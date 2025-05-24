@@ -84,6 +84,9 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling) // For UI Tooling (like Previews in debug)
     implementation(libs.compose.ui.tooling.preview) // For Previews
 
+    // AndroidX Startup
+    implementation(libs.startup.runtime)
+
     // Navigation
     implementation(libs.androidx.navigation.compose)
 
