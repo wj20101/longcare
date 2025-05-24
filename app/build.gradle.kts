@@ -40,7 +40,6 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -51,7 +50,6 @@ android {
         
         debug {
             isDebuggable = true
-            applicationIdSuffix = ".debug" // 可选，给debug版本一个不同的包名后缀
             buildConfigField("String", "BASE_URL", "\"https://api.qianyuwl168.cn/\"") // 测试环境 URL
             signingConfig = signingConfigs.getByName("config")
         }
