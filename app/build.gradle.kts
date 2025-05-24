@@ -83,12 +83,13 @@ android {
         val versionName = variant.versionName
 
         outputs.configureEach {
+            val date = SimpleDateFormat("MMdd-HH", Locale.getDefault()).format(Date())
             val fileName = buildString {
                 append("app_")
+                append(date)
                 append(variant.productFlavors.joinToString("-") { it.name })
                 append("-${variant.buildType.name}")
                 append("-${versionName}")
-                append("-${SimpleDateFormat("yyyyMMdd", Locale.CHINA).format(Date())}")
                 append(".apk")
             }
 
