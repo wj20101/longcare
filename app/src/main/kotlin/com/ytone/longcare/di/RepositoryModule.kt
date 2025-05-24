@@ -1,7 +1,7 @@
 package com.ytone.longcare.di
 
 import com.ytone.longcare.data.repository.SampleRepositoryImpl
-import com.ytone.longcare.domain.SampleRepository
+import com.ytone.longcare.domain.repository.SampleRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

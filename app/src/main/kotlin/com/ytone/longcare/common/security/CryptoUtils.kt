@@ -154,13 +154,44 @@ enum class AESMode(val transformation: String, val requiresIV: Boolean = true) {
     CTR_NO_PADDING("AES/CTR/NoPadding", true)
 }
 
-enum class RSAMode(val transformation: String, val maxDataSize: Int) {
-    NONE_PKCS1_PADDING("RSA/NONE/PKCS1Padding", 245), // For 2048-bit key
-    ECB_PKCS1_PADDING("RSA/ECB/PKCS1Padding", 245),
-    ECB_OAEP_WITH_SHA1_AND_MGF1_PADDING("RSA/ECB/OAEPWithSHA-1AndMGF1Padding", 214),
-    ECB_OAEP_WITH_SHA256_AND_MGF1_PADDING("RSA/ECB/OAEPWithSHA-256AndMGF1Padding", 190),
-    ECB_OAEP_WITH_SHA384_AND_MGF1_PADDING("RSA/ECB/OAEPWithSHA-384AndMGF1Padding", 158),
-    ECB_OAEP_WITH_SHA512_AND_MGF1_PADDING("RSA/ECB/OAEPWithSHA-512AndMGF1Padding", 126)
+enum class RSAMode(val transformation: String) {
+    NONE_PKCS1_PADDING("RSA/NONE/PKCS1Padding") {
+        override fun getMaxDataSize(keySizeInBits: Int): Int = (keySizeInBits / 8) - 11
+    },
+    ECB_PKCS1_PADDING("RSA/ECB/PKCS1Padding") {
+        override fun getMaxDataSize(keySizeInBits: Int): Int = (keySizeInBits / 8) - 11
+    },
+    ECB_OAEP_WITH_SHA1_AND_MGF1_PADDING("RSA/ECB/OAEPWithSHA-1AndMGF1Padding") {
+        // SHA-1 hash length = 20 bytes. Max data = key_bytes - 2*hash_bytes - 2.
+        override fun getMaxDataSize(keySizeInBits: Int): Int = (keySizeInBits / 8) - 2 * 20 - 2
+    },
+    ECB_OAEP_WITH_SHA256_AND_MGF1_PADDING("RSA/ECB/OAEPWithSHA-256AndMGF1Padding") {
+        // SHA-256 hash length = 32 bytes.
+        override fun getMaxDataSize(keySizeInBits: Int): Int = (keySizeInBits / 8) - 2 * 32 - 2
+    },
+    ECB_OAEP_WITH_SHA384_AND_MGF1_PADDING("RSA/ECB/OAEPWithSHA-384AndMGF1Padding") {
+        // SHA-384 hash length = 48 bytes.
+        override fun getMaxDataSize(keySizeInBits: Int): Int = (keySizeInBits / 8) - 2 * 48 - 2
+    },
+    ECB_OAEP_WITH_SHA512_AND_MGF1_PADDING("RSA/ECB/OAEPWithSHA-512AndMGF1Padding") {
+        // SHA-512 hash length = 64 bytes.
+        override fun getMaxDataSize(keySizeInBits: Int): Int = (keySizeInBits / 8) - 2 * 64 - 2
+    };
+
+    /**
+     * Calculates the maximum number of bytes that can be encrypted with this RSA mode and a given key size.
+     * @param keySizeInBits The size of the RSA key in bits.
+     * @return The maximum number of bytes that can be encrypted.
+     */
+    abstract fun getMaxDataSize(keySizeInBits: Int): Int
+
+    companion object {
+        /**
+         * Default RSA encryption mode, recommended for new applications.
+         * OAEP padding is generally more secure than PKCS1Padding.
+         */
+        val DEFAULT_ENCRYPTION_MODE = ECB_OAEP_WITH_SHA256_AND_MGF1_PADDING
+    }
 }
 
 /**
@@ -457,10 +488,13 @@ object CryptoUtils {
     /**
      * 使用 AES 解密数据。
      *
-     * @param base64CipherText Base64 编码的密文。
+     * @param base64CipherText Base64 编码的密文。如果 iv 参数为 null 且模式需要 IV (如 GCM, CBC 等),
+     *                         则此参数应为 IV 和密文的 Base64 编码组合 (IV 在前，密文在后)。
      * @param keyString Base64 编码的 AES 密钥字符串。
      * @param mode AES 解密模式。
-     * @param iv Base64 编码的初始化向量，如果为 null 则从密文中提取（适用于组合格式）。
+     * @param iv Base64 编码的初始化向量。如果模式需要 IV 且此参数不为 null，则使用此 IV。
+     *           如果模式需要 IV 且此参数为 null，则会尝试从 base64CipherText 中提取 IV。
+     *           如果模式不需要 IV (如 ECB)，则此参数被忽略。
      * @return 解密后的明文；如果解密失败，则返回 null。
      */
     fun aesDecrypt(
@@ -552,10 +586,13 @@ object CryptoUtils {
     /**
      * 使用 AES 解密数据（返回 ByteArray）。
      *
-     * @param base64CipherText Base64 编码的密文。
+     * @param base64CipherText Base64 编码的密文。如果 iv 参数为 null 且模式需要 IV (如 GCM, CBC 等),
+     *                         则此参数应为 IV 和密文的 Base64 编码组合 (IV 在前，密文在后)。
      * @param keyString Base64 编码的 AES 密钥字符串。
      * @param mode AES 解密模式。
-     * @param iv Base64 编码的初始化向量，如果为 null 则从密文中提取（适用于组合格式）。
+     * @param iv Base64 编码的初始化向量。如果模式需要 IV 且此参数不为 null，则使用此 IV。
+     *           如果模式需要 IV 且此参数为 null，则会尝试从 base64CipherText 中提取 IV。
+     *           如果模式不需要 IV (如 ECB)，则此参数被忽略。
      * @return 解密后的原始数据；如果解密失败，则返回 null。
      */
     fun aesDecryptToBytes(
@@ -616,6 +653,17 @@ object CryptoUtils {
 
     // --- RSA Encryption/Decryption ---
 
+    private fun getKeySizeInBits(key: java.security.Key): Int? {
+        return when (key) {
+            is java.security.interfaces.RSAKey -> key.modulus.bitLength()
+            else -> {
+                System.err.println("Unsupported key type for size calculation: ${key.javaClass.name}")
+                null
+            }
+        }
+    }
+
+    //region RSA Key Generation
     /**
      * 生成指定长度的 RSA 密钥对。
      *
@@ -721,26 +769,17 @@ object CryptoUtils {
     private fun rsaEncryptCore(
         plainData: ByteArray,
         publicKey: PublicKey,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): ByteArray? {
         if (plainData.isEmpty()) return null
-        // 根据密钥长度和填充模式检查数据大小
-        // 注意：这里的 keySizeBits 获取方式是近似的，更准确的方式可能需要解析密钥规范
-        // 对于标准的 RSA 密钥，publicKey.encoded.size * 8 通常能给出密钥的位数
-        // 但对于某些特殊情况或非标准密钥，这可能不准确
-        val keyFactory = KeyFactory.getInstance("RSA")
-        val rsaPublicKeySpec = keyFactory.getKeySpec(publicKey, java.security.spec.RSAPublicKeySpec::class.java)
-        val keySizeBits = rsaPublicKeySpec.modulus.bitLength()
-
-        val maxDataSize = when (mode) {
-            RSAMode.NONE_PKCS1_PADDING, RSAMode.ECB_PKCS1_PADDING -> (keySizeBits / 8) - 11
-            RSAMode.ECB_OAEP_WITH_SHA1_AND_MGF1_PADDING -> (keySizeBits / 8) - 2 * 20 - 2 // SHA-1 hash size is 20 bytes
-            RSAMode.ECB_OAEP_WITH_SHA256_AND_MGF1_PADDING -> (keySizeBits / 8) - 2 * 32 - 2 // SHA-256 hash size is 32 bytes
-            RSAMode.ECB_OAEP_WITH_SHA384_AND_MGF1_PADDING -> (keySizeBits / 8) - 2 * 48 - 2 // SHA-384 hash size is 48 bytes
-            RSAMode.ECB_OAEP_WITH_SHA512_AND_MGF1_PADDING -> (keySizeBits / 8) - 2 * 64 - 2 // SHA-512 hash size is 64 bytes
+        val keySize = getKeySizeInBits(publicKey)
+        if (keySize == null) {
+            System.err.println("Could not determine RSA key size for input validation. Encryption aborted.")
+            return null
         }
-        require(plainData.size <= maxDataSize) {
-            "Data too large for RSA encryption with the chosen mode and key size. Maximum data size: $maxDataSize bytes, data size: ${plainData.size} bytes."
+        val maxData = mode.getMaxDataSize(keySize)
+        require(plainData.size <= maxData) {
+            "Data too large for RSA encryption with the chosen mode and key size. Maximum data size: $maxData bytes, data size: ${plainData.size} bytes."
         }
         return try {
             val cipher = Cipher.getInstance(mode.transformation)
@@ -758,7 +797,7 @@ object CryptoUtils {
     private fun rsaDecryptCore(
         cipherData: ByteArray,
         privateKey: PrivateKey,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): ByteArray? {
         if (cipherData.isEmpty()) return null
         return try {
@@ -782,7 +821,7 @@ object CryptoUtils {
     fun rsaEncrypt(
         plainText: String,
         publicKey: PublicKey,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): RSAEncryptResult? {
         val plainData = plainText.toByteArray(Charsets.UTF_8)
         val cipherText = rsaEncryptCore(plainData, publicKey, mode)
@@ -800,7 +839,7 @@ object CryptoUtils {
     fun rsaEncrypt(
         plainData: ByteArray,
         publicKey: PublicKey,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): RSAEncryptResult? {
         val cipherText = rsaEncryptCore(plainData, publicKey, mode)
         return cipherText?.let { RSAEncryptResult(it) }
@@ -817,7 +856,7 @@ object CryptoUtils {
     fun rsaEncrypt(
         plainText: String,
         publicKeyString: String,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): RSAEncryptResult? {
         val publicKey = stringToPublicKey(publicKeyString) ?: return null
         return rsaEncrypt(plainText, publicKey, mode)
@@ -834,7 +873,7 @@ object CryptoUtils {
     fun rsaEncrypt(
         plainData: ByteArray,
         publicKeyString: String,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): RSAEncryptResult? {
         val publicKey = stringToPublicKey(publicKeyString) ?: return null
         return rsaEncrypt(plainData, publicKey, mode)
@@ -852,7 +891,7 @@ object CryptoUtils {
     fun rsaDecrypt(
         base64CipherText: String,
         privateKey: PrivateKey,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): String? {
         if (base64CipherText.isEmpty()) return null
         return try {
@@ -876,7 +915,7 @@ object CryptoUtils {
     fun rsaDecrypt(
         base64CipherText: String,
         privateKeyString: String,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): String? {
         val privateKey = stringToPrivateKey(privateKeyString) ?: return null
         return rsaDecrypt(base64CipherText, privateKey, mode)
@@ -893,7 +932,7 @@ object CryptoUtils {
     fun rsaDecryptToBytes(
         base64CipherText: String,
         privateKey: PrivateKey,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): ByteArray? {
         if (base64CipherText.isEmpty()) return null
         return try {
@@ -916,7 +955,7 @@ object CryptoUtils {
     fun rsaDecryptToBytes(
         base64CipherText: String,
         privateKeyString: String,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): ByteArray? {
         val privateKey = stringToPrivateKey(privateKeyString) ?: return null
         return rsaDecryptToBytes(base64CipherText, privateKey, mode)
@@ -933,7 +972,7 @@ object CryptoUtils {
     fun rsaDecryptFromHex(
         hexCipherText: String,
         privateKey: PrivateKey,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): String? {
         if (hexCipherText.isEmpty()) return null
         return try {
@@ -957,7 +996,7 @@ object CryptoUtils {
     fun rsaDecryptFromHex(
         hexCipherText: String,
         privateKeyString: String,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): String? {
         val privateKey = stringToPrivateKey(privateKeyString) ?: return null
         return rsaDecryptFromHex(hexCipherText, privateKey, mode)
@@ -974,7 +1013,7 @@ object CryptoUtils {
     fun rsaDecryptToBytesFromHex(
         hexCipherText: String,
         privateKey: PrivateKey,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): ByteArray? {
         if (hexCipherText.isEmpty()) return null
         return try {
@@ -997,7 +1036,7 @@ object CryptoUtils {
     fun rsaDecryptToBytesFromHex(
         hexCipherText: String,
         privateKeyString: String,
-        mode: RSAMode = RSAMode.ECB_PKCS1_PADDING
+        mode: RSAMode = RSAMode.DEFAULT_ENCRYPTION_MODE
     ): ByteArray? {
         val privateKey = stringToPrivateKey(privateKeyString) ?: return null
         return rsaDecryptToBytesFromHex(hexCipherText, privateKey, mode)

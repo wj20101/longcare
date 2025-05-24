@@ -13,6 +13,15 @@ android {
     namespace = "com.ytone.longcare"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
+    signingConfigs {
+        create("config") {
+            keyAlias = "longcare"
+            keyPassword = "REMOVED_RELEASE_KEY_PASSWORD"
+            storeFile = file("../keystore.jks")
+            storePassword = "longcare~!@#\$%"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.ytone.longcare"
         minSdk = libs.versions.minSdk.get().toInt()
@@ -37,11 +46,14 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("String", "BASE_URL", "\"https://api.qianyuwl168.cn/\"") // 生产环境 URL
+            signingConfig = signingConfigs.getByName("config")
         }
+        
         debug {
             isDebuggable = true
             applicationIdSuffix = ".debug" // 可选，给debug版本一个不同的包名后缀
             buildConfigField("String", "BASE_URL", "\"https://api.qianyuwl168.cn/\"") // 测试环境 URL
+            signingConfig = signingConfigs.getByName("config")
         }
     }
     compileOptions {
