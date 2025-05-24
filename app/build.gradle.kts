@@ -86,7 +86,7 @@ android {
             val date = SimpleDateFormat("MMdd-HH", Locale.getDefault()).format(Date())
             val fileName = buildString {
                 append("app")
-                append("-${versionName}")
+                append("-v${versionName}")
                 append("-$date")
                 append("-")
                 append(variant.productFlavors.joinToString("-") { it.name })
