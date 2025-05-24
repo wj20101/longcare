@@ -26,7 +26,7 @@ fun AppNavigation() {
             )
         }
         composable(AppDestinations.HOME_ROUTE) {
-            HomeScreen()
+            HomeScreen(navController = navController)
         }
     }
 }
