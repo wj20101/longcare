@@ -1,3 +1,8 @@
+import com.android.build.gradle.internal.api.ApkVariantOutputImpl
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
@@ -64,6 +69,33 @@ android {
     buildFeatures {
         buildConfig = true
         compose = true
+    }
+
+    flavorDimensions += "environment"
+    productFlavors {
+        create("dev") { dimension = "environment" }
+        create("prod") { dimension = "environment" }
+    }
+
+    // Custom APK naming
+    applicationVariants.all {
+        val variant = this
+        val versionName = variant.versionName
+
+        outputs.configureEach {
+            val fileName = buildString {
+                append("app_")
+                append(variant.productFlavors.joinToString("-") { it.name })
+                append("-${variant.buildType.name}")
+                append("-${versionName}")
+                append("-${SimpleDateFormat("yyyyMMdd", Locale.CHINA).format(Date())}")
+                append(".apk")
+            }
+
+            if (this is ApkVariantOutputImpl) {
+                outputFileName = fileName
+            }
+        }
     }
 }
 
