@@ -99,36 +99,14 @@ object KLogger {
         val logMessage = buildLogMessage(message)
 
         // 实际打印到 Logcat
-        when (level) {
-            LogLevel.VERBOSE -> if (throwable == null) Log.v(finalTag, logMessage) else Log.v(
-                finalTag, logMessage, throwable
-            )
-
-            LogLevel.DEBUG -> if (throwable == null) Log.d(
-                finalTag, logMessage
-            ) else Log.d(finalTag, logMessage, throwable)
-
-            LogLevel.INFO -> if (throwable == null) Log.i(finalTag, logMessage) else Log.i(
-                finalTag, logMessage, throwable
-            )
-
-            LogLevel.WARN -> if (throwable == null) Log.w(finalTag, logMessage) else Log.w(
-                finalTag, logMessage, throwable
-            )
-
-            LogLevel.ERROR -> if (throwable == null) Log.e(
-                finalTag, logMessage
-            ) else Log.e(finalTag, logMessage, throwable)
-
-            LogLevel.ASSERT -> if (throwable == null) Log.wtf(finalTag, logMessage) else Log.wtf(
-                finalTag, logMessage, throwable
-            )
-
-            LogLevel.NONE -> Unit // Do nothing
+        val bytesWritten = if (throwable == null) {
+            Log.println(level.priority, finalTag, logMessage)
+        } else {
+            Log.println(level.priority, finalTag, "$logMessage\n${Log.getStackTraceString(throwable)}")
         }
 
         // (高级功能占位) 如果启用了文件日志，则写入文件
-        if (config.logToFileEnabled) {
+        if (config.logToFileEnabled && bytesWritten > 0) {
             // TODO: Write to file: formatLogForFile(level, finalTag, logMessage, throwable)
         }
     }
@@ -155,16 +133,31 @@ object KLogger {
      * 注意：这是一个耗性能的操作，谨慎开启或调整 stackTraceDepth
      */
     private fun getCallerStackTraceElement(): StackTraceElement? {
-        // 0: getThreadStackTrace()
+        // BEWARE: This method of getting caller info is fragile and performance-intensive.
+        // It relies on a fixed call stack depth, which can break if the internal logging call structure changes.
+        // Consider alternative approaches for production-critical logging if precise caller info is paramount
+        // and performance is a concern (e.g., passing caller info explicitly, or using a library that handles this robustly).
+
+        // Stack trace indices:
+        // 0: Thread.getStackTrace()
         // 1: getCallerStackTraceElement() (this method)
         // 2: buildLogMessage()
-        // 3: log()
-        // 4: v(), d(), i(), w(), e(), wtf() (the public log function)
-        // 5: The actual caller of v(), d(), etc.
-        val N = 4 + config.stackTraceDepth // 调整这个索引以匹配调用层级
+        // 3: log() (the private core logging method)
+        // 4: The public KLogger methods (v, d, i, w, e, wtf)
+        // 5: The Any.logX extension function OR the klogX global function
+        // 6: The actual call site in user code, if stackTraceDepth is 1 (meaning we want the immediate caller of logX/klogX)
+        // So, to get the caller of logX/klogX, we need index 5 + config.stackTraceDepth (where depth 1 means caller of logX)
+        // However, if stackTraceDepth is 0 (don't show), this logic is skipped.
+        // If stackTraceDepth is 1, we want the element at index 5.
+        // If stackTraceDepth is 2, we want the element at index 6 (caller of the caller of logX).
+        // The original N = 4 + config.stackTraceDepth was targeting the public KLogger methods (v,d,i..) as depth 1.
+        // To target the caller of the extension/global functions:
+        val baseDepth = 5 // Depth to reach the logX/klogX call itself
+        val targetDepth = baseDepth + config.stackTraceDepth
+
         val stackTrace = Thread.currentThread().stackTrace
-        return if (stackTrace.size > N) {
-            stackTrace[N]
+        return if (config.stackTraceDepth > 0 && stackTrace.size > targetDepth) {
+            stackTrace[targetDepth]
         } else {
             null
         }
@@ -173,55 +166,33 @@ object KLogger {
 
 // --- Kotlin 扩展函数，方便调用 ---
 
-fun Any.logV(message: String, throwable: Throwable? = null) {
-    KLogger.v(this.javaClass.simpleName, message, throwable)
+private fun Any.getClassNameTag(): String = this.javaClass.simpleName
+
+// Unified extension functions with optional custom tag
+fun Any.logV(message: String, tag: String? = null, throwable: Throwable? = null) {
+    KLogger.v(tag ?: getClassNameTag(), message, throwable)
 }
 
-fun Any.logD(message: String, throwable: Throwable? = null) {
-    KLogger.d(this.javaClass.simpleName, message, throwable)
+fun Any.logD(message: String, tag: String? = null, throwable: Throwable? = null) {
+    KLogger.d(tag ?: getClassNameTag(), message, throwable)
 }
 
-fun Any.logI(message: String, throwable: Throwable? = null) {
-    KLogger.i(this.javaClass.simpleName, message, throwable)
+fun Any.logI(message: String, tag: String? = null, throwable: Throwable? = null) {
+    KLogger.i(tag ?: getClassNameTag(), message, throwable)
 }
 
-fun Any.logW(message: String, throwable: Throwable? = null) {
-    KLogger.w(this.javaClass.simpleName, message, throwable)
+fun Any.logW(message: String, tag: String? = null, throwable: Throwable? = null) {
+    KLogger.w(tag ?: getClassNameTag(), message, throwable)
 }
 
-fun Any.logE(message: String, throwable: Throwable? = null) {
-    KLogger.e(this.javaClass.simpleName, message, throwable)
+fun Any.logE(message: String, tag: String? = null, throwable: Throwable? = null) {
+    KLogger.e(tag ?: getClassNameTag(), message, throwable)
 }
 
-fun Any.logWtf(message: String, throwable: Throwable? = null) {
-    KLogger.wtf(this.javaClass.simpleName, message, throwable)
+fun Any.logWtf(message: String, tag: String? = null, throwable: Throwable? = null) {
+    KLogger.wtf(tag ?: getClassNameTag(), message, throwable)
 }
 
-// --- 允许自定义 Tag 的扩展函数 ---
-fun Any.logV(tag: String, message: String, throwable: Throwable? = null) {
-    KLogger.v(tag, message, throwable)
-}
-
-fun Any.logD(tag: String, message: String, throwable: Throwable? = null) {
-    KLogger.d(tag, message, throwable)
-}
-
-fun Any.logI(tag: String, message: String, throwable: Throwable? = null) {
-    KLogger.i(tag, message, throwable)
-}
-
-fun Any.logW(tag: String, message: String, throwable: Throwable? = null) {
-    KLogger.w(tag, message, throwable)
-}
-
-fun Any.logE(tag: String, message: String, throwable: Throwable? = null) {
-    KLogger.e(tag, message, throwable)
-}
-
-fun Any.logWtf(tag: String, message: String, throwable: Throwable? = null) {
-    KLogger.wtf(tag, message, throwable)
-}
-// ... 为其他级别也添加带自定义 tag 的版本
 
 // --- 全局函数，如果不方便使用 `this.javaClass.simpleName` 作为 Tag ---
 fun klogV(message: String, throwable: Throwable? = null) {
@@ -231,4 +202,19 @@ fun klogV(message: String, throwable: Throwable? = null) {
 fun klogD(message: String, throwable: Throwable? = null) {
     KLogger.d(null, message, throwable)
 }
-// ... 为其他级别也添加全局版本
+
+fun klogI(message: String, throwable: Throwable? = null) {
+    KLogger.i(null, message, throwable)
+}
+
+fun klogW(message: String, throwable: Throwable? = null) {
+    KLogger.w(null, message, throwable)
+}
+
+fun klogE(message: String, throwable: Throwable? = null) {
+    KLogger.e(null, message, throwable)
+}
+
+fun klogWtf(message: String, throwable: Throwable? = null) {
+    KLogger.wtf(null, message, throwable)
+}
