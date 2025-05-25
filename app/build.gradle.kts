@@ -118,6 +118,9 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling) // For UI Tooling (like Previews in debug)
     implementation(libs.compose.ui.tooling.preview) // For Previews
 
+    // Constraintlayout Compose
+    implementation(libs.constraintlayout.compose)
+
     // AndroidX Startup
     implementation(libs.startup.runtime)
 

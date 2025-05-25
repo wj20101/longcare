@@ -1,208 +1,261 @@
 package com.ytone.longcare.features.login.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Dimension
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ytone.longcare.R
 import com.ytone.longcare.features.login.viewmodel.LoginViewModel
 import com.ytone.longcare.theme.LongCareTheme
+
+// 定义颜色 (从UI设计稿中近似取色) - 与之前版本相同
+val LightScreenBackground = Color(0xFFF8F9FB)
+val PrimaryBlue = Color(0xFF3D7EFF)
+val TextColorPrimary = Color(0xFF333333)
+val TextColorSecondary = Color(0xFF757575)
+val TextColorHint = Color(0xFFBABABA)
+val LinkColor = PrimaryBlue
+val InputFieldBackground = Color.White
+val InputFieldBorderColor = Color(0xFFE8E8E8)
 
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(), onLoginSuccess: () -> Unit
 ) {
     var phoneNumber by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    val loginState by viewModel.loginState.collectAsState()
-    var passwordVisible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(loginState) {
-        if (loginState is LoginViewModel.LoginUiState.Success) {
-            onLoginSuccess()
-        }
-    }
+    var verificationCode by remember { mutableStateOf("") }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp) // Add some padding around the whole screen
+        modifier = Modifier.fillMaxSize()
     ) {
-        Column(
+        // 使用 Image 作为背景
+        Image(
+            painter = painterResource(id = R.drawable.login_bg),
+            contentDescription = "Login Background",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop // 或者 ContentScale.FillBounds，根据需要选择
+        )
+
+        ConstraintLayout(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()) // Make content scrollable if it overflows
-                .padding(horizontal = 16.dp), // Horizontal padding for content within the Box
-            horizontalAlignment = Alignment.CenterHorizontally
+                .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
-            Spacer(modifier = Modifier.height(60.dp)) // Space from top
+            // 创建所有UI元素的引用
+            val (smallLogo, logo, phoneField, codeField, sendCodeButton, loginButton, agreementText) = createRefs()
 
+            val horizontalMargin = 48.dp
+
+            // Small Logo
             Image(
-                painter = painterResource(id = R.drawable.ic_launcher_foreground), // Replace with your app logo
-                contentDescription = "App Logo", modifier = Modifier.size(80.dp), // Adjusted size
-                contentScale = ContentScale.Fit
-            )
+                painter = painterResource(R.drawable.app_logo_small),
+                contentDescription = "small logo",
+                modifier = Modifier
+                    .width(86.dp)
+                    .constrainAs(smallLogo) {
+                        top.linkTo(parent.top, margin = 20.dp)
+                        start.linkTo(parent.start)
+                    })
 
-            Spacer(modifier = Modifier.height(24.dp))
+            // Logo
+            InfinityLogo(
+                modifier = Modifier
+                    .width(200.dp)
+                    .constrainAs(logo) {
+                        top.linkTo(parent.top, margin = 80.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    })
 
-            Text(
-                text = "欢迎登录", style = TextStyle(
-                    fontSize = 26.sp, // Slightly adjusted size
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface // Use onSurface for better theme adaptability
-                )
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "颐康通", // Subtitle or App Name
-                style = TextStyle(
-                    fontSize = 16.sp, // Slightly adjusted size
-                    color = MaterialTheme.colorScheme.onSurfaceVariant // Use onSurfaceVariant
-                )
-            )
-
-            Spacer(modifier = Modifier.height(40.dp)) // Adjusted spacing
-
+            // Phone Number Input Field
             OutlinedTextField(
                 value = phoneNumber,
                 onValueChange = { phoneNumber = it },
-                label = { Text("请输入手机号") }, // More descriptive label
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Filled.Person, contentDescription = "Phone Number Icon"
-                    )
+                placeholder = {
+                    Text("请输入您的手机号码", color = TextColorHint, fontSize = 15.sp)
                 },
-                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(50),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = InputFieldBackground,
+                    unfocusedContainerColor = InputFieldBackground,
+                    disabledContainerColor = InputFieldBackground,
+                    focusedBorderColor = PrimaryBlue,
+                    unfocusedBorderColor = InputFieldBorderColor,
+                    cursorColor = PrimaryBlue
+                ),
+                singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color.Gray,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                )
-            )
+                textStyle = TextStyle(fontSize = 15.sp, color = TextColorPrimary),
+                modifier = Modifier.constrainAs(phoneField) {
+                    start.linkTo(parent.start, margin = horizontalMargin)
+                    end.linkTo(parent.end, margin = horizontalMargin)
+                    bottom.linkTo(codeField.top, margin = 12.dp)
+                    width = Dimension.fillToConstraints // 宽度填充约束
+                })
 
-            Spacer(modifier = Modifier.height(20.dp)) // Adjusted spacing
-
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("请输入密码") }, // More descriptive label
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Filled.Lock, contentDescription = "Password Icon"
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                trailingIcon = {
-                    val image =
-                        if (passwordVisible) painterResource(id = R.drawable.ic_visibility_on)
-                        else painterResource(id = R.drawable.ic_visibility_off)
-
-                    val description = if (passwordVisible) "隐藏密码" else "显示密码"
-
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            painter = image,
-                            description,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color.Gray,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                )
-            )
-
-            Spacer(modifier = Modifier.height(12.dp)) // Adjusted spacing
-
+            // Send Verification Code Button
             TextButton(
-                onClick = { /* TODO: Implement forgot password */ },
-                modifier = Modifier.align(Alignment.End) // Align to the end (right)
-            ) {
-                Text("忘记密码?", color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
+                onClick = { /* TODO: Handle send code */ },
+                shape = RoundedCornerShape(50),
+                modifier = Modifier.constrainAs(sendCodeButton) {
+                    bottom.linkTo(phoneField.bottom) // 假设输入框高度约48dp，保证垂直对齐
+                    end.linkTo(parent.end, margin = horizontalMargin)
+                    bottom.linkTo(loginButton.top, margin = 18.dp)
+                    // 高度通过 TextButton 内部内容自适应，或显式设置
+                }) {
+                Text("发送验证码", color = PrimaryBlue, fontSize = 15.sp)
             }
 
-            Spacer(modifier = Modifier.height(28.dp)) // Adjusted spacing
 
+            // Verification Code Input Field
+            OutlinedTextField(
+                value = verificationCode,
+                onValueChange = { verificationCode = it },
+                placeholder = { Text("输入验证码", color = TextColorHint, fontSize = 15.sp) },
+                shape = RoundedCornerShape(50),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = InputFieldBackground,
+                    unfocusedContainerColor = InputFieldBackground,
+                    disabledContainerColor = InputFieldBackground,
+                    focusedBorderColor = PrimaryBlue,
+                    unfocusedBorderColor = InputFieldBorderColor,
+                    cursorColor = PrimaryBlue
+                ),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                textStyle = TextStyle(fontSize = 15.sp, color = TextColorPrimary),
+                modifier = Modifier.constrainAs(codeField) {
+                    start.linkTo(parent.start, margin = horizontalMargin)
+                    end.linkTo(sendCodeButton.start, margin = 8.dp) // 结束于发送按钮的开始处
+                    bottom.linkTo(loginButton.top)
+                    width = Dimension.fillToConstraints // 宽度填充约束
+                    // 与 sendCodeButton 保持垂直对齐 (其top已与 phoneField.bottom 对齐)
+                    centerVerticallyTo(sendCodeButton) // 简便的垂直对齐方式
+                })
+
+            // Login Button
             Button(
-                onClick = { viewModel.login(phoneNumber, password) },
+                onClick = { /* TODO: Handle login */ },
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp), // Standard button height
-                enabled = loginState !is LoginViewModel.LoginUiState.Loading,
-                shape = MaterialTheme.shapes.medium, // Or RoundedCornerShape(8.dp)
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                if (loginState is LoginViewModel.LoginUiState.Loading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text(
-                        "登录",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                }
-            }
-
-            if (loginState is LoginViewModel.LoginUiState.Error) {
-                Spacer(modifier = Modifier.height(16.dp))
+                    .height(48.dp) // 明确按钮高度
+                    .constrainAs(loginButton) {
+                        start.linkTo(parent.start, margin = horizontalMargin)
+                        end.linkTo(parent.end, margin = horizontalMargin)
+                        bottom.linkTo(agreementText.top, margin = 48.dp)
+                        width = Dimension.fillToConstraints // 宽度填充约束
+                    }) {
                 Text(
-                    (loginState as LoginViewModel.LoginUiState.Error).message,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
+                    "确定登录",
+                    fontSize = 18.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
-            Spacer(modifier = Modifier.weight(1f)) // Pushes the following content to the bottom
-
-            TextButton(onClick = { /* TODO: Implement register navigation */ }) {
-                Text(
-                    "还没有账号? 立即注册",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 14.sp
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp)) // Space from bottom
+            // Agreement Text
+            AgreementText( // AgreementText 组件复用之前的实现
+                onUserAgreementClick = { /* TODO: Navigate to User Agreement */ },
+                onPrivacyPolicyClick = { /* TODO: Navigate to Privacy Policy */ },
+                modifier = Modifier.constrainAs(agreementText) {
+                    bottom.linkTo(parent.bottom, margin = 32.dp)
+                    start.linkTo(parent.start, margin = 32.dp) // 应用边距以控制文本块宽度
+                    end.linkTo(parent.end, margin = 32.dp)     // 应用边距
+                    width = Dimension.fillToConstraints // 确保文本在约束内正确换行和居中
+                })
         }
     }
 }
 
-@Preview(showBackground = true)
+// InfinityLogo Composable - 与之前版本相同
+@Composable
+fun InfinityLogo(modifier: Modifier = Modifier) {
+    Image(
+        painter = painterResource(id = R.drawable.app_logo_name),
+        contentDescription = "App Logo",
+        modifier = modifier
+    )
+}
+
+// AgreementText Composable - 与之前修正后的版本相同
+@Composable
+fun AgreementText(
+    modifier: Modifier = Modifier,
+    onUserAgreementClick: () -> Unit,
+    onPrivacyPolicyClick: () -> Unit
+) {
+    val userAgreementTag = "USER_AGREEMENT"
+    val privacyPolicyTag = "PRIVACY_POLICY"
+
+    val annotatedString = buildAnnotatedString {
+        append("登录即表明已阅读并同意")
+        pushStringAnnotation(tag = userAgreementTag, annotation = "user_agreement_link")
+        withStyle(style = SpanStyle(color = LinkColor, fontWeight = FontWeight.Normal)) {
+            append("《用户协议》")
+        }
+        pop()
+        append("和")
+        pushStringAnnotation(tag = privacyPolicyTag, annotation = "privacy_policy_link")
+        withStyle(style = SpanStyle(color = LinkColor, fontWeight = FontWeight.Normal)) {
+            append("《隐私政策》")
+        }
+        pop()
+    }
+
+    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+    Text(
+        text = annotatedString,
+        style = TextStyle(
+            color = TextColorSecondary, fontSize = 12.sp, textAlign = TextAlign.Center // 文本本身居中
+        ),
+        onTextLayout = { result ->
+            textLayoutResult = result
+        },
+        modifier = modifier // Modifier 从 constrainAs 传入, 已包含 fillMaxWidth 效果由 width = Dimension.fillToConstraints 提供
+            .pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    textLayoutResult?.let { layoutResult ->
+                        val clickedOffset = layoutResult.getOffsetForPosition(offset)
+                        annotatedString.getStringAnnotations(
+                            tag = userAgreementTag, start = clickedOffset, end = clickedOffset
+                        ).firstOrNull()?.let {
+                            onUserAgreementClick()
+                        }
+                        annotatedString.getStringAnnotations(
+                            tag = privacyPolicyTag, start = clickedOffset, end = clickedOffset
+                        ).firstOrNull()?.let {
+                            onPrivacyPolicyClick()
+                        }
+                    }
+                }
+            })
+}
+
+@Preview(showBackground = true, device = "spec:width=360dp,height=740dp")
 @Composable
 fun LoginScreenPreview() {
     LongCareTheme {
