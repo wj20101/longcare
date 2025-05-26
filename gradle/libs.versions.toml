@@ -42,7 +42,6 @@ firebasePerfSdk = "21.0.5"
 
 coil = "3.2.0"
 accompanistPermissions = "0.34.0"
-timber = "5.0.1"
 
 # Testing
 junit = "4.13.2"
@@ -113,9 +112,6 @@ kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime",
 
 # Firebase Performance Monitoring
 firebase-perf = { group = "com.google.firebase", name = "firebase-perf-ktx", version.ref = "firebasePerfSdk" }
-
-# Logging
-timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 
 # Image Loading
 coil-core = { group = "io.coil-kt.coil3", name = "coil", version.ref = "coil" }
