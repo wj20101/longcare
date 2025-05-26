@@ -157,7 +157,7 @@ fun LoginScreen(
 
             // Login Button
             Button(
-                onClick = { /* TODO: Handle login */ },
+                onClick = { onLoginSuccess.invoke() },
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                 modifier = Modifier
