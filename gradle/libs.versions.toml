@@ -77,6 +77,7 @@ compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" } # For debug builds (layout inspector, etc.)
 compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" } # For @Preview
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+compose-material3-adaptive = { group = "androidx.compose.material3.adaptive", name = "adaptive" }
 
 # Data Persistence - Room
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }

@@ -115,6 +115,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material3.adaptive)
     debugImplementation(libs.compose.ui.tooling) // For UI Tooling (like Previews in debug)
     implementation(libs.compose.ui.tooling.preview) // For Previews
 
