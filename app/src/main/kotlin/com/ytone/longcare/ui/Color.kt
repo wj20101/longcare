@@ -1,4 +1,4 @@
-package com.ytone.longcare.features.home.ui
+package com.ytone.longcare.ui
 
 import androidx.compose.ui.graphics.Color
 

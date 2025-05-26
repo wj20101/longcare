@@ -1,4 +1,4 @@
-package com.ytone.longcare.features.home.ui
+package com.ytone.longcare.ui
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
