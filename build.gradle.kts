@@ -5,7 +5,6 @@ plugins {
     alias(libs.plugins.kotlinKapt) apply false
     alias(libs.plugins.dagger.hilt) apply false
     alias(libs.plugins.ksp) apply false
-    alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.kotlinCompose) apply false
     alias(libs.plugins.room) apply false
     alias(libs.plugins.protobuf.plugin) apply false

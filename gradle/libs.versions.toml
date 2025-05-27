@@ -48,10 +48,6 @@ junit = "4.13.2"
 androidxJunit = "1.2.1"
 espressoCore = "3.6.1"
 
-# Code Quality
-ktlintGradle = "11.6.1" # Ktlint Gradle plugin version
-ktlintVersion = "0.50.0" # Ktlint rule set version for configuration block
-
 # protobuf
 protobuf-plugin = "0.9.5"     # Protobuf Gradle 插件版本
 protobuf = "4.31.0"
@@ -153,7 +149,6 @@ dagger-hilt = { id = "com.google.dagger.hilt.android", version.ref = "dagger" } 
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" } # Room Gradle Plugin, uses 'room' version key from [versions]
 firebasePerf = { id = "com.google.firebase.firebase-perf", version.ref = "firebasePerfPlugin" } # Firebase Performance Gradle plugin
-ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlintGradle" } # Ktlint Gradle plugin
 protobuf-plugin = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
 
 [bundles]
