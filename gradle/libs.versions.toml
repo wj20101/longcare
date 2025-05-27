@@ -52,6 +52,10 @@ espressoCore = "3.6.1"
 ktlintGradle = "11.6.1" # Ktlint Gradle plugin version
 ktlintVersion = "0.50.0" # Ktlint rule set version for configuration block
 
+# protobuf
+protobuf-plugin = "0.9.5"     # Protobuf Gradle 插件版本
+protobuf = "4.31.0"
+
 # Android SDK and App Versions
 compileSdk = "35"
 minSdk = "24"
@@ -132,6 +136,12 @@ androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espres
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" } # Version from BOM
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" } # Version from BOM
 
+# protobuf
+protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf" }
+protobuf-kotlin = { group = "com.google.protobuf", name = "protobuf-kotlin", version.ref = "protobuf" }
+protobuf-java-util = { group = "com.google.protobuf", name = "protobuf-java-util", version.ref = "protobuf" }
+protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protobuf" }
+
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
@@ -144,6 +154,7 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" } # Room Gradle Plugin, uses 'room' version key from [versions]
 firebasePerf = { id = "com.google.firebase.firebase-perf", version.ref = "firebasePerfPlugin" } # Firebase Performance Gradle plugin
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlintGradle" } # Ktlint Gradle plugin
+protobuf-plugin = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
 
 [bundles]
 coil = ["coil-core", "coil-compose", "coil-network-okhttp", "coil-gif", "coil-svg", "coil-video"]

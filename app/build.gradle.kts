@@ -14,6 +14,9 @@ plugins {
     alias(libs.plugins.room)
 }
 
+// 添加 protobuf 配置（推荐使用绝对路径）
+apply(from = file("${rootProject.projectDir}/protobuf.gradle"))
+
 android {
     namespace = "com.ytone.longcare"
     compileSdk = libs.versions.compileSdk.get().toInt()
