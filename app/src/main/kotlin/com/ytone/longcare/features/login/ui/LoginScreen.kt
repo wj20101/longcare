@@ -29,16 +29,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.ytone.longcare.R
 import com.ytone.longcare.features.login.viewmodel.LoginViewModel
 import com.ytone.longcare.theme.LongCareTheme
-
-// 定义颜色 (从UI设计稿中近似取色) - 与之前版本相同
-val LightScreenBackground = Color(0xFFF8F9FB)
-val PrimaryBlue = Color(0xFF3D7EFF)
-val TextColorPrimary = Color(0xFF333333)
-val TextColorSecondary = Color(0xFF757575)
-val TextColorHint = Color(0xFFBABABA)
-val LinkColor = PrimaryBlue
-val InputFieldBackground = Color.White
-val InputFieldBorderColor = Color(0xFFE8E8E8)
+import com.ytone.longcare.ui.InputFieldBackground
+import com.ytone.longcare.ui.InputFieldBorderColor
+import com.ytone.longcare.ui.LinkColor
+import com.ytone.longcare.ui.PrimaryBlue
+import com.ytone.longcare.ui.TextColorHint
+import com.ytone.longcare.ui.TextColorPrimary
+import com.ytone.longcare.ui.TextColorSecondary
 
 @Composable
 fun LoginScreen(

@@ -25,3 +25,21 @@ val BookmarkIconGreen = Color(0xFF6DD4A1) // 书签图标的绿色部分
 
 val BottomNavSelectedColor = PrimaryBlue
 val BottomNavUnselectedColor = Color(0xFF8A8A8F)
+
+val LogoutRed = Color(0xFFE53935) // A guess for logout button, adjust from design
+val IconInfoBlue = Color(0xFF2962FF) // For "信息上报" and "设置" icons
+val IconProfileOrange = Color(0xFFF57C00) // For "个人信息" icon
+val DividerColor = Color(0xFFEEEEEE)
+
+val TextColorPrimary = Color(0xFF333333)
+val TextColorSecondary = Color(0xFF757575)
+val TextColorHint = Color(0xFFBABABA)
+val LinkColor = PrimaryBlue
+val InputFieldBackground = Color.White
+val InputFieldBorderColor = Color(0xFFE8E8E8)
+
+val StatusRed = Color(0xFFD32F2F)
+val StatusGreen = Color(0xFF388E3C)
+val DatePillSelectedBackground = Color.White
+val DatePillSelectedText = PrimaryBlue
+val DatePillUnselectedText = Color.White.copy(alpha = 0.85f)
