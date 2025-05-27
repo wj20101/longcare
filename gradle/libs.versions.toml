@@ -36,12 +36,7 @@ okhttp = "4.12.0"
 kotlinxSerializationJson = "1.8.1"
 kotlinxDatetime = "0.6.2"
 
-# Firebase
-firebasePerfPlugin = "1.4.2"
-firebasePerfSdk = "21.0.5"
-
 coil = "3.2.0"
-accompanistPermissions = "0.34.0"
 
 # Testing
 junit = "4.13.2"
@@ -111,9 +106,6 @@ okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-i
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinxDatetime" }
 
-# Firebase Performance Monitoring
-firebase-perf = { group = "com.google.firebase", name = "firebase-perf-ktx", version.ref = "firebasePerfSdk" }
-
 # Image Loading
 coil-core = { group = "io.coil-kt.coil3", name = "coil", version.ref = "coil" }
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
@@ -121,9 +113,6 @@ coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp"
 coil-svg = { group = "io.coil-kt.coil3", name = "coil-svg", version.ref = "coil" }
 coil-gif = { group = "io.coil-kt.coil3", name = "coil-gif", version.ref = "coil" }
 coil-video = { group = "io.coil-kt.coil3", name = "coil-video", version.ref = "coil" }
-
-# Permissions
-accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanistPermissions" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -148,7 +137,6 @@ kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", versio
 dagger-hilt = { id = "com.google.dagger.hilt.android", version.ref = "dagger" } # Hilt Gradle plugin
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" } # Room Gradle Plugin, uses 'room' version key from [versions]
-firebasePerf = { id = "com.google.firebase.firebase-perf", version.ref = "firebasePerfPlugin" } # Firebase Performance Gradle plugin
 protobuf-plugin = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
 
 [bundles]

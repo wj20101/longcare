@@ -10,7 +10,6 @@ plugins {
     alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.firebasePerf)
     alias(libs.plugins.room)
 }
 
@@ -157,14 +156,8 @@ dependencies {
     // Window
     implementation(libs.window)
 
-    // Firebase
-    implementation(libs.firebase.perf)
-
     // Image Loading
     implementation(libs.bundles.coil)
-
-    // Permissions
-    implementation(libs.accompanist.permissions)
 
     // kotlinx datetime
     implementation(libs.kotlinx.datetime)
