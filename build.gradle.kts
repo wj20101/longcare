@@ -11,3 +11,5 @@ plugins {
     alias(libs.plugins.wire) apply false
     alias(libs.plugins.ktlint) apply false
 }
+
+apply(from = "$rootDir/constants.gradle.kts")

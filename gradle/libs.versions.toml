@@ -46,13 +46,6 @@ junit = "4.13.2"
 androidxJunit = "1.2.1"
 espressoCore = "3.6.1"
 
-# Android SDK and App Versions
-compileSdk = "35"
-minSdk = "24"
-targetSdk = "34"
-versionCode = "1"
-versionName = "1.0"
-
 [libraries]
 # AndroidX Core & Lifecycle
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

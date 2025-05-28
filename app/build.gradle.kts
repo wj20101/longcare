@@ -19,9 +19,17 @@ wire {
     kotlin {}
 }
 
+val appCompileSdkVersion: Int by rootProject.extra
+val appTargetSdkVersion: Int by rootProject.extra
+val appMinSdkVersion: Int by rootProject.extra
+val appJavaVersion: JavaVersion by rootProject.extra
+val appKotlinJvmTarget: String by rootProject.extra
+val appVersionCode: Int by rootProject.extra
+val appVersionName: String by rootProject.extra
+
 android {
     namespace = "com.ytone.longcare"
-    compileSdk = libs.versions.compileSdk.get().toInt()
+    compileSdk = appCompileSdkVersion
 
     signingConfigs {
         create("config") {
@@ -34,10 +42,10 @@ android {
 
     defaultConfig {
         applicationId = "com.ytone.longcare"
-        minSdk = libs.versions.minSdk.get().toInt()
-        targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = libs.versions.versionCode.get().toInt()
-        versionName = libs.versions.versionName.get()
+        minSdk = appMinSdkVersion
+        targetSdk = appTargetSdkVersion
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -65,11 +73,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = appJavaVersion
+        targetCompatibility = appJavaVersion
     }
     kotlinOptions {
-        jvmTarget = "21"
+        jvmTarget = appKotlinJvmTarget
     }
     buildFeatures {
         buildConfig = true
