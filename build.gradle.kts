@@ -7,5 +7,6 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.kotlinCompose) apply false
     alias(libs.plugins.room) apply false
-    alias(libs.plugins.protobuf.plugin) apply false
+    alias(libs.plugins.wire) apply false
+    alias(libs.plugins.ktlint) apply false
 }

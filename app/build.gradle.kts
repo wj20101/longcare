@@ -11,10 +11,13 @@ plugins {
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
+    alias(libs.plugins.wire)
+    alias(libs.plugins.ktlint)
 }
 
-// 添加 protobuf 配置（推荐使用绝对路径）
-apply(from = file("${rootProject.projectDir}/protobuf.gradle"))
+wire {
+    kotlin {}
+}
 
 android {
     namespace = "com.ytone.longcare"
