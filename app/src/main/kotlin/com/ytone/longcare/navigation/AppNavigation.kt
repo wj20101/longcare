@@ -1,6 +1,7 @@
 package com.ytone.longcare.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -12,18 +13,18 @@ object AppDestinations {
     const val HOME_ROUTE = "home"
 }
 
+fun NavController.navigateToHomeFromLogin() {
+    navigate(AppDestinations.HOME_ROUTE) {
+        popUpTo(AppDestinations.LOGIN_ROUTE) { inclusive = true }
+    }
+}
+
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = AppDestinations.LOGIN_ROUTE) {
         composable(AppDestinations.LOGIN_ROUTE) {
-            LoginScreen(
-                onLoginSuccess = {
-                    navController.navigate(AppDestinations.HOME_ROUTE) {
-                        popUpTo(AppDestinations.LOGIN_ROUTE) { inclusive = true }
-                    }
-                }
-            )
+            LoginScreen(navController = navController)
         }
         composable(AppDestinations.HOME_ROUTE) {
             HomeScreen(navController = navController)

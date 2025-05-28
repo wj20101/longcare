@@ -26,8 +26,11 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.features.login.viewmodel.LoginViewModel
+import com.ytone.longcare.navigation.navigateToHomeFromLogin
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.ui.InputFieldBackground
 import com.ytone.longcare.ui.InputFieldBorderColor
@@ -39,7 +42,7 @@ import com.ytone.longcare.ui.TextColorSecondary
 
 @Composable
 fun LoginScreen(
-    viewModel: LoginViewModel = hiltViewModel(), onLoginSuccess: () -> Unit
+    navController: NavController, viewModel: LoginViewModel = hiltViewModel()
 ) {
     var phoneNumber by remember { mutableStateOf("") }
     var verificationCode by remember { mutableStateOf("") }
@@ -154,7 +157,7 @@ fun LoginScreen(
 
             // Login Button
             Button(
-                onClick = { onLoginSuccess.invoke() },
+                onClick = { navController.navigateToHomeFromLogin() },
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                 modifier = Modifier
@@ -256,6 +259,6 @@ fun AgreementText(
 @Composable
 fun LoginScreenPreview() {
     LongCareTheme {
-        LoginScreen(onLoginSuccess = {})
+        LoginScreen(navController = rememberNavController())
     }
 }
