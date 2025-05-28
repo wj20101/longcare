@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "longcare"
 include(":app")
+include(":baselineprofile")

@@ -13,6 +13,7 @@ plugins {
     alias(libs.plugins.room)
     alias(libs.plugins.wire)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.baselineprofile)
 }
 
 wire {
@@ -116,6 +117,8 @@ android {
 
 dependencies {
 
+    "baselineProfile"(project(":baselineprofile"))
+
     // Core & Lifecycle
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -137,6 +140,9 @@ dependencies {
 
     // AndroidX Startup
     implementation(libs.startup.runtime)
+
+    // AndroidX Profile Installer
+    implementation(libs.androidx.profileinstaller)
 
     // Navigation
     implementation(libs.androidx.navigation.compose)
