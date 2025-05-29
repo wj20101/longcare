@@ -411,50 +411,6 @@ fun ServicePlanItem(plan: ServicePlan) {
     }
 }
 
-// --- Bottom Navigation (No change needed here for ConstraintLayout focus) ---
-data class BottomNavItemData(val label: String, val selectedIconRes: Int, val unselectedIconRes: Int)
-
-@Composable
-fun AppBottomNavigation(
-    items: List<BottomNavItemData>,
-    selectedItemIndex: Int,
-    onItemSelected: (Int) -> Unit
-) {
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 4.dp
-    ) {
-        items.forEachIndexed { index, item ->
-            val isSelected = selectedItemIndex == index
-            NavigationBarItem(
-                selected = isSelected,
-                onClick = { onItemSelected(index) },
-                icon = {
-                    Icon(
-                        painter = painterResource(id = if (isSelected) item.selectedIconRes else item.unselectedIconRes),
-                        contentDescription = item.label,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                label = {
-                    Text(
-                        item.label,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        fontSize = 12.sp
-                    )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = BottomNavSelectedColor,
-                    selectedTextColor = BottomNavSelectedColor,
-                    unselectedIconColor = BottomNavUnselectedColor,
-                    unselectedTextColor = BottomNavUnselectedColor,
-                    indicatorColor = Color.Transparent
-                ),
-            )
-        }
-    }
-}
-
 // --- Preview ---
 @Preview(showBackground = true, backgroundColor = 0xFFF0F5FF)
 @Composable
