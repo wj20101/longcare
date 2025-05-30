@@ -20,6 +20,12 @@ wire {
     kotlin {}
 }
 
+ktlint {
+    verbose = true
+    android = true
+    outputToConsole = true
+}
+
 val appCompileSdkVersion: Int by rootProject.extra
 val appTargetSdkVersion: Int by rootProject.extra
 val appMinSdkVersion: Int by rootProject.extra
@@ -50,7 +56,11 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "PUBLIC_KEY", "\"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk45Er/DSjJwRNhReRT+4lINV6GanR3FwNutADNBwVoNQgY33bM/adLN5ZDmb8CwCeRJ4iBdcIX0co+2cm169HSHtJvOHUm864UbT63BrxKtnJCR+GkmsB3dj7YMwDbYArg7ymGP3EhWsiqMPdnR15+4LYIfK3l74nOZqPIPp8XkUKbbvJeieyslBIVSux2eytUGQjY8EPTE7nOHbAh8boWhiekFKevmx24dQBLoOrKrpTIv4pNiFSPxWCdBayCXjyr3Vq6Eg+vEDYN1+sxXWAj4bo/91TIbGQzdPCcCiZUQ1d7EgBp1JJKAsTTzkd+CusSTVpmmz/uVwjOaEHNzqWwIDAQAB\"")
+        buildConfigField(
+            "String",
+            "PUBLIC_KEY",
+            "\"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk45Er/DSjJwRNhReRT+4lINV6GanR3FwNutADNBwVoNQgY33bM/adLN5ZDmb8CwCeRJ4iBdcIX0co+2cm169HSHtJvOHUm864UbT63BrxKtnJCR+GkmsB3dj7YMwDbYArg7ymGP3EhWsiqMPdnR15+4LYIfK3l74nOZqPIPp8XkUKbbvJeieyslBIVSux2eytUGQjY8EPTE7nOHbAh8boWhiekFKevmx24dQBLoOrKrpTIv4pNiFSPxWCdBayCXjyr3Vq6Eg+vEDYN1+sxXWAj4bo/91TIbGQzdPCcCiZUQ1d7EgBp1JJKAsTTzkd+CusSTVpmmz/uVwjOaEHNzqWwIDAQAB\"",
+        )
     }
 
     room {
@@ -61,12 +71,12 @@ android {
         release {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
             buildConfigField("String", "BASE_URL", "\"https://api.qianyuwl168.cn/\"") // 生产环境 URL
             signingConfig = signingConfigs.getByName("config")
         }
-        
+
         debug {
             isDebuggable = true
             buildConfigField("String", "BASE_URL", "\"https://api.qianyuwl168.cn/\"") // 测试环境 URL
@@ -98,15 +108,16 @@ android {
 
         outputs.configureEach {
             val date = SimpleDateFormat("MMdd-HH", Locale.getDefault()).format(Date())
-            val fileName = buildString {
-                append("app")
-                append("-v${versionName}")
-                append("-$date")
-                append("-")
-                append(variant.productFlavors.joinToString("-") { it.name })
-                append("-${variant.buildType.name}")
-                append(".apk")
-            }
+            val fileName =
+                buildString {
+                    append("app")
+                    append("-v$versionName")
+                    append("-$date")
+                    append("-")
+                    append(variant.productFlavors.joinToString("-") { it.name })
+                    append("-${variant.buildType.name}")
+                    append(".apk")
+                }
 
             if (this is ApkVariantOutputImpl) {
                 outputFileName = fileName
