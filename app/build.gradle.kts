@@ -12,18 +12,11 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
     alias(libs.plugins.wire)
-    alias(libs.plugins.ktlint)
     alias(libs.plugins.baselineprofile)
 }
 
 wire {
     kotlin {}
-}
-
-ktlint {
-    verbose = true
-    android = true
-    outputToConsole = true
 }
 
 val appCompileSdkVersion: Int by rootProject.extra

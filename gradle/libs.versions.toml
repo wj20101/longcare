@@ -33,7 +33,6 @@ window = "1.4.0"
 dagger = "2.56.2"
 hilt = "1.2.0"
 wire = "5.3.1"
-ktlint = "12.3.0"
 
 # Networking
 retrofit = "3.0.0"
@@ -132,7 +131,6 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" } # Room Gradle Plugin, uses 'room' version key from [versions]
 benchmark = { id = "androidx.benchmark", version.ref = "benchmark" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
-ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 android-test = { id = "com.android.test", version.ref = "agp" }
 baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }
 
