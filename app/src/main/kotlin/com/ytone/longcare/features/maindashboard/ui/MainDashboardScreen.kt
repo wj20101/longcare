@@ -44,7 +44,6 @@ import com.ytone.longcare.ui.LightGrayText
 import com.ytone.longcare.ui.ServiceItemHourColor
 import com.ytone.longcare.ui.TextPrimary
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainDashboardScreen(
     navController: NavController, // Added NavController for navigation

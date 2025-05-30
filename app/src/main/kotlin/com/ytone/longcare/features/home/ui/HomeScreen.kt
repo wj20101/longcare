@@ -1,6 +1,8 @@
 package com.ytone.longcare.features.home.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -22,33 +24,36 @@ import com.ytone.longcare.features.profile.ui.ProfileScreen
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.ui.BottomNavSelectedColor
 import com.ytone.longcare.ui.BottomNavUnselectedColor
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController, // Added NavController for navigation
     homeViewModel: HomeViewModel = hiltViewModel()
 ) {
-    var selectedBottomNavItem by remember { mutableIntStateOf(0) }
     val bottomNavItems = listOf(
         BottomNavItemData("首页", R.drawable.app_logo_small, R.drawable.app_logo_small),
         BottomNavItemData("护理工作", R.drawable.app_logo_small, R.drawable.app_logo_small),
         BottomNavItemData("我的", R.drawable.app_logo_small, R.drawable.app_logo_small)
     )
+    val pagerState = rememberPagerState(pageCount = { bottomNavItems.size })
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         topBar = { MainDashboardTopBar() }, // Uses ConstraintLayout
         bottomBar = {
             AppBottomNavigation(
                 items = bottomNavItems,
-                selectedItemIndex = selectedBottomNavItem,
-                onItemSelected = { selectedBottomNavItem = it }
+                selectedItemIndex = pagerState.currentPage,
+                onItemSelected = {
+                    coroutineScope.launch { pagerState.animateScrollToPage(it) }
+                }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues)) {
-            when (selectedBottomNavItem) {
+        HorizontalPager(state = pagerState, modifier = Modifier.padding(paddingValues)) { page ->
+            when (page) {
                 0 -> MainDashboardScreen(navController = navController)
                 1 -> NursingScreen(navController = navController)
                 2 -> ProfileScreen(navController = navController)
