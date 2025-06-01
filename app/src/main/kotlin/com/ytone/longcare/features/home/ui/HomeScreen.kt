@@ -12,7 +12,6 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.features.home.viewmodel.HomeViewModel
 import com.ytone.longcare.features.maindashboard.ui.MainDashboardScreen
-import com.ytone.longcare.features.maindashboard.ui.MainDashboardTopBar
 import com.ytone.longcare.features.nursing.ui.NursingScreen
 import com.ytone.longcare.features.profile.ui.ProfileScreen
 import com.ytone.longcare.theme.LongCareTheme
@@ -33,19 +32,21 @@ fun HomeScreen(
     val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
-        topBar = { MainDashboardTopBar() },
         bottomBar = {
             AppBottomNavigation(
                 items = bottomNavItems,
                 selectedItemIndex = pagerState.currentPage,
                 onItemSelected = {
-                    coroutineScope.launch { pagerState.animateScrollToPage(it) }
+                    coroutineScope.launch { pagerState.scrollToPage(it) }
                 }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        HorizontalPager(state = pagerState, modifier = Modifier.padding(paddingValues)) { page ->
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())
+        ) { page ->
             when (page) {
                 0 -> MainDashboardScreen(navController = navController)
                 1 -> NursingScreen(navController = navController)

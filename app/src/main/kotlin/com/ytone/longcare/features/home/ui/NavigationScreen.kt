@@ -49,7 +49,7 @@ fun AppBottomNavigationPreview() {
         CustomBottomNavigationItem("护理工作"),
         CustomBottomNavigationItem("我的")
     )
-    CustomBottomNavigationBar(items = bottomNavItems, selectedItemIndex = 0, onItemSelected = {})
+    CustomBottomNavigationBar(items = bottomNavItems, selectedItemIndex = 1, onItemSelected = {})
 }
 
 // 定义底部导航项的数据结构

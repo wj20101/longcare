@@ -50,11 +50,10 @@ fun MainDashboardScreen(
     mainDashboardViewModel: MainDashboardViewModel = hiltViewModel()
 ) {
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp), // Added horizontal padding for consistency
+        modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        item { MainDashboardTopBar() }
         item { PromotionBanner() } // Uses ConstraintLayout
         item { QuickAccessGrid() } // Grid itself is Row/Column, cards use ConstraintLayout
         item { ServicePlanSectionTitle() }
