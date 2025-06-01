@@ -43,3 +43,11 @@ val StatusGreen = Color(0xFF388E3C)
 val DatePillSelectedBackground = Color.White
 val DatePillSelectedText = PrimaryBlue
 val DatePillUnselectedText = Color.White.copy(alpha = 0.85f)
+
+val BottomNavBackground = Color.White // 底部导航栏背景色
+val BottomNavSelectedText = Color(0xFF0D7EFF) // 选中项文字颜色 (设计图中的蓝色)
+val BottomNavUnselectedText = Color(0xFF8A8A8F) // 未选中项文字颜色 (设计图中的灰色)
+
+// 指示器渐变色
+val IndicatorGradientStart = Color(0xFF00A2FF) // 渐变起始色 (蓝色)
+val IndicatorGradientEnd = Color(0xFF00FFC2)   // 渐变结束色 (青绿色)
