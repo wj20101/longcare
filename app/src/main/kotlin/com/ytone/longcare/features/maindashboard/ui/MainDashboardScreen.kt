@@ -8,409 +8,330 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.painter.ColorPainter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.Dimension
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.features.maindashboard.viewmodel.MainDashboardViewModel
-import com.ytone.longcare.features.nursing.ui.NursingScreen
-import com.ytone.longcare.features.profile.ui.ProfileScreen
 import com.ytone.longcare.theme.LongCareTheme
-import com.ytone.longcare.ui.AccentOrange
-import com.ytone.longcare.ui.BadgeYellow
-import com.ytone.longcare.ui.BookmarkIconBlue
-import com.ytone.longcare.ui.BottomNavSelectedColor
-import com.ytone.longcare.ui.BottomNavUnselectedColor
-import com.ytone.longcare.ui.ChatIconBlue
-import com.ytone.longcare.ui.ClockIconBlue
-import com.ytone.longcare.ui.HeartIconBlue
-import com.ytone.longcare.ui.LightGrayText
-import com.ytone.longcare.ui.ServiceItemHourColor
-import com.ytone.longcare.ui.TextPrimary
 
 @Composable
 fun MainDashboardScreen(
-    navController: NavController, // Added NavController for navigation
-    mainDashboardViewModel: MainDashboardViewModel = hiltViewModel()
+    navController: NavController, mainDashboardViewModel: MainDashboardViewModel = hiltViewModel()
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item { MainDashboardTopBar() }
-        item { PromotionBanner() } // Uses ConstraintLayout
-        item { QuickAccessGrid() } // Grid itself is Row/Column, cards use ConstraintLayout
-        item { ServicePlanSectionTitle() }
-        items(getDummyServicePlans()) { plan ->
-            ServicePlanItem(plan) // Uses ConstraintLayout
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color(0xFF468AFF), Color(0xFFF6F9FF))
+                    )
+                )
+                .padding(top = paddingValues.calculateTopPadding(), start = 16.dp, end = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp) // 项目之间的垂直间距
+        ) {
+            // 顶部Header
+            item {
+                Spacer(modifier = Modifier.height(8.dp)) // 顶部留出一些空间
+                TopHeader()
+            }
+
+            // Banner广告卡片
+            item {
+                HomeBannerCard()
+            }
+
+            // 快捷功能区
+            item {
+                QuickActionsSection()
+            }
+
+            // 统计学习区
+            item {
+                StatsSection()
+            }
+
+            // 待服务计划列表
+            item {
+                Text(
+                    text = "待服务计划",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            // 模拟的服务计划数据
+            val servicePlans = listOf(
+                ServicePlan("孙天成", 8, "助浴服务", "杭州市西湖区328弄24号"),
+                ServicePlan("李小梅", 8, "助洁服务", "杭州市滨江区江南大道100号"),
+                ServicePlan("王大爷", 8, "助餐服务", "杭州市上城区解放路56号")
+            )
+            items(servicePlans) { plan ->
+                ServicePlanItem(plan)
+            }
+
+            // 底部留出一些空间
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
     }
 }
 
 @Composable
-fun MainDashboardTopBar() {
-    ConstraintLayout(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primary)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+fun TopHeader() {
+    Row(
+        modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
     ) {
-        val (logo, appNameText, userInfoColumn, avatarImage) = createRefs()
-
+        // Logo
         Image(
-            painter = painterResource(id = R.drawable.app_logo_small),
-            contentDescription = "长护盾 Logo",
-            modifier = Modifier
-                .size(32.dp)
-                .constrainAs(logo) {
-                    start.linkTo(parent.start)
-                    top.linkTo(parent.top)
-                    bottom.linkTo(parent.bottom)
-                }
+            painter = painterResource(R.drawable.app_logo_small_white),
+            contentDescription = "Logo",
+            modifier = Modifier.height(40.dp)
         )
 
-        Text(
-            text = "长护盾",
-            style = MaterialTheme.typography.headlineSmall.copy(color = MaterialTheme.colorScheme.onPrimary),
-            modifier = Modifier.constrainAs(appNameText) {
-                start.linkTo(logo.end, margin = 8.dp)
-                top.linkTo(logo.top)
-                bottom.linkTo(logo.bottom)
-            }
-        )
+        // 占位符，将右侧内容推到最右边
+        Spacer(modifier = Modifier.weight(1f))
 
+        // 护理员信息
+        Column(horizontalAlignment = Alignment.End) {
+            Text(text = "张默默", fontWeight = FontWeight.Bold, color = Color.White)
+            Text(text = "护理员", fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f))
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        // 头像
         Image(
-            painter = painterResource(id = R.drawable.app_logo_small),
-            contentDescription = "用户头像",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
+            painter = ColorPainter(Color.LightGray), // 使用占位符颜色，实际应加载网络图片
+            contentDescription = "护理员头像", modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .constrainAs(avatarImage) {
-                    end.linkTo(parent.end)
-                    top.linkTo(parent.top)
-                    bottom.linkTo(parent.bottom)
-                }
-        )
-
-        Column(
-            horizontalAlignment = Alignment.End,
-            modifier = Modifier.constrainAs(userInfoColumn) {
-                end.linkTo(avatarImage.start, margin = 12.dp)
-                top.linkTo(avatarImage.top)
-                bottom.linkTo(avatarImage.bottom)
-                // Optional: If you want the user info to fill space if appNameText is short
-                // start.linkTo(appNameText.end, margin = 8.dp, goneMargin = 8.dp)
-                // width = Dimension.fillToConstraints
-            }
-        ) {
-            Text(
-                text = "张默默",
-                style = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.onPrimary)
-            )
-            Text(
-                text = "护理员",
-                style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
-            )
-        }
-    }
-}
-
-@Composable
-fun PromotionBanner() {
-    ConstraintLayout(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(170.dp)
-    ) {
-        // Guideline to help position the image relative to the card content
-        val imageStartGuideline = createGuidelineFromStart(0.58f) // Image will start from 58% of width
-
-        val (cardContent, bannerImage) = createRefs()
-
-        Card(
-            modifier = Modifier
-                .constrainAs(cardContent) {
-                    start.linkTo(parent.start)
-                    top.linkTo(parent.top)
-                    bottom.linkTo(parent.bottom)
-                    end.linkTo(imageStartGuideline, margin = 16.dp) // Card ends before the image fully starts, allowing visual overlap by image
-                    width = Dimension.fillToConstraints
-                    height = Dimension.fillToConstraints
-                },
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 16.dp), // Adjusted end padding
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "援通管家",
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = TextPrimary
-                            )
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .background(AccentOrange.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "居家养老",
-                                style = MaterialTheme.typography.headlineSmall.copy(
-                                    fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = AccentOrange
-                                )
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "为每个家庭提供个性化养老解决方案",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 16.sp)
-                    )
-                }
-                Button(
-                    onClick = { /*TODO*/ },
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp),
-                    modifier = Modifier.height(40.dp)
-                ) {
-                    Text("查看详细方案", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-
-        Image(
-            painter = painterResource(id = R.drawable.app_logo_small),
-            contentDescription = "居家养老服务图",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .constrainAs(bannerImage) {
-                    start.linkTo(imageStartGuideline) // Image starts at the guideline
-                    end.linkTo(parent.end)
-                    top.linkTo(parent.top, margin = (170.dp * 0.015f)) // Small top/bottom margin for visual appeal
-                    bottom.linkTo(parent.bottom, margin = (170.dp * 0.015f))
-                    width = Dimension.fillToConstraints // Image fills from guideline to parent end
-                    height = Dimension.fillToConstraints // Image height fills constrained space
-                }
-                .clip(RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp, topStart = 8.dp, bottomStart = 8.dp))
         )
     }
 }
 
-
-// --- Quick Access Section (QuickAccessCard uses ConstraintLayout) ---
-data class QuickAccessItemData(
-    val title: String,
-    val subtitle: String,
-    val iconPainter: Painter,
-    val iconBackgroundColor: Color,
-    val badgeText: String? = null
-)
-
 @Composable
-fun QuickAccessGrid() {
-    val items = listOf(
-        QuickAccessItemData("待护理计划", "你有12个护理待执行", painterResource(id = R.drawable.app_logo_small), HeartIconBlue.copy(alpha = 0.1f), "12"),
-        QuickAccessItemData("已服务记录", "查看过往服务记录", painterResource(id = R.drawable.app_logo_small), ChatIconBlue.copy(alpha = 0.1f)),
-        QuickAccessItemData("工时: 22322", "服务工时统计", painterResource(id = R.drawable.app_logo_small), ClockIconBlue.copy(alpha = 0.1f)),
-        QuickAccessItemData("待学习", "服务标准学习", painterResource(id = R.drawable.app_logo_small), BookmarkIconBlue.copy(alpha = 0.1f), "12")
+fun HomeBannerCard() {
+    // 1. Banner 图片素材列表 (使用网络图片URL)
+    val sampleBanners = listOf(
+        BannerItem(1, "https://images.pexels.com/photos/3768894/pexels-photo-3768894.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1", "Banner 1"),
+        BannerItem(2, "https://images.pexels.com/photos/3831847/pexels-photo-3831847.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1", "Banner 2"),
+        BannerItem(3, "https://images.pexels.com/photos/4058315/pexels-photo-4058315.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1", "Banner 3")
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            QuickAccessCard(item = items[0], modifier = Modifier.weight(1f))
-            QuickAccessCard(item = items[1], modifier = Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            QuickAccessCard(item = items[2], modifier = Modifier.weight(1f))
-            QuickAccessCard(item = items[3], modifier = Modifier.weight(1f))
-        }
+    ImageBannerPager(
+        bannerItems = sampleBanners,
+        modifier = Modifier.height(120.dp)
+    )
+}
+
+@Composable
+fun QuickActionsSection() {
+    Row(
+        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        ActionCard(
+            modifier = Modifier.weight(1f),
+            icon = Icons.Default.Favorite,
+            iconBgColor = Color(0xFFE8F4FF),
+            iconTint = Color(0xFF3A9DFF),
+            title = "待护理计划",
+            subtitle = "你有12个护理待执行",
+            badgeCount = 12
+        )
+        ActionCard(
+            modifier = Modifier.weight(1f),
+            icon = Icons.Default.Favorite,
+            iconBgColor = Color(0xFFFFF4E8),
+            iconTint = Color(0xFFFF9800),
+            title = "已服务记录",
+            subtitle = "查看过往服务记录"
+        )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun QuickAccessCard(item: QuickAccessItemData, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.height(100.dp),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        ConstraintLayout(
-            modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 10.dp) // Padding inside card, outside CL
-                .fillMaxSize()
-        ) {
-            val (iconRef, titleRowRef, subtitleRef) = createRefs()
-            val centerVerticalGuideline = createGuidelineFromTop(0.5f) // Guideline for vertical centering of text
 
+@Composable
+fun StatsSection() {
+    Row(
+        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        InfoCard(
+            modifier = Modifier.weight(1f),
+            icon = Icons.Default.Settings,
+            text = "工时: 22322",
+            subtext = "服务工时统计"
+        )
+        InfoCard(
+            modifier = Modifier.weight(1f),
+            icon = Icons.Default.Settings,
+            text = "待学习",
+            subtext = "服务标准学习",
+            badgeCount = 12
+        )
+    }
+}
+
+
+// --- 可复用的子组件 ---
+
+@Composable
+fun ActionCard(
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    iconBgColor: Color,
+    iconTint: Color,
+    title: String,
+    subtitle: String,
+    badgeCount: Int? = null
+) {
+    Card(
+        onClick = { /*TODO*/ },
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically
+        ) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(CircleShape)
-                    .background(item.iconBackgroundColor)
-                    .constrainAs(iconRef) {
-                        start.linkTo(parent.start)
-                        top.linkTo(parent.top)
-                        bottom.linkTo(parent.bottom)
-                        centerVerticallyTo(parent) // Alternative to top/bottom linking
-                    },
-                contentAlignment = Alignment.Center
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(iconBgColor), contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painter = item.iconPainter,
-                    contentDescription = item.title,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(22.dp)
-                )
+                Icon(imageVector = icon, contentDescription = title, tint = iconTint)
             }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.constrainAs(titleRowRef) {
-                    start.linkTo(iconRef.end, margin = 10.dp)
-                    end.linkTo(parent.end)
-                    bottom.linkTo(centerVerticalGuideline, margin = 1.dp) // Title part above subtitle
-                    width = Dimension.fillToConstraints
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    if (badgeCount != null) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Badge(containerColor = Color.Red) { Text("$badgeCount") }
+                    }
                 }
-            ) {
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp, fontWeight = FontWeight.Bold),
-                    maxLines = 1
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                item.badgeText?.let {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Badge(
-                        containerColor = BadgeYellow,
-                        contentColor = TextPrimary
-                    ) { Text(it, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
-                }
             }
-
-            Text(
-                text = item.subtitle,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, lineHeight = 14.sp),
-                maxLines = 1,
-                modifier = Modifier.constrainAs(subtitleRef) {
-                    start.linkTo(titleRowRef.start) // Align with title's start
-                    end.linkTo(parent.end)
-                    top.linkTo(centerVerticalGuideline, margin = 1.dp) // Subtitle part below title
-                    width = Dimension.fillToConstraints
-                }
-            )
         }
     }
 }
 
-
-// --- Service Plan Section (ServicePlanItem uses ConstraintLayout) ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ServicePlanSectionTitle() {
-    Text(
-        text = "待服务计划",
-        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-        modifier = Modifier.padding(bottom = 4.dp, top = 8.dp) // Added top padding for spacing
-    )
+fun InfoCard(
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    text: String,
+    subtext: String,
+    badgeCount: Int? = null
+) {
+    Card(
+        onClick = { /*TODO*/ },
+        modifier = modifier.height(80.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = text,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = text, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    if (badgeCount != null) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Badge(containerColor = Color.Red) { Text("$badgeCount") }
+                    }
+                }
+                Text(text = subtext, fontSize = 12.sp, color = Color.Gray)
+            }
+        }
+    }
 }
 
+// 服务计划列表项的数据类
 data class ServicePlan(
-    val id: String, val name: String, val hours: String,
-    val serviceType: String, val address: String
+    val name: String, val hours: Int, val serviceType: String, val address: String
 )
 
-fun getDummyServicePlans(): List<ServicePlan> = List(3) {
-    ServicePlan("id_$it", "孙天成", "8", "助浴服务", "杭州市西湖区328弄24号")
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServicePlanItem(plan: ServicePlan) {
     Card(
+        onClick = { /*TODO*/ },
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        onClick = { /* TODO: Navigate */ }
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        ConstraintLayout(
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 16.dp)
-                .fillMaxWidth()
+        Row(
+            modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically
         ) {
-            val (contentColumnRef, arrowIconRef) = createRefs()
-
-            Icon(
-                imageVector = Icons.Filled.CheckCircle,
-                contentDescription = "查看详情",
-                tint = LightGrayText,
-                modifier = Modifier.constrainAs(arrowIconRef) {
-                    end.linkTo(parent.end)
-                    top.linkTo(parent.top)
-                    bottom.linkTo(parent.bottom)
-                    centerVerticallyTo(parent)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = plan.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(4.dp), color = Color(0xFFE8F4FF)
+                    ) {
+                        Text(
+                            text = "工时: ${plan.hours}",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
-            )
-
-            Column(
-                modifier = Modifier.constrainAs(contentColumnRef) {
-                    start.linkTo(parent.start)
-                    end.linkTo(arrowIconRef.start, margin = 8.dp)
-                    top.linkTo(parent.top)
-                    bottom.linkTo(parent.bottom)
-                    width = Dimension.fillToConstraints // Fill available space
-                }
-            ) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(plan.name, style = MaterialTheme.typography.titleLarge)
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        "工时: ${plan.hours}",
-                        style = MaterialTheme.typography.labelSmall.copy(color = ServiceItemHourColor, fontSize = 13.sp),
-                        modifier = Modifier.padding(bottom = 2.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(plan.serviceType, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp))
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "地址: ${plan.address}",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                    maxLines = 1
+                    text = "${plan.serviceType} 地址: ${plan.address}",
+                    fontSize = 14.sp,
+                    color = Color.Gray
                 )
             }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = "详情",
+                tint = Color.LightGray,
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }
 
 // --- Preview ---
-@Preview(showBackground = true, backgroundColor = 0xFFF0F5FF)
+@Preview
 @Composable
 fun MainDashboardScreenPreview() {
     LongCareTheme {
