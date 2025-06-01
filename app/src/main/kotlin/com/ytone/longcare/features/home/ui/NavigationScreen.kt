@@ -1,9 +1,10 @@
 package com.ytone.longcare.features.home.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,7 +16,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,14 +34,10 @@ import com.ytone.longcare.ui.IndicatorGradientStart
 
 @Composable
 fun AppBottomNavigation(
-    items: List<CustomBottomNavigationItem>,
-    selectedItemIndex: Int,
-    onItemSelected: (Int) -> Unit
+    items: List<CustomBottomNavigationItem>, selectedItemIndex: Int, onItemSelected: (Int) -> Unit
 ) {
     CustomBottomNavigationBar(
-        items = items,
-        selectedItemIndex = selectedItemIndex,
-        onItemSelected = onItemSelected
+        items = items, selectedItemIndex = selectedItemIndex, onItemSelected = onItemSelected
     )
 }
 
@@ -58,7 +54,7 @@ fun AppBottomNavigationPreview() {
 
 // 定义底部导航项的数据结构
 data class CustomBottomNavigationItem(
-    val label: String,
+    val text: String,
 )
 
 @Composable
@@ -78,55 +74,74 @@ fun CustomBottomNavigationBar(
     ) {
         items.forEachIndexed { index, item ->
             val isSelected = selectedItemIndex == index
-
             NavigationBarItem(
+                // 当前项是否被选中
                 selected = isSelected,
+                // 点击事件：更新选中的索引
                 onClick = { onItemSelected(index) },
-                icon = { },
-                label = {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(bottom = 6.dp) // 给指示器留出空间，并调整整体垂直位置
-                    ) {
-                        Text(
-                            text = item.label,
-                            fontSize = 15.sp, // 根据设计图调整字体大小
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) BottomNavSelectedText else BottomNavUnselectedText
-                        )
-                        Spacer(modifier = Modifier.height(6.dp)) // 文字和指示器之间的间距
-
-                        // 自定义指示器
-                        Box(
-                            modifier = Modifier
-                                .height(4.dp) // 指示器高度
-                                .width(30.dp)  // 指示器宽度
-                                .clip(RoundedCornerShape(2.dp)) // 指示器本身的圆角
-                                .background(
-                                    if (isSelected) {
-                                        Brush.horizontalGradient(
-                                            colors = listOf(
-                                                IndicatorGradientStart,
-                                                IndicatorGradientEnd
-                                            )
-                                        )
-                                    } else {
-                                        Brush.horizontalGradient(
-                                            colors = listOf(
-                                                Color.Transparent,
-                                                Color.Transparent
-                                            )
-                                        )
-                                    }
-                                )
-                        )
-                    }
+                // 关键点：使用 icon 参数来放置我们的自定义Composable
+                icon = {
+                    CustomNavItem(
+                        text = item.text, isSelected = isSelected
+                    )
                 },
+                // 关键点：通过设置颜色来移除默认的指示器背景
                 colors = NavigationBarItemDefaults.colors(
                     indicatorColor = Color.Transparent
-                ),
-                alwaysShowLabel = true // 确保标签总是显示
+                )
             )
+        }
+    }
+}
+
+/**
+ * 单个导航项的自定义UI
+ *
+ * @param text 显示的文字
+ * @param isSelected 是否被选中
+ */
+@Composable
+private fun CustomNavItem(text: String, isSelected: Boolean) {
+    // 根据是否选中来决定文字颜色
+    val textColor = if (isSelected) BottomNavSelectedText else BottomNavUnselectedText
+
+    // 使用Column来垂直排列文字和指示器
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.padding(vertical = 8.dp) // 给整体一些垂直内边距，让点击区域更大
+    ) {
+        // 文字部分
+        Text(
+            text = text,
+            color = textColor,
+            fontSize = 15.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+        )
+
+        // 文字和指示器之间的间距
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // 指示器部分
+        if (isSelected) {
+            // 定义渐变色
+            val gradientBrush = Brush.horizontalGradient(
+                colors = listOf(
+                    IndicatorGradientStart, IndicatorGradientEnd
+                )
+            )
+            // 使用Box绘制圆角渐变线条
+            Box(
+                modifier = Modifier
+                    .width(30.dp)
+                    .height(4.dp)
+                    .background(
+                        brush = gradientBrush, shape = RoundedCornerShape(50) // 50%的圆角，形成胶囊形状
+                    )
+            )
+        } else {
+            // 未选中时，放置一个等高的透明Box来占位，防止切换时UI跳动
+            Box(modifier = Modifier.height(4.dp))
         }
     }
 }
