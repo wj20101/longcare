@@ -2,321 +2,213 @@ package com.ytone.longcare.features.profile.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Person // Placeholder for 个人信息
-import androidx.compose.material.icons.outlined.Settings // Placeholder for 设置
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.Dimension
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.ytone.longcare.R
 import com.ytone.longcare.features.profile.viewmodel.ProfileViewModel
 import com.ytone.longcare.theme.LongCareTheme
-import com.ytone.longcare.ui.CardWhite
-import com.ytone.longcare.ui.DividerColor
-import com.ytone.longcare.ui.IconInfoBlue
-import com.ytone.longcare.ui.IconProfileOrange
-import com.ytone.longcare.ui.LightBlueBackground
-import com.ytone.longcare.ui.LightGrayText
-import com.ytone.longcare.ui.LogoutRed
-import com.ytone.longcare.ui.PrimaryBlue
-import com.ytone.longcare.ui.TextOnPrimary
-import com.ytone.longcare.ui.TextPrimary
-import com.ytone.longcare.ui.TextSecondary
 
+// 主屏幕入口
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    navController: NavController,
-    viewModel: ProfileViewModel = hiltViewModel() // Assuming Hilt ViewModel
+    navController: NavController, viewModel: ProfileViewModel = hiltViewModel()
 ) {
     Scaffold(
         topBar = {
-            ProfileTopAppBar(
-                title = "我的", onBackClick = { navController.popBackStack() })
-        }, containerColor = LightBlueBackground // Sets the background for the area under TopAppBar
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "我的", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = Color.White
+                )
+            )
+        }, containerColor = Color.Transparent
     ) { paddingValues ->
         Column(
             modifier = Modifier
-                .padding(paddingValues)
                 .fillMaxSize()
+                .padding(top = paddingValues.calculateTopPadding(), start = 16.dp, end = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Blue header section
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PrimaryBlue) // Blue background for this section
-                    .padding(
-                        start = 16.dp, end = 16.dp, top = 16.dp, bottom = 32.dp
-                    ) // Bottom padding creates space before MenuItemsCard
-            ) {
-                ProfileHeader(
-                    avatarRes = R.drawable.app_logo_small, // Replace with actual resource
-                    name = "张默默", role = "护理员"
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                StatsInfoCard(
-                    stats = listOf(
-                        StatData("2321", "已服务工时"),
-                        StatData("122", "服务次数"),
-                        StatData("223", "未服务工时")
-                    )
-                )
-            }
-
-            // Menu Items on LightBlueBackground
-            ProfileMenuItems(
-                modifier = Modifier.padding(horizontal = 16.dp)
-                // The top of this card aligns with where the blue background ended due to parent Column's padding.
-                // If an overlap effect where this card slightly enters the blue area is desired,
-                // you could use .offset(y = (-YY).dp) here and adjust parent's bottom padding.
-                // From the image, it seems there's a clean separation.
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            LogoutButton(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp), // Wider horizontal padding for logout button
-                onClick = { /* TODO: Handle logout */ })
-
-            Spacer(Modifier.weight(1f)) // Pushes content up if screen is tall
+            Spacer(modifier = Modifier.height(16.dp))
+            UserInfoSection()
+            Spacer(modifier = Modifier.height(24.dp))
+            StatsCard()
+            Spacer(modifier = Modifier.height(24.dp))
+            OptionsCard()
+            Spacer(modifier = Modifier.weight(1f))
+            LogoutButton()
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileTopAppBar(title: String, onBackClick: () -> Unit) {
-    TopAppBar(
-        title = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge.copy(color = MaterialTheme.colorScheme.onPrimary),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth() // Center title
-            )
-        }, navigationIcon = {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-        }, actions = {
-            // Invisible spacer to balance the navigation icon and center the title correctly
-            Spacer(modifier = Modifier.width(48.dp)) // Width of IconButton
-        }, colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            titleContentColor = MaterialTheme.colorScheme.onPrimary
-        )
-    )
-}
-
-@Composable
-fun ProfileHeader(
-    modifier: Modifier = Modifier, avatarRes: Int, name: String, role: String
-) {
+fun UserInfoSection() {
     Row(
-        modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
-            painter = painterResource(id = avatarRes),
+            painter = ColorPainter(Color.LightGray),
             contentDescription = "用户头像",
-            contentScale = ContentScale.Crop,
             modifier = Modifier
-                .size(60.dp)
+                .size(40.dp)
                 .clip(CircleShape)
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column {
             Text(
-                text = name, style = MaterialTheme.typography.titleLarge.copy(
-                    color = TextOnPrimary, fontWeight = FontWeight.Bold
-                )
+                text = "张默默",
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = Color.White
             )
-            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = role,
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextOnPrimary.copy(alpha = 0.8f))
+                text = "护理员",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 12.sp,
+                lineHeight = 12.sp,
+                style = TextStyle(
+                    lineHeightStyle = LineHeightStyle(
+                        alignment = LineHeightStyle.Alignment.Center,
+                        trim = LineHeightStyle.Trim.Both
+                    )
+                )
             )
         }
     }
 }
 
-data class StatData(val value: String, val label: String)
-
 @Composable
-fun StatsInfoCard(modifier: Modifier = Modifier, stats: List<StatData>) {
+fun StatsCard() {
     Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large, // Rounded corners
-        colors = CardDefaults.cardColors(containerColor = CardWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp) // Slight elevation
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 20.dp, horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround // Distributes items evenly
+                .padding(vertical = 20.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            stats.forEach { stat ->
-                StatItem(value = stat.value, label = stat.label, modifier = Modifier.weight(1f))
-            }
+            StatItem(value = "2321", label = "已服务工时")
+            VerticalDivider(
+                modifier = Modifier.height(30.dp), thickness = 1.dp, color = Color(0xFFF0F0F0)
+            )
+            StatItem(value = "122", label = "服务次数")
+            VerticalDivider(
+                modifier = Modifier.height(30.dp), thickness = 1.dp, color = Color(0xFFF0F0F0)
+            )
+            StatItem(value = "223", label = "未服务工时")
         }
     }
 }
 
 @Composable
-fun StatItem(modifier: Modifier = Modifier, value: String, label: String) {
-    Column(
-        modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = value, style = MaterialTheme.typography.labelMedium, color = TextPrimary
-        )
+fun StatItem(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = value, fontWeight = FontWeight.Bold, fontSize = 22.sp)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label, style = MaterialTheme.typography.labelMedium, color = TextSecondary
-        )
+        Text(text = label, color = Color.Gray, fontSize = 12.sp)
     }
 }
 
-data class ProfileMenuItem(
-    val id: String,
-    val title: String,
-    val icon: ImageVector, // Or Painter if using drawable resources
-    val iconTint: Color,
-    val action: () -> Unit
-)
-
 @Composable
-fun ProfileMenuItems(modifier: Modifier = Modifier) {
-    val menuItems = listOf(
-        ProfileMenuItem("info_report", "信息上报", Icons.Outlined.Person, IconInfoBlue, {}),
-        ProfileMenuItem("personal_info", "个人信息", Icons.Outlined.Person, IconProfileOrange, {}),
-        ProfileMenuItem("settings", "设置", Icons.Outlined.Settings, IconInfoBlue, {})
-    )
-
+fun OptionsCard() {
     Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = CardWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            menuItems.forEachIndexed { index, item ->
-                MenuItemRow(
-                    icon = item.icon,
-                    iconTint = item.iconTint,
-                    text = item.title,
-                    onClick = item.action
-                )
-                if (index < menuItems.size - 1) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        thickness = 0.5.dp,
-                        color = DividerColor
-                    )
-                }
-            }
+            OptionItem(icon = Icons.Default.Description, text = "信息上报", onClick = {})
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF0F0F0)
+            )
+            OptionItem(icon = Icons.Default.Person, text = "个人信息", onClick = {})
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF0F0F0)
+            )
+            OptionItem(icon = Icons.Default.Settings, text = "设置", onClick = {})
         }
     }
 }
 
 @Composable
-fun MenuItemRow(
-    icon: ImageVector, iconTint: Color, text: String, onClick: () -> Unit
-) {
-    ConstraintLayout(
+fun OptionItem(icon: ImageVector, text: String, onClick: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 16.dp)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        val (iconRef, textRef, arrowRef) = createRefs()
-
         Icon(
-            imageVector = icon,
-            contentDescription = text,
-            tint = iconTint,
-            modifier = Modifier
-                .size(24.dp)
-                .constrainAs(iconRef) {
-                    start.linkTo(parent.start)
-                    top.linkTo(parent.top)
-                    bottom.linkTo(parent.bottom)
-                    centerVerticallyTo(parent)
-                })
-
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = TextPrimary,
-            modifier = Modifier.constrainAs(textRef) {
-                start.linkTo(iconRef.end, margin = 16.dp)
-                end.linkTo(arrowRef.start, margin = 8.dp)
-                top.linkTo(parent.top)
-                bottom.linkTo(parent.bottom)
-                centerVerticallyTo(parent)
-                width = Dimension.fillToConstraints // Important for text to occupy available space
-            })
-
+            imageVector = icon, contentDescription = text, tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(text = text, modifier = Modifier.weight(1f), fontSize = 16.sp)
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "详情",
-            tint = LightGrayText,
-            modifier = Modifier.constrainAs(arrowRef) {
-                end.linkTo(parent.end)
-                top.linkTo(parent.top)
-                bottom.linkTo(parent.bottom)
-                centerVerticallyTo(parent)
-            })
-    }
-}
-
-@Composable
-fun LogoutButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Button( // Using regular Button and styling it to look like OutlinedButton with specific colors
-        onClick = onClick,
-        modifier = modifier.height(50.dp),
-        shape = RoundedCornerShape(50), // Fully rounded
-        colors = ButtonDefaults.buttonColors(
-            containerColor = CardWhite, // White background
-            contentColor = LogoutRed    // Red text
-        ),
-        border = BorderStroke(1.dp, LogoutRed) // Red border
-    ) {
-        Text(
-            text = "退出登录",
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = Color.LightGray
         )
     }
 }
 
+@Composable
+fun LogoutButton() {
+    OutlinedButton(
+        onClick = { /* TODO: 退出登录逻辑 */ },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp),
+        shape = CircleShape,
+        border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.5f)),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color.White, contentColor = Color.Red
+        )
+    ) {
+        Text(text = "退出登录", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+    }
+}
 
-@Preview(showBackground = true)
+// --- 预览 ---
+
+@Preview(showBackground = true, backgroundColor = 0xFF468AFF)
 @Composable
 fun ProfileScreenPreview() {
     LongCareTheme {

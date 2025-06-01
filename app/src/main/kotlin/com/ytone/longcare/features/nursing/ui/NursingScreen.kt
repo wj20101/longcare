@@ -4,13 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -52,7 +50,7 @@ fun NursingScreen(
 
     Scaffold(
         modifier = Modifier, topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
                         "待护理计划",
@@ -60,16 +58,6 @@ fun NursingScreen(
                         textAlign = TextAlign.Center
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = { /* TODO: 返回操作 */ }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            tint = Color.White,
-                            contentDescription = "返回"
-                        )
-                    }
-                },
-                actions = { Spacer(modifier = Modifier.width(48.dp)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
                     titleContentColor = Color.White
