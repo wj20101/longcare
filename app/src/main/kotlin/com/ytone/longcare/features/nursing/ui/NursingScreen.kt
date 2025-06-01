@@ -95,8 +95,7 @@ fun NursingScreen(
                             .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
                             .then(
                                 if (isSelected) Modifier.background(Color.White) else Modifier
-                            )
-                            .padding(vertical = 8.dp),
+                            ),
                         selectedContentColor = selectedTabContentColor,
                         unselectedContentColor = unselectedTabContentColor,
                         text = {
