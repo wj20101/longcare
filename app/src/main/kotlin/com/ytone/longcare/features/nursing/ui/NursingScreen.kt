@@ -7,10 +7,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,325 +22,222 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.Dimension
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.ytone.longcare.R
 import com.ytone.longcare.features.nursing.viewmodel.NursingViewModel
 import com.ytone.longcare.theme.LongCareTheme
-import com.ytone.longcare.ui.CardWhite
-import com.ytone.longcare.ui.DatePillSelectedBackground
-import com.ytone.longcare.ui.DatePillSelectedText
-import com.ytone.longcare.ui.DatePillUnselectedText
-import com.ytone.longcare.ui.DividerColor
-import com.ytone.longcare.ui.LightBlueBackground
-import com.ytone.longcare.ui.LightGrayText
-import com.ytone.longcare.ui.PrimaryBlue
-import com.ytone.longcare.ui.ServiceItemHourColor
-import com.ytone.longcare.ui.StatusGreen
-import com.ytone.longcare.ui.StatusRed
-import com.ytone.longcare.ui.TextPrimary
-import com.ytone.longcare.ui.TextSecondary
 
-enum class TaskStatus { PENDING, COMPLETED }
-data class TaskInfo(
-    val id: String,
-    val clientName: String,
-    val hours: String,
-    val serviceType: String,
+// --- 1. 数据模型 ---
+
+data class DateInfo(val dayOfWeek: String, val date: String)
+data class PlanItem(
+    val name: String,
+    val hours: Int,
+    val service: String,
     val address: String,
-    val status: TaskStatus
+    val status: String? // 状态可以为空，例如已完成的就不显示
 )
 
-data class DateInfo(
-    val dayLabel: String, // "昨天", "今天", "周二"
-    val dateString: String, // "05/10"
-    val fullDate: Long // Unique identifier for the date, e.g., epoch millis
-)
 
-@Composable
-fun NursingScreen(
-    navController: NavController, // Added NavController for navigation
-    viewModel: NursingViewModel = hiltViewModel()
-) {
-    var selectedDateEpoch by remember { mutableStateOf(getDummyDates().find { it.dayLabel == "今天" }?.fullDate ?: 0L) }
+// --- 2. UI 子组件 ---
 
-    Scaffold(
-        topBar = {
-            NursingTopAppBar(
-                title = "护理工作",
-                onBackClick = { navController.popBackStack() }
-            )
-        },
-        containerColor = LightBlueBackground // Main background below blue header
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues) // Apply padding from Scaffold
-                .fillMaxSize()
-        ) {
-            // Blue header section for Date Selector
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PrimaryBlue)
-                    .padding(bottom = 16.dp) // Space before the task list card
-            ) {
-                DateSelector(
-                    dates = getDummyDates(),
-                    selectedDateEpoch = selectedDateEpoch,
-                    onDateSelected = { dateInfo -> selectedDateEpoch = dateInfo.fullDate }
-                )
-            }
-
-            // Task List Card - sits on LightBlueBackground
-            TaskListSection(
-                tasks = getDummyTasksForDate(selectedDateEpoch),
-                modifier = Modifier
-                    .padding(horizontal = 16.dp) // Side margins for the card
-                    .fillMaxSize() // Takes remaining space
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NursingTopAppBar(title: String, onBackClick: () -> Unit) {
-    TopAppBar(
-        title = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge.copy(color = MaterialTheme.colorScheme.onPrimary),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-        },
-        actions = { Spacer(modifier = Modifier.width(48.dp)) }, // Balance nav icon for centering title
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            titleContentColor = MaterialTheme.colorScheme.onPrimary
-        )
-    )
-}
-
+/**
+ * 横向滚动的日期选择器
+ */
 @Composable
 fun DateSelector(
     dates: List<DateInfo>,
-    selectedDateEpoch: Long,
-    onDateSelected: (DateInfo) -> Unit
+    selectedDateIndex: Int,
+    onDateSelected: (Int) -> Unit
 ) {
     LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(dates) { dateInfo ->
-            DatePill(
+        itemsIndexed(dates) { index, dateInfo ->
+            DateChip(
                 dateInfo = dateInfo,
-                isSelected = dateInfo.fullDate == selectedDateEpoch,
-                onClick = { onDateSelected(dateInfo) }
+                isSelected = index == selectedDateIndex,
+                onClick = { onDateSelected(index) }
             )
         }
     }
 }
 
+/**
+ * 单个日期“芯片”
+ */
 @Composable
-fun DatePill(dateInfo: DateInfo, isSelected: Boolean, onClick: () -> Unit) {
-    val backgroundColor = if (isSelected) DatePillSelectedBackground else Color.Transparent
-    val dayLabelColor = if (isSelected) DatePillSelectedText else DatePillUnselectedText
-    val dateStringColor = if (isSelected) DatePillSelectedText.copy(alpha = 0.7f) else DatePillUnselectedText.copy(alpha = 0.7f)
+fun DateChip(dateInfo: DateInfo, isSelected: Boolean, onClick: () -> Unit) {
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+    val contentColor =
+        if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
 
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp)) // Pill shape
+            .clip(RoundedCornerShape(12.dp))
             .background(backgroundColor)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(vertical = 8.dp, horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = dateInfo.dayLabel,
-            color = dayLabelColor,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-            fontSize = 15.sp
+            text = dateInfo.dayOfWeek,
+            color = contentColor,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = dateInfo.dateString,
-            color = dateStringColor,
-            style = MaterialTheme.typography.labelSmall,
-            fontSize = 11.sp
+            text = dateInfo.date,
+            color = contentColor,
+            fontSize = 12.sp
         )
     }
 }
 
+/**
+ * 计划列表项
+ */
 @Composable
-fun TaskListSection(tasks: List<TaskInfo>, modifier: Modifier = Modifier) {
-    if (tasks.isEmpty()) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("当前日期无护理任务", style = MaterialTheme.typography.bodyMedium)
-        }
-        return
-    }
-
+fun PlanListItem(item: PlanItem) {
     Card(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.large.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp)), // Top rounded corners
-        colors = CardDefaults.cardColors(containerColor = CardWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        onClick = { /* TODO: 跳转到详情 */ },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(), // Fill the card
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            itemsIndexed(tasks, key = { _, task -> task.id }) { index, task ->
-                TaskItem(taskInfo = task, onClick = { /* TODO: Handle task click */ })
-                if (index < tasks.size - 1) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        thickness = 0.5.dp,
-                        color = DividerColor
+            // 左侧信息
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = item.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "工时: ${item.hours}",
+                        color = Color.Gray,
+                        fontSize = 14.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "${item.service}  地址: ${item.address}",
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp // 增加行高以改善可读性
+                )
+            }
+
+            // 右侧状态和箭头
+            item.status?.let {
+                Text(
+                    text = it,
+                    color = Color.Red,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = "详情",
+                tint = Color.LightGray
+            )
+        }
+    }
+}
+
+
+// --- 3. 主屏幕 ---
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NursingScreen(
+    navController: NavController,
+    viewModel: NursingViewModel = hiltViewModel()
+) {
+    // 模拟数据
+    val dates = listOf(
+        DateInfo("昨天", "05/10"),
+        DateInfo("今天", "05/11"),
+        DateInfo("明天", "05/12"),
+        DateInfo("周二", "05/13"),
+        DateInfo("周三", "05/14"),
+        DateInfo("周四", "05/15"),
+        DateInfo("周五", "05/16"),
+    )
+    val plans = listOf(
+        PlanItem("孙天成", 8, "助浴服务", "杭州市西湖区328弄24号", "未完成"),
+        PlanItem("王东明", 8, "清洁服务", "杭州市西湖区328弄24号", "未完成"),
+        PlanItem("胡来德", 8, "维修服务", "杭州市西湖区328弄24号", "未完成"),
+        PlanItem("丛敏丽", 8, "理发服务", "杭州市西湖区328弄24号", "未完成"),
+        PlanItem("爱德福", 8, "推拿服务", "杭州市西湖区328弄24号", "未完成"),
+        PlanItem("丁成立", 8, "清洁服务", "杭州市西湖区328弄24号", "未完成"),
+        PlanItem("张爱国", 8, "清洁服务", "杭州市西湖区328弄24号", "未完成"),
+        PlanItem("王阳明", 8, "清洁服务", "杭州市西湖区328弄24号", "未完成"),
+        PlanItem("陈福记", 8, "孙连仲", "杭州市西湖区328弄24号", null)
+    )
+
+    var selectedDateIndex by remember { mutableIntStateOf(1) } // 默认选中“今天”
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "待护理计划",
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { /* TODO: 返回操作 */ }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    // 保留一个空的 action, 让标题能够完美居中
+                    Spacer(modifier = Modifier.width(48.dp))
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
+        },
+        containerColor = Color.Transparent
+    ) { paddingValues ->
+        Column(modifier = Modifier.padding(paddingValues)) {
+            Spacer(modifier = Modifier.height(16.dp))
+            // 日期选择器
+            DateSelector(
+                dates = dates,
+                selectedDateIndex = selectedDateIndex,
+                onDateSelected = { selectedDateIndex = it }
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            // 计划列表
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp) // 卡片之间的间距
+            ) {
+                items(plans) { plan ->
+                    PlanListItem(item = plan)
                 }
             }
         }
     }
 }
-
-@Composable
-fun TaskItem(taskInfo: TaskInfo, onClick: () -> Unit) {
-    val statusColor = if (taskInfo.status == TaskStatus.COMPLETED) StatusGreen else StatusRed
-    val statusText = if (taskInfo.status == TaskStatus.COMPLETED) "已完成" else "未完成"
-
-    ConstraintLayout(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 16.dp)
-    ) {
-        val (detailsColumn, statusTextRef, arrowIconRef) = createRefs()
-        val endGuidelineForArrow = createGuidelineFromEnd(24.dp)
-        val endGuidelineForStatus = createGuidelineFromEnd(32.dp) // Status is to the left of arrow
-
-        // Details Column (Name, Hours, Service, Address)
-        Column(
-            modifier = Modifier.constrainAs(detailsColumn) {
-                start.linkTo(parent.start)
-                end.linkTo(statusTextRef.start, margin = 8.dp, goneMargin = 70.dp) // Ensure space or constraint if status text is short
-                top.linkTo(parent.top)
-                bottom.linkTo(parent.bottom)
-                width = Dimension.fillToConstraints
-            }
-        ) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    text = taskInfo.clientName,
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp),
-                    color = TextPrimary
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = "工时: ${taskInfo.hours}",
-                    style = MaterialTheme.typography.labelSmall.copy(color = ServiceItemHourColor, fontSize = 13.sp),
-                    modifier = Modifier.padding(bottom = 2.dp) // Align baseline
-                )
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = taskInfo.serviceType,
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                color = TextSecondary
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "地址: ${taskInfo.address}",
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                color = TextSecondary,
-                maxLines = 1
-            )
-        }
-
-        // Status Text
-        Text(
-            text = statusText,
-            color = statusColor,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-            modifier = Modifier.constrainAs(statusTextRef) {
-                end.linkTo(arrowIconRef.start, margin = 4.dp)
-                top.linkTo(parent.top)
-                bottom.linkTo(parent.bottom)
-                centerVerticallyTo(parent)
-            }
-        )
-
-        // Arrow Icon
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "详情",
-            tint = LightGrayText,
-            modifier = Modifier.constrainAs(arrowIconRef) {
-                end.linkTo(parent.end)
-                top.linkTo(parent.top)
-                bottom.linkTo(parent.bottom)
-                centerVerticallyTo(parent)
-            }
-        )
-    }
-}
-
-// --- Dummy Data for Preview ---
-fun getDummyDates(): List<DateInfo> {
-    val today = System.currentTimeMillis()
-    val dayMillis = 24 * 60 * 60 * 1000
-    return listOf(
-        DateInfo("昨天", "05/10", today - dayMillis),
-        DateInfo("今天", "05/11", today),
-        DateInfo("明天", "05/12", today + dayMillis),
-        DateInfo("周二", "05/13", today + 2 * dayMillis),
-        DateInfo("周三", "05/14", today + 3 * dayMillis),
-        DateInfo("周四", "05/15", today + 4 * dayMillis),
-        DateInfo("周五", "05/16", today + 5 * dayMillis)
-    )
-}
-
-fun getDummyTasksForDate(dateEpoch: Long): List<TaskInfo> {
-    // Simple logic: return different task lists based on date, or same for preview
-    val todayEpoch = getDummyDates().find { it.dayLabel == "今天" }?.fullDate
-    if (dateEpoch == todayEpoch) {
-        return listOf(
-            TaskInfo("task1", "孙天成", "8", "助浴服务", "杭州市西湖区328弄24号", TaskStatus.PENDING),
-            TaskInfo("task2", "王东明", "8", "清洁服务", "杭州市西湖区328弄24号", TaskStatus.COMPLETED),
-            TaskInfo("task3", "胡来德", "8", "维修服务", "杭州市滨江区XX路10号", TaskStatus.COMPLETED),
-            TaskInfo("task4", "丛敏丽", "8", "理发服务", "杭州市上城区YY街22号", TaskStatus.COMPLETED),
-            TaskInfo("task5", "爱德福", "8", "推拿服务", "杭州市西湖区328弄24号", TaskStatus.COMPLETED),
-            TaskInfo("task6", "丁成立", "8", "清洁服务", "杭州市滨江区XX路10号", TaskStatus.COMPLETED),
-            TaskInfo("task7", "张爱国", "8", "清洁服务", "杭州市上城区YY街22号", TaskStatus.COMPLETED),
-            TaskInfo("task8", "王阳明", "8", "清洁服务", "杭州市西湖区328弄24号", TaskStatus.COMPLETED),
-            TaskInfo("task9", "陈福记", "8", "送餐服务", "杭州市滨江区XX路10号", TaskStatus.PENDING)
-        )
-    }
-    if (dateEpoch == getDummyDates().find { it.dayLabel == "昨天" }?.fullDate) {
-        return listOf(
-            TaskInfo("task10", "李晓红", "4", "购物代办", "杭州市拱墅区AA路1号", TaskStatus.COMPLETED),
-            TaskInfo("task11", "赵铁柱", "6", "健康监测", "杭州市余杭区BB路2号", TaskStatus.COMPLETED)
-        )
-    }
-    return emptyList() // Default to empty for other dates
-}
-
 
 @Preview(showBackground = true)
 @Composable

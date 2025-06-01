@@ -40,16 +40,11 @@ fun MainDashboardScreen(
     navController: NavController, mainDashboardViewModel: MainDashboardViewModel = hiltViewModel()
 ) {
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0xFF468AFF), Color(0xFFF6F9FF))
-                    )
-                )
                 .padding(top = paddingValues.calculateTopPadding(), start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp) // 项目之间的垂直间距
         ) {
