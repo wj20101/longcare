@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -277,7 +278,7 @@ fun ServicePlanItem(plan: ServicePlan) {
     Card(
         onClick = { /*TODO*/ },
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
@@ -285,7 +286,7 @@ fun ServicePlanItem(plan: ServicePlan) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = plan.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(text = plan.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(
                         shape = RoundedCornerShape(4.dp), color = Color(0xFFE8F4FF)
@@ -301,12 +302,12 @@ fun ServicePlanItem(plan: ServicePlan) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${plan.serviceType} 地址: ${plan.address}",
-                    fontSize = 14.sp,
+                    fontSize = 12.sp,
                     color = Color.Gray
                 )
             }
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                 contentDescription = "详情",
                 tint = Color.LightGray,
                 modifier = Modifier.size(16.dp)
