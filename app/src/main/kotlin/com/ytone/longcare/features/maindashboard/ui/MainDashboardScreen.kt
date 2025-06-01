@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.maindashboard.ui
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -9,8 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,11 +18,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -62,14 +63,9 @@ fun MainDashboardScreen(
                 HomeBannerCard()
             }
 
-            // 快捷功能区
+            // 功能卡片
             item {
-                QuickActionsSection()
-            }
-
-            // 统计学习区
-            item {
-                StatsSection()
+                DashboardGridWithImages()
             }
 
             // 待服务计划列表
@@ -104,10 +100,10 @@ fun TopHeader() {
         modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
     ) {
         // Logo
-        Image(
-            painter = painterResource(R.drawable.app_logo_small_white),
-            contentDescription = "Logo",
-            modifier = Modifier.height(40.dp)
+        ImageWithAdaptiveWidth(
+            drawableResId = R.drawable.app_logo_small_white,
+            fixedHeight = 34.dp,
+            contentDescription = "Logo"
         )
 
         // 占位符，将右侧内容推到最右边
@@ -133,9 +129,21 @@ fun TopHeader() {
 fun HomeBannerCard() {
     // 1. Banner 图片素材列表 (使用网络图片URL)
     val sampleBanners = listOf(
-        BannerItem(1, "https://images.pexels.com/photos/3768894/pexels-photo-3768894.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1", "Banner 1"),
-        BannerItem(2, "https://images.pexels.com/photos/3831847/pexels-photo-3831847.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1", "Banner 2"),
-        BannerItem(3, "https://images.pexels.com/photos/4058315/pexels-photo-4058315.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1", "Banner 3")
+        BannerItem(
+            1,
+            "https://images.pexels.com/photos/3768894/pexels-photo-3768894.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+            "Banner 1"
+        ),
+        BannerItem(
+            2,
+            "https://images.pexels.com/photos/3831847/pexels-photo-3831847.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+            "Banner 2"
+        ),
+        BannerItem(
+            3,
+            "https://images.pexels.com/photos/4058315/pexels-photo-4058315.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+            "Banner 3"
+        )
     )
 
     ImageBannerPager(
@@ -144,139 +152,116 @@ fun HomeBannerCard() {
     )
 }
 
+// 整体仪表盘网格
 @Composable
-fun QuickActionsSection() {
-    Row(
-        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
+fun DashboardGridWithImages() {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp) // 行之间的间距
     ) {
-        ActionCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Default.Favorite,
-            iconBgColor = Color(0xFFE8F4FF),
-            iconTint = Color(0xFF3A9DFF),
-            title = "待护理计划",
-            subtitle = "你有12个护理待执行",
-            badgeCount = 12
-        )
-        ActionCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Default.Favorite,
-            iconBgColor = Color(0xFFFFF4E8),
-            iconTint = Color(0xFFFF9800),
-            title = "已服务记录",
-            subtitle = "查看过往服务记录"
-        )
-    }
-}
-
-
-@Composable
-fun StatsSection() {
-    Row(
-        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        InfoCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Default.Settings,
-            text = "工时: 22322",
-            subtext = "服务工时统计"
-        )
-        InfoCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Default.Settings,
-            text = "待学习",
-            subtext = "服务标准学习",
-            badgeCount = 12
-        )
-    }
-}
-
-
-// --- 可复用的子组件 ---
-
-@Composable
-fun ActionCard(
-    modifier: Modifier = Modifier,
-    icon: ImageVector,
-    iconBgColor: Color,
-    iconTint: Color,
-    title: String,
-    subtitle: String,
-    badgeCount: Int? = null
-) {
-    Card(
-        onClick = { /*TODO*/ },
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(iconBgColor), contentAlignment = Alignment.Center
-            ) {
-                Icon(imageVector = icon, contentDescription = title, tint = iconTint)
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    if (badgeCount != null) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Badge(containerColor = Color.Red) { Text("$badgeCount") }
-                    }
-                }
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    fontSize = 12.sp,
-                    color = Color.Gray,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+        // 第一行
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            InfoCard(
+                modifier = Modifier.weight(1f),
+                iconRes = R.drawable.main_ic_plan,
+                title = "待护理计划",
+                subtitle = "你有12个护理待执行",
+                badgeCount = 12,
+            )
+            InfoCard(
+                modifier = Modifier.weight(1f),
+                iconRes = R.drawable.main_ic_records,
+                title = "已服务记录",
+                subtitle = "查看过往服务记录",
+            )
+        }
+        // 第二行
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            InfoCard(
+                modifier = Modifier.weight(1f),
+                iconRes = R.drawable.main_ic_hours,
+                title = "工时: 22322",
+                subtitle = "服务工时统计",
+            )
+            InfoCard(
+                modifier = Modifier.weight(1f),
+                iconRes = R.drawable.main_ic_study,
+                title = "待学习",
+                subtitle = "服务标准学习",
+                badgeCount = 12,
+            )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun InfoCard(
     modifier: Modifier = Modifier,
-    icon: ImageVector,
-    text: String,
-    subtext: String,
-    badgeCount: Int? = null
+    @DrawableRes iconRes: Int,
+    title: String,
+    subtitle: String,
+    badgeCount: Int? = null,
+    iconContentDescription: String? = null,
 ) {
     Card(
-        onClick = { /*TODO*/ },
-        modifier = modifier.height(80.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        onClick = { /* 卡片点击事件 */ },
+        modifier = modifier.height(65.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = text,
-                tint = MaterialTheme.colorScheme.primary
+            // 左侧图标区域
+            Image(
+                painter = painterResource(id = iconRes),
+                contentDescription = iconContentDescription,
+                modifier = Modifier.size(32.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            // 右侧文字区域
             Column {
+                // 标题行
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = text, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(
+                        text = title,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     if (badgeCount != null) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Badge(containerColor = Color.Red) { Text("$badgeCount") }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Badge(
+                            containerColor = Color(0xFFFFC107)
+                        ) {
+                            Text(
+                                text = badgeCount.toString(),
+                                color = Color.Black,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
-                Text(text = subtext, fontSize = 12.sp, color = Color.Gray)
+                // 副标题
+                Text(
+                    text = subtitle,
+                    fontSize = 10.sp,
+                    color = Color.Gray,
+                    lineHeight = 12.sp,
+                    style = TextStyle(
+                        lineHeightStyle = LineHeightStyle(
+                            alignment = LineHeightStyle.Alignment.Center,
+                            trim = LineHeightStyle.Trim.Both
+                        )
+                    )
+                )
             }
         }
     }
@@ -328,6 +313,43 @@ fun ServicePlanItem(plan: ServicePlan) {
             )
         }
     }
+}
+
+/**
+ * 一个固定高度、宽度根据图片原始比例自适应的 Image 组件。
+ *
+ * @param drawableResId 要加载的本地 drawable 资源 ID。
+ * @param fixedHeight 固定的高度。
+ * @param modifier 修饰符。
+ * @param contentDescription 图片的内容描述，用于无障碍。
+ */
+@Composable
+fun ImageWithAdaptiveWidth(
+    @DrawableRes drawableResId: Int,
+    fixedHeight: Dp,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null
+) {
+    // 1. 使用 painterResource 创建 Painter
+    val painter = painterResource(id = drawableResId)
+
+    // 2. 从 painter 的 intrinsicSize 中计算宽高比
+    //    为防止除以0，增加一个保护判断
+    val aspectRatio = if (painter.intrinsicSize.height > 0) {
+        painter.intrinsicSize.width / painter.intrinsicSize.height
+    } else {
+        1.0f // 如果高度为0，则默认为1:1
+    }
+
+    // 3. 应用 Modifier 链
+    Image(
+        painter = painter,
+        contentDescription = contentDescription,
+        contentScale = ContentScale.FillHeight,
+        modifier = modifier
+            .height(fixedHeight)      // 首先，强制设置固定的高度
+            .aspectRatio(aspectRatio) // 然后，根据宽高比自动计算并设置宽度
+    )
 }
 
 // --- Preview ---
