@@ -1,9 +1,11 @@
 package com.ytone.longcare.features.nursing.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +64,7 @@ fun NursingScreen(
                     IconButton(onClick = { /* TODO: 返回操作 */ }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
+                            tint = Color.White,
                             contentDescription = "返回"
                         )
                     }
@@ -70,7 +72,7 @@ fun NursingScreen(
                 actions = { Spacer(modifier = Modifier.width(48.dp)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    titleContentColor = Color.White
                 ),
             )
         }, containerColor = Color.Transparent
@@ -92,6 +94,7 @@ fun NursingScreen(
                             coroutineScope.launch { pagerState.animateScrollToPage(index) }
                         },
                         modifier = Modifier
+                            .padding(horizontal = 8.dp)
                             .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
                             .then(
                                 if (isSelected) Modifier.background(Color.White) else Modifier
@@ -129,63 +132,88 @@ fun NursingScreen(
 }
 
 /**
- * 计划列表，现在只包含 LazyColumn
+ * 计划列表，拥有一个整体的、顶部圆角的白色背景。
  */
 @Composable
 fun PlanList(plans: List<PlanItem>, modifier: Modifier = Modifier) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+            .background(Color.White),
     ) {
-        items(plans) { plan ->
-            PlanListItem(item = plan) // PlanListItem 组件与之前版本相同，可复用
+        LazyColumn(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            itemsIndexed(plans) { index, plan ->
+                PlanListItem(item = plan)
+                if (index < plans.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        thickness = 1.dp,
+                        color = Color(0xFFF0F0F0)
+                    )
+                } else {
+                    // 底部留出一些空间
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
         }
     }
 }
 
 
-// --- 之前版本的 PlanListItem 组件 (无需修改) ---
+/**
+ * 计划列表项，移除了 Card, 改为简单的 Row 布局
+ */
 @Composable
 fun PlanListItem(item: PlanItem) {
-    Card(
-        onClick = { /* TODO: 跳转到详情 */ },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { /* TODO: 跳转到详情 */ }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = item.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "工时: ${item.hours}", color = Color.Gray, fontSize = 14.sp)
-                }
-                Spacer(modifier = Modifier.height(6.dp))
+        // -- 内部布局与之前完全相同 --
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "${item.service}  地址: ${item.address}",
-                    color = Color.Gray,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp
-                )
-            }
-            item.status?.let {
-                Text(
-                    text = it,
-                    color = Color.Red,
+                    text = item.name,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                    fontSize = 16.sp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "工时: ${item.hours}",
+                    color = Color.Gray,
+                    fontSize = 14.sp
                 )
             }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = "详情",
-                tint = Color.LightGray
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "${item.service}  地址: ${item.address}",
+                color = Color.Gray,
+                fontSize = 14.sp,
+                lineHeight = 20.sp
             )
         }
+
+        item.status?.let {
+            Text(
+                text = it,
+                color = Color.Red,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = "详情",
+            tint = Color.LightGray
+        )
     }
 }
 
@@ -219,7 +247,7 @@ private fun createPlanList(): List<PlanItem> {
 }
 
 // --- 预览 ---
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF468AFF)
 @Composable
 fun NursingScreenPreview() {
     LongCareTheme {

@@ -46,7 +46,8 @@ fun MainDashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = paddingValues.calculateTopPadding(), start = 16.dp, end = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp) // 项目之间的垂直间距
+            verticalArrangement = Arrangement.spacedBy(16.dp), // 项目之间的垂直间距
+            contentPadding = PaddingValues(bottom = 8.dp)
         ) {
             // 顶部Header
             item {
@@ -80,11 +81,6 @@ fun MainDashboardScreen(
             )
             items(servicePlans) { plan ->
                 ServicePlanItem(plan)
-            }
-
-            // 底部留出一些空间
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
