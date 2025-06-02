@@ -34,11 +34,11 @@ android {
 
     targetProjectPath = ":app"
 
-    flavorDimensions += listOf("environment")
-    productFlavors {
-        create("dev") { dimension = "environment" }
-        create("prod") { dimension = "environment" }
-    }
+//    flavorDimensions += listOf("environment")
+//    productFlavors {
+//        create("dev") { dimension = "environment" }
+//        create("prod") { dimension = "environment" }
+//    }
 
 }
 

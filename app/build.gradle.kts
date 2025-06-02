@@ -88,11 +88,11 @@ android {
         compose = true
     }
 
-    flavorDimensions += "environment"
-    productFlavors {
-        create("dev") { dimension = "environment" }
-        create("prod") { dimension = "environment" }
-    }
+//    flavorDimensions += "environment"
+//    productFlavors {
+//        create("dev") { dimension = "environment" }
+//        create("prod") { dimension = "environment" }
+//    }
 
     // Custom APK naming
     applicationVariants.all {
@@ -106,8 +106,8 @@ android {
                     append("app")
                     append("-v$versionName")
                     append("-$date")
-                    append("-")
-                    append(variant.productFlavors.joinToString("-") { it.name })
+//                    append("-")
+//                    append(variant.productFlavors.joinToString("-") { it.name })
                     append("-${variant.buildType.name}")
                     append(".apk")
                 }
