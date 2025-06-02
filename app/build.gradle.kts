@@ -37,6 +37,10 @@ android {
             keyPassword = "REMOVED_RELEASE_KEY_PASSWORD"
             storeFile = file("../keystore.jks")
             storePassword = "longcare~!@#\$%"
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = true
         }
     }
 
@@ -54,6 +58,7 @@ android {
             "PUBLIC_KEY",
             "\"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk45Er/DSjJwRNhReRT+4lINV6GanR3FwNutADNBwVoNQgY33bM/adLN5ZDmb8CwCeRJ4iBdcIX0co+2cm169HSHtJvOHUm864UbT63BrxKtnJCR+GkmsB3dj7YMwDbYArg7ymGP3EhWsiqMPdnR15+4LYIfK3l74nOZqPIPp8XkUKbbvJeieyslBIVSux2eytUGQjY8EPTE7nOHbAh8boWhiekFKevmx24dQBLoOrKrpTIv4pNiFSPxWCdBayCXjyr3Vq6Eg+vEDYN1+sxXWAj4bo/91TIbGQzdPCcCiZUQ1d7EgBp1JJKAsTTzkd+CusSTVpmmz/uVwjOaEHNzqWwIDAQAB\"",
         )
+        signingConfig = signingConfigs.getByName("config")
     }
 
     room {
@@ -62,18 +67,19 @@ android {
 
     buildTypes {
         release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            isDebuggable = false
+            isJniDebuggable = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
             buildConfigField("String", "BASE_URL", "\"https://api.qianyuwl168.cn/\"") // 生产环境 URL
-            signingConfig = signingConfigs.getByName("config")
         }
 
         debug {
-            isDebuggable = true
             buildConfigField("String", "BASE_URL", "\"https://api.qianyuwl168.cn/\"") // 测试环境 URL
-            signingConfig = signingConfigs.getByName("config")
         }
     }
     compileOptions {
