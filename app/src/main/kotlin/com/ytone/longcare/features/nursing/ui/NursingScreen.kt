@@ -25,6 +25,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.features.nursing.viewmodel.NursingViewModel
+import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.theme.LongCareTheme
 import kotlinx.coroutines.launch
 
@@ -113,7 +114,9 @@ fun NursingScreen(
                 modifier = Modifier.fillMaxSize(),
             ) { page ->
                 val planList = remember(page) { createPlanList().shuffled() }
-                PlanList(plans = planList)
+                PlanList(plans = planList) {
+                    navController.navigateToService()
+                }
             }
         }
     }
@@ -123,7 +126,7 @@ fun NursingScreen(
  * 计划列表，拥有一个整体的、顶部圆角的白色背景。
  */
 @Composable
-fun PlanList(plans: List<PlanItem>, modifier: Modifier = Modifier) {
+fun PlanList(plans: List<PlanItem>, modifier: Modifier = Modifier, onGoToDetailClick: () -> Unit) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -135,7 +138,7 @@ fun PlanList(plans: List<PlanItem>, modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxSize()
         ) {
             itemsIndexed(plans) { index, plan ->
-                PlanListItem(item = plan)
+                PlanListItem(modifier = Modifier.clickable { onGoToDetailClick.invoke() }, item = plan)
                 if (index < plans.lastIndex) {
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -156,11 +159,10 @@ fun PlanList(plans: List<PlanItem>, modifier: Modifier = Modifier) {
  * 计划列表项，移除了 Card, 改为简单的 Row 布局
  */
 @Composable
-fun PlanListItem(item: PlanItem) {
+fun PlanListItem(modifier: Modifier,item: PlanItem) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clickable { /* TODO: 跳转到详情 */ }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
