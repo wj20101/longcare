@@ -19,6 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
+import com.ytone.longcare.ui.bgGradientBrush
 
 // --- 数据模型 (如果需要) ---
 data class ClientInfo(
@@ -40,12 +41,10 @@ fun NursingExecutionScreen() {
         address = "浙江省杭州市西湖区爱家小区32号501",
         serviceContent = "助浴"
     )
-    val gradientBrush =
-        Brush.verticalGradient(colors = listOf(Color(0xFF468AFF), Color(0xFFF6F9FF)))
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(gradientBrush)
+            .background(bgGradientBrush)
     ) {
         Scaffold(
             topBar = {

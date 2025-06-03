@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.ui.bgGradientBrush
 
 // --- 数据模型 ---
 data class Device(
@@ -33,10 +34,6 @@ data class Device(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectDeviceScreen() {
-    // 1. 定义渐变色背景
-    val gradientBrush =
-        Brush.verticalGradient(colors = listOf(Color(0xFF468AFF), Color(0xFFF6F9FF)))
-
     // 模拟设备数据
     val devices = remember {
         List(6) { index -> Device(id = "id_$index", name = "设备名称") }
@@ -46,7 +43,7 @@ fun SelectDeviceScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(gradientBrush)
+            .background(bgGradientBrush)
     ) {
         Scaffold(
             topBar = {
@@ -171,16 +168,13 @@ fun DeviceItem(device: Device, isSelected: Boolean, onClick: () -> Unit) {
 @Composable
 fun NextStepButton(text: String, enabled: Boolean, onClick: () -> Unit) {
 
-    val gradientBrush =
-        Brush.horizontalGradient(colors = listOf(Color(0xFF2B83FF), Color(0xFF3192FD)))
-
     Button(
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
             .height(50.dp)
-            .background(brush = gradientBrush, shape = RoundedCornerShape(50)),
+            .background(brush = bgGradientBrush, shape = RoundedCornerShape(50)),
         shape = RoundedCornerShape(50),
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.Transparent, disabledContainerColor = Color.Gray

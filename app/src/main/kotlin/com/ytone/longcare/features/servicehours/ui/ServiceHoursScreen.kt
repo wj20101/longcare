@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R // 确保这是您项目正确的R文件导入
+import com.ytone.longcare.ui.bgGradientBrush
 
 // --- 数据模型 ---
 data class ServiceRecord(
@@ -36,12 +37,11 @@ data class ServiceRecord(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceHoursScreen(navController: NavController) {
-    val gradientBrush = Brush.verticalGradient(colors = listOf(Color(0xFF468AFF), Color(0xFFF6F9FF)))
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(gradientBrush)
+            .background(bgGradientBrush)
     ) {
         Scaffold(
             topBar = {

@@ -18,6 +18,7 @@ import com.ytone.longcare.features.maindashboard.ui.MainDashboardScreen
 import com.ytone.longcare.features.nursing.ui.NursingScreen
 import com.ytone.longcare.features.profile.ui.ProfileScreen
 import com.ytone.longcare.theme.LongCareTheme
+import com.ytone.longcare.ui.bgGradientBrush
 import kotlinx.coroutines.launch
 
 
@@ -34,13 +35,10 @@ fun HomeScreen(
     val pagerState = rememberPagerState(pageCount = { bottomNavItems.size })
     val coroutineScope = rememberCoroutineScope()
 
-    val gradientBrush =
-        Brush.verticalGradient(colors = listOf(Color(0xFF468AFF), Color(0xFFF6F9FF)))
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(brush = gradientBrush)
+            .background(brush = bgGradientBrush)
     ){
         Scaffold(
             bottomBar = {

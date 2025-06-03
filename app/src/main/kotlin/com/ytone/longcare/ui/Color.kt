@@ -1,6 +1,9 @@
 package com.ytone.longcare.ui
 
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+
+val bgGradientBrush = Brush.verticalGradient(colors = listOf(Color(0xFF468AFF), Color(0xFFF6F9FF)))
 
 val PrimaryBlue = Color(0xFF4A80F0)
 val LightBlueBackground = Color(0xFFF0F5FF) // 主背景的浅蓝色调
