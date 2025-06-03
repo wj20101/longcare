@@ -64,8 +64,7 @@ fun ServiceHoursScreen(navController: NavController) {
                         IconButton(onClick = { /* TODO: 返回操作 */ }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
-                                tint = Color.White
+                                contentDescription = "返回"
                             )
                         }
                     },
@@ -94,7 +93,7 @@ fun ServiceHoursScreen(navController: NavController) {
                 // “已服务工时”标签，通过 offset 和对齐方式进行叠加
                 ServiceHoursTag(
                     modifier = Modifier
-                        .padding(start = 15.5.dp) // 标签距离屏幕左边的距离 图片存在内边距，所以需要少0.5dp
+                        .padding(start = 16.dp)
                 )
             }
         }
