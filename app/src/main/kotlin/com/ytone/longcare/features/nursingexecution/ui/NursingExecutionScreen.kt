@@ -167,7 +167,6 @@ fun InfoRow(label: String, value: String) {
 
 @Composable
 fun ConfirmButton(text: String, onClick: () -> Unit) {
-    // 1. 定义你的横向渐变色
     val gradientBrush = Brush.horizontalGradient(colors = listOf(Color(0xFF2B83FF), Color(0xFF3192FD)))
 
     Button(
