@@ -13,18 +13,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.ytone.longcare.R // 确保这是您项目正确的R文件导入
 import com.ytone.longcare.ui.bgGradientBrush
+import com.ytone.longcare.ui.screen.ServiceHoursTag
 
 // --- 数据模型 ---
 data class ServiceRecord(
@@ -91,40 +88,9 @@ fun ServiceHoursScreen(navController: NavController) {
                 )
 
                 // “已服务工时”标签，通过 offset 和对齐方式进行叠加
-                ServiceHoursTag(
-                    modifier = Modifier
-                        .padding(start = 16.dp)
-                )
+                ServiceHoursTag(modifier = Modifier.padding(start = 16.dp), tagText = "已服务工时")
             }
         }
-    }
-}
-
-
-@Composable
-fun ServiceHoursTag(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-    ) {
-        // 背景图片
-        Image(
-            painter = painterResource(id = R.drawable.service_tab_bg), // <-- 替换为您的PNG资源ID
-            contentDescription = null, // 背景图片通常不需要内容描述
-            modifier = Modifier
-                .size(120.dp, 44.dp),
-            contentScale = ContentScale.FillBounds
-        )
-
-        // 文字内容
-        Text(
-            text = "已服务工时",
-            color = Color(0xFF134AA8),
-            fontWeight = FontWeight.Bold,
-            fontSize = 15.sp,
-            modifier = Modifier
-                .align(Alignment.Center) // 文字在Box中垂直居中，水平靠左
-                .offset(y = -(6.dp))
-        )
     }
 }
 
@@ -202,7 +168,7 @@ fun ServiceRecordItem(record: ServiceRecord) {
 @Preview(showBackground = true)
 @Composable
 fun ServiceHoursScreenPreview() {
-    MaterialTheme { // 建议包裹在您的应用主题中
+    MaterialTheme {
         ServiceHoursScreen(navController = rememberNavController())
     }
 }

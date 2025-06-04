@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 import com.ytone.longcare.ui.bgGradientBrush
+import com.ytone.longcare.ui.screen.ServiceHoursTag
 
 // --- 数据模型 (如果需要) ---
 data class ClientInfo(
@@ -82,7 +83,7 @@ fun NursingExecutionScreen() {
                 Box {
                     ClientInfoCard(modifier = Modifier.padding(top = 8.dp), clientInfo = clientInfo)
 
-                    SectionTitleTag(title = "客户信息")
+                    ServiceHoursTag(tagText = "客户信息")
                 }
 
                 Spacer(modifier = Modifier.weight(1f)) // 将按钮推到底部
@@ -103,7 +104,7 @@ fun SectionTitleTag(title: String, modifier: Modifier = Modifier) {
     ) {
         // 背景图片
         Image(
-            painter = painterResource(id = R.drawable.service_tab_bg), // <-- 替换为您的PNG资源ID
+            painter = painterResource(id = R.drawable.service_tab_bg),
             contentDescription = null, // 背景图片通常不需要内容描述
             modifier = Modifier.size(120.dp, 44.dp), contentScale = ContentScale.FillBounds
         )
