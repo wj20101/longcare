@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
@@ -29,6 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.showLongToast
 import com.ytone.longcare.features.login.viewmodel.LoginViewModel
 import com.ytone.longcare.navigation.navigateToHomeFromLogin
 import com.ytone.longcare.theme.LongCareTheme
@@ -39,6 +41,9 @@ import com.ytone.longcare.ui.PrimaryBlue
 import com.ytone.longcare.ui.TextColorHint
 import com.ytone.longcare.ui.TextColorPrimary
 import com.ytone.longcare.ui.TextColorSecondary
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // 最大手机号码长度，用于控制输入长度
 private const val maxPhoneLength = 11
@@ -47,6 +52,7 @@ private const val maxPhoneLength = 11
 fun LoginScreen(
     navController: NavController, viewModel: LoginViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     var phoneNumber by remember { mutableStateOf("") }
     var verificationCode by remember { mutableStateOf("") }
 
@@ -83,14 +89,17 @@ fun LoginScreen(
                     })
 
             // Logo
-            InfinityLogo(
+            Image(
+                painter = painterResource(id = R.drawable.app_logo_name),
+                contentDescription = "App Logo",
                 modifier = Modifier
                     .width(200.dp)
                     .constrainAs(logo) {
                         top.linkTo(parent.top, margin = 80.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
-                    })
+                    }
+            )
 
             // Phone Number Input Field
             OutlinedTextField(
@@ -124,18 +133,13 @@ fun LoginScreen(
                 })
 
             // Send Verification Code Button
-            TextButton(
-                onClick = { /* TODO: Handle send code */ },
-                shape = RoundedCornerShape(50),
-                modifier = Modifier.constrainAs(sendCodeButton) {
-                    bottom.linkTo(phoneField.bottom) // 假设输入框高度约48dp，保证垂直对齐
-                    end.linkTo(parent.end, margin = horizontalMargin)
-                    bottom.linkTo(loginButton.top, margin = 18.dp)
-                    // 高度通过 TextButton 内部内容自适应，或显式设置
-                }) {
-                Text("发送验证码", color = PrimaryBlue, fontSize = 15.sp)
-            }
-
+            SendVerificationCodeButton(modifier = Modifier.constrainAs(sendCodeButton) {
+                bottom.linkTo(phoneField.bottom)
+                end.linkTo(parent.end, margin = horizontalMargin)
+                bottom.linkTo(loginButton.top, margin = 18.dp)
+            }, onSendCodeClick = {
+                context.showLongToast("发送验证码")
+            })
 
             // Verification Code Input Field
             OutlinedTextField(
@@ -185,8 +189,8 @@ fun LoginScreen(
 
             // Agreement Text
             AgreementText( // AgreementText 组件复用之前的实现
-                onUserAgreementClick = { /* TODO: Navigate to User Agreement */ },
-                onPrivacyPolicyClick = { /* TODO: Navigate to Privacy Policy */ },
+                onUserAgreementClick = { context.showLongToast("用户协议") },
+                onPrivacyPolicyClick = { context.showLongToast("隐私政策") },
                 modifier = Modifier.constrainAs(agreementText) {
                     bottom.linkTo(parent.bottom, margin = 32.dp)
                     start.linkTo(parent.start, margin = 32.dp) // 应用边距以控制文本块宽度
@@ -197,7 +201,60 @@ fun LoginScreen(
     }
 }
 
-// InfinityLogo Composable - 与之前版本相同
+
+@Composable
+fun SendVerificationCodeButton(
+    modifier: Modifier = Modifier,
+    onSendCodeClick: () -> Unit // 点击发送验证码时触发的回调
+) {
+    var countdownSeconds by remember { mutableIntStateOf(0) }
+    val coroutineScope = rememberCoroutineScope()
+    var countdownJob: Job? by remember { mutableStateOf(null) }
+
+    val isCountingDown = countdownSeconds > 0
+
+    TextButton(
+        onClick = {
+            if (!isCountingDown) {
+                onSendCodeClick() // 实际发送验证码的逻辑
+                countdownSeconds = 60 // 开始60秒倒计时
+                countdownJob?.cancel() // 取消上一个倒计时（如果有）
+                countdownJob = coroutineScope.launch {
+                    while (countdownSeconds > 0) {
+                        delay(1000L) // 每秒更新一次
+                        countdownSeconds--
+                    }
+                }
+            }
+        },
+        shape = RoundedCornerShape(50),
+        modifier = modifier,
+        enabled = !isCountingDown // 当不在倒计时中时，按钮可用
+    ) {
+        if (isCountingDown) {
+            Text(
+                text = "${countdownSeconds}秒后重发",
+                color = TextColorHint, // 倒计时期间使用灰色文字
+                fontSize = 15.sp
+            )
+        } else {
+            Text(
+                text = "发送验证码",
+                color = PrimaryBlue,
+                fontSize = 15.sp
+            )
+        }
+    }
+
+    // 当 Composable 离开组合时，取消协程以避免内存泄漏
+    DisposableEffect(Unit) {
+        onDispose {
+            countdownJob?.cancel()
+        }
+    }
+}
+
+
 @Composable
 fun InfinityLogo(modifier: Modifier = Modifier) {
     Image(
@@ -207,7 +264,7 @@ fun InfinityLogo(modifier: Modifier = Modifier) {
     )
 }
 
-// AgreementText Composable - 与之前修正后的版本相同
+
 @Composable
 fun AgreementText(
     modifier: Modifier = Modifier,
@@ -267,5 +324,23 @@ fun AgreementText(
 fun LoginScreenPreview() {
     LongCareTheme {
         LoginScreen(navController = rememberNavController())
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SendVerificationCodeButtonPreview() {
+    var sendCodeTriggered by remember { mutableStateOf(false) }
+    Column(modifier = Modifier.padding(16.dp)) {
+        SendVerificationCodeButton(
+            onSendCodeClick = {
+                sendCodeTriggered = true // 模拟发送验证码
+                // 可以在这里 Log.d("Preview", "Send code clicked!")
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        if (sendCodeTriggered) {
+            Text("验证码已发送 (模拟)")
+        }
     }
 }

@@ -46,7 +46,6 @@ object StorageModule {
     @Provides
     @Singleton
     fun provideMMKV(): MMKV {
-        // MMKVUtils.init() should be called by MMKVInitializer at application startup
         return MMKV.defaultMMKV()
     }
 
