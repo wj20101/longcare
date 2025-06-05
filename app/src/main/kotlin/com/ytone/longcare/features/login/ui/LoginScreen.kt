@@ -40,6 +40,9 @@ import com.ytone.longcare.ui.TextColorHint
 import com.ytone.longcare.ui.TextColorPrimary
 import com.ytone.longcare.ui.TextColorSecondary
 
+// 最大手机号码长度，用于控制输入长度
+private const val maxPhoneLength = 11
+
 @Composable
 fun LoginScreen(
     navController: NavController, viewModel: LoginViewModel = hiltViewModel()
@@ -92,7 +95,12 @@ fun LoginScreen(
             // Phone Number Input Field
             OutlinedTextField(
                 value = phoneNumber,
-                onValueChange = { phoneNumber = it },
+                onValueChange = { newValue ->
+                    val digitsOnly = newValue.filter { it.isDigit() }
+                    if (digitsOnly.length <= maxPhoneLength) {
+                        phoneNumber = digitsOnly
+                    }
+                },
                 placeholder = {
                     Text("请输入您的手机号码", color = TextColorHint, fontSize = 15.sp)
                 },
@@ -151,7 +159,6 @@ fun LoginScreen(
                     end.linkTo(sendCodeButton.start, margin = 8.dp) // 结束于发送按钮的开始处
                     bottom.linkTo(loginButton.top)
                     width = Dimension.fillToConstraints // 宽度填充约束
-                    // 与 sendCodeButton 保持垂直对齐 (其top已与 phoneField.bottom 对齐)
                     centerVerticallyTo(sendCodeButton) // 简便的垂直对齐方式
                 })
 
@@ -160,6 +167,7 @@ fun LoginScreen(
                 onClick = { navController.navigateToHomeFromLogin() },
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                enabled = phoneNumber.length == maxPhoneLength && verificationCode.isNotEmpty(),
                 modifier = Modifier
                     .height(48.dp) // 明确按钮高度
                     .constrainAs(loginButton) {
@@ -171,7 +179,6 @@ fun LoginScreen(
                 Text(
                     "确定登录",
                     fontSize = 18.sp,
-                    color = Color.White,
                     fontWeight = FontWeight.Medium
                 )
             }
