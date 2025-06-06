@@ -13,6 +13,7 @@ import android.nfc.tech.Ndef
 import android.os.Build
 import android.provider.Settings
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.IntentCompat
 
 object NfcUtils {
 
@@ -110,11 +111,7 @@ object NfcUtils {
     fun getTagFromIntent(intent: Intent): Tag? {
         val action = intent.action
         if (NfcAdapter.ACTION_TAG_DISCOVERED == action || NfcAdapter.ACTION_TECH_DISCOVERED == action || NfcAdapter.ACTION_NDEF_DISCOVERED == action) {
-            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableExtra(NfcAdapter.EXTRA_TAG, Tag::class.java)
-            } else {
-                @Suppress("DEPRECATION") intent.getParcelableExtra(NfcAdapter.EXTRA_TAG)
-            }
+            return IntentCompat.getParcelableExtra(intent,NfcAdapter.EXTRA_TAG,Tag::class.java)
         }
         return null
     }
@@ -128,10 +125,12 @@ object NfcUtils {
         if (NfcAdapter.ACTION_NDEF_DISCOVERED == action || NfcAdapter.ACTION_TAG_DISCOVERED == action || // TAG_DISCOVERED 也可以包含 NDEF
             NfcAdapter.ACTION_TECH_DISCOVERED == action   // TECH_DISCOVERED 也可以包含 NDEF
         ) {
-            val rawMessages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES)
-            if (rawMessages != null) {
-                return rawMessages.map { it as NdefMessage }.toTypedArray()
-            }
+            val rawMessages = IntentCompat.getParcelableArrayExtra(
+                intent,
+                NfcAdapter.EXTRA_NDEF_MESSAGES,
+                NdefMessage::class.java
+            )
+            return rawMessages?.filterIsInstance<NdefMessage>()?.toTypedArray()
         }
         return null
     }
