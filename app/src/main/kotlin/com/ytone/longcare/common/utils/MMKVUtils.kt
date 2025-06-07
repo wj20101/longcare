@@ -19,7 +19,7 @@ object MMKVUtils {
                 mmkv?.encode(key, value as? Set<String>)
             }
             else -> {
-                System.err.println("MMKVUtils: Unsupported type for key: $key")
+                logE(message = "MMKVUtils: Unsupported type for key: $key")
             }
         }
     }
@@ -67,6 +67,4 @@ object MMKVUtils {
     fun clearAll() {
         mmkv?.clearAll()
     }
-
-    // You can add more specific methods as needed, e.g., for custom objects with serialization
 }

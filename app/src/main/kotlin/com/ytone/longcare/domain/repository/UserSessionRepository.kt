@@ -36,12 +36,9 @@ class DefaultUserSessionRepository @Inject constructor() : UserSessionRepository
 
     override fun loginUser(userId: String) {
         _currentUserId.value = userId
-        // In a real app, you might also persist this to SharedPreferences or secure storage
-        // to remember the logged-in user across app restarts.
     }
 
     override fun logoutUser() {
         _currentUserId.value = null
-        // Clear any persisted user session data.
     }
 }

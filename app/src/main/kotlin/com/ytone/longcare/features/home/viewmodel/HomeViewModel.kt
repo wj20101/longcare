@@ -17,7 +17,7 @@ class HomeViewModel @Inject constructor(
     private val userSpecificStorageManager: UserSpecificStorageManager
 ) : ViewModel() {
 
-    private val _sampleData = MutableStateFlow<String>("")
+    private val _sampleData = MutableStateFlow("")
     val sampleData: StateFlow<String> = _sampleData
 
     val userMMKV: StateFlow<MMKV?> = userSpecificStorageManager.userMMKV
@@ -29,12 +29,10 @@ class HomeViewModel @Inject constructor(
     }
 
     fun saveUserPreference(key: String, value: String) {
-        viewModelScope.launch {
-            userSpecificStorageManager.userMMKV.value?.encode(key, value)
-        }
+        userSpecificStorageManager.putString(key, value)
     }
 
     fun getUserPreference(key: String, defaultValue: String): String {
-        return userSpecificStorageManager.userMMKV.value?.decodeString(key, defaultValue) ?: defaultValue
+        return userSpecificStorageManager.getString(key, defaultValue) ?: defaultValue
     }
 }
