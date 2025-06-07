@@ -159,7 +159,11 @@ object NfcUtils {
                         textEncoding
                     )
                 } catch (e: Exception) {
-                    // Log.e("NfcUtils", "Error parsing NDEF text record", e) // Consider uncommenting or using a proper logger
+                    logE(
+                        message = "Error parsing NDEF text record",
+                        tag = "NfcUtils",
+                        throwable = e
+                    )
                     return null
                 }
             }
