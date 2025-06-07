@@ -8,11 +8,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -62,7 +62,7 @@ fun LoginScreen(
         // 使用 Image 作为背景
         Image(
             painter = painterResource(id = R.drawable.login_bg),
-            contentDescription = "Login Background",
+            contentDescription = stringResource(R.string.login_background_description),
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop // 或者 ContentScale.FillBounds，根据需要选择
         )
@@ -80,7 +80,7 @@ fun LoginScreen(
             // Small Logo
             Image(
                 painter = painterResource(R.drawable.app_logo_small),
-                contentDescription = "small logo",
+                contentDescription = stringResource(R.string.login_small_logo_description),
                 modifier = Modifier
                     .width(86.dp)
                     .constrainAs(smallLogo) {
@@ -91,7 +91,7 @@ fun LoginScreen(
             // Logo
             Image(
                 painter = painterResource(id = R.drawable.app_logo_name),
-                contentDescription = "App Logo",
+                contentDescription = stringResource(R.string.login_app_logo_description),
                 modifier = Modifier
                     .width(200.dp)
                     .constrainAs(logo) {
@@ -111,7 +111,7 @@ fun LoginScreen(
                     }
                 },
                 placeholder = {
-                    Text("请输入您的手机号码", color = TextColorHint, fontSize = 15.sp)
+                    Text(stringResource(R.string.login_phone_number_hint), color = TextColorHint, fontSize = 15.sp)
                 },
                 shape = RoundedCornerShape(50),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -138,14 +138,14 @@ fun LoginScreen(
                 end.linkTo(parent.end, margin = horizontalMargin)
                 bottom.linkTo(loginButton.top, margin = 18.dp)
             }, onSendCodeClick = {
-                context.showLongToast("发送验证码")
+                context.showLongToast(context.getString(R.string.login_send_code_toast))
             })
 
             // Verification Code Input Field
             OutlinedTextField(
                 value = verificationCode,
                 onValueChange = { verificationCode = it },
-                placeholder = { Text("输入验证码", color = TextColorHint, fontSize = 15.sp) },
+                placeholder = { Text(stringResource(R.string.login_verification_code_hint), color = TextColorHint, fontSize = 15.sp) },
                 shape = RoundedCornerShape(50),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = InputFieldBackground,
@@ -181,7 +181,7 @@ fun LoginScreen(
                         width = Dimension.fillToConstraints // 宽度填充约束
                     }) {
                 Text(
-                    "确定登录",
+                    stringResource(R.string.login_button_text),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -189,8 +189,8 @@ fun LoginScreen(
 
             // Agreement Text
             AgreementText( // AgreementText 组件复用之前的实现
-                onUserAgreementClick = { context.showLongToast("用户协议") },
-                onPrivacyPolicyClick = { context.showLongToast("隐私政策") },
+                onUserAgreementClick = { context.showLongToast(context.getString(R.string.login_user_agreement_toast)) },
+                onPrivacyPolicyClick = { context.showLongToast(context.getString(R.string.login_privacy_policy_toast)) },
                 modifier = Modifier.constrainAs(agreementText) {
                     bottom.linkTo(parent.bottom, margin = 32.dp)
                     start.linkTo(parent.start, margin = 32.dp) // 应用边距以控制文本块宽度
@@ -233,13 +233,13 @@ fun SendVerificationCodeButton(
     ) {
         if (isCountingDown) {
             Text(
-                text = "${countdownSeconds}秒后重发",
+                text = stringResource(R.string.login_resend_code_countdown, countdownSeconds),
                 color = TextColorHint, // 倒计时期间使用灰色文字
                 fontSize = 15.sp
             )
         } else {
             Text(
-                text = "发送验证码",
+                text = stringResource(R.string.login_send_code_button_text),
                 color = PrimaryBlue,
                 fontSize = 15.sp
             )
@@ -259,7 +259,7 @@ fun SendVerificationCodeButton(
 fun InfinityLogo(modifier: Modifier = Modifier) {
     Image(
         painter = painterResource(id = R.drawable.app_logo_name),
-        contentDescription = "App Logo",
+        contentDescription = stringResource(R.string.login_app_logo_description),
         modifier = modifier
     )
 }
@@ -275,16 +275,16 @@ fun AgreementText(
     val privacyPolicyTag = "PRIVACY_POLICY"
 
     val annotatedString = buildAnnotatedString {
-        append("登录即表明已阅读并同意")
+        append(stringResource(R.string.login_agreement_prefix))
         pushStringAnnotation(tag = userAgreementTag, annotation = "user_agreement_link")
         withStyle(style = SpanStyle(color = LinkColor, fontWeight = FontWeight.Normal)) {
-            append("《用户协议》")
+            append(stringResource(R.string.login_user_agreement))
         }
         pop()
-        append("和")
+        append(stringResource(R.string.login_agreement_and))
         pushStringAnnotation(tag = privacyPolicyTag, annotation = "privacy_policy_link")
         withStyle(style = SpanStyle(color = LinkColor, fontWeight = FontWeight.Normal)) {
-            append("《隐私政策》")
+            append(stringResource(R.string.login_privacy_policy))
         }
         pop()
     }
@@ -340,7 +340,7 @@ fun SendVerificationCodeButtonPreview() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         if (sendCodeTriggered) {
-            Text("验证码已发送 (模拟)")
+            Text(stringResource(R.string.login_code_sent_mock))
         }
     }
 }

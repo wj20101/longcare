@@ -14,13 +14,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.R
 import com.ytone.longcare.ui.bgGradientBrush
 
 // --- 数据模型 ---
@@ -48,12 +49,12 @@ fun SelectDeviceScreen() {
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("请选择设备", fontWeight = FontWeight.Bold) },
+                    title = { Text(stringResource(R.string.select_device_title), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = { /* TODO: 返回操作 */ }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
+                                contentDescription = stringResource(R.string.common_back),
                                 tint = Color.White
                             )
                         }
@@ -76,7 +77,7 @@ fun SelectDeviceScreen() {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "请先选择相应设备，进行碰一碰",
+                    text = stringResource(R.string.select_device_instruction),
                     fontSize = 14.sp,
                     color = Color.White.copy(alpha = 0.9f),
                     textAlign = TextAlign.Center
@@ -94,7 +95,7 @@ fun SelectDeviceScreen() {
                 Spacer(modifier = Modifier.weight(1f)) // 将按钮推到底部
 
                 NextStepButton(
-                    text = "下一步", enabled = selectedDeviceIndex != null, // 仅当有设备选中时才可用
+                    text = stringResource(R.string.common_next_step), enabled = selectedDeviceIndex != null, // 仅当有设备选中时才可用
                     onClick = { /* TODO: 执行下一步操作 */ })
 
                 Spacer(modifier = Modifier.height(32.dp)) // 按钮与屏幕底部的间距

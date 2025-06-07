@@ -18,12 +18,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ytone.longcare.R // 确保这是您项目正确的R文件导入
+import com.ytone.longcare.R
 import com.ytone.longcare.ui.bgGradientBrush
 
 // --- 状态定义 ---
@@ -48,12 +49,12 @@ fun NfcSignInScreen() {
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("进门碰一碰", fontWeight = FontWeight.Bold) },
+                    title = { Text(stringResource(R.string.nfc_sign_in_title), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = { /* TODO: 返回操作 */ }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
+                                contentDescription = stringResource(R.string.common_back),
                                 tint = Color.White
                             )
                         }
@@ -77,7 +78,7 @@ fun NfcSignInScreen() {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "请将手机碰一碰如图感应区位置，即可完成签到",
+                    text = stringResource(R.string.nfc_sign_in_prompt),
                     fontSize = 14.sp,
                     color = Color.White.copy(alpha = 0.9f),
                     textAlign = TextAlign.Center,
@@ -93,12 +94,12 @@ fun NfcSignInScreen() {
                 // 根据状态显示不同的底部按钮
                 when (signInState) {
                     SignInState.SUCCESS -> ActionButton(
-                        text = "下一步",
+                        text = stringResource(R.string.common_next_step),
                         onClick = { /* TODO: 执行下一步操作 */ }
                     )
 
                     SignInState.FAILURE -> ActionButton(
-                        text = "重新碰一碰",
+                        text = stringResource(R.string.nfc_sign_in_retry),
                         onClick = { signInState = SignInState.IDLE /* TODO: 重新NFC尝试 */ }
                     )
 
@@ -113,9 +114,9 @@ fun NfcSignInScreen() {
                     Modifier.padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(onClick = { signInState = SignInState.IDLE }) { Text("Idle") }
-                    Button(onClick = { signInState = SignInState.SUCCESS }) { Text("Success") }
-                    Button(onClick = { signInState = SignInState.FAILURE }) { Text("Failure") }
+                    Button(onClick = { signInState = SignInState.IDLE }) { Text(stringResource(R.string.common_idle)) }
+                    Button(onClick = { signInState = SignInState.SUCCESS }) { Text(stringResource(R.string.common_success)) }
+                    Button(onClick = { signInState = SignInState.FAILURE }) { Text(stringResource(R.string.common_failure)) }
                 }
 
 
@@ -145,13 +146,13 @@ fun SignInContentCard(signInState: SignInState) {
             when (signInState) {
                 SignInState.SUCCESS -> StatusDisplay(
                     icon = Icons.Default.CheckCircle,
-                    text = "签到成功",
+                    text = stringResource(R.string.nfc_sign_in_status_success),
                     iconColor = Color(0xFF34C759) // 绿色
                 )
 
                 SignInState.FAILURE -> StatusDisplay(
                     icon = Icons.Default.Error,
-                    text = "签到失败，请重新再试一次",
+                    text = stringResource(R.string.nfc_sign_in_status_failure),
                     iconColor = Color.Red
                 )
 
@@ -166,7 +167,7 @@ fun SignInContentCard(signInState: SignInState) {
             // NFC 操作示意图
             Image(
                 painter = painterResource(id = R.drawable.nfc_interaction_diagram), // 替换为你的示意图资源
-                contentDescription = "NFC操作示意图",
+                contentDescription = stringResource(R.string.nfc_sign_in_diagram_description),
                 modifier = Modifier
                     .padding(start = 48.dp)
                     .size(170.dp),
@@ -280,12 +281,12 @@ private fun NfcSignInScreenContentForPreview(
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("进门碰一碰", fontWeight = FontWeight.Bold) },
+                    title = { Text(stringResource(R.string.nfc_sign_in_title), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = { /* TODO: 返回操作 */ }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
+                                contentDescription = stringResource(R.string.common_back),
                                 tint = Color.White
                             )
                         }
@@ -308,7 +309,7 @@ private fun NfcSignInScreenContentForPreview(
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = "请将手机碰一碰如图感应区位置，即可完成签到",
+                    text = stringResource(R.string.nfc_sign_in_prompt),
                     fontSize = 14.sp,
                     color = Color.White.copy(alpha = 0.9f),
                     textAlign = TextAlign.Center,
@@ -318,9 +319,9 @@ private fun NfcSignInScreenContentForPreview(
                 SignInContentCard(signInState = signInState)
                 Spacer(modifier = Modifier.weight(1f))
                 when (signInState) {
-                    SignInState.SUCCESS -> ActionButton(text = "下一步", onClick = { })
+                    SignInState.SUCCESS -> ActionButton(text = stringResource(R.string.common_next_step), onClick = { })
                     SignInState.FAILURE -> ActionButton(
-                        text = "重新碰一碰",
+                        text = stringResource(R.string.nfc_sign_in_retry),
                         onClick = { onStateChange(SignInState.IDLE) })
 
                     SignInState.IDLE -> Box(modifier = Modifier.height(50.dp))
@@ -330,9 +331,9 @@ private fun NfcSignInScreenContentForPreview(
                     Modifier.padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(onClick = { onStateChange(SignInState.IDLE) }) { Text("Idle") }
-                    Button(onClick = { onStateChange(SignInState.SUCCESS) }) { Text("Success") }
-                    Button(onClick = { onStateChange(SignInState.FAILURE) }) { Text("Failure") }
+                    Button(onClick = { onStateChange(SignInState.IDLE) }) { Text(stringResource(R.string.common_idle)) }
+                    Button(onClick = { onStateChange(SignInState.SUCCESS) }) { Text(stringResource(R.string.common_success)) }
+                    Button(onClick = { onStateChange(SignInState.FAILURE) }) { Text(stringResource(R.string.common_failure)) }
                 }
                 Spacer(modifier = Modifier.height(32.dp))
             }

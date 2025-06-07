@@ -24,11 +24,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.rememberAsyncImagePainter
+import com.ytone.longcare.R
 import com.ytone.longcare.ui.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
@@ -77,12 +79,12 @@ fun PhotoUploadScreen() {
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("护理照片上传", fontWeight = FontWeight.Bold) },
+                    title = { Text(stringResource(R.string.photo_upload_title), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = { /* TODO: 返回操作 */ }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
+                                contentDescription = stringResource(R.string.common_back),
                                 tint = Color.White
                             )
                         }
@@ -98,7 +100,7 @@ fun PhotoUploadScreen() {
             bottomBar = { // 将按钮放在 bottomBar 中使其固定在底部
                 Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
                     ConfirmAndNextButton(
-                        text = "确认并进入下一步",
+                        text = stringResource(R.string.photo_upload_confirm_and_next),
                         onClick = { /* TODO: 下一步逻辑 */ }
                     )
                 }
@@ -114,7 +116,7 @@ fun PhotoUploadScreen() {
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "护理执行阶段需要拍摄护理前照片、护理中照片、护理后照片。",
+                        text = stringResource(R.string.photo_upload_description),
                         fontSize = 13.sp,
                         color = Color.White.copy(alpha = 0.9f),
                         lineHeight = 18.sp,
@@ -214,13 +216,13 @@ fun AddPhotoButton(onClick: () -> Unit) {
     ) {
         Icon(
             imageVector = Icons.Filled.Add,
-            contentDescription = "添加照片",
+            contentDescription = stringResource(R.string.photo_upload_add_photo_description),
             tint = lineColor,
             modifier = Modifier.size(32.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "添加照片",
+            text = stringResource(R.string.photo_upload_add_photo),
             fontSize = 12.sp,
             color = lineColor
         )
@@ -243,7 +245,7 @@ fun UploadedImageItem(photo: PhotoItem, onClick: () -> Unit) {
                 photo.imageUrl,
                 placeholder = if (photo.placeholderRes != null) painterResource(photo.placeholderRes) else null
             ),
-            contentDescription = "已上传照片 ${photo.id}",
+            contentDescription = stringResource(R.string.photo_upload_uploaded_image_description, photo.id),
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )

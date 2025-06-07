@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -50,10 +51,10 @@ fun NursingExecutionScreen() {
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("护理执行", fontWeight = FontWeight.Bold) },
+                    title = { Text(stringResource(R.string.nursing_execution_title), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = { /* TODO: 返回操作 */ }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -72,7 +73,7 @@ fun NursingExecutionScreen() {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "请阅读并确认订单服务内容以及客户信息，扫描客户容貌验证通过后，开始服务。",
+                    text = stringResource(R.string.nursing_execution_instruction),
                     fontSize = 14.sp,
                     color = Color.White,
                     lineHeight = 20.sp
@@ -83,12 +84,12 @@ fun NursingExecutionScreen() {
                 Box {
                     ClientInfoCard(modifier = Modifier.padding(top = 8.dp), clientInfo = clientInfo)
 
-                    ServiceHoursTag(tagText = "客户信息")
+                    ServiceHoursTag(tagText = stringResource(R.string.nursing_execution_client_info_tag))
                 }
 
                 Spacer(modifier = Modifier.weight(1f)) // 将按钮推到底部
 
-                ConfirmButton(text = "确认信息开始人脸认证", onClick = { /* TODO */ })
+                ConfirmButton(text = stringResource(R.string.nursing_execution_confirm_button), onClick = { /* TODO */ })
 
                 Spacer(modifier = Modifier.height(24.dp))
             }
@@ -135,11 +136,11 @@ fun ClientInfoCard(modifier: Modifier, clientInfo: ClientInfo) {
             modifier = Modifier.padding(start = 16.dp, end = 12.dp, top = 32.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp) // 行之间的间距
         ) {
-            InfoRow(label = "姓名:", value = clientInfo.name)
-            InfoRow(label = "年龄:", value = clientInfo.age.toString())
-            InfoRow(label = "身份证号:", value = clientInfo.idNumber)
-            InfoRow(label = "地址:", value = clientInfo.address)
-            InfoRow(label = "服务内容:", value = clientInfo.serviceContent)
+            InfoRow(label = stringResource(R.string.nursing_execution_label_name), value = clientInfo.name)
+            InfoRow(label = stringResource(R.string.nursing_execution_label_age), value = clientInfo.age.toString())
+            InfoRow(label = stringResource(R.string.nursing_execution_label_id_number), value = clientInfo.idNumber)
+            InfoRow(label = stringResource(R.string.nursing_execution_label_address), value = clientInfo.address)
+            InfoRow(label = stringResource(R.string.nursing_execution_label_service_content), value = clientInfo.serviceContent)
         }
     }
 }
