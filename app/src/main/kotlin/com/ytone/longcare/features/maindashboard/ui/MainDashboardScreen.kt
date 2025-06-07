@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -92,7 +93,7 @@ fun TopHeader() {
         ImageWithAdaptiveWidth(
             drawableResId = R.drawable.app_logo_small_white,
             fixedHeight = 34.dp,
-            contentDescription = "Logo"
+            contentDescription = stringResource(R.string.main_dashboard_logo)
         )
 
         // 占位符，将右侧内容推到最右边
@@ -107,7 +108,7 @@ fun TopHeader() {
         // 头像
         Image(
             painter = ColorPainter(Color.LightGray), // 使用占位符颜色，实际应加载网络图片
-            contentDescription = "护理员头像", modifier = Modifier
+            contentDescription = stringResource(R.string.main_dashboard_nursing_staff_avatar), modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
         )
@@ -296,7 +297,7 @@ fun ServicePlanItem(plan: ServicePlan) {
             }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                contentDescription = "详情",
+                contentDescription = stringResource(R.string.common_details),
                 tint = Color.LightGray,
                 modifier = Modifier.size(16.dp)
             )

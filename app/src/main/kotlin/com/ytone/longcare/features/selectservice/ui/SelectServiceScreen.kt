@@ -16,10 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.R
 import com.ytone.longcare.ui.bgGradientBrush
 
 // --- 数据模型 ---
@@ -65,7 +67,7 @@ fun SelectServiceScreen() {
                     IconButton(onClick = { /* TODO: 返回操作 */ }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
+                            contentDescription = stringResource(R.string.common_back),
                             tint = Color.White
                         )
                     }
@@ -169,7 +171,7 @@ fun ServiceSelectionItem(item: ServiceItem, onClick: () -> Unit) {
             // 自定义勾选图标
             Icon(
                 imageVector = if (item.isSelected) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
-                contentDescription = if (item.isSelected) "已选择" else "未选择",
+                contentDescription = if (item.isSelected) stringResource(R.string.common_selected) else stringResource(R.string.common_unselected),
                 tint = if (item.isSelected) Color(0xFF34C759) else Color.LightGray,
                 modifier = Modifier.size(24.dp)
             )

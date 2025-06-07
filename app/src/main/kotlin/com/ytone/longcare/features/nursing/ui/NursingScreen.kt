@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.ytone.longcare.R
 import com.ytone.longcare.features.nursing.viewmodel.NursingViewModel
 import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.theme.LongCareTheme
@@ -201,7 +203,7 @@ fun PlanListItem(modifier: Modifier,item: PlanItem) {
         }
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = "详情",
+            contentDescription = stringResource(R.string.common_details),
             tint = Color.LightGray
         )
     }

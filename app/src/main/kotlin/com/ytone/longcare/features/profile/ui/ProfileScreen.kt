@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -29,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.ytone.longcare.R
 import com.ytone.longcare.features.profile.viewmodel.ProfileViewModel
 import com.ytone.longcare.theme.LongCareTheme
 
@@ -79,7 +81,7 @@ fun UserInfoSection() {
     ) {
         Image(
             painter = ColorPainter(Color.LightGray),
-            contentDescription = "用户头像",
+            contentDescription = stringResource(R.string.profile_user_avatar),
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
@@ -183,7 +185,7 @@ fun OptionItem(icon: ImageVector, text: String, onClick: () -> Unit) {
         Text(text = text, modifier = Modifier.weight(1f), fontSize = 16.sp)
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.common_arrow_right),
             tint = Color.LightGray
         )
     }
