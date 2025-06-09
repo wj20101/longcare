@@ -135,6 +135,7 @@ dependencies {
     implementation(libs.androidx.appcompat.resources)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.fragment.compose)
 
     // Jetpack Compose (using BOM)
     implementation(platform(libs.compose.bom))
