@@ -16,7 +16,14 @@ plugins {
 }
 
 wire {
-    kotlin {}
+    kotlin {
+        /**
+         * [Boolean] 如果为 true，生成的 Kotlin 类会实现 `android.os.Parcelable` 接口。
+         * 这对于在 Android 组件之间（如 Activity, Fragment）传递 Protobuf 对象非常有用。
+         * 默认值: false
+         */
+        android = true
+    }
 }
 
 val appCompileSdkVersion: Int by rootProject.extra
