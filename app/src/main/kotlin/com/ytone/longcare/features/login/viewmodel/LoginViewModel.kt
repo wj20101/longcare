@@ -4,17 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.LongCareApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(private val apiService: LongCareApiService) : ViewModel() {
 
-    private val _loginState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
-    val loginState: StateFlow<LoginUiState> = _loginState
-
+    /**
+     * 登录
+     */
     fun login(phoneNumber: String, code: String) {
         viewModelScope.launch {
 
@@ -26,13 +24,7 @@ class LoginViewModel @Inject constructor(private val apiService: LongCareApiServ
      */
     fun sendSmsCode(){
         viewModelScope.launch {
-        }
-    }
 
-    sealed class LoginUiState {
-        data object Idle : LoginUiState()
-        data object Loading : LoginUiState()
-        data class Success(val message: String) : LoginUiState()
-        data class Error(val message: String) : LoginUiState()
+        }
     }
 }
