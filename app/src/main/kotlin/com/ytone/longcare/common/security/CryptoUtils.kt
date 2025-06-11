@@ -399,7 +399,7 @@ object CryptoUtils {
         mode: AESMode = AESMode.GCM_NO_PADDING,
         iv: ByteArray? = null
     ): AESEncryptResult? {
-        return aesEncryptCore(plainText.toByteArray(Charsets.UTF_8), keyString, mode, iv)
+        return aesEncryptCore(plainText.toByteArray(), keyString, mode, iv)
     }
 
     /**

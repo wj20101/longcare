@@ -1,5 +1,6 @@
 package com.ytone.longcare.domain.repository
 
+import com.ytone.longcare.domain.model.User
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
@@ -10,15 +11,15 @@ import javax.inject.Singleton
  */
 interface UserSessionRepository {
     /**
-     * A [StateFlow] emitting the current user's ID. Emits null if no user is logged in.
+     * A [StateFlow] emitting the current user. Emits null if no user is logged in.
      */
-    val currentUserId: StateFlow<String?>
+    val currentUser: StateFlow<User?>
 
     /**
      * Call when a user logs in.
-     * @param userId The ID of the logged-in user.
+     * @param user The logged-in user.
      */
-    fun loginUser(userId: String)
+    fun loginUser(user: User)
 
     /**
      * Call when a user logs out.
@@ -31,14 +32,14 @@ interface UserSessionRepository {
  */
 @Singleton
 class DefaultUserSessionRepository @Inject constructor() : UserSessionRepository {
-    private val _currentUserId = MutableStateFlow<String?>(null) // Initially no user
-    override val currentUserId: StateFlow<String?> = _currentUserId
+    private val _currentUser = MutableStateFlow<User?>(null) // Initially no user
+    override val currentUser: StateFlow<User?> = _currentUser
 
-    override fun loginUser(userId: String) {
-        _currentUserId.value = userId
+    override fun loginUser(user: User) {
+        _currentUser.value = user
     }
 
     override fun logoutUser() {
-        _currentUserId.value = null
+        _currentUser.value = null
     }
 }

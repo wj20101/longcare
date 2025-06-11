@@ -32,6 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.showLongToast
 import com.ytone.longcare.features.login.viewmodel.LoginViewModel
+import com.ytone.longcare.features.login.viewmodel.LoginUiState
 import com.ytone.longcare.navigation.navigateToHomeFromLogin
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.ui.InputFieldBackground
@@ -55,6 +56,7 @@ fun LoginScreen(
     val context = LocalContext.current
     var phoneNumber by remember { mutableStateOf("") }
     var verificationCode by remember { mutableStateOf("") }
+    val loginState by viewModel.loginState.collectAsState()
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -138,7 +140,7 @@ fun LoginScreen(
                 end.linkTo(parent.end, margin = horizontalMargin)
                 bottom.linkTo(loginButton.top, margin = 18.dp)
             }, onSendCodeClick = {
-                context.showLongToast(context.getString(R.string.login_send_code_toast))
+                viewModel.sendSmsCode(phoneNumber)
             })
 
             // Verification Code Input Field
@@ -168,10 +170,10 @@ fun LoginScreen(
 
             // Login Button
             Button(
-                onClick = { navController.navigateToHomeFromLogin() },
+                onClick = { viewModel.login(phoneNumber, verificationCode) },
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                enabled = phoneNumber.length == maxPhoneLength && verificationCode.isNotEmpty(),
+                enabled = phoneNumber.length == maxPhoneLength && verificationCode.isNotEmpty() && loginState !is LoginUiState.Loading,
                 modifier = Modifier
                     .height(48.dp) // 明确按钮高度
                     .constrainAs(loginButton) {
@@ -185,6 +187,14 @@ fun LoginScreen(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium
                 )
+                if (loginState is LoginUiState.Loading) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                }
             }
 
             // Agreement Text
@@ -197,6 +207,12 @@ fun LoginScreen(
                     end.linkTo(parent.end, margin = 32.dp)     // 应用边距
                     width = Dimension.fillToConstraints // 确保文本在约束内正确换行和居中
                 })
+        }
+    }
+
+    LaunchedEffect(loginState) {
+        if (loginState is LoginUiState.Success) {
+            navController.navigateToHomeFromLogin()
         }
     }
 }

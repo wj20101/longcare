@@ -5,6 +5,7 @@ import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.common.utils.DefaultJson
 import com.ytone.longcare.common.utils.DeviceUtils
+import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.network.interceptor.RequestInterceptor
 import dagger.Module
 import dagger.Provides
@@ -46,8 +47,11 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideRequestInterceptor(deviceUtils: DeviceUtils): RequestInterceptor {
-        return RequestInterceptor(deviceUtils)
+    fun provideRequestInterceptor(
+        userSessionRepository: UserSessionRepository,
+        deviceUtils: DeviceUtils
+    ): RequestInterceptor {
+        return RequestInterceptor(userSessionRepository, deviceUtils)
     }
 
     @Provides
@@ -66,7 +70,7 @@ object NetworkModule {
         cache: Cache
     ): OkHttpClient {
         return OkHttpClient.Builder()
-            .addInterceptor(requestInterceptor) // 如果需要，可以添加自定义的认证拦截器等
+//            .addInterceptor(requestInterceptor) // 自定义参数加密逻辑
             .addInterceptor(loggingInterceptor) // 添加日志拦截器
             .cache(cache) // 设置缓存
             .connectTimeout(30, TimeUnit.SECONDS) // 连接超时时间

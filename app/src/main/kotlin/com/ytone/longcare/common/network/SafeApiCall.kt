@@ -1,5 +1,6 @@
 package com.ytone.longcare.common.network
 
+import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.model.Response
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -31,6 +32,7 @@ suspend fun <T> safeApiCall(
                 ApiResult.Failure(response.resultCode, response.resultMsg)
             }
         } catch (throwable: Throwable) {
+            logE(message = "api fail" , throwable = throwable)
             // 捕获所有可能的异常
             when (throwable) {
                 is IOException -> {
