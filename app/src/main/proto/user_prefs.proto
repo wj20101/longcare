@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+option java_package = "com.ytone.longcare";
+option java_multiple_files = true;
+
+message User {
+  string user_id = 1;
+  string token = 2;
+  string name = 3;
+  string mobile = 4;
+  string avatar = 5;
+  int32 user_type = 6;
+}
