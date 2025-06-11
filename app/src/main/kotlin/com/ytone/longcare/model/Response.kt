@@ -1,17 +1,18 @@
 package com.ytone.longcare.model
 
-import androidx.annotation.Keep
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-@Keep
+@Serializable
 data class Response<T>(
-        val resultCode: Int,
-        val resultMsg: String,
-        val data: T,
+    @SerialName("resultCode") val resultCode: Int,
+    @SerialName("resultMsg") val resultMsg: String,
+    @SerialName("data") val data: T,
 ) {
     fun isSuccess() = resultCode == 1000
 }
 
-@Keep
+@Serializable
 data class ListResponse<T>(
-        val data: T, val hasNext: Int
+    @SerialName("data") val data: T, @SerialName("hasNext") val hasNext: Int
 )

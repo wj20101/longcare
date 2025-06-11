@@ -17,22 +17,22 @@ import com.ytone.longcare.api.response.UserInfoModel
 import com.ytone.longcare.api.response.UploadTokenResultModel
 import com.ytone.longcare.api.response.SystemConfigModel
 import com.ytone.longcare.api.request.SendSmsCodeParamModel
-import retrofit2.Response
+import com.ytone.longcare.model.Response
+import kotlinx.serialization.json.JsonElement
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 
 interface LongCareApiService {
 
-
     /**
-     * 按天查询服务订单
+     * 发送短信验证码
      *
-     * @param orderListParamModel 包含查询日期的请求体
-     * @return 返回服务订单列表
+     * @param sendSmsCodeParamModel 请求参数
+     * @return 无返回值
      */
-    @POST("/V1/Service/OrderList")
-    suspend fun getOrderList(@Body orderListParamModel: OrderListParamModel): Response<List<ServiceOrderModel>>
+    @POST("/V1/Phone/SendSmsCode")
+    suspend fun sendSmsCode(@Body sendSmsCodeParamModel: SendSmsCodeParamModel): Response<JsonElement>
 
     /**
      * 手机号码登录
@@ -42,6 +42,15 @@ interface LongCareApiService {
      */
     @POST("/V1/Login/Phone")
     suspend fun phoneLogin(@Body loginPhoneParamModel: LoginPhoneParamModel): Response<LoginResultModel>
+
+    /**
+     * 按天查询服务订单
+     *
+     * @param orderListParamModel 包含查询日期的请求体
+     * @return 返回服务订单列表
+     */
+    @POST("/V1/Service/OrderList")
+    suspend fun getOrderList(@Body orderListParamModel: OrderListParamModel): Response<List<ServiceOrderModel>>
 
     /**
      * 记录登录日志
@@ -129,12 +138,4 @@ interface LongCareApiService {
     @GET("/V1/Common/Config")
     suspend fun getSystemConfig(): Response<SystemConfigModel>
 
-    /**
-     * 发送短信验证码
-     *
-     * @param sendSmsCodeParamModel 请求参数
-     * @return 无返回值
-     */
-    @POST("/V1/Phone/SendSmsCode")
-    suspend fun sendSmsCode(@Body sendSmsCodeParamModel: SendSmsCodeParamModel): Response<Unit>
 }
