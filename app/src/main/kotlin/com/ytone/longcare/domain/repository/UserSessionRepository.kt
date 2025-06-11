@@ -1,5 +1,6 @@
 package com.ytone.longcare.domain.repository
 
+import com.ytone.longcare.data.storage.UserSpecificDataStoreManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
@@ -30,7 +31,9 @@ interface UserSessionRepository {
  * Default implementation of [UserSessionRepository].
  */
 @Singleton
-class DefaultUserSessionRepository @Inject constructor() : UserSessionRepository {
+class DefaultUserSessionRepository @Inject constructor(
+    private val userSpecificDataStoreManager: UserSpecificDataStoreManager
+) : UserSessionRepository {
     private val _currentUserId = MutableStateFlow<String?>(null) // Initially no user
     override val currentUserId: StateFlow<String?> = _currentUserId
 
@@ -39,6 +42,10 @@ class DefaultUserSessionRepository @Inject constructor() : UserSessionRepository
     }
 
     override fun logoutUser() {
+        val loggedOutUserId = _currentUserId.value
         _currentUserId.value = null
+        if (loggedOutUserId != null) {
+            userSpecificDataStoreManager.onUserLogout(loggedOutUserId)
+        }
     }
 }
