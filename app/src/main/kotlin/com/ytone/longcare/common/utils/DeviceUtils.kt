@@ -17,6 +17,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import androidx.core.content.edit
+import androidx.core.content.pm.PackageInfoCompat
 
 @Singleton
 class DeviceUtils @Inject constructor(
@@ -250,12 +251,9 @@ class DeviceUtils @Inject constructor(
      */
     fun getAppVersionCode(): Long {
         val packageInfo = getPackageInfo()
+
         return packageInfo?.let {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) { // API 28+
-                it.longVersionCode
-            } else {
-                @Suppress("DEPRECATION") it.versionCode.toLong()
-            }
+            PackageInfoCompat.getLongVersionCode(it)
         } ?: -1L
     }
 }
