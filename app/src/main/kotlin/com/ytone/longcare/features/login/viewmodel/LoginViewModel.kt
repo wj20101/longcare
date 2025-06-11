@@ -12,8 +12,10 @@ class LoginViewModel @Inject constructor(private val apiService: LongCareApiServ
 
     /**
      * 登录
+     * @param mobile 手机号
+     * @param code 验证码
      */
-    fun login(phoneNumber: String, code: String) {
+    fun login(mobile: String, code: String) {
         viewModelScope.launch {
 
         }
@@ -21,8 +23,9 @@ class LoginViewModel @Inject constructor(private val apiService: LongCareApiServ
 
     /**
      * 发送短信验证码
+     * @param mobile 手机号
      */
-    fun sendSmsCode(){
+    fun sendSmsCode(mobile: String) {
         viewModelScope.launch {
 
         }
