@@ -48,16 +48,6 @@
                 android:resource="@xml/nfc_tech_filter" />
         </activity>
 
-        <provider
-            android:name="androidx.startup.InitializationProvider"
-            android:authorities="${applicationId}.androidx-startup"
-            android:exported="false"
-            tools:node="merge">
-            <meta-data
-                android:name="com.ytone.longcare.app.MMKVInitializer"
-                android:value="androidx.startup" />
-        </provider>
-
     </application>
 
 </manifest>

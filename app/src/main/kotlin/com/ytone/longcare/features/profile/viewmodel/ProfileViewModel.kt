@@ -1,12 +1,12 @@
 package com.ytone.longcare.features.profile.viewmodel
 
-import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.data.storage.UserSpecificDataStoreManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -21,12 +21,17 @@ class ProfileViewModel @Inject constructor(
     private val dataStoreManager: UserSpecificDataStoreManager
 ) : ViewModel() {
 
+    companion object{
+        private const val STOP_TIMEOUT = 5000L
+    }
+
     // Expose a StateFlow for a sample preference, e.g., "user_name"
+    @OptIn(ExperimentalCoroutinesApi::class)
     val userName: StateFlow<String?> = dataStoreManager.userDataStore.flatMapLatest { dataStore ->
         dataStore?.data?.map { preferences ->
             preferences[stringPreferencesKey("user_name")]
         } ?: flowOf(null) // Emit null if DataStore is null (user logged out)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), null)
 
     fun updateUserName(newName: String) {
         viewModelScope.launch {

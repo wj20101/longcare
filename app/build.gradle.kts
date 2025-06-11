@@ -177,7 +177,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     // Data Storage
-    implementation(libs.mmkv)
     implementation(libs.androidx.datastore.preferences)
 
     // Work
