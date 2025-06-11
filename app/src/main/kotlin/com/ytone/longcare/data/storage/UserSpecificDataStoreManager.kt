@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
-import com.ytone.longcare.domain.UserSessionRepository
+import com.ytone.longcare.domain.repository.UserSessionRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -34,15 +33,13 @@ class UserSpecificDataStoreManager @Inject constructor(
 
     init {
         coroutineScope.launch {
-            userSessionRepository.currentUserId
-                .distinctUntilChanged()
-                .collectLatest { userId ->
+            userSessionRepository.currentUserId.collectLatest { userId ->
                     if (userId != null) {
                         val fileName = "user_session_${userId}_prefs"
                         val dataStore = dataStoreCache.getOrPut(userId) {
                             PreferenceDataStoreFactory.create(
                                 produceFile = {
-                                    context.applicationContext.filesDir.resolve("datastore/$fileName.preferences_pb").absoluteFile
+                                    context.filesDir.resolve("datastore/$fileName.preferences_pb").absoluteFile
                                 }
                             )
                         }
