@@ -9,8 +9,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import com.ytone.longcare.domain.repository.DefaultUserSessionRepository
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import dagger.Binds
-import com.tencent.mmkv.MMKV
-import com.ytone.longcare.data.storage.UserSpecificStorageManager
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -41,19 +39,5 @@ object StorageModule {
     fun provideDeviceIdSharedPreferences(@ApplicationContext context: Context): SharedPreferences {
         // 为设备 ID 使用一个专门的 SharedPreferences 文件
         return context.getSharedPreferences("device_instance_id_store", Context.MODE_PRIVATE)
-    }
-
-    @Provides
-    @Singleton
-    fun provideMMKV(): MMKV {
-        return MMKV.defaultMMKV()
-    }
-
-    @Provides
-    @Singleton
-    fun provideUserSpecificStorageManager(
-        userSessionRepository: UserSessionRepository
-    ): UserSpecificStorageManager {
-        return UserSpecificStorageManager(userSessionRepository)
     }
 }
