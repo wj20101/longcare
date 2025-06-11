@@ -12,11 +12,6 @@ data class Response<T>(
 }
 
 @Keep
-open class ListResponse<T>(
-        val data: T,
-        val hasNext: Int
-
+data class ListResponse<T>(
+        val data: T, val hasNext: Int
 )
-
-
-
