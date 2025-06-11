@@ -27,6 +27,12 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideKotlinxSerializationJson(): Json {
+        return DefaultJson
+    }
+
+    @Provides
+    @Singleton
     fun provideHttpLoggingInterceptor(): HttpLoggingInterceptor {
         val loggingInterceptor = HttpLoggingInterceptor()
         // 在Debug模式下打印日志，Release模式下不打印

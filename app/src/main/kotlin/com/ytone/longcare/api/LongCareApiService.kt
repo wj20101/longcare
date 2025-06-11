@@ -16,6 +16,7 @@ import com.ytone.longcare.api.response.NurseServiceTimeModel
 import com.ytone.longcare.api.response.UserInfoModel
 import com.ytone.longcare.api.response.UploadTokenResultModel
 import com.ytone.longcare.api.response.SystemConfigModel
+import com.ytone.longcare.api.request.SendSmsCodeParamModel
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -127,4 +128,13 @@ interface LongCareApiService {
      */
     @GET("/V1/Common/Config")
     suspend fun getSystemConfig(): Response<SystemConfigModel>
+
+    /**
+     * 发送短信验证码
+     *
+     * @param sendSmsCodeParamModel 请求参数
+     * @return 无返回值
+     */
+    @POST("/V1/Phone/SendSmsCode")
+    suspend fun sendSmsCode(@Body sendSmsCodeParamModel: SendSmsCodeParamModel): Response<Unit>
 }
