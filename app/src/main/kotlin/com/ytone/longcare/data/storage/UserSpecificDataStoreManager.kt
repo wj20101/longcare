@@ -24,6 +24,10 @@ class UserSpecificDataStoreManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val userSessionRepository: UserSessionRepository
 ) {
+    companion object{
+        private const val STOP_TIMEOUT = 5000L
+    }
+
     private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val dataStoreInstances = ConcurrentHashMap<String, DataStore<Preferences>>()
 
@@ -53,7 +57,7 @@ class UserSpecificDataStoreManager @Inject constructor(
         }
         .stateIn(
             scope = coroutineScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT),
             initialValue = null
         )
 
