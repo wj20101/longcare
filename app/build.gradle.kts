@@ -178,6 +178,7 @@ dependencies {
 
     // Data Storage
     implementation(libs.mmkv)
+    implementation(libs.androidx.datastore.preferences)
 
     // Work
     implementation(libs.work.runtime.ktx)
