@@ -7,30 +7,10 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import javax.inject.Qualifier
+import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class DeviceIdStorage // 用于 DeviceUtils 存储设备ID的 SharedPreferences
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class AppPrefs // 用于 AppPrefs 存储设备ID的 SharedPreferences
-
-// 定义 Dispatcher 的限定符 (Qualifiers)
-@Retention(AnnotationRetention.BINARY)
-@Qualifier
-annotation class IoDispatcher
-
-@Retention(AnnotationRetention.BINARY)
-@Qualifier
-annotation class MainDispatcher
-
-@Retention(AnnotationRetention.BINARY)
-@Qualifier
-annotation class DefaultDispatcher
 
 
 @Module
@@ -60,5 +40,15 @@ object AppModule {
     @Singleton
     @DefaultDispatcher
     fun provideDefaultDispatcher(): CoroutineDispatcher = Dispatchers.Default
+
+    @Provides
+    @Singleton
+    @ApplicationScope
+    fun provideApplicationScope(
+        @DefaultDispatcher defaultDispatcher: CoroutineDispatcher
+    ): CoroutineScope {
+        // 使用 SupervisorJob() 以确保一个子协程的失败不会影响其他子协程
+        return CoroutineScope(SupervisorJob() + defaultDispatcher)
+    }
 
 }

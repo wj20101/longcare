@@ -2,6 +2,9 @@ package com.ytone.longcare.di
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import com.ytone.longcare.data.storage.appDataStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -36,5 +39,12 @@ object StorageModule {
     @DeviceIdStorage
     fun provideDeviceIdSharedPreferences(@ApplicationContext context: Context): SharedPreferences {
         return context.getSharedPreferences("device_instance_id_store", Context.MODE_PRIVATE)
+    }
+
+    @Provides
+    @Singleton
+    @AppDataStore
+    fun provideAppDataStore(@ApplicationContext context: Context): DataStore<Preferences> {
+        return context.appDataStore
     }
 }

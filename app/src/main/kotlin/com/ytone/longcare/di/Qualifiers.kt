@@ -1,0 +1,34 @@
+package com.ytone.longcare.di
+
+import javax.inject.Qualifier
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class DeviceIdStorage // 用于 DeviceUtils 存储设备ID的 SharedPreferences
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class AppPrefs // 用于 AppPrefs 存储设备ID的 SharedPreferences
+
+/**
+ * 一个 Hilt 限定符，用于标识应用级别的 DataStore<Preferences>。
+ */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class AppDataStore
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class ApplicationScope
+
+@Retention(AnnotationRetention.BINARY)
+@Qualifier
+annotation class IoDispatcher
+
+@Retention(AnnotationRetention.BINARY)
+@Qualifier
+annotation class MainDispatcher
+
+@Retention(AnnotationRetention.BINARY)
+@Qualifier
+annotation class DefaultDispatcher
