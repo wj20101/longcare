@@ -20,32 +20,65 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Interface for managing user session data, primarily the current user's ID.
+ * 定义会话状态的密封类。
+ * 通过一个抽象属性 `user` 提供对用户对象的便捷访问。
+ */
+sealed class SessionState {
+    /**
+     * 当前的用户对象。
+     * 仅在 [LoggedIn] 状态下为非空，在 [Unknown] 和 [LoggedOut] 状态下为 null。
+     */
+    abstract val user: User?
+
+    /**
+     * 初始状态，正在从持久化存储中读取用户状态。
+     */
+    data object Unknown : SessionState() {
+        override val user: User? = null
+    }
+
+    /**
+     * 用户已登录状态，包含用户信息。
+     * @param user 当前登录的 User 对象，不能为空。
+     */
+    data class LoggedIn(override val user: User) : SessionState()
+
+    /**
+     * 用户已登出状态。
+     */
+    data object LoggedOut : SessionState() {
+        override val user: User? = null
+    }
+}
+
+
+/**
+ * 用户会话管理的接口
  */
 interface UserSessionRepository {
     /**
-     * A [StateFlow] emitting the current user. Emits null if no user is logged in.
+     * 一个 [StateFlow]，发射当前的会话状态 [SessionState]。
      */
-    val currentUser: StateFlow<User?>
+    val sessionState: StateFlow<SessionState>
 
     /**
-     * 登录
+     * 登录用户，并持久化用户信息。
      */
     fun loginUser(user: User)
 
     /**
-     * 更新user
+     * 更新当前登录的用户信息。
      */
     fun updateUser(user: User)
 
     /**
-     * 退出登录
+     * 退出登录，并清除持久化的用户信息。
      */
     fun logoutUser()
 }
 
 /**
- * Default implementation of [UserSessionRepository].
+ * UserSessionRepository 的默认实现
  */
 @Singleton
 class DefaultUserSessionRepository @Inject constructor(
@@ -53,28 +86,34 @@ class DefaultUserSessionRepository @Inject constructor(
     @ApplicationScope private val coroutineScope: CoroutineScope
 ) : UserSessionRepository {
 
-    override val currentUser: StateFlow<User?> = appDataStore.data
+    override val sessionState: StateFlow<SessionState> = appDataStore.data
         .catch { exception ->
             if (exception is IOException) {
-                // 遇到错误时，发射一个空的 Preferences，让下游可以处理为 null
+                // 如果读取DataStore时发生IO异常，视为登出状态
                 emit(emptyPreferences())
             } else {
-                // 如果是其他类型的异常，则向上抛出
                 throw exception
             }
         }
         .map { preferences ->
             val userBytes = preferences[DataStoreKeys.APP_USER]
             if (userBytes != null) {
-                runCatching { User.ADAPTER.decode(userBytes) }.getOrNull()
+                try {
+                    // 解码成功，返回登录状态
+                    SessionState.LoggedIn(User.ADAPTER.decode(userBytes))
+                } catch (e: IOException) {
+                    // 如果数据损坏导致解码失败，视为登出状态
+                    SessionState.LoggedOut
+                }
             } else {
-                null // 没有找到用户数据，返回 null
+                // 如果没有用户数据，视为登出状态
+                SessionState.LoggedOut
             }
         }
         .stateIn(
             scope = coroutineScope,
-            started = SharingStarted.WhileSubscribed(5000L), // 推荐
-            initialValue = null // 明确初始状态为 null (未登录)
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = SessionState.Unknown // <-- 关键：初始状态为 Unknown
         )
 
     override fun loginUser(user: User) {

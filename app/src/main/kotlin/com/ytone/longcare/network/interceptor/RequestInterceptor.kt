@@ -77,8 +77,8 @@ class RequestInterceptor @Inject constructor(
 
     private fun iniHttpHeader(randomString: String): Map<String, String> {
         val map = mapOf<String, Any>(
-            "userId" to (userSessionRepository.currentUser.value?.userId ?: 0),
-            "token" to userSessionRepository.currentUser.value?.token.orEmpty(),
+            "userId" to (userSessionRepository.sessionState.value.user?.userId ?: 0),
+            "token" to userSessionRepository.sessionState.value.user?.token.orEmpty(),
             "nonce" to randomString,
             "timeSpan" to TimeUtils.getCurrentEpochMilliseconds(),
             "platform" to "android",
