@@ -25,7 +25,6 @@ class ProfileViewModel @Inject constructor(
         private const val STOP_TIMEOUT = 5000L
     }
 
-    // Expose a StateFlow for a sample preference, e.g., "user_name"
     @OptIn(ExperimentalCoroutinesApi::class)
     val userName: StateFlow<String?> = dataStoreManager.userDataStore.flatMapLatest { dataStore ->
         dataStore?.data?.map { preferences ->
