@@ -15,6 +15,10 @@ import javax.inject.Singleton
 @Retention(AnnotationRetention.BINARY)
 annotation class DeviceIdStorage // 用于 DeviceUtils 存储设备ID的 SharedPreferences
 
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class AppPrefs // 用于 AppPrefs 存储设备ID的 SharedPreferences
+
 // 定义 Dispatcher 的限定符 (Qualifiers)
 @Retention(AnnotationRetention.BINARY)
 @Qualifier
