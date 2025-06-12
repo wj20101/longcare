@@ -3,14 +3,19 @@ package com.ytone.longcare.domain.repository
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import com.ytone.longcare.data.storage.DataStoreKeys
 import com.ytone.longcare.di.AppDataStore
 import com.ytone.longcare.di.ApplicationScope
 import com.ytone.longcare.models.protos.User
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,31 +53,50 @@ class DefaultUserSessionRepository @Inject constructor(
     @ApplicationScope private val coroutineScope: CoroutineScope
 ) : UserSessionRepository {
 
-    private val _currentUser = MutableStateFlow<User?>(null)
-    override val currentUser: StateFlow<User?> = _currentUser
-
-    override fun loginUser(user: User) {
-        _currentUser.value = user
-        coroutineScope.launch {
-            appDataStore.edit {
-                it[DataStoreKeys.APP_USER] = user.encode()
+    override val currentUser: StateFlow<User?> = appDataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                // 遇到错误时，发射一个空的 Preferences，让下游可以处理为 null
+                emit(emptyPreferences())
+            } else {
+                // 如果是其他类型的异常，则向上抛出
+                throw exception
             }
         }
+        .map { preferences ->
+            val userBytes = preferences[DataStoreKeys.APP_USER]
+            if (userBytes != null) {
+                runCatching { User.ADAPTER.decode(userBytes) }.getOrNull()
+            } else {
+                null // 没有找到用户数据，返回 null
+            }
+        }
+        .stateIn(
+            scope = coroutineScope,
+            started = SharingStarted.WhileSubscribed(5000L), // 推荐
+            initialValue = null // 明确初始状态为 null (未登录)
+        )
+
+    override fun loginUser(user: User) {
+        updateUserInternal(user)
     }
 
     override fun updateUser(user: User) {
+        updateUserInternal(user)
+    }
+
+    private fun updateUserInternal(user: User) {
         coroutineScope.launch {
-            appDataStore.edit {
-                it[DataStoreKeys.APP_USER] = user.encode()
+            appDataStore.edit { preferences ->
+                preferences[DataStoreKeys.APP_USER] = user.encode()
             }
         }
     }
 
     override fun logoutUser() {
-        _currentUser.value = null
         coroutineScope.launch {
-            appDataStore.edit {
-                it.remove(DataStoreKeys.APP_USER)
+            appDataStore.edit { preferences ->
+                preferences.remove(DataStoreKeys.APP_USER)
             }
         }
     }
