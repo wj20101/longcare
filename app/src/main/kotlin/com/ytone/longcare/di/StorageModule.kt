@@ -24,20 +24,17 @@ abstract class StorageModuleInternal {
 @InstallIn(SingletonComponent::class)
 object StorageModule {
 
-    // 这是你原有的 AppModule 中的 SharedPreferences provider
-    // 如果它没有 Qualifier，你可以考虑添加一个，比如 @AppPrefs
     @Provides
     @Singleton
-    // @AppPrefs // 可选，如果需要区分
+    @AppPrefs
     fun provideAppSharedPreferences(@ApplicationContext context: Context): SharedPreferences {
         return context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
     }
 
     @Provides
     @Singleton
-    @DeviceIdStorage // 使用我们定义的 Qualifier
+    @DeviceIdStorage
     fun provideDeviceIdSharedPreferences(@ApplicationContext context: Context): SharedPreferences {
-        // 为设备 ID 使用一个专门的 SharedPreferences 文件
         return context.getSharedPreferences("device_instance_id_store", Context.MODE_PRIVATE)
     }
 }

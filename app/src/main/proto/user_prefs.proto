@@ -1,6 +1,0 @@
-syntax = "proto3";
-
-package com.ytone.longcare.models.protos;
-
-option java_package = "com.ytone.longcare.models.protos";
-option java_multiple_files = true;

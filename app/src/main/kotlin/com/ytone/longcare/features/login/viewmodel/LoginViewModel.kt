@@ -4,10 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.response.LoginResultModel
 import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.domain.model.User
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.models.protos.User
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -100,17 +100,17 @@ class LoginViewModel @Inject constructor(
 }
 
 private fun LoginResultModel.toUser(): User {
-    return User(
-        userId = userId,
-        userName = userName,
-        headUrl = headUrl,
-        userIdentity = userIdentity,
-        identityCardNumber = identityCardNumber,
-        gender = gender,
-        token = token,
-        companyId = companyId,
-        accountId = accountId
-    )
+    return User.build {
+        this.userId = userId
+        this.userName = userName
+        this.headUrl = headUrl
+        this.userIdentity = userIdentity
+        this.identityCardNumber = identityCardNumber
+        this.gender = gender
+        this.token = token
+        this.companyId = companyId
+        this.accountId = accountId
+    }
 }
 
 // --- UI 状态定义 ---
