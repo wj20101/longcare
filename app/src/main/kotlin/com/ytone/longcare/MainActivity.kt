@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import com.ytone.longcare.navigation.AppNavigation // Added import
+import com.ytone.longcare.navigation.MainApp
 import com.ytone.longcare.theme.LongCareTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -16,7 +16,7 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             LongCareTheme {
-                AppNavigation()
+                MainApp()
             }
         }
     }
