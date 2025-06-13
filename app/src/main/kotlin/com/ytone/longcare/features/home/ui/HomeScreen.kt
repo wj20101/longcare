@@ -17,7 +17,7 @@ import com.ytone.longcare.features.maindashboard.ui.MainDashboardScreen
 import com.ytone.longcare.features.nursing.ui.NursingScreen
 import com.ytone.longcare.features.profile.ui.ProfileScreen
 import com.ytone.longcare.theme.LongCareTheme
-import com.ytone.longcare.ui.bgGradientBrush
+import com.ytone.longcare.theme.bgGradientBrush
 import kotlinx.coroutines.launch
 
 

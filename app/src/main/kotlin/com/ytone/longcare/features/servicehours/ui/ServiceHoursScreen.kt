@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
-import com.ytone.longcare.ui.bgGradientBrush
+import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 
 // --- 数据模型 ---

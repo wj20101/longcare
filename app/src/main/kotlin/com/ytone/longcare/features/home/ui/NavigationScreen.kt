@@ -26,11 +26,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ytone.longcare.ui.BottomNavBackground
-import com.ytone.longcare.ui.BottomNavSelectedText
-import com.ytone.longcare.ui.BottomNavUnselectedText
-import com.ytone.longcare.ui.IndicatorGradientEnd
-import com.ytone.longcare.ui.IndicatorGradientStart
+import com.ytone.longcare.theme.BottomNavBackground
+import com.ytone.longcare.theme.BottomNavSelectedText
+import com.ytone.longcare.theme.BottomNavUnselectedText
+import com.ytone.longcare.theme.IndicatorGradientEnd
+import com.ytone.longcare.theme.IndicatorGradientStart
 
 
 @Composable
@@ -38,9 +38,7 @@ fun AppBottomNavigation(
     items: List<CustomBottomNavigationItem>, selectedItemIndex: Int, onItemSelected: (Int) -> Unit
 ) {
     CustomBottomNavigationBar(
-        items = items,
-        selectedItemIndex = selectedItemIndex,
-        onItemSelected = onItemSelected
+        items = items, selectedItemIndex = selectedItemIndex, onItemSelected = onItemSelected
     )
 }
 
