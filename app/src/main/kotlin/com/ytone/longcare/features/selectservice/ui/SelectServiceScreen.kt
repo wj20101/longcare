@@ -22,7 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
-import com.ytone.longcare.ui.bgGradientBrush
+import com.ytone.longcare.theme.bgGradientBrush
 
 // --- 数据模型 ---
 data class ServiceItem(
