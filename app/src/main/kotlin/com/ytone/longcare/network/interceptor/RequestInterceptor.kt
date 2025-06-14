@@ -55,7 +55,8 @@ class RequestInterceptor @Inject constructor(
             try {
                 val buffer = Buffer()
                 requestBody.writeTo(buffer)
-                val encryptRequest = encryptRequest(randomString, buffer.readByteArray())
+                val requestBodyBytes = buffer.readByteArray()
+                val encryptRequest = encryptRequest(randomString, requestBodyBytes)
                 val bodyMap = mapOf("ParamJsonString" to encryptRequest)
                 val encryptData = bodyMap.toJsonStringMap().orEmpty()
                 val newRequestBody = encryptData.toRequestBody(contentType)
