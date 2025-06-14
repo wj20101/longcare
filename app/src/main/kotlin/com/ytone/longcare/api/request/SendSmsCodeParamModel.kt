@@ -1,17 +1,17 @@
 package com.ytone.longcare.api.request
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 发送短信验证码
  * @property mobile 手机号
  * @property codeType 验证码类型 1:登录
  */
-@Serializable
+@JsonClass(generateAdapter = true)
 data class SendSmsCodeParamModel(
-    @SerialName("mobile")
+    @field:Json("mobile")
     val mobile: String = "",
-    @SerialName("codeType")
+    @field:Json("codeType")
     val codeType: Int = 0
 )

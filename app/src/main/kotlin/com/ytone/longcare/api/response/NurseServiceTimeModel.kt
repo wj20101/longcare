@@ -1,28 +1,28 @@
 package com.ytone.longcare.api.response
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 本月服务统计信息
  */
-@Serializable
+@JsonClass(generateAdapter = true)
 data class NurseServiceTimeModel(
     /**
      * 已服务时长
      */
-    @SerialName("haveServiceTime")
+    @field:Json("haveServiceTime")
     val haveServiceTime: Int = 0,
 
     /**
      * 已经服务的次数
      */
-    @SerialName("haveServiceNum")
+    @field:Json("haveServiceNum")
     val haveServiceNum: Int = 0,
 
     /**
      * 未服务时长
      */
-    @SerialName("noServiceTime")
+    @field:Json("noServiceTime")
     val noServiceTime: Int = 0
 )

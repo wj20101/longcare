@@ -1,7 +1,7 @@
 package com.ytone.longcare.api.response
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 服务订单数据模型
@@ -17,16 +17,16 @@ import kotlinx.serialization.Serializable
  * @property completeTotalTime 时间完成时间
  * @property totalServiceTime 服务时长
  */
-@Serializable
+@JsonClass(generateAdapter = true)
 data class ServiceOrderModel(
-    @SerialName("orderId") val orderId: Long = 0,
-    @SerialName("userId") val userId: Int = 0,
-    @SerialName("name") val name: String = "",
-    @SerialName("callPhone") val callPhone: String = "",
-    @SerialName("identityCardNumber") val identityCardNumber: String = "",
-    @SerialName("liveAddress") val liveAddress: String = "",
-    @SerialName("state") val state: Int = 0,
-    @SerialName("planTotalTime") val planTotalTime: Int = 0,
-    @SerialName("completeTotalTime") val completeTotalTime: Int = 0,
-    @SerialName("totalServiceTime") val totalServiceTime: Int = 0
+    @field:Json("orderId") val orderId: Long = 0,
+    @field:Json("userId") val userId: Int = 0,
+    @field:Json("name") val name: String = "",
+    @field:Json("callPhone") val callPhone: String = "",
+    @field:Json("identityCardNumber") val identityCardNumber: String = "",
+    @field:Json("liveAddress") val liveAddress: String = "",
+    @field:Json("state") val state: Int = 0,
+    @field:Json("planTotalTime") val planTotalTime: Int = 0,
+    @field:Json("completeTotalTime") val completeTotalTime: Int = 0,
+    @field:Json("totalServiceTime") val totalServiceTime: Int = 0
 )

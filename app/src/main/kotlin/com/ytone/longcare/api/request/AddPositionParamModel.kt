@@ -1,28 +1,28 @@
 package com.ytone.longcare.api.request
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 定位参数信息
  */
-@Serializable
+@JsonClass(generateAdapter = true)
 data class AddPositionParamModel(
     /**
      * 订单号
      */
-    @SerialName("orderid")
+    @field:Json("orderid")
     val orderId: Long = 0L,
 
     /**
      * 经度
      */
-    @SerialName("longitude")
+    @field:Json("longitude")
     val longitude: Double = 0.0,
 
     /**
      * 纬度
      */
-    @SerialName("latitude")
+    @field:Json("latitude")
     val latitude: Double = 0.0
 )

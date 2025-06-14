@@ -1,22 +1,22 @@
 package com.ytone.longcare.api.request
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 开始服务工单参数
  */
-@Serializable
+@JsonClass(generateAdapter = true)
 data class StartOrderParamModel(
     /**
      * 订单Id
      */
-    @SerialName("orderid")
+    @field:Json("orderid")
     val orderId: Long = 0L,
 
     /**
      * nfc设备号
      */
-    @SerialName("nfc")
+    @field:Json("nfc")
     val nfc: String = ""
 )

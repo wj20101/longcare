@@ -6,7 +6,6 @@ import java.util.Locale
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
-    alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.ksp)
@@ -176,7 +175,14 @@ dependencies {
     implementation(libs.retrofit.converter.kotlinx.serialization)
     implementation(libs.okhttp.core)
     implementation(libs.okhttp.logging.interceptor)
-    implementation(libs.kotlinx.serialization.json)
+
+    //Json
+    implementation(libs.moshi.core)
+    implementation(libs.moshi.kotlin)
+    ksp(libs.moshi.kotlin.codegen)
+    implementation(libs.retrofit.converter.moshi)
+    implementation(libs.wire.moshi.adapter)
+    implementation(libs.retrofit.converter.wire)
 
     // Data Storage
     implementation(libs.androidx.datastore.preferences)

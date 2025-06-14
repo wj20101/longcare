@@ -18,7 +18,6 @@ import com.ytone.longcare.api.response.UploadTokenResultModel
 import com.ytone.longcare.api.response.SystemConfigModel
 import com.ytone.longcare.api.request.SendSmsCodeParamModel
 import com.ytone.longcare.model.Response
-import kotlinx.serialization.json.JsonElement
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -32,7 +31,7 @@ interface LongCareApiService {
      * @return 无返回值
      */
     @POST("/V1/Phone/SendSmsCode")
-    suspend fun sendSmsCode(@Body sendSmsCodeParamModel: SendSmsCodeParamModel): Response<JsonElement>
+    suspend fun sendSmsCode(@Body sendSmsCodeParamModel: SendSmsCodeParamModel): Response<Unit>
 
     /**
      * 手机号码登录

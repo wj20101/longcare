@@ -8,12 +8,11 @@ import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.network.safeApiCall
 import com.ytone.longcare.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.serialization.json.JsonElement
 import javax.inject.Inject
 
 interface LoginRepository {
     suspend fun login(mobile: String, code: String): ApiResult<LoginResultModel>
-    suspend fun sendSmsCode(mobile: String): ApiResult<JsonElement>
+    suspend fun sendSmsCode(mobile: String): ApiResult<Unit>
 }
 
 class LoginRepositoryImpl @Inject constructor(

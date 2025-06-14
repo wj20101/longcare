@@ -1,16 +1,16 @@
 package com.ytone.longcare.api.request
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 获取本月用户的服务记录情况 请求参数
  */
-@Serializable
+@JsonClass(generateAdapter = true)
 data class UserOrderParamModel(
     /**
      * 老人用户Id
      */
-    @SerialName("userId")
+    @field:Json("userId")
     val userId: Int = 0
 )
