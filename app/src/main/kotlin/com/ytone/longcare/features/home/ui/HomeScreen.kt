@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.home.ui
 
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -12,6 +13,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.home.viewmodel.HomeViewModel
 import com.ytone.longcare.features.maindashboard.ui.MainDashboardScreen
 import com.ytone.longcare.features.nursing.ui.NursingScreen
@@ -26,6 +28,11 @@ fun HomeScreen(
     navController: NavController,
     homeViewModel: HomeViewModel = hiltViewModel()
 ) {
+    // ==========================================================
+    // 在这里调用函数，将此页面强制设置为竖屏
+    // ==========================================================
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+
     val bottomNavItems = listOf(
         CustomBottomNavigationItem("首页"),
         CustomBottomNavigationItem("护理工作"),
