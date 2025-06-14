@@ -30,9 +30,14 @@ class LoginViewModel @Inject constructor(
     /**
      * 发送短信验证码
      */
+    private fun isValidMobileNumber(mobile: String): Boolean {
+        val regex = "^1[3-9]\\d{9}$"
+        return mobile.matches(regex.toRegex())
+    }
+
     fun sendSmsCode(mobile: String) {
-        if (mobile.length != 11) {
-            showShortToast("请输入11位手机号")
+        if (!isValidMobileNumber(mobile)) {
+            showShortToast("请输入有效的11位手机号")
             return
         }
         viewModelScope.launch {
@@ -62,7 +67,7 @@ class LoginViewModel @Inject constructor(
      * 执行登录
      */
     fun login(mobile: String, code: String) {
-        if (mobile.length != 11 || code.isBlank()) {
+        if (!isValidMobileNumber(mobile) || code.isBlank()) {
             showShortToast("手机号或验证码格式不正确")
             return
         }
