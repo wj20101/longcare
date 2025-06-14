@@ -11,18 +11,18 @@ data class LoginPhoneParamModel(
     /**
      * 手机号码:纯号码不带86区号
      */
-    @field:Json("mobile")
+    @Json(name = "mobile")
     val mobile: String = "",
 
     /**
      * 短信验证码
      */
-    @field:Json("smsCode")
+    @Json(name = "smsCode")
     val smsCode: String = "",
 
     /**
      * 身份1护理员
      */
-    @field:Json("userIdentity")
+    @Json(name = "userIdentity")
     val userIdentity: Int = 0
 )

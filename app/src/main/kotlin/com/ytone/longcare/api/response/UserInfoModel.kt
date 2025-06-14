@@ -11,54 +11,54 @@ data class UserInfoModel(
     /**
      * 用户Id
      */
-    @field:Json("userId")
+    @Json(name = "userId")
     val userId: Int = 0,
 
     /**
      * 老人姓名
      */
-    @field:Json("name")
+    @Json(name = "name")
     val name: String = "",
 
     /**
      * 身份证号码
      */
-    @field:Json("identityCardNumber")
+    @Json(name = "identityCardNumber")
     val identityCardNumber: String = "",
 
     /**
      * 年龄
      */
-    @field:Json("age")
+    @Json(name = "age")
     val age: Int = 0,
 
     /**
      * 性别
      */
-    @field:Json("gender")
+    @Json(name = "gender")
     val gender: String = "",
 
     /**
      * 居住地址
      */
-    @field:Json("address")
+    @Json(name = "address")
     val address: String = "",
 
     /**
      * 最后服务时间
      */
-    @field:Json("lastServiceTime")
+    @Json(name = "lastServiceTime")
     val lastServiceTime: String = "",
 
     /**
      * 本月已服务时间
      */
-    @field:Json("monthServiceTime")
+    @Json(name = "monthServiceTime")
     val monthServiceTime: Int = 0,
 
     /**
      * 本月未服务时间
      */
-    @field:Json("monthNoServiceTime")
+    @Json(name = "monthNoServiceTime")
     val monthNoServiceTime: Int = 0
 )

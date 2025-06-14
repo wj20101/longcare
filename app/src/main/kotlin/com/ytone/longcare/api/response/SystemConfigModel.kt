@@ -11,24 +11,24 @@ data class SystemConfigModel(
     /**
      * 腾讯地图key
      */
-    @field:Json("TencentMapKey")
+    @Json(name = "TencentMapKey")
     val tencentMapKey: String = "",
 
     /**
      * 腾讯地图围栏半径
      */
-    @field:Json("TencentMapFenceRadius")
+    @Json(name = "TencentMapFenceRadius")
     val tencentMapFenceRadius: Int = 0,
 
     /**
      * 腾讯地图定位上传间隔时间（秒）
      */
-    @field:Json("TencentMapUploadInterval")
+    @Json(name = "TencentMapUploadInterval")
     val tencentMapUploadInterval: Int = 0,
 
     /**
      * 腾讯地图定位上传距离（米）
      */
-    @field:Json("TencentMapUploadDistance")
+    @Json(name = "TencentMapUploadDistance")
     val tencentMapUploadDistance: Int = 0
 )

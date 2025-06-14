@@ -10,5 +10,5 @@ import com.squareup.moshi.JsonClass
  */
 @JsonClass(generateAdapter = true)
 data class OrderListParamModel(
-    @field:Json("daytime") val daytime: String = ""
+    @Json(name = "daytime") val daytime: String = ""
 )

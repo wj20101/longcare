@@ -11,25 +11,25 @@ data class ServiceOrderInfoModel(
     /**
      * 服务单号
      */
-    @field:Json("orderId")
+    @Json(name = "orderId")
     val orderId: Long = 0L,
 
     /**
      * 服务状态
      */
-    @field:Json("state")
+    @Json(name = "state")
     val state: Int = 0,
 
     /**
      * 用户信息
      */
-    @field:Json("userInfo")
+    @Json(name = "userInfo")
     val userInfo: UserInfoM = UserInfoM(),
 
     /**
      * 服务项目信息集合
      */
-    @field:Json("projectList")
+    @Json(name = "projectList")
     val projectList: List<ServiceProjectM> = emptyList()
 )
 
@@ -41,55 +41,55 @@ data class UserInfoM(
     /**
      * 用户Id
      */
-    @field:Json("userId")
+    @Json(name = "userId")
     val userId: Int = 0,
 
     /**
      * 老人姓名
      */
-    @field:Json("name")
+    @Json(name = "name")
     val name: String = "",
 
     /**
      * 身份证号码
      */
-    @field:Json("identityCardNumber")
+    @Json(name = "identityCardNumber")
     val identityCardNumber: String = "",
 
     /**
      * 年龄
      */
-    @field:Json("age")
+    @Json(name = "age")
     val age: Int = 0,
 
     /**
      * 性别
      */
-    @field:Json("gender")
+    @Json(name = "gender")
     val gender: String = "",
 
     /**
      * 居住地址
      */
-    @field:Json("address")
+    @Json(name = "address")
     val address: String = "",
 
     /**
      * 最后服务时间
      */
-    @field:Json("lastServiceTime")
+    @Json(name = "lastServiceTime")
     val lastServiceTime: String = "", // Assuming date-time is represented as String
 
     /**
      * 本月已服务时间
      */
-    @field:Json("monthServiceTime")
+    @Json(name = "monthServiceTime")
     val monthServiceTime: Int = 0,
 
     /**
      * 本月未服务时间
      */
-    @field:Json("monthNoServiceTime")
+    @Json(name = "monthNoServiceTime")
     val monthNoServiceTime: Int = 0
 )
 
@@ -101,24 +101,24 @@ data class ServiceProjectM(
     /**
      * 服务项目ID
      */
-    @field:Json("projectId")
+    @Json(name = "projectId")
     val projectId: Int = 0,
 
     /**
      * 服务项目名称
      */
-    @field:Json("projectName")
+    @Json(name = "projectName")
     val projectName: String = "",
 
     /**
      * 服务时长 分钟
      */
-    @field:Json("serviceTime")
+    @Json(name = "serviceTime")
     val serviceTime: Int = 0,
 
     /**
      * 最后服务的时间
      */
-    @field:Json("lastServiceTime")
+    @Json(name = "lastServiceTime")
     val lastServiceTime: String = "" // Assuming date-time is represented as String
 )

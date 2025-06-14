@@ -19,14 +19,14 @@ import com.squareup.moshi.JsonClass
  */
 @JsonClass(generateAdapter = true)
 data class ServiceOrderModel(
-    @field:Json("orderId") val orderId: Long = 0,
-    @field:Json("userId") val userId: Int = 0,
-    @field:Json("name") val name: String = "",
-    @field:Json("callPhone") val callPhone: String = "",
-    @field:Json("identityCardNumber") val identityCardNumber: String = "",
-    @field:Json("liveAddress") val liveAddress: String = "",
-    @field:Json("state") val state: Int = 0,
-    @field:Json("planTotalTime") val planTotalTime: Int = 0,
-    @field:Json("completeTotalTime") val completeTotalTime: Int = 0,
-    @field:Json("totalServiceTime") val totalServiceTime: Int = 0
+    @Json(name = "orderId") val orderId: Long = 0,
+    @Json(name = "userId") val userId: Int = 0,
+    @Json(name = "name") val name: String = "",
+    @Json(name = "callPhone") val callPhone: String = "",
+    @Json(name = "identityCardNumber") val identityCardNumber: String = "",
+    @Json(name = "liveAddress") val liveAddress: String = "",
+    @Json(name = "state") val state: Int = 0,
+    @Json(name = "planTotalTime") val planTotalTime: Int = 0,
+    @Json(name = "completeTotalTime") val completeTotalTime: Int = 0,
+    @Json(name = "totalServiceTime") val totalServiceTime: Int = 0
 )

@@ -177,7 +177,6 @@ dependencies {
     implementation(libs.okhttp.logging.interceptor)
 
     //Json
-    implementation(libs.moshi.core)
     implementation(libs.moshi.kotlin)
     ksp(libs.moshi.kotlin.codegen)
     implementation(libs.retrofit.converter.moshi)
