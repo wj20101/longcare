@@ -5,6 +5,7 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.squareup.wire.WireJsonAdapterFactory
+import com.ytone.longcare.di.UnitJsonAdapter
 import java.lang.reflect.Type
 
 /**
@@ -12,6 +13,7 @@ import java.lang.reflect.Type
  * 在实际项目中，通过 Hilt 注入 Moshi 实例是更好的做法。
  */
 val DefaultMoshi: Moshi = Moshi.Builder()
+    .add(Unit::class.java, UnitJsonAdapter)
     .add(WireJsonAdapterFactory()) // 添加 WireJsonAdapterFactory 来处理所有 Wire 生成的类型
     .add(KotlinJsonAdapterFactory()) // 添加 KotlinJsonAdapterFactory 来处理常规的 Kotlin 类
     .build()
