@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.data.storage.DataStoreKeys
 import com.ytone.longcare.di.AppDataStore
 import com.ytone.longcare.di.ApplicationScope
@@ -102,6 +103,7 @@ class DefaultUserSessionRepository @Inject constructor(
                     // 解码成功，返回登录状态
                     SessionState.LoggedIn(User.ADAPTER.decode(userBytes))
                 } catch (e: IOException) {
+                    logE(message = "User data corrupted", throwable = e)
                     // 如果数据损坏导致解码失败，视为登出状态
                     SessionState.LoggedOut
                 }
