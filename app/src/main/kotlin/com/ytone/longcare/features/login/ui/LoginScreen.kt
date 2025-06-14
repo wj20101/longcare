@@ -35,6 +35,7 @@ import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.showLongToast
 import com.ytone.longcare.features.login.viewmodel.LoginViewModel
 import com.ytone.longcare.features.login.viewmodel.LoginUiState
+import com.ytone.longcare.features.login.viewmodel.SendSmsCodeUiState
 import com.ytone.longcare.navigation.navigateToHomeFromLogin
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.InputFieldBackground
@@ -234,6 +235,7 @@ fun SendVerificationCodeButton(
     onSendCodeClick: () -> Unit // 点击发送验证码时触发的回调
 ) {
     val countdownSeconds by viewModel.countdownSeconds.collectAsState()
+    val sendSmsState by viewModel.sendSmsCodeState.collectAsState()
     val isCountingDown = countdownSeconds > 0
 
     TextButton(
@@ -244,7 +246,7 @@ fun SendVerificationCodeButton(
         },
         shape = RoundedCornerShape(50),
         modifier = modifier,
-        enabled = !isCountingDown // 当不在倒计时中时，按钮可用
+        enabled = !isCountingDown && sendSmsState !is SendSmsCodeUiState.Loading // 当不在倒计时中时，按钮可用
     ) {
         if (isCountingDown) {
             Text(
