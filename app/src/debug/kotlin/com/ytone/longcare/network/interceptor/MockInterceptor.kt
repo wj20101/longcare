@@ -11,7 +11,7 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 class MockInterceptor(private val context: Context) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
-        if (!BuildConfig.DEBUG) {
+        if (!BuildConfig.USE_MOCK_DATA) {
             return chain.proceed(chain.request())
         }
 
