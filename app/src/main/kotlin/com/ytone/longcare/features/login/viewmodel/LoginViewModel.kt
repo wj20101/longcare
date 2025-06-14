@@ -113,7 +113,7 @@ class LoginViewModel @Inject constructor(
     private fun startCountdown() {
         countdownJob?.cancel()
         countdownJob = viewModelScope.launch {
-            _countdownSeconds.value = 60
+            _countdownSeconds.value = SMS_TIME_TOTAL
             while (_countdownSeconds.value > 0) {
                 delay(1000L)
                 _countdownSeconds.value--
@@ -124,6 +124,11 @@ class LoginViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         countdownJob?.cancel()
+    }
+
+    companion object {
+        // 短信倒计时长度
+        private const val SMS_TIME_TOTAL = 60
     }
 }
 
