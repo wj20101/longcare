@@ -11,60 +11,60 @@ data class TodayServiceOrderModel(
     /**
      * 订单号
      */
-    @field:Json("orderId")
+    @Json(name = "orderId")
     val orderId: Long = 0L,
 
     /**
      * 用户Id
      */
-    @field:Json("userId")
+    @Json(name = "userId")
     val userId: Int = 0,
 
     /**
      * 姓名
      */
-    @field:Json("name")
+    @Json(name = "name")
     val name: String = "",
 
     /**
      * 老人联系电话
      */
-    @field:Json("callPhone")
+    @Json(name = "callPhone")
     val callPhone: String = "",
 
     /**
      * 身份证号
      */
-    @field:Json("identityCardNumber")
+    @Json(name = "identityCardNumber")
     val identityCardNumber: String = "",
 
     /**
      * 居住地址
      */
-    @field:Json("liveAddress")
+    @Json(name = "liveAddress")
     val liveAddress: String = "",
 
     /**
      * 状态:0待执行 1执行中 2任务完成 3作废
      */
-    @field:Json("state")
+    @Json(name = "state")
     val state: Int = 0,
 
     /**
      * 中的服务时间
      */
-    @field:Json("planTotalTime")
+    @Json(name = "planTotalTime")
     val planTotalTime: Int = 0,
 
     /**
      * 时间完成时间
      */
-    @field:Json("completeTotalTime")
+    @Json(name = "completeTotalTime")
     val completeTotalTime: Int = 0,
 
     /**
      * 服务时长
      */
-    @field:Json("totalServiceTime")
+    @Json(name = "totalServiceTime")
     val totalServiceTime: Int = 0
 )

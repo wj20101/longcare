@@ -11,18 +11,18 @@ data class NurseServiceTimeModel(
     /**
      * 已服务时长
      */
-    @field:Json("haveServiceTime")
+    @Json(name = "haveServiceTime")
     val haveServiceTime: Int = 0,
 
     /**
      * 已经服务的次数
      */
-    @field:Json("haveServiceNum")
+    @Json(name = "haveServiceNum")
     val haveServiceNum: Int = 0,
 
     /**
      * 未服务时长
      */
-    @field:Json("noServiceTime")
+    @Json(name = "noServiceTime")
     val noServiceTime: Int = 0
 )

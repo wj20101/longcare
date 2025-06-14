@@ -11,6 +11,6 @@ data class OrderInfoParamModel(
     /**
      * 查询的订单号
      */
-    @field:Json("orderid")
+    @Json(name = "orderid")
     val orderId: Long = 0L
 )

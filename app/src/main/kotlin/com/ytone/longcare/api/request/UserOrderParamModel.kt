@@ -11,6 +11,6 @@ data class UserOrderParamModel(
     /**
      * 老人用户Id
      */
-    @field:Json("userId")
+    @Json(name = "userId")
     val userId: Int = 0
 )
