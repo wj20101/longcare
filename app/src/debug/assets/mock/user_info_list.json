@@ -1,0 +1,28 @@
+{
+  "resultCode": 1000,
+  "resultMsg": "成功",
+  "data": [
+    {
+      "userId": 101,
+      "name": "孙天成 (Mock)",
+      "identityCardNumber": "3301...01",
+      "age": 78,
+      "gender": "男",
+      "address": "杭州市西湖区模拟小区1号楼",
+      "lastServiceTime": "2025-05-20 10:00:00",
+      "monthServiceTime": 8,
+      "monthNoServiceTime": 12
+    },
+    {
+      "userId": 103,
+      "name": "李秀英 (Mock)",
+      "identityCardNumber": "3301...03",
+      "age": 82,
+      "gender": "女",
+      "address": "杭州市拱墅区模拟小区3号楼",
+      "lastServiceTime": "2025-05-22 09:00:00",
+      "monthServiceTime": 10,
+      "monthNoServiceTime": 6
+    }
+  ]
+}

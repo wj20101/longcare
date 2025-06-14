@@ -1,6 +1,7 @@
 package com.ytone.longcare.di
 
 import android.app.Application
+import android.content.Context
 import com.squareup.moshi.Moshi
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.api.LongCareApiService
@@ -11,6 +12,7 @@ import com.ytone.longcare.network.interceptor.RequestInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.Cache
 import okhttp3.OkHttpClient
@@ -64,6 +66,7 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(
+        @ApplicationContext context: Context,
         loggingInterceptor: HttpLoggingInterceptor,
         requestInterceptor: RequestInterceptor,
         cache: Cache
@@ -75,6 +78,7 @@ object NetworkModule {
             .connectTimeout(30, TimeUnit.SECONDS) // 连接超时时间
             .readTimeout(30, TimeUnit.SECONDS)    // 读取超时时间
             .writeTimeout(30, TimeUnit.SECONDS)   // 写入超时时间
+            .addFlavorInterceptors(context)
             .build()
     }
 

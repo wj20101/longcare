@@ -1,0 +1,30 @@
+{
+  "resultCode": 1000,
+  "resultMsg": "成功",
+  "data": [
+    {
+      "orderId": 20250615001,
+      "userId": 101,
+      "name": "孙天成 (Mock)",
+      "callPhone": "13800138001",
+      "identityCardNumber": "3301...01",
+      "liveAddress": "杭州市西湖区模拟小区1号楼",
+      "state": 0,
+      "planTotalTime": 120,
+      "completeTotalTime": 0,
+      "totalServiceTime": 0
+    },
+    {
+      "orderId": 20250615002,
+      "userId": 102,
+      "name": "王大妈 (Mock)",
+      "callPhone": "13800138002",
+      "identityCardNumber": "3301...02",
+      "liveAddress": "杭州市滨江区模拟小区2号楼",
+      "state": 1,
+      "planTotalTime": 90,
+      "completeTotalTime": 30,
+      "totalServiceTime": 30
+    }
+  ]
+}

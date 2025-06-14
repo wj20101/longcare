@@ -1,0 +1,9 @@
+{
+  "resultCode": 1000,
+  "resultMsg": "成功",
+  "data": {
+    "haveServiceTime": 1230,
+    "haveServiceNum": 15,
+    "noServiceTime": 450
+  }
+}

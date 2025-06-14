@@ -1,0 +1,10 @@
+{
+  "resultCode": 1000,
+  "resultMsg": "成功",
+  "data": {
+    "TencentMapKey": "MOCK-TENCENT-MAP-KEY",
+    "TencentMapFenceRadius": 500,
+    "TencentMapUploadInterval": 60,
+    "TencentMapUploadDistance": 100
+  }
+}
