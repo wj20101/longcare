@@ -7,173 +7,173 @@ option java_multiple_files = true;
 
 // Request Models
 
-// 获取本月用户的服务记录情况 请求参数
-message UserOrderParam {
-  int32 user_id = 1 [json_name = "userId"]; // 老人用户Id
-}
-
-// 开始服务工单参数
-message StartOrderParam {
-  int64 order_id = 1 [json_name = "orderid"]; // 订单Id
-  string nfc = 2 [json_name = "nfc"]; // nfc设备号
-}
-
-// 发送短信验证码
-message SendSmsCodeParam {
-  string mobile = 1 [json_name = "mobile"]; // 手机号
-  int32 code_type = 2 [json_name = "codeType"]; // 验证码类型 1:登录
-}
-
-// 按天查询服务订单的请求参数模型
-message OrderListParam {
-  string daytime = 1 [json_name = "daytime"]; // 查询日期，格式例如: "yyyy-MM-dd"
-}
-
-// 查询服务订单详情参数
-message OrderInfoParam {
-  int64 order_id = 1 [json_name = "orderid"]; // 查询的订单号
-}
-
-// 手机登录请求参数
-message LoginPhoneParam {
-  string mobile = 1 [json_name = "mobile"]; // 手机号码:纯号码不带86区号
-  string sms_code = 2 [json_name = "smsCode"]; // 短信验证码
-  int32 user_identity = 3 [json_name = "userIdentity"]; // 身份1护理员
-}
-
-// 登录日志模型
-message LoginLogParam {
-  string phone_system = 1 [json_name = "phoneSystem"]; // 手机系统
-  string phone_version = 2 [json_name = "phoneVersion"]; // 手机系统版本
-  string network_type = 3 [json_name = "networkType"]; // 网络类型
-  string network_operator = 4 [json_name = "networkOperator"]; // 网络运营商
-}
-
-// 结束服务工单参数
-message EndOrderParam {
-  int64 order_id = 1 [json_name = "orderId"]; // 订单Id
-  string nfc = 2 [json_name = "nfc"]; // nfc设备号
-  repeated int32 project_id_list = 3 [json_name = "porjectIdList"]; // 完成的服务项目Id集合
-  repeated string begin_img_list = 4 [json_name = "beginImgList"]; // 开始图片集合
-  repeated string end_img_list = 5 [json_name = "endImgList"]; // 结束图片集合
-}
-
-// 定位参数信息
-message AddPositionParam {
-  int64 order_id = 1 [json_name = "orderId"]; // 订单号
-  double longitude = 2 [json_name = "longitude"]; // 经度
-  double latitude = 3 [json_name = "latitude"]; // 纬度
-}
-
-// Response Models
-
-// 用户信息
-message UserInfo {
-  int32 user_id = 1 [json_name = "userId"]; // 用户Id
-  string name = 2 [json_name = "name"]; // 老人姓名
-  string identity_card_number = 3 [json_name = "identityCardNumber"]; // 身份证号码
-  int32 age = 4 [json_name = "age"]; // 年龄
-  string gender = 5 [json_name = "gender"]; // 性别
-  string address = 6 [json_name = "address"]; // 居住地址
-  string last_service_time = 7 [json_name = "lastServiceTime"]; // 最后服务时间
-  int32 month_service_time = 8 [json_name = "monthServiceTime"]; // 本月已服务时间
-  int32 month_no_service_time = 9 [json_name = "monthNoServiceTime"]; // 本月未服务时间
-}
-
-// 文件上传token
-message UploadTokenResult {
-  string tmp_secret_id = 1 [json_name = "tmpSecretId"];
-  string tmp_secret_key = 2 [json_name = "tmpSecretKey"];
-  string session_token = 3 [json_name = "sessionToken"];
-  string start_time = 4 [json_name = "startTime"];
-  string request_id = 5 [json_name = "requestId"];
-  string expiration = 6 [json_name = "expiration"];
-  string expired_time = 7 [json_name = "expiredTime"];
-  string bucket = 8 [json_name = "bucket"];
-  string region = 9 [json_name = "region"];
-}
-
-// 今天的服务订单
-message TodayServiceOrder {
-  int64 order_id = 1 [json_name = "orderId"]; // 订单号
-  int32 user_id = 2 [json_name = "userId"]; // 用户Id
-  string name = 3 [json_name = "name"]; // 姓名
-  string call_phone = 4 [json_name = "callPhone"]; // 老人联系电话
-  string identity_card_number = 5 [json_name = "identityCardNumber"]; // 身份证号
-  string live_address = 6 [json_name = "liveAddress"]; // 居住地址
-  int32 state = 7 [json_name = "state"]; // 状态:0待执行 1执行中 2任务完成 3作废
-  int32 plan_total_time = 8 [json_name = "planTotalTime"]; // 中的服务时间
-  int32 complete_total_time = 9 [json_name = "completeTotalTime"]; // 时间完成时间
-  int32 total_service_time = 10 [json_name = "totalServiceTime"]; // 服务时长
-}
-
-// 系统相关配置
-message SystemConfig {
-  string tencent_map_key = 1 [json_name = "TencentMapKey"]; // 腾讯地图key
-  int32 tencent_map_fence_radius = 2 [json_name = "TencentMapFenceRadius"]; // 腾讯地图围栏半径
-  int32 tencent_map_upload_interval = 3 [json_name = "TencentMapUploadInterval"]; // 腾讯地图定位上传间隔时间（秒）
-  int32 tencent_map_upload_distance = 4 [json_name = "TencentMapUploadDistance"]; // 腾讯地图定位上传距离（米）
-}
-
-// 服务订单数据模型
-message ServiceOrder {
-  int64 order_id = 1 [json_name = "orderId"]; // 订单号
-  int32 user_id = 2 [json_name = "userId"]; // 用户Id
-  string name = 3 [json_name = "name"]; // 姓名
-  string call_phone = 4 [json_name = "callPhone"]; // 老人联系电话
-  string identity_card_number = 5 [json_name = "identityCardNumber"]; // 身份证号
-  string live_address = 6 [json_name = "liveAddress"]; // 居住地址
-  int32 state = 7 [json_name = "state"]; // 状态:0待执行 1执行中 2任务完成 3作废
-  int32 plan_total_time = 8 [json_name = "planTotalTime"]; // 计划服务时间
-  int32 complete_total_time = 9 [json_name = "completeTotalTime"]; // 时间完成时间
-  int32 total_service_time = 10 [json_name = "totalServiceTime"]; // 服务时长
-}
-
-// 服务订单详情
-message ServiceOrderInfo {
-  int64 order_id = 1 [json_name = "orderId"]; // 服务单号
-  int32 state = 2 [json_name = "state"]; // 服务状态
-  UserInfoM user_info = 3 [json_name = "userInfo"]; // 用户信息
-  repeated ServiceProjectM project_list = 4 [json_name = "projectList"]; // 服务项目信息集合
-}
-
-// 用户信息 (嵌套在ServiceOrderInfo内)
-message UserInfoM {
-  int32 user_id = 1 [json_name = "userId"]; // 用户Id
-  string name = 2 [json_name = "name"]; // 老人姓名
-  string identity_card_number = 3 [json_name = "identityCardNumber"]; // 身份证号码
-  int32 age = 4 [json_name = "age"]; // 年龄
-  string gender = 5 [json_name = "gender"]; // 性别
-  string address = 6 [json_name = "address"]; // 居住地址
-  string last_service_time = 7 [json_name = "lastServiceTime"]; // 最后服务时间
-  int32 month_service_time = 8 [json_name = "monthServiceTime"]; // 本月已服务时间
-  int32 month_no_service_time = 9 [json_name = "monthNoServiceTime"]; // 本月未服务时间
-}
-
-// 服务项目信息 (嵌套在ServiceOrderInfo内)
-message ServiceProjectM {
-  int32 project_id = 1 [json_name = "projectId"]; // 服务项目ID
-  string project_name = 2 [json_name = "projectName"]; // 服务项目名称
-  int32 service_time = 3 [json_name = "serviceTime"]; // 服务时长 分钟
-  string last_service_time = 4 [json_name = "lastServiceTime"]; // 最后服务的时间
-}
-
-// 本月服务统计信息
-message NurseServiceTime {
-  int32 have_service_time = 1 [json_name = "haveServiceTime"]; // 已服务时长
-  int32 have_service_num = 2 [json_name = "haveServiceNum"]; // 已经服务的次数
-  int32 no_service_time = 3 [json_name = "noServiceTime"]; // 未服务时长
-}
-
-// 登录结果
-message LoginResult {
-  int32 company_id = 1 [json_name = "companyId"]; // 公司Id
-  int32 account_id = 2 [json_name = "accountId"]; // 账号Id
-  int32 user_id = 3 [json_name = "userId"]; // 用户Id
-  string user_name = 4 [json_name = "userName"]; // 用户名字
-  string head_url = 5 [json_name = "headUrl"]; // 头像地址
-  int32 user_identity = 6 [json_name = "userIdentity"]; // 用户身份 1护理员
-  string identity_card_number = 7 [json_name = "identityCardNumber"]; // 身份证号码
-  int32 gender = 8 [json_name = "gender"]; // 性别 1男 0女
-  string token = 9 [json_name = "token"]; // 用户身份token
-}
+//// 获取本月用户的服务记录情况 请求参数
+//message UserOrderParam {
+//  int32 user_id = 1 [json_name = "userId"]; // 老人用户Id
+//}
+//
+//// 开始服务工单参数
+//message StartOrderParam {
+//  int64 order_id = 1 [json_name = "orderid"]; // 订单Id
+//  string nfc = 2 [json_name = "nfc"]; // nfc设备号
+//}
+//
+//// 发送短信验证码
+//message SendSmsCodeParam {
+//  string mobile = 1 [json_name = "mobile"]; // 手机号
+//  int32 code_type = 2 [json_name = "codeType"]; // 验证码类型 1:登录
+//}
+//
+//// 按天查询服务订单的请求参数模型
+//message OrderListParam {
+//  string daytime = 1 [json_name = "daytime"]; // 查询日期，格式例如: "yyyy-MM-dd"
+//}
+//
+//// 查询服务订单详情参数
+//message OrderInfoParam {
+//  int64 order_id = 1 [json_name = "orderid"]; // 查询的订单号
+//}
+//
+//// 手机登录请求参数
+//message LoginPhoneParam {
+//  string mobile = 1 [json_name = "mobile"]; // 手机号码:纯号码不带86区号
+//  string sms_code = 2 [json_name = "smsCode"]; // 短信验证码
+//  int32 user_identity = 3 [json_name = "userIdentity"]; // 身份1护理员
+//}
+//
+//// 登录日志模型
+//message LoginLogParam {
+//  string phone_system = 1 [json_name = "phoneSystem"]; // 手机系统
+//  string phone_version = 2 [json_name = "phoneVersion"]; // 手机系统版本
+//  string network_type = 3 [json_name = "networkType"]; // 网络类型
+//  string network_operator = 4 [json_name = "networkOperator"]; // 网络运营商
+//}
+//
+//// 结束服务工单参数
+//message EndOrderParam {
+//  int64 order_id = 1 [json_name = "orderid"]; // 订单Id
+//  string nfc = 2 [json_name = "nfc"]; // nfc设备号
+//  repeated int32 project_id_list = 3 [json_name = "porjectIdList"]; // 完成的服务项目Id集合
+//  repeated string begin_img_list = 4 [json_name = "beginImgList"]; // 开始图片集合
+//  repeated string end_img_list = 5 [json_name = "endImgList"]; // 结束图片集合
+//}
+//
+//// 定位参数信息
+//message AddPositionParam {
+//  int64 order_id = 1 [json_name = "orderid"]; // 订单号
+//  double longitude = 2 [json_name = "longitude"]; // 经度
+//  double latitude = 3 [json_name = "latitude"]; // 纬度
+//}
+//
+//// Response Models
+//
+//// 用户信息
+//message UserInfo {
+//  int32 user_id = 1 [json_name = "userId"]; // 用户Id
+//  string name = 2 [json_name = "name"]; // 老人姓名
+//  string identity_card_number = 3 [json_name = "identityCardNumber"]; // 身份证号码
+//  int32 age = 4 [json_name = "age"]; // 年龄
+//  string gender = 5 [json_name = "gender"]; // 性别
+//  string address = 6 [json_name = "address"]; // 居住地址
+//  string last_service_time = 7 [json_name = "lastServiceTime"]; // 最后服务时间
+//  int32 month_service_time = 8 [json_name = "monthServiceTime"]; // 本月已服务时间
+//  int32 month_no_service_time = 9 [json_name = "monthNoServiceTime"]; // 本月未服务时间
+//}
+//
+//// 文件上传token
+//message UploadTokenResult {
+//  string tmp_secret_id = 1 [json_name = "tmpSecretId"];
+//  string tmp_secret_key = 2 [json_name = "tmpSecretKey"];
+//  string session_token = 3 [json_name = "sessionToken"];
+//  string start_time = 4 [json_name = "startTime"];
+//  string request_id = 5 [json_name = "requestId"];
+//  string expiration = 6 [json_name = "expiration"];
+//  string expired_time = 7 [json_name = "expiredTime"];
+//  string bucket = 8 [json_name = "bucket"];
+//  string region = 9 [json_name = "region"];
+//}
+//
+//// 今天的服务订单
+//message TodayServiceOrder {
+//  int64 order_id = 1 [json_name = "orderId"]; // 订单号
+//  int32 user_id = 2 [json_name = "userId"]; // 用户Id
+//  string name = 3 [json_name = "name"]; // 姓名
+//  string call_phone = 4 [json_name = "callPhone"]; // 老人联系电话
+//  string identity_card_number = 5 [json_name = "identityCardNumber"]; // 身份证号
+//  string live_address = 6 [json_name = "liveAddress"]; // 居住地址
+//  int32 state = 7 [json_name = "state"]; // 状态:0待执行 1执行中 2任务完成 3作废
+//  int32 plan_total_time = 8 [json_name = "planTotalTime"]; // 中的服务时间
+//  int32 complete_total_time = 9 [json_name = "completeTotalTime"]; // 时间完成时间
+//  int32 total_service_time = 10 [json_name = "totalServiceTime"]; // 服务时长
+//}
+//
+//// 系统相关配置
+//message SystemConfig {
+//  string tencent_map_key = 1 [json_name = "TencentMapKey"]; // 腾讯地图key
+//  int32 tencent_map_fence_radius = 2 [json_name = "TencentMapFenceRadius"]; // 腾讯地图围栏半径
+//  int32 tencent_map_upload_interval = 3 [json_name = "TencentMapUploadInterval"]; // 腾讯地图定位上传间隔时间（秒）
+//  int32 tencent_map_upload_distance = 4 [json_name = "TencentMapUploadDistance"]; // 腾讯地图定位上传距离（米）
+//}
+//
+//// 服务订单数据模型
+//message ServiceOrder {
+//  int64 order_id = 1 [json_name = "orderId"]; // 订单号
+//  int32 user_id = 2 [json_name = "userId"]; // 用户Id
+//  string name = 3 [json_name = "name"]; // 姓名
+//  string call_phone = 4 [json_name = "callPhone"]; // 老人联系电话
+//  string identity_card_number = 5 [json_name = "identityCardNumber"]; // 身份证号
+//  string live_address = 6 [json_name = "liveAddress"]; // 居住地址
+//  int32 state = 7 [json_name = "state"]; // 状态:0待执行 1执行中 2任务完成 3作废
+//  int32 plan_total_time = 8 [json_name = "planTotalTime"]; // 计划服务时间
+//  int32 complete_total_time = 9 [json_name = "completeTotalTime"]; // 时间完成时间
+//  int32 total_service_time = 10 [json_name = "totalServiceTime"]; // 服务时长
+//}
+//
+//// 服务订单详情
+//message ServiceOrderInfo {
+//  int64 order_id = 1 [json_name = "orderId"]; // 服务单号
+//  int32 state = 2 [json_name = "state"]; // 服务状态
+//  UserInfoM user_info = 3 [json_name = "userInfo"]; // 用户信息
+//  repeated ServiceProjectM project_list = 4 [json_name = "projectList"]; // 服务项目信息集合
+//}
+//
+//// 用户信息 (嵌套在ServiceOrderInfo内)
+//message UserInfoM {
+//  int32 user_id = 1 [json_name = "userId"]; // 用户Id
+//  string name = 2 [json_name = "name"]; // 老人姓名
+//  string identity_card_number = 3 [json_name = "identityCardNumber"]; // 身份证号码
+//  int32 age = 4 [json_name = "age"]; // 年龄
+//  string gender = 5 [json_name = "gender"]; // 性别
+//  string address = 6 [json_name = "address"]; // 居住地址
+//  string last_service_time = 7 [json_name = "lastServiceTime"]; // 最后服务时间
+//  int32 month_service_time = 8 [json_name = "monthServiceTime"]; // 本月已服务时间
+//  int32 month_no_service_time = 9 [json_name = "monthNoServiceTime"]; // 本月未服务时间
+//}
+//
+//// 服务项目信息 (嵌套在ServiceOrderInfo内)
+//message ServiceProjectM {
+//  int32 project_id = 1 [json_name = "projectId"]; // 服务项目ID
+//  string project_name = 2 [json_name = "projectName"]; // 服务项目名称
+//  int32 service_time = 3 [json_name = "serviceTime"]; // 服务时长 分钟
+//  string last_service_time = 4 [json_name = "lastServiceTime"]; // 最后服务的时间
+//}
+//
+//// 本月服务统计信息
+//message NurseServiceTime {
+//  int32 have_service_time = 1 [json_name = "haveServiceTime"]; // 已服务时长
+//  int32 have_service_num = 2 [json_name = "haveServiceNum"]; // 已经服务的次数
+//  int32 no_service_time = 3 [json_name = "noServiceTime"]; // 未服务时长
+//}
+//
+//// 登录结果
+//message LoginResult {
+//  int32 company_id = 1 [json_name = "companyId"]; // 公司Id
+//  int32 account_id = 2 [json_name = "accountId"]; // 账号Id
+//  int32 user_id = 3 [json_name = "userId"]; // 用户Id
+//  string user_name = 4 [json_name = "userName"]; // 用户名字
+//  string head_url = 5 [json_name = "headUrl"]; // 头像地址
+//  int32 user_identity = 6 [json_name = "userIdentity"]; // 用户身份 1护理员
+//  string identity_card_number = 7 [json_name = "identityCardNumber"]; // 身份证号码
+//  int32 gender = 8 [json_name = "gender"]; // 性别 1男 0女
+//  string token = 9 [json_name = "token"]; // 用户身份token
+//}
