@@ -68,7 +68,7 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(24.dp))
             OptionsCard()
             Spacer(modifier = Modifier.weight(1f))
-            LogoutButton()
+            LogoutButton { viewModel.logout() }
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
@@ -192,9 +192,9 @@ fun OptionItem(icon: ImageVector, text: String, onClick: () -> Unit) {
 }
 
 @Composable
-fun LogoutButton() {
+fun LogoutButton(logoutClick: () -> Unit = {}) {
     OutlinedButton(
-        onClick = { /* TODO: 退出登录逻辑 */ },
+        onClick = logoutClick,
         modifier = Modifier
             .fillMaxWidth()
             .height(50.dp),

@@ -5,6 +5,7 @@ package com.ytone.longcare.common.network
  * @param T 成功时返回的数据类型。
  */
 sealed class ApiResult<out T> {
+
     /**
      * 表示请求成功，并包含返回的数据。
      * @param data 从服务器成功获取的数据。
@@ -24,3 +25,18 @@ sealed class ApiResult<out T> {
      */
     data class Exception(val exception: Throwable) : ApiResult<Nothing>()
 }
+
+/**
+ * 判断是否是成功
+ */
+fun <T> ApiResult<T>.isSuccess(): Boolean = this is ApiResult.Success
+
+/**
+ * 判断是否是失败
+ */
+fun <T> ApiResult<T>.isFailure(): Boolean = this is ApiResult.Failure
+
+/**
+ * 判断是否是异常
+ */
+fun <T> ApiResult<T>.isException(): Boolean = this is ApiResult.Exception
