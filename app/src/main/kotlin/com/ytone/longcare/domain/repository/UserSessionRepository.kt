@@ -109,9 +109,7 @@ class DefaultUserSessionRepository @Inject constructor(
                 }
             } else {
                 // 如果没有用户数据，视为登出状态
-//                SessionState.LoggedOut
-                //TODO mock
-                SessionState.LoggedIn(User())
+                SessionState.LoggedOut
             }
         }
         .stateIn(
