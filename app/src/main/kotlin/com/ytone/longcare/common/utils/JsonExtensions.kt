@@ -1,158 +1,148 @@
 package com.ytone.longcare.common.utils
 
-import com.ytone.longcare.BuildConfig
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.serializer
 
 /**
  * Default Json instance for convenience.
- * It's generally better to inject or pass the configured Json instance
- * from your Dagger/Hilt module to ensure consistent configuration
- * (like ignoreUnknownKeys, isLenient, etc.).
  */
 val DefaultJson: Json = Json {
     isLenient = true             // 对宽松的JSON格式更友好
     ignoreUnknownKeys = true     // 忽略JSON中存在但DTO中不存在的字段
     coerceInputValues = true     // 如果JSON字段为null，但DTO中对应字段不可空且有默认值，会尝试使用默认值
     encodeDefaults = false       // 序列化时是否包含具有默认值的属性 (false更常见，节省空间)
-    prettyPrint = BuildConfig.DEBUG // 在Debug模式下格式化输出JSON，方便阅读
 }
 
+// --- 标准序列化函数 (无需修改) ---
 /**
- * Converts an object of type [T] to its JSON string representation.
- * @param T The type of the object, must be @Serializable.
- * @param json The Json instance to use for serialization. Defaults to [DefaultJson].
- * @return JSON string or null if serialization fails or the object is null.
+ * Converts a serializable object of type [T] to its JSON string representation.
  */
 inline fun <reified T> T?.toJsonString(json: Json = DefaultJson): String? {
-    if (this == null) return null // Handle null input explicitly if desired, though encodeToString might handle it based on T's nullability
+    if (this == null) return null
     return try {
         json.encodeToString(this)
     } catch (e: SerializationException) {
-        // Log error e.g. Log.e("JsonExtensions", "Failed to encode ${T::class.simpleName} to JSON", e)
+        logE(message = "Json Fail", throwable = e)
         null
     }
 }
 
 /**
  * Converts a JSON string to an object of type [T].
- * @param T The target type of the object, must be @Serializable.
- * @param json The Json instance to use for deserialization. Defaults to [DefaultJson].
- * @return Object of type [T] or null if deserialization fails or JSON string is null/blank.
  */
 inline fun <reified T> String?.toObject(json: Json = DefaultJson): T? {
     if (this.isNullOrBlank()) return null
     return try {
         json.decodeFromString<T>(this)
     } catch (e: SerializationException) {
-        // Log error e.g. Log.e("JsonExtensions", "Failed to decode JSON to ${T::class.simpleName}", e)
+        logE(message = "Json Fail", throwable = e)
         null
     }
 }
 
-/**
- * Converts a List of objects of type [T] to its JSON string representation.
- * @param T The type of elements in the list, must be @Serializable.
- * @param json The Json instance to use for serialization. Defaults to [DefaultJson].
- * @return JSON string representing the list or null if serialization fails or list is null.
- */
-inline fun <reified T> List<T>?.toJsonStringList(json: Json = DefaultJson): String? {
-    if (this == null) return null
-    return try {
-        // For lists (and other collections), kotlinx.serialization needs a KSerializer.
-        // We can get it using `serializer<List<T>>()` if T is reified.
-        // However, `json.encodeToString(this)` should work directly if T is serializable.
-        json.encodeToString(this)
-    } catch (e: SerializationException) {
-        // Log error
-        null
-    }
-}
-
-/**
- * Converts a JSON string (representing an array) to a List of objects of type [T].
- * @param T The target type of elements in the list, must be @Serializable.
- * @param json The Json instance to use for deserialization. Defaults to [DefaultJson].
- * @return List of objects of type [T] or null if deserialization fails or JSON string is null/blank.
- */
+// ... 其他标准函数 (fromJsonToList 等) ...
 inline fun <reified T> String?.fromJsonToList(json: Json = DefaultJson): List<T>? {
     if (this.isNullOrBlank()) return null
     return try {
         json.decodeFromString<List<T>>(this)
     } catch (e: SerializationException) {
-        // Log error
+        logE(message = "Json Fail", throwable = e)
         null
     }
 }
 
-// --- Map to/from JSON String ---
-
-/**
- * Converts a Map<K, V> to its JSON string representation.
- * @param K The type of keys in the map, must be @Serializable or a basic type (String, primitives).
- * @param V The type of values in the map, must be @Serializable.
- * @param json The Json instance to use for serialization. Defaults to [DefaultJson].
- * @return JSON string representing the map or null if serialization fails or map is null.
- * Note: For complex keys, ensure they are properly serializable by Kotlinx.Serialization.
- *       JSON object keys are always strings. Non-string keys are typically converted to strings.
- */
-inline fun <reified K, reified V> Map<K, V>?.toJsonStringMap(json: Json = DefaultJson): String? {
-    if (this == null) return null
-    return try {
-        json.encodeToString(this)
-    } catch (e: SerializationException) {
-        // Log error
-        null
-    }
-}
-
-/**
- * Converts a JSON string (representing an object) to a Map<K, V>.
- * @param K The target type of keys in the map, must be @Serializable or a basic type.
- * @param V The target type of values in the map, must be @Serializable.
- * @param json The Json instance to use for deserialization. Defaults to [DefaultJson].
- * @return Map<K, V> or null if deserialization fails or JSON string is null/blank.
- * Note: JSON object keys are always strings. If K is not String, ensure appropriate deserialization.
- */
 inline fun <reified K, reified V> String?.fromJsonToMap(json: Json = DefaultJson): Map<K, V>? {
     if (this.isNullOrBlank()) return null
     return try {
         json.decodeFromString<Map<K, V>>(this)
     } catch (e: SerializationException) {
-        // Log error
+        logE(message = "Json Fail", throwable = e)
         null
     }
 }
 
-// --- Alternative approach: Extensions on Json class ---
-// This can be cleaner if you always have the Json instance handy.
+// --- 智能的 Map 序列化函数 ---
 
 /**
- * Converts an object of type [T] to its JSON string representation.
- * Extension on Json class.
- * @param T The type of the object, must be @Serializable.
- * @param value The object to serialize.
- * @return JSON string or null if serialization fails.
+ * [智能] 将任意 Map 转换为 JSON 字符串。
+ *
+ * 此函数会自动检测键 (K) 或值 (V) 的类型。
+ * - 如果 K 或 V 是 Any 类型，它会使用动态、逐个转换的方式来生成 JSON。
+ * - 如果 K 和 V 都是具体的、可序列化的类型，它会使用高效的、编译时生成的标准序列化器。
+ *
+ * @param json 用于序列化的 Json 实例。
+ * @return JSON 字符串，如果序列化失败则返回 null。
  */
-inline fun <reified T> Json.tryEncodeToString(value: T): String? {
-    return try {
-        this.encodeToString(value)
-    } catch (e: SerializationException) {
-        null
+inline fun <reified K, reified V> Map<K, V>?.toJsonStringMap(json: Json = DefaultJson): String? {
+    if (this == null) return null
+
+    // 检查 K 或 V 是否为不明确的 Any 类型
+    return if (K::class == Any::class || V::class == Any::class) {
+        // 如果是，则使用支持任意键值的动态序列化方法
+        this.toDynamicJsonString(json)
+    } else {
+        // 否则，使用标准的高效序列化方法
+        try {
+            json.encodeToString(this)
+        } catch (e: SerializationException) {
+            logE(message = "Json Fail", throwable = e)
+            // 如果标准方法失败（例如，类型没有@Serializable注解），尝试降级到动态方法
+            this.toDynamicJsonString(json)
+        }
     }
 }
 
+// --- 用于动态处理的内部辅助函数 ---
+
 /**
- * Converts a JSON string to an object of type [T].
- * Extension on Json class.
- * @param T The target type of the object, must be @Serializable.
- * @param value The JSON string to deserialize.
- * @return Object of type [T] or null if deserialization fails.
+ * 这是动态转换的入口点。
  */
-inline fun <reified T> Json.tryDecodeFromString(value: String): T? {
-    return try {
-        this.decodeFromString<T>(value)
-    } catch (e: SerializationException) {
-        null
+fun Map<*, *>?.toDynamicJsonString(json: Json = DefaultJson): String? {
+    if (this == null) return null
+    return json.encodeToString(this.toDynamicJsonElement())
+}
+
+/**
+ * 定义为 private 以作为内部实现。
+ */
+private fun Map<*, *>.toDynamicJsonElement(): JsonElement {
+    val map = mutableMapOf<String, JsonElement>()
+    this.forEach { (key, value) ->
+        // 将任意类型的 key 通过 toString() 转换为 JSON 对象的字符串 key
+        map[key.toString()] = value.toDynamicJsonElement()
+    }
+    return JsonObject(map)
+}
+
+/**
+ * 将任意类型 (`Any?`) 递归转换为一个 JsonElement。
+ * 这是手动处理的核心，并采用了“混合模式”。
+ */
+private fun Any?.toDynamicJsonElement(): JsonElement {
+    return when (this) {
+        null -> JsonNull
+        is JsonElement -> this
+        is String -> JsonPrimitive(this)
+        is Number -> JsonPrimitive(this)
+        is Boolean -> JsonPrimitive(this)
+        is Map<*, *> -> this.toDynamicJsonElement() // 递归处理 Map
+        is Iterable<*> -> JsonArray(this.map { it.toDynamicJsonElement() }) // 递归处理 List 等 Iterable
+        is Array<*> -> JsonArray(this.map { it.toDynamicJsonElement() }) // 递归处理 Array
+        else -> {
+            // 混合模式：优先尝试标准序列化，失败则降级
+            try {
+                val serializer = DefaultJson.serializersModule.serializer(this::class.java)
+                DefaultJson.encodeToJsonElement(serializer, this)
+            } catch (e: Exception) {
+                logE(message = "Json Fail", throwable = e)
+                JsonPrimitive(this.toString())
+            }
+        }
     }
 }

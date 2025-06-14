@@ -70,7 +70,7 @@ object NetworkModule {
         cache: Cache
     ): OkHttpClient {
         return OkHttpClient.Builder()
-//            .addInterceptor(requestInterceptor) // 自定义参数加密逻辑
+            .addInterceptor(requestInterceptor) // 自定义参数加密逻辑
             .addInterceptor(loggingInterceptor) // 添加日志拦截器
             .cache(cache) // 设置缓存
             .connectTimeout(30, TimeUnit.SECONDS) // 连接超时时间

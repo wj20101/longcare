@@ -79,6 +79,8 @@ class RequestInterceptor @Inject constructor(
         val map = mapOf<String, Any>(
             "userId" to (userSessionRepository.sessionState.value.user?.userId ?: 0),
             "token" to userSessionRepository.sessionState.value.user?.token.orEmpty(),
+            "accountId" to (userSessionRepository.sessionState.value.user?.accountId ?: 0),
+            "companyId" to (userSessionRepository.sessionState.value.user?.companyId ?: 0),
             "nonce" to randomString,
             "timeSpan" to TimeUtils.getCurrentEpochMilliseconds(),
             "platform" to "android",
