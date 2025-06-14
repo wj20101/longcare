@@ -11,6 +11,8 @@ import com.ytone.longcare.models.protos.User
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -26,6 +28,10 @@ class LoginViewModel @Inject constructor(
 
     private val _sendSmsCodeState = MutableStateFlow<SendSmsCodeUiState>(SendSmsCodeUiState.Idle)
     val sendSmsCodeState: StateFlow<SendSmsCodeUiState> = _sendSmsCodeState
+
+    private val _countdownSeconds = MutableStateFlow(0)
+    val countdownSeconds: StateFlow<Int> = _countdownSeconds
+    private var countdownJob: Job? = null
 
     /**
      * 发送短信验证码
@@ -46,6 +52,7 @@ class LoginViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     _sendSmsCodeState.value = SendSmsCodeUiState.Success
                     showShortToast("验证码已发送")
+                    startCountdown()
                 }
 
                 is ApiResult.Failure -> {
@@ -101,6 +108,22 @@ class LoginViewModel @Inject constructor(
 
     private fun showShortToast(msg: CharSequence) {
         toastHelper.showShort(msg)
+    }
+
+    private fun startCountdown() {
+        countdownJob?.cancel()
+        countdownJob = viewModelScope.launch {
+            _countdownSeconds.value = 60
+            while (_countdownSeconds.value > 0) {
+                delay(1000L)
+                _countdownSeconds.value--
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        countdownJob?.cancel()
     }
 }
 
