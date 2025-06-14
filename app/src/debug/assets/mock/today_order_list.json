@@ -1,0 +1,18 @@
+{
+  "resultCode": 1000,
+  "resultMsg": "成功",
+  "data": [
+    {
+      "orderId": 20250615001,
+      "userId": 101,
+      "name": "今日-孙天成 (Mock)",
+      "callPhone": "13800138001",
+      "identityCardNumber": "3301...01",
+      "liveAddress": "杭州市西湖区模拟小区1号楼",
+      "state": 0,
+      "planTotalTime": 120,
+      "completeTotalTime": 0,
+      "totalServiceTime": 0
+    }
+  ]
+}

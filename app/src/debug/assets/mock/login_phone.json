@@ -1,0 +1,15 @@
+{
+  "resultCode": 1000,
+  "resultMsg": "登录成功 (来自本地Mock数据)",
+  "data": {
+    "companyId": 1,
+    "accountId": 101,
+    "userId": 1001,
+    "userName": "Mock用户",
+    "headUrl": "https://example.com/avatar.png",
+    "userIdentity": 1,
+    "identityCardNumber": "33010020000101100X",
+    "gender": 1,
+    "token": "mock-jwt-token-from-local-file-123456"
+  }
+}
