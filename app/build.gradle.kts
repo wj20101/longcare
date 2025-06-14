@@ -77,10 +77,14 @@ android {
                 "proguard-rules.pro",
             )
             buildConfigField("String", "BASE_URL", "\"https://careapi.ytone.cn\"") // 生产环境 URL
+            // 在 release 版本中，定义 USE_MOCK_DATA 常量为 false
+            buildConfigField("boolean", "USE_MOCK_DATA", "false")
         }
 
         debug {
             buildConfigField("String", "BASE_URL", "\"https://careapi.ytone.cn\"") // 测试环境 URL
+            // 在 debug 版本中，定义 USE_MOCK_DATA 常量为 true
+            buildConfigField("boolean", "USE_MOCK_DATA", "true")
         }
     }
     compileOptions {

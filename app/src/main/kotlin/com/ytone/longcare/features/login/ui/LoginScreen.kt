@@ -45,10 +45,10 @@ import com.ytone.longcare.theme.PrimaryBlue
 import com.ytone.longcare.theme.TextColorHint
 import com.ytone.longcare.theme.TextColorPrimary
 import com.ytone.longcare.theme.TextColorSecondary
-import kotlinx.coroutines.launch
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import com.ytone.longcare.features.login.ext.maxPhoneLength
 
-// 最大手机号码长度，用于控制输入长度
-private const val maxPhoneLength = 11
 
 @Composable
 fun LoginScreen(
@@ -63,6 +63,9 @@ fun LoginScreen(
     var phoneNumber by remember { mutableStateOf("") }
     var verificationCode by remember { mutableStateOf("") }
     val loginState by viewModel.loginState.collectAsState()
+    val sendSmsState by viewModel.sendSmsCodeState.collectAsState()
+
+    val verificationCodeFocusRequester = remember { FocusRequester() }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -176,7 +179,8 @@ fun LoginScreen(
                     bottom.linkTo(loginButton.top)
                     width = Dimension.fillToConstraints // 宽度填充约束
                     centerVerticallyTo(sendCodeButton) // 简便的垂直对齐方式
-                })
+                }.focusRequester(verificationCodeFocusRequester)
+            )
 
             // Login Button
             Button(
@@ -225,6 +229,12 @@ fun LoginScreen(
             navController.navigateToHomeFromLogin()
         }
     }
+
+    LaunchedEffect(sendSmsState) {
+        if (sendSmsState is SendSmsCodeUiState.Success) {
+            verificationCodeFocusRequester.requestFocus()
+        }
+    }
 }
 
 
@@ -262,18 +272,6 @@ fun SendVerificationCodeButton(
             )
         }
     }
-
-
-}
-
-
-@Composable
-fun InfinityLogo(modifier: Modifier = Modifier) {
-    Image(
-        painter = painterResource(id = R.drawable.app_logo_name),
-        contentDescription = stringResource(R.string.login_app_logo_description),
-        modifier = modifier
-    )
 }
 
 
