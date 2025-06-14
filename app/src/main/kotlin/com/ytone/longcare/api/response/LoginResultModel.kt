@@ -1,64 +1,64 @@
 package com.ytone.longcare.api.response
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 登录结果
  */
-@Serializable
+@JsonClass(generateAdapter = true)
 data class LoginResultModel(
     /**
      * 公司Id
      */
-    @SerialName("companyId")
+    @field:Json("companyId")
     val companyId: Int = 0,
 
     /**
      * 账号Id
      */
-    @SerialName("accountId")
+    @field:Json("accountId")
     val accountId: Int = 0,
 
     /**
      * 用户Id
      */
-    @SerialName("userId")
+    @field:Json("userId")
     val userId: Int = 0,
 
     /**
      * 用户名字
      */
-    @SerialName("userName")
+    @field:Json("userName")
     val userName: String = "",
 
     /**
      * 头像地址
      */
-    @SerialName("headUrl")
+    @field:Json("headUrl")
     val headUrl: String = "",
 
     /**
      * 用户身份 1护理员
      */
-    @SerialName("userIdentity")
+    @field:Json("userIdentity")
     val userIdentity: Int = 0,
 
     /**
      * 身份证号码
      */
-    @SerialName("identityCardNumber")
+    @field:Json("identityCardNumber")
     val identityCardNumber: String = "",
 
     /**
      * 性别 1男 0女
      */
-    @SerialName("gender")
+    @field:Json("gender")
     val gender: Int = 0,
 
     /**
      * 用户身份token
      */
-    @SerialName("token")
+    @field:Json("token")
     val token: String = ""
 )

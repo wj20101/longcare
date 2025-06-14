@@ -1,34 +1,34 @@
 package com.ytone.longcare.api.response
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 系统相关配置
  */
-@Serializable
+@JsonClass(generateAdapter = true)
 data class SystemConfigModel(
     /**
      * 腾讯地图key
      */
-    @SerialName("TencentMapKey")
+    @field:Json("TencentMapKey")
     val tencentMapKey: String = "",
 
     /**
      * 腾讯地图围栏半径
      */
-    @SerialName("TencentMapFenceRadius")
+    @field:Json("TencentMapFenceRadius")
     val tencentMapFenceRadius: Int = 0,
 
     /**
      * 腾讯地图定位上传间隔时间（秒）
      */
-    @SerialName("TencentMapUploadInterval")
+    @field:Json("TencentMapUploadInterval")
     val tencentMapUploadInterval: Int = 0,
 
     /**
      * 腾讯地图定位上传距离（米）
      */
-    @SerialName("TencentMapUploadDistance")
+    @field:Json("TencentMapUploadDistance")
     val tencentMapUploadDistance: Int = 0
 )

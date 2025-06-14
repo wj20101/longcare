@@ -1,70 +1,70 @@
 package com.ytone.longcare.api.response
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 今天的服务订单
  */
-@Serializable
+@JsonClass(generateAdapter = true)
 data class TodayServiceOrderModel(
     /**
      * 订单号
      */
-    @SerialName("orderId")
+    @field:Json("orderId")
     val orderId: Long = 0L,
 
     /**
      * 用户Id
      */
-    @SerialName("userId")
+    @field:Json("userId")
     val userId: Int = 0,
 
     /**
      * 姓名
      */
-    @SerialName("name")
+    @field:Json("name")
     val name: String = "",
 
     /**
      * 老人联系电话
      */
-    @SerialName("callPhone")
+    @field:Json("callPhone")
     val callPhone: String = "",
 
     /**
      * 身份证号
      */
-    @SerialName("identityCardNumber")
+    @field:Json("identityCardNumber")
     val identityCardNumber: String = "",
 
     /**
      * 居住地址
      */
-    @SerialName("liveAddress")
+    @field:Json("liveAddress")
     val liveAddress: String = "",
 
     /**
      * 状态:0待执行 1执行中 2任务完成 3作废
      */
-    @SerialName("state")
+    @field:Json("state")
     val state: Int = 0,
 
     /**
      * 中的服务时间
      */
-    @SerialName("planTotalTime")
+    @field:Json("planTotalTime")
     val planTotalTime: Int = 0,
 
     /**
      * 时间完成时间
      */
-    @SerialName("completeTotalTime")
+    @field:Json("completeTotalTime")
     val completeTotalTime: Int = 0,
 
     /**
      * 服务时长
      */
-    @SerialName("totalServiceTime")
+    @field:Json("totalServiceTime")
     val totalServiceTime: Int = 0
 )

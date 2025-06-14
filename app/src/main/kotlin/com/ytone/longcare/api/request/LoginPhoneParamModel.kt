@@ -1,28 +1,28 @@
 package com.ytone.longcare.api.request
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 手机登录请求参数
  */
-@Serializable
+@JsonClass(generateAdapter = true)
 data class LoginPhoneParamModel(
     /**
      * 手机号码:纯号码不带86区号
      */
-    @SerialName("mobile")
+    @field:Json("mobile")
     val mobile: String = "",
 
     /**
      * 短信验证码
      */
-    @SerialName("smsCode")
+    @field:Json("smsCode")
     val smsCode: String = "",
 
     /**
      * 身份1护理员
      */
-    @SerialName("userIdentity")
+    @field:Json("userIdentity")
     val userIdentity: Int = 0
 )

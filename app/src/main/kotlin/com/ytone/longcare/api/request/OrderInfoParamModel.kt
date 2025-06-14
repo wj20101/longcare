@@ -1,16 +1,16 @@
 package com.ytone.longcare.api.request
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 查询服务订单详情参数
  */
-@Serializable
+@JsonClass(generateAdapter = true)
 data class OrderInfoParamModel(
     /**
      * 查询的订单号
      */
-    @SerialName("orderid")
+    @field:Json("orderid")
     val orderId: Long = 0L
 )

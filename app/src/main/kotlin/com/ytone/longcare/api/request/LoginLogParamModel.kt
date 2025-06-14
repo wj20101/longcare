@@ -1,34 +1,34 @@
 package com.ytone.longcare.api.request
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 登录日志模型
  */
-@Serializable
+@JsonClass(generateAdapter = true)
 data class LoginLogParamModel(
     /**
      * 手机系统
      */
-    @SerialName("phoneSystem")
+    @field:Json("phoneSystem")
     val phoneSystem: String = "",
 
     /**
      * 手机系统版本
      */
-    @SerialName("phoneVersion")
+    @field:Json("phoneVersion")
     val phoneVersion: String = "",
 
     /**
      * 网络类型
      */
-    @SerialName("networkType")
+    @field:Json("networkType")
     val networkType: String = "",
 
     /**
      * 网络运营商
      */
-    @SerialName("networkOperator")
+    @field:Json("networkOperator")
     val networkOperator: String = ""
 )

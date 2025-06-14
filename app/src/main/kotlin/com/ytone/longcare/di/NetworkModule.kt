@@ -1,9 +1,10 @@
 package com.ytone.longcare.di
 
 import android.app.Application
+import com.squareup.moshi.Moshi
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.common.utils.DefaultJson
+import com.ytone.longcare.common.utils.DefaultMoshi
 import com.ytone.longcare.common.utils.DeviceUtils
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.network.interceptor.RequestInterceptor
@@ -11,13 +12,12 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import kotlinx.serialization.json.Json
 import okhttp3.Cache
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import retrofit2.converter.moshi.MoshiConverterFactory
+import retrofit2.converter.wire.WireConverterFactory
 import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -28,8 +28,8 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideKotlinxSerializationJson(): Json {
-        return DefaultJson
+    fun provideMoshi(): Moshi {
+        return DefaultMoshi
     }
 
     @Provides
@@ -48,8 +48,7 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideRequestInterceptor(
-        userSessionRepository: UserSessionRepository,
-        deviceUtils: DeviceUtils
+        userSessionRepository: UserSessionRepository, deviceUtils: DeviceUtils
     ): RequestInterceptor {
         return RequestInterceptor(userSessionRepository, deviceUtils)
     }
@@ -82,14 +81,20 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideRetrofit(
-        okHttpClient: OkHttpClient,
-        kotlinxJson: Json = DefaultJson
+        okHttpClient: OkHttpClient, moshi: Moshi // 注入 Moshi 实例
     ): Retrofit {
-        val contentType = "application/json".toMediaType()
-        return Retrofit.Builder()
-            .baseUrl(BuildConfig.BASE_URL)
-            .client(okHttpClient)
-            .addConverterFactory(kotlinxJson.asConverterFactory(contentType)) // 使用 Kotlinx Serialization Converter
+        // 1. 创建 Moshi 和 Wire 各自的转换器工厂
+        val moshiConverterFactory = MoshiConverterFactory.create(moshi)
+        val wireConverterFactory = WireConverterFactory.create()
+
+        // 2. 创建我们的“调度中心”工厂
+        val qualifiedTypeConverterFactory = QualifiedTypeConverterFactory(
+            jsonFactory = moshiConverterFactory, protobufFactory = wireConverterFactory
+        )
+
+        // 3. 构建 Retrofit 实例，只添加我们的调度工厂
+        return Retrofit.Builder().baseUrl(BuildConfig.BASE_URL).client(okHttpClient)
+            .addConverterFactory(qualifiedTypeConverterFactory)
             .build()
     }
 

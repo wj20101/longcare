@@ -1,29 +1,29 @@
 package com.ytone.longcare.api.response
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 文件上传token
  */
-@Serializable
+@JsonClass(generateAdapter = true)
 data class UploadTokenResultModel(
-    @SerialName("tmpSecretId")
+    @field:Json("tmpSecretId")
     val tmpSecretId: String = "",
-    @SerialName("tmpSecretKey")
+    @field:Json("tmpSecretKey")
     val tmpSecretKey: String = "",
-    @SerialName("sessionToken")
+    @field:Json("sessionToken")
     val sessionToken: String = "",
-    @SerialName("startTime")
+    @field:Json("startTime")
     val startTime: String = "",
-    @SerialName("requestId")
+    @field:Json("requestId")
     val requestId: String = "",
-    @SerialName("expiration")
+    @field:Json("expiration")
     val expiration: String = "",
-    @SerialName("expiredTime")
+    @field:Json("expiredTime")
     val expiredTime: String = "",
-    @SerialName("bucket")
+    @field:Json("bucket")
     val bucket: String = "",
-    @SerialName("region")
+    @field:Json("region")
     val region: String = ""
 )
