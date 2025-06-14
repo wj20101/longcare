@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.login.ui
 
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -30,6 +31,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.showLongToast
 import com.ytone.longcare.features.login.viewmodel.LoginViewModel
 import com.ytone.longcare.features.login.viewmodel.LoginUiState
@@ -53,6 +55,11 @@ private const val maxPhoneLength = 11
 fun LoginScreen(
     navController: NavController, viewModel: LoginViewModel = hiltViewModel()
 ) {
+    // ==========================================================
+    // 在这里调用函数，将此页面强制设置为竖屏
+    // ==========================================================
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+
     val context = LocalContext.current
     var phoneNumber by remember { mutableStateOf("") }
     var verificationCode by remember { mutableStateOf("") }

@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.servicehours.ui
 
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 
@@ -35,6 +37,11 @@ data class ServiceRecord(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceHoursScreen(navController: NavController) {
+
+    // ==========================================================
+    // 在这里调用函数，将此页面强制设置为竖屏
+    // ==========================================================
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     Box(
         modifier = Modifier
