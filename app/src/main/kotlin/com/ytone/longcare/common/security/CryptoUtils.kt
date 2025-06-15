@@ -332,7 +332,7 @@ object CryptoUtils {
         if (plainData.isEmpty() || keyString.isEmpty()) return null
 
         return try {
-            val keyBytes = Base64.decode(keyString, Base64.NO_WRAP)
+            val keyBytes = keyString.toByteArray()
             require(
                 keyBytes.size in listOf(
                     16,
