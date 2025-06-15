@@ -133,17 +133,17 @@ class LoginViewModel @Inject constructor(
 }
 
 private fun LoginResultModel.toUser(): User {
-    return User.build {
-        this.userId = userId
-        this.userName = userName
-        this.headUrl = headUrl
-        this.userIdentity = userIdentity
-        this.identityCardNumber = identityCardNumber
-        this.gender = gender
-        this.token = token
-        this.companyId = companyId
-        this.accountId = accountId
-    }
+    return User(
+        userId = userId,
+        userName = userName,
+        headUrl = headUrl,
+        userIdentity = userIdentity,
+        identityCardNumber = identityCardNumber,
+        gender = gender,
+        token = token,
+        companyId = companyId,
+        accountId = accountId
+    )
 }
 
 // --- UI 状态定义 ---

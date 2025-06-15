@@ -2,6 +2,7 @@ package com.ytone.longcare.features.maindashboard.ui
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,90 +28,129 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import coil3.compose.rememberAsyncImagePainter
 import com.ytone.longcare.R
+import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.maindashboard.viewmodel.MainDashboardViewModel
+import com.ytone.longcare.model.userIdentityShow
+import com.ytone.longcare.models.protos.User
 import com.ytone.longcare.theme.LongCareTheme
 
 @Composable
 fun MainDashboardScreen(
-    navController: NavController, mainDashboardViewModel: MainDashboardViewModel = hiltViewModel()
+    navController: NavController, viewModel: MainDashboardViewModel = hiltViewModel()
 ) {
+    val sessionState by viewModel.userSessionRepository.sessionState.collectAsStateWithLifecycle()
+
     Scaffold(
         containerColor = Color.Transparent
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding(), start = 16.dp, end = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp), // 项目之间的垂直间距
-            contentPadding = PaddingValues(bottom = 8.dp)
-        ) {
-            // 顶部Header
-            item {
-                Spacer(modifier = Modifier.height(8.dp)) // 顶部留出一些空间
-                TopHeader()
-            }
-
-            // Banner广告卡片
-            item {
-                HomeBannerCard()
-            }
-
-            // 功能卡片
-            item {
-                DashboardGridWithImages()
-            }
-
-            // 待服务计划列表
-            item {
-                Text(
-                    text = "待服务计划",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+        when (val state = sessionState) {
+            is SessionState.LoggedIn -> {
+                // 当且仅当用户已登录时，才渲染主界面内容
+                MainDashboardContent(
+                    user = state.user, // 传递非空的 User 对象
+                    navController = navController, modifier = Modifier.padding(paddingValues)
                 )
             }
-            // 模拟的服务计划数据
-            val servicePlans = listOf(
-                ServicePlan("孙天成", 8, "助浴服务", "杭州市西湖区328弄24号"),
-                ServicePlan("李小梅", 8, "助洁服务", "杭州市滨江区江南大道100号"),
-                ServicePlan("王大爷", 8, "助餐服务", "杭州市上城区解放路56号")
-            )
-            items(servicePlans) { plan ->
-                ServicePlanItem(plan)
+
+            is SessionState.LoggedOut, is SessionState.Unknown -> {
+                // 在登出或状态未知时（例如，正在初始化或切换），显示一个居中的加载指示器
+                // 这可以防止在状态转换的瞬间出现UI闪烁或崩溃
+                Box(
+                    modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
         }
     }
 }
 
+/**
+ * 将主界面的核心内容提取到一个新的 Composable 中
+ * @param user 保证不为空的 User 对象
+ */
 @Composable
-fun TopHeader() {
+private fun MainDashboardContent(
+    user: User, navController: NavController, modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp), // 在外部 Modifier 上应用 padding
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 8.dp)
+    ) {
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            TopHeader(user = user)
+        }
+        item {
+            HomeBannerCard()
+        }
+        item {
+            DashboardGridWithImages()
+        }
+        item {
+            Text(
+                text = "待服务计划",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        val servicePlans = listOf(
+            ServicePlan("孙天成", 8, "助浴服务", "杭州市西湖区328弄24号"),
+            ServicePlan("李小梅", 8, "助洁服务", "杭州市滨江区江南大道100号"),
+            ServicePlan("王大爷", 8, "助餐服务", "杭州市上城区解放路56号")
+        )
+        items(servicePlans) { plan ->
+            ServicePlanItem(plan)
+        }
+    }
+}
+
+/**
+ * 修改 TopHeader，现在它接收一个非空的 User 对象
+ * @param user Protobuf 生成的 User 对象，保证非空
+ */
+@Composable
+fun TopHeader(user: User) {
     Row(
         modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
     ) {
-        // Logo
         ImageWithAdaptiveWidth(
             drawableResId = R.drawable.app_logo_small_white,
             fixedHeight = 34.dp,
             contentDescription = stringResource(R.string.main_dashboard_logo)
         )
-
-        // 占位符，将右侧内容推到最右边
         Spacer(modifier = Modifier.weight(1f))
-
-        // 护理员信息
         Column(horizontalAlignment = Alignment.End) {
-            Text(text = "张默默", fontWeight = FontWeight.Bold, color = Color.White)
-            Text(text = "护理员", fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f))
+            Text(
+                text = user.userName, fontWeight = FontWeight.Bold, color = Color.White
+            )
+            Text(
+                text = user.userIdentityShow(),
+                fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f)
+            )
         }
         Spacer(modifier = Modifier.width(12.dp))
-        // 头像
+
         Image(
-            painter = ColorPainter(Color.LightGray), // 使用占位符颜色，实际应加载网络图片
-            contentDescription = stringResource(R.string.main_dashboard_nursing_staff_avatar), modifier = Modifier
+            painter = rememberAsyncImagePainter(
+                model = user.headUrl,
+                placeholder = ColorPainter(Color.LightGray),
+                error = ColorPainter(Color.LightGray)
+            ),
+            contentDescription = stringResource(R.string.main_dashboard_nursing_staff_avatar),
+            modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
+                .background(Color.White),
+            contentScale = ContentScale.Crop
         )
     }
 }
@@ -123,13 +163,11 @@ fun HomeBannerCard() {
             1,
             "https://images.pexels.com/photos/3768894/pexels-photo-3768894.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
             "Banner 1"
-        ),
-        BannerItem(
+        ), BannerItem(
             2,
             "https://images.pexels.com/photos/3831847/pexels-photo-3831847.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
             "Banner 2"
-        ),
-        BannerItem(
+        ), BannerItem(
             3,
             "https://images.pexels.com/photos/4058315/pexels-photo-4058315.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
             "Banner 3"
@@ -137,8 +175,7 @@ fun HomeBannerCard() {
     )
 
     ImageBannerPager(
-        bannerItems = sampleBanners,
-        modifier = Modifier.height(120.dp)
+        bannerItems = sampleBanners, modifier = Modifier.height(120.dp)
     )
 }
 
