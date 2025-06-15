@@ -3,6 +3,7 @@ package com.ytone.longcare.features.maindashboard.ui
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,7 +55,9 @@ fun MainDashboardScreen(
             MainDashboardContent(
                 user = loggedInUser,
                 navController = navController,
-                modifier = Modifier.padding(paddingValues)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = paddingValues.calculateTopPadding(), start = 16.dp, end = 16.dp),
             )
         } ?: run {
             // 如果 user 为 null (例如正在登出或初始化)，显示加载指示器
@@ -74,9 +77,7 @@ private fun MainDashboardContent(
     user: User, navController: NavController, modifier: Modifier = Modifier
 ) {
     LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp), // 在外部 Modifier 上应用 padding
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(bottom = 8.dp)
     ) {
@@ -142,19 +143,7 @@ fun TopHeader(user: User) {
 fun HomeBannerCard() {
     // 1. Banner 图片素材列表 (使用网络图片URL)
     val sampleBanners = listOf(
-        BannerItem(
-            1,
-            "https://images.pexels.com/photos/3768894/pexels-photo-3768894.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-            "Banner 1"
-        ), BannerItem(
-            2,
-            "https://images.pexels.com/photos/3831847/pexels-photo-3831847.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-            "Banner 2"
-        ), BannerItem(
-            3,
-            "https://images.pexels.com/photos/4058315/pexels-photo-4058315.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-            "Banner 3"
-        )
+        BannerItem(1, R.drawable.main_banner, "Banner 1")
     )
 
     ImageBannerPager(

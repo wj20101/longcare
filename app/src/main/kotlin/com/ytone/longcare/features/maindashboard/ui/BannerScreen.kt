@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.maindashboard.ui
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -27,11 +28,12 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.rememberAsyncImagePainter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.ytone.longcare.R
 
 // 定义 Banner 数据项
 data class BannerItem(
     val id: Int,
-    val imageUrl: String, // 如果是网络图片
+    @DrawableRes val imageRes: Int, // 如果是网络图片
     val description: String = "Banner Image $id"
 )
 
@@ -101,7 +103,7 @@ fun ImageBannerPager(
             ) { pageIndex ->
                 val item = bannerItems[pageIndex]
                 Image(
-                    painter = rememberAsyncImagePainter(model = item.imageUrl),
+                    painter = rememberAsyncImagePainter(model = item.imageRes),
                     contentDescription = item.description,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -153,21 +155,9 @@ fun BannerIndicatorDot(
 @Composable
 fun ImageBannerPagerPreview() {
     val sampleBanners = listOf(
-        BannerItem(
-            1,
-            "https://images.pexels.com/photos/3768894/pexels-photo-3768894.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-            "Banner 1"
-        ),
-        BannerItem(
-            2,
-            "https://images.pexels.com/photos/3831847/pexels-photo-3831847.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-            "Banner 2"
-        ),
-        BannerItem(
-            3,
-            "https://images.pexels.com/photos/4058315/pexels-photo-4058315.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-            "Banner 3"
-        )
+        BannerItem(1, R.drawable.main_banner, "Banner 1"),
+        BannerItem(2, R.drawable.main_banner, "Banner 2"),
+        BannerItem(3, R.drawable.main_banner, "Banner 3"),
     )
     MaterialTheme {
         Surface {
@@ -183,11 +173,7 @@ fun ImageBannerPagerPreview() {
 @Composable
 fun SingleImageBannerPagerPreview() {
     val singleBanner = listOf(
-        BannerItem(
-            1,
-            "https://images.pexels.com/photos/3768894/pexels-photo-3768894.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-            "Single Banner"
-        )
+        BannerItem(1, R.drawable.main_banner, "Single Banner")
     )
     MaterialTheme {
         Surface {
