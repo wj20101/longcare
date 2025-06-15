@@ -17,18 +17,26 @@ suspend fun <T> safeApiCall(
     dispatcher: CoroutineDispatcher,
     apiCall: suspend () -> Response<T>
 ): ApiResult<T> {
-    // 将网络请求切换到指定的IO线程
     return withContext(dispatcher) {
         try {
-            // 执行实际的 API 调用
             val response = apiCall()
 
-            // 检查业务状态码
-            if (response.isSuccess()) { // isSuccess() 是您在 Response 类中定义的方法
-                // 业务成功，返回成功结果和数据
-                ApiResult.Success(response.data)
+            if (response.isSuccess()) {
+                // ==========================================================
+                // 新增的核心调整：检查 data 是否为 null
+                // ==========================================================
+                val data = response.data
+                if (data != null) {
+                    // 业务成功，且 data 字段有值，返回成功结果。
+                    ApiResult.Success(data)
+                } else {
+                    // 业务成功，但 data 字段为 null。
+                    // 这可能是一种意外情况，我们将其视为一种特定的失败来处理，
+                    // 以防止将 null 传递给期望非空数据的代码。
+                    ApiResult.Failure(response.resultCode, "响应成功，但数据为空")
+                }
             } else {
-                // 业务失败，返回失败结果和错误信息
+                // 业务失败，返回失败结果和错误信息。
                 ApiResult.Failure(response.resultCode, response.resultMsg)
             }
         } catch (throwable: Throwable) {
@@ -36,12 +44,10 @@ suspend fun <T> safeApiCall(
             // 捕获所有可能的异常
             when (throwable) {
                 is IOException -> {
-                    // IO 异常，通常是网络连接问题（无网络、超时）
                     ApiResult.Exception(IOException("网络连接异常，请检查您的网络", throwable))
                 }
 
                 is HttpException -> {
-                    // HTTP 异常，例如 404 Not Found, 500 Internal Server Error
                     val code = throwable.code()
                     val errorMsg = throwable.message()
                     ApiResult.Exception(
@@ -53,8 +59,7 @@ suspend fun <T> safeApiCall(
                 }
 
                 else -> {
-                    // 其他未知异常，例如 JSON 解析错误等
-                    ApiResult.Exception(Exception("未知错误", throwable))
+                    ApiResult.Exception(Exception("未知错误: ${throwable.message}", throwable))
                 }
             }
         }
