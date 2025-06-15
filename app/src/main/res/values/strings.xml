@@ -60,4 +60,5 @@
     <string name="common_details">详情</string>
     <string name="main_dashboard_logo">标志</string>
     <string name="main_dashboard_nursing_staff_avatar">护理员头像</string>
+    <string name="user_avatar_description">头像</string>
 </resources>

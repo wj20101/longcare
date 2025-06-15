@@ -2,11 +2,9 @@ package com.ytone.longcare.features.maindashboard.ui
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
@@ -14,9 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -31,13 +27,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import coil3.compose.rememberAsyncImagePainter
 import com.ytone.longcare.R
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.maindashboard.viewmodel.MainDashboardViewModel
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
 import com.ytone.longcare.theme.LongCareTheme
+import com.ytone.longcare.ui.components.UserAvatar
 
 @Composable
 fun MainDashboardScreen(
@@ -139,19 +135,7 @@ fun TopHeader(user: User) {
         }
         Spacer(modifier = Modifier.width(12.dp))
 
-        Image(
-            painter = rememberAsyncImagePainter(
-                model = user.headUrl,
-                placeholder = ColorPainter(Color.LightGray),
-                error = ColorPainter(Color.LightGray)
-            ),
-            contentDescription = stringResource(R.string.main_dashboard_nursing_staff_avatar),
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Color.White),
-            contentScale = ContentScale.Crop
-        )
+        UserAvatar(avatarUrl = user.headUrl)
     }
 }
 
