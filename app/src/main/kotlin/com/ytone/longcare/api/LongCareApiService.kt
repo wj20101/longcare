@@ -137,4 +137,10 @@ interface LongCareApiService {
     @GET("/V1/Common/Config")
     suspend fun getSystemConfig(): Response<SystemConfigModel>
 
+    /**
+     * 退出登录
+     */
+    @GET("/V1/Login/Out")
+    suspend fun logout(): Response<Unit>
+
 }
