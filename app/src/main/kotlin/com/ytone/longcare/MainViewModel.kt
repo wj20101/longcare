@@ -13,7 +13,12 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    userSessionRepository: UserSessionRepository
+    private val userSessionRepository: UserSessionRepository
 ) : ViewModel() {
+
     val sessionState: StateFlow<SessionState> = userSessionRepository.sessionState
+
+    fun forceLogout() {
+        userSessionRepository.logout()
+    }
 }

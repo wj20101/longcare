@@ -1,11 +1,16 @@
 package com.ytone.longcare.common.network
 
+import com.ytone.longcare.common.event.AppEvent
+import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.model.Response
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.io.IOException
+
+// 定义需要强制登出的特定业务码
+private const val FORCE_LOGOUT_CODE = 3002
 
 /**
  * 一个安全的网络请求调用包装器。
@@ -15,6 +20,7 @@ import java.io.IOException
  */
 suspend fun <T> safeApiCall(
     dispatcher: CoroutineDispatcher,
+    eventBus: AppEventBus,
     apiCall: suspend () -> Response<T>
 ): ApiResult<T> {
     return withContext(dispatcher) {
@@ -36,6 +42,12 @@ suspend fun <T> safeApiCall(
                     ApiResult.Failure(response.resultCode, "响应成功，但数据为空")
                 }
             } else {
+                if (response.resultCode == FORCE_LOGOUT_CODE) {
+                    // ==========================================================
+                    // 1. 发送强制登出事件，而不是返回特殊类型
+                    // ==========================================================
+                    eventBus.sendEvent(AppEvent.ForceLogout)
+                }
                 // 业务失败，返回失败结果和错误信息。
                 ApiResult.Failure(response.resultCode, response.resultMsg)
             }
