@@ -30,6 +30,13 @@ class DeviceUtils @Inject constructor(
         private const val INVALID_ANDROID_ID_VALUE = "9774d56d682e549c" // 常见的不可靠ANDROID_ID
     }
 
+    // ==========================================================
+    // 1. 新增：用于内存缓存的私有变量
+    //    @Volatile 确保在多线程环境中，一个线程的写入对其他线程立即可见。
+    // ==========================================================
+    @Volatile
+    private var cachedAppInstanceId: String? = null
+
     /**
      * 获取 ANDROID_ID。
      *
@@ -81,31 +88,43 @@ class DeviceUtils @Inject constructor(
      *
      * @return 应用安装实例的唯一 ID。
      */
-    @Synchronized
     fun getAppInstanceId(): String {
-        // 1. 检查是否已存在生成的ID (通常是UUID)
-        val storedId = deviceIdPrefs.getString(PREFS_GENERATED_ID_KEY, null)
-        if (!storedId.isNullOrEmpty()) {
-            // Log.d("DeviceUtils", "Returning stored generated ID: $storedId")
-            return storedId
-        }
 
-        // 2. 如果没有存储的ID，尝试使用 ANDROID_ID (如果它“好”)
-        val androidId = fetchAndroidIdInternal() // 获取经过处理的 ANDROID_ID
-        if (androidId != null) {
-            // Log.d("DeviceUtils", "Using valid ANDROID_ID as app instance ID: $androidId")
-            // 将有效的 ANDROID_ID 存储起来，作为此“安装实例”的 ID
-            // 后续调用将直接返回这个存储的 ID，即使 ANDROID_ID 因某种原因（非卸载）变化
-            // 但如果应用数据被清除，这里会重新执行，可能会获取到新的 ANDROID_ID (如果系统分配了新的)
-            deviceIdPrefs.edit { putString(PREFS_GENERATED_ID_KEY, androidId) }
-            return androidId
-        }
+        // 优先从内存缓存中读取，如果存在，则直接返回，效率最高。
+        cachedAppInstanceId?.let { return it }
 
-        // 3. 如果 ANDROID_ID 无效或不可用，生成新的 UUID
-        // Log.d("DeviceUtils", "ANDROID_ID is invalid or null, generating new UUID.")
-        val newUuid = UUID.randomUUID().toString()
-        deviceIdPrefs.edit { putString(PREFS_GENERATED_ID_KEY, newUuid) }
-        return newUuid
+        synchronized(this) {
+
+            // 再次检查缓存，因为可能在等待锁的时候，其他线程已经完成了初始化。
+            cachedAppInstanceId?.let { return it }
+
+            // 1. 检查是否已存在生成的ID (通常是UUID)
+            val storedId = deviceIdPrefs.getString(PREFS_GENERATED_ID_KEY, null)
+            if (!storedId.isNullOrEmpty()) {
+                // Log.d("DeviceUtils", "Returning stored generated ID: $storedId")
+                cachedAppInstanceId = storedId
+                return storedId
+            }
+
+            // 2. 如果没有存储的ID，尝试使用 ANDROID_ID (如果它“好”)
+            val androidId = fetchAndroidIdInternal() // 获取经过处理的 ANDROID_ID
+            if (androidId != null) {
+                // Log.d("DeviceUtils", "Using valid ANDROID_ID as app instance ID: $androidId")
+                // 将有效的 ANDROID_ID 存储起来，作为此“安装实例”的 ID
+                // 后续调用将直接返回这个存储的 ID，即使 ANDROID_ID 因某种原因（非卸载）变化
+                // 但如果应用数据被清除，这里会重新执行，可能会获取到新的 ANDROID_ID (如果系统分配了新的)
+                deviceIdPrefs.edit { putString(PREFS_GENERATED_ID_KEY, androidId) }
+                cachedAppInstanceId = androidId
+                return androidId
+            }
+
+            // 3. 如果 ANDROID_ID 无效或不可用，生成新的 UUID
+            // Log.d("DeviceUtils", "ANDROID_ID is invalid or null, generating new UUID.")
+            val newUuid = UUID.randomUUID().toString()
+            deviceIdPrefs.edit { putString(PREFS_GENERATED_ID_KEY, newUuid) }
+            cachedAppInstanceId = newUuid
+            return newUuid
+        }
     }
 
 
