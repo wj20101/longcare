@@ -109,10 +109,8 @@ option java_multiple_files = true;
 //
 //// 系统相关配置
 //message SystemConfig {
-//  string tencent_map_key = 1 [json_name = "TencentMapKey"]; // 腾讯地图key
-//  int32 tencent_map_fence_radius = 2 [json_name = "TencentMapFenceRadius"]; // 腾讯地图围栏半径
-//  int32 tencent_map_upload_interval = 3 [json_name = "TencentMapUploadInterval"]; // 腾讯地图定位上传间隔时间（秒）
-//  int32 tencent_map_upload_distance = 4 [json_name = "TencentMapUploadDistance"]; // 腾讯地图定位上传距离（米）
+//  string company_name = 1 [json_name = "companyName"]; // 公司名称
+//  int32 max_img_num = 2 [json_name = "maxImgNum"]; // 上传最大的数量
 //}
 //
 //// 服务订单数据模型
