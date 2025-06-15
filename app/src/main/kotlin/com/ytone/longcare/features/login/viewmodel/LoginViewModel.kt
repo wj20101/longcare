@@ -85,7 +85,7 @@ class LoginViewModel @Inject constructor(
                     val loginResult = result.data
                     // 登录成功，转换并保存User对象
                     val user = loginResult.toUser()
-                    userSessionRepository.loginUser(user)
+                    userSessionRepository.login(user)
 
                     _loginState.value = LoginUiState.Success(user)
                     showShortToast("登录成功")

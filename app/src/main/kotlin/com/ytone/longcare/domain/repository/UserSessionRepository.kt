@@ -48,7 +48,7 @@ interface UserSessionRepository {
     /**
      * 登录用户，并持久化用户信息。
      */
-    fun loginUser(user: User)
+    fun login(user: User)
 
     /**
      * 更新当前登录的用户信息。
@@ -58,5 +58,5 @@ interface UserSessionRepository {
     /**
      * 退出登录，并清除持久化的用户信息。
      */
-    fun logoutUser()
+    fun logout()
 }

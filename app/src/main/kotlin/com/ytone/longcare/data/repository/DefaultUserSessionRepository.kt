@@ -62,7 +62,7 @@ class DefaultUserSessionRepository @Inject constructor(
             initialValue = SessionState.Unknown // <-- 关键：初始状态为 Unknown
         )
 
-    override fun loginUser(user: User) {
+    override fun login(user: User) {
         updateUserInternal(user)
     }
 
@@ -78,7 +78,7 @@ class DefaultUserSessionRepository @Inject constructor(
         }
     }
 
-    override fun logoutUser() {
+    override fun logout() {
         coroutineScope.launch {
             appDataStore.edit { preferences ->
                 preferences.remove(DataStoreKeys.APP_USER)
