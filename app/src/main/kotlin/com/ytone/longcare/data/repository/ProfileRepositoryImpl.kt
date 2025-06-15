@@ -1,4 +1,4 @@
-package com.ytone.longcare.domain.impl
+package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.domain.profile.ProfileRepository

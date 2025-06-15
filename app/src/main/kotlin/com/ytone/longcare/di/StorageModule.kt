@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.ytone.longcare.data.storage.appDataStore
-import com.ytone.longcare.domain.impl.DefaultUserSessionRepository
+import com.ytone.longcare.data.repository.DefaultUserSessionRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

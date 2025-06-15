@@ -1,11 +1,9 @@
 package com.ytone.longcare.di
 
-import com.ytone.longcare.data.repository.SampleRepositoryImpl
-import com.ytone.longcare.domain.impl.LoginRepositoryImpl
-import com.ytone.longcare.domain.impl.ProfileRepositoryImpl
+import com.ytone.longcare.data.repository.LoginRepositoryImpl
+import com.ytone.longcare.data.repository.ProfileRepositoryImpl
 import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.profile.ProfileRepository
-import com.ytone.longcare.domain.repository.SampleRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -15,9 +13,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
-    @Binds
-    @Singleton
-    abstract fun bindSampleRepository(impl: SampleRepositoryImpl): SampleRepository
 
     @Binds
     @Singleton

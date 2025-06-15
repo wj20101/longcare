@@ -1,4 +1,4 @@
-package com.ytone.longcare.domain.impl
+package com.ytone.longcare.data.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences

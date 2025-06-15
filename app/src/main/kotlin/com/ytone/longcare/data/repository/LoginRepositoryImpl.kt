@@ -1,4 +1,4 @@
-package com.ytone.longcare.domain.impl
+package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.request.LoginPhoneParamModel
