@@ -22,7 +22,8 @@ class ProfileRepositoryImpl @Inject constructor(
     }
 
     override suspend fun logout(): ApiResult<Unit> {
+        val result = safeApiCall(ioDispatcher, eventBus) { apiService.logout() }
         userSessionRepository.logout()
-        return ApiResult.Success(Unit)
+        return result
     }
 }
