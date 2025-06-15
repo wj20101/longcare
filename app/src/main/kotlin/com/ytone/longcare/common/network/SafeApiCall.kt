@@ -15,6 +15,7 @@ private const val FORCE_LOGOUT_CODE = 3002
 /**
  * 一个安全的网络请求调用包装器。
  * @param dispatcher 执行网络请求的协程调度器，通常是 Dispatchers.IO。
+ * @param eventBus 用于发送特殊事件。
  * @param apiCall 一个 suspend lambda，它代表了实际的 Retrofit API 调用。
  * @return 返回一个 ApiResult 对象，封装了成功、业务失败或异常的结果。
  */
@@ -44,7 +45,7 @@ suspend fun <T> safeApiCall(
             } else {
                 if (response.resultCode == FORCE_LOGOUT_CODE) {
                     // ==========================================================
-                    // 1. 发送强制登出事件，而不是返回特殊类型
+                    // 发送强制登出事件，而不是返回特殊类型
                     // ==========================================================
                     eventBus.sendEvent(AppEvent.ForceLogout)
                 }
