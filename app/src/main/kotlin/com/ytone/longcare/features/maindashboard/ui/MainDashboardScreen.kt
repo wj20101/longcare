@@ -173,22 +173,22 @@ fun DashboardGridWithImages() {
                 subtitle = "查看过往服务记录",
             )
         }
-        // 第二行
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            InfoCard(
-                modifier = Modifier.weight(1f),
-                iconRes = R.drawable.main_ic_hours,
-                title = "工时: 22322",
-                subtitle = "服务工时统计",
-            )
-            InfoCard(
-                modifier = Modifier.weight(1f),
-                iconRes = R.drawable.main_ic_study,
-                title = "待学习",
-                subtitle = "服务标准学习",
-                badgeCount = 12,
-            )
-        }
+//        // 第二行
+//        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+//            InfoCard(
+//                modifier = Modifier.weight(1f),
+//                iconRes = R.drawable.main_ic_hours,
+//                title = "工时: 22322",
+//                subtitle = "服务工时统计",
+//            )
+//            InfoCard(
+//                modifier = Modifier.weight(1f),
+//                iconRes = R.drawable.main_ic_study,
+//                title = "待学习",
+//                subtitle = "服务标准学习",
+//                badgeCount = 12,
+//            )
+//        }
     }
 }
 
