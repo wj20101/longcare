@@ -25,10 +25,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
+import com.ytone.longcare.api.response.NurseServiceTimeModel
 import com.ytone.longcare.features.home.viewmodel.HomeSharedViewModel
 import com.ytone.longcare.features.profile.viewmodel.ProfileViewModel
 import com.ytone.longcare.model.userIdentityShow
@@ -48,6 +52,16 @@ fun ProfileScreen(
     }
     val homeSharedViewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
     val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
+
+    val statsState by viewModel.statsState.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        // 当此 Composable 的生命周期进入 RESUMED 状态时（即回到此页面），
+        // 就会执行刷新操作。
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.refreshStats()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -75,7 +89,7 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 UserInfoSection(user = loggedInUser)
                 Spacer(modifier = Modifier.height(24.dp))
-                StatsCard()
+                StatsCard(stats = statsState)
                 Spacer(modifier = Modifier.height(24.dp))
                 OptionsCard()
                 Spacer(modifier = Modifier.weight(1f))
@@ -121,7 +135,7 @@ fun UserInfoSection(user: User) {
 }
 
 @Composable
-fun StatsCard() {
+fun StatsCard(stats: NurseServiceTimeModel) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -135,15 +149,15 @@ fun StatsCard() {
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            StatItem(value = "2321", label = "已服务工时")
+            StatItem(value = stats.haveServiceTime.toString(), label = "已服务工时")
             VerticalDivider(
                 modifier = Modifier.height(30.dp), thickness = 1.dp, color = Color(0xFFF0F0F0)
             )
-            StatItem(value = "122", label = "服务次数")
+            StatItem(value = stats.haveServiceNum.toString(), label = "服务次数")
             VerticalDivider(
                 modifier = Modifier.height(30.dp), thickness = 1.dp, color = Color(0xFFF0F0F0)
             )
-            StatItem(value = "223", label = "未服务工时")
+            StatItem(value = stats.noServiceTime.toString(), label = "未服务工时")
         }
     }
 }
