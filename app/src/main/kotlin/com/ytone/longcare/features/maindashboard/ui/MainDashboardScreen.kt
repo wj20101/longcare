@@ -25,10 +25,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
+import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.features.home.viewmodel.HomeSharedViewModel
 import com.ytone.longcare.features.maindashboard.viewmodel.MainDashboardViewModel
 import com.ytone.longcare.model.userIdentityShow
@@ -44,8 +48,19 @@ fun MainDashboardScreen(
     val parentEntry = remember(navController.currentBackStackEntry) {
         navController.getBackStackEntry(AppDestinations.HOME_ROUTE)
     }
-    val viewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
-    val user by viewModel.userState.collectAsStateWithLifecycle()
+    val homeSharedViewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
+    val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
+
+    val todayOrderList by viewModel.todayOrderListState.collectAsStateWithLifecycle()
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        // 当此 Composable 的生命周期进入 RESUMED 状态时（即回到此页面），
+        // 就会执行刷新操作。
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.loadTodayOrders()
+        }
+    }
 
     Scaffold(
         containerColor = Color.Transparent
@@ -54,10 +69,9 @@ fun MainDashboardScreen(
         user?.let { loggedInUser ->
             MainDashboardContent(
                 user = loggedInUser,
+                todayOrderList = todayOrderList,
                 navController = navController,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = paddingValues.calculateTopPadding(), start = 16.dp, end = 16.dp),
+                modifier = Modifier.padding(top = paddingValues.calculateTopPadding(), start = 16.dp, end = 16.dp)
             )
         } ?: run {
             // 如果 user 为 null (例如正在登出或初始化)，显示加载指示器
@@ -74,7 +88,10 @@ fun MainDashboardScreen(
  */
 @Composable
 private fun MainDashboardContent(
-    user: User, navController: NavController, modifier: Modifier = Modifier
+    user: User,
+    todayOrderList: List<TodayServiceOrderModel>,
+    navController: NavController,
+    modifier: Modifier = Modifier
 ) {
     LazyColumn(
         modifier = modifier,
@@ -89,22 +106,28 @@ private fun MainDashboardContent(
             HomeBannerCard()
         }
         item {
-            DashboardGridWithImages()
+            DashboardGridWithImages(pendingCarePlanCount = todayOrderList.count { it.state == 0 })
         }
-        item {
-            Text(
-                text = "待服务计划",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+        val servicePlans = todayOrderList.filter { it.state == 0 }.map {
+            ServicePlan(
+                name = it.name,
+                hours = it.totalServiceTime,
+                serviceType = "",
+                address = it.liveAddress
             )
         }
-        val servicePlans = listOf(
-            ServicePlan("孙天成", 8, "助浴服务", "杭州市西湖区328弄24号"),
-            ServicePlan("李小梅", 8, "助洁服务", "杭州市滨江区江南大道100号"),
-            ServicePlan("王大爷", 8, "助餐服务", "杭州市上城区解放路56号")
-        )
-        items(servicePlans) { plan ->
-            ServicePlanItem(plan)
+
+        if (servicePlans.isNotEmpty()) {
+            item {
+                Text(
+                    text = "待服务计划",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            items(servicePlans) { plan ->
+                ServicePlanItem(plan)
+            }
         }
     }
 }
@@ -151,9 +174,12 @@ fun HomeBannerCard() {
     )
 }
 
-// 整体仪表盘网格
+/**
+ * 整体仪表盘网格
+ * @param pendingCarePlanCount 待护理计划总数
+ */
 @Composable
-fun DashboardGridWithImages() {
+fun DashboardGridWithImages(pendingCarePlanCount: Int) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp) // 行之间的间距
     ) {
@@ -163,8 +189,8 @@ fun DashboardGridWithImages() {
                 modifier = Modifier.weight(1f),
                 iconRes = R.drawable.main_ic_plan,
                 title = "待护理计划",
-                subtitle = "你有12个护理待执行",
-                badgeCount = 12,
+                subtitle = if (pendingCarePlanCount > 0) "你有${pendingCarePlanCount}个护理待执行" else "",
+                badgeCount = pendingCarePlanCount,
             )
             InfoCard(
                 modifier = Modifier.weight(1f),
@@ -234,7 +260,7 @@ fun InfoCard(
                         fontSize = 15.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    if (badgeCount != null) {
+                    if (badgeCount != null && badgeCount > 0) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Badge(
                             containerColor = Color(0xFFFFC107)
@@ -248,19 +274,21 @@ fun InfoCard(
                         }
                     }
                 }
-                // 副标题
-                Text(
-                    text = subtitle,
-                    fontSize = 10.sp,
-                    color = Color.Gray,
-                    lineHeight = 12.sp,
-                    style = TextStyle(
-                        lineHeightStyle = LineHeightStyle(
-                            alignment = LineHeightStyle.Alignment.Center,
-                            trim = LineHeightStyle.Trim.Both
+                if (subtitle.isNotBlank()){
+                    // 副标题
+                    Text(
+                        text = subtitle,
+                        fontSize = 10.sp,
+                        color = Color.Gray,
+                        lineHeight = 12.sp,
+                        style = TextStyle(
+                            lineHeightStyle = LineHeightStyle(
+                                alignment = LineHeightStyle.Alignment.Center,
+                                trim = LineHeightStyle.Trim.Both
+                            )
                         )
                     )
-                )
+                }
             }
         }
     }
