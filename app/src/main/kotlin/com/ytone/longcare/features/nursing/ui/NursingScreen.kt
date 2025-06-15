@@ -56,7 +56,7 @@ fun NursingScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "待护理计划",
+                        "护理工作",
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
