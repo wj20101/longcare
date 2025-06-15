@@ -10,7 +10,7 @@ class ProfileRepositoryImpl @Inject constructor(
 ) : ProfileRepository {
 
     override suspend fun logout(): ApiResult<Unit> {
-        userSessionRepository.logoutUser()
+        userSessionRepository.logout()
         return ApiResult.Success(Unit)
     }
 }

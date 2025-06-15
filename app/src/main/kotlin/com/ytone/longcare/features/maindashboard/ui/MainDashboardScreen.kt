@@ -28,10 +28,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
-import com.ytone.longcare.domain.repository.SessionState
+import com.ytone.longcare.features.home.viewmodel.HomeSharedViewModel
 import com.ytone.longcare.features.maindashboard.viewmodel.MainDashboardViewModel
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
+import com.ytone.longcare.navigation.AppDestinations
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.ui.components.UserAvatar
 
@@ -39,28 +40,26 @@ import com.ytone.longcare.ui.components.UserAvatar
 fun MainDashboardScreen(
     navController: NavController, viewModel: MainDashboardViewModel = hiltViewModel()
 ) {
-    val sessionState by viewModel.userSessionRepository.sessionState.collectAsStateWithLifecycle()
+    val parentEntry = remember(navController.currentBackStackEntry) {
+        navController.getBackStackEntry(AppDestinations.HOME_ROUTE)
+    }
+    val viewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
+    val user by viewModel.userState.collectAsStateWithLifecycle()
 
     Scaffold(
         containerColor = Color.Transparent
     ) { paddingValues ->
-        when (val state = sessionState) {
-            is SessionState.LoggedIn -> {
-                // 当且仅当用户已登录时，才渲染主界面内容
-                MainDashboardContent(
-                    user = state.user, // 传递非空的 User 对象
-                    navController = navController, modifier = Modifier.padding(paddingValues)
-                )
-            }
-
-            is SessionState.LoggedOut, is SessionState.Unknown -> {
-                // 在登出或状态未知时（例如，正在初始化或切换），显示一个居中的加载指示器
-                // 这可以防止在状态转换的瞬间出现UI闪烁或崩溃
-                Box(
-                    modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+        // 只有在 user 不为 null (即已登录) 的情况下才显示内容
+        user?.let { loggedInUser ->
+            MainDashboardContent(
+                user = loggedInUser,
+                navController = navController,
+                modifier = Modifier.padding(paddingValues)
+            )
+        } ?: run {
+            // 如果 user 为 null (例如正在登出或初始化)，显示加载指示器
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
         }
     }

@@ -1,7 +1,6 @@
 package com.ytone.longcare.features.profile.ui
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -12,12 +11,10 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -28,11 +25,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
+import com.ytone.longcare.features.home.viewmodel.HomeSharedViewModel
 import com.ytone.longcare.features.profile.viewmodel.ProfileViewModel
+import com.ytone.longcare.model.userIdentityShow
+import com.ytone.longcare.models.protos.User
+import com.ytone.longcare.navigation.AppDestinations
 import com.ytone.longcare.theme.LongCareTheme
+import com.ytone.longcare.ui.components.UserAvatar
 
 // 主屏幕入口
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,6 +43,12 @@ import com.ytone.longcare.theme.LongCareTheme
 fun ProfileScreen(
     navController: NavController, viewModel: ProfileViewModel = hiltViewModel()
 ) {
+    val parentEntry = remember(navController.currentBackStackEntry) {
+        navController.getBackStackEntry(AppDestinations.HOME_ROUTE)
+    }
+    val homeSharedViewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
+    val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -55,47 +64,48 @@ fun ProfileScreen(
             )
         }, containerColor = Color.Transparent
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding(), start = 16.dp, end = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            UserInfoSection()
-            Spacer(modifier = Modifier.height(24.dp))
-            StatsCard()
-            Spacer(modifier = Modifier.height(24.dp))
-            OptionsCard()
-            Spacer(modifier = Modifier.weight(1f))
-            LogoutButton { viewModel.logout() }
-            Spacer(modifier = Modifier.height(24.dp))
+        user?.let { loggedInUser ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(24.dp))
+                UserInfoSection(user = loggedInUser)
+                Spacer(modifier = Modifier.height(24.dp))
+                StatsCard()
+                Spacer(modifier = Modifier.height(24.dp))
+                OptionsCard()
+                Spacer(modifier = Modifier.weight(1f))
+                LogoutButton(onClick = { viewModel.logout() })
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        } ?: run {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
         }
     }
 }
 
 @Composable
-fun UserInfoSection() {
+fun UserInfoSection(user: User) {
     Row(
         modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(
-            painter = ColorPainter(Color.LightGray),
-            contentDescription = stringResource(R.string.profile_user_avatar),
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-        )
+        UserAvatar(avatarUrl = user.headUrl)
         Spacer(modifier = Modifier.width(16.dp))
         Column {
             Text(
-                text = "张默默",
+                text = user.userName,
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
                 color = Color.White
             )
             Text(
-                text = "护理员",
+                text = user.userIdentityShow(),
                 color = Color.White.copy(alpha = 0.5f),
                 fontSize = 12.sp,
                 lineHeight = 12.sp,
@@ -192,9 +202,9 @@ fun OptionItem(icon: ImageVector, text: String, onClick: () -> Unit) {
 }
 
 @Composable
-fun LogoutButton(logoutClick: () -> Unit = {}) {
+fun LogoutButton(onClick: () -> Unit = {}) {
     OutlinedButton(
-        onClick = logoutClick,
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .height(50.dp),
