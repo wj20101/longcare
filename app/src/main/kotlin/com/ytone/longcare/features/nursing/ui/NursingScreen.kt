@@ -26,26 +26,37 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.DisplayDate
+import com.ytone.longcare.common.utils.TimeUtils
 import com.ytone.longcare.features.nursing.viewmodel.NursingViewModel
 import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.theme.LongCareTheme
 import kotlinx.coroutines.launch
 
-// --- 数据模型 (与之前相同) ---
-data class DateInfo(val dayOfWeek: String, val date: String)
+/**
+ * 用于 UI 层的状态包装类，仅增加了一个 isSelected 字段来管理UI选择状态。
+ */
+private data class UiDate(
+    val displayInfo: DisplayDate
+)
 data class PlanItem(
     val name: String, val hours: Int, val service: String, val address: String, val status: String?
 )
 
-// --- 主屏幕 (重构后) ---
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NursingScreen(
     navController: NavController, viewModel: NursingViewModel = hiltViewModel()
 ) {
-    val dates = remember { createDateList() }
-    val pagerState = rememberPagerState { dates.size }
+    val dateList by remember {
+        mutableStateOf(
+            TimeUtils.getCurrentMonthDateList().map { displayDate ->
+                UiDate(displayInfo = displayDate)
+            }
+        )
+    }
+    val pagerState = rememberPagerState { dateList.size }
     val coroutineScope = rememberCoroutineScope()
 
     val selectedTabContentColor = Color(0xFF4A86E8) // 选中 Tab 的文字颜色
@@ -77,7 +88,7 @@ fun NursingScreen(
                 divider = {},
                 indicator = {}
             ) {
-                dates.forEachIndexed { index, dateInfo ->
+                dateList.forEachIndexed { index, dateInfo ->
                     val isSelected = pagerState.currentPage == index
                     Tab(
                         selected = isSelected,
@@ -97,12 +108,12 @@ fun NursingScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
-                                    text = dateInfo.dayOfWeek,
+                                    text = dateInfo.displayInfo.dayOfWeek,
                                     fontWeight = FontWeight.Bold,
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = dateInfo.date,
+                                    text = dateInfo.displayInfo.dateLabel,
                                     fontSize = 12.sp
                                 )
                             }
@@ -210,19 +221,6 @@ fun PlanListItem(modifier: Modifier,item: PlanItem) {
 }
 
 
-// --- 模拟数据创建函数 ---
-private fun createDateList(): List<DateInfo> {
-    return listOf(
-        DateInfo("昨天", "05/10"),
-        DateInfo("今天", "05/11"),
-        DateInfo("明天", "05/12"),
-        DateInfo("周二", "05/13"),
-        DateInfo("周三", "05/14"),
-        DateInfo("周四", "05/15"),
-        DateInfo("周五", "05/16"),
-        DateInfo("周六", "05/17")
-    )
-}
 
 private fun createPlanList(): List<PlanItem> {
     return listOf(

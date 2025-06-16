@@ -3,7 +3,119 @@ package com.ytone.longcare.common.utils
 import kotlinx.datetime.*
 import kotlin.time.Duration.Companion.days
 
+/**
+ * 一个通用的、用于UI显示日期信息的数据类。
+ * 它不依赖任何特定的UI组件。
+ *
+ * @param timestamp 当天零点的毫秒级时间戳，用于业务逻辑。
+ * @param dayOfWeek 供UI显示的星期字符串，如 "今天", "周一"。
+ * @param dateLabel 供UI显示的月/日字符串，如 "06/05"。
+ * @param isToday 是否是今天。
+ */
+data class DisplayDate(
+    val timestamp: Long,
+    val dayOfWeek: String,
+    val dateLabel: String,
+    val isToday: Boolean
+)
+
 object TimeUtils {
+
+    /**
+     * 获取一个以今天为中心的、用于UI选择的日期列表。
+     * @param pastDays 显示今天之前的天数。
+     * @param futureDays 显示今天之后的天数。
+     * @return 返回一个包含格式化日期信息的列表。
+     */
+    fun getWeeklyDateList(pastDays: Int = 3, futureDays: Int = 3): List<DisplayDate> {
+        val dateList = mutableListOf<DisplayDate>()
+        val systemTimeZone = TimeZone.currentSystemDefault()
+        val today = Clock.System.todayIn(systemTimeZone)
+
+        val startDate = today.plus(DatePeriod(days = -pastDays))
+        val totalDays = pastDays + futureDays + 1
+
+        for (i in 0 until totalDays) {
+            val currentDate = startDate.plus(DatePeriod(days = i))
+            dateList.add(createDisplayDateFrom(currentDate, today, systemTimeZone))
+        }
+        return dateList
+    }
+
+    /**
+     * 获取指定月份的所有日期列表。
+     * @param year 年份，默认为当年。
+     * @param monthNumber 月份 (1-12)，默认为当月。
+     * @return 返回该月所有日期的 DisplayDate 列表。
+     */
+    fun getCurrentMonthDateList(
+        year: Int = Clock.System.todayIn(TimeZone.currentSystemDefault()).year,
+        monthNumber: Int = Clock.System.todayIn(TimeZone.currentSystemDefault()).monthNumber
+    ): List<DisplayDate> {
+        val dateList = mutableListOf<DisplayDate>()
+        val systemTimeZone = TimeZone.currentSystemDefault()
+        val today = Clock.System.todayIn(systemTimeZone)
+
+        var currentDate = LocalDate(year, monthNumber, 1)
+
+        // 循环直到月份改变
+        while (currentDate.monthNumber == monthNumber) {
+            dateList.add(createDisplayDateFrom(currentDate, today, systemTimeZone))
+            currentDate = currentDate.plus(DatePeriod(days = 1))
+        }
+        return dateList
+    }
+
+    /**
+     * 从一个 LocalDate 创建 DisplayDate，这是一个内部辅助函数。
+     */
+    private fun createDisplayDateFrom(
+        currentDate: LocalDate,
+        today: LocalDate,
+        timeZone: TimeZone
+    ): DisplayDate {
+        val dayOfWeekString = formatDayOfWeek(currentDate, today)
+
+        val monthStr = currentDate.monthNumber.toString().padStart(2, '0')
+        val dayStr = currentDate.dayOfMonth.toString().padStart(2, '0')
+        val dateLabelString = "$monthStr/$dayStr"
+
+        val timestamp = currentDate.atStartOfDayIn(timeZone).toEpochMilliseconds()
+        val isToday = currentDate == today
+
+        return DisplayDate(
+            timestamp = timestamp,
+            dayOfWeek = dayOfWeekString,
+            dateLabel = dateLabelString,
+            isToday = isToday
+        )
+    }
+
+    /**
+     * 根据规则格式化星期几的显示文本。
+     */
+    private fun formatDayOfWeek(date: LocalDate, today: LocalDate): String {
+        val yesterday = today.plus(DatePeriod(days = -1))
+        val tomorrow = today.plus(DatePeriod(days = 1))
+
+        return when (date) {
+            today -> "今天"
+            yesterday -> "昨天"
+            tomorrow -> "明天"
+            else -> {
+                when (date.dayOfWeek.ordinal) {
+                    0 -> "周一"  // MONDAY
+                    1 -> "周二"  // TUESDAY
+                    2 -> "周三"  // WEDNESDAY
+                    3 -> "周四"  // THURSDAY
+                    4 -> "周五"  // FRIDAY
+                    5 -> "周六"  // SATURDAY
+                    6 -> "周日"  // SUNDAY
+                    else -> "未知"
+                }
+            }
+        }
+    }
 
     /**
      * 获取当前 Instant (通常是 UTC 时间点)
