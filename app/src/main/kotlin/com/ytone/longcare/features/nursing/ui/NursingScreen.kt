@@ -56,7 +56,8 @@ fun NursingScreen(
             }
         )
     }
-    val pagerState = rememberPagerState { dateList.size }
+    val initialPage = dateList.indexOfFirst { it.displayInfo.isToday }.coerceAtLeast(0)
+    val pagerState = rememberPagerState(initialPage = initialPage) { dateList.size }
     val coroutineScope = rememberCoroutineScope()
 
     val selectedTabContentColor = Color(0xFF4A86E8) // 选中 Tab 的文字颜色
