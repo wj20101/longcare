@@ -2,9 +2,20 @@ package com.ytone.longcare.features.nursing.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -39,27 +51,27 @@ import kotlinx.coroutines.launch
 private data class UiDate(
     val displayInfo: DisplayDate
 )
+
 data class PlanItem(
     val name: String, val hours: Int, val service: String, val address: String, val status: String?
 )
 
+
+// 缓存当月日期列表，避免重复计算
+private val currentMonthDateList by lazy {
+    TimeUtils.getCurrentMonthDateList().map { displayDate ->
+        UiDate(displayInfo = displayDate)
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NursingScreen(
     navController: NavController, viewModel: NursingViewModel = hiltViewModel()
 ) {
-    val dateList by remember {
-        mutableStateOf(
-            TimeUtils.getCurrentMonthDateList().map { displayDate ->
-                UiDate(displayInfo = displayDate)
-            }
-        )
-    }
-    val initialPage = dateList.indexOfFirst { it.displayInfo.isToday }.coerceAtLeast(0)
-    val pagerState = rememberPagerState(initialPage = initialPage) { dateList.size }
+    val dateList = currentMonthDateList
+    val pagerState = rememberPagerState(initialPage = dateList.indexOfFirst { it.displayInfo.isToday }.coerceAtLeast(0)) { dateList.size }
     val coroutineScope = rememberCoroutineScope()
-
     val selectedTabContentColor = Color(0xFF4A86E8) // 选中 Tab 的文字颜色
     val unselectedTabContentColor = Color.White // 未选中 Tab 的文字颜色
 
@@ -81,45 +93,65 @@ fun NursingScreen(
         }, containerColor = Color.Transparent
     ) { paddingValues ->
         Column(modifier = Modifier.padding(top = paddingValues.calculateTopPadding())) {
-            ScrollableTabRow(
-                selectedTabIndex = pagerState.currentPage,
+            val lazyListState = rememberLazyListState()
+            
+            val density = LocalDensity.current
+            
+            // 同步LazyRow和HorizontalPager的滚动状态，选中项居中显示
+            LaunchedEffect(pagerState.currentPage) {
+                val targetIndex = pagerState.currentPage
+                if (targetIndex >= 0 && targetIndex < dateList.size) {
+                    // 使用更简单的方式计算居中偏移
+                    // 每个tab项约65dp宽度，让选中项居中显示
+                    val itemWidthPx = with(density) { 65.dp.toPx() }
+                    val centerOffsetPx = (itemWidthPx * 2).toInt() // 简化的居中偏移计算
+                    
+                    lazyListState.animateScrollToItem(
+                        index = targetIndex,
+                        scrollOffset = -centerOffsetPx
+                    )
+                }
+            }
+            
+            LazyRow(
+                state = lazyListState,
                 modifier = Modifier.fillMaxWidth(),
-                containerColor = Color.Transparent,
-                edgePadding = 16.dp,
-                divider = {},
-                indicator = {}
+                contentPadding = PaddingValues(horizontal = 16.dp)
             ) {
-                dateList.forEachIndexed { index, dateInfo ->
+                itemsIndexed(
+                    items = dateList,
+                    key = { index, _ -> index }
+                ) { index, dateInfo ->
                     val isSelected = pagerState.currentPage == index
-                    Tab(
-                        selected = isSelected,
-                        onClick = {
-                            coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                        },
+                    
+                    Box(
                         modifier = Modifier
                             .padding(horizontal = 8.dp)
                             .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
                             .then(
                                 if (isSelected) Modifier.background(Color.White) else Modifier
-                            ),
-                        selectedContentColor = selectedTabContentColor,
-                        unselectedContentColor = unselectedTabContentColor,
-                        text = {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = dateInfo.displayInfo.dayOfWeek,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = dateInfo.displayInfo.dateLabel,
-                                    fontSize = 12.sp
-                                )
+                            )
+                            .clickable {
+                                coroutineScope.launch { pagerState.animateScrollToPage(index) }
                             }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = dateInfo.displayInfo.dayOfWeek,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) selectedTabContentColor else unselectedTabContentColor
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = dateInfo.displayInfo.dateLabel,
+                                fontSize = 12.sp,
+                                color = if (isSelected) selectedTabContentColor else unselectedTabContentColor
+                            )
                         }
-                    )
+                    }
                 }
             }
 
