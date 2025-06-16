@@ -240,5 +240,16 @@ object TimeUtils {
     fun isSameDay(instant1: Instant, instant2: Instant, timeZone: TimeZone = TimeZone.currentSystemDefault()): Boolean {
         return instant1.toLocalDateTime(timeZone).date == instant2.toLocalDateTime(timeZone).date
     }
+    
+    /**
+     * 将 DisplayDate 转换为 API 需要的日期格式 (yyyy-MM-dd)
+     * @param displayDate 要转换的 DisplayDate 对象
+     * @return 格式化后的日期字符串，如 "2024-01-15"
+     */
+    fun formatDateForApi(displayDate: DisplayDate): String {
+        val instant = Instant.fromEpochMilliseconds(displayDate.timestamp)
+        val localDate = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+        return "${localDate.year}-${localDate.monthNumber.toString().padStart(2, '0')}-${localDate.dayOfMonth.toString().padStart(2, '0')}"
+    }
 
 }

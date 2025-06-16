@@ -2,6 +2,7 @@ package com.ytone.longcare.features.nursing.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,12 +36,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
+import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.common.utils.DisplayDate
 import com.ytone.longcare.common.utils.TimeUtils
 import com.ytone.longcare.features.nursing.viewmodel.NursingViewModel
+import com.ytone.longcare.model.stateShow
 import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.theme.LongCareTheme
 import kotlinx.coroutines.launch
@@ -51,11 +55,6 @@ import kotlinx.coroutines.launch
 private data class UiDate(
     val displayInfo: DisplayDate
 )
-
-data class PlanItem(
-    val name: String, val hours: Int, val service: String, val address: String, val status: String?
-)
-
 
 // 缓存当月日期列表，避免重复计算
 private val currentMonthDateList by lazy {
@@ -69,11 +68,41 @@ private val currentMonthDateList by lazy {
 fun NursingScreen(
     navController: NavController, viewModel: NursingViewModel = hiltViewModel()
 ) {
-    val dateList = currentMonthDateList
-    val pagerState = rememberPagerState(initialPage = dateList.indexOfFirst { it.displayInfo.isToday }.coerceAtLeast(0)) { dateList.size }
+    val dateList = remember { currentMonthDateList }
+    val initialPage = remember { dateList.indexOfFirst { it.displayInfo.isToday }.coerceAtLeast(0) }
+    var selectedTabIndex by remember { mutableIntStateOf(initialPage) }
+    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { dateList.size })
     val coroutineScope = rememberCoroutineScope()
     val selectedTabContentColor = Color(0xFF4A86E8) // 选中 Tab 的文字颜色
     val unselectedTabContentColor = Color.White // 未选中 Tab 的文字颜色
+
+    // 观察ViewModel状态
+    val orderList by viewModel.orderListState.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+
+    // 初始化时加载今天的数据
+    LaunchedEffect(Unit) {
+        val selectedDate = dateList[selectedTabIndex]
+        val dateString = TimeUtils.formatDateForApi(selectedDate.displayInfo)
+        viewModel.getOrderList(dateString)
+    }
+
+    // 当选中的日期改变时，获取对应日期的订单数据
+    LaunchedEffect(selectedTabIndex) {
+        val selectedDate = dateList[selectedTabIndex]
+        // 将DisplayDate转换为API需要的格式
+        val dateString = TimeUtils.formatDateForApi(selectedDate.displayInfo)
+        viewModel.getOrderList(dateString)
+    }
+
+    // 同步 LazyRow 和 HorizontalPager 的滚动状态
+    LaunchedEffect(selectedTabIndex) {
+        pagerState.animateScrollToPage(selectedTabIndex)
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
+        selectedTabIndex = pagerState.currentPage
+    }
 
     Scaffold(
         modifier = Modifier, topBar = {
@@ -94,9 +123,9 @@ fun NursingScreen(
     ) { paddingValues ->
         Column(modifier = Modifier.padding(top = paddingValues.calculateTopPadding())) {
             val lazyListState = rememberLazyListState()
-            
+
             val density = LocalDensity.current
-            
+
             // 同步LazyRow和HorizontalPager的滚动状态，选中项居中显示
             LaunchedEffect(pagerState.currentPage) {
                 val targetIndex = pagerState.currentPage
@@ -105,14 +134,14 @@ fun NursingScreen(
                     // 每个tab项约65dp宽度，让选中项居中显示
                     val itemWidthPx = with(density) { 65.dp.toPx() }
                     val centerOffsetPx = (itemWidthPx * 2).toInt() // 简化的居中偏移计算
-                    
+
                     lazyListState.animateScrollToItem(
                         index = targetIndex,
                         scrollOffset = -centerOffsetPx
                     )
                 }
             }
-            
+
             LazyRow(
                 state = lazyListState,
                 modifier = Modifier.fillMaxWidth(),
@@ -123,7 +152,7 @@ fun NursingScreen(
                     key = { index, _ -> index }
                 ) { index, dateInfo ->
                     val isSelected = pagerState.currentPage == index
-                    
+
                     Box(
                         modifier = Modifier
                             .padding(horizontal = 8.dp)
@@ -159,8 +188,7 @@ fun NursingScreen(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
             ) { page ->
-                val planList = remember(page) { createPlanList().shuffled() }
-                PlanList(plans = planList) {
+                PlanList(plans = orderList, isLoading = isLoading) {
                     navController.navigateToService()
                 }
             }
@@ -172,28 +200,64 @@ fun NursingScreen(
  * 计划列表，拥有一个整体的、顶部圆角的白色背景。
  */
 @Composable
-fun PlanList(plans: List<PlanItem>, modifier: Modifier = Modifier, onGoToDetailClick: () -> Unit) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-            .background(Color.White),
-    ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize()
+fun PlanList(plans: List<ServiceOrderModel>, isLoading: Boolean, onGoToDetailClick: () -> Unit) {
+    val modifier = Modifier
+        .fillMaxSize()
+        .padding(horizontal = 16.dp)
+        .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+        .background(Color.White)
+    if (isLoading) {
+        Box(
+            modifier = modifier,
+            contentAlignment = Alignment.Center
         ) {
-            itemsIndexed(plans) { index, plan ->
-                PlanListItem(modifier = Modifier.clickable { onGoToDetailClick.invoke() }, item = plan)
-                if (index < plans.lastIndex) {
+            CircularProgressIndicator()
+        }
+    } else if (plans.isEmpty()) {
+        // 空状态视图
+        Box(
+            modifier = modifier,
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "暂无服务订单",
+                    fontSize = 16.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "当前日期没有安排服务订单",
+                    fontSize = 14.sp,
+                    color = Color.LightGray
+                )
+            }
+        }
+    } else {
+        Column(
+            modifier = modifier,
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                itemsIndexed(plans) { index, plan ->
+                    OrderListItem(
+                        modifier = Modifier.clickable { onGoToDetailClick.invoke() },
+                        item = plan
+                    )
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),
                         thickness = 1.dp,
                         color = Color(0xFFF0F0F0)
                     )
-                } else {
-                    // 底部留出一些空间
-                    Spacer(modifier = Modifier.height(8.dp))
+                    if (index == plans.lastIndex) {
+                        // 底部留出一些空间
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
             }
         }
@@ -205,14 +269,14 @@ fun PlanList(plans: List<PlanItem>, modifier: Modifier = Modifier, onGoToDetailC
  * 计划列表项，移除了 Card, 改为简单的 Row 布局
  */
 @Composable
-fun PlanListItem(modifier: Modifier,item: PlanItem) {
+fun OrderListItem(modifier: Modifier = Modifier, item: ServiceOrderModel) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // -- 内部布局与之前完全相同 --
+
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -222,29 +286,27 @@ fun PlanListItem(modifier: Modifier,item: PlanItem) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "工时: ${item.hours}",
+                    text = "工时: ${item.planTotalTime}",
                     color = Color.Gray,
                     fontSize = 14.sp
                 )
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "${item.service}  地址: ${item.address}",
+                text = "地址: ${item.liveAddress}",
                 color = Color.Gray,
                 fontSize = 14.sp,
                 lineHeight = 20.sp
             )
         }
 
-        item.status?.let {
-            Text(
-                text = it,
-                color = Color.Red,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
-        }
+        Text(
+            text = item.state.stateShow(),
+            color = Color.Red,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            modifier = Modifier.padding(horizontal = 8.dp)
+        )
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = stringResource(R.string.common_details),
@@ -253,21 +315,6 @@ fun PlanListItem(modifier: Modifier,item: PlanItem) {
     }
 }
 
-
-
-private fun createPlanList(): List<PlanItem> {
-    return listOf(
-        PlanItem("孙天成", 8, "助浴服务", "杭州市西湖区328弄24号", "未完成"),
-        PlanItem("王东明", 8, "清洁服务", "杭州市西湖区328弄24号", "未完成"),
-        PlanItem("胡来德", 8, "维修服务", "杭州市西湖区328弄24号", "未完成"),
-        PlanItem("丛敏丽", 8, "理发服务", "杭州市西湖区328弄24号", "未完成"),
-        PlanItem("爱德福", 8, "推拿服务", "杭州市西湖区328弄24号", "未完成"),
-        PlanItem("丁成立", 8, "清洁服务", "杭州市西湖区328弄24号", "未完成"),
-        PlanItem("张爱国", 8, "清洁服务", "杭州市西湖区328弄24号", "未完成"),
-        PlanItem("王阳明", 8, "清洁服务", "杭州市西湖区328弄24号", "未完成"),
-        PlanItem("陈福记", 8, "孙连仲", "杭州市西湖区328弄24号", null)
-    )
-}
 
 // --- 预览 ---
 @Preview(showBackground = true, backgroundColor = 0xFF468AFF)
