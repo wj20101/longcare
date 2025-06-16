@@ -60,7 +60,8 @@ fun HomeScreen(
         ) { paddingValues ->
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())
+                modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding()),
+                userScrollEnabled = false
             ) { page ->
                 when (page) {
                     0 -> MainDashboardScreen(navController = navController)
