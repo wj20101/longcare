@@ -38,6 +38,8 @@ import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
 import com.ytone.longcare.navigation.AppDestinations
+import com.ytone.longcare.navigation.navigateToCarePlansList
+import com.ytone.longcare.navigation.navigateToServiceRecordsList
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.ui.components.UserAvatar
 
@@ -106,7 +108,10 @@ private fun MainDashboardContent(
             HomeBannerCard()
         }
         item {
-            DashboardGridWithImages(pendingCarePlanCount = todayOrderList.count { it.state == 0 })
+            DashboardGridWithImages(
+                pendingCarePlanCount = todayOrderList.count { it.state == 0 },
+                navController = navController
+            )
         }
         val servicePlans = todayOrderList.filter { it.state == 0 }.map {
             ServicePlan(
@@ -177,9 +182,13 @@ fun HomeBannerCard() {
 /**
  * 整体仪表盘网格
  * @param pendingCarePlanCount 待护理计划总数
+ * @param navController 导航控制器
  */
 @Composable
-fun DashboardGridWithImages(pendingCarePlanCount: Int) {
+fun DashboardGridWithImages(
+    pendingCarePlanCount: Int,
+    navController: NavController
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp) // 行之间的间距
     ) {
@@ -191,12 +200,14 @@ fun DashboardGridWithImages(pendingCarePlanCount: Int) {
                 title = "待护理计划",
                 subtitle = if (pendingCarePlanCount > 0) "你有${pendingCarePlanCount}个护理待执行" else "",
                 badgeCount = pendingCarePlanCount,
+                onClick = { navController.navigateToCarePlansList() }
             )
             InfoCard(
                 modifier = Modifier.weight(1f),
                 iconRes = R.drawable.main_ic_records,
                 title = "已服务记录",
                 subtitle = "查看过往服务记录",
+                onClick = { navController.navigateToServiceRecordsList() }
             )
         }
 //        // 第二行
@@ -227,9 +238,10 @@ fun InfoCard(
     subtitle: String,
     badgeCount: Int? = null,
     iconContentDescription: String? = null,
+    onClick: (() -> Unit)? = null,
 ) {
     Card(
-        onClick = { /* 卡片点击事件 */ },
+        onClick = { onClick?.invoke() },
         modifier = modifier.height(65.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),

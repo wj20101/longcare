@@ -18,11 +18,15 @@ import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
+import com.ytone.longcare.features.careplans.ui.CarePlansListScreen
+import com.ytone.longcare.features.servicerecords.ui.ServiceRecordsListScreen
 
 object AppDestinations {
     const val LOGIN_ROUTE = "login"
     const val HOME_ROUTE = "home"
     const val SERVICE_ROUTE = "service"
+    const val CARE_PLANS_LIST_ROUTE = "care_plans_list"
+    const val SERVICE_RECORDS_LIST_ROUTE = "service_records_list"
 }
 
 fun NavController.navigateToHomeFromLogin() {
@@ -33,6 +37,14 @@ fun NavController.navigateToHomeFromLogin() {
 
 fun NavController.navigateToService() {
     navigate(AppDestinations.SERVICE_ROUTE)
+}
+
+fun NavController.navigateToCarePlansList() {
+    navigate(AppDestinations.CARE_PLANS_LIST_ROUTE)
+}
+
+fun NavController.navigateToServiceRecordsList() {
+    navigate(AppDestinations.SERVICE_RECORDS_LIST_ROUTE)
 }
 
 /**
@@ -87,6 +99,12 @@ fun AppNavigation(startDestination: String) {
         }
         composable(AppDestinations.SERVICE_ROUTE) {
             ServiceHoursScreen(navController = navController)
+        }
+        composable(AppDestinations.CARE_PLANS_LIST_ROUTE) {
+            CarePlansListScreen(navController = navController)
+        }
+        composable(AppDestinations.SERVICE_RECORDS_LIST_ROUTE) {
+            ServiceRecordsListScreen(navController = navController)
         }
     }
 }
