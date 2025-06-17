@@ -1,4 +1,4 @@
-package com.ytone.longcare.features.servicerecords.ui
+package com.ytone.longcare.features.serviceorders.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -25,19 +25,47 @@ import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
+import com.ytone.longcare.navigation.AppDestinations
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.bgGradientBrush
 
+enum class ServiceOrderType {
+    PENDING_CARE_PLANS,  // 待护理计划
+    SERVICE_RECORDS      // 已服务记录
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ServiceRecordsListScreen(
+fun ServiceOrdersListScreen(
     navController: NavController,
-    viewModel: MainDashboardViewModel = hiltViewModel()
+    orderType: ServiceOrderType
 ) {
+    // 使用共享的MainDashboardViewModel
+    val parentEntry = remember(navController.currentBackStackEntry) {
+        navController.getBackStackEntry(AppDestinations.HOME_ROUTE)
+    }
+    val viewModel: MainDashboardViewModel = hiltViewModel(parentEntry)
     val todayOrderList by viewModel.todayOrderListState.collectAsStateWithLifecycle()
     
-    // 过滤出已服务记录 (state == 2)
-    val serviceRecords = todayOrderList.filter { it.state == 2 }
+    // 根据类型过滤订单
+    val filteredOrders = when (orderType) {
+        ServiceOrderType.PENDING_CARE_PLANS -> todayOrderList.filter { it.state == 0 }
+        ServiceOrderType.SERVICE_RECORDS -> todayOrderList.filter { it.state == 2 }
+    }
+    
+    // 页面标题和空状态文案
+    val (title, emptyTitle, emptySubtitle) = when (orderType) {
+        ServiceOrderType.PENDING_CARE_PLANS -> Triple(
+            "待护理计划",
+            "暂无待护理计划",
+            "当前没有需要执行的护理计划"
+        )
+        ServiceOrderType.SERVICE_RECORDS -> Triple(
+            "已服务记录",
+            "暂无服务记录",
+            "当前没有已完成的服务记录"
+        )
+    }
     
     LaunchedEffect(Unit) {
         viewModel.loadTodayOrders()
@@ -49,10 +77,10 @@ fun ServiceRecordsListScreen(
     ) {
         Scaffold(
             topBar = {
-                CenterAlignedTopAppBar(
+                TopAppBar(
                     title = {
                         Text(
-                            text = "已服务记录",
+                            text = title,
                             fontWeight = FontWeight.Bold
                         )
                     },
@@ -82,7 +110,7 @@ fun ServiceRecordsListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(vertical = 16.dp)
             ) {
-                if (serviceRecords.isEmpty()) {
+                if (filteredOrders.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier
@@ -94,14 +122,14 @@ fun ServiceRecordsListScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
-                                    text = "暂无服务记录",
+                                    text = emptyTitle,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = Color.Gray
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "当前没有已完成的服务记录",
+                                    text = emptySubtitle,
                                     fontSize = 14.sp,
                                     color = Color.Gray
                                 )
@@ -109,8 +137,11 @@ fun ServiceRecordsListScreen(
                         }
                     }
                 } else {
-                    items(serviceRecords) { record ->
-                        ServiceRecordItem(record = record)
+                    items(filteredOrders) { order ->
+                        ServiceOrderItem(
+                            order = order,
+                            orderType = orderType
+                        )
                     }
                 }
             }
@@ -119,7 +150,10 @@ fun ServiceRecordsListScreen(
 }
 
 @Composable
-fun ServiceRecordItem(record: TodayServiceOrderModel) {
+fun ServiceOrderItem(
+    order: TodayServiceOrderModel,
+    orderType: ServiceOrderType
+) {
     Card(
         onClick = { /*TODO: 导航到详情页*/ },
         modifier = Modifier.fillMaxWidth(),
@@ -134,45 +168,64 @@ fun ServiceRecordItem(record: TodayServiceOrderModel) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = record.name,
+                        text = order.name,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFFE8F5E8)
-                    ) {
-                        Text(
-                            text = "已完成",
-                            color = Color(0xFF4CAF50),
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFFE8F4FF)
-                    ) {
-                        Text(
-                            text = "工时: ${record.completeTotalTime}",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                    
+                    // 根据订单类型显示不同的状态标签
+                    when (orderType) {
+                        ServiceOrderType.PENDING_CARE_PLANS -> {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = Color(0xFFE8F4FF)
+                            ) {
+                                Text(
+                                    text = "工时: ${order.totalServiceTime}",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        ServiceOrderType.SERVICE_RECORDS -> {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = Color(0xFFE8F5E8)
+                            ) {
+                                Text(
+                                    text = "已完成",
+                                    color = Color(0xFF4CAF50),
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = Color(0xFFE8F4FF)
+                            ) {
+                                Text(
+                                    text = "工时: ${order.completeTotalTime}",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "地址: ${record.liveAddress}",
+                    text = "地址: ${order.liveAddress}",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
-                if (record.callPhone.isNotEmpty()) {
+                if (order.callPhone.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "联系电话: ${record.callPhone}",
+                        text = "联系电话: ${order.callPhone}",
                         fontSize = 12.sp,
                         color = Color.Gray
                     )
@@ -190,8 +243,11 @@ fun ServiceRecordItem(record: TodayServiceOrderModel) {
 
 @Preview
 @Composable
-fun ServiceRecordsListScreenPreview() {
+fun ServiceOrdersListScreenPreview() {
     LongCareTheme {
-        ServiceRecordsListScreen(navController = rememberNavController())
+        ServiceOrdersListScreen(
+            navController = rememberNavController(),
+            orderType = ServiceOrderType.PENDING_CARE_PLANS
+        )
     }
 }
