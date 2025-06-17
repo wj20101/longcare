@@ -32,7 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
-import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
+import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderItem
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
@@ -44,22 +44,23 @@ import com.ytone.longcare.ui.components.UserAvatar
 
 @Composable
 fun MainDashboardScreen(
-    navController: NavController, viewModel: MainDashboardViewModel = hiltViewModel()
+    navController: NavController
 ) {
     val parentEntry = remember(navController.currentBackStackEntry) {
         navController.getBackStackEntry(AppDestinations.HOME_ROUTE)
     }
     val homeSharedViewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
+    val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
     val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
 
-    val todayOrderList by viewModel.todayOrderListState.collectAsStateWithLifecycle()
+    val todayOrderList by todayOrderViewModel.todayOrderListState.collectAsStateWithLifecycle()
 
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner) {
         // 当此 Composable 的生命周期进入 RESUMED 状态时（即回到此页面），
         // 就会执行刷新操作。
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            viewModel.loadTodayOrders()
+            todayOrderViewModel.loadTodayOrders()
         }
     }
 
