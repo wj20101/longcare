@@ -188,8 +188,8 @@ fun NursingScreen(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
             ) { page ->
-                PlanList(plans = orderList, isLoading = isLoading) {
-                    navController.navigateToService()
+                PlanList(plans = orderList, isLoading = isLoading) { orderId ->
+                    navController.navigateToService(orderId)
                 }
             }
         }
@@ -200,7 +200,7 @@ fun NursingScreen(
  * 计划列表，拥有一个整体的、顶部圆角的白色背景。
  */
 @Composable
-fun PlanList(plans: List<ServiceOrderModel>, isLoading: Boolean, onGoToDetailClick: () -> Unit) {
+fun PlanList(plans: List<ServiceOrderModel>, isLoading: Boolean, onGoToDetailClick: (Long) -> Unit) {
     val modifier = Modifier
         .fillMaxSize()
         .padding(horizontal = 16.dp)
@@ -246,7 +246,7 @@ fun PlanList(plans: List<ServiceOrderModel>, isLoading: Boolean, onGoToDetailCli
             ) {
                 itemsIndexed(plans) { index, plan ->
                     OrderListItem(
-                        modifier = Modifier.clickable { onGoToDetailClick.invoke() },
+                        modifier = Modifier.clickable { onGoToDetailClick.invoke(plan.orderId) },
                         item = plan
                     )
                     HorizontalDivider(

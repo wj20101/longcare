@@ -28,6 +28,7 @@ import com.ytone.longcare.api.response.isPendingCare
 import com.ytone.longcare.api.response.isServiceRecord
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.navigation.AppDestinations
+import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.bgGradientBrush
 
@@ -39,35 +40,31 @@ enum class ServiceOrderType {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceOrdersListScreen(
-    navController: NavController,
-    orderType: ServiceOrderType
+    navController: NavController, orderType: ServiceOrderType
 ) {
     val parentEntry = remember(navController.currentBackStackEntry) {
         navController.getBackStackEntry(AppDestinations.HOME_ROUTE)
     }
     val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
     val todayOrderList by todayOrderViewModel.todayOrderListState.collectAsStateWithLifecycle()
-    
+
     // 根据类型过滤订单
     val filteredOrders = when (orderType) {
         ServiceOrderType.PENDING_CARE_PLANS -> todayOrderList.filter { it.isPendingCare() }
         ServiceOrderType.SERVICE_RECORDS -> todayOrderList.filter { it.isServiceRecord() }
     }
-    
+
     // 页面标题和空状态文案
     val (title, emptyTitle, emptySubtitle) = when (orderType) {
         ServiceOrderType.PENDING_CARE_PLANS -> Triple(
-            "待护理计划",
-            "暂无待护理计划",
-            "当前没有需要执行的护理计划"
+            "待护理计划", "暂无待护理计划", "当前没有需要执行的护理计划"
         )
+
         ServiceOrderType.SERVICE_RECORDS -> Triple(
-            "已服务记录",
-            "暂无服务记录",
-            "当前没有已完成的服务记录"
+            "已服务记录", "暂无服务记录", "当前没有已完成的服务记录"
         )
     }
-    
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -77,28 +74,24 @@ fun ServiceOrdersListScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
-                        Text(
-                            text = title,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
-                                tint = Color.White
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White
+                    Text(
+                        text = title, fontWeight = FontWeight.Bold
                     )
+                }, navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回",
+                            tint = Color.White
+                        )
+                    }
+                }, colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
                 )
-            },
-            containerColor = Color.Transparent
+                )
+            }, containerColor = Color.Transparent
         ) { paddingValues ->
             LazyColumn(
                 modifier = Modifier
@@ -127,17 +120,17 @@ fun ServiceOrdersListScreen(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = emptySubtitle,
-                                    fontSize = 14.sp,
-                                    color = Color.Gray
+                                    text = emptySubtitle, fontSize = 14.sp, color = Color.Gray
                                 )
                             }
                         }
                     }
                 } else {
                     items(filteredOrders) { order ->
-                    ServiceOrderItem(order = order)
-                }
+                        ServiceOrderItem(order = order) {
+                            navController.navigateToService(order.orderId)
+                        }
+                    }
                 }
             }
         }
@@ -146,8 +139,7 @@ fun ServiceOrdersListScreen(
 
 @Composable
 fun ServiceOrderItem(
-    order: TodayServiceOrderModel,
-    onClick: () -> Unit = { /*TODO: 导航到详情页*/ }
+    order: TodayServiceOrderModel, onClick: () -> Unit = { }
 ) {
     Card(
         onClick = onClick,
@@ -157,24 +149,20 @@ fun ServiceOrderItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = order.name,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        text = order.name, fontWeight = FontWeight.Bold, fontSize = 14.sp
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    
+
                     // 根据state显示不同的状态标签
                     when (order.state) {
                         0 -> { // 待护理计划
                             Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = Color(0xFFE8F4FF)
+                                shape = RoundedCornerShape(4.dp), color = Color(0xFFE8F4FF)
                             ) {
                                 Text(
                                     text = "工时: ${order.totalServiceTime}",
@@ -184,10 +172,10 @@ fun ServiceOrderItem(
                                 )
                             }
                         }
+
                         2 -> { // 已服务记录
                             Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = Color(0xFFE8F5E8)
+                                shape = RoundedCornerShape(4.dp), color = Color(0xFFE8F5E8)
                             ) {
                                 Text(
                                     text = "已完成",
@@ -198,8 +186,7 @@ fun ServiceOrderItem(
                             }
                             Spacer(modifier = Modifier.width(4.dp))
                             Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = Color(0xFFE8F4FF)
+                                shape = RoundedCornerShape(4.dp), color = Color(0xFFE8F4FF)
                             ) {
                                 Text(
                                     text = "工时: ${order.completeTotalTime}",
@@ -209,10 +196,10 @@ fun ServiceOrderItem(
                                 )
                             }
                         }
+
                         else -> { // 其他状态，显示总工时
                             Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = Color(0xFFE8F4FF)
+                                shape = RoundedCornerShape(4.dp), color = Color(0xFFE8F4FF)
                             ) {
                                 Text(
                                     text = "工时: ${order.totalServiceTime}",
@@ -226,16 +213,12 @@ fun ServiceOrderItem(
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "地址: ${order.liveAddress}",
-                    fontSize = 12.sp,
-                    color = Color.Gray
+                    text = "地址: ${order.liveAddress}", fontSize = 12.sp, color = Color.Gray
                 )
                 if (order.callPhone.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "联系电话: ${order.callPhone}",
-                        fontSize = 12.sp,
-                        color = Color.Gray
+                        text = "联系电话: ${order.callPhone}", fontSize = 12.sp, color = Color.Gray
                     )
                 }
             }
@@ -254,8 +237,7 @@ fun ServiceOrderItem(
 fun ServiceOrdersListScreenPreview() {
     LongCareTheme {
         ServiceOrdersListScreen(
-            navController = rememberNavController(),
-            orderType = ServiceOrderType.PENDING_CARE_PLANS
+            navController = rememberNavController(), orderType = ServiceOrderType.PENDING_CARE_PLANS
         )
     }
 }
