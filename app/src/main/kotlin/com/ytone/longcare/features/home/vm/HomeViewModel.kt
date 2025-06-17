@@ -1,4 +1,4 @@
-package com.ytone.longcare.features.home.viewmodel
+package com.ytone.longcare.features.home.vm
 
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel

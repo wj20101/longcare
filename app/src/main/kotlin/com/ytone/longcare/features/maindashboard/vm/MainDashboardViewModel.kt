@@ -1,4 +1,4 @@
-package com.ytone.longcare.features.maindashboard.viewmodel
+package com.ytone.longcare.features.maindashboard.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

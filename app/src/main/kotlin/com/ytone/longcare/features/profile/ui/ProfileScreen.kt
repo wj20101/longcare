@@ -33,8 +33,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.NurseServiceTimeModel
-import com.ytone.longcare.features.home.viewmodel.HomeSharedViewModel
-import com.ytone.longcare.features.profile.viewmodel.ProfileViewModel
+import com.ytone.longcare.features.home.vm.HomeSharedViewModel
+import com.ytone.longcare.features.profile.vm.ProfileViewModel
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
 import com.ytone.longcare.navigation.AppDestinations

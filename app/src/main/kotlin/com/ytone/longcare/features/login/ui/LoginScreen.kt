@@ -33,9 +33,9 @@ import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.showLongToast
-import com.ytone.longcare.features.login.viewmodel.LoginViewModel
-import com.ytone.longcare.features.login.viewmodel.LoginUiState
-import com.ytone.longcare.features.login.viewmodel.SendSmsCodeUiState
+import com.ytone.longcare.features.login.vm.LoginViewModel
+import com.ytone.longcare.features.login.vm.LoginUiState
+import com.ytone.longcare.features.login.vm.SendSmsCodeUiState
 import com.ytone.longcare.navigation.navigateToHomeFromLogin
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.InputFieldBackground
