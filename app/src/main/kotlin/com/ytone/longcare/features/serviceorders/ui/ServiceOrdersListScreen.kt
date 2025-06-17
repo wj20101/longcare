@@ -134,11 +134,8 @@ fun ServiceOrdersListScreen(
                     }
                 } else {
                     items(filteredOrders) { order ->
-                        ServiceOrderItem(
-                            order = order,
-                            orderType = orderType
-                        )
-                    }
+                    ServiceOrderItem(order = order)
+                }
                 }
             }
         }
@@ -148,10 +145,10 @@ fun ServiceOrdersListScreen(
 @Composable
 fun ServiceOrderItem(
     order: TodayServiceOrderModel,
-    orderType: ServiceOrderType
+    onClick: () -> Unit = { /*TODO: 导航到详情页*/ }
 ) {
     Card(
-        onClick = { /*TODO: 导航到详情页*/ },
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -170,9 +167,9 @@ fun ServiceOrderItem(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     
-                    // 根据订单类型显示不同的状态标签
-                    when (orderType) {
-                        ServiceOrderType.PENDING_CARE_PLANS -> {
+                    // 根据state显示不同的状态标签
+                    when (order.state) {
+                        0 -> { // 待护理计划
                             Surface(
                                 shape = RoundedCornerShape(4.dp),
                                 color = Color(0xFFE8F4FF)
@@ -185,7 +182,7 @@ fun ServiceOrderItem(
                                 )
                             }
                         }
-                        ServiceOrderType.SERVICE_RECORDS -> {
+                        2 -> { // 已服务记录
                             Surface(
                                 shape = RoundedCornerShape(4.dp),
                                 color = Color(0xFFE8F5E8)
@@ -204,6 +201,19 @@ fun ServiceOrderItem(
                             ) {
                                 Text(
                                     text = "工时: ${order.completeTotalTime}",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        else -> { // 其他状态，显示总工时
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = Color(0xFFE8F4FF)
+                            ) {
+                                Text(
+                                    text = "工时: ${order.totalServiceTime}",
                                     color = MaterialTheme.colorScheme.primary,
                                     fontSize = 12.sp,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
