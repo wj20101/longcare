@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +33,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
+import com.ytone.longcare.features.serviceorders.ui.ServiceOrderItem
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
 import com.ytone.longcare.navigation.AppDestinations
@@ -113,16 +112,10 @@ private fun MainDashboardContent(
                 navController = navController
             )
         }
-        val servicePlans = todayOrderList.filter { it.state == 0 }.map {
-            ServicePlan(
-                name = it.name,
-                hours = it.totalServiceTime,
-                serviceType = "",
-                address = it.liveAddress
-            )
-        }
+        // 过滤待护理计划
+        val pendingOrders = todayOrderList.filter { it.state == 0 }
 
-        if (servicePlans.isNotEmpty()) {
+        if (pendingOrders.isNotEmpty()) {
             item {
                 Text(
                     text = "待护理计划",
@@ -130,8 +123,8 @@ private fun MainDashboardContent(
                     fontWeight = FontWeight.Bold
                 )
             }
-            items(servicePlans) { plan ->
-                ServicePlanItem(plan)
+            items(pendingOrders) { order ->
+                ServiceOrderItem(order = order)
             }
         }
     }
@@ -302,54 +295,6 @@ fun InfoCard(
                     )
                 }
             }
-        }
-    }
-}
-
-// 服务计划列表项的数据类
-data class ServicePlan(
-    val name: String, val hours: Int, val serviceType: String, val address: String
-)
-
-@Composable
-fun ServicePlanItem(plan: ServicePlan) {
-    Card(
-        onClick = { /*TODO*/ },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = plan.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(4.dp), color = Color(0xFFE8F4FF)
-                    ) {
-                        Text(
-                            text = "工时: ${plan.hours}",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${plan.serviceType} 地址: ${plan.address}",
-                    fontSize = 12.sp,
-                    color = Color.Gray
-                )
-            }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                contentDescription = stringResource(R.string.common_details),
-                tint = Color.LightGray,
-                modifier = Modifier.size(16.dp)
-            )
         }
     }
 }
