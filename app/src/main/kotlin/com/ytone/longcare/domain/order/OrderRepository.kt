@@ -2,6 +2,7 @@ package com.ytone.longcare.domain.order
 
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
+import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
 
 /**
@@ -18,4 +19,10 @@ interface OrderRepository {
      * @param daytime 查询日期，格式例如: "yyyy-MM-dd"
      */
     suspend fun getOrderList(daytime: String): ApiResult<List<ServiceOrderModel>>
+    
+    /**
+     * 获取服务订单详情
+     * @param orderId 订单号
+     */
+    suspend fun getOrderInfo(orderId: Long): ApiResult<ServiceOrderInfoModel>
 }

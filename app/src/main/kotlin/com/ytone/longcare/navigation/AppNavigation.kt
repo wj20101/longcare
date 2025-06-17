@@ -10,9 +10,11 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.ytone.longcare.MainViewModel
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
@@ -22,11 +24,19 @@ import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
 
 object AppDestinations {
+    // 路径参数名称常量
+    const val ORDER_ID_ARG = "orderId"
+
     const val LOGIN_ROUTE = "login"
     const val HOME_ROUTE = "home"
-    const val SERVICE_ROUTE = "service"
+    const val SERVICE_ROUTE = "service/{${ORDER_ID_ARG}}"
     const val CARE_PLANS_LIST_ROUTE = "care_plans_list"
     const val SERVICE_RECORDS_LIST_ROUTE = "service_records_list"
+
+    // 路径构建函数
+    fun buildServiceRoute(orderId: Long): String {
+        return SERVICE_ROUTE.replace("{$ORDER_ID_ARG}", orderId.toString())
+    }
 }
 
 fun NavController.navigateToHomeFromLogin() {
@@ -35,8 +45,8 @@ fun NavController.navigateToHomeFromLogin() {
     }
 }
 
-fun NavController.navigateToService() {
-    navigate(AppDestinations.SERVICE_ROUTE)
+fun NavController.navigateToService(orderId: Long) {
+    navigate(AppDestinations.buildServiceRoute(orderId))
 }
 
 fun NavController.navigateToCarePlansList() {
@@ -97,8 +107,15 @@ fun AppNavigation(startDestination: String) {
         composable(AppDestinations.HOME_ROUTE) {
             HomeScreen(navController = navController)
         }
-        composable(AppDestinations.SERVICE_ROUTE) {
-            ServiceHoursScreen(navController = navController)
+        composable(
+            route = AppDestinations.SERVICE_ROUTE,
+            arguments = listOf(navArgument(AppDestinations.ORDER_ID_ARG) { type = NavType.LongType })
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getLong(AppDestinations.ORDER_ID_ARG) ?: 0L
+            ServiceHoursScreen(
+                navController = navController,
+                orderId = orderId
+            )
         }
         composable(AppDestinations.CARE_PLANS_LIST_ROUTE) {
             ServiceOrdersListScreen(

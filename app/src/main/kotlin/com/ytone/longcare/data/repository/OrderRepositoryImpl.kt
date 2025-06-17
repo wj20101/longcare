@@ -2,8 +2,10 @@ package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.request.OrderListParamModel
+import com.ytone.longcare.api.request.OrderInfoParamModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
+import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.network.safeApiCall
@@ -27,6 +29,12 @@ class OrderRepositoryImpl @Inject constructor(
     override suspend fun getOrderList(daytime: String): ApiResult<List<ServiceOrderModel>> {
         return safeApiCall(ioDispatcher, eventBus) { 
             apiService.getOrderList(OrderListParamModel(daytime = daytime))
+        }
+    }
+    
+    override suspend fun getOrderInfo(orderId: Long): ApiResult<ServiceOrderInfoModel> {
+        return safeApiCall(ioDispatcher, eventBus) {
+            apiService.getOrderInfo(OrderInfoParamModel(orderId = orderId))
         }
     }
 }

@@ -38,6 +38,7 @@ import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
 import com.ytone.longcare.navigation.AppDestinations
 import com.ytone.longcare.navigation.navigateToCarePlansList
+import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.navigation.navigateToServiceRecordsList
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.ui.components.UserAvatar
@@ -125,7 +126,9 @@ private fun MainDashboardContent(
                 )
             }
             items(pendingOrders) { order ->
-                ServiceOrderItem(order = order)
+                ServiceOrderItem(order = order) {
+                    navController.navigateToService(order.orderId)
+                }
             }
         }
     }
