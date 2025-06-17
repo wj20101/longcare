@@ -24,7 +24,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.TodayServiceOrderModel
-import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
+import com.ytone.longcare.shared.vm.TodayOrderViewModel
+import com.ytone.longcare.navigation.AppDestinations
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.bgGradientBrush
 
@@ -37,11 +38,13 @@ enum class ServiceOrderType {
 @Composable
 fun ServiceOrdersListScreen(
     navController: NavController,
-    orderType: ServiceOrderType,
-    viewModel: MainDashboardViewModel = hiltViewModel()
+    orderType: ServiceOrderType
 ) {
-
-    val todayOrderList by viewModel.todayOrderListState.collectAsStateWithLifecycle()
+    val parentEntry = remember(navController.currentBackStackEntry) {
+        navController.getBackStackEntry(AppDestinations.HOME_ROUTE)
+    }
+    val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
+    val todayOrderList by todayOrderViewModel.todayOrderListState.collectAsStateWithLifecycle()
     
     // 根据类型过滤订单
     val filteredOrders = when (orderType) {
@@ -63,9 +66,6 @@ fun ServiceOrdersListScreen(
         )
     }
     
-    LaunchedEffect(Unit) {
-        viewModel.loadTodayOrders()
-    }
     Box(
         modifier = Modifier
             .fillMaxSize()
