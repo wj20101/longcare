@@ -1,8 +1,7 @@
-package com.ytone.longcare.features.home.viewmodel
+package com.ytone.longcare.features.home.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.common.network.isSuccess
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.models.protos.User

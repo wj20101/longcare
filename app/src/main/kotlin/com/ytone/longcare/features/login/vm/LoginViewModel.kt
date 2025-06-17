@@ -1,4 +1,4 @@
-package com.ytone.longcare.features.login.viewmodel
+package com.ytone.longcare.features.login.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

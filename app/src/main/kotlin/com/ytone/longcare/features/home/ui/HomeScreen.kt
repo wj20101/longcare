@@ -14,7 +14,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.common.utils.LockScreenOrientation
-import com.ytone.longcare.features.home.viewmodel.HomeViewModel
+import com.ytone.longcare.features.home.vm.HomeViewModel
 import com.ytone.longcare.features.maindashboard.ui.MainDashboardScreen
 import com.ytone.longcare.features.nursing.ui.NursingScreen
 import com.ytone.longcare.features.profile.ui.ProfileScreen

@@ -33,8 +33,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.TodayServiceOrderModel
-import com.ytone.longcare.features.home.viewmodel.HomeSharedViewModel
-import com.ytone.longcare.features.maindashboard.viewmodel.MainDashboardViewModel
+import com.ytone.longcare.features.home.vm.HomeSharedViewModel
+import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
 import com.ytone.longcare.navigation.AppDestinations
@@ -120,7 +120,7 @@ private fun MainDashboardContent(
         if (servicePlans.isNotEmpty()) {
             item {
                 Text(
-                    text = "待服务计划",
+                    text = "待护理计划",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )

@@ -43,7 +43,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.common.utils.DisplayDate
 import com.ytone.longcare.common.utils.TimeUtils
-import com.ytone.longcare.features.nursing.viewmodel.NursingViewModel
+import com.ytone.longcare.features.nursing.vm.NursingViewModel
 import com.ytone.longcare.model.stateShow
 import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.theme.LongCareTheme
