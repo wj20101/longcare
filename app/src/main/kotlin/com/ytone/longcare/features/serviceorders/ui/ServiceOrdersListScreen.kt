@@ -25,7 +25,6 @@ import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
-import com.ytone.longcare.navigation.AppDestinations
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.bgGradientBrush
 
@@ -38,13 +37,10 @@ enum class ServiceOrderType {
 @Composable
 fun ServiceOrdersListScreen(
     navController: NavController,
-    orderType: ServiceOrderType
+    orderType: ServiceOrderType,
+    viewModel: MainDashboardViewModel = hiltViewModel()
 ) {
-    // 使用共享的MainDashboardViewModel
-    val parentEntry = remember(navController.currentBackStackEntry) {
-        navController.getBackStackEntry(AppDestinations.HOME_ROUTE)
-    }
-    val viewModel: MainDashboardViewModel = hiltViewModel(parentEntry)
+
     val todayOrderList by viewModel.todayOrderListState.collectAsStateWithLifecycle()
     
     // 根据类型过滤订单
@@ -77,7 +73,7 @@ fun ServiceOrdersListScreen(
     ) {
         Scaffold(
             topBar = {
-                TopAppBar(
+                CenterAlignedTopAppBar(
                     title = {
                         Text(
                             text = title,
