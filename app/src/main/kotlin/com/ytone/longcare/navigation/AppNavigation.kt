@@ -18,8 +18,8 @@ import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
-import com.ytone.longcare.features.careplans.ui.CarePlansListScreen
-import com.ytone.longcare.features.servicerecords.ui.ServiceRecordsListScreen
+import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
+import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
 
 object AppDestinations {
     const val LOGIN_ROUTE = "login"
@@ -101,10 +101,17 @@ fun AppNavigation(startDestination: String) {
             ServiceHoursScreen(navController = navController)
         }
         composable(AppDestinations.CARE_PLANS_LIST_ROUTE) {
-            CarePlansListScreen(navController = navController)
+            ServiceOrdersListScreen(
+                navController = navController,
+                orderType = ServiceOrderType.PENDING_CARE_PLANS
+            )
         }
+        
         composable(AppDestinations.SERVICE_RECORDS_LIST_ROUTE) {
-            ServiceRecordsListScreen(navController = navController)
+            ServiceOrdersListScreen(
+                navController = navController,
+                orderType = ServiceOrderType.SERVICE_RECORDS
+            )
         }
     }
 }
