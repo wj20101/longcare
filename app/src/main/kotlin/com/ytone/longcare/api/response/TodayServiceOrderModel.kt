@@ -2,6 +2,9 @@ package com.ytone.longcare.api.response
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
+import com.ytone.longcare.model.isCancelledState
+import com.ytone.longcare.model.isPendingCareState
+import com.ytone.longcare.model.isServiceRecordState
 
 /**
  * 今天的服务订单
@@ -68,3 +71,24 @@ data class TodayServiceOrderModel(
     @Json(name = "totalServiceTime")
     val totalServiceTime: Int = 0
 )
+
+/**
+ * 判断是否为待护理计划状态（待执行或执行中）
+ */
+fun TodayServiceOrderModel.isPendingCare(): Boolean {
+    return state.isPendingCareState()
+}
+
+/**
+ * 判断是否为服务记录状态（任务完成）
+ */
+fun TodayServiceOrderModel.isServiceRecord(): Boolean {
+    return state.isServiceRecordState()
+}
+
+/**
+ * 判断是否为作废状态
+ */
+fun TodayServiceOrderModel.isCancelled(): Boolean {
+    return state.isCancelledState()
+}

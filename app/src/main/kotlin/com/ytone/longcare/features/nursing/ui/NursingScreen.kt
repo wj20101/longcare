@@ -44,7 +44,7 @@ import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.common.utils.DisplayDate
 import com.ytone.longcare.common.utils.TimeUtils
 import com.ytone.longcare.features.nursing.vm.NursingViewModel
-import com.ytone.longcare.model.stateShow
+import com.ytone.longcare.model.toStateDisplayText
 import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.theme.LongCareTheme
 import kotlinx.coroutines.launch
@@ -301,7 +301,7 @@ fun OrderListItem(modifier: Modifier = Modifier, item: ServiceOrderModel) {
         }
 
         Text(
-            text = item.state.stateShow(),
+            text = item.state.toStateDisplayText(),
             color = Color.Red,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,

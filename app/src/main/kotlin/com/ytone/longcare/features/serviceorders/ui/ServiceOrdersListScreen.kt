@@ -24,6 +24,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.TodayServiceOrderModel
+import com.ytone.longcare.api.response.isPendingCare
+import com.ytone.longcare.api.response.isServiceRecord
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.navigation.AppDestinations
 import com.ytone.longcare.theme.LongCareTheme
@@ -48,8 +50,8 @@ fun ServiceOrdersListScreen(
     
     // 根据类型过滤订单
     val filteredOrders = when (orderType) {
-        ServiceOrderType.PENDING_CARE_PLANS -> todayOrderList.filter { it.state == 0 }
-        ServiceOrderType.SERVICE_RECORDS -> todayOrderList.filter { it.state == 2 }
+        ServiceOrderType.PENDING_CARE_PLANS -> todayOrderList.filter { it.isPendingCare() }
+        ServiceOrderType.SERVICE_RECORDS -> todayOrderList.filter { it.isServiceRecord() }
     }
     
     // 页面标题和空状态文案
