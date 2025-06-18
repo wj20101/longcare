@@ -20,6 +20,7 @@ import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.features.nursingexecution.ui.NursingExecutionScreen
+import com.ytone.longcare.features.nfcsignin.ui.NfcSignInScreen
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
@@ -33,6 +34,7 @@ object AppDestinations {
     const val HOME_ROUTE = "home"
     const val SERVICE_ROUTE = "service/{${ORDER_ID_ARG}}"
     const val NURSING_EXECUTION_ROUTE = "nursing_execution/{${ORDER_ID_ARG}}"
+    const val NFC_SIGN_IN_ROUTE = "nfc_sign_in/{${ORDER_ID_ARG}}"
     const val CARE_PLANS_LIST_ROUTE = "care_plans_list"
     const val SERVICE_RECORDS_LIST_ROUTE = "service_records_list"
 
@@ -43,6 +45,10 @@ object AppDestinations {
 
     fun buildNursingExecutionRoute(orderId: Long): String {
         return NURSING_EXECUTION_ROUTE.replace("{$ORDER_ID_ARG}", orderId.toString())
+    }
+
+    fun buildNfcSignInRoute(orderId: Long): String {
+        return NFC_SIGN_IN_ROUTE.replace("{$ORDER_ID_ARG}", orderId.toString())
     }
 }
 
@@ -58,6 +64,10 @@ fun NavController.navigateToService(orderId: Long) {
 
 fun NavController.navigateToNursingExecution(orderId: Long) {
     navigate(AppDestinations.buildNursingExecutionRoute(orderId))
+}
+
+fun NavController.navigateToNfcSignIn(orderId: Long) {
+    navigate(AppDestinations.buildNfcSignInRoute(orderId))
 }
 
 fun NavController.navigateToCarePlansList() {
@@ -151,6 +161,16 @@ fun AppNavigation(startDestination: String) {
             ServiceOrdersListScreen(
                 navController = navController,
                 orderType = ServiceOrderType.SERVICE_RECORDS
+            )
+        }
+        composable(
+            route = AppDestinations.NFC_SIGN_IN_ROUTE,
+            arguments = listOf(navArgument(AppDestinations.ORDER_ID_ARG) { type = NavType.LongType })
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getLong(AppDestinations.ORDER_ID_ARG) ?: 0L
+            NfcSignInScreen(
+                navController = navController,
+                orderId = orderId
             )
         }
     }

@@ -1,0 +1,71 @@
+package com.ytone.longcare.features.nfcsignin.vm
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.domain.order.OrderRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+/**
+ * NFC签到页面的ViewModel
+ */
+@HiltViewModel
+class NfcSignInViewModel @Inject constructor(
+    private val orderRepository: OrderRepository,
+    private val toastHelper: ToastHelper
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
+    val uiState: StateFlow<NfcSignInUiState> = _uiState.asStateFlow()
+
+    /**
+     * 开始服务工单
+     * @param orderId 订单ID
+     * @param nfcDeviceId NFC设备号
+     */
+    fun startOrder(orderId: Long, nfcDeviceId: String) {
+        viewModelScope.launch {
+            _uiState.value = NfcSignInUiState.Loading
+            
+            when (val result = orderRepository.startOrder(orderId, nfcDeviceId)) {
+                is ApiResult.Success -> {
+                    _uiState.value = NfcSignInUiState.Success
+                }
+                
+                is ApiResult.Exception -> {
+                    _uiState.value = NfcSignInUiState.Error(
+                        result.exception.message ?: "网络错误，请检查网络连接"
+                    )
+                }
+                
+                is ApiResult.Failure -> {
+                    toastHelper.showShort(result.message)
+                    _uiState.value = NfcSignInUiState.Error(result.message)
+                }
+            }
+        }
+    }
+
+    /**
+     * 重置状态
+     */
+    fun resetState() {
+        _uiState.value = NfcSignInUiState.Initial
+    }
+}
+
+/**
+ * NFC签到页面的UI状态密封类
+ */
+sealed class NfcSignInUiState {
+    data object Loading : NfcSignInUiState()
+    data object Success : NfcSignInUiState()
+    data class Error(val message: String) : NfcSignInUiState()
+    data object Initial : NfcSignInUiState()
+}

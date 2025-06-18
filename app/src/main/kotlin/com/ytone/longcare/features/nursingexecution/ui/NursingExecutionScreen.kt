@@ -26,6 +26,7 @@ import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
+import com.ytone.longcare.navigation.navigateToNfcSignIn
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 
@@ -57,7 +58,8 @@ fun NursingExecutionScreen(
         is OrderDetailUiState.Success -> {
             NursingExecutionContent(
                 navController = navController,
-                orderInfo = state.orderInfo
+                orderInfo = state.orderInfo,
+                orderId = orderId
             )
         }
         
@@ -124,7 +126,8 @@ fun ErrorScreen(
 @Composable
 fun NursingExecutionContent(
     navController: NavController,
-    orderInfo: ServiceOrderInfoModel
+    orderInfo: ServiceOrderInfoModel,
+    orderId: Long
 ) {
     Box(
         modifier = Modifier
@@ -179,7 +182,7 @@ fun NursingExecutionContent(
 
                 ConfirmButton(
                     text = stringResource(R.string.nursing_execution_confirm_button), 
-                    onClick = { /* TODO */ }
+                    onClick = { navController.navigateToNfcSignIn(orderId) }
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
