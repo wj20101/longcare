@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.nursingexecution.ui
 
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
+import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
@@ -35,6 +37,12 @@ fun NursingExecutionScreen(
     orderId: Long,
     viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
+
+    // ==========================================================
+    // 在这里调用函数，将此页面强制设置为竖屏
+    // ==========================================================
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
     // 在组件初始化时加载订单信息
