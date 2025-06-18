@@ -31,6 +31,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.TodayServiceOrderModel
+import com.ytone.longcare.api.response.isPendingCare
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderItem
@@ -38,6 +39,7 @@ import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
 import com.ytone.longcare.navigation.AppDestinations
 import com.ytone.longcare.navigation.navigateToCarePlansList
+import com.ytone.longcare.navigation.navigateToNursingExecution
 import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.navigation.navigateToServiceRecordsList
 import com.ytone.longcare.theme.LongCareTheme
@@ -74,7 +76,11 @@ fun MainDashboardScreen(
                 user = loggedInUser,
                 todayOrderList = todayOrderList,
                 navController = navController,
-                modifier = Modifier.padding(top = paddingValues.calculateTopPadding(), start = 16.dp, end = 16.dp)
+                modifier = Modifier.padding(
+                    top = paddingValues.calculateTopPadding(),
+                    start = 16.dp,
+                    end = 16.dp
+                )
             )
         } ?: run {
             // 如果 user 为 null (例如正在登出或初始化)，显示加载指示器
@@ -127,7 +133,11 @@ private fun MainDashboardContent(
             }
             items(pendingOrders) { order ->
                 ServiceOrderItem(order = order) {
-                    navController.navigateToService(order.orderId)
+                    if (order.isPendingCare()) {
+                        navController.navigateToNursingExecution(order.orderId)
+                    } else {
+                        navController.navigateToService(order.orderId)
+                    }
                 }
             }
         }
@@ -283,7 +293,7 @@ fun InfoCard(
                         }
                     }
                 }
-                if (subtitle.isNotBlank()){
+                if (subtitle.isNotBlank()) {
                     // 副标题
                     Text(
                         text = subtitle,

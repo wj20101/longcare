@@ -26,15 +26,15 @@ import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.common.utils.LockScreenOrientation
-import com.ytone.longcare.features.servicehours.vm.ServiceHoursViewModel
-import com.ytone.longcare.features.servicehours.vm.ServiceHoursUiState
+import com.ytone.longcare.shared.vm.OrderDetailViewModel
+import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceHoursScreen(
-    navController: NavController, orderId: Long, viewModel: ServiceHoursViewModel = hiltViewModel()
+    navController: NavController, orderId: Long, viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
 
     // ==========================================================
@@ -55,9 +55,8 @@ fun ServiceHoursScreen(
             .fillMaxSize()
             .background(bgGradientBrush)
     ) {
-        val currentState = uiState
-        when (currentState) {
-            is ServiceHoursUiState.Loading -> {
+        when (val state = uiState) {
+            is OrderDetailUiState.Loading -> {
                 Box(
                     modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                 ) {
@@ -65,29 +64,29 @@ fun ServiceHoursScreen(
                 }
             }
 
-            is ServiceHoursUiState.Error -> {
+            is OrderDetailUiState.Error -> {
                 Box(
                     modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "错误: ${currentState.message}",
+                        text = "错误: ${state.message}",
                         color = MaterialTheme.colorScheme.error
                     )
                 }
             }
 
-            is ServiceHoursUiState.Success -> {
+            is OrderDetailUiState.Success -> {
                 Scaffold(
                     topBar = {
                         CenterAlignedTopAppBar(
                             title = {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    currentState.orderInfo.userInfo.name,
+                                    state.orderInfo.userInfo.name,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 18.sp
                                 )
-                                val address = currentState.orderInfo.userInfo.address
+                                val address = state.orderInfo.userInfo.address
                                 if (address.isNotBlank()){
                                     Text(
                                         "地址: $address",
@@ -119,7 +118,7 @@ fun ServiceHoursScreen(
                     ) {
                         // 列表内容区域，需要给顶部留出空间给 ServiceHoursTag
                         ServiceRecordList(
-                            projects = currentState.orderInfo.projectList,
+                            projects = state.orderInfo.projectList,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(top = 18.dp) // 为 ServiceHoursTag 预留空间，可调整
@@ -133,7 +132,7 @@ fun ServiceHoursScreen(
                 }
             }
 
-            is ServiceHoursUiState.Initial -> {
+            is OrderDetailUiState.Initial -> {
                 Box(
                     modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                 ) {

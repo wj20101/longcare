@@ -41,10 +41,13 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.ServiceOrderModel
+import com.ytone.longcare.api.response.isPendingCare
 import com.ytone.longcare.common.utils.DisplayDate
 import com.ytone.longcare.common.utils.TimeUtils
 import com.ytone.longcare.features.nursing.vm.NursingViewModel
+import com.ytone.longcare.model.isPendingCareState
 import com.ytone.longcare.model.toStateDisplayText
+import com.ytone.longcare.navigation.navigateToNursingExecution
 import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.theme.LongCareTheme
 import kotlinx.coroutines.launch
@@ -188,8 +191,12 @@ fun NursingScreen(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
             ) { page ->
-                PlanList(plans = orderList, isLoading = isLoading) { orderId ->
-                    navController.navigateToService(orderId)
+                PlanList(plans = orderList, isLoading = isLoading) { order ->
+                    if (order.state.isPendingCareState()) {
+                        navController.navigateToNursingExecution(order.orderId)
+                    } else {
+                        navController.navigateToService(order.orderId)
+                    }
                 }
             }
         }
@@ -200,7 +207,7 @@ fun NursingScreen(
  * 计划列表，拥有一个整体的、顶部圆角的白色背景。
  */
 @Composable
-fun PlanList(plans: List<ServiceOrderModel>, isLoading: Boolean, onGoToDetailClick: (Long) -> Unit) {
+fun PlanList(plans: List<ServiceOrderModel>, isLoading: Boolean, onGoToDetailClick: (ServiceOrderModel) -> Unit) {
     val modifier = Modifier
         .fillMaxSize()
         .padding(horizontal = 16.dp)
@@ -246,7 +253,7 @@ fun PlanList(plans: List<ServiceOrderModel>, isLoading: Boolean, onGoToDetailCli
             ) {
                 itemsIndexed(plans) { index, plan ->
                     OrderListItem(
-                        modifier = Modifier.clickable { onGoToDetailClick.invoke(plan.orderId) },
+                        modifier = Modifier.clickable { onGoToDetailClick.invoke(plan) },
                         item = plan
                     )
                     HorizontalDivider(

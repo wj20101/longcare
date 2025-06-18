@@ -19,6 +19,8 @@ import com.ytone.longcare.MainViewModel
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
+import com.ytone.longcare.features.nursingexecution.ui.NursingExecutionScreen
+import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
@@ -30,12 +32,17 @@ object AppDestinations {
     const val LOGIN_ROUTE = "login"
     const val HOME_ROUTE = "home"
     const val SERVICE_ROUTE = "service/{${ORDER_ID_ARG}}"
+    const val NURSING_EXECUTION_ROUTE = "nursing_execution/{${ORDER_ID_ARG}}"
     const val CARE_PLANS_LIST_ROUTE = "care_plans_list"
     const val SERVICE_RECORDS_LIST_ROUTE = "service_records_list"
 
     // 路径构建函数
     fun buildServiceRoute(orderId: Long): String {
         return SERVICE_ROUTE.replace("{$ORDER_ID_ARG}", orderId.toString())
+    }
+
+    fun buildNursingExecutionRoute(orderId: Long): String {
+        return NURSING_EXECUTION_ROUTE.replace("{$ORDER_ID_ARG}", orderId.toString())
     }
 }
 
@@ -47,6 +54,10 @@ fun NavController.navigateToHomeFromLogin() {
 
 fun NavController.navigateToService(orderId: Long) {
     navigate(AppDestinations.buildServiceRoute(orderId))
+}
+
+fun NavController.navigateToNursingExecution(orderId: Long) {
+    navigate(AppDestinations.buildNursingExecutionRoute(orderId))
 }
 
 fun NavController.navigateToCarePlansList() {
@@ -115,6 +126,18 @@ fun AppNavigation(startDestination: String) {
             ServiceHoursScreen(
                 navController = navController,
                 orderId = orderId
+            )
+        }
+        composable(
+            route = AppDestinations.NURSING_EXECUTION_ROUTE,
+            arguments = listOf(navArgument(AppDestinations.ORDER_ID_ARG) { type = NavType.LongType })
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getLong(AppDestinations.ORDER_ID_ARG) ?: 0L
+            val viewModel: OrderDetailViewModel = hiltViewModel()
+            NursingExecutionScreen(
+                navController = navController,
+                orderId = orderId,
+                viewModel = viewModel
             )
         }
         composable(AppDestinations.CARE_PLANS_LIST_ROUTE) {
