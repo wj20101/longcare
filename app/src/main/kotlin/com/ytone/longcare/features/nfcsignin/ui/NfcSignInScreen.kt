@@ -24,7 +24,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import com.ytone.longcare.R
+import com.ytone.longcare.features.nfcsignin.vm.NfcSignInViewModel
+import com.ytone.longcare.features.nfcsignin.vm.NfcSignInUiState
 import com.ytone.longcare.theme.bgGradientBrush
 
 // --- 状态定义 ---
@@ -37,9 +42,20 @@ enum class SignInState {
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NfcSignInScreen() {
+fun NfcSignInScreen(
+    navController: NavController,
+    orderId: Long,
+    viewModel: NfcSignInViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var signInState by remember { mutableStateOf(SignInState.IDLE) }
+    // 根据ViewModel状态确定SignInState
+    val signInState = when (uiState) {
+        is NfcSignInUiState.Loading -> SignInState.IDLE
+        is NfcSignInUiState.Success -> SignInState.SUCCESS
+        is NfcSignInUiState.Error -> SignInState.FAILURE
+        is NfcSignInUiState.Initial -> SignInState.IDLE
+    }
 
     Box(
         modifier = Modifier
@@ -51,7 +67,7 @@ fun NfcSignInScreen() {
                 CenterAlignedTopAppBar(
                     title = { Text(stringResource(R.string.nfc_sign_in_title), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = { /* TODO: 返回操作 */ }) {
+                        IconButton(onClick = { navController.popBackStack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.common_back),
@@ -95,12 +111,16 @@ fun NfcSignInScreen() {
                 when (signInState) {
                     SignInState.SUCCESS -> ActionButton(
                         text = stringResource(R.string.common_next_step),
-                        onClick = { /* TODO: 执行下一步操作 */ }
+                        onClick = { navController.popBackStack() }
                     )
 
                     SignInState.FAILURE -> ActionButton(
                         text = stringResource(R.string.nfc_sign_in_retry),
-                        onClick = { signInState = SignInState.IDLE /* TODO: 重新NFC尝试 */ }
+                        onClick = { 
+                            viewModel.resetState()
+                            // 模拟NFC签到，实际应用中应该是NFC读取逻辑
+                            viewModel.startOrder(orderId, "mock_nfc_device_id")
+                        }
                     )
 
                     SignInState.IDLE -> {
@@ -109,14 +129,17 @@ fun NfcSignInScreen() {
                         Box(modifier = Modifier.height(50.dp)) // 与按钮同高，避免内容跳动
                     }
                 }
-                // 模拟状态切换按钮，实际应用中由NFC结果触发
-                Row(
-                    Modifier.padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(onClick = { signInState = SignInState.IDLE }) { Text(stringResource(R.string.common_idle)) }
-                    Button(onClick = { signInState = SignInState.SUCCESS }) { Text(stringResource(R.string.common_success)) }
-                    Button(onClick = { signInState = SignInState.FAILURE }) { Text(stringResource(R.string.common_failure)) }
+                // 模拟NFC签到按钮，实际应用中应该是自动触发
+                if (signInState == SignInState.IDLE && uiState !is NfcSignInUiState.Loading) {
+                    Button(
+                        onClick = { 
+                            // 模拟NFC签到，实际应用中应该是NFC读取逻辑
+                            viewModel.startOrder(orderId, "mock_nfc_device_id")
+                        },
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    ) {
+                        Text("模拟NFC签到")
+                    }
                 }
 
 
@@ -227,7 +250,7 @@ fun ActionButton(text: String, onClick: () -> Unit) {
 @Composable
 fun NfcSignInScreenIdlePreview() {
     MaterialTheme {
-        NfcSignInScreen() // 默认是 IDLE 状态
+        NfcSignInScreenContentForPreview(SignInState.IDLE) { }
     }
 }
 
@@ -235,13 +258,7 @@ fun NfcSignInScreenIdlePreview() {
 @Composable
 fun NfcSignInScreenSuccessPreview() {
     MaterialTheme {
-        // 模拟成功状态
-        val currentScreen: @Composable () -> Unit = {
-            var signInState by remember { mutableStateOf(SignInState.IDLE) }
-            LaunchedEffect(Unit) { signInState = SignInState.SUCCESS } // 触发状态改变
-            NfcSignInScreenContentForPreview(signInState, onStateChange = { signInState = it })
-        }
-        currentScreen()
+        NfcSignInScreenContentForPreview(SignInState.SUCCESS) { }
     }
 }
 
@@ -249,13 +266,7 @@ fun NfcSignInScreenSuccessPreview() {
 @Composable
 fun NfcSignInScreenFailurePreview() {
     MaterialTheme {
-        // 模拟失败状态
-        val currentScreen: @Composable () -> Unit = {
-            var signInState by remember { mutableStateOf(SignInState.IDLE) }
-            LaunchedEffect(Unit) { signInState = SignInState.FAILURE }
-            NfcSignInScreenContentForPreview(signInState, onStateChange = { signInState = it })
-        }
-        currentScreen()
+        NfcSignInScreenContentForPreview(SignInState.FAILURE) { }
     }
 }
 
@@ -338,13 +349,5 @@ private fun NfcSignInScreenContentForPreview(
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
-    }
-}
-
-
-// 伪造一个R文件用于预览，实际项目中请勿使用
-object R {
-    object drawable {
-        val nfc_interaction_diagram = 0 // 您的NFC示意图资源
     }
 }

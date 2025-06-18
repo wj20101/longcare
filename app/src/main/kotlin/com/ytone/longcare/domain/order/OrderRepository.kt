@@ -25,4 +25,11 @@ interface OrderRepository {
      * @param orderId 订单号
      */
     suspend fun getOrderInfo(orderId: Long): ApiResult<ServiceOrderInfoModel>
+    
+    /**
+     * 开始订单服务（NFC签到）
+     * @param orderId 订单号
+     * @param nfcDeviceId NFC设备ID
+     */
+    suspend fun startOrder(orderId: Long, nfcDeviceId: String): ApiResult<Unit>
 }
