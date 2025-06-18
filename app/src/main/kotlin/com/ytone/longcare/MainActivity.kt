@@ -1,5 +1,6 @@
 package com.ytone.longcare
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -44,6 +45,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // 更新Activity的Intent，这样其他地方可以通过activity.intent获取到最新的Intent
+        setIntent(intent)
+        
+        // 发送NFC Intent事件
+        lifecycleScope.launch {
+            appEventBus.sendEvent(AppEvent.NfcIntentReceived(intent))
+            
+            // 延迟重新启用NFC前台调度，确保Activity处于resumed状态
+            kotlinx.coroutines.delay(100)
+            if (!isFinishing && !isDestroyed) {
+                com.ytone.longcare.common.utils.NfcUtils.enableForegroundDispatch(this@MainActivity)
+            }
+        }
+    }
+
     private fun observeAppEvents() {
         lifecycleScope.launch {
             appEventBus.events.collect { event ->
@@ -58,6 +76,10 @@ class MainActivity : AppCompatActivity() {
                             viewModel.forceLogout()
                             // 3. 导航逻辑已在 MainApp 中处理，当 sessionState 变为 LoggedOut 时会自动跳转
                         }
+                    }
+                    // 忽略NFC事件，由具体的Screen处理
+                    is AppEvent.NfcIntentReceived -> {
+                        // NFC事件由具体的Screen监听处理
                     }
                 }
             }

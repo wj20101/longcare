@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.nfcsignin.ui
 
+import android.app.Activity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,6 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.features.nfcsignin.vm.NfcSignInViewModel
 import com.ytone.longcare.features.nfcsignin.vm.NfcSignInUiState
 import com.ytone.longcare.theme.bgGradientBrush
@@ -48,6 +51,45 @@ fun NfcSignInScreen(
     viewModel: NfcSignInViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val activity = context as? Activity
+
+    // NFC检查和处理
+    LaunchedEffect(Unit) {
+        if (activity != null) {
+            when {
+                !NfcUtils.isNfcSupported(context) -> {
+                    // 设备不支持NFC，显示错误信息
+                    viewModel.showError("设备不支持NFC功能")
+                }
+                !NfcUtils.isNfcEnabled(context) -> {
+                    // NFC未开启，提示用户开启
+                    NfcUtils.showEnableNfcDialog(
+                        activity,
+                        title = "NFC未开启",
+                        message = "请在设置中开启NFC功能以使用签到功能"
+                    )
+                }
+                else -> {
+                    // NFC已开启，启用前台调度
+                    NfcUtils.enableForegroundDispatch(activity)
+                }
+            }
+        }
+    }
+
+    // 监听NFC事件
+    LaunchedEffect(Unit) {
+        viewModel.observeNfcEvents(orderId)
+    }
+
+    // 管理NFC前台调度的生命周期
+    DisposableEffect(activity) {
+        onDispose {
+            // 禁用前台调度
+            activity?.let { NfcUtils.disableForegroundDispatch(it) }
+        }
+    }
 
     // 根据ViewModel状态确定SignInState
     val signInState = when (uiState) {
@@ -118,27 +160,27 @@ fun NfcSignInScreen(
                         text = stringResource(R.string.nfc_sign_in_retry),
                         onClick = { 
                             viewModel.resetState()
-                            // 模拟NFC签到，实际应用中应该是NFC读取逻辑
-                            viewModel.startOrder(orderId, "mock_nfc_device_id")
+                            // 重置状态后等待用户重新靠近NFC设备
                         }
                     )
 
                     SignInState.IDLE -> {
-                        // 初始状态不显示按钮，但为了布局稳定性可以放一个等高的 Spacer
-                        // 或者直接什么都不放，让上面的 Spacer(Modifier.weight(1f)) 完全生效
-                        Box(modifier = Modifier.height(50.dp)) // 与按钮同高，避免内容跳动
-                    }
-                }
-                // 模拟NFC签到按钮，实际应用中应该是自动触发
-                if (signInState == SignInState.IDLE && uiState !is NfcSignInUiState.Loading) {
-                    Button(
-                        onClick = { 
-                            // 模拟NFC签到，实际应用中应该是NFC读取逻辑
-                            viewModel.startOrder(orderId, "mock_nfc_device_id")
-                        },
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    ) {
-                        Text("模拟NFC签到")
+                        // 初始状态显示等待NFC的提示
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color.White.copy(alpha = 0.9f)
+                            )
+                        ) {
+                            Text(
+                                text = "请将NFC设备靠近手机背面",
+                                modifier = Modifier.padding(16.dp),
+                                textAlign = TextAlign.Center,
+                                color = Color.Black.copy(alpha = 0.7f)
+                            )
+                        }
                     }
                 }
 

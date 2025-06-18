@@ -2,7 +2,10 @@ package com.ytone.longcare.features.nfcsignin.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.event.AppEvent
+import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,7 +21,8 @@ import javax.inject.Inject
 @HiltViewModel
 class NfcSignInViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
-    private val toastHelper: ToastHelper
+    private val toastHelper: ToastHelper,
+    private val appEventBus: AppEventBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
@@ -57,6 +61,30 @@ class NfcSignInViewModel @Inject constructor(
      */
     fun resetState() {
         _uiState.value = NfcSignInUiState.Initial
+    }
+
+    /**
+     * 显示错误信息
+     * @param message 错误信息
+     */
+    fun showError(message: String) {
+        _uiState.value = NfcSignInUiState.Error(message)
+    }
+
+    fun observeNfcEvents(orderId: Long) {
+        viewModelScope.launch {
+            appEventBus.events.collect { event ->
+                if (event is AppEvent.NfcIntentReceived) {
+                    val tag = NfcUtils.getTagFromIntent(event.intent)
+                    if (tag != null) {
+                        val tagId = NfcUtils.bytesToHexString(tag.id)
+                        if (tagId.isNotEmpty()) {
+                            startOrder(orderId, tagId)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
