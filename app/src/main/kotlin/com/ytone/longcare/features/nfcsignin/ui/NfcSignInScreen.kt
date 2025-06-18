@@ -71,8 +71,8 @@ fun NfcSignInScreen(
                     )
                 }
                 else -> {
-                    // NFC已开启，启用前台调度
-                    NfcUtils.enableForegroundDispatch(activity)
+                    // NFC已开启，通知MainActivity启用前台调度
+                    (activity as? com.ytone.longcare.MainActivity)?.setNfcDispatchNeeded(true)
                 }
             }
         }
@@ -86,8 +86,8 @@ fun NfcSignInScreen(
     // 管理NFC前台调度的生命周期
     DisposableEffect(activity) {
         onDispose {
-            // 禁用前台调度
-            activity?.let { NfcUtils.disableForegroundDispatch(it) }
+            // 通知MainActivity禁用前台调度
+            (activity as? com.ytone.longcare.MainActivity)?.setNfcDispatchNeeded(false)
         }
     }
 
