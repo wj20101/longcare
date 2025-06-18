@@ -1,4 +1,4 @@
-package com.ytone.longcare.features.servicehours.vm
+package com.ytone.longcare.shared.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,35 +14,35 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class ServiceHoursViewModel @Inject constructor(
+class OrderDetailViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val toastHelper: ToastHelper
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<ServiceHoursUiState>(ServiceHoursUiState.Initial)
-    val uiState: StateFlow<ServiceHoursUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<OrderDetailUiState>(OrderDetailUiState.Initial)
+    val uiState: StateFlow<OrderDetailUiState> = _uiState.asStateFlow()
 
     /**
      * 获取订单详情
      */
     fun getOrderInfo(orderId: Long) {
         viewModelScope.launch {
-            _uiState.value = ServiceHoursUiState.Loading
+            _uiState.value = OrderDetailUiState.Loading
 
             when (val result = orderRepository.getOrderInfo(orderId)) {
                 is ApiResult.Success -> {
-                    _uiState.value = ServiceHoursUiState.Success(result.data)
+                    _uiState.value = OrderDetailUiState.Success(result.data)
                 }
 
                 is ApiResult.Exception -> {
-                    _uiState.value = ServiceHoursUiState.Error(
+                    _uiState.value = OrderDetailUiState.Error(
                         result.exception.message ?: "未知错误"
                     )
                 }
 
                 is ApiResult.Failure -> {
                     toastHelper.showShort(result.message)
-                    _uiState.value = ServiceHoursUiState.Error(
+                    _uiState.value = OrderDetailUiState.Error(
                         result.message
                     )
                 }
@@ -55,9 +55,9 @@ class ServiceHoursViewModel @Inject constructor(
 /**
  * UI状态密封类
  */
-sealed class ServiceHoursUiState {
-    data object Loading : ServiceHoursUiState()
-    data class Success(val orderInfo: ServiceOrderInfoModel) : ServiceHoursUiState()
-    data class Error(val message: String) : ServiceHoursUiState()
-    data object Initial : ServiceHoursUiState()
+sealed class OrderDetailUiState {
+    data object Loading : OrderDetailUiState()
+    data class Success(val orderInfo: ServiceOrderInfoModel) : OrderDetailUiState()
+    data class Error(val message: String) : OrderDetailUiState()
+    data object Initial : OrderDetailUiState()
 }

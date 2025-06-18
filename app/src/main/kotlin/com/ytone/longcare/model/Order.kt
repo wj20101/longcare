@@ -17,19 +17,22 @@ fun Int.toStateDisplayText(): String {
  * 判断是否为待护理计划状态（待执行或执行中）
  */
 fun Int.isPendingCareState(): Boolean {
-    return this == 0 || this == 1
+    val value: Int = this
+    return value == 0 || value == 1
 }
 
 /**
  * 判断是否为服务记录状态（任务完成）
  */
 fun Int.isServiceRecordState(): Boolean {
-    return this == 2
+    val value: Int = this
+    return value == 2
 }
 
 /**
  * 判断是否为作废状态
  */
 fun Int.isCancelledState(): Boolean {
-    return this == 3
+    val value: Int = this
+    return value == 3
 }
