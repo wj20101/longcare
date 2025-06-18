@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.nfcsignin.ui
 
 import android.app.Activity
+import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -29,7 +30,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.NfcManager
+import com.ytone.longcare.common.utils.NfcManagerEntryPoint
 import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.features.nfcsignin.vm.NfcSignInViewModel
 import com.ytone.longcare.features.nfcsignin.vm.NfcSignInUiState
@@ -54,6 +58,15 @@ fun NfcSignInScreen(
     val context = LocalContext.current
     val activity = context as? Activity
 
+    // 获取NfcManager实例
+    val nfcManager: NfcManager = remember {
+        val appContext: Context = context.applicationContext
+        EntryPointAccessors.fromApplication(
+            appContext,
+            NfcManagerEntryPoint::class.java
+        ).nfcManager()
+    }
+
     // NFC检查和处理
     LaunchedEffect(Unit) {
         if (activity != null) {
@@ -62,17 +75,10 @@ fun NfcSignInScreen(
                     // 设备不支持NFC，显示错误信息
                     viewModel.showError("设备不支持NFC功能")
                 }
-                !NfcUtils.isNfcEnabled(context) -> {
-                    // NFC未开启，提示用户开启
-                    NfcUtils.showEnableNfcDialog(
-                        activity,
-                        title = "NFC未开启",
-                        message = "请在设置中开启NFC功能以使用签到功能"
-                    )
-                }
+
                 else -> {
-                    // NFC已开启，通知MainActivity启用前台调度
-                    (activity as? com.ytone.longcare.MainActivity)?.setNfcDispatchNeeded(true)
+                    // 启用NFC功能
+                    nfcManager.enableNfcForActivity(activity)
                 }
             }
         }
@@ -86,8 +92,8 @@ fun NfcSignInScreen(
     // 管理NFC前台调度的生命周期
     DisposableEffect(activity) {
         onDispose {
-            // 通知MainActivity禁用前台调度
-            (activity as? com.ytone.longcare.MainActivity)?.setNfcDispatchNeeded(false)
+            // 禁用NFC功能
+            activity?.let { nfcManager.disableNfcForActivity(it) }
         }
     }
 
@@ -107,7 +113,12 @@ fun NfcSignInScreen(
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text(stringResource(R.string.nfc_sign_in_title), fontWeight = FontWeight.Bold) },
+                    title = {
+                        Text(
+                            stringResource(R.string.nfc_sign_in_title),
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(
@@ -158,7 +169,7 @@ fun NfcSignInScreen(
 
                     SignInState.FAILURE -> ActionButton(
                         text = stringResource(R.string.nfc_sign_in_retry),
-                        onClick = { 
+                        onClick = {
                             viewModel.resetState()
                             // 重置状态后等待用户重新靠近NFC设备
                         }
@@ -334,7 +345,12 @@ private fun NfcSignInScreenContentForPreview(
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text(stringResource(R.string.nfc_sign_in_title), fontWeight = FontWeight.Bold) },
+                    title = {
+                        Text(
+                            stringResource(R.string.nfc_sign_in_title),
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
                     navigationIcon = {
                         IconButton(onClick = { /* TODO: 返回操作 */ }) {
                             Icon(
@@ -372,7 +388,10 @@ private fun NfcSignInScreenContentForPreview(
                 SignInContentCard(signInState = signInState)
                 Spacer(modifier = Modifier.weight(1f))
                 when (signInState) {
-                    SignInState.SUCCESS -> ActionButton(text = stringResource(R.string.common_next_step), onClick = { })
+                    SignInState.SUCCESS -> ActionButton(
+                        text = stringResource(R.string.common_next_step),
+                        onClick = { })
+
                     SignInState.FAILURE -> ActionButton(
                         text = stringResource(R.string.nfc_sign_in_retry),
                         onClick = { onStateChange(SignInState.IDLE) })

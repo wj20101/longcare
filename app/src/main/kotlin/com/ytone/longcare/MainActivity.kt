@@ -9,7 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
-import com.ytone.longcare.common.utils.NfcUtils
+import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.navigation.MainApp
 import com.ytone.longcare.theme.LongCareTheme
@@ -28,12 +28,12 @@ class MainActivity : AppCompatActivity() {
 
     @Inject
     lateinit var toastHelper: ToastHelper
+    
+    @Inject
+    lateinit var nfcManager: NfcManager
 
     // 获取 MainViewModel，它持有 UserSessionRepository
     private val viewModel: MainViewModel by viewModels()
-    
-    // 标记是否需要NFC前台调度（当在NFC签到页面时）
-    private var needsNfcDispatch = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,41 +49,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        // 如果需要NFC前台调度，则启用它
-        if (needsNfcDispatch && NfcUtils.isNfcSupported(this) && NfcUtils.isNfcEnabled(this)) {
-            NfcUtils.enableForegroundDispatch(this)
-        }
-    }
-    
-    override fun onPause() {
-        super.onPause()
-        // 暂停时禁用NFC前台调度
-        if (needsNfcDispatch) {
-            NfcUtils.disableForegroundDispatch(this)
-        }
-    }
-
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // 更新Activity的Intent，这样其他地方可以通过activity.intent获取到最新的Intent
-        setIntent(intent)
-        
-        // 发送NFC Intent事件
-        lifecycleScope.launch {
-            appEventBus.sendEvent(AppEvent.NfcIntentReceived(intent))
-        }
-    }
-    
-    // 供外部调用，设置是否需要NFC前台调度
-    fun setNfcDispatchNeeded(needed: Boolean) {
-        needsNfcDispatch = needed
-        if (needed && NfcUtils.isNfcSupported(this) && NfcUtils.isNfcEnabled(this)) {
-            NfcUtils.enableForegroundDispatch(this)
-        } else if (!needed) {
-            NfcUtils.disableForegroundDispatch(this)
-        }
+        // 委托给NfcManager处理NFC Intent
+        nfcManager.handleNfcIntent(this, intent)
     }
 
     private fun observeAppEvents() {
