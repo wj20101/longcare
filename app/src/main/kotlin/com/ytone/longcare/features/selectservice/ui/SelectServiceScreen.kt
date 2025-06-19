@@ -31,7 +31,7 @@ import com.ytone.longcare.shared.vm.OrderDetailUiState
 
 // --- 数据模型 ---
 data class ServiceItem(
-    val id: String, val name: String, val duration: Int, // 分钟
+    val id: Int, val name: String, val duration: Int, // 分钟
     var isSelected: Boolean = false
 )
 
@@ -62,7 +62,7 @@ fun SelectServiceScreen(
                 serviceItems.addAll(
                     currentState.orderInfo.projectList.map { project ->
                         ServiceItem(
-                            id = project.projectId.toString(),
+                            id = project.projectId,
                             name = project.projectName,
                             duration = project.serviceTime,
                             isSelected = false // 默认不选中，用户可以手动选择
