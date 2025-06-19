@@ -2,10 +2,10 @@
 # Build Tool Versions
 agp = "8.10.1"
 kotlin = "2.1.21"
-ksp = "2.1.21-2.0.1"
+ksp = "2.1.21-2.0.2"
 
 # Compose Versions
-composeBom = "2025.06.00"
+composeBom = "2025.06.01"
 
 # AndroidX Core & Lifecycle
 coreKtx = "1.16.0"
@@ -22,10 +22,10 @@ profileinstaller = "1.4.1"
 
 # Data Persistence
 datastore = "1.1.7"
-room = "2.7.1"
+room = "2.7.2"
 
 # Work
-work = "2.10.1"
+work = "2.10.2"
 
 # Window
 window = "1.4.0"
