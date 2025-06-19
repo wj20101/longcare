@@ -36,6 +36,7 @@ import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.NfcManagerEntryPoint
 import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.features.nfcsignin.vm.NfcSignInViewModel
+import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.features.nfcsignin.vm.NfcSignInUiState
 import com.ytone.longcare.theme.bgGradientBrush
 
@@ -164,7 +165,7 @@ fun NfcSignInScreen(
                 when (signInState) {
                     SignInState.SUCCESS -> ActionButton(
                         text = stringResource(R.string.common_next_step),
-                        onClick = { navController.popBackStack() }
+                        onClick = { navController.navigateToSelectService(orderId) }
                     )
 
                     SignInState.FAILURE -> ActionButton(
