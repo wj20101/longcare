@@ -22,6 +22,7 @@ import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.features.nursingexecution.ui.NursingExecutionScreen
 import com.ytone.longcare.features.nfcsignin.ui.NfcSignInScreen
 import com.ytone.longcare.features.selectservice.ui.SelectServiceScreen
+import com.ytone.longcare.features.photoupload.ui.PhotoUploadScreen
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
@@ -37,6 +38,7 @@ object AppDestinations {
     const val NURSING_EXECUTION_ROUTE = "nursing_execution/{${ORDER_ID_ARG}}"
     const val NFC_SIGN_IN_ROUTE = "nfc_sign_in/{${ORDER_ID_ARG}}"
     const val SELECT_SERVICE_ROUTE = "select_service/{${ORDER_ID_ARG}}"
+    const val PHOTO_UPLOAD_ROUTE = "photo_upload/{${ORDER_ID_ARG}}"
     const val CARE_PLANS_LIST_ROUTE = "care_plans_list"
     const val SERVICE_RECORDS_LIST_ROUTE = "service_records_list"
 
@@ -55,6 +57,10 @@ object AppDestinations {
 
     fun buildSelectServiceRoute(orderId: Long): String {
         return SELECT_SERVICE_ROUTE.replace("{$ORDER_ID_ARG}", orderId.toString())
+    }
+
+    fun buildPhotoUploadRoute(orderId: Long): String {
+        return PHOTO_UPLOAD_ROUTE.replace("{$ORDER_ID_ARG}", orderId.toString())
     }
 }
 
@@ -86,6 +92,10 @@ fun NavController.navigateToServiceRecordsList() {
 
 fun NavController.navigateToSelectService(orderId: Long) {
     navigate(AppDestinations.buildSelectServiceRoute(orderId))
+}
+
+fun NavController.navigateToPhotoUpload(orderId: Long) {
+    navigate(AppDestinations.buildPhotoUploadRoute(orderId))
 }
 
 /**
@@ -194,6 +204,13 @@ fun AppNavigation(startDestination: String) {
                 orderId = orderId,
                 viewModel = viewModel
             )
+        }
+        composable(
+            route = AppDestinations.PHOTO_UPLOAD_ROUTE,
+            arguments = listOf(navArgument(AppDestinations.ORDER_ID_ARG) { type = NavType.LongType })
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getLong(AppDestinations.ORDER_ID_ARG) ?: 0L
+            PhotoUploadScreen(navController = navController, orderId = orderId)
         }
     }
 }

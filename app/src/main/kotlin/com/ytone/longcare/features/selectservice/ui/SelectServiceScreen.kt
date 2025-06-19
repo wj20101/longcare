@@ -28,6 +28,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
+import com.ytone.longcare.navigation.navigateToPhotoUpload
 
 // --- 数据模型 ---
 data class ServiceItem(
@@ -169,7 +170,9 @@ fun SelectServiceScreen(
                     text = "下一步",
                     // 按钮是否可用可以根据是否有选中项来判断
                     enabled = serviceItems.any { it.isSelected },
-                    onClick = {}
+                    onClick = {
+                        navController.navigateToPhotoUpload(orderId)
+                    }
                 )
                 Spacer(modifier = Modifier.height(32.dp))
             }

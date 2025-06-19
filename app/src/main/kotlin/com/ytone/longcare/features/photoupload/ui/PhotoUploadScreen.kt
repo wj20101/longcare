@@ -29,6 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import coil3.compose.rememberAsyncImagePainter
 import com.ytone.longcare.R
 import com.ytone.longcare.theme.bgGradientBrush
@@ -51,7 +53,7 @@ enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PhotoUploadScreen() {
+fun PhotoUploadScreen(navController: NavController, orderId: Long) {
 
     // 模拟图片数据状态
     var beforeCarePhotos by remember { mutableStateOf<List<PhotoItem>>(emptyList()) }
@@ -79,7 +81,12 @@ fun PhotoUploadScreen() {
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text(stringResource(R.string.photo_upload_title), fontWeight = FontWeight.Bold) },
+                    title = {
+                        Text(
+                            stringResource(R.string.photo_upload_title),
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
                     navigationIcon = {
                         IconButton(onClick = { /* TODO: 返回操作 */ }) {
                             Icon(
@@ -176,12 +183,14 @@ fun PhotoUploadSection(
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(86.dp),
-                modifier = Modifier.padding(
-                    start = 20.dp,
-                    top = 20.dp,
-                    end = 20.dp,
-                    bottom = 18.dp
-                ),
+                modifier = Modifier
+                    .padding(
+                        start = 20.dp,
+                        top = 20.dp,
+                        end = 20.dp,
+                        bottom = 18.dp
+                    )
+                    .heightIn(max = 300.dp), // 限制最大高度避免无限约束
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
@@ -245,7 +254,10 @@ fun UploadedImageItem(photo: PhotoItem, onClick: () -> Unit) {
                 photo.imageUrl,
                 placeholder = if (photo.placeholderRes != null) painterResource(photo.placeholderRes) else null
             ),
-            contentDescription = stringResource(R.string.photo_upload_uploaded_image_description, photo.id),
+            contentDescription = stringResource(
+                R.string.photo_upload_uploaded_image_description,
+                photo.id
+            ),
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
@@ -298,6 +310,6 @@ fun PhotoUploadSectionPreview() {
 @Composable
 fun PhotoUploadScreenPreview() {
     MaterialTheme {
-        PhotoUploadScreen()
+        PhotoUploadScreen(navController = rememberNavController(), orderId = 1L)
     }
 }
