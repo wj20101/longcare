@@ -116,12 +116,12 @@ private fun MainDashboardContent(
         }
         item {
             DashboardGridWithImages(
-                pendingCarePlanCount = todayOrderList.count { it.state == 0 },
+                pendingCarePlanCount = todayOrderList.count { it.isPendingCare() },
                 navController = navController
             )
         }
         // 过滤待护理计划
-        val pendingOrders = todayOrderList.filter { it.state == 0 }
+        val pendingOrders = todayOrderList.filter { it.isPendingCare() }
 
         if (pendingOrders.isNotEmpty()) {
             item {
