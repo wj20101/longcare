@@ -21,6 +21,7 @@ import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.features.nursingexecution.ui.NursingExecutionScreen
 import com.ytone.longcare.features.nfcsignin.ui.NfcSignInScreen
+import com.ytone.longcare.features.selectservice.ui.SelectServiceScreen
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
@@ -35,6 +36,7 @@ object AppDestinations {
     const val SERVICE_ROUTE = "service/{${ORDER_ID_ARG}}"
     const val NURSING_EXECUTION_ROUTE = "nursing_execution/{${ORDER_ID_ARG}}"
     const val NFC_SIGN_IN_ROUTE = "nfc_sign_in/{${ORDER_ID_ARG}}"
+    const val SELECT_SERVICE_ROUTE = "select_service/{${ORDER_ID_ARG}}"
     const val CARE_PLANS_LIST_ROUTE = "care_plans_list"
     const val SERVICE_RECORDS_LIST_ROUTE = "service_records_list"
 
@@ -49,6 +51,10 @@ object AppDestinations {
 
     fun buildNfcSignInRoute(orderId: Long): String {
         return NFC_SIGN_IN_ROUTE.replace("{$ORDER_ID_ARG}", orderId.toString())
+    }
+
+    fun buildSelectServiceRoute(orderId: Long): String {
+        return SELECT_SERVICE_ROUTE.replace("{$ORDER_ID_ARG}", orderId.toString())
     }
 }
 
@@ -76,6 +82,10 @@ fun NavController.navigateToCarePlansList() {
 
 fun NavController.navigateToServiceRecordsList() {
     navigate(AppDestinations.SERVICE_RECORDS_LIST_ROUTE)
+}
+
+fun NavController.navigateToSelectService(orderId: Long) {
+    navigate(AppDestinations.buildSelectServiceRoute(orderId))
 }
 
 /**
@@ -171,6 +181,18 @@ fun AppNavigation(startDestination: String) {
             NfcSignInScreen(
                 navController = navController,
                 orderId = orderId
+            )
+        }
+        composable(
+            route = AppDestinations.SELECT_SERVICE_ROUTE,
+            arguments = listOf(navArgument("orderId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getLong("orderId") ?: 0L
+            val viewModel: OrderDetailViewModel = hiltViewModel()
+            SelectServiceScreen(
+                navController = navController,
+                orderId = orderId,
+                viewModel = viewModel
             )
         }
     }
