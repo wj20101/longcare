@@ -36,3 +36,19 @@ fun Int.isCancelledState(): Boolean {
     val value: Int = this
     return value == 3
 }
+
+/**
+ * 判断是否为待执行状态
+ */
+fun Int.isPendingExecutionState(): Boolean {
+    val value: Int = this
+    return value == 0
+}
+
+/**
+ * 判断是否为执行中状态
+ */
+fun Int.isExecutingState(): Boolean {
+    val value: Int = this
+    return value == 1
+}

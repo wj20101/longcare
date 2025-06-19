@@ -27,6 +27,9 @@ import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.navigation.navigateToNfcSignIn
+import com.ytone.longcare.navigation.navigateToSelectService
+import com.ytone.longcare.model.isExecutingState
+import com.ytone.longcare.model.isPendingExecutionState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 
@@ -182,7 +185,13 @@ fun NursingExecutionContent(
 
                 ConfirmButton(
                     text = stringResource(R.string.nursing_execution_confirm_button), 
-                    onClick = { navController.navigateToNfcSignIn(orderId) }
+                    onClick = {
+                        when {
+                            orderInfo.state.isExecutingState() -> navController.navigateToSelectService(orderId)
+                            orderInfo.state.isPendingExecutionState() -> navController.navigateToNfcSignIn(orderId)
+                            else -> navController.popBackStack()
+                        }
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
