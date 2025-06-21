@@ -5,6 +5,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -22,9 +25,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -296,6 +306,7 @@ fun ImageTaskItem(
     onRetry: () -> Unit,
     onRemove: () -> Unit
 ) {
+    var showPreview by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -322,7 +333,9 @@ fun ImageTaskItem(
                     Image(
                         painter = rememberAsyncImagePainter(uri),
                         contentDescription = "处理完成的图片",
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable { showPreview = true },
                         contentScale = ContentScale.Crop
                     )
                 }
@@ -390,6 +403,16 @@ fun ImageTaskItem(
             }
         }
     }
+    
+    // 大图预览对话框
+    if (showPreview && task.status == ImageTaskStatus.SUCCESS) {
+        task.resultUri?.let { uri ->
+            ImagePreviewDialog(
+                imageUri = uri,
+                onDismiss = { showPreview = false }
+            )
+        }
+    }
 }
 
 @Composable
@@ -446,6 +469,83 @@ fun PhotoUploadSectionPreview() {
         onRetryTask = {},
         onRemoveTask = {}
     )
+}
+
+@Composable
+fun ImagePreviewDialog(
+    imageUri: Uri,
+    onDismiss: () -> Unit
+) {
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    
+    val windowInfo = LocalWindowInfo.current
+    val density = LocalDensity.current
+    
+    // 使用 LocalWindowInfo 获取屏幕尺寸
+    val screenWidth = with(density) { windowInfo.containerSize.width.toDp().toPx() }
+    val screenHeight = with(density) { windowInfo.containerSize.height.toDp().toPx() }
+    
+    // 缩放状态管理
+    val transformableState = rememberTransformableState { zoomChange, offsetChange, _ ->
+        val newScale = (scale * zoomChange).coerceIn(1f, 5f) // 最小缩放限制为1.0
+        
+        // 计算新的偏移量，确保图片不会超出屏幕边界
+        val maxOffsetX = if (newScale > 1f) (screenWidth * (newScale - 1)) / 2 else 0f
+        val maxOffsetY = if (newScale > 1f) (screenHeight * (newScale - 1)) / 2 else 0f
+        
+        val newOffset = if (newScale > 1f) {
+            Offset(
+                x = (offset.x + offsetChange.x).coerceIn(-maxOffsetX, maxOffsetX),
+                y = (offset.y + offsetChange.y).coerceIn(-maxOffsetY, maxOffsetY)
+            )
+        } else {
+            // 当缩放等于1时，重置偏移量为0
+            Offset.Zero
+        }
+        
+        scale = newScale
+        offset = newOffset
+    }
+    
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = {
+                            // 单击退出预览
+                            onDismiss()
+                        }
+                    )
+                }
+                .transformable(state = transformableState),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = rememberAsyncImagePainter(imageUri),
+                contentDescription = "预览图片",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offset.x,
+                        translationY = offset.y
+                    ),
+                contentScale = ContentScale.Fit
+            )
+        }
+    }
 }
 
 // --- 预览 ---
