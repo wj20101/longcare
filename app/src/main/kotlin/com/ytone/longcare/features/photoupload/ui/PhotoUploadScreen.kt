@@ -108,6 +108,12 @@ fun PhotoUploadScreen(
     val beforeCareTasks = imageTasks.filter { it.taskType == ImageTaskType.BEFORE_CARE }
     val duringCareTasks = imageTasks.filter { it.taskType == ImageTaskType.DURING_CARE }
     val afterCareTasks = imageTasks.filter { it.taskType == ImageTaskType.AFTER_CARE }
+    
+    // 检查三个分类是否都有成功上传的图片
+    val hasBeforeCareSuccess = beforeCareTasks.any { it.status == ImageTaskStatus.SUCCESS }
+    val hasDuringCareSuccess = duringCareTasks.any { it.status == ImageTaskStatus.SUCCESS }
+    val hasAfterCareSuccess = afterCareTasks.any { it.status == ImageTaskStatus.SUCCESS }
+    val allCategoriesHaveImages = hasBeforeCareSuccess && hasDuringCareSuccess && hasAfterCareSuccess
 
     Box(
         modifier = Modifier
@@ -144,6 +150,7 @@ fun PhotoUploadScreen(
                 Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
                     ConfirmAndNextButton(
                         text = stringResource(R.string.photo_upload_confirm_and_next),
+                        enabled = allCategoriesHaveImages,
                         onClick = { 
                             // 获取所有成功处理的图片URI
                             val successfulUris = viewModel.getSuccessfulImageUris()
@@ -416,12 +423,19 @@ fun ImageTaskItem(
 }
 
 @Composable
-fun ConfirmAndNextButton(text: String, onClick: () -> Unit) {
-    val buttonGradient = Brush.horizontalGradient(
-        colors = listOf(Color(0xFF5CA0FF), Color(0xFF2A8CFF))
-    )
+fun ConfirmAndNextButton(text: String, enabled: Boolean = true, onClick: () -> Unit) {
+    val buttonGradient = if (enabled) {
+        Brush.horizontalGradient(
+            colors = listOf(Color(0xFF5CA0FF), Color(0xFF2A8CFF))
+        )
+    } else {
+        Brush.horizontalGradient(
+            colors = listOf(Color(0xFF9E9E9E), Color(0xFF757575))
+        )
+    }
     Button(
-        onClick = onClick,
+        onClick = if (enabled) onClick else { {} },
+        enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
             .height(50.dp)
@@ -429,7 +443,9 @@ fun ConfirmAndNextButton(text: String, onClick: () -> Unit) {
         shape = CircleShape,
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.Transparent,
-            contentColor = Color.White
+            contentColor = if (enabled) Color.White else Color.White.copy(alpha = 0.6f),
+            disabledContainerColor = Color.Transparent,
+            disabledContentColor = Color.White.copy(alpha = 0.6f)
         )
     ) {
         Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
