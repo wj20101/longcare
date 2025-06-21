@@ -1,6 +1,6 @@
 package com.ytone.longcare.features.photoupload.ui
 
-import androidx.annotation.DrawableRes
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,27 +25,28 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil3.compose.rememberAsyncImagePainter
 import com.ytone.longcare.R
+import com.ytone.longcare.features.photoupload.model.ImageTask
+import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
+import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.features.photoupload.utils.rememberMultiplePhotoPicker
+import com.ytone.longcare.features.photoupload.utils.launchMultiplePhotoPicker
+import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
+import androidx.core.net.toUri
 
 // --- 数据模型 ---
-data class PhotoItem(
-    val id: String,
-    val imageUrl: String, // 本地 URI 或网络 URL
-    @DrawableRes val placeholderRes: Int? = null // 如果是本地占位图资源
-)
-
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
     BEFORE_CARE("护理前照片", tagCategory = TagCategory.DEFAULT),
     DURING_CARE("护理中照片", tagCategory = TagCategory.ORANGE),
@@ -53,25 +56,48 @@ enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PhotoUploadScreen(navController: NavController, orderId: Long) {
-
-    // 模拟图片数据状态
-    var beforeCarePhotos by remember { mutableStateOf<List<PhotoItem>>(emptyList()) }
-    var duringCarePhotos by remember { mutableStateOf<List<PhotoItem>>(emptyList()) }
-    var afterCarePhotos by remember { mutableStateOf<List<PhotoItem>>(emptyList()) }
-
-    // 模拟添加图片逻辑
-    fun addPhoto(category: PhotoCategory) {
-        val newItem = PhotoItem(
-            id = System.currentTimeMillis().toString(),
-            imageUrl = "", // 初始为空或占位符
-        )
-        when (category) {
-            PhotoCategory.BEFORE_CARE -> beforeCarePhotos = beforeCarePhotos + newItem
-            PhotoCategory.DURING_CARE -> duringCarePhotos = duringCarePhotos + newItem
-            PhotoCategory.AFTER_CARE -> afterCarePhotos = afterCarePhotos + newItem
+fun PhotoUploadScreen(
+    navController: NavController, 
+    orderId: Long,
+    viewModel: PhotoProcessingViewModel = hiltViewModel()
+) {
+    // 收集ViewModel状态
+    val imageTasks by viewModel.imageTasks.collectAsState()
+    val isProcessing by viewModel.isProcessing.collectAsState()
+    
+    // 当前选择的分类
+    var currentCategory by remember { mutableStateOf<PhotoCategory?>(null) }
+    
+    // 图片选择器
+    val multiplePhotoPicker = rememberMultiplePhotoPicker(
+        maxItems = 5,
+        onGifFiltered = { gifUris ->
+            // 显示GIF被过滤的提示
+            viewModel.showToast("暂不支持GIF图片")
+        },
+        onImagesSelected = { uris ->
+            if (uris.isNotEmpty()) {
+                currentCategory?.let { category ->
+                    val taskType = when (category) {
+                        PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
+                        PhotoCategory.DURING_CARE -> ImageTaskType.DURING_CARE
+                        PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
+                    }
+                    val watermarkContent = when (category) {
+                        PhotoCategory.BEFORE_CARE -> "护理前 - 长护险服务"
+                        PhotoCategory.DURING_CARE -> "护理中 - 长护险服务"
+                        PhotoCategory.AFTER_CARE -> "护理后 - 长护险服务"
+                    }
+                    viewModel.addImagesToProcess(uris, taskType, watermarkContent)
+                }
+            }
         }
-    }
+    )
+    
+    // 根据任务类型获取不同分类的任务
+    val beforeCareTasks = imageTasks.filter { it.taskType == ImageTaskType.BEFORE_CARE }
+    val duringCareTasks = imageTasks.filter { it.taskType == ImageTaskType.DURING_CARE }
+    val afterCareTasks = imageTasks.filter { it.taskType == ImageTaskType.AFTER_CARE }
 
     Box(
         modifier = Modifier
@@ -108,7 +134,12 @@ fun PhotoUploadScreen(navController: NavController, orderId: Long) {
                 Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
                     ConfirmAndNextButton(
                         text = stringResource(R.string.photo_upload_confirm_and_next),
-                        onClick = { /* TODO: 下一步逻辑 */ }
+                        onClick = { 
+                            // 获取所有成功处理的图片URI
+                            val successfulUris = viewModel.getSuccessfulImageUris()
+                            // TODO: 传递给下一个页面或保存到数据库
+                            navController.popBackStack()
+                        }
                     )
                 }
             }
@@ -135,8 +166,13 @@ fun PhotoUploadScreen(navController: NavController, orderId: Long) {
                 item {
                     PhotoUploadSection(
                         category = PhotoCategory.BEFORE_CARE,
-                        photos = beforeCarePhotos,
-                        onAddPhoto = { addPhoto(PhotoCategory.BEFORE_CARE) }
+                        tasks = beforeCareTasks,
+                        onAddPhoto = { 
+                            currentCategory = PhotoCategory.BEFORE_CARE
+                            launchMultiplePhotoPicker(multiplePhotoPicker)
+                        },
+                        onRetryTask = { taskId -> viewModel.retryTask(taskId) },
+                        onRemoveTask = { taskId -> viewModel.removeTask(taskId) }
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                 }
@@ -144,8 +180,13 @@ fun PhotoUploadScreen(navController: NavController, orderId: Long) {
                 item {
                     PhotoUploadSection(
                         category = PhotoCategory.DURING_CARE,
-                        photos = duringCarePhotos,
-                        onAddPhoto = { addPhoto(PhotoCategory.DURING_CARE) }
+                        tasks = duringCareTasks,
+                        onAddPhoto = { 
+                            currentCategory = PhotoCategory.DURING_CARE
+                            launchMultiplePhotoPicker(multiplePhotoPicker)
+                        },
+                        onRetryTask = { taskId -> viewModel.retryTask(taskId) },
+                        onRemoveTask = { taskId -> viewModel.removeTask(taskId) }
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                 }
@@ -153,8 +194,13 @@ fun PhotoUploadScreen(navController: NavController, orderId: Long) {
                 item {
                     PhotoUploadSection(
                         category = PhotoCategory.AFTER_CARE,
-                        photos = afterCarePhotos,
-                        onAddPhoto = { addPhoto(PhotoCategory.AFTER_CARE) }
+                        tasks = afterCareTasks,
+                        onAddPhoto = { 
+                            currentCategory = PhotoCategory.AFTER_CARE
+                            launchMultiplePhotoPicker(multiplePhotoPicker)
+                        },
+                        onRetryTask = { taskId -> viewModel.retryTask(taskId) },
+                        onRemoveTask = { taskId -> viewModel.removeTask(taskId) }
                     )
                     Spacer(modifier = Modifier.height(20.dp)) // 额外的底部间距
                 }
@@ -166,8 +212,10 @@ fun PhotoUploadScreen(navController: NavController, orderId: Long) {
 @Composable
 fun PhotoUploadSection(
     category: PhotoCategory,
-    photos: List<PhotoItem>,
+    tasks: List<ImageTask>,
     onAddPhoto: () -> Unit,
+    onRetryTask: (String) -> Unit,
+    onRemoveTask: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -198,9 +246,13 @@ fun PhotoUploadSection(
                 item {
                     AddPhotoButton(onClick = onAddPhoto)
                 }
-                // 后续的图片items
-                items(photos) { photo ->
-                    UploadedImageItem(photo = photo, onClick = { /* TODO */ })
+                // 后续的图片任务items
+                items(tasks) { task ->
+                    ImageTaskItem(
+                        task = task,
+                        onRetry = { onRetryTask(task.id) },
+                        onRemove = { onRemoveTask(task.id) }
+                    )
                 }
             }
         }
@@ -239,28 +291,104 @@ fun AddPhotoButton(onClick: () -> Unit) {
 }
 
 @Composable
-fun UploadedImageItem(photo: PhotoItem, onClick: () -> Unit) {
+fun ImageTaskItem(
+    task: ImageTask,
+    onRetry: () -> Unit,
+    onRemove: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.LightGray) // 图片加载时的占位背景
-            .clickable(onClick = onClick)
+            .background(Color.LightGray)
     ) {
-        Image(
-            // 实际应使用 Coil 等库加载 photo.imageUrl
-            painter = rememberAsyncImagePainter(
-                photo.imageUrl,
-                placeholder = if (photo.placeholderRes != null) painterResource(photo.placeholderRes) else null
-            ),
-            contentDescription = stringResource(
-                R.string.photo_upload_uploaded_image_description,
-                photo.id
-            ),
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
+        when (task.status) {
+            ImageTaskStatus.PROCESSING -> {
+                // 处理中状态：显示加载动画
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = Color(0xFF2C87FE)
+                    )
+                }
+            }
+            ImageTaskStatus.SUCCESS -> {
+                // 成功状态：显示处理后的图片
+                task.resultUri?.let { uri ->
+                    Image(
+                        painter = rememberAsyncImagePainter(uri),
+                        contentDescription = "处理完成的图片",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                // 删除按钮
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 2.dp, end = 2.dp)
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.7f))
+                        .clickable(onClick = onRemove),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "操作图标",
+                        modifier = Modifier.size(12.dp),
+                        tint = Color.White
+                    )
+                }
+            }
+            ImageTaskStatus.FAILED -> {
+                // 失败状态：显示错误信息和重试按钮
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "重试",
+                        tint = Color.Red,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clickable { onRetry() }
+                    )
+                    Text(
+                        text = "点击重试",
+                        fontSize = 8.sp,
+                        color = Color.Gray,
+                        maxLines = 1
+                    )
+                }
+                // 删除按钮
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 2.dp, end = 2.dp)
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.7f))
+                        .clickable(onClick = onRemove),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "操作图标",
+                        modifier = Modifier.size(12.dp),
+                        tint = Color.White
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -289,20 +417,35 @@ fun ConfirmAndNextButton(text: String, onClick: () -> Unit) {
 @Composable
 fun PhotoUploadSectionPreview() {
     val mockList = listOf(
-        PhotoItem(
+        ImageTask(
             id = "123",
-            imageUrl = "https://img0.baidu.com/it/u=2895902758,4240700774&fm=253&fmt=auto&app=120&f=JPEG?w=800&h=800"
+            originalUri = "https://img0.baidu.com/it/u=2895902758,4240700774&fm=253&fmt=auto&app=120&f=JPEG?w=800&h=800".toUri(),
+            taskType = ImageTaskType.AFTER_CARE,
+            watermarkContent = "护理后 - 长护险服务",
+            status = ImageTaskStatus.SUCCESS
         ),
-        PhotoItem(
-            id = "123",
-            imageUrl = "https://img0.baidu.com/it/u=2895902758,4240700774&fm=253&fmt=auto&app=120&f=JPEG?w=800&h=800"
+        ImageTask(
+            id = "124",
+            originalUri = "https://img0.baidu.com/it/u=2895902758,4240700774&fm=253&fmt=auto&app=120&f=JPEG?w=800&h=800".toUri(),
+            taskType = ImageTaskType.AFTER_CARE,
+            watermarkContent = "护理后 - 长护险服务",
+            status = ImageTaskStatus.PROCESSING
         ),
-        PhotoItem(
-            id = "123",
-            imageUrl = "https://img0.baidu.com/it/u=2895902758,4240700774&fm=253&fmt=auto&app=120&f=JPEG?w=800&h=800"
+        ImageTask(
+            id = "125",
+            originalUri = "https://img0.baidu.com/it/u=2895902758,4240700774&fm=253&fmt=auto&app=120&f=JPEG?w=800&h=800".toUri(),
+            taskType = ImageTaskType.AFTER_CARE,
+            watermarkContent = "护理后 - 长护险服务",
+            status = ImageTaskStatus.FAILED
         ),
     )
-    PhotoUploadSection(category = PhotoCategory.AFTER_CARE, photos = mockList, onAddPhoto = {})
+    PhotoUploadSection(
+        category = PhotoCategory.AFTER_CARE, 
+        tasks = mockList, 
+        onAddPhoto = {},
+        onRetryTask = {},
+        onRemoveTask = {}
+    )
 }
 
 // --- 预览 ---
