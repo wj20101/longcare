@@ -2,6 +2,7 @@ package com.ytone.longcare.features.nfcsignin.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.api.request.EndOrderParamModel
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
@@ -57,6 +58,32 @@ class NfcSignInViewModel @Inject constructor(
     }
 
     /**
+     * 结束服务工单
+     */
+    fun endOrder(params: EndOrderParamModel) {
+        viewModelScope.launch {
+            _uiState.value = NfcSignInUiState.Loading
+
+            when (val result = orderRepository.endOrder(params)) {
+                is ApiResult.Success -> {
+                    _uiState.value = NfcSignInUiState.Success
+                }
+
+                is ApiResult.Exception -> {
+                    _uiState.value = NfcSignInUiState.Error(
+                        result.exception.message ?: "网络错误，请检查网络连接"
+                    )
+                }
+
+                is ApiResult.Failure -> {
+                    toastHelper.showShort(result.message)
+                    _uiState.value = NfcSignInUiState.Error(result.message)
+                }
+            }
+        }
+    }
+
+    /**
      * 重置状态
      */
     fun resetState() {
@@ -71,7 +98,7 @@ class NfcSignInViewModel @Inject constructor(
         _uiState.value = NfcSignInUiState.Error(message)
     }
 
-    fun observeNfcEvents(orderId: Long) {
+    fun observeNfcEvents(orderId: Long, signInMode: com.ytone.longcare.features.nfcsignin.ui.SignInMode, endOrderParams: com.ytone.longcare.api.request.EndOrderParamModel?) {
         viewModelScope.launch {
             appEventBus.events.collect { event ->
                 if (event is AppEvent.NfcIntentReceived) {
@@ -79,7 +106,14 @@ class NfcSignInViewModel @Inject constructor(
                     if (tag != null) {
                         val tagId = NfcUtils.bytesToHexString(tag.id)
                         if (tagId.isNotEmpty()) {
-                            startOrder(orderId, tagId)
+                            when (signInMode) {
+                                com.ytone.longcare.features.nfcsignin.ui.SignInMode.START_ORDER -> startOrder(orderId, tagId)
+                                com.ytone.longcare.features.nfcsignin.ui.SignInMode.END_ORDER -> {
+                                    endOrderParams?.let { 
+                                        endOrder(it.copy(nfc = tagId))
+                                    }
+                                }
+                            }
                         }
                     }
                 }

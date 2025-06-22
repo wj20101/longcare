@@ -1,6 +1,7 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
+import com.ytone.longcare.api.request.EndOrderParamModel
 import com.ytone.longcare.api.request.OrderListParamModel
 import com.ytone.longcare.api.request.OrderInfoParamModel
 import com.ytone.longcare.api.request.StartOrderParamModel
@@ -42,6 +43,12 @@ class OrderRepositoryImpl @Inject constructor(
     override suspend fun startOrder(orderId: Long, nfcDeviceId: String): ApiResult<Unit> {
         return safeApiCall(ioDispatcher, eventBus) {
             apiService.startOrder(StartOrderParamModel(orderId = orderId, nfc = nfcDeviceId))
+        }
+    }
+
+    override suspend fun endOrder(params: EndOrderParamModel): ApiResult<Unit> {
+        return safeApiCall(ioDispatcher, eventBus) {
+            apiService.endOrder(params)
         }
     }
 }

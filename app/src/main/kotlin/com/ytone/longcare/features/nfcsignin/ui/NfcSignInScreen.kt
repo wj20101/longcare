@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.R
+import com.ytone.longcare.api.request.EndOrderParamModel
 import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.NfcManagerEntryPoint
 import com.ytone.longcare.common.utils.NfcUtils
@@ -39,6 +40,11 @@ import com.ytone.longcare.features.nfcsignin.vm.NfcSignInViewModel
 import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.features.nfcsignin.vm.NfcSignInUiState
 import com.ytone.longcare.theme.bgGradientBrush
+
+enum class SignInMode {
+    START_ORDER,
+    END_ORDER
+}
 
 // --- 状态定义 ---
 enum class SignInState {
@@ -53,6 +59,8 @@ enum class SignInState {
 fun NfcSignInScreen(
     navController: NavController,
     orderId: Long,
+    signInMode: SignInMode, // 新增参数，用于区分开始/结束订单
+    endOrderParams: EndOrderParamModel?,
     viewModel: NfcSignInViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -86,8 +94,8 @@ fun NfcSignInScreen(
     }
 
     // 监听NFC事件
-    LaunchedEffect(Unit) {
-        viewModel.observeNfcEvents(orderId)
+    LaunchedEffect(orderId, signInMode) {
+        viewModel.observeNfcEvents(orderId, signInMode, endOrderParams)
     }
 
     // 管理NFC前台调度的生命周期

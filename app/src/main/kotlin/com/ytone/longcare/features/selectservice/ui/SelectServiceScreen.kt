@@ -171,7 +171,8 @@ fun SelectServiceScreen(
                     // 按钮是否可用可以根据是否有选中项来判断
                     enabled = serviceItems.any { it.isSelected },
                     onClick = {
-                        navController.navigateToPhotoUpload(orderId)
+                        val selectedProjectIds = serviceItems.filter { it.isSelected }.map { it.id }
+                        navController.navigateToPhotoUpload(orderId, selectedProjectIds)
                     }
                 )
                 Spacer(modifier = Modifier.height(32.dp))

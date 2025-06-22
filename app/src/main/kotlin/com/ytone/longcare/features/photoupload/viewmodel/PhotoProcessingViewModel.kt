@@ -162,9 +162,11 @@ class PhotoProcessingViewModel @Inject constructor(
     /**
      * 获取所有成功处理的图片Uri列表
      */
-    fun getSuccessfulImageUris(): List<Uri> {
-        return _imageTasks.value.filter { it.status == ImageTaskStatus.SUCCESS && it.resultUri != null }
-            .mapNotNull { it.resultUri }
+    fun getSuccessfulImageUris(): Map<String, List<String>> {
+        return _imageTasks.value
+            .filter { it.status == ImageTaskStatus.SUCCESS && it.resultUri != null }
+            .groupBy { it.taskType.name }
+            .mapValues { entry -> entry.value.mapNotNull { it.resultUri?.toString() } }
     }
 
     /**
@@ -186,13 +188,6 @@ class PhotoProcessingViewModel @Inject constructor(
      */
     fun getBeforeCareTasks(): List<ImageTask> {
         return getTasksByType(ImageTaskType.BEFORE_CARE)
-    }
-
-    /**
-     * 获取护理中任务列表
-     */
-    fun getDuringCareTasks(): List<ImageTask> {
-        return getTasksByType(ImageTaskType.DURING_CARE)
     }
 
     /**

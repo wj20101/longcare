@@ -16,29 +16,34 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ytone.longcare.MainViewModel
+import com.ytone.longcare.api.request.EndOrderParamModel
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.features.nursingexecution.ui.NursingExecutionScreen
 import com.ytone.longcare.features.nfcsignin.ui.NfcSignInScreen
+import com.ytone.longcare.features.nfcsignin.ui.SignInMode
 import com.ytone.longcare.features.selectservice.ui.SelectServiceScreen
 import com.ytone.longcare.features.photoupload.ui.PhotoUploadScreen
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
+import java.net.URLEncoder
 
 object AppDestinations {
     // 路径参数名称常量
     const val ORDER_ID_ARG = "orderId"
+    const val SIGN_IN_MODE_ARG = "signInMode"
+    const val END_ORDER_PARAMS_ARG = "endOrderParams"
 
     const val LOGIN_ROUTE = "login"
     const val HOME_ROUTE = "home"
     const val SERVICE_ROUTE = "service/{${ORDER_ID_ARG}}"
     const val NURSING_EXECUTION_ROUTE = "nursing_execution/{${ORDER_ID_ARG}}"
-    const val NFC_SIGN_IN_ROUTE = "nfc_sign_in/{${ORDER_ID_ARG}}"
+    const val NFC_SIGN_IN_ROUTE = "nfc_sign_in/{${ORDER_ID_ARG}}?${SIGN_IN_MODE_ARG}={${SIGN_IN_MODE_ARG}}&${END_ORDER_PARAMS_ARG}={${END_ORDER_PARAMS_ARG}}"
     const val SELECT_SERVICE_ROUTE = "select_service/{${ORDER_ID_ARG}}"
-    const val PHOTO_UPLOAD_ROUTE = "photo_upload/{${ORDER_ID_ARG}}"
+    const val PHOTO_UPLOAD_ROUTE = "photo_upload/{${ORDER_ID_ARG}}?projectIds={projectIds}"
     const val CARE_PLANS_LIST_ROUTE = "care_plans_list"
     const val SERVICE_RECORDS_LIST_ROUTE = "service_records_list"
 
@@ -51,8 +56,10 @@ object AppDestinations {
         return NURSING_EXECUTION_ROUTE.replace("{$ORDER_ID_ARG}", orderId.toString())
     }
 
-    fun buildNfcSignInRoute(orderId: Long): String {
-        return NFC_SIGN_IN_ROUTE.replace("{$ORDER_ID_ARG}", orderId.toString())
+    fun buildNfcSignInRoute(orderId: Long, signInMode: SignInMode): String {
+        return NFC_SIGN_IN_ROUTE
+            .replace("{$ORDER_ID_ARG}", orderId.toString())
+            .replace("{$SIGN_IN_MODE_ARG}", signInMode.name)
     }
 
     fun buildSelectServiceRoute(orderId: Long): String {
@@ -78,8 +85,21 @@ fun NavController.navigateToNursingExecution(orderId: Long) {
     navigate(AppDestinations.buildNursingExecutionRoute(orderId))
 }
 
-fun NavController.navigateToNfcSignIn(orderId: Long) {
-    navigate(AppDestinations.buildNfcSignInRoute(orderId))
+fun NavController.navigateToNfcSignInForStartOrder(orderId: Long) {
+    val route = AppDestinations.NFC_SIGN_IN_ROUTE
+        .replace("{${AppDestinations.ORDER_ID_ARG}}", orderId.toString())
+        .replace("{${AppDestinations.SIGN_IN_MODE_ARG}}", SignInMode.START_ORDER.name)
+        .replace("&${AppDestinations.END_ORDER_PARAMS_ARG}={${AppDestinations.END_ORDER_PARAMS_ARG}}", "")
+    navigate(route)
+}
+
+fun NavController.navigateToNfcSignInForEndOrder(orderId: Long, params: EndOrderParamModel) {
+    val paramsJson = com.squareup.moshi.Moshi.Builder().build().adapter(EndOrderParamModel::class.java).toJson(params)
+    val route = AppDestinations.NFC_SIGN_IN_ROUTE
+        .replace("{${AppDestinations.ORDER_ID_ARG}}", orderId.toString())
+        .replace("{${AppDestinations.SIGN_IN_MODE_ARG}}", SignInMode.END_ORDER.name)
+        .replace("{${AppDestinations.END_ORDER_PARAMS_ARG}}", URLEncoder.encode(paramsJson, "UTF-8"))
+    navigate(route)
 }
 
 fun NavController.navigateToCarePlansList() {
@@ -94,8 +114,11 @@ fun NavController.navigateToSelectService(orderId: Long) {
     navigate(AppDestinations.buildSelectServiceRoute(orderId))
 }
 
-fun NavController.navigateToPhotoUpload(orderId: Long) {
-    navigate(AppDestinations.buildPhotoUploadRoute(orderId))
+fun NavController.navigateToPhotoUpload(orderId: Long, projectIds: List<Int>) {
+    val route = AppDestinations.PHOTO_UPLOAD_ROUTE
+        .replace("{${AppDestinations.ORDER_ID_ARG}}", orderId.toString())
+        .replace("{projectIds}", projectIds.joinToString(","))
+    navigate(route)
 }
 
 /**
@@ -185,12 +208,25 @@ fun AppNavigation(startDestination: String) {
         }
         composable(
             route = AppDestinations.NFC_SIGN_IN_ROUTE,
-            arguments = listOf(navArgument(AppDestinations.ORDER_ID_ARG) { type = NavType.LongType })
+            arguments = listOf(
+                navArgument(AppDestinations.ORDER_ID_ARG) { type = NavType.LongType },
+                navArgument(AppDestinations.SIGN_IN_MODE_ARG) { type = NavType.StringType; nullable = true },
+                navArgument(AppDestinations.END_ORDER_PARAMS_ARG) { type = NavType.StringType; nullable = true }
+            )
         ) { backStackEntry ->
             val orderId = backStackEntry.arguments?.getLong(AppDestinations.ORDER_ID_ARG) ?: 0L
+            val signInModeName = backStackEntry.arguments?.getString(AppDestinations.SIGN_IN_MODE_ARG)
+            val signInMode = com.ytone.longcare.features.nfcsignin.ui.SignInMode.valueOf(signInModeName ?: com.ytone.longcare.features.nfcsignin.ui.SignInMode.START_ORDER.name)
+            val paramsJson = backStackEntry.arguments?.getString(AppDestinations.END_ORDER_PARAMS_ARG)
+            val endOrderParams = paramsJson?.let {
+                com.squareup.moshi.Moshi.Builder().build().adapter(com.ytone.longcare.api.request.EndOrderParamModel::class.java).fromJson(java.net.URLDecoder.decode(it, "UTF-8"))
+            }
+
             NfcSignInScreen(
                 navController = navController,
-                orderId = orderId
+                orderId = orderId,
+                signInMode = signInMode,
+                endOrderParams = endOrderParams
             )
         }
         composable(
@@ -207,10 +243,19 @@ fun AppNavigation(startDestination: String) {
         }
         composable(
             route = AppDestinations.PHOTO_UPLOAD_ROUTE,
-            arguments = listOf(navArgument(AppDestinations.ORDER_ID_ARG) { type = NavType.LongType })
+            arguments = listOf(
+                navArgument(AppDestinations.ORDER_ID_ARG) { type = NavType.LongType },
+                navArgument("projectIds") { type = NavType.StringType; nullable = true }
+            )
         ) { backStackEntry ->
             val orderId = backStackEntry.arguments?.getLong(AppDestinations.ORDER_ID_ARG) ?: 0L
-            PhotoUploadScreen(navController = navController, orderId = orderId)
+            val projectIdsStr = backStackEntry.arguments?.getString("projectIds")
+            val projectIds = projectIdsStr?.split(",")?.mapNotNull { it.toIntOrNull() } ?: emptyList()
+            PhotoUploadScreen(
+                navController = navController,
+                orderId = orderId,
+                projectIds = projectIds
+            )
         }
     }
 }
