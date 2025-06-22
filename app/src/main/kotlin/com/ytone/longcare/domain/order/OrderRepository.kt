@@ -1,5 +1,6 @@
 package com.ytone.longcare.domain.order
 
+import com.ytone.longcare.api.request.EndOrderParamModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
@@ -32,4 +33,10 @@ interface OrderRepository {
      * @param nfcDeviceId NFC设备ID
      */
     suspend fun startOrder(orderId: Long, nfcDeviceId: String): ApiResult<Unit>
+
+    /**
+     * 结束订单服务（NFC签退）
+     * @param params 结束订单所需的参数
+     */
+    suspend fun endOrder(params: EndOrderParamModel): ApiResult<Unit>
 }

@@ -55,11 +55,12 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import androidx.core.net.toUri
+import com.ytone.longcare.api.request.EndOrderParamModel
+import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
     BEFORE_CARE("护理前照片", tagCategory = TagCategory.DEFAULT),
-    DURING_CARE("护理中照片", tagCategory = TagCategory.ORANGE),
     AFTER_CARE("护理后照片", tagCategory = TagCategory.BLUE)
 }
 
@@ -67,17 +68,17 @@ enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhotoUploadScreen(
-    navController: NavController, 
+    navController: NavController,
     orderId: Long,
+    projectIds: List<Int>,
     viewModel: PhotoProcessingViewModel = hiltViewModel()
 ) {
     // 收集ViewModel状态
     val imageTasks by viewModel.imageTasks.collectAsState()
-    val isProcessing by viewModel.isProcessing.collectAsState()
-    
+
     // 当前选择的分类
     var currentCategory by remember { mutableStateOf<PhotoCategory?>(null) }
-    
+
     // 图片选择器
     val multiplePhotoPicker = rememberMultiplePhotoPicker(
         maxItems = 5,
@@ -90,12 +91,10 @@ fun PhotoUploadScreen(
                 currentCategory?.let { category ->
                     val taskType = when (category) {
                         PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
-                        PhotoCategory.DURING_CARE -> ImageTaskType.DURING_CARE
                         PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
                     }
                     val watermarkContent = when (category) {
                         PhotoCategory.BEFORE_CARE -> "护理前 - 长护险服务"
-                        PhotoCategory.DURING_CARE -> "护理中 - 长护险服务"
                         PhotoCategory.AFTER_CARE -> "护理后 - 长护险服务"
                     }
                     viewModel.addImagesToProcess(uris, taskType, watermarkContent)
@@ -103,17 +102,15 @@ fun PhotoUploadScreen(
             }
         }
     )
-    
+
     // 根据任务类型获取不同分类的任务
     val beforeCareTasks = imageTasks.filter { it.taskType == ImageTaskType.BEFORE_CARE }
-    val duringCareTasks = imageTasks.filter { it.taskType == ImageTaskType.DURING_CARE }
     val afterCareTasks = imageTasks.filter { it.taskType == ImageTaskType.AFTER_CARE }
-    
+
     // 检查三个分类是否都有成功上传的图片
     val hasBeforeCareSuccess = beforeCareTasks.any { it.status == ImageTaskStatus.SUCCESS }
-    val hasDuringCareSuccess = duringCareTasks.any { it.status == ImageTaskStatus.SUCCESS }
     val hasAfterCareSuccess = afterCareTasks.any { it.status == ImageTaskStatus.SUCCESS }
-    val allCategoriesHaveImages = hasBeforeCareSuccess && hasDuringCareSuccess && hasAfterCareSuccess
+    val allCategoriesHaveImages = hasBeforeCareSuccess && hasAfterCareSuccess
 
     Box(
         modifier = Modifier
@@ -151,11 +148,24 @@ fun PhotoUploadScreen(
                     ConfirmAndNextButton(
                         text = stringResource(R.string.photo_upload_confirm_and_next),
                         enabled = allCategoriesHaveImages,
-                        onClick = { 
-                            // 获取所有成功处理的图片URI
+                        onClick = {
                             val successfulUris = viewModel.getSuccessfulImageUris()
-                            // TODO: 传递给下一个页面或保存到数据库
-                            navController.popBackStack()
+                            val params = EndOrderParamModel(
+                                orderId = orderId,
+                                projectIdList = projectIds,
+                                beginImgList = successfulUris.getOrDefault(
+                                    ImageTaskType.BEFORE_CARE,
+                                    emptyList()
+                                ),
+                                endImgList = successfulUris.getOrDefault(
+                                    ImageTaskType.AFTER_CARE,
+                                    emptyList()
+                                )
+                            )
+                            navController.navigateToNfcSignInForEndOrder(
+                                orderId = orderId,
+                                params = params
+                            )
                         }
                     )
                 }
@@ -184,22 +194,8 @@ fun PhotoUploadScreen(
                     PhotoUploadSection(
                         category = PhotoCategory.BEFORE_CARE,
                         tasks = beforeCareTasks,
-                        onAddPhoto = { 
+                        onAddPhoto = {
                             currentCategory = PhotoCategory.BEFORE_CARE
-                            launchMultiplePhotoPicker(multiplePhotoPicker)
-                        },
-                        onRetryTask = { taskId -> viewModel.retryTask(taskId) },
-                        onRemoveTask = { taskId -> viewModel.removeTask(taskId) }
-                    )
-                    Spacer(modifier = Modifier.height(20.dp))
-                }
-
-                item {
-                    PhotoUploadSection(
-                        category = PhotoCategory.DURING_CARE,
-                        tasks = duringCareTasks,
-                        onAddPhoto = { 
-                            currentCategory = PhotoCategory.DURING_CARE
                             launchMultiplePhotoPicker(multiplePhotoPicker)
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
@@ -212,7 +208,7 @@ fun PhotoUploadScreen(
                     PhotoUploadSection(
                         category = PhotoCategory.AFTER_CARE,
                         tasks = afterCareTasks,
-                        onAddPhoto = { 
+                        onAddPhoto = {
                             currentCategory = PhotoCategory.AFTER_CARE
                             launchMultiplePhotoPicker(multiplePhotoPicker)
                         },
@@ -334,6 +330,7 @@ fun ImageTaskItem(
                     )
                 }
             }
+
             ImageTaskStatus.SUCCESS -> {
                 // 成功状态：显示处理后的图片
                 task.resultUri?.let { uri ->
@@ -365,6 +362,7 @@ fun ImageTaskItem(
                     )
                 }
             }
+
             ImageTaskStatus.FAILED -> {
                 // 失败状态：显示错误信息和重试按钮
                 Column(
@@ -410,7 +408,7 @@ fun ImageTaskItem(
             }
         }
     }
-    
+
     // 大图预览对话框
     if (showPreview && task.status == ImageTaskStatus.SUCCESS) {
         task.resultUri?.let { uri ->
@@ -434,7 +432,9 @@ fun ConfirmAndNextButton(text: String, enabled: Boolean = true, onClick: () -> U
         )
     }
     Button(
-        onClick = if (enabled) onClick else { {} },
+        onClick = if (enabled) onClick else {
+            {}
+        },
         enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
@@ -479,8 +479,8 @@ fun PhotoUploadSectionPreview() {
         ),
     )
     PhotoUploadSection(
-        category = PhotoCategory.AFTER_CARE, 
-        tasks = mockList, 
+        category = PhotoCategory.AFTER_CARE,
+        tasks = mockList,
         onAddPhoto = {},
         onRetryTask = {},
         onRemoveTask = {}
@@ -494,22 +494,22 @@ fun ImagePreviewDialog(
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
-    
+
     val windowInfo = LocalWindowInfo.current
     val density = LocalDensity.current
-    
+
     // 使用 LocalWindowInfo 获取屏幕尺寸
     val screenWidth = with(density) { windowInfo.containerSize.width.toDp().toPx() }
     val screenHeight = with(density) { windowInfo.containerSize.height.toDp().toPx() }
-    
+
     // 缩放状态管理
     val transformableState = rememberTransformableState { zoomChange, offsetChange, _ ->
         val newScale = (scale * zoomChange).coerceIn(1f, 5f) // 最小缩放限制为1.0
-        
+
         // 计算新的偏移量，确保图片不会超出屏幕边界
         val maxOffsetX = if (newScale > 1f) (screenWidth * (newScale - 1)) / 2 else 0f
         val maxOffsetY = if (newScale > 1f) (screenHeight * (newScale - 1)) / 2 else 0f
-        
+
         val newOffset = if (newScale > 1f) {
             Offset(
                 x = (offset.x + offsetChange.x).coerceIn(-maxOffsetX, maxOffsetX),
@@ -519,11 +519,11 @@ fun ImagePreviewDialog(
             // 当缩放等于1时，重置偏移量为0
             Offset.Zero
         }
-        
+
         scale = newScale
         offset = newOffset
     }
-    
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -569,6 +569,10 @@ fun ImagePreviewDialog(
 @Composable
 fun PhotoUploadScreenPreview() {
     MaterialTheme {
-        PhotoUploadScreen(navController = rememberNavController(), orderId = 1L)
+        PhotoUploadScreen(
+            navController = rememberNavController(),
+            orderId = 1L,
+            projectIds = emptyList()
+        )
     }
 }

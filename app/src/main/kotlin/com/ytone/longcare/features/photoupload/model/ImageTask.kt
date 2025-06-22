@@ -20,7 +20,6 @@ data class ImageTask(
  */
 enum class ImageTaskType {
     BEFORE_CARE,  // 护理前
-    DURING_CARE,  // 护理中
     AFTER_CARE    // 护理后
 }
 
