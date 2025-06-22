@@ -27,28 +27,42 @@ class OrderRepositoryImpl @Inject constructor(
     override suspend fun getTodayOrderList(): ApiResult<List<TodayServiceOrderModel>> {
         return safeApiCall(ioDispatcher, eventBus) { apiService.getTodayOrderList() }
     }
-    
+
     override suspend fun getOrderList(daytime: String): ApiResult<List<ServiceOrderModel>> {
-        return safeApiCall(ioDispatcher, eventBus) { 
+        return safeApiCall(ioDispatcher, eventBus) {
             apiService.getOrderList(OrderListParamModel(daytime = daytime))
         }
     }
-    
+
     override suspend fun getOrderInfo(orderId: Long): ApiResult<ServiceOrderInfoModel> {
         return safeApiCall(ioDispatcher, eventBus) {
             apiService.getOrderInfo(OrderInfoParamModel(orderId = orderId))
         }
     }
-    
+
     override suspend fun startOrder(orderId: Long, nfcDeviceId: String): ApiResult<Unit> {
         return safeApiCall(ioDispatcher, eventBus) {
             apiService.startOrder(StartOrderParamModel(orderId = orderId, nfc = nfcDeviceId))
         }
     }
 
-    override suspend fun endOrder(params: EndOrderParamModel): ApiResult<Unit> {
+    override suspend fun endOrder(
+        orderId: Long,
+        nfcDeviceId: String,
+        projectIdList: List<Int>,
+        beginImgList: List<String>,
+        endImageList: List<String>
+    ): ApiResult<Unit> {
         return safeApiCall(ioDispatcher, eventBus) {
-            apiService.endOrder(params)
+            apiService.endOrder(
+                EndOrderParamModel(
+                    orderId = orderId,
+                    nfc = nfcDeviceId,
+                    projectIdList = projectIdList,
+                    beginImgList = beginImgList,
+                    endImgList = endImageList
+                )
+            )
         }
     }
 }

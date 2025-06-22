@@ -2,13 +2,14 @@ package com.ytone.longcare.features.nfcsignin.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.api.request.EndOrderParamModel
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.OrderRepository
+import com.ytone.longcare.features.nfcsignin.model.EndOderInfo
+import com.ytone.longcare.features.nfcsignin.ui.SignInMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,18 +38,18 @@ class NfcSignInViewModel @Inject constructor(
     fun startOrder(orderId: Long, nfcDeviceId: String) {
         viewModelScope.launch {
             _uiState.value = NfcSignInUiState.Loading
-            
+
             when (val result = orderRepository.startOrder(orderId, nfcDeviceId)) {
                 is ApiResult.Success -> {
                     _uiState.value = NfcSignInUiState.Success
                 }
-                
+
                 is ApiResult.Exception -> {
                     _uiState.value = NfcSignInUiState.Error(
                         result.exception.message ?: "网络错误，请检查网络连接"
                     )
                 }
-                
+
                 is ApiResult.Failure -> {
                     toastHelper.showShort(result.message)
                     _uiState.value = NfcSignInUiState.Error(result.message)
@@ -60,11 +61,23 @@ class NfcSignInViewModel @Inject constructor(
     /**
      * 结束服务工单
      */
-    fun endOrder(params: EndOrderParamModel) {
+    fun endOrder(
+        orderId: Long,
+        nfcDeviceId: String,
+        projectIdList: List<Int>,
+        beginImgList: List<String>,
+        endImageList: List<String>
+    ) {
         viewModelScope.launch {
             _uiState.value = NfcSignInUiState.Loading
 
-            when (val result = orderRepository.endOrder(params)) {
+            when (val result = orderRepository.endOrder(
+                orderId,
+                nfcDeviceId,
+                projectIdList,
+                beginImgList,
+                endImageList
+            )) {
                 is ApiResult.Success -> {
                     _uiState.value = NfcSignInUiState.Success
                 }
@@ -98,7 +111,11 @@ class NfcSignInViewModel @Inject constructor(
         _uiState.value = NfcSignInUiState.Error(message)
     }
 
-    fun observeNfcEvents(orderId: Long, signInMode: com.ytone.longcare.features.nfcsignin.ui.SignInMode, endOrderParams: com.ytone.longcare.api.request.EndOrderParamModel?) {
+    fun observeNfcEvents(
+        orderId: Long,
+        signInMode: SignInMode,
+        endOderInfo: EndOderInfo?
+    ) {
         viewModelScope.launch {
             appEventBus.events.collect { event ->
                 if (event is AppEvent.NfcIntentReceived) {
@@ -107,10 +124,17 @@ class NfcSignInViewModel @Inject constructor(
                         val tagId = NfcUtils.bytesToHexString(tag.id)
                         if (tagId.isNotEmpty()) {
                             when (signInMode) {
-                                com.ytone.longcare.features.nfcsignin.ui.SignInMode.START_ORDER -> startOrder(orderId, tagId)
-                                com.ytone.longcare.features.nfcsignin.ui.SignInMode.END_ORDER -> {
-                                    endOrderParams?.let { 
-                                        endOrder(it.copy(nfc = tagId))
+                                SignInMode.START_ORDER -> startOrder(orderId, tagId)
+
+                                SignInMode.END_ORDER -> {
+                                    endOderInfo?.let {
+                                        endOrder(
+                                            orderId = orderId,
+                                            nfcDeviceId = tagId,
+                                            projectIdList = it.projectIdList,
+                                            beginImgList = it.beginImgList,
+                                            endImageList = it.endImgList
+                                        )
                                     }
                                 }
                             }
