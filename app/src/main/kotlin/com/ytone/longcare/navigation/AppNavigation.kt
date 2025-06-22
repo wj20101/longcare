@@ -17,7 +17,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.squareup.moshi.Moshi
 import com.ytone.longcare.MainViewModel
-import com.ytone.longcare.api.request.EndOrderParamModel
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
@@ -100,8 +99,8 @@ fun NavController.navigateToNfcSignInForStartOrder(orderId: Long) {
     navigate(route)
 }
 
-fun NavController.navigateToNfcSignInForEndOrder(orderId: Long, params: EndOrderParamModel) {
-    val paramsJson = Moshi.Builder().build().adapter(EndOrderParamModel::class.java).toJson(params)
+fun NavController.navigateToNfcSignInForEndOrder(orderId: Long, params: EndOderInfo) {
+    val paramsJson = Moshi.Builder().build().adapter(EndOderInfo::class.java).toJson(params)
     val route = AppDestinations.NFC_SIGN_IN_ROUTE
         .replace("{${AppDestinations.ORDER_ID_ARG}}", orderId.toString())
         .replace("{${AppDestinations.SIGN_IN_MODE_ARG}}", SignInMode.END_ORDER.name)

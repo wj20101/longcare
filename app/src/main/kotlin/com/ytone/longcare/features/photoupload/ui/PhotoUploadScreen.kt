@@ -56,6 +56,7 @@ import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import androidx.core.net.toUri
 import com.ytone.longcare.api.request.EndOrderParamModel
+import com.ytone.longcare.features.nfcsignin.model.EndOderInfo
 import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
 
 // --- 数据模型 ---
@@ -150,8 +151,7 @@ fun PhotoUploadScreen(
                         enabled = allCategoriesHaveImages,
                         onClick = {
                             val successfulUris = viewModel.getSuccessfulImageUris()
-                            val params = EndOrderParamModel(
-                                orderId = orderId,
+                            val params = EndOderInfo(
                                 projectIdList = projectIds,
                                 beginImgList = successfulUris.getOrDefault(
                                     ImageTaskType.BEFORE_CARE,
