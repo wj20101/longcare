@@ -21,6 +21,7 @@ import com.ytone.longcare.api.request.EndOrderParamModel
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
+import com.ytone.longcare.features.nfcsignin.model.EndOderInfo
 import com.ytone.longcare.features.nursingexecution.ui.NursingExecutionScreen
 import com.ytone.longcare.features.nfcsignin.ui.NfcSignInScreen
 import com.ytone.longcare.features.nfcsignin.ui.SignInMode
@@ -237,8 +238,8 @@ fun AppNavigation(startDestination: String) {
             val signInMode = SignInMode.valueOf(signInModeName ?: SignInMode.START_ORDER.name)
             val paramsJson =
                 backStackEntry.arguments?.getString(AppDestinations.END_ORDER_PARAMS_ARG)
-            val endOrderParams = paramsJson?.let {
-                Moshi.Builder().build().adapter(EndOrderParamModel::class.java)
+            val endOderInfo = paramsJson?.let {
+                Moshi.Builder().build().adapter(EndOderInfo::class.java)
                     .fromJson(URLDecoder.decode(it, "UTF-8"))
             }
 
@@ -246,7 +247,7 @@ fun AppNavigation(startDestination: String) {
                 navController = navController,
                 orderId = orderId,
                 signInMode = signInMode,
-                endOrderParams = endOrderParams
+                endOderInfo = endOderInfo
             )
         }
         composable(
