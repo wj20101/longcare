@@ -15,8 +15,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.squareup.moshi.Moshi
 import com.ytone.longcare.MainViewModel
+import com.ytone.longcare.common.utils.toJsonString
+import com.ytone.longcare.common.utils.toObject
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
@@ -32,6 +33,7 @@ import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
 import java.net.URLDecoder
 import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 object AppDestinations {
     // 路径参数名称常量
@@ -43,8 +45,7 @@ object AppDestinations {
     const val HOME_ROUTE = "home"
     const val SERVICE_ROUTE = "service/{${ORDER_ID_ARG}}"
     const val NURSING_EXECUTION_ROUTE = "nursing_execution/{${ORDER_ID_ARG}}"
-    const val NFC_SIGN_IN_ROUTE =
-        "nfc_sign_in/{${ORDER_ID_ARG}}?${SIGN_IN_MODE_ARG}={${SIGN_IN_MODE_ARG}}&${END_ORDER_PARAMS_ARG}={${END_ORDER_PARAMS_ARG}}"
+    const val NFC_SIGN_IN_ROUTE = "nfc_sign_in/{${ORDER_ID_ARG}}?${SIGN_IN_MODE_ARG}={${SIGN_IN_MODE_ARG}}&${END_ORDER_PARAMS_ARG}={${END_ORDER_PARAMS_ARG}}"
     const val SELECT_SERVICE_ROUTE = "select_service/{${ORDER_ID_ARG}}"
     const val PHOTO_UPLOAD_ROUTE = "photo_upload/{${ORDER_ID_ARG}}?projectIds={projectIds}"
     const val CARE_PLANS_LIST_ROUTE = "care_plans_list"
@@ -92,22 +93,16 @@ fun NavController.navigateToNfcSignInForStartOrder(orderId: Long) {
     val route = AppDestinations.NFC_SIGN_IN_ROUTE
         .replace("{${AppDestinations.ORDER_ID_ARG}}", orderId.toString())
         .replace("{${AppDestinations.SIGN_IN_MODE_ARG}}", SignInMode.START_ORDER.name)
-        .replace(
-            "&${AppDestinations.END_ORDER_PARAMS_ARG}={${AppDestinations.END_ORDER_PARAMS_ARG}}",
-            ""
-        )
+        .replace("&${AppDestinations.END_ORDER_PARAMS_ARG}={${AppDestinations.END_ORDER_PARAMS_ARG}}", "")
     navigate(route)
 }
 
 fun NavController.navigateToNfcSignInForEndOrder(orderId: Long, params: EndOderInfo) {
-    val paramsJson = Moshi.Builder().build().adapter(EndOderInfo::class.java).toJson(params)
+    val paramsJson = params.toJsonString()
     val route = AppDestinations.NFC_SIGN_IN_ROUTE
         .replace("{${AppDestinations.ORDER_ID_ARG}}", orderId.toString())
         .replace("{${AppDestinations.SIGN_IN_MODE_ARG}}", SignInMode.END_ORDER.name)
-        .replace(
-            "{${AppDestinations.END_ORDER_PARAMS_ARG}}",
-            URLEncoder.encode(paramsJson, "UTF-8")
-        )
+        .replace("{${AppDestinations.END_ORDER_PARAMS_ARG}}", URLEncoder.encode(paramsJson, StandardCharsets.UTF_8.name()))
     navigate(route)
 }
 
@@ -238,8 +233,7 @@ fun AppNavigation(startDestination: String) {
             val paramsJson =
                 backStackEntry.arguments?.getString(AppDestinations.END_ORDER_PARAMS_ARG)
             val endOderInfo = paramsJson?.let {
-                Moshi.Builder().build().adapter(EndOderInfo::class.java)
-                    .fromJson(URLDecoder.decode(it, "UTF-8"))
+                URLDecoder.decode(it, StandardCharsets.UTF_8.name()).toObject<EndOderInfo>()
             }
 
             NfcSignInScreen(
