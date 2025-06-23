@@ -27,7 +27,7 @@ import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.isPendingCare
 import com.ytone.longcare.api.response.isServiceRecord
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
-import com.ytone.longcare.navigation.AppDestinations
+import com.ytone.longcare.navigation.HomeRoute
 import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.bgGradientBrush
@@ -43,7 +43,7 @@ fun ServiceOrdersListScreen(
     navController: NavController, orderType: ServiceOrderType
 ) {
     val parentEntry = remember(navController.currentBackStackEntry) {
-        navController.getBackStackEntry(AppDestinations.HOME_ROUTE)
+        navController.getBackStackEntry(HomeRoute)
     }
     val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
     val todayOrderList by todayOrderViewModel.todayOrderListState.collectAsStateWithLifecycle()
