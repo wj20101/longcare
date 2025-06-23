@@ -1,7 +1,6 @@
 package com.ytone.longcare.navigation
 
 import androidx.annotation.Keep
-import com.ytone.longcare.features.nfcsignin.ui.SignInMode
 import kotlinx.serialization.Serializable
 
 /**
@@ -25,12 +24,15 @@ data class ServiceRoute(val orderId: Long)
 @Serializable
 data class NursingExecutionRoute(val orderId: Long)
 
+@Serializable
+enum class SignInMode {
+    START_ORDER, END_ORDER
+}
+
 @Keep
 @Serializable
 data class NfcSignInRoute(
-    val orderId: Long,
-    val signInMode: SignInMode,
-    val endOrderParams: EndOderInfo? = null
+    val orderId: Long, val signInMode: SignInMode, val endOrderParams: EndOderInfo? = null
 )
 
 @Keep
@@ -48,8 +50,7 @@ data class SelectServiceRoute(val orderId: Long)
 @Keep
 @Serializable
 data class PhotoUploadRoute(
-    val orderId: Long,
-    val projectIds: List<Int> = emptyList()
+    val orderId: Long, val projectIds: List<Int> = emptyList()
 )
 
 @Keep
