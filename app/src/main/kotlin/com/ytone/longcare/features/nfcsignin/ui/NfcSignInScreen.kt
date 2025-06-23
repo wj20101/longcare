@@ -39,14 +39,8 @@ import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.features.nfcsignin.vm.NfcSignInViewModel
 import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.features.nfcsignin.vm.NfcSignInUiState
+import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.theme.bgGradientBrush
-import kotlinx.serialization.Serializable
-
-@Serializable
-enum class SignInMode {
-    START_ORDER,
-    END_ORDER
-}
 
 // --- 状态定义 ---
 enum class SignInState {

@@ -20,14 +20,13 @@ import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.features.nursingexecution.ui.NursingExecutionScreen
 import com.ytone.longcare.features.nfcsignin.ui.NfcSignInScreen
-import com.ytone.longcare.features.nfcsignin.ui.SignInMode
 import com.ytone.longcare.features.selectservice.ui.SelectServiceScreen
 import com.ytone.longcare.features.photoupload.ui.PhotoUploadScreen
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
-
+import kotlin.reflect.typeOf
 
 
 fun NavController.navigateToHomeFromLogin() {
@@ -147,7 +146,9 @@ fun AppNavigation(startDestination: Any) {
                 orderType = ServiceOrderType.SERVICE_RECORDS
             )
         }
-        composable<NfcSignInRoute> { backStackEntry ->
+        composable<NfcSignInRoute>(
+            typeMap = mapOf(typeOf<EndOderInfo?>() to EndOderInfoNavType)
+        ) { backStackEntry ->
             val route = backStackEntry.toRoute<NfcSignInRoute>()
             
             NfcSignInScreen(
