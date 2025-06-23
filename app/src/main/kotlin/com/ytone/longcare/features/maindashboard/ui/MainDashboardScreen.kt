@@ -37,7 +37,7 @@ import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderItem
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
-import com.ytone.longcare.navigation.AppDestinations
+import com.ytone.longcare.navigation.HomeRoute
 import com.ytone.longcare.navigation.navigateToCarePlansList
 import com.ytone.longcare.navigation.navigateToNursingExecution
 import com.ytone.longcare.navigation.navigateToService
@@ -50,7 +50,7 @@ fun MainDashboardScreen(
     navController: NavController
 ) {
     val parentEntry = remember(navController.currentBackStackEntry) {
-        navController.getBackStackEntry(AppDestinations.HOME_ROUTE)
+        navController.getBackStackEntry(HomeRoute)
     }
     val homeSharedViewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
     val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)

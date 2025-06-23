@@ -35,12 +35,14 @@ import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.NfcManagerEntryPoint
 import com.ytone.longcare.common.utils.NfcUtils
-import com.ytone.longcare.features.nfcsignin.model.EndOderInfo
+import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.features.nfcsignin.vm.NfcSignInViewModel
 import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.features.nfcsignin.vm.NfcSignInUiState
 import com.ytone.longcare.theme.bgGradientBrush
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class SignInMode {
     START_ORDER,
     END_ORDER

@@ -37,7 +37,7 @@ import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.profile.vm.ProfileViewModel
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
-import com.ytone.longcare.navigation.AppDestinations
+import com.ytone.longcare.navigation.HomeRoute
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.ui.components.UserAvatar
 
@@ -48,7 +48,7 @@ fun ProfileScreen(
     navController: NavController, viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val parentEntry = remember(navController.currentBackStackEntry) {
-        navController.getBackStackEntry(AppDestinations.HOME_ROUTE)
+        navController.getBackStackEntry(HomeRoute)
     }
     val homeSharedViewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
     val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
