@@ -40,7 +40,7 @@ retrofit = "3.0.0"
 okhttp = "4.12.0"
 moshi = "1.15.2"
 kotlinxDatetime = "0.6.2"
-kotlinxSerialization = "1.7.3"
+kotlinxSerialization = "1.8.1"
 
 coil = "3.2.0"
 
