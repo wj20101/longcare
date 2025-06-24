@@ -1,7 +1,10 @@
 package com.ytone.longcare.common.utils
 
 import kotlinx.datetime.*
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * 一个通用的、用于UI显示日期信息的数据类。
@@ -27,6 +30,7 @@ object TimeUtils {
      * @param futureDays 显示今天之后的天数。
      * @return 返回一个包含格式化日期信息的列表。
      */
+    @OptIn(ExperimentalTime::class)
     fun getWeeklyDateList(pastDays: Int = 3, futureDays: Int = 3): List<DisplayDate> {
         val dateList = mutableListOf<DisplayDate>()
         val systemTimeZone = TimeZone.currentSystemDefault()
@@ -48,9 +52,10 @@ object TimeUtils {
      * @param monthNumber 月份 (1-12)，默认为当月。
      * @return 返回该月所有日期的 DisplayDate 列表。
      */
+    @OptIn(ExperimentalTime::class)
     fun getCurrentMonthDateList(
         year: Int = Clock.System.todayIn(TimeZone.currentSystemDefault()).year,
-        monthNumber: Int = Clock.System.todayIn(TimeZone.currentSystemDefault()).monthNumber
+        monthNumber: Int = Clock.System.todayIn(TimeZone.currentSystemDefault()).month.number
     ): List<DisplayDate> {
         val dateList = mutableListOf<DisplayDate>()
         val systemTimeZone = TimeZone.currentSystemDefault()
@@ -59,7 +64,7 @@ object TimeUtils {
         var currentDate = LocalDate(year, monthNumber, 1)
 
         // 循环直到月份改变
-        while (currentDate.monthNumber == monthNumber) {
+        while (currentDate.month.number == monthNumber) {
             dateList.add(createDisplayDateFrom(currentDate, today, systemTimeZone))
             currentDate = currentDate.plus(DatePeriod(days = 1))
         }
@@ -69,6 +74,7 @@ object TimeUtils {
     /**
      * 从一个 LocalDate 创建 DisplayDate，这是一个内部辅助函数。
      */
+    @OptIn(ExperimentalTime::class)
     private fun createDisplayDateFrom(
         currentDate: LocalDate,
         today: LocalDate,
@@ -76,8 +82,8 @@ object TimeUtils {
     ): DisplayDate {
         val dayOfWeekString = formatDayOfWeek(currentDate, today)
 
-        val monthStr = currentDate.monthNumber.toString().padStart(2, '0')
-        val dayStr = currentDate.dayOfMonth.toString().padStart(2, '0')
+        val monthStr = currentDate.month.number.toString().padStart(2, '0')
+        val dayStr = currentDate.day.toString().padStart(2, '0')
         val dateLabelString = "$monthStr/$dayStr"
 
         val timestamp = currentDate.atStartOfDayIn(timeZone).toEpochMilliseconds()
@@ -103,15 +109,14 @@ object TimeUtils {
             yesterday -> "昨天"
             tomorrow -> "明天"
             else -> {
-                when (date.dayOfWeek.ordinal) {
-                    0 -> "周一"  // MONDAY
-                    1 -> "周二"  // TUESDAY
-                    2 -> "周三"  // WEDNESDAY
-                    3 -> "周四"  // THURSDAY
-                    4 -> "周五"  // FRIDAY
-                    5 -> "周六"  // SATURDAY
-                    6 -> "周日"  // SUNDAY
-                    else -> "未知"
+                when (date.dayOfWeek) {
+                    DayOfWeek.MONDAY -> "周一"
+                    DayOfWeek.TUESDAY -> "周二"
+                    DayOfWeek.WEDNESDAY -> "周三"
+                    DayOfWeek.THURSDAY -> "周四"
+                    DayOfWeek.FRIDAY -> "周五"
+                    DayOfWeek.SATURDAY -> "周六"
+                    DayOfWeek.SUNDAY -> "周日"
                 }
             }
         }
@@ -120,39 +125,47 @@ object TimeUtils {
     /**
      * 获取当前 Instant (通常是 UTC 时间点)
      */
+    @OptIn(ExperimentalTime::class)
     fun getCurrentInstant(): Instant = Clock.System.now()
 
     /**
      * 获取当前毫秒级时间戳
      */
+    @OptIn(ExperimentalTime::class)
     fun getCurrentEpochMilliseconds(): Long = getCurrentInstant().toEpochMilliseconds()
 
     /**
      * 获取当前系统默认时区的 LocalDateTime
      */
+    @OptIn(ExperimentalTime::class)
     fun getCurrentLocalDateTime(timeZone: TimeZone = TimeZone.currentSystemDefault()): LocalDateTime =
         getCurrentInstant().toLocalDateTime(timeZone)
 
     /**
      * 获取当前系统默认时区的 LocalDate
      */
+    @OptIn(ExperimentalTime::class)
     fun getCurrentLocalDate(timeZone: TimeZone = TimeZone.currentSystemDefault()): LocalDate =
         getCurrentInstant().toLocalDateTime(timeZone).date
 
 
+    @OptIn(ExperimentalTime::class)
     fun epochMillisToInstant(epochMillis: Long): Instant = Instant.fromEpochMilliseconds(epochMillis)
 
+    @OptIn(ExperimentalTime::class)
     fun epochMillisToLocalDateTime(epochMillis: Long, timeZone: TimeZone = TimeZone.currentSystemDefault()): LocalDateTime =
         epochMillisToInstant(epochMillis).toLocalDateTime(timeZone)
 
     fun epochMillisToLocalDate(epochMillis: Long, timeZone: TimeZone = TimeZone.currentSystemDefault()): LocalDate =
         epochMillisToLocalDateTime(epochMillis, timeZone).date
 
+    @OptIn(ExperimentalTime::class)
     fun localDateTimeToEpochMillis(localDateTime: LocalDateTime, timeZone: TimeZone): Long {
         // LocalDateTime 需要一个 TimeZone 才能明确地转换为一个 Instant (时间点)
         return localDateTime.toInstant(timeZone).toEpochMilliseconds()
     }
 
+    @OptIn(ExperimentalTime::class)
     fun localDateToEpochMillis(localDate: LocalDate, timeZone: TimeZone, atTime: LocalTime = LocalTime(0,0,0)): Long {
         // LocalDate 需要时间 和 TimeZone 才能明确地转换为一个 Instant
         return localDate.atTime(atTime).toInstant(timeZone).toEpochMilliseconds()
@@ -163,6 +176,7 @@ object TimeUtils {
      * @param instant 起始 Instant
      * @param daysToAdd 天数 (负数为几天前)
      */
+    @OptIn(ExperimentalTime::class)
     fun instantPlusDays(instant: Instant, daysToAdd: Int): Instant =
         instant.plus(daysToAdd.days) // Uses kotlin.time.Duration
 
@@ -172,6 +186,7 @@ object TimeUtils {
      * @param yearsToAdd 年数
      * @param timeZone 用于计算的日历时区，因为“年”的长度依赖于日历系统
      */
+    @OptIn(ExperimentalTime::class)
     fun instantPlusYears(instant: Instant, yearsToAdd: Int, timeZone: TimeZone = TimeZone.currentSystemDefault()): Instant =
         instant.plus(yearsToAdd, DateTimeUnit.YEAR, timeZone)
 
@@ -179,6 +194,7 @@ object TimeUtils {
     /**
      * 判断给定的 Instant 是否是今天 (基于指定时区)
      */
+    @OptIn(ExperimentalTime::class)
     fun isToday(instant: Instant, timeZone: TimeZone = TimeZone.currentSystemDefault()): Boolean {
         val today = getCurrentLocalDate(timeZone)
         return instant.toLocalDateTime(timeZone).date == today
@@ -204,10 +220,11 @@ object TimeUtils {
     /**
      * 判断给定的 Instant 是否是当月 (基于指定时区)
      */
+    @OptIn(ExperimentalTime::class)
     fun isThisMonth(instant: Instant, timeZone: TimeZone = TimeZone.currentSystemDefault()): Boolean {
         val today = getCurrentLocalDate(timeZone)
         val dateFromInstant = instant.toLocalDateTime(timeZone).date
-        return dateFromInstant.year == today.year && dateFromInstant.monthNumber == today.monthNumber
+        return dateFromInstant.year == today.year && dateFromInstant.month.number == today.month.number
     }
 
     /**
@@ -215,12 +232,13 @@ object TimeUtils {
      */
     fun isThisMonth(localDateTime: LocalDateTime, referenceTimeZone: TimeZone = TimeZone.currentSystemDefault()): Boolean {
         val todayInReferenceZone = getCurrentLocalDate(referenceTimeZone)
-        return localDateTime.year == todayInReferenceZone.year && localDateTime.monthNumber == todayInReferenceZone.monthNumber
+        return localDateTime.year == todayInReferenceZone.year && localDateTime.month.number == todayInReferenceZone.month.number
     }
 
     /**
      * 判断给定的 Instant 是否是当年 (基于指定时区)
      */
+    @OptIn(ExperimentalTime::class)
     fun isThisYear(instant: Instant, timeZone: TimeZone = TimeZone.currentSystemDefault()): Boolean {
         val today = getCurrentLocalDate(timeZone)
         return instant.toLocalDateTime(timeZone).date.year == today.year
@@ -237,6 +255,7 @@ object TimeUtils {
     /**
      * 判断两个 Instant 是否是同一天 (基于指定时区)
      */
+    @OptIn(ExperimentalTime::class)
     fun isSameDay(instant1: Instant, instant2: Instant, timeZone: TimeZone = TimeZone.currentSystemDefault()): Boolean {
         return instant1.toLocalDateTime(timeZone).date == instant2.toLocalDateTime(timeZone).date
     }
@@ -246,10 +265,11 @@ object TimeUtils {
      * @param displayDate 要转换的 DisplayDate 对象
      * @return 格式化后的日期字符串，如 "2024-01-15"
      */
+    @OptIn(ExperimentalTime::class)
     fun formatDateForApi(displayDate: DisplayDate): String {
         val instant = Instant.fromEpochMilliseconds(displayDate.timestamp)
         val localDate = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
-        return "${localDate.year}-${localDate.monthNumber.toString().padStart(2, '0')}-${localDate.dayOfMonth.toString().padStart(2, '0')}"
+        return "${localDate.year}-${localDate.month.number.toString().padStart(2, '0')}-${localDate.month.number.toString().padStart(2, '0')}"
     }
 
 }
