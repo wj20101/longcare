@@ -85,12 +85,16 @@ android {
             buildConfigField("String", "BASE_URL", "\"https://careapi.ytone.cn\"") // 生产环境 URL
             // 在 release 版本中，定义 USE_MOCK_DATA 常量为 false
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
+            buildConfigField("String", "TX_ID", "\"REDACTED_TX_ID_1\"")
+            buildConfigField("String", "TX_Secret", "\"REDACTED_TX_SECRET_1\"")
         }
 
         debug {
             buildConfigField("String", "BASE_URL", "\"https://careapi.ytone.cn\"") // 测试环境 URL
             // 在 debug 版本中，定义 USE_MOCK_DATA 常量为 true
             buildConfigField("boolean", "USE_MOCK_DATA", "true")
+            buildConfigField("String", "TX_ID", "\"REDACTED_TX_ID_2\"")
+            buildConfigField("String", "TX_Secret", "\"REDACTED_TX_SECRET_2\"")
         }
     }
     compileOptions {
