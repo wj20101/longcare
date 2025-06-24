@@ -48,27 +48,32 @@ object TimeUtils {
 
     /**
      * 获取指定月份的所有日期列表。
+     *
      * @param year 年份，默认为当年。
      * @param monthNumber 月份 (1-12)，默认为当月。
      * @return 返回该月所有日期的 DisplayDate 列表。
      */
     @OptIn(ExperimentalTime::class)
-    fun getCurrentMonthDateList(
-        year: Int = Clock.System.todayIn(TimeZone.currentSystemDefault()).year,
-        monthNumber: Int = Clock.System.todayIn(TimeZone.currentSystemDefault()).month.number
-    ): List<DisplayDate> {
-        val dateList = mutableListOf<DisplayDate>()
+    fun getCurrentMonthDateList(year: Int? = null, monthNumber: Int? = null): List<DisplayDate> {
         val systemTimeZone = TimeZone.currentSystemDefault()
         val today = Clock.System.todayIn(systemTimeZone)
 
-        var currentDate = LocalDate(year, monthNumber, 1)
+        // 如果未提供年份或月份，则使用当前的年份和月份
+        val targetYear = year ?: today.year
+        val targetMonthNumber = monthNumber ?: today.month.number
 
-        // 循环直到月份改变
-        while (currentDate.month.number == monthNumber) {
-            dateList.add(createDisplayDateFrom(currentDate, today, systemTimeZone))
-            currentDate = currentDate.plus(DatePeriod(days = 1))
+        val firstDayOfMonth = LocalDate(targetYear, targetMonthNumber, 1)
+
+        // 方法：获取下个月的第一天，然后减去一天，得到当前月的最后一天
+        val firstDayOfNextMonth = firstDayOfMonth.plus(1, DateTimeUnit.MONTH)
+        val lastDayOfMonth = firstDayOfNextMonth.minus(1, DateTimeUnit.DAY)
+        val daysInMonth = lastDayOfMonth.day
+
+        // 使用 for 循环代替 while 循环，代码意图更清晰
+        return (1..daysInMonth).map { day ->
+            val currentDate = LocalDate(targetYear, targetMonthNumber, day)
+            createDisplayDateFrom(currentDate, today, systemTimeZone)
         }
-        return dateList
     }
 
     /**
