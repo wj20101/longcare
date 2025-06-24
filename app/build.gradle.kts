@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.kotlinCompose)
+    alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
@@ -60,6 +61,10 @@ android {
             "\"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk45Er/DSjJwRNhReRT+4lINV6GanR3FwNutADNBwVoNQgY33bM/adLN5ZDmb8CwCeRJ4iBdcIX0co+2cm169HSHtJvOHUm864UbT63BrxKtnJCR+GkmsB3dj7YMwDbYArg7ymGP3EhWsiqMPdnR15+4LYIfK3l74nOZqPIPp8XkUKbbvJeieyslBIVSux2eytUGQjY8EPTE7nOHbAh8boWhiekFKevmx24dQBLoOrKrpTIv4pNiFSPxWCdBayCXjyr3Vq6Eg+vEDYN1+sxXWAj4bo/91TIbGQzdPCcCiZUQ1d7EgBp1JJKAsTTzkd+CusSTVpmmz/uVwjOaEHNzqWwIDAQAB\"",
         )
         signingConfig = signingConfigs.getByName("config")
+        
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
     room {
@@ -75,6 +80,7 @@ android {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
+                "txkyc-face-consumer-proguard-rules.pro"
             )
             buildConfigField("String", "BASE_URL", "\"https://careapi.ytone.cn\"") // 生产环境 URL
             // 在 release 版本中，定义 USE_MOCK_DATA 常量为 false
@@ -84,7 +90,7 @@ android {
         debug {
             buildConfigField("String", "BASE_URL", "\"https://careapi.ytone.cn\"") // 测试环境 URL
             // 在 debug 版本中，定义 USE_MOCK_DATA 常量为 true
-            buildConfigField("boolean", "USE_MOCK_DATA", "false")
+            buildConfigField("boolean", "USE_MOCK_DATA", "true")
         }
     }
     compileOptions {
@@ -186,6 +192,7 @@ dependencies {
     implementation(libs.retrofit.converter.moshi)
     implementation(libs.wire.moshi.adapter)
     implementation(libs.retrofit.converter.wire)
+    implementation(libs.kotlinx.serialization.json)
 
     // Data Storage
     implementation(libs.androidx.datastore.preferences)
@@ -201,6 +208,10 @@ dependencies {
 
     // kotlinx datetime
     implementation(libs.kotlinx.datetime)
+
+    // 腾讯人脸
+    implementation(files("libs/WbCloudFaceLiveSdk-will-v6.6.3-8e4718fc.aar"))
+    implementation(files("libs/WbCloudNormal-v5.1.10-4e3e198.aar"))
 
     // Testing
     testImplementation(libs.junit)
