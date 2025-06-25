@@ -7,14 +7,14 @@ private const val SUCCESS_CODE = 1000
 
 @JsonClass(generateAdapter = true)
 data class Response<T>(
-    @Json(name = "resultCode") val resultCode: Int,
-    @Json(name = "resultMsg") val resultMsg: String,
-    @Json(name = "data") val data: T?,
+    @param:Json(name = "resultCode") val resultCode: Int,
+    @param:Json(name = "resultMsg") val resultMsg: String,
+    @param:Json(name = "data") val data: T?,
 ) {
     fun isSuccess() = resultCode == SUCCESS_CODE
 }
 
 @JsonClass(generateAdapter = true)
 data class ListResponse<T>(
-    @Json(name = "data") val data: T, @Json(name = "hasNext") val hasNext: Int
+    @param:Json(name = "data") val data: T, @param:Json(name = "hasNext") val hasNext: Int
 )

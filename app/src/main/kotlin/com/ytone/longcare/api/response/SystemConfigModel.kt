@@ -11,12 +11,12 @@ data class SystemConfigModel(
     /**
      * 公司名称
      */
-    @Json(name = "companyName")
+    @param:Json(name = "companyName")
     val companyName: String = "",
 
     /**
      * 上传最大的数量
      */
-    @Json(name = "maxImgNum")
+    @param:Json(name = "maxImgNum")
     val maxImgNum: Int = 0
 )

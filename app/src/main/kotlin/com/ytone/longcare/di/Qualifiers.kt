@@ -25,6 +25,13 @@ annotation class UseJson
 annotation class UseProtobuf
 
 /**
+ * 一个 Hilt 限定符，用于标识腾讯人脸识别API的 Retrofit 实例。
+ */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class TencentFaceRetrofit
+
+/**
  * 一个 Hilt 限定符，用于标识应用级别的 DataStore<Preferences>。
  */
 @Qualifier

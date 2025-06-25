@@ -11,18 +11,18 @@ data class AddPositionParamModel(
     /**
      * 订单号
      */
-    @Json(name = "orderid")
+    @param:Json(name = "orderid")
     val orderId: Long = 0L,
 
     /**
      * 经度
      */
-    @Json(name = "longitude")
+    @param:Json(name = "longitude")
     val longitude: Double = 0.0,
 
     /**
      * 纬度
      */
-    @Json(name = "latitude")
+    @param:Json(name = "latitude")
     val latitude: Double = 0.0
 )

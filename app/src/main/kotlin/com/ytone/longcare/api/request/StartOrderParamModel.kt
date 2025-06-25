@@ -11,12 +11,12 @@ data class StartOrderParamModel(
     /**
      * 订单Id
      */
-    @Json(name = "orderid")
+    @param:Json(name = "orderid")
     val orderId: Long = 0L,
 
     /**
      * nfc设备号
      */
-    @Json(name = "nfc")
+    @param:Json(name = "nfc")
     val nfc: String = ""
 )

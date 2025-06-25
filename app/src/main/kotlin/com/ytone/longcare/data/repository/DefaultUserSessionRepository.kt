@@ -27,8 +27,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class DefaultUserSessionRepository @Inject constructor(
-    @AppDataStore private val appDataStore: DataStore<Preferences>,
-    @ApplicationScope private val coroutineScope: CoroutineScope
+    @param:AppDataStore private val appDataStore: DataStore<Preferences>,
+    @param:ApplicationScope private val coroutineScope: CoroutineScope
 ) : UserSessionRepository {
 
     override val sessionState: StateFlow<SessionState> = appDataStore.data
