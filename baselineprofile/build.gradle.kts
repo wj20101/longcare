@@ -7,20 +7,16 @@ plugins {
 val appCompileSdkVersion: Int by rootProject.extra
 val appTargetSdkVersion: Int by rootProject.extra
 val appMinSdkVersion: Int by rootProject.extra
-val appJavaVersion: JavaVersion by rootProject.extra
-val appKotlinJvmTarget: String by rootProject.extra
+val appJdkVersion: Int by rootProject.extra
 
 android {
     namespace = "com.ytone.longcare.baselineprofile"
     compileSdk = appCompileSdkVersion
 
-    compileOptions {
-        sourceCompatibility = appJavaVersion
-        targetCompatibility = appJavaVersion
-    }
-
-    kotlinOptions {
-        jvmTarget = appKotlinJvmTarget
+    kotlin {
+        // 根据您的 constants.gradle.kts 文件，您使用的是 Java 21
+        // 这里直接设置 jvmToolchain 为 21
+        jvmToolchain(appJdkVersion)
     }
 
     defaultConfig {
@@ -55,10 +51,6 @@ dependencies {
 
 androidComponents {
     onVariants { v ->
-        val artifactsLoader = v.artifacts.getBuiltArtifactsLoader()
-        v.instrumentationRunnerArguments.put(
-            "targetAppId",
-            v.testedApks.map { artifactsLoader.load(it)?.applicationId }
-        )
+        v.instrumentationRunnerArguments.put("targetAppId", v.testedApplicationId)
     }
 }
