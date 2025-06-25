@@ -9,8 +9,6 @@ val appTargetSdkVersion: Int by rootProject.extra
 val appMinSdkVersion: Int by rootProject.extra
 val appJavaVersion: JavaVersion by rootProject.extra
 val appKotlinJvmTarget: String by rootProject.extra
-val appVersionCode: Int by rootProject.extra
-val appVersionName: String by rootProject.extra
 
 android {
     namespace = "com.ytone.longcare.baselineprofile"
