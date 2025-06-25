@@ -11,24 +11,24 @@ data class LoginLogParamModel(
     /**
      * 手机系统
      */
-    @Json(name = "phoneSystem")
+    @param:Json(name = "phoneSystem")
     val phoneSystem: String = "",
 
     /**
      * 手机系统版本
      */
-    @Json(name = "phoneVersion")
+    @param:Json(name = "phoneVersion")
     val phoneVersion: String = "",
 
     /**
      * 网络类型
      */
-    @Json(name = "networkType")
+    @param:Json(name = "networkType")
     val networkType: String = "",
 
     /**
      * 网络运营商
      */
-    @Json(name = "networkOperator")
+    @param:Json(name = "networkOperator")
     val networkOperator: String = ""
 )

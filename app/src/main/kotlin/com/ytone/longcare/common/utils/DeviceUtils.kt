@@ -21,8 +21,8 @@ import androidx.core.content.pm.PackageInfoCompat
 
 @Singleton
 class DeviceUtils @Inject constructor(
-    @ApplicationContext private val applicationContext: Context,
-    @DeviceIdStorage private val deviceIdPrefs: SharedPreferences
+    @param:ApplicationContext private val applicationContext: Context,
+    @param:DeviceIdStorage private val deviceIdPrefs: SharedPreferences
 ) {
 
     companion object {

@@ -5,6 +5,7 @@ import android.content.Context
 import com.squareup.moshi.Moshi
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.api.LongCareApiService
+import com.ytone.longcare.api.TencentFaceApiService
 import com.ytone.longcare.common.utils.DefaultMoshi
 import com.ytone.longcare.common.utils.DeviceUtils
 import com.ytone.longcare.domain.repository.UserSessionRepository
@@ -106,5 +107,28 @@ object NetworkModule {
     @Singleton
     fun provideMyApiService(retrofit: Retrofit): LongCareApiService {
         return retrofit.create(LongCareApiService::class.java)
+    }
+    
+    @Provides
+    @Singleton
+    @TencentFaceRetrofit
+    fun provideTencentFaceRetrofit(
+        okHttpClient: OkHttpClient,
+        moshi: Moshi
+    ): Retrofit {
+        // 为腾讯云API创建单独的Retrofit实例
+        return Retrofit.Builder()
+            .baseUrl("https://kyc1.qcloud.com")
+            .client(okHttpClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideTencentFaceApiService(
+        @TencentFaceRetrofit retrofit: Retrofit
+    ): TencentFaceApiService {
+        return retrofit.create(TencentFaceApiService::class.java)
     }
 }

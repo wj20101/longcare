@@ -11,54 +11,54 @@ data class LoginResultModel(
     /**
      * 公司Id
      */
-    @Json(name = "companyId")
+    @param:Json(name = "companyId")
     val companyId: Int = 0,
 
     /**
      * 账号Id
      */
-    @Json(name = "accountId")
+    @param:Json(name = "accountId")
     val accountId: Int = 0,
 
     /**
      * 用户Id
      */
-    @Json(name = "userId")
+    @param:Json(name = "userId")
     val userId: Int = 0,
 
     /**
      * 用户名字
      */
-    @Json(name = "userName")
+    @param:Json(name = "userName")
     val userName: String = "",
 
     /**
      * 头像地址
      */
-    @Json(name = "headUrl")
+    @param:Json(name = "headUrl")
     val headUrl: String = "",
 
     /**
      * 用户身份 1护理员
      */
-    @Json(name = "userIdentity")
+    @param:Json(name = "userIdentity")
     val userIdentity: Int = 0,
 
     /**
      * 身份证号码
      */
-    @Json(name = "identityCardNumber")
+    @param:Json(name = "identityCardNumber")
     val identityCardNumber: String = "",
 
     /**
      * 性别 1男 0女
      */
-    @Json(name = "gender")
+    @param:Json(name = "gender")
     val gender: Int = 0,
 
     /**
      * 用户身份token
      */
-    @Json(name = "token")
+    @param:Json(name = "token")
     val token: String = ""
 )

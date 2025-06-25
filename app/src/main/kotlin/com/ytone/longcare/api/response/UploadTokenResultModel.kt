@@ -8,22 +8,22 @@ import com.squareup.moshi.JsonClass
  */
 @JsonClass(generateAdapter = true)
 data class UploadTokenResultModel(
-    @Json(name = "tmpSecretId")
+    @param:Json(name = "tmpSecretId")
     val tmpSecretId: String = "",
-    @Json(name = "tmpSecretKey")
+    @param:Json(name = "tmpSecretKey")
     val tmpSecretKey: String = "",
-    @Json(name = "sessionToken")
+    @param:Json(name = "sessionToken")
     val sessionToken: String = "",
-    @Json(name = "startTime")
+    @param:Json(name = "startTime")
     val startTime: String = "",
-    @Json(name = "requestId")
+    @param:Json(name = "requestId")
     val requestId: String = "",
-    @Json(name = "expiration")
+    @param:Json(name = "expiration")
     val expiration: String = "",
-    @Json(name = "expiredTime")
+    @param:Json(name = "expiredTime")
     val expiredTime: String = "",
-    @Json(name = "bucket")
+    @param:Json(name = "bucket")
     val bucket: String = "",
-    @Json(name = "region")
+    @param:Json(name = "region")
     val region: String = ""
 )

@@ -5,23 +5,12 @@ import android.content.SharedPreferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.ytone.longcare.data.storage.appDataStore
-import com.ytone.longcare.data.repository.DefaultUserSessionRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
-import com.ytone.longcare.domain.repository.UserSessionRepository
-import dagger.Binds
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-
-@Module
-@InstallIn(SingletonComponent::class)
-abstract class StorageModuleInternal {
-    @Binds
-    @Singleton
-    abstract fun bindUserSessionRepository(impl: DefaultUserSessionRepository): UserSessionRepository
-}
 
 @Module
 @InstallIn(SingletonComponent::class)

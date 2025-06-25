@@ -10,8 +10,8 @@ import com.squareup.moshi.JsonClass
  */
 @JsonClass(generateAdapter = true)
 data class SendSmsCodeParamModel(
-    @Json(name = "mobile")
+    @param:Json(name = "mobile")
     val mobile: String = "",
-    @Json(name = "codeType")
+    @param:Json(name = "codeType")
     val codeType: Int = 0
 )
