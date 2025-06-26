@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import coil3.compose.rememberAsyncImagePainter
 import com.ytone.longcare.R
 import com.ytone.longcare.features.photoupload.model.ImageTask
@@ -55,7 +54,6 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import androidx.core.net.toUri
-import com.ytone.longcare.api.request.EndOrderParamModel
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
 
@@ -452,41 +450,6 @@ fun ConfirmAndNextButton(text: String, enabled: Boolean = true, onClick: () -> U
     }
 }
 
-@Preview(showBackground = true, device = "id:pixel_6")
-@Composable
-fun PhotoUploadSectionPreview() {
-    val mockList = listOf(
-        ImageTask(
-            id = "123",
-            originalUri = "https://img0.baidu.com/it/u=2895902758,4240700774&fm=253&fmt=auto&app=120&f=JPEG?w=800&h=800".toUri(),
-            taskType = ImageTaskType.AFTER_CARE,
-            watermarkContent = "护理后 - 长护险服务",
-            status = ImageTaskStatus.SUCCESS
-        ),
-        ImageTask(
-            id = "124",
-            originalUri = "https://img0.baidu.com/it/u=2895902758,4240700774&fm=253&fmt=auto&app=120&f=JPEG?w=800&h=800".toUri(),
-            taskType = ImageTaskType.AFTER_CARE,
-            watermarkContent = "护理后 - 长护险服务",
-            status = ImageTaskStatus.PROCESSING
-        ),
-        ImageTask(
-            id = "125",
-            originalUri = "https://img0.baidu.com/it/u=2895902758,4240700774&fm=253&fmt=auto&app=120&f=JPEG?w=800&h=800".toUri(),
-            taskType = ImageTaskType.AFTER_CARE,
-            watermarkContent = "护理后 - 长护险服务",
-            status = ImageTaskStatus.FAILED
-        ),
-    )
-    PhotoUploadSection(
-        category = PhotoCategory.AFTER_CARE,
-        tasks = mockList,
-        onAddPhoto = {},
-        onRetryTask = {},
-        onRemoveTask = {}
-    )
-}
-
 @Composable
 fun ImagePreviewDialog(
     imageUri: Uri,
@@ -564,15 +527,62 @@ fun ImagePreviewDialog(
     }
 }
 
-// --- 预览 ---
-@Preview(showBackground = true, device = "id:pixel_6")
+@Preview
 @Composable
-fun PhotoUploadScreenPreview() {
-    MaterialTheme {
-        PhotoUploadScreen(
-            navController = rememberNavController(),
-            orderId = 1L,
-            projectIds = emptyList()
+fun PhotoUploadSectionPreview() {
+    val tasks = listOf(
+        ImageTask(
+            id = "1",
+            originalUri = Uri.EMPTY,
+            taskType = ImageTaskType.BEFORE_CARE,
+            watermarkContent = "Watermark 1",
+            status = ImageTaskStatus.SUCCESS,
+            resultUri = "content://media/picker/0/com.android.providers.media.photopicker/media/1000000033".toUri()
+        ),
+        ImageTask(
+            id = "2",
+            originalUri = Uri.EMPTY,
+            taskType = ImageTaskType.BEFORE_CARE,
+            watermarkContent = "Watermark 2",
+            status = ImageTaskStatus.PROCESSING
+        ),
+        ImageTask(
+            id = "3",
+            originalUri = Uri.EMPTY,
+            taskType = ImageTaskType.BEFORE_CARE,
+            watermarkContent = "Watermark 3",
+            status = ImageTaskStatus.FAILED,
+            errorMessage = "Upload failed"
         )
-    }
+    )
+    PhotoUploadSection(
+        category = PhotoCategory.BEFORE_CARE,
+        tasks = tasks,
+        onAddPhoto = {},
+        onRetryTask = {},
+        onRemoveTask = {})
+}
+
+@Preview
+@Composable
+fun AddPhotoButtonPreview() {
+    AddPhotoButton(onClick = {})
+}
+
+@Preview
+@Composable
+fun ImageTaskItemPreview() {
+    val task = ImageTask(
+        id = "1",
+        originalUri = Uri.EMPTY,
+        taskType = ImageTaskType.BEFORE_CARE,
+        watermarkContent = "Watermark"
+    )
+    ImageTaskItem(task = task, onRetry = {}, onRemove = {})
+}
+
+@Preview
+@Composable
+fun ConfirmAndNextButtonPreview() {
+    ConfirmAndNextButton(text = "Confirm & Next", enabled = true, onClick = {})
 }

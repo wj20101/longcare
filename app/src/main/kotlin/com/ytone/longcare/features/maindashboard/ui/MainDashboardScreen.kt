@@ -350,11 +350,25 @@ fun ImageWithAdaptiveWidth(
     )
 }
 
+
 // --- Preview ---
 @Preview
 @Composable
-fun MainDashboardScreenPreview() {
-    LongCareTheme {
-        MainDashboardScreen(navController = rememberNavController())
-    }
+fun MainDashboardContentPreview() {
+    val user = User(
+        companyId = 1,
+        accountId = 1,
+        userId = 1,
+        userName = "John Doe",
+        headUrl = "",
+        userIdentity = 1,
+        identityCardNumber = "123456789012345678",
+        gender = 1,
+        token = "token"
+    )
+    val todayOrderList = listOf(
+        TodayServiceOrderModel(orderId = 1L, name = "Order 1", state = 0),
+        TodayServiceOrderModel(orderId = 2L, name = "Order 2", state = 1)
+    )
+    MainDashboardContent(user = user, todayOrderList = todayOrderList, navController = rememberNavController())
 }

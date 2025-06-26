@@ -111,6 +111,12 @@ fun ServiceCompleteScreen() {
     }
 }
 
+@Preview
+@Composable
+fun ServiceCompleteScreenPreview() {
+    ServiceCompleteScreen()
+}
+
 // --- UI 子组件 ---
 
 @Composable
@@ -150,6 +156,12 @@ fun ThankYouCard() {
             )
         }
     }
+}
+
+@Preview
+@Composable
+fun ThankYouCardPreview() {
+    ThankYouCard()
 }
 
 
@@ -196,6 +208,19 @@ fun ServiceChecklistSection(summary: ServiceSummary) {
     }
 }
 
+@Preview
+@Composable
+fun ServiceChecklistSectionPreview() {
+    val summary = ServiceSummary(
+        clientName = "John Doe",
+        clientAge = 75,
+        clientIdNumber = "123456789012345678",
+        clientAddress = "123 Main St, Anytown, USA",
+        serviceContent = "Bathing Assistance",
+        duration = "2 hours 30 minutes"
+    )
+    ServiceChecklistSection(summary = summary)
+}
 @Composable
 fun ChecklistItem(label: String, value: String) {
     Row(
@@ -216,6 +241,12 @@ fun ChecklistItem(label: String, value: String) {
             modifier = Modifier.weight(1f)
         )
     }
+}
+
+@Preview
+@Composable
+fun ChecklistItemPreview() {
+    ChecklistItem(label = "Name:", value = "John Doe")
 }
 
 @Composable
@@ -239,11 +270,8 @@ fun ActionButton(text: String, onClick: () -> Unit) {
     }
 }
 
-// --- 预览 ---
-@Preview(showBackground = true)
+@Preview
 @Composable
-fun ServiceCompleteScreenPreview() {
-    MaterialTheme {
-        ServiceCompleteScreen()
-    }
+fun ActionButtonPreview() {
+    ActionButton(text = "Submit", onClick = {})
 }

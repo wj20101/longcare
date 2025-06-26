@@ -174,6 +174,20 @@ fun ServiceRecordList(
     }
 }
 
+@Preview
+@Composable
+fun ServiceRecordListPreview() {
+    val sampleProjects = listOf(
+        ServiceProjectM(projectId = 1, projectName = "日常清洁", serviceTime = 60, lastServiceTime = "2023-10-26 10:00"),
+        ServiceProjectM(projectId = 2, projectName = "健康监测", serviceTime = 30, lastServiceTime = "2023-10-26 11:30"),
+        ServiceProjectM(projectId = 3, projectName = "助浴服务", serviceTime = 90, lastServiceTime = "2023-10-25 14:00")
+    )
+    MaterialTheme {
+        ServiceRecordList(projects = sampleProjects)
+    }
+}
+
+
 @Composable
 fun ServiceRecordItem(project: ServiceProjectM) {
     Row(
@@ -203,11 +217,11 @@ fun ServiceRecordItem(project: ServiceProjectM) {
     }
 }
 
-// --- 预览 ---
-@Preview(showBackground = true)
+@Preview
 @Composable
-fun ServiceHoursScreenPreview() {
+fun ServiceRecordItemPreview() {
+    val sampleProject = ServiceProjectM(projectId = 1, projectName = "助餐服务", serviceTime = 45, lastServiceTime = "2023-10-27 12:00")
     MaterialTheme {
-        ServiceHoursScreen(navController = rememberNavController(), orderId = 1L)
+        ServiceRecordItem(project = sampleProject)
     }
 }

@@ -104,6 +104,12 @@ fun SelectDeviceScreen() {
     }
 }
 
+@Preview
+@Composable
+fun SelectDeviceScreenPreview() {
+    SelectDeviceScreen()
+}
+
 @Composable
 fun DeviceGrid(
     devices: List<Device>, selectedDeviceIndex: Int?, onDeviceSelected: (Int) -> Unit
@@ -124,6 +130,16 @@ fun DeviceGrid(
                 onClick = { onDeviceSelected(index) })
         }
     }
+}
+
+@Preview
+@Composable
+fun DeviceGridPreview() {
+    val devices = remember {
+        List(6) { index -> Device(id = "id_$index", name = "设备名称") }
+    }
+    var selectedDeviceIndex by remember { mutableStateOf<Int?>(null) }
+    DeviceGrid(devices = devices, selectedDeviceIndex = selectedDeviceIndex, onDeviceSelected = { index -> selectedDeviceIndex = if (selectedDeviceIndex == index) null else index })
 }
 
 @Composable
@@ -165,6 +181,12 @@ fun DeviceItem(device: Device, isSelected: Boolean, onClick: () -> Unit) {
     }
 }
 
+@Preview
+@Composable
+fun DeviceItemPreview() {
+    val device = Device(id = "id_0", name = "设备名称")
+    DeviceItem(device = device, isSelected = false, onClick = {})
+}
 
 @Composable
 fun NextStepButton(text: String, enabled: Boolean, onClick: () -> Unit) {
@@ -185,11 +207,8 @@ fun NextStepButton(text: String, enabled: Boolean, onClick: () -> Unit) {
     }
 }
 
-// --- 预览 ---
-@Preview(showBackground = true)
+@Preview
 @Composable
-fun SelectDeviceScreenPreview() {
-    MaterialTheme { // 建议包裹在您的应用主题中
-        SelectDeviceScreen()
-    }
+fun NextStepButtonPreview() {
+    NextStepButton(text = "Next Step", enabled = true, onClick = {})
 }

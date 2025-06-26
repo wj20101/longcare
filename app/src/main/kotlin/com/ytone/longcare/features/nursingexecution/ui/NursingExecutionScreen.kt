@@ -23,6 +23,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
+import com.ytone.longcare.api.response.ServiceProjectM
+import com.ytone.longcare.api.response.UserInfoM
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
@@ -268,14 +270,86 @@ fun ConfirmButton(text: String, onClick: () -> Unit) {
     }
 }
 
-// --- 预览 ---
-@Preview(showBackground = true)
+@Preview
 @Composable
-fun NursingExecutionScreenPreview() {
-    MaterialTheme { // 建议包裹在您的应用主题中
-        NursingExecutionScreen(
-            navController = rememberNavController(),
-            orderId = 1L
+fun LoadingScreenPreview() {
+    LoadingScreen()
+}
+
+@Preview
+@Composable
+fun ErrorScreenPreview() {
+    ErrorScreen(
+        message = "Error message",
+        onRetry = {}
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview
+@Composable
+fun NursingExecutionContentPreview() {
+    val navController = rememberNavController()
+    val orderInfo = ServiceOrderInfoModel(
+        orderId = 1L,
+        state = 0,
+        userInfo = UserInfoM(
+            userId = 1,
+            name = "John Doe",
+            identityCardNumber = "123456789012345678",
+            age = 80,
+            gender = "Male",
+            address = "123 Main St, Anytown, USA",
+            lastServiceTime = "2023-10-26T10:00:00Z",
+            monthServiceTime = 10,
+            monthNoServiceTime = 5
+        ),
+        projectList = listOf(
+            ServiceProjectM(projectId = 1, projectName = "Project A", serviceTime = 60, lastServiceTime = "2023-10-26T10:00:00Z"),
+            ServiceProjectM(
+                projectId = 2,
+                projectName = "Project B",
+                serviceTime = 30,
+                lastServiceTime = "2023-10-25T14:00:00Z"
+            )
         )
-    }
+    )
+    NursingExecutionContent(
+        navController = navController,
+        orderInfo = orderInfo,
+        orderId = 1L
+    )
+}
+
+@Preview
+@Composable
+fun ClientInfoCardPreview() {
+    val orderInfo = ServiceOrderInfoModel(
+        userInfo = UserInfoM(
+            name = "Jane Doe",
+            age = 75,
+            identityCardNumber = "876543210987654321",
+            address = "456 Oak St, Anytown, USA"
+        ),
+        projectList = listOf(
+            ServiceProjectM(projectName = "Service X"),
+            ServiceProjectM(projectName = "Service Y")
+        )
+    )
+    ClientInfoCard(modifier = Modifier.padding(8.dp), orderInfo = orderInfo)
+}
+
+@Preview
+@Composable
+fun InfoRowPreview() {
+    InfoRow(label = "Label:", value = "This is the value for the label.")
+}
+
+@Preview
+@Composable
+fun ConfirmButtonPreview() {
+    ConfirmButton(
+        text = "Confirm Action",
+        onClick = {}
+    )
 }
