@@ -4,11 +4,12 @@ import android.content.Context
 import android.util.Log
 import com.tencent.cos.xml.CosXmlService
 import com.tencent.cos.xml.CosXmlServiceConfig
-import com.tencent.cos.xml.exception.CosXmlClientException
 import com.tencent.cos.xml.exception.CosXmlServiceException
 import com.tencent.cos.xml.model.`object`.DeleteObjectRequest
 import com.tencent.cos.xml.model.`object`.HeadObjectRequest
 import com.tencent.cos.xml.model.`object`.PutObjectRequest
+import com.tencent.qcloud.core.auth.QCloudCredentialProvider
+import com.tencent.qcloud.core.auth.QCloudLifecycleCredentials
 import com.tencent.qcloud.core.auth.SessionQCloudCredentials
 import com.tencent.qcloud.core.auth.StaticCredentialProvider
 import com.ytone.longcare.api.LongCareApiService
@@ -18,392 +19,360 @@ import com.ytone.longcare.data.cos.model.CosCredentials
 import com.ytone.longcare.data.cos.model.CosUploadResult
 import com.ytone.longcare.data.cos.model.UploadParams
 import com.ytone.longcare.data.cos.model.UploadProgress
+import com.ytone.longcare.data.cos.model.toCosConfig
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * 腾讯云COS存储服务实现类
+ * 
+ * 主要功能：
+ * - 支持临时密钥和固定密钥两种认证方式
+ * - 自动token刷新和缓存机制
+ * - 文件上传（支持进度回调）
+ * - 文件删除、存在性检查、大小获取
+ * - 下载URL生成
+ * 
+ * 线程安全：使用Mutex保证并发安全
+ * 错误处理：统一的重试机制和错误处理
+ */
 @Singleton
 class CosRepositoryImpl @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val apiService: LongCareApiService
 ) : CosRepository {
-    
+
     companion object {
         private const val TAG = "CosRepositoryImpl"
-        private const val TOKEN_REFRESH_THRESHOLD_SECONDS = 300 // 5分钟提前刷新
+        private const val TOKEN_REFRESH_THRESHOLD_SECONDS = 300L // 5分钟提前刷新
+        private const val DEFAULT_TOKEN_EXPIRE_SECONDS = 3600L // 默认1小时过期
     }
-    
-    private var cosXmlService: CosXmlService? = null
-    private var currentBucket: String? = null
-    private var currentRegion: String? = null
-    
-    // 缓存相关属性
-    private var cachedTokenResult: UploadTokenResultModel? = null
-    private var tokenExpireTime: Long = 0L
-    private val tokenLock = Any()
-    
+
+    // 线程安全的状态管理
+    private val mutex = Mutex()
+    private val serviceRef = AtomicReference<CosXmlService?>(null)
+    private val configCache = CosConfigCache()
+
     /**
-     * 获取有效的上传token，支持缓存和自动刷新
+     * CosConfig缓存管理类
+     * 统一管理COS配置信息，包括临时密钥、bucket、region等
      */
-    private suspend fun getValidUploadToken(): UploadTokenResultModel {
-        synchronized(tokenLock) {
-            val currentTime = System.currentTimeMillis() / 1000
-            
-            // 检查缓存是否有效（提前5分钟刷新）
-            if (cachedTokenResult != null && currentTime < (tokenExpireTime - TOKEN_REFRESH_THRESHOLD_SECONDS)) {
-                return cachedTokenResult!!
+    private class CosConfigCache {
+        @Volatile
+        var cosConfig: CosConfig? = null
+        
+        fun isValid(): Boolean {
+            val config = cosConfig ?: return false
+            return !config.isExpiringSoon(TOKEN_REFRESH_THRESHOLD_SECONDS)
+        }
+        
+        fun clear() {
+            cosConfig = null
+        }
+        
+        fun update(config: CosConfig) {
+            cosConfig = config
+        }
+        
+        fun updateFromToken(token: UploadTokenResultModel) {
+            cosConfig = token.toCosConfig()
+        }
+    }
+
+    /**
+     * 动态密钥提供者 - 支持自动刷新临时密钥
+     */
+    private inner class DynamicCredentialProvider : QCloudCredentialProvider {
+        
+        override fun getCredentials(): QCloudLifecycleCredentials? {
+            return try {
+                // 检查并刷新配置
+                if (!configCache.isValid()) {
+                    refreshConfigSync()
+                }
+                
+                configCache.cosConfig?.let { config ->
+                    when {
+                        config.isTemporaryCredentials -> {
+                            SessionQCloudCredentials(
+                                config.tmpSecretId!!,
+                                config.tmpSecretKey!!,
+                                config.sessionToken!!,
+                                config.startTime?.toLongOrNull() ?: 0L,
+                                config.effectiveExpiredTime
+                            )
+                        }
+                        config.isStaticCredentials -> {
+                            SessionQCloudCredentials(
+                                config.secretId!!,
+                                config.secretKey!!,
+                                null,
+                                0L,
+                                config.effectiveExpiredTime
+                            )
+                        }
+                        else -> {
+                            Log.w(TAG, "No valid credentials found in config")
+                            null
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to get credentials", e)
+                null
             }
         }
         
-        // 获取新的token
-        return refreshUploadToken()
+        override fun refresh() {
+            try {
+                refreshConfigSync()
+                Log.d(TAG, "Credentials refreshed successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to refresh credentials", e)
+            }
+        }
+        
+        /**
+         * 同步刷新配置（在密钥提供者回调中使用）
+         */
+        private fun refreshConfigSync() {
+            runBlocking {
+                refreshCosConfig()
+            }
+        }
     }
-    
+
     /**
-     * 刷新上传token
+     * 获取有效的COS服务实例
      */
-    private suspend fun refreshUploadToken(): UploadTokenResultModel = withContext(Dispatchers.IO) {
+    private suspend fun getCosService(): CosXmlService {
+        serviceRef.get()?.let { return it }
+        
+        return mutex.withLock {
+            // 双重检查
+            serviceRef.get()?.let { return@withLock it }
+            
+            // 获取配置并初始化服务
+            val config = getValidCosConfig()
+            val service = createCosService(config)
+            serviceRef.set(service)
+            
+            Log.d(TAG, "COS service initialized with bucket: ${config.bucket}, region: ${config.region}")
+            service
+        }
+    }
+
+    /**
+     * 创建COS服务实例
+     */
+    private fun createCosService(config: CosConfig): CosXmlService {
+        val credentialProvider = DynamicCredentialProvider()
+        val serviceConfig = CosXmlServiceConfig.Builder()
+            .setRegion(config.region)
+            .isHttps(true)
+            .builder()
+        
+        return CosXmlService(context, serviceConfig, credentialProvider)
+    }
+
+    /**
+     * 获取有效的COS配置
+     */
+    private suspend fun getValidCosConfig(): CosConfig {
+        if (configCache.isValid()) {
+            return configCache.cosConfig!!
+        }
+        
+        return mutex.withLock {
+            // 双重检查
+            if (configCache.isValid()) {
+                return@withLock configCache.cosConfig!!
+            }
+            
+            refreshCosConfig()
+        }
+    }
+
+    /**
+     * 刷新COS配置（从API获取临时密钥）
+     */
+    private suspend fun refreshCosConfig(): CosConfig = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "Refreshing upload token...")
+            Log.d(TAG, "Refreshing COS config...")
             val response = apiService.getUploadToken()
             
             if (response.isSuccess() && response.data != null) {
-                val tokenResult = response.data
-                
-                synchronized(tokenLock) {
-                    cachedTokenResult = tokenResult
-                    // 解析过期时间
-                    tokenExpireTime = try {
-                        tokenResult.expiredTime.toLongOrNull() ?: (System.currentTimeMillis() / 1000 + 3600)
-                    } catch (_: Exception) {
-                        System.currentTimeMillis() / 1000 + 3600 // 默认1小时后过期
-                    }
-                }
-                
-                Log.d(TAG, "Upload token refreshed successfully, expires at: $tokenExpireTime")
-                tokenResult
+                val token = response.data
+                val config = token.toCosConfig()
+                configCache.update(config)
+                Log.d(TAG, "COS config refreshed successfully, expires at: ${config.effectiveExpiredTime}")
+                config
             } else {
-                throw Exception("Failed to get upload token")
+                throw Exception("Failed to get upload token: ${response.resultMsg}")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to refresh upload token", e)
+            Log.e(TAG, "Failed to refresh COS config", e)
             throw e
         }
     }
-    
+
     /**
-     * 懒汉式获取COS服务实例
+     * 清除缓存的服务和配置（用于错误重试）
      */
-    private suspend fun getCosService(): CosXmlService {
-        cosXmlService?.let { return it }
-        
-        // 获取token并初始化服务
-        val tokenResult = getValidUploadToken()
-        return initCosServiceWithToken(tokenResult)
-    }
-    
-    /**
-     * 使用token初始化COS服务
-     */
-    private suspend fun initCosServiceWithToken(tokenResult: UploadTokenResultModel): CosXmlService = withContext(Dispatchers.IO) {
-        try {
-            val credentials = SessionQCloudCredentials(
-                tokenResult.tmpSecretId,
-                tokenResult.tmpSecretKey,
-                tokenResult.sessionToken,
-                tokenResult.startTime.toLongOrNull() ?: 0L,
-                tokenResult.expiredTime.toLongOrNull() ?: (System.currentTimeMillis() / 1000 + 3600)
-            )
-            
-            val credentialProvider = StaticCredentialProvider(credentials)
-            val serviceConfig = CosXmlServiceConfig.Builder()
-                .setRegion(tokenResult.region)
-                .isHttps(true)
-                .builder()
-            
-            val service = CosXmlService(context, serviceConfig, credentialProvider)
-            
-            // 更新缓存的服务实例和配置
-            cosXmlService = service
-            currentBucket = tokenResult.bucket
-            currentRegion = tokenResult.region
-            
-            Log.d(TAG, "COS service initialized with token, bucket: ${tokenResult.bucket}, region: ${tokenResult.region}")
-            service
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize COS service with token", e)
-            throw e
+    private suspend fun clearCache() {
+        mutex.withLock {
+            serviceRef.set(null)
+            configCache.clear()
         }
+        Log.d(TAG, "Cache cleared")
     }
-    
+
+    // ==================== 公共接口实现 ====================
+
     override suspend fun initCosService(config: CosConfig): Unit = withContext(Dispatchers.IO) {
         try {
-            val credentials = SessionQCloudCredentials(config.secretId, config.secretKey, null, 0, System.currentTimeMillis() / 1000 + 600)
-            val credentialProvider = StaticCredentialProvider(credentials)
-            val serviceConfig = CosXmlServiceConfig.Builder()
-                .setRegion(config.region)
-                .isHttps(true)
-                .builder()
+            // 缓存配置
+            configCache.update(config)
             
-            cosXmlService = CosXmlService(context, serviceConfig, credentialProvider)
-            currentBucket = config.bucket
-            currentRegion = config.region
+            // 创建服务
+            val service = if (config.isStaticCredentials) {
+                // 使用静态密钥
+                val credentials = SessionQCloudCredentials(
+                    config.secretId!!, 
+                    config.secretKey!!, 
+                    null, 
+                    0, 
+                    config.effectiveExpiredTime
+                )
+                val credentialProvider = StaticCredentialProvider(credentials)
+                val serviceConfig = CosXmlServiceConfig.Builder()
+                    .setRegion(config.region)
+                    .isHttps(true)
+                    .builder()
+                
+                CosXmlService(context, serviceConfig, credentialProvider)
+            } else {
+                // 使用动态密钥提供者
+                createCosService(config)
+            }
             
-            Log.d(TAG, "COS service initialized successfully")
+            mutex.withLock {
+                serviceRef.set(service)
+            }
+            
+            Log.d(TAG, "COS service initialized with ${if (config.isStaticCredentials) "static" else "dynamic"} credentials")
+            if (config.isStaticCredentials) {
+                Log.w(TAG, "Warning: Using static credentials. Consider using temporary credentials for production.")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize COS service", e)
             throw e
         }
     }
-    
+
     override suspend fun initCosServiceWithCredentials(
         credentials: CosCredentials,
         region: String,
         bucket: String
     ): Unit = withContext(Dispatchers.IO) {
         try {
-            val sessionCredentials = SessionQCloudCredentials(
-                credentials.tmpSecretId,
-                credentials.tmpSecretKey,
-                credentials.sessionToken,
-                credentials.startTime,
-                credentials.expiredTime
-            )
-            val credentialProvider = StaticCredentialProvider(sessionCredentials)
-            val serviceConfig = CosXmlServiceConfig.Builder()
-                .setRegion(region)
-                .isHttps(true)
-                .builder()
+            // 转换为CosConfig并缓存
+            val config = credentials.toCosConfig(region, bucket)
+            configCache.update(config)
             
-            cosXmlService = CosXmlService(context, serviceConfig, credentialProvider)
-            currentBucket = bucket
-            currentRegion = region
+            val service = createCosService(config)
             
-            Log.d(TAG, "COS service initialized with temporary credentials")
+            mutex.withLock {
+                serviceRef.set(service)
+            }
+            
+            Log.d(TAG, "COS service initialized with provided credentials")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize COS service with credentials", e)
             throw e
         }
     }
-    
-    override suspend fun uploadFile(params: UploadParams): CosUploadResult = withContext(Dispatchers.IO) {
-        try {
-            return@withContext uploadFileInternal(params)
-        } catch (e: Exception) {
-            // 如果上传失败，尝试刷新token重试一次
-            Log.w(TAG, "Upload failed, attempting to refresh token and retry", e)
-            try {
-                clearCachedService()
-                return@withContext uploadFileInternal(params)
-            } catch (retryException: Exception) {
-                Log.e(TAG, "Upload failed after retry", retryException)
-                return@withContext CosUploadResult(
-                    success = false,
-                    key = params.key,
-                    errorMessage = "Upload failed: ${retryException.message}"
-                )
-            }
+
+    override suspend fun uploadFile(params: UploadParams): CosUploadResult {
+        return executeWithRetry {
+            uploadFileInternal(params, null)
         }
     }
-    
-    private suspend fun uploadFileInternal(params: UploadParams): CosUploadResult {
-        val service = getCosService()
-        val bucket = currentBucket ?: throw IllegalStateException("Bucket not set")
-        
-        return try {
-            val request = PutObjectRequest(bucket, params.key, params.filePath)
-            
-            // 设置元数据
-            if (params.contentType != null) {
-                request.setRequestHeaders("Content-Type", params.contentType, false)
-            }
-            
-            val result = service.putObject(request)
-            
-            CosUploadResult(
-                success = true,
-                key = params.key,
-                url = getPublicUrl(params.key)
-            )
-        } catch (e: CosXmlServiceException) {
-            Log.e(TAG, "COS service error during upload: ${e.errorCode}", e)
-            CosUploadResult(
-                success = false,
-                key = params.key,
-                errorMessage = "Upload failed: ${e.errorMessage}"
-            )
-        } catch (e: CosXmlClientException) {
-            Log.e(TAG, "COS client error during upload", e)
-            CosUploadResult(
-                success = false,
-                key = params.key,
-                errorMessage = "Upload failed: ${e.message}"
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error during upload", e)
-            CosUploadResult(
-                success = false,
-                key = params.key,
-                errorMessage = "Upload failed: ${e.message}"
-            )
-        }
-    }
-    
+
     override suspend fun uploadFileWithProgress(
         params: UploadParams,
         onProgress: (UploadProgress) -> Unit
-    ): CosUploadResult = withContext(Dispatchers.IO) {
-        try {
-            return@withContext uploadFileWithProgressInternal(params, onProgress)
-        } catch (e: Exception) {
-            // 如果上传失败，尝试刷新token重试一次
-            Log.w(TAG, "Upload with progress failed, attempting to refresh token and retry", e)
-            try {
-                clearCachedService()
-                return@withContext uploadFileWithProgressInternal(params, onProgress)
-            } catch (retryException: Exception) {
-                Log.e(TAG, "Upload with progress failed after retry", retryException)
-                return@withContext CosUploadResult(
-                    success = false,
-                    key = params.key,
-                    errorMessage = "Upload failed: ${retryException.message}"
-                )
-            }
-        }
-    }
-    
-    private suspend fun uploadFileWithProgressInternal(
-        params: UploadParams,
-        onProgress: (UploadProgress) -> Unit
     ): CosUploadResult {
-        val service = getCosService()
-        val bucket = currentBucket ?: throw IllegalStateException("Bucket not set")
-        
-        return try {
-            val request = PutObjectRequest(bucket, params.key, params.filePath)
-            
-            // 设置元数据
-            if (params.contentType != null) {
-                request.setRequestHeaders("Content-Type", params.contentType, false)
-            }
-            
-            // 设置进度回调
-            request.setProgressListener { complete, target ->
-                val progress = UploadProgress(
-                    bytesTransferred = complete,
-                    totalBytes = target
-                )
-                onProgress(progress)
-            }
-            
-            val result = service.putObject(request)
-            
-            CosUploadResult(
-                success = true,
-                key = params.key,
-                url = getPublicUrl(params.key)
-            )
-        } catch (e: CosXmlServiceException) {
-            Log.e(TAG, "COS service error during upload: ${e.errorCode}", e)
-            CosUploadResult(
-                success = false,
-                key = params.key,
-                errorMessage = "Upload failed: ${e.errorMessage}"
-            )
-        } catch (e: CosXmlClientException) {
-            Log.e(TAG, "COS client error during upload", e)
-            CosUploadResult(
-                success = false,
-                key = params.key,
-                errorMessage = "Upload failed: ${e.message}"
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error during upload", e)
-            CosUploadResult(
-                success = false,
-                key = params.key,
-                errorMessage = "Upload failed: ${e.message}"
-            )
+        return executeWithRetry {
+            uploadFileInternal(params, onProgress)
         }
     }
-    
-    override fun uploadFileFlow(
-        params: UploadParams
-    ): Flow<Result<UploadProgress>> = flow {
-        try {
-            uploadFileFlowInternal(params)
-        } catch (e: Exception) {
-            // 如果上传失败，尝试刷新token重试一次
-            Log.w(TAG, "Upload flow failed, attempting to refresh token and retry", e)
+
+    override fun uploadFileFlow(params: UploadParams): Flow<Result<UploadProgress>> {
+        return callbackFlow {
             try {
-                clearCachedService()
-                uploadFileFlowInternal(params)
-            } catch (retryException: Exception) {
-                Log.e(TAG, "Upload flow failed after retry", retryException)
-                emit(Result.failure(Exception("Upload failed: ${retryException.message}")))
-            }
-        }
-    }.flowOn(Dispatchers.IO)
-    
-    private suspend fun FlowCollector<Result<UploadProgress>>.uploadFileFlowInternal(params: UploadParams) {
-        val service = getCosService()
-        val bucket = currentBucket ?: throw IllegalStateException("Bucket not set")
-        
-        try {
-            val request = PutObjectRequest(bucket, params.key, params.filePath)
-            
-            // 设置元数据
-            if (params.contentType != null) {
-                request.setRequestHeaders("Content-Type", params.contentType, false)
-            }
-            
-            // 设置进度回调
-            request.setProgressListener { complete, target ->
-                val progress = UploadProgress(
-                    bytesTransferred = complete,
-                    totalBytes = target
+                val service = getCosService()
+                val config = getValidCosConfig()
+                
+                val request = PutObjectRequest(config.bucket, params.key, params.filePath)
+                
+                // 设置Content-Type
+                params.contentType?.let {
+                    request.setRequestHeaders("Content-Type", it, false)
+                }
+                
+                // 设置进度回调
+                request.setProgressListener { complete, target ->
+                    val progress = UploadProgress(
+                        bytesTransferred = complete,
+                        totalBytes = target
+                    )
+                    trySend(Result.success(progress))
+                }
+                
+                // 执行上传
+                withContext(Dispatchers.IO) {
+                    service.putObject(request)
+                }
+                
+                // 发送完成状态
+                val fileSize = File(params.filePath).length()
+                val finalProgress = UploadProgress(
+                    bytesTransferred = fileSize,
+                    totalBytes = fileSize
                 )
-                // 注意：这里不能直接 emit，因为不在协程上下文中
-                // 进度回调会在上传过程中自动触发
+                trySend(Result.success(finalProgress))
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Upload flow failed", e)
+                trySend(Result.failure(e))
             }
             
-            val result = service.putObject(request)
-            
-            // 上传完成，发送最终进度
-            val file = File(params.filePath)
-            val fileSize = if (file.exists()) file.length() else 0L
-            val finalProgress = UploadProgress(
-                bytesTransferred = fileSize,
-                totalBytes = fileSize
-            )
-            emit(Result.success(finalProgress))
-        } catch (e: CosXmlServiceException) {
-            Log.e(TAG, "COS service error during upload: ${e.errorCode}", e)
-            emit(Result.failure(Exception("Upload failed: ${e.errorMessage}")))
-        } catch (e: CosXmlClientException) {
-            Log.e(TAG, "COS client error during upload", e)
-            emit(Result.failure(Exception("Upload failed: ${e.message}")))
-        } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error during upload", e)
-            emit(Result.failure(Exception("Upload failed: ${e.message}")))
-        }
+            awaitClose { }
+        }.flowOn(Dispatchers.IO)
     }
-    
+
     override suspend fun deleteFile(key: String): Boolean = withContext(Dispatchers.IO) {
         try {
             val service = getCosService()
-            val bucket = currentBucket ?: return@withContext false
+            val config = getValidCosConfig()
             
-            val deleteObjectRequest = DeleteObjectRequest(bucket, key)
-            service.deleteObject(deleteObjectRequest)
+            val request = DeleteObjectRequest(config.bucket, key)
+            service.deleteObject(request)
+            
             Log.d(TAG, "File deleted successfully: $key")
             true
         } catch (e: Exception) {
@@ -411,69 +380,124 @@ class CosRepositoryImpl @Inject constructor(
             false
         }
     }
-    
-    override suspend fun getDownloadUrl(key: String, expireTimeInSeconds: Long): String? = withContext(Dispatchers.IO) {
-        try {
-            // 对于公共读的存储桶，直接返回公共 URL
+
+    override suspend fun getDownloadUrl(key: String, expireTimeInSeconds: Long): String? {
+        return try {
             getPublicUrl(key)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get download URL for: $key", e)
             null
         }
     }
-    
+
     override suspend fun fileExists(key: String): Boolean = withContext(Dispatchers.IO) {
         try {
             val service = getCosService()
-            val bucket = currentBucket ?: return@withContext false
+            val config = getValidCosConfig()
             
-            val request = HeadObjectRequest(bucket, key)
+            val request = HeadObjectRequest(config.bucket, key)
             service.headObject(request)
             true
         } catch (e: CosXmlServiceException) {
-            if (e.statusCode == 404) {
-                false
-            } else {
-                Log.e(TAG, "Error checking file existence: $key", e)
-                false
-            }
+            e.statusCode != 404
         } catch (e: Exception) {
             Log.e(TAG, "Error checking file existence: $key", e)
             false
         }
     }
-    
+
     override suspend fun getFileSize(key: String): Long? = withContext(Dispatchers.IO) {
         try {
             val service = getCosService()
-            val bucket = currentBucket ?: return@withContext null
+            val config = getValidCosConfig()
             
-            val request = HeadObjectRequest(bucket, key)
+            val request = HeadObjectRequest(config.bucket, key)
             val result = service.headObject(request)
-            // 尝试从响应头获取文件大小
-            val contentLengthStr = result.headers?.get("Content-Length") as? String
-            contentLengthStr?.toLongOrNull()
+            
+            (result.headers?.get("Content-Length") as? String)?.toLongOrNull()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get file size for: $key", e)
             null
         }
     }
-    
+
+    // ==================== 私有辅助方法 ====================
+
     /**
-     * 清除缓存的服务实例，用于错误重试
+     * 执行操作并支持重试机制
      */
-    private fun clearCachedService() {
-        synchronized(tokenLock) {
-            cosXmlService = null
-            cachedTokenResult = null
-            tokenExpireTime = 0L
+    private suspend fun <T> executeWithRetry(operation: suspend () -> T): T {
+        return try {
+            operation()
+        } catch (e: Exception) {
+            Log.w(TAG, "Operation failed, attempting retry after cache clear", e)
+            try {
+                clearCache()
+                operation()
+            } catch (retryException: Exception) {
+                Log.e(TAG, "Operation failed after retry", retryException)
+                throw retryException
+            }
         }
-        Log.d(TAG, "Cached COS service and token cleared")
+    }
+
+    /**
+     * 内部上传实现
+     */
+    private suspend fun uploadFileInternal(
+        params: UploadParams,
+        onProgress: ((UploadProgress) -> Unit)?
+    ): CosUploadResult = withContext(Dispatchers.IO) {
+        try {
+            val service = getCosService()
+            val config = getValidCosConfig()
+            
+            val request = PutObjectRequest(config.bucket, params.key, params.filePath)
+            
+            // 设置Content-Type
+            params.contentType?.let {
+                request.setRequestHeaders("Content-Type", it, false)
+            }
+            
+            // 设置进度回调
+            onProgress?.let { callback ->
+                request.setProgressListener { complete, target ->
+                    callback(UploadProgress(complete, target))
+                }
+            }
+            
+            // 执行上传
+            service.putObject(request)
+            
+            CosUploadResult(
+                success = true,
+                key = params.key,
+                bucket = config.bucket,
+                region = config.region,
+                url = getPublicUrl(params.key, config)
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Upload failed for key: ${params.key}", e)
+            CosUploadResult(
+                success = false,
+                key = params.key,
+                errorMessage = "Upload failed: ${e.message}"
+            )
+        }
+    }
+
+    /**
+     * 生成公共访问URL
+     */
+    private suspend fun getPublicUrl(key: String): String {
+        val config = getValidCosConfig()
+        return getPublicUrl(key, config)
     }
     
-    private fun getPublicUrl(key: String): String {
-        val bucket = currentBucket ?: throw IllegalStateException("Bucket not set")
-        val region = currentRegion ?: throw IllegalStateException("Region not set")
-        return "https://$bucket.cos.$region.myqcloud.com/$key"
+    /**
+     * 根据配置生成公共访问URL
+     */
+    private fun getPublicUrl(key: String, config: CosConfig): String {
+        return "https://${config.bucket}.cos.${config.region}.myqcloud.com/$key"
     }
 }
