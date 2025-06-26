@@ -29,7 +29,6 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.showLongToast
@@ -329,34 +328,13 @@ fun AgreementText(
             })
 }
 
-@Preview(showBackground = true, device = "spec:width=360dp,height=740dp")
+@Preview
 @Composable
-fun LoginScreenPreview() {
+fun AgreementTextPreview() {
     LongCareTheme {
-        LoginScreen(navController = rememberNavController())
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun SendVerificationCodeButtonPreview() {
-    // Preview for SendVerificationCodeButton might need adjustment
-    // as it now relies on a ViewModel. For simplicity, this preview
-    // might need to be rethought or use a mock ViewModel.
-    // For now, let's keep it simple or comment it out if it causes issues.
-    val mockViewModel: LoginViewModel = hiltViewModel() // This might not work as expected in preview
-    var sendCodeTriggered by remember { mutableStateOf(false) }
-    Column(modifier = Modifier.padding(16.dp)) {
-        SendVerificationCodeButton(
-            viewModel = mockViewModel,
-            onSendCodeClick = {
-                sendCodeTriggered = true // 模拟发送验证码
-                // 可以在这里 Log.d("Preview", "Send code clicked!")
-            }
+        AgreementText(
+            onUserAgreementClick = {},
+            onPrivacyPolicyClick = {}
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        if (sendCodeTriggered) {
-            Text(stringResource(R.string.login_code_sent_mock))
-        }
     }
 }

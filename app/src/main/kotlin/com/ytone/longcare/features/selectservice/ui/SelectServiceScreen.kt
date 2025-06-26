@@ -22,7 +22,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ytone.longcare.R
 import com.ytone.longcare.theme.bgGradientBrush
@@ -272,12 +271,59 @@ fun NextStepButton(text: String, enabled: Boolean, onClick: () -> Unit) {
     }
 }
 
-// --- 预览 ---
-@Preview(showBackground = true, device = "id:pixel_6")
+@Preview
 @Composable
-fun SelectServiceScreenPreview() {
-    MaterialTheme { // 建议包裹在您的应用主题中
-        // 预览时使用模拟的NavController和orderId
-        SelectServiceScreen(navController = rememberNavController(), orderId = 1L)
-    }
+fun TotalDurationDisplayPreview() {
+    TotalDurationDisplay(totalDuration = 120)
+}
+
+@Preview
+@Composable
+fun ServiceSelectionListPreview() {
+    val serviceItems = listOf(
+        ServiceItem(id = 1, name = "基础护理", duration = 60, isSelected = true),
+        ServiceItem(id = 2, name = "康复训练", duration = 45),
+        ServiceItem(id = 3, name = "心理疏导", duration = 30, isSelected = false)
+    )
+    ServiceSelectionList(serviceItems = serviceItems, onItemClick = {})
+}
+
+@Preview
+@Composable
+fun ServiceSelectionItemSelectedPreview() {
+    ServiceSelectionItem(
+        item = ServiceItem(
+            id = 1,
+            name = "基础护理",
+            duration = 60,
+            isSelected = true
+        ),
+        onClick = {}
+    )
+}
+
+@Preview
+@Composable
+fun ServiceSelectionItemUnselectedPreview() {
+    ServiceSelectionItem(
+        item = ServiceItem(
+            id = 2,
+            name = "康复训练",
+            duration = 45,
+            isSelected = false
+        ),
+        onClick = {}
+    )
+}
+
+@Preview
+@Composable
+fun NextStepButtonEnabledPreview() {
+    NextStepButton(text = "下一步", enabled = true, onClick = {})
+}
+
+@Preview
+@Composable
+fun NextStepButtonDisabledPreview() {
+    NextStepButton(text = "下一步", enabled = false, onClick = {})
 }

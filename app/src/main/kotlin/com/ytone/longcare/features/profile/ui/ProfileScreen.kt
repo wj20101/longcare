@@ -30,7 +30,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.NurseServiceTimeModel
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
@@ -232,12 +231,82 @@ fun LogoutButton(onClick: () -> Unit = {}) {
     }
 }
 
-// --- 预览 ---
-
-@Preview(showBackground = true, backgroundColor = 0xFF468AFF)
+@Preview
 @Composable
-fun ProfileScreenPreview() {
+fun UserInfoSectionPreview() {
+    val user = User(
+        companyId = 1,
+        accountId = 1,
+        userId = 1,
+        userName = "张三",
+        headUrl = "https://example.com/avatar.jpg",
+        userIdentity = 1,
+        identityCardNumber = "123456789012345678",
+        gender = 1,
+        token = "test_token"
+    )
     LongCareTheme {
-        ProfileScreen(navController = rememberNavController())
+        Surface {
+            UserInfoSection(user = user)
+        }
+    }
+}
+
+@Preview
+@Composable
+fun StatsCardPreview() {
+    val stats = NurseServiceTimeModel(
+        haveServiceTime = 100,
+        haveServiceNum = 10,
+        noServiceTime = 20
+    )
+    LongCareTheme {
+        Surface {
+            StatsCard(stats = stats)
+        }
+    }
+}
+
+@Preview
+@Composable
+fun StatItemPreview() {
+    LongCareTheme {
+        Surface {
+            StatItem(value = "120", label = "已服务工时")
+        }
+    }
+}
+
+@Preview
+@Composable
+fun OptionsCardPreview() {
+    LongCareTheme {
+        Surface {
+            OptionsCard()
+        }
+    }
+}
+
+@Preview
+@Composable
+fun OptionItemPreview() {
+    LongCareTheme {
+        Surface {
+            OptionItem(
+                icon = Icons.Default.Description,
+                text = "信息上报",
+                onClick = {}
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+fun LogoutButtonPreview() {
+    LongCareTheme {
+        Surface {
+            LogoutButton(onClick = {})
+        }
     }
 }

@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.isPendingCare
@@ -29,7 +28,6 @@ import com.ytone.longcare.api.response.isServiceRecord
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.navigation.HomeRoute
 import com.ytone.longcare.navigation.navigateToService
-import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.bgGradientBrush
 
 enum class ServiceOrderType {
@@ -137,6 +135,13 @@ fun ServiceOrdersListScreen(
     }
 }
 
+@Preview
+@Composable
+fun ServiceOrderItemPreview() {
+    val order = TodayServiceOrderModel(name = "张三", state = 0, totalServiceTime = 60, liveAddress = "北京市朝阳区 xxx 街道 xxx 号", callPhone = "138xxxxxxxx")
+    ServiceOrderItem(order = order)
+}
+
 @Composable
 fun ServiceOrderItem(
     order: TodayServiceOrderModel, onClick: () -> Unit = { }
@@ -229,15 +234,5 @@ fun ServiceOrderItem(
                 modifier = Modifier.size(16.dp)
             )
         }
-    }
-}
-
-@Preview
-@Composable
-fun ServiceOrdersListScreenPreview() {
-    LongCareTheme {
-        ServiceOrdersListScreen(
-            navController = rememberNavController(), orderType = ServiceOrderType.PENDING_CARE_PLANS
-        )
     }
 }
