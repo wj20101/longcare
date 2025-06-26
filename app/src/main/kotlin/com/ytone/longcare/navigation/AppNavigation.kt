@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.ytone.longcare.MainViewModel
+import com.ytone.longcare.common.utils.RandomUtils
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
@@ -26,6 +27,7 @@ import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
+import com.ytone.longcare.features.shared.FaceVerificationWithAutoSignScreen
 import kotlin.reflect.typeOf
 
 
@@ -89,7 +91,12 @@ fun MainApp(
 
         is SessionState.LoggedOut -> {
             // 用户未登录，导航到登录页
-            AppNavigation(startDestination = LoginRoute)
+//            AppNavigation(startDestination = LoginRoute)
+            AppNavigation(startDestination = TxFaceRoute(
+                faceId = RandomUtils.generateRandomString(32),
+                orderNo = RandomUtils.generateRandomString(32),
+                userId = RandomUtils.generateRandomString(32)
+            ))
         }
     }
 }
@@ -173,6 +180,17 @@ fun AppNavigation(startDestination: Any) {
                 navController = navController,
                 orderId = route.orderId,
                 projectIds = route.projectIds
+            )
+        }
+        composable<TxFaceRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<TxFaceRoute>()
+            FaceVerificationWithAutoSignScreen(
+                {},
+                {},
+                null,
+                route.faceId,
+                route.orderNo,
+                route.userId
             )
         }
     }

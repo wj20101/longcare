@@ -60,3 +60,7 @@ object CarePlansListRoute
 @Keep
 @Serializable
 object ServiceRecordsListRoute
+
+@Keep
+@Serializable
+data class TxFaceRoute(val faceId: String, val orderNo: String, val userId: String)
