@@ -85,6 +85,7 @@ android {
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
             buildConfigField("String", "TX_ID", "\"REDACTED_TX_ID_1\"")
             buildConfigField("String", "TX_Secret", "\"REDACTED_TX_SECRET_1\"")
+            buildConfigField("String", "TX_Licence", "\"REDACTED_TX_LICENCE_1\"")
             signingConfig = signingConfigs.getByName("release")
         }
 
@@ -94,6 +95,7 @@ android {
             buildConfigField("boolean", "USE_MOCK_DATA", "true")
             buildConfigField("String", "TX_ID", "\"REDACTED_TX_ID_2\"")
             buildConfigField("String", "TX_Secret", "\"REDACTED_TX_SECRET_2\"")
+            buildConfigField("String", "TX_Licence", "\"REDACTED_TX_LICENCE_2\"")
             signingConfig = signingConfigs.getByName("release")
         }
     }
@@ -213,6 +215,9 @@ dependencies {
     // 腾讯人脸
     implementation(files("libs/WbCloudFaceLiveSdk-will-v6.6.3-8e4718fc.aar"))
     implementation(files("libs/WbCloudNormal-v5.1.10-4e3e198.aar"))
+
+    // 腾讯云COS
+    implementation(libs.tencent.cos.android)
 
     // Testing
     testImplementation(libs.junit)

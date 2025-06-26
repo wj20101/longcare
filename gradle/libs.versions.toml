@@ -44,6 +44,9 @@ kotlinxSerialization = "1.8.1"
 
 coil = "3.2.0"
 
+# Tencent COS
+tencentCos = "5.9.46"
+
 # Testing
 junit = "4.13.2"
 androidxJunit = "1.2.1"
@@ -118,6 +121,9 @@ coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp"
 coil-svg = { group = "io.coil-kt.coil3", name = "coil-svg", version.ref = "coil" }
 coil-gif = { group = "io.coil-kt.coil3", name = "coil-gif", version.ref = "coil" }
 coil-video = { group = "io.coil-kt.coil3", name = "coil-video", version.ref = "coil" }
+
+# Tencent COS
+tencent-cos-android = { group = "com.qcloud.cos", name = "cos-android", version.ref = "tencentCos" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }

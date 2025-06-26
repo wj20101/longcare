@@ -10,6 +10,7 @@ import com.tencent.cloud.huiyansdkface.facelight.api.listeners.WbCloudFaceVerify
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.tencent.cloud.huiyansdkface.facelight.process.FaceVerifyStatus
+import com.ytone.longcare.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -236,7 +237,7 @@ class FaceVerificationManager @Inject constructor(
             nonce = nonce,
             userId = userId,
             sign = sign,
-            keyLicence = apiTicket // 使用api_ticket作为keyLicence
+            keyLicence = BuildConfig.TX_Licence
         )
     }
 
