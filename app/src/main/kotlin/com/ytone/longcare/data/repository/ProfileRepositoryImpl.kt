@@ -14,7 +14,7 @@ import javax.inject.Inject
 class ProfileRepositoryImpl @Inject constructor(
     private val apiService: LongCareApiService,
     private val userSessionRepository: UserSessionRepository,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val eventBus: AppEventBus
 ) : ProfileRepository {
     override suspend fun getServiceStatistics(): ApiResult<NurseServiceTimeModel> {

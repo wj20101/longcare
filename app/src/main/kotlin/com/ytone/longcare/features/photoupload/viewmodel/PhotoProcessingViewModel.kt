@@ -25,7 +25,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class PhotoProcessingViewModel @Inject constructor(
-    @ApplicationContext private val applicationContext: Context,
+    @param:ApplicationContext private val applicationContext: Context,
     private val toastHelper: ToastHelper
 ) : ViewModel() {
 

@@ -20,7 +20,7 @@ import javax.inject.Singleton
 @Singleton
 class OrderRepositoryImpl @Inject constructor(
     private val apiService: LongCareApiService,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val eventBus: AppEventBus,
 ) : OrderRepository {
 
