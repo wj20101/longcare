@@ -7,7 +7,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class ToastHelper @Inject constructor(@ApplicationContext private val context: Context) {
+class ToastHelper @Inject constructor(@param:ApplicationContext private val context: Context) {
 
     fun showShort(message: CharSequence) {
         context.showShortToast(message)
