@@ -1,12 +1,30 @@
 package com.ytone.longcare.features.shared
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
@@ -17,7 +35,7 @@ import com.ytone.longcare.ui.components.FaceVerificationComponent
 /**
  * 人脸验证页面
  * 这是一个示例页面，展示如何使用人脸验证组件
- * 
+ *
  * @param onNavigateBack 返回回调
  * @param onVerificationSuccess 验证成功回调
  * @param faceVerifyParams 人脸验证参数（可选，用于预设参数）
@@ -31,7 +49,7 @@ fun FaceVerificationScreen(
 ) {
     var showSnackbar by remember { mutableStateOf(false) }
     var snackbarMessage by remember { mutableStateOf("") }
-    
+
     // 示例参数（实际使用时应该从服务器获取）
     val defaultParams = remember {
         FaceVerificationManager.FaceVerifyParams(
@@ -44,9 +62,9 @@ fun FaceVerificationScreen(
             keyLicence = "your_key_licence"
         )
     }
-    
+
     val params = faceVerifyParams ?: defaultParams
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -54,7 +72,7 @@ fun FaceVerificationScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Default.ArrowBack,
                             contentDescription = "返回"
                         )
                     }
@@ -106,7 +124,7 @@ fun FaceVerificationScreen(
                     )
                 }
             }
-            
+
             // 人脸验证组件
             FaceVerificationComponent(
                 params = params,
@@ -124,7 +142,7 @@ fun FaceVerificationScreen(
                     showSnackbar = true
                 }
             )
-            
+
             // 参数信息（仅用于调试，生产环境应移除）
             if (BuildConfig.DEBUG) {
                 Card(
