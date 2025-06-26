@@ -11,19 +11,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 /**
- * 图片选择器工具类
- * 支持单选和多选，包含完整的降级机制
+ * 检查现代图片选择器（Photo Picker）是否可用。
+ * 这是官方推荐的、使用 Context 的最新检查方式。
+ * @param context 上下文。
+ * @return 如果可用则返回 true，否则返回 false。
  */
-class PhotoPicker {
-    
-    companion object {
-        /**
-         * 检查是否支持现代图片选择器
-         */
-        fun isPhotoPickerAvailable(): Boolean {
-            return ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable()
-        }
-    }
+private fun isPhotoPickerAvailable(context: Context): Boolean {
+    // 在 Android 11 (API 30) 及以上版本，才有可能使用新的图片选择器
+    return ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable(context)
 }
 
 /**
@@ -104,7 +99,7 @@ fun rememberSinglePhotoPicker(
 ): PhotoPickerLauncher {
     val context = LocalContext.current
     
-    return if (PhotoPicker.isPhotoPickerAvailable()) {
+    return if (isPhotoPickerAvailable(context)) {
         // 使用现代图片选择器
         val launcher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.PickVisualMedia(),
@@ -145,7 +140,7 @@ fun rememberMultiplePhotoPicker(
 ): MultiplePhotoPickerLauncher {
     val context = LocalContext.current
     
-    return if (PhotoPicker.isPhotoPickerAvailable()) {
+    return if (isPhotoPickerAvailable(context)) {
         // 使用现代图片选择器
         val launcher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems),
