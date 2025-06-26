@@ -46,20 +46,12 @@ import com.ytone.longcare.features.shared.vm.FaceVerificationViewModel
  * 
  * @param onNavigateBack 返回回调
  * @param onVerificationSuccess 验证成功回调
- * @param tencentConfig 腾讯云配置（可选，用于预设配置）
- * @param faceId 人脸ID（可选）
- * @param orderNo 订单号（可选）
- * @param userId 用户ID（可选）
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FaceVerificationWithAutoSignScreen(
     onNavigateBack: () -> Unit,
     onVerificationSuccess: (WbFaceVerifyResult) -> Unit,
-    tencentConfig: FaceVerificationManager.TencentCloudConfig? = null,
-    faceId: String? = null,
-    orderNo: String? = null,
-    userId: String? = null,
     viewModel: FaceVerificationViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -74,11 +66,10 @@ fun FaceVerificationWithAutoSignScreen(
             secret = BuildConfig.TX_Secret
         )
     }
-    
-    val config = tencentConfig ?: defaultConfig
-    val currentFaceId = faceId ?: "default_face_id"
-    val currentOrderNo = orderNo ?: "order_${System.currentTimeMillis()}"
-    val currentUserId = userId ?: "user_${System.currentTimeMillis()}"
+    val config = defaultConfig
+    val currentFaceId = "123456"
+    val currentOrderNo = "order_${System.currentTimeMillis()}"
+    val currentUserId = "user_${System.currentTimeMillis()}"
     
     // 处理验证结果
     LaunchedEffect(uiState) {

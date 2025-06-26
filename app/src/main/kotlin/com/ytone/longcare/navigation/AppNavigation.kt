@@ -92,11 +92,7 @@ fun MainApp(
         is SessionState.LoggedOut -> {
             // 用户未登录，导航到登录页
 //            AppNavigation(startDestination = LoginRoute)
-            AppNavigation(startDestination = TxFaceRoute(
-                faceId = RandomUtils.generateRandomString(32),
-                orderNo = RandomUtils.generateRandomString(32),
-                userId = RandomUtils.generateRandomString(32)
-            ))
+            AppNavigation(startDestination = TxFaceRoute)
         }
     }
 }
@@ -183,14 +179,9 @@ fun AppNavigation(startDestination: Any) {
             )
         }
         composable<TxFaceRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<TxFaceRoute>()
             FaceVerificationWithAutoSignScreen(
                 {},
                 {},
-                null,
-                route.faceId,
-                route.orderNo,
-                route.userId
             )
         }
     }
