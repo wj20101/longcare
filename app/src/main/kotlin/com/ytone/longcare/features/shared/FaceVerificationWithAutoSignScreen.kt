@@ -70,8 +70,8 @@ fun FaceVerificationWithAutoSignScreen(
     // 默认配置（实际使用时应该从配置文件或服务器获取）
     val defaultConfig = remember {
         FaceVerificationManager.TencentCloudConfig(
-            appId = "your_tencent_app_id",
-            secret = "your_tencent_secret"
+            appId = BuildConfig.TX_ID,
+            secret = BuildConfig.TX_Secret
         )
     }
     
