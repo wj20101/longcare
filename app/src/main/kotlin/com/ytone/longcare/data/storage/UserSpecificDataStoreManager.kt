@@ -18,8 +18,8 @@ import javax.inject.Singleton
 
 @Singleton
 class UserSpecificDataStoreManager @Inject constructor(
-    @ApplicationContext private val context: Context,
-    @ApplicationScope private val coroutineScope: CoroutineScope,
+    @param:ApplicationContext private val context: Context,
+    @param:ApplicationScope private val coroutineScope: CoroutineScope,
     private val userSessionRepository: UserSessionRepository
 ) {
     companion object {

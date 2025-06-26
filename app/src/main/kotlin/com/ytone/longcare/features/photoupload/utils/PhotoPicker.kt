@@ -33,7 +33,7 @@ private fun isGifImage(context: Context, uri: Uri): Boolean {
     return try {
         val mimeType = context.contentResolver.getType(uri)
         mimeType == "image/gif"
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         // 如果无法获取MIME类型，尝试从文件扩展名判断
         val extension = MimeTypeMap.getFileExtensionFromUrl(uri.toString())
         extension?.lowercase() == "gif"

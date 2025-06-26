@@ -12,7 +12,7 @@ import javax.inject.Inject
 
 class LoginRepositoryImpl @Inject constructor(
     private val apiService: LongCareApiService,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val eventBus: AppEventBus
 ) : LoginRepository {
 

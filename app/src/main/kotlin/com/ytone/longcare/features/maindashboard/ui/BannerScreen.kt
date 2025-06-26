@@ -33,7 +33,7 @@ import com.ytone.longcare.R
 // 定义 Banner 数据项
 data class BannerItem(
     val id: Int,
-    @DrawableRes val imageRes: Int, // 如果是网络图片
+    @param:DrawableRes val imageRes: Int, // 如果是网络图片
     val description: String = "Banner Image $id"
 )
 
