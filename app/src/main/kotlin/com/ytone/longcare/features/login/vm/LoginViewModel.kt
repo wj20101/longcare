@@ -142,7 +142,8 @@ private fun LoginResultModel.toUser(): User {
         gender = gender,
         token = token,
         companyId = companyId,
-        accountId = accountId
+        accountId = accountId,
+        faceId = faceId
     )
 }
 
