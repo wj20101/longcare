@@ -11,11 +11,9 @@ import com.tencent.cos.xml.model.`object`.PutObjectRequest
 import com.tencent.qcloud.core.auth.QCloudCredentialProvider
 import com.tencent.qcloud.core.auth.QCloudLifecycleCredentials
 import com.tencent.qcloud.core.auth.SessionQCloudCredentials
-import com.tencent.qcloud.core.auth.StaticCredentialProvider
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.response.UploadTokenResultModel
 import com.ytone.longcare.data.cos.model.CosConfig
-import com.ytone.longcare.data.cos.model.CosCredentials
 import com.ytone.longcare.data.cos.model.CosUploadResult
 import com.ytone.longcare.data.cos.model.UploadParams
 import com.ytone.longcare.data.cos.model.UploadProgress
@@ -58,7 +56,6 @@ class CosRepositoryImpl @Inject constructor(
     companion object {
         private const val TAG = "CosRepositoryImpl"
         private const val TOKEN_REFRESH_THRESHOLD_SECONDS = 300L // 5分钟提前刷新
-        private const val DEFAULT_TOKEN_EXPIRE_SECONDS = 3600L // 默认1小时过期
     }
 
     // 线程安全的状态管理
@@ -108,20 +105,20 @@ class CosRepositoryImpl @Inject constructor(
                     when {
                         config.isTemporaryCredentials -> {
                             SessionQCloudCredentials(
-                                config.tmpSecretId!!,
-                                config.tmpSecretKey!!,
-                                config.sessionToken!!,
-                                config.startTime?.toLongOrNull() ?: 0L,
+                                config.tmpSecretId,
+                                config.tmpSecretKey,
+                                config.sessionToken,
+                                config.startTime,
                                 config.effectiveExpiredTime
                             )
                         }
                         config.isStaticCredentials -> {
                             SessionQCloudCredentials(
-                                config.secretId!!,
-                                config.secretKey!!,
-                                null,
-                                0L,
-                                config.effectiveExpiredTime
+                                config.tmpSecretId,
+                                config.tmpSecretKey,
+                                config.sessionToken,
+                                config.startTime,
+                                config.expiredTime
                             )
                         }
                         else -> {
@@ -241,71 +238,6 @@ class CosRepositoryImpl @Inject constructor(
     }
 
     // ==================== 公共接口实现 ====================
-
-    override suspend fun initCosService(config: CosConfig): Unit = withContext(Dispatchers.IO) {
-        try {
-            // 缓存配置
-            configCache.update(config)
-            
-            // 创建服务
-            val service = if (config.isStaticCredentials) {
-                // 使用静态密钥
-                val credentials = SessionQCloudCredentials(
-                    config.secretId!!, 
-                    config.secretKey!!, 
-                    null, 
-                    0, 
-                    config.effectiveExpiredTime
-                )
-                val credentialProvider = StaticCredentialProvider(credentials)
-                val serviceConfig = CosXmlServiceConfig.Builder()
-                    .setRegion(config.region)
-                    .isHttps(true)
-                    .builder()
-                
-                CosXmlService(context, serviceConfig, credentialProvider)
-            } else {
-                // 使用动态密钥提供者
-                createCosService(config)
-            }
-            
-            mutex.withLock {
-                serviceRef.set(service)
-            }
-            
-            Log.d(TAG, "COS service initialized with ${if (config.isStaticCredentials) "static" else "dynamic"} credentials")
-            if (config.isStaticCredentials) {
-                Log.w(TAG, "Warning: Using static credentials. Consider using temporary credentials for production.")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize COS service", e)
-            throw e
-        }
-    }
-
-    override suspend fun initCosServiceWithCredentials(
-        credentials: CosCredentials,
-        region: String,
-        bucket: String
-    ): Unit = withContext(Dispatchers.IO) {
-        try {
-            // 转换为CosConfig并缓存
-            val config = credentials.toCosConfig(region, bucket)
-            configCache.update(config)
-            
-            val service = createCosService(config)
-            
-            mutex.withLock {
-                serviceRef.set(service)
-            }
-            
-            Log.d(TAG, "COS service initialized with provided credentials")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize COS service with credentials", e)
-            throw e
-        }
-    }
-
     override suspend fun uploadFile(params: UploadParams): CosUploadResult {
         return executeWithRetry {
             uploadFileInternal(params, null)
@@ -413,8 +345,7 @@ class CosRepositoryImpl @Inject constructor(
             
             val request = HeadObjectRequest(config.bucket, key)
             val result = service.headObject(request)
-            
-            (result.headers?.get("Content-Length") as? String)?.toLongOrNull()
+            result.headers?.get("Content-Length")?.firstOrNull()?.toLongOrNull()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get file size for: $key", e)
             null

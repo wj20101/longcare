@@ -1,7 +1,5 @@
 package com.ytone.longcare.domain.cos.repository
 
-import com.ytone.longcare.data.cos.model.CosConfig
-import com.ytone.longcare.data.cos.model.CosCredentials
 import com.ytone.longcare.data.cos.model.CosUploadResult
 import com.ytone.longcare.data.cos.model.UploadParams
 import com.ytone.longcare.data.cos.model.UploadProgress
@@ -12,24 +10,6 @@ import kotlinx.coroutines.flow.Flow
  * 提供文件上传、下载、删除等功能
  */
 interface CosRepository {
-    
-    /**
-     * 初始化COS服务
-     * @param config COS配置信息
-     */
-    suspend fun initCosService(config: CosConfig)
-    
-    /**
-     * 使用临时密钥初始化COS服务
-     * @param credentials 临时密钥信息
-     * @param region 地域
-     * @param bucket 存储桶名称
-     */
-    suspend fun initCosServiceWithCredentials(
-        credentials: CosCredentials,
-        region: String,
-        bucket: String
-    )
     
     /**
      * 上传文件
