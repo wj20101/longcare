@@ -86,13 +86,13 @@ fun MainApp(
 
         is SessionState.LoggedIn -> {
             // 用户已登录，导航到主页
-            AppNavigation(startDestination = HomeRoute)
+//            AppNavigation(startDestination = HomeRoute)
+            AppNavigation(startDestination = TxFaceRoute)
         }
 
         is SessionState.LoggedOut -> {
             // 用户未登录，导航到登录页
-//            AppNavigation(startDestination = LoginRoute)
-            AppNavigation(startDestination = TxFaceRoute)
+            AppNavigation(startDestination = LoginRoute)
         }
     }
 }
@@ -180,6 +180,7 @@ fun AppNavigation(startDestination: Any) {
         }
         composable<TxFaceRoute> { backStackEntry ->
             FaceVerificationWithAutoSignScreen(
+                navController = navController,
                 {},
                 {},
             )

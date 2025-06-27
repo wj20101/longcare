@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.shared.vm
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
@@ -35,22 +36,7 @@ class FaceVerificationViewModel @Inject constructor(
     
     private val _uiState = MutableStateFlow<FaceVerifyUiState>(FaceVerifyUiState.Idle)
     val uiState: StateFlow<FaceVerifyUiState> = _uiState.asStateFlow()
-    
-    /**
-     * 开始人脸验证（使用预设参数）
-     * @param params 验证参数
-     */
-    fun startFaceVerification(params: FaceVerificationManager.FaceVerifyParams) {
-        viewModelScope.launch {
-            _uiState.value = FaceVerifyUiState.Initializing
-            
-            faceVerificationManager.startFaceVerification(
-                params = params,
-                callback = createFaceVerifyCallback()
-            )
-        }
-    }
-    
+
     /**
      * 开始人脸验证（自动获取签名参数）
      * @param config 腾讯云配置
@@ -59,6 +45,7 @@ class FaceVerificationViewModel @Inject constructor(
      * @param userId 用户ID
      */
     fun startFaceVerificationWithAutoSign(
+        context: Context,
         config: FaceVerificationManager.TencentCloudConfig,
         faceId: String,
         orderNo: String,
@@ -66,8 +53,9 @@ class FaceVerificationViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             _uiState.value = FaceVerifyUiState.Initializing
-            
+
             faceVerificationManager.startFaceVerificationWithAutoSign(
+                context = context,
                 config = config,
                 faceId = faceId,
                 orderNo = orderNo,
