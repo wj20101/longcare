@@ -24,36 +24,34 @@ data class CosUploadResult(
 data class CosConfig(
     val region: String,
     val bucket: String,
-    val secretId: String? = null,
-    val secretKey: String? = null,
-    val sessionToken: String? = null,
-    val expiredTime: Long? = null,
-    // 从UploadTokenResultModel扩展的字段
-    val tmpSecretId: String? = null,
-    val tmpSecretKey: String? = null,
-    val startTime: String? = null,
-    val requestId: String? = null,
-    val expiration: String? = null,
-    val expiredTimeStr: String? = null
+    val sessionToken: String,
+    val expiredTime: Long,
+    val tmpSecretId: String,
+    val tmpSecretKey: String,
+    val startTime: Long,
+    val requestId: String,
+    val expiration: String,
+    val expiredTimeStr: String
 ) {
     /**
      * 判断是否为临时密钥配置
      */
     val isTemporaryCredentials: Boolean
-        get() = !tmpSecretId.isNullOrEmpty() && !tmpSecretKey.isNullOrEmpty() && !sessionToken.isNullOrEmpty()
-    
+        get() = tmpSecretId.isNotEmpty() && tmpSecretKey.isNotEmpty() && sessionToken.isNotEmpty()
+
     /**
      * 判断是否为固定密钥配置
      */
     val isStaticCredentials: Boolean
-        get() = !secretId.isNullOrEmpty() && !secretKey.isNullOrEmpty()
-    
+        get() = tmpSecretId.isNotEmpty() && tmpSecretKey.isNotEmpty()
+
+
     /**
      * 获取有效的过期时间（优先使用Long类型的expiredTime）
      */
     val effectiveExpiredTime: Long
-        get() = expiredTime ?: expiredTimeStr?.toLongOrNull() ?: (System.currentTimeMillis() / 1000 + 3600)
-    
+        get() = expiredTime
+
     /**
      * 检查密钥是否即将过期（提前5分钟）
      */
@@ -62,18 +60,6 @@ data class CosConfig(
         return currentTime >= (effectiveExpiredTime - thresholdSeconds)
     }
 }
-
-/**
- * COS临时密钥信息
- */
-@Serializable
-data class CosCredentials(
-    val tmpSecretId: String,
-    val tmpSecretKey: String,
-    val sessionToken: String,
-    val expiredTime: Long,
-    val startTime: Long
-)
 
 /**
  * 上传进度回调
@@ -106,25 +92,10 @@ fun UploadTokenResultModel.toCosConfig(): CosConfig {
         sessionToken = this.sessionToken,
         tmpSecretId = this.tmpSecretId,
         tmpSecretKey = this.tmpSecretKey,
-        startTime = this.startTime,
+        startTime = this.startTime.toLongOrNull() ?: 0L,
         requestId = this.requestId,
         expiration = this.expiration,
         expiredTimeStr = this.expiredTime,
-        // 将字符串时间转换为Long类型的时间戳
-        expiredTime = this.expiredTime.toLongOrNull()
-    )
-}
-
-/**
- * 从临时密钥信息创建 CosConfig
- */
-fun CosCredentials.toCosConfig(region: String, bucket: String): CosConfig {
-    return CosConfig(
-        region = region,
-        bucket = bucket,
-        sessionToken = this.sessionToken,
-        tmpSecretId = this.tmpSecretId,
-        tmpSecretKey = this.tmpSecretKey,
-        expiredTime = this.expiredTime
+        expiredTime = this.expiredTime.toLongOrNull() ?: 0L
     )
 }
