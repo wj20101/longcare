@@ -213,7 +213,7 @@ dependencies {
     implementation(libs.kotlinx.datetime)
 
     // 腾讯人脸
-    implementation(files("libs/WbCloudFaceLiveSdk-will-v6.6.3-8e4718fc.aar"))
+    implementation(files("libs/WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc.aar"))
     implementation(files("libs/WbCloudNormal-v5.1.10-4e3e198.aar"))
 
     // 腾讯云COS

@@ -42,7 +42,6 @@ import com.ytone.longcare.navigation.navigateToCarePlansList
 import com.ytone.longcare.navigation.navigateToNursingExecution
 import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.navigation.navigateToServiceRecordsList
-import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.ui.components.UserAvatar
 
 @Composable

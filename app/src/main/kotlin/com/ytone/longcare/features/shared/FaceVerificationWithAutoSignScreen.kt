@@ -32,12 +32,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.common.utils.FaceVerificationManager
+import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.shared.vm.FaceVerificationViewModel
 
 /**
@@ -50,14 +53,17 @@ import com.ytone.longcare.features.shared.vm.FaceVerificationViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FaceVerificationWithAutoSignScreen(
+    navController: NavController,
     onNavigateBack: () -> Unit,
     onVerificationSuccess: (WbFaceVerifyResult) -> Unit,
     viewModel: FaceVerificationViewModel = hiltViewModel()
 ) {
+    val homeSharedViewModel: HomeSharedViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    
+    val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
     var showSnackbar by remember { mutableStateOf(false) }
     var snackbarMessage by remember { mutableStateOf("") }
+    val context = LocalContext.current
     
     // 默认配置（实际使用时应该从配置文件或服务器获取）
     val defaultConfig = remember {
@@ -67,9 +73,9 @@ fun FaceVerificationWithAutoSignScreen(
         )
     }
     val config = defaultConfig
-    val currentFaceId = "123456"
+    val currentFaceId = user?.faceId ?: "default_face_id"
     val currentOrderNo = "order_${System.currentTimeMillis()}"
-    val currentUserId = "user_${System.currentTimeMillis()}"
+    val currentUserId = "124"
     
     // 处理验证结果
     LaunchedEffect(uiState) {
@@ -172,6 +178,7 @@ fun FaceVerificationWithAutoSignScreen(
                             Button(
                                 onClick = {
                                     viewModel.startFaceVerificationWithAutoSign(
+                                        context = context,
                                         config = config,
                                         faceId = currentFaceId,
                                         orderNo = currentOrderNo,
@@ -264,6 +271,7 @@ fun FaceVerificationWithAutoSignScreen(
                                 Button(
                                     onClick = {
                                         viewModel.startFaceVerificationWithAutoSign(
+                                            context = context,
                                             config = config,
                                             faceId = currentFaceId,
                                             orderNo = currentOrderNo,

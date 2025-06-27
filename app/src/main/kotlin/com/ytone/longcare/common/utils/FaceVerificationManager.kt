@@ -2,8 +2,6 @@ package com.ytone.longcare.common.utils
 
 import android.content.Context
 import androidx.core.os.bundleOf
-import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.domain.faceauth.TencentFaceRepository
 import com.tencent.cloud.huiyansdkface.facelight.api.WbCloudFaceContant
 import com.tencent.cloud.huiyansdkface.facelight.api.WbCloudFaceVerifySdk
 import com.tencent.cloud.huiyansdkface.facelight.api.listeners.WbCloudFaceVerifyLoginListener
@@ -11,7 +9,8 @@ import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.tencent.cloud.huiyansdkface.facelight.process.FaceVerifyStatus
 import com.ytone.longcare.BuildConfig
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.domain.faceauth.TencentFaceRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,7 +21,6 @@ import javax.inject.Singleton
  */
 @Singleton
 class FaceVerificationManager @Inject constructor(
-    @param:ApplicationContext private val context: Context,
     private val tencentFaceRepository: TencentFaceRepository
 ) {
 
@@ -84,9 +82,9 @@ class FaceVerificationManager @Inject constructor(
      * @param callback 验证回调
      */
     fun startFaceVerification(
-        params: FaceVerifyParams, callback: FaceVerifyCallback
+        context: Context, params: FaceVerifyParams, callback: FaceVerifyCallback
     ) {
-        startVerificationInternal(params, callback)
+        startVerificationInternal(context, params, callback)
     }
 
     /**
@@ -98,6 +96,7 @@ class FaceVerificationManager @Inject constructor(
      * @param callback 验证回调
      */
     suspend fun startFaceVerificationWithAutoSign(
+        context: Context,
         config: TencentCloudConfig,
         faceId: String,
         orderNo: String,
@@ -142,7 +141,7 @@ class FaceVerificationManager @Inject constructor(
                                 apiTicket = apiTicket
                             )
 
-                            startVerificationInternal(params, callback)
+                            startVerificationInternal(context, params, callback)
                         }
 
                         is ApiResult.Exception -> callback.onInitFailed(null)
@@ -162,7 +161,7 @@ class FaceVerificationManager @Inject constructor(
      * 内部验证方法
      */
     private fun startVerificationInternal(
-        params: FaceVerifyParams, callback: FaceVerifyCallback
+        context: Context, params: FaceVerifyParams, callback: FaceVerifyCallback
     ) {
         val inputData = WbCloudFaceVerifySdk.InputData(
             params.faceId,
@@ -177,17 +176,53 @@ class FaceVerificationManager @Inject constructor(
         )
 
         val verifySdk = WbCloudFaceVerifySdk.getInstance()
-        val data = bundleOf(WbCloudFaceContant.INPUT_DATA to inputData)
+        val data = bundleOf()
+        data.putSerializable(WbCloudFaceContant.INPUT_DATA, inputData)
+        data.putString(WbCloudFaceContant.LANGUAGE, WbCloudFaceContant.LANGUAGE_ZH_CN)
+        //颜色设置,sdk内置黑色和白色两种模式，默认白色
+        //如果客户想定制自己的皮肤，可以传入WbCloudFaceContant.CUSTOM模式,此时可以配置ui里各种元素的色值
+        //定制详情参考app/res/colors.xml文件里各个参数
+        data.putString(WbCloudFaceContant.COLOR_MODE, WbCloudFaceContant.WHITE)
+        //是否需要录制上传视频 默认不需要
+        data.putBoolean(WbCloudFaceContant.VIDEO_UPLOAD, false)
+        //是否播放提示音，默认不播放
+        data.putBoolean(WbCloudFaceContant.PLAY_VOICE, false)
+        //是否指定横屏，默认false，指定竖屏
+        data.putBoolean(WbCloudFaceContant.IS_LANDSCAPE, false)
+        //横竖屏是否跟随系统（仅限pad），默认false
+        data.putBoolean(WbCloudFaceContant.IS_FOLLOW_SYSTEM, false)
+        //识别阶段合作方定制提示语,可不传，此处为demo演示
+        data.putString(WbCloudFaceContant.CUSTOMER_TIPS_LIVE, "仅供体验使用 请勿用于投产!")
+        //上传阶段合作方定制提示语,可不传，此处为demo演示
+        data.putString(WbCloudFaceContant.CUSTOMER_TIPS_UPLOAD, "仅供体验使用 请勿用于投产!")
+
+        //合作方长定制提示语，可不传，此处为demo演示
+        //如果需要展示长提示语，需要邮件申请
+        data.putString(
+            WbCloudFaceContant.CUSTOMER_LONG_TIP,
+            "本demo提供的appId仅用于体验，实际生产请使用控制台给您分配的appId！"
+        )
+
+
+        //设置选择的比对类型  默认为权威库对比
+        //权威库比对 WbCloudFaceContant.ID_CRAD
+        data.putString(WbCloudFaceContant.COMPARE_TYPE, WbCloudFaceContant.ID_CARD)
+
+
+        //sdk log开关，默认关闭，debug调试sdk问题的时候可以打开,打开日志开关需要外部存储权限
+        //【特别注意】上线前请务必关闭sdk log开关！！！
+        data.putBoolean(WbCloudFaceContant.IS_ENABLE_LOG, true)
 
         // 初始化SDK
-        verifySdk.initWillSdk(context, data, object : WbCloudFaceVerifyLoginListener {
+        verifySdk.initSdk(context, data, object : WbCloudFaceVerifyLoginListener {
             override fun onLoginSuccess() {
                 callback.onInitSuccess()
                 // 初始化成功后开始人脸验证
-                startVerification(verifySdk, callback)
+                startVerification(context, verifySdk, callback)
             }
 
             override fun onLoginFailed(error: WbFaceError?) {
+                WbCloudFaceVerifySdk.getInstance().release()
                 callback.onInitFailed(error)
             }
         })
@@ -197,7 +232,7 @@ class FaceVerificationManager @Inject constructor(
      * 开始验证流程
      */
     private fun startVerification(
-        sdk: WbCloudFaceVerifySdk, callback: FaceVerifyCallback
+        context: Context, sdk: WbCloudFaceVerifySdk, callback: FaceVerifyCallback
     ) {
         sdk.startWbFaceVerifySdk(context) { result ->
             if (result.isSuccess) {
@@ -224,7 +259,6 @@ class FaceVerificationManager @Inject constructor(
         // 生成签名（这里需要根据腾讯云文档实现具体的签名算法）
         val sign = generateSign(
             appId = config.appId,
-            orderNo = orderNo,
             nonce = nonce,
             userId = userId,
             apiTicket = apiTicket
@@ -249,21 +283,21 @@ class FaceVerificationManager @Inject constructor(
      * 3. 进行 SHA1 编码
      */
     private fun generateSign(
-        appId: String, orderNo: String, nonce: String, userId: String, apiTicket: String
+        appId: String, nonce: String, userId: String, apiTicket: String
     ): String {
         // 固定版本号
         val version = "1.0.0"
-        
+
         // 将五个参数按字典序排序
         val params = listOf(version, appId, apiTicket, nonce, userId).sorted()
-        
+
         // 拼接成字符串
         val signString = params.joinToString("")
-        
+
         // 进行 SHA1 编码
         return sha1(signString).uppercase()
     }
-    
+
     /**
      * 生成32位随机字符串（字母和数字）
      * 符合腾讯云文档要求
@@ -274,7 +308,7 @@ class FaceVerificationManager @Inject constructor(
             .map { chars.random() }
             .joinToString("")
     }
-    
+
     /**
      * SHA1 编码
      */
