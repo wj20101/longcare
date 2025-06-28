@@ -90,7 +90,8 @@ class FaceVerificationManager @Inject constructor(
     /**
      * 开始人脸验证（自动获取签名参数）
      * @param config 腾讯云配置
-     * @param faceId 人脸ID
+     * @param name 姓名
+     * @param idNo 证件号码
      * @param orderNo 订单号
      * @param userId 用户ID
      * @param callback 验证回调
@@ -98,7 +99,8 @@ class FaceVerificationManager @Inject constructor(
     suspend fun startFaceVerificationWithAutoSign(
         context: Context,
         config: TencentCloudConfig,
-        faceId: String,
+        name: String,
+        idNo: String,
         orderNo: String,
         userId: String,
         callback: FaceVerifyCallback
@@ -117,31 +119,84 @@ class FaceVerificationManager @Inject constructor(
                         return
                     }
 
-                    // 2. 获取api_ticket
-                    val apiTicketResult = tencentFaceRepository.getApiTicket(
-                        appId = config.appId, accessToken = accessToken, userId = userId
+                    // 2. 获取SIGN类型的ticket用于获取faceId
+                    val signTicketResult = tencentFaceRepository.getSignTicket(
+                        appId = config.appId, accessToken = accessToken
                     )
 
-                    when (apiTicketResult) {
+                    when (signTicketResult) {
                         is ApiResult.Success -> {
-                            val tickets = apiTicketResult.data.tickets
-                            if (tickets.isNullOrEmpty()) {
+                            val signTickets = signTicketResult.data.tickets
+                            if (signTickets.isNullOrEmpty()) {
                                 callback.onInitFailed(null)
                                 return
                             }
 
-                            val apiTicket = tickets.first().value
+                            val signTicket = signTickets.first().value
 
-                            // 3. 生成签名并开始验证
-                            val params = generateFaceVerifyParams(
-                                config = config,
-                                faceId = faceId,
-                                orderNo = orderNo,
+                            // 3. 获取faceId
+                            val nonce = generateNonce()
+                            val sign = generateSign(
+                                appId = config.appId,
+                                nonce = nonce,
                                 userId = userId,
-                                apiTicket = apiTicket
+                                apiTicket = signTicket
                             )
+                            
+                            val faceIdResult = tencentFaceRepository.getFaceId(
+                                appId = config.appId,
+                                orderNo = orderNo,
+                                name = name,
+                                idNo = idNo,
+                                userId = userId,
+                                sign = sign,
+                                nonce = nonce
+                            )
+                            
+                            when (faceIdResult) {
+                                is ApiResult.Success -> {
+                                    val faceId = faceIdResult.data.result?.faceId
+                                    if (faceId.isNullOrEmpty()) {
+                                        callback.onInitFailed(null)
+                                        return
+                                    }
 
-                            startVerificationInternal(context, params, callback)
+                                    // 4. 获取NONCE类型的ticket用于人脸验证
+                                    val nonceTicketResult = tencentFaceRepository.getApiTicket(
+                                        appId = config.appId, accessToken = accessToken, userId = userId
+                                    )
+
+                                    when (nonceTicketResult) {
+                                        is ApiResult.Success -> {
+                                            val nonceTickets = nonceTicketResult.data.tickets
+                                            if (nonceTickets.isNullOrEmpty()) {
+                                                callback.onInitFailed(null)
+                                                return
+                                            }
+
+                                            val nonceTicket = nonceTickets.first().value
+
+                                            // 5. 生成人脸验证参数
+                                            val verifyNonce = generateNonce()
+                                            val params = generateFaceVerifyParams(
+                                                config = config,
+                                                faceId = faceId,
+                                                orderNo = orderNo,
+                                                userId = userId,
+                                                apiTicket = nonceTicket,
+                                                nonce = verifyNonce
+                                            )
+
+                                            startVerificationInternal(context, params, callback)
+                                        }
+                                        is ApiResult.Exception -> callback.onInitFailed(null)
+                                        is ApiResult.Failure -> callback.onInitFailed(null)
+                                    }
+                                }
+                                
+                                is ApiResult.Exception -> callback.onInitFailed(null)
+                                is ApiResult.Failure -> callback.onInitFailed(null)
+                            }
                         }
 
                         is ApiResult.Exception -> callback.onInitFailed(null)
@@ -251,10 +306,9 @@ class FaceVerificationManager @Inject constructor(
         faceId: String,
         orderNo: String,
         userId: String,
-        apiTicket: String
+        apiTicket: String,
+        nonce: String
     ): FaceVerifyParams {
-        // 生成32位随机字符串（字母和数字）
-        val nonce = generateNonce()
 
         // 生成签名（这里需要根据腾讯云文档实现具体的签名算法）
         val sign = generateSign(
@@ -297,6 +351,8 @@ class FaceVerificationManager @Inject constructor(
         // 进行 SHA1 编码
         return sha1(signString).uppercase()
     }
+    
+
 
     /**
      * 生成32位随机字符串（字母和数字）

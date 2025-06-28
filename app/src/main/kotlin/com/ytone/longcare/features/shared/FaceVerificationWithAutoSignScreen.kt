@@ -73,7 +73,8 @@ fun FaceVerificationWithAutoSignScreen(
         )
     }
     val config = defaultConfig
-    val currentFaceId = user?.faceId ?: "default_face_id"
+    val currentName = user?.userName ?: "默认姓名"
+    val currentIdNo = user?.identityCardNumber ?: "默认身份证号"
     val currentOrderNo = "order_${System.currentTimeMillis()}"
     val currentUserId = "124"
     
@@ -180,7 +181,8 @@ fun FaceVerificationWithAutoSignScreen(
                                     viewModel.startFaceVerificationWithAutoSign(
                                         context = context,
                                         config = config,
-                                        faceId = currentFaceId,
+                                        name = currentName,
+                                        idNo = currentIdNo,
                                         orderNo = currentOrderNo,
                                         userId = currentUserId
                                     )
@@ -273,7 +275,8 @@ fun FaceVerificationWithAutoSignScreen(
                                         viewModel.startFaceVerificationWithAutoSign(
                                             context = context,
                                             config = config,
-                                            faceId = currentFaceId,
+                                            name = currentName,
+                                            idNo = currentIdNo,
                                             orderNo = currentOrderNo,
                                             userId = currentUserId
                                         )
@@ -326,7 +329,12 @@ fun FaceVerificationWithAutoSignScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "Face ID: $currentFaceId",
+                            text = "Name: $currentName",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "ID No: $currentIdNo",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -40,14 +40,16 @@ class FaceVerificationViewModel @Inject constructor(
     /**
      * 开始人脸验证（自动获取签名参数）
      * @param config 腾讯云配置
-     * @param faceId 人脸ID
+     * @param name 姓名
+     * @param idNo 证件号码
      * @param orderNo 订单号
      * @param userId 用户ID
      */
     fun startFaceVerificationWithAutoSign(
         context: Context,
         config: FaceVerificationManager.TencentCloudConfig,
-        faceId: String,
+        name: String,
+        idNo: String,
         orderNo: String,
         userId: String
     ) {
@@ -57,7 +59,8 @@ class FaceVerificationViewModel @Inject constructor(
             faceVerificationManager.startFaceVerificationWithAutoSign(
                 context = context,
                 config = config,
-                faceId = faceId,
+                name = name,
+                idNo = idNo,
                 orderNo = orderNo,
                 userId = userId,
                 callback = createFaceVerifyCallback()

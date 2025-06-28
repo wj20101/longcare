@@ -1,8 +1,12 @@
 package com.ytone.longcare.api
 
+import com.ytone.longcare.api.request.GetFaceIdRequest
 import com.ytone.longcare.api.response.TencentAccessTokenResponse
 import com.ytone.longcare.api.response.TencentApiTicketResponse
+import com.ytone.longcare.api.response.TencentFaceIdResponse
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.Query
 
 /**
@@ -47,4 +51,38 @@ interface TencentFaceApiService {
         @Query("version") version: String = "1.0.0",
         @Query("user_id") userId: String
     ): TencentApiTicketResponse
+    
+    /**
+     * 获取SIGN ticket
+     * 根据腾讯云官方文档：https://cloud.tencent.com/document/product/1007/37305
+     * 用于获取faceId时的签名生成
+     * 
+     * @param appId 业务流程唯一标识，即 WBappid
+     * @param accessToken 根据 Access Token 获取指引进行获取
+     * @param type ticket 类型，固定值：SIGN（必须大写）
+     * @param version 版本号
+     * @return api_ticket响应
+     */
+    @GET("/api/oauth2/api_ticket")
+    suspend fun getSignTicket(
+        @Query("appId") appId: String,
+        @Query("access_token") accessToken: String,
+        @Query("type") type: String = "SIGN",
+        @Query("version") version: String = "1.0.0"
+    ): TencentApiTicketResponse
+    
+    /**
+     * 获取faceId
+     * 根据腾讯云官方文档：https://cloud.tencent.com/document/product/1007/35866
+     * 合作方后台上传身份信息，获取faceId
+     * 
+     * @param request 获取faceId的请求体
+     * @param orderNo 订单号，用于查询耗时
+     * @return faceId响应
+     */
+    @POST("/api/server/getfaceid")
+    suspend fun getFaceId(
+        @Body request: GetFaceIdRequest,
+        @Query("orderNo") orderNo: String
+    ): TencentFaceIdResponse
 }

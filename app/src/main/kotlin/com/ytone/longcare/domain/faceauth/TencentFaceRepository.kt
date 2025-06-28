@@ -2,6 +2,7 @@ package com.ytone.longcare.domain.faceauth
 
 import com.ytone.longcare.api.response.TencentAccessTokenResponse
 import com.ytone.longcare.api.response.TencentApiTicketResponse
+import com.ytone.longcare.api.response.TencentFaceIdResponse
 import com.ytone.longcare.common.network.ApiResult
 
 /**
@@ -34,4 +35,40 @@ interface TencentFaceRepository {
         accessToken: String,
         userId: String
     ): ApiResult<TencentApiTicketResponse>
+    
+    /**
+     * 获取SIGN ticket
+     * 用于获取faceId时的签名生成
+     * 
+     * @param appId 业务流程唯一标识，即 WBappid
+     * @param accessToken 访问令牌
+     * @return api_ticket结果
+     */
+    suspend fun getSignTicket(
+        appId: String,
+        accessToken: String
+    ): ApiResult<TencentApiTicketResponse>
+    
+    /**
+     * 获取faceId
+     * 合作方后台上传身份信息，获取faceId
+     * 
+     * @param appId 业务流程唯一标识，即 WBappid
+     * @param orderNo 订单号
+     * @param name 姓名
+     * @param idNo 证件号码
+     * @param userId 用户ID
+     * @param sign 签名
+     * @param nonce 随机数
+     * @return faceId结果
+     */
+    suspend fun getFaceId(
+        appId: String,
+        orderNo: String,
+        name: String,
+        idNo: String,
+        userId: String,
+        sign: String,
+        nonce: String
+    ): ApiResult<TencentFaceIdResponse>
 }
