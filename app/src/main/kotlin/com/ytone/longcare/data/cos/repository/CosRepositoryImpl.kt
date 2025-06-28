@@ -12,6 +12,7 @@ import com.tencent.qcloud.core.auth.QCloudCredentialProvider
 import com.tencent.qcloud.core.auth.QCloudLifecycleCredentials
 import com.tencent.qcloud.core.auth.SessionQCloudCredentials
 import com.ytone.longcare.api.LongCareApiService
+import com.ytone.longcare.api.request.UploadTokenParamModel
 import com.ytone.longcare.api.response.UploadTokenResultModel
 import com.ytone.longcare.data.cos.model.CosConfig
 import com.ytone.longcare.data.cos.model.CosUploadResult
@@ -29,7 +30,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -58,8 +58,9 @@ class CosRepositoryImpl @Inject constructor(
         private const val TOKEN_REFRESH_THRESHOLD_SECONDS = 300L // 5分钟提前刷新
     }
 
-    // 线程安全的状态管理
-    private val mutex = Mutex()
+    // 线程安全的状态管理 - 分离锁职责避免死锁
+    private val serviceMutex = Mutex()  // 专门保护服务初始化
+    private val configMutex = Mutex()   // 专门保护配置刷新
     private val serviceRef = AtomicReference<CosXmlService?>(null)
     private val configCache = CosConfigCache()
 
@@ -158,7 +159,7 @@ class CosRepositoryImpl @Inject constructor(
     private suspend fun getCosService(): CosXmlService {
         serviceRef.get()?.let { return it }
         
-        return mutex.withLock {
+        return serviceMutex.withLock {
             // 双重检查
             serviceRef.get()?.let { return@withLock it }
             
@@ -193,7 +194,7 @@ class CosRepositoryImpl @Inject constructor(
             return configCache.cosConfig!!
         }
         
-        return mutex.withLock {
+        return configMutex.withLock {
             // 双重检查
             if (configCache.isValid()) {
                 return@withLock configCache.cosConfig!!
@@ -209,7 +210,7 @@ class CosRepositoryImpl @Inject constructor(
     private suspend fun refreshCosConfig(): CosConfig = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "Refreshing COS config...")
-            val response = apiService.getUploadToken()
+            val response = apiService.getUploadToken(UploadTokenParamModel(folderType = 13))
             
             if (response.isSuccess() && response.data != null) {
                 val token = response.data
@@ -230,8 +231,11 @@ class CosRepositoryImpl @Inject constructor(
      * 清除缓存的服务和配置（用于错误重试）
      */
     private suspend fun clearCache() {
-        mutex.withLock {
+        // 分别清除服务和配置缓存，避免嵌套锁
+        serviceMutex.withLock {
             serviceRef.set(null)
+        }
+        configMutex.withLock {
             configCache.clear()
         }
         Log.d(TAG, "Cache cleared")
@@ -259,7 +263,7 @@ class CosRepositoryImpl @Inject constructor(
                 val service = getCosService()
                 val config = getValidCosConfig()
                 
-                val request = PutObjectRequest(config.bucket, params.key, params.filePath)
+                val request = PutObjectRequest(config.bucket, params.key, params.fileUri)
                 
                 // 设置Content-Type
                 params.contentType?.let {
@@ -281,10 +285,9 @@ class CosRepositoryImpl @Inject constructor(
                 }
                 
                 // 发送完成状态
-                val fileSize = File(params.filePath).length()
                 val finalProgress = UploadProgress(
-                    bytesTransferred = fileSize,
-                    totalBytes = fileSize
+                    bytesTransferred = 100L,
+                    totalBytes = 100L
                 )
                 trySend(Result.success(finalProgress))
                 
@@ -383,7 +386,7 @@ class CosRepositoryImpl @Inject constructor(
             val service = getCosService()
             val config = getValidCosConfig()
             
-            val request = PutObjectRequest(config.bucket, params.key, params.filePath)
+            val request = PutObjectRequest(config.bucket, params.key, params.fileUri)
             
             // 设置Content-Type
             params.contentType?.let {

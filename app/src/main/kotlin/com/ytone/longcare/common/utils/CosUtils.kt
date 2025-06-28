@@ -17,44 +17,48 @@ import java.util.UUID
 object CosUtils {
     
     /**
-     * 根据文件路径生成上传参数
-     * @param filePath 文件路径
+     * 创建上传参数
+     * @param context 上下文
+     * @param fileUri 文件Uri
      * @param keyPrefix 键名前缀，默认为空
      * @param customKey 自定义键名，如果提供则使用此键名
      * @return 上传参数
      */
     fun createUploadParams(
-        filePath: String,
+        context: Context,
+        fileUri: Uri,
         keyPrefix: String = "",
         customKey: String? = null
     ): UploadParams {
-        val file = File(filePath)
-        val key = customKey ?: generateFileKey(file.name, keyPrefix)
-        val contentType = getContentType(file.extension)
+        val fileName = fileUri.getFileName(context)
+        val key = customKey ?: generateFileKey(fileName, keyPrefix)
+        val extension = fileName.substringAfterLast('.', "")
+        val contentType = getContentType(extension)
         
         return UploadParams(
-            filePath = filePath,
+            fileUri = fileUri,
             key = key,
             contentType = contentType
         )
     }
     
     /**
-     * 根据Uri生成上传参数
+     * 根据文件路径生成上传参数（兼容旧版本）
      * @param context 上下文
-     * @param uri 文件Uri
+     * @param filePath 文件路径
      * @param keyPrefix 键名前缀
      * @param customKey 自定义键名
-     * @return 上传参数，如果Uri无效返回null
+     * @return 上传参数
      */
-    fun createUploadParamsFromUri(
+    fun createUploadParamsFromPath(
         context: Context,
-        uri: Uri,
+        filePath: String,
         keyPrefix: String = "",
         customKey: String? = null
-    ): UploadParams? {
-        val filePath = getFilePathFromUri(context, uri) ?: return null
-        return createUploadParams(filePath, keyPrefix, customKey)
+    ): UploadParams {
+        val file = File(filePath)
+        val fileUri = Uri.fromFile(file)
+        return createUploadParams(context, fileUri, keyPrefix, customKey)
     }
     
     /**
@@ -140,7 +144,7 @@ object CosUtils {
      * @return 临时文件
      */
     private fun createTempFile(context: Context, uri: Uri): File {
-        val fileName = getFileNameFromUri(context, uri) ?: "temp_${System.currentTimeMillis()}"
+        val fileName = uri.getFileName(context)
         val tempDir = File(context.cacheDir, "cos_temp")
         if (!tempDir.exists()) {
             tempDir.mkdirs()

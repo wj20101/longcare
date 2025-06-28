@@ -1,5 +1,6 @@
 package com.ytone.longcare.data.cos.model
 
+import android.net.Uri
 import kotlinx.serialization.Serializable
 import com.ytone.longcare.api.response.UploadTokenResultModel
 
@@ -31,7 +32,8 @@ data class CosConfig(
     val startTime: Long,
     val requestId: String,
     val expiration: String,
-    val expiredTimeStr: String
+    val expiredTimeStr: String,
+    val fileKeyPre: String
 ) {
     /**
      * 判断是否为临时密钥配置
@@ -76,7 +78,7 @@ data class UploadProgress(
  * 上传参数
  */
 data class UploadParams(
-    val filePath: String,
+    val fileUri: Uri,
     val key: String,
     val contentType: String? = null,
     val metadata: Map<String, String>? = null
@@ -96,6 +98,7 @@ fun UploadTokenResultModel.toCosConfig(): CosConfig {
         requestId = this.requestId,
         expiration = this.expiration,
         expiredTimeStr = this.expiredTime,
-        expiredTime = this.expiredTime.toLongOrNull() ?: 0L
+        expiredTime = this.expiredTime.toLongOrNull() ?: 0L,
+        fileKeyPre = this.fileKeyPre
     )
 }

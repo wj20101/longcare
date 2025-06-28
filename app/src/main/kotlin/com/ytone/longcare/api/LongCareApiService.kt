@@ -8,6 +8,8 @@ import com.ytone.longcare.api.request.OrderInfoParamModel
 import com.ytone.longcare.api.request.StartOrderParamModel
 import com.ytone.longcare.api.request.AddPositionParamModel
 import com.ytone.longcare.api.request.UserOrderParamModel
+import com.ytone.longcare.api.request.UploadTokenParamModel
+import com.ytone.longcare.api.request.SaveFileParamModel
 import com.ytone.longcare.api.response.LoginResultModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.api.response.ServiceOrderModel
@@ -128,8 +130,14 @@ interface LongCareApiService {
     /**
      * 获取文件上传token
      */
-    @GET("/V1/Common/UploadToken")
-    suspend fun getUploadToken(): Response<UploadTokenResultModel>
+    @POST("/V1/File/UploadToken")
+    suspend fun getUploadToken(@Body uploadTokenParamModel: UploadTokenParamModel): Response<UploadTokenResultModel>
+
+    /**
+     * 文件上传完之后获取访问连接,因为图片是私有的
+     */
+    @POST("/V1/File/GetFileUrl")
+    suspend fun getFileUrl(@Body saveFileParamModel: SaveFileParamModel): Response<String>
 
     /**
      * 系统相关配置

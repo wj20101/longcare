@@ -3,7 +3,6 @@ package com.ytone.longcare.features.photoupload.utils
 import android.content.Context
 import android.graphics.*
 import android.net.Uri
-import androidx.core.content.FileProvider
 import com.ytone.longcare.common.utils.logE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -12,6 +11,7 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.core.graphics.scale
+import androidx.core.net.toUri
 
 /**
  * 图片处理工具类
@@ -212,10 +212,6 @@ class ImageProcessor(private val context: Context) {
             bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
         }
 
-        return FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
-        )
+        return file.toUri()
     }
 }

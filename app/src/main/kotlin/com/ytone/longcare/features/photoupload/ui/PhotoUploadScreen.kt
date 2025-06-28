@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,6 +75,7 @@ fun PhotoUploadScreen(
 ) {
     // 收集ViewModel状态
     val imageTasks by viewModel.imageTasks.collectAsState()
+    val scope = rememberCoroutineScope()
 
     // 当前选择的分类
     var currentCategory by remember { mutableStateOf<PhotoCategory?>(null) }
@@ -148,22 +150,41 @@ fun PhotoUploadScreen(
                         text = stringResource(R.string.photo_upload_confirm_and_next),
                         enabled = allCategoriesHaveImages,
                         onClick = {
-                            val successfulUris = viewModel.getSuccessfulImageUris()
-                            val params = EndOderInfo(
-                                projectIdList = projectIds,
-                                beginImgList = successfulUris.getOrDefault(
-                                    ImageTaskType.BEFORE_CARE,
-                                    emptyList()
-                                ),
-                                endImgList = successfulUris.getOrDefault(
-                                    ImageTaskType.AFTER_CARE,
-                                    emptyList()
-                                )
-                            )
-                            navController.navigateToNfcSignInForEndOrder(
-                                orderId = orderId,
-                                params = params
-                            )
+                            // 上传图片到云端后再导航
+                            scope.launch {
+                                try {
+                                    val uploadResult = viewModel.uploadSuccessfulImagesToCloud()
+                                    uploadResult.fold(
+                                        onSuccess = { cloudUrls ->
+                                            // 将云端URL转换为字符串格式传递给下一个页面
+                                            val cloudUrlsMap = cloudUrls.mapKeys { it.key.name }
+                                                .mapValues { entry -> entry.value }
+                                            val params = EndOderInfo(
+                                                projectIdList = projectIds,
+                                                beginImgList = cloudUrlsMap.getOrDefault(
+                                                    ImageTaskType.BEFORE_CARE,
+                                                    emptyList()
+                                                ),
+                                                endImgList = cloudUrlsMap.getOrDefault(
+                                                    ImageTaskType.AFTER_CARE,
+                                                    emptyList()
+                                                )
+                                            )
+                                            navController.navigateToNfcSignInForEndOrder(
+                                                orderId = orderId,
+                                                params = params
+                                            )
+                                        },
+                                        onFailure = { error ->
+                                             // 显示上传失败的错误信息
+                                             viewModel.showToast("图片上传失败: ${error.message}")
+                                         }
+                                     )
+                                 } catch (e: Exception) {
+                                     // 处理异常情况
+                                     viewModel.showToast("上传过程中发生错误: ${e.message}")
+                                 }
+                            }
                         }
                     )
                 }
@@ -430,9 +451,7 @@ fun ConfirmAndNextButton(text: String, enabled: Boolean = true, onClick: () -> U
         )
     }
     Button(
-        onClick = if (enabled) onClick else {
-            {}
-        },
+        onClick = onClick,
         enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
