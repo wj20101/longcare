@@ -13,6 +13,8 @@ import com.tencent.qcloud.core.auth.QCloudLifecycleCredentials
 import com.tencent.qcloud.core.auth.SessionQCloudCredentials
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.request.UploadTokenParamModel
+import com.ytone.longcare.api.request.SaveFileParamModel
+import com.ytone.longcare.common.utils.getFileSize
 import com.ytone.longcare.api.response.UploadTokenResultModel
 import com.ytone.longcare.data.cos.model.CosConfig
 import com.ytone.longcare.data.cos.model.CosUploadResult
@@ -316,15 +318,6 @@ class CosRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getDownloadUrl(key: String, expireTimeInSeconds: Long): String? {
-        return try {
-            getPublicUrl(key)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to get download URL for: $key", e)
-            null
-        }
-    }
-
     override suspend fun fileExists(key: String): Boolean = withContext(Dispatchers.IO) {
         try {
             val service = getCosService()
@@ -408,7 +401,7 @@ class CosRepositoryImpl @Inject constructor(
                 key = params.key,
                 bucket = config.bucket,
                 region = config.region,
-                url = getPublicUrl(params.key, config)
+                url = getPublicUrl(params, config)
             )
         } catch (e: Exception) {
             Log.e(TAG, "Upload failed for key: ${params.key}", e)
@@ -421,17 +414,27 @@ class CosRepositoryImpl @Inject constructor(
     }
 
     /**
-     * 生成公共访问URL
+     * 通过接口获取文件访问URL
      */
-    private suspend fun getPublicUrl(key: String): String {
-        val config = getValidCosConfig()
-        return getPublicUrl(key, config)
-    }
-    
-    /**
-     * 根据配置生成公共访问URL
-     */
-    private fun getPublicUrl(key: String, config: CosConfig): String {
-        return "https://${config.bucket}.cos.${config.region}.myqcloud.com/$key"
+    private suspend fun getPublicUrl(params: UploadParams, config: CosConfig): String {
+        val fallbackUrl = "https://${config.bucket}.cos.${config.region}.myqcloud.com/${params.key}"
+        return try {
+            val fileSize = params.fileUri.getFileSize(context)
+            val saveFileParam = SaveFileParamModel(
+                folderType = 13,
+                fileKey = params.key,
+                fileSize = fileSize
+            )
+            val response = apiService.getFileUrl(saveFileParam)
+            if (response.isSuccess()) {
+                response.data ?: fallbackUrl
+            } else {
+                Log.w(TAG, "Failed to get file URL from API, using fallback")
+                fallbackUrl
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting file URL from API, using fallback", e)
+            fallbackUrl
+        }
     }
 }
