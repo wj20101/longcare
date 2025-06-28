@@ -256,10 +256,8 @@ object CosUtils {
             "content" -> {
                 // 内容URI，通过ContentResolver获取大小
                 try {
-                    context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { descriptor ->
-                        descriptor.length
-                    } ?: 0L
-                } catch (e: Exception) {
+                    context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { descriptor -> descriptor.length } ?: 0L
+                } catch (_: Exception) {
                     // 如果无法通过AssetFileDescriptor获取，尝试通过Cursor查询
                     try {
                         context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -270,7 +268,7 @@ object CosUtils {
                                 0L
                             }
                         } ?: 0L
-                    } catch (ex: Exception) {
+                    } catch (_: Exception) {
                         0L
                     }
                 }
