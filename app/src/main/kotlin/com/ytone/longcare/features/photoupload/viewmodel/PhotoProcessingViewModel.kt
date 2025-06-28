@@ -36,6 +36,10 @@ class PhotoProcessingViewModel @Inject constructor(
     private val cosRepository: CosRepository
 ) : ViewModel() {
 
+    companion object {
+        private const val DEFAULT_FOLDER_TYPE = 13 // 默认文件夹类型
+    }
+
     private val imageProcessor = ImageProcessor(applicationContext)
 
     // 图片任务列表的私有状态
@@ -202,6 +206,7 @@ class PhotoProcessingViewModel @Inject constructor(
                 val uploadParams = CosUtils.createUploadParams(
                     context = applicationContext,
                     fileUri = uri,
+                    folderType = DEFAULT_FOLDER_TYPE,
                     customKey = cloudKey
                 )
                 

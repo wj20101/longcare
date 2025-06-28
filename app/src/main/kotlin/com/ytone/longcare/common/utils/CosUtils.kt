@@ -20,6 +20,7 @@ object CosUtils {
      * 创建上传参数
      * @param context 上下文
      * @param fileUri 文件Uri
+     * @param folderType 文件夹类型
      * @param keyPrefix 键名前缀，默认为空
      * @param customKey 自定义键名，如果提供则使用此键名
      * @return 上传参数
@@ -27,6 +28,7 @@ object CosUtils {
     fun createUploadParams(
         context: Context,
         fileUri: Uri,
+        folderType: Int,
         keyPrefix: String = "",
         customKey: String? = null
     ): UploadParams {
@@ -38,6 +40,7 @@ object CosUtils {
         return UploadParams(
             fileUri = fileUri,
             key = key,
+            folderType = folderType,
             contentType = contentType
         )
     }
@@ -46,6 +49,7 @@ object CosUtils {
      * 根据文件路径生成上传参数（兼容旧版本）
      * @param context 上下文
      * @param filePath 文件路径
+     * @param folderType 文件夹类型
      * @param keyPrefix 键名前缀
      * @param customKey 自定义键名
      * @return 上传参数
@@ -53,12 +57,13 @@ object CosUtils {
     fun createUploadParamsFromPath(
         context: Context,
         filePath: String,
+        folderType: Int,
         keyPrefix: String = "",
         customKey: String? = null
     ): UploadParams {
         val file = File(filePath)
         val fileUri = Uri.fromFile(file)
-        return createUploadParams(context, fileUri, keyPrefix, customKey)
+        return createUploadParams(context, fileUri, folderType, keyPrefix, customKey)
     }
     
     /**

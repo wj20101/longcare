@@ -58,6 +58,7 @@ class CosRepositoryImpl @Inject constructor(
     companion object {
         private const val TAG = "CosRepositoryImpl"
         private const val TOKEN_REFRESH_THRESHOLD_SECONDS = 300L // 5分钟提前刷新
+        private const val DEFAULT_FOLDER_TYPE = 13 // 默认文件夹类型
     }
 
     // 线程安全的状态管理 - 分离锁职责避免死锁
@@ -191,7 +192,7 @@ class CosRepositoryImpl @Inject constructor(
     /**
      * 获取有效的COS配置
      */
-    private suspend fun getValidCosConfig(): CosConfig {
+    private suspend fun getValidCosConfig(folderType: Int = DEFAULT_FOLDER_TYPE): CosConfig {
         if (configCache.isValid()) {
             return configCache.cosConfig!!
         }
@@ -202,17 +203,17 @@ class CosRepositoryImpl @Inject constructor(
                 return@withLock configCache.cosConfig!!
             }
             
-            refreshCosConfig()
+            refreshCosConfig(folderType)
         }
     }
 
     /**
      * 刷新COS配置（从API获取临时密钥）
      */
-    private suspend fun refreshCosConfig(): CosConfig = withContext(Dispatchers.IO) {
+    private suspend fun refreshCosConfig(folderType: Int = DEFAULT_FOLDER_TYPE): CosConfig = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "Refreshing COS config...")
-            val response = apiService.getUploadToken(UploadTokenParamModel(folderType = 13))
+            val response = apiService.getUploadToken(UploadTokenParamModel(folderType = folderType))
             
             if (response.isSuccess() && response.data != null) {
                 val token = response.data
@@ -377,7 +378,7 @@ class CosRepositoryImpl @Inject constructor(
     ): CosUploadResult = withContext(Dispatchers.IO) {
         try {
             val service = getCosService()
-            val config = getValidCosConfig()
+            val config = getValidCosConfig(params.folderType)
             
             val request = PutObjectRequest(config.bucket, params.key, params.fileUri)
             
@@ -421,7 +422,7 @@ class CosRepositoryImpl @Inject constructor(
         return try {
             val fileSize = params.fileUri.getFileSize(context)
             val saveFileParam = SaveFileParamModel(
-                folderType = 13,
+                folderType = params.folderType,
                 fileKey = params.key,
                 fileSize = fileSize
             )

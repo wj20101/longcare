@@ -80,6 +80,7 @@ data class UploadProgress(
 data class UploadParams(
     val fileUri: Uri,
     val key: String,
+    val folderType: Int,
     val contentType: String? = null,
     val metadata: Map<String, String>? = null
 )
