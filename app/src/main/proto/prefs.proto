@@ -16,5 +16,4 @@ message User{
   string identityCardNumber = 7;//身份证号码
   int32 gender = 8;//性别 1男 0女
   string token = 9;//用户身份token
-  string faceId = 10;//人脸id
 }

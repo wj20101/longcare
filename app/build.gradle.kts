@@ -217,8 +217,8 @@ dependencies {
     implementation(files("libs/WbCloudNormal-v5.1.10-4e3e198.aar"))
     
     // Support Library compatibility for Tencent SDK
-    implementation("androidx.legacy:legacy-support-v4:1.0.0")
-    implementation("androidx.legacy:legacy-support-core-utils:1.0.0")
+    implementation(libs.androidx.legacy.support.v4)
+    implementation(libs.androidx.legacy.support.core.utils)
 
     // 腾讯云COS
     implementation(libs.tencent.cos.android)
