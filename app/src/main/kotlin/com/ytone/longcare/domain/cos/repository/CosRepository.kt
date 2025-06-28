@@ -29,13 +29,7 @@ interface CosRepository {
         onProgress: (UploadProgress) -> Unit
     ): CosUploadResult
     
-    /**
-     * 上传文件流
-     * @param params 上传参数
-     * @return 进度流和结果
-     */
-    fun uploadFileFlow(params: UploadParams): Flow<Result<UploadProgress>>
-    
+
     /**
      * 删除文件
      * @param key 文件键名

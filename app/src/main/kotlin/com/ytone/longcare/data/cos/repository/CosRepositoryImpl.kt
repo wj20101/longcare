@@ -14,8 +14,9 @@ import com.tencent.qcloud.core.auth.SessionQCloudCredentials
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.request.UploadTokenParamModel
 import com.ytone.longcare.api.request.SaveFileParamModel
-import com.ytone.longcare.common.utils.getFileSize
 import com.ytone.longcare.api.response.UploadTokenResultModel
+import com.ytone.longcare.common.utils.CosUtils
+import com.ytone.longcare.common.utils.getFileSize
 import com.ytone.longcare.data.cos.model.CosConfig
 import com.ytone.longcare.data.cos.model.CosUploadResult
 import com.ytone.longcare.data.cos.model.UploadParams
@@ -24,10 +25,6 @@ import com.ytone.longcare.data.cos.model.toCosConfig
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -38,14 +35,14 @@ import javax.inject.Singleton
 
 /**
  * 腾讯云COS存储服务实现类
- * 
+ *
  * 主要功能：
  * - 支持临时密钥和固定密钥两种认证方式
  * - 自动token刷新和缓存机制
  * - 文件上传（支持进度回调）
  * - 文件删除、存在性检查、大小获取
  * - 下载URL生成
- * 
+ *
  * 线程安全：使用Mutex保证并发安全
  * 错误处理：统一的重试机制和错误处理
  */
@@ -74,20 +71,20 @@ class CosRepositoryImpl @Inject constructor(
     private class CosConfigCache {
         @Volatile
         var cosConfig: CosConfig? = null
-        
+
         fun isValid(): Boolean {
             val config = cosConfig ?: return false
             return !config.isExpiringSoon(TOKEN_REFRESH_THRESHOLD_SECONDS)
         }
-        
+
         fun clear() {
             cosConfig = null
         }
-        
+
         fun update(config: CosConfig) {
             cosConfig = config
         }
-        
+
         fun updateFromToken(token: UploadTokenResultModel) {
             cosConfig = token.toCosConfig()
         }
@@ -97,14 +94,14 @@ class CosRepositoryImpl @Inject constructor(
      * 动态密钥提供者 - 支持自动刷新临时密钥
      */
     private inner class DynamicCredentialProvider : QCloudCredentialProvider {
-        
+
         override fun getCredentials(): QCloudLifecycleCredentials? {
             return try {
                 // 检查并刷新配置
                 if (!configCache.isValid()) {
                     refreshConfigSync()
                 }
-                
+
                 configCache.cosConfig?.let { config ->
                     when {
                         config.isTemporaryCredentials -> {
@@ -116,6 +113,7 @@ class CosRepositoryImpl @Inject constructor(
                                 config.effectiveExpiredTime
                             )
                         }
+
                         config.isStaticCredentials -> {
                             SessionQCloudCredentials(
                                 config.tmpSecretId,
@@ -125,6 +123,7 @@ class CosRepositoryImpl @Inject constructor(
                                 config.expiredTime
                             )
                         }
+
                         else -> {
                             Log.w(TAG, "No valid credentials found in config")
                             null
@@ -136,7 +135,7 @@ class CosRepositoryImpl @Inject constructor(
                 null
             }
         }
-        
+
         override fun refresh() {
             try {
                 refreshConfigSync()
@@ -145,7 +144,7 @@ class CosRepositoryImpl @Inject constructor(
                 Log.e(TAG, "Failed to refresh credentials", e)
             }
         }
-        
+
         /**
          * 同步刷新配置（在密钥提供者回调中使用）
          */
@@ -161,17 +160,20 @@ class CosRepositoryImpl @Inject constructor(
      */
     private suspend fun getCosService(): CosXmlService {
         serviceRef.get()?.let { return it }
-        
+
         return serviceMutex.withLock {
             // 双重检查
             serviceRef.get()?.let { return@withLock it }
-            
+
             // 获取配置并初始化服务
             val config = getValidCosConfig()
             val service = createCosService(config)
             serviceRef.set(service)
-            
-            Log.d(TAG, "COS service initialized with bucket: ${config.bucket}, region: ${config.region}")
+
+            Log.d(
+                TAG,
+                "COS service initialized with bucket: ${config.bucket}, region: ${config.region}"
+            )
             service
         }
     }
@@ -185,7 +187,7 @@ class CosRepositoryImpl @Inject constructor(
             .setRegion(config.region)
             .isHttps(true)
             .builder()
-        
+
         return CosXmlService(context, serviceConfig, credentialProvider)
     }
 
@@ -196,13 +198,13 @@ class CosRepositoryImpl @Inject constructor(
         if (configCache.isValid()) {
             return configCache.cosConfig!!
         }
-        
+
         return configMutex.withLock {
             // 双重检查
             if (configCache.isValid()) {
                 return@withLock configCache.cosConfig!!
             }
-            
+
             refreshCosConfig(folderType)
         }
     }
@@ -210,25 +212,30 @@ class CosRepositoryImpl @Inject constructor(
     /**
      * 刷新COS配置（从API获取临时密钥）
      */
-    private suspend fun refreshCosConfig(folderType: Int = DEFAULT_FOLDER_TYPE): CosConfig = withContext(Dispatchers.IO) {
-        try {
-            Log.d(TAG, "Refreshing COS config...")
-            val response = apiService.getUploadToken(UploadTokenParamModel(folderType = folderType))
-            
-            if (response.isSuccess() && response.data != null) {
-                val token = response.data
-                val config = token.toCosConfig()
-                configCache.update(config)
-                Log.d(TAG, "COS config refreshed successfully, expires at: ${config.effectiveExpiredTime}")
-                config
-            } else {
-                throw Exception("Failed to get upload token: ${response.resultMsg}")
+    private suspend fun refreshCosConfig(folderType: Int = DEFAULT_FOLDER_TYPE): CosConfig =
+        withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "Refreshing COS config...")
+                val response =
+                    apiService.getUploadToken(UploadTokenParamModel(folderType = folderType))
+
+                if (response.isSuccess() && response.data != null) {
+                    val token = response.data
+                    val config = token.toCosConfig()
+                    configCache.update(config)
+                    Log.d(
+                        TAG,
+                        "COS config refreshed successfully, expires at: ${config.effectiveExpiredTime}"
+                    )
+                    config
+                } else {
+                    throw Exception("Failed to get upload token: ${response.resultMsg}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to refresh COS config", e)
+                throw e
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to refresh COS config", e)
-            throw e
         }
-    }
 
     /**
      * 清除缓存的服务和配置（用于错误重试）
@@ -260,57 +267,14 @@ class CosRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun uploadFileFlow(params: UploadParams): Flow<Result<UploadProgress>> {
-        return callbackFlow {
-            try {
-                val service = getCosService()
-                val config = getValidCosConfig()
-                
-                val request = PutObjectRequest(config.bucket, params.key, params.fileUri)
-                
-                // 设置Content-Type
-                params.contentType?.let {
-                    request.setRequestHeaders("Content-Type", it, false)
-                }
-                
-                // 设置进度回调
-                request.setProgressListener { complete, target ->
-                    val progress = UploadProgress(
-                        bytesTransferred = complete,
-                        totalBytes = target
-                    )
-                    trySend(Result.success(progress))
-                }
-                
-                // 执行上传
-                withContext(Dispatchers.IO) {
-                    service.putObject(request)
-                }
-                
-                // 发送完成状态
-                val finalProgress = UploadProgress(
-                    bytesTransferred = 100L,
-                    totalBytes = 100L
-                )
-                trySend(Result.success(finalProgress))
-                
-            } catch (e: Exception) {
-                Log.e(TAG, "Upload flow failed", e)
-                trySend(Result.failure(e))
-            }
-            
-            awaitClose { }
-        }.flowOn(Dispatchers.IO)
-    }
-
     override suspend fun deleteFile(key: String): Boolean = withContext(Dispatchers.IO) {
         try {
             val service = getCosService()
             val config = getValidCosConfig()
-            
+
             val request = DeleteObjectRequest(config.bucket, key)
             service.deleteObject(request)
-            
+
             Log.d(TAG, "File deleted successfully: $key")
             true
         } catch (e: Exception) {
@@ -323,7 +287,7 @@ class CosRepositoryImpl @Inject constructor(
         try {
             val service = getCosService()
             val config = getValidCosConfig()
-            
+
             val request = HeadObjectRequest(config.bucket, key)
             service.headObject(request)
             true
@@ -339,7 +303,7 @@ class CosRepositoryImpl @Inject constructor(
         try {
             val service = getCosService()
             val config = getValidCosConfig()
-            
+
             val request = HeadObjectRequest(config.bucket, key)
             val result = service.headObject(request)
             result.headers?.get("Content-Length")?.firstOrNull()?.toLongOrNull()
@@ -379,30 +343,33 @@ class CosRepositoryImpl @Inject constructor(
         try {
             val service = getCosService()
             val config = getValidCosConfig(params.folderType)
-            
-            val request = PutObjectRequest(config.bucket, params.key, params.fileUri)
-            
+            val key = params.key.takeIf { it.isNotBlank() } ?: CosUtils.generateFileKey(
+                config.fileKeyPre,
+                params.fileUri
+            )
+            val request = PutObjectRequest(config.bucket, key, params.fileUri)
+            val newParams = params.copy(key = key)
             // 设置Content-Type
-            params.contentType?.let {
+            newParams.contentType?.let {
                 request.setRequestHeaders("Content-Type", it, false)
             }
-            
+
             // 设置进度回调
             onProgress?.let { callback ->
                 request.setProgressListener { complete, target ->
                     callback(UploadProgress(complete, target))
                 }
             }
-            
+
             // 执行上传
             service.putObject(request)
-            
+
             CosUploadResult(
                 success = true,
-                key = params.key,
+                key = newParams.key,
                 bucket = config.bucket,
                 region = config.region,
-                url = getPublicUrl(params, config)
+                url = getPublicUrl(service, newParams, config)
             )
         } catch (e: Exception) {
             Log.e(TAG, "Upload failed for key: ${params.key}", e)
@@ -417,8 +384,12 @@ class CosRepositoryImpl @Inject constructor(
     /**
      * 通过接口获取文件访问URL
      */
-    private suspend fun getPublicUrl(params: UploadParams, config: CosConfig): String {
-        val fallbackUrl = "https://${config.bucket}.cos.${config.region}.myqcloud.com/${params.key}"
+    private suspend fun getPublicUrl(
+        service: CosXmlService,
+        params: UploadParams,
+        config: CosConfig
+    ): String {
+        val fallbackUrl = service.getObjectUrl(config.bucket, config.region, params.key)
         return try {
             val fileSize = params.fileUri.getFileSize(context)
             val saveFileParam = SaveFileParamModel(

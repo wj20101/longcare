@@ -2,6 +2,7 @@ package com.ytone.longcare.common.utils
 
 import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
 import com.ytone.longcare.data.cos.model.UploadParams
 import java.io.File
@@ -15,14 +16,13 @@ import java.util.UUID
  * 提供文件上传相关的便捷方法
  */
 object CosUtils {
-    
+
     /**
      * 创建上传参数
      * @param context 上下文
      * @param fileUri 文件Uri
      * @param folderType 文件夹类型
-     * @param keyPrefix 键名前缀，默认为空
-     * @param customKey 自定义键名，如果提供则使用此键名
+     * @param keyPrefix 文件key前缀，默认为空
      * @return 上传参数
      */
     fun createUploadParams(
@@ -30,13 +30,12 @@ object CosUtils {
         fileUri: Uri,
         folderType: Int,
         keyPrefix: String = "",
-        customKey: String? = null
     ): UploadParams {
         val fileName = fileUri.getFileName(context)
-        val key = customKey ?: generateFileKey(fileName, keyPrefix)
+        val key = generateFileKey(keyPrefix, fileUri)
         val extension = fileName.substringAfterLast('.', "")
         val contentType = getContentType(extension)
-        
+
         return UploadParams(
             fileUri = fileUri,
             key = key,
@@ -44,49 +43,29 @@ object CosUtils {
             contentType = contentType
         )
     }
-    
-    /**
-     * 根据文件路径生成上传参数（兼容旧版本）
-     * @param context 上下文
-     * @param filePath 文件路径
-     * @param folderType 文件夹类型
-     * @param keyPrefix 键名前缀
-     * @param customKey 自定义键名
-     * @return 上传参数
-     */
-    fun createUploadParamsFromPath(
-        context: Context,
-        filePath: String,
-        folderType: Int,
-        keyPrefix: String = "",
-        customKey: String? = null
-    ): UploadParams {
-        val file = File(filePath)
-        val fileUri = Uri.fromFile(file)
-        return createUploadParams(context, fileUri, folderType, keyPrefix, customKey)
-    }
-    
+
     /**
      * 生成文件键名
-     * @param originalFileName 原始文件名
-     * @param prefix 前缀
+     * @param fileKeyPre 文件key前缀,上传时使用这个前缀+唯一文件名+".后缀"作为完整key
+     * @param uri 原始文件
      * @return 生成的键名
      */
-    fun generateFileKey(originalFileName: String, prefix: String = ""): String {
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val uuid = UUID.randomUUID().toString().substring(0, 8)
-        val extension = File(originalFileName).extension
-        
-        val fileName = if (extension.isNotEmpty()) {
-            "${timestamp}_${uuid}.${extension}"
+    fun generateFileKey(fileKeyPre: String, uri: Uri): String {
+        if (fileKeyPre.isEmpty()) return ""
+        // 生成唯一标识符（时间戳 + UUID前8位）
+        val timestamp = SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault()).format(Date())
+        val uuid = UUID.randomUUID().toString().replace("-", "").substring(0, 8)
+        val uniqueId = "${timestamp}_${uuid}"
+
+        // 获取文件扩展名
+        val fileName = uri.lastPathSegment ?: "file"
+        val extension = fileName.substringAfterLast('.', "")
+
+        // 构建完整的键名
+        return if (extension.isNotEmpty()) {
+            "${fileKeyPre}${uniqueId}.${extension}"
         } else {
-            "${timestamp}_${uuid}"
-        }
-        
-        return if (prefix.isNotEmpty()) {
-            "${prefix.trimEnd('/')}/$fileName"
-        } else {
-            fileName
+            "${fileKeyPre}${uniqueId}"
         }
     }
     
@@ -108,10 +87,11 @@ object CosUtils {
             "txt" -> "text/plain"
             "json" -> "application/json"
             "xml" -> "application/xml"
-            else -> MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "application/octet-stream"
+            else -> MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+                ?: "application/octet-stream"
         }
     }
-    
+
     /**
      * 从Uri获取文件路径
      * @param context 上下文
@@ -135,13 +115,14 @@ object CosUtils {
                         null
                     }
                 }
+
                 else -> null
             }
         } catch (e: Exception) {
             null
         }
     }
-    
+
     /**
      * 创建临时文件
      * @param context 上下文
@@ -156,7 +137,7 @@ object CosUtils {
         }
         return File(tempDir, fileName)
     }
-    
+
     /**
      * 从Uri获取文件名
      * @param context 上下文
@@ -177,7 +158,7 @@ object CosUtils {
             null
         }
     }
-    
+
     /**
      * 格式化文件大小
      * @param bytes 字节数
@@ -187,15 +168,15 @@ object CosUtils {
         val units = arrayOf("B", "KB", "MB", "GB", "TB")
         var size = bytes.toDouble()
         var unitIndex = 0
-        
+
         while (size >= 1024 && unitIndex < units.size - 1) {
             size /= 1024
             unitIndex++
         }
-        
+
         return String.format(Locale.getDefault(), "%.2f %s", size, units[unitIndex])
     }
-    
+
     /**
      * 验证文件是否为图片
      * @param filePath 文件路径
@@ -205,7 +186,7 @@ object CosUtils {
         val extension = File(filePath).extension.lowercase()
         return extension in listOf("jpg", "jpeg", "png", "gif", "webp", "bmp")
     }
-    
+
     /**
      * 验证文件是否为视频
      * @param filePath 文件路径
@@ -215,7 +196,7 @@ object CosUtils {
         val extension = File(filePath).extension.lowercase()
         return extension in listOf("mp4", "avi", "mov", "wmv", "flv", "mkv", "webm")
     }
-    
+
     /**
      * 清理临时文件
      * @param context 上下文
@@ -234,7 +215,7 @@ object CosUtils {
             // 忽略清理错误
         }
     }
-    
+
     /**
      * 生成缩略图键名
      * @param originalKey 原始文件键名
@@ -246,17 +227,88 @@ object CosUtils {
         val nameWithoutExtension = file.nameWithoutExtension
         val extension = file.extension
         val parentPath = file.parent
-        
+
         val thumbnailName = if (extension.isNotEmpty()) {
             "${nameWithoutExtension}${suffix}.${extension}"
         } else {
             "${nameWithoutExtension}${suffix}"
         }
-        
+
         return if (parentPath != null && parentPath != ".") {
             "$parentPath/$thumbnailName"
         } else {
             thumbnailName
+        }
+    }
+
+    /**
+     * 根据Uri获取文件大小
+     * @param context 上下文
+     * @return 文件大小（字节），如果无法获取则返回0
+     */
+    fun getFileSize(context: Context, uri: Uri): Long {
+        return when (uri.scheme) {
+            "file" -> {
+                // 文件URI，直接通过File获取大小
+                uri.path?.let { File(it).length() } ?: 0L
+            }
+
+            "content" -> {
+                // 内容URI，通过ContentResolver获取大小
+                try {
+                    context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { descriptor ->
+                        descriptor.length
+                    } ?: 0L
+                } catch (e: Exception) {
+                    // 如果无法通过AssetFileDescriptor获取，尝试通过Cursor查询
+                    try {
+                        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                            val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                            if (sizeIndex != -1 && cursor.moveToFirst()) {
+                                cursor.getLong(sizeIndex)
+                            } else {
+                                0L
+                            }
+                        } ?: 0L
+                    } catch (ex: Exception) {
+                        0L
+                    }
+                }
+            }
+
+            else -> 0L
+        }
+    }
+
+    /**
+     * 根据Uri获取文件名
+     * @param context 上下文
+     * @return 文件名，如果无法获取则返回"unknown"
+     */
+    fun getFileName(context: Context, uri: Uri, defaultFileName: String = "unknown"): String {
+        return when (uri.scheme) {
+            "file" -> {
+                // 文件URI，直接从路径获取文件名
+                uri.lastPathSegment ?: defaultFileName
+            }
+
+            "content" -> {
+                // 内容URI，通过ContentResolver查询文件名
+                try {
+                    context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (nameIndex != -1 && cursor.moveToFirst()) {
+                            cursor.getString(nameIndex)
+                        } else {
+                            uri.lastPathSegment ?: defaultFileName
+                        }
+                    } ?: (uri.lastPathSegment ?: defaultFileName)
+                } catch (_: Exception) {
+                    uri.lastPathSegment ?: defaultFileName
+                }
+            }
+
+            else -> uri.lastPathSegment ?: defaultFileName
         }
     }
 }
