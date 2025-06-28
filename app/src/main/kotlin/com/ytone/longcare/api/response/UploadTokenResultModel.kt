@@ -25,5 +25,10 @@ data class UploadTokenResultModel(
     @param:Json(name = "bucket")
     val bucket: String = "",
     @param:Json(name = "region")
-    val region: String = ""
+    val region: String = "",
+    /**
+     * 文件key前缀,上传时使用这个前缀+唯一文件名+".png"作为完整key
+     */
+    @param:Json(name = "fileKeyPre")
+    val fileKeyPre: String = "",
 )

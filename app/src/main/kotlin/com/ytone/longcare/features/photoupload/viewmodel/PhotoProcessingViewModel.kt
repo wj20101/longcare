@@ -5,6 +5,11 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.common.utils.CosUtils
+import com.ytone.longcare.common.utils.getFileName
+import com.ytone.longcare.common.utils.getFileExtension
+import com.ytone.longcare.data.cos.model.UploadParams
+import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
@@ -16,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.*
 import javax.inject.Inject
 
@@ -26,7 +32,8 @@ import javax.inject.Inject
 @HiltViewModel
 class PhotoProcessingViewModel @Inject constructor(
     @param:ApplicationContext private val applicationContext: Context,
-    private val toastHelper: ToastHelper
+    private val toastHelper: ToastHelper,
+    private val cosRepository: CosRepository
 ) : ViewModel() {
 
     private val imageProcessor = ImageProcessor(applicationContext)
@@ -168,6 +175,52 @@ class PhotoProcessingViewModel @Inject constructor(
             .groupBy { it.taskType.name }
             .mapValues { entry -> entry.value.mapNotNull { it.resultUri?.toString() } }
     }
+
+    /**
+     * 上传成功的图片到云端
+     * @return 上传成功的云端URL列表，按任务类型分组
+     */
+    suspend fun uploadSuccessfulImagesToCloud(): Result<Map<ImageTaskType, List<String>>> {
+        return try {
+            val successfulTasks = _imageTasks.value.filter { 
+                it.status == ImageTaskStatus.SUCCESS && it.resultUri != null 
+            }
+            
+            if (successfulTasks.isEmpty()) {
+                return Result.success(emptyMap())
+            }
+            
+            val uploadResults = mutableMapOf<ImageTaskType, MutableList<String>>()
+            
+            for (task in successfulTasks) {
+                val uri = task.resultUri ?: continue
+                
+                // 生成云端文件key
+                val fileExtension = uri.getFileExtension(applicationContext, "jpg")
+                val cloudKey = "longcare/photos/${task.taskType.name.lowercase()}/${UUID.randomUUID()}.$fileExtension"
+                
+                val uploadParams = CosUtils.createUploadParams(
+                    context = applicationContext,
+                    fileUri = uri,
+                    customKey = cloudKey
+                )
+                
+                val uploadResult = cosRepository.uploadFile(uploadParams)
+                
+                if (uploadResult.success && uploadResult.url != null) {
+                    uploadResults.getOrPut(task.taskType) { mutableListOf() }.add(uploadResult.url)
+                } else {
+                    return Result.failure(Exception("上传失败: ${uploadResult.errorMessage}"))
+                }
+            }
+            
+            Result.success(uploadResults.toMap())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+
 
     /**
      * 获取指定状态的任务列表
