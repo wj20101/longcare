@@ -44,14 +44,6 @@ interface CosRepository {
     suspend fun deleteFile(key: String): Boolean
     
     /**
-     * 获取文件下载URL
-     * @param key 文件键名
-     * @param expireTimeInSeconds 过期时间（秒）
-     * @return 下载URL
-     */
-    suspend fun getDownloadUrl(key: String, expireTimeInSeconds: Long = 3600): String?
-    
-    /**
      * 检查文件是否存在
      * @param key 文件键名
      * @return 文件是否存在
