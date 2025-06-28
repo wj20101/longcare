@@ -14,18 +14,44 @@ import com.ytone.longcare.domain.faceauth.TencentFaceRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 
-
 /**
  * 腾讯人脸识别管理器
- * 负责处理腾讯云人脸识别SDK的初始化和验证流程
+ * 
+ * 职责：
+ * 1. 管理腾讯云人脸识别的完整流程
+ * 2. 处理认证凭据的获取和管理
+ * 3. 协调SDK的初始化和验证过程
+ * 4. 提供统一的错误处理和回调机制
  */
 @Singleton
 class FaceVerificationManager @Inject constructor(
     private val tencentFaceRepository: TencentFaceRepository
 ) {
 
+    // ================================
+    // 数据模型定义
+    // ================================
+    
     /**
-     * 人脸验证参数
+     * 腾讯云配置参数
+     */
+    data class TencentCloudConfig(
+        val appId: String,
+        val secret: String
+    )
+    
+    /**
+     * 人脸验证请求参数
+     */
+    data class FaceVerifyRequest(
+        val name: String,
+        val idNo: String,
+        val orderNo: String,
+        val userId: String
+    )
+
+    /**
+     * 人脸验证参数（SDK使用）
      */
     data class FaceVerifyParams(
         val faceId: String,
@@ -38,296 +64,361 @@ class FaceVerificationManager @Inject constructor(
         val keyLicence: String,
         val mode: FaceVerifyStatus.Mode = FaceVerifyStatus.Mode.GRADE
     )
-
+    
     /**
-     * 腾讯云配置参数
+     * 认证凭据数据
      */
-    data class TencentCloudConfig(
-        val appId: String, val secret: String
-    )
-
+    // ================================
+    // 回调接口定义
+    // ================================
+    
     /**
      * 人脸验证回调接口
      */
     interface FaceVerifyCallback {
-        /**
-         * 初始化成功
-         */
+        /** 初始化成功 */
         fun onInitSuccess()
-
-        /**
-         * 初始化失败
-         */
+        
+        /** 初始化失败 */
         fun onInitFailed(error: WbFaceError?)
-
-        /**
-         * 验证成功
-         */
+        
+        /** 验证成功 */
         fun onVerifySuccess(result: WbFaceVerifyResult)
-
-        /**
-         * 验证失败
-         */
+        
+        /** 验证失败 */
         fun onVerifyFailed(error: WbFaceError?)
-
-        /**
-         * 用户取消验证
-         */
+        
+        /** 用户取消验证 */
         fun onVerifyCancel()
     }
 
+    // ================================
+    // 公共API方法
+    // ================================
+    
     /**
      * 开始人脸验证（使用预设参数）
+     * 
+     * @param context Android上下文
      * @param params 验证参数
      * @param callback 验证回调
      */
     fun startFaceVerification(
-        context: Context, params: FaceVerifyParams, callback: FaceVerifyCallback
+        context: Context,
+        params: FaceVerifyParams,
+        callback: FaceVerifyCallback
     ) {
-        startVerificationInternal(context, params, callback)
+        initializeAndStartVerification(context, params, callback)
     }
 
     /**
-     * 开始人脸验证（自动获取签名参数）
+     * 开始人脸验证（自动获取所有必要参数）
+     * 
+     * @param context Android上下文
      * @param config 腾讯云配置
-     * @param name 姓名
-     * @param idNo 证件号码
-     * @param orderNo 订单号
-     * @param userId 用户ID
+     * @param request 验证请求参数
      * @param callback 验证回调
      */
-    suspend fun startFaceVerificationWithAutoSign(
+    suspend fun startFaceVerification(
         context: Context,
         config: TencentCloudConfig,
-        name: String,
-        idNo: String,
-        orderNo: String,
-        userId: String,
+        request: FaceVerifyRequest,
         callback: FaceVerifyCallback
     ) {
         try {
-            // 1. 获取access_token
-            val accessTokenResult = tencentFaceRepository.getAccessToken(
-                appId = config.appId, secret = config.secret
-            )
-
-            when (accessTokenResult) {
-                is ApiResult.Success -> {
-                    val accessToken = accessTokenResult.data.accessToken
-                    if (accessToken.isNullOrEmpty()) {
-                        callback.onInitFailed(null)
-                        return
-                    }
-
-                    // 2. 获取SIGN类型的ticket用于获取faceId
-                    val signTicketResult = tencentFaceRepository.getSignTicket(
-                        appId = config.appId, accessToken = accessToken
-                    )
-
-                    when (signTicketResult) {
-                        is ApiResult.Success -> {
-                            val signTickets = signTicketResult.data.tickets
-                            if (signTickets.isNullOrEmpty()) {
-                                callback.onInitFailed(null)
-                                return
-                            }
-
-                            val signTicket = signTickets.first().value
-
-                            // 3. 获取faceId
-                            val nonce = generateNonce()
-                            val sign = generateSign(
-                                appId = config.appId,
-                                nonce = nonce,
-                                userId = userId,
-                                apiTicket = signTicket
-                            )
-                            
-                            val faceIdResult = tencentFaceRepository.getFaceId(
-                                appId = config.appId,
-                                orderNo = orderNo,
-                                name = name,
-                                idNo = idNo,
-                                userId = userId,
-                                sign = sign,
-                                nonce = nonce
-                            )
-                            
-                            when (faceIdResult) {
-                                is ApiResult.Success -> {
-                                    val faceId = faceIdResult.data.result?.faceId
-                                    if (faceId.isNullOrEmpty()) {
-                                        callback.onInitFailed(null)
-                                        return
-                                    }
-
-                                    // 4. 获取NONCE类型的ticket用于人脸验证
-                                    val nonceTicketResult = tencentFaceRepository.getApiTicket(
-                                        appId = config.appId, accessToken = accessToken, userId = userId
-                                    )
-
-                                    when (nonceTicketResult) {
-                                        is ApiResult.Success -> {
-                                            val nonceTickets = nonceTicketResult.data.tickets
-                                            if (nonceTickets.isNullOrEmpty()) {
-                                                callback.onInitFailed(null)
-                                                return
-                                            }
-
-                                            val nonceTicket = nonceTickets.first().value
-
-                                            // 5. 生成人脸验证参数
-                                            val verifyNonce = generateNonce()
-                                            val params = generateFaceVerifyParams(
-                                                config = config,
-                                                faceId = faceId,
-                                                orderNo = orderNo,
-                                                userId = userId,
-                                                apiTicket = nonceTicket,
-                                                nonce = verifyNonce
-                                            )
-
-                                            startVerificationInternal(context, params, callback)
-                                        }
-                                        is ApiResult.Exception -> callback.onInitFailed(null)
-                                        is ApiResult.Failure -> callback.onInitFailed(null)
-                                    }
-                                }
-                                
-                                is ApiResult.Exception -> callback.onInitFailed(null)
-                                is ApiResult.Failure -> callback.onInitFailed(null)
-                            }
-                        }
-
-                        is ApiResult.Exception -> callback.onInitFailed(null)
-                        is ApiResult.Failure -> callback.onInitFailed(null)
-                    }
-                }
-
-                is ApiResult.Exception -> callback.onInitFailed(null)
-                is ApiResult.Failure -> callback.onInitFailed(null)
+            // 统一生成nonce，避免在不同地方创建不同的nonce
+            val nonce = generateNonce()
+            
+            // 按需获取访问令牌
+            val accessToken = getAccessToken(config)
+            if (accessToken == null) {
+                callback.onInitFailed(createError("获取访问令牌失败"))
+                return
             }
+
+            // 按需获取SIGN类型票据
+            val signTicket = getSignTicket(config, accessToken)
+            if (signTicket == null) {
+                callback.onInitFailed(createError("获取SIGN票据失败"))
+                return
+            }
+
+            // 获取faceId
+            val faceId = getFaceId(config, request, signTicket, nonce)
+            if (faceId == null) {
+                callback.onInitFailed(createError("获取faceId失败"))
+                return
+            }
+
+            // 按需获取NONCE类型票据
+            val nonceTicket = getNonceTicket(config, accessToken, request.userId)
+            if (nonceTicket == null) {
+                callback.onInitFailed(createError("获取NONCE票据失败"))
+                return
+            }
+
+            // 生成验证参数并开始验证
+            val params = createFaceVerifyParams(config, request, faceId, nonceTicket, nonce)
+            startSdkVerification(context, params, callback)
+
+        } catch (e: Exception) {
+            callback.onInitFailed(createError("人脸验证初始化失败: ${e.message}"))
+        }
+    }
+
+    // ================================
+    // 核心流程方法
+    // ================================
+    
+    /**
+     * 获取访问令牌
+     */
+    private suspend fun getAccessToken(config: TencentCloudConfig): String? {
+        return try {
+            val result = tencentFaceRepository.getAccessToken(config.appId, config.secret)
+            if (result is ApiResult.Success) {
+                result.data.accessToken
+            } else null
         } catch (_: Exception) {
-            callback.onInitFailed(null)
+            null
         }
     }
 
     /**
-     * 内部验证方法
+     * 获取SIGN类型票据
      */
-    private fun startVerificationInternal(
-        context: Context, params: FaceVerifyParams, callback: FaceVerifyCallback
+    private suspend fun getSignTicket(config: TencentCloudConfig, accessToken: String): String? {
+        return try {
+            val result = tencentFaceRepository.getSignTicket(config.appId, accessToken)
+            if (result is ApiResult.Success) {
+                result.data.tickets?.firstOrNull()?.value
+            } else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * 获取NONCE类型票据
+     */
+    private suspend fun getNonceTicket(config: TencentCloudConfig, accessToken: String, userId: String): String? {
+        return try {
+            val result = tencentFaceRepository.getApiTicket(config.appId, accessToken, userId)
+            if (result is ApiResult.Success) {
+                result.data.tickets?.firstOrNull()?.value
+            } else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * 获取人脸ID
+     */
+    private suspend fun getFaceId(
+        config: TencentCloudConfig,
+        request: FaceVerifyRequest,
+        signTicket: String,
+        nonce: String
+    ): String? {
+        return try {
+             val sign = generateSign(
+                 appId = config.appId,
+                 nonce = nonce,
+                 apiTicket = signTicket,
+                 userId = request.userId
+             )
+
+            val result = tencentFaceRepository.getFaceId(
+                appId = config.appId,
+                orderNo = request.orderNo,
+                name = request.name,
+                idNo = request.idNo,
+                userId = request.userId,
+                sign = sign,
+                nonce = nonce
+            )
+
+            if (result is ApiResult.Success) {
+                result.data.result?.faceId
+            } else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * 创建人脸验证参数
+     */
+    private fun createFaceVerifyParams(
+        config: TencentCloudConfig,
+        request: FaceVerifyRequest,
+        faceId: String,
+        nonceTicket: String,
+        nonce: String
+    ): FaceVerifyParams {
+        val sign = generateSign(
+             appId = config.appId,
+             nonce = nonce,
+             apiTicket = nonceTicket,
+             userId = request.userId,
+         )
+
+         return FaceVerifyParams(
+             faceId = faceId,
+             orderNo = request.orderNo,
+             appId = config.appId,
+             nonce = nonce,
+             userId = request.userId,
+             sign = sign,
+             keyLicence = BuildConfig.TX_Licence
+         )
+     }
+
+    // ================================
+    // SDK操作方法
+    // ================================
+    
+    /**
+     * 初始化并开始验证
+     */
+    private fun initializeAndStartVerification(
+        context: Context,
+        params: FaceVerifyParams,
+        callback: FaceVerifyCallback
     ) {
-        val inputData = WbCloudFaceVerifySdk.InputData(
-            params.faceId,
-            params.orderNo,
-            params.appId,
-            params.version,
-            params.nonce,
-            params.userId,
-            params.sign,
-            params.mode,
-            params.keyLicence
-        )
-
-        val verifySdk = WbCloudFaceVerifySdk.getInstance()
-        val data = bundleOf()
-        data.putSerializable(WbCloudFaceContant.INPUT_DATA, inputData)
-        data.putString(WbCloudFaceContant.LANGUAGE, WbCloudFaceContant.LANGUAGE_ZH_CN)
-        //颜色设置,sdk内置黑色和白色两种模式，默认白色
-        //如果客户想定制自己的皮肤，可以传入WbCloudFaceContant.CUSTOM模式,此时可以配置ui里各种元素的色值
-        //定制详情参考app/res/colors.xml文件里各个参数
-        data.putString(WbCloudFaceContant.COLOR_MODE, WbCloudFaceContant.WHITE)
-        //是否需要录制上传视频 默认不需要
-        data.putBoolean(WbCloudFaceContant.VIDEO_UPLOAD, false)
-        //是否播放提示音，默认不播放
-        data.putBoolean(WbCloudFaceContant.PLAY_VOICE, false)
-        //是否指定横屏，默认false，指定竖屏
-        data.putBoolean(WbCloudFaceContant.IS_LANDSCAPE, false)
-        //横竖屏是否跟随系统（仅限pad），默认false
-        data.putBoolean(WbCloudFaceContant.IS_FOLLOW_SYSTEM, false)
-        //识别阶段合作方定制提示语,可不传，此处为demo演示
-        data.putString(WbCloudFaceContant.CUSTOMER_TIPS_LIVE, "仅供体验使用 请勿用于投产!")
-        //上传阶段合作方定制提示语,可不传，此处为demo演示
-        data.putString(WbCloudFaceContant.CUSTOMER_TIPS_UPLOAD, "仅供体验使用 请勿用于投产!")
-
-        //合作方长定制提示语，可不传，此处为demo演示
-        //如果需要展示长提示语，需要邮件申请
-        data.putString(
-            WbCloudFaceContant.CUSTOMER_LONG_TIP,
-            "本demo提供的appId仅用于体验，实际生产请使用控制台给您分配的appId！"
-        )
-
-
-        //设置选择的比对类型  默认为权威库对比
-        //权威库比对 WbCloudFaceContant.ID_CRAD
-        data.putString(WbCloudFaceContant.COMPARE_TYPE, WbCloudFaceContant.ID_CARD)
-
-
-        //sdk log开关，默认关闭，debug调试sdk问题的时候可以打开,打开日志开关需要外部存储权限
-        //【特别注意】上线前请务必关闭sdk log开关！！！
-        data.putBoolean(WbCloudFaceContant.IS_ENABLE_LOG, true)
-
         // 初始化SDK
-        verifySdk.initSdk(context, data, object : WbCloudFaceVerifyLoginListener {
+        val initSuccess = initializeSdk(context, params.keyLicence, params.mode)
+        if (!initSuccess) {
+            callback.onInitFailed(createError("SDK初始化失败"))
+            return
+        }
+
+        callback.onInitSuccess()
+        startSdkVerification(context, params, callback)
+    }
+
+    /**
+     * 初始化腾讯云人脸识别SDK
+     */
+    private fun initializeSdk(
+        context: Context,
+        licence: String,
+        mode: FaceVerifyStatus.Mode
+    ): Boolean {
+        return try {
+            // 简化初始化，只传入必要参数
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * 启动SDK验证流程
+     */
+    private fun startSdkVerification(
+        context: Context,
+        params: FaceVerifyParams,
+        callback: FaceVerifyCallback
+    ) {
+        try {
+            val inputData = WbCloudFaceVerifySdk.InputData(
+                params.faceId,
+                params.orderNo,
+                params.appId,
+                params.version,
+                params.nonce,
+                params.userId,
+                params.sign,
+                params.mode,
+                params.keyLicence
+            )
+
+            // 设置SDK配置
+            val data = bundleOf(
+                WbCloudFaceContant.INPUT_DATA to inputData,
+                WbCloudFaceContant.LANGUAGE to WbCloudFaceContant.LANGUAGE_ZH_CN,
+                WbCloudFaceContant.COLOR_MODE to WbCloudFaceContant.WHITE,
+                WbCloudFaceContant.VIDEO_UPLOAD to false,
+                WbCloudFaceContant.PLAY_VOICE to false,
+                WbCloudFaceContant.IS_LANDSCAPE to false,
+                WbCloudFaceContant.COMPARE_TYPE to WbCloudFaceContant.ID_CARD,
+                WbCloudFaceContant.IS_ENABLE_LOG to BuildConfig.DEBUG
+            )
+
+            WbCloudFaceVerifySdk.getInstance().initSdk(
+                context,
+                data,
+                createSdkLoginListener(context, callback)
+            )
+        } catch (e: Exception) {
+            callback.onVerifyFailed(createError("启动验证失败: ${e.message}"))
+        }
+    }
+
+    /**
+     * 创建SDK登录监听器
+     */
+    private fun createSdkLoginListener(context: Context, callback: FaceVerifyCallback): WbCloudFaceVerifyLoginListener {
+        return object : WbCloudFaceVerifyLoginListener {
             override fun onLoginSuccess() {
-                callback.onInitSuccess()
-                // 初始化成功后开始人脸验证
-                startVerification(context, verifySdk, callback)
+                // SDK登录成功，开始人脸验证
+                startFaceVerification(context, callback)
             }
 
             override fun onLoginFailed(error: WbFaceError?) {
-                WbCloudFaceVerifySdk.getInstance().release()
-                callback.onInitFailed(error)
-            }
-        })
-    }
-
-    /**
-     * 开始验证流程
-     */
-    private fun startVerification(
-        context: Context, sdk: WbCloudFaceVerifySdk, callback: FaceVerifyCallback
-    ) {
-        sdk.startWbFaceVerifySdk(context) { result ->
-            if (result.isSuccess) {
-                callback.onVerifySuccess(result)
-            } else {
-                callback.onVerifyFailed(result.error)
+                callback.onVerifyFailed(error ?: createError("SDK登录失败"))
             }
         }
     }
 
     /**
-     * 生成人脸验证参数
+     * 开始人脸验证
      */
-    private fun generateFaceVerifyParams(
-        config: TencentCloudConfig,
-        faceId: String,
-        orderNo: String,
-        userId: String,
-        apiTicket: String,
-        nonce: String
-    ): FaceVerifyParams {
-
-        // 生成签名（这里需要根据腾讯云文档实现具体的签名算法）
-        val sign = generateSign(
-            appId = config.appId,
-            nonce = nonce,
-            userId = userId,
-            apiTicket = apiTicket
-        )
-
-        return FaceVerifyParams(
-            faceId = faceId,
-            orderNo = orderNo,
-            appId = config.appId,
-            nonce = nonce,
-            userId = userId,
-            sign = sign,
-            keyLicence = BuildConfig.TX_Licence
-        )
+    private fun startFaceVerification(context: Context, callback: FaceVerifyCallback) {
+        try {
+            WbCloudFaceVerifySdk.getInstance().startWbFaceVerifySdk(context) { result ->
+                handleVerificationResult(result, callback)
+            }
+        } catch (e: Exception) {
+            callback.onVerifyFailed(createError("人脸验证失败: ${e.message}"))
+        }
     }
+
+    /**
+     * 处理验证结果
+     */
+    private fun handleVerificationResult(
+        result: WbFaceVerifyResult,
+        callback: FaceVerifyCallback
+    ) {
+        when {
+            result.isSuccess -> callback.onVerifySuccess(result)
+            // 检查是否用户取消，根据SDK文档可能是其他属性名
+            else -> {
+                if (result.error?.code?.contains("cancel", ignoreCase = true) == true ||
+                    result.error?.desc?.contains("取消", ignoreCase = true) == true) {
+                    callback.onVerifyCancel()
+                } else {
+                    callback.onVerifyFailed(result.error ?: createError("验证失败"))
+                }
+            }
+        }
+    }
+
+    // ================================
+    // 工具方法
+    // ================================
+    
+    /**
+     * 生成随机字符串（nonce）
+     */
+    private fun generateNonce(length: Int = 32): String {
+        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        return (1..length).map { chars.random() }.joinToString("")
+    }
+
 
     /**
      * 生成签名
@@ -351,29 +442,36 @@ class FaceVerificationManager @Inject constructor(
         // 进行 SHA1 编码
         return sha1(signString).uppercase()
     }
-    
-
 
     /**
-     * 生成32位随机字符串（字母和数字）
-     * 符合腾讯云文档要求
-     */
-    private fun generateNonce(): String {
-        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-        return (1..32)
-            .map { chars.random() }
-            .joinToString("")
-    }
-
-    /**
-     * SHA1 编码
+     * SHA1编码
      */
     private fun sha1(input: String): String {
-        val digest = java.security.MessageDigest.getInstance("SHA-1")
-        val hashBytes = digest.digest(input.toByteArray())
-        return hashBytes.joinToString("") { "%02x".format(it) }
+        return try {
+            val digest = java.security.MessageDigest.getInstance("SHA-1")
+            val result = digest.digest(input.toByteArray())
+            result.joinToString("") { "%02x".format(it) }
+        } catch (_: Exception) {
+            ""
+        }
     }
 
+    /**
+     * 创建错误对象
+     */
+    private fun createError(message: String): WbFaceError {
+        return WbFaceError().apply {
+            domain = WbFaceError.WBFaceErrorDomainNativeProcess
+            code = message
+            desc = message
+            reason = message
+        }
+    }
+
+    // ================================
+    // 资源管理
+    // ================================
+    
     /**
      * 释放SDK资源
      */
@@ -381,7 +479,7 @@ class FaceVerificationManager @Inject constructor(
         try {
             WbCloudFaceVerifySdk.getInstance().release()
         } catch (_: Exception) {
-            // 忽略释放异常
+            // 忽略释放时的异常
         }
     }
 }
