@@ -199,15 +199,10 @@ class PhotoProcessingViewModel @Inject constructor(
             for (task in successfulTasks) {
                 val uri = task.resultUri ?: continue
                 
-                // 生成云端文件key
-                val fileExtension = uri.getFileExtension(applicationContext, "jpg")
-                val cloudKey = "longcare/photos/${task.taskType.name.lowercase()}/${UUID.randomUUID()}.$fileExtension"
-                
                 val uploadParams = CosUtils.createUploadParams(
                     context = applicationContext,
                     fileUri = uri,
-                    folderType = DEFAULT_FOLDER_TYPE,
-                    customKey = cloudKey
+                    folderType = DEFAULT_FOLDER_TYPE
                 )
                 
                 val uploadResult = cosRepository.uploadFile(uploadParams)
