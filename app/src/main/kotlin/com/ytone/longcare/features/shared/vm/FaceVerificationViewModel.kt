@@ -56,13 +56,17 @@ class FaceVerificationViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = FaceVerifyUiState.Initializing
 
-            faceVerificationManager.startFaceVerificationWithAutoSign(
-                context = context,
-                config = config,
+            val request = FaceVerificationManager.FaceVerifyRequest(
                 name = name,
                 idNo = idNo,
                 orderNo = orderNo,
-                userId = userId,
+                userId = userId
+            )
+            
+            faceVerificationManager.startFaceVerification(
+                context = context,
+                config = config,
+                request = request,
                 callback = createFaceVerifyCallback()
             )
         }
