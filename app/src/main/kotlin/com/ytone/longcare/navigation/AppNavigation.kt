@@ -15,7 +15,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.ytone.longcare.MainViewModel
-import com.ytone.longcare.common.utils.RandomUtils
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
@@ -86,8 +85,7 @@ fun MainApp(
 
         is SessionState.LoggedIn -> {
             // 用户已登录，导航到主页
-//            AppNavigation(startDestination = HomeRoute)
-            AppNavigation(startDestination = TxFaceRoute)
+            AppNavigation(startDestination = HomeRoute)
         }
 
         is SessionState.LoggedOut -> {

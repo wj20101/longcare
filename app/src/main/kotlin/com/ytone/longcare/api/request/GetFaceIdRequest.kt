@@ -2,6 +2,7 @@ package com.ytone.longcare.api.request
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
+import com.ytone.longcare.common.utils.FaceVerificationManager.Companion.FACE_VERSION
 
 /**
  * 获取faceId的请求体
@@ -43,7 +44,7 @@ data class GetFaceIdRequest(
      * 版本号，默认参数值为：1.0.0
      */
     @param:Json(name = "version")
-    val version: String = "1.0.0",
+    val version: String = FACE_VERSION,
     
     /**
      * 签名：使用上面生成的签名

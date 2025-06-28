@@ -57,7 +57,7 @@ class FaceVerificationManager @Inject constructor(
         val faceId: String,
         val orderNo: String,
         val appId: String,
-        val version: String = "1.0.0",
+        val version: String = FACE_VERSION,
         val nonce: String,
         val userId: String,
         val sign: String,
@@ -95,21 +95,6 @@ class FaceVerificationManager @Inject constructor(
     // ================================
     // 公共API方法
     // ================================
-    
-    /**
-     * 开始人脸验证（使用预设参数）
-     * 
-     * @param context Android上下文
-     * @param params 验证参数
-     * @param callback 验证回调
-     */
-    fun startFaceVerification(
-        context: Context,
-        params: FaceVerifyParams,
-        callback: FaceVerifyCallback
-    ) {
-        initializeAndStartVerification(context, params, callback)
-    }
 
     /**
      * 开始人脸验证（自动获取所有必要参数）
@@ -278,41 +263,6 @@ class FaceVerificationManager @Inject constructor(
     // ================================
     // SDK操作方法
     // ================================
-    
-    /**
-     * 初始化并开始验证
-     */
-    private fun initializeAndStartVerification(
-        context: Context,
-        params: FaceVerifyParams,
-        callback: FaceVerifyCallback
-    ) {
-        // 初始化SDK
-        val initSuccess = initializeSdk(context, params.keyLicence, params.mode)
-        if (!initSuccess) {
-            callback.onInitFailed(createError("SDK初始化失败"))
-            return
-        }
-
-        callback.onInitSuccess()
-        startSdkVerification(context, params, callback)
-    }
-
-    /**
-     * 初始化腾讯云人脸识别SDK
-     */
-    private fun initializeSdk(
-        context: Context,
-        licence: String,
-        mode: FaceVerifyStatus.Mode
-    ): Boolean {
-        return try {
-            // 简化初始化，只传入必要参数
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
 
     /**
      * 启动SDK验证流程
@@ -431,7 +381,7 @@ class FaceVerificationManager @Inject constructor(
         appId: String, nonce: String, userId: String, apiTicket: String
     ): String {
         // 固定版本号
-        val version = "1.0.0"
+        val version = FACE_VERSION
 
         // 将五个参数按字典序排序
         val params = listOf(version, appId, apiTicket, nonce, userId).sorted()
@@ -481,5 +431,9 @@ class FaceVerificationManager @Inject constructor(
         } catch (_: Exception) {
             // 忽略释放时的异常
         }
+    }
+
+    companion object {
+        const val FACE_VERSION = "1.0.0"
     }
 }
