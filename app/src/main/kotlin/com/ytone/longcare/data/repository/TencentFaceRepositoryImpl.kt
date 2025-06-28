@@ -1,8 +1,10 @@
 package com.ytone.longcare.data.repository
 
+import com.ytone.longcare.api.request.GetFaceIdRequest
 import com.ytone.longcare.api.TencentFaceApiService
 import com.ytone.longcare.api.response.TencentAccessTokenResponse
 import com.ytone.longcare.api.response.TencentApiTicketResponse
+import com.ytone.longcare.api.response.TencentFaceIdResponse
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.network.safeTencentApiCall
@@ -39,6 +41,40 @@ class TencentFaceRepositoryImpl @Inject constructor(
             appId = appId,
             accessToken = accessToken,
             userId = userId
+        )
+    }
+    
+    override suspend fun getSignTicket(
+        appId: String,
+        accessToken: String
+    ): ApiResult<TencentApiTicketResponse> = safeTencentApiCall(ioDispatcher, eventBus) {
+        apiService.getSignTicket(
+            appId = appId,
+            accessToken = accessToken
+        )
+    }
+    
+    override suspend fun getFaceId(
+        appId: String,
+        orderNo: String,
+        name: String,
+        idNo: String,
+        userId: String,
+        sign: String,
+        nonce: String
+    ): ApiResult<TencentFaceIdResponse> = safeTencentApiCall(ioDispatcher, eventBus) {
+        val request = GetFaceIdRequest(
+            appId = appId,
+            orderNo = orderNo,
+            name = name,
+            idNo = idNo,
+            userId = userId,
+            sign = sign,
+            nonce = nonce
+        )
+        apiService.getFaceId(
+            request = request,
+            orderNo = orderNo
         )
     }
 }
