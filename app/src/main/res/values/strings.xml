@@ -7,6 +7,7 @@
     <string name="camera_permission_rationale">此应用需要相机权限来拍照。</string>
     <string name="request_camera_permission">请求相机权限</string>
     <string name="nfc_sign_in_title">进门碰一碰</string>
+    <string name="nfc_sign_out_title">出门碰一碰</string>
     <string name="common_back">返回</string>
     <string name="nfc_sign_in_prompt">请将手机碰一碰如图感应区位置，即可完成签到</string>
     <string name="common_next_step">下一步</string>
@@ -61,4 +62,5 @@
     <string name="main_dashboard_logo">标志</string>
     <string name="main_dashboard_nursing_staff_avatar">护理员头像</string>
     <string name="user_avatar_description">头像</string>
+    <string name="nfc_sign_out_complete_service">服务完成，结束签到</string>
 </resources>
