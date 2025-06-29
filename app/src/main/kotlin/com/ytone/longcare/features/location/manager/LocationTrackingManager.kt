@@ -27,16 +27,14 @@ class LocationTrackingManager @Inject constructor(
     /**
      * 启动定位追踪服务。
      */
-    fun startTracking() {
-        // 在这里可以添加业务判断，例如检查是否有关联的订单ID等
-        // 如果当前状态已经是追踪中，则不重复发送命令
+    fun startTracking(orderId: Long) {
         if (_isTracking.value) return
 
         _isTracking.value = true
         Intent(context, LocationTrackingService::class.java).apply {
             action = LocationTrackingService.ACTION_START
+            putExtra(LocationTrackingService.EXTRA_ORDER_ID, orderId)
         }.also {
-            // 使用ContextCompat.startForegroundService确保在后台也能安全启动服务
             ContextCompat.startForegroundService(context, it)
         }
     }
