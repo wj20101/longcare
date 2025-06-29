@@ -36,6 +36,8 @@ class LocationTrackingManager @Inject constructor(
      * @return 是否成功启动
      */
     fun startTracking(orderId: Long): Boolean {
+        LogExt.d("LocationTrackingManager", "Attempting to start tracking for order: $orderId")
+        
         if (!hasLocationPermission()) {
             LogExt.e("LocationTrackingManager", "No location permission")
             return false
@@ -57,10 +59,14 @@ class LocationTrackingManager @Inject constructor(
         }
 
         try {
+            LogExt.d("LocationTrackingManager", "Starting LocationTrackingService...")
             LocationTrackingService.startTracking(context, orderId)
+            
+            // 暂时设置状态，但服务可能会因为其他原因失败
+            // 实际状态应该由服务回调确认
             _isTracking.value = true
             _currentOrderId.value = orderId
-            LogExt.d("LocationTrackingManager", "Started tracking for order: $orderId")
+            LogExt.d("LocationTrackingManager", "Service start command sent for order: $orderId")
             return true
         } catch (e: Exception) {
             LogExt.e("LocationTrackingManager", "Failed to start tracking", e)
@@ -72,6 +78,8 @@ class LocationTrackingManager @Inject constructor(
      * 停止定位跟踪
      */
     fun stopTracking() {
+        LogExt.d("LocationTrackingManager", "Attempting to stop tracking")
+        
         if (!_isTracking.value) {
             LogExt.w("LocationTrackingManager", "Not tracking")
             return
@@ -134,5 +142,14 @@ class LocationTrackingManager @Inject constructor(
     fun resetState() {
         _isTracking.value = false
         _currentOrderId.value = 0L
+    }
+    
+    /**
+     * 手动更新跟踪状态（由服务回调使用）
+     */
+    fun updateTrackingState(isTracking: Boolean, orderId: Long = 0L) {
+        LogExt.d("LocationTrackingManager", "Updating tracking state: isTracking=$isTracking, orderId=$orderId")
+        _isTracking.value = isTracking
+        _currentOrderId.value = if (isTracking) orderId else 0L
     }
 }

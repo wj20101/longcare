@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
+import android.os.Bundle
 import android.os.IBinder
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationChannelCompat
@@ -40,6 +41,8 @@ class LocationTrackingService : Service() {
     // 获取一个在主线程上执行任务的 Executor
     private val mainThreadExecutor by lazy { ContextCompat.getMainExecutor(this) }
 
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private var locationManager: LocationManager? = null
     private var locationListener: LocationListenerCompat? = null
     private var serviceJob: Job? = null
@@ -50,7 +53,6 @@ class LocationTrackingService : Service() {
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "location_tracking_channel"
         private const val LOCATION_UPDATE_INTERVAL = 30 * 1000L // 30秒
-        private const val LOCATION_UPDATE_MIN_INTERVAL = 15 * 1000L // 15秒
         private const val MIN_DISTANCE_CHANGE = 0f // 最小距离变化
 
         const val ACTION_START_TRACKING = "start_tracking"
@@ -65,7 +67,7 @@ class LocationTrackingService : Service() {
                 action = ACTION_START_TRACKING
                 putExtra(EXTRA_ORDER_ID, orderId)
             }
-            ContextCompat.startForegroundService(context,intent)
+            ContextCompat.startForegroundService(context, intent)
         }
 
         /**
@@ -87,13 +89,20 @@ class LocationTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        LogExt.d("LocationTrackingService", "onStartCommand called with action: ${intent?.action}")
+        
         when (intent?.action) {
             ACTION_START_TRACKING -> {
                 orderId = intent.getLongExtra(EXTRA_ORDER_ID, 0L)
+                LogExt.d("LocationTrackingService", "Starting tracking for order: $orderId")
                 startLocationTracking()
             }
             ACTION_STOP_TRACKING -> {
+                LogExt.d("LocationTrackingService", "Stopping tracking")
                 stopLocationTracking()
+            }
+            else -> {
+                LogExt.w("LocationTrackingService", "Unknown action: ${intent?.action}")
             }
         }
         return START_STICKY
@@ -105,6 +114,7 @@ class LocationTrackingService : Service() {
         super.onDestroy()
         LogExt.d("LocationTrackingService", "Service destroyed")
         stopLocationTracking()
+        serviceScope.cancel()
     }
 
     /**
@@ -129,38 +139,81 @@ class LocationTrackingService : Service() {
      * 开始位置跟踪
      */
     private fun startLocationTracking() {
+        LogExt.d("LocationTrackingService", "startLocationTracking called, isTracking: $isTracking")
+        
         if (isTracking) {
             LogExt.d("LocationTrackingService", "Already tracking")
             return
         }
 
+        if (orderId <= 0) {
+            LogExt.e("LocationTrackingService", "Invalid order ID: $orderId, stopping service")
+            stopSelf()
+            return
+        }
+
         if (!hasLocationPermission()) {
-            LogExt.e("LocationTrackingService", "No location permission")
+            LogExt.e("LocationTrackingService", "No location permission, stopping service")
             stopSelf()
             return
         }
 
         if (!isLocationEnabled()) {
-            LogExt.e("LocationTrackingService", "Location service is disabled")
+            LogExt.e("LocationTrackingService", "Location service is disabled, stopping service")
             stopSelf()
             return
         }
 
-        isTracking = true
-        startForeground(NOTIFICATION_ID, createNotification())
+        try {
+            LogExt.d("LocationTrackingService", "Starting foreground service with notification")
+            isTracking = true
+            startForeground(NOTIFICATION_ID, createNotification())
 
-        // 创建位置监听器
-        locationListener = LocationListenerCompat {
-            LogExt.d("LocationTrackingService", "Location changed: ${it.latitude}, ${it.longitude}")
-            uploadLocation(it)
+            // 创建位置监听器
+            locationListener = object : LocationListenerCompat {
+                override fun onStatusChanged(provider: String, status: Int, extras: Bundle?) {
+                    super.onStatusChanged(provider, status, extras)
+                    LogExt.d("LocationTrackingService", "Status Changed: $provider, $status, $extras")
+                }
+
+                override fun onFlushComplete(requestCode: Int) {
+                    super.onFlushComplete(requestCode)
+                    LogExt.d("LocationTrackingService", "Flush Complete: $requestCode")
+                }
+
+                override fun onLocationChanged(locations: List<Location?>) {
+                    super.onLocationChanged(locations)
+                    LogExt.d("LocationTrackingService", "Location changed: $locations")
+                }
+
+                override fun onProviderDisabled(provider: String) {
+                    super.onProviderDisabled(provider)
+                    LogExt.d("LocationTrackingService", "Provider Disabled: $provider")
+                }
+
+                override fun onProviderEnabled(provider: String) {
+                    super.onProviderEnabled(provider)
+                    LogExt.d("LocationTrackingService", "Provider Enabled: $provider")
+                }
+
+                override fun onLocationChanged(location: Location) {
+                    LogExt.d("LocationTrackingService", "Location changed: ${location.latitude}, ${location.longitude}, accuracy: ${location.accuracy}")
+                    uploadLocation(location)
+                }
+            }
+
+            // 启动协程作业
+            serviceJob = serviceScope.launch {
+                LogExt.d("LocationTrackingService", "Starting location updates coroutine")
+                requestLocationUpdates()
+            }
+
+            LogExt.d("LocationTrackingService", "Location tracking started successfully for order: $orderId")
+        } catch (e: Exception) {
+            LogExt.e("LocationTrackingService", "Failed to start location tracking", e)
+            isTracking = false
+            stopSelf()
         }
-
-        // 启动协程作业
-        serviceJob = CoroutineScope(Dispatchers.Main + SupervisorJob()).launch {
-            requestLocationUpdates()
-        }
-
-        LogExt.d("LocationTrackingService", "Location tracking started for order: $orderId")
     }
 
     /**
@@ -196,51 +249,65 @@ class LocationTrackingService : Service() {
      */
     private suspend fun requestLocationUpdates() = withContext(Dispatchers.Main) {
         try {
+            LogExt.d("LocationTrackingService", "requestLocationUpdates called")
+            
             if (!isLocationEnabled()) {
                 LogExt.e("LocationTrackingService", "Location service is disabled, cannot request updates")
                 return@withContext
             }
 
-            locationManager?.let { manager ->
-                locationListener?.let { listener ->
-                    val provider = when {
-                        LocationManagerCompat.hasProvider(
-                            manager,
-                            LocationManager.GPS_PROVIDER
-                        ) -> LocationManager.GPS_PROVIDER
-
-                        LocationManagerCompat.hasProvider(
-                            manager,
-                            LocationManager.NETWORK_PROVIDER
-                        ) -> LocationManager.NETWORK_PROVIDER
-
-                        else -> return@let
-                    }
-                    if (ActivityCompat.checkSelfPermission(
-                            this@LocationTrackingService,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                        ) == PackageManager.PERMISSION_GRANTED ||
-                        ActivityCompat.checkSelfPermission(
-                            this@LocationTrackingService,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        val locationRequest = LocationRequestCompat
-                            .Builder(LOCATION_UPDATE_INTERVAL) // 设置基础间隔为30秒
-                            .setQuality(LocationRequestCompat.QUALITY_HIGH_ACCURACY) // 请求高精度
-                            .setMinUpdateIntervalMillis(LOCATION_UPDATE_MIN_INTERVAL) // 最快更新间隔（例如15秒），防止过于频繁
-                            .setMinUpdateDistanceMeters(MIN_DISTANCE_CHANGE) // 不根据距离更新
-                            .build()
-                        LocationManagerCompat.requestLocationUpdates(
-                            manager,
-                            provider,
-                            locationRequest,
-                            mainThreadExecutor,
-                            listener
-                        )
-                    }
+            val manager = locationManager
+            val listener = locationListener
+            
+            if (manager == null) {
+                LogExt.e("LocationTrackingService", "LocationManager is null")
+                return@withContext
+            }
+            
+            if (listener == null) {
+                LogExt.e("LocationTrackingService", "LocationListener is null")
+                return@withContext
+            }
+            
+            LogExt.d("LocationTrackingService", "Checking available providers...")
+            val provider = when {
+                LocationManagerCompat.hasProvider(manager, LocationManager.GPS_PROVIDER) -> {
+                    LogExt.d("LocationTrackingService", "Using GPS provider")
+                    LocationManager.GPS_PROVIDER
+                }
+                LocationManagerCompat.hasProvider(manager, LocationManager.NETWORK_PROVIDER) -> {
+                    LogExt.d("LocationTrackingService", "Using Network provider")
+                    LocationManager.NETWORK_PROVIDER
+                }
+                else -> {
+                    LogExt.e("LocationTrackingService", "No location providers available")
+                    return@withContext
                 }
             }
+            
+            if (!hasLocationPermission()) {
+                LogExt.e("LocationTrackingService", "No location permission for requesting updates")
+                return@withContext
+            }
+            
+            LogExt.d("LocationTrackingService", "Requesting location updates with provider: $provider")
+            val locationRequest = LocationRequestCompat
+                .Builder(LOCATION_UPDATE_INTERVAL) // 设置基础间隔为30秒
+                .setMinUpdateDistanceMeters(MIN_DISTANCE_CHANGE) // 不根据距离更新
+                .build()
+
+            LocationManagerCompat.requestLocationUpdates(
+                manager,
+                provider,
+                locationRequest,
+                mainThreadExecutor,
+                listener
+            )
+            
+            LogExt.d("LocationTrackingService", "Location updates requested successfully")
+            
+        } catch (e: SecurityException) {
+            LogExt.e("LocationTrackingService", "Security exception when requesting location updates", e)
         } catch (e: Exception) {
             LogExt.e("LocationTrackingService", "Error requesting location updates", e)
         }
@@ -256,7 +323,7 @@ class LocationTrackingService : Service() {
         }
 
         // 在IO线程中执行网络请求
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             try {
                 val param = AddPositionParamModel(
                     orderId = orderId,
@@ -265,7 +332,7 @@ class LocationTrackingService : Service() {
                 )
 
                 LogExt.d("LocationTrackingService", "Uploading location: ${param.latitude}, ${param.longitude} for order: ${param.orderId}")
-                
+
                 val response = apiService.addPosition(param)
                 if (response.isSuccess()) {
                     LogExt.d("LocationTrackingService", "Location uploaded successfully")
