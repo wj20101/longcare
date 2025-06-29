@@ -44,16 +44,21 @@ class LocationTrackingService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private var locationManager: LocationManager? = null
-    private var locationListener: LocationListenerCompat? = null
+    private var gpsLocationListener: LocationListenerCompat? = null
+    private var networkLocationListener: LocationListenerCompat? = null
     private var serviceJob: Job? = null
     private var orderId: Long = 0L
     private var isTracking = false
+    private var lastUploadTime = 0L
+    private var lastLocation: Location? = null
 
     companion object {
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "location_tracking_channel"
         private const val LOCATION_UPDATE_INTERVAL = 30 * 1000L // 30秒
         private const val MIN_DISTANCE_CHANGE = 0f // 最小距离变化
+        private const val MIN_UPLOAD_INTERVAL = 25 * 1000L // 最小上报间隔25秒，避免重复上报
+        private const val MIN_LOCATION_ACCURACY = 100f // 最小位置精度100米
 
         const val ACTION_START_TRACKING = "start_tracking"
         const val ACTION_STOP_TRACKING = "stop_tracking"
@@ -121,10 +126,17 @@ class LocationTrackingService : Service() {
      * 创建通知渠道
      */
     private fun createNotificationChannel() {
-        val channel =
-            NotificationChannelCompat.Builder(CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_LOW)
-                .setName("定位跟踪服务").setDescription("后台定位跟踪服务通知").setShowBadge(false)
-                .build()
+        val channel = NotificationChannelCompat.Builder(
+            CHANNEL_ID, 
+            NotificationManagerCompat.IMPORTANCE_HIGH // 提高重要性
+        )
+            .setName("定位跟踪服务")
+            .setDescription("后台定位跟踪服务通知，确保服务持续运行")
+            .setShowBadge(true) // 显示角标
+            .setLightsEnabled(false) // 关闭指示灯
+            .setVibrationEnabled(false) // 关闭震动
+            .setSound(null, null) // 关闭声音
+            .build()
         NotificationManagerCompat.from(this).createNotificationChannel(channel)
     }
 
@@ -169,36 +181,49 @@ class LocationTrackingService : Service() {
             isTracking = true
             startForeground(NOTIFICATION_ID, createNotification())
 
-            // 创建位置监听器
-            locationListener = object : LocationListenerCompat {
+            // 创建GPS位置监听器
+            gpsLocationListener = object : LocationListenerCompat {
                 override fun onStatusChanged(provider: String, status: Int, extras: Bundle?) {
                     super.onStatusChanged(provider, status, extras)
-                    LogExt.d("LocationTrackingService", "Status Changed: $provider, $status, $extras")
-                }
-
-                override fun onFlushComplete(requestCode: Int) {
-                    super.onFlushComplete(requestCode)
-                    LogExt.d("LocationTrackingService", "Flush Complete: $requestCode")
-                }
-
-                override fun onLocationChanged(locations: List<Location?>) {
-                    super.onLocationChanged(locations)
-                    LogExt.d("LocationTrackingService", "Location changed: $locations")
+                    LogExt.d("LocationTrackingService", "GPS Status Changed: $provider, $status, $extras")
                 }
 
                 override fun onProviderDisabled(provider: String) {
                     super.onProviderDisabled(provider)
-                    LogExt.d("LocationTrackingService", "Provider Disabled: $provider")
+                    LogExt.d("LocationTrackingService", "GPS Provider Disabled: $provider")
                 }
 
                 override fun onProviderEnabled(provider: String) {
                     super.onProviderEnabled(provider)
-                    LogExt.d("LocationTrackingService", "Provider Enabled: $provider")
+                    LogExt.d("LocationTrackingService", "GPS Provider Enabled: $provider")
                 }
 
                 override fun onLocationChanged(location: Location) {
-                    LogExt.d("LocationTrackingService", "Location changed: ${location.latitude}, ${location.longitude}, accuracy: ${location.accuracy}")
-                    uploadLocation(location)
+                    LogExt.d("LocationTrackingService", "GPS Location changed: ${location.latitude}, ${location.longitude}, accuracy: ${location.accuracy}")
+                    handleLocationUpdate(location, "GPS")
+                }
+            }
+
+            // 创建网络位置监听器
+            networkLocationListener = object : LocationListenerCompat {
+                override fun onStatusChanged(provider: String, status: Int, extras: Bundle?) {
+                    super.onStatusChanged(provider, status, extras)
+                    LogExt.d("LocationTrackingService", "Network Status Changed: $provider, $status, $extras")
+                }
+
+                override fun onProviderDisabled(provider: String) {
+                    super.onProviderDisabled(provider)
+                    LogExt.d("LocationTrackingService", "Network Provider Disabled: $provider")
+                }
+
+                override fun onProviderEnabled(provider: String) {
+                    super.onProviderEnabled(provider)
+                    LogExt.d("LocationTrackingService", "Network Provider Enabled: $provider")
+                }
+
+                override fun onLocationChanged(location: Location) {
+                    LogExt.d("LocationTrackingService", "Network Location changed: ${location.latitude}, ${location.longitude}, accuracy: ${location.accuracy}")
+                    handleLocationUpdate(location, "Network")
                 }
             }
 
@@ -224,19 +249,34 @@ class LocationTrackingService : Service() {
 
         isTracking = false
         serviceJob?.cancel()
-        locationListener?.let { listener ->
+        
+        // 移除GPS监听器
+        gpsLocationListener?.let { listener ->
             try {
                 locationManager?.let { manager ->
-                    LocationManagerCompat.removeUpdates(
-                        manager,
-                        listener
-                    )
+                    LocationManagerCompat.removeUpdates(manager, listener)
                 }
             } catch (e: SecurityException) {
-                LogExt.e("LocationTrackingService", "Error removing location updates", e)
+                LogExt.e("LocationTrackingService", "Error removing GPS location updates", e)
             }
         }
-        locationListener = null
+        gpsLocationListener = null
+        
+        // 移除网络监听器
+        networkLocationListener?.let { listener ->
+            try {
+                locationManager?.let { manager ->
+                    LocationManagerCompat.removeUpdates(manager, listener)
+                }
+            } catch (e: SecurityException) {
+                LogExt.e("LocationTrackingService", "Error removing Network location updates", e)
+            }
+        }
+        networkLocationListener = null
+        
+        // 重置状态
+        lastUploadTime = 0L
+        lastLocation = null
 
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -257,32 +297,17 @@ class LocationTrackingService : Service() {
             }
 
             val manager = locationManager
-            val listener = locationListener
+            val gpsListener = gpsLocationListener
+            val networkListener = networkLocationListener
             
             if (manager == null) {
                 LogExt.e("LocationTrackingService", "LocationManager is null")
                 return@withContext
             }
             
-            if (listener == null) {
-                LogExt.e("LocationTrackingService", "LocationListener is null")
+            if (gpsListener == null || networkListener == null) {
+                LogExt.e("LocationTrackingService", "LocationListeners are null")
                 return@withContext
-            }
-            
-            LogExt.d("LocationTrackingService", "Checking available providers...")
-            val provider = when {
-                LocationManagerCompat.hasProvider(manager, LocationManager.GPS_PROVIDER) -> {
-                    LogExt.d("LocationTrackingService", "Using GPS provider")
-                    LocationManager.GPS_PROVIDER
-                }
-                LocationManagerCompat.hasProvider(manager, LocationManager.NETWORK_PROVIDER) -> {
-                    LogExt.d("LocationTrackingService", "Using Network provider")
-                    LocationManager.NETWORK_PROVIDER
-                }
-                else -> {
-                    LogExt.e("LocationTrackingService", "No location providers available")
-                    return@withContext
-                }
             }
             
             if (!hasLocationPermission()) {
@@ -290,21 +315,57 @@ class LocationTrackingService : Service() {
                 return@withContext
             }
             
-            LogExt.d("LocationTrackingService", "Requesting location updates with provider: $provider")
             val locationRequest = LocationRequestCompat
                 .Builder(LOCATION_UPDATE_INTERVAL) // 设置基础间隔为30秒
                 .setMinUpdateDistanceMeters(MIN_DISTANCE_CHANGE) // 不根据距离更新
                 .build()
-
-            LocationManagerCompat.requestLocationUpdates(
-                manager,
-                provider,
-                locationRequest,
-                mainThreadExecutor,
-                listener
-            )
             
-            LogExt.d("LocationTrackingService", "Location updates requested successfully")
+            var providersRegistered = 0
+            
+            // 注册GPS提供者
+            if (LocationManagerCompat.hasProvider(manager, LocationManager.GPS_PROVIDER)) {
+                try {
+                    LocationManagerCompat.requestLocationUpdates(
+                        manager,
+                        LocationManager.GPS_PROVIDER,
+                        locationRequest,
+                        mainThreadExecutor,
+                        gpsListener
+                    )
+                    LogExt.d("LocationTrackingService", "GPS provider registered successfully")
+                    providersRegistered++
+                } catch (e: Exception) {
+                    LogExt.e("LocationTrackingService", "Failed to register GPS provider", e)
+                }
+            } else {
+                LogExt.w("LocationTrackingService", "GPS provider not available")
+            }
+            
+            // 注册网络提供者
+            if (LocationManagerCompat.hasProvider(manager, LocationManager.NETWORK_PROVIDER)) {
+                try {
+                    LocationManagerCompat.requestLocationUpdates(
+                        manager,
+                        LocationManager.NETWORK_PROVIDER,
+                        locationRequest,
+                        mainThreadExecutor,
+                        networkListener
+                    )
+                    LogExt.d("LocationTrackingService", "Network provider registered successfully")
+                    providersRegistered++
+                } catch (e: Exception) {
+                    LogExt.e("LocationTrackingService", "Failed to register Network provider", e)
+                }
+            } else {
+                LogExt.w("LocationTrackingService", "Network provider not available")
+            }
+            
+            if (providersRegistered == 0) {
+                LogExt.e("LocationTrackingService", "No location providers could be registered")
+                return@withContext
+            }
+            
+            LogExt.d("LocationTrackingService", "Location updates requested successfully with $providersRegistered providers")
             
         } catch (e: SecurityException) {
             LogExt.e("LocationTrackingService", "Security exception when requesting location updates", e)
@@ -313,6 +374,41 @@ class LocationTrackingService : Service() {
         }
     }
 
+    /**
+     * 处理位置更新（去重逻辑）
+     */
+    private fun handleLocationUpdate(location: Location, provider: String) {
+        val currentTime = System.currentTimeMillis()
+        
+        // 检查位置精度
+        if (location.accuracy > MIN_LOCATION_ACCURACY) {
+            LogExt.d("LocationTrackingService", "Location accuracy too low: ${location.accuracy}m from $provider, ignoring")
+            return
+        }
+        
+        // 检查时间间隔，避免频繁上报
+        if (currentTime - lastUploadTime < MIN_UPLOAD_INTERVAL) {
+            LogExt.d("LocationTrackingService", "Upload interval too short, ignoring location from $provider")
+            return
+        }
+        
+        // 检查位置是否有显著变化
+        lastLocation?.let { last ->
+            val distance = location.distanceTo(last)
+            if (distance < MIN_DISTANCE_CHANGE && location.accuracy >= last.accuracy) {
+                LogExt.d("LocationTrackingService", "Location change too small: ${distance}m from $provider, ignoring")
+                return
+            }
+        }
+        
+        // 更新最后上报时间和位置
+        lastUploadTime = currentTime
+        lastLocation = location
+        
+        LogExt.d("LocationTrackingService", "Accepting location from $provider: ${location.latitude}, ${location.longitude}, accuracy: ${location.accuracy}m")
+        uploadLocation(location)
+    }
+    
     /**
      * 上传位置信息到服务器
      */
@@ -349,22 +445,46 @@ class LocationTrackingService : Service() {
      * 创建前台服务通知
      */
     private fun createNotification(): Notification {
-        val intent = Intent(this, MainActivity::class.java)
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        
+        // 创建停止服务的PendingIntent
+        val stopIntent = Intent(this, LocationTrackingService::class.java).apply {
+            action = ACTION_STOP_TRACKING
+        }
+        val stopPendingIntent = PendingIntent.getService(
+            this,
+            1,
+            stopIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("定位跟踪服务")
-            .setContentText("正在后台跟踪位置信息")
+            .setContentText("正在后台跟踪位置信息，订单ID: $orderId")
             .setSmallIcon(R.mipmap.app_logo_round)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_HIGH) // 提高优先级
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setShowWhen(true)
+            .setWhen(System.currentTimeMillis())
+            .setAutoCancel(false) // 不允许用户取消
+            .setOnlyAlertOnce(true) // 只提醒一次
+            .addAction(
+                 android.R.drawable.ic_menu_close_clear_cancel,
+                 "停止跟踪",
+                 stopPendingIntent
+             )
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
     }
 
