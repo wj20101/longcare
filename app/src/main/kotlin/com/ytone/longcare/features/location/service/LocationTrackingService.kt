@@ -140,6 +140,12 @@ class LocationTrackingService : Service() {
             return
         }
 
+        if (!isLocationEnabled()) {
+            LogExt.e("LocationTrackingService", "Location service is disabled")
+            stopSelf()
+            return
+        }
+
         isTracking = true
         startForeground(NOTIFICATION_ID, createNotification())
 
@@ -190,6 +196,11 @@ class LocationTrackingService : Service() {
      */
     private suspend fun requestLocationUpdates() = withContext(Dispatchers.Main) {
         try {
+            if (!isLocationEnabled()) {
+                LogExt.e("LocationTrackingService", "Location service is disabled, cannot request updates")
+                return@withContext
+            }
+
             locationManager?.let { manager ->
                 locationListener?.let { listener ->
                     val provider = when {
@@ -302,5 +313,14 @@ class LocationTrackingService : Service() {
                     this,
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
+     * 检查位置服务是否启用
+     */
+    private fun isLocationEnabled(): Boolean {
+        return locationManager?.let { manager ->
+            LocationManagerCompat.isLocationEnabled(manager)
+        } ?: false
     }
 }
