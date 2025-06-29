@@ -103,32 +103,13 @@ class CosRepositoryImpl @Inject constructor(
                 }
 
                 configCache.cosConfig?.let { config ->
-                    when {
-                        config.isTemporaryCredentials -> {
-                            SessionQCloudCredentials(
-                                config.tmpSecretId,
-                                config.tmpSecretKey,
-                                config.sessionToken,
-                                config.startTime,
-                                config.effectiveExpiredTime
-                            )
-                        }
-
-                        config.isStaticCredentials -> {
-                            SessionQCloudCredentials(
-                                config.tmpSecretId,
-                                config.tmpSecretKey,
-                                config.sessionToken,
-                                config.startTime,
-                                config.expiredTime
-                            )
-                        }
-
-                        else -> {
-                            Log.w(TAG, "No valid credentials found in config")
-                            null
-                        }
-                    }
+                    SessionQCloudCredentials(
+                        config.tmpSecretId,
+                        config.tmpSecretKey,
+                        config.sessionToken,
+                        config.startTime,
+                        config.expiredTime
+                    )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to get credentials", e)
@@ -225,7 +206,7 @@ class CosRepositoryImpl @Inject constructor(
                     configCache.update(config)
                     Log.d(
                         TAG,
-                        "COS config refreshed successfully, expires at: ${config.effectiveExpiredTime}"
+                        "COS config refreshed successfully, expires at: ${config.expiredTime}"
                     )
                     config
                 } else {
