@@ -87,7 +87,7 @@ fun MainApp(
         is SessionState.LoggedIn -> {
             // 用户已登录，导航到主页
 //            AppNavigation(startDestination = HomeRoute)
-            AppNavigation(startDestination = LocationTrackingRoute(orderId = 10000L))
+            AppNavigation(startDestination = LocationTrackingRoute)
         }
 
         is SessionState.LoggedOut -> {
@@ -186,8 +186,7 @@ fun AppNavigation(startDestination: Any) {
             )
         }
         composable<LocationTrackingRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<LocationTrackingRoute>()
-            LocationTrackingScreen(orderId = route.orderId)
+            LocationTrackingScreen()
         }
     }
 }

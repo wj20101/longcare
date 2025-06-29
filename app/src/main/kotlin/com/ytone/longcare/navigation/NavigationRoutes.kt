@@ -67,4 +67,4 @@ object TxFaceRoute
 
 @Keep
 @Serializable
-data class LocationTrackingRoute(val orderId: Long)
+object LocationTrackingRoute
