@@ -110,6 +110,11 @@ fun NfcSignInScreen(
         is NfcSignInUiState.Initial -> SignInState.IDLE
     }
 
+    val titleRes = when (signInMode) {
+        SignInMode.START_ORDER -> R.string.nfc_sign_in_title
+        SignInMode.END_ORDER -> R.string.nfc_sign_out_title
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -120,7 +125,7 @@ fun NfcSignInScreen(
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
-                            stringResource(R.string.nfc_sign_in_title),
+                            stringResource(titleRes),
                             fontWeight = FontWeight.Bold
                         )
                     },
@@ -167,10 +172,16 @@ fun NfcSignInScreen(
 
                 // 根据状态显示不同的底部按钮
                 when (signInState) {
-                    SignInState.SUCCESS -> ActionButton(
-                        text = stringResource(R.string.common_next_step),
-                        onClick = { navController.navigateToSelectService(orderId) }
-                    )
+                    SignInState.SUCCESS -> {
+                        val buttonText = when (signInMode) {
+                            SignInMode.START_ORDER -> stringResource(R.string.common_next_step)
+                            SignInMode.END_ORDER -> stringResource(R.string.nfc_sign_out_complete_service)
+                        }
+                        ActionButton(
+                            text = buttonText,
+                            onClick = { navController.navigateToSelectService(orderId) }
+                        )
+                    }
 
                     SignInState.FAILURE -> ActionButton(
                         text = stringResource(R.string.nfc_sign_in_retry),
