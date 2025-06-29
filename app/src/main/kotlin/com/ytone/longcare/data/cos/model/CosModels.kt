@@ -32,34 +32,15 @@ data class CosConfig(
     val startTime: Long,
     val requestId: String,
     val expiration: String,
-    val expiredTimeStr: String,
     val fileKeyPre: String
 ) {
-    /**
-     * 判断是否为临时密钥配置
-     */
-    val isTemporaryCredentials: Boolean
-        get() = tmpSecretId.isNotEmpty() && tmpSecretKey.isNotEmpty() && sessionToken.isNotEmpty()
-
-    /**
-     * 判断是否为固定密钥配置
-     */
-    val isStaticCredentials: Boolean
-        get() = tmpSecretId.isNotEmpty() && tmpSecretKey.isNotEmpty()
-
-
-    /**
-     * 获取有效的过期时间（优先使用Long类型的expiredTime）
-     */
-    val effectiveExpiredTime: Long
-        get() = expiredTime
 
     /**
      * 检查密钥是否即将过期（提前5分钟）
      */
     fun isExpiringSoon(thresholdSeconds: Long = 300): Boolean {
         val currentTime = System.currentTimeMillis() / 1000
-        return currentTime >= (effectiveExpiredTime - thresholdSeconds)
+        return currentTime >= (expiredTime - thresholdSeconds)
     }
 }
 
@@ -98,7 +79,6 @@ fun UploadTokenResultModel.toCosConfig(): CosConfig {
         startTime = this.startTime.toLongOrNull() ?: 0L,
         requestId = this.requestId,
         expiration = this.expiration,
-        expiredTimeStr = this.expiredTime,
         expiredTime = this.expiredTime.toLongOrNull() ?: 0L,
         fileKeyPre = this.fileKeyPre
     )
