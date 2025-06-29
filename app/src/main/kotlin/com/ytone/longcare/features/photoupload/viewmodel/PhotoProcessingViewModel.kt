@@ -52,6 +52,10 @@ class PhotoProcessingViewModel @Inject constructor(
     private val _isProcessing = MutableStateFlow(false)
     val isProcessing: StateFlow<Boolean> = _isProcessing.asStateFlow()
 
+    // 是否正在上传到云端的状态
+    private val _isUploading = MutableStateFlow(false)
+    val isUploading: StateFlow<Boolean> = _isUploading.asStateFlow()
+
     fun showToast(string: String) {
         toastHelper.showShort(string)
     }
@@ -186,11 +190,14 @@ class PhotoProcessingViewModel @Inject constructor(
      */
     suspend fun uploadSuccessfulImagesToCloud(): Result<Map<ImageTaskType, List<String>>> {
         return try {
+            _isUploading.value = true
+            
             val successfulTasks = _imageTasks.value.filter { 
                 it.status == ImageTaskStatus.SUCCESS && it.resultUri != null 
             }
             
             if (successfulTasks.isEmpty()) {
+                _isUploading.value = false
                 return Result.success(emptyMap())
             }
             
@@ -210,12 +217,15 @@ class PhotoProcessingViewModel @Inject constructor(
                 if (uploadResult.success && uploadResult.url != null) {
                     uploadResults.getOrPut(task.taskType) { mutableListOf() }.add(uploadResult.url)
                 } else {
+                    _isUploading.value = false
                     return Result.failure(Exception("上传失败: ${uploadResult.errorMessage}"))
                 }
             }
             
+            _isUploading.value = false
             Result.success(uploadResults.toMap())
         } catch (e: Exception) {
+            _isUploading.value = false
             Result.failure(e)
         }
     }

@@ -371,6 +371,7 @@ class CosRepositoryImpl @Inject constructor(
         config: CosConfig
     ): String {
         val fallbackUrl = service.getObjectUrl(config.bucket, config.region, params.key)
+        Log.e("getPublicUrl", "fallbackUrl: $fallbackUrl")
         return try {
             val fileSize = params.fileUri.getFileSize(context)
             val saveFileParam = SaveFileParamModel(
@@ -380,6 +381,7 @@ class CosRepositoryImpl @Inject constructor(
             )
             val response = apiService.getFileUrl(saveFileParam)
             if (response.isSuccess()) {
+                Log.e("getPublicUrl", "response.data: ${response.data}")
                 response.data ?: fallbackUrl
             } else {
                 Log.w(TAG, "Failed to get file URL from API, using fallback")

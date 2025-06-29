@@ -16,8 +16,6 @@ data class UploadTokenResultModel(
     val sessionToken: String = "",
     @param:Json(name = "startTime")
     val startTime: String = "",
-    @param:Json(name = "requestId")
-    val requestId: String = "",
     @param:Json(name = "expiration")
     val expiration: String = "",
     @param:Json(name = "expiredTime")

@@ -30,7 +30,6 @@ data class CosConfig(
     val tmpSecretId: String,
     val tmpSecretKey: String,
     val startTime: Long,
-    val requestId: String,
     val expiration: String,
     val fileKeyPre: String
 ) {
@@ -77,7 +76,6 @@ fun UploadTokenResultModel.toCosConfig(): CosConfig {
         tmpSecretId = this.tmpSecretId,
         tmpSecretKey = this.tmpSecretKey,
         startTime = this.startTime.toLongOrNull() ?: 0L,
-        requestId = this.requestId,
         expiration = this.expiration,
         expiredTime = this.expiredTime.toLongOrNull() ?: 0L,
         fileKeyPre = this.fileKeyPre
