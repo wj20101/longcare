@@ -86,8 +86,7 @@ fun MainApp(
 
         is SessionState.LoggedIn -> {
             // 用户已登录，导航到主页
-//            AppNavigation(startDestination = HomeRoute)
-            AppNavigation(startDestination = LocationTrackingRoute)
+            AppNavigation(startDestination = HomeRoute)
         }
 
         is SessionState.LoggedOut -> {
