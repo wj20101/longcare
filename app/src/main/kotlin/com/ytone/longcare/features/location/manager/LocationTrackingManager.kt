@@ -1,155 +1,67 @@
 package com.ytone.longcare.features.location.manager
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
-import android.location.LocationManager
+import android.content.Intent
 import androidx.core.content.ContextCompat
-import androidx.core.location.LocationManagerCompat
 import com.ytone.longcare.features.location.service.LocationTrackingService
-import com.ytone.longcare.common.utils.LogExt
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 定位跟踪管理器
- * 负责管理定位服务的启动、停止和状态
+ * 定位追踪功能的状态中心和控制器。
+ * 这是一个Hilt单例，作为整个应用中定位状态的唯一数据源。
  */
 @Singleton
 class LocationTrackingManager @Inject constructor(
     @param:ApplicationContext private val context: Context
 ) {
-
     private val _isTracking = MutableStateFlow(false)
-    val isTracking: StateFlow<Boolean> = _isTracking.asStateFlow()
-
-    private val _currentOrderId = MutableStateFlow(0L)
-    val currentOrderId: StateFlow<Long> = _currentOrderId.asStateFlow()
+    /**
+     * UI和ViewModel可以订阅此StateFlow来实时获取追踪状态。
+     */
+    val isTracking = _isTracking.asStateFlow()
 
     /**
-     * 开始定位跟踪
-     * @param orderId 订单ID
-     * @return 是否成功启动
+     * 启动定位追踪服务。
      */
-    fun startTracking(orderId: Long): Boolean {
-        LogExt.d("LocationTrackingManager", "Attempting to start tracking for order: $orderId")
-        
-        if (!hasLocationPermission()) {
-            LogExt.e("LocationTrackingManager", "No location permission")
-            return false
-        }
+    fun startTracking() {
+        // 在这里可以添加业务判断，例如检查是否有关联的订单ID等
+        // 如果当前状态已经是追踪中，则不重复发送命令
+        if (_isTracking.value) return
 
-        if (!isLocationEnabled()) {
-            LogExt.e("LocationTrackingManager", "Location service is disabled")
-            return false
-        }
-
-        if (_isTracking.value) {
-            LogExt.w("LocationTrackingManager", "Already tracking")
-            return true
-        }
-
-        if (orderId <= 0) {
-            LogExt.e("LocationTrackingManager", "Invalid order ID: $orderId")
-            return false
-        }
-
-        try {
-            LogExt.d("LocationTrackingManager", "Starting LocationTrackingService...")
-            LocationTrackingService.startTracking(context, orderId)
-            
-            // 暂时设置状态，但服务可能会因为其他原因失败
-            // 实际状态应该由服务回调确认
-            _isTracking.value = true
-            _currentOrderId.value = orderId
-            LogExt.d("LocationTrackingManager", "Service start command sent for order: $orderId")
-            return true
-        } catch (e: Exception) {
-            LogExt.e("LocationTrackingManager", "Failed to start tracking", e)
-            return false
+        _isTracking.value = true
+        Intent(context, LocationTrackingService::class.java).apply {
+            action = LocationTrackingService.ACTION_START
+        }.also {
+            // 使用ContextCompat.startForegroundService确保在后台也能安全启动服务
+            ContextCompat.startForegroundService(context, it)
         }
     }
 
     /**
-     * 停止定位跟踪
+     * 停止定位追踪服务。
      */
     fun stopTracking() {
-        LogExt.d("LocationTrackingManager", "Attempting to stop tracking")
-        
-        if (!_isTracking.value) {
-            LogExt.w("LocationTrackingManager", "Not tracking")
-            return
-        }
+        // 如果当前状态已经是停止，则不重复发送命令
+        if (!_isTracking.value) return
 
-        try {
-            LocationTrackingService.stopTracking(context)
-            _isTracking.value = false
-            _currentOrderId.value = 0L
-            LogExt.d("LocationTrackingManager", "Stopped tracking")
-        } catch (e: Exception) {
-            LogExt.e("LocationTrackingManager", "Failed to stop tracking", e)
-        }
-    }
-
-    /**
-     * 检查是否有位置权限
-     */
-    fun hasLocationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    /**
-     * 检查位置服务是否启用
-     */
-    fun isLocationEnabled(): Boolean {
-        val locationManager = ContextCompat.getSystemService(context, LocationManager::class.java)
-        return locationManager?.let { manager ->
-            LocationManagerCompat.isLocationEnabled(manager)
-        } ?: false
-    }
-
-    /**
-     * 检查定位是否可用（权限 + 位置服务启用）
-     */
-    fun isLocationAvailable(): Boolean {
-        return hasLocationPermission() && isLocationEnabled()
-    }
-
-    /**
-     * 获取需要的权限列表
-     */
-    fun getRequiredPermissions(): Array<String> {
-        return arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-    }
-
-    /**
-     * 重置状态（用于应用重启后恢复状态）
-     */
-    fun resetState() {
         _isTracking.value = false
-        _currentOrderId.value = 0L
+        Intent(context, LocationTrackingService::class.java).apply {
+            action = LocationTrackingService.ACTION_STOP
+        }.also {
+            context.startService(it)
+        }
     }
-    
+
     /**
-     * 手动更新跟踪状态（由服务回调使用）
+     * 此方法由Service在其生命周期变化时内部调用，以确保状态在任何情况下都保持同步。
+     * 例如，当服务被系统杀死时，能正确地将状态更新为false。
+     * internal修饰符确保了它只能在同一个模块内被调用。
      */
-    fun updateTrackingState(isTracking: Boolean, orderId: Long = 0L) {
-        LogExt.d("LocationTrackingManager", "Updating tracking state: isTracking=$isTracking, orderId=$orderId")
+    internal fun updateTrackingState(isTracking: Boolean) {
         _isTracking.value = isTracking
-        _currentOrderId.value = if (isTracking) orderId else 0L
     }
 }

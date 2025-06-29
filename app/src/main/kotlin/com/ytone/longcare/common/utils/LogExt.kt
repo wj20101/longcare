@@ -218,32 +218,3 @@ fun klogE(message: String, throwable: Throwable? = null) {
 fun klogWtf(message: String, throwable: Throwable? = null) {
     KLogger.wtf(null, message, throwable)
 }
-
-/**
- * LogExt 对象，提供静态日志方法
- */
-object LogExt {
-    fun v(tag: String, message: String, throwable: Throwable? = null) {
-        KLogger.v(tag, message, throwable)
-    }
-
-    fun d(tag: String, message: String, throwable: Throwable? = null) {
-        KLogger.d(tag, message, throwable)
-    }
-
-    fun i(tag: String, message: String, throwable: Throwable? = null) {
-        KLogger.i(tag, message, throwable)
-    }
-
-    fun w(tag: String, message: String, throwable: Throwable? = null) {
-        KLogger.w(tag, message, throwable)
-    }
-
-    fun e(tag: String, message: String, throwable: Throwable? = null) {
-        KLogger.e(tag, message, throwable)
-    }
-
-    fun wtf(tag: String, message: String, throwable: Throwable? = null) {
-        KLogger.wtf(tag, message, throwable)
-    }
-}

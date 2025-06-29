@@ -1,6 +1,9 @@
 package com.ytone.longcare.di
 
+import android.app.NotificationManager
 import android.content.Context
+import android.location.LocationManager
+import androidx.core.content.ContextCompat
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -51,4 +54,23 @@ object AppModule {
         return CoroutineScope(SupervisorJob() + defaultDispatcher)
     }
 
+    /**
+     * 提供 LocationManager 的单例。
+     */
+    @Provides
+    @Singleton
+    fun provideLocationManager(@ApplicationContext context: Context): LocationManager {
+        return ContextCompat.getSystemService(context, LocationManager::class.java)
+            ?: throw IllegalStateException("LocationManager not found")
+    }
+
+    /**
+     * 提供 NotificationManager 的单例。
+     */
+    @Provides
+    @Singleton
+    fun provideNotificationManager(@ApplicationContext context: Context): NotificationManager {
+        return ContextCompat.getSystemService(context, NotificationManager::class.java)
+            ?: throw IllegalStateException("NotificationManager not found")
+    }
 }
