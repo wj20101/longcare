@@ -64,19 +64,30 @@ class LocationTrackingViewModel @Inject constructor(
      * 开始定位跟踪
      */
     fun startTracking(orderId: Long) {
+        LogExt.d("LocationTrackingViewModel", "startTracking called with orderId: $orderId")
+        
         viewModelScope.launch {
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+                LogExt.d("LocationTrackingViewModel", "UI state set to loading")
 
                 // 检查权限
-                if (!locationTrackingManager.hasLocationPermission()) {
+                val hasPermission = locationTrackingManager.hasLocationPermission()
+                LogExt.d("LocationTrackingViewModel", "Has location permission: $hasPermission")
+                
+                if (!hasPermission) {
+                    LogExt.d("LocationTrackingViewModel", "Showing permission dialog")
                     _showPermissionDialog.value = true
                     _uiState.value = _uiState.value.copy(isLoading = false)
                     return@launch
                 }
 
                 // 检查位置服务是否启用
-                if (!locationTrackingManager.isLocationEnabled()) {
+                val isLocationEnabled = locationTrackingManager.isLocationEnabled()
+                LogExt.d("LocationTrackingViewModel", "Is location enabled: $isLocationEnabled")
+                
+                if (!isLocationEnabled) {
+                    LogExt.w("LocationTrackingViewModel", "Location service is disabled")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         errorMessage = "位置服务未启用，请在系统设置中开启位置服务"
@@ -85,8 +96,12 @@ class LocationTrackingViewModel @Inject constructor(
                 }
 
                 // 启动跟踪
+                LogExt.d("LocationTrackingViewModel", "Calling locationTrackingManager.startTracking")
                 val success = locationTrackingManager.startTracking(orderId)
+                LogExt.d("LocationTrackingViewModel", "startTracking result: $success")
+                
                 if (!success) {
+                    LogExt.e("LocationTrackingViewModel", "Failed to start tracking")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         errorMessage = "启动定位跟踪失败，请检查权限和位置服务设置"
@@ -129,10 +144,13 @@ class LocationTrackingViewModel @Inject constructor(
      * 权限请求结果处理
      */
     fun onPermissionResult(granted: Boolean, orderId: Long) {
+        LogExt.d("LocationTrackingViewModel", "Permission result: granted=$granted, orderId=$orderId")
         _showPermissionDialog.value = false
         if (granted) {
+            LogExt.d("LocationTrackingViewModel", "Permission granted, restarting tracking")
             startTracking(orderId)
         } else {
+            LogExt.w("LocationTrackingViewModel", "Permission denied")
             _uiState.value = _uiState.value.copy(
                 errorMessage = "需要位置权限才能开始定位跟踪"
             )
