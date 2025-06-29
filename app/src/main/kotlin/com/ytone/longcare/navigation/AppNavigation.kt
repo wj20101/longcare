@@ -17,6 +17,7 @@ import androidx.navigation.toRoute
 import com.ytone.longcare.MainViewModel
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
+import com.ytone.longcare.features.location.ui.LocationTrackingScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.features.nursingexecution.ui.NursingExecutionScreen
 import com.ytone.longcare.features.nfcsignin.ui.NfcSignInScreen
@@ -85,7 +86,8 @@ fun MainApp(
 
         is SessionState.LoggedIn -> {
             // 用户已登录，导航到主页
-            AppNavigation(startDestination = HomeRoute)
+//            AppNavigation(startDestination = HomeRoute)
+            AppNavigation(startDestination = LocationTrackingRoute(orderId = 10000L))
         }
 
         is SessionState.LoggedOut -> {
@@ -182,6 +184,10 @@ fun AppNavigation(startDestination: Any) {
                 {},
                 {},
             )
+        }
+        composable<LocationTrackingRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<LocationTrackingRoute>()
+            LocationTrackingScreen(orderId = route.orderId)
         }
     }
 }

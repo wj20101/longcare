@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.location.ui
 
-import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -25,7 +24,6 @@ import com.ytone.longcare.theme.LongCareTheme
 /**
  * 定位跟踪主界面
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationTrackingScreen(
     orderId: Long = 1001L, // 默认订单ID，实际使用时应从参数传入
@@ -33,7 +31,6 @@ fun LocationTrackingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showPermissionDialog by viewModel.showPermissionDialog.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
     // 权限请求启动器
     val permissionLauncher = rememberLauncherForActivityResult(

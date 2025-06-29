@@ -3,7 +3,9 @@ package com.ytone.longcare.features.location.manager
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import androidx.core.content.ContextCompat
+import androidx.core.location.LocationManagerCompat
 import com.ytone.longcare.features.location.service.LocationTrackingService
 import com.ytone.longcare.common.utils.LogExt
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -36,6 +38,11 @@ class LocationTrackingManager @Inject constructor(
     fun startTracking(orderId: Long): Boolean {
         if (!hasLocationPermission()) {
             LogExt.e("LocationTrackingManager", "No location permission")
+            return false
+        }
+
+        if (!isLocationEnabled()) {
+            LogExt.e("LocationTrackingManager", "Location service is disabled")
             return false
         }
 
@@ -92,6 +99,23 @@ class LocationTrackingManager @Inject constructor(
                     context,
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
+     * 检查位置服务是否启用
+     */
+    fun isLocationEnabled(): Boolean {
+        val locationManager = ContextCompat.getSystemService(context, LocationManager::class.java)
+        return locationManager?.let { manager ->
+            LocationManagerCompat.isLocationEnabled(manager)
+        } ?: false
+    }
+
+    /**
+     * 检查定位是否可用（权限 + 位置服务启用）
+     */
+    fun isLocationAvailable(): Boolean {
+        return hasLocationPermission() && isLocationEnabled()
     }
 
     /**

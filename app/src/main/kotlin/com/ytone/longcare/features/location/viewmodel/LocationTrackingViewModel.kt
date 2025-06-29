@@ -20,6 +20,8 @@ data class LocationTrackingUiState(
     val isTracking: Boolean = false,
     val currentOrderId: Long = 0L,
     val hasLocationPermission: Boolean = false,
+    val isLocationEnabled: Boolean = false,
+    val isLocationAvailable: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
@@ -44,10 +46,16 @@ class LocationTrackingViewModel @Inject constructor(
             locationTrackingManager.isTracking,
             locationTrackingManager.currentOrderId
         ) { isTracking, orderId ->
+            val hasPermission = locationTrackingManager.hasLocationPermission()
+            val isEnabled = locationTrackingManager.isLocationEnabled()
+            val isAvailable = locationTrackingManager.isLocationAvailable()
+            
             _uiState.value = _uiState.value.copy(
                 isTracking = isTracking,
                 currentOrderId = orderId,
-                hasLocationPermission = locationTrackingManager.hasLocationPermission()
+                hasLocationPermission = hasPermission,
+                isLocationEnabled = isEnabled,
+                isLocationAvailable = isAvailable
             )
         }.launchIn(viewModelScope)
     }
@@ -67,12 +75,21 @@ class LocationTrackingViewModel @Inject constructor(
                     return@launch
                 }
 
+                // 检查位置服务是否启用
+                if (!locationTrackingManager.isLocationEnabled()) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = "位置服务未启用，请在系统设置中开启位置服务"
+                    )
+                    return@launch
+                }
+
                 // 启动跟踪
                 val success = locationTrackingManager.startTracking(orderId)
                 if (!success) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        errorMessage = "启动定位跟踪失败，请检查权限设置"
+                        errorMessage = "启动定位跟踪失败，请检查权限和位置服务设置"
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(isLoading = false)
@@ -123,10 +140,44 @@ class LocationTrackingViewModel @Inject constructor(
     }
 
     /**
-     * 清除错误消息
+     * 检查位置服务状态并返回用户友好的提示信息
+     */
+    fun getLocationStatusMessage(): String? {
+        return when {
+            !locationTrackingManager.hasLocationPermission() -> "需要位置权限才能使用定位功能"
+            !locationTrackingManager.isLocationEnabled() -> "位置服务未启用，请在系统设置中开启"
+            else -> null
+        }
+    }
+
+    /**
+     * 检查是否可以开始定位跟踪
+     */
+    fun canStartTracking(): Boolean {
+        return locationTrackingManager.isLocationAvailable()
+    }
+
+    /**
+     * 清除错误信息
      */
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    /**
+     * 隐藏权限对话框
+     */
+    fun hidePermissionDialog() {
+        _showPermissionDialog.value = false
+    }
+
+    /**
+     * 重置状态
+     */
+    fun resetState() {
+        locationTrackingManager.resetState()
+        _uiState.value = LocationTrackingUiState()
+        _showPermissionDialog.value = false
     }
 
     /**
