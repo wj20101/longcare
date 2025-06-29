@@ -44,6 +44,8 @@ class LocationTrackingService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var trackingJob: Job? = null
 
+    private var currentOrderId: Long = INVALID_ORDER_ID
+
     private val mainThreadExecutor: Executor by lazy { ContextCompat.getMainExecutor(this) }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -56,7 +58,16 @@ class LocationTrackingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> startTracking()
+            ACTION_START -> {
+                val orderId = intent.getLongExtra(EXTRA_ORDER_ID, INVALID_ORDER_ID)
+                if (orderId == INVALID_ORDER_ID) {
+                    logE("启动服务失败：未提供有效的 orderId。")
+                    stopTracking() // 如果没有 orderId，则不启动并立即停止
+                } else {
+                    currentOrderId = orderId
+                    startTracking()
+                }
+            }
             ACTION_STOP -> stopTracking()
         }
         // 使用 START_NOT_STICKY，避免服务在被意外杀死后自动重启，将控制权交由用户或业务逻辑
@@ -160,10 +171,7 @@ class LocationTrackingService : Service() {
 
         // 在IO线程中执行网络请求
         serviceScope.launch {
-            // 这里的 orderId 应该从启动服务的 Intent 中获取或从其他地方获取
-            // 为了演示，我们使用一个固定的值
-            val orderId = 12345L
-            locationRepository.addPosition(orderId, location.latitude, location.longitude)
+            locationRepository.addPosition(currentOrderId, location.latitude, location.longitude)
             logI("位置上报API调用完成。")
         }
     }
@@ -172,6 +180,7 @@ class LocationTrackingService : Service() {
         logI("停止定位上报循环...")
         trackingJob?.cancel()
         trackingJob = null
+        currentOrderId = INVALID_ORDER_ID // 重置 orderId
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -211,6 +220,8 @@ class LocationTrackingService : Service() {
     companion object {
         const val ACTION_START = "ACTION_START_LOCATION_TRACKING"
         const val ACTION_STOP = "ACTION_STOP_LOCATION_TRACKING"
+        const val EXTRA_ORDER_ID = "EXTRA_ORDER_ID"
+        private const val INVALID_ORDER_ID = -1L
         private const val NOTIFICATION_ID = 1
         private const val NOTIFICATION_CHANNEL_ID = "location_tracking_channel"
     }

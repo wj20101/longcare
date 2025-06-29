@@ -20,8 +20,8 @@ class LocationTrackingViewModel @Inject constructor(
      * 当UI层的“开启”按钮被点击时调用。
      * 将操作委托给 Manager。
      */
-    fun onStartClicked() {
-        trackingManager.startTracking()
+    fun onStartClicked(orderId: Long) {
+        trackingManager.startTracking(orderId)
     }
 
     /**
