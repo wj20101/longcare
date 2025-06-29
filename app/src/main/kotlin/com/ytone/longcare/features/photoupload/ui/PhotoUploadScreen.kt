@@ -75,6 +75,7 @@ fun PhotoUploadScreen(
 ) {
     // 收集ViewModel状态
     val imageTasks by viewModel.imageTasks.collectAsState()
+    val isUploading by viewModel.isUploading.collectAsState()
     val scope = rememberCoroutineScope()
 
     // 当前选择的分类
@@ -147,8 +148,9 @@ fun PhotoUploadScreen(
             bottomBar = { // 将按钮放在 bottomBar 中使其固定在底部
                 Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
                     ConfirmAndNextButton(
-                        text = stringResource(R.string.photo_upload_confirm_and_next),
-                        enabled = allCategoriesHaveImages,
+                        text = if (isUploading) "上传中..." else stringResource(R.string.photo_upload_confirm_and_next),
+                        enabled = allCategoriesHaveImages && !isUploading,
+                        isLoading = isUploading,
                         onClick = {
                             // 上传图片到云端后再导航
                             scope.launch {
@@ -213,6 +215,7 @@ fun PhotoUploadScreen(
                     PhotoUploadSection(
                         category = PhotoCategory.BEFORE_CARE,
                         tasks = beforeCareTasks,
+                        isUploading = isUploading,
                         onAddPhoto = {
                             currentCategory = PhotoCategory.BEFORE_CARE
                             launchMultiplePhotoPicker(multiplePhotoPicker)
@@ -227,6 +230,7 @@ fun PhotoUploadScreen(
                     PhotoUploadSection(
                         category = PhotoCategory.AFTER_CARE,
                         tasks = afterCareTasks,
+                        isUploading = isUploading,
                         onAddPhoto = {
                             currentCategory = PhotoCategory.AFTER_CARE
                             launchMultiplePhotoPicker(multiplePhotoPicker)
@@ -245,6 +249,7 @@ fun PhotoUploadScreen(
 fun PhotoUploadSection(
     category: PhotoCategory,
     tasks: List<ImageTask>,
+    isUploading: Boolean,
     onAddPhoto: () -> Unit,
     onRetryTask: (String) -> Unit,
     onRemoveTask: (String) -> Unit,
@@ -276,14 +281,18 @@ fun PhotoUploadSection(
             ) {
                 // 添加照片按钮作为第一个item
                 item {
-                    AddPhotoButton(onClick = onAddPhoto)
+                    AddPhotoButton(
+                        onClick = onAddPhoto,
+                        enabled = !isUploading
+                    )
                 }
                 // 后续的图片任务items
                 items(tasks) { task ->
                     ImageTaskItem(
                         task = task,
                         onRetry = { onRetryTask(task.id) },
-                        onRemove = { onRemoveTask(task.id) }
+                        onRemove = { onRemoveTask(task.id) },
+                        isUploading = isUploading
                     )
                 }
             }
@@ -295,15 +304,21 @@ fun PhotoUploadSection(
 }
 
 @Composable
-fun AddPhotoButton(onClick: () -> Unit) {
-    val lineColor = Color(0xFF2C87FE)
+fun AddPhotoButton(
+    onClick: () -> Unit,
+    enabled: Boolean = true
+) {
+    val lineColor = if (enabled) Color(0xFF2C87FE) else Color.Gray
+    val alpha = if (enabled) 1f else 0.5f
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .border(1.dp, color = lineColor, shape = RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(8.dp),
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(8.dp)
+            .graphicsLayer(alpha = alpha),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -326,7 +341,8 @@ fun AddPhotoButton(onClick: () -> Unit) {
 fun ImageTaskItem(
     task: ImageTask,
     onRetry: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    isUploading: Boolean = false
 ) {
     var showPreview by remember { mutableStateOf(false) }
     Box(
@@ -363,22 +379,24 @@ fun ImageTaskItem(
                     )
                 }
                 // 删除按钮
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 2.dp, end = 2.dp)
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.7f))
-                        .clickable(onClick = onRemove),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "操作图标",
-                        modifier = Modifier.size(12.dp),
-                        tint = Color.White
-                    )
+                if (!isUploading) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 2.dp, end = 2.dp)
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.7f))
+                            .clickable(onClick = onRemove),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "操作图标",
+                            modifier = Modifier.size(12.dp),
+                            tint = Color.White
+                        )
+                    }
                 }
             }
 
@@ -407,22 +425,24 @@ fun ImageTaskItem(
                     )
                 }
                 // 删除按钮
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 2.dp, end = 2.dp)
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.7f))
-                        .clickable(onClick = onRemove),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "操作图标",
-                        modifier = Modifier.size(12.dp),
-                        tint = Color.White
-                    )
+                if (!isUploading) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 2.dp, end = 2.dp)
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.7f))
+                            .clickable(onClick = onRemove),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "操作图标",
+                            modifier = Modifier.size(12.dp),
+                            tint = Color.White
+                        )
+                    }
                 }
             }
         }
@@ -440,7 +460,12 @@ fun ImageTaskItem(
 }
 
 @Composable
-fun ConfirmAndNextButton(text: String, enabled: Boolean = true, onClick: () -> Unit) {
+fun ConfirmAndNextButton(
+    text: String, 
+    enabled: Boolean = true, 
+    isLoading: Boolean = false,
+    onClick: () -> Unit
+) {
     val buttonGradient = if (enabled) {
         Brush.horizontalGradient(
             colors = listOf(Color(0xFF5CA0FF), Color(0xFF2A8CFF))
@@ -465,7 +490,22 @@ fun ConfirmAndNextButton(text: String, enabled: Boolean = true, onClick: () -> U
             disabledContentColor = Color.White.copy(alpha = 0.6f)
         )
     ) {
-        Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        if (isLoading) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        } else {
+            Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
@@ -577,6 +617,7 @@ fun PhotoUploadSectionPreview() {
     PhotoUploadSection(
         category = PhotoCategory.BEFORE_CARE,
         tasks = tasks,
+        isUploading = false,
         onAddPhoto = {},
         onRetryTask = {},
         onRemoveTask = {})
@@ -603,5 +644,9 @@ fun ImageTaskItemPreview() {
 @Preview
 @Composable
 fun ConfirmAndNextButtonPreview() {
-    ConfirmAndNextButton(text = "Confirm & Next", enabled = true, onClick = {})
+    Column(modifier = Modifier.padding(16.dp)) {
+        ConfirmAndNextButton(text = "Confirm & Next", enabled = true, isLoading = false, onClick = {})
+        Spacer(modifier = Modifier.height(16.dp))
+        ConfirmAndNextButton(text = "上传中...", enabled = false, isLoading = true, onClick = {})
+    }
 }
