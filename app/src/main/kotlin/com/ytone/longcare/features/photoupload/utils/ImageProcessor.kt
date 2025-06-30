@@ -9,14 +9,14 @@ import android.text.TextPaint
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.scale
 import androidx.core.net.toUri
-import com.ytone.longcare.R // 确保 R 文件被正确导入
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import androidx.core.graphics.withTranslation
 import androidx.core.graphics.createBitmap
+import androidx.core.graphics.withTranslation
 
 /**
  * 图片处理工具类
@@ -28,22 +28,18 @@ class ImageProcessor(private val context: Context) {
         private const val MAX_IMAGE_SIZE = 1920 // 最大图片尺寸
     }
 
-    suspend fun processImage(
-        originalUri: Uri,
-        watermarkLines: List<String>
-    ): Result<Uri> = withContext(Dispatchers.IO) {
+    suspend fun processImage(originalUri: Uri, watermarkLines: List<String>): Result<Uri> = withContext(Dispatchers.IO) {
         try {
             val originalBitmap = loadBitmapFromUri(originalUri)
                 ?: return@withContext Result.failure(Exception("无法读取图片"))
             val scaledBitmap = scaleImageIfNeeded(originalBitmap)
-            val watermarkedBitmap = addWatermark(scaledBitmap, watermarkLines) // 调用新的 addWatermark
+            val watermarkedBitmap = addWatermark(scaledBitmap, watermarkLines)
             val savedUri = saveBitmapToCache(watermarkedBitmap)
 
             if (originalBitmap != scaledBitmap) {
                 originalBitmap.recycle()
             }
             scaledBitmap.recycle()
-            // 注意：addWatermark 现在返回的是一个新的 Bitmap，也需要回收
             watermarkedBitmap.recycle()
 
             Result.success(savedUri)
@@ -118,80 +114,90 @@ class ImageProcessor(private val context: Context) {
         return bitmap
     }
 
-    /**
-     * 为图片添加一个复杂的水印，实现效果图样式。
-     *
-     * @param bitmap 要添加水印的原始图片。
-     * @param watermarkLines 水印内容的字符串列表。
-     * @return 添加了水印的新 Bitmap 对象。
-     */
     private fun addWatermark(bitmap: Bitmap, watermarkLines: List<String>): Bitmap {
         val result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(result)
         val imageWidth = result.width
         val imageHeight = result.height
 
-        // --- 1. 定义绘制参数 ---
         val logoBitmap = drawableToBitmap(R.mipmap.app_logo_round)
-        val lineIndicator = ContextCompat.getDrawable(context, R.drawable.watermark_indicator_line)
-
         val textSize = 56f
         val textColor = Color.WHITE
         val horizontalPadding = 30f
         val bottomPadding = 30f
         val logoTextSpacing = 25f
-        val lineSpacingMultiplier = 1.3f
-        val lineIndicatorWidth = 8f
-        val lineIndicatorTextSpacing = 20f
+        val lineSpacing = 15f
 
-        // --- 2. 创建 Paint 和 TextPaint ---
         val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = textColor
             this.textSize = textSize
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-            // 为了让文字在任何背景下都清晰可见，添加一层细微的阴影
             setShadowLayer(5f, 2f, 2f, Color.BLACK)
         }
 
-        // --- 3. 准备文本并计算布局 ---
-        val fullText = watermarkLines.joinToString("\n")
-        val textMaxWidth = (imageWidth * 0.6f - horizontalPadding - lineIndicatorWidth - lineIndicatorTextSpacing).toInt()
+        val textMaxWidth = (imageWidth * 0.9f - horizontalPadding).toInt()
 
-        val textLayout = StaticLayout.Builder.obtain(fullText, 0, fullText.length, textPaint, textMaxWidth)
-            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .setLineSpacing(0f, lineSpacingMultiplier)
-            .setIncludePad(false)
-            .build()
+        val layouts = watermarkLines.map { line ->
+            createIndentedLayout(line, textPaint, textMaxWidth)
+        }
 
-        // --- 4. 计算所有元素的尺寸和位置 ---
-        val logoHeight = logoBitmap?.height ?: 0
-        val textHeight = textLayout.height
-        val contentTotalHeight = logoHeight + logoTextSpacing + textHeight
+        var totalContentHeight = layouts.sumOf { it.height }.toFloat()
+        if (layouts.isNotEmpty()) {
+            totalContentHeight += (layouts.size - 1) * lineSpacing
+        }
+        if (logoBitmap != null) {
+            totalContentHeight += logoBitmap.height + logoTextSpacing
+        }
 
-        val logoX = horizontalPadding
-        val logoY = imageHeight - bottomPadding - contentTotalHeight
+        var currentY = imageHeight - bottomPadding - totalContentHeight
 
-        val lineIndicatorTop = logoY + logoHeight + logoTextSpacing
-        val lineIndicatorBottom = lineIndicatorTop + textHeight
-        lineIndicator?.setBounds(
-            horizontalPadding.toInt(),
-            lineIndicatorTop.toInt(),
-            (horizontalPadding + lineIndicatorWidth).toInt(),
-            lineIndicatorBottom.toInt()
-        )
+        logoBitmap?.let {
+            canvas.drawBitmap(it, horizontalPadding, currentY, null)
+            currentY += it.height + logoTextSpacing
+        }
 
-        val textX = horizontalPadding + lineIndicatorWidth + lineIndicatorTextSpacing
-        val textY = lineIndicatorTop
+        layouts.forEach { layout ->
+            canvas.withTranslation(horizontalPadding, currentY) {
+                layout.draw(this)
+            }
 
-        // --- 5. 按顺序绘制 ---
-
-        logoBitmap?.let { canvas.drawBitmap(it, logoX, logoY, null) }
-        lineIndicator?.draw(canvas)
-
-        canvas.withTranslation(textX, textY) {
-            textLayout.draw(this)
+            currentY += layout.height + lineSpacing
         }
 
         return result
+    }
+
+    /**
+     * 创建带有悬挂缩进的 StaticLayout，以实现冒号后对齐。
+     */
+    private fun createIndentedLayout(text: String, paint: TextPaint, maxWidth: Int): StaticLayout {
+        // 查找第一个冒号的位置
+        val colonIndex = text.indexOf(':')
+
+        // 如果没有冒号，或者冒号是最后一个字符，则不进行特殊缩进处理
+        if (colonIndex < 0 || colonIndex >= text.length - 1) {
+            return StaticLayout.Builder.obtain(text, 0, text.length, paint, maxWidth).build()
+        }
+
+        // ==========================================================
+        // 核心修正：测量标签+冒号+空格的宽度作为缩进量
+        // ==========================================================
+        // 我们要测量的部分是冒号以及它后面的所有空格，直到第一个非空格字符
+        var contentStartIndex = colonIndex + 1
+        while (contentStartIndex < text.length && text[contentStartIndex] == ' ') {
+            contentStartIndex++
+        }
+        // "labelPart" 现在是 "地址: "
+        val labelPart = text.substring(0, contentStartIndex)
+        val indentation = paint.measureText(labelPart)
+
+        return StaticLayout.Builder.obtain(text, 0, text.length, paint, maxWidth)
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setLineSpacing(0f, 1.0f) // 默认行间距
+            .setIncludePad(false)
+            // 关键：设置缩进
+            // 第一行缩进为0，后续所有行都缩进 "labelPart" 的宽度
+            .setIndents(intArrayOf(0, indentation.toInt()), null)
+            .build()
     }
 }

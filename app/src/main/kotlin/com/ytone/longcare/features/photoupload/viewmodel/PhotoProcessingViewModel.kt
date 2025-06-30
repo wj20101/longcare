@@ -98,7 +98,7 @@ class PhotoProcessingViewModel @Inject constructor(
             ImageTaskType.BEFORE_CARE -> "护理前 - 长护险服务"
             ImageTaskType.AFTER_CARE -> "护理后 - 长护险服务"
         }
-        return listOf(watermarkTitle, "上传时间: $currentTime", "地址: $address")
+        return listOf(watermarkTitle, "上传时间: $currentTime", "地    址: $address")
     }
 
     /**
