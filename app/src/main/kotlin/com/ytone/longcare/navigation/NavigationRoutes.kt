@@ -2,6 +2,7 @@ package com.ytone.longcare.navigation
 
 import androidx.annotation.Keep
 import kotlinx.serialization.Serializable
+import okhttp3.Address
 
 /**
  * 类型安全的导航路由定义
@@ -50,7 +51,7 @@ data class SelectServiceRoute(val orderId: Long)
 @Keep
 @Serializable
 data class PhotoUploadRoute(
-    val orderId: Long, val projectIds: List<Int> = emptyList()
+    val orderId: Long, val address: String, val projectIds: List<Int> = emptyList()
 )
 
 @Keep
