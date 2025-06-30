@@ -7,7 +7,9 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
+import androidx.core.graphics.withTranslation
 import androidx.core.net.toUri
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
@@ -15,8 +17,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import androidx.core.graphics.createBitmap
-import androidx.core.graphics.withTranslation
 
 /**
  * 图片处理工具类
@@ -25,29 +25,42 @@ import androidx.core.graphics.withTranslation
 class ImageProcessor(private val context: Context) {
 
     companion object {
-        private const val MAX_IMAGE_SIZE = 1920 // 最大图片尺寸
+        private const val MAX_IMAGE_SIZE = 1920 // 图片最大尺寸，防止OOM
     }
 
-    suspend fun processImage(originalUri: Uri, watermarkLines: List<String>): Result<Uri> = withContext(Dispatchers.IO) {
-        try {
-            val originalBitmap = loadBitmapFromUri(originalUri)
-                ?: return@withContext Result.failure(Exception("无法读取图片"))
-            val scaledBitmap = scaleImageIfNeeded(originalBitmap)
-            val watermarkedBitmap = addWatermark(scaledBitmap, watermarkLines)
-            val savedUri = saveBitmapToCache(watermarkedBitmap)
+    /**
+     * 核心处理流程：加载、缩放、添加水印、保存。
+     * 使用 try...finally 确保所有中间创建的 Bitmap 都被正确回收。
+     */
+    suspend fun processImage(originalUri: Uri, watermarkLines: List<String>): Result<Uri> =
+        withContext(Dispatchers.IO) {
+            var originalBitmap: Bitmap? = null
+            var scaledBitmap: Bitmap? = null
+            var watermarkedBitmap: Bitmap? = null
 
-            if (originalBitmap != scaledBitmap) {
-                originalBitmap.recycle()
+            try {
+                originalBitmap = loadBitmapFromUri(originalUri)
+                    ?: return@withContext Result.failure(Exception("无法从URI加载图片: $originalUri"))
+
+                scaledBitmap = scaleImageIfNeeded(originalBitmap)
+                watermarkedBitmap = addWatermark(scaledBitmap, watermarkLines)
+
+                val savedUri = saveBitmapToCache(watermarkedBitmap)
+                Result.success(savedUri)
+
+            } catch (e: Exception) {
+                logE(message = "processImage 失败, uri is $originalUri", throwable = e)
+                Result.failure(e)
+            } finally {
+                // 在 finally 块中手动回收所有创建的 Bitmap，确保内存安全
+                originalBitmap?.recycle()
+                // 如果 scaledBitmap 和 originalBitmap 是同一个对象，则不重复回收
+                if (scaledBitmap != originalBitmap) {
+                    scaledBitmap?.recycle()
+                }
+                watermarkedBitmap?.recycle()
             }
-            scaledBitmap.recycle()
-            watermarkedBitmap.recycle()
-
-            Result.success(savedUri)
-        } catch (e: Exception) {
-            logE(message = "processImage fail,uri is $originalUri", throwable = e)
-            Result.failure(e)
         }
-    }
 
     private fun loadBitmapFromUri(uri: Uri): Bitmap? {
         return try {
@@ -114,77 +127,83 @@ class ImageProcessor(private val context: Context) {
         return bitmap
     }
 
+    /**
+     * 为图片添加完整的水印效果。
+     */
     private fun addWatermark(bitmap: Bitmap, watermarkLines: List<String>): Bitmap {
         val result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(result)
         val imageWidth = result.width
         val imageHeight = result.height
 
-        // --- 1. 定义绘制参数 ---
-        val logoBitmap = drawableToBitmap(R.mipmap.app_logo_round)
-        val lineIndicator = ContextCompat.getDrawable(context, R.drawable.watermark_indicator_line)
-        val textSize = 56f
-        val textColor = Color.WHITE
-        val horizontalPadding = 30f
-        val bottomPadding = 30f
-        val logoTextSpacing = 25f
-        val lineSpacing = 15f
-        val lineIndicatorWidth = 8f
-        val lineIndicatorTextSpacing = 20f
+        var logoBitmap: Bitmap? = null
+        try {
+            logoBitmap = drawableToBitmap(R.mipmap.app_logo_round)
+            val lineIndicator =
+                ContextCompat.getDrawable(context, R.drawable.watermark_indicator_line)
 
-        // --- 2. 创建 Paint 对象 ---
-        val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = textColor
-            this.textSize = textSize
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-            setShadowLayer(5f, 2f, 2f, Color.BLACK)
-        }
+            val textSize = 56f
+            val textColor = Color.WHITE
+            val horizontalPadding = 30f
+            val bottomPadding = 30f
+            val logoTextSpacing = 25f
+            val lineSpacing = 15f
+            val lineIndicatorWidth = 8f
+            val lineIndicatorTextSpacing = 20f
 
-        // --- 3. 准备文本并计算布局 ---
-
-        // 文本的最大宽度现在严格等于图片宽度的60%
-        val textMaxWidth = (imageWidth * 0.6f).toInt()
-
-        val layouts = watermarkLines.map { line ->
-            createIndentedLayout(line, textPaint, textMaxWidth)
-        }
-
-        // --- 4. 计算所有元素的尺寸和位置 ---
-        var totalContentHeight = layouts.sumOf { it.height }.toFloat()
-        if (layouts.isNotEmpty()) {
-            totalContentHeight += (layouts.size - 1) * lineSpacing
-        }
-        if (logoBitmap != null) {
-            totalContentHeight += logoBitmap.height + logoTextSpacing
-        }
-
-        var currentY = imageHeight - bottomPadding - totalContentHeight
-
-        // 绘制 Logo
-        logoBitmap?.let {
-            canvas.drawBitmap(it, horizontalPadding, currentY, null)
-            currentY += it.height + logoTextSpacing
-        }
-
-        // [新增] 计算并绘制左侧装饰线
-        val lineIndicatorTop = currentY
-        val lineIndicatorBottom = currentY + layouts.sumOf { it.height }.toFloat() + (layouts.size - 1) * lineSpacing
-        lineIndicator?.setBounds(
-            horizontalPadding.toInt(),
-            lineIndicatorTop.toInt(),
-            (horizontalPadding + lineIndicatorWidth).toInt(),
-            lineIndicatorBottom.toInt()
-        )
-        lineIndicator?.draw(canvas)
-
-        // --- 5. 逐个绘制文本布局 ---
-        layouts.forEach { layout ->
-            // 文本的 X 坐标需要考虑装饰线和它们之间的间距
-            val textX = horizontalPadding + lineIndicatorWidth + lineIndicatorTextSpacing
-            canvas.withTranslation(textX, currentY) {
-                layout.draw(this)
+            val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = textColor
+                this.textSize = textSize
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+                setShadowLayer(5f, 2f, 2f, Color.BLACK)
             }
-            currentY += layout.height + lineSpacing
+
+            // 文本最大宽度现在严格等于图片宽度的60%
+            val textMaxWidth = (imageWidth * 0.6f).toInt()
+
+            val layouts = watermarkLines.map { line ->
+                createIndentedLayout(line, textPaint, textMaxWidth)
+            }
+
+            var totalContentHeight = layouts.sumOf { it.height }.toFloat()
+            if (layouts.isNotEmpty()) {
+                totalContentHeight += (layouts.size - 1) * lineSpacing
+            }
+            if (logoBitmap != null) {
+                totalContentHeight += logoBitmap.height + logoTextSpacing
+            }
+
+            var currentY = imageHeight - bottomPadding - totalContentHeight
+
+            logoBitmap?.let {
+                canvas.drawBitmap(it, horizontalPadding, currentY, null)
+                currentY += it.height + logoTextSpacing
+            }
+
+            // 绘制左侧装饰线
+            val lineIndicatorTop = currentY
+            val lineIndicatorBottom =
+                currentY + layouts.sumOf { it.height }.toFloat() + (layouts.size - 1) * lineSpacing
+            lineIndicator?.setBounds(
+                horizontalPadding.toInt(),
+                lineIndicatorTop.toInt(),
+                (horizontalPadding + lineIndicatorWidth).toInt(),
+                lineIndicatorBottom.toInt()
+            )
+            lineIndicator?.draw(canvas)
+
+            // 逐个绘制文本布局
+            layouts.forEach { layout ->
+                val textX = horizontalPadding + lineIndicatorWidth + lineIndicatorTextSpacing
+                canvas.withTranslation(textX, currentY) {
+                    layout.draw(this)
+                }
+                currentY += layout.height + lineSpacing
+            }
+
+        } finally {
+            // 回收在函数内部创建的 logoBitmap
+            logoBitmap?.recycle()
         }
 
         return result
