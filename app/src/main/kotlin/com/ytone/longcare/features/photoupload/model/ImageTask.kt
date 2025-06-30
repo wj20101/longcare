@@ -9,7 +9,7 @@ data class ImageTask(
     val id: String,
     val originalUri: Uri,
     val taskType: ImageTaskType,
-    val watermarkContent: String,
+    val watermarkLines: List<String>,
     val resultUri: Uri? = null,
     val status: ImageTaskStatus = ImageTaskStatus.PROCESSING,
     val errorMessage: String? = null

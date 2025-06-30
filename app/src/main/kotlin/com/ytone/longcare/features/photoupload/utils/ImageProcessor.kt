@@ -31,7 +31,7 @@ class ImageProcessor(private val context: Context) {
      */
     suspend fun processImage(
         originalUri: Uri,
-        watermarkContent: String = "长护险护理服务"
+        watermarkLines: List<String>
     ): Result<Uri> = withContext(Dispatchers.IO) {
         try {
             // 读取原始图片
@@ -42,7 +42,7 @@ class ImageProcessor(private val context: Context) {
             val scaledBitmap = scaleImageIfNeeded(originalBitmap)
 
             // 添加水印
-            val watermarkedBitmap = addWatermark(scaledBitmap, watermarkContent)
+            val watermarkedBitmap = addWatermark(scaledBitmap, watermarkLines)
 
             // 保存到缓存目录
             val savedUri = saveBitmapToCache(watermarkedBitmap)
@@ -139,7 +139,7 @@ class ImageProcessor(private val context: Context) {
     /**
      * 添加水印
      */
-    private fun addWatermark(bitmap: Bitmap, watermarkContent: String): Bitmap {
+    private fun addWatermark(bitmap: Bitmap, watermarkLines: List<String>): Bitmap {
         val result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(result)
 
@@ -154,9 +154,6 @@ class ImageProcessor(private val context: Context) {
             style = Paint.Style.FILL
             setShadowLayer(4f, 2f, 2f, Color.BLACK) // 添加阴影
         }
-
-        // 水印文字内容
-        val watermarkLines = getWatermarkText(watermarkContent)
 
         // 计算文字位置（左下角）
         val lineHeight = paint.fontMetrics.let { it.bottom - it.top }
@@ -180,20 +177,6 @@ class ImageProcessor(private val context: Context) {
         val imageSize = minOf(imageWidth, imageHeight)
         val textSize = (imageSize * 0.03f).coerceAtLeast(MIN_TEXT_SIZE)
         return minOf(textSize, BASE_TEXT_SIZE)
-    }
-
-    /**
-     * 获取水印文字内容
-     */
-    private fun getWatermarkText(watermarkContent: String): List<String> {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        val currentTime = dateFormat.format(Date())
-
-        return listOf(
-            watermarkContent,
-            "拍摄时间：$currentTime",
-            "GPS定位：已获取"
-        )
     }
 
     /**

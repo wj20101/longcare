@@ -78,7 +78,7 @@ data class UserInfoM(
      * 最后服务时间
      */
     @param:Json(name = "lastServiceTime")
-    val lastServiceTime: String = "", // Assuming date-time is represented as String
+    val lastServiceTime: String = "",
 
     /**
      * 本月已服务时间
@@ -120,5 +120,5 @@ data class ServiceProjectM(
      * 最后服务的时间
      */
     @param:Json(name = "lastServiceTime")
-    val lastServiceTime: String = "" // Assuming date-time is represented as String
+    val lastServiceTime: String = ""
 )

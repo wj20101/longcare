@@ -70,6 +70,7 @@ enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
 fun PhotoUploadScreen(
     navController: NavController,
     orderId: Long,
+    orderAddress: String,
     projectIds: List<Int>,
     viewModel: PhotoProcessingViewModel = hiltViewModel()
 ) {
@@ -95,11 +96,7 @@ fun PhotoUploadScreen(
                         PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
                         PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
                     }
-                    val watermarkContent = when (category) {
-                        PhotoCategory.BEFORE_CARE -> "护理前 - 长护险服务"
-                        PhotoCategory.AFTER_CARE -> "护理后 - 长护险服务"
-                    }
-                    viewModel.addImagesToProcess(uris, taskType, watermarkContent)
+                    viewModel.addImagesToProcess(uris, taskType, orderAddress)
                 }
             }
         }
@@ -178,14 +175,14 @@ fun PhotoUploadScreen(
                                             )
                                         },
                                         onFailure = { error ->
-                                             // 显示上传失败的错误信息
-                                             viewModel.showToast("图片上传失败: ${error.message}")
-                                         }
-                                     )
-                                 } catch (e: Exception) {
-                                     // 处理异常情况
-                                     viewModel.showToast("上传过程中发生错误: ${e.message}")
-                                 }
+                                            // 显示上传失败的错误信息
+                                            viewModel.showToast("图片上传失败: ${error.message}")
+                                        }
+                                    )
+                                } catch (e: Exception) {
+                                    // 处理异常情况
+                                    viewModel.showToast("上传过程中发生错误: ${e.message}")
+                                }
                             }
                         }
                     )
@@ -310,7 +307,7 @@ fun AddPhotoButton(
 ) {
     val lineColor = if (enabled) Color(0xFF2C87FE) else Color.Gray
     val alpha = if (enabled) 1f else 0.5f
-    
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -461,8 +458,8 @@ fun ImageTaskItem(
 
 @Composable
 fun ConfirmAndNextButton(
-    text: String, 
-    enabled: Boolean = true, 
+    text: String,
+    enabled: Boolean = true,
     isLoading: Boolean = false,
     onClick: () -> Unit
 ) {
@@ -594,7 +591,7 @@ fun PhotoUploadSectionPreview() {
             id = "1",
             originalUri = Uri.EMPTY,
             taskType = ImageTaskType.BEFORE_CARE,
-            watermarkContent = "Watermark 1",
+            watermarkLines = listOf("Watermark"),
             status = ImageTaskStatus.SUCCESS,
             resultUri = "content://media/picker/0/com.android.providers.media.photopicker/media/1000000033".toUri()
         ),
@@ -602,14 +599,14 @@ fun PhotoUploadSectionPreview() {
             id = "2",
             originalUri = Uri.EMPTY,
             taskType = ImageTaskType.BEFORE_CARE,
-            watermarkContent = "Watermark 2",
+            watermarkLines = listOf("Watermark"),
             status = ImageTaskStatus.PROCESSING
         ),
         ImageTask(
             id = "3",
             originalUri = Uri.EMPTY,
             taskType = ImageTaskType.BEFORE_CARE,
-            watermarkContent = "Watermark 3",
+            watermarkLines = listOf("Watermark"),
             status = ImageTaskStatus.FAILED,
             errorMessage = "Upload failed"
         )
@@ -636,7 +633,7 @@ fun ImageTaskItemPreview() {
         id = "1",
         originalUri = Uri.EMPTY,
         taskType = ImageTaskType.BEFORE_CARE,
-        watermarkContent = "Watermark"
+        watermarkLines = listOf("Watermark")
     )
     ImageTaskItem(task = task, onRetry = {}, onRemove = {})
 }
@@ -645,7 +642,11 @@ fun ImageTaskItemPreview() {
 @Composable
 fun ConfirmAndNextButtonPreview() {
     Column(modifier = Modifier.padding(16.dp)) {
-        ConfirmAndNextButton(text = "Confirm & Next", enabled = true, isLoading = false, onClick = {})
+        ConfirmAndNextButton(
+            text = "Confirm & Next",
+            enabled = true,
+            isLoading = false,
+            onClick = {})
         Spacer(modifier = Modifier.height(16.dp))
         ConfirmAndNextButton(text = "上传中...", enabled = false, isLoading = true, onClick = {})
     }

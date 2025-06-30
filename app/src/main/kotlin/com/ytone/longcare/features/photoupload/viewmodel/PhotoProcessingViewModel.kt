@@ -6,9 +6,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.CosUtils
-import com.ytone.longcare.common.utils.getFileName
-import com.ytone.longcare.common.utils.getFileExtension
-import com.ytone.longcare.data.cos.model.UploadParams
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
@@ -21,7 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.io.File
+import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 
@@ -63,20 +60,21 @@ class PhotoProcessingViewModel @Inject constructor(
     /**
      * 添加单张图片到处理队列
      */
-    fun addImageToProcess(uri: Uri, taskType: ImageTaskType, watermarkContent: String) {
-        addImagesToProcess(listOf(uri), taskType, watermarkContent)
+    fun addImageToProcess(uri: Uri, taskType: ImageTaskType, address: String) {
+        addImagesToProcess(listOf(uri), taskType, address)
     }
 
     /**
      * 添加多张图片到处理队列
      */
-    fun addImagesToProcess(uris: List<Uri>, taskType: ImageTaskType, watermarkContent: String) {
+    fun addImagesToProcess(uris: List<Uri>, taskType: ImageTaskType, address: String) {
+        val watermarkLines = generateWatermarkLines(taskType, address)
         val newTasks = uris.map { uri ->
             ImageTask(
                 id = UUID.randomUUID().toString(),
                 originalUri = uri,
                 taskType = taskType,
-                watermarkContent = watermarkContent,
+                watermarkLines = watermarkLines,
                 status = ImageTaskStatus.PROCESSING
             )
         }
@@ -91,6 +89,19 @@ class PhotoProcessingViewModel @Inject constructor(
     }
 
     /**
+     * 生成水印内容
+     */
+    private fun generateWatermarkLines(taskType: ImageTaskType, address: String): List<String> {
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val currentTime = dateFormat.format(Date())
+        val watermarkTitle = when (taskType) {
+            ImageTaskType.BEFORE_CARE -> "护理前 - 长护险服务"
+            ImageTaskType.AFTER_CARE -> "护理后 - 长护险服务"
+        }
+        return listOf(watermarkTitle, "上传时间: $currentTime", "地址: $address")
+    }
+
+    /**
      * 处理单个图片任务
      */
     private fun processImageTask(task: ImageTask) {
@@ -98,7 +109,7 @@ class PhotoProcessingViewModel @Inject constructor(
             _isProcessing.value = true
 
             try {
-                val result = imageProcessor.processImage(task.originalUri, task.watermarkContent)
+                val result = imageProcessor.processImage(task.originalUri, task.watermarkLines)
 
                 if (result.isSuccess) {
                     // 处理成功
@@ -191,29 +202,29 @@ class PhotoProcessingViewModel @Inject constructor(
     suspend fun uploadSuccessfulImagesToCloud(): Result<Map<ImageTaskType, List<String>>> {
         return try {
             _isUploading.value = true
-            
-            val successfulTasks = _imageTasks.value.filter { 
-                it.status == ImageTaskStatus.SUCCESS && it.resultUri != null 
+
+            val successfulTasks = _imageTasks.value.filter {
+                it.status == ImageTaskStatus.SUCCESS && it.resultUri != null
             }
-            
+
             if (successfulTasks.isEmpty()) {
                 _isUploading.value = false
                 return Result.success(emptyMap())
             }
-            
+
             val uploadResults = mutableMapOf<ImageTaskType, MutableList<String>>()
-            
+
             for (task in successfulTasks) {
                 val uri = task.resultUri ?: continue
-                
+
                 val uploadParams = CosUtils.createUploadParams(
                     context = applicationContext,
                     fileUri = uri,
                     folderType = DEFAULT_FOLDER_TYPE
                 )
-                
+
                 val uploadResult = cosRepository.uploadFile(uploadParams)
-                
+
                 if (uploadResult.success && uploadResult.url != null) {
                     uploadResults.getOrPut(task.taskType) { mutableListOf() }.add(uploadResult.url)
                 } else {
@@ -221,7 +232,7 @@ class PhotoProcessingViewModel @Inject constructor(
                     return Result.failure(Exception("上传失败: ${uploadResult.errorMessage}"))
                 }
             }
-            
+
             _isUploading.value = false
             Result.success(uploadResults.toMap())
         } catch (e: Exception) {
@@ -229,7 +240,6 @@ class PhotoProcessingViewModel @Inject constructor(
             Result.failure(e)
         }
     }
-    
 
 
     /**

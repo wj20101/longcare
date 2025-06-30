@@ -53,6 +53,7 @@ fun SelectServiceScreen(
     
     // 根据API返回的数据转换为UI需要的ServiceItem格式
     val serviceItems = remember { mutableStateListOf<ServiceItem>() }
+    var orderAddress by remember { mutableStateOf("") }
     
     // 当uiState变化时更新serviceItems
     LaunchedEffect(uiState) {
@@ -69,6 +70,7 @@ fun SelectServiceScreen(
                         )
                     }
                 )
+                orderAddress = currentState.orderInfo.userInfo.address
             }
             else -> {
                 serviceItems.clear()
@@ -120,7 +122,9 @@ fun SelectServiceScreen(
                 when (val currentState = uiState) {
                     is OrderDetailUiState.Loading -> {
                         Box(
-                            modifier = Modifier.fillMaxWidth().height(200.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(color = Color.White)
@@ -128,7 +132,9 @@ fun SelectServiceScreen(
                     }
                     is OrderDetailUiState.Error -> {
                         Box(
-                            modifier = Modifier.fillMaxWidth().height(200.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -151,7 +157,9 @@ fun SelectServiceScreen(
                     is OrderDetailUiState.Initial -> {
                         // 初始状态，显示空白或占位符
                         Box(
-                            modifier = Modifier.fillMaxWidth().height(200.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -171,7 +179,11 @@ fun SelectServiceScreen(
                     enabled = serviceItems.any { it.isSelected },
                     onClick = {
                         val selectedProjectIds = serviceItems.filter { it.isSelected }.map { it.id }
-                        navController.navigateToPhotoUpload(orderId, selectedProjectIds)
+                        navController.navigateToPhotoUpload(
+                            orderId,
+                            address = orderAddress,
+                            selectedProjectIds
+                        )
                     }
                 )
                 Spacer(modifier = Modifier.height(32.dp))

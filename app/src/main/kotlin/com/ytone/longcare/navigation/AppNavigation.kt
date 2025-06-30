@@ -65,8 +65,8 @@ fun NavController.navigateToSelectService(orderId: Long) {
     navigate(SelectServiceRoute(orderId))
 }
 
-fun NavController.navigateToPhotoUpload(orderId: Long, projectIds: List<Int>) {
-    navigate(PhotoUploadRoute(orderId, projectIds))
+fun NavController.navigateToPhotoUpload(orderId: Long, address: String, projectIds: List<Int>) {
+    navigate(PhotoUploadRoute(orderId, address, projectIds))
 }
 
 /**
@@ -174,6 +174,7 @@ fun AppNavigation(startDestination: Any) {
             PhotoUploadScreen(
                 navController = navController,
                 orderId = route.orderId,
+                orderAddress = route.address,
                 projectIds = route.projectIds
             )
         }
