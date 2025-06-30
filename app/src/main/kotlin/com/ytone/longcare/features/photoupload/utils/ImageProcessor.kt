@@ -120,14 +120,19 @@ class ImageProcessor(private val context: Context) {
         val imageWidth = result.width
         val imageHeight = result.height
 
+        // --- 1. 定义绘制参数 ---
         val logoBitmap = drawableToBitmap(R.mipmap.app_logo_round)
+        val lineIndicator = ContextCompat.getDrawable(context, R.drawable.watermark_indicator_line)
         val textSize = 56f
         val textColor = Color.WHITE
         val horizontalPadding = 30f
         val bottomPadding = 30f
         val logoTextSpacing = 25f
         val lineSpacing = 15f
+        val lineIndicatorWidth = 8f
+        val lineIndicatorTextSpacing = 20f
 
+        // --- 2. 创建 Paint 对象 ---
         val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = textColor
             this.textSize = textSize
@@ -135,12 +140,16 @@ class ImageProcessor(private val context: Context) {
             setShadowLayer(5f, 2f, 2f, Color.BLACK)
         }
 
-        val textMaxWidth = (imageWidth * 0.9f - horizontalPadding).toInt()
+        // --- 3. 准备文本并计算布局 ---
+
+        // 文本的最大宽度现在严格等于图片宽度的60%
+        val textMaxWidth = (imageWidth * 0.6f).toInt()
 
         val layouts = watermarkLines.map { line ->
             createIndentedLayout(line, textPaint, textMaxWidth)
         }
 
+        // --- 4. 计算所有元素的尺寸和位置 ---
         var totalContentHeight = layouts.sumOf { it.height }.toFloat()
         if (layouts.isNotEmpty()) {
             totalContentHeight += (layouts.size - 1) * lineSpacing
@@ -151,16 +160,30 @@ class ImageProcessor(private val context: Context) {
 
         var currentY = imageHeight - bottomPadding - totalContentHeight
 
+        // 绘制 Logo
         logoBitmap?.let {
             canvas.drawBitmap(it, horizontalPadding, currentY, null)
             currentY += it.height + logoTextSpacing
         }
 
+        // [新增] 计算并绘制左侧装饰线
+        val lineIndicatorTop = currentY
+        val lineIndicatorBottom = currentY + layouts.sumOf { it.height }.toFloat() + (layouts.size - 1) * lineSpacing
+        lineIndicator?.setBounds(
+            horizontalPadding.toInt(),
+            lineIndicatorTop.toInt(),
+            (horizontalPadding + lineIndicatorWidth).toInt(),
+            lineIndicatorBottom.toInt()
+        )
+        lineIndicator?.draw(canvas)
+
+        // --- 5. 逐个绘制文本布局 ---
         layouts.forEach { layout ->
-            canvas.withTranslation(horizontalPadding, currentY) {
+            // 文本的 X 坐标需要考虑装饰线和它们之间的间距
+            val textX = horizontalPadding + lineIndicatorWidth + lineIndicatorTextSpacing
+            canvas.withTranslation(textX, currentY) {
                 layout.draw(this)
             }
-
             currentY += layout.height + lineSpacing
         }
 
@@ -171,32 +194,21 @@ class ImageProcessor(private val context: Context) {
      * 创建带有悬挂缩进的 StaticLayout，以实现冒号后对齐。
      */
     private fun createIndentedLayout(text: String, paint: TextPaint, maxWidth: Int): StaticLayout {
-        // 查找第一个冒号的位置
         val colonIndex = text.indexOf(':')
-
-        // 如果没有冒号，或者冒号是最后一个字符，则不进行特殊缩进处理
         if (colonIndex < 0 || colonIndex >= text.length - 1) {
             return StaticLayout.Builder.obtain(text, 0, text.length, paint, maxWidth).build()
         }
-
-        // ==========================================================
-        // 核心修正：测量标签+冒号+空格的宽度作为缩进量
-        // ==========================================================
-        // 我们要测量的部分是冒号以及它后面的所有空格，直到第一个非空格字符
         var contentStartIndex = colonIndex + 1
         while (contentStartIndex < text.length && text[contentStartIndex] == ' ') {
             contentStartIndex++
         }
-        // "labelPart" 现在是 "地址: "
         val labelPart = text.substring(0, contentStartIndex)
         val indentation = paint.measureText(labelPart)
 
         return StaticLayout.Builder.obtain(text, 0, text.length, paint, maxWidth)
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .setLineSpacing(0f, 1.0f) // 默认行间距
+            .setLineSpacing(0f, 1.0f)
             .setIncludePad(false)
-            // 关键：设置缩进
-            // 第一行缩进为0，后续所有行都缩进 "labelPart" 的宽度
             .setIndents(intArrayOf(0, indentation.toInt()), null)
             .build()
     }
