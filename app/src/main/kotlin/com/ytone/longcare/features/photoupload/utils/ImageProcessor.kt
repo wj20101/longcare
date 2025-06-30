@@ -3,15 +3,20 @@ package com.ytone.longcare.features.photoupload.utils
 import android.content.Context
 import android.graphics.*
 import android.net.Uri
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.scale
+import androidx.core.net.toUri
+import com.ytone.longcare.R // 确保 R 文件被正确导入
 import com.ytone.longcare.common.utils.logE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import java.text.SimpleDateFormat
-import java.util.*
-import androidx.core.graphics.scale
-import androidx.core.net.toUri
+import androidx.core.graphics.withTranslation
+import androidx.core.graphics.createBitmap
 
 /**
  * 图片处理工具类
@@ -21,37 +26,24 @@ class ImageProcessor(private val context: Context) {
 
     companion object {
         private const val MAX_IMAGE_SIZE = 1920 // 最大图片尺寸
-        private const val WATERMARK_MARGIN = 40f // 水印边距
-        private const val BASE_TEXT_SIZE = 36f // 基础文字大小
-        private const val MIN_TEXT_SIZE = 24f // 最小文字大小
     }
 
-    /**
-     * 处理图片：添加水印并保存到缓存目录
-     */
     suspend fun processImage(
         originalUri: Uri,
         watermarkLines: List<String>
     ): Result<Uri> = withContext(Dispatchers.IO) {
         try {
-            // 读取原始图片
             val originalBitmap = loadBitmapFromUri(originalUri)
                 ?: return@withContext Result.failure(Exception("无法读取图片"))
-
-            // 缩放图片（如果需要）
             val scaledBitmap = scaleImageIfNeeded(originalBitmap)
-
-            // 添加水印
-            val watermarkedBitmap = addWatermark(scaledBitmap, watermarkLines)
-
-            // 保存到缓存目录
+            val watermarkedBitmap = addWatermark(scaledBitmap, watermarkLines) // 调用新的 addWatermark
             val savedUri = saveBitmapToCache(watermarkedBitmap)
 
-            // 清理资源
             if (originalBitmap != scaledBitmap) {
                 originalBitmap.recycle()
             }
             scaledBitmap.recycle()
+            // 注意：addWatermark 现在返回的是一个新的 Bitmap，也需要回收
             watermarkedBitmap.recycle()
 
             Result.success(savedUri)
@@ -61,22 +53,12 @@ class ImageProcessor(private val context: Context) {
         }
     }
 
-    /**
-     * 从Uri加载Bitmap
-     */
     private fun loadBitmapFromUri(uri: Uri): Bitmap? {
         return try {
             context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                // 先获取图片尺寸
-                val options = BitmapFactory.Options().apply {
-                    inJustDecodeBounds = true
-                }
+                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 BitmapFactory.decodeStream(inputStream, null, options)
-
-                // 计算采样率
                 val sampleSize = calculateInSampleSize(options, MAX_IMAGE_SIZE, MAX_IMAGE_SIZE)
-
-                // 重新打开流并解码
                 context.contentResolver.openInputStream(uri)?.use { newInputStream ->
                     val decodeOptions = BitmapFactory.Options().apply {
                         inSampleSize = sampleSize
@@ -91,22 +73,12 @@ class ImageProcessor(private val context: Context) {
         }
     }
 
-    /**
-     * 计算采样率
-     */
-    private fun calculateInSampleSize(
-        options: BitmapFactory.Options,
-        reqWidth: Int,
-        reqHeight: Int
-    ): Int {
-        val height = options.outHeight
-        val width = options.outWidth
+    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        val (height, width) = options.outHeight to options.outWidth
         var inSampleSize = 1
-
         if (height > reqHeight || width > reqWidth) {
-            val halfHeight = height / 2
-            val halfWidth = width / 2
-
+            val halfHeight: Int = height / 2
+            val halfWidth: Int = width / 2
             while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
                 inSampleSize *= 2
             }
@@ -114,87 +86,112 @@ class ImageProcessor(private val context: Context) {
         return inSampleSize
     }
 
-    /**
-     * 如果需要则缩放图片
-     */
     private fun scaleImageIfNeeded(bitmap: Bitmap): Bitmap {
         val width = bitmap.width
         val height = bitmap.height
-
         if (width <= MAX_IMAGE_SIZE && height <= MAX_IMAGE_SIZE) {
             return bitmap
         }
-
-        val scale = minOf(
-            MAX_IMAGE_SIZE.toFloat() / width,
-            MAX_IMAGE_SIZE.toFloat() / height
-        )
-
+        val scale = minOf(MAX_IMAGE_SIZE.toFloat() / width, MAX_IMAGE_SIZE.toFloat() / height)
         val newWidth = (width * scale).toInt()
         val newHeight = (height * scale).toInt()
+        return bitmap.scale(newWidth, newHeight, false)
+    }
 
-        return bitmap.scale(newWidth, newHeight)
+    private fun saveBitmapToCache(bitmap: Bitmap): Uri {
+        val cacheDir = File(context.cacheDir, "processed_images")
+        if (!cacheDir.exists()) cacheDir.mkdirs()
+        val fileName = "processed_${System.currentTimeMillis()}.jpg"
+        val file = File(cacheDir, fileName)
+        FileOutputStream(file).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+        }
+        return file.toUri()
+    }
+
+    private fun drawableToBitmap(drawableId: Int): Bitmap? {
+        val drawable = ContextCompat.getDrawable(context, drawableId) ?: return null
+        val bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        return bitmap
     }
 
     /**
-     * 添加水印
+     * 为图片添加一个复杂的水印，实现效果图样式。
+     *
+     * @param bitmap 要添加水印的原始图片。
+     * @param watermarkLines 水印内容的字符串列表。
+     * @return 添加了水印的新 Bitmap 对象。
      */
     private fun addWatermark(bitmap: Bitmap, watermarkLines: List<String>): Bitmap {
         val result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(result)
+        val imageWidth = result.width
+        val imageHeight = result.height
 
-        // 计算文字大小（根据图片大小动态调整）
-        val textSize = calculateTextSize(bitmap.width, bitmap.height)
+        // --- 1. 定义绘制参数 ---
+        val logoBitmap = drawableToBitmap(R.mipmap.app_logo_round)
+        val lineIndicator = ContextCompat.getDrawable(context, R.drawable.watermark_indicator_line)
 
-        // 创建画笔
-        val paint = Paint().apply {
-            color = Color.WHITE
+        val textSize = 56f
+        val textColor = Color.WHITE
+        val horizontalPadding = 30f
+        val bottomPadding = 30f
+        val logoTextSpacing = 25f
+        val lineSpacingMultiplier = 1.3f
+        val lineIndicatorWidth = 8f
+        val lineIndicatorTextSpacing = 20f
+
+        // --- 2. 创建 Paint 和 TextPaint ---
+        val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = textColor
             this.textSize = textSize
-            isAntiAlias = true
-            style = Paint.Style.FILL
-            setShadowLayer(4f, 2f, 2f, Color.BLACK) // 添加阴影
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+            // 为了让文字在任何背景下都清晰可见，添加一层细微的阴影
+            setShadowLayer(5f, 2f, 2f, Color.BLACK)
         }
 
-        // 计算文字位置（左下角）
-        val lineHeight = paint.fontMetrics.let { it.bottom - it.top }
-        val totalTextHeight = lineHeight * watermarkLines.size
+        // --- 3. 准备文本并计算布局 ---
+        val fullText = watermarkLines.joinToString("\n")
+        val textMaxWidth = (imageWidth * 0.6f - horizontalPadding - lineIndicatorWidth - lineIndicatorTextSpacing).toInt()
 
-        var y = bitmap.height - WATERMARK_MARGIN - totalTextHeight + lineHeight
+        val textLayout = StaticLayout.Builder.obtain(fullText, 0, fullText.length, textPaint, textMaxWidth)
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setLineSpacing(0f, lineSpacingMultiplier)
+            .setIncludePad(false)
+            .build()
 
-        // 绘制每行文字
-        watermarkLines.forEach { line ->
-            canvas.drawText(line, WATERMARK_MARGIN, y, paint)
-            y += lineHeight
+        // --- 4. 计算所有元素的尺寸和位置 ---
+        val logoHeight = logoBitmap?.height ?: 0
+        val textHeight = textLayout.height
+        val contentTotalHeight = logoHeight + logoTextSpacing + textHeight
+
+        val logoX = horizontalPadding
+        val logoY = imageHeight - bottomPadding - contentTotalHeight
+
+        val lineIndicatorTop = logoY + logoHeight + logoTextSpacing
+        val lineIndicatorBottom = lineIndicatorTop + textHeight
+        lineIndicator?.setBounds(
+            horizontalPadding.toInt(),
+            lineIndicatorTop.toInt(),
+            (horizontalPadding + lineIndicatorWidth).toInt(),
+            lineIndicatorBottom.toInt()
+        )
+
+        val textX = horizontalPadding + lineIndicatorWidth + lineIndicatorTextSpacing
+        val textY = lineIndicatorTop
+
+        // --- 5. 按顺序绘制 ---
+
+        logoBitmap?.let { canvas.drawBitmap(it, logoX, logoY, null) }
+        lineIndicator?.draw(canvas)
+
+        canvas.withTranslation(textX, textY) {
+            textLayout.draw(this)
         }
 
         return result
-    }
-
-    /**
-     * 计算文字大小
-     */
-    private fun calculateTextSize(imageWidth: Int, imageHeight: Int): Float {
-        val imageSize = minOf(imageWidth, imageHeight)
-        val textSize = (imageSize * 0.03f).coerceAtLeast(MIN_TEXT_SIZE)
-        return minOf(textSize, BASE_TEXT_SIZE)
-    }
-
-    /**
-     * 保存Bitmap到缓存目录并返回Uri
-     */
-    private fun saveBitmapToCache(bitmap: Bitmap): Uri {
-        val cacheDir = File(context.cacheDir, "processed_images")
-        if (!cacheDir.exists()) {
-            cacheDir.mkdirs()
-        }
-
-        val fileName = "processed_${System.currentTimeMillis()}.jpg"
-        val file = File(cacheDir, fileName)
-
-        FileOutputStream(file).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
-        }
-
-        return file.toUri()
     }
 }
