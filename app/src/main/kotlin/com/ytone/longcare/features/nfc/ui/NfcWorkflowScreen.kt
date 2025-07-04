@@ -38,6 +38,7 @@ import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
 import com.ytone.longcare.navigation.navigateToSelectService
+import com.ytone.longcare.navigation.navigateToServiceComplete
 import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.theme.bgGradientBrush
@@ -179,7 +180,12 @@ fun NfcWorkflowScreen(
                         }
                         ActionButton(
                             text = buttonText,
-                            onClick = { navController.navigateToSelectService(orderId) }
+                            onClick = {
+                                when (signInMode) {
+                                    SignInMode.START_ORDER -> navController.navigateToSelectService(orderId)
+                                    SignInMode.END_ORDER -> navController.navigateToServiceComplete(orderId)
+                                }
+                            }
                         )
                     }
 
