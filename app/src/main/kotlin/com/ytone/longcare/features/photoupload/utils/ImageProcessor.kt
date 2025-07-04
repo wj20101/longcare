@@ -118,11 +118,39 @@ class ImageProcessor(private val context: Context) {
         return file.toUri()
     }
 
-    private fun drawableToBitmap(drawableId: Int): Bitmap? {
+    /**
+     * 将drawable转换为bitmap，并根据图片尺寸控制logo大小
+     * @param drawableId drawable资源ID
+     * @param targetImageWidth 目标图片宽度，用于计算合适的logo尺寸
+     * @return 处理后的bitmap
+     */
+    private fun drawableToBitmap(drawableId: Int, targetImageWidth: Int): Bitmap? {
         val drawable = ContextCompat.getDrawable(context, drawableId) ?: return null
-        val bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
+        
+        // 根据图片宽度动态计算logo尺寸
+        // logo宽度为图片宽度的8-12%，确保在不同尺寸图片上都有合适的显示效果
+        val logoMaxWidth = (targetImageWidth * 0.3f).toInt()
+        val originalWidth = drawable.intrinsicWidth
+        val originalHeight = drawable.intrinsicHeight
+        
+        // 如果原始logo太大，按比例缩放
+        val (finalWidth, finalHeight) = if (originalWidth > logoMaxWidth) {
+            val scale = logoMaxWidth.toFloat() / originalWidth
+            Pair((originalWidth * scale).toInt(), (originalHeight * scale).toInt())
+        } else {
+            // 如果原始logo太小，适当放大，但不超过最大限制
+            val minLogoWidth = (targetImageWidth * 0.3f).toInt()
+            if (originalWidth < minLogoWidth) {
+                val scale = minLogoWidth.toFloat() / originalWidth
+                Pair((originalWidth * scale).toInt(), (originalHeight * scale).toInt())
+            } else {
+                Pair(originalWidth, originalHeight)
+            }
+        }
+        
+        val bitmap = createBitmap(finalWidth, finalHeight)
         val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.setBounds(0, 0, finalWidth, finalHeight)
         drawable.draw(canvas)
         return bitmap
     }
@@ -138,7 +166,7 @@ class ImageProcessor(private val context: Context) {
 
         var logoBitmap: Bitmap? = null
         try {
-            logoBitmap = drawableToBitmap(R.mipmap.app_logo_round)
+            logoBitmap = drawableToBitmap(R.drawable.app_watermark_image, imageWidth)
             val lineIndicator =
                 ContextCompat.getDrawable(context, R.drawable.watermark_indicator_line)
 
