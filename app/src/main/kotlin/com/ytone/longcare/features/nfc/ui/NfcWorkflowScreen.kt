@@ -1,8 +1,17 @@
 package com.ytone.longcare.features.nfc.ui
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.location.LocationManager
+import android.os.Build
+import android.provider.Settings
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.core.location.LocationManagerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -42,6 +51,7 @@ import com.ytone.longcare.navigation.navigateToServiceComplete
 import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.theme.bgGradientBrush
+import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 
 // --- 状态定义 ---
 enum class SignInState {
@@ -58,11 +68,46 @@ fun NfcWorkflowScreen(
     orderId: Long,
     signInMode: SignInMode, // 新增参数，用于区分开始/结束订单
     endOderInfo: EndOderInfo?,
-    viewModel: NfcWorkflowViewModel = hiltViewModel()
+    viewModel: NfcWorkflowViewModel = hiltViewModel(),
+    locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
+
+    // 权限请求启动器
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions ->
+            if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+                // 权限获取成功，启动定位服务
+                locationTrackingViewModel.onStartClicked(orderId)
+                navController.navigateToSelectService(orderId)
+            } else {
+                Toast.makeText(context, "需要定位权限才能开始服务", Toast.LENGTH_LONG).show()
+            }
+        }
+    )
+
+    // 检查定位权限和服务的函数
+    fun checkLocationPermissionAndStart() {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        if (!LocationManagerCompat.isLocationEnabled(locationManager)) {
+            Toast.makeText(context, "请先在系统设置中开启定位服务", Toast.LENGTH_LONG).show()
+            context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            return
+        }
+
+        val permissionsToRequest = mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        permissionLauncher.launch(permissionsToRequest.toTypedArray())
+    }
 
     // 获取NfcManager实例
     val nfcManager: NfcManager = remember {
@@ -182,8 +227,15 @@ fun NfcWorkflowScreen(
                             text = buttonText,
                             onClick = {
                                 when (signInMode) {
-                                    SignInMode.START_ORDER -> navController.navigateToSelectService(orderId)
-                                    SignInMode.END_ORDER -> navController.navigateToServiceComplete(orderId)
+                                    SignInMode.START_ORDER -> {
+                                        // 签到时检查权限并启动定位上报任务
+                                        checkLocationPermissionAndStart()
+                                    }
+                                    SignInMode.END_ORDER -> {
+                                        // 签退时停止定位上报任务
+                                        locationTrackingViewModel.onStopClicked()
+                                        navController.navigateToServiceComplete(orderId)
+                                    }
                                 }
                             }
                         )
