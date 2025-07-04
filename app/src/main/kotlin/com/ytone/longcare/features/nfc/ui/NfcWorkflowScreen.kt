@@ -1,4 +1,4 @@
-package com.ytone.longcare.features.nfcsignin.ui
+package com.ytone.longcare.features.nfc.ui
 
 import android.app.Activity
 import android.content.Context
@@ -36,9 +36,9 @@ import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.NfcManagerEntryPoint
 import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.navigation.EndOderInfo
-import com.ytone.longcare.features.nfcsignin.vm.NfcSignInViewModel
+import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
 import com.ytone.longcare.navigation.navigateToSelectService
-import com.ytone.longcare.features.nfcsignin.vm.NfcSignInUiState
+import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.theme.bgGradientBrush
 
@@ -52,12 +52,12 @@ enum class SignInState {
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NfcSignInScreen(
+fun NfcWorkflowScreen(
     navController: NavController,
     orderId: Long,
     signInMode: SignInMode, // 新增参数，用于区分开始/结束订单
     endOderInfo: EndOderInfo?,
-    viewModel: NfcSignInViewModel = hiltViewModel()
+    viewModel: NfcWorkflowViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
