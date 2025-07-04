@@ -28,6 +28,7 @@ import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
 import com.ytone.longcare.features.shared.FaceVerificationWithAutoSignScreen
+import com.ytone.longcare.features.servicecomplete.ui.ServiceCompleteScreen
 import kotlin.reflect.typeOf
 
 
@@ -50,7 +51,13 @@ fun NavController.navigateToNfcSignInForStartOrder(orderId: Long) {
 }
 
 fun NavController.navigateToNfcSignInForEndOrder(orderId: Long, params: EndOderInfo) {
-    navigate(NfcSignInRoute(orderId = orderId, signInMode = SignInMode.END_ORDER, endOrderParams = params))
+    navigate(
+        NfcSignInRoute(
+            orderId = orderId,
+            signInMode = SignInMode.END_ORDER,
+            endOrderParams = params
+        )
+    )
 }
 
 fun NavController.navigateToCarePlansList() {
@@ -67,6 +74,17 @@ fun NavController.navigateToSelectService(orderId: Long) {
 
 fun NavController.navigateToPhotoUpload(orderId: Long, address: String, projectIds: List<Int>) {
     navigate(PhotoUploadRoute(orderId, address, projectIds))
+}
+
+fun NavController.navigateToServiceComplete(orderId: Long) {
+    navigate(ServiceCompleteRoute(orderId))
+}
+
+fun NavController.navigateToHomeAndClearStack() {
+    navigate(HomeRoute) {
+        popUpTo(0) { inclusive = false }
+        launchSingleTop = true
+    }
 }
 
 /**
@@ -152,7 +170,7 @@ fun AppNavigation(startDestination: Any) {
             typeMap = mapOf(typeOf<EndOderInfo?>() to EndOderInfoNavType)
         ) { backStackEntry ->
             val route = backStackEntry.toRoute<NfcSignInRoute>()
-            
+
             NfcWorkflowScreen(
                 navController = navController,
                 orderId = route.orderId,
@@ -187,6 +205,10 @@ fun AppNavigation(startDestination: Any) {
         }
         composable<LocationTrackingRoute> { backStackEntry ->
             LocationTrackingScreen()
+        }
+        composable<ServiceCompleteRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<ServiceCompleteRoute>()
+            ServiceCompleteScreen(navController = navController, orderId = route.orderId)
         }
     }
 }

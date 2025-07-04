@@ -20,6 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.ytone.longcare.navigation.navigateToHomeAndClearStack
 import com.ytone.longcare.R
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
@@ -38,7 +41,10 @@ data class ServiceSummary(
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ServiceCompleteScreen() {
+fun ServiceCompleteScreen(
+    navController: NavController,
+    orderId: Long,
+) {
 
     val serviceSummary = ServiceSummary(
         clientName = "孙连中",
@@ -59,7 +65,7 @@ fun ServiceCompleteScreen() {
                 CenterAlignedTopAppBar(
                     title = { Text("服务完成", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = { /* TODO: 返回操作 */ }) {
+                        IconButton(onClick = { navController.navigateToHomeAndClearStack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "返回",
@@ -78,7 +84,9 @@ fun ServiceCompleteScreen() {
             bottomBar = {
                 // 将按钮放在 bottomBar 中使其固定在底部
                 Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
-                    ActionButton(text = "完成", onClick = { /* TODO: 完成逻辑 */ })
+                    ActionButton(text = "完成", onClick = { 
+                        navController.navigateToHomeAndClearStack()
+                    })
                 }
             }
         ) { paddingValues ->
@@ -114,7 +122,7 @@ fun ServiceCompleteScreen() {
 @Preview
 @Composable
 fun ServiceCompleteScreenPreview() {
-    ServiceCompleteScreen()
+    ServiceCompleteScreen(navController = rememberNavController(), orderId = 1L)
 }
 
 // --- UI 子组件 ---
@@ -204,7 +212,11 @@ fun ServiceChecklistSection(summary: ServiceSummary) {
         }
 
         // 标题标签
-        ServiceHoursTag(modifier = Modifier, tagText = "服务清单", tagCategory = TagCategory.DEFAULT)
+        ServiceHoursTag(
+            modifier = Modifier,
+            tagText = "服务清单",
+            tagCategory = TagCategory.DEFAULT
+        )
     }
 }
 
@@ -221,6 +233,7 @@ fun ServiceChecklistSectionPreview() {
     )
     ServiceChecklistSection(summary = summary)
 }
+
 @Composable
 fun ChecklistItem(label: String, value: String) {
     Row(
