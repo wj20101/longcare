@@ -9,7 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -20,10 +20,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.navigation.navigateToHomeAndClearStack
 import com.ytone.longcare.R
+import com.ytone.longcare.shared.vm.OrderDetailViewModel
+import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
@@ -42,10 +45,157 @@ data class ServiceSummary(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceCompleteScreen(
-    navController: NavController,
-    orderId: Long,
+    navController: NavController, orderId: Long, viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    // 在组件初始化时获取订单详情
+    LaunchedEffect(orderId) {
+        viewModel.getOrderInfo(orderId)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bgGradientBrush)
+    ) {
+        Scaffold(topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("服务完成", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateToHomeAndClearStack() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
+            )
+        }, containerColor = Color.Transparent, bottomBar = {
+            // 将按钮放在 bottomBar 中使其固定在底部
+            Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+                ActionButton(text = "完成", onClick = {
+                    navController.navigateToHomeAndClearStack()
+                })
+            }
+        }) { paddingValues ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues), // 应用来自Scaffold的padding (包括了底部按钮的空间)
+                horizontalAlignment = Alignment.CenterHorizontally,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+            ) {
+                item {
+                    Text(
+                        text = "已完成服务，请确认服务内容", color = Color.White, fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
+                item {
+                    ThankYouCard()
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
+                item {
+                    when (val state = uiState) {
+                        is OrderDetailUiState.Loading -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = Color.White)
+                            }
+                        }
+
+                        is OrderDetailUiState.Success -> {
+                            val orderInfo = state.orderInfo
+                            val serviceSummary = ServiceSummary(
+                                clientName = orderInfo.userInfo.name,
+                                clientAge = orderInfo.userInfo.age,
+                                clientIdNumber = orderInfo.userInfo.identityCardNumber,
+                                clientAddress = orderInfo.userInfo.address,
+                                serviceContent = orderInfo.projectList.joinToString(", ") { it.projectName },
+                                duration = formatServiceDuration(orderInfo.projectList.sumOf { it.serviceTime })
+                            )
+                            ServiceChecklistSection(summary = serviceSummary)
+                        }
+
+                        is OrderDetailUiState.Error -> {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "加载订单信息失败",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = state.message,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        is OrderDetailUiState.Initial -> {
+                            // 初始状态，显示加载指示器
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = Color.White)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 格式化服务时长
+ * @param totalMinutes 总分钟数
+ * @return 格式化后的时长字符串，如"2小时30分钟"
+ */
+fun formatServiceDuration(totalMinutes: Int): String {
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+
+    return when {
+        hours > 0 && minutes > 0 -> "${hours}小时${minutes}分钟"
+        hours > 0 -> "${hours}小时"
+        minutes > 0 -> "${minutes}分钟"
+        else -> "0分钟"
+    }
+}
+
+@Preview
+@Composable
+fun ServiceCompleteScreenPreview() {
+    // Preview中使用假数据，避免依赖真实的ViewModel
     val serviceSummary = ServiceSummary(
         clientName = "孙连中",
         clientAge = 72,
@@ -60,69 +210,28 @@ fun ServiceCompleteScreen(
             .fillMaxSize()
             .background(bgGradientBrush)
     ) {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("服务完成", fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.navigateToHomeAndClearStack() }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
-                                tint = Color.White
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White
-                    )
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+        ) {
+            item {
+                Text(
+                    text = "已完成服务，请确认服务内容", color = Color.White, fontSize = 14.sp
                 )
-            },
-            containerColor = Color.Transparent,
-            bottomBar = {
-                // 将按钮放在 bottomBar 中使其固定在底部
-                Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
-                    ActionButton(text = "完成", onClick = { 
-                        navController.navigateToHomeAndClearStack()
-                    })
-                }
+                Spacer(modifier = Modifier.height(24.dp))
             }
-        ) { paddingValues ->
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues), // 应用来自Scaffold的padding (包括了底部按钮的空间)
-                horizontalAlignment = Alignment.CenterHorizontally,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
-            ) {
-                item {
-                    Text(
-                        text = "已完成服务，请确认服务内容",
-                        color = Color.White,
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
 
-                item {
-                    ThankYouCard()
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
+            item {
+                ThankYouCard()
+                Spacer(modifier = Modifier.height(24.dp))
+            }
 
-                item {
-                    ServiceChecklistSection(summary = serviceSummary)
-                }
+            item {
+                ServiceChecklistSection(summary = serviceSummary)
             }
         }
     }
-}
-
-@Preview
-@Composable
-fun ServiceCompleteScreenPreview() {
-    ServiceCompleteScreen(navController = rememberNavController(), orderId = 1L)
 }
 
 // --- UI 子组件 ---
@@ -185,10 +294,7 @@ fun ServiceChecklistSection(summary: ServiceSummary) {
                 .fillMaxWidth()
                 .padding(top = tagHeightEstimate - tagOverlap),
             shape = RoundedCornerShape(
-                topStart = 0.dp,
-                topEnd = 12.dp,
-                bottomStart = 12.dp,
-                bottomEnd = 12.dp
+                topStart = 0.dp, topEnd = 12.dp, bottomStart = 12.dp, bottomEnd = 12.dp
             ),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -196,11 +302,8 @@ fun ServiceChecklistSection(summary: ServiceSummary) {
             Column(
                 modifier = Modifier.padding(
                     top = tagOverlap + 16.dp, // 为标签留出空间
-                    bottom = 16.dp,
-                    start = 16.dp,
-                    end = 16.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    bottom = 16.dp, start = 16.dp, end = 16.dp
+                ), verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 ChecklistItem("姓名:", summary.clientName)
                 ChecklistItem("年龄:", summary.clientAge.toString())
@@ -213,9 +316,7 @@ fun ServiceChecklistSection(summary: ServiceSummary) {
 
         // 标题标签
         ServiceHoursTag(
-            modifier = Modifier,
-            tagText = "服务清单",
-            tagCategory = TagCategory.DEFAULT
+            modifier = Modifier, tagText = "服务清单", tagCategory = TagCategory.DEFAULT
         )
     }
 }
@@ -237,8 +338,7 @@ fun ServiceChecklistSectionPreview() {
 @Composable
 fun ChecklistItem(label: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
+        modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top
     ) {
         Text(
             text = label,
@@ -275,8 +375,7 @@ fun ActionButton(text: String, onClick: () -> Unit) {
             .background(brush = buttonGradient, shape = CircleShape),
         shape = CircleShape,
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent,
-            contentColor = Color.White
+            containerColor = Color.Transparent, contentColor = Color.White
         )
     ) {
         Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
