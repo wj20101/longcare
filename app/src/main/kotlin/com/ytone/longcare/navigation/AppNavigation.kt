@@ -20,7 +20,7 @@ import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.location.ui.LocationTrackingScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.features.nursingexecution.ui.NursingExecutionScreen
-import com.ytone.longcare.features.nfcsignin.ui.NfcSignInScreen
+import com.ytone.longcare.features.nfc.ui.NfcWorkflowScreen
 import com.ytone.longcare.features.selectservice.ui.SelectServiceScreen
 import com.ytone.longcare.features.photoupload.ui.PhotoUploadScreen
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
@@ -153,7 +153,7 @@ fun AppNavigation(startDestination: Any) {
         ) { backStackEntry ->
             val route = backStackEntry.toRoute<NfcSignInRoute>()
             
-            NfcSignInScreen(
+            NfcWorkflowScreen(
                 navController = navController,
                 orderId = route.orderId,
                 signInMode = route.signInMode,

@@ -1,4 +1,4 @@
-package com.ytone.longcare.features.nfcsignin.vm
+package com.ytone.longcare.features.nfc.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,7 +21,7 @@ import javax.inject.Inject
  * NFC签到页面的ViewModel
  */
 @HiltViewModel
-class NfcSignInViewModel @Inject constructor(
+class NfcWorkflowViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val toastHelper: ToastHelper,
     private val appEventBus: AppEventBus
