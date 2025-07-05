@@ -66,7 +66,7 @@ enum class SignInState {
 fun NfcWorkflowScreen(
     navController: NavController,
     orderId: Long,
-    signInMode: SignInMode, // 新增参数，用于区分开始/结束订单
+    signInMode: SignInMode,
     endOderInfo: EndOderInfo?,
     viewModel: NfcWorkflowViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
