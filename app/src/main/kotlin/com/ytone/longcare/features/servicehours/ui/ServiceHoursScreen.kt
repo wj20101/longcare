@@ -80,33 +80,33 @@ fun ServiceHoursScreen(
                     topBar = {
                         CenterAlignedTopAppBar(
                             title = {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    state.orderInfo.userInfo.name,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp
-                                )
-                                val address = state.orderInfo.userInfo.address
-                                if (address.isNotBlank()){
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
-                                        "地址: $address",
-                                        fontSize = 12.sp,
-                                        color = Color.White.copy(alpha = 0.85f)
+                                        state.orderInfo.userInfo.name,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp
+                                    )
+                                    val address = state.orderInfo.userInfo.address
+                                    if (address.isNotBlank()) {
+                                        Text(
+                                            "地址: $address",
+                                            fontSize = 12.sp,
+                                            color = Color.White.copy(alpha = 0.85f)
+                                        )
+                                    }
+                                }
+                            }, navigationIcon = {
+                                IconButton(onClick = { navController.popBackStack() }) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = stringResource(R.string.common_back)
                                     )
                                 }
-                            }
-                        }, navigationIcon = {
-                            IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = stringResource(R.string.common_back)
-                                )
-                            }
-                        }, colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = Color.Transparent,
-                            titleContentColor = Color.White,
-                            navigationIconContentColor = Color.White
-                        )
+                            }, colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                containerColor = Color.Transparent,
+                                titleContentColor = Color.White,
+                                navigationIconContentColor = Color.White
+                            )
                         )
                     }, containerColor = Color.Transparent
                 ) { paddingValues ->
@@ -178,9 +178,24 @@ fun ServiceRecordList(
 @Composable
 fun ServiceRecordListPreview() {
     val sampleProjects = listOf(
-        ServiceProjectM(projectId = 1, projectName = "日常清洁", serviceTime = 60, lastServiceTime = "2023-10-26 10:00"),
-        ServiceProjectM(projectId = 2, projectName = "健康监测", serviceTime = 30, lastServiceTime = "2023-10-26 11:30"),
-        ServiceProjectM(projectId = 3, projectName = "助浴服务", serviceTime = 90, lastServiceTime = "2023-10-25 14:00")
+        ServiceProjectM(
+            projectId = 1,
+            projectName = "日常清洁",
+            serviceTime = 60,
+            lastServiceTime = "2023-10-26 10:00"
+        ),
+        ServiceProjectM(
+            projectId = 2,
+            projectName = "健康监测",
+            serviceTime = 30,
+            lastServiceTime = "2023-10-26 11:30"
+        ),
+        ServiceProjectM(
+            projectId = 3,
+            projectName = "助浴服务",
+            serviceTime = 90,
+            lastServiceTime = "2023-10-25 14:00"
+        )
     )
     MaterialTheme {
         ServiceRecordList(projects = sampleProjects)
@@ -220,7 +235,12 @@ fun ServiceRecordItem(project: ServiceProjectM) {
 @Preview
 @Composable
 fun ServiceRecordItemPreview() {
-    val sampleProject = ServiceProjectM(projectId = 1, projectName = "助餐服务", serviceTime = 45, lastServiceTime = "2023-10-27 12:00")
+    val sampleProject = ServiceProjectM(
+        projectId = 1,
+        projectName = "助餐服务",
+        serviceTime = 45,
+        lastServiceTime = "2023-10-27 12:00"
+    )
     MaterialTheme {
         ServiceRecordItem(project = sampleProject)
     }
