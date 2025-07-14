@@ -86,6 +86,8 @@ android {
             buildConfigField("String", "TX_ID", "\"REDACTED_TX_ID_1\"")
             buildConfigField("String", "TX_Secret", "\"REDACTED_TX_SECRET_1\"")
             buildConfigField("String", "TX_Licence", "\"REDACTED_TX_LICENCE_1\"")
+            // NFC读取功能开关
+            buildConfigField("boolean", "ENABLE_NFC_READING", "true")
             signingConfig = signingConfigs.getByName("release")
         }
 
@@ -96,6 +98,8 @@ android {
             buildConfigField("String", "TX_ID", "\"REDACTED_TX_ID_2\"")
             buildConfigField("String", "TX_Secret", "\"REDACTED_TX_SECRET_2\"")
             buildConfigField("String", "TX_Licence", "\"REDACTED_TX_LICENCE_2\"")
+            // NFC读取功能开关
+            buildConfigField("boolean", "ENABLE_NFC_READING", "true")
             signingConfig = signingConfigs.getByName("release")
         }
     }
