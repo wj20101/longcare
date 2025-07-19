@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.selectservice.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,22 +40,20 @@ data class ServiceItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectServiceScreen(
-    navController: NavController,
-    orderId: Long,
-    viewModel: OrderDetailViewModel = hiltViewModel()
+    navController: NavController, orderId: Long, viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
     // 使用ViewModel获取订单详情
     val uiState by viewModel.uiState.collectAsState()
-    
+
     // 在组件初始化时请求数据
     LaunchedEffect(orderId) {
         viewModel.getOrderInfo(orderId)
     }
-    
+
     // 根据API返回的数据转换为UI需要的ServiceItem格式
     val serviceItems = remember { mutableStateListOf<ServiceItem>() }
     var orderAddress by remember { mutableStateOf("") }
-    
+
     // 当uiState变化时更新serviceItems
     LaunchedEffect(uiState) {
         when (val currentState = uiState) {
@@ -68,10 +67,10 @@ fun SelectServiceScreen(
                             duration = project.serviceTime,
                             isSelected = false // 默认不选中，用户可以手动选择
                         )
-                    }
-                )
+                    })
                 orderAddress = currentState.orderInfo.userInfo.address
             }
+
             else -> {
                 serviceItems.clear()
             }
@@ -114,7 +113,8 @@ fun SelectServiceScreen(
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
 
-                TotalDurationDisplay(totalDuration = serviceItems.filter { it.isSelected }.sumOf { it.duration })
+                TotalDurationDisplay(totalDuration = serviceItems.filter { it.isSelected }
+                    .sumOf { it.duration })
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -130,6 +130,7 @@ fun SelectServiceScreen(
                             CircularProgressIndicator(color = Color.White)
                         }
                     }
+
                     is OrderDetailUiState.Error -> {
                         Box(
                             modifier = Modifier
@@ -144,16 +145,17 @@ fun SelectServiceScreen(
                             )
                         }
                     }
+
                     is OrderDetailUiState.Success -> {
                         ServiceSelectionList(
-                            serviceItems = serviceItems, 
-                            onItemClick = { clickedIndex ->
+                            serviceItems = serviceItems, onItemClick = { clickedIndex ->
                                 // 创建一个新的列表副本并修改选中状态，以触发 recomposition
                                 val currentItem = serviceItems[clickedIndex]
-                                serviceItems[clickedIndex] = currentItem.copy(isSelected = !currentItem.isSelected)
-                            }
-                        )
+                                serviceItems[clickedIndex] =
+                                    currentItem.copy(isSelected = !currentItem.isSelected)
+                            })
                     }
+
                     is OrderDetailUiState.Initial -> {
                         // 初始状态，显示空白或占位符
                         Box(
@@ -163,9 +165,7 @@ fun SelectServiceScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "正在初始化...",
-                                color = Color.White,
-                                fontSize = 16.sp
+                                text = "正在初始化...", color = Color.White, fontSize = 16.sp
                             )
                         }
                     }
@@ -173,20 +173,42 @@ fun SelectServiceScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                NextStepButton(
-                    text = "下一步",
-                    // 按钮是否可用可以根据是否有选中项来判断
-                    enabled = serviceItems.any { it.isSelected },
-                    onClick = {
-                        val selectedProjectIds = serviceItems.filter { it.isSelected }.map { it.id }
-                        navController.navigateToPhotoUpload(
-                            orderId,
-                            address = orderAddress,
-                            selectedProjectIds
-                        )
-                    }
-                )
-                Spacer(modifier = Modifier.height(32.dp))
+                // 底部按钮行
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 32.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 全选按钮
+                    SelectAllButton(
+                        isAllSelected = serviceItems.isNotEmpty() && serviceItems.all { it.isSelected },
+                        onClick = {
+                            val isAllSelected = serviceItems.all { it.isSelected }
+                            for (i in serviceItems.indices) {
+                                serviceItems[i] = serviceItems[i].copy(isSelected = !isAllSelected)
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // 下一步按钮
+                    NextStepButton(
+                        text = "下一步",
+                        enabled = serviceItems.any { it.isSelected },
+                        onClick = {
+                            val selectedProjectIds =
+                                serviceItems.filter { it.isSelected }.map { it.id }
+                            navController.navigateToPhotoUpload(
+                                orderId, address = orderAddress, selectedProjectIds
+                            )
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
@@ -251,7 +273,9 @@ fun ServiceSelectionItem(item: ServiceItem, onClick: () -> Unit) {
             // 自定义勾选图标
             Icon(
                 imageVector = if (item.isSelected) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
-                contentDescription = if (item.isSelected) stringResource(R.string.common_selected) else stringResource(R.string.common_unselected),
+                contentDescription = if (item.isSelected) stringResource(R.string.common_selected) else stringResource(
+                    R.string.common_unselected
+                ),
                 tint = if (item.isSelected) Color(0xFF34C759) else Color.LightGray,
                 modifier = Modifier.size(24.dp)
             )
@@ -260,15 +284,16 @@ fun ServiceSelectionItem(item: ServiceItem, onClick: () -> Unit) {
 }
 
 @Composable
-fun NextStepButton(text: String, enabled: Boolean, onClick: () -> Unit) {
+fun NextStepButton(
+    text: String, enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier
+) {
     val buttonGradient = Brush.horizontalGradient(
         colors = listOf(Color(0xFF5CA0FF), Color(0xFF2A8CFF)) // 根据设计图调整渐变色
     )
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .height(50.dp)
             .background(brush = buttonGradient, shape = CircleShape),
         shape = CircleShape,
@@ -305,13 +330,8 @@ fun ServiceSelectionListPreview() {
 fun ServiceSelectionItemSelectedPreview() {
     ServiceSelectionItem(
         item = ServiceItem(
-            id = 1,
-            name = "基础护理",
-            duration = 60,
-            isSelected = true
-        ),
-        onClick = {}
-    )
+            id = 1, name = "基础护理", duration = 60, isSelected = true
+        ), onClick = {})
 }
 
 @Preview
@@ -319,13 +339,8 @@ fun ServiceSelectionItemSelectedPreview() {
 fun ServiceSelectionItemUnselectedPreview() {
     ServiceSelectionItem(
         item = ServiceItem(
-            id = 2,
-            name = "康复训练",
-            duration = 45,
-            isSelected = false
-        ),
-        onClick = {}
-    )
+            id = 2, name = "康复训练", duration = 45, isSelected = false
+        ), onClick = {})
 }
 
 @Preview
@@ -338,4 +353,41 @@ fun NextStepButtonEnabledPreview() {
 @Composable
 fun NextStepButtonDisabledPreview() {
     NextStepButton(text = "下一步", enabled = false, onClick = {})
+}
+
+@Composable
+fun SelectAllButton(
+    isAllSelected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(50.dp),
+        shape = CircleShape,
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.primary, containerColor = Color.White
+        ),
+        border = BorderStroke(1.dp, Color(0xFF2C85FE))
+    ) {
+        if (isAllSelected) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = "All selected",
+                tint = Color(0xFF34C759),
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+        }
+        Text(
+            text = "全选",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF2C85FE)
+        )
+    }
+}
+
+@Preview
+@Composable
+fun SelectAllButtonPreview() {
+    SelectAllButton(isAllSelected = true, onClick = {})
 }
