@@ -15,6 +15,9 @@ import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.request.UploadTokenParamModel
 import com.ytone.longcare.api.request.SaveFileParamModel
 import com.ytone.longcare.api.response.UploadTokenResultModel
+import com.ytone.longcare.common.event.AppEventBus
+import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.common.network.safeApiCall
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.common.utils.getFileSize
 import com.ytone.longcare.data.cos.model.CosConfig
@@ -22,8 +25,10 @@ import com.ytone.longcare.data.cos.model.CosUploadResult
 import com.ytone.longcare.data.cos.model.UploadParams
 import com.ytone.longcare.data.cos.model.UploadProgress
 import com.ytone.longcare.data.cos.model.toCosConfig
+import com.ytone.longcare.di.IoDispatcher
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -49,7 +54,9 @@ import javax.inject.Singleton
 @Singleton
 class CosRepositoryImpl @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val apiService: LongCareApiService
+    private val apiService: LongCareApiService,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val eventBus: AppEventBus
 ) : CosRepository {
 
     companion object {
@@ -197,20 +204,28 @@ class CosRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 Log.d(TAG, "Refreshing COS config...")
-                val response =
+                val response = safeApiCall(ioDispatcher, eventBus) {
                     apiService.getUploadToken(UploadTokenParamModel(folderType = folderType))
+                }
+                when (response) {
+                    is ApiResult.Exception -> {
+                        throw Exception("Failed to get upload token: ${response.exception.message}")
+                    }
 
-                if (response.isSuccess() && response.data != null) {
-                    val token = response.data
-                    val config = token.toCosConfig()
-                    configCache.update(config)
-                    Log.d(
-                        TAG,
-                        "COS config refreshed successfully, expires at: ${config.expiredTime}"
-                    )
-                    config
-                } else {
-                    throw Exception("Failed to get upload token: ${response.resultMsg}")
+                    is ApiResult.Failure -> {
+                        throw Exception("Failed to get upload token: ${response.message}")
+                    }
+
+                    is ApiResult.Success -> {
+                        val token = response.data
+                        val config = token.toCosConfig()
+                        configCache.update(config)
+                        Log.d(
+                            TAG,
+                            "COS config refreshed successfully, expires at: ${config.expiredTime}"
+                        )
+                        config
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to refresh COS config", e)

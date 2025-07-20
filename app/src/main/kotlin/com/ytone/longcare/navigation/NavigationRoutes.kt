@@ -38,6 +38,10 @@ data class NfcSignInRoute(
 
 @Keep
 @Serializable
+data class ServiceCountdownRoute(val orderId: Long)
+
+@Keep
+@Serializable
 data class EndOderInfo(
     val projectIdList: List<Int> = emptyList(),
     val beginImgList: List<String> = emptyList(),
