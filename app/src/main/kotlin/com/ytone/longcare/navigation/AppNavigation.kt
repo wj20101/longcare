@@ -20,6 +20,7 @@ import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.location.ui.LocationTrackingScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.features.nursingexecution.ui.NursingExecutionScreen
+import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownScreen
 import com.ytone.longcare.features.nfc.ui.NfcWorkflowScreen
 import com.ytone.longcare.features.selectservice.ui.SelectServiceScreen
 import com.ytone.longcare.features.photoupload.ui.PhotoUploadScreen
@@ -74,6 +75,10 @@ fun NavController.navigateToSelectService(orderId: Long) {
 
 fun NavController.navigateToPhotoUpload(orderId: Long, address: String, projectIds: List<Int>) {
     navigate(PhotoUploadRoute(orderId, address, projectIds))
+}
+
+fun NavController.navigateToServiceCountdown(orderId: Long) {
+    navigate(ServiceCountdownRoute(orderId))
 }
 
 fun NavController.navigateToServiceComplete(orderId: Long) {
@@ -195,6 +200,10 @@ fun AppNavigation(startDestination: Any) {
                 orderAddress = route.address,
                 projectIds = route.projectIds
             )
+        }
+        composable<ServiceCountdownRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<ServiceCountdownRoute>()
+            ServiceCountdownScreen(navController = navController, orderId = route.orderId)
         }
         composable<TxFaceRoute> { backStackEntry ->
             FaceVerificationWithAutoSignScreen(
