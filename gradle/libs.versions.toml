@@ -43,7 +43,7 @@ moshi = "1.15.2"
 kotlinxDatetime = "0.7.1"
 kotlinxSerialization = "1.9.0"
 
-coil = "3.2.0"
+coil = "3.3.0"
 
 # Tencent COS
 tencentCos = "5.9.46"
