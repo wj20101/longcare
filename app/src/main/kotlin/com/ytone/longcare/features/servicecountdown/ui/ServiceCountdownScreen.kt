@@ -6,7 +6,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -15,19 +15,46 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
+import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
+import kotlinx.coroutines.flow.MutableStateFlow
+
+// 服务倒计时页面状态
+enum class ServiceCountdownState {
+    RUNNING,    // 倒计时运行中
+    COMPLETED,  // 倒计时完成
+    ENDED       // 服务已结束
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceCountdownScreen(
     navController: NavController,
-    orderId: Long
+    orderId: Long,
+    viewModel: Any = hiltViewModel()
 ) {
+    // 从ViewModel获取状态
+    val countdownState by when (viewModel) {
+        is ServiceCountdownViewModel -> viewModel.countdownState.collectAsStateWithLifecycle()
+        is PreviewServiceCountdownViewModel -> viewModel.countdownState.collectAsState()
+        else -> remember { mutableStateOf(ServiceCountdownState.RUNNING) }
+    }
+    val formattedTime by when (viewModel) {
+        is ServiceCountdownViewModel -> viewModel.formattedTime.collectAsStateWithLifecycle()
+        is PreviewServiceCountdownViewModel -> viewModel.formattedTime.collectAsState()
+        else -> remember { mutableStateOf("12:00:00") }
+    }
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -66,7 +93,11 @@ fun ServiceCountdownScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Countdown Timer Card
-            CountdownTimerCard()
+            CountdownTimerCard(
+                countdownState = countdownState,
+                formattedTime = formattedTime,
+                viewModel = viewModel
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -76,13 +107,18 @@ fun ServiceCountdownScreen(
 
             // End Service Button
             Button(
-                onClick = { /*TODO*/ },
+                onClick = { 
+                    when (viewModel) {
+                        is ServiceCountdownViewModel -> viewModel.endService()
+                        is PreviewServiceCountdownViewModel -> viewModel.setCountdownState(ServiceCountdownState.ENDED)
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF4A90E2) // A blue color
+                    containerColor = Color(0xFF4A90E2) // 蓝色
                 )
             ) {
                 Text("结束服务", fontSize = 18.sp, color = Color.White)
@@ -94,7 +130,11 @@ fun ServiceCountdownScreen(
 }
 
 @Composable
-fun CountdownTimerCard() {
+fun CountdownTimerCard(
+    countdownState: ServiceCountdownState,
+    formattedTime: String = "12:00:00",
+    viewModel: Any? = null
+) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -106,23 +146,54 @@ fun CountdownTimerCard() {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "12:00:00",
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-                Text(
-                    text = "服务倒计时",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
+                // 根据状态显示不同的倒计时文本
+                when (countdownState) {
+                    ServiceCountdownState.RUNNING -> {
+                        Text(
+                            text = formattedTime,
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        Text(
+                            text = "服务倒计时",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    ServiceCountdownState.COMPLETED -> {
+                        Text(
+                            text = "00:00:00",
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        Text(
+                            text = "服务倒计时",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    ServiceCountdownState.ENDED -> {
+                        Text(
+                            text = "00:00:00",
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        Text(
+                            text = "服务已结束",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
             }
             Button(
                 onClick = { /*TODO*/ },
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFF5A623) // An orange color
+                    containerColor = Color(0xFFF5A623) // 橙色
                 )
             ) {
                 Text("护理相册", color = Color.White)
@@ -158,8 +229,94 @@ fun SelectedServicesCard() {
     }
 }
 
+// 预览用的简化ViewModel
+class PreviewServiceCountdownViewModel : ViewModel() {
+    val countdownState = MutableStateFlow(ServiceCountdownState.RUNNING)
+    val formattedTime = MutableStateFlow("12:00:00")
+    
+    fun endService() {
+        countdownState.value = ServiceCountdownState.ENDED
+    }
+    
+    fun setCountdownState(state: ServiceCountdownState) {
+        countdownState.value = state
+    }
+    
+    fun setFormattedTime(time: String) {
+        formattedTime.value = time
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
-fun ServiceCountdownScreenPreview() {
-    ServiceCountdownScreen(navController = rememberNavController(), orderId = 1L)
+fun ServiceCountdownScreenRunningPreview() {
+    val previewViewModel = remember { 
+        PreviewServiceCountdownViewModel().apply {
+            setCountdownState(ServiceCountdownState.RUNNING)
+        }
+    }
+
+    CompositionLocalProvider(
+        LocalViewModelStoreOwner provides remember {
+            object : ViewModelStoreOwner {
+                override val viewModelStore = ViewModelStore()
+            }
+        }
+    ) {
+        ServiceCountdownScreen(
+            navController = rememberNavController(), 
+            orderId = 1L,
+            viewModel = previewViewModel
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ServiceCountdownScreenCompletedPreview() {
+    val previewViewModel = remember { 
+        PreviewServiceCountdownViewModel().apply {
+            setCountdownState(ServiceCountdownState.COMPLETED)
+            setFormattedTime("00:00:00")
+        }
+    }
+    
+    CompositionLocalProvider(
+        LocalViewModelStoreOwner provides remember {
+            object : ViewModelStoreOwner {
+                override val viewModelStore = ViewModelStore()
+            }
+        }
+    ) {
+        ServiceCountdownScreen(
+            navController = rememberNavController(), 
+            orderId = 1L,
+            viewModel = previewViewModel
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ServiceCountdownScreenEndedPreview() {
+    val previewViewModel = remember { 
+        PreviewServiceCountdownViewModel().apply {
+            setCountdownState(ServiceCountdownState.ENDED)
+            setFormattedTime("00:00:00")
+        }
+    }
+    
+    CompositionLocalProvider(
+        LocalViewModelStoreOwner provides remember {
+            object : ViewModelStoreOwner {
+                override val viewModelStore = ViewModelStore()
+            }
+        }
+    ) {
+        ServiceCountdownScreen(
+            navController = rememberNavController(), 
+            orderId = 1L,
+            viewModel = previewViewModel
+        )
+    }
 }
