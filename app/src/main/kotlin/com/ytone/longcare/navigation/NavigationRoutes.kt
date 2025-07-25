@@ -77,3 +77,7 @@ object LocationTrackingRoute
 @Keep
 @Serializable
 data class ServiceCompleteRoute(val orderId: Long)
+
+@Keep
+@Serializable
+object FaceRecognitionGuideRoute

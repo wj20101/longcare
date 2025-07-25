@@ -1,0 +1,414 @@
+package com.ytone.longcare.features.facerecognition.ui
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.CompositionLocalProvider
+import com.ytone.longcare.R
+import com.ytone.longcare.features.facerecognition.vm.FaceRecognitionViewModel
+import com.ytone.longcare.theme.bgGradientBrush
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FaceRecognitionGuideScreen(
+    navController: NavController,
+    viewModel: FaceRecognitionViewModel = hiltViewModel()
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bgGradientBrush)
+    ) {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            stringResource(id = R.string.face_recognition_guide_title),
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "返回",
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White
+                    )
+                )
+            },
+            containerColor = Color.Transparent,
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(id = R.string.face_recognition_guide_subtitle),
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // 主要内容卡片
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // 人脸识别框
+                        Box(
+                            modifier = Modifier
+                                .size(200.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .border(
+                                    width = 1.dp,
+                                    color = Color(0xFFFF8C00),
+                                    shape = RoundedCornerShape(8.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // 人脸图片
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_service_person),
+                                contentDescription = "人脸识别示例",
+                                modifier = Modifier.fillMaxSize(0.9f)
+                            )
+
+                            // 四个角的边框装饰
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(4.dp)
+                            ) {
+                                // 左上角
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp, 2.dp)
+                                        .background(Color(0xFF34C759))
+                                        .align(Alignment.TopStart)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(2.dp, 20.dp)
+                                        .background(Color(0xFF34C759))
+                                        .align(Alignment.TopStart)
+                                )
+
+                                // 右上角
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp, 2.dp)
+                                        .background(Color(0xFF34C759))
+                                        .align(Alignment.TopEnd)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(2.dp, 20.dp)
+                                        .background(Color(0xFF34C759))
+                                        .align(Alignment.TopEnd)
+                                )
+
+                                // 左下角
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp, 2.dp)
+                                        .background(Color(0xFF34C759))
+                                        .align(Alignment.BottomStart)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(2.dp, 20.dp)
+                                        .background(Color(0xFF34C759))
+                                        .align(Alignment.BottomStart)
+                                )
+
+                                // 右下角
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp, 2.dp)
+                                        .background(Color(0xFF34C759))
+                                        .align(Alignment.BottomEnd)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(2.dp, 20.dp)
+                                        .background(Color(0xFF34C759))
+                                        .align(Alignment.BottomEnd)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // 正确的人脸识别文本
+                        Text(
+                            text = stringResource(id = R.string.face_recognition_guide_correct_example),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF333333)
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // 错误示例行
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            // 错误示例1：戴眼镜
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color(0xFFF5F5F5)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.ic_service_person),
+                                        contentDescription = "戴眼镜示例",
+                                        modifier = Modifier.fillMaxSize(0.8f)
+                                    )
+
+                                    // 错误标记
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .background(
+                                                Color(0xFFFF6B00),
+                                                RoundedCornerShape(12.dp)
+                                            )
+                                            .align(Alignment.BottomStart)
+                                            .offset((-4).dp, 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "错误标记",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                    text = stringResource(id = R.string.face_recognition_guide_incorrect_glasses),
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF666666)
+                                )
+                            }
+
+                            // 错误示例2：戴帽子
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color(0xFFF5F5F5)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.ic_service_person),
+                                        contentDescription = "戴帽子示例",
+                                        modifier = Modifier.fillMaxSize(0.8f)
+                                    )
+
+                                    // 错误标记
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .background(
+                                                Color(0xFFFF6B00),
+                                                RoundedCornerShape(12.dp)
+                                            )
+                                            .align(Alignment.BottomStart)
+                                            .offset((-4).dp, 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "×",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                    text = stringResource(id = R.string.face_recognition_guide_incorrect_hat),
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF666666)
+                                )
+                            }
+
+                            // 错误示例3：光线不足
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color(0xFFF5F5F5)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.ic_service_person),
+                                        contentDescription = "光线不足示例",
+                                        modifier = Modifier.fillMaxSize(0.8f)
+                                    )
+
+                                    // 错误标记
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .background(
+                                                Color(0xFFFF6B00),
+                                                RoundedCornerShape(12.dp)
+                                            )
+                                            .align(Alignment.BottomStart)
+                                            .offset((-4).dp, 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "×",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                    text = stringResource(id = R.string.face_recognition_guide_incorrect_light),
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF666666)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // 获取隐私政策同意状态
+                val privacyAgreed by viewModel.privacyAgreed.collectAsStateWithLifecycle()
+
+                // 开始人脸识别按钮
+                Button(
+                    onClick = {
+                        // 调用ViewModel的方法开始人脸识别
+                        viewModel.startFaceRecognition()
+                        // 这里可以导航到实际的人脸识别页面
+                        // 例如：navController.navigate(TxFaceRoute)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4A90E2), // 蓝色
+                        disabledContainerColor = Color(0xFF4A90E2).copy(alpha = 0.5f)
+                    ),
+                    enabled = privacyAgreed
+                ) {
+                    Text(
+                        stringResource(id = R.string.face_recognition_guide_start_button),
+                        fontSize = 16.sp,
+                        color = Color.White
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 隐私政策提示
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                ) {
+                    Checkbox(
+                        checked = privacyAgreed,
+                        onCheckedChange = { viewModel.updatePrivacyAgreement(it) },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = Color(0xFF4A90E2),
+                            checkmarkColor = Color.White
+                        )
+                    )
+                    Text(
+                        text = stringResource(id = R.string.face_recognition_guide_privacy_agreement),
+                        fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.8f),
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FaceRecognitionGuideScreenPreview() {
+    val previewViewModel: FaceRecognitionViewModel = hiltViewModel()
+    CompositionLocalProvider(LocalViewModelStoreOwner provides PreviewViewModelStoreOwner()) {
+        FaceRecognitionGuideScreen(
+            navController = rememberNavController(),
+            viewModel = previewViewModel
+        )
+    }
+}
+
+/**
+ * 用于预览的ViewModelStoreOwner
+ */
+private class PreviewViewModelStoreOwner : ViewModelStoreOwner {
+    override val viewModelStore: ViewModelStore
+        get() = viewModelStore
+}

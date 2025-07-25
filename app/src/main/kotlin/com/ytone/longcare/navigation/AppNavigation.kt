@@ -30,6 +30,7 @@ import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
 import com.ytone.longcare.features.shared.FaceVerificationWithAutoSignScreen
 import com.ytone.longcare.features.servicecomplete.ui.ServiceCompleteScreen
+import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
 import kotlin.reflect.typeOf
 
 
@@ -83,6 +84,10 @@ fun NavController.navigateToServiceCountdown(orderId: Long) {
 
 fun NavController.navigateToServiceComplete(orderId: Long) {
     navigate(ServiceCompleteRoute(orderId))
+}
+
+fun NavController.navigateToFaceRecognitionGuide() {
+    navigate(FaceRecognitionGuideRoute)
 }
 
 fun NavController.navigateToHomeAndClearStack() {
@@ -218,6 +223,10 @@ fun AppNavigation(startDestination: Any) {
         composable<ServiceCompleteRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<ServiceCompleteRoute>()
             ServiceCompleteScreen(navController = navController, orderId = route.orderId)
+        }
+        
+        composable<FaceRecognitionGuideRoute> {
+            FaceRecognitionGuideScreen(navController = navController)
         }
     }
 }
