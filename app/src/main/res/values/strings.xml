@@ -63,4 +63,14 @@
     <string name="main_dashboard_nursing_staff_avatar">护理员头像</string>
     <string name="user_avatar_description">头像</string>
     <string name="nfc_sign_out_complete_service">服务完成，结束签到</string>
+    
+    <!-- 人脸识别指导页面 -->
+    <string name="face_recognition_guide_title">身份认证</string>
+    <string name="face_recognition_guide_subtitle">请按照要求进行人脸识别</string>
+    <string name="face_recognition_guide_correct_example">正确的人脸识别</string>
+    <string name="face_recognition_guide_incorrect_glasses">不戴眼镜</string>
+    <string name="face_recognition_guide_incorrect_hat">不戴帽子</string>
+    <string name="face_recognition_guide_incorrect_light">光线不要太暗</string>
+    <string name="face_recognition_guide_start_button">开始人脸识别</string>
+    <string name="face_recognition_guide_privacy_agreement">提通科技将手机并提供您身份验证过程中产生的图像、视频、数据信息以确认您的本人身份避免的身份信息被盗用，勾选即表示您同意人脸信息的手机、使用、保存和删除</string>
 </resources>
