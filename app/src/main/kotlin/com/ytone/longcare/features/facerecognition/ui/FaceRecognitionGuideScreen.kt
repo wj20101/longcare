@@ -219,15 +219,14 @@ fun FaceRecognitionGuideScreen(
                                                 Color(0xFFFF6B00),
                                                 RoundedCornerShape(12.dp)
                                             )
-                                            .align(Alignment.BottomStart)
-                                            .offset((-4).dp, 4.dp),
+                                            .align(Alignment.BottomStart),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Close,
                                             contentDescription = "错误标记",
                                             tint = Color.White,
-                                            modifier = Modifier.size(16.dp)
+                                            modifier = Modifier.fillMaxSize()
                                         )
                                     }
                                 }
@@ -266,14 +265,14 @@ fun FaceRecognitionGuideScreen(
                                                 Color(0xFFFF6B00),
                                                 RoundedCornerShape(12.dp)
                                             )
-                                            .align(Alignment.BottomStart)
-                                            .offset((-4).dp, 4.dp),
+                                            .align(Alignment.BottomStart),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text(
-                                            text = "×",
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "错误标记",
+                                            tint = Color.White,
+                                            modifier = Modifier.fillMaxSize()
                                         )
                                     }
                                 }
@@ -312,14 +311,14 @@ fun FaceRecognitionGuideScreen(
                                                 Color(0xFFFF6B00),
                                                 RoundedCornerShape(12.dp)
                                             )
-                                            .align(Alignment.BottomStart)
-                                            .offset((-4).dp, 4.dp),
+                                            .align(Alignment.BottomStart),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text(
-                                            text = "×",
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "错误标记",
+                                            tint = Color.White,
+                                            modifier = Modifier.fillMaxSize()
                                         )
                                     }
                                 }
