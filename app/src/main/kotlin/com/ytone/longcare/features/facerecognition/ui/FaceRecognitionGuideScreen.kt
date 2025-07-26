@@ -7,7 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -113,68 +114,15 @@ fun FaceRecognitionGuideScreen(
                                 modifier = Modifier.fillMaxSize(0.9f)
                             )
 
-                            // 四个角的边框装饰
-                            Box(
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "正确标记",
+                                tint = Color(0xFF34C759),
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(4.dp)
-                            ) {
-                                // 左上角
-                                Box(
-                                    modifier = Modifier
-                                        .size(20.dp, 2.dp)
-                                        .background(Color(0xFF34C759))
-                                        .align(Alignment.TopStart)
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(2.dp, 20.dp)
-                                        .background(Color(0xFF34C759))
-                                        .align(Alignment.TopStart)
-                                )
-
-                                // 右上角
-                                Box(
-                                    modifier = Modifier
-                                        .size(20.dp, 2.dp)
-                                        .background(Color(0xFF34C759))
-                                        .align(Alignment.TopEnd)
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(2.dp, 20.dp)
-                                        .background(Color(0xFF34C759))
-                                        .align(Alignment.TopEnd)
-                                )
-
-                                // 左下角
-                                Box(
-                                    modifier = Modifier
-                                        .size(20.dp, 2.dp)
-                                        .background(Color(0xFF34C759))
-                                        .align(Alignment.BottomStart)
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(2.dp, 20.dp)
-                                        .background(Color(0xFF34C759))
-                                        .align(Alignment.BottomStart)
-                                )
-
-                                // 右下角
-                                Box(
-                                    modifier = Modifier
-                                        .size(20.dp, 2.dp)
-                                        .background(Color(0xFF34C759))
-                                        .align(Alignment.BottomEnd)
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(2.dp, 20.dp)
-                                        .background(Color(0xFF34C759))
-                                        .align(Alignment.BottomEnd)
-                                )
-                            }
+                                    .size(16.dp)
+                                    .align(Alignment.BottomStart)
+                                    .offset(x = 24.dp, y = (-8).dp)
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -212,23 +160,14 @@ fun FaceRecognitionGuideScreen(
                                     )
 
                                     // 错误标记
-                                    Box(
+                                    Icon(
+                                        imageVector = Icons.Default.Cancel,
+                                        contentDescription = "错误标记",
+                                        tint = Color(0xFFFF6B00),
                                         modifier = Modifier
-                                            .size(24.dp)
-                                            .background(
-                                                Color(0xFFFF6B00),
-                                                RoundedCornerShape(12.dp)
-                                            )
-                                            .align(Alignment.BottomStart),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "错误标记",
-                                            tint = Color.White,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
+                                            .size(16.dp)
+                                            .align(Alignment.BottomStart)
+                                    )
                                 }
 
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -258,23 +197,14 @@ fun FaceRecognitionGuideScreen(
                                     )
 
                                     // 错误标记
-                                    Box(
+                                    Icon(
+                                        imageVector = Icons.Default.Cancel,
+                                        contentDescription = "错误标记",
+                                        tint = Color(0xFFFF6B00),
                                         modifier = Modifier
-                                            .size(24.dp)
-                                            .background(
-                                                Color(0xFFFF6B00),
-                                                RoundedCornerShape(12.dp)
-                                            )
-                                            .align(Alignment.BottomStart),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "错误标记",
-                                            tint = Color.White,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
+                                            .size(16.dp)
+                                            .align(Alignment.BottomStart)
+                                    )
                                 }
 
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -304,23 +234,14 @@ fun FaceRecognitionGuideScreen(
                                     )
 
                                     // 错误标记
-                                    Box(
+                                    Icon(
+                                        imageVector = Icons.Default.Cancel,
+                                        contentDescription = "错误标记",
+                                        tint = Color(0xFFFF6B00),
                                         modifier = Modifier
-                                            .size(24.dp)
-                                            .background(
-                                                Color(0xFFFF6B00),
-                                                RoundedCornerShape(12.dp)
-                                            )
-                                            .align(Alignment.BottomStart),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "错误标记",
-                                            tint = Color.White,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
+                                            .size(16.dp)
+                                            .align(Alignment.BottomStart)
+                                    )
                                 }
 
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -383,7 +304,7 @@ fun FaceRecognitionGuideScreen(
                     Text(
                         text = stringResource(id = R.string.face_recognition_guide_privacy_agreement),
                         fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.8f),
+                        color = Color(0xFF666666),
                         lineHeight = 16.sp
                     )
                 }
