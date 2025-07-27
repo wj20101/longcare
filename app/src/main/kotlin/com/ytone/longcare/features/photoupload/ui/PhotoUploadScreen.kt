@@ -45,6 +45,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.rememberAsyncImagePainter
 import com.ytone.longcare.R
+import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
@@ -150,7 +151,12 @@ fun PhotoUploadScreen(
                                 try {
                                     val uploadResult = viewModel.uploadSuccessfulImagesToCloud()
                                     uploadResult.fold(
-                                        onSuccess = { _ ->
+                                        onSuccess = { cloudUrlsMap ->
+                                            // 将上传结果回传给上一个页面
+                                            navController.previousBackStackEntry?.savedStateHandle?.set(
+                                                NavigationConstants.PHOTO_UPLOAD_RESULT_KEY,
+                                                cloudUrlsMap
+                                            )
                                             navController.popBackStack()
                                         },
                                         onFailure = { error ->

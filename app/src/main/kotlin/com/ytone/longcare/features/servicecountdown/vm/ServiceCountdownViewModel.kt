@@ -3,6 +3,7 @@ package com.ytone.longcare.features.servicecountdown.vm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
+import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -106,5 +107,22 @@ class ServiceCountdownViewModel @Inject constructor() : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         countdownJob?.cancel()
+    }
+    
+    /**
+     * 处理图片上传结果
+     * @param uploadResult 按ImageTaskType分组的图片URL列表
+     */
+    fun handlePhotoUploadResult(uploadResult: Map<ImageTaskType, List<String>>) {
+        val beforeCareImages = uploadResult[ImageTaskType.BEFORE_CARE] ?: emptyList()
+        val afterCareImages = uploadResult[ImageTaskType.AFTER_CARE] ?: emptyList()
+        
+        // 这里可以根据业务需求处理上传的图片数据
+        // 例如：保存到本地状态、发送到服务器等
+        println("收到护理前图片: $beforeCareImages")
+        println("收到护理后图片: $afterCareImages")
+        
+        // 可以在这里更新状态或执行其他业务逻辑
+        // 例如：更新UI状态、触发数据同步等
     }
 }
