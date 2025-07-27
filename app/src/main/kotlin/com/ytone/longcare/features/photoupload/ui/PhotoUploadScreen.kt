@@ -50,13 +50,11 @@ import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import com.ytone.longcare.features.photoupload.utils.rememberMultiplePhotoPicker
 import com.ytone.longcare.features.photoupload.utils.launchMultiplePhotoPicker
-import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import androidx.core.net.toUri
-import com.ytone.longcare.navigation.EndOderInfo
-import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
+import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewModel
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
@@ -69,10 +67,7 @@ enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
 @Composable
 fun PhotoUploadScreen(
     navController: NavController,
-    orderId: Long,
     orderAddress: String,
-    projectIds: List<Int>,
-    endOrderInfo: EndOderInfo? = null,
     viewModel: PhotoProcessingViewModel = hiltViewModel()
 ) {
     // 收集ViewModel状态
@@ -155,25 +150,8 @@ fun PhotoUploadScreen(
                                 try {
                                     val uploadResult = viewModel.uploadSuccessfulImagesToCloud()
                                     uploadResult.fold(
-                                        onSuccess = { cloudUrls ->
-                                            // 将云端URL转换为字符串格式传递给下一个页面
-                                            val cloudUrlsMap = cloudUrls.mapKeys { it.key }
-                                                .mapValues { entry -> entry.value }
-                                            val params = EndOderInfo(
-                                                projectIdList = projectIds,
-                                                beginImgList = cloudUrlsMap.getOrDefault(
-                                                    ImageTaskType.BEFORE_CARE,
-                                                    emptyList()
-                                                ),
-                                                endImgList = cloudUrlsMap.getOrDefault(
-                                                    ImageTaskType.AFTER_CARE,
-                                                    emptyList()
-                                                )
-                                            )
-                                            navController.navigateToNfcSignInForEndOrder(
-                                                orderId = orderId,
-                                                params = params
-                                            )
+                                        onSuccess = { _ ->
+                                            navController.popBackStack()
                                         },
                                         onFailure = { error ->
                                             // 显示上传失败的错误信息
