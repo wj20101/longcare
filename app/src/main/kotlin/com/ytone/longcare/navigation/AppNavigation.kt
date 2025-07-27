@@ -34,24 +34,45 @@ import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
 import kotlin.reflect.typeOf
 
 
+/**
+ * 从登录页面导航到主页，并清除登录页面的返回栈
+ * @param NavController 导航控制器
+ */
 fun NavController.navigateToHomeFromLogin() {
     navigate(HomeRoute) {
         popUpTo(LoginRoute) { inclusive = true }
     }
 }
 
+/**
+ * 导航到服务详情页面
+ * @param orderId 订单ID
+ */
 fun NavController.navigateToService(orderId: Long) {
     navigate(ServiceRoute(orderId))
 }
 
+/**
+ * 导航到护理执行页面
+ * @param orderId 订单ID
+ */
 fun NavController.navigateToNursingExecution(orderId: Long) {
     navigate(NursingExecutionRoute(orderId))
 }
 
+/**
+ * 导航到NFC签到页面（开始订单模式）
+ * @param orderId 订单ID
+ */
 fun NavController.navigateToNfcSignInForStartOrder(orderId: Long) {
     navigate(NfcSignInRoute(orderId = orderId, signInMode = SignInMode.START_ORDER))
 }
 
+/**
+ * 导航到NFC签到页面（结束订单模式）
+ * @param orderId 订单ID
+ * @param params 结束订单的信息参数
+ */
 fun NavController.navigateToNfcSignInForEndOrder(orderId: Long, params: EndOderInfo) {
     navigate(
         NfcSignInRoute(
@@ -62,34 +83,64 @@ fun NavController.navigateToNfcSignInForEndOrder(orderId: Long, params: EndOderI
     )
 }
 
+/**
+ * 导航到护理计划列表页面
+ */
 fun NavController.navigateToCarePlansList() {
     navigate(CarePlansListRoute)
 }
 
+/**
+ * 导航到服务记录列表页面
+ */
 fun NavController.navigateToServiceRecordsList() {
     navigate(ServiceRecordsListRoute)
 }
 
+/**
+ * 导航到选择服务页面
+ * @param orderId 订单ID
+ */
 fun NavController.navigateToSelectService(orderId: Long) {
     navigate(SelectServiceRoute(orderId))
 }
 
+/**
+ * 导航到照片上传页面
+ * @param orderId 订单ID
+ * @param address 订单地址
+ * @param projectIds 项目ID列表
+ */
 fun NavController.navigateToPhotoUpload(orderId: Long, address: String, projectIds: List<Int>) {
     navigate(PhotoUploadRoute(orderId, address, projectIds))
 }
 
+/**
+ * 导航到服务倒计时页面
+ * @param orderId 订单ID
+ */
 fun NavController.navigateToServiceCountdown(orderId: Long) {
     navigate(ServiceCountdownRoute(orderId))
 }
 
+/**
+ * 导航到服务完成页面
+ * @param orderId 订单ID
+ */
 fun NavController.navigateToServiceComplete(orderId: Long) {
     navigate(ServiceCompleteRoute(orderId))
 }
 
+/**
+ * 导航到人脸识别引导页面
+ */
 fun NavController.navigateToFaceRecognitionGuide() {
     navigate(FaceRecognitionGuideRoute)
 }
 
+/**
+ * 导航到主页并清除所有返回栈
+ */
 fun NavController.navigateToHomeAndClearStack() {
     navigate(HomeRoute) {
         popUpTo(0) { inclusive = false }
@@ -99,6 +150,7 @@ fun NavController.navigateToHomeAndClearStack() {
 
 /**
  * 应用的顶层 Composable，负责根据认证状态决定初始导航。
+ * @param viewModel 主要的ViewModel，用于获取会话状态
  */
 @Composable
 fun MainApp(
@@ -137,6 +189,10 @@ fun SplashScreen() {
     }
 }
 
+/**
+ * 应用的主要导航组件
+ * @param startDestination 初始导航目的地
+ */
 @Composable
 fun AppNavigation(startDestination: Any) {
     val navController = rememberNavController()
