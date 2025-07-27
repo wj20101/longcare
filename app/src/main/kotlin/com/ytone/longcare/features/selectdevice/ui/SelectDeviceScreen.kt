@@ -219,3 +219,10 @@ fun NextStepButton(text: String, enabled: Boolean, onClick: () -> Unit) {
 fun NextStepButtonPreview() {
     NextStepButton(text = "Next Step", enabled = true, onClick = {})
 }
+
+@Preview
+@Composable
+fun SelectDeviceScreenWithNavControllerPreview() {
+    val navController = rememberNavController()
+    SelectDeviceScreen(navController = navController, orderId = 12345L)
+}
