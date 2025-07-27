@@ -131,8 +131,7 @@ fun ServiceCountdownScreen(
                 orderId = orderId,
                 countdownState = countdownState,
                 formattedTime = formattedTime,
-                viewModel = viewModel,
-                sharedViewModel = sharedViewModel
+                viewModel = viewModel
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -184,8 +183,7 @@ fun CountdownTimerCard(
     orderId: Long,
     countdownState: ServiceCountdownState,
     formattedTime: String = "12:00:00",
-    viewModel: ServiceCountdownViewModel,
-    sharedViewModel: SharedOrderDetailViewModel
+    viewModel: ServiceCountdownViewModel
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
