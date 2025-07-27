@@ -21,6 +21,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
+import com.ytone.longcare.navigation.EndOderInfo
+import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
 import com.ytone.longcare.navigation.navigateToPhotoUpload
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
@@ -99,10 +101,16 @@ fun ServiceCountdownScreen(
             Button(
                 onClick = { 
                     viewModel.endService()
+                    val endOrderInfo = EndOderInfo(
+                        projectIdList = emptyList(), // 项目ID可以从ViewModel获取
+                        beginImgList = emptyList(), // 开始图片列表
+                        endImgList = emptyList() // 结束图片列表
+                    )
                     navController.navigateToPhotoUpload(
                         orderId = orderId,
                         address = "", // 可以从ViewModel或其他地方获取地址信息
-                        projectIds = emptyList() // 可以从ViewModel或其他地方获取项目ID列表
+                        projectIds = emptyList(), // 可以从ViewModel或其他地方获取项目ID列表
+                        endOrderInfo = endOrderInfo
                     )
                 },
                 modifier = Modifier
@@ -204,10 +212,14 @@ fun CountdownTimerCard(
             }
             Button(
                 onClick = { 
-                    navController.navigateToPhotoUpload(
+                    val endOrderInfo = EndOderInfo(
+                        projectIdList = emptyList(), // 项目ID可以从ViewModel获取
+                        beginImgList = emptyList(), // 开始图片列表
+                        endImgList = emptyList() // 结束图片列表
+                    )
+                    navController.navigateToNfcSignInForEndOrder(
                         orderId = orderId,
-                        address = "", // 地址信息可以从ViewModel获取
-                        projectIds = emptyList() // 项目ID可以从ViewModel获取
+                        params = endOrderInfo
                     )
                 },
                 shape = RoundedCornerShape(50),
