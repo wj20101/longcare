@@ -72,7 +72,7 @@ data class NfcSignInRoute(
  */
 @Keep
 @Serializable
-data class ServiceCountdownRoute(val orderId: Long)
+data class ServiceCountdownRoute(val orderId: Long, val projectIdList: List<Int>)
 
 /**
  * 结束订单信息数据类

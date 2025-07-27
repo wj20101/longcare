@@ -121,9 +121,10 @@ fun NavController.navigateToPhotoUpload(
 /**
  * 导航到服务倒计时页面
  * @param orderId 订单ID
+ * @param projectIdList 项目ID列表
  */
-fun NavController.navigateToServiceCountdown(orderId: Long) {
-    navigate(ServiceCountdownRoute(orderId))
+fun NavController.navigateToServiceCountdown(orderId: Long, projectIdList: List<Int>) {
+    navigate(ServiceCountdownRoute(orderId, projectIdList))
 }
 
 /**
@@ -283,7 +284,11 @@ fun AppNavigation(startDestination: Any) {
         }
         composable<ServiceCountdownRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<ServiceCountdownRoute>()
-            ServiceCountdownScreen(navController = navController, orderId = route.orderId)
+            ServiceCountdownScreen(
+                navController = navController,
+                orderId = route.orderId,
+                projectIdList = route.projectIdList
+            )
         }
         composable<TxFaceRoute> { backStackEntry ->
             FaceVerificationWithAutoSignScreen(
