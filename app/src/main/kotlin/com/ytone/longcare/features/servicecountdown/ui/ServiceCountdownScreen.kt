@@ -43,21 +43,27 @@ enum class ServiceCountdownState {
 fun ServiceCountdownScreen(
     navController: NavController,
     orderId: Long,
+    projectIdList: List<Int>,
     viewModel: ServiceCountdownViewModel = hiltViewModel()
 ) {
     // 从ViewModel获取状态
     val countdownState by viewModel.countdownState.collectAsStateWithLifecycle()
     val formattedTime by viewModel.formattedTime.collectAsStateWithLifecycle()
-    
+
     // 监听图片上传结果
     LaunchedEffect(navController.currentBackStackEntry?.savedStateHandle) {
-        navController.currentBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<String>>?>(NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, null)?.collect { result ->
+        navController.currentBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<String>>?>(
+            NavigationConstants.PHOTO_UPLOAD_RESULT_KEY,
+            null
+        )?.collect { result ->
             result?.let {
                 // 调用ViewModel处理图片上传结果
                 viewModel.handlePhotoUploadResult(it)
-                
+
                 // 清除结果，避免重复处理
-                navController.currentBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<String>>>(NavigationConstants.PHOTO_UPLOAD_RESULT_KEY)
+                navController.currentBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<String>>>(
+                    NavigationConstants.PHOTO_UPLOAD_RESULT_KEY
+                )
             }
         }
     }
@@ -115,7 +121,7 @@ fun ServiceCountdownScreen(
 
             // End Service Button
             Button(
-                onClick = { 
+                onClick = {
                     viewModel.endService()
                     navController.navigateToNfcSignInForEndOrder(
                         orderId = orderId,
@@ -143,7 +149,11 @@ fun ServiceCountdownScreen(
 fun ServiceCountdownScreenPreview() {
     val navController = rememberNavController()
     // 这里我们使用一个模拟的订单ID用于预览
-    ServiceCountdownScreen(navController = navController, orderId = 12345L)
+    ServiceCountdownScreen(
+        navController = navController,
+        orderId = 12345L,
+        projectIdList = emptyList()
+    )
 }
 
 @Composable
@@ -184,6 +194,7 @@ fun CountdownTimerCard(
                             softWrap = false
                         )
                     }
+
                     ServiceCountdownState.COMPLETED -> {
                         Text(
                             text = "00:00:00",
@@ -201,6 +212,7 @@ fun CountdownTimerCard(
                             softWrap = false
                         )
                     }
+
                     ServiceCountdownState.ENDED -> {
                         Text(
                             text = "00:00:00",
@@ -221,7 +233,7 @@ fun CountdownTimerCard(
                 }
             }
             Button(
-                onClick = { 
+                onClick = {
                     val existingImages = viewModel?.getCurrentUploadedImages() ?: emptyMap()
                     // 通过savedStateHandle传递已有的图片数据
                     navController.currentBackStackEntry?.savedStateHandle?.set(
@@ -278,9 +290,18 @@ fun SelectedServicesCard() {
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            modifier = Modifier.fillMaxWidth().padding(top = tagHeightEstimate - tagOverlap),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = tagHeightEstimate - tagOverlap),
         ) {
-            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 32.dp, bottom = 16.dp)) {
+            Column(
+                modifier = Modifier.padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 32.dp,
+                    bottom = 16.dp
+                )
+            ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("1: 助浴服务")
                     Text("2: 做饭服务")
