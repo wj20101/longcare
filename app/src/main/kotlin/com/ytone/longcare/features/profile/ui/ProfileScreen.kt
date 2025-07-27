@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.profile.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,6 +31,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.NurseServiceTimeModel
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
@@ -37,6 +39,8 @@ import com.ytone.longcare.features.profile.vm.ProfileViewModel
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
 import com.ytone.longcare.navigation.HomeRoute
+import com.ytone.longcare.navigation.navigateToHaveServiceUserList
+import com.ytone.longcare.navigation.navigateToNoServiceUserList
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.ui.components.UserAvatar
 
@@ -88,7 +92,7 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 UserInfoSection(user = loggedInUser)
                 Spacer(modifier = Modifier.height(24.dp))
-                StatsCard(stats = statsState)
+                StatsCard(navController = navController, stats = statsState)
                 Spacer(modifier = Modifier.height(24.dp))
                 OptionsCard()
                 Spacer(modifier = Modifier.weight(1f))
@@ -134,7 +138,7 @@ fun UserInfoSection(user: User) {
 }
 
 @Composable
-fun StatsCard(stats: NurseServiceTimeModel) {
+fun StatsCard(navController: NavController, stats: NurseServiceTimeModel) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -148,7 +152,11 @@ fun StatsCard(stats: NurseServiceTimeModel) {
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            StatItem(value = stats.haveServiceTime.toString(), label = "已服务工时")
+            StatItem(
+                value = stats.haveServiceTime.toString(),
+                label = "已服务工时",
+                onClick = { navController.navigateToHaveServiceUserList() }
+            )
             VerticalDivider(
                 modifier = Modifier.height(30.dp), thickness = 1.dp, color = Color(0xFFF0F0F0)
             )
@@ -156,14 +164,25 @@ fun StatsCard(stats: NurseServiceTimeModel) {
             VerticalDivider(
                 modifier = Modifier.height(30.dp), thickness = 1.dp, color = Color(0xFFF0F0F0)
             )
-            StatItem(value = stats.noServiceTime.toString(), label = "未服务工时")
+            StatItem(
+                value = stats.noServiceTime.toString(),
+                label = "未服务工时",
+                onClick = { navController.navigateToNoServiceUserList() }
+            )
         }
     }
 }
 
 @Composable
-fun StatItem(value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+fun StatItem(value: String, label: String, onClick: (() -> Unit)? = null) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = if (onClick != null) {
+            Modifier.clickable { onClick() }
+        } else {
+            Modifier
+        }
+    ) {
         Text(text = value, fontWeight = FontWeight.Bold, fontSize = 22.sp)
         Spacer(modifier = Modifier.height(4.dp))
         Text(text = label, color = Color.Gray, fontSize = 12.sp)
@@ -262,7 +281,7 @@ fun StatsCardPreview() {
     )
     LongCareTheme {
         Surface {
-            StatsCard(stats = stats)
+            StatsCard(navController = rememberNavController(), stats = stats)
         }
     }
 }

@@ -166,3 +166,17 @@ data class SelectDeviceRoute(val orderId: Long)
 @Keep
 @Serializable
 data class IdentificationRoute(val orderId: Long)
+
+/**
+ * 已服务工时用户列表页面路由
+ */
+@Keep
+@Serializable
+object HaveServiceUserListRoute
+
+/**
+ * 未服务工时用户列表页面路由
+ */
+@Keep
+@Serializable
+object NoServiceUserListRoute

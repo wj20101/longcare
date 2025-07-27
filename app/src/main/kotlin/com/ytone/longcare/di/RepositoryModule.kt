@@ -6,12 +6,14 @@ import com.ytone.longcare.data.repository.LoginRepositoryImpl
 import com.ytone.longcare.data.repository.OrderRepositoryImpl
 import com.ytone.longcare.data.repository.ProfileRepositoryImpl
 import com.ytone.longcare.data.repository.TencentFaceRepositoryImpl
+import com.ytone.longcare.data.repository.UserListRepositoryImpl
 import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.profile.ProfileRepository
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository
 import com.ytone.longcare.domain.location.LocationRepository
 import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.domain.userlist.UserListRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -45,4 +47,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindLocationRepository(impl: LocationRepositoryImpl): LocationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindUserListRepository(impl: UserListRepositoryImpl): UserListRepository
 }
