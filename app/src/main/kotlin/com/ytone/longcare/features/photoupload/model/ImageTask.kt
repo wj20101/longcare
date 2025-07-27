@@ -12,7 +12,9 @@ data class ImageTask(
     val watermarkLines: List<String>,
     val resultUri: Uri? = null,
     val status: ImageTaskStatus = ImageTaskStatus.PROCESSING,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isUploaded: Boolean = false, // 标识是否已经上传到云端
+    val cloudUrl: String? = null // 云端URL
 )
 
 /**

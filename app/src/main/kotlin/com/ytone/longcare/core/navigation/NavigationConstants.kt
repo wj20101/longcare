@@ -12,6 +12,12 @@ object NavigationConstants {
      */
     const val PHOTO_UPLOAD_RESULT_KEY = "photo_upload_result"
     
+    /**
+     * 已有图片数据的键值
+     * 用于向PhotoUploadScreen传递已有的图片数据
+     */
+    const val EXISTING_IMAGES_KEY = "existing_images"
+    
     // 可以在这里添加其他导航相关的常量
     // const val OTHER_RESULT_KEY = "other_result"
 }
