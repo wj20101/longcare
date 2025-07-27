@@ -21,20 +21,26 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.theme.bgGradientBrush
+import com.ytone.longcare.navigation.navigateToNfcSignInForStartOrder
+import com.ytone.longcare.theme.bgButtonGradientBrush
 
 // --- 数据模型 ---
 data class Device(
     val id: String,
     val name: String,
-    // val imageUrl: String? = null // 如果有设备图片
 )
 
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SelectDeviceScreen() {
+fun SelectDeviceScreen(
+    navController: NavController = rememberNavController(),
+    orderId: Long = 0L
+) {
     // 模拟设备数据
     val devices = remember {
         List(6) { index -> Device(id = "id_$index", name = "设备名称") }
@@ -51,7 +57,7 @@ fun SelectDeviceScreen() {
                 CenterAlignedTopAppBar(
                     title = { Text(stringResource(R.string.select_device_title), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = { /* TODO: 返回操作 */ }) {
+                        IconButton(onClick = { navController.popBackStack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.common_back),
@@ -95,8 +101,10 @@ fun SelectDeviceScreen() {
                 Spacer(modifier = Modifier.weight(1f)) // 将按钮推到底部
 
                 NextStepButton(
-                    text = stringResource(R.string.common_next_step), enabled = selectedDeviceIndex != null, // 仅当有设备选中时才可用
-                    onClick = { /* TODO: 执行下一步操作 */ })
+                    text = stringResource(R.string.common_next_step), enabled = true/* selectedDeviceIndex != null*/, // 仅当有设备选中时才可用
+                    onClick = { 
+                        navController.navigateToNfcSignInForStartOrder(orderId)
+                    })
 
                 Spacer(modifier = Modifier.height(32.dp)) // 按钮与屏幕底部的间距
             }
@@ -190,14 +198,13 @@ fun DeviceItemPreview() {
 
 @Composable
 fun NextStepButton(text: String, enabled: Boolean, onClick: () -> Unit) {
-
     Button(
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
             .height(50.dp)
-            .background(brush = bgGradientBrush, shape = RoundedCornerShape(50)),
+            .background(brush = bgButtonGradientBrush, shape = RoundedCornerShape(50)),
         shape = RoundedCornerShape(50),
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.Transparent, disabledContainerColor = Color.Gray

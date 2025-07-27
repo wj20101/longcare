@@ -46,7 +46,7 @@
     <string name="nursing_execution_title">护理执行</string>
     <string name="nursing_execution_instruction">请阅读并确认订单服务内容以及客户信息，扫描客户容貌验证通过后，开始服务。</string>
     <string name="nursing_execution_client_info_tag">客户信息</string>
-    <string name="nursing_execution_confirm_button">确认信息开始人脸认证</string>
+    <string name="nursing_execution_confirm_button">确认信息</string>
     <string name="nursing_execution_label_name">姓名：</string>
     <string name="nursing_execution_label_age">年龄：</string>
     <string name="nursing_execution_label_id_number">身份证号：</string>

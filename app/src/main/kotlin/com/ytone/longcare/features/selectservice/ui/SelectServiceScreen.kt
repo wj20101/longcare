@@ -25,10 +25,10 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ytone.longcare.R
+import com.ytone.longcare.navigation.navigateToServiceCountdown
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
-import com.ytone.longcare.navigation.navigateToPhotoUpload
 
 // --- 数据模型 ---
 data class ServiceItem(
@@ -202,9 +202,7 @@ fun SelectServiceScreen(
                         onClick = {
                             val selectedProjectIds =
                                 serviceItems.filter { it.isSelected }.map { it.id }
-                            navController.navigateToPhotoUpload(
-                                orderId, address = orderAddress, selectedProjectIds
-                            )
+                            navController.navigateToServiceCountdown(orderId)
                         },
                         modifier = Modifier.weight(1f)
                     )

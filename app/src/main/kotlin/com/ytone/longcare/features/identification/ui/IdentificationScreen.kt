@@ -20,17 +20,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.theme.bgGradientBrush
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.ytone.longcare.navigation.navigateToFaceRecognitionGuide
+
 
 // 身份认证状态枚举
 enum class IdentificationState {
@@ -43,13 +40,10 @@ enum class IdentificationState {
 @Composable
 fun IdentificationScreen(
     navController: NavController,
-    viewModel: Any = hiltViewModel()
+    orderId: Long = 0L,
+    viewModel: IdentificationViewModel = hiltViewModel()
 ) {
-    val identificationState by when (viewModel) {
-        is IdentificationViewModel -> viewModel.identificationState.collectAsStateWithLifecycle()
-        is PreviewIdentificationViewModel -> viewModel.identificationState.collectAsState()
-        else -> remember { mutableStateOf(IdentificationState.INITIAL) }
-    }
+    val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
     
     Box(
         modifier = Modifier
@@ -98,10 +92,7 @@ fun IdentificationScreen(
                     isVerified = identificationState == IdentificationState.SERVICE_VERIFIED || 
                                 identificationState == IdentificationState.ELDER_VERIFIED,
                     onVerifyClick = { 
-                        when (viewModel) {
-                            is IdentificationViewModel -> viewModel.verifyServicePerson()
-                            is PreviewIdentificationViewModel -> viewModel.setState(IdentificationState.SERVICE_VERIFIED)
-                        }
+                        viewModel.verifyServicePerson()
                     },
                     viewModel = viewModel
                 )
@@ -113,10 +104,7 @@ fun IdentificationScreen(
                     personType = "老人",
                     isVerified = identificationState == IdentificationState.ELDER_VERIFIED,
                     onVerifyClick = { 
-                        when (viewModel) {
-                            is IdentificationViewModel -> viewModel.verifyElder()
-                            is PreviewIdentificationViewModel -> viewModel.setState(IdentificationState.ELDER_VERIFIED)
-                        }
+                        viewModel.verifyElder()
                     },
                     viewModel = viewModel
                 )
@@ -125,7 +113,7 @@ fun IdentificationScreen(
 
                 // 下一步按钮
                 Button(
-                    onClick = { /* TODO: 导航到下一个页面 */ },
+                    onClick = { navController.navigateToFaceRecognitionGuide(orderId) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
@@ -150,13 +138,9 @@ fun IdentificationCard(
     personType: String,
     isVerified: Boolean,
     onVerifyClick: () -> Unit,
-    viewModel: Any = hiltViewModel()
+    viewModel: IdentificationViewModel = hiltViewModel()
 ) {
-    val identificationState by when (viewModel) {
-        is IdentificationViewModel -> viewModel.identificationState.collectAsStateWithLifecycle()
-        is PreviewIdentificationViewModel -> viewModel.identificationState.collectAsState()
-        else -> remember { mutableStateOf(IdentificationState.INITIAL) }
-    }
+    val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
     
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -241,77 +225,5 @@ fun IdentificationCard(
                 }
             }
         }
-    }
-}
-
-// 预览用的ViewModel
-class PreviewIdentificationViewModel : ViewModel() {
-    val identificationState = MutableStateFlow(IdentificationState.INITIAL)
-    
-    fun setState(state: IdentificationState) {
-        identificationState.value = state
-    }
-}
-
-@Preview(showBackground = true, name = "初始状态 - 两个都未验证")
-@Composable
-fun IdentificationScreenInitialPreview() {
-    val previewViewModel = remember { PreviewIdentificationViewModel() }
-    previewViewModel.setState(IdentificationState.INITIAL)
-    val navController = rememberNavController()
-    
-    CompositionLocalProvider(
-        LocalViewModelStoreOwner provides remember {
-            object : ViewModelStoreOwner {
-                override val viewModelStore = ViewModelStore()
-            }
-        }
-    ) {
-        IdentificationScreen(
-            navController = navController,
-            viewModel = previewViewModel
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "服务人员已验证状态")
-@Composable
-fun IdentificationScreenServiceVerifiedPreview() {
-    val previewViewModel = remember { PreviewIdentificationViewModel() }
-    previewViewModel.setState(IdentificationState.SERVICE_VERIFIED)
-    val navController = rememberNavController()
-    
-    CompositionLocalProvider(
-        LocalViewModelStoreOwner provides remember {
-            object : ViewModelStoreOwner {
-                override val viewModelStore = ViewModelStore()
-            }
-        }
-    ) {
-        IdentificationScreen(
-            navController = navController,
-            viewModel = previewViewModel
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "全部验证完成状态")
-@Composable
-fun IdentificationScreenAllVerifiedPreview() {
-    val previewViewModel = remember { PreviewIdentificationViewModel() }
-    previewViewModel.setState(IdentificationState.ELDER_VERIFIED)
-    val navController = rememberNavController()
-    
-    CompositionLocalProvider(
-        LocalViewModelStoreOwner provides remember {
-            object : ViewModelStoreOwner {
-                override val viewModelStore = ViewModelStore()
-            }
-        }
-    ) {
-        IdentificationScreen(
-            navController = navController,
-            viewModel = previewViewModel
-        )
     }
 }

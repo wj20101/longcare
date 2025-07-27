@@ -31,7 +31,7 @@ import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.model.isExecutingState
 import com.ytone.longcare.model.isPendingExecutionState
-import com.ytone.longcare.navigation.navigateToNfcSignInForStartOrder
+import com.ytone.longcare.navigation.navigateToSelectDevice
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 
@@ -190,7 +190,7 @@ fun NursingExecutionContent(
                     onClick = {
                         when {
                             orderInfo.state.isExecutingState() -> navController.navigateToSelectService(orderId)
-                            orderInfo.state.isPendingExecutionState() -> navController.navigateToNfcSignInForStartOrder(orderId)
+                            orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(orderId)
                             else -> navController.popBackStack()
                         }
                     }
