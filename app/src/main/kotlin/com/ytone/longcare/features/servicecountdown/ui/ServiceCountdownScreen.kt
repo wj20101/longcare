@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.core.navigation.NavigationConstants
@@ -81,6 +80,14 @@ fun ServiceCountdownScreen(
             }
         }
     }
+    
+    // 设置倒计时时间
+    LaunchedEffect(orderId, projectIdList) {
+        val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
+        orderInfo?.let {
+            viewModel.setCountdownTimeFromProjects(it.projectList, projectIdList)
+        }
+    }
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -130,7 +137,11 @@ fun ServiceCountdownScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            SelectedServicesCard()
+            SelectedServicesCard(
+                orderId = orderId,
+                projectIdList = projectIdList,
+                sharedViewModel = sharedViewModel
+            )
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -165,18 +176,6 @@ fun ServiceCountdownScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
-}
-
-@Preview
-@Composable
-fun ServiceCountdownScreenPreview() {
-    val navController = rememberNavController()
-    // 这里我们使用一个模拟的订单ID用于预览
-    ServiceCountdownScreen(
-        navController = navController,
-        orderId = 12345L,
-        projectIdList = emptyList(),
-    )
 }
 
 @Composable
@@ -277,42 +276,21 @@ fun CountdownTimerCard(
     }
 }
 
-@Preview
 @Composable
-fun CountdownTimerCardPreview() {
-    val navController = rememberNavController()
-    Column(modifier = Modifier.padding(16.dp)) {
-        CountdownTimerCard(
-            navController = navController,
-            orderId = 12345L,
-            countdownState = ServiceCountdownState.RUNNING,
-            formattedTime = "02:35:16",
-            viewModel = hiltViewModel(),
-            sharedViewModel = hiltViewModel()
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        CountdownTimerCard(
-            navController = navController,
-            orderId = 12345L,
-            countdownState = ServiceCountdownState.COMPLETED,
-            viewModel = hiltViewModel(),
-            sharedViewModel = hiltViewModel()
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        CountdownTimerCard(
-            navController = navController,
-            orderId = 12345L,
-            countdownState = ServiceCountdownState.ENDED,
-            viewModel = hiltViewModel(),
-            sharedViewModel = hiltViewModel()
-        )
-    }
-}
-
-@Composable
-fun SelectedServicesCard() {
+fun SelectedServicesCard(
+    orderId: Long,
+    projectIdList: List<Int>,
+    sharedViewModel: SharedOrderDetailViewModel
+) {
     val tagHeightEstimate = 32.dp
     val tagOverlap = 12.dp
+    
+    // 获取订单详情
+    val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
+    
+    // 过滤出选中的项目
+    val selectedProjects = orderInfo?.projectList?.filter { it.projectId in projectIdList } ?: emptyList()
+    
     Box {
         Card(
             shape = RoundedCornerShape(16.dp),
@@ -329,11 +307,17 @@ fun SelectedServicesCard() {
                     bottom = 16.dp
                 )
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("1: 助浴服务")
-                    Text("2: 做饭服务")
-                    Text("3: 维修服务")
-                    Text("4: 医护检查服务")
+                if (selectedProjects.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        selectedProjects.forEachIndexed { index, project ->
+                            Text("${index + 1}: ${project.projectName} (${project.serviceTime}分钟)")
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "暂无选中的服务项目",
+                        color = Color.Gray
+                    )
                 }
             }
         }
@@ -348,5 +332,9 @@ fun SelectedServicesCard() {
 @Preview
 @Composable
 fun SelectedServicesCardPreview() {
-    SelectedServicesCard()
+    SelectedServicesCard(
+        orderId = 12345L,
+        projectIdList = listOf(1, 2),
+        sharedViewModel = hiltViewModel()
+    )
 }
