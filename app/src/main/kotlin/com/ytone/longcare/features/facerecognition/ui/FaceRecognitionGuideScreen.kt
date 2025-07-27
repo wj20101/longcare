@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.facerecognition.ui
 
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +31,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.runtime.CompositionLocalProvider
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.facerecognition.vm.FaceRecognitionViewModel
 import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.theme.bgGradientBrush
@@ -41,6 +43,12 @@ fun FaceRecognitionGuideScreen(
     orderId: Long,
     viewModel: FaceRecognitionViewModel = hiltViewModel()
 ) {
+
+    // ==========================================================
+    // 在这里调用函数，将此页面强制设置为竖屏
+    // ==========================================================
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+
     Box(
         modifier = Modifier
             .fillMaxSize()

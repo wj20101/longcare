@@ -202,7 +202,11 @@ fun SelectServiceScreen(
                         onClick = {
                             val selectedProjectIds =
                                 serviceItems.filter { it.isSelected }.map { it.id }
-                            navController.navigateToServiceCountdown(orderId, selectedProjectIds)
+                            navController.navigateToServiceCountdown(
+                                orderId,
+                                selectedProjectIds,
+                                orderAddress
+                            )
                         },
                         modifier = Modifier.weight(1f)
                     )
