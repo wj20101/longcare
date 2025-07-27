@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.servicecountdown.ui
 
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.navigation.EndOderInfo
@@ -44,14 +46,20 @@ fun ServiceCountdownScreen(
     navController: NavController,
     orderId: Long,
     projectIdList: List<Int>,
+    address: String,
     viewModel: ServiceCountdownViewModel = hiltViewModel()
 ) {
+    // ==========================================================
+    // 在这里调用函数，将此页面强制设置为竖屏
+    // ==========================================================
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+
     // 从ViewModel获取状态
     val countdownState by viewModel.countdownState.collectAsStateWithLifecycle()
     val formattedTime by viewModel.formattedTime.collectAsStateWithLifecycle()
 
-    // 监听图片上传结果
-    LaunchedEffect(navController.currentBackStackEntry?.savedStateHandle) {
+    LaunchedEffect(orderId) {
+        // 监听图片上传结果
         navController.currentBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<String>>?>(
             NavigationConstants.PHOTO_UPLOAD_RESULT_KEY,
             null
@@ -108,6 +116,7 @@ fun ServiceCountdownScreen(
             CountdownTimerCard(
                 navController = navController,
                 orderId = orderId,
+                address = address,
                 countdownState = countdownState,
                 formattedTime = formattedTime,
                 viewModel = viewModel
@@ -123,9 +132,17 @@ fun ServiceCountdownScreen(
             Button(
                 onClick = {
                     viewModel.endService()
+                    val uploadedImages = viewModel.getCurrentUploadedImages()
+                    val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
+                    val endImgList = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
+                    
                     navController.navigateToNfcSignInForEndOrder(
                         orderId = orderId,
-                        params = EndOderInfo(),
+                        params = EndOderInfo(
+                            projectIdList = projectIdList,
+                            beginImgList = beginImgList,
+                            endImgList = endImgList
+                        ),
                     )
                 },
                 modifier = Modifier
@@ -152,7 +169,8 @@ fun ServiceCountdownScreenPreview() {
     ServiceCountdownScreen(
         navController = navController,
         orderId = 12345L,
-        projectIdList = emptyList()
+        projectIdList = emptyList(),
+        address = ""
     )
 }
 
@@ -160,6 +178,7 @@ fun ServiceCountdownScreenPreview() {
 fun CountdownTimerCard(
     navController: NavController,
     orderId: Long,
+    address: String,
     countdownState: ServiceCountdownState,
     formattedTime: String = "12:00:00",
     viewModel: ServiceCountdownViewModel? = null
@@ -242,7 +261,7 @@ fun CountdownTimerCard(
                     )
                     navController.navigateToPhotoUpload(
                         orderId = orderId,
-                        address = "" // 可以从ViewModel或其他地方获取地址信息
+                        address = address
                     )
                 },
                 shape = RoundedCornerShape(50),
@@ -264,6 +283,7 @@ fun CountdownTimerCardPreview() {
         CountdownTimerCard(
             navController = navController,
             orderId = 12345L,
+            address = "",
             countdownState = ServiceCountdownState.RUNNING,
             formattedTime = "02:35:16"
         )
@@ -271,12 +291,14 @@ fun CountdownTimerCardPreview() {
         CountdownTimerCard(
             navController = navController,
             orderId = 12345L,
+            address = "",
             countdownState = ServiceCountdownState.COMPLETED
         )
         Spacer(modifier = Modifier.height(16.dp))
         CountdownTimerCard(
             navController = navController,
             orderId = 12345L,
+            address = "",
             countdownState = ServiceCountdownState.ENDED
         )
     }

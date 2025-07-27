@@ -69,10 +69,16 @@ data class NfcSignInRoute(
 /**
  * 服务倒计时页面路由
  * @param orderId 订单ID
+ * @param projectIdList 项目ID列表
+ * @param address 地址
  */
 @Keep
 @Serializable
-data class ServiceCountdownRoute(val orderId: Long, val projectIdList: List<Int>)
+data class ServiceCountdownRoute(
+    val orderId: Long,
+    val projectIdList: List<Int>,
+    val address: String
+)
 
 /**
  * 结束订单信息数据类
