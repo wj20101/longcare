@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +57,7 @@ import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import androidx.core.net.toUri
 import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewModel
+import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
@@ -68,14 +70,27 @@ enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
 @Composable
 fun PhotoUploadScreen(
     navController: NavController,
-    orderAddress: String,
-    viewModel: PhotoProcessingViewModel = hiltViewModel()
+    orderId: Long,
+    viewModel: PhotoProcessingViewModel = hiltViewModel(),
+    sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
+
+    // 在组件初始化时加载订单信息（如果缓存中没有）
+    LaunchedEffect(orderId) {
+        // 先检查缓存，如果没有缓存数据才请求
+        if (sharedViewModel.getCachedOrderInfo(orderId) == null) {
+            sharedViewModel.getOrderInfo(orderId)
+        } else {
+            // 如果有缓存数据，直接设置为成功状态
+            sharedViewModel.getOrderInfo(orderId, forceRefresh = false)
+        }
+    }
+
     // 收集ViewModel状态
     val imageTasks by viewModel.imageTasks.collectAsState()
     val isUploading by viewModel.isUploading.collectAsState()
     val scope = rememberCoroutineScope()
-    
+
     // 监听已有图片数据
     LaunchedEffect(navController.previousBackStackEntry?.savedStateHandle) {
         navController.previousBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<String>>?>(
@@ -84,7 +99,7 @@ fun PhotoUploadScreen(
             existingImages?.let {
                 // 将已有图片数据同步到ViewModel
                 viewModel.loadExistingImages(it)
-                
+
                 // 清除数据，避免重复处理
                 navController.previousBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<String>>>(
                     NavigationConstants.EXISTING_IMAGES_KEY
@@ -107,7 +122,11 @@ fun PhotoUploadScreen(
                     PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
                     PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
                 }
-                viewModel.addImagesToProcess(uris, taskType, orderAddress)
+                viewModel.addImagesToProcess(
+                    uris = uris,
+                    taskType = taskType,
+                    address = sharedViewModel.getUserAddress(orderId)
+                )
             }
         }
     })
@@ -129,22 +148,22 @@ fun PhotoUploadScreen(
         Scaffold(topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                Text(
-                    stringResource(R.string.photo_upload_title), fontWeight = FontWeight.Bold
-                )
-            }, navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.common_back),
-                        tint = Color.White
+                    Text(
+                        stringResource(R.string.photo_upload_title), fontWeight = FontWeight.Bold
                     )
-                }
-            }, colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                containerColor = Color.Transparent,
-                titleContentColor = Color.White,
-                navigationIconContentColor = Color.White
-            )
+                }, navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            tint = Color.White
+                        )
+                    }
+                }, colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
         }, containerColor = Color.Transparent, bottomBar = { // 将按钮放在 bottomBar 中使其固定在底部
             Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
@@ -510,17 +529,18 @@ fun ImagePreviewDialog(
             dismissOnClickOutside = false
         )
     ) {
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        // 单击退出预览
-                        onDismiss()
-                    })
-            }
-            .transformable(state = transformableState), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = {
+                            // 单击退出预览
+                            onDismiss()
+                        })
+                }
+                .transformable(state = transformableState), contentAlignment = Alignment.Center) {
             Image(
                 painter = rememberAsyncImagePainter(imageUri),
                 contentDescription = "预览图片",

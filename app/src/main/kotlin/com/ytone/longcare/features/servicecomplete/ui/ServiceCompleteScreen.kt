@@ -25,7 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.navigation.navigateToHomeAndClearStack
 import com.ytone.longcare.R
-import com.ytone.longcare.shared.vm.OrderDetailViewModel
+import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
@@ -45,13 +45,19 @@ data class ServiceSummary(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceCompleteScreen(
-    navController: NavController, orderId: Long, viewModel: OrderDetailViewModel = hiltViewModel()
+    navController: NavController, orderId: Long, sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by sharedViewModel.uiState.collectAsStateWithLifecycle()
 
-    // 在组件初始化时获取订单详情
+    // 在组件初始化时获取订单详情（如果缓存中没有）
     LaunchedEffect(orderId) {
-        viewModel.getOrderInfo(orderId)
+        // 先检查缓存，如果没有缓存数据才请求
+        if (sharedViewModel.getCachedOrderInfo(orderId) == null) {
+            sharedViewModel.getOrderInfo(orderId)
+        } else {
+            // 如果有缓存数据，直接设置为成功状态
+            sharedViewModel.getOrderInfo(orderId, forceRefresh = false)
+        }
     }
 
     Box(

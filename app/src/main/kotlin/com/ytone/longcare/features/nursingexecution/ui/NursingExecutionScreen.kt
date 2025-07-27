@@ -26,7 +26,7 @@ import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.api.response.UserInfoM
 import com.ytone.longcare.common.utils.LockScreenOrientation
-import com.ytone.longcare.shared.vm.OrderDetailViewModel
+import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.model.isExecutingState
@@ -41,7 +41,7 @@ import com.ytone.longcare.ui.screen.ServiceHoursTag
 fun NursingExecutionScreen(
     navController: NavController,
     orderId: Long,
-    viewModel: OrderDetailViewModel = hiltViewModel()
+    sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
 
     // ==========================================================
@@ -49,11 +49,17 @@ fun NursingExecutionScreen(
     // ==========================================================
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by sharedViewModel.uiState.collectAsStateWithLifecycle()
     
-    // 在组件初始化时加载订单信息
+    // 在组件初始化时加载订单信息（如果缓存中没有）
     LaunchedEffect(orderId) {
-        viewModel.getOrderInfo(orderId)
+        // 先检查缓存，如果没有缓存数据才请求
+        if (sharedViewModel.getCachedOrderInfo(orderId) == null) {
+            sharedViewModel.getOrderInfo(orderId)
+        } else {
+            // 如果有缓存数据，直接设置为成功状态
+            sharedViewModel.getOrderInfo(orderId, forceRefresh = false)
+        }
     }
     when (val state = uiState) {
         is OrderDetailUiState.Loading -> {
@@ -71,7 +77,7 @@ fun NursingExecutionScreen(
         is OrderDetailUiState.Error -> {
             ErrorScreen(
                 message = state.message,
-                onRetry = { viewModel.getOrderInfo(orderId) }
+                onRetry = { sharedViewModel.getOrderInfo(orderId, forceRefresh = true) }
             )
         }
         
