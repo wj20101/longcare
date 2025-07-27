@@ -2,7 +2,7 @@ package com.ytone.longcare.features.servicecountdown.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.api.response.ServiceOrderInfoModel
+import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
@@ -27,7 +27,7 @@ class ServiceCountdownViewModel @Inject constructor(
     val countdownState: StateFlow<ServiceCountdownState> = _countdownState.asStateFlow()
     
     // 倒计时时间（毫秒）
-    private val _remainingTimeMillis = MutableStateFlow(12 * 60 * 60 * 1000L) // 12小时
+    private val _remainingTimeMillis = MutableStateFlow(0L)
     val remainingTimeMillis: StateFlow<Long> = _remainingTimeMillis.asStateFlow()
     
     // 格式化的倒计时时间
@@ -41,9 +41,24 @@ class ServiceCountdownViewModel @Inject constructor(
     private val _uploadedImages = MutableStateFlow<Map<ImageTaskType, List<String>>>(emptyMap())
     val uploadedImages: StateFlow<Map<ImageTaskType, List<String>>> = _uploadedImages.asStateFlow()
     
-    init {
-        // 初始化时启动倒计时
-        startCountdown()
+    /**
+     * 设置倒计时时间（根据选中项目的总时长）
+     * @param projectList 所有项目列表
+     * @param selectedProjectIds 选中的项目ID列表
+     */
+    fun setCountdownTimeFromProjects(projectList: List<ServiceProjectM>, selectedProjectIds: List<Int>) {
+        val totalMinutes = projectList
+            .filter { it.projectId in selectedProjectIds }
+            .sumOf { it.serviceTime }
+        
+        val totalMillis = totalMinutes * 60 * 1000L // 转换为毫秒
+        _remainingTimeMillis.value = totalMillis
+        updateFormattedTime()
+        
+        // 如果有时间则启动倒计时
+        if (totalMillis > 0) {
+            startCountdown()
+        }
     }
     
     // 启动倒计时
@@ -89,9 +104,9 @@ class ServiceCountdownViewModel @Inject constructor(
     }
     
     // 重置倒计时
-    fun resetCountdown() {
+    fun resetCountdown(totalMinutes: Int = 0) {
         countdownJob?.cancel()
-        _remainingTimeMillis.value = 12 * 60 * 60 * 1000L // 12小时
+        _remainingTimeMillis.value = totalMinutes * 60 * 1000L
         updateFormattedTime()
         _countdownState.value = ServiceCountdownState.RUNNING
     }
