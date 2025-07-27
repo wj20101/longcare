@@ -127,7 +127,7 @@ fun PhotoUploadScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = { /* TODO: 返回操作 */ }) {
+                        IconButton(onClick = { navController.popBackStack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.common_back),
