@@ -35,6 +35,8 @@ import com.ytone.longcare.features.identification.ui.IdentificationScreen
 import com.ytone.longcare.features.selectdevice.ui.SelectDeviceScreen
 import kotlin.reflect.typeOf
 
+@file:OptIn(kotlin.ExperimentalStdlibApi::class)
+
 
 /**
  * 从登录页面导航到主页，并清除登录页面的返回栈
@@ -112,9 +114,15 @@ fun NavController.navigateToSelectService(orderId: Long) {
  * @param orderId 订单ID
  * @param address 订单地址
  * @param projectIds 项目ID列表
+ * @param endOrderInfo 结束订单信息
  */
-fun NavController.navigateToPhotoUpload(orderId: Long, address: String, projectIds: List<Int>) {
-    navigate(PhotoUploadRoute(orderId, address, projectIds))
+fun NavController.navigateToPhotoUpload(
+    orderId: Long, 
+    address: String, 
+    projectIds: List<Int>,
+    endOrderInfo: EndOderInfo? = null
+) {
+    navigate(PhotoUploadRoute(orderId, address, projectIds, endOrderInfo))
 }
 
 /**
@@ -137,7 +145,7 @@ fun NavController.navigateToServiceComplete(orderId: Long) {
  * 导航到人脸识别引导页面
  */
 fun NavController.navigateToFaceRecognitionGuide(orderId: Long) {
-    navigate(FaceRecognitionGuideRoute(orderId))
+    navigate(FaceRecognitionGuideRoute(orderId = orderId))
 }
 
 /**
@@ -271,13 +279,16 @@ fun AppNavigation(startDestination: Any) {
                 viewModel = viewModel
             )
         }
-        composable<PhotoUploadRoute> { backStackEntry ->
+        composable<PhotoUploadRoute>(
+            typeMap = mapOf(typeOf<EndOderInfo?>() to EndOderInfoNavType)
+        ) { backStackEntry ->
             val route = backStackEntry.toRoute<PhotoUploadRoute>()
             PhotoUploadScreen(
                 navController = navController,
                 orderId = route.orderId,
                 orderAddress = route.address,
-                projectIds = route.projectIds
+                projectIds = route.projectIds,
+                endOrderInfo = route.endOrderInfo
             )
         }
         composable<ServiceCountdownRoute> { backStackEntry ->

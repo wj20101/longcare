@@ -72,6 +72,7 @@ fun PhotoUploadScreen(
     orderId: Long,
     orderAddress: String,
     projectIds: List<Int>,
+    endOrderInfo: EndOderInfo? = null,
     viewModel: PhotoProcessingViewModel = hiltViewModel()
 ) {
     // 收集ViewModel状态
