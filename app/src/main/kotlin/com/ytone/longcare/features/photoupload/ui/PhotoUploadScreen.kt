@@ -80,24 +80,20 @@ fun PhotoUploadScreen(
     var currentCategory by remember { mutableStateOf<PhotoCategory?>(null) }
 
     // 图片选择器
-    val multiplePhotoPicker = rememberMultiplePhotoPicker(
-        maxItems = 5,
-        onGifFiltered = { gifUris ->
-            // 显示GIF被过滤的提示
-            viewModel.showToast("暂不支持GIF图片")
-        },
-        onImagesSelected = { uris ->
-            if (uris.isNotEmpty()) {
-                currentCategory?.let { category ->
-                    val taskType = when (category) {
-                        PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
-                        PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
-                    }
-                    viewModel.addImagesToProcess(uris, taskType, orderAddress)
+    val multiplePhotoPicker = rememberMultiplePhotoPicker(maxItems = 5, onGifFiltered = { gifUris ->
+        // 显示GIF被过滤的提示
+        viewModel.showToast("暂不支持GIF图片")
+    }, onImagesSelected = { uris ->
+        if (uris.isNotEmpty()) {
+            currentCategory?.let { category ->
+                val taskType = when (category) {
+                    PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
+                    PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
                 }
+                viewModel.addImagesToProcess(uris, taskType, orderAddress)
             }
         }
-    )
+    })
 
     // 根据任务类型获取不同分类的任务
     val beforeCareTasks = imageTasks.filter { it.taskType == ImageTaskType.BEFORE_CARE }
@@ -113,67 +109,55 @@ fun PhotoUploadScreen(
             .fillMaxSize()
             .background(bgGradientBrush)
     ) {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            stringResource(R.string.photo_upload_title),
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.common_back),
-                                tint = Color.White
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White
-                    )
+        Scaffold(topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                Text(
+                    stringResource(R.string.photo_upload_title), fontWeight = FontWeight.Bold
                 )
-            },
-            containerColor = Color.Transparent,
-            bottomBar = { // 将按钮放在 bottomBar 中使其固定在底部
-                Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
-                    ConfirmAndNextButton(
-                        text = if (isUploading) "上传中..." else stringResource(R.string.photo_upload_confirm_and_next),
-                        enabled = allCategoriesHaveImages && !isUploading,
-                        isLoading = isUploading,
-                        onClick = {
-                            // 上传图片到云端后再导航
-                            scope.launch {
-                                try {
-                                    val uploadResult = viewModel.uploadSuccessfulImagesToCloud()
-                                    uploadResult.fold(
-                                        onSuccess = { cloudUrlsMap ->
-                                            // 将上传结果回传给上一个页面
-                                            navController.previousBackStackEntry?.savedStateHandle?.set(
-                                                NavigationConstants.PHOTO_UPLOAD_RESULT_KEY,
-                                                cloudUrlsMap
-                                            )
-                                            navController.popBackStack()
-                                        },
-                                        onFailure = { error ->
-                                            // 显示上传失败的错误信息
-                                            viewModel.showToast("图片上传失败: ${error.message}")
-                                        }
-                                    )
-                                } catch (e: Exception) {
-                                    // 处理异常情况
-                                    viewModel.showToast("上传过程中发生错误: ${e.message}")
-                                }
-                            }
-                        }
+            }, navigationIcon = {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.common_back),
+                        tint = Color.White
                     )
                 }
+            }, colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                containerColor = Color.Transparent,
+                titleContentColor = Color.White,
+                navigationIconContentColor = Color.White
+            )
+            )
+        }, containerColor = Color.Transparent, bottomBar = { // 将按钮放在 bottomBar 中使其固定在底部
+            Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+                ConfirmAndNextButton(
+                    text = if (isUploading) "上传中..." else stringResource(R.string.photo_upload_confirm_and_next),
+                    enabled = allCategoriesHaveImages && !isUploading,
+                    isLoading = isUploading,
+                    onClick = {
+                        // 上传图片到云端后再导航
+                        scope.launch {
+                            try {
+                                val uploadResult = viewModel.uploadSuccessfulImagesToCloud()
+                                uploadResult.fold(onSuccess = { cloudUrlsMap ->
+                                    // 将上传结果回传给上一个页面
+                                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                                        NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, cloudUrlsMap
+                                    )
+                                    navController.popBackStack()
+                                }, onFailure = { error ->
+                                    // 显示上传失败的错误信息
+                                    viewModel.showToast("图片上传失败: ${error.message}")
+                                })
+                            } catch (e: Exception) {
+                                // 处理异常情况
+                                viewModel.showToast("上传过程中发生错误: ${e.message}")
+                            }
+                        }
+                    })
             }
-        ) { paddingValues ->
+        }) { paddingValues ->
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -203,8 +187,7 @@ fun PhotoUploadScreen(
                             launchMultiplePhotoPicker(multiplePhotoPicker)
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
-                        onRemoveTask = { taskId -> viewModel.removeTask(taskId) }
-                    )
+                        onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
                     Spacer(modifier = Modifier.height(20.dp))
                 }
 
@@ -218,8 +201,7 @@ fun PhotoUploadScreen(
                             launchMultiplePhotoPicker(multiplePhotoPicker)
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
-                        onRemoveTask = { taskId -> viewModel.removeTask(taskId) }
-                    )
+                        onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
                     Spacer(modifier = Modifier.height(20.dp)) // 额外的底部间距
                 }
             }
@@ -252,10 +234,7 @@ fun PhotoUploadSection(
                 columns = GridCells.Adaptive(86.dp),
                 modifier = Modifier
                     .padding(
-                        start = 20.dp,
-                        top = 20.dp,
-                        end = 20.dp,
-                        bottom = 18.dp
+                        start = 20.dp, top = 20.dp, end = 20.dp, bottom = 18.dp
                     )
                     .heightIn(max = 300.dp), // 限制最大高度避免无限约束
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -264,8 +243,7 @@ fun PhotoUploadSection(
                 // 添加照片按钮作为第一个item
                 item {
                     AddPhotoButton(
-                        onClick = onAddPhoto,
-                        enabled = !isUploading
+                        onClick = onAddPhoto, enabled = !isUploading
                     )
                 }
                 // 后续的图片任务items
@@ -287,8 +265,7 @@ fun PhotoUploadSection(
 
 @Composable
 fun AddPhotoButton(
-    onClick: () -> Unit,
-    enabled: Boolean = true
+    onClick: () -> Unit, enabled: Boolean = true
 ) {
     val lineColor = if (enabled) Color(0xFF2C87FE) else Color.Gray
     val alpha = if (enabled) 1f else 0.5f
@@ -321,10 +298,7 @@ fun AddPhotoButton(
 
 @Composable
 fun ImageTaskItem(
-    task: ImageTask,
-    onRetry: () -> Unit,
-    onRemove: () -> Unit,
-    isUploading: Boolean = false
+    task: ImageTask, onRetry: () -> Unit, onRemove: () -> Unit, isUploading: Boolean = false
 ) {
     var showPreview by remember { mutableStateOf(false) }
     Box(
@@ -338,12 +312,10 @@ fun ImageTaskItem(
             ImageTaskStatus.PROCESSING -> {
                 // 处理中状态：显示加载动画
                 Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(32.dp),
-                        color = Color(0xFF2C87FE)
+                        modifier = Modifier.size(32.dp), color = Color(0xFF2C87FE)
                     )
                 }
             }
@@ -369,8 +341,7 @@ fun ImageTaskItem(
                             .size(24.dp)
                             .clip(CircleShape)
                             .background(Color.Black.copy(alpha = 0.7f))
-                            .clickable(onClick = onRemove),
-                        contentAlignment = Alignment.Center
+                            .clickable(onClick = onRemove), contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
@@ -397,13 +368,9 @@ fun ImageTaskItem(
                         tint = Color.Red,
                         modifier = Modifier
                             .size(32.dp)
-                            .clickable { onRetry() }
-                    )
+                            .clickable { onRetry() })
                     Text(
-                        text = "点击重试",
-                        fontSize = 8.sp,
-                        color = Color.Gray,
-                        maxLines = 1
+                        text = "点击重试", fontSize = 8.sp, color = Color.Gray, maxLines = 1
                     )
                 }
                 // 删除按钮
@@ -415,8 +382,7 @@ fun ImageTaskItem(
                             .size(24.dp)
                             .clip(CircleShape)
                             .background(Color.Black.copy(alpha = 0.7f))
-                            .clickable(onClick = onRemove),
-                        contentAlignment = Alignment.Center
+                            .clickable(onClick = onRemove), contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
@@ -434,19 +400,14 @@ fun ImageTaskItem(
     if (showPreview && task.status == ImageTaskStatus.SUCCESS) {
         task.resultUri?.let { uri ->
             ImagePreviewDialog(
-                imageUri = uri,
-                onDismiss = { showPreview = false }
-            )
+                imageUri = uri, onDismiss = { showPreview = false })
         }
     }
 }
 
 @Composable
 fun ConfirmAndNextButton(
-    text: String,
-    enabled: Boolean = true,
-    isLoading: Boolean = false,
-    onClick: () -> Unit
+    text: String, enabled: Boolean = true, isLoading: Boolean = false, onClick: () -> Unit
 ) {
     val buttonGradient = if (enabled) {
         Brush.horizontalGradient(
@@ -478,9 +439,7 @@ fun ConfirmAndNextButton(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    color = Color.White,
-                    strokeWidth = 2.dp
+                    modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
@@ -493,8 +452,7 @@ fun ConfirmAndNextButton(
 
 @Composable
 fun ImagePreviewDialog(
-    imageUri: Uri,
-    onDismiss: () -> Unit
+    imageUri: Uri, onDismiss: () -> Unit
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -529,28 +487,23 @@ fun ImagePreviewDialog(
     }
 
     Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
+        onDismissRequest = onDismiss, properties = DialogProperties(
             usePlatformDefaultWidth = false,
             dismissOnBackPress = true,
             dismissOnClickOutside = false
         )
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = {
-                            // 单击退出预览
-                            onDismiss()
-                        }
-                    )
-                }
-                .transformable(state = transformableState),
-            contentAlignment = Alignment.Center
-        ) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = {
+                        // 单击退出预览
+                        onDismiss()
+                    })
+            }
+            .transformable(state = transformableState), contentAlignment = Alignment.Center) {
             Image(
                 painter = rememberAsyncImagePainter(imageUri),
                 contentDescription = "预览图片",
@@ -579,15 +532,13 @@ fun PhotoUploadSectionPreview() {
             watermarkLines = listOf("Watermark"),
             status = ImageTaskStatus.SUCCESS,
             resultUri = "content://media/picker/0/com.android.providers.media.photopicker/media/1000000033".toUri()
-        ),
-        ImageTask(
+        ), ImageTask(
             id = "2",
             originalUri = Uri.EMPTY,
             taskType = ImageTaskType.BEFORE_CARE,
             watermarkLines = listOf("Watermark"),
             status = ImageTaskStatus.PROCESSING
-        ),
-        ImageTask(
+        ), ImageTask(
             id = "3",
             originalUri = Uri.EMPTY,
             taskType = ImageTaskType.BEFORE_CARE,
@@ -628,10 +579,7 @@ fun ImageTaskItemPreview() {
 fun ConfirmAndNextButtonPreview() {
     Column(modifier = Modifier.padding(16.dp)) {
         ConfirmAndNextButton(
-            text = "Confirm & Next",
-            enabled = true,
-            isLoading = false,
-            onClick = {})
+            text = "Confirm & Next", enabled = true, isLoading = false, onClick = {})
         Spacer(modifier = Modifier.height(16.dp))
         ConfirmAndNextButton(text = "上传中...", enabled = false, isLoading = true, onClick = {})
     }
