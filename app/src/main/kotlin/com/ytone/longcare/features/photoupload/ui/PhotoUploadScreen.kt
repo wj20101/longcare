@@ -157,7 +157,7 @@ fun PhotoUploadScreen(
                                     uploadResult.fold(
                                         onSuccess = { cloudUrls ->
                                             // 将云端URL转换为字符串格式传递给下一个页面
-                                            val cloudUrlsMap = cloudUrls.mapKeys { it.key.name }
+                                            val cloudUrlsMap = cloudUrls.mapKeys { it.key }
                                                 .mapValues { entry -> entry.value }
                                             val params = EndOderInfo(
                                                 projectIdList = projectIds,
