@@ -24,7 +24,7 @@ import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownScreen
 import com.ytone.longcare.features.nfc.ui.NfcWorkflowScreen
 import com.ytone.longcare.features.selectservice.ui.SelectServiceScreen
 import com.ytone.longcare.features.photoupload.ui.PhotoUploadScreen
-import com.ytone.longcare.shared.vm.OrderDetailViewModel
+import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
@@ -109,27 +109,21 @@ fun NavController.navigateToSelectService(orderId: Long) {
 /**
  * 导航到照片上传页面
  * @param orderId 订单ID
- * @param address 订单地址
  */
-fun NavController.navigateToPhotoUpload(
-    orderId: Long, 
-    address: String
-) {
-    navigate(PhotoUploadRoute(orderId, address))
+fun NavController.navigateToPhotoUpload(orderId: Long) {
+    navigate(PhotoUploadRoute(orderId))
 }
 
 /**
  * 导航到服务倒计时页面
  * @param orderId 订单ID
  * @param projectIdList 项目ID列表
- * @param address 订单地址
  */
 fun NavController.navigateToServiceCountdown(
     orderId: Long,
-    projectIdList: List<Int>,
-    address: String
+    projectIdList: List<Int>
 ) {
-    navigate(ServiceCountdownRoute(orderId, projectIdList, address))
+    navigate(ServiceCountdownRoute(orderId, projectIdList))
 }
 
 /**
@@ -237,11 +231,9 @@ fun AppNavigation(startDestination: Any) {
         }
         composable<NursingExecutionRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<NursingExecutionRoute>()
-            val viewModel: OrderDetailViewModel = hiltViewModel()
             NursingExecutionScreen(
                 navController = navController,
-                orderId = route.orderId,
-                viewModel = viewModel
+                orderId = route.orderId
             )
         }
         composable<CarePlansListRoute> {
@@ -271,11 +263,9 @@ fun AppNavigation(startDestination: Any) {
         }
         composable<SelectServiceRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<SelectServiceRoute>()
-            val viewModel: OrderDetailViewModel = hiltViewModel()
             SelectServiceScreen(
                 navController = navController,
-                orderId = route.orderId,
-                viewModel = viewModel
+                orderId = route.orderId
             )
         }
         composable<PhotoUploadRoute>(
@@ -284,7 +274,7 @@ fun AppNavigation(startDestination: Any) {
             val route = backStackEntry.toRoute<PhotoUploadRoute>()
             PhotoUploadScreen(
                 navController = navController,
-                orderAddress = route.address
+                orderId = route.orderId
             )
         }
         composable<ServiceCountdownRoute> { backStackEntry ->
@@ -292,8 +282,7 @@ fun AppNavigation(startDestination: Any) {
             ServiceCountdownScreen(
                 navController = navController,
                 orderId = route.orderId,
-                projectIdList = route.projectIdList,
-                address = route.address
+                projectIdList = route.projectIdList
             )
         }
         composable<TxFaceRoute> { backStackEntry ->

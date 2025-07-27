@@ -27,7 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.ytone.longcare.R
 import com.ytone.longcare.navigation.navigateToServiceCountdown
 import com.ytone.longcare.theme.bgGradientBrush
-import com.ytone.longcare.shared.vm.OrderDetailViewModel
+import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 
 // --- 数据模型 ---
@@ -40,19 +40,24 @@ data class ServiceItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectServiceScreen(
-    navController: NavController, orderId: Long, viewModel: OrderDetailViewModel = hiltViewModel()
+    navController: NavController, orderId: Long, sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
-    // 使用ViewModel获取订单详情
-    val uiState by viewModel.uiState.collectAsState()
+    // 使用SharedViewModel获取订单详情
+    val uiState by sharedViewModel.uiState.collectAsState()
 
-    // 在组件初始化时请求数据
+    // 在组件初始化时加载订单信息（如果缓存中没有）
     LaunchedEffect(orderId) {
-        viewModel.getOrderInfo(orderId)
+        // 先检查缓存，如果没有缓存数据才请求
+        if (sharedViewModel.getCachedOrderInfo(orderId) == null) {
+            sharedViewModel.getOrderInfo(orderId)
+        } else {
+            // 如果有缓存数据，直接设置为成功状态
+            sharedViewModel.getOrderInfo(orderId, forceRefresh = false)
+        }
     }
 
     // 根据API返回的数据转换为UI需要的ServiceItem格式
     val serviceItems = remember { mutableStateListOf<ServiceItem>() }
-    var orderAddress by remember { mutableStateOf("") }
 
     // 当uiState变化时更新serviceItems
     LaunchedEffect(uiState) {
@@ -68,7 +73,6 @@ fun SelectServiceScreen(
                             isSelected = false // 默认不选中，用户可以手动选择
                         )
                     })
-                orderAddress = currentState.orderInfo.userInfo.address
             }
 
             else -> {
@@ -204,8 +208,7 @@ fun SelectServiceScreen(
                                 serviceItems.filter { it.isSelected }.map { it.id }
                             navController.navigateToServiceCountdown(
                                 orderId,
-                                selectedProjectIds,
-                                orderAddress
+                                selectedProjectIds
                             )
                         },
                         modifier = Modifier.weight(1f)
