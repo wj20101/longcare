@@ -12,6 +12,7 @@ val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
 val bgGradientBrush = Brush.verticalGradient(colors = listOf(Color(0xFF468AFF), Color(0xFFF6F9FF)))
+val bgButtonGradientBrush = Brush.verticalGradient(colors = listOf(Color(0xFF2B83FF), Color(0xFF3192FD)))
 
 val PrimaryBlue = Color(0xFF4A80F0)
 val LightBlueBackground = Color(0xFFF0F5FF) // 主背景的浅蓝色调

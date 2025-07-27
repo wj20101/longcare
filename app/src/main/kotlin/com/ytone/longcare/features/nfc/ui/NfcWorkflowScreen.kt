@@ -48,6 +48,7 @@ import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
 import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.navigation.navigateToServiceComplete
+import com.ytone.longcare.navigation.navigateToIdentification
 import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.theme.bgGradientBrush
@@ -228,8 +229,8 @@ fun NfcWorkflowScreen(
                             onClick = {
                                 when (signInMode) {
                                     SignInMode.START_ORDER -> {
-                                        // 签到时检查权限并启动定位上报任务
-                                        checkLocationPermissionAndStart()
+                                        // 签到成功后跳转到身份认证页面
+                                        navController.navigateToIdentification(orderId)
                                     }
                                     SignInMode.END_ORDER -> {
                                         // 签退时停止定位上报任务

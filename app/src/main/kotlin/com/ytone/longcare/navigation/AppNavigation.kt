@@ -31,6 +31,8 @@ import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
 import com.ytone.longcare.features.shared.FaceVerificationWithAutoSignScreen
 import com.ytone.longcare.features.servicecomplete.ui.ServiceCompleteScreen
 import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
+import com.ytone.longcare.features.identification.ui.IdentificationScreen
+import com.ytone.longcare.features.selectdevice.ui.SelectDeviceScreen
 import kotlin.reflect.typeOf
 
 
@@ -134,8 +136,24 @@ fun NavController.navigateToServiceComplete(orderId: Long) {
 /**
  * 导航到人脸识别引导页面
  */
-fun NavController.navigateToFaceRecognitionGuide() {
-    navigate(FaceRecognitionGuideRoute)
+fun NavController.navigateToFaceRecognitionGuide(orderId: Long) {
+    navigate(FaceRecognitionGuideRoute(orderId))
+}
+
+/**
+ * 导航到选择设备页面
+ * @param orderId 订单ID
+ */
+fun NavController.navigateToSelectDevice(orderId: Long) {
+    navigate(SelectDeviceRoute(orderId))
+}
+
+/**
+ * 导航到身份认证页面
+ * @param orderId 订单ID
+ */
+fun NavController.navigateToIdentification(orderId: Long) {
+    navigate(IdentificationRoute(orderId))
 }
 
 /**
@@ -280,9 +298,26 @@ fun AppNavigation(startDestination: Any) {
             val route = backStackEntry.toRoute<ServiceCompleteRoute>()
             ServiceCompleteScreen(navController = navController, orderId = route.orderId)
         }
+
+        composable<FaceRecognitionGuideRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<FaceRecognitionGuideRoute>()
+            FaceRecognitionGuideScreen(navController = navController, orderId = route.orderId)
+        }
         
-        composable<FaceRecognitionGuideRoute> {
-            FaceRecognitionGuideScreen(navController = navController)
+        composable<SelectDeviceRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<SelectDeviceRoute>()
+            SelectDeviceScreen(
+                navController = navController,
+                orderId = route.orderId
+            )
+        }
+        
+        composable<IdentificationRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<IdentificationRoute>()
+            IdentificationScreen(
+                navController = navController,
+                orderId = route.orderId
+            )
         }
     }
 }

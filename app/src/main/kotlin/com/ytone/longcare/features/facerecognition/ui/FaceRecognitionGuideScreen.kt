@@ -31,12 +31,14 @@ import androidx.navigation.compose.rememberNavController
 import androidx.compose.runtime.CompositionLocalProvider
 import com.ytone.longcare.R
 import com.ytone.longcare.features.facerecognition.vm.FaceRecognitionViewModel
+import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.theme.bgGradientBrush
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FaceRecognitionGuideScreen(
     navController: NavController,
+    orderId: Long,
     viewModel: FaceRecognitionViewModel = hiltViewModel()
 ) {
     Box(
@@ -266,8 +268,8 @@ fun FaceRecognitionGuideScreen(
                     onClick = {
                         // 调用ViewModel的方法开始人脸识别
                         viewModel.startFaceRecognition()
-                        // 这里可以导航到实际的人脸识别页面
-                        // 例如：navController.navigate(TxFaceRoute)
+                        // 跳转到选择服务页面
+                        navController.navigateToSelectService(orderId)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -320,6 +322,7 @@ fun FaceRecognitionGuideScreenPreview() {
     CompositionLocalProvider(LocalViewModelStoreOwner provides PreviewViewModelStoreOwner()) {
         FaceRecognitionGuideScreen(
             navController = rememberNavController(),
+            orderId = 1,
             viewModel = previewViewModel
         )
     }

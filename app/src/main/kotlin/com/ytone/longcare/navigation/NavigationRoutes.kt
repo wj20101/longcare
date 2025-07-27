@@ -149,4 +149,20 @@ data class ServiceCompleteRoute(val orderId: Long)
  */
 @Keep
 @Serializable
-object FaceRecognitionGuideRoute
+data class FaceRecognitionGuideRoute(val orderId: Long)
+
+/**
+ * 选择设备页面路由
+ * @param orderId 订单ID
+ */
+@Keep
+@Serializable
+data class SelectDeviceRoute(val orderId: Long)
+
+/**
+ * 身份认证页面路由
+ * @param orderId 订单ID
+ */
+@Keep
+@Serializable
+data class IdentificationRoute(val orderId: Long)
