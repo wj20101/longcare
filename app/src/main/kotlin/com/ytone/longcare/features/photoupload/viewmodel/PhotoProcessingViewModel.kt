@@ -188,10 +188,10 @@ class PhotoProcessingViewModel @Inject constructor(
     /**
      * 获取所有成功处理的图片Uri列表
      */
-    fun getSuccessfulImageUris(): Map<String, List<String>> {
+    fun getSuccessfulImageUris(): Map<ImageTaskType, List<String>> {
         return _imageTasks.value
             .filter { it.status == ImageTaskStatus.SUCCESS && it.resultUri != null }
-            .groupBy { it.taskType.name }
+            .groupBy { it.taskType }
             .mapValues { entry -> entry.value.mapNotNull { it.resultUri?.toString() } }
     }
 
