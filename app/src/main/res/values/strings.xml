@@ -19,7 +19,7 @@
     <string name="nfc_sign_in_status_failure">签到失败，请重新再试一次</string>
     <string name="nfc_sign_in_diagram_description">NFC操作示意图</string>
     <string name="photo_upload_title">护理照片上传</string>
-    <string name="photo_upload_confirm_and_next">确认并进入下一步</string>
+    <string name="photo_upload_confirm_and_next">确定</string>
     <string name="photo_upload_description">护理执行阶段需要拍摄护理前照片、护理中照片、护理后照片。</string>
     <string name="photo_upload_add_photo">添加照片</string>
     <string name="photo_upload_add_photo_description">添加照片</string>

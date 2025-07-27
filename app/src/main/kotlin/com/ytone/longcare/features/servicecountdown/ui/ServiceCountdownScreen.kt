@@ -12,11 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.navigation.navigateToPhotoUpload
@@ -119,6 +121,14 @@ fun ServiceCountdownScreen(
     }
 }
 
+@Preview
+@Composable
+fun ServiceCountdownScreenPreview() {
+    val navController = rememberNavController()
+    // 这里我们使用一个模拟的订单ID用于预览
+    ServiceCountdownScreen(navController = navController, orderId = 12345L)
+}
+
 @Composable
 fun CountdownTimerCard(
     navController: NavController,
@@ -142,40 +152,52 @@ fun CountdownTimerCard(
                     ServiceCountdownState.RUNNING -> {
                         Text(
                             text = formattedTime,
-                            fontSize = 48.sp,
+                            fontSize = 32.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = Color.Black,
+                            maxLines = 1,
+                            softWrap = false
                         )
                         Text(
                             text = "服务倒计时",
                             fontSize = 14.sp,
-                            color = Color.Gray
+                            color = Color.Gray,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                     ServiceCountdownState.COMPLETED -> {
                         Text(
                             text = "00:00:00",
-                            fontSize = 48.sp,
+                            fontSize = 32.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = Color.Black,
+                            maxLines = 1,
+                            softWrap = false
                         )
                         Text(
                             text = "服务倒计时",
                             fontSize = 14.sp,
-                            color = Color.Gray
+                            color = Color.Gray,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                     ServiceCountdownState.ENDED -> {
                         Text(
                             text = "00:00:00",
-                            fontSize = 48.sp,
+                            fontSize = 32.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = Color.Black,
+                            maxLines = 1,
+                            softWrap = false
                         )
                         Text(
                             text = "服务已结束",
                             fontSize = 14.sp,
-                            color = Color.Gray
+                            color = Color.Gray,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
@@ -196,6 +218,32 @@ fun CountdownTimerCard(
                 Text("护理相册", color = Color.White)
             }
         }
+    }
+}
+
+@Preview
+@Composable
+fun CountdownTimerCardPreview() {
+    val navController = rememberNavController()
+    Column(modifier = Modifier.padding(16.dp)) {
+        CountdownTimerCard(
+            navController = navController,
+            orderId = 12345L,
+            countdownState = ServiceCountdownState.RUNNING,
+            formattedTime = "02:35:16"
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        CountdownTimerCard(
+            navController = navController,
+            orderId = 12345L,
+            countdownState = ServiceCountdownState.COMPLETED
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        CountdownTimerCard(
+            navController = navController,
+            orderId = 12345L,
+            countdownState = ServiceCountdownState.ENDED
+        )
     }
 }
 
@@ -224,4 +272,10 @@ fun SelectedServicesCard() {
             tagCategory = TagCategory.DEFAULT
         )
     }
+}
+
+@Preview
+@Composable
+fun SelectedServicesCardPreview() {
+    SelectedServicesCard()
 }
