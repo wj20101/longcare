@@ -101,9 +101,9 @@ fun ServiceCountdownScreen(
             Button(
                 onClick = { 
                     viewModel.endService()
-                    navController.navigateToPhotoUpload(
+                    navController.navigateToNfcSignInForEndOrder(
                         orderId = orderId,
-                        address = "",
+                        params = EndOderInfo(),
                     )
                 },
                 modifier = Modifier
@@ -205,14 +205,9 @@ fun CountdownTimerCard(
             }
             Button(
                 onClick = { 
-                    val endOrderInfo = EndOderInfo(
-                        projectIdList = emptyList(), // 项目ID可以从ViewModel获取
-                        beginImgList = emptyList(), // 开始图片列表
-                        endImgList = emptyList() // 结束图片列表
-                    )
-                    navController.navigateToNfcSignInForEndOrder(
+                    navController.navigateToPhotoUpload(
                         orderId = orderId,
-                        params = endOrderInfo
+                        address = "",
                     )
                 },
                 shape = RoundedCornerShape(50),
