@@ -33,6 +33,8 @@ import com.ytone.longcare.features.servicecomplete.ui.ServiceCompleteScreen
 import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
 import com.ytone.longcare.features.identification.ui.IdentificationScreen
 import com.ytone.longcare.features.selectdevice.ui.SelectDeviceScreen
+import com.ytone.longcare.features.userlist.ui.UserListScreen
+import com.ytone.longcare.features.userlist.ui.UserListType
 import kotlin.reflect.typeOf
 
 /**
@@ -155,6 +157,20 @@ fun NavController.navigateToSelectDevice(orderId: Long) {
  */
 fun NavController.navigateToIdentification(orderId: Long) {
     navigate(IdentificationRoute(orderId))
+}
+
+/**
+ * 导航到已服务工时用户列表页面
+ */
+fun NavController.navigateToHaveServiceUserList() {
+    navigate(HaveServiceUserListRoute)
+}
+
+/**
+ * 导航到未服务工时用户列表页面
+ */
+fun NavController.navigateToNoServiceUserList() {
+    navigate(NoServiceUserListRoute)
 }
 
 /**
@@ -318,6 +334,20 @@ fun AppNavigation(startDestination: Any) {
             IdentificationScreen(
                 navController = navController,
                 orderId = route.orderId
+            )
+        }
+        
+        composable<HaveServiceUserListRoute> {
+            UserListScreen(
+                navController = navController,
+                userListType = UserListType.HAVE_SERVICE
+            )
+        }
+        
+        composable<NoServiceUserListRoute> {
+            UserListScreen(
+                navController = navController,
+                userListType = UserListType.NO_SERVICE
             )
         }
     }
