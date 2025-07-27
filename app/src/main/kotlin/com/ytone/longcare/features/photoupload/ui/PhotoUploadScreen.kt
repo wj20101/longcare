@@ -75,6 +75,23 @@ fun PhotoUploadScreen(
     val imageTasks by viewModel.imageTasks.collectAsState()
     val isUploading by viewModel.isUploading.collectAsState()
     val scope = rememberCoroutineScope()
+    
+    // 监听已有图片数据
+    LaunchedEffect(navController.previousBackStackEntry?.savedStateHandle) {
+        navController.previousBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<String>>?>(
+            NavigationConstants.EXISTING_IMAGES_KEY, null
+        )?.collect { existingImages ->
+            existingImages?.let {
+                // 将已有图片数据同步到ViewModel
+                viewModel.loadExistingImages(it)
+                
+                // 清除数据，避免重复处理
+                navController.previousBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<String>>>(
+                    NavigationConstants.EXISTING_IMAGES_KEY
+                )
+            }
+        }
+    }
 
     // 当前选择的分类
     var currentCategory by remember { mutableStateOf<PhotoCategory?>(null) }

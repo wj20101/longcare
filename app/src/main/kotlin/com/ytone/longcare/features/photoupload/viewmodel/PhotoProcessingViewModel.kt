@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
+import androidx.core.net.toUri
 
 /**
  * 图片处理ViewModel
@@ -159,6 +160,19 @@ class PhotoProcessingViewModel @Inject constructor(
     }
 
     /**
+     * 更新任务上传状态
+     */
+    private fun updateTaskUploadStatus(taskId: String, cloudUrl: String) {
+        _imageTasks.value = _imageTasks.value.map { task ->
+            if (task.id == taskId) {
+                task.copy(isUploaded = true, cloudUrl = cloudUrl)
+            } else {
+                task
+            }
+        }
+    }
+
+    /**
      * 重试失败的任务
      */
     fun retryTask(taskId: String) {
@@ -203,13 +217,19 @@ class PhotoProcessingViewModel @Inject constructor(
         return try {
             _isUploading.value = true
 
+            // 过滤出成功处理但尚未上传的图片任务
             val successfulTasks = _imageTasks.value.filter {
-                it.status == ImageTaskStatus.SUCCESS && it.resultUri != null
+                it.status == ImageTaskStatus.SUCCESS && it.resultUri != null && !it.isUploaded
             }
 
             if (successfulTasks.isEmpty()) {
                 _isUploading.value = false
-                return Result.success(emptyMap())
+                // 返回所有已上传的图片URL（包括之前上传的）
+                val allUploadedResults = _imageTasks.value
+                    .filter { it.status == ImageTaskStatus.SUCCESS && it.isUploaded && it.cloudUrl != null }
+                    .groupBy { it.taskType }
+                    .mapValues { entry -> entry.value.mapNotNull { it.cloudUrl } }
+                return Result.success(allUploadedResults)
             }
 
             val uploadResults = mutableMapOf<ImageTaskType, MutableList<String>>()
@@ -226,6 +246,8 @@ class PhotoProcessingViewModel @Inject constructor(
                 val uploadResult = cosRepository.uploadFile(uploadParams)
 
                 if (uploadResult.success && uploadResult.url != null) {
+                    // 更新任务状态，标记为已上传并保存云端URL
+                    updateTaskUploadStatus(task.id, uploadResult.url)
                     uploadResults.getOrPut(task.taskType) { mutableListOf() }.add(uploadResult.url)
                 } else {
                     _isUploading.value = false
@@ -233,8 +255,14 @@ class PhotoProcessingViewModel @Inject constructor(
                 }
             }
 
+            // 合并新上传的和之前已上传的图片URL
+            val allUploadedResults = _imageTasks.value
+                .filter { it.status == ImageTaskStatus.SUCCESS && it.isUploaded && it.cloudUrl != null }
+                .groupBy { it.taskType }
+                .mapValues { entry -> entry.value.mapNotNull { it.cloudUrl } }
+
             _isUploading.value = false
-            Result.success(uploadResults.toMap())
+            Result.success(allUploadedResults)
         } catch (e: Exception) {
             _isUploading.value = false
             Result.failure(e)
@@ -282,6 +310,33 @@ class PhotoProcessingViewModel @Inject constructor(
      */
     fun hasFailedTasks(): Boolean {
         return _imageTasks.value.any { it.status == ImageTaskStatus.FAILED }
+    }
+
+    /**
+     * 加载已有的图片数据
+     * @param existingImages 按ImageTaskType分组的图片URL列表
+     */
+    fun loadExistingImages(existingImages: Map<ImageTaskType, List<String>>) {
+        val existingTasks = mutableListOf<ImageTask>()
+        
+        existingImages.forEach { (taskType, urls) ->
+            urls.forEach { url ->
+                val task = ImageTask(
+                    id = UUID.randomUUID().toString(),
+                    originalUri = url.toUri(), // 使用URL作为Uri
+                    taskType = taskType,
+                    watermarkLines = emptyList(), // 已处理的图片不需要水印
+                    status = ImageTaskStatus.SUCCESS,
+                    resultUri = url.toUri(), // 结果URI也是这个URL
+                    isUploaded = true, // 已有图片标记为已上传
+                    cloudUrl = url // 云端URL就是这个URL
+                )
+                existingTasks.add(task)
+            }
+        }
+        
+        // 将已有图片任务添加到任务列表中
+        _imageTasks.update { it + existingTasks }
     }
 
     /**

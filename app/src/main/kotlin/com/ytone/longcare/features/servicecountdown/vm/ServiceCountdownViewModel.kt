@@ -33,6 +33,10 @@ class ServiceCountdownViewModel @Inject constructor() : ViewModel() {
     // 倒计时Job
     private var countdownJob: Job? = null
     
+    // 已上传的图片数据
+    private val _uploadedImages = MutableStateFlow<Map<ImageTaskType, List<String>>>(emptyMap())
+    val uploadedImages: StateFlow<Map<ImageTaskType, List<String>>> = _uploadedImages.asStateFlow()
+    
     init {
         // 初始化时启动倒计时
         startCountdown()
@@ -117,12 +121,19 @@ class ServiceCountdownViewModel @Inject constructor() : ViewModel() {
         val beforeCareImages = uploadResult[ImageTaskType.BEFORE_CARE] ?: emptyList()
         val afterCareImages = uploadResult[ImageTaskType.AFTER_CARE] ?: emptyList()
         
-        // 这里可以根据业务需求处理上传的图片数据
-        // 例如：保存到本地状态、发送到服务器等
+        // 保存上传的图片数据到状态中
+        _uploadedImages.value = uploadResult
+        
         println("收到护理前图片: $beforeCareImages")
         println("收到护理后图片: $afterCareImages")
-        
-        // 可以在这里更新状态或执行其他业务逻辑
-        // 例如：更新UI状态、触发数据同步等
+        println("已保存图片数据到ViewModel状态中")
+    }
+    
+    /**
+     * 获取当前已上传的图片数据
+     * @return 按ImageTaskType分组的图片URL列表
+     */
+    fun getCurrentUploadedImages(): Map<ImageTaskType, List<String>> {
+        return _uploadedImages.value
     }
 }

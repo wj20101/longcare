@@ -103,7 +103,8 @@ fun ServiceCountdownScreen(
                 navController = navController,
                 orderId = orderId,
                 countdownState = countdownState,
-                formattedTime = formattedTime
+                formattedTime = formattedTime,
+                viewModel = viewModel
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -151,6 +152,7 @@ fun CountdownTimerCard(
     orderId: Long,
     countdownState: ServiceCountdownState,
     formattedTime: String = "12:00:00",
+    viewModel: ServiceCountdownViewModel? = null
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -220,9 +222,15 @@ fun CountdownTimerCard(
             }
             Button(
                 onClick = { 
+                    val existingImages = viewModel?.getCurrentUploadedImages() ?: emptyMap()
+                    // 通过savedStateHandle传递已有的图片数据
+                    navController.currentBackStackEntry?.savedStateHandle?.set(
+                        NavigationConstants.EXISTING_IMAGES_KEY,
+                        existingImages
+                    )
                     navController.navigateToPhotoUpload(
                         orderId = orderId,
-                        address = "", // 可以从ViewModel或其他地方获取地址信息
+                        address = "" // 可以从ViewModel或其他地方获取地址信息
                     )
                 },
                 shape = RoundedCornerShape(50),
