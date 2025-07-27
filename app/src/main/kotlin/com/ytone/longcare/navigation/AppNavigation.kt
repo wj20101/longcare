@@ -110,16 +110,12 @@ fun NavController.navigateToSelectService(orderId: Long) {
  * 导航到照片上传页面
  * @param orderId 订单ID
  * @param address 订单地址
- * @param projectIds 项目ID列表
- * @param endOrderInfo 结束订单信息
  */
 fun NavController.navigateToPhotoUpload(
     orderId: Long, 
-    address: String, 
-    projectIds: List<Int>,
-    endOrderInfo: EndOderInfo? = null
+    address: String
 ) {
-    navigate(PhotoUploadRoute(orderId, address, projectIds, endOrderInfo))
+    navigate(PhotoUploadRoute(orderId, address))
 }
 
 /**
@@ -282,10 +278,7 @@ fun AppNavigation(startDestination: Any) {
             val route = backStackEntry.toRoute<PhotoUploadRoute>()
             PhotoUploadScreen(
                 navController = navController,
-                orderId = route.orderId,
-                orderAddress = route.address,
-                projectIds = route.projectIds,
-                endOrderInfo = route.endOrderInfo
+                orderAddress = route.address
             )
         }
         composable<ServiceCountdownRoute> { backStackEntry ->

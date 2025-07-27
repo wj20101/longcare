@@ -100,16 +100,12 @@ data class SelectServiceRoute(val orderId: Long)
  * 照片上传页面路由
  * @param orderId 订单ID
  * @param address 订单地址
- * @param projectIds 项目ID列表
- * @param endOrderInfo 结束订单信息
  */
 @Keep
 @Serializable
 data class PhotoUploadRoute(
     val orderId: Long, 
-    val address: String, 
-    val projectIds: List<Int> = emptyList(),
-    val endOrderInfo: EndOderInfo? = null
+    val address: String,
 )
 
 /**
