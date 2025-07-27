@@ -35,9 +35,6 @@ import com.ytone.longcare.features.identification.ui.IdentificationScreen
 import com.ytone.longcare.features.selectdevice.ui.SelectDeviceScreen
 import kotlin.reflect.typeOf
 
-@file:OptIn(kotlin.ExperimentalStdlibApi::class)
-
-
 /**
  * 从登录页面导航到主页，并清除登录页面的返回栈
  * @param NavController 导航控制器
