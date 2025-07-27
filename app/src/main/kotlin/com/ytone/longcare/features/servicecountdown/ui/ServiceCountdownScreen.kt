@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
+import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
@@ -27,6 +28,7 @@ import com.ytone.longcare.navigation.navigateToPhotoUpload
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
+import com.ytone.longcare.features.photoupload.model.ImageTaskType
 
 
 // 服务倒计时页面状态
@@ -46,6 +48,19 @@ fun ServiceCountdownScreen(
     // 从ViewModel获取状态
     val countdownState by viewModel.countdownState.collectAsStateWithLifecycle()
     val formattedTime by viewModel.formattedTime.collectAsStateWithLifecycle()
+    
+    // 监听图片上传结果
+    LaunchedEffect(navController.currentBackStackEntry?.savedStateHandle) {
+        navController.currentBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<String>>?>(NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, null)?.collect { result ->
+            result?.let {
+                // 调用ViewModel处理图片上传结果
+                viewModel.handlePhotoUploadResult(it)
+                
+                // 清除结果，避免重复处理
+                navController.currentBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<String>>>(NavigationConstants.PHOTO_UPLOAD_RESULT_KEY)
+            }
+        }
+    }
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -207,7 +222,7 @@ fun CountdownTimerCard(
                 onClick = { 
                     navController.navigateToPhotoUpload(
                         orderId = orderId,
-                        address = "",
+                        address = "", // 可以从ViewModel或其他地方获取地址信息
                     )
                 },
                 shape = RoundedCornerShape(50),
