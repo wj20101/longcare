@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -24,6 +25,9 @@ import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
+import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
+import com.ytone.longcare.common.utils.LocationPermissionHelper
+import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
 import com.ytone.longcare.navigation.navigateToPhotoUpload
@@ -47,7 +51,8 @@ fun ServiceCountdownScreen(
     orderId: Long,
     projectIdList: List<Int>,
     viewModel: ServiceCountdownViewModel = hiltViewModel(),
-    sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
+    sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
+    locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -57,12 +62,28 @@ fun ServiceCountdownScreen(
     // 从ViewModel获取状态
     val countdownState by viewModel.countdownState.collectAsStateWithLifecycle()
     val formattedTime by viewModel.formattedTime.collectAsStateWithLifecycle()
+    
+    val context = LocalContext.current
+    
+    // 权限请求启动器
+    val permissionLauncher = rememberLocationPermissionLauncher(
+        locationTrackingViewModel = locationTrackingViewModel,
+        orderId = orderId
+    )
+
+    // 检查定位权限和服务的函数
+    fun checkLocationPermissionAndStart() {
+        LocationPermissionHelper.checkLocationPermissionAndStart(context, permissionLauncher)
+    }
 
     LaunchedEffect(orderId) {
         // 确保订单详情已加载到SharedViewModel中
         if (sharedViewModel.getCachedOrderInfo(orderId) == null) {
             sharedViewModel.getOrderInfo(orderId)
         }
+        
+        // 检查并启动定位服务
+        checkLocationPermissionAndStart()
         
         // 监听图片上传结果
         navController.currentBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<String>>?>(

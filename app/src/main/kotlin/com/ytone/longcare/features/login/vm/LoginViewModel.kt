@@ -1,17 +1,11 @@
 package com.ytone.longcare.features.login.vm
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.api.response.LoginResultModel
-import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.repository.UserSessionRepository
@@ -29,9 +23,7 @@ import javax.inject.Inject
 class LoginViewModel @Inject constructor(
     private val loginRepository: LoginRepository,
     private val userSessionRepository: UserSessionRepository,
-    private val toastHelper: ToastHelper,
-    private val appEventBus: AppEventBus,
-    @param:ApplicationContext private val context: Context
+    private val toastHelper: ToastHelper
 ) : ViewModel() {
 
     private val _loginState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
@@ -44,13 +36,6 @@ class LoginViewModel @Inject constructor(
     val countdownSeconds: StateFlow<Int> = _countdownSeconds
     private var countdownJob: Job? = null
     private var nfcEventJob: Job? = null
-
-    init {
-        // 如果启用了NFC读取功能，则开始监听NFC事件
-        if (BuildConfig.ENABLE_NFC_READING) {
-            startNfcEventObserver()
-        }
-    }
 
     /**
      * 发送短信验证码
@@ -138,46 +123,6 @@ class LoginViewModel @Inject constructor(
                 _countdownSeconds.value--
             }
         }
-    }
-
-    /**
-     * 开始监听NFC事件
-     */
-    private fun startNfcEventObserver() {
-        nfcEventJob = viewModelScope.launch {
-            appEventBus.events.collect { event ->
-                if (event is AppEvent.NfcIntentReceived) {
-                    handleNfcEvent(event)
-                }
-            }
-        }
-    }
-
-    /**
-     * 处理NFC事件
-     */
-    private fun handleNfcEvent(event: AppEvent.NfcIntentReceived) {
-        val tag = NfcUtils.getTagFromIntent(event.intent)
-        if (tag != null) {
-            val tagId = NfcUtils.bytesToHexString(tag.id)
-            if (tagId.isNotEmpty()) {
-                // Toast显示NFC标签ID
-                showShortToast("NFC标签ID: $tagId")
-                
-                // 复制到剪贴板
-                copyToClipboard(tagId)
-                showShortToast("NFC标签ID已复制到剪贴板")
-            }
-        }
-    }
-
-    /**
-     * 复制文本到剪贴板
-     */
-    private fun copyToClipboard(text: String) {
-        val clipboardManager = ContextCompat.getSystemService(context, ClipboardManager::class.java)
-        val clipData = ClipData.newPlainText("NFC Tag ID", text)
-        clipboardManager?.setPrimaryClip(clipData)
     }
 
     override fun onCleared() {

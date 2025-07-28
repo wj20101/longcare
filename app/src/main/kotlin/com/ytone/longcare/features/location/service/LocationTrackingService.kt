@@ -10,7 +10,6 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
@@ -21,7 +20,6 @@ import com.ytone.longcare.features.location.provider.LocationStrategy
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import java.util.Locale
-import java.util.concurrent.Executor
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -48,8 +46,6 @@ class LocationTrackingService : Service() {
     private var trackingJob: Job? = null
 
     private var currentOrderId: Long = INVALID_ORDER_ID
-
-    private val mainThreadExecutor: Executor by lazy { ContextCompat.getMainExecutor(this) }
 
     override fun onBind(intent: Intent?): IBinder? = null
 

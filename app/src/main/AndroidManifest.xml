@@ -18,6 +18,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
 
     <uses-sdk tools:overrideLibrary="com.tencent.cloud.huiyansdkface.wecamera"/>
 
@@ -87,7 +88,7 @@
             android:foregroundServiceType="location" />
             
         <!-- 高德地图定位服务 -->
-        <service android:name="com.amap.api.location.APSService" ></service>
+        <service android:name="com.amap.api.location.APSService" />
 
     </application>
 

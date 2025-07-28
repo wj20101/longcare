@@ -1,9 +1,6 @@
 package com.ytone.longcare.features.login.ui
 
-import android.app.Activity
-import android.content.Context
 import android.content.pm.ActivityInfo
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -12,7 +9,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -32,12 +28,8 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
-import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.R
-import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.showLongToast
 import com.ytone.longcare.features.login.vm.LoginViewModel
@@ -54,10 +46,7 @@ import com.ytone.longcare.theme.TextColorPrimary
 import com.ytone.longcare.theme.TextColorSecondary
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import com.ytone.longcare.common.utils.NfcManagerEntryPoint
-import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.features.login.ext.maxPhoneLength
-import dagger.hilt.android.EntryPointAccessors
 
 
 @Composable
@@ -76,62 +65,6 @@ fun LoginScreen(
     val sendSmsState by viewModel.sendSmsCodeState.collectAsState()
 
     val verificationCodeFocusRequester = remember { FocusRequester() }
-
-    // NFC功能管理
-    if (BuildConfig.ENABLE_NFC_READING) {
-        val lifecycleOwner = LocalLifecycleOwner.current
-        val activity = context as? Activity
-        // 获取NfcManager实例
-        val nfcManager: NfcManager = remember {
-            val appContext: Context = context.applicationContext
-            EntryPointAccessors.fromApplication(
-                appContext,
-                NfcManagerEntryPoint::class.java
-            ).nfcManager()
-        }
-
-        // NFC检查和处理
-        LaunchedEffect(Unit) {
-            if (activity != null) {
-                when {
-                    !NfcUtils.isNfcSupported(context) -> {
-                        // 设备不支持NFC，显示错误信息
-                        Toast.makeText(context, "设备不支持NFC功能", Toast.LENGTH_SHORT).show()
-                    }
-
-                    else -> {
-                        // 启用NFC功能
-                        nfcManager.enableNfcForActivity(activity)
-                    }
-                }
-            }
-        }
-
-        // NFC生命周期管理
-        DisposableEffect(lifecycleOwner) {
-            val observer = LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_RESUME -> {
-                        (context as? Activity)?.let { activity ->
-                            // 启用NFC前台调度
-                            NfcUtils.enableForegroundDispatch(activity)
-                        }
-                    }
-                    Lifecycle.Event.ON_PAUSE -> {
-                        (context as? Activity)?.let { activity ->
-                            // 禁用NFC前台调度
-                            NfcUtils.disableForegroundDispatch(activity)
-                        }
-                    }
-                    else -> {}
-                }
-            }
-            lifecycleOwner.lifecycle.addObserver(observer)
-            onDispose {
-                lifecycleOwner.lifecycle.removeObserver(observer)
-            }
-        }
-    }
 
     Box(
         modifier = Modifier.fillMaxSize()

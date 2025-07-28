@@ -1,17 +1,8 @@
 package com.ytone.longcare.features.nfc.ui
 
-import android.Manifest
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
-import android.location.LocationManager
-import android.os.Build
-import android.provider.Settings
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.core.location.LocationManagerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -46,13 +37,14 @@ import com.ytone.longcare.common.utils.NfcManagerEntryPoint
 import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
-import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.navigation.navigateToServiceComplete
 import com.ytone.longcare.navigation.navigateToIdentification
 import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
+import com.ytone.longcare.common.utils.LocationPermissionHelper
+import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 
 // --- 状态定义 ---
 enum class SignInState {
@@ -77,37 +69,14 @@ fun NfcWorkflowScreen(
     val activity = context as? Activity
 
     // 权限请求启动器
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions(),
-        onResult = { permissions ->
-            if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
-                // 权限获取成功，启动定位服务
-                locationTrackingViewModel.onStartClicked(orderId)
-                navController.navigateToSelectService(orderId)
-            } else {
-                Toast.makeText(context, "需要定位权限才能开始服务", Toast.LENGTH_LONG).show()
-            }
-        }
+    val permissionLauncher = rememberLocationPermissionLauncher(
+        locationTrackingViewModel = locationTrackingViewModel,
+        orderId = orderId
     )
 
     // 检查定位权限和服务的函数
     fun checkLocationPermissionAndStart() {
-        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        if (!LocationManagerCompat.isLocationEnabled(locationManager)) {
-            Toast.makeText(context, "请先在系统设置中开启定位服务", Toast.LENGTH_LONG).show()
-            context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-            return
-        }
-
-        val permissionsToRequest = mutableListOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-
-        permissionLauncher.launch(permissionsToRequest.toTypedArray())
+        LocationPermissionHelper.checkLocationPermissionAndStart(context, permissionLauncher)
     }
 
     // 获取NfcManager实例
@@ -131,6 +100,10 @@ fun NfcWorkflowScreen(
                 else -> {
                     // 启用NFC功能
                     nfcManager.enableNfcForActivity(activity)
+                    // 检查并启动定位服务（仅在开始订单时）
+                    if (signInMode == SignInMode.START_ORDER) {
+                        checkLocationPermissionAndStart()
+                    }
                 }
             }
         }
