@@ -31,6 +31,14 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.navigation.navigateToFaceRecognitionGuide
 
+/**
+ * 身份认证相关常量
+ */
+private object IdentificationConstants {
+    const val SERVICE_PERSON = "服务人员"
+    const val ELDER = "老人"
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IdentificationScreen(
@@ -125,7 +133,7 @@ fun IdentificationScreen(
 
                 // 服务人员识别卡片
                 IdentificationCard(
-                    personType = "服务人员",
+                    personType = IdentificationConstants.SERVICE_PERSON,
                     isVerified = identificationState == IdentificationState.SERVICE_VERIFIED,
                     onVerifyClick = { 
                         viewModel.verifyServicePerson(context)
@@ -138,7 +146,7 @@ fun IdentificationScreen(
                 
                 // 老人识别卡片
                 IdentificationCard(
-                    personType = "老人",
+                    personType = IdentificationConstants.ELDER,
                     isVerified = identificationState == IdentificationState.ELDER_VERIFIED,
                     onVerifyClick = { 
                         viewModel.verifyElder(context, orderId)
@@ -180,6 +188,14 @@ fun IdentificationCard(
     faceVerificationState: IdentificationViewModel.FaceVerificationState
 ) {
     val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
+    val currentVerificationType by viewModel.currentVerificationType.collectAsStateWithLifecycle()
+    
+    // 判断当前卡片是否正在进行验证
+    val isCurrentlyVerifying = when (personType) {
+        IdentificationConstants.SERVICE_PERSON -> currentVerificationType == IdentificationViewModel.VerificationType.SERVICE_PERSON
+        IdentificationConstants.ELDER -> currentVerificationType == IdentificationViewModel.VerificationType.ELDER
+        else -> false
+    }
     
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -203,7 +219,7 @@ fun IdentificationCard(
                 contentAlignment = Alignment.Center
             ) {
                 // 头像图片
-                if (personType == "服务人员") {
+                if (personType == IdentificationConstants.SERVICE_PERSON) {
                     Image(
                         painter = painterResource(id = R.drawable.ic_service_person),
                         contentDescription = "服务人员头像",
@@ -244,9 +260,9 @@ fun IdentificationCard(
                     }
                 } else {
                     // 未验证状态，根据人脸验证状态显示不同UI
-                    when (faceVerificationState) {
-                        is IdentificationViewModel.FaceVerificationState.Initializing -> {
-                            // 初始化中
+                    when {
+                        isCurrentlyVerifying && faceVerificationState is IdentificationViewModel.FaceVerificationState.Initializing -> {
+                            // 初始化中（仅当前卡片正在验证时显示）
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -262,8 +278,8 @@ fun IdentificationCard(
                                 )
                             }
                         }
-                        is IdentificationViewModel.FaceVerificationState.Verifying -> {
-                            // 验证中
+                        isCurrentlyVerifying && faceVerificationState is IdentificationViewModel.FaceVerificationState.Verifying -> {
+                            // 验证中（仅当前卡片正在验证时显示）
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -279,8 +295,8 @@ fun IdentificationCard(
                                 )
                             }
                         }
-                        is IdentificationViewModel.FaceVerificationState.Error -> {
-                            // 验证失败
+                        isCurrentlyVerifying && faceVerificationState is IdentificationViewModel.FaceVerificationState.Error -> {
+                            // 验证失败（仅当前卡片正在验证时显示）
                             Column(
                                 horizontalAlignment = Alignment.End
                             ) {
@@ -299,14 +315,14 @@ fun IdentificationCard(
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color(0xFFF5A623)
                                     ),
-                                    modifier = Modifier.height(32.dp)
+                                    modifier = Modifier.height(36.dp)
                                 ) {
-                                    Text("重试", color = Color.White, fontSize = 12.sp)
+                                    Text("重试", color = Color.White)
                                 }
                             }
                         }
-                        is IdentificationViewModel.FaceVerificationState.Cancelled -> {
-                            // 用户取消
+                        isCurrentlyVerifying && faceVerificationState is IdentificationViewModel.FaceVerificationState.Cancelled -> {
+                            // 用户取消（仅当前卡片正在验证时显示）
                             Column(
                                 horizontalAlignment = Alignment.End
                             ) {
@@ -325,17 +341,17 @@ fun IdentificationCard(
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color(0xFFF5A623)
                                     ),
-                                    modifier = Modifier.height(32.dp)
+                                    modifier = Modifier.height(36.dp)
                                 ) {
-                                    Text("重新识别", color = Color.White, fontSize = 12.sp)
+                                    Text("重新识别", color = Color.White)
                                 }
                             }
                         }
                         else -> {
                             // 默认状态，显示验证按钮
                             val isButtonEnabled = when {
-                                personType == "服务人员" -> true // 服务人员按钮始终可用
-                                personType == "老人" && identificationState == IdentificationState.SERVICE_VERIFIED -> true // 老人按钮仅在服务人员已验证时可用
+                                personType == IdentificationConstants.SERVICE_PERSON -> true // 服务人员按钮始终可用
+                                personType == IdentificationConstants.ELDER && identificationState == IdentificationState.SERVICE_VERIFIED -> true // 老人按钮仅在服务人员已验证时可用
                                 else -> false // 其他情况按钮不可用
                             }
                             
@@ -348,7 +364,7 @@ fun IdentificationCard(
                                 enabled = isButtonEnabled,
                                 modifier = Modifier.height(36.dp)
                             ) {
-                                Text("进行${personType}识别", color = Color.White, fontSize = 14.sp)
+                                Text("进行${personType}识别", color = Color.White)
                             }
                         }
                     }
