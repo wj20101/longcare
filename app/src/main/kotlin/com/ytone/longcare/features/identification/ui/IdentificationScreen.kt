@@ -15,35 +15,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
+import com.ytone.longcare.features.identification.vm.IdentificationState
+import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.navigation.navigateToFaceRecognitionGuide
-
-
-// 身份认证状态枚举
-enum class IdentificationState {
-    INITIAL,           // 初始状态
-    SERVICE_VERIFIED,  // 服务人员已验证
-    ELDER_VERIFIED     // 老人已验证
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IdentificationScreen(
     navController: NavController,
     orderId: Long = 0L,
-    viewModel: IdentificationViewModel = hiltViewModel()
+    viewModel: IdentificationViewModel = hiltViewModel(),
+    sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
 
     // ==========================================================
@@ -51,7 +45,42 @@ fun IdentificationScreen(
     // ==========================================================
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
+    val context = LocalContext.current
     val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
+    val faceVerificationState by viewModel.faceVerificationState.collectAsStateWithLifecycle()
+    val currentVerificationType by viewModel.currentVerificationType.collectAsStateWithLifecycle()
+    
+    // 预加载订单详情
+    LaunchedEffect(orderId) {
+        if (orderId > 0) {
+            sharedOrderDetailViewModel.getOrderInfo(orderId)
+        }
+    }
+    
+    // 处理人脸验证结果
+    LaunchedEffect(faceVerificationState, currentVerificationType) {
+        when (faceVerificationState) {
+            is IdentificationViewModel.FaceVerificationState.Success -> {
+                // 验证成功，根据验证类型更新身份认证状态
+                when (currentVerificationType) {
+                    IdentificationViewModel.VerificationType.SERVICE_PERSON -> {
+                        viewModel.setServicePersonVerified()
+                    }
+                    IdentificationViewModel.VerificationType.ELDER -> {
+                        viewModel.setElderVerified()
+                    }
+                    null -> { /* 无验证类型，不处理 */ }
+                }
+            }
+            is IdentificationViewModel.FaceVerificationState.Error -> {
+                // 验证失败，可以显示错误提示
+            }
+            is IdentificationViewModel.FaceVerificationState.Cancelled -> {
+                // 用户取消验证
+            }
+            else -> { /* 其他状态不需要处理 */ }
+        }
+    }
     
     Box(
         modifier = Modifier
@@ -97,12 +126,12 @@ fun IdentificationScreen(
                 // 服务人员识别卡片
                 IdentificationCard(
                     personType = "服务人员",
-                    isVerified = identificationState == IdentificationState.SERVICE_VERIFIED || 
-                                identificationState == IdentificationState.ELDER_VERIFIED,
+                    isVerified = identificationState == IdentificationState.SERVICE_VERIFIED,
                     onVerifyClick = { 
-                        viewModel.verifyServicePerson()
+                        viewModel.verifyServicePerson(context)
                     },
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    faceVerificationState = faceVerificationState
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -112,9 +141,10 @@ fun IdentificationScreen(
                     personType = "老人",
                     isVerified = identificationState == IdentificationState.ELDER_VERIFIED,
                     onVerifyClick = { 
-                        viewModel.verifyElder()
+                        viewModel.verifyElder(context, orderId)
                     },
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    faceVerificationState = faceVerificationState
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -146,7 +176,8 @@ fun IdentificationCard(
     personType: String,
     isVerified: Boolean,
     onVerifyClick: () -> Unit,
-    viewModel: IdentificationViewModel = hiltViewModel()
+    viewModel: IdentificationViewModel = hiltViewModel(),
+    faceVerificationState: IdentificationViewModel.FaceVerificationState
 ) {
     val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
     
@@ -212,23 +243,114 @@ fun IdentificationCard(
                         )
                     }
                 } else {
-                    // 未验证状态，显示验证按钮
-                    val isButtonEnabled = when {
-                        personType == "服务人员" -> true // 服务人员按钮始终可用
-                        personType == "老人" && identificationState == IdentificationState.SERVICE_VERIFIED -> true // 老人按钮仅在服务人员已验证时可用
-                        else -> false // 其他情况按钮不可用
-                    }
-                    
-                    Button(
-                        onClick = onVerifyClick,
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFF5A623) // 橙色
-                        ),
-                        enabled = isButtonEnabled,
-                        modifier = Modifier.height(36.dp)
-                    ) {
-                        Text("进行${personType}识别", color = Color.White, fontSize = 14.sp)
+                    // 未验证状态，根据人脸验证状态显示不同UI
+                    when (faceVerificationState) {
+                        is IdentificationViewModel.FaceVerificationState.Initializing -> {
+                            // 初始化中
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Text(
+                                    text = "初始化中...",
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF666666)
+                                )
+                            }
+                        }
+                        is IdentificationViewModel.FaceVerificationState.Verifying -> {
+                            // 验证中
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Text(
+                                    text = "${personType}识别中...",
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF666666)
+                                )
+                            }
+                        }
+                        is IdentificationViewModel.FaceVerificationState.Error -> {
+                            // 验证失败
+                            Column(
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Text(
+                                    text = "验证失败",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFFFF3B30)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Button(
+                                    onClick = {
+                                        viewModel.resetFaceVerificationState()
+                                        onVerifyClick()
+                                    },
+                                    shape = RoundedCornerShape(50),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFF5A623)
+                                    ),
+                                    modifier = Modifier.height(32.dp)
+                                ) {
+                                    Text("重试", color = Color.White, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                        is IdentificationViewModel.FaceVerificationState.Cancelled -> {
+                            // 用户取消
+                            Column(
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Text(
+                                    text = "已取消",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF666666)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Button(
+                                    onClick = {
+                                        viewModel.resetFaceVerificationState()
+                                        onVerifyClick()
+                                    },
+                                    shape = RoundedCornerShape(50),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFF5A623)
+                                    ),
+                                    modifier = Modifier.height(32.dp)
+                                ) {
+                                    Text("重新识别", color = Color.White, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                        else -> {
+                            // 默认状态，显示验证按钮
+                            val isButtonEnabled = when {
+                                personType == "服务人员" -> true // 服务人员按钮始终可用
+                                personType == "老人" && identificationState == IdentificationState.SERVICE_VERIFIED -> true // 老人按钮仅在服务人员已验证时可用
+                                else -> false // 其他情况按钮不可用
+                            }
+                            
+                            Button(
+                                onClick = onVerifyClick,
+                                shape = RoundedCornerShape(50),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFF5A623) // 橙色
+                                ),
+                                enabled = isButtonEnabled,
+                                modifier = Modifier.height(36.dp)
+                            ) {
+                                Text("进行${personType}识别", color = Color.White, fontSize = 14.sp)
+                            }
+                        }
                     }
                 }
             }
