@@ -10,9 +10,9 @@ import android.nfc.NdefRecord
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.Ndef
-import android.os.Build
 import android.provider.Settings
 import androidx.appcompat.app.AlertDialog
+import androidx.core.app.PendingIntentCompat
 import androidx.core.content.IntentCompat
 
 object NfcUtils {
@@ -63,12 +63,13 @@ object NfcUtils {
 
         // 创建一个 PendingIntent，当发现 NFC 标签时，系统会用它来启动我们的 Activity
         val intent = Intent(activity, activity.javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        } else {
-            PendingIntent.FLAG_UPDATE_CURRENT
-        }
-        val pendingIntent = PendingIntent.getActivity(activity, 0, intent, pendingIntentFlags)
+        val pendingIntent = PendingIntentCompat.getActivity(
+            activity,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT,
+            true // mutable = true，允许系统修改PendingIntent
+        )
 
         // 定义 IntentFilter，用于声明我们感兴趣的 NFC 事件
         // NDEF_DISCOVERED 是最常用的，用于处理已格式化并包含 NDEF 消息的标签
