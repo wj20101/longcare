@@ -13,6 +13,11 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    
+    <!-- 高德地图定位所需权限 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
 
     <uses-sdk tools:overrideLibrary="com.tencent.cloud.huiyansdkface.wecamera"/>
 
@@ -80,6 +85,9 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="location" />
+            
+        <!-- 高德地图定位服务 -->
+        <service android:name="com.amap.api.location.APSService" ></service>
 
     </application>
 

@@ -48,6 +48,9 @@ coil = "3.3.0"
 # Tencent COS
 tencentCos = "5.9.46"
 
+# amap
+amapLocation = "6.4.9"
+
 # Testing
 junit = "4.13.2"
 androidxJunit = "1.2.1"
@@ -127,6 +130,9 @@ coil-video = { group = "io.coil-kt.coil3", name = "coil-video", version.ref = "c
 
 # Tencent COS
 tencent-cos-android = { group = "com.qcloud.cos", name = "cos-android", version.ref = "tencentCos" }
+
+# amap
+amap-location = { module = "com.amap.api:location", version.ref = "amapLocation" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
