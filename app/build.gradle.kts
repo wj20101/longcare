@@ -88,8 +88,6 @@ android {
             buildConfigField("String", "TX_Licence", "\"REDACTED_TX_LICENCE_1\"")
             // 高德地图API Key
             buildConfigField("String", "AMAP_API_KEY", "\"REDACTED_AMAP_API_KEY\"")
-            // NFC读取功能开关
-            buildConfigField("boolean", "ENABLE_NFC_READING", "true")
             signingConfig = signingConfigs.getByName("release")
         }
 
@@ -102,8 +100,6 @@ android {
             buildConfigField("String", "TX_Licence", "\"REDACTED_TX_LICENCE_2\"")
             // 高德地图API Key
             buildConfigField("String", "AMAP_API_KEY", "\"REDACTED_AMAP_API_KEY\"")
-            // NFC读取功能开关
-            buildConfigField("boolean", "ENABLE_NFC_READING", "true")
             signingConfig = signingConfigs.getByName("release")
         }
     }

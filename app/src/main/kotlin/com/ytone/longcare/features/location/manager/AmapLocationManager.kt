@@ -34,6 +34,9 @@ class AmapLocationManager @Inject constructor(
         try {
             // 设置高德地图API Key
             AMapLocationClient.setApiKey(BuildConfig.AMAP_API_KEY)
+            // 设置隐私合规
+            AMapLocationClient.updatePrivacyShow(context, true, true)
+            AMapLocationClient.updatePrivacyAgree(context, true)
             
             // 初始化定位客户端
             locationClient = AMapLocationClient(context)

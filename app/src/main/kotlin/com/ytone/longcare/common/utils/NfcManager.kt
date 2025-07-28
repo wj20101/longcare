@@ -3,6 +3,7 @@ package com.ytone.longcare.common.utils
 import android.app.Activity
 import android.content.Intent
 import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.ytone.longcare.common.event.AppEvent
@@ -39,10 +40,14 @@ class NfcManager @Inject constructor(
         // 添加生命周期观察者
         if (activity is LifecycleOwner) {
             activity.lifecycle.addObserver(this)
+            // 只有在Activity已经处于resumed状态时才立即启用NFC
+            if (activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                checkAndEnableNfc(activity)
+            }
+        } else {
+            // 如果不是LifecycleOwner，直接尝试启用（兼容性处理）
+            checkAndEnableNfc(activity)
         }
-        
-        // 检查NFC状态并启用前台调度
-        checkAndEnableNfc(activity)
     }
     
     /**
@@ -86,6 +91,13 @@ class NfcManager @Inject constructor(
      * 检查NFC状态并启用前台调度
      */
     private fun checkAndEnableNfc(activity: Activity) {
+        // 检查Activity是否处于resumed状态
+        if (activity is LifecycleOwner && 
+            !activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            // Activity未处于resumed状态，不能启用前台调度
+            return
+        }
+        
         when {
             !NfcUtils.isNfcSupported(activity) -> {
                 // 设备不支持NFC，不做任何操作
