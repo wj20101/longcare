@@ -8,16 +8,16 @@ import android.app.Service
 import android.content.Intent
 import android.location.LocationManager
 import android.os.Build
-import android.os.CancellationSignal
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import androidx.core.location.LocationManagerCompat
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.location.LocationRepository
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
+import com.ytone.longcare.features.location.provider.CompositeLocationProvider
+import com.ytone.longcare.features.location.provider.LocationStrategy
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import java.util.Locale
@@ -38,6 +38,9 @@ class LocationTrackingService : Service() {
 
     @Inject
     lateinit var trackingManager: LocationTrackingManager
+    
+    @Inject
+    lateinit var compositeLocationProvider: CompositeLocationProvider
 
     // 创建一个与 Service 生命周期绑定的协程作用域
     // 使用 SupervisorJob 确保一个子任务的失败不会影响其他任务
@@ -96,82 +99,43 @@ class LocationTrackingService : Service() {
     }
 
     /**
-     * 健壮的定位获取方法，带有从 GPS 到网络的回退机制。
+     * 获取当前位置的方法，使用新的定位提供者系统
      */
-    @SuppressLint("MissingPermission")
-    private fun fetchCurrentLocation() {
-        val cancellationSignal = CancellationSignal()
-
-        // 1. 优先尝试使用 GPS
-        if (LocationManagerCompat.hasProvider(locationManager, LocationManager.GPS_PROVIDER)) {
-            logI("正在尝试使用 GPS 获取位置...")
-            LocationManagerCompat.getCurrentLocation(
-                locationManager,
-                LocationManager.GPS_PROVIDER,
-                cancellationSignal,
-                mainThreadExecutor
-            ) { location ->
-                if (location != null) {
-                    // GPS 成功获取到位置，上报并结束本次流程
-                    logI("GPS 获取位置成功。")
-                    handleLocationUpdate(location)
-                } else {
-                    // GPS 失败（例如超时或在室内），自动回退到网络定位
-                    logI("GPS 获取位置失败，回退到网络定位...")
-                    fetchNetworkLocation(cancellationSignal)
-                }
+    private suspend fun fetchCurrentLocation() {
+        try {
+            logI("开始获取位置...")
+            val locationResult = compositeLocationProvider.getCurrentLocation()
+            
+            if (locationResult != null) {
+                handleLocationUpdate(locationResult)
+            } else {
+                logE("所有定位方式都获取位置失败")
+                updateNotification("获取位置失败，请检查网络和GPS信号。")
             }
-        } else {
-            // 如果 GPS 未开启，直接尝试网络定位
-            logI("GPS 未开启，直接尝试网络定位...")
-            fetchNetworkLocation(cancellationSignal)
-        }
-    }
-
-    /**
-     * 作为回退方案，专门用于获取网络位置的辅助方法。
-     */
-    @SuppressLint("MissingPermission")
-    private fun fetchNetworkLocation(cancellationSignal: CancellationSignal) {
-        if (LocationManagerCompat.hasProvider(locationManager, LocationManager.NETWORK_PROVIDER)) {
-            LocationManagerCompat.getCurrentLocation(
-                locationManager,
-                LocationManager.NETWORK_PROVIDER,
-                cancellationSignal,
-                mainThreadExecutor
-            ) { location ->
-                if (location != null) {
-                    logI("网络定位获取位置成功。")
-                    handleLocationUpdate(location)
-                } else {
-                    logE("网络定位也获取位置失败。")
-                    updateNotification("获取位置失败，请检查网络和GPS信号。")
-                }
-            }
-        } else {
-            logE("GPS 和网络定位均未开启。")
-            updateNotification("错误：定位服务均未开启。")
+        } catch (e: Exception) {
+            logE("定位过程中发生异常: ${e.message}")
+            updateNotification("定位异常: ${e.message}")
         }
     }
 
     /**
      * 处理位置更新和上报的统一方法。
      */
-    private fun handleLocationUpdate(location: android.location.Location) {
-        logI("成功获取到位置: Provider=${location.provider}, Lat=${location.latitude}, Lng=${location.longitude}")
+    private fun handleLocationUpdate(locationResult: com.ytone.longcare.features.location.provider.LocationResult) {
+        logI("成功获取到位置: Provider=${locationResult.provider}, Lat=${locationResult.latitude}, Lng=${locationResult.longitude}")
         updateNotification(
             "位置已更新: ${
                 String.format(
                     Locale.getDefault(),
                     "%.4f",
-                    location.latitude
+                    locationResult.latitude
                 )
-            }, ${String.format(Locale.getDefault(), "%.4f", location.longitude)}"
+            }, ${String.format(Locale.getDefault(), "%.4f", locationResult.longitude)}"
         )
 
         // 在IO线程中执行网络请求
         serviceScope.launch {
-            locationRepository.addPosition(currentOrderId, location.latitude, location.longitude)
+            locationRepository.addPosition(currentOrderId, locationResult.latitude, locationResult.longitude)
             logI("位置上报API调用完成。")
         }
     }
@@ -213,8 +177,25 @@ class LocationTrackingService : Service() {
         super.onDestroy()
         // 当服务被销毁时（无论正常停止还是被系统杀死），向Manager同步状态
         trackingManager.updateTrackingState(false)
+        // 销毁定位提供者资源
+        compositeLocationProvider.destroy()
         // 取消所有正在运行的协程任务，防止内存泄漏
         serviceScope.cancel()
+    }
+
+    /**
+     * 设置定位策略
+     */
+    fun setLocationStrategy(strategy: LocationStrategy) {
+        compositeLocationProvider.setLocationStrategy(strategy)
+        logI("定位服务策略已更新为: $strategy")
+    }
+    
+    /**
+     * 获取当前定位策略
+     */
+    fun getCurrentLocationStrategy(): LocationStrategy {
+        return compositeLocationProvider.getCurrentStrategy()
     }
 
     companion object {

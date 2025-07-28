@@ -86,6 +86,8 @@ android {
             buildConfigField("String", "TX_ID", "\"REDACTED_TX_ID_1\"")
             buildConfigField("String", "TX_Secret", "\"REDACTED_TX_SECRET_1\"")
             buildConfigField("String", "TX_Licence", "\"REDACTED_TX_LICENCE_1\"")
+            // 高德地图API Key
+            buildConfigField("String", "AMAP_API_KEY", "\"REDACTED_AMAP_API_KEY\"")
             // NFC读取功能开关
             buildConfigField("boolean", "ENABLE_NFC_READING", "true")
             signingConfig = signingConfigs.getByName("release")
@@ -98,6 +100,8 @@ android {
             buildConfigField("String", "TX_ID", "\"REDACTED_TX_ID_2\"")
             buildConfigField("String", "TX_Secret", "\"REDACTED_TX_SECRET_2\"")
             buildConfigField("String", "TX_Licence", "\"REDACTED_TX_LICENCE_2\"")
+            // 高德地图API Key
+            buildConfigField("String", "AMAP_API_KEY", "\"REDACTED_AMAP_API_KEY\"")
             // NFC读取功能开关
             buildConfigField("boolean", "ENABLE_NFC_READING", "true")
             signingConfig = signingConfigs.getByName("release")
@@ -226,6 +230,9 @@ dependencies {
 
     // 腾讯云COS
     implementation(libs.tencent.cos.android)
+
+    // 高德地图定位SDK
+    implementation(libs.amap.location)
 
     // Testing
     testImplementation(libs.junit)
