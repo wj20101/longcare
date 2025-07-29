@@ -24,7 +24,6 @@ import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownScreen
 import com.ytone.longcare.features.nfc.ui.NfcWorkflowScreen
 import com.ytone.longcare.features.selectservice.ui.SelectServiceScreen
 import com.ytone.longcare.features.photoupload.ui.PhotoUploadScreen
-import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType

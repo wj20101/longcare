@@ -52,6 +52,8 @@ import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import com.ytone.longcare.features.photoupload.utils.rememberMultiplePhotoPicker
 import com.ytone.longcare.features.photoupload.utils.launchMultiplePhotoPicker
+import com.ytone.longcare.features.photoupload.utils.rememberCameraLauncher
+import com.ytone.longcare.features.photoupload.utils.launchCamera
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
@@ -111,7 +113,22 @@ fun PhotoUploadScreen(
     // 当前选择的分类
     var currentCategory by remember { mutableStateOf<PhotoCategory?>(null) }
 
-    // 图片选择器
+    // 相机拍照启动器
+    val cameraLauncher = rememberCameraLauncher { uri ->
+        currentCategory?.let { category ->
+            val taskType = when (category) {
+                PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
+                PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
+            }
+            viewModel.addImagesToProcess(
+                uris = listOf(uri),
+                taskType = taskType,
+                address = sharedViewModel.getUserAddress(orderId)
+            )
+        }
+    }
+
+    // 图片选择器（保留作为备用）
     val multiplePhotoPicker = rememberMultiplePhotoPicker(maxItems = 5, onGifFiltered = { gifUris ->
         // 显示GIF被过滤的提示
         viewModel.showToast("暂不支持GIF图片")
@@ -220,7 +237,7 @@ fun PhotoUploadScreen(
                         isUploading = isUploading,
                         onAddPhoto = {
                             currentCategory = PhotoCategory.BEFORE_CARE
-                            launchMultiplePhotoPicker(multiplePhotoPicker)
+                            launchCamera(cameraLauncher)
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
                         onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
@@ -234,7 +251,7 @@ fun PhotoUploadScreen(
                         isUploading = isUploading,
                         onAddPhoto = {
                             currentCategory = PhotoCategory.AFTER_CARE
-                            launchMultiplePhotoPicker(multiplePhotoPicker)
+                            launchCamera(cameraLauncher)
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
                         onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
