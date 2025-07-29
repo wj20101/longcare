@@ -106,7 +106,14 @@ fun ServiceCountdownScreen(
     LaunchedEffect(orderId, projectIdList) {
         val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
         orderInfo?.let {
-            viewModel.setCountdownTimeFromProjects(it.projectList, projectIdList)
+            // 处理lastServiceTime为空或空字符串的情况
+            val lastServiceTime = it.userInfo.lastServiceTime.ifBlank { null }
+            
+            viewModel.setCountdownTimeFromProjects(
+                projectList = it.projectList, 
+                selectedProjectIds = projectIdList,
+                lastServiceTime = lastServiceTime
+            )
         }
     }
     Scaffold(
@@ -168,6 +175,12 @@ fun ServiceCountdownScreen(
             // End Service Button
             Button(
                 onClick = {
+                    // 验证照片是否已上传
+                    if (!viewModel.validatePhotosUploaded()) {
+                        viewModel.showToast("请上传照片")
+                        return@Button
+                    }
+                    
                     viewModel.endService()
                     val uploadedImages = viewModel.getCurrentUploadedImages()
                     val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
@@ -182,15 +195,28 @@ fun ServiceCountdownScreen(
                         ),
                     )
                 },
+                enabled = countdownState == ServiceCountdownState.COMPLETED,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF4A90E2) // 蓝色
+                    containerColor = if (countdownState == ServiceCountdownState.COMPLETED) {
+                        Color(0xFF4A90E2) // 蓝色
+                    } else {
+                        Color.Gray // 灰色（禁用状态）
+                    }
                 )
             ) {
-                Text("结束服务", fontSize = 18.sp, color = Color.White)
+                Text(
+                    text = if (countdownState == ServiceCountdownState.COMPLETED) {
+                        "结束服务"
+                    } else {
+                        "倒计时进行中..."
+                    },
+                    fontSize = 18.sp, 
+                    color = Color.White
+                )
             }
 
             Spacer(modifier = Modifier.height(32.dp))

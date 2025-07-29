@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -42,22 +44,62 @@ class ServiceCountdownViewModel @Inject constructor(
     val uploadedImages: StateFlow<Map<ImageTaskType, List<String>>> = _uploadedImages.asStateFlow()
     
     /**
-     * 设置倒计时时间（根据选中项目的总时长）
+     * 设置倒计时时间（根据选中项目的总时长和lastServiceTime）
      * @param projectList 所有项目列表
      * @param selectedProjectIds 选中的项目ID列表
+     * @param lastServiceTime 最后服务时间，可为null或空字符串
      */
-    fun setCountdownTimeFromProjects(projectList: List<ServiceProjectM>, selectedProjectIds: List<Int>) {
+    fun setCountdownTimeFromProjects(projectList: List<ServiceProjectM>, selectedProjectIds: List<Int>, lastServiceTime: String?) {
         val totalMinutes = projectList
             .filter { it.projectId in selectedProjectIds }
             .sumOf { it.serviceTime }
         
-        val totalMillis = totalMinutes * 60 * 1000L // 转换为毫秒
-        _remainingTimeMillis.value = totalMillis
+        // 计算基于lastServiceTime的剩余时间
+        val remainingMillis = calculateRemainingTime(lastServiceTime, totalMinutes)
+        
+        _remainingTimeMillis.value = remainingMillis
         updateFormattedTime()
         
-        // 如果有时间则启动倒计时
-        if (totalMillis > 0) {
+        // 如果剩余时间大于0则启动倒计时，否则设置为完成状态
+        if (remainingMillis > 0) {
+            _countdownState.value = ServiceCountdownState.RUNNING
             startCountdown()
+        } else {
+            _countdownState.value = ServiceCountdownState.COMPLETED
+        }
+    }
+    
+    /**
+     * 计算基于lastServiceTime的剩余倒计时时间
+     * @param lastServiceTime 最后服务时间字符串，可为null或空字符串
+     * @param totalMinutes 总服务时长（分钟）
+     * @return 剩余时间（毫秒）
+     */
+    private fun calculateRemainingTime(lastServiceTime: String?, totalMinutes: Int): Long {
+        // 如果lastServiceTime为null或空字符串，直接使用总时长作为倒计时
+        if (lastServiceTime.isNullOrEmpty()) {
+            return totalMinutes * 60 * 1000L
+        }
+        
+        return try {
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            val startTime = dateFormat.parse(lastServiceTime)
+            val currentTime = Date()
+            
+            if (startTime != null) {
+                val elapsedMillis = currentTime.time - startTime.time
+                val totalServiceMillis = totalMinutes * 60 * 1000L
+                val remainingMillis = totalServiceMillis - elapsedMillis
+                
+                // 确保剩余时间不为负数
+                maxOf(0L, remainingMillis)
+            } else {
+                // 如果解析失败，使用总时长作为倒计时
+                totalMinutes * 60 * 1000L
+            }
+        } catch (e: Exception) {
+            // 如果解析失败，使用总时长作为倒计时
+            totalMinutes * 60 * 1000L
         }
     }
     
@@ -154,5 +196,25 @@ class ServiceCountdownViewModel @Inject constructor(
      */
     fun getCurrentUploadedImages(): Map<ImageTaskType, List<String>> {
         return _uploadedImages.value
+    }
+    
+    /**
+     * 验证照片是否已上传
+     * @return true表示护理前和护理后照片都已上传，false表示有照片未上传
+     */
+    fun validatePhotosUploaded(): Boolean {
+        val uploadedImages = _uploadedImages.value
+        val beforeCareImages = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
+        val afterCareImages = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
+        
+        return beforeCareImages.isNotEmpty() && afterCareImages.isNotEmpty()
+    }
+    
+    /**
+     * 显示Toast提示
+     * @param message 提示信息
+     */
+    fun showToast(message: String) {
+        toastHelper.showShort(message)
     }
 }
