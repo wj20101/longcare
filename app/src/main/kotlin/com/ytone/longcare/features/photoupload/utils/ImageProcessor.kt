@@ -10,12 +10,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
 import androidx.core.graphics.withTranslation
-import androidx.core.net.toUri
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.common.utils.FileProviderHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.io.FileOutputStream
 
 /**
@@ -108,14 +107,16 @@ class ImageProcessor(private val context: Context) {
     }
 
     private fun saveBitmapToCache(bitmap: Bitmap): Uri {
-        val cacheDir = File(context.cacheDir, "processed_images")
-        if (!cacheDir.exists()) cacheDir.mkdirs()
-        val fileName = "processed_${System.currentTimeMillis()}.jpg"
-        val file = File(cacheDir, fileName)
+        // 使用FileProviderHelper创建处理后图片的文件
+        val file = FileProviderHelper.createProcessedImageFile(context)
+        
+        // 保存bitmap到文件
         FileOutputStream(file).use { out ->
             bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
         }
-        return file.toUri()
+        
+        // 返回FileProvider Uri
+        return FileProviderHelper.getUriForFile(context, file)
     }
 
     /**

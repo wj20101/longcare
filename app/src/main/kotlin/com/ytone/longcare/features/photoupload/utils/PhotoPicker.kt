@@ -8,7 +8,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import com.ytone.longcare.common.utils.FileProviderHelper
 
 /**
  * 检查现代图片选择器（Photo Picker）是否可用。
@@ -89,6 +91,14 @@ sealed class MultiplePhotoPickerLauncher {
 }
 
 /**
+ * 相机拍照启动器封装
+ */
+data class CameraLauncher(
+    val launcher: ManagedActivityResultLauncher<Uri, Boolean>,
+    val photoUri: Uri
+)
+
+/**
  * 创建单张图片选择器
  */
 @Composable
@@ -126,6 +136,32 @@ fun rememberSinglePhotoPicker(
         )
         PhotoPickerLauncher.Legacy(launcher)
     }
+}
+
+/**
+ * 创建相机拍照启动器
+ */
+@Composable
+fun rememberCameraLauncher(
+    onPhotoTaken: (Uri) -> Unit
+): CameraLauncher {
+    val context = LocalContext.current
+    
+    // 使用FileProviderHelper创建相机拍照Uri
+    val photoUri = remember {
+        FileProviderHelper.createCameraPhotoUri(context)
+    }
+    
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+        onResult = { success ->
+            if (success) {
+                onPhotoTaken(photoUri)
+            }
+        }
+    )
+    
+    return CameraLauncher(launcher, photoUri)
 }
 
 /**
@@ -195,6 +231,15 @@ fun launchSinglePhotoPicker(
             launcher.launcher.launch("image/*")
         }
     }
+}
+
+/**
+ * 启动相机拍照
+ */
+fun launchCamera(
+    launcher: CameraLauncher
+) {
+    launcher.launcher.launch(launcher.photoUri)
 }
 
 /**
