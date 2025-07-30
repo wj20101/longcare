@@ -168,15 +168,9 @@ data class SelectDeviceRoute(val orderId: Long)
 data class IdentificationRoute(val orderId: Long)
 
 /**
- * 已服务工时用户列表页面路由
+ * 用户列表页面路由
+ * @param listType 列表类型：HAVE_SERVICE(已服务工时)、NO_SERVICE(未服务工时)、SERVICE_COUNT(服务次数)
  */
 @Keep
 @Serializable
-object HaveServiceUserListRoute
-
-/**
- * 未服务工时用户列表页面路由
- */
-@Keep
-@Serializable
-object NoServiceUserListRoute
+data class UserListRoute(val listType: String)

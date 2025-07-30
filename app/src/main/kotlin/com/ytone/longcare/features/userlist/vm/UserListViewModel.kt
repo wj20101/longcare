@@ -75,4 +75,29 @@ class UserListViewModel @Inject constructor(
             _isLoading.value = false
         }
     }
+    
+    /**
+     * 获取服务次数用户列表
+     */
+    fun getServiceCountUserList() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            
+            when (val result = userListRepository.getServiceCountUserList()) {
+                is ApiResult.Success -> {
+                    _userListState.value = result.data
+                }
+                is ApiResult.Failure -> {
+                    toastHelper.showShort(result.message)
+                    logE("获取服务次数用户列表失败: code=${result.code}, msg=${result.message}")
+                }
+                is ApiResult.Exception -> {
+                    toastHelper.showShort("网络异常，请稍后重试")
+                    logE("获取服务次数用户列表异常", throwable = result.exception)
+                }
+            }
+            
+            _isLoading.value = false
+        }
+    }
 }
