@@ -26,7 +26,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,7 +43,8 @@ import com.ytone.longcare.theme.bgGradientBrush
  */
 enum class UserListType {
     HAVE_SERVICE, // 已服务工时
-    NO_SERVICE    // 未服务工时
+    NO_SERVICE,   // 未服务工时
+    SERVICE_COUNT // 服务次数
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,6 +61,7 @@ fun UserListScreen(
     val title = when (userListType) {
         UserListType.HAVE_SERVICE -> "已服务工时"
         UserListType.NO_SERVICE -> "未服务工时"
+        UserListType.SERVICE_COUNT -> "服务次数"
     }
 
     // 初始化时加载数据
@@ -68,6 +69,7 @@ fun UserListScreen(
         when (userListType) {
             UserListType.HAVE_SERVICE -> viewModel.getHaveServiceUserList()
             UserListType.NO_SERVICE -> viewModel.getNoServiceUserList()
+            UserListType.SERVICE_COUNT -> viewModel.getServiceCountUserList()
         }
     }
     Box(
@@ -207,6 +209,7 @@ fun UserListItem(
                 val serviceTimeText = when (userListType) {
                     UserListType.HAVE_SERVICE -> "本月已服务工时: ${user.monthServiceTime}"
                     UserListType.NO_SERVICE -> "本月未服务工时: ${user.monthNoServiceTime}"
+                    UserListType.SERVICE_COUNT -> "本月已服务工时: ${user.monthServiceTime}"
                 }
                 Text(
                     text = serviceTimeText,
@@ -223,17 +226,6 @@ fun UserListItem(
             )
         }
 
-        val displayTime = when (userListType) {
-            UserListType.HAVE_SERVICE -> user.monthServiceTime
-            UserListType.NO_SERVICE -> user.monthNoServiceTime
-        }
-        Text(
-            text = "$displayTime",
-            color = Color(0xFF4A86E8),
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(horizontal = 8.dp)
-        )
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = stringResource(R.string.common_details),

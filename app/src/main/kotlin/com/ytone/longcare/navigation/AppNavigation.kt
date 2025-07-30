@@ -159,17 +159,32 @@ fun NavController.navigateToIdentification(orderId: Long) {
 }
 
 /**
+ * 导航到用户列表页面
+ * @param listType 列表类型
+ */
+fun NavController.navigateToUserList(listType: String) {
+    navigate(UserListRoute(listType))
+}
+
+/**
  * 导航到已服务工时用户列表页面
  */
 fun NavController.navigateToHaveServiceUserList() {
-    navigate(HaveServiceUserListRoute)
+    navigateToUserList(UserListType.HAVE_SERVICE.name)
 }
 
 /**
  * 导航到未服务工时用户列表页面
  */
 fun NavController.navigateToNoServiceUserList() {
-    navigate(NoServiceUserListRoute)
+    navigateToUserList(UserListType.NO_SERVICE.name)
+}
+
+/**
+ * 导航到服务次数用户列表页面
+ */
+fun NavController.navigateToServiceCountUserList() {
+    navigateToUserList(UserListType.SERVICE_COUNT.name)
 }
 
 /**
@@ -336,17 +351,17 @@ fun AppNavigation(startDestination: Any) {
             )
         }
         
-        composable<HaveServiceUserListRoute> {
+        composable<UserListRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<UserListRoute>()
+            val userListType = when (route.listType) {
+                UserListType.HAVE_SERVICE.name -> UserListType.HAVE_SERVICE
+                UserListType.NO_SERVICE.name -> UserListType.NO_SERVICE
+                UserListType.SERVICE_COUNT.name -> UserListType.SERVICE_COUNT
+                else -> UserListType.HAVE_SERVICE // 默认值
+            }
             UserListScreen(
                 navController = navController,
-                userListType = UserListType.HAVE_SERVICE
-            )
-        }
-        
-        composable<NoServiceUserListRoute> {
-            UserListScreen(
-                navController = navController,
-                userListType = UserListType.NO_SERVICE
+                userListType = userListType
             )
         }
     }

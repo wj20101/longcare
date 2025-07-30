@@ -35,4 +35,13 @@ class UserListRepositoryImpl @Inject constructor(
             apiService.getNoServiceUserList()
         }
     }
+
+    /**
+     * 获取本月服务次数的用户列表
+     */
+    override suspend fun getServiceCountUserList(): ApiResult<List<UserInfoModel>> {
+        return safeApiCall(ioDispatcher, eventBus) {
+            apiService.getUserOrderList(com.ytone.longcare.api.request.UserOrderParamModel())
+        }
+    }
 }

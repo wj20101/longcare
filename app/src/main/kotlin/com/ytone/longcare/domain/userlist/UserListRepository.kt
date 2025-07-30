@@ -17,4 +17,9 @@ interface UserListRepository {
      * 获取本月未服务的用户列表
      */
     suspend fun getNoServiceUserList(): ApiResult<List<UserInfoModel>>
+
+    /**
+     * 获取本月服务次数的用户列表
+     */
+    suspend fun getServiceCountUserList(): ApiResult<List<UserInfoModel>>
 }
