@@ -40,6 +40,10 @@ annotation class AppDataStore
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
+annotation class OrderStorage
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
 annotation class ApplicationScope
 
 @Retention(AnnotationRetention.BINARY)
