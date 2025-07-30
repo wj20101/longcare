@@ -62,13 +62,12 @@ fun ServiceCountdownScreen(
     // 从ViewModel获取状态
     val countdownState by viewModel.countdownState.collectAsStateWithLifecycle()
     val formattedTime by viewModel.formattedTime.collectAsStateWithLifecycle()
-    
+
     val context = LocalContext.current
-    
+
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
-        locationTrackingViewModel = locationTrackingViewModel,
-        orderId = orderId
+        locationTrackingViewModel = locationTrackingViewModel, orderId = orderId
     )
 
     // 检查定位权限和服务的函数
@@ -81,14 +80,13 @@ fun ServiceCountdownScreen(
         if (sharedViewModel.getCachedOrderInfo(orderId) == null) {
             sharedViewModel.getOrderInfo(orderId)
         }
-        
+
         // 检查并启动定位服务
         checkLocationPermissionAndStart()
-        
+
         // 监听图片上传结果
         navController.currentBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<String>>?>(
-            NavigationConstants.PHOTO_UPLOAD_RESULT_KEY,
-            null
+            NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, null
         )?.collect { result ->
             result?.let {
                 // 调用ViewModel处理图片上传结果
@@ -101,18 +99,15 @@ fun ServiceCountdownScreen(
             }
         }
     }
-    
+
     // 设置倒计时时间
     LaunchedEffect(orderId, projectIdList) {
         val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
         orderInfo?.let {
-            // 处理lastServiceTime为空或空字符串的情况
-            val lastServiceTime = it.userInfo.lastServiceTime.ifBlank { null }
-            
             viewModel.setCountdownTimeFromProjects(
-                projectList = it.projectList, 
+                projectList = it.projectList,
                 selectedProjectIds = projectIdList,
-                lastServiceTime = lastServiceTime
+                lastServiceTime = null
             )
         }
     }
@@ -134,9 +129,7 @@ fun ServiceCountdownScreen(
                     navigationIconContentColor = Color.White
                 )
             )
-        },
-        containerColor = Color.Transparent,
-        modifier = Modifier.background(bgGradientBrush)
+        }, containerColor = Color.Transparent, modifier = Modifier.background(bgGradientBrush)
     ) {
         Column(
             modifier = Modifier
@@ -165,9 +158,7 @@ fun ServiceCountdownScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             SelectedServicesCard(
-                orderId = orderId,
-                projectIdList = projectIdList,
-                sharedViewModel = sharedViewModel
+                orderId = orderId, projectIdList = projectIdList, sharedViewModel = sharedViewModel
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -180,12 +171,12 @@ fun ServiceCountdownScreen(
                         viewModel.showToast("请上传照片")
                         return@Button
                     }
-                    
+
                     viewModel.endService()
                     val uploadedImages = viewModel.getCurrentUploadedImages()
                     val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
                     val endImgList = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
-                    
+
                     navController.navigateToNfcSignInForEndOrder(
                         orderId = orderId,
                         params = EndOderInfo(
@@ -212,10 +203,8 @@ fun ServiceCountdownScreen(
                     text = if (countdownState == ServiceCountdownState.COMPLETED) {
                         "结束服务"
                     } else {
-                        "倒计时进行中..."
-                    },
-                    fontSize = 18.sp, 
-                    color = Color.White
+                        "服务进行中..."
+                    }, fontSize = 18.sp, color = Color.White
                 )
             }
 
@@ -244,74 +233,38 @@ fun CountdownTimerCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 // 根据状态显示不同的倒计时文本
-                when (countdownState) {
-                    ServiceCountdownState.RUNNING -> {
-                        Text(
-                            text = formattedTime,
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                        Text(
-                            text = "服务倒计时",
-                            fontSize = 14.sp,
-                            color = Color.Gray,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                    }
-
-                    ServiceCountdownState.COMPLETED -> {
-                        Text(
-                            text = "00:00:00",
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                        Text(
-                            text = "服务倒计时",
-                            fontSize = 14.sp,
-                            color = Color.Gray,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                    }
-
-                    ServiceCountdownState.ENDED -> {
-                        Text(
-                            text = "00:00:00",
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                        Text(
-                            text = "服务已结束",
-                            fontSize = 14.sp,
-                            color = Color.Gray,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                    }
+                // 倒计时显示
+                val (timeText, statusText) = when (countdownState) {
+                    ServiceCountdownState.RUNNING -> formattedTime to "服务倒计时"
+                    ServiceCountdownState.COMPLETED -> "00:00:00" to "服务倒计时"
+                    ServiceCountdownState.ENDED -> "00:00:00" to "服务已结束"
                 }
+
+                Text(
+                    text = timeText,
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black,
+                    maxLines = 1,
+                    softWrap = false
+                )
+                Text(
+                    text = statusText,
+                    fontSize = 20.sp,
+                    color = Color.Gray,
+                    maxLines = 1,
+                    softWrap = false
+                )
             }
             Button(
                 onClick = {
                     val existingImages = viewModel.getCurrentUploadedImages()
                     // 通过savedStateHandle传递已有的图片数据
                     navController.currentBackStackEntry?.savedStateHandle?.set(
-                        NavigationConstants.EXISTING_IMAGES_KEY,
-                        existingImages
+                        NavigationConstants.EXISTING_IMAGES_KEY, existingImages
                     )
                     navController.navigateToPhotoUpload(orderId = orderId)
-                },
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(
+                }, shape = RoundedCornerShape(50), colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFF5A623) // 橙色
                 )
             ) {
@@ -323,19 +276,18 @@ fun CountdownTimerCard(
 
 @Composable
 fun SelectedServicesCard(
-    orderId: Long,
-    projectIdList: List<Int>,
-    sharedViewModel: SharedOrderDetailViewModel
+    orderId: Long, projectIdList: List<Int>, sharedViewModel: SharedOrderDetailViewModel
 ) {
     val tagHeightEstimate = 32.dp
     val tagOverlap = 12.dp
-    
+
     // 获取订单详情
     val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
-    
+
     // 过滤出选中的项目
-    val selectedProjects = orderInfo?.projectList?.filter { it.projectId in projectIdList } ?: emptyList()
-    
+    val selectedProjects =
+        orderInfo?.projectList?.filter { it.projectId in projectIdList } ?: emptyList()
+
     Box {
         Card(
             shape = RoundedCornerShape(16.dp),
@@ -346,10 +298,7 @@ fun SelectedServicesCard(
         ) {
             Column(
                 modifier = Modifier.padding(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = 32.dp,
-                    bottom = 16.dp
+                    start = 16.dp, end = 16.dp, top = 32.dp, bottom = 16.dp
                 )
             ) {
                 if (selectedProjects.isNotEmpty()) {
@@ -360,8 +309,7 @@ fun SelectedServicesCard(
                     }
                 } else {
                     Text(
-                        text = "暂无选中的服务项目",
-                        color = Color.Gray
+                        text = "暂无选中的服务项目", color = Color.Gray
                     )
                 }
             }
@@ -378,8 +326,6 @@ fun SelectedServicesCard(
 @Composable
 fun SelectedServicesCardPreview() {
     SelectedServicesCard(
-        orderId = 12345L,
-        projectIdList = listOf(1, 2),
-        sharedViewModel = hiltViewModel()
+        orderId = 12345L, projectIdList = listOf(1, 2), sharedViewModel = hiltViewModel()
     )
 }
