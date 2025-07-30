@@ -1,15 +1,14 @@
 package com.ytone.longcare.common.utils
 
-import android.content.Context
 import android.content.SharedPreferences
 import android.os.SystemClock
+import androidx.core.content.edit
+import com.ytone.longcare.di.OrderStorage
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlin.math.abs
 import javax.inject.Inject
 import javax.inject.Singleton
-import androidx.core.content.edit
 
 /**
  * 服务时间管理器
@@ -18,17 +17,14 @@ import androidx.core.content.edit
  */
 @Singleton
 class ServiceTimeManager @Inject constructor(
-    @param:ApplicationContext private val context: Context,
+    @param:OrderStorage private val orderPrefs: SharedPreferences,
     private val userSessionRepository: UserSessionRepository
 ) {
     companion object {
-        private const val PREFS_NAME = "service_time_prefs"
         private const val KEY_SERVICE_START_TIME = "service_start_time_"
         private const val KEY_SYSTEM_BOOT_TIME = "system_boot_time_"
         private const val KEY_REAL_START_TIME = "real_start_time_"
     }
-    
-    private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     
     /**
      * 获取当前登录用户ID
@@ -63,13 +59,13 @@ class ServiceTimeManager @Inject constructor(
         val realStartTimeKey = generateStorageKey(KEY_REAL_START_TIME, orderId)
         
         // 检查是否有记录
-        if (!prefs.contains(startTimeKey)) {
+        if (!orderPrefs.contains(startTimeKey)) {
             return null
         }
         
-        val savedElapsedTime = prefs.getLong(startTimeKey, -1L)
-        val savedBootTime = prefs.getLong(bootTimeKey, -1L)
-        val savedRealStartTime = prefs.getLong(realStartTimeKey, -1L)
+        val savedElapsedTime = orderPrefs.getLong(startTimeKey, -1L)
+        val savedBootTime = orderPrefs.getLong(bootTimeKey, -1L)
+        val savedRealStartTime = orderPrefs.getLong(realStartTimeKey, -1L)
         
         if (savedElapsedTime == -1L || savedBootTime == -1L || savedRealStartTime == -1L) {
             return null
@@ -103,7 +99,7 @@ class ServiceTimeManager @Inject constructor(
         val bootTimeKey = KEY_SYSTEM_BOOT_TIME + orderId
         val realStartTimeKey = KEY_REAL_START_TIME + orderId
         
-        prefs.edit {
+        orderPrefs.edit {
             putLong(startTimeKey, currentElapsedTime)
                 .putLong(bootTimeKey, currentBootTime)
                 .putLong(realStartTimeKey, currentTime)
@@ -141,7 +137,7 @@ class ServiceTimeManager @Inject constructor(
         val currentBootTime = System.currentTimeMillis() - SystemClock.elapsedRealtime()
         val currentElapsedTime = SystemClock.elapsedRealtime()
         
-        prefs.edit {
+        orderPrefs.edit {
             putLong(startTimeKey, currentElapsedTime)
             putLong(bootTimeKey, currentBootTime)
             putLong(realStartTimeKey, startTime)
@@ -157,7 +153,7 @@ class ServiceTimeManager @Inject constructor(
         val bootTimeKey = generateStorageKey(KEY_SYSTEM_BOOT_TIME, orderId)
         val realStartTimeKey = generateStorageKey(KEY_REAL_START_TIME, orderId)
         
-        prefs.edit {
+        orderPrefs.edit {
             remove(startTimeKey)
             remove(bootTimeKey)
             remove(realStartTimeKey)

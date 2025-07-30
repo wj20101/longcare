@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -25,6 +26,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.api.response.UserInfoM
+import com.ytone.longcare.common.utils.FaceVerificationStatusManager
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
@@ -35,6 +37,16 @@ import com.ytone.longcare.navigation.navigateToIdentification
 import com.ytone.longcare.navigation.navigateToSelectDevice
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface NursingExecutionEntryPoint {
+    fun faceVerificationStatusManager(): FaceVerificationStatusManager
+}
 
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +56,11 @@ fun NursingExecutionScreen(
     orderId: Long,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    val faceVerificationStatusManager = EntryPointAccessors.fromApplication(
+        context.applicationContext,
+        NursingExecutionEntryPoint::class.java
+    ).faceVerificationStatusManager()
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -71,7 +88,8 @@ fun NursingExecutionScreen(
             NursingExecutionContent(
                 navController = navController,
                 orderInfo = state.orderInfo,
-                orderId = orderId
+                orderId = orderId,
+                faceVerificationStatusManager = faceVerificationStatusManager
             )
         }
         
@@ -139,7 +157,8 @@ fun ErrorScreen(
 fun NursingExecutionContent(
     navController: NavController,
     orderInfo: ServiceOrderInfoModel,
-    orderId: Long
+    orderId: Long,
+    faceVerificationStatusManager: FaceVerificationStatusManager
 ) {
     Box(
         modifier = Modifier
@@ -196,7 +215,16 @@ fun NursingExecutionContent(
                     text = stringResource(R.string.nursing_execution_confirm_button), 
                     onClick = {
                         when {
-                            orderInfo.state.isExecutingState() -> navController.navigateToIdentification(orderId)
+                            orderInfo.state.isExecutingState() -> {
+                                // 检查是否已完成人脸验证
+                                if (faceVerificationStatusManager.isFaceVerificationCompleted(orderId)) {
+                                    // 已完成人脸验证，直接跳转到选择服务页面
+                                    navController.navigateToSelectService(orderId)
+                                } else {
+                                    // 未完成人脸验证，跳转到身份认证页面
+                                    navController.navigateToIdentification(orderId)
+                                }
+                            }
                             orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(orderId)
                             else -> navController.popBackStack()
                         }
@@ -321,11 +349,21 @@ fun NursingExecutionContentPreview() {
             )
         )
     )
-    NursingExecutionContent(
-        navController = navController,
-        orderInfo = orderInfo,
-        orderId = 1L
-    )
+    // Preview中暂时注释掉NursingExecutionContent调用，因为需要依赖注入
+    // NursingExecutionContent(
+    //     navController = navController,
+    //     orderInfo = orderInfo,
+    //     orderId = 1L,
+    //     faceVerificationStatusManager = faceVerificationStatusManager
+    // )
+    
+    // 显示一个简单的预览界面
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("NursingExecutionContent Preview")
+    }
 }
 
 @Preview

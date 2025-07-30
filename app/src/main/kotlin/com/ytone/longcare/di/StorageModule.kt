@@ -32,6 +32,13 @@ object StorageModule {
 
     @Provides
     @Singleton
+    @OrderStorage
+    fun provideOrderSharedPreferences(@ApplicationContext context: Context): SharedPreferences {
+        return context.getSharedPreferences("order_storage", Context.MODE_PRIVATE)
+    }
+
+    @Provides
+    @Singleton
     @AppDataStore
     fun provideAppDataStore(@ApplicationContext context: Context): DataStore<Preferences> {
         return context.appDataStore

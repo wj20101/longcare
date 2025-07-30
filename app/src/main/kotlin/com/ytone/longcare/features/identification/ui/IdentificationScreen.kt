@@ -24,12 +24,17 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.FaceVerificationStatusManager
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.features.identification.vm.IdentificationState
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.navigation.navigateToFaceRecognitionGuide
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
 
 /**
  * 身份认证相关常量
@@ -37,6 +42,12 @@ import com.ytone.longcare.navigation.navigateToFaceRecognitionGuide
 private object IdentificationConstants {
     const val SERVICE_PERSON = "服务人员"
     const val ELDER = "老人"
+}
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface IdentificationEntryPoint {
+    fun faceVerificationStatusManager(): FaceVerificationStatusManager
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,13 +58,17 @@ fun IdentificationScreen(
     viewModel: IdentificationViewModel = hiltViewModel(),
     sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    val faceVerificationStatusManager = EntryPointAccessors.fromApplication(
+        context.applicationContext,
+        IdentificationEntryPoint::class.java
+    ).faceVerificationStatusManager()
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
     // ==========================================================
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
-    val context = LocalContext.current
     val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
     val faceVerificationState by viewModel.faceVerificationState.collectAsStateWithLifecycle()
     val currentVerificationType by viewModel.currentVerificationType.collectAsStateWithLifecycle()
@@ -76,6 +91,10 @@ fun IdentificationScreen(
                     }
                     IdentificationViewModel.VerificationType.ELDER -> {
                         viewModel.setElderVerified()
+                        // 老人验证成功后，保存人脸验证完成状态
+                        if (orderId > 0) {
+                            faceVerificationStatusManager.saveFaceVerificationCompleted(orderId)
+                        }
                     }
                     null -> { /* 无验证类型，不处理 */ }
                 }
