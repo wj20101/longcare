@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.profile.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -148,23 +147,32 @@ fun StatsCard(navController: NavController, stats: NurseServiceTimeModel) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 20.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+                .height(80.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             StatItem(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
                 value = stats.haveServiceTime.toString(),
                 label = "已服务工时",
                 onClick = { navController.navigateToHaveServiceUserList() }
             )
             VerticalDivider(
-                modifier = Modifier.height(30.dp), thickness = 1.dp, color = Color(0xFFF0F0F0)
-            )
-            StatItem(value = stats.haveServiceNum.toString(), label = "服务次数")
-            VerticalDivider(
-                modifier = Modifier.height(30.dp), thickness = 1.dp, color = Color(0xFFF0F0F0)
+                modifier = Modifier.fillMaxHeight().padding(vertical = 16.dp), 
+                thickness = 1.dp, 
+                color = Color(0xFFF0F0F0)
             )
             StatItem(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                value = stats.haveServiceNum.toString(),
+                label = "服务次数"
+            )
+            VerticalDivider(
+                modifier = Modifier.fillMaxHeight().padding(vertical = 16.dp), 
+                thickness = 1.dp, 
+                color = Color(0xFFF0F0F0)
+            )
+            StatItem(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
                 value = stats.noServiceTime.toString(),
                 label = "未服务工时",
                 onClick = { navController.navigateToNoServiceUserList() }
@@ -174,18 +182,37 @@ fun StatsCard(navController: NavController, stats: NurseServiceTimeModel) {
 }
 
 @Composable
-fun StatItem(value: String, label: String, onClick: (() -> Unit)? = null) {
+fun StatItem(
+    modifier: Modifier = Modifier,
+    value: String, 
+    label: String, 
+    onClick: (() -> Unit)? = null
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = if (onClick != null) {
-            Modifier.clickable { onClick() }
-        } else {
-            Modifier
-        }
+        verticalArrangement = Arrangement.Center,
+        modifier = modifier
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable{ onClick() }
+                } else {
+                    Modifier
+                }
+            )
+            .padding(horizontal = 8.dp, vertical = 12.dp)
     ) {
-        Text(text = value, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        Text(
+            text = value, 
+            fontWeight = FontWeight.Bold, 
+            fontSize = 22.sp,
+            color = if (onClick != null) Color(0xFF333333) else Color(0xFF666666)
+        )
         Spacer(modifier = Modifier.height(4.dp))
-        Text(text = label, color = Color.Gray, fontSize = 12.sp)
+        Text(
+            text = label, 
+            color = if (onClick != null) Color(0xFF666666) else Color.Gray, 
+            fontSize = 12.sp
+        )
     }
 }
 
