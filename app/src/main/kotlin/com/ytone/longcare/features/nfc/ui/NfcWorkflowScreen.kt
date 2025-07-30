@@ -100,10 +100,6 @@ fun NfcWorkflowScreen(
                 else -> {
                     // 启用NFC功能
                     nfcManager.enableNfcForActivity(activity)
-                    // 检查并启动定位服务（仅在开始订单时）
-                    if (signInMode == SignInMode.START_ORDER) {
-                        checkLocationPermissionAndStart()
-                    }
                 }
             }
         }
@@ -202,6 +198,8 @@ fun NfcWorkflowScreen(
                             onClick = {
                                 when (signInMode) {
                                     SignInMode.START_ORDER -> {
+                                        // 签到成功时开启定位上报任务
+                                        checkLocationPermissionAndStart()
                                         // 签到成功后跳转到身份认证页面
                                         navController.navigateToIdentification(orderId)
                                     }
