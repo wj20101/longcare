@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.servicecountdown.ui
 
 import android.content.pm.ActivityInfo
+import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -105,9 +106,9 @@ fun ServiceCountdownScreen(
         val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
         orderInfo?.let {
             viewModel.setCountdownTimeFromProjects(
+                orderId = orderId,
                 projectList = it.projectList,
-                selectedProjectIds = projectIdList,
-                lastServiceTime = null
+                selectedProjectIds = projectIdList
             )
         }
     }
@@ -172,7 +173,7 @@ fun ServiceCountdownScreen(
                         return@Button
                     }
 
-                    viewModel.endService()
+                    viewModel.endService(orderId)
                     val uploadedImages = viewModel.getCurrentUploadedImages()
                     val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
                     val endImgList = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()

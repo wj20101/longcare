@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.common.utils.ServiceTimeManager
 import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,7 +22,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ServiceCountdownViewModel @Inject constructor(
-    private val toastHelper: ToastHelper
+    private val toastHelper: ToastHelper,
+    private val serviceTimeManager: ServiceTimeManager
 ) : ViewModel() {
     
     // 倒计时状态
@@ -44,64 +46,49 @@ class ServiceCountdownViewModel @Inject constructor(
     val uploadedImages: StateFlow<Map<ImageTaskType, List<String>>> = _uploadedImages.asStateFlow()
     
     /**
-     * 设置倒计时时间（根据选中项目的总时长和lastServiceTime）
+     * 根据项目列表设置倒计时时间
+     * @param orderId 订单ID
      * @param projectList 所有项目列表
      * @param selectedProjectIds 选中的项目ID列表
-     * @param lastServiceTime 最后服务时间，可为null或空字符串
+     * @param lastServiceTime 上次服务时间，可为null或空字符串（已废弃，使用持久化存储）
      */
-    fun setCountdownTimeFromProjects(projectList: List<ServiceProjectM>, selectedProjectIds: List<Int>, lastServiceTime: String?) {
+    fun setCountdownTimeFromProjects(
+        orderId: Long,
+        projectList: List<ServiceProjectM>, 
+        selectedProjectIds: List<Int>,
+        lastServiceTime: String? = null
+    ) {
         val totalMinutes = projectList
             .filter { it.projectId in selectedProjectIds }
             .sumOf { it.serviceTime }
         
-        // 计算基于lastServiceTime的剩余时间
-        val remainingMillis = calculateRemainingTime(lastServiceTime, totalMinutes)
-        
-        _remainingTimeMillis.value = remainingMillis
-        updateFormattedTime()
-        
-        // 如果剩余时间大于0则启动倒计时，否则设置为完成状态
-        if (remainingMillis > 0) {
-            _countdownState.value = ServiceCountdownState.RUNNING
-            startCountdown()
-        } else {
-            _countdownState.value = ServiceCountdownState.COMPLETED
+        if (totalMinutes > 0) {
+            // 获取或创建服务开始时间
+            val serviceStartTime = serviceTimeManager.getOrCreateServiceStartTime(orderId)
+            
+            // 计算总服务时长（毫秒）
+            val totalServiceTimeMillis = totalMinutes * 60 * 1000L
+            
+            // 计算已经过去的时间
+            val elapsedTime = System.currentTimeMillis() - serviceStartTime
+            
+            // 计算剩余时间
+            val remainingTime = maxOf(0L, totalServiceTimeMillis - elapsedTime)
+            
+            _remainingTimeMillis.value = remainingTime
+            updateFormattedTime()
+            
+            // 如果剩余时间大于0，启动倒计时；否则设置为完成状态
+            if (remainingTime > 0) {
+                _countdownState.value = ServiceCountdownState.RUNNING
+                startCountdown()
+            } else {
+                _countdownState.value = ServiceCountdownState.COMPLETED
+            }
         }
     }
     
-    /**
-     * 计算基于lastServiceTime的剩余倒计时时间
-     * @param lastServiceTime 最后服务时间字符串，可为null或空字符串
-     * @param totalMinutes 总服务时长（分钟）
-     * @return 剩余时间（毫秒）
-     */
-    private fun calculateRemainingTime(lastServiceTime: String?, totalMinutes: Int): Long {
-        // 如果lastServiceTime为null或空字符串，直接使用总时长作为倒计时
-        if (lastServiceTime.isNullOrEmpty()) {
-            return totalMinutes * 60 * 1000L
-        }
-        
-        return try {
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            val startTime = dateFormat.parse(lastServiceTime)
-            val currentTime = Date()
-            
-            if (startTime != null) {
-                val elapsedMillis = currentTime.time - startTime.time
-                val totalServiceMillis = totalMinutes * 60 * 1000L
-                val remainingMillis = totalServiceMillis - elapsedMillis
-                
-                // 确保剩余时间不为负数
-                maxOf(0L, remainingMillis)
-            } else {
-                // 如果解析失败，使用总时长作为倒计时
-                totalMinutes * 60 * 1000L
-            }
-        } catch (e: Exception) {
-            // 如果解析失败，使用总时长作为倒计时
-            totalMinutes * 60 * 1000L
-        }
-    }
+
     
     // 启动倒计时
     fun startCountdown() {
@@ -153,10 +140,18 @@ class ServiceCountdownViewModel @Inject constructor(
         _countdownState.value = ServiceCountdownState.RUNNING
     }
     
-    // 结束服务
-    fun endService() {
+    /**
+     * 结束服务
+     * @param orderId 订单ID，用于清除服务时间记录
+     */
+    fun endService(orderId: Long? = null) {
         countdownJob?.cancel()
         _countdownState.value = ServiceCountdownState.ENDED
+        
+        // 清除服务时间记录
+        orderId?.let {
+            serviceTimeManager.clearServiceTime(it)
+        }
     }
     
     // 设置倒计时时间（用于测试或手动设置）
