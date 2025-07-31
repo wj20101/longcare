@@ -31,6 +31,7 @@ import com.ytone.longcare.features.identification.vm.IdentificationState
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.navigation.navigateToFaceRecognitionGuide
+import com.ytone.longcare.navigation.navigateToSelectService
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -153,9 +154,10 @@ fun IdentificationScreen(
                 // 服务人员识别卡片
                 IdentificationCard(
                     personType = IdentificationConstants.SERVICE_PERSON,
-                    isVerified = identificationState == IdentificationState.SERVICE_VERIFIED,
-                    onVerifyClick = { 
-                        viewModel.verifyServicePerson(context)
+                    isVerified = identificationState.ordinal >= IdentificationState.SERVICE_VERIFIED.ordinal,
+                    onVerifyClick = {
+                        viewModel.setServicePersonVerified()
+//                        viewModel.verifyServicePerson(context)
                     },
                     viewModel = viewModel,
                     faceVerificationState = faceVerificationState
@@ -166,9 +168,10 @@ fun IdentificationScreen(
                 // 老人识别卡片
                 IdentificationCard(
                     personType = IdentificationConstants.ELDER,
-                    isVerified = identificationState == IdentificationState.ELDER_VERIFIED,
-                    onVerifyClick = { 
-                        viewModel.verifyElder(context, orderId)
+                    isVerified = identificationState.ordinal >= IdentificationState.ELDER_VERIFIED.ordinal,
+                    onVerifyClick = {
+                        viewModel.setElderVerified()
+//                        viewModel.verifyElder(context, orderId)
                     },
                     viewModel = viewModel,
                     faceVerificationState = faceVerificationState
@@ -178,7 +181,7 @@ fun IdentificationScreen(
 
                 // 下一步按钮
                 Button(
-                    onClick = { navController.navigateToFaceRecognitionGuide(orderId) },
+                    onClick = { navController.navigateToSelectService(orderId) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
