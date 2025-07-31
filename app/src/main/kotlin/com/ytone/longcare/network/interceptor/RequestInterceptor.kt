@@ -14,7 +14,6 @@ import okhttp3.Interceptor
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okio.Buffer
-import java.nio.charset.StandardCharsets
 import javax.inject.Inject
 
 class RequestInterceptor @Inject constructor(
@@ -30,7 +29,6 @@ class RequestInterceptor @Inject constructor(
             return chain.proceed(request)
         }
 
-        var charset = StandardCharsets.UTF_8
         val method = request.method
         val newRequestBuilder = request.newBuilder()
         val randomString = RandomUtils.generateRandomStringKotlin(32)
@@ -45,7 +43,6 @@ class RequestInterceptor @Inject constructor(
         if (requestBody != null) {
             val contentType = requestBody.contentType()
             if (contentType != null) {
-                charset = contentType.charset(charset)/*如果是二进制上传  则不进行加密*/
                 if (contentType.type.lowercase() == "multipart") {
                     return chain.proceed(newRequestBuilder.build())
                 }
@@ -92,7 +89,7 @@ class RequestInterceptor @Inject constructor(
             "channel" to "office"
         )
         val headerInfo = map.toJsonStringMap().orEmpty()
-        return mapOf<String, String>(
+        return mapOf(
             "AesKeyString" to getAKHead(randomString),
             "BaseParamString" to encryptRequest(randomString, headerInfo)
         )

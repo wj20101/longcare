@@ -18,5 +18,17 @@ data class StartOrderParamModel(
      * nfc设备号
      */
     @param:Json(name = "nfc")
-    val nfc: String = ""
+    val nfc: String = "",
+
+    /**
+     * 经度
+     */
+    @param:Json(name = "longitude")
+    val longitude: String = "",
+
+    /**
+     * 纬度
+     */
+    @param:Json(name = "latitude")
+    val latitude: String = ""
 )

@@ -20,7 +20,7 @@ class LocationRepositoryImpl @Inject constructor(
 
     override suspend fun addPosition(orderId: Long, latitude: Double, longitude: Double): ApiResult<Unit> {
         return safeApiCall(ioDispatcher, eventBus) {
-            val params = AddPositionParamModel(orderId = orderId, latitude = latitude, longitude = longitude)
+            val params = AddPositionParamModel(orderId = orderId, latitude = latitude.toString(), longitude = longitude.toString())
             // 注意：由于 addPosition 现在返回 ApiResponse，我们需要解包
             apiService.addPosition(params)
         }
