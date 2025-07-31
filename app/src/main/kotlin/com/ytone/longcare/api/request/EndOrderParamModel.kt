@@ -21,6 +21,18 @@ data class EndOrderParamModel(
     val nfc: String = "",
 
     /**
+     * 经度
+     */
+    @param:Json(name = "longitude")
+    val longitude: String = "",
+
+    /**
+     * 纬度
+     */
+    @param:Json(name = "latitude")
+    val latitude: String = "",
+
+    /**
      * 完成的服务项目Id集合
      */
     @param:Json(name = "porjectIdList")

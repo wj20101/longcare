@@ -18,11 +18,11 @@ data class AddPositionParamModel(
      * 经度
      */
     @param:Json(name = "longitude")
-    val longitude: Double = 0.0,
+    val longitude: String = "",
 
     /**
      * 纬度
      */
     @param:Json(name = "latitude")
-    val latitude: Double = 0.0
+    val latitude: String = ""
 )
