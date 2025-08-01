@@ -30,17 +30,33 @@ interface OrderRepository {
      * 开始订单服务（NFC签到）
      * @param orderId 订单号
      * @param nfcDeviceId NFC设备ID
+     * @param longitude 经度
+     * @param latitude 纬度
      */
-    suspend fun startOrder(orderId: Long, nfcDeviceId: String): ApiResult<Unit>
+    suspend fun startOrder(
+        orderId: Long, 
+        nfcDeviceId: String,
+        longitude: String = "",
+        latitude: String = ""
+    ): ApiResult<Unit>
 
     /**
      * 结束订单服务（NFC签退）
+     * @param orderId 订单号
+     * @param nfcDeviceId NFC设备ID
+     * @param projectIdList 完成的服务项目ID集合
+     * @param beginImgList 开始图片集合
+     * @param endImageList 结束图片集合
+     * @param longitude 经度
+     * @param latitude 纬度
      */
     suspend fun endOrder(
         orderId: Long,
         nfcDeviceId: String,
         projectIdList: List<Int>,
         beginImgList: List<String>,
-        endImageList: List<String>
+        endImageList: List<String>,
+        longitude: String = "",
+        latitude: String = ""
     ): ApiResult<Unit>
 }

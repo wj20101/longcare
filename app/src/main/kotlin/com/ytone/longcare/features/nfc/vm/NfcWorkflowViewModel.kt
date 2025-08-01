@@ -34,12 +34,19 @@ class NfcWorkflowViewModel @Inject constructor(
      * 开始服务工单
      * @param orderId 订单ID
      * @param nfcDeviceId NFC设备号
+     * @param longitude 经度
+     * @param latitude 纬度
      */
-    fun startOrder(orderId: Long, nfcDeviceId: String) {
+    fun startOrder(
+        orderId: Long, 
+        nfcDeviceId: String,
+        longitude: String = "",
+        latitude: String = ""
+    ) {
         viewModelScope.launch {
             _uiState.value = NfcSignInUiState.Loading
 
-            when (val result = orderRepository.startOrder(orderId, nfcDeviceId)) {
+            when (val result = orderRepository.startOrder(orderId, nfcDeviceId, longitude, latitude)) {
                 is ApiResult.Success -> {
                     _uiState.value = NfcSignInUiState.Success
                 }
@@ -60,13 +67,22 @@ class NfcWorkflowViewModel @Inject constructor(
 
     /**
      * 结束服务工单
+     * @param orderId 订单ID
+     * @param nfcDeviceId NFC设备号
+     * @param projectIdList 完成的服务项目ID集合
+     * @param beginImgList 开始图片集合
+     * @param endImageList 结束图片集合
+     * @param longitude 经度
+     * @param latitude 纬度
      */
     fun endOrder(
         orderId: Long,
         nfcDeviceId: String,
         projectIdList: List<Int>,
         beginImgList: List<String>,
-        endImageList: List<String>
+        endImageList: List<String>,
+        longitude: String = "",
+        latitude: String = ""
     ) {
         viewModelScope.launch {
             _uiState.value = NfcSignInUiState.Loading
@@ -76,7 +92,9 @@ class NfcWorkflowViewModel @Inject constructor(
                 nfcDeviceId,
                 projectIdList,
                 beginImgList,
-                endImageList
+                endImageList,
+                longitude,
+                latitude
             )) {
                 is ApiResult.Success -> {
                     _uiState.value = NfcSignInUiState.Success
@@ -114,7 +132,8 @@ class NfcWorkflowViewModel @Inject constructor(
     fun observeNfcEvents(
         orderId: Long,
         signInMode: SignInMode,
-        endOderInfo: EndOderInfo?
+        endOderInfo: EndOderInfo?,
+        onLocationRequest: suspend () -> Pair<String, String>
     ) {
         viewModelScope.launch {
             appEventBus.events.collect { event ->
@@ -123,8 +142,11 @@ class NfcWorkflowViewModel @Inject constructor(
                     if (tag != null) {
                         val tagId = NfcUtils.bytesToHexString(tag.id)
                         if (tagId.isNotEmpty()) {
+                            // 实时获取位置信息
+                            val (longitude, latitude) = onLocationRequest()
+                            
                             when (signInMode) {
-                                SignInMode.START_ORDER -> startOrder(orderId, tagId)
+                                SignInMode.START_ORDER -> startOrder(orderId, tagId, longitude, latitude)
 
                                 SignInMode.END_ORDER -> {
                                     endOderInfo?.let {
@@ -133,7 +155,9 @@ class NfcWorkflowViewModel @Inject constructor(
                                             nfcDeviceId = tagId,
                                             projectIdList = it.projectIdList,
                                             beginImgList = it.beginImgList,
-                                            endImageList = it.endImgList
+                                            endImageList = it.endImgList,
+                                            longitude = longitude,
+                                            latitude = latitude
                                         )
                                     }
                                 }
