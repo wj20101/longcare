@@ -45,6 +45,17 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.common.utils.LocationPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
+import com.ytone.longcare.features.location.provider.CompositeLocationProvider
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+
+// --- EntryPoint定义 ---
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface NfcLocationEntryPoint {
+    fun compositeLocationProvider(): CompositeLocationProvider
+}
 
 // --- 状态定义 ---
 enum class SignInState {
@@ -88,6 +99,39 @@ fun NfcWorkflowScreen(
         ).nfcManager()
     }
 
+    // 获取CompositeLocationProvider实例
+    val locationProvider: CompositeLocationProvider = remember {
+        val appContext: Context = context.applicationContext
+        EntryPointAccessors.fromApplication(
+            appContext,
+            NfcLocationEntryPoint::class.java
+        ).compositeLocationProvider()
+    }
+
+    // 获取当前位置的函数（使用高德定位）
+    suspend fun getCurrentLocationCoordinates(): Pair<String, String> {
+        return try {
+            // 检查定位权限
+            if (!LocationPermissionHelper.hasLocationPermission(context)) {
+                return Pair("", "")
+            }
+            
+            // 检查定位服务是否开启
+            if (!LocationPermissionHelper.isLocationServiceEnabled(context)) {
+                return Pair("", "")
+            }
+            
+            val location = locationProvider.getCurrentLocation()
+            if (location != null) {
+                Pair(location.longitude.toString(), location.latitude.toString())
+            } else {
+                Pair("", "")
+            }
+        } catch (e: Exception) {
+            Pair("", "")
+        }
+    }
+
     // NFC检查和处理
     LaunchedEffect(Unit) {
         if (activity != null) {
@@ -107,7 +151,12 @@ fun NfcWorkflowScreen(
 
     // 监听NFC事件
     LaunchedEffect(orderId, signInMode) {
-        viewModel.observeNfcEvents(orderId, signInMode, endOderInfo)
+        viewModel.observeNfcEvents(
+            orderId = orderId,
+            signInMode = signInMode,
+            endOderInfo = endOderInfo,
+            onLocationRequest = { getCurrentLocationCoordinates() }
+        )
     }
 
     // 管理NFC前台调度的生命周期
