@@ -6,6 +6,7 @@ import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.SharedOrderRepository
+import com.ytone.longcare.domain.order.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SharedOrderDetailViewModel @Inject constructor(
     private val sharedOrderRepository: SharedOrderRepository,
+    private val orderRepository: OrderRepository,
     private val toastHelper: ToastHelper
 ) : ViewModel() {
 
@@ -129,4 +131,53 @@ class SharedOrderDetailViewModel @Inject constructor(
         _uiState.value = OrderDetailUiState.Initial
         _currentOrderId.value = null
     }
+
+    // 工单开始状态
+    private val _starOrderState = MutableStateFlow<StarOrderUiState>(StarOrderUiState.Initial)
+    val starOrderState: StateFlow<StarOrderUiState> = _starOrderState.asStateFlow()
+
+    /**
+     * 工单开始(正式计时)
+     * @param orderId 订单ID
+     * @param onSuccess 成功回调
+     */
+    fun starOrder(orderId: Long, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            _starOrderState.value = StarOrderUiState.Loading
+
+            when (val result = orderRepository.starOrder(orderId)) {
+                is ApiResult.Success -> {
+                    _starOrderState.value = StarOrderUiState.Success
+                    toastHelper.showShort("工单开始成功")
+                    onSuccess()
+                }
+                is ApiResult.Exception -> {
+                    val errorMessage = result.exception.message ?: "网络错误，请检查网络连接"
+                    _starOrderState.value = StarOrderUiState.Error(errorMessage)
+                    toastHelper.showShort(errorMessage)
+                }
+                is ApiResult.Failure -> {
+                    _starOrderState.value = StarOrderUiState.Error(result.message)
+                    toastHelper.showShort(result.message)
+                }
+            }
+        }
+    }
+
+    /**
+     * 重置工单开始状态
+     */
+    fun resetStarOrderState() {
+        _starOrderState.value = StarOrderUiState.Initial
+    }
+}
+
+/**
+ * 工单开始UI状态
+ */
+sealed class StarOrderUiState {
+    data object Initial : StarOrderUiState()
+    data object Loading : StarOrderUiState()
+    data object Success : StarOrderUiState()
+    data class Error(val message: String) : StarOrderUiState()
 }

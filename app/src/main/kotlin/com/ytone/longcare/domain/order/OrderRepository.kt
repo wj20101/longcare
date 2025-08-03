@@ -41,6 +41,12 @@ interface OrderRepository {
     ): ApiResult<Unit>
 
     /**
+     * 工单开始(正式计时)
+     * @param orderId 订单号
+     */
+    suspend fun starOrder(orderId: Long): ApiResult<Unit>
+
+    /**
      * 结束订单服务（NFC签退）
      * @param orderId 订单号
      * @param nfcDeviceId NFC设备ID

@@ -5,6 +5,7 @@ import com.ytone.longcare.api.request.CheckOrderParamModel
 import com.ytone.longcare.api.request.EndOrderParamModel
 import com.ytone.longcare.api.request.OrderListParamModel
 import com.ytone.longcare.api.request.OrderInfoParamModel
+import com.ytone.longcare.api.request.StarOrderParamModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
@@ -54,6 +55,14 @@ class OrderRepositoryImpl @Inject constructor(
                     longitude = longitude,
                     latitude = latitude
                 )
+            )
+        }
+    }
+
+    override suspend fun starOrder(orderId: Long): ApiResult<Unit> {
+        return safeApiCall(ioDispatcher, eventBus) {
+            apiService.starOrder(
+                StarOrderParamModel(orderId = orderId)
             )
         }
     }
