@@ -24,11 +24,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
 import com.ytone.longcare.navigation.navigateToServiceCountdown
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
+import com.ytone.longcare.shared.vm.StarOrderUiState
 
 // --- 数据模型 ---
 data class ServiceItem(
@@ -44,6 +46,7 @@ fun SelectServiceScreen(
 ) {
     // 使用SharedViewModel获取订单详情
     val uiState by sharedViewModel.uiState.collectAsState()
+    val starOrderState by sharedViewModel.starOrderState.collectAsStateWithLifecycle()
 
     // 在组件初始化时加载订单信息（如果缓存中没有）
     LaunchedEffect(orderId) {
@@ -53,6 +56,14 @@ fun SelectServiceScreen(
         } else {
             // 如果有缓存数据，直接设置为成功状态
             sharedViewModel.getOrderInfo(orderId, forceRefresh = false)
+        }
+    }
+
+    // 监听starOrder状态，成功后执行路由跳转
+    LaunchedEffect(starOrderState) {
+        if (starOrderState is StarOrderUiState.Success) {
+            // 重置状态
+            sharedViewModel.resetStarOrderState()
         }
     }
 
@@ -202,14 +213,18 @@ fun SelectServiceScreen(
                     // 下一步按钮
                     NextStepButton(
                         text = "下一步",
-                        enabled = serviceItems.any { it.isSelected },
+                        enabled = serviceItems.any { it.isSelected } && starOrderState !is StarOrderUiState.Loading,
                         onClick = {
                             val selectedProjectIds =
                                 serviceItems.filter { it.isSelected }.map { it.id }
-                            navController.navigateToServiceCountdown(
-                                orderId,
-                                selectedProjectIds
-                            )
+                            // 先调用starOrder接口
+                            sharedViewModel.starOrder(orderId) {
+                                // 成功后执行路由跳转
+                                navController.navigateToServiceCountdown(
+                                    orderId,
+                                    selectedProjectIds
+                                )
+                            }
                         },
                         modifier = Modifier.weight(1f)
                     )
