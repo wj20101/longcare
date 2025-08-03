@@ -114,19 +114,24 @@ fun PhotoUploadScreen(
     var currentCategory by remember { mutableStateOf<PhotoCategory?>(null) }
 
     // 相机拍照启动器
-    val cameraLauncher = rememberCameraLauncher { uri ->
-        currentCategory?.let { category ->
-            val taskType = when (category) {
-                PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
-                PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
+    val cameraLauncher = rememberCameraLauncher(
+        onPhotoTaken = { uri ->
+            currentCategory?.let { category ->
+                val taskType = when (category) {
+                    PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
+                    PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
+                }
+                viewModel.addImagesToProcess(
+                    uris = listOf(uri),
+                    taskType = taskType,
+                    address = sharedViewModel.getUserAddress(orderId)
+                )
             }
-            viewModel.addImagesToProcess(
-                uris = listOf(uri),
-                taskType = taskType,
-                address = sharedViewModel.getUserAddress(orderId)
-            )
+        },
+        onError = { errorMessage ->
+            viewModel.showToast("相机启动失败: $errorMessage")
         }
-    }
+    )
 
     // 图片选择器（保留作为备用）
     val multiplePhotoPicker = rememberMultiplePhotoPicker(maxItems = 5, onGifFiltered = { gifUris ->

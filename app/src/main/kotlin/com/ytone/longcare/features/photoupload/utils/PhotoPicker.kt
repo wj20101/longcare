@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.ytone.longcare.common.utils.FileProviderHelper
+import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 
 /**
  * 检查现代图片选择器（Photo Picker）是否可用。
@@ -140,23 +141,43 @@ fun rememberSinglePhotoPicker(
 
 /**
  * 创建相机拍照启动器
+ * 增强版本，包含错误处理和兼容性处理
  */
 @Composable
 fun rememberCameraLauncher(
-    onPhotoTaken: (Uri) -> Unit
+    onPhotoTaken: (Uri) -> Unit,
+    onError: ((String) -> Unit)? = null
 ): CameraLauncher {
     val context = LocalContext.current
     
     // 使用FileProviderHelper创建相机拍照Uri
     val photoUri = remember {
-        FileProviderHelper.createCameraPhotoUri(context)
+        try {
+            FileProviderHelper.createCameraPhotoUri(context)
+        } catch (e: Exception) {
+            onError?.invoke("创建相机文件失败: ${e.message}")
+            // 返回一个默认的Uri，避免崩溃
+            Uri.EMPTY
+        }
     }
     
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
         onResult = { success ->
-            if (success) {
-                onPhotoTaken(photoUri)
+            try {
+                if (success && photoUri != Uri.EMPTY) {
+                    // 验证文件是否真的存在
+                    val file = java.io.File(photoUri.path ?: "")
+                    if (file.exists() && file.length() > 0) {
+                        onPhotoTaken(photoUri)
+                    } else {
+                        onError?.invoke("拍照文件创建失败或文件为空")
+                    }
+                } else {
+                    onError?.invoke("拍照被取消或失败")
+                }
+            } catch (e: Exception) {
+                onError?.invoke("处理拍照结果时出错: ${e.message}")
             }
         }
     )
@@ -235,11 +256,58 @@ fun launchSinglePhotoPicker(
 
 /**
  * 启动相机拍照
+ * 增强版本，包含权限检查、设备检查和安全检查
  */
 fun launchCamera(
-    launcher: CameraLauncher
+    launcher: CameraLauncher,
+    context: android.content.Context,
+    onError: ((String) -> Unit)? = null
 ) {
-    launcher.launcher.launch(launcher.photoUri)
+    try {
+        // 检查相机功能是否可用
+        if (!UnifiedPermissionHelper.isCameraAvailable(context)) {
+            val reason = UnifiedPermissionHelper.getCameraUnavailableReason(context)
+            onError?.invoke(reason)
+            return
+        }
+        
+        // 检查photoUri是否有效
+        if (launcher.photoUri == Uri.EMPTY) {
+            onError?.invoke("相机文件URI无效，无法启动相机")
+            return
+        }
+        
+        // 启动相机
+        launcher.launcher.launch(launcher.photoUri)
+    } catch (e: SecurityException) {
+        onError?.invoke("相机权限不足: ${e.message}")
+    } catch (e: Exception) {
+        onError?.invoke("启动相机失败: ${e.message}")
+    }
+}
+
+/**
+ * 启动相机拍照（重载版本，兼容旧代码）
+ * @deprecated 建议使用带context参数的版本以获得更好的错误处理
+ */
+fun launchCamera(
+    launcher: CameraLauncher,
+    onError: ((String) -> Unit)? = null
+) {
+    try {
+        // 检查photoUri是否有效
+        if (launcher.photoUri == Uri.EMPTY) {
+            onError?.invoke("相机文件URI无效，无法启动相机")
+            return
+        }
+        
+        // 启动相机
+        launcher.launcher.launch(launcher.photoUri)
+    } catch (e: SecurityException) {
+        onError?.invoke("相机权限不足: ${e.message}")
+    } catch (e: Exception) {
+        onError?.invoke("启动相机失败: ${e.message}")
+    }
 }
 
 /**

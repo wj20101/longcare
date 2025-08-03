@@ -43,7 +43,7 @@ import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
-import com.ytone.longcare.common.utils.LocationPermissionHelper
+import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import dagger.hilt.EntryPoint
@@ -87,7 +87,7 @@ fun NfcWorkflowScreen(
 
     // 检查定位权限和服务的函数
     fun checkLocationPermissionAndStart() {
-        LocationPermissionHelper.checkLocationPermissionAndStart(context, permissionLauncher)
+        UnifiedPermissionHelper.checkLocationPermissionAndStart(context, permissionLauncher)
     }
 
     // 获取NfcManager实例
@@ -112,12 +112,12 @@ fun NfcWorkflowScreen(
     suspend fun getCurrentLocationCoordinates(): Pair<String, String> {
         return try {
             // 检查定位权限
-            if (!LocationPermissionHelper.hasLocationPermission(context)) {
+            if (!UnifiedPermissionHelper.hasLocationPermission(context)) {
                 return Pair("", "")
             }
             
             // 检查定位服务是否开启
-            if (!LocationPermissionHelper.isLocationServiceEnabled(context)) {
+            if (!UnifiedPermissionHelper.isLocationServiceEnabled(context)) {
                 return Pair("", "")
             }
             

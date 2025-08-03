@@ -27,7 +27,7 @@ import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
-import com.ytone.longcare.common.utils.LocationPermissionHelper
+import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
@@ -73,7 +73,7 @@ fun ServiceCountdownScreen(
 
     // 检查定位权限和服务的函数
     fun checkLocationPermissionAndStart() {
-        LocationPermissionHelper.checkLocationPermissionAndStart(context, permissionLauncher)
+        UnifiedPermissionHelper.checkLocationPermissionAndStart(context, permissionLauncher)
     }
 
     LaunchedEffect(orderId) {

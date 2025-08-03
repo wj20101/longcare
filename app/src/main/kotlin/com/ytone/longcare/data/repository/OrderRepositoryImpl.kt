@@ -6,6 +6,7 @@ import com.ytone.longcare.api.request.EndOrderParamModel
 import com.ytone.longcare.api.request.OrderListParamModel
 import com.ytone.longcare.api.request.OrderInfoParamModel
 import com.ytone.longcare.api.request.StarOrderParamModel
+import com.ytone.longcare.api.request.UpUserStartImgParamModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
@@ -63,6 +64,17 @@ class OrderRepositoryImpl @Inject constructor(
         return safeApiCall(ioDispatcher, eventBus) {
             apiService.starOrder(
                 StarOrderParamModel(orderId = orderId)
+            )
+        }
+    }
+
+    override suspend fun upUserStartImg(orderId: Long, userImgList: List<String>): ApiResult<Unit> {
+        return safeApiCall(ioDispatcher, eventBus) {
+            apiService.upUserStartImg(
+                UpUserStartImgParamModel(
+                    orderId = orderId,
+                    userImgList = userImgList
+                )
             )
         }
     }
