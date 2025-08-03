@@ -27,6 +27,7 @@ import com.ytone.longcare.api.response.isPendingCare
 import com.ytone.longcare.api.response.isServiceRecord
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.navigation.HomeRoute
+import com.ytone.longcare.navigation.navigateToNursingExecution
 import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.theme.bgGradientBrush
 
@@ -126,7 +127,11 @@ fun ServiceOrdersListScreen(
                 } else {
                     items(filteredOrders) { order ->
                         ServiceOrderItem(order = order) {
-                            navController.navigateToService(order.orderId)
+                            if (order.isPendingCare()) {
+                                navController.navigateToNursingExecution(order.orderId)
+                            } else {
+                                navController.navigateToService(order.orderId)
+                            }
                         }
                     }
                 }
