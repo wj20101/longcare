@@ -50,13 +50,11 @@ class ServiceCountdownViewModel @Inject constructor(
      * @param orderId 订单ID
      * @param projectList 所有项目列表
      * @param selectedProjectIds 选中的项目ID列表
-     * @param lastServiceTime 上次服务时间，可为null或空字符串（已废弃，使用持久化存储）
      */
     fun setCountdownTimeFromProjects(
         orderId: Long,
         projectList: List<ServiceProjectM>, 
-        selectedProjectIds: List<Int>,
-        lastServiceTime: String? = null
+        selectedProjectIds: List<Int>
     ) {
         val totalMinutes = projectList
             .filter { it.projectId in selectedProjectIds }

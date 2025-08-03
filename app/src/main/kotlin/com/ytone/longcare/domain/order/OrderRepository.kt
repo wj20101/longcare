@@ -47,6 +47,13 @@ interface OrderRepository {
     suspend fun starOrder(orderId: Long): ApiResult<Unit>
 
     /**
+     * 添加开始老人照片
+     * @param orderId 订单号
+     * @param userImgList 用户图片集合
+     */
+    suspend fun upUserStartImg(orderId: Long, userImgList: List<String>): ApiResult<Unit>
+
+    /**
      * 结束订单服务（NFC签退）
      * @param orderId 订单号
      * @param nfcDeviceId NFC设备ID

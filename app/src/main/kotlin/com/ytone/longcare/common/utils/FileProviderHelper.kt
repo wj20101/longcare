@@ -37,13 +37,38 @@ object FileProviderHelper {
      * @param context 上下文
      * @param fileName 文件名，如果为null则自动生成
      * @return 文件Uri
+     * @throws Exception 当文件创建失败时抛出异常
      */
     fun createCameraPhotoUri(context: Context, fileName: String? = null): Uri {
-        val photoFile = File(
-            context.cacheDir,
-            fileName ?: "camera_photo_${System.currentTimeMillis()}.jpg"
-        )
-        return getUriForFile(context, photoFile)
+        try {
+            // 确保缓存目录存在
+            val cacheDir = context.cacheDir
+            if (!cacheDir.exists()) {
+                if (!cacheDir.mkdirs()) {
+                    throw Exception("无法创建缓存目录: ${cacheDir.absolutePath}")
+                }
+            }
+            
+            // 创建相机照片文件
+            val photoFile = File(
+                cacheDir,
+                fileName ?: "camera_photo_${System.currentTimeMillis()}.jpg"
+            )
+            
+            // 如果文件已存在，删除它
+            if (photoFile.exists()) {
+                photoFile.delete()
+            }
+            
+            // 创建新文件
+            if (!photoFile.createNewFile()) {
+                throw Exception("无法创建相机照片文件: ${photoFile.absolutePath}")
+            }
+            
+            return getUriForFile(context, photoFile)
+        } catch (e: Exception) {
+            throw Exception("创建相机拍照Uri失败: ${e.message}", e)
+        }
     }
     
     /**

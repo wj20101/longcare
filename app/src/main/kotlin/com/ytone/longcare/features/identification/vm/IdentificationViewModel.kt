@@ -1,22 +1,30 @@
 package com.ytone.longcare.features.identification.vm
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
+import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.FaceVerificationManager
+import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.SharedOrderRepository
+import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.features.photoupload.utils.ImageProcessor
 import com.ytone.longcare.models.protos.User
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 import javax.inject.Inject
 
 /**
@@ -32,8 +40,13 @@ enum class IdentificationState {
 class IdentificationViewModel @Inject constructor(
     private val faceVerificationManager: FaceVerificationManager,
     private val userSessionRepository: UserSessionRepository,
-    private val sharedOrderRepository: SharedOrderRepository
+    private val sharedOrderRepository: SharedOrderRepository,
+    private val orderRepository: OrderRepository,
+    private val toastHelper: ToastHelper,
+    @param:ApplicationContext private val applicationContext: Context
 ) : ViewModel() {
+
+    private val imageProcessor = ImageProcessor(applicationContext)
     
     // 身份认证状态
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL)
@@ -46,6 +59,10 @@ class IdentificationViewModel @Inject constructor(
     // 当前验证类型
     private val _currentVerificationType = MutableStateFlow<VerificationType?>(null)
     val currentVerificationType: StateFlow<VerificationType?> = _currentVerificationType.asStateFlow()
+
+    // 拍照上传状态
+    private val _photoUploadState = MutableStateFlow<PhotoUploadState>(PhotoUploadState.Initial)
+    val photoUploadState: StateFlow<PhotoUploadState> = _photoUploadState.asStateFlow()
     
     // 腾讯云配置
     private val tencentCloudConfig = FaceVerificationManager.TencentCloudConfig(
@@ -71,6 +88,17 @@ class IdentificationViewModel @Inject constructor(
         data class Success(val result: WbFaceVerifyResult) : FaceVerificationState()
         data class Error(val error: WbFaceError?, val message: String) : FaceVerificationState()
         object Cancelled : FaceVerificationState()
+    }
+
+    /**
+     * 拍照上传状态
+     */
+    sealed class PhotoUploadState {
+        object Initial : PhotoUploadState()
+        object Processing : PhotoUploadState()
+        object Uploading : PhotoUploadState()
+        object Success : PhotoUploadState()
+        data class Error(val message: String) : PhotoUploadState()
     }
     
     /**
@@ -214,6 +242,88 @@ class IdentificationViewModel @Inject constructor(
         _faceVerificationState.value = FaceVerificationState.Idle
     }
     
+    /**
+     * 处理拍照并上传老人照片
+     * @param photoUri 拍照的图片URI
+     * @param orderId 订单ID
+     * @param onSuccess 成功回调
+     */
+    fun processElderPhoto(photoUri: Uri, orderId: Long, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                _photoUploadState.value = PhotoUploadState.Processing
+                
+                // 生成水印内容
+                val watermarkLines = generateWatermarkLines(orderId)
+                
+                // 处理图片（添加水印）
+                val processResult = imageProcessor.processImage(photoUri, watermarkLines)
+                
+                if (processResult.isFailure) {
+                    _photoUploadState.value = PhotoUploadState.Error(
+                        processResult.exceptionOrNull()?.message ?: "图片处理失败"
+                    )
+                    return@launch
+                }
+                
+                val processedUri = processResult.getOrNull()!!
+                
+                _photoUploadState.value = PhotoUploadState.Uploading
+                
+                // 上传图片到云端（这里需要集成云端上传逻辑）
+                // 暂时使用本地URI作为示例，实际应该上传到云端获取URL
+                val imageUrl = processedUri.toString()
+                
+                // 调用上传接口
+                when (val result = orderRepository.upUserStartImg(orderId, listOf(imageUrl))) {
+                    is ApiResult.Success -> {
+                        _photoUploadState.value = PhotoUploadState.Success
+                        toastHelper.showShort("老人照片上传成功")
+                        setElderVerified()
+                        onSuccess()
+                    }
+                    is ApiResult.Exception -> {
+                        val errorMessage = result.exception.message ?: "网络错误，请检查网络连接"
+                        _photoUploadState.value = PhotoUploadState.Error(errorMessage)
+                        toastHelper.showShort(errorMessage)
+                    }
+                    is ApiResult.Failure -> {
+                        _photoUploadState.value = PhotoUploadState.Error(result.message)
+                        toastHelper.showShort(result.message)
+                    }
+                }
+                
+            } catch (e: Exception) {
+                _photoUploadState.value = PhotoUploadState.Error(e.message ?: "未知错误")
+                toastHelper.showShort("处理失败: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * 生成水印内容
+     */
+    private fun generateWatermarkLines(orderId: Long): List<String> {
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val currentTime = dateFormat.format(Date())
+        
+        // 获取订单地址
+        val address = sharedOrderRepository.getCachedOrderInfo(orderId)?.userInfo?.address ?: "未知地址"
+        
+        return listOf(
+            "老人身份验证 - 长护险服务",
+            "拍摄时间: $currentTime",
+            "地址: $address"
+        )
+    }
+    
+    /**
+     * 重置拍照上传状态
+     */
+    fun resetPhotoUploadState() {
+        _photoUploadState.value = PhotoUploadState.Initial
+    }
+
     override fun onCleared() {
         super.onCleared()
         // 释放人脸识别SDK资源

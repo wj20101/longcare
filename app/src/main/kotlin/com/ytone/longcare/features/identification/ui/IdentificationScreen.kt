@@ -28,6 +28,8 @@ import com.ytone.longcare.common.utils.FaceVerificationStatusManager
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.features.identification.vm.IdentificationState
+import com.ytone.longcare.features.photoupload.utils.rememberCameraLauncher
+import com.ytone.longcare.features.photoupload.utils.launchCamera
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.navigation.navigateToFaceRecognitionGuide
@@ -69,9 +71,21 @@ fun IdentificationScreen(
     // 在这里调用函数，将此页面强制设置为竖屏
     // ==========================================================
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
-
+// 观察状态
     val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
     val faceVerificationState by viewModel.faceVerificationState.collectAsStateWithLifecycle()
+    val photoUploadState by viewModel.photoUploadState.collectAsStateWithLifecycle()
+
+    // 相机拍照启动器
+    val cameraLauncher = rememberCameraLauncher(
+        onPhotoTaken = { uri ->
+            viewModel.processElderPhoto(uri, orderId)
+        },
+        onError = { errorMessage ->
+            viewModel.resetPhotoUploadState()
+            // 这里可以显示错误提示，或者通过ViewModel处理
+        }
+    )
     val currentVerificationType by viewModel.currentVerificationType.collectAsStateWithLifecycle()
     
     // 预加载订单详情
@@ -107,6 +121,23 @@ fun IdentificationScreen(
                 // 用户取消验证
             }
             else -> { /* 其他状态不需要处理 */ }
+        }
+    }
+    
+    // 监听拍照上传状态变化
+    LaunchedEffect(photoUploadState) {
+        when (photoUploadState) {
+            is IdentificationViewModel.PhotoUploadState.Success -> {
+                // 上传成功，自动跳转到下一步
+                navController.navigateToSelectService(orderId)
+                // 重置状态
+                viewModel.resetPhotoUploadState()
+            }
+            is IdentificationViewModel.PhotoUploadState.Error -> {
+                // 上传失败，重置状态
+                viewModel.resetPhotoUploadState()
+            }
+            else -> {}
         }
     }
     
@@ -170,11 +201,21 @@ fun IdentificationScreen(
                     personType = IdentificationConstants.ELDER,
                     isVerified = identificationState.ordinal >= IdentificationState.ELDER_VERIFIED.ordinal,
                     onVerifyClick = {
-                        viewModel.setElderVerified()
-//                        viewModel.verifyElder(context, orderId)
+                        // 启动相机拍照
+                        launchCamera(
+                            launcher = cameraLauncher,
+                            context = context,
+                            onError = { errorMessage ->
+                                viewModel.resetPhotoUploadState()
+                                // 可以通过Toast显示错误信息
+                            }
+                        )
+                        // 保留人脸识别功能（注释状态，后续需求）
+                        // viewModel.verifyElder(context, orderId)
                     },
                     viewModel = viewModel,
-                    faceVerificationState = faceVerificationState
+                    faceVerificationState = faceVerificationState,
+                    photoUploadState = photoUploadState
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -206,8 +247,9 @@ fun IdentificationCard(
     personType: String,
     isVerified: Boolean,
     onVerifyClick: () -> Unit,
-    viewModel: IdentificationViewModel = hiltViewModel(),
-    faceVerificationState: IdentificationViewModel.FaceVerificationState
+    viewModel: IdentificationViewModel,
+    faceVerificationState: IdentificationViewModel.FaceVerificationState,
+    photoUploadState: IdentificationViewModel.PhotoUploadState = IdentificationViewModel.PhotoUploadState.Initial
 ) {
     val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
     val currentVerificationType by viewModel.currentVerificationType.collectAsStateWithLifecycle()
@@ -377,16 +419,47 @@ fun IdentificationCard(
                                 else -> false // 其他情况按钮不可用
                             }
                             
-                            Button(
-                                onClick = onVerifyClick,
-                                shape = RoundedCornerShape(50),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFF5A623) // 橙色
-                                ),
-                                enabled = isButtonEnabled,
-                                modifier = Modifier.height(36.dp)
-                            ) {
-                                Text("进行${personType}识别", color = Color.White)
+                            // 检查是否正在处理拍照上传（仅对老人卡片）
+                            val isProcessing = personType == IdentificationConstants.ELDER && (
+                                photoUploadState is IdentificationViewModel.PhotoUploadState.Processing ||
+                                photoUploadState is IdentificationViewModel.PhotoUploadState.Uploading
+                            )
+                            
+                            if (isProcessing) {
+                                // 显示处理状态
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Text(
+                                        text = when (photoUploadState) {
+                                            is IdentificationViewModel.PhotoUploadState.Processing -> "处理中..."
+                                            is IdentificationViewModel.PhotoUploadState.Uploading -> "上传中..."
+                                            else -> "处理中..."
+                                        },
+                                        fontSize = 14.sp,
+                                        color = Color(0xFF666666)
+                                    )
+                                }
+                            } else {
+                                Button(
+                                    onClick = onVerifyClick,
+                                    shape = RoundedCornerShape(50),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFF5A623) // 橙色
+                                    ),
+                                    enabled = isButtonEnabled,
+                                    modifier = Modifier.height(36.dp)
+                                ) {
+                                    Text(
+                                        text = if (personType == IdentificationConstants.ELDER) "拍照验证" else "进行${personType}识别",
+                                        color = Color.White
+                                    )
+                                }
                             }
                         }
                     }
