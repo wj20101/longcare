@@ -10,6 +10,9 @@ import com.ytone.longcare.api.request.AddPositionParamModel
 import com.ytone.longcare.api.request.UserOrderParamModel
 import com.ytone.longcare.api.request.UploadTokenParamModel
 import com.ytone.longcare.api.request.SaveFileParamModel
+import com.ytone.longcare.api.request.CheckOrderParamModel
+import com.ytone.longcare.api.request.StarOrderParamModel
+import com.ytone.longcare.api.request.UpUserStartImgParamModel
 import com.ytone.longcare.api.response.LoginResultModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.api.response.ServiceOrderModel
@@ -80,13 +83,13 @@ interface LongCareApiService {
     suspend fun getOrderInfo(@Body orderInfoParamModel: OrderInfoParamModel): Response<ServiceOrderInfoModel>
 
     /**
-     * 开始服务工单
+     * 工单开始(正式计时)
      *
-     * @param startOrderParamModel 请求参数，包含订单ID和NFC设备号
+     * @param starOrderParamModel 请求参数，包含订单ID
      * @return 无返回值
      */
-    @POST("/V1/Service/StartOrder")
-    suspend fun startOrder(@Body startOrderParamModel: StartOrderParamModel): Response<Unit>
+    @POST("/V1/Service/StarOrder")
+    suspend fun starOrder(@Body starOrderParamModel: StarOrderParamModel): Response<Unit>
 
     /**
      * 结束服务工单
@@ -150,5 +153,23 @@ interface LongCareApiService {
      */
     @GET("/V1/Login/Out")
     suspend fun logout(): Response<Unit>
+
+    /**
+     * 工单前校验
+     *
+     * @param checkOrderParamModel 请求参数，包含订单ID、NFC设备号和位置信息
+     * @return 无返回值
+     */
+    @POST("/V1/Service/CheckOrder")
+    suspend fun checkOrder(@Body checkOrderParamModel: CheckOrderParamModel): Response<Unit>
+
+    /**
+     * 添加开始老人照片
+     *
+     * @param upUserStartImgParamModel 请求参数，包含订单ID和用户图片集合
+     * @return 无返回值
+     */
+    @POST("/V1/Service/UpUserStartImg")
+    suspend fun upUserStartImg(@Body upUserStartImgParamModel: UpUserStartImgParamModel): Response<Unit>
 
 }

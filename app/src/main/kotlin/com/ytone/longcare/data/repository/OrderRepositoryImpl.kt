@@ -1,10 +1,10 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
+import com.ytone.longcare.api.request.CheckOrderParamModel
 import com.ytone.longcare.api.request.EndOrderParamModel
 import com.ytone.longcare.api.request.OrderListParamModel
 import com.ytone.longcare.api.request.OrderInfoParamModel
-import com.ytone.longcare.api.request.StartOrderParamModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
@@ -47,8 +47,8 @@ class OrderRepositoryImpl @Inject constructor(
         latitude: String
     ): ApiResult<Unit> {
         return safeApiCall(ioDispatcher, eventBus) {
-            apiService.startOrder(
-                StartOrderParamModel(
+            apiService.checkOrder(
+                CheckOrderParamModel(
                     orderId = orderId, 
                     nfc = nfcDeviceId,
                     longitude = longitude,
