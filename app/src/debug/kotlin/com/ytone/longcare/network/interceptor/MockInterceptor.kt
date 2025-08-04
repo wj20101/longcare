@@ -40,9 +40,12 @@ class MockInterceptor(private val context: Context) : Interceptor {
             // 返回 Unit 的通用成功响应
             "/V1/Phone/SendSmsCode",
             "/V1/Login/Log",
-            "/V1/Service/StartOrder",
+            "/V1/Service/StarOrder",  // 修正：StartOrder -> StarOrder
             "/V1/Service/EndOrder",
-            "/V1/Service/AddPostion" -> "mock/common_success_unit.json"
+            "/V1/Service/AddPostion",
+            "/V1/Service/CheckOrder",  // 新增：工单前校验
+            "/V1/Service/UpUserStartImg",  // 新增：添加开始老人照片
+            "/V1/Login/Out" -> "mock/common_success_unit.json"  // 新增：退出登录
 
             // 具体数据模型的响应
             "/V1/Login/Phone" -> "mock/login_phone.json"
@@ -53,7 +56,8 @@ class MockInterceptor(private val context: Context) : Interceptor {
             "/V1/Service/HaveServiceUserList",
             "/V1/Service/NoServiceUserList",
             "/V1/Service/UserOrderList" -> "mock/user_info_list.json"
-            "/V1/Common/UploadToken" -> "mock/upload_token.json"
+            "/V1/File/UploadToken" -> "mock/upload_token.json"  // 修正：路径从 /V1/Common/UploadToken 改为 /V1/File/UploadToken
+            "/V1/File/GetFileUrl" -> "mock/file_url.json"  // 新增：获取文件访问链接
             "/V1/Common/Config" -> "mock/system_config.json"
 
             else -> null

@@ -1,0 +1,5 @@
+{
+  "resultCode": 200,
+  "resultMsg": "获取成功",
+  "data": "https://longcare-bucket-1234567890.cos.ap-beijing.myqcloud.com/images/mock_image_123456.jpg?sign=mock_signature_abcdef1234567890"
+}
