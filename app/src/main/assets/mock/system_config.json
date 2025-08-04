@@ -1,0 +1,8 @@
+{
+  "resultCode": 200,
+  "resultMsg": "获取成功",
+  "data": {
+    "companyName": "长护科技有限公司",
+    "maxImgNum": 9
+  }
+}

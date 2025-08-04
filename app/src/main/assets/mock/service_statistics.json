@@ -1,0 +1,9 @@
+{
+  "resultCode": 200,
+  "resultMsg": "查询成功",
+  "data": {
+    "haveServiceTime": 1200,
+    "haveServiceNum": 15,
+    "noServiceTime": 300
+  }
+}
