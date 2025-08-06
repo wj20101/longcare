@@ -47,7 +47,7 @@ suspend fun <T> safeApiCall(
                     // ==========================================================
                     // 发送强制登出事件，而不是返回特殊类型
                     // ==========================================================
-                    eventBus.sendEvent(AppEvent.ForceLogout)
+                    eventBus.send(AppEvent.ForceLogout(response.resultMsg))
                 }
                 // 业务失败，返回失败结果和错误信息。
                 ApiResult.Failure(response.resultCode, response.resultMsg)

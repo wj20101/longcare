@@ -7,8 +7,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -27,6 +31,8 @@ import com.ytone.longcare.features.photoupload.ui.PhotoUploadScreen
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
+import com.ytone.longcare.ui.components.UpdateDialog
+import com.ytone.longcare.worker.DownloadWorker
 import com.ytone.longcare.features.shared.FaceVerificationWithAutoSignScreen
 import com.ytone.longcare.features.servicecomplete.ui.ServiceCompleteScreen
 import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
@@ -206,6 +212,8 @@ fun MainApp(
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
+    val appVersionModel by viewModel.appVersionModel.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     when (sessionState) {
         is SessionState.Unknown -> {
@@ -222,6 +230,28 @@ fun MainApp(
             // 用户未登录，导航到登录页
             AppNavigation(startDestination = LoginRoute)
         }
+    }
+
+    appVersionModel?.let {
+        UpdateDialog(
+            appVersionModel = it,
+            onUpdate = {
+                val data = Data.Builder()
+                    .putString(DownloadWorker.KEY_URL, it.downUrl)
+                    .putString(DownloadWorker.KEY_FILE_NAME, "longcare.apk")
+                    .build()
+
+                val downloadWorkRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
+                    .setInputData(data)
+                    .build()
+
+                WorkManager.getInstance(context).enqueue(downloadWorkRequest)
+                viewModel.clearAppVersionModel()
+            },
+            onDismiss = {
+                viewModel.clearAppVersionModel()
+            }
+        )
     }
 }
 

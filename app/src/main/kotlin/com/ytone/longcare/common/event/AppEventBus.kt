@@ -1,5 +1,7 @@
 package com.ytone.longcare.common.event
 
+import android.content.Intent
+import com.ytone.longcare.api.response.AppVersionModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import javax.inject.Inject
@@ -20,7 +22,13 @@ class AppEventBus @Inject constructor() {
      * 发送一个全局事件。
      * @param event 要发送的事件。
      */
-    suspend fun sendEvent(event: AppEvent) {
+    suspend fun send(event: AppEvent) {
         _events.emit(event)
     }
+}
+
+sealed class AppEvent {
+    data class ForceLogout(val reason: String) : AppEvent()
+    data class NfcIntentReceived(val intent: Intent) : AppEvent()
+    data class AppUpdate(val appVersionModel: AppVersionModel) : AppEvent()
 }

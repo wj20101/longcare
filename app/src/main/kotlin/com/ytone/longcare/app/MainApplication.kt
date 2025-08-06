@@ -4,6 +4,9 @@ import android.app.Application
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
+import androidx.work.Configuration
+import androidx.work.WorkManager
+import androidx.hilt.work.HiltWorkerFactory
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -14,12 +17,20 @@ import javax.inject.Inject
 import javax.inject.Provider
 
 @HiltAndroidApp
-class MainApplication : Application(), SingletonImageLoader.Factory {
+class MainApplication : Application(), SingletonImageLoader.Factory, Configuration.Provider {
 
     // 如果你想让Coil全局使用Hilt提供的ImageLoader，
     // 你的Application类需要实现ImageLoaderFactory
     @Inject
     lateinit var imageLoaderProvider: Provider<ImageLoader>
+
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -31,6 +42,9 @@ class MainApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+
+        // Initialize WorkManager with custom configuration
+        WorkManager.initialize(this, workManagerConfiguration)
 
         // Setup Global Uncaught Exception Handler
         setupGlobalExceptionHandler()
