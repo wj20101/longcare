@@ -1,0 +1,12 @@
+{
+  "resultCode": 0,
+  "resultMsg": "Success",
+  "data": {
+    "versionCode": 100,
+    "versionName": "1.0.0",
+    "upType": 1,
+    "remarks": "1. 修复已知bug\n2. 优化用户体验",
+    "platform": "android",
+    "downUrl": "https://www.pgyer.com/longcare"
+  }
+}

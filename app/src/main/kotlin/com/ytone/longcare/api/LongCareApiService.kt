@@ -21,6 +21,7 @@ import com.ytone.longcare.api.response.NurseServiceTimeModel
 import com.ytone.longcare.api.response.UserInfoModel
 import com.ytone.longcare.api.response.UploadTokenResultModel
 import com.ytone.longcare.api.response.SystemConfigModel
+import com.ytone.longcare.api.response.AppVersionModel
 import com.ytone.longcare.api.request.SendSmsCodeParamModel
 import com.ytone.longcare.model.Response
 import retrofit2.http.Body
@@ -171,5 +172,11 @@ interface LongCareApiService {
      */
     @POST("/V1/Service/UpUserStartImg")
     suspend fun upUserStartImg(@Body upUserStartImgParamModel: UpUserStartImgParamModel): Response<Unit>
+
+    /**
+     * 版本检测
+     */
+    @GET("/V1/System/ChecVersion")
+    suspend fun checkVersion(): Response<AppVersionModel>
 
 }
