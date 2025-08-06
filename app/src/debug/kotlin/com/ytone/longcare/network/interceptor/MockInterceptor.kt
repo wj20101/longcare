@@ -59,6 +59,7 @@ class MockInterceptor(private val context: Context) : Interceptor {
             "/V1/File/UploadToken" -> "mock/upload_token.json"  // 修正：路径从 /V1/Common/UploadToken 改为 /V1/File/UploadToken
             "/V1/File/GetFileUrl" -> "mock/file_url.json"  // 新增：获取文件访问链接
             "/V1/Common/Config" -> "mock/system_config.json"
+            "/V1/System/ChecVersion" -> "mock/app_version.json"
 
             else -> null
         }
