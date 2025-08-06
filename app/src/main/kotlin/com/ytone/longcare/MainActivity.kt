@@ -59,20 +59,19 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             appEventBus.events.collect { event ->
                 when (event) {
-                    // 当收到 ForceLogout 事件时
                     is AppEvent.ForceLogout -> {
-                        // 在主线程执行UI相关的登出操作
                         withContext(Dispatchers.Main) {
-                            // 1. 显示提示信息
                             toastHelper.showLong("登录已失效，请重新登录")
-                            // 2. 调用 ViewModel 执行登出业务逻辑
                             viewModel.forceLogout()
-                            // 3. 导航逻辑已在 MainApp 中处理，当 sessionState 变为 LoggedOut 时会自动跳转
                         }
                     }
-                    // 忽略NFC事件，由具体的Screen处理
+
                     is AppEvent.NfcIntentReceived -> {
                         // NFC事件由具体的Screen监听处理
+                    }
+
+                    is AppEvent.AppUpdate -> {
+                        viewModel.setAppVersionModel(event.appVersionModel)
                     }
                 }
             }

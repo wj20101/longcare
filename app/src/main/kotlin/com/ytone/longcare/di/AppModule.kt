@@ -4,6 +4,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.location.LocationManager
 import androidx.core.content.ContextCompat
+import androidx.work.WorkManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -72,5 +73,11 @@ object AppModule {
     fun provideNotificationManager(@ApplicationContext context: Context): NotificationManager {
         return ContextCompat.getSystemService(context, NotificationManager::class.java)
             ?: throw IllegalStateException("NotificationManager not found")
+    }
+
+    @Provides
+    @Singleton
+    fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
+        return WorkManager.getInstance(context)
     }
 }

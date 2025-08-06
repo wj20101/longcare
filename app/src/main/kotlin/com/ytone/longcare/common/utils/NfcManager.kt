@@ -81,7 +81,7 @@ class NfcManager @Inject constructor(
             // 发送NFC Intent事件
             if (activity is LifecycleOwner) {
                 activity.lifecycleScope.launch {
-                    appEventBus.sendEvent(AppEvent.NfcIntentReceived(intent))
+                    appEventBus.send(AppEvent.NfcIntentReceived(intent))
                 }
             }
         }
