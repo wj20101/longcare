@@ -50,9 +50,9 @@ import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
-import com.ytone.longcare.features.photoupload.utils.rememberMultiplePhotoPicker
-import com.ytone.longcare.features.photoupload.utils.rememberCameraLauncher
-import com.ytone.longcare.features.photoupload.utils.launchCamera
+import com.ytone.longcare.features.photoupload.utils.rememberCameraLauncherWithPermission
+import com.ytone.longcare.features.photoupload.utils.launchCameraWithPermission
+import androidx.compose.ui.platform.LocalContext
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
@@ -111,9 +111,10 @@ fun PhotoUploadScreen(
 
     // 当前选择的分类
     var currentCategory by remember { mutableStateOf<PhotoCategory?>(null) }
+    val context = LocalContext.current
 
-    // 相机拍照启动器
-    val cameraLauncher = rememberCameraLauncher(
+    // 相机拍照启动器（带权限申请功能）
+    val (cameraLauncher, permissionLauncher) = rememberCameraLauncherWithPermission(
         onPhotoTaken = { uri ->
             currentCategory?.let { category ->
                 val taskType = when (category) {
@@ -128,29 +129,12 @@ fun PhotoUploadScreen(
             }
         },
         onError = { errorMessage ->
-            viewModel.showToast("相机启动失败: $errorMessage")
+            viewModel.showToast(errorMessage)
+        },
+        onPermissionDenied = {
+            viewModel.showToast("需要相机权限才能拍照")
         }
     )
-
-    // 图片选择器（保留作为备用）
-    val multiplePhotoPicker = rememberMultiplePhotoPicker(maxItems = 5, onGifFiltered = { gifUris ->
-        // 显示GIF被过滤的提示
-        viewModel.showToast("暂不支持GIF图片")
-    }, onImagesSelected = { uris ->
-        if (uris.isNotEmpty()) {
-            currentCategory?.let { category ->
-                val taskType = when (category) {
-                    PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
-                    PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
-                }
-                viewModel.addImagesToProcess(
-                    uris = uris,
-                    taskType = taskType,
-                    address = sharedViewModel.getUserAddress(orderId)
-                )
-            }
-        }
-    })
 
     // 根据任务类型获取不同分类的任务
     val beforeCareTasks = imageTasks.filter { it.taskType == ImageTaskType.BEFORE_CARE }
@@ -241,7 +225,11 @@ fun PhotoUploadScreen(
                         isUploading = isUploading,
                         onAddPhoto = {
                             currentCategory = PhotoCategory.BEFORE_CARE
-                            launchCamera(cameraLauncher)
+                            launchCameraWithPermission(
+                                cameraLauncher = cameraLauncher,
+                                permissionLauncher = permissionLauncher,
+                                context = context
+                            )
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
                         onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
@@ -255,7 +243,11 @@ fun PhotoUploadScreen(
                         isUploading = isUploading,
                         onAddPhoto = {
                             currentCategory = PhotoCategory.AFTER_CARE
-                            launchCamera(cameraLauncher)
+                            launchCameraWithPermission(
+                                cameraLauncher = cameraLauncher,
+                                permissionLauncher = permissionLauncher,
+                                context = context
+                            )
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
                         onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
