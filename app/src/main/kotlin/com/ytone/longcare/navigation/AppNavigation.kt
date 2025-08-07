@@ -10,9 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.work.Data
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,8 +28,8 @@ import com.ytone.longcare.features.photoupload.ui.PhotoUploadScreen
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
-import com.ytone.longcare.ui.components.UpdateDialog
-import com.ytone.longcare.worker.DownloadWorker
+import com.ytone.longcare.features.update.ui.AppUpdateDialog
+import com.ytone.longcare.features.update.viewmodel.AppUpdateViewModel
 import com.ytone.longcare.features.shared.FaceVerificationWithAutoSignScreen
 import com.ytone.longcare.features.servicecomplete.ui.ServiceCompleteScreen
 import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
@@ -233,21 +230,11 @@ fun MainApp(
     }
 
     appVersionModel?.let {
-        UpdateDialog(
-            appVersionModel = it,
-            onUpdate = {
-                val data = Data.Builder()
-                    .putString(DownloadWorker.KEY_URL, it.downUrl)
-                    .putString(DownloadWorker.KEY_FILE_NAME, "longcare.apk")
-                    .build()
-
-                val downloadWorkRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
-                    .setInputData(data)
-                    .build()
-
-                WorkManager.getInstance(context).enqueue(downloadWorkRequest)
-                viewModel.clearAppVersionModel()
-            },
+        val updateViewModel: AppUpdateViewModel = hiltViewModel()
+        updateViewModel.setAppVersionModel(it)
+        
+        AppUpdateDialog(
+            viewModel = updateViewModel,
             onDismiss = {
                 viewModel.clearAppVersionModel()
             }

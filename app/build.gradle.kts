@@ -192,6 +192,7 @@ dependencies {
     implementation(libs.retrofit.converter.kotlinx.serialization)
     implementation(libs.okhttp.core)
     implementation(libs.okhttp.logging.interceptor)
+    implementation(libs.okio.core)
 
     //Json
     implementation(libs.moshi.kotlin)
