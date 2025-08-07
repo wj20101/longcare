@@ -3,4 +3,7 @@
     <cache-path name="processed_images" path="processed_images/" />
     <cache-path name="camera_photos" path="." />
     <external-cache-path name="downloads" path="." />
+    <external-files-path name="external_files" path="." />
+    <external-files-path name="downloads_files" path="downloads/" />
+    <external-files-path name="external_downloads" path="Downloads/" />
 </paths>

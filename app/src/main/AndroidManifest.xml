@@ -91,14 +91,6 @@
         <!-- 高德地图定位服务 -->
         <service android:name="com.amap.api.location.APSService" />
 
-        <receiver
-            android:name=".receiver.InstallReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
-            </intent-filter>
-        </receiver>
-
         <!-- Disable WorkManager automatic initialization -->
         <provider
             android:name="androidx.startup.InitializationProvider"
