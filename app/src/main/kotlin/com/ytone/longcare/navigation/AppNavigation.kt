@@ -210,7 +210,6 @@ fun MainApp(
 ) {
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
     val appVersionModel by viewModel.appVersionModel.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
     when (sessionState) {
         is SessionState.Unknown -> {
