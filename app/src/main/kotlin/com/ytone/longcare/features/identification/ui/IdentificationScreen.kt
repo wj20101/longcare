@@ -28,11 +28,10 @@ import com.ytone.longcare.common.utils.FaceVerificationStatusManager
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.features.identification.vm.IdentificationState
-import com.ytone.longcare.features.photoupload.utils.rememberCameraLauncher
-import com.ytone.longcare.features.photoupload.utils.launchCamera
+import com.ytone.longcare.features.photoupload.utils.rememberCameraLauncherWithPermission
+import com.ytone.longcare.features.photoupload.utils.launchCameraWithPermission
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
-import com.ytone.longcare.navigation.navigateToFaceRecognitionGuide
 import com.ytone.longcare.navigation.navigateToSelectService
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.EntryPoint
@@ -76,14 +75,18 @@ fun IdentificationScreen(
     val faceVerificationState by viewModel.faceVerificationState.collectAsStateWithLifecycle()
     val photoUploadState by viewModel.photoUploadState.collectAsStateWithLifecycle()
 
-    // 相机拍照启动器
-    val cameraLauncher = rememberCameraLauncher(
+    // 相机拍照启动器（带权限申请功能）
+    val (cameraLauncher, permissionLauncher) = rememberCameraLauncherWithPermission(
         onPhotoTaken = { uri ->
             viewModel.processElderPhoto(uri, orderId)
         },
         onError = { errorMessage ->
             viewModel.resetPhotoUploadState()
             // 这里可以显示错误提示，或者通过ViewModel处理
+        },
+        onPermissionDenied = {
+            viewModel.resetPhotoUploadState()
+            // 权限被拒绝的处理
         }
     )
     val currentVerificationType by viewModel.currentVerificationType.collectAsStateWithLifecycle()
@@ -201,9 +204,10 @@ fun IdentificationScreen(
                     personType = IdentificationConstants.ELDER,
                     isVerified = identificationState.ordinal >= IdentificationState.ELDER_VERIFIED.ordinal,
                     onVerifyClick = {
-                        // 启动相机拍照
-                        launchCamera(
-                            launcher = cameraLauncher,
+                        // 启动相机拍照（自动处理权限申请）
+                        launchCameraWithPermission(
+                            cameraLauncher = cameraLauncher,
+                            permissionLauncher = permissionLauncher,
                             context = context,
                             onError = { errorMessage ->
                                 viewModel.resetPhotoUploadState()
