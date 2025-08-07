@@ -1,10 +1,12 @@
 package com.ytone.longcare.features.photoupload.utils
 
+import android.Manifest
 import android.content.Context
 import android.net.Uri
 import android.webkit.MimeTypeMap
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -12,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.ytone.longcare.common.utils.FileProviderHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
+import java.io.File
 
 /**
  * 检查现代图片选择器（Photo Picker）是否可用。
@@ -167,7 +170,7 @@ fun rememberCameraLauncher(
             try {
                 if (success && photoUri != Uri.EMPTY) {
                     // 验证文件是否真的存在
-                    val file = java.io.File(photoUri.path ?: "")
+                    val file = File(photoUri.path ?: "")
                     if (file.exists() && file.length() > 0) {
                         onPhotoTaken(photoUri)
                     } else {
@@ -257,17 +260,30 @@ fun launchSinglePhotoPicker(
 /**
  * 启动相机拍照
  * 增强版本，包含权限检查、设备检查和安全检查
+ * 当没有权限时会自动申请权限
  */
 fun launchCamera(
     launcher: CameraLauncher,
-    context: android.content.Context,
-    onError: ((String) -> Unit)? = null
+    context: Context,
+    onError: ((String) -> Unit)? = null,
+    permissionLauncher: ActivityResultLauncher<String>? = null
 ) {
     try {
-        // 检查相机功能是否可用
-        if (!UnifiedPermissionHelper.isCameraAvailable(context)) {
-            val reason = UnifiedPermissionHelper.getCameraUnavailableReason(context)
-            onError?.invoke(reason)
+        // 检查相机权限
+        if (!UnifiedPermissionHelper.isCameraPermissionGranted(context)) {
+            // 如果没有权限且提供了权限申请器，则申请权限
+            if (permissionLauncher != null) {
+                permissionLauncher.launch(Manifest.permission.CAMERA)
+            } else {
+                onError?.invoke("需要相机权限才能使用拍照功能")
+            }
+            return
+        }
+        
+        // 检查硬件支持
+        val packageManager = context.packageManager
+        if (!packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)) {
+            onError?.invoke("设备不支持相机功能")
             return
         }
         
@@ -308,6 +324,57 @@ fun launchCamera(
     } catch (e: Exception) {
         onError?.invoke("启动相机失败: ${e.message}")
     }
+}
+
+/**
+ * 创建带权限申请功能的相机启动器
+ * 当没有相机权限时会自动申请权限，然后启动相机
+ */
+@Composable
+fun rememberCameraLauncherWithPermission(
+    onPhotoTaken: (Uri) -> Unit,
+    onError: (String) -> Unit = {},
+    onPermissionDenied: () -> Unit = {}
+): Pair<CameraLauncher, ActivityResultLauncher<String>> {
+    val context = LocalContext.current
+    
+    // 创建权限申请启动器
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // 权限获取成功，重新尝试启动相机
+            onError("权限已获取，请重新点击拍照按钮")
+        } else {
+            // 权限被拒绝
+            onPermissionDenied()
+        }
+    }
+    
+    // 创建相机启动器
+    val cameraLauncher = rememberCameraLauncher(
+        onPhotoTaken = onPhotoTaken,
+        onError = onError
+    )
+    
+    return Pair(cameraLauncher, permissionLauncher)
+}
+
+/**
+ * 便捷函数：启动带权限申请的相机拍照
+ */
+fun launchCameraWithPermission(
+    cameraLauncher: CameraLauncher,
+    permissionLauncher: ActivityResultLauncher<String>,
+    context: Context,
+    onError: ((String) -> Unit)? = null
+) {
+    launchCamera(
+        launcher = cameraLauncher,
+        context = context,
+        onError = onError,
+        permissionLauncher = permissionLauncher
+    )
 }
 
 /**
