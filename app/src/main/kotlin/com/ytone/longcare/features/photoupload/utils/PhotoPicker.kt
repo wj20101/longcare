@@ -336,8 +336,7 @@ fun rememberCameraLauncherWithPermission(
     onError: (String) -> Unit = {},
     onPermissionDenied: () -> Unit = {}
 ): Pair<CameraLauncher, ActivityResultLauncher<String>> {
-    val context = LocalContext.current
-    
+
     // 创建权限申请启动器
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
