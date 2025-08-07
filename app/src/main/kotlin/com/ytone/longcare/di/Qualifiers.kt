@@ -57,3 +57,7 @@ annotation class MainDispatcher
 @Retention(AnnotationRetention.BINARY)
 @Qualifier
 annotation class DefaultDispatcher
+
+@Qualifier
+@Retention(AnnotationRetention.RUNTIME)
+annotation class DefaultOkHttpClient
