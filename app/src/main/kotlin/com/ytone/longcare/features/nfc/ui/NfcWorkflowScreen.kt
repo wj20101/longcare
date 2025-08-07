@@ -44,6 +44,7 @@ import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
+import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSettings
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import dagger.hilt.EntryPoint
@@ -113,11 +114,16 @@ fun NfcWorkflowScreen(
         return try {
             // 检查定位权限
             if (!UnifiedPermissionHelper.hasLocationPermission(context)) {
+                // 申请定位权限
+                checkLocationPermissionAndStart()
                 return Pair("", "")
             }
             
             // 检查定位服务是否开启
             if (!UnifiedPermissionHelper.isLocationServiceEnabled(context)) {
+                // 提醒用户开启定位服务
+                openLocationSettings(context)
+                viewModel.showError("请开启定位服务以获取位置信息")
                 return Pair("", "")
             }
             

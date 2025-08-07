@@ -145,6 +145,12 @@ class NfcWorkflowViewModel @Inject constructor(
                             // 实时获取位置信息
                             val (longitude, latitude) = onLocationRequest()
                             
+                            // 如果定位信息为空，则中断流程，因为参数无效
+                            if (longitude.isEmpty() || latitude.isEmpty()) {
+                                showError("无法获取位置信息，请检查定位权限和服务")
+                                return@collect
+                            }
+                            
                             when (signInMode) {
                                 SignInMode.START_ORDER -> startOrder(orderId, tagId, longitude, latitude)
 
