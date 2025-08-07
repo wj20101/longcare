@@ -2,7 +2,7 @@
   "resultCode": 1000,
   "resultMsg": "Success",
   "data": {
-    "versionCode": 100,
+    "versionCode": 1,
     "versionName": "1.0.0",
     "upType": 2,
     "remarks": "1. 修复已知bug\n2. 优化用户体验",
