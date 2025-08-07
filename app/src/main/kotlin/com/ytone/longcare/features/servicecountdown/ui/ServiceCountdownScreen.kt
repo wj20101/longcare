@@ -32,6 +32,7 @@ import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
 import com.ytone.longcare.navigation.navigateToPhotoUpload
+import com.ytone.longcare.navigation.navigateToHomeAndClearStack
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
@@ -117,7 +118,7 @@ fun ServiceCountdownScreen(
             CenterAlignedTopAppBar(
                 title = { Text("服务时间倒计时", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navController.navigateToHomeAndClearStack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
