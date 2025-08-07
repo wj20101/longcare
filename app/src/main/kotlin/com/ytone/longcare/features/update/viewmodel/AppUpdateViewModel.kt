@@ -21,7 +21,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AppUpdateViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppUpdateUiState())
@@ -29,6 +29,7 @@ class AppUpdateViewModel @Inject constructor(
 
     private var currentWorkId: UUID? = null
     private val workManager = WorkManager.getInstance(context)
+    private var pendingInstallFilePath: String? = null
 
     fun setAppVersionModel(appVersionModel: AppVersionModel) {
         _uiState.value = _uiState.value.copy(
@@ -63,7 +64,7 @@ class AppUpdateViewModel @Inject constructor(
 
     private fun observeDownloadProgress(workId: UUID) {
         viewModelScope.launch {
-            workManager.getWorkInfoByIdLiveData(workId).observeForever { workInfo ->
+            workManager.getWorkInfoByIdFlow(workId).collect { workInfo ->
                 when (workInfo?.state) {
                     WorkInfo.State.RUNNING -> {
                         val progress = workInfo.progress.getInt(DownloadWorker.KEY_PROGRESS, 0)
@@ -130,8 +131,25 @@ class AppUpdateViewModel @Inject constructor(
         if (ApkInstallUtils.canInstallApk(context)) {
             ApkInstallUtils.installApk(context, filePath)
         } else {
+            // 保存文件路径，等待权限获取后自动安装
+            pendingInstallFilePath = filePath
+            _uiState.value = _uiState.value.copy(hasPendingInstall = true)
             // 需要权限时，可以提示用户或直接跳转设置
             ApkInstallUtils.requestInstallPermission(context)
+        }
+    }
+
+    /**
+     * 检查权限并安装待安装的APK
+     * 当用户从设置页面返回时调用
+     */
+    fun checkPermissionAndInstall() {
+        pendingInstallFilePath?.let { filePath ->
+            if (ApkInstallUtils.canInstallApk(context)) {
+                ApkInstallUtils.installApk(context, filePath)
+                pendingInstallFilePath = null
+                _uiState.value = _uiState.value.copy(hasPendingInstall = false)
+            }
         }
     }
 }
@@ -142,5 +160,6 @@ data class AppUpdateUiState(
     val isDownloading: Boolean = false,
     val downloadProgress: Int = 0,
     val downloadedFilePath: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    val hasPendingInstall: Boolean = false
 )

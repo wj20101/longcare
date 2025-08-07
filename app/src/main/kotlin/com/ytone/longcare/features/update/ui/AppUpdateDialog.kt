@@ -28,17 +28,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.ytone.longcare.api.response.AppVersionModel
 import com.ytone.longcare.features.update.viewmodel.AppUpdateViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -51,6 +53,20 @@ fun AppUpdateDialog(
     val appVersionModel = uiState.appVersionModel ?: return
     val downloadProgress = uiState.downloadProgress
     val isDownloading = uiState.isDownloading
+    val lifecycleOwner = LocalLifecycleOwner.current
+    
+    // 监听生命周期事件，当从设置页面返回时检查权限
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && uiState.hasPendingInstall) {
+                viewModel.checkPermissionAndInstall()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     Dialog(
         onDismissRequest = { if (appVersionModel.upType != 2 && !isDownloading) onDismiss() },
         properties = DialogProperties(

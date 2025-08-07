@@ -1,6 +1,7 @@
 package com.ytone.longcare.worker
 
 import android.content.Context
+import android.os.Environment
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -28,7 +29,6 @@ class DownloadWorker @AssistedInject constructor(
     private val retrofit: Retrofit
 ) : CoroutineWorker(context, workerParams) {
 
-    // Retrofit API 接口用于下载
     interface DownloadApi {
         @Streaming
         @GET
@@ -41,10 +41,10 @@ class DownloadWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         val url = inputData.getString(KEY_URL) ?: return Result.failure(
-            workDataOf(KEY_ERROR to "URL is required")
+            workDataOf(KEY_ERROR to "URL不能为空")
         )
         val fileName = inputData.getString(KEY_FILE_NAME) ?: return Result.failure(
-            workDataOf(KEY_ERROR to "File name is required")
+            workDataOf(KEY_ERROR to "文件名不能为空")
         )
 
         return withContext(Dispatchers.IO) {
@@ -53,52 +53,49 @@ class DownloadWorker @AssistedInject constructor(
                     workDataOf(KEY_PROGRESS to 0)
                 )
 
-                // 创建下载目录
-                val downloadDir = File(applicationContext.getExternalFilesDir(null), "downloads")
+                val downloadDir = applicationContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: applicationContext.filesDir
                 if (!downloadDir.exists()) {
                     downloadDir.mkdirs()
                 }
 
-                // 使用 Retrofit2 方案下载
                 downloadWithRetrofit(url, fileName, downloadDir)
             } catch (e: IOException) {
                 return@withContext Result.failure(
-                    workDataOf(KEY_ERROR to "Download failed: ${e.message}")
+                    workDataOf(KEY_ERROR to "网络错误: ${e.message}")
                 )
             } catch (e: Exception) {
                 return@withContext Result.failure(
-                    workDataOf(KEY_ERROR to "Unexpected error: ${e.message}")
+                    workDataOf(KEY_ERROR to "下载失败: ${e.message}")
                 )
             }
         }
     }
 
-    /**
-     * 使用 Retrofit2 进行下载的方法
-     */
     private suspend fun downloadWithRetrofit(
         url: String,
         fileName: String,
         downloadDir: File
     ): Result {
         val response = downloadApi.downloadFile(url)
-        
         if (!response.isSuccessful) {
             return Result.failure(
-                workDataOf(KEY_ERROR to "Download failed: ${response.code()}")
+                workDataOf(KEY_ERROR to "下载失败，HTTP状态码: ${response.code()}")
             )
         }
 
-        val body = response.body() ?: return Result.failure(
-            workDataOf(KEY_ERROR to "Response body is null")
+        val responseBody = response.body() ?: return Result.failure(
+            workDataOf(KEY_ERROR to "响应体为空")
         )
 
-        val contentLength = body.contentLength()
         val file = File(downloadDir, fileName)
+        val contentLength = responseBody.contentLength()
+        val source = responseBody.source()
         val sink = file.sink().buffer()
-        val source = body.source()
         val buffer = Buffer()
         var bytesRead = 0L
+        var lastProgress = -1
+        var lastUpdateTime = 0L
+        val updateInterval = 500L // 500ms 更新间隔
 
         source.use { input ->
             sink.use { output ->
@@ -109,13 +106,28 @@ class DownloadWorker @AssistedInject constructor(
 
                     if (contentLength > 0) {
                         val progress = (bytesRead * 100 / contentLength).toInt()
-                        setProgressAsync(
-                            workDataOf(KEY_PROGRESS to progress)
-                        )
+                        val currentTime = System.currentTimeMillis()
+                        
+                        // 只有当进度变化超过1%或时间间隔超过500ms时才更新
+                        if (progress != lastProgress && 
+                            (progress - lastProgress >= 1 || currentTime - lastUpdateTime >= updateInterval)) {
+                            setProgressAsync(
+                                workDataOf(KEY_PROGRESS to progress)
+                            )
+                            lastProgress = progress
+                            lastUpdateTime = currentTime
+                        }
                     }
                 }
                 output.flush()
             }
+        }
+        
+        // 确保最后更新到100%
+        if (contentLength > 0 && lastProgress < 100) {
+            setProgressAsync(
+                workDataOf(KEY_PROGRESS to 100)
+            )
         }
 
         return Result.success(
