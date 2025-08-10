@@ -38,15 +38,7 @@ import com.ytone.longcare.navigation.navigateToSelectDevice
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
-
-@EntryPoint
-@InstallIn(SingletonComponent::class)
-interface NursingExecutionEntryPoint {
-    fun faceVerificationStatusManager(): FaceVerificationStatusManager
-}
+import com.ytone.longcare.di.NursingExecutionEntryPoint
 
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)

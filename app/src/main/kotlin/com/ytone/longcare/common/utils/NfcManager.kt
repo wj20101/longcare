@@ -8,9 +8,6 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -144,10 +141,4 @@ class NfcManager @Inject constructor(
             disableNfcForActivity(activity)
         }
     }
-}
-
-@EntryPoint
-@InstallIn(SingletonComponent::class)
-interface NfcManagerEntryPoint {
-    fun nfcManager(): NfcManager
 }
