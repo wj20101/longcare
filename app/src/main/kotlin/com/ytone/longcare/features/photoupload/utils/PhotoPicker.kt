@@ -169,13 +169,9 @@ fun rememberCameraLauncher(
         onResult = { success ->
             try {
                 if (success && photoUri != Uri.EMPTY) {
-                    // 验证文件是否真的存在
-                    val file = File(photoUri.path ?: "")
-                    if (file.exists() && file.length() > 0) {
-                        onPhotoTaken(photoUri)
-                    } else {
-                        onError?.invoke("拍照文件创建失败或文件为空")
-                    }
+                    // TakePicture contract的success参数已经表明拍照是否成功
+                    // 直接回调URI，无需额外验证文件存在性
+                    onPhotoTaken(photoUri)
                 } else {
                     onError?.invoke("拍照被取消或失败")
                 }

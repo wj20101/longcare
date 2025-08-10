@@ -70,7 +70,7 @@ fun IdentificationScreen(
     // 在这里调用函数，将此页面强制设置为竖屏
     // ==========================================================
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
-// 观察状态
+    // 观察状态
     val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
     val faceVerificationState by viewModel.faceVerificationState.collectAsStateWithLifecycle()
     val photoUploadState by viewModel.photoUploadState.collectAsStateWithLifecycle()
