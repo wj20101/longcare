@@ -33,7 +33,8 @@ import androidx.navigation.NavController
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.NfcManager
-import com.ytone.longcare.common.utils.NfcManagerEntryPoint
+import com.ytone.longcare.di.NfcManagerEntryPoint
+import com.ytone.longcare.di.NfcLocationEntryPoint
 import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
@@ -47,16 +48,7 @@ import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSettings
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
 
-// --- EntryPoint定义 ---
-@EntryPoint
-@InstallIn(SingletonComponent::class)
-interface NfcLocationEntryPoint {
-    fun compositeLocationProvider(): CompositeLocationProvider
-}
 
 // --- 状态定义 ---
 enum class SignInState {

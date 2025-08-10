@@ -24,7 +24,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.R
-import com.ytone.longcare.common.utils.FaceVerificationStatusManager
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.features.identification.vm.IdentificationState
@@ -34,9 +33,7 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.navigation.navigateToSelectService
 import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
+import com.ytone.longcare.di.IdentificationEntryPoint
 
 /**
  * 身份认证相关常量
@@ -44,12 +41,6 @@ import dagger.hilt.components.SingletonComponent
 private object IdentificationConstants {
     const val SERVICE_PERSON = "服务人员"
     const val ELDER = "老人"
-}
-
-@EntryPoint
-@InstallIn(SingletonComponent::class)
-interface IdentificationEntryPoint {
-    fun faceVerificationStatusManager(): FaceVerificationStatusManager
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
