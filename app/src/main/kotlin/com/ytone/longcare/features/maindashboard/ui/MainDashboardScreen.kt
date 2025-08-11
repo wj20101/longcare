@@ -86,10 +86,11 @@ fun MainDashboardScreen(
                 todayOrderList = todayOrderList,
                 inOrderList = inOrderList,
                 navController = navController,
+                homeSharedViewModel = homeSharedViewModel,
                 modifier = Modifier.padding(
-                    top = paddingValues.calculateTopPadding(),
                     start = 16.dp,
-                    end = 16.dp
+                    end = 16.dp,
+                    top = paddingValues.calculateTopPadding()
                 )
             )
         } ?: run {
@@ -111,6 +112,7 @@ private fun MainDashboardContent(
     todayOrderList: List<TodayServiceOrderModel>,
     inOrderList: List<ServiceOrderModel>,
     navController: NavController,
+    homeSharedViewModel: HomeSharedViewModel,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -136,7 +138,8 @@ private fun MainDashboardContent(
             OrderTabLayout(
                 todayOrderList = todayOrderList,
                 inOrderList = inOrderList,
-                navController = navController
+                navController = navController,
+                homeSharedViewModel = homeSharedViewModel
             )
         }
     }
@@ -412,9 +415,10 @@ fun InOrderServiceItem(
 fun OrderTabLayout(
     todayOrderList: List<TodayServiceOrderModel>,
     inOrderList: List<ServiceOrderModel>,
-    navController: NavController
+    navController: NavController,
+    homeSharedViewModel: HomeSharedViewModel
 ) {
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val selectedTabIndex by homeSharedViewModel.selectedTabIndex.collectAsStateWithLifecycle()
     val tabs = listOf("待护理计划", "服务中")
     
     Column {
@@ -428,7 +432,7 @@ fun OrderTabLayout(
             tabs.forEachIndexed { index, title ->
                 Tab(
                     selected = selectedTabIndex == index,
-                    onClick = { selectedTabIndex = index },
+                    onClick = { homeSharedViewModel.updateSelectedTabIndex(index) },
                     text = {
                         CustomTabItem(
                             text = title,
@@ -562,5 +566,6 @@ fun MainDashboardContentPreview() {
     val inOrderList = listOf(
         ServiceOrderModel(orderId = 3L, name = "In Order 1", state = 2)
     )
-    MainDashboardContent(user = user, todayOrderList = todayOrderList, inOrderList = inOrderList, navController = rememberNavController())
+    // Preview中无法使用真实的ViewModel，这里注释掉
+    // MainDashboardContent(user = user, todayOrderList = todayOrderList, inOrderList = inOrderList, navController = rememberNavController(), homeSharedViewModel = homeSharedViewModel)
 }
