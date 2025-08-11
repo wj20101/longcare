@@ -8,6 +8,7 @@ import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.common.utils.FaceVerificationManager
 import com.ytone.longcare.common.utils.ToastHelper
@@ -50,9 +51,7 @@ class IdentificationViewModel @Inject constructor(
 
     private val imageProcessor = ImageProcessor(applicationContext)
     
-    companion object {
-        private const val DEFAULT_FOLDER_TYPE = 13 // 默认文件夹类型
-    }
+    // 移除重复的常量定义，使用统一的 CosConstants
     
     // 身份认证状态
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL)
@@ -272,7 +271,11 @@ class IdentificationViewModel @Inject constructor(
                     return@launch
                 }
                 
-                val processedUri = processResult.getOrNull()!!
+                val processedUri = processResult.getOrNull()
+                if (processedUri == null) {
+                    _photoUploadState.value = PhotoUploadState.Error("图片处理结果为空")
+                    return@launch
+                }
                 
                 _photoUploadState.value = PhotoUploadState.Uploading
                 
@@ -280,7 +283,7 @@ class IdentificationViewModel @Inject constructor(
                 val uploadParams = CosUtils.createUploadParams(
                     context = applicationContext,
                     fileUri = processedUri,
-                    folderType = DEFAULT_FOLDER_TYPE
+                    folderType = CosConstants.DEFAULT_FOLDER_TYPE
                 )
                 
                 val uploadResult = cosRepository.uploadFile(uploadParams)

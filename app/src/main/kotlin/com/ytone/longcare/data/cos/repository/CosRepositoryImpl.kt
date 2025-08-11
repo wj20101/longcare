@@ -18,6 +18,7 @@ import com.ytone.longcare.api.response.UploadTokenResultModel
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.network.safeApiCall
+import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.common.utils.getFileSize
 import com.ytone.longcare.data.cos.model.CosConfig
@@ -62,7 +63,6 @@ class CosRepositoryImpl @Inject constructor(
     companion object {
         private const val TAG = "CosRepositoryImpl"
         private const val TOKEN_REFRESH_THRESHOLD_SECONDS = 300L // 5分钟提前刷新
-        private const val DEFAULT_FOLDER_TYPE = 13 // 默认文件夹类型
     }
 
     // 线程安全的状态管理 - 分离锁职责避免死锁
@@ -182,7 +182,7 @@ class CosRepositoryImpl @Inject constructor(
     /**
      * 获取有效的COS配置
      */
-    private suspend fun getValidCosConfig(folderType: Int = DEFAULT_FOLDER_TYPE): CosConfig {
+    private suspend fun getValidCosConfig(folderType: Int = CosConstants.DEFAULT_FOLDER_TYPE): CosConfig {
         if (configCache.isValid()) {
             return configCache.cosConfig!!
         }
@@ -200,7 +200,7 @@ class CosRepositoryImpl @Inject constructor(
     /**
      * 刷新COS配置（从API获取临时密钥）
      */
-    private suspend fun refreshCosConfig(folderType: Int = DEFAULT_FOLDER_TYPE): CosConfig =
+    private suspend fun refreshCosConfig(folderType: Int = CosConstants.DEFAULT_FOLDER_TYPE): CosConfig =
         withContext(Dispatchers.IO) {
             try {
                 Log.d(TAG, "Refreshing COS config...")

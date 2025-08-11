@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.domain.cos.repository.CosRepository
@@ -33,10 +34,6 @@ class PhotoProcessingViewModel @Inject constructor(
     private val toastHelper: ToastHelper,
     private val cosRepository: CosRepository
 ) : ViewModel() {
-
-    companion object {
-        private const val DEFAULT_FOLDER_TYPE = 13 // 默认文件夹类型
-    }
 
     private val imageProcessor = ImageProcessor(applicationContext)
 
@@ -240,7 +237,7 @@ class PhotoProcessingViewModel @Inject constructor(
                 val uploadParams = CosUtils.createUploadParams(
                     context = applicationContext,
                     fileUri = uri,
-                    folderType = DEFAULT_FOLDER_TYPE
+                    folderType = CosConstants.DEFAULT_FOLDER_TYPE
                 )
 
                 val uploadResult = cosRepository.uploadFile(uploadParams)
