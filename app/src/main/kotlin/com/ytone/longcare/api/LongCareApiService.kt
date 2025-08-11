@@ -74,6 +74,14 @@ interface LongCareApiService {
     suspend fun getTodayOrderList(): Response<List<TodayServiceOrderModel>>
 
     /**
+     * 查询服务中的订单
+     *
+     * @return 返回服务中的订单列表
+     */
+    @GET("/V1/Service/InOrder")
+    suspend fun getInOrderList(): Response<List<ServiceOrderModel>>
+
+    /**
      * 查询服务订单详情
      *
      * @param orderInfoParamModel 请求参数，包含订单号

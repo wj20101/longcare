@@ -15,6 +15,11 @@ interface OrderRepository {
     suspend fun getTodayOrderList(): ApiResult<List<TodayServiceOrderModel>>
 
     /**
+     * 获取服务中的订单列表
+     */
+    suspend fun getInOrderList(): ApiResult<List<ServiceOrderModel>>
+
+    /**
      * 按天查询服务订单
      * @param daytime 查询日期，格式例如: "yyyy-MM-dd"
      */

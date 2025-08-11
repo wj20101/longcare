@@ -30,6 +30,10 @@ class OrderRepositoryImpl @Inject constructor(
         return safeApiCall(ioDispatcher, eventBus) { apiService.getTodayOrderList() }
     }
 
+    override suspend fun getInOrderList(): ApiResult<List<ServiceOrderModel>> {
+        return safeApiCall(ioDispatcher, eventBus) { apiService.getInOrderList() }
+    }
+
     override suspend fun getOrderList(daytime: String): ApiResult<List<ServiceOrderModel>> {
         return safeApiCall(ioDispatcher, eventBus) {
             apiService.getOrderList(OrderListParamModel(daytime = daytime))
