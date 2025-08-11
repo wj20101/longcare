@@ -51,6 +51,7 @@ class MockInterceptor(private val context: Context) : Interceptor {
             "/V1/Login/Phone" -> "mock/login_phone.json"
             "/V1/Service/OrderList" -> "mock/order_list.json"
             "/V1/Service/TodayOrder" -> "mock/today_order_list.json"
+            "/V1/Service/InOrder" -> "mock/in_order_list.json"
             "/V1/Service/OrderInfo" -> "mock/order_info.json"
             "/V1/Service/Statistics" -> "mock/service_statistics.json"
             "/V1/Service/HaveServiceUserList",

@@ -1,0 +1,54 @@
+{
+  "resultCode": 200,
+  "resultMsg": "查询成功",
+  "data": [
+    {
+      "orderId": 10005,
+      "userId": 2005,
+      "name": "孙天成",
+      "callPhone": "13800138005",
+      "identityCardNumber": "110101193501011234",
+      "liveAddress": "杭州市西湖区328弄24号",
+      "state": 1,
+      "checkState": 1,
+      "checkStateDesc": "可以开单",
+      "planTotalTime": 8,
+      "completeTotalTime": 0,
+      "totalServiceTime": 480,
+      "longitude": "120.1551",
+      "latitude": "30.2741"
+    },
+    {
+      "orderId": 10006,
+      "userId": 2006,
+      "name": "孙天成",
+      "callPhone": "13800138006",
+      "identityCardNumber": "110101193601011234",
+      "liveAddress": "杭州市西湖区328弄24号",
+      "state": 1,
+      "checkState": 1,
+      "checkStateDesc": "可以开单",
+      "planTotalTime": 8,
+      "completeTotalTime": 0,
+      "totalServiceTime": 480,
+      "longitude": "120.1551",
+      "latitude": "30.2741"
+    },
+    {
+      "orderId": 10007,
+      "userId": 2007,
+      "name": "孙天成",
+      "callPhone": "13800138007",
+      "identityCardNumber": "110101193701011234",
+      "liveAddress": "杭州市西湖区328弄24号",
+      "state": 1,
+      "checkState": 1,
+      "checkStateDesc": "可以开单",
+      "planTotalTime": 8,
+      "completeTotalTime": 0,
+      "totalServiceTime": 480,
+      "longitude": "120.1551",
+      "latitude": "30.2741"
+    }
+  ]
+}
