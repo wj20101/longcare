@@ -2,20 +2,18 @@ package com.ytone.longcare.features.maindashboard.ui
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -27,6 +25,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -40,6 +40,8 @@ import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.isPendingCare
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
+import com.ytone.longcare.theme.IndicatorGradientStart
+import com.ytone.longcare.theme.IndicatorGradientEnd
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderItem
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
@@ -418,17 +420,19 @@ fun OrderTabLayout(
     Column {
         TabRow(
             selectedTabIndex = selectedTabIndex,
+            modifier = Modifier.fillMaxWidth(),
             containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.primary
+            divider = {},
+            indicator = { }
         ) {
             tabs.forEachIndexed { index, title ->
                 Tab(
                     selected = selectedTabIndex == index,
                     onClick = { selectedTabIndex = index },
                     text = {
-                        Text(
+                        CustomTabItem(
                             text = title,
-                            fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
+                            isSelected = selectedTabIndex == index
                         )
                     }
                 )
@@ -477,6 +481,62 @@ fun OrderTabLayout(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun CustomTabItem(
+    text: String,
+    isSelected: Boolean
+) {
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = text,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            color = if (isSelected) Color(0xFF007AFF) else Color(0xFF999999),
+            fontSize = 16.sp
+        )
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        // 自定义指示器，宽度与文字宽度一致
+        if (isSelected) {
+            val textLayoutResult = textMeasurer.measure(
+                text = text,
+                style = TextStyle(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            )
+            val textWidthDp = with(density) { textLayoutResult.size.width.toDp() }
+            
+            Box(
+                modifier = Modifier
+                    .width(textWidthDp)
+                    .height(2.dp)
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                IndicatorGradientStart,
+                                IndicatorGradientEnd
+                            )
+                        ),
+                        shape = RoundedCornerShape(4.dp)
+                    )
+            )
+        } else {
+            // 占位符，保持布局一致
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(2.dp)
+            )
         }
     }
 }
