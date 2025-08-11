@@ -6,8 +6,10 @@ import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.models.protos.User
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
@@ -37,4 +39,15 @@ class HomeSharedViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = null // 初始值为 null
     )
+
+    // 主仪表盘Tab状态管理
+    private val _selectedTabIndex = MutableStateFlow(0)
+    val selectedTabIndex: StateFlow<Int> = _selectedTabIndex.asStateFlow()
+
+    /**
+     * 更新选中的Tab索引
+     */
+    fun updateSelectedTabIndex(index: Int) {
+        _selectedTabIndex.value = index
+    }
 }
