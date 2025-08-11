@@ -7,10 +7,11 @@ import androidx.lifecycle.viewModelScope
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.ytone.longcare.BuildConfig
-import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.common.utils.FaceVerificationManager
 import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.order.SharedOrderRepository
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.SessionState
@@ -42,11 +43,16 @@ class IdentificationViewModel @Inject constructor(
     private val userSessionRepository: UserSessionRepository,
     private val sharedOrderRepository: SharedOrderRepository,
     private val orderRepository: OrderRepository,
+    private val cosRepository: CosRepository,
     private val toastHelper: ToastHelper,
     @param:ApplicationContext private val applicationContext: Context
 ) : ViewModel() {
 
     private val imageProcessor = ImageProcessor(applicationContext)
+    
+    companion object {
+        private const val DEFAULT_FOLDER_TYPE = 13 // 默认文件夹类型
+    }
     
     // 身份认证状态
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL)
@@ -270,27 +276,39 @@ class IdentificationViewModel @Inject constructor(
                 
                 _photoUploadState.value = PhotoUploadState.Uploading
                 
-                // 上传图片到云端（这里需要集成云端上传逻辑）
-                // 暂时使用本地URI作为示例，实际应该上传到云端获取URL
-                val imageUrl = processedUri.toString()
+                // 使用CosUtils上传图片到云端
+                val uploadParams = CosUtils.createUploadParams(
+                    context = applicationContext,
+                    fileUri = processedUri,
+                    folderType = DEFAULT_FOLDER_TYPE
+                )
                 
-                // 调用上传接口
-                when (val result = orderRepository.upUserStartImg(orderId, listOf(imageUrl))) {
-                    is ApiResult.Success -> {
-                        _photoUploadState.value = PhotoUploadState.Success
-                        toastHelper.showShort("老人照片上传成功")
-                        setElderVerified()
-                        onSuccess()
+                val uploadResult = cosRepository.uploadFile(uploadParams)
+                
+                if (uploadResult.success && uploadResult.key != null) {
+                    // 上传成功，调用后端接口
+                    when (val result = orderRepository.upUserStartImg(orderId, listOf(uploadResult.key))) {
+                        is ApiResult.Success -> {
+                            _photoUploadState.value = PhotoUploadState.Success
+                            toastHelper.showShort("老人照片上传成功")
+                            setElderVerified()
+                            onSuccess()
+                        }
+                        is ApiResult.Exception -> {
+                            val errorMessage = result.exception.message ?: "网络错误，请检查网络连接"
+                            _photoUploadState.value = PhotoUploadState.Error(errorMessage)
+                            toastHelper.showShort(errorMessage)
+                        }
+                        is ApiResult.Failure -> {
+                            _photoUploadState.value = PhotoUploadState.Error(result.message)
+                            toastHelper.showShort(result.message)
+                        }
                     }
-                    is ApiResult.Exception -> {
-                        val errorMessage = result.exception.message ?: "网络错误，请检查网络连接"
-                        _photoUploadState.value = PhotoUploadState.Error(errorMessage)
-                        toastHelper.showShort(errorMessage)
-                    }
-                    is ApiResult.Failure -> {
-                        _photoUploadState.value = PhotoUploadState.Error(result.message)
-                        toastHelper.showShort(result.message)
-                    }
+                } else {
+                    // 上传失败
+                    val errorMessage = uploadResult.errorMessage ?: "图片上传失败"
+                    _photoUploadState.value = PhotoUploadState.Error(errorMessage)
+                    toastHelper.showShort(errorMessage)
                 }
                 
             } catch (e: Exception) {
