@@ -1,7 +1,6 @@
 package com.ytone.longcare.features.servicecountdown.ui
 
 import android.content.pm.ActivityInfo
-import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +18,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
@@ -66,6 +68,7 @@ fun ServiceCountdownScreen(
     val formattedTime by viewModel.formattedTime.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
@@ -102,8 +105,8 @@ fun ServiceCountdownScreen(
         }
     }
 
-    // 设置倒计时时间
-    LaunchedEffect(orderId, projectIdList) {
+    // 设置倒计时时间的通用函数
+    val setupCountdownTime = {
         val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
         orderInfo?.let {
             viewModel.setCountdownTimeFromProjects(
@@ -111,6 +114,18 @@ fun ServiceCountdownScreen(
                 projectList = it.projectList,
                 selectedProjectIds = projectIdList
             )
+        }
+    }
+
+    // 初始设置倒计时时间
+    LaunchedEffect(orderId, projectIdList) {
+        setupCountdownTime()
+    }
+
+    // 监听生命周期变化，在页面恢复时重新计算倒计时
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            setupCountdownTime()
         }
     }
     Scaffold(
