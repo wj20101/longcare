@@ -77,15 +77,46 @@ class ServiceCountdownViewModel @Inject constructor(
             // 计算剩余时间
             val remainingTime = maxOf(0L, totalServiceTimeMillis - elapsedTime)
             
-            _remainingTimeMillis.value = remainingTime
-            updateFormattedTime()
-            
-            // 如果剩余时间大于0，启动倒计时；否则设置为完成状态
             if (remainingTime > 0) {
+                // 还有剩余时间，启动正常倒计时
+                _remainingTimeMillis.value = remainingTime
                 _countdownState.value = ServiceCountdownState.RUNNING
+                updateFormattedTime()
                 startCountdown()
             } else {
-                _countdownState.value = ServiceCountdownState.COMPLETED
+                // 已经超时，计算超时时长
+                val overtimeMillis = elapsedTime - totalServiceTimeMillis
+                
+                // 如果当前不是OVERTIME状态，先设置为COMPLETED再转为OVERTIME
+                if (_countdownState.value != ServiceCountdownState.OVERTIME) {
+                    _remainingTimeMillis.value = 0
+                    _countdownState.value = ServiceCountdownState.COMPLETED
+                    updateFormattedTime()
+                    
+                    // 立即进入OVERTIME状态（不需要等待5秒）
+                    _countdownState.value = ServiceCountdownState.OVERTIME
+                }
+                
+                // 设置当前超时时长
+                _overtimeMillis.value = overtimeMillis
+                updateFormattedTime()
+                
+                // 如果倒计时Job没有运行，启动超时计时
+                if (countdownJob?.isActive != true) {
+                    startOvertimeCountdown()
+                }
+            }
+        }
+    }
+    
+    // 启动超时计时
+    private fun startOvertimeCountdown() {
+        countdownJob?.cancel()
+        countdownJob = viewModelScope.launch {
+            while (_countdownState.value == ServiceCountdownState.OVERTIME) {
+                delay(1000)
+                _overtimeMillis.value += 1000
+                updateFormattedTime()
             }
         }
     }
