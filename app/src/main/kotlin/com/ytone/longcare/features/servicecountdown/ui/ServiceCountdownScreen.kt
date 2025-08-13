@@ -45,6 +45,7 @@ import com.ytone.longcare.features.photoupload.model.ImageTaskType
 enum class ServiceCountdownState {
     RUNNING,    // 倒计时运行中
     COMPLETED,  // 倒计时完成
+    OVERTIME,   // 倒计时超时
     ENDED       // 服务已结束
 }
 
@@ -69,6 +70,9 @@ fun ServiceCountdownScreen(
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    
+    // 二次确认弹窗状态
+    var showConfirmDialog by remember { mutableStateOf(false) }
 
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
@@ -189,44 +193,90 @@ fun ServiceCountdownScreen(
                         return@Button
                     }
 
-                    viewModel.endService(orderId)
-                    val uploadedImages = viewModel.getCurrentUploadedImages()
-                    val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
-                    val endImgList = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
+                    // 如果倒计时还在进行中，显示确认弹窗
+                    if (countdownState == ServiceCountdownState.RUNNING) {
+                        showConfirmDialog = true
+                    } else {
+                        // 直接结束服务
+                        viewModel.endService(orderId)
+                        val uploadedImages = viewModel.getCurrentUploadedImages()
+                        val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
+                        val endImgList = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
 
-                    navController.navigateToNfcSignInForEndOrder(
-                        orderId = orderId,
-                        params = EndOderInfo(
-                            projectIdList = projectIdList,
-                            beginImgList = beginImgList,
-                            endImgList = endImgList
-                        ),
-                    )
+                        navController.navigateToNfcSignInForEndOrder(
+                            orderId = orderId,
+                            params = EndOderInfo(
+                                projectIdList = projectIdList,
+                                beginImgList = beginImgList,
+                                endImgList = endImgList,
+                                endType = 1
+                            ),
+                        )
+                    }
                 },
-                enabled = countdownState == ServiceCountdownState.COMPLETED,
+                enabled = countdownState != ServiceCountdownState.ENDED,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (countdownState == ServiceCountdownState.COMPLETED) {
-                        Color(0xFF4A90E2) // 蓝色
-                    } else {
-                        Color.Gray // 灰色（禁用状态）
+                    containerColor = when (countdownState) {
+                        ServiceCountdownState.RUNNING -> Color(0xFFFF9500) // 橙色（提前结束）
+                        ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> Color(0xFF4A90E2) // 蓝色（正常结束）
+                        ServiceCountdownState.ENDED -> Color.Gray // 灰色（已结束）
                     }
                 )
             ) {
                 Text(
-                    text = if (countdownState == ServiceCountdownState.COMPLETED) {
-                        "结束服务"
-                    } else {
-                        "服务进行中..."
+                    text = when (countdownState) {
+                        ServiceCountdownState.RUNNING -> "提前结束服务"
+                        ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> "结束服务"
+                        ServiceCountdownState.ENDED -> "服务已结束"
                     }, fontSize = 18.sp, color = Color.White
                 )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
+    
+    // 二次确认弹窗
+    if (showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text("确认提前结束服务") },
+            text = { Text("服务时间尚未结束，确定要提前结束服务吗？") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showConfirmDialog = false
+                        viewModel.endService(orderId)
+                        val uploadedImages = viewModel.getCurrentUploadedImages()
+                        val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
+                        val endImgList = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
+
+                        navController.navigateToNfcSignInForEndOrder(
+                             orderId = orderId,
+                             params = EndOderInfo(
+                                 projectIdList = projectIdList,
+                                 beginImgList = beginImgList,
+                                 endImgList = endImgList,
+                                 endType = 2  // 提前结束
+                             ),
+                         )
+                    }
+                ) {
+                    Text("确定")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showConfirmDialog = false }
+                ) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
 
@@ -254,6 +304,7 @@ fun CountdownTimerCard(
                 val (timeText, statusText) = when (countdownState) {
                     ServiceCountdownState.RUNNING -> formattedTime to "服务倒计时"
                     ServiceCountdownState.COMPLETED -> "00:00:00" to "服务倒计时"
+                    ServiceCountdownState.OVERTIME -> formattedTime to "服务超时"
                     ServiceCountdownState.ENDED -> "00:00:00" to "服务已结束"
                 }
 

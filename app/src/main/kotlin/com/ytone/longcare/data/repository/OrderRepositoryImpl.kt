@@ -90,7 +90,8 @@ class OrderRepositoryImpl @Inject constructor(
         beginImgList: List<String>,
         endImageList: List<String>,
         longitude: String,
-        latitude: String
+        latitude: String,
+        endType: Int
     ): ApiResult<Unit> {
         return safeApiCall(ioDispatcher, eventBus) {
             apiService.endOrder(
@@ -101,7 +102,8 @@ class OrderRepositoryImpl @Inject constructor(
                     latitude = latitude,
                     projectIdList = projectIdList,
                     beginImgList = beginImgList,
-                    endImgList = endImageList
+                    endImgList = endImageList,
+                    endType = endType
                 )
             )
         }

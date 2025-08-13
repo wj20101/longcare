@@ -48,5 +48,10 @@ data class EndOrderParamModel(
      * 结束图片集合
      */
     @param:Json(name = "endImgList")
-    val endImgList: List<String> = emptyList()
+    val endImgList: List<String> = emptyList(),
+    /**
+     * 结束类型 1正常 2提前
+     */
+    @param:Json(name = "endType")
+    val endType: Int = 1
 )

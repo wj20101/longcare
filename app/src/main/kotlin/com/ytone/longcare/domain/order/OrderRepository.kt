@@ -67,6 +67,7 @@ interface OrderRepository {
      * @param endImageList 结束图片集合
      * @param longitude 经度
      * @param latitude 纬度
+     * @param endType 结束类型：1=正常结束，2=提前结束
      */
     suspend fun endOrder(
         orderId: Long,
@@ -75,6 +76,7 @@ interface OrderRepository {
         beginImgList: List<String>,
         endImageList: List<String>,
         longitude: String = "",
-        latitude: String = ""
+        latitude: String = "",
+        endType: Int = 1
     ): ApiResult<Unit>
 }

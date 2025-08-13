@@ -38,6 +38,10 @@ class ServiceCountdownViewModel @Inject constructor(
     private val _formattedTime = MutableStateFlow("12:00:00")
     val formattedTime: StateFlow<String> = _formattedTime.asStateFlow()
     
+    // 超时时间（毫秒）
+    private val _overtimeMillis = MutableStateFlow(0L)
+    val overtimeMillis: StateFlow<Long> = _overtimeMillis.asStateFlow()
+    
     // 倒计时Job
     private var countdownJob: Job? = null
     
@@ -98,6 +102,7 @@ class ServiceCountdownViewModel @Inject constructor(
         
         // 启动新的倒计时
         countdownJob = viewModelScope.launch {
+            // 倒计时阶段
             while (_remainingTimeMillis.value > 0) {
                 // 更新格式化时间
                 updateFormattedTime()
@@ -109,18 +114,41 @@ class ServiceCountdownViewModel @Inject constructor(
                 _remainingTimeMillis.value -= 1000
             }
             
-            // 倒计时结束
+            // 倒计时结束，进入超时计时阶段
             _remainingTimeMillis.value = 0
-            updateFormattedTime()
             _countdownState.value = ServiceCountdownState.COMPLETED
+            updateFormattedTime()
+            
+            // 等待5秒后进入超时状态
+            delay(5000)
+            _countdownState.value = ServiceCountdownState.OVERTIME
+            _overtimeMillis.value = 0
+            
+            // 超时计时阶段
+            while (_countdownState.value == ServiceCountdownState.OVERTIME) {
+                // 延迟1秒
+                delay(1000)
+                
+                // 增加超时时间
+                _overtimeMillis.value += 1000
+                
+                // 更新格式化时间显示超时时长
+                updateFormattedTime()
+            }
         }
     }
     
     // 更新格式化时间
     private fun updateFormattedTime() {
-        val hours = TimeUnit.MILLISECONDS.toHours(_remainingTimeMillis.value)
-        val minutes = TimeUnit.MILLISECONDS.toMinutes(_remainingTimeMillis.value) % 60
-        val seconds = TimeUnit.MILLISECONDS.toSeconds(_remainingTimeMillis.value) % 60
+        val timeToFormat = if (_countdownState.value == ServiceCountdownState.OVERTIME) {
+            _overtimeMillis.value
+        } else {
+            _remainingTimeMillis.value
+        }
+        
+        val hours = TimeUnit.MILLISECONDS.toHours(timeToFormat)
+        val minutes = TimeUnit.MILLISECONDS.toMinutes(timeToFormat) % 60
+        val seconds = TimeUnit.MILLISECONDS.toSeconds(timeToFormat) % 60
 
         _formattedTime.value = String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
     }
