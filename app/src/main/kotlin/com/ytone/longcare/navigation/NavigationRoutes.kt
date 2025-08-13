@@ -83,13 +83,15 @@ data class ServiceCountdownRoute(
  * @param projectIdList 项目ID列表
  * @param beginImgList 开始时的图片列表
  * @param endImgList 结束时的图片列表
+ * @param endType 结束类型：1=正常结束，2=提前结束
  */
 @Keep
 @Serializable
 data class EndOderInfo(
     val projectIdList: List<Int> = emptyList(),
     val beginImgList: List<String> = emptyList(),
-    val endImgList: List<String> = emptyList()
+    val endImgList: List<String> = emptyList(),
+    val endType: Int = 1
 )
 
 /**
