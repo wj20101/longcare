@@ -95,15 +95,20 @@ class ServiceCountdownViewModel @Inject constructor(
                     
                     // 立即进入OVERTIME状态（不需要等待5秒）
                     _countdownState.value = ServiceCountdownState.OVERTIME
-                }
-                
-                // 设置当前超时时长
-                _overtimeMillis.value = overtimeMillis
-                updateFormattedTime()
-                
-                // 如果倒计时Job没有运行，启动超时计时
-                if (countdownJob?.isActive != true) {
+                    _overtimeMillis.value = overtimeMillis
+                    updateFormattedTime()
+                    
+                    // 启动超时计时
                     startOvertimeCountdown()
+                } else {
+                    // 如果已经是OVERTIME状态，更新超时时长并确保计时协程在运行
+                    _overtimeMillis.value = overtimeMillis
+                    updateFormattedTime()
+                    
+                    // 确保超时计时协程在运行
+                    if (countdownJob?.isActive != true) {
+                        startOvertimeCountdown()
+                    }
                 }
             }
         }
@@ -115,6 +120,8 @@ class ServiceCountdownViewModel @Inject constructor(
         countdownJob = viewModelScope.launch {
             while (_countdownState.value == ServiceCountdownState.OVERTIME) {
                 delay(1000)
+                
+                // 增加超时时间（固定1秒）
                 _overtimeMillis.value += 1000
                 updateFormattedTime()
             }
@@ -145,13 +152,12 @@ class ServiceCountdownViewModel @Inject constructor(
                 _remainingTimeMillis.value -= 1000
             }
             
-            // 倒计时结束，进入超时计时阶段
+            // 倒计时结束，立即进入超时计时阶段
             _remainingTimeMillis.value = 0
             _countdownState.value = ServiceCountdownState.COMPLETED
             updateFormattedTime()
             
-            // 等待5秒后进入超时状态
-            delay(5000)
+            // 立即进入超时状态（移除5秒延迟）
             _countdownState.value = ServiceCountdownState.OVERTIME
             _overtimeMillis.value = 0
             
