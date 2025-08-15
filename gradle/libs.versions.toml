@@ -5,14 +5,14 @@ kotlin = "2.2.0"
 ksp = "2.2.0-2.0.2"
 
 # Compose Versions
-composeBom = "2025.07.00"
+composeBom = "2025.08.00"
 
 # AndroidX Core & Lifecycle
-coreKtx = "1.16.0"
+coreKtx = "1.17.0"
 legacySupport = "1.0.0"
 lifecycle = "2.9.2"
 activityCompose = "1.10.1"
-fragmentCompose = "1.8.8"
+fragmentCompose = "1.8.9"
 navigationCompose = "2.9.3"
 appcompat = "1.7.1"
 startup = "1.2.0"
