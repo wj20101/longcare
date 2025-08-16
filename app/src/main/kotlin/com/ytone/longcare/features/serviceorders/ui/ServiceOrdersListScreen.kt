@@ -25,6 +25,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.isPendingCare
 import com.ytone.longcare.api.response.isServiceRecord
+import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.navigation.HomeRoute
 import com.ytone.longcare.navigation.navigateToNursingExecution
@@ -46,6 +47,9 @@ fun ServiceOrdersListScreen(
     }
     val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
     val todayOrderList by todayOrderViewModel.todayOrderListState.collectAsStateWithLifecycle()
+
+    // 统一处理系统返回键
+    UnifiedBackHandler(navController = navController)
 
     // 根据类型过滤订单
     val filteredOrders = when (orderType) {

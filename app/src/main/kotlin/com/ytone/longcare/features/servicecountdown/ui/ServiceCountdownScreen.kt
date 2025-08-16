@@ -39,6 +39,7 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.common.utils.HomeBackHandler
 
 
 // 服务倒计时页面状态
@@ -63,6 +64,9 @@ fun ServiceCountdownScreen(
     // 在这里调用函数，将此页面强制设置为竖屏
     // ==========================================================
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+    
+    // 统一处理系统返回键，确保与导航按钮行为一致
+    HomeBackHandler(navController = navController)
 
     // 从ViewModel获取状态
     val countdownState by viewModel.countdownState.collectAsStateWithLifecycle()

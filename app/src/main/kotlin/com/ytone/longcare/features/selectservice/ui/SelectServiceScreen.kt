@@ -26,6 +26,7 @@ import androidx.navigation.NavController
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.navigation.navigateToServiceCountdown
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
@@ -47,6 +48,9 @@ fun SelectServiceScreen(
     // 使用SharedViewModel获取订单详情
     val uiState by sharedViewModel.uiState.collectAsState()
     val starOrderState by sharedViewModel.starOrderState.collectAsStateWithLifecycle()
+
+    // 统一处理系统返回键
+    UnifiedBackHandler(navController = navController)
 
     // 在组件初始化时加载订单信息（如果缓存中没有）
     LaunchedEffect(orderId) {

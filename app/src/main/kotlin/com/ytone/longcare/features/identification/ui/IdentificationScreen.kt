@@ -34,6 +34,7 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.navigation.navigateToSelectService
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.di.IdentificationEntryPoint
+import com.ytone.longcare.common.utils.UnifiedBackHandler
 
 /**
  * 身份认证相关常量
@@ -61,6 +62,9 @@ fun IdentificationScreen(
     // 在这里调用函数，将此页面强制设置为竖屏
     // ==========================================================
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+    
+    // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
+    UnifiedBackHandler(navController = navController)
     // 观察状态
     val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
     val faceVerificationState by viewModel.faceVerificationState.collectAsStateWithLifecycle()

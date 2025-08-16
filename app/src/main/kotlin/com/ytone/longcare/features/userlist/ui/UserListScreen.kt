@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.UserInfoModel
+import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.features.userlist.vm.UserListViewModel
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.bgGradientBrush
@@ -63,6 +64,9 @@ fun UserListScreen(
         UserListType.NO_SERVICE -> "未服务工时"
         UserListType.SERVICE_COUNT -> "服务次数"
     }
+
+    // 统一处理系统返回键
+    UnifiedBackHandler(navController = navController)
 
     // 初始化时加载数据
     LaunchedEffect(userListType) {

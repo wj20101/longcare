@@ -59,6 +59,7 @@ import com.ytone.longcare.ui.screen.TagCategory
 import androidx.core.net.toUri
 import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
+import com.ytone.longcare.common.utils.UnifiedBackHandler
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
@@ -75,6 +76,8 @@ fun PhotoUploadScreen(
     viewModel: PhotoProcessingViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
+    // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
+    UnifiedBackHandler(navController = navController)
 
     // 在组件初始化时加载订单信息（如果缓存中没有）
     LaunchedEffect(orderId) {
