@@ -6,6 +6,7 @@ import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.NfcUtils
+import com.ytone.longcare.common.utils.SelectedProjectsManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.navigation.EndOderInfo
@@ -24,7 +25,8 @@ import javax.inject.Inject
 class NfcWorkflowViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val toastHelper: ToastHelper,
-    private val appEventBus: AppEventBus
+    private val appEventBus: AppEventBus,
+    private val selectedProjectsManager: SelectedProjectsManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
@@ -100,6 +102,8 @@ class NfcWorkflowViewModel @Inject constructor(
                 endType
             )) {
                 is ApiResult.Success -> {
+                    // 订单结束成功后清除本地存储的选中项目数据
+                    selectedProjectsManager.clearSelectedProjects(orderId)
                     _uiState.value = NfcSignInUiState.Success
                 }
 

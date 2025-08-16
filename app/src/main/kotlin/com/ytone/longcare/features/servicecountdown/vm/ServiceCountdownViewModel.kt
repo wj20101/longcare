@@ -3,8 +3,9 @@ package com.ytone.longcare.features.servicecountdown.vm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.response.ServiceProjectM
-import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.common.utils.SelectedProjectsManager
 import com.ytone.longcare.common.utils.ServiceTimeManager
+import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,8 +15,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -23,7 +22,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ServiceCountdownViewModel @Inject constructor(
     private val toastHelper: ToastHelper,
-    private val serviceTimeManager: ServiceTimeManager
+    private val serviceTimeManager: ServiceTimeManager,
+    private val selectedProjectsManager: SelectedProjectsManager
 ) : ViewModel() {
     
     // 倒计时状态
@@ -205,15 +205,16 @@ class ServiceCountdownViewModel @Inject constructor(
     
     /**
      * 结束服务
-     * @param orderId 订单ID，用于清除服务时间记录
+     * @param orderId 订单ID，用于清除服务时间记录和选中项目记录
      */
     fun endService(orderId: Long? = null) {
         countdownJob?.cancel()
         _countdownState.value = ServiceCountdownState.ENDED
         
-        // 清除服务时间记录
+        // 清除服务时间记录和选中项目记录
         orderId?.let {
             serviceTimeManager.clearServiceTime(it)
+            selectedProjectsManager.clearSelectedProjects(it)
         }
     }
     
