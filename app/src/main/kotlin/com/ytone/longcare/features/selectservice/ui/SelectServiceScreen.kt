@@ -25,9 +25,13 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.platform.LocalContext
+import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.UnifiedBackHandler
-import com.ytone.longcare.navigation.navigateToServiceCountdown
+import com.ytone.longcare.common.utils.SelectedProjectsManager
+import com.ytone.longcare.common.utils.NavigationHelper
+import com.ytone.longcare.di.SelectServiceEntryPoint
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
@@ -43,8 +47,20 @@ data class ServiceItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectServiceScreen(
-    navController: NavController, orderId: Long, sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
+    navController: NavController, 
+    orderId: Long, 
+    sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    val selectedProjectsManager = EntryPointAccessors.fromApplication(
+        context.applicationContext,
+        SelectServiceEntryPoint::class.java
+    ).selectedProjectsManager()
+    
+    val navigationHelper = EntryPointAccessors.fromApplication(
+        context.applicationContext,
+        SelectServiceEntryPoint::class.java
+    ).navigationHelper()
     // 使用SharedViewModel获取订单详情
     val uiState by sharedViewModel.uiState.collectAsState()
     val starOrderState by sharedViewModel.starOrderState.collectAsStateWithLifecycle()
@@ -223,11 +239,19 @@ fun SelectServiceScreen(
                                 serviceItems.filter { it.isSelected }.map { it.id }
                             // 先调用starOrder接口
                             sharedViewModel.starOrder(orderId) {
-                                // 成功后执行路由跳转
-                                navController.navigateToServiceCountdown(
-                                    orderId,
-                                    selectedProjectIds
-                                )
+                                // 成功后保存选中的项目ID到本地存储
+                                selectedProjectsManager.saveSelectedProjects(orderId, selectedProjectIds)
+                                // 从uiState获取orderInfo
+                                val currentState = uiState
+                                if (currentState is OrderDetailUiState.Success) {
+                                    // 使用NavigationHelper统一处理跳转逻辑
+                                    navigationHelper.navigateToServiceCountdownWithLogic(
+                                        navController = navController,
+                                        orderId = orderId,
+                                        projectList = currentState.orderInfo.projectList,
+                                        selectedProjectIds = selectedProjectIds
+                                    )
+                                }
                             }
                         },
                         modifier = Modifier.weight(1f)

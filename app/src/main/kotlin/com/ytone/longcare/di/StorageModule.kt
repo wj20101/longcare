@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import com.google.gson.Gson
 import com.ytone.longcare.data.storage.appDataStore
 import dagger.Module
 import dagger.Provides
@@ -42,5 +43,11 @@ object StorageModule {
     @AppDataStore
     fun provideAppDataStore(@ApplicationContext context: Context): DataStore<Preferences> {
         return context.appDataStore
+    }
+
+    @Provides
+    @Singleton
+    fun provideGson(): Gson {
+        return Gson()
     }
 }

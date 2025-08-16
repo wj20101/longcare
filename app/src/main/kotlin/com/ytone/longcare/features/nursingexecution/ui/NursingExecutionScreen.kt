@@ -26,15 +26,13 @@ import com.ytone.longcare.R
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.api.response.UserInfoM
-import com.ytone.longcare.common.utils.FaceVerificationStatusManager
+import com.ytone.longcare.common.utils.NavigationHelper
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
-import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.model.isExecutingState
 import com.ytone.longcare.model.isPendingExecutionState
-import com.ytone.longcare.navigation.navigateToIdentification
 import com.ytone.longcare.navigation.navigateToSelectDevice
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
@@ -50,10 +48,15 @@ fun NursingExecutionScreen(
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val faceVerificationStatusManager = EntryPointAccessors.fromApplication(
+    val navigationHelper = EntryPointAccessors.fromApplication(
         context.applicationContext,
         NursingExecutionEntryPoint::class.java
-    ).faceVerificationStatusManager()
+    ).navigationHelper()
+    
+    val selectedProjectsManager = EntryPointAccessors.fromApplication(
+        context.applicationContext,
+        NursingExecutionEntryPoint::class.java
+    ).selectedProjectsManager()
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -85,7 +88,7 @@ fun NursingExecutionScreen(
                 navController = navController,
                 orderInfo = state.orderInfo,
                 orderId = orderId,
-                faceVerificationStatusManager = faceVerificationStatusManager
+                navigationHelper = navigationHelper
             )
         }
         
@@ -154,7 +157,7 @@ fun NursingExecutionContent(
     navController: NavController,
     orderInfo: ServiceOrderInfoModel,
     orderId: Long,
-    faceVerificationStatusManager: FaceVerificationStatusManager
+    navigationHelper: NavigationHelper
 ) {
     Box(
         modifier = Modifier
@@ -212,14 +215,12 @@ fun NursingExecutionContent(
                     onClick = {
                         when {
                             orderInfo.state.isExecutingState() -> {
-                                // 检查是否已完成人脸验证
-                                if (faceVerificationStatusManager.isFaceVerificationCompleted(orderId)) {
-                                    // 已完成人脸验证，直接跳转到选择服务页面
-                                    navController.navigateToSelectService(orderId)
-                                } else {
-                                    // 未完成人脸验证，跳转到身份认证页面
-                                    navController.navigateToIdentification(orderId)
-                                }
+                                // 使用NavigationHelper统一处理跳转逻辑
+                                navigationHelper.navigateToServiceCountdownWithLogic(
+                                    navController = navController,
+                                    orderId = orderId,
+                                    projectList = orderInfo.projectList
+                                )
                             }
                             orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(orderId)
                             else -> navController.popBackStack()

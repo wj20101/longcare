@@ -355,10 +355,18 @@ fun SelectedServicesCard(
 
     // 获取订单详情
     val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
+    val allProjects = orderInfo?.projectList ?: emptyList()
 
-    // 过滤出选中的项目
-    val selectedProjects =
-        orderInfo?.projectList?.filter { it.projectId in projectIdList } ?: emptyList()
+    // 判断是否为全选状态
+    val isAllSelected = projectIdList.isEmpty() || 
+        (allProjects.isNotEmpty() && projectIdList.containsAll(allProjects.map { it.projectId }))
+
+    // 根据是否全选来确定显示的项目
+    val selectedProjects = if (isAllSelected) {
+        allProjects
+    } else {
+        allProjects.filter { it.projectId in projectIdList }
+    }
 
     Box {
         Card(
@@ -374,6 +382,16 @@ fun SelectedServicesCard(
                 )
             ) {
                 if (selectedProjects.isNotEmpty()) {
+                    // 如果是全选状态，显示全选提示
+                    if (isAllSelected && allProjects.size > 1) {
+                        Text(
+                            text = "已选择全部服务项目 (${allProjects.size}项)",
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4A90E2)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         selectedProjects.forEachIndexed { index, project ->
                             Text("${index + 1}: ${project.projectName} (${project.serviceTime}分钟)")
@@ -388,7 +406,7 @@ fun SelectedServicesCard(
         }
         ServiceHoursTag(
             modifier = Modifier.align(Alignment.TopStart),
-            tagText = "所选服务",
+            tagText = if (isAllSelected && allProjects.size > 1) "全选服务" else "所选服务",
             tagCategory = TagCategory.DEFAULT
         )
     }

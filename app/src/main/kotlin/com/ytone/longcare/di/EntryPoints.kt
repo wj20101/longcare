@@ -1,7 +1,9 @@
 package com.ytone.longcare.di
 
 import com.ytone.longcare.common.utils.FaceVerificationStatusManager
+import com.ytone.longcare.common.utils.NavigationHelper
 import com.ytone.longcare.common.utils.NfcManager
+import com.ytone.longcare.common.utils.SelectedProjectsManager
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -32,6 +34,15 @@ interface NfcLocationEntryPoint {
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
+interface SelectServiceEntryPoint {
+    fun selectedProjectsManager(): SelectedProjectsManager
+    fun navigationHelper(): NavigationHelper
+}
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
 interface NursingExecutionEntryPoint {
     fun faceVerificationStatusManager(): FaceVerificationStatusManager
+    fun selectedProjectsManager(): SelectedProjectsManager
+    fun navigationHelper(): NavigationHelper
 }
