@@ -48,6 +48,7 @@ import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSettings
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
+import com.ytone.longcare.common.utils.UnifiedBackHandler
 
 
 // --- 状态定义 ---
@@ -71,6 +72,9 @@ fun NfcWorkflowScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
+    
+    // 统一处理系统返回键，与导航按钮行为一致
+    UnifiedBackHandler(navController = navController)
 
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(

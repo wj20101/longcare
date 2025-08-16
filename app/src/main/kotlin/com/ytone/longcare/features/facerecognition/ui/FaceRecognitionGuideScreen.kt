@@ -35,6 +35,7 @@ import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.facerecognition.vm.FaceRecognitionViewModel
 import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.theme.bgGradientBrush
+import com.ytone.longcare.common.utils.UnifiedBackHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +49,9 @@ fun FaceRecognitionGuideScreen(
     // 在这里调用函数，将此页面强制设置为竖屏
     // ==========================================================
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+    
+    // 统一处理系统返回键，与导航按钮行为一致
+    UnifiedBackHandler(navController = navController)
 
     Box(
         modifier = Modifier

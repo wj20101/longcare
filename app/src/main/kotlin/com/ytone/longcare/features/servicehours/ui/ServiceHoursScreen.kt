@@ -22,10 +22,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.common.utils.LockScreenOrientation
+import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
@@ -44,6 +44,9 @@ fun ServiceHoursScreen(
 
     // 获取UI状态
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // 统一处理系统返回键
+    UnifiedBackHandler(navController = navController)
 
     // 页面初始化时获取订单详情
     LaunchedEffect(orderId) {

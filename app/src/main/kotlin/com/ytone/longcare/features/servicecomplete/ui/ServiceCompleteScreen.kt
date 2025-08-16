@@ -30,6 +30,7 @@ import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
+import com.ytone.longcare.common.utils.HomeBackHandler
 
 // --- 数据模型 ---
 data class ServiceSummary(
@@ -48,6 +49,9 @@ fun ServiceCompleteScreen(
     navController: NavController, orderId: Long, sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     val uiState by sharedViewModel.uiState.collectAsStateWithLifecycle()
+    
+    // 统一处理系统返回键，与导航按钮行为一致（返回首页并清空堆栈）
+    HomeBackHandler(navController = navController)
 
     // 在组件初始化时获取订单详情（如果缓存中没有）
     LaunchedEffect(orderId) {

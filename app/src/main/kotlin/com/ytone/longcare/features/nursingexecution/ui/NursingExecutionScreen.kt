@@ -28,6 +28,7 @@ import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.api.response.UserInfoM
 import com.ytone.longcare.common.utils.FaceVerificationStatusManager
 import com.ytone.longcare.common.utils.LockScreenOrientation
+import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.navigation.navigateToSelectService
@@ -60,6 +61,9 @@ fun NursingExecutionScreen(
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     val uiState by sharedViewModel.uiState.collectAsStateWithLifecycle()
+    
+    // 统一处理系统返回键
+    UnifiedBackHandler(navController = navController)
     
     // 在组件初始化时加载订单信息（如果缓存中没有）
     LaunchedEffect(orderId) {
