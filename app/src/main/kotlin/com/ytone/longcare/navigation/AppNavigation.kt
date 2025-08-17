@@ -197,9 +197,11 @@ fun NavController.navigateToHomeAndClearStack() {
 /**
  * 导航到用户服务记录页面
  * @param userId 用户ID
+ * @param userName 用户昵称
+ * @param userAddress 用户地址
  */
-fun NavController.navigateToUserServiceRecord(userId: Long) {
-    navigate(UserServiceRecordRoute(userId))
+fun NavController.navigateToUserServiceRecord(userId: Long, userName: String, userAddress: String) {
+    navigate(UserServiceRecordRoute(userId, userName, userAddress))
 }
 
 /**
@@ -386,8 +388,8 @@ fun AppNavigation(startDestination: Any) {
             val route = backStackEntry.toRoute<UserServiceRecordRoute>()
             UserServiceRecordScreen(
                 userId = route.userId,
-                userName = "用户详情", // 可以从参数传入或从ViewModel获取
-                userAddress = "", // 可以从参数传入或从ViewModel获取
+                userName = route.userName,
+                userAddress = route.userAddress,
                 onBackClick = { navController.popBackStack() }
             )
         }
