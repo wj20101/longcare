@@ -180,7 +180,9 @@ data class UserListRoute(val listType: String)
 /**
  * 用户服务记录页面路由
  * @param userId 用户ID
+ * @param userName 用户昵称
+ * @param userAddress 用户地址
  */
 @Keep
 @Serializable
-data class UserServiceRecordRoute(val userId: Long)
+data class UserServiceRecordRoute(val userId: Long, val userName: String, val userAddress: String)

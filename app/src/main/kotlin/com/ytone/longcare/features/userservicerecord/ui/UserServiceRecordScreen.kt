@@ -65,46 +65,42 @@ fun UserServiceRecordScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            userName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = Color.White
+                        )
+                        if (userAddress.isNotBlank()) {
                             Text(
-                                userName,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
-                            )
-                            if (userAddress.isNotBlank()) {
-                                Text(
-                                    "地址: $userAddress",
-                                    fontSize = 12.sp,
-                                    color = Color.White.copy(alpha = 0.85f)
-                                )
-                            }
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "返回",
-                                tint = Color.White
+                                "地址: $userAddress",
+                                fontSize = 12.sp,
+                                color = Color.White.copy(alpha = 0.85f)
                             )
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent
-                    )
+                    }
+                }, navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "返回",
+                            tint = Color.White
+                        )
+                    }
+                }, colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent
                 )
-            },
-            containerColor = Color.Transparent
+                )
+            }, containerColor = Color.Transparent
         ) { paddingValues ->
             if (isLoading) {
                 CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = Color.White
+                    modifier = Modifier.align(Alignment.Center), color = Color.White
                 )
             } else {
                 UserServiceRecordContent(
-                    serviceRecords = serviceRecords,
-                    modifier = Modifier.padding(paddingValues)
+                    serviceRecords = serviceRecords, modifier = Modifier.padding(paddingValues)
                 )
             }
         }
@@ -113,25 +109,11 @@ fun UserServiceRecordScreen(
 
 @Composable
 fun UserServiceRecordContent(
-    serviceRecords: List<UserOrderModel>,
-    modifier: Modifier = Modifier
+    serviceRecords: List<UserOrderModel>, modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier.padding(16.dp)
     ) {
-        // 使用ServiceHoursTag样式
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
-        ) {
-            ServiceHoursTag(
-                 tagText = "已服务工时",
-                 tagCategory = TagCategory.DEFAULT
-             )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         // 服务记录列表
         if (serviceRecords.isEmpty()) {
             Box(
@@ -143,12 +125,19 @@ fun UserServiceRecordContent(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "暂无服务记录",
-                    color = Color.Gray,
-                    fontSize = 16.sp
+                    text = "暂无服务记录", color = Color.Gray, fontSize = 16.sp
                 )
             }
         } else {
+            // 使用ServiceHoursTag样式
+            Row(
+                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start
+            ) {
+                ServiceHoursTag(
+                    tagText = "已服务工时", tagCategory = TagCategory.DEFAULT
+                )
+            }
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -159,10 +148,9 @@ fun UserServiceRecordContent(
             ) {
                 itemsIndexed(serviceRecords) { index, record ->
                     ServiceRecordItem(
-                        record = record,
-                        modifier = Modifier.fillMaxWidth()
+                        record = record, modifier = Modifier.fillMaxWidth()
                     )
-                    
+
                     // 添加分割线，除了最后一项
                     if (index < serviceRecords.size - 1) {
                         HorizontalDivider(
@@ -179,8 +167,7 @@ fun UserServiceRecordContent(
 
 @Composable
 fun ServiceRecordItem(
-    record: UserOrderModel,
-    modifier: Modifier = Modifier
+    record: UserOrderModel, modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
@@ -199,9 +186,7 @@ fun ServiceRecordItem(
 
         // 工时信息
         Text(
-            text = "工时：${record.totalServiceTime}",
-            fontSize = 14.sp,
-            color = Color.Gray
+            text = "工时：${record.totalServiceTime}", fontSize = 14.sp, color = Color.Gray
         )
 
         Spacer(modifier = Modifier.height(4.dp))

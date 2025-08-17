@@ -39,15 +39,6 @@ class UserListRepositoryImpl @Inject constructor(
     }
 
     /**
-     * 获取本月服务次数的用户列表
-     */
-    override suspend fun getServiceCountUserList(): ApiResult<List<UserInfoModel>> {
-        return safeApiCall(ioDispatcher, eventBus) {
-            apiService.getHaveServiceUserList()
-        }
-    }
-
-    /**
      * 获取用户服务记录列表
      * @param userId 用户ID
      */

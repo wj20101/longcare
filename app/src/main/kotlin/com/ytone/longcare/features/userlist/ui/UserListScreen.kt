@@ -117,7 +117,11 @@ fun UserListScreen(
                 // 点击用户项的处理逻辑
                 if (userListType == UserListType.HAVE_SERVICE) {
                     // 已服务工时页面，跳转到用户服务记录页面
-                    navController.navigateToUserServiceRecord(user.userId.toLong())
+                    navController.navigateToUserServiceRecord(
+                        user.userId.toLong(),
+                        user.name,
+                        user.address
+                    )
                 }
                 // 其他类型暂时不做处理
             }
