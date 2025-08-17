@@ -64,10 +64,10 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun starOrder(orderId: Long): ApiResult<Unit> {
+    override suspend fun starOrder(orderId: Long, selectedProjectIds: List<Long>): ApiResult<Unit> {
         return safeApiCall(ioDispatcher, eventBus) {
             apiService.starOrder(
-                StarOrderParamModel(orderId = orderId)
+                StarOrderParamModel(orderId = orderId, selectedProjectIds = selectedProjectIds)
             )
         }
     }

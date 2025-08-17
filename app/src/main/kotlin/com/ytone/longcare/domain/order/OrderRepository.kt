@@ -48,8 +48,9 @@ interface OrderRepository {
     /**
      * 工单开始(正式计时)
      * @param orderId 订单号
+     * @param selectedProjectIds 选中的项目ID列表
      */
-    suspend fun starOrder(orderId: Long): ApiResult<Unit>
+    suspend fun starOrder(orderId: Long, selectedProjectIds: List<Long> = emptyList()): ApiResult<Unit>
 
     /**
      * 添加开始老人照片

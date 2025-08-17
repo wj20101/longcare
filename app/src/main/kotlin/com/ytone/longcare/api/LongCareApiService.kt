@@ -18,6 +18,7 @@ import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.NurseServiceTimeModel
 import com.ytone.longcare.api.response.UserInfoModel
+import com.ytone.longcare.api.response.UserOrderModel
 import com.ytone.longcare.api.response.UploadTokenResultModel
 import com.ytone.longcare.api.response.SystemConfigModel
 import com.ytone.longcare.api.response.AppVersionModel
@@ -136,7 +137,7 @@ interface LongCareApiService {
      * 获取本月用户的服务记录情况
      */
     @POST("/V1/Service/UserOrderList")
-    suspend fun getUserOrderList(@Body param: UserOrderParamModel): Response<List<UserInfoModel>>
+    suspend fun getUserOrderList(@Body param: UserOrderParamModel): Response<List<UserOrderModel>>
 
     /**
      * 获取文件上传token

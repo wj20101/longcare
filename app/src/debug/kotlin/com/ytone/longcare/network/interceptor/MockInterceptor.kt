@@ -55,8 +55,8 @@ class MockInterceptor(private val context: Context) : Interceptor {
             "/V1/Service/OrderInfo" -> "mock/order_info.json"
             "/V1/Service/Statistics" -> "mock/service_statistics.json"
             "/V1/Service/HaveServiceUserList",
-            "/V1/Service/NoServiceUserList",
-            "/V1/Service/UserOrderList" -> "mock/user_info_list.json"
+            "/V1/Service/NoServiceUserList" -> "mock/user_info_list.json"
+            "/V1/Service/UserOrderList" -> "mock/user_order_list.json"
             "/V1/File/UploadToken" -> "mock/upload_token.json"  // 修正：路径从 /V1/Common/UploadToken 改为 /V1/File/UploadToken
             "/V1/File/GetFileUrl" -> "mock/file_url.json"  // 新增：获取文件访问链接
             "/V1/Common/Config" -> "mock/system_config.json"

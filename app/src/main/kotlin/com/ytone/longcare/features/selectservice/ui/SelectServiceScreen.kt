@@ -238,7 +238,7 @@ fun SelectServiceScreen(
                             val selectedProjectIds =
                                 serviceItems.filter { it.isSelected }.map { it.id }
                             // 先调用starOrder接口
-                            sharedViewModel.starOrder(orderId) {
+                            sharedViewModel.starOrder(orderId, selectedProjectIds.map { it.toLong() }) {
                                 // 成功后保存选中的项目ID到本地存储
                                 selectedProjectsManager.saveSelectedProjects(orderId, selectedProjectIds)
                                 // 从uiState获取orderInfo

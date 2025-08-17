@@ -9,5 +9,11 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class StarOrderParamModel(
     @param:Json(name = "orderid")
-    val orderId: Long
+    val orderId: Long,
+    
+    /**
+     * 选中的项目ID列表
+     */
+    @param:Json(name = "selectedProjectIds")
+    val selectedProjectIds: List<Long> = emptyList()
 )

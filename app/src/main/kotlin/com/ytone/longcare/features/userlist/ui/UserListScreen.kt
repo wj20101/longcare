@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.userlist.ui
 
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,8 +35,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.UserInfoModel
+import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.features.userlist.vm.UserListViewModel
+import com.ytone.longcare.navigation.navigateToUserServiceRecord
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.bgGradientBrush
 
@@ -54,6 +57,12 @@ fun UserListScreen(
     userListType: UserListType,
     viewModel: UserListViewModel = hiltViewModel()
 ) {
+
+    // ==========================================================
+    // 在这里调用函数，将此页面强制设置为竖屏
+    // ==========================================================
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+
     val userList by viewModel.userListState.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
@@ -105,8 +114,12 @@ fun UserListScreen(
                 userListType = userListType,
                 modifier = Modifier.padding(paddingValues)
             ) { user ->
-                // 点击用户项的处理逻辑，可以导航到用户详情页面
-                // 这里暂时不做处理，根据需求可以添加
+                // 点击用户项的处理逻辑
+                if (userListType == UserListType.HAVE_SERVICE) {
+                    // 已服务工时页面，跳转到用户服务记录页面
+                    navController.navigateToUserServiceRecord(user.userId.toLong())
+                }
+                // 其他类型暂时不做处理
             }
         }
     }

@@ -139,13 +139,14 @@ class SharedOrderDetailViewModel @Inject constructor(
     /**
      * 工单开始(正式计时)
      * @param orderId 订单ID
+     * @param selectedProjectIds 选中的项目ID列表
      * @param onSuccess 成功回调
      */
-    fun starOrder(orderId: Long, onSuccess: () -> Unit = {}) {
+    fun starOrder(orderId: Long, selectedProjectIds: List<Long> = emptyList(), onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             _starOrderState.value = StarOrderUiState.Loading
 
-            when (val result = orderRepository.starOrder(orderId)) {
+            when (val result = orderRepository.starOrder(orderId, selectedProjectIds)) {
                 is ApiResult.Success -> {
                     _starOrderState.value = StarOrderUiState.Success
                     toastHelper.showShort("工单开始成功")

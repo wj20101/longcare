@@ -37,6 +37,7 @@ import com.ytone.longcare.features.identification.ui.IdentificationScreen
 import com.ytone.longcare.features.selectdevice.ui.SelectDeviceScreen
 import com.ytone.longcare.features.userlist.ui.UserListScreen
 import com.ytone.longcare.features.userlist.ui.UserListType
+import com.ytone.longcare.features.userservicerecord.ui.UserServiceRecordScreen
 import kotlin.reflect.typeOf
 
 /**
@@ -191,6 +192,14 @@ fun NavController.navigateToHomeAndClearStack() {
         popUpTo(0) { inclusive = false }
         launchSingleTop = true
     }
+}
+
+/**
+ * 导航到用户服务记录页面
+ * @param userId 用户ID
+ */
+fun NavController.navigateToUserServiceRecord(userId: Long) {
+    navigate(UserServiceRecordRoute(userId))
 }
 
 /**
@@ -370,6 +379,16 @@ fun AppNavigation(startDestination: Any) {
             UserListScreen(
                 navController = navController,
                 userListType = userListType
+            )
+        }
+        
+        composable<UserServiceRecordRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<UserServiceRecordRoute>()
+            UserServiceRecordScreen(
+                userId = route.userId,
+                userName = "用户详情", // 可以从参数传入或从ViewModel获取
+                userAddress = "", // 可以从参数传入或从ViewModel获取
+                onBackClick = { navController.popBackStack() }
             )
         }
     }
