@@ -184,13 +184,6 @@ fun NavController.navigateToNoServiceUserList() {
 }
 
 /**
- * 导航到服务次数用户列表页面
- */
-fun NavController.navigateToServiceCountUserList() {
-    navigateToUserList(UserListType.SERVICE_COUNT.name)
-}
-
-/**
  * 导航到主页并清除所有返回栈
  */
 fun NavController.navigateToHomeAndClearStack() {
@@ -372,7 +365,6 @@ fun AppNavigation(startDestination: Any) {
             val userListType = when (route.listType) {
                 UserListType.HAVE_SERVICE.name -> UserListType.HAVE_SERVICE
                 UserListType.NO_SERVICE.name -> UserListType.NO_SERVICE
-                UserListType.SERVICE_COUNT.name -> UserListType.SERVICE_COUNT
                 else -> UserListType.HAVE_SERVICE // 默认值
             }
             UserListScreen(

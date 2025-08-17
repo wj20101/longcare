@@ -45,7 +45,6 @@ import com.ytone.longcare.theme.bgGradientBrush
 enum class UserListType {
     HAVE_SERVICE, // 已服务工时
     NO_SERVICE,   // 未服务工时
-    SERVICE_COUNT // 服务次数
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,7 +61,6 @@ fun UserListScreen(
     val title = when (userListType) {
         UserListType.HAVE_SERVICE -> "已服务工时"
         UserListType.NO_SERVICE -> "未服务工时"
-        UserListType.SERVICE_COUNT -> "服务次数"
     }
 
     // 统一处理系统返回键
@@ -73,7 +71,6 @@ fun UserListScreen(
         when (userListType) {
             UserListType.HAVE_SERVICE -> viewModel.getHaveServiceUserList()
             UserListType.NO_SERVICE -> viewModel.getNoServiceUserList()
-            UserListType.SERVICE_COUNT -> viewModel.getServiceCountUserList()
         }
     }
     Box(
@@ -213,7 +210,6 @@ fun UserListItem(
                 val serviceTimeText = when (userListType) {
                     UserListType.HAVE_SERVICE -> "本月已服务工时: ${user.monthServiceTime}"
                     UserListType.NO_SERVICE -> "本月未服务工时: ${user.monthNoServiceTime}"
-                    UserListType.SERVICE_COUNT -> "本月已服务工时: ${user.monthServiceTime}"
                 }
                 Text(
                     text = serviceTimeText,

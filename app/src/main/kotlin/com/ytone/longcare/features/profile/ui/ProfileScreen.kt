@@ -40,7 +40,6 @@ import com.ytone.longcare.models.protos.User
 import com.ytone.longcare.navigation.HomeRoute
 import com.ytone.longcare.navigation.navigateToHaveServiceUserList
 import com.ytone.longcare.navigation.navigateToNoServiceUserList
-import com.ytone.longcare.navigation.navigateToServiceCountUserList
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.ui.components.UserAvatar
 
@@ -166,7 +165,6 @@ fun StatsCard(navController: NavController, stats: NurseServiceTimeModel) {
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 value = stats.haveServiceNum.toString(),
                 label = "服务次数",
-                onClick = { navController.navigateToServiceCountUserList() }
             )
             VerticalDivider(
                 modifier = Modifier.fillMaxHeight().padding(vertical = 16.dp), 
