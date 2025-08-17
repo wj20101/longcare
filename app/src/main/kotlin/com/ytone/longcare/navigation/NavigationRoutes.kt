@@ -176,3 +176,11 @@ data class IdentificationRoute(val orderId: Long)
 @Keep
 @Serializable
 data class UserListRoute(val listType: String)
+
+/**
+ * 用户服务记录页面路由
+ * @param userId 用户ID
+ */
+@Keep
+@Serializable
+data class UserServiceRecordRoute(val userId: Long)

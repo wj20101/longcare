@@ -1,6 +1,7 @@
 package com.ytone.longcare.domain.userlist
 
 import com.ytone.longcare.api.response.UserInfoModel
+import com.ytone.longcare.api.response.UserOrderModel
 import com.ytone.longcare.common.network.ApiResult
 
 /**
@@ -22,4 +23,10 @@ interface UserListRepository {
      * 获取本月服务次数的用户列表
      */
     suspend fun getServiceCountUserList(): ApiResult<List<UserInfoModel>>
+
+    /**
+     * 获取用户服务记录列表
+     * @param userId 用户ID
+     */
+    suspend fun getUserOrderList(userId: Long): ApiResult<List<UserOrderModel>>
 }

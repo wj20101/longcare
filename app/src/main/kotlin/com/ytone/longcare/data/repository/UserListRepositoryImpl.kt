@@ -1,7 +1,9 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
+import com.ytone.longcare.api.request.UserOrderParamModel
 import com.ytone.longcare.api.response.UserInfoModel
+import com.ytone.longcare.api.response.UserOrderModel
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.network.safeApiCall
@@ -41,7 +43,17 @@ class UserListRepositoryImpl @Inject constructor(
      */
     override suspend fun getServiceCountUserList(): ApiResult<List<UserInfoModel>> {
         return safeApiCall(ioDispatcher, eventBus) {
-            apiService.getUserOrderList(com.ytone.longcare.api.request.UserOrderParamModel())
+            apiService.getHaveServiceUserList()
+        }
+    }
+
+    /**
+     * 获取用户服务记录列表
+     * @param userId 用户ID
+     */
+    override suspend fun getUserOrderList(userId: Long): ApiResult<List<UserOrderModel>> {
+        return safeApiCall(ioDispatcher, eventBus) {
+            apiService.getUserOrderList(UserOrderParamModel(userId = userId.toInt()))
         }
     }
 }
