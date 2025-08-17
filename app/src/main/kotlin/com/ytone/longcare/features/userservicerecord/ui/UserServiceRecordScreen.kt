@@ -129,37 +129,47 @@ fun UserServiceRecordContent(
                 )
             }
         } else {
-            // 使用ServiceHoursTag样式
-            Row(
-                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start
-            ) {
-                ServiceHoursTag(
-                    tagText = "已服务工时", tagCategory = TagCategory.DEFAULT
-                )
-            }
+            // 使用Box实现ServiceHoursTag叠加在ServiceRecordList之上
+            Box {
+                // 列表内容区域，需要给顶部留出空间给ServiceHoursTag
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 22.dp) // 给ServiceHoursTag留出空间
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.9f))
+                ) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        itemsIndexed(serviceRecords) { index, record ->
+                            ServiceRecordItem(
+                                record = record,
+                                index = index,
+                                modifier = Modifier.fillMaxWidth()
+                            )
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.9f))
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                itemsIndexed(serviceRecords) { index, record ->
-                    ServiceRecordItem(
-                        record = record, modifier = Modifier.fillMaxWidth()
-                    )
-
-                    // 添加分割线，除了最后一项
-                    if (index < serviceRecords.size - 1) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            thickness = 0.5.dp,
-                            color = Color.Gray.copy(alpha = 0.3f)
-                        )
+                            // 添加分割线，除了最后一项
+                            if (index < serviceRecords.size - 1) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    thickness = 0.5.dp,
+                                    color = Color.Gray.copy(alpha = 0.3f)
+                                )
+                            }
+                        }
                     }
                 }
+                
+                // ServiceHoursTag 叠加在白色容器的左上角外侧
+                ServiceHoursTag(
+                    modifier = Modifier.align(Alignment.TopStart),
+                    tagText = "已服务工时", 
+                    tagCategory = TagCategory.DEFAULT
+                )
             }
         }
     }
@@ -167,7 +177,9 @@ fun UserServiceRecordContent(
 
 @Composable
 fun ServiceRecordItem(
-    record: UserOrderModel, modifier: Modifier = Modifier
+    record: UserOrderModel,
+    index: Int,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
@@ -176,7 +188,7 @@ fun ServiceRecordItem(
     ) {
         // 服务记录标题
         Text(
-            text = "服务记录${record.ordreId}",
+            text = "服务记录${index + 1}",
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
             color = Color.Black
