@@ -48,3 +48,9 @@ interface NursingExecutionEntryPoint {
     fun navigationHelper(): NavigationHelper
     fun toastHelper(): ToastHelper
 }
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface SelectedProjectsManagerEntryPoint {
+    fun selectedProjectsManager(): SelectedProjectsManager
+}

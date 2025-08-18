@@ -30,11 +30,15 @@ import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
+import com.ytone.longcare.common.utils.SelectedProjectsManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceHoursScreen(
-    navController: NavController, orderId: Long, viewModel: OrderDetailViewModel = hiltViewModel()
+    navController: NavController, 
+    orderId: Long, 
+    viewModel: OrderDetailViewModel = hiltViewModel(),
+    selectedProjectsManager: SelectedProjectsManager
 ) {
 
     // ==========================================================
@@ -120,8 +124,13 @@ fun ServiceHoursScreen(
                             .padding(paddingValues) // 应用来自Scaffold的padding
                     ) {
                         // 列表内容区域，需要给顶部留出空间给 ServiceHoursTag
+                        val selectedProjects = getSelectedProjects(
+                            allProjects = state.orderInfo.projectList,
+                            selectedProjectsManager = selectedProjectsManager,
+                            orderId = orderId
+                        )
                         ServiceRecordList(
-                            projects = state.orderInfo.projectList,
+                            projects = selectedProjects,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(top = 18.dp) // 为 ServiceHoursTag 预留空间，可调整
@@ -145,6 +154,31 @@ fun ServiceHoursScreen(
                 }
             }
         }
+    }
+}
+
+/**
+ * 获取选中的项目列表
+ * @param allProjects 所有项目列表
+ * @param selectedProjectsManager 选中项目管理器
+ * @param orderId 订单ID
+ * @return 过滤后的项目列表
+ */
+fun getSelectedProjects(
+    allProjects: List<ServiceProjectM>,
+    selectedProjectsManager: SelectedProjectsManager,
+    orderId: Long
+): List<ServiceProjectM> {
+    val selectedProjectIds = selectedProjectsManager.getSelectedProjects(orderId)
+    
+    return if (selectedProjectIds?.isNotEmpty() == true) {
+        // 根据选中的项目ID过滤项目列表
+        allProjects.filter { project -> 
+            selectedProjectIds.contains(project.projectId) 
+        }
+    } else {
+        // 如果没有选中项目数据，返回所有项目（兼容性处理）
+        allProjects
     }
 }
 
