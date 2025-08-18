@@ -5,6 +5,7 @@ import com.ytone.longcare.common.utils.NavigationHelper
 import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.SelectedProjectsManager
 import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -53,4 +54,10 @@ interface NursingExecutionEntryPoint {
 @InstallIn(SingletonComponent::class)
 interface SelectedProjectsManagerEntryPoint {
     fun selectedProjectsManager(): SelectedProjectsManager
+}
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface ServiceCountdownEntryPoint {
+    fun countdownNotificationManager(): CountdownNotificationManager
 }

@@ -20,6 +20,14 @@
     <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    
+    <!-- 倒计时通知所需权限 -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" 
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <uses-sdk tools:overrideLibrary="com.tencent.cloud.huiyansdkface.wecamera"/>
 
@@ -90,6 +98,12 @@
             
         <!-- 高德地图定位服务 -->
         <service android:name="com.amap.api.location.APSService" />
+        
+        <!-- 倒计时闹钟广播接收器 -->
+        <receiver
+            android:name=".features.countdown.receiver.CountdownAlarmReceiver"
+            android:enabled="true"
+            android:exported="false" />
 
         <!-- Disable WorkManager automatic initialization -->
         <provider

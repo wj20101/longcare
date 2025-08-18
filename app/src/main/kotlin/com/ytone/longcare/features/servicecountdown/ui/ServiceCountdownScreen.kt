@@ -40,6 +40,8 @@ import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import com.ytone.longcare.common.utils.HomeBackHandler
+import com.ytone.longcare.di.ServiceCountdownEntryPoint
+import dagger.hilt.android.EntryPointAccessors
 
 
 // 服务倒计时页面状态
@@ -74,6 +76,13 @@ fun ServiceCountdownScreen(
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    
+    // 获取CountdownNotificationManager实例
+    val entryPoint = EntryPointAccessors.fromApplication(
+        context.applicationContext,
+        ServiceCountdownEntryPoint::class.java
+    )
+    val countdownNotificationManager = entryPoint.countdownNotificationManager()
     
     // 二次确认弹窗状态
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -117,11 +126,31 @@ fun ServiceCountdownScreen(
     val setupCountdownTime = {
         val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
         orderInfo?.let {
+            // 计算总服务时间（分钟）
+            val totalMinutes = it.projectList
+                .filter { project -> project.projectId in projectIdList }
+                .sumOf { project -> project.serviceTime }
+            
+            // 设置ViewModel的倒计时
             viewModel.setCountdownTimeFromProjects(
                 orderId = orderId,
                 projectList = it.projectList,
                 selectedProjectIds = projectIdList
             )
+            
+            // 设置系统级倒计时闹钟
+            if (totalMinutes > 0) {
+                val serviceName = it.projectList
+                    .filter { project -> project.projectId in projectIdList }
+                    .joinToString(", ") { project -> project.projectName }
+                
+                val completionTime = countdownNotificationManager.calculateCompletionTime(totalMinutes * 60 * 1000L)
+                countdownNotificationManager.scheduleCountdownAlarm(
+                    orderId = orderId,
+                    serviceName = serviceName,
+                    triggerTimeMillis = completionTime
+                )
+            }
         }
     }
 
@@ -203,6 +232,9 @@ fun ServiceCountdownScreen(
                     } else {
                         // 直接结束服务
                         viewModel.endService(orderId)
+                        // 取消倒计时闹钟
+                        countdownNotificationManager.cancelCountdownAlarm()
+                        
                         val uploadedImages = viewModel.getCurrentUploadedImages()
                         val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
                         val endImgList = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
@@ -255,6 +287,9 @@ fun ServiceCountdownScreen(
                     onClick = {
                         showConfirmDialog = false
                         viewModel.endService(orderId)
+                        // 取消倒计时闹钟
+                        countdownNotificationManager.cancelCountdownAlarm()
+                        
                         val uploadedImages = viewModel.getCurrentUploadedImages()
                         val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
                         val endImgList = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
