@@ -11,17 +11,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,12 +33,15 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.isPendingCare
+import com.ytone.longcare.common.utils.NavigationHelper
+import com.ytone.longcare.di.NursingExecutionEntryPoint
+import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.theme.IndicatorGradientStart
@@ -51,6 +55,9 @@ import com.ytone.longcare.navigation.navigateToNursingExecution
 import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.navigation.navigateToServiceRecordsList
 import com.ytone.longcare.ui.components.UserAvatar
+import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.common.utils.logE
+import dagger.hilt.android.EntryPointAccessors
 
 @Composable
 fun MainDashboardScreen(
@@ -59,8 +66,16 @@ fun MainDashboardScreen(
     val parentEntry = remember(navController.currentBackStackEntry) {
         navController.getBackStackEntry(HomeRoute)
     }
+    val context = LocalContext.current
+    val entryPoint = EntryPointAccessors.fromApplication(
+        context.applicationContext,
+        NursingExecutionEntryPoint::class.java
+    )
+    val navigationHelper = entryPoint.navigationHelper()
+    val toastHelper = entryPoint.toastHelper()
     val homeSharedViewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
     val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
+    val sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel()
     val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
 
     val todayOrderList by todayOrderViewModel.todayOrderListState.collectAsStateWithLifecycle()
@@ -91,7 +106,10 @@ fun MainDashboardScreen(
                     start = 16.dp,
                     end = 16.dp,
                     top = paddingValues.calculateTopPadding()
-                )
+                ),
+                navigationHelper = navigationHelper,
+                sharedOrderDetailViewModel = sharedOrderDetailViewModel,
+                toastHelper = toastHelper
             )
         } ?: run {
             // 如果 user 为 null (例如正在登出或初始化)，显示加载指示器
@@ -113,7 +131,10 @@ private fun MainDashboardContent(
     inOrderList: List<ServiceOrderModel>,
     navController: NavController,
     homeSharedViewModel: HomeSharedViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    navigationHelper: NavigationHelper,
+    sharedOrderDetailViewModel: SharedOrderDetailViewModel,
+    toastHelper: ToastHelper
 ) {
     LazyColumn(
         modifier = modifier,
@@ -139,7 +160,10 @@ private fun MainDashboardContent(
                 todayOrderList = todayOrderList,
                 inOrderList = inOrderList,
                 navController = navController,
-                homeSharedViewModel = homeSharedViewModel
+                homeSharedViewModel = homeSharedViewModel,
+                navigationHelper = navigationHelper,
+                sharedOrderDetailViewModel = sharedOrderDetailViewModel,
+                toastHelper = toastHelper
             )
         }
     }
@@ -416,10 +440,14 @@ fun OrderTabLayout(
     todayOrderList: List<TodayServiceOrderModel>,
     inOrderList: List<ServiceOrderModel>,
     navController: NavController,
-    homeSharedViewModel: HomeSharedViewModel
+    homeSharedViewModel: HomeSharedViewModel,
+    navigationHelper: NavigationHelper,
+    sharedOrderDetailViewModel: SharedOrderDetailViewModel,
+    toastHelper: ToastHelper
 ) {
     val selectedTabIndex by homeSharedViewModel.selectedTabIndex.collectAsStateWithLifecycle()
     val tabs = listOf("待护理计划", "服务中")
+    val coroutineScope = rememberCoroutineScope()
     
     Column {
         TabRow(
@@ -472,7 +500,42 @@ fun OrderTabLayout(
                 if (inOrderList.isNotEmpty()) {
                     inOrderList.forEach { order ->
                         InOrderServiceItem(order = order) {
-                            navController.navigateToService(order.orderId)
+                            // 先尝试从缓存获取projectList
+                            val cachedOrderInfo = sharedOrderDetailViewModel.getCachedOrderInfo(order.orderId)
+                            if (cachedOrderInfo != null) {
+                                // 缓存存在，直接跳转
+                                val projectList = cachedOrderInfo.projectList
+                                navigationHelper.navigateToServiceCountdownWithLogic(
+                                    navController = navController,
+                                    orderId = order.orderId,
+                                    projectList = projectList
+                                )
+                            } else {
+                                 // 缓存不存在，先查询订单详情
+                                 coroutineScope.launch {
+                                     try {
+                                         sharedOrderDetailViewModel.getOrderInfo(order.orderId)
+                                         // 查询完成后，再次尝试获取缓存并跳转
+                                         val orderInfo = sharedOrderDetailViewModel.getCachedOrderInfo(order.orderId)
+                                         if (orderInfo != null) {
+                                             val projectList = orderInfo.projectList
+                                             navigationHelper.navigateToServiceCountdownWithLogic(
+                                                 navController = navController,
+                                                 orderId = order.orderId,
+                                                 projectList = projectList
+                                             )
+                                         } else {
+                                             // 订单详情获取失败，添加错误提示和日志
+                                             toastHelper.showShort("获取订单详情失败，请稍后重试")
+                                             logE("获取订单详情失败: orderId=${order.orderId}")
+                                         }
+                                     } catch (e: Exception) {
+                                         // 网络请求失败或其他异常，添加错误处理
+                                         toastHelper.showShort("网络连接异常，请检查网络后重试")
+                                         logE("跳转到服务倒计时页面失败: orderId=${order.orderId}", throwable = e)
+                                     }
+                                 }
+                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -543,29 +606,4 @@ fun CustomTabItem(
             )
         }
     }
-}
-
-@Preview
-@Composable
-fun MainDashboardContentPreview() {
-    val user = User(
-        companyId = 1,
-        accountId = 1,
-        userId = 1,
-        userName = "John Doe",
-        headUrl = "",
-        userIdentity = 1,
-        identityCardNumber = "123456789012345678",
-        gender = 1,
-        token = "token"
-    )
-    val todayOrderList = listOf(
-        TodayServiceOrderModel(orderId = 1L, name = "Order 1", state = 0),
-        TodayServiceOrderModel(orderId = 2L, name = "Order 2", state = 1)
-    )
-    val inOrderList = listOf(
-        ServiceOrderModel(orderId = 3L, name = "In Order 1", state = 2)
-    )
-    // Preview中无法使用真实的ViewModel，这里注释掉
-    // MainDashboardContent(user = user, todayOrderList = todayOrderList, inOrderList = inOrderList, navController = rememberNavController(), homeSharedViewModel = homeSharedViewModel)
 }
