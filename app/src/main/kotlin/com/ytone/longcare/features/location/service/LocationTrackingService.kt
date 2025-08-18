@@ -16,10 +16,10 @@ import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.location.LocationRepository
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
+import com.ytone.longcare.features.location.provider.LocationResult
 import com.ytone.longcare.features.location.provider.LocationStrategy
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
-import java.util.Locale
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -117,17 +117,9 @@ class LocationTrackingService : Service() {
     /**
      * 处理位置更新和上报的统一方法。
      */
-    private fun handleLocationUpdate(locationResult: com.ytone.longcare.features.location.provider.LocationResult) {
+    private fun handleLocationUpdate(locationResult: LocationResult) {
         logI("成功获取到位置: Provider=${locationResult.provider}, Lat=${locationResult.latitude}, Lng=${locationResult.longitude}")
-        updateNotification(
-            "位置已更新: ${
-                String.format(
-                    Locale.getDefault(),
-                    "%.4f",
-                    locationResult.latitude
-                )
-            }, ${String.format(Locale.getDefault(), "%.4f", locationResult.longitude)}"
-        )
+        updateNotification("位置已更新")
 
         // 在IO线程中执行网络请求
         serviceScope.launch {
