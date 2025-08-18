@@ -1,5 +1,6 @@
 package com.ytone.longcare.di
 
+import android.app.AlarmManager
 import android.app.NotificationManager
 import android.content.Context
 import android.location.LocationManager
@@ -79,5 +80,15 @@ object AppModule {
     @Singleton
     fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
         return WorkManager.getInstance(context)
+    }
+
+    /**
+     * 提供 AlarmManager 的单例。
+     */
+    @Provides
+    @Singleton
+    fun provideAlarmManager(@ApplicationContext context: Context): AlarmManager {
+        return ContextCompat.getSystemService(context, AlarmManager::class.java)
+            ?: throw IllegalStateException("AlarmManager not found")
     }
 }
