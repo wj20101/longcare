@@ -16,6 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.ytone.longcare.MainViewModel
+import com.ytone.longcare.di.SelectedProjectsManagerEntryPoint
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.location.ui.LocationTrackingScreen
@@ -32,6 +33,7 @@ import com.ytone.longcare.features.update.ui.AppUpdateDialog
 import com.ytone.longcare.features.update.viewmodel.AppUpdateViewModel
 import com.ytone.longcare.features.shared.FaceVerificationWithAutoSignScreen
 import com.ytone.longcare.features.servicecomplete.ui.ServiceCompleteScreen
+import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
 import com.ytone.longcare.features.identification.ui.IdentificationScreen
 import com.ytone.longcare.features.selectdevice.ui.SelectDeviceScreen
@@ -274,9 +276,15 @@ fun AppNavigation(startDestination: Any) {
         }
         composable<ServiceRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<ServiceRoute>()
+            val context = LocalContext.current
+            val selectedProjectsManager = EntryPointAccessors.fromApplication(
+                context,
+                SelectedProjectsManagerEntryPoint::class.java
+            ).selectedProjectsManager()
             ServiceHoursScreen(
                 navController = navController,
-                orderId = route.orderId
+                orderId = route.orderId,
+                selectedProjectsManager = selectedProjectsManager
             )
         }
         composable<NursingExecutionRoute> { backStackEntry ->
@@ -347,7 +355,16 @@ fun AppNavigation(startDestination: Any) {
         }
         composable<ServiceCompleteRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<ServiceCompleteRoute>()
-            ServiceCompleteScreen(navController = navController, orderId = route.orderId)
+            val context = LocalContext.current
+            val selectedProjectsManager = EntryPointAccessors.fromApplication(
+                context,
+                SelectedProjectsManagerEntryPoint::class.java
+            ).selectedProjectsManager()
+            ServiceCompleteScreen(
+                navController = navController,
+                orderId = route.orderId,
+                selectedProjectsManager = selectedProjectsManager
+            )
         }
 
         composable<FaceRecognitionGuideRoute> { backStackEntry ->

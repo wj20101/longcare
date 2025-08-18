@@ -31,6 +31,7 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import com.ytone.longcare.common.utils.HomeBackHandler
+import com.ytone.longcare.common.utils.SelectedProjectsManager
 
 // --- 数据模型 ---
 data class ServiceSummary(
@@ -46,7 +47,10 @@ data class ServiceSummary(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceCompleteScreen(
-    navController: NavController, orderId: Long, sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
+    navController: NavController, 
+    orderId: Long, 
+    sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
+    selectedProjectsManager: SelectedProjectsManager
 ) {
     val uiState by sharedViewModel.uiState.collectAsStateWithLifecycle()
     
@@ -134,8 +138,8 @@ fun ServiceCompleteScreen(
                                 clientAge = orderInfo.userInfo.age,
                                 clientIdNumber = orderInfo.userInfo.identityCardNumber,
                                 clientAddress = orderInfo.userInfo.address,
-                                serviceContent = orderInfo.projectList.joinToString(", ") { it.projectName },
-                                duration = formatServiceDuration(orderInfo.projectList.sumOf { it.serviceTime })
+                                serviceContent = getSelectedProjectsContent(orderInfo.projectList, selectedProjectsManager, orderId),
+                                duration = formatSelectedProjectsDuration(orderInfo.projectList, selectedProjectsManager, orderId)
                             )
                             ServiceChecklistSection(summary = serviceSummary)
                         }
@@ -183,6 +187,58 @@ fun ServiceCompleteScreen(
             }
         }
     }
+}
+
+/**
+ * 获取选中项目的服务内容
+ * @param allProjects 所有项目列表
+ * @param selectedProjectsManager 选中项目管理器
+ * @param orderId 订单ID
+ * @return 选中项目的名称字符串
+ */
+fun getSelectedProjectsContent(
+    allProjects: List<com.ytone.longcare.api.response.ServiceProjectM>,
+    selectedProjectsManager: SelectedProjectsManager,
+    orderId: Long
+): String {
+    val selectedProjectIds = selectedProjectsManager.getSelectedProjects(orderId)
+    
+    return if (selectedProjectIds?.isNotEmpty() == true) {
+        // 根据选中的项目ID过滤项目列表
+        allProjects.filter { project -> 
+            selectedProjectIds.contains(project.projectId) 
+        }.joinToString(", ") { it.projectName }
+    } else {
+        // 如果没有选中项目数据，显示所有项目（兼容性处理）
+        allProjects.joinToString(", ") { it.projectName }
+    }
+}
+
+/**
+ * 获取选中项目的服务时长
+ * @param allProjects 所有项目列表
+ * @param selectedProjectsManager 选中项目管理器
+ * @param orderId 订单ID
+ * @return 格式化后的时长字符串
+ */
+fun formatSelectedProjectsDuration(
+    allProjects: List<com.ytone.longcare.api.response.ServiceProjectM>,
+    selectedProjectsManager: SelectedProjectsManager,
+    orderId: Long
+): String {
+    val selectedProjectIds = selectedProjectsManager.getSelectedProjects(orderId)
+    
+    val totalMinutes = if (selectedProjectIds?.isNotEmpty() == true) {
+        // 根据选中的项目ID计算总时长
+        allProjects.filter { project -> 
+            selectedProjectIds.contains(project.projectId) 
+        }.sumOf { it.serviceTime }
+    } else {
+        // 如果没有选中项目数据，计算所有项目时长（兼容性处理）
+        allProjects.sumOf { it.serviceTime }
+    }
+    
+    return formatServiceDuration(totalMinutes)
 }
 
 /**
