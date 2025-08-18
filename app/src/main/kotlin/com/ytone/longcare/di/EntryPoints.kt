@@ -4,6 +4,7 @@ import com.ytone.longcare.common.utils.FaceVerificationStatusManager
 import com.ytone.longcare.common.utils.NavigationHelper
 import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.SelectedProjectsManager
+import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -45,4 +46,5 @@ interface NursingExecutionEntryPoint {
     fun faceVerificationStatusManager(): FaceVerificationStatusManager
     fun selectedProjectsManager(): SelectedProjectsManager
     fun navigationHelper(): NavigationHelper
+    fun toastHelper(): ToastHelper
 }
