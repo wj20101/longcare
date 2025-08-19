@@ -59,7 +59,7 @@ fun LoginScreen(
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     val context = LocalContext.current
-    var phoneNumber by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf(viewModel.getLastLoginPhoneNumber()) }
     var verificationCode by remember { mutableStateOf("") }
     val loginState by viewModel.loginState.collectAsState()
     val sendSmsState by viewModel.sendSmsCodeState.collectAsState()
