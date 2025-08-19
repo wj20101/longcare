@@ -1,17 +1,15 @@
 package com.ytone.longcare.features.login.vm
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.response.LoginResultModel
-import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.common.utils.LoginPreferencesManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.models.protos.User
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.Job
@@ -23,7 +21,8 @@ import javax.inject.Inject
 class LoginViewModel @Inject constructor(
     private val loginRepository: LoginRepository,
     private val userSessionRepository: UserSessionRepository,
-    private val toastHelper: ToastHelper
+    private val toastHelper: ToastHelper,
+    private val loginPreferencesManager: LoginPreferencesManager
 ) : ViewModel() {
 
     private val _loginState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
@@ -90,6 +89,9 @@ class LoginViewModel @Inject constructor(
                     // 登录成功，转换并保存User对象
                     val user = loginResult.toUser()
                     userSessionRepository.login(user)
+                    
+                    // 保存登录成功的手机号码
+                    loginPreferencesManager.saveLastLoginPhoneNumber(mobile)
 
                     _loginState.value = LoginUiState.Success(user)
                     showShortToast("登录成功")
@@ -108,6 +110,13 @@ class LoginViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * 获取上次登录成功的手机号码
+     */
+    fun getLastLoginPhoneNumber(): String {
+        return loginPreferencesManager.getLastLoginPhoneNumber()
     }
 
     private fun showShortToast(msg: CharSequence) {
