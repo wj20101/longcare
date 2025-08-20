@@ -96,6 +96,17 @@
             android:exported="false"
             android:foregroundServiceType="location" />
             
+        <!-- 倒计时前台服务 -->
+        <service
+            android:name=".features.servicecountdown.service.CountdownForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" >
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="countdown" />
+        </service>
+            
         <!-- 高德地图定位服务 -->
         <service android:name="com.amap.api.location.APSService" />
         
