@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -52,7 +51,6 @@ import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import com.ytone.longcare.common.utils.HomeBackHandler
 import com.ytone.longcare.di.ServiceCountdownEntryPoint
 import dagger.hilt.android.EntryPointAccessors
-import com.ytone.longcare.BuildConfig
 import androidx.core.net.toUri
 
 
@@ -85,7 +83,6 @@ fun ServiceCountdownScreen(
     // 从ViewModel获取状态
     val countdownState by viewModel.countdownState.collectAsStateWithLifecycle()
     val formattedTime by viewModel.formattedTime.collectAsStateWithLifecycle()
-    val remainingTimeMillis by viewModel.remainingTimeMillis.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -96,9 +93,7 @@ fun ServiceCountdownScreen(
         ServiceCountdownEntryPoint::class.java
     )
     val countdownNotificationManager = entryPoint.countdownNotificationManager()
-    val debugHelper = entryPoint.countdownNotificationDebugHelper()
-    val notificationTester = entryPoint.countdownNotificationTester()
-    
+
     // 二次确认弹窗状态
     var showConfirmDialog by remember { mutableStateOf(false) }
     
@@ -269,9 +264,7 @@ fun ServiceCountdownScreen(
                 
                 // 设置系统级倒计时闹钟（只有在权限充足时）
                 if (checkNotificationPermission() && countdownNotificationManager.canScheduleExactAlarms()) {
-                    // 进行调试诊断
-                    debugHelper.diagnoseNotificationIssues(context)
-                    
+
                     val completionTime = countdownNotificationManager.calculateCompletionTime(totalMinutes * 60 * 1000L)
                     countdownNotificationManager.scheduleCountdownAlarm(
                         orderId = orderId,
@@ -308,25 +301,6 @@ fun ServiceCountdownScreen(
         }
     }
     
-    // 监听倒计时时间变化，同步更新前台服务
-    LaunchedEffect(remainingTimeMillis, countdownState) {
-        if (isCountdownInitialized && countdownState == ServiceCountdownState.RUNNING) {
-            val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
-            // 前台服务通知已改为静态显示，不再需要更新时间
-        // orderInfo?.let {
-        //     val serviceName = it.projectList
-        //         .filter { project -> project.projectId in projectIdList }
-        //         .joinToString(", ") { project -> project.projectName }
-        //     
-        //     val remainingSeconds = remainingTimeMillis / 1000
-        //     viewModel.updateForegroundServiceTime(
-        //         context = context,
-        //         remainingSeconds = remainingSeconds,
-        //         serviceName = serviceName
-        //     )
-        // }
-        }
-    }
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -378,29 +352,6 @@ fun ServiceCountdownScreen(
             )
 
             Spacer(modifier = Modifier.weight(1f))
-
-            // Debug Test Button (仅在Debug模式下显示)
-            if (BuildConfig.DEBUG) {
-                Button(
-                     onClick = {
-                          notificationTester.runFullTest()
-                      },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(40.dp),
-                    shape = RoundedCornerShape(20),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF9C27B0) // 紫色
-                    )
-                ) {
-                    Text(
-                        text = "测试倒计时通知",
-                        fontSize = 14.sp,
-                        color = Color.White
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
 
             // End Service Button
             Button(
@@ -483,7 +434,7 @@ fun ServiceCountdownScreen(
                         showPermissionDialog = false
                         // 引导用户到设置页面
                         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = Uri.parse("package:${context.packageName}")
+                            data = "package:${context.packageName}".toUri()
                         }
                         context.startActivity(intent)
                     }

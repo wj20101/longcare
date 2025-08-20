@@ -6,8 +6,6 @@ import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.SelectedProjectsManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
-import com.ytone.longcare.features.countdown.debug.CountdownNotificationDebugHelper
-import com.ytone.longcare.features.servicecountdown.debug.CountdownNotificationTester
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -62,6 +60,4 @@ interface SelectedProjectsManagerEntryPoint {
 @InstallIn(SingletonComponent::class)
 interface ServiceCountdownEntryPoint {
     fun countdownNotificationManager(): CountdownNotificationManager
-    fun countdownNotificationDebugHelper(): CountdownNotificationDebugHelper
-    fun countdownNotificationTester(): CountdownNotificationTester
 }
