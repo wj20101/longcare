@@ -16,6 +16,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,7 +58,10 @@ class CountdownAlarmReceiver : BroadcastReceiver() {
         try {
             wakeLock.acquire(30000) // 最多持有30秒
             
-            // 显示通知
+            // 先停止前台服务，清除进行中的通知
+            CountdownForegroundService.stopCountdown(context)
+            
+            // 显示完成通知
             countdownNotificationManager.showCountdownCompletionNotification(orderId, serviceName)
             
             // 播放提示音和震动

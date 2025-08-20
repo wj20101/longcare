@@ -41,6 +41,7 @@ data class NursingExecutionRoute(val orderId: Long)
 /**
  * NFC签到模式枚举
  */
+@Keep
 @Serializable
 enum class SignInMode {
     /**

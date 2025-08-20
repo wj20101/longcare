@@ -1,6 +1,14 @@
 package com.ytone.longcare.features.servicecountdown.ui
 
+import android.Manifest
+import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -42,6 +52,8 @@ import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import com.ytone.longcare.common.utils.HomeBackHandler
 import com.ytone.longcare.di.ServiceCountdownEntryPoint
 import dagger.hilt.android.EntryPointAccessors
+import com.ytone.longcare.BuildConfig
+import androidx.core.net.toUri
 
 
 // 服务倒计时页面状态
@@ -73,6 +85,7 @@ fun ServiceCountdownScreen(
     // 从ViewModel获取状态
     val countdownState by viewModel.countdownState.collectAsStateWithLifecycle()
     val formattedTime by viewModel.formattedTime.collectAsStateWithLifecycle()
+    val remainingTimeMillis by viewModel.remainingTimeMillis.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -83,9 +96,36 @@ fun ServiceCountdownScreen(
         ServiceCountdownEntryPoint::class.java
     )
     val countdownNotificationManager = entryPoint.countdownNotificationManager()
+    val debugHelper = entryPoint.countdownNotificationDebugHelper()
+    val notificationTester = entryPoint.countdownNotificationTester()
     
     // 二次确认弹窗状态
     var showConfirmDialog by remember { mutableStateOf(false) }
+    
+    // 权限相关状态
+    var showPermissionDialog by remember { mutableStateOf(false) }
+    var permissionDialogMessage by remember { mutableStateOf("") }
+    
+    // 通知权限请求启动器
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            permissionDialogMessage = "通知权限被拒绝，可能无法收到倒计时完成提醒。请到设置中手动开启通知权限。"
+            showPermissionDialog = true
+        }
+    }
+    
+    // 精确闹钟权限请求启动器
+    val exactAlarmPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { _ ->
+        // 检查权限是否已授予
+        if (!countdownNotificationManager.canScheduleExactAlarms()) {
+            permissionDialogMessage = "精确闹钟权限被拒绝，可能无法准时收到倒计时完成提醒。请到设置中手动开启精确闹钟权限。"
+            showPermissionDialog = true
+        }
+    }
 
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
@@ -95,6 +135,54 @@ fun ServiceCountdownScreen(
     // 检查定位权限和服务的函数
     fun checkLocationPermissionAndStart() {
         UnifiedPermissionHelper.checkLocationPermissionAndStart(context, permissionLauncher)
+    }
+    
+    // 检查通知权限
+    fun checkNotificationPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true // Android 13以下不需要运行时权限
+        }
+    }
+    
+    // 请求通知权限
+    fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (!checkNotificationPermission()) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+    
+    // 请求精确闹钟权限
+    fun requestExactAlarmPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!countdownNotificationManager.canScheduleExactAlarms()) {
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = "package:${context.packageName}".toUri()
+                }
+                exactAlarmPermissionLauncher.launch(intent)
+            }
+        }
+    }
+    
+    // 检查所有必需权限
+    fun checkAndRequestPermissions() {
+        // 检查通知权限
+        if (!checkNotificationPermission()) {
+            requestNotificationPermission()
+            return
+        }
+        
+        // 检查精确闹钟权限
+        if (!countdownNotificationManager.canScheduleExactAlarms()) {
+            requestExactAlarmPermission()
+            return
+        }
     }
 
     LaunchedEffect(orderId) {
@@ -122,8 +210,24 @@ fun ServiceCountdownScreen(
         }
     }
 
+    // 状态跟踪变量
+    var isCountdownInitialized by remember { mutableStateOf(false) }
+    var lastSetupTime by remember { mutableLongStateOf(0L) }
+    var lastProjectIdList by remember { mutableStateOf(emptyList<Int>()) }
+    var permissionsChecked by remember { mutableStateOf(false) }
+    
+    // 防抖延迟时间（毫秒）
+    val debounceDelay = 500L
+    
     // 设置倒计时时间的通用函数
-    val setupCountdownTime = {
+    fun setupCountdownTime() {
+        val currentTime = System.currentTimeMillis()
+        
+        // 防抖检查：如果距离上次调用时间太短，则跳过
+        if (currentTime - lastSetupTime < debounceDelay) {
+            return
+        }
+        
         val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
         orderInfo?.let {
             // 计算总服务时间（分钟）
@@ -131,26 +235,61 @@ fun ServiceCountdownScreen(
                 .filter { project -> project.projectId in projectIdList }
                 .sumOf { project -> project.serviceTime }
             
-            // 设置ViewModel的倒计时
-            viewModel.setCountdownTimeFromProjects(
-                orderId = orderId,
-                projectList = it.projectList,
-                selectedProjectIds = projectIdList
-            )
+            // 检查是否需要重新初始化
+            val needsReinit = !isCountdownInitialized || 
+                             lastProjectIdList != projectIdList ||
+                             countdownState == ServiceCountdownState.ENDED
             
-            // 设置系统级倒计时闹钟
-            if (totalMinutes > 0) {
+            if (needsReinit && totalMinutes > 0) {
+                // 首次初始化时检查权限
+                if (!permissionsChecked) {
+                    checkAndRequestPermissions()
+                    permissionsChecked = true
+                }
+                
+                // 设置ViewModel的倒计时
+                viewModel.setCountdownTimeFromProjects(
+                    orderId = orderId,
+                    projectList = it.projectList,
+                    selectedProjectIds = projectIdList
+                )
+                
+                // 启动前台服务显示倒计时通知
                 val serviceName = it.projectList
                     .filter { project -> project.projectId in projectIdList }
                     .joinToString(", ") { project -> project.projectName }
+                val totalSeconds = totalMinutes * 60L
                 
-                val completionTime = countdownNotificationManager.calculateCompletionTime(totalMinutes * 60 * 1000L)
-                countdownNotificationManager.scheduleCountdownAlarm(
+                viewModel.startForegroundService(
+                    context = context,
                     orderId = orderId,
                     serviceName = serviceName,
-                    triggerTimeMillis = completionTime
+                    totalSeconds = totalSeconds
                 )
+                
+                // 设置系统级倒计时闹钟（只有在权限充足时）
+                if (checkNotificationPermission() && countdownNotificationManager.canScheduleExactAlarms()) {
+                    // 进行调试诊断
+                    debugHelper.diagnoseNotificationIssues(context)
+                    
+                    val completionTime = countdownNotificationManager.calculateCompletionTime(totalMinutes * 60 * 1000L)
+                    countdownNotificationManager.scheduleCountdownAlarm(
+                        orderId = orderId,
+                        serviceName = serviceName,
+                        triggerTimeMillis = completionTime
+                    )
+                } else {
+                    // 权限不足时显示提示
+                    permissionDialogMessage = "缺少必要权限，可能无法收到倒计时完成提醒。请检查通知权限和精确闹钟权限设置。"
+                    showPermissionDialog = true
+                }
+                
+                // 更新状态
+                isCountdownInitialized = true
+                lastProjectIdList = projectIdList
             }
+            
+            lastSetupTime = currentTime
         }
     }
 
@@ -159,10 +298,33 @@ fun ServiceCountdownScreen(
         setupCountdownTime()
     }
 
-    // 监听生命周期变化，在页面恢复时重新计算倒计时
+    // 监听生命周期变化，仅在特定条件下重新计算倒计时
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            setupCountdownTime()
+            // 只有在倒计时未初始化或已结束时才重新设置
+            if (!isCountdownInitialized || countdownState == ServiceCountdownState.ENDED) {
+                setupCountdownTime()
+            }
+        }
+    }
+    
+    // 监听倒计时时间变化，同步更新前台服务
+    LaunchedEffect(remainingTimeMillis, countdownState) {
+        if (isCountdownInitialized && countdownState == ServiceCountdownState.RUNNING) {
+            val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
+            // 前台服务通知已改为静态显示，不再需要更新时间
+        // orderInfo?.let {
+        //     val serviceName = it.projectList
+        //         .filter { project -> project.projectId in projectIdList }
+        //         .joinToString(", ") { project -> project.projectName }
+        //     
+        //     val remainingSeconds = remainingTimeMillis / 1000
+        //     viewModel.updateForegroundServiceTime(
+        //         context = context,
+        //         remainingSeconds = remainingSeconds,
+        //         serviceName = serviceName
+        //     )
+        // }
         }
     }
     Scaffold(
@@ -217,6 +379,29 @@ fun ServiceCountdownScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
+            // Debug Test Button (仅在Debug模式下显示)
+            if (BuildConfig.DEBUG) {
+                Button(
+                     onClick = {
+                          notificationTester.runFullTest()
+                      },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp),
+                    shape = RoundedCornerShape(20),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF9C27B0) // 紫色
+                    )
+                ) {
+                    Text(
+                        text = "测试倒计时通知",
+                        fontSize = 14.sp,
+                        color = Color.White
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             // End Service Button
             Button(
                 onClick = {
@@ -231,7 +416,7 @@ fun ServiceCountdownScreen(
                         showConfirmDialog = true
                     } else {
                         // 直接结束服务
-                        viewModel.endService(orderId)
+                        viewModel.endService(orderId, context)
                         // 取消倒计时闹钟
                         countdownNotificationManager.cancelCountdownAlarm()
                         
@@ -276,6 +461,46 @@ fun ServiceCountdownScreen(
         }
     }
     
+    // 页面销毁时清理资源
+    DisposableEffect(Unit) {
+        onDispose {
+            // 如果服务未正常结束，取消倒计时闹钟
+            if (countdownState != ServiceCountdownState.ENDED) {
+                countdownNotificationManager.cancelCountdownAlarm()
+            }
+        }
+    }
+    
+    // 权限提示对话框
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDialog = false },
+            title = { Text("权限提示") },
+            text = { Text(permissionDialogMessage) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPermissionDialog = false
+                        // 引导用户到设置页面
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                        }
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Text("去设置")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showPermissionDialog = false }
+                ) {
+                    Text("稍后")
+                }
+            }
+        )
+    }
+    
     // 二次确认弹窗
     if (showConfirmDialog) {
         AlertDialog(
@@ -286,7 +511,7 @@ fun ServiceCountdownScreen(
                 TextButton(
                     onClick = {
                         showConfirmDialog = false
-                        viewModel.endService(orderId)
+                        viewModel.endService(orderId, context)
                         // 取消倒计时闹钟
                         countdownNotificationManager.cancelCountdownAlarm()
                         

@@ -54,6 +54,7 @@ class CountdownNotificationManager @Inject constructor(
         triggerTimeMillis: Long
     ) {
         try {
+            logE("scheduleCountdownAlarm ------------------>")
             val intent = Intent(context, CountdownAlarmReceiver::class.java).apply {
                 putExtra(EXTRA_ORDER_ID, orderId)
                 putExtra(EXTRA_SERVICE_NAME, serviceName)

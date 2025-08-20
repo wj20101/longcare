@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.servicecountdown.vm
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.response.ServiceProjectM
@@ -7,6 +8,7 @@ import com.ytone.longcare.common.utils.SelectedProjectsManager
 import com.ytone.longcare.common.utils.ServiceTimeManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
+import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -175,6 +177,46 @@ class ServiceCountdownViewModel @Inject constructor(
         }
     }
     
+    /**
+     * 启动前台服务显示倒计时通知
+     * @param context 上下文
+     * @param orderId 订单ID
+     * @param serviceName 服务名称
+     * @param totalSeconds 总倒计时秒数
+     */
+    fun startForegroundService(
+        context: Context,
+        orderId: Long,
+        serviceName: String,
+        totalSeconds: Long
+    ) {
+        CountdownForegroundService.startCountdown(context, orderId, serviceName, totalSeconds)
+    }
+    
+    /**
+     * 停止前台服务
+     * @param context 上下文
+     */
+    fun stopForegroundService(context: Context) {
+        CountdownForegroundService.stopCountdown(context)
+    }
+    
+    /**
+     * 更新前台服务的倒计时时间（已废弃，通知改为静态显示）
+     * @param context 上下文
+     * @param remainingSeconds 剩余秒数
+     * @param serviceName 服务名称
+     */
+    @Deprecated("通知已改为静态显示，不再需要更新时间")
+    fun updateForegroundServiceTime(
+        context: Context,
+        remainingSeconds: Long,
+        serviceName: String
+    ) {
+        // 不再执行任何操作
+        // CountdownForegroundService.updateTime(context, remainingSeconds, serviceName)
+    }
+    
     // 更新格式化时间
     private fun updateFormattedTime() {
         val timeToFormat = if (_countdownState.value == ServiceCountdownState.OVERTIME) {
@@ -206,10 +248,14 @@ class ServiceCountdownViewModel @Inject constructor(
     /**
      * 结束服务
      * @param orderId 订单ID，用于清除服务时间记录和选中项目记录
+     * @param context 上下文，用于停止前台服务
      */
-    fun endService(orderId: Long? = null) {
+    fun endService(orderId: Long? = null, context: Context? = null) {
         countdownJob?.cancel()
         _countdownState.value = ServiceCountdownState.ENDED
+        
+        // 停止前台服务
+        context?.let { stopForegroundService(it) }
         
         // 清除服务时间记录和选中项目记录
         orderId?.let {
