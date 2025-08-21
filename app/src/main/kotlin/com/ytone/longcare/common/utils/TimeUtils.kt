@@ -274,7 +274,7 @@ object TimeUtils {
     fun formatDateForApi(displayDate: DisplayDate): String {
         val instant = Instant.fromEpochMilliseconds(displayDate.timestamp)
         val localDate = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
-        return "${localDate.year}-${localDate.month.number.toString().padStart(2, '0')}-${localDate.month.number.toString().padStart(2, '0')}"
+        return localDate.toString()
     }
 
 }
