@@ -54,7 +54,19 @@ class NfcManager @Inject constructor(
     fun disableNfcForActivity(activity: Activity) {
         if (currentActivity == activity) {
             isNfcEnabled = false
-            NfcUtils.disableForegroundDispatch(activity)
+            
+            // 检查Activity是否处于resumed状态，只有在resumed状态才能安全地禁用前台调度
+            if (activity is LifecycleOwner && 
+                activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                NfcUtils.disableForegroundDispatch(activity)
+            } else if (activity !is LifecycleOwner) {
+                // 如果不是LifecycleOwner，直接尝试禁用（兼容性处理）
+                try {
+                    NfcUtils.disableForegroundDispatch(activity)
+                } catch (e: IllegalStateException) {
+                    // 忽略IllegalStateException，因为Activity可能已经不在resumed状态
+                }
+            }
             
             // 移除生命周期观察者
             if (activity is LifecycleOwner) {
@@ -130,7 +142,12 @@ class NfcManager @Inject constructor(
         super.onPause(owner)
         currentActivity?.let { activity ->
             if (isNfcEnabled) {
-                NfcUtils.disableForegroundDispatch(activity)
+                // 在onPause中安全地禁用前台调度
+                try {
+                    NfcUtils.disableForegroundDispatch(activity)
+                } catch (e: IllegalStateException) {
+                    // 忽略IllegalStateException，因为Activity可能已经不在resumed状态
+                }
             }
         }
     }
