@@ -13,11 +13,15 @@ object EndOderInfoNavType : NavType<EndOderInfo?>(isNullableAllowed = true) {
 
     override fun get(bundle: Bundle, key: String): EndOderInfo? {
         return bundle.getString(key)?.let { jsonString ->
-            try {
-                Json.decodeFromString<EndOderInfo>(Uri.decode(jsonString))
-            } catch (e: Exception) {
-                logE(message = "EndOderInfoNavType get fail", throwable = e)
+            if (jsonString == "null" || jsonString.isEmpty()) {
                 null
+            } else {
+                try {
+                    Json.decodeFromString<EndOderInfo>(Uri.decode(jsonString))
+                } catch (e: Exception) {
+                    logE(message = "EndOderInfoNavType get fail", throwable = e)
+                    null
+                }
             }
         }
     }

@@ -326,9 +326,7 @@ fun AppNavigation(startDestination: Any) {
                 orderId = route.orderId
             )
         }
-        composable<PhotoUploadRoute>(
-            typeMap = mapOf(typeOf<EndOderInfo?>() to EndOderInfoNavType)
-        ) { backStackEntry ->
+        composable<PhotoUploadRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<PhotoUploadRoute>()
             PhotoUploadScreen(
                 navController = navController,
