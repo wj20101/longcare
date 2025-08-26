@@ -57,6 +57,8 @@ import com.ytone.longcare.navigation.navigateToServiceRecordsList
 import com.ytone.longcare.ui.components.UserAvatar
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.shared.vm.OrderDetailUiState
+import kotlinx.coroutines.flow.first
 import dagger.hilt.android.EntryPointAccessors
 
 @Composable
@@ -514,20 +516,35 @@ fun OrderTabLayout(
                                  // 缓存不存在，先查询订单详情
                                  coroutineScope.launch {
                                      try {
+                                         // 启动异步获取订单详情
                                          sharedOrderDetailViewModel.getOrderInfo(order.orderId)
-                                         // 查询完成后，再次尝试获取缓存并跳转
-                                         val orderInfo = sharedOrderDetailViewModel.getCachedOrderInfo(order.orderId)
-                                         if (orderInfo != null) {
-                                             val projectList = orderInfo.projectList
-                                             navigationHelper.navigateToServiceCountdownWithLogic(
-                                                 navController = navController,
-                                                 orderId = order.orderId,
-                                                 projectList = projectList
-                                             )
-                                         } else {
-                                             // 订单详情获取失败，添加错误提示和日志
-                                             toastHelper.showShort("获取订单详情失败，请稍后重试")
-                                             logE("获取订单详情失败: orderId=${order.orderId}")
+                                         
+                                         // 等待获取完成，使用first来避免持续监听
+                                         val finalState = sharedOrderDetailViewModel.uiState
+                                             .first { state ->
+                                                 state is OrderDetailUiState.Success || state is OrderDetailUiState.Error
+                                             }
+                                         
+                                         when (finalState) {
+                                             is OrderDetailUiState.Success -> {
+                                                 // 获取成功，直接使用返回的数据跳转
+                                                 val projectList = finalState.orderInfo.projectList
+                                                 navigationHelper.navigateToServiceCountdownWithLogic(
+                                                     navController = navController,
+                                                     orderId = order.orderId,
+                                                     projectList = projectList
+                                                 )
+                                             }
+                                             is OrderDetailUiState.Error -> {
+                                                 // 获取失败，显示错误信息
+                                                 toastHelper.showShort("获取订单详情失败：${finalState.message}")
+                                                 logE("获取订单详情失败: orderId=${order.orderId}, error=${finalState.message}")
+                                             }
+                                             else -> {
+                                                 // 理论上不会到达这里，因为first已经过滤了状态
+                                                 toastHelper.showShort("获取订单详情失败，请稍后重试")
+                                                 logE("获取订单详情失败: orderId=${order.orderId}, 未知状态")
+                                             }
                                          }
                                      } catch (e: Exception) {
                                          // 网络请求失败或其他异常，添加错误处理
