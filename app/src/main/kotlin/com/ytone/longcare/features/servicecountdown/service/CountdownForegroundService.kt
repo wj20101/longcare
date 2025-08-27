@@ -7,10 +7,12 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logI
@@ -19,8 +21,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
 
@@ -120,8 +120,12 @@ class CountdownForegroundService : Service() {
                 
                 // 立即启动前台服务，避免超时异常
                 val notification = createCountdownNotification()
-                startForeground(FOREGROUND_NOTIFICATION_ID, notification)
-                
+                ServiceCompat.startForeground(
+                    this,
+                    FOREGROUND_NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
                 // 然后进行其他初始化
                 startCountdownTimer()
             }
