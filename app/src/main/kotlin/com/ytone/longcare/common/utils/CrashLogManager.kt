@@ -137,6 +137,18 @@ object CrashLogManager {
     }
     
     /**
+     * 删除指定的崩溃日志文件
+     */
+    fun deleteCrashLog(file: File): Boolean {
+        return try {
+            file.delete()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+    
+    /**
      * 清理旧的崩溃日志文件（保留最近30天的日志）
      */
     fun cleanOldCrashLogs(context: Context) {

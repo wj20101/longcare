@@ -105,6 +105,16 @@ fun UserAvatar(
                         }
                     }
                 }
+            },
+            onRefresh = {
+                // 刷新日志列表
+                coroutineScope.launch(Dispatchers.IO) {
+                    try {
+                        crashLogs = CrashLogManager.getAllCrashLogs(context)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
             }
         )
     }
