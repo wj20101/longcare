@@ -3,7 +3,7 @@ package com.ytone.longcare.common.utils
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import androidx.core.content.FileProvider
+import androidx.core.app.ShareCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -86,16 +86,19 @@ object CrashLogManager {
         if (files.isEmpty()) return null
         
         return try {
-            val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, "崩溃日志报告")
-                putExtra(Intent.EXTRA_TEXT, "请查看附件中的崩溃日志文件")
-                
-                val uris = files.map { file -> FileProviderHelper.getUriForFile(context,file) }
-                putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            Intent.createChooser(intent, "分享崩溃日志")
+            val uris = files.map { file -> FileProviderHelper.getUriForFile(context, file) }
+            
+            ShareCompat.IntentBuilder(context)
+                .setType("text/plain")
+                .setSubject("崩溃日志报告")
+                .setText("请查看附件中的崩溃日志文件")
+                .apply {
+                    uris.forEach { uri -> addStream(uri) }
+                }
+                .createChooserIntent()
+                .apply {
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
         } catch (e: Exception) {
             e.printStackTrace()
             null
