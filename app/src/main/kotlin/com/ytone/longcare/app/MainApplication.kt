@@ -15,6 +15,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Provider
+import com.ytone.longcare.common.utils.CrashLogManager
 
 @HiltAndroidApp
 class MainApplication : Application(), SingletonImageLoader.Factory, Configuration.Provider {
@@ -78,6 +79,17 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
 
     // Example of a custom crash handling function
     private fun handleCrash(throwable: Throwable) {
+        // 在后台线程中保存崩溃日志
+        applicationScope.launch(Dispatchers.IO) {
+            try {
+                CrashLogManager.saveCrashLog(this@MainApplication, throwable)
+                // 清理旧的崩溃日志文件
+                CrashLogManager.cleanOldCrashLogs(this@MainApplication)
+            } catch (e: Exception) {
+                // 如果保存崩溃日志失败，至少打印到控制台
+                e.printStackTrace()
+            }
+        }
     }
 }
 
