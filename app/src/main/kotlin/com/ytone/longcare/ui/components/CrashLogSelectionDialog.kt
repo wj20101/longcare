@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.ytone.longcare.common.utils.CrashLogManager
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -23,9 +26,11 @@ import java.util.*
 fun CrashLogSelectionDialog(
     crashLogs: List<File>,
     onDismiss: () -> Unit,
-    onConfirm: (List<File>) -> Unit
+    onConfirm: (List<File>) -> Unit,
+    onRefresh: () -> Unit = {}
 ) {
     var selectedLogs by remember { mutableStateOf(setOf<File>()) }
+    var showDeleteConfirmDialog by remember { mutableStateOf<File?>(null) }
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US) }
     
     Dialog(onDismissRequest = onDismiss) {
@@ -71,6 +76,7 @@ fun CrashLogSelectionDialog(
                                         selectedLogs - logFile
                                     }
                                 },
+                                onDeleteClick = { showDeleteConfirmDialog = logFile },
                                 dateFormat = dateFormat
                             )
                         }
@@ -105,6 +111,37 @@ fun CrashLogSelectionDialog(
             }
         }
     }
+    
+    // 删除确认对话框
+    showDeleteConfirmDialog?.let { fileToDelete ->
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = null },
+            title = { Text("确认删除") },
+            text = { Text("确定要删除日志文件 \"${fileToDelete.name}\" 吗？此操作不可撤销。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val success = CrashLogManager.deleteCrashLog(fileToDelete)
+                        if (success) {
+                            // 从选中列表中移除已删除的文件
+                            selectedLogs = selectedLogs - fileToDelete
+                            onRefresh()
+                        }
+                        showDeleteConfirmDialog = null
+                    }
+                ) {
+                    Text("删除")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteConfirmDialog = null }
+                ) {
+                    Text("取消")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -112,6 +149,7 @@ private fun CrashLogItem(
     logFile: File,
     isSelected: Boolean,
     onSelectionChanged: (Boolean) -> Unit,
+    onDeleteClick: () -> Unit,
     dateFormat: SimpleDateFormat
 ) {
     Card(
@@ -161,6 +199,16 @@ private fun CrashLogItem(
                     text = "大小: ${formatFileSize(logFile.length())}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            IconButton(
+                onClick = onDeleteClick
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "删除日志",
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
         }
