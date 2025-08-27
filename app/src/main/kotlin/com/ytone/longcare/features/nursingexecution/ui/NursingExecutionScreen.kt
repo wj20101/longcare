@@ -52,11 +52,6 @@ fun NursingExecutionScreen(
         context.applicationContext,
         NursingExecutionEntryPoint::class.java
     ).navigationHelper()
-    
-    val selectedProjectsManager = EntryPointAccessors.fromApplication(
-        context.applicationContext,
-        NursingExecutionEntryPoint::class.java
-    ).selectedProjectsManager()
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
