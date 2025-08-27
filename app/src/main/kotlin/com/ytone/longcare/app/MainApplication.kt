@@ -64,7 +64,7 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
             // FirebaseCrashlytics.getInstance().recordException(throwable)
 
             // Optional: Custom crash handling logic (e.g., show a crash screen, restart app)
-            // handleCrash(throwable)
+            handleCrash(throwable)
 
             // It's important to call the original handler if you want the OS to handle it (e.g., force close)
             // or if you have other crash reporting SDKs that need to process the exception.
@@ -77,13 +77,7 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
     override fun newImageLoader(context: PlatformContext): ImageLoader = imageLoaderProvider.get()
 
     // Example of a custom crash handling function
-    // private fun handleCrash(throwable: Throwable) {
-    //     // Navigate to a specific error activity
-    //     // val intent = Intent(applicationContext, ErrorActivity::class.java)
-    //     // intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-    //     // intent.putExtra("error_details", throwable.message)
-    //     // startActivity(intent)
-    //     // exitProcess(1) // Ensure the app closes
-    // }
+    private fun handleCrash(throwable: Throwable) {
+    }
 }
 

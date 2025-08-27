@@ -32,7 +32,7 @@ work = "2.10.3"
 window = "1.4.0"
 
 # Dependency Injection
-dagger = "2.57"
+dagger = "2.57.1"
 hilt = "1.2.0"
 wire = "5.3.11"
 
