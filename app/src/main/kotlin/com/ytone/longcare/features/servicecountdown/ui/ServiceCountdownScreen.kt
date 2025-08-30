@@ -230,9 +230,10 @@ fun ServiceCountdownScreen(
                 .sumOf { project -> project.serviceTime }
             
             // 检查是否需要重新初始化
-            val needsReinit = !isCountdownInitialized || 
-                             lastProjectIdList != projectIdList.map { it.toInt() } ||
-                             countdownState == ServiceCountdownState.ENDED
+            // 允许在锁屏解锁后重新刷新倒计时状态，确保显示正确的超时状态
+            val needsReinit = lastProjectIdList != projectIdList.map { it.toInt() } ||
+                             countdownState == ServiceCountdownState.ENDED ||
+                             !isCountdownInitialized
             
             if (needsReinit && totalMinutes > 0) {
                 // 首次初始化时检查权限
@@ -290,12 +291,26 @@ fun ServiceCountdownScreen(
         setupCountdownTime()
     }
 
-    // 监听生命周期变化，仅在特定条件下重新计算倒计时
+    // 监听生命周期变化，在RESUMED状态下重新计算倒计时
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            // 只有在倒计时未初始化或已结束时才重新设置
-            if (!isCountdownInitialized || countdownState == ServiceCountdownState.ENDED) {
-                setupCountdownTime()
+            // 在RESUMED状态下强制重新设置倒计时，忽略防抖机制
+            // 确保锁屏解锁后状态正确，显示当前真实的倒计时状态
+            val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest.orderId)
+            orderInfo?.let {
+                // 计算总服务时间（分钟）
+                val totalMinutes = it.projectList
+                    .filter { project -> project.projectId in projectIdList.map { it.toInt() } }
+                    .sumOf { project -> project.serviceTime }
+                
+                if (totalMinutes > 0) {
+                    // 强制重新计算倒计时状态，不受防抖限制
+                    countdownViewModel.setCountdownTimeFromProjects(
+                        orderId = orderInfoRequest.orderId,
+                        projectList = it.projectList,
+                        selectedProjectIds = projectIdList.map { it.toInt() }
+                    )
+                }
             }
         }
     }

@@ -95,9 +95,9 @@ class ServiceTimeManager @Inject constructor(
         val currentElapsedTime = SystemClock.elapsedRealtime()
         val currentBootTime = System.currentTimeMillis() - currentElapsedTime
         
-        val startTimeKey = KEY_SERVICE_START_TIME + orderId
-        val bootTimeKey = KEY_SYSTEM_BOOT_TIME + orderId
-        val realStartTimeKey = KEY_REAL_START_TIME + orderId
+        val startTimeKey = generateStorageKey(KEY_SERVICE_START_TIME, orderId)
+        val bootTimeKey = generateStorageKey(KEY_SYSTEM_BOOT_TIME, orderId)
+        val realStartTimeKey = generateStorageKey(KEY_REAL_START_TIME, orderId)
         
         orderPrefs.edit {
             putLong(startTimeKey, currentElapsedTime)
