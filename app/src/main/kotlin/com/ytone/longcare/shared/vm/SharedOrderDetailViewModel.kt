@@ -35,15 +35,6 @@ class SharedOrderDetailViewModel @Inject constructor(
 
     /**
      * 获取订单详情
-     * @param orderId 订单ID
-     * @param forceRefresh 是否强制刷新
-     */
-    fun getOrderInfo(orderId: Long, forceRefresh: Boolean = false) {
-        getOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0), forceRefresh)
-    }
-
-    /**
-     * 获取订单详情
      * @param request 订单信息请求模型
      * @param forceRefresh 是否强制刷新
      */
@@ -78,28 +69,11 @@ class SharedOrderDetailViewModel @Inject constructor(
 
     /**
      * 获取缓存的订单详情
-     * @param orderId 订单ID
-     * @return 缓存的订单详情，如果不存在则返回null
-     */
-    fun getCachedOrderInfo(orderId: Long): ServiceOrderInfoModel? {
-        return getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))
-    }
-
-    /**
-     * 获取缓存的订单详情
      * @param request 订单信息请求模型
      * @return 缓存的订单详情，如果不存在则返回null
      */
     fun getCachedOrderInfo(request: OrderInfoRequestModel): ServiceOrderInfoModel? {
         return sharedOrderRepository.getCachedOrderInfo(request)
-    }
-
-    /**
-     * 预加载订单详情
-     * @param orderId 订单ID
-     */
-    fun preloadOrderInfo(orderId: Long) {
-        preloadOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))
     }
 
     /**
@@ -114,15 +88,6 @@ class SharedOrderDetailViewModel @Inject constructor(
 
     /**
      * 获取用户地址
-     * @param orderId 订单ID
-     * @return 用户地址，如果获取失败则返回空字符串
-     */
-    fun getUserAddress(orderId: Long): String {
-        return getUserAddress(OrderInfoRequestModel(orderId = orderId, planId = 0))
-    }
-
-    /**
-     * 获取用户地址
      * @param request 订单信息请求模型
      * @return 用户地址，如果获取失败则返回空字符串
      */
@@ -132,28 +97,11 @@ class SharedOrderDetailViewModel @Inject constructor(
 
     /**
      * 获取项目ID列表
-     * @param orderId 订单ID
-     * @return 项目ID列表
-     */
-    fun getProjectIdList(orderId: Long): List<Int> {
-        return getProjectIdList(OrderInfoRequestModel(orderId = orderId, planId = 0))
-    }
-
-    /**
-     * 获取项目ID列表
      * @param request 订单信息请求模型
      * @return 项目ID列表
      */
     fun getProjectIdList(request: OrderInfoRequestModel): List<Int> {
         return getCachedOrderInfo(request)?.projectList?.map { it.projectId } ?: emptyList()
-    }
-
-    /**
-     * 清除指定订单的缓存
-     * @param orderId 订单ID
-     */
-    fun clearOrderCache(orderId: Long) {
-        clearOrderCache(OrderInfoRequestModel(orderId = orderId, planId = 0))
     }
 
     /**
