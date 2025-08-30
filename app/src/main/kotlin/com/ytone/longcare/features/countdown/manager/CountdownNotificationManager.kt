@@ -6,13 +6,17 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.AlarmManagerCompat
 import androidx.core.app.NotificationCompat
+import com.longcare.presentation.countdown.CountdownAlarmActivity
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.receiver.CountdownAlarmReceiver
+import com.ytone.longcare.features.countdown.receiver.DismissAlarmReceiver
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -29,9 +33,10 @@ class CountdownNotificationManager @Inject constructor(
 ) {
 
     companion object {
-        private const val COUNTDOWN_NOTIFICATION_CHANNEL_ID = "countdown_completion_channel"
+        private const val COUNTDOWN_NOTIFICATION_CHANNEL_ID = "countdown_completion_channel_v2"
         private const val COUNTDOWN_NOTIFICATION_ID = 2001
         private const val COUNTDOWN_ALARM_REQUEST_CODE = 3001
+        private const val DISMISS_ALARM_REQUEST_CODE = 3002
         
         // Intent extras
         const val EXTRA_ORDER_ID = "extra_order_id"
@@ -113,15 +118,57 @@ class CountdownNotificationManager @Inject constructor(
         serviceName: String
     ) {
         try {
+            // 创建关闭响铃的PendingIntent
+            val dismissIntent = Intent(context, DismissAlarmReceiver::class.java).apply {
+                putExtra(EXTRA_ORDER_ID, orderId)
+                putExtra(EXTRA_SERVICE_NAME, serviceName)
+            }
+            val dismissPendingIntent = PendingIntent.getBroadcast(
+                context,
+                DISMISS_ALARM_REQUEST_CODE,
+                dismissIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            // 创建启动CountdownAlarmActivity的PendingIntent
+            val alarmActivityIntent = CountdownAlarmActivity.createIntent(
+                context,
+                orderId.toString(),
+                serviceName,
+                autoCloseEnabled = true
+            )
+            val alarmActivityPendingIntent = PendingIntent.getActivity(
+                context,
+                COUNTDOWN_ALARM_REQUEST_CODE,
+                alarmActivityIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // 通知负责响闹铃和震动
+            val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            
             val notification = NotificationCompat.Builder(context, COUNTDOWN_NOTIFICATION_CHANNEL_ID)
-                .setContentTitle("服务倒计时完成")
+                .setContentTitle("⏰ 服务倒计时完成")
                 .setContentText("$serviceName 服务时间已到，请及时处理")
                 .setSmallIcon(R.mipmap.app_logo_round)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setPriority(NotificationCompat.PRIORITY_MAX) // 使用最高优先级
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
-                .setAutoCancel(true)
-                .setDefaults(NotificationCompat.DEFAULT_ALL) // 声音、振动、LED
+                .setAutoCancel(false) // 不自动取消，需要用户手动关闭
+                .setOngoing(true) // 设置为持续通知，不能滑动删除
+                .setDefaults(0) // 清除默认设置，使用自定义配置
+                .setSound(alarmUri) // 播放闹铃声音
+                .setVibrate(longArrayOf(0, 1000, 500, 1000, 500, 1000)) // 设置震动模式
+                .setLights(0xFF0000FF.toInt(), 1000, 500) // 设置LED灯光
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // 锁屏可见
+                .setContentIntent(alarmActivityPendingIntent) // 点击通知时启动闹铃页面
+                .addAction(
+                    android.R.drawable.ic_menu_close_clear_cancel,
+                    "关闭响铃",
+                    dismissPendingIntent
+                )
+                .setFullScreenIntent(alarmActivityPendingIntent, true) // 全屏显示闹铃页面
+                .setTimeoutAfter(0) // 不自动超时
                 .build()
 
             notificationManager.notify(COUNTDOWN_NOTIFICATION_ID, notification)
@@ -132,10 +179,29 @@ class CountdownNotificationManager @Inject constructor(
     }
 
     /**
+     * 取消倒计时完成通知
+     */
+    fun cancelCountdownCompletionNotification() {
+        try {
+            notificationManager.cancel(COUNTDOWN_NOTIFICATION_ID)
+            logI("倒计时完成通知已取消")
+        } catch (e: Exception) {
+            logE("取消倒计时完成通知失败: ${e.message}")
+        }
+    }
+
+    /**
      * 创建通知渠道
      */
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // 先删除旧的通知渠道（如果存在）
+            try {
+                notificationManager.deleteNotificationChannel("countdown_completion_channel")
+            } catch (e: Exception) {
+                // 忽略删除失败的错误
+            }
+            
             val channel = NotificationChannel(
                 COUNTDOWN_NOTIFICATION_CHANNEL_ID,
                 "倒计时完成通知",
@@ -146,10 +212,30 @@ class CountdownNotificationManager @Inject constructor(
                 enableLights(true)
                 setShowBadge(true)
                 lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
+                
+                // 设置闹铃声音
+                val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                    ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+                setSound(alarmUri, audioAttributes)
+                
+                // 设置震动模式
+                vibrationPattern = longArrayOf(0, 1000, 500, 1000, 500, 1000)
+                
+                // 允许绕过勿扰模式
+                setBypassDnd(true)
+                
+                // 设置为可以在锁屏上显示
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    setAllowBubbles(true)
+                }
             }
             
             notificationManager.createNotificationChannel(channel)
-            logI("倒计时通知渠道已创建")
+            logI("倒计时通知渠道已重新创建: $COUNTDOWN_NOTIFICATION_CHANNEL_ID")
         }
     }
 
