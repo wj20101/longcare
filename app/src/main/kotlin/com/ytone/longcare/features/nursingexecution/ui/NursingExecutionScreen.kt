@@ -215,7 +215,7 @@ fun NursingExecutionContent(
                                 navigationHelper.navigateToServiceCountdownWithLogic(
                                     navController = navController,
                                     orderId = orderInfoRequest.orderId,
-                                    projectList = orderInfo.projectList
+                                    projectList = orderInfo.projectList ?: emptyList()
                                 )
                             }
                             orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(orderInfoRequest)
@@ -242,11 +242,11 @@ fun ClientInfoCard(modifier: Modifier, orderInfo: ServiceOrderInfoModel) {
             modifier = Modifier.padding(start = 16.dp, end = 12.dp, top = 32.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp) // 行之间的间距
         ) {
-            InfoRow(label = stringResource(R.string.nursing_execution_label_name), value = orderInfo.userInfo.name)
-            InfoRow(label = stringResource(R.string.nursing_execution_label_age), value = orderInfo.userInfo.age.toString())
-            InfoRow(label = stringResource(R.string.nursing_execution_label_id_number), value = orderInfo.userInfo.identityCardNumber)
-            InfoRow(label = stringResource(R.string.nursing_execution_label_address), value = orderInfo.userInfo.address)
-            InfoRow(label = stringResource(R.string.nursing_execution_label_service_content), value = orderInfo.projectList.joinToString {it.projectName})
+            InfoRow(label = stringResource(R.string.nursing_execution_label_name), value = orderInfo.userInfo?.name ?: "")
+            InfoRow(label = stringResource(R.string.nursing_execution_label_age), value = orderInfo.userInfo?.age?.toString() ?: "")
+            InfoRow(label = stringResource(R.string.nursing_execution_label_id_number), value = orderInfo.userInfo?.identityCardNumber ?: "")
+            InfoRow(label = stringResource(R.string.nursing_execution_label_address), value = orderInfo.userInfo?.address ?: "")
+            InfoRow(label = stringResource(R.string.nursing_execution_label_service_content), value = (orderInfo.projectList ?: emptyList()).joinToString {it.projectName})
         }
     }
 }

@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.ServiceProjectM
+import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
@@ -91,11 +92,11 @@ fun ServiceHoursScreen(
                             title = {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
-                                        state.orderInfo.userInfo.name,
+                                        state.orderInfo.userInfo?.name ?: "",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 18.sp
                                     )
-                                    val address = state.orderInfo.userInfo.address
+                                    val address = state.orderInfo.userInfo?.address ?: ""
                                     if (address.isNotBlank()) {
                                         Text(
                                             "地址: $address",
@@ -127,12 +128,13 @@ fun ServiceHoursScreen(
                     ) {
                         // 列表内容区域，需要给顶部留出空间给 ServiceHoursTag
                         val selectedProjects = getSelectedProjects(
-                            allProjects = state.orderInfo.projectList,
+                            allProjects = state.orderInfo.projectList ?: emptyList(),
                             selectedProjectsManager = selectedProjectsManager,
                             orderId = orderId
                         )
                         ServiceRecordList(
                             projects = selectedProjects,
+                            orderInfo = state.orderInfo,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(top = 18.dp) // 为 ServiceHoursTag 预留空间，可调整
@@ -186,7 +188,9 @@ fun getSelectedProjects(
 
 @Composable
 fun ServiceRecordList(
-    projects: List<ServiceProjectM>, modifier: Modifier = Modifier
+    projects: List<ServiceProjectM>,
+    orderInfo: ServiceOrderInfoModel,
+    modifier: Modifier = Modifier
 ) {
 
     // 白色背景和顶部圆角的容器
@@ -200,7 +204,7 @@ fun ServiceRecordList(
             modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 8.dp)
         ) {
             itemsIndexed(projects) { index, project ->
-                ServiceRecordItem(project)
+                ServiceRecordItem(project, orderInfo)
                 if (index < projects.lastIndex) { // 不是最后一项才添加分割线
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -236,14 +240,18 @@ fun ServiceRecordListPreview() {
             lastServiceTime = "2023-10-25 14:00"
         )
     )
+    val sampleOrderInfo = ServiceOrderInfoModel(
+        startTime = "09:00",
+        endTime = "12:00"
+    )
     MaterialTheme {
-        ServiceRecordList(projects = sampleProjects)
+        ServiceRecordList(projects = sampleProjects, orderInfo = sampleOrderInfo)
     }
 }
 
 
 @Composable
-fun ServiceRecordItem(project: ServiceProjectM) {
+fun ServiceRecordItem(project: ServiceProjectM, orderInfo: ServiceOrderInfoModel) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -264,8 +272,15 @@ fun ServiceRecordItem(project: ServiceProjectM) {
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))
+            val serviceTimeText = if (orderInfo.startTime.isNotBlank() && orderInfo.endTime.isNotBlank()) {
+                "服务时间: ${orderInfo.startTime} - ${orderInfo.endTime}"
+            } else if (orderInfo.startTime.isNotBlank()) {
+                "开始时间: ${orderInfo.startTime}"
+            } else {
+                "服务时间: 未设置"
+            }
             Text(
-                text = "服务时间: ${project.lastServiceTime}", color = Color.Gray, fontSize = 13.sp
+                text = serviceTimeText, color = Color.Gray, fontSize = 13.sp
             )
         }
     }
@@ -280,7 +295,11 @@ fun ServiceRecordItemPreview() {
         serviceTime = 45,
         lastServiceTime = "2023-10-27 12:00"
     )
+    val sampleOrderInfo = ServiceOrderInfoModel(
+        startTime = "09:00",
+        endTime = "12:00"
+    )
     MaterialTheme {
-        ServiceRecordItem(project = sampleProject)
+        ServiceRecordItem(project = sampleProject, orderInfo = sampleOrderInfo)
     }
 }

@@ -135,12 +135,12 @@ fun ServiceCompleteScreen(
                         is OrderDetailUiState.Success -> {
                             val orderInfo = state.orderInfo
                             val serviceSummary = ServiceSummary(
-                                clientName = orderInfo.userInfo.name,
-                                clientAge = orderInfo.userInfo.age,
-                                clientIdNumber = orderInfo.userInfo.identityCardNumber,
-                                clientAddress = orderInfo.userInfo.address,
-                                serviceContent = getSelectedProjectsContent(orderInfo.projectList, selectedProjectsManager, orderInfoRequest.orderId),
-                                duration = formatSelectedProjectsDuration(orderInfo.projectList, selectedProjectsManager, orderInfoRequest.orderId)
+                                clientName = orderInfo.userInfo?.name ?: "",
+                                clientAge = orderInfo.userInfo?.age ?: 0,
+                                clientIdNumber = orderInfo.userInfo?.identityCardNumber ?: "",
+                                clientAddress = orderInfo.userInfo?.address ?: "",
+                                serviceContent = getSelectedProjectsContent(orderInfo.projectList ?: emptyList(), selectedProjectsManager, orderInfoRequest.orderId),
+                                duration = formatSelectedProjectsDuration(orderInfo.projectList ?: emptyList(), selectedProjectsManager, orderInfoRequest.orderId)
                             )
                             ServiceChecklistSection(summary = serviceSummary)
                         }

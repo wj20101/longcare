@@ -225,7 +225,7 @@ fun ServiceCountdownScreen(
         val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
         orderInfo?.let {
             // 计算总服务时间（分钟）
-            val totalMinutes = it.projectList
+            val totalMinutes = (it.projectList ?: emptyList())
                 .filter { project -> project.projectId in projectIdList.map { it.toInt() } }
                 .sumOf { project -> project.serviceTime }
             
@@ -245,12 +245,12 @@ fun ServiceCountdownScreen(
                 // 设置ViewModel的倒计时
                 countdownViewModel.setCountdownTimeFromProjects(
                     orderRequest = orderInfoRequest,
-                    projectList = it.projectList,
+                    projectList = it.projectList ?: emptyList(),
                     selectedProjectIds = projectIdList.map { it.toInt() }
                 )
                 
                 // 启动前台服务显示倒计时通知
-                val serviceName = it.projectList
+                val serviceName = (it.projectList ?: emptyList())
                     .filter { project -> project.projectId in projectIdList.map { it.toInt() } }
                     .joinToString(", ") { project -> project.projectName }
                 val totalSeconds = totalMinutes * 60L
@@ -299,7 +299,7 @@ fun ServiceCountdownScreen(
             val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
             orderInfo?.let {
                 // 计算总服务时间（分钟）
-                val totalMinutes = it.projectList
+                val totalMinutes = (it.projectList ?: emptyList())
                     .filter { project -> project.projectId in projectIdList.map { it.toInt() } }
                     .sumOf { project -> project.serviceTime }
                 
@@ -307,7 +307,7 @@ fun ServiceCountdownScreen(
                     // 强制重新计算倒计时状态，不受防抖限制
                     countdownViewModel.setCountdownTimeFromProjects(
                         orderRequest = orderInfoRequest,
-                        projectList = it.projectList,
+                        projectList = it.projectList ?: emptyList(),
                         selectedProjectIds = projectIdList.map { it.toInt() }
                     )
                 }
