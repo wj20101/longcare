@@ -5,6 +5,7 @@ package com.ytone.longcare.model
  */
 fun Int.toStateDisplayText(): String {
     return when (this) {
+        -1 -> "未开单"
         0 -> "待执行"
         1 -> "执行中"
         2 -> "任务完成"
@@ -51,4 +52,45 @@ fun Int.isPendingExecutionState(): Boolean {
 fun Int.isExecutingState(): Boolean {
     val value: Int = this
     return value == 1
+}
+
+/**
+ * 判断是否为未开单状态
+ */
+fun Int.isNotStartedState(): Boolean {
+    val value: Int = this
+    return value == -1
+}
+
+/**
+ * 统一的订单跳转处理函数
+ * @param state 订单状态
+ * @param orderId 订单ID
+ * @param planId 计划ID
+ * @param onNavigateToNursingExecution 跳转到护理执行页面的回调
+ * @param onNavigateToService 跳转到服务页面的回调
+ * @param onNotStartedState 未开单状态的回调（可选）
+ */
+fun handleOrderNavigation(
+    state: Int,
+    orderId: Long,
+    planId: Int = 0,
+    onNavigateToNursingExecution: (Long, Int) -> Unit,
+    onNavigateToService: (Long, Int) -> Unit,
+    onNotStartedState: (() -> Unit)? = null
+) {
+    when {
+        state.isNotStartedState() -> {
+            // 未开单状态，执行回调或默认不处理
+            onNotStartedState?.invoke()
+        }
+        state.isPendingCareState() -> {
+            // 待护理计划状态，跳转到护理执行页面
+            onNavigateToNursingExecution(orderId, planId)
+        }
+        else -> {
+            // 其他状态，跳转到服务页面
+            onNavigateToService(orderId, planId)
+        }
+    }
 }

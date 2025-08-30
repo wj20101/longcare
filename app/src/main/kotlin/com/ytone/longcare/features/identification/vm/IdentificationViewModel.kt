@@ -134,14 +134,16 @@ class IdentificationViewModel @Inject constructor(
             val orderInfo = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))
             if (orderInfo != null) {
                 val userInfo = orderInfo.userInfo
-                startFaceVerification(
-                    context = context,
-                    name = userInfo.name,
-                    idNo = userInfo.identityCardNumber,
-                    orderNo = "elder_${orderId}_${System.currentTimeMillis()}",
-                    userId = userInfo.userId.toString(),
-                    verificationType = VerificationType.ELDER
-                )
+                if (userInfo != null) {
+                    startFaceVerification(
+                        context = context,
+                        name = userInfo.name,
+                        idNo = userInfo.identityCardNumber,
+                        orderNo = "elder_${orderId}_${System.currentTimeMillis()}",
+                        userId = userInfo.userId.toString(),
+                        verificationType = VerificationType.ELDER
+                    )
+                }
             }
         }
     }

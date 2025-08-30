@@ -36,13 +36,13 @@ data class ServiceOrderInfoModel(
      * 用户信息
      */
     @param:Json(name = "userInfo")
-    val userInfo: UserInfoM = UserInfoM(),
+    val userInfo: UserInfoM? = null,
 
     /**
      * 服务项目信息集合
      */
     @param:Json(name = "projectList")
-    val projectList: List<ServiceProjectM> = emptyList()
+    val projectList: List<ServiceProjectM>? = null
 )
 
 /**

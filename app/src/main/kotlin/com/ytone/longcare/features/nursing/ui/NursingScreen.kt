@@ -44,6 +44,7 @@ import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.common.utils.DisplayDate
 import com.ytone.longcare.common.utils.TimeUtils
 import com.ytone.longcare.features.nursing.vm.NursingViewModel
+import com.ytone.longcare.model.handleOrderNavigation
 import com.ytone.longcare.model.isPendingCareState
 import com.ytone.longcare.model.toStateDisplayText
 import com.ytone.longcare.navigation.navigateToNursingExecution
@@ -191,11 +192,20 @@ fun NursingScreen(
                 modifier = Modifier.fillMaxSize(),
             ) { page ->
                 PlanList(plans = orderList, isLoading = isLoading) { order ->
-                    if (order.state.isPendingCareState()) {
-                        navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = order.orderId, planId = order.planId))
-                    } else {
-                        navController.navigateToService(OrderInfoRequestModel(orderId = order.orderId, planId = order.planId))
-                    }
+                    handleOrderNavigation(
+                         state = order.state,
+                         orderId = order.orderId,
+                         planId = order.planId,
+                         onNavigateToNursingExecution = { orderId, planId ->
+                             navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = orderId, planId = planId))
+                         },
+                         onNavigateToService = { orderId, planId ->
+                             navController.navigateToService(OrderInfoRequestModel(orderId = orderId, planId = planId))
+                         },
+                         onNotStartedState = {
+                             // 未开单状态，不允许跳转
+                         }
+                     )
                 }
             }
         }

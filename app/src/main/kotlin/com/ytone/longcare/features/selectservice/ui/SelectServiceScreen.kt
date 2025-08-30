@@ -95,7 +95,7 @@ fun SelectServiceScreen(
             is OrderDetailUiState.Success -> {
                 serviceItems.clear()
                 serviceItems.addAll(
-                    currentState.orderInfo.projectList.map { project ->
+                    (currentState.orderInfo.projectList ?: emptyList()).map { project ->
                         ServiceItem(
                             id = project.projectId,
                             name = project.projectName,
@@ -247,7 +247,7 @@ fun SelectServiceScreen(
                                     navigationHelper.navigateToServiceCountdownWithLogic(
                                         navController = navController,
                                         orderId = orderInfoRequest.orderId,
-                                        projectList = currentState.orderInfo.projectList,
+                                        projectList = currentState.orderInfo.projectList ?: emptyList(),
                                         selectedProjectIds = selectedProjectIds
                                     )
                                 }

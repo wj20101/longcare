@@ -26,6 +26,7 @@ import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.isPendingCare
 import com.ytone.longcare.api.response.isServiceRecord
+import com.ytone.longcare.model.handleOrderNavigation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.navigation.HomeRoute
@@ -132,12 +133,21 @@ fun ServiceOrdersListScreen(
                 } else {
                     items(filteredOrders) { order ->
                         ServiceOrderItem(order = order) {
-                            if (order.isPendingCare()) {
-                                navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = order.orderId, planId = 0))
-                            } else {
-                                navController.navigateToService(OrderInfoRequestModel(orderId = order.orderId, planId = 0))
-                            }
-                        }
+                    handleOrderNavigation(
+                         state = order.state,
+                         orderId = order.orderId,
+                         planId = 0,
+                         onNavigateToNursingExecution = { orderId, planId ->
+                             navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = orderId, planId = planId))
+                         },
+                         onNavigateToService = { orderId, planId ->
+                             navController.navigateToService(OrderInfoRequestModel(orderId = orderId, planId = planId))
+                         },
+                         onNotStartedState = {
+                             // 未开单状态，不允许跳转
+                         }
+                     )
+                }
                     }
                 }
             }

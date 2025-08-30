@@ -39,6 +39,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.isPendingCare
+import com.ytone.longcare.model.handleOrderNavigation
 import com.ytone.longcare.common.utils.NavigationHelper
 import com.ytone.longcare.di.NursingExecutionEntryPoint
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
@@ -482,11 +483,20 @@ fun OrderTabLayout(
                 if (pendingOrders.isNotEmpty()) {
                     pendingOrders.forEach { order ->
                         ServiceOrderItem(order = order) {
-                            if (order.isPendingCare()) {
-                                navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = order.orderId, planId = 0))
-                            } else {
-                                navController.navigateToService(OrderInfoRequestModel(orderId = order.orderId, planId = 0))
-                            }
+                            handleOrderNavigation(
+                                 state = order.state,
+                                 orderId = order.orderId,
+                                 planId = 0,
+                                 onNavigateToNursingExecution = { orderId, planId ->
+                                     navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = orderId, planId = planId))
+                                 },
+                                 onNavigateToService = { orderId, planId ->
+                                     navController.navigateToService(OrderInfoRequestModel(orderId = orderId, planId = planId))
+                                 },
+                                 onNotStartedState = {
+                                     // 未开单状态，不允许跳转
+                                 }
+                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -508,7 +518,7 @@ fun OrderTabLayout(
                             val cachedOrderInfo = sharedOrderDetailViewModel.getCachedOrderInfo(orderInfoRequest)
                             if (cachedOrderInfo != null) {
                                 // 缓存存在，直接跳转
-                                val projectList = cachedOrderInfo.projectList
+                                val projectList = cachedOrderInfo.projectList ?: emptyList()
                                 navigationHelper.navigateToServiceCountdownWithLogic(
                                     navController = navController,
                                     orderId = order.orderId,
@@ -530,7 +540,7 @@ fun OrderTabLayout(
                                          when (finalState) {
                                              is OrderDetailUiState.Success -> {
                                                  // 获取成功，直接使用返回的数据跳转
-                                                 val projectList = finalState.orderInfo.projectList
+                                                 val projectList = finalState.orderInfo.projectList ?: emptyList()
                                                  navigationHelper.navigateToServiceCountdownWithLogic(
                                                      navController = navController,
                                                      orderId = order.orderId,
