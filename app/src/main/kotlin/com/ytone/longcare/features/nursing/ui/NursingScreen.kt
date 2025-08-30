@@ -192,9 +192,9 @@ fun NursingScreen(
             ) { page ->
                 PlanList(plans = orderList, isLoading = isLoading) { order ->
                     if (order.state.isPendingCareState()) {
-                        navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = order.orderId, planId = 0))
+                        navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = order.orderId, planId = order.planId))
                     } else {
-                        navController.navigateToService(OrderInfoRequestModel(orderId = order.orderId, planId = 0))
+                        navController.navigateToService(OrderInfoRequestModel(orderId = order.orderId, planId = order.planId))
                     }
                 }
             }

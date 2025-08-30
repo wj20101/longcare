@@ -29,7 +29,7 @@ class NfcWorkflowViewModel @Inject constructor(
     private val selectedProjectsManager: SelectedProjectsManager
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
+    private val _uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Success)
     val uiState: StateFlow<NfcSignInUiState> = _uiState.asStateFlow()
 
     /**
