@@ -59,9 +59,9 @@ fun ServiceCompleteScreen(
     HomeBackHandler(navController = navController)
 
     // 在组件初始化时获取订单详情（如果缓存中没有）
-    LaunchedEffect(orderInfoRequest.orderId) {
+    LaunchedEffect(orderInfoRequest) {
         // 先检查缓存，如果没有缓存数据才请求
-        if (sharedViewModel.getCachedOrderInfo(orderInfoRequest.orderId) == null) {
+        if (sharedViewModel.getCachedOrderInfo(orderInfoRequest) == null) {
             sharedViewModel.getOrderInfo(orderInfoRequest)
         } else {
             // 如果有缓存数据，直接设置为成功状态

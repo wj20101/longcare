@@ -181,8 +181,8 @@ fun ServiceCountdownScreen(
         }
     }
 
-    LaunchedEffect(orderInfoRequest.orderId) {
-        sharedViewModel.getCachedOrderInfo(orderInfoRequest.orderId)
+    LaunchedEffect(orderInfoRequest) {
+        sharedViewModel.getCachedOrderInfo(orderInfoRequest)
         sharedViewModel.getOrderInfo(orderInfoRequest)
 
         // 检查并启动定位服务
@@ -222,7 +222,7 @@ fun ServiceCountdownScreen(
             return
         }
         
-        val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest.orderId)
+        val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
         orderInfo?.let {
             // 计算总服务时间（分钟）
             val totalMinutes = it.projectList
@@ -287,7 +287,7 @@ fun ServiceCountdownScreen(
     }
 
     // 初始设置倒计时时间
-    LaunchedEffect(orderInfoRequest.orderId, projectIdList) {
+    LaunchedEffect(orderInfoRequest, projectIdList) {
         setupCountdownTime()
     }
 
@@ -296,7 +296,7 @@ fun ServiceCountdownScreen(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             // 在RESUMED状态下强制重新设置倒计时，忽略防抖机制
             // 确保锁屏解锁后状态正确，显示当前真实的倒计时状态
-            val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest.orderId)
+            val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
             orderInfo?.let {
                 // 计算总服务时间（分钟）
                 val totalMinutes = it.projectList
