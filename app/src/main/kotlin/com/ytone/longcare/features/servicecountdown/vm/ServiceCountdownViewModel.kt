@@ -3,10 +3,12 @@ package com.ytone.longcare.features.servicecountdown.vm
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.common.utils.SelectedProjectsManager
 import com.ytone.longcare.common.utils.ServiceTimeManager
 import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.common.utils.UploadedImagesManager
 import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
@@ -25,7 +27,8 @@ import javax.inject.Inject
 class ServiceCountdownViewModel @Inject constructor(
     private val toastHelper: ToastHelper,
     private val serviceTimeManager: ServiceTimeManager,
-    private val selectedProjectsManager: SelectedProjectsManager
+    private val selectedProjectsManager: SelectedProjectsManager,
+    private val uploadedImagesManager: UploadedImagesManager
 ) : ViewModel() {
     
     // 倒计时状态
@@ -58,12 +61,12 @@ class ServiceCountdownViewModel @Inject constructor(
     
     /**
      * 根据项目列表设置倒计时时间
-     * @param orderId 订单ID
+     * @param orderRequest 订单信息请求模型
      * @param projectList 所有项目列表
      * @param selectedProjectIds 选中的项目ID列表
      */
     fun setCountdownTimeFromProjects(
-        orderId: Long,
+        orderRequest: OrderInfoRequestModel,
         projectList: List<ServiceProjectM>, 
         selectedProjectIds: List<Int>
     ) {
@@ -73,7 +76,7 @@ class ServiceCountdownViewModel @Inject constructor(
         
         if (totalMinutes > 0) {
             // 获取或创建服务开始时间
-            val serviceStartTime = serviceTimeManager.getOrCreateServiceStartTime(orderId)
+            val serviceStartTime = serviceTimeManager.getOrCreateServiceStartTime(orderRequest.orderId)
             
             // 计算总服务时长（毫秒）
             val totalServiceTimeMillis = totalMinutes * 60 * 1000L
@@ -107,7 +110,7 @@ class ServiceCountdownViewModel @Inject constructor(
                 _overtimeMillis.value = overtimeMillis
                 
                 // 保存当前订单ID和项目信息，用于超时计时中重新计算
-                currentOrderId = orderId
+                currentOrderId = orderRequest.orderId
                 currentProjectList = projectList
                 currentSelectedProjectIds = selectedProjectIds
                 
@@ -261,10 +264,10 @@ class ServiceCountdownViewModel @Inject constructor(
     
     /**
      * 结束服务
-     * @param orderId 订单ID，用于清除服务时间记录和选中项目记录
+     * @param orderInfoRequest 订单信息请求模型，用于清除服务时间记录和选中项目记录
      * @param context 上下文，用于停止前台服务
      */
-    fun endService(orderId: Long? = null, context: Context? = null) {
+    fun endService(orderInfoRequest: OrderInfoRequestModel, context: Context? = null) {
         countdownJob?.cancel()
         _countdownState.value = ServiceCountdownState.ENDED
         
@@ -272,10 +275,10 @@ class ServiceCountdownViewModel @Inject constructor(
         context?.let { stopForegroundService(it) }
         
         // 清除服务时间记录和选中项目记录
-        orderId?.let {
-            serviceTimeManager.clearServiceTime(it)
-            selectedProjectsManager.clearSelectedProjects(it)
-        }
+        serviceTimeManager.clearServiceTime(orderInfoRequest.orderId)
+        selectedProjectsManager.clearSelectedProjects(orderInfoRequest.orderId)
+        // 清除本地存储的图片数据
+        clearUploadedImagesFromLocal(orderInfoRequest)
     }
     
     // 设置倒计时时间（用于测试或手动设置）
@@ -295,18 +298,22 @@ class ServiceCountdownViewModel @Inject constructor(
     
     /**
      * 处理图片上传结果
+     * @param orderRequest 订单信息请求模型
      * @param uploadResult 按ImageTaskType分组的图片URL列表
      */
-    fun handlePhotoUploadResult(uploadResult: Map<ImageTaskType, List<String>>) {
+    fun handlePhotoUploadResult(orderRequest: OrderInfoRequestModel, uploadResult: Map<ImageTaskType, List<String>>) {
         val beforeCareImages = uploadResult[ImageTaskType.BEFORE_CARE] ?: emptyList()
         val afterCareImages = uploadResult[ImageTaskType.AFTER_CARE] ?: emptyList()
         
         // 保存上传的图片数据到状态中
         _uploadedImages.value = uploadResult
         
+        // 保存到本地存储，与订单关联
+        uploadedImagesManager.saveUploadedImages(orderRequest, uploadResult)
+        
         println("收到护理前图片: $beforeCareImages")
         println("收到护理后图片: $afterCareImages")
-        println("已保存图片数据到ViewModel状态中")
+        println("已保存图片数据到ViewModel状态和本地存储中")
     }
     
     /**
@@ -329,6 +336,36 @@ class ServiceCountdownViewModel @Inject constructor(
         return beforeCareImages.isNotEmpty() && afterCareImages.isNotEmpty()
     }
     
+    /**
+     * 加载本地存储的图片数据（用于页面恢复）
+     * @param orderRequest 订单信息请求模型
+     */
+    fun loadUploadedImagesFromLocal(orderRequest: OrderInfoRequestModel) {
+        val localImages = uploadedImagesManager.getUploadedImages(orderRequest)
+        if (localImages.isNotEmpty()) {
+            _uploadedImages.value = localImages
+            println("从本地存储加载图片数据: $localImages")
+        }
+    }
+    
+    /**
+     * 检查是否有本地存储的图片数据
+     * @param orderRequest 订单信息请求模型
+     * @return 是否存在本地存储的图片数据
+     */
+    fun hasLocalUploadedImages(orderRequest: OrderInfoRequestModel): Boolean {
+        return uploadedImagesManager.hasUploadedImages(orderRequest)
+    }
+    
+    /**
+     * 清除本地存储的图片数据（订单完成后调用）
+     * @param orderRequest 订单信息请求模型
+     */
+    fun clearUploadedImagesFromLocal(orderRequest: OrderInfoRequestModel) {
+        uploadedImagesManager.deleteUploadedImages(orderRequest)
+        println("已清除订单 ${orderRequest.orderId} 的本地图片数据")
+    }
+
     /**
      * 显示Toast提示
      * @param message 提示信息

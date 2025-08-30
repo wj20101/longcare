@@ -83,7 +83,7 @@ fun NursingExecutionScreen(
             NursingExecutionContent(
                 navController = navController,
                 orderInfo = state.orderInfo,
-                orderId = orderInfoRequest.orderId,
+                orderInfoRequest = orderInfoRequest,
                 navigationHelper = navigationHelper
             )
         }
@@ -152,7 +152,7 @@ fun ErrorScreen(
 fun NursingExecutionContent(
     navController: NavController,
     orderInfo: ServiceOrderInfoModel,
-    orderId: Long,
+    orderInfoRequest: OrderInfoRequestModel,
     navigationHelper: NavigationHelper
 ) {
     Box(
@@ -214,11 +214,11 @@ fun NursingExecutionContent(
                                 // 使用NavigationHelper统一处理跳转逻辑
                                 navigationHelper.navigateToServiceCountdownWithLogic(
                                     navController = navController,
-                                    orderId = orderId,
+                                    orderId = orderInfoRequest.orderId,
                                     projectList = orderInfo.projectList
                                 )
                             }
-                            orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(OrderInfoRequestModel(orderId = orderId, planId = 0))
+                            orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(orderInfoRequest)
                             else -> navController.popBackStack()
                         }
                     }

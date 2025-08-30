@@ -13,6 +13,7 @@ legacySupport = "1.0.0"
 lifecycle = "2.9.3"
 activityCompose = "1.10.1"
 fragmentCompose = "1.8.9"
+mockk = "1.14.5"
 navigationCompose = "2.9.3"
 appcompat = "1.7.1"
 startup = "1.2.0"
@@ -70,6 +71,7 @@ androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecyc
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-fragment-compose = { group = "androidx.fragment", name = "fragment-compose", version.ref = "fragmentCompose" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 startup-runtime = { group = "androidx.startup", name = "startup-runtime", version.ref = "startup" }
 constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayoutCompose" }
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
