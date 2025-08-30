@@ -17,6 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.ytone.longcare.MainViewModel
 import com.ytone.longcare.di.SelectedProjectsManagerEntryPoint
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.location.ui.LocationTrackingScreen
@@ -41,6 +42,7 @@ import com.ytone.longcare.features.userlist.ui.UserListScreen
 import com.ytone.longcare.features.userlist.ui.UserListType
 import com.ytone.longcare.features.userservicerecord.ui.UserServiceRecordScreen
 import kotlin.reflect.typeOf
+import com.ytone.longcare.navigation.OrderInfoRequestModelNavType
 
 /**
  * 从登录页面导航到主页，并清除登录页面的返回栈
@@ -54,37 +56,37 @@ fun NavController.navigateToHomeFromLogin() {
 
 /**
  * 导航到服务详情页面
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
-fun NavController.navigateToService(orderId: Long) {
-    navigate(ServiceRoute(orderId))
+fun NavController.navigateToService(orderInfoRequest: OrderInfoRequestModel) {
+    navigate(ServiceRoute(orderInfoRequest))
 }
 
 /**
  * 导航到护理执行页面
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
-fun NavController.navigateToNursingExecution(orderId: Long) {
-    navigate(NursingExecutionRoute(orderId))
+fun NavController.navigateToNursingExecution(orderInfoRequest: OrderInfoRequestModel) {
+    navigate(NursingExecutionRoute(orderInfoRequest))
 }
 
 /**
  * 导航到NFC签到页面（开始订单模式）
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
-fun NavController.navigateToNfcSignInForStartOrder(orderId: Long) {
-    navigate(NfcSignInRoute(orderId = orderId, signInMode = SignInMode.START_ORDER))
+fun NavController.navigateToNfcSignInForStartOrder(orderInfoRequest: OrderInfoRequestModel) {
+    navigate(NfcSignInRoute(orderInfoRequest = orderInfoRequest, signInMode = SignInMode.START_ORDER))
 }
 
 /**
  * 导航到NFC签到页面（结束订单模式）
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  * @param params 结束订单的信息参数
  */
-fun NavController.navigateToNfcSignInForEndOrder(orderId: Long, params: EndOderInfo) {
+fun NavController.navigateToNfcSignInForEndOrder(orderInfoRequest: OrderInfoRequestModel, params: EndOderInfo) {
     navigate(
         NfcSignInRoute(
-            orderId = orderId,
+            orderInfoRequest = orderInfoRequest,
             signInMode = SignInMode.END_ORDER,
             endOrderParams = params
         )
@@ -107,61 +109,62 @@ fun NavController.navigateToServiceRecordsList() {
 
 /**
  * 导航到选择服务页面
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
-fun NavController.navigateToSelectService(orderId: Long) {
-    navigate(SelectServiceRoute(orderId))
+fun NavController.navigateToSelectService(orderInfoRequest: OrderInfoRequestModel) {
+    navigate(SelectServiceRoute(orderInfoRequest))
 }
 
 /**
  * 导航到照片上传页面
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
-fun NavController.navigateToPhotoUpload(orderId: Long) {
-    navigate(PhotoUploadRoute(orderId))
+fun NavController.navigateToPhotoUpload(orderInfoRequest: OrderInfoRequestModel) {
+    navigate(PhotoUploadRoute(orderInfoRequest))
 }
 
 /**
  * 导航到服务倒计时页面
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  * @param projectIdList 项目ID列表
  */
 fun NavController.navigateToServiceCountdown(
-    orderId: Long,
+    orderInfoRequest: OrderInfoRequestModel,
     projectIdList: List<Int>
 ) {
-    navigate(ServiceCountdownRoute(orderId, projectIdList))
+    navigate(ServiceCountdownRoute(orderInfoRequest, projectIdList))
 }
 
 /**
  * 导航到服务完成页面
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
-fun NavController.navigateToServiceComplete(orderId: Long) {
-    navigate(ServiceCompleteRoute(orderId))
+fun NavController.navigateToServiceComplete(orderInfoRequest: OrderInfoRequestModel) {
+    navigate(ServiceCompleteRoute(orderInfoRequest))
 }
 
 /**
  * 导航到人脸识别引导页面
+ * @param orderInfoRequest 订单信息请求模型
  */
-fun NavController.navigateToFaceRecognitionGuide(orderId: Long) {
-    navigate(FaceRecognitionGuideRoute(orderId = orderId))
+fun NavController.navigateToFaceRecognitionGuide(orderInfoRequest: OrderInfoRequestModel) {
+    navigate(FaceRecognitionGuideRoute(orderInfoRequest = orderInfoRequest))
 }
 
 /**
  * 导航到选择设备页面
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
-fun NavController.navigateToSelectDevice(orderId: Long) {
-    navigate(SelectDeviceRoute(orderId))
+fun NavController.navigateToSelectDevice(orderInfoRequest: OrderInfoRequestModel) {
+    navigate(SelectDeviceRoute(orderInfoRequest))
 }
 
 /**
  * 导航到身份认证页面
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
-fun NavController.navigateToIdentification(orderId: Long) {
-    navigate(IdentificationRoute(orderId))
+fun NavController.navigateToIdentification(orderInfoRequest: OrderInfoRequestModel) {
+    navigate(IdentificationRoute(orderInfoRequest))
 }
 
 /**
@@ -274,7 +277,9 @@ fun AppNavigation(startDestination: Any) {
         composable<HomeRoute> {
             HomeScreen(navController = navController)
         }
-        composable<ServiceRoute> { backStackEntry ->
+        composable<ServiceRoute>(
+            typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
+        ) { backStackEntry ->
             val route = backStackEntry.toRoute<ServiceRoute>()
             val context = LocalContext.current
             val selectedProjectsManager = EntryPointAccessors.fromApplication(
@@ -283,15 +288,17 @@ fun AppNavigation(startDestination: Any) {
             ).selectedProjectsManager()
             ServiceHoursScreen(
                 navController = navController,
-                orderId = route.orderId,
+                orderInfoRequest = route.orderInfoRequest,
                 selectedProjectsManager = selectedProjectsManager
             )
         }
-        composable<NursingExecutionRoute> { backStackEntry ->
+        composable<NursingExecutionRoute>(
+            typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
+        ) { backStackEntry ->
             val route = backStackEntry.toRoute<NursingExecutionRoute>()
             NursingExecutionScreen(
                 navController = navController,
-                orderId = route.orderId
+                orderInfoRequest = route.orderInfoRequest
             )
         }
         composable<CarePlansListRoute> {
@@ -308,37 +315,46 @@ fun AppNavigation(startDestination: Any) {
             )
         }
         composable<NfcSignInRoute>(
-            typeMap = mapOf(typeOf<EndOderInfo?>() to EndOderInfoNavType)
+            typeMap = mapOf(
+                typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType,
+                typeOf<EndOderInfo?>() to EndOderInfoNavType
+            )
         ) { backStackEntry ->
             val route = backStackEntry.toRoute<NfcSignInRoute>()
 
             NfcWorkflowScreen(
                 navController = navController,
-                orderId = route.orderId,
+                orderInfoRequest = route.orderInfoRequest,
                 signInMode = route.signInMode,
                 endOderInfo = route.endOrderParams
             )
         }
-        composable<SelectServiceRoute> { backStackEntry ->
+        composable<SelectServiceRoute>(
+            typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
+        ) { backStackEntry ->
             val route = backStackEntry.toRoute<SelectServiceRoute>()
             SelectServiceScreen(
                 navController = navController,
-                orderId = route.orderId
+                orderInfoRequest = route.orderInfoRequest
             )
         }
-        composable<PhotoUploadRoute> { backStackEntry ->
+        composable<PhotoUploadRoute>(
+            typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
+        ) { backStackEntry ->
             val route = backStackEntry.toRoute<PhotoUploadRoute>()
             PhotoUploadScreen(
                 navController = navController,
-                orderId = route.orderId
+                orderInfoRequest = route.orderInfoRequest
             )
         }
-        composable<ServiceCountdownRoute> { backStackEntry ->
+        composable<ServiceCountdownRoute>(
+            typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
+        ) { backStackEntry ->
             val route = backStackEntry.toRoute<ServiceCountdownRoute>()
             ServiceCountdownScreen(
                 navController = navController,
-                orderId = route.orderId,
-                projectIdList = route.projectIdList
+                orderInfoRequest = route.orderInfoRequest,
+                projectIdList = route.projectIdList.map { it.toString() }
             )
         }
         composable<TxFaceRoute> { backStackEntry ->
@@ -351,7 +367,9 @@ fun AppNavigation(startDestination: Any) {
         composable<LocationTrackingRoute> { backStackEntry ->
             LocationTrackingScreen()
         }
-        composable<ServiceCompleteRoute> { backStackEntry ->
+        composable<ServiceCompleteRoute>(
+            typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
+        ) { backStackEntry ->
             val route = backStackEntry.toRoute<ServiceCompleteRoute>()
             val context = LocalContext.current
             val selectedProjectsManager = EntryPointAccessors.fromApplication(
@@ -360,29 +378,35 @@ fun AppNavigation(startDestination: Any) {
             ).selectedProjectsManager()
             ServiceCompleteScreen(
                 navController = navController,
-                orderId = route.orderId,
+                orderInfoRequest = route.orderInfoRequest,
                 selectedProjectsManager = selectedProjectsManager
             )
         }
 
-        composable<FaceRecognitionGuideRoute> { backStackEntry ->
+        composable<FaceRecognitionGuideRoute>(
+            typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
+        ) { backStackEntry ->
             val route = backStackEntry.toRoute<FaceRecognitionGuideRoute>()
-            FaceRecognitionGuideScreen(navController = navController, orderId = route.orderId)
+            FaceRecognitionGuideScreen(navController = navController, orderInfoRequest = route.orderInfoRequest)
         }
         
-        composable<SelectDeviceRoute> { backStackEntry ->
+        composable<SelectDeviceRoute>(
+            typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
+        ) { backStackEntry ->
             val route = backStackEntry.toRoute<SelectDeviceRoute>()
             SelectDeviceScreen(
                 navController = navController,
-                orderId = route.orderId
+                orderInfoRequest = route.orderInfoRequest
             )
         }
         
-        composable<IdentificationRoute> { backStackEntry ->
+        composable<IdentificationRoute>(
+            typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
+        ) { backStackEntry ->
             val route = backStackEntry.toRoute<IdentificationRoute>()
             IdentificationScreen(
                 navController = navController,
-                orderId = route.orderId
+                orderInfoRequest = route.orderInfoRequest
             )
         }
         

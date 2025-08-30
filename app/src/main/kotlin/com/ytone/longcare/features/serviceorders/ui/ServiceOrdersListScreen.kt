@@ -22,6 +22,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.R
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.isPendingCare
 import com.ytone.longcare.api.response.isServiceRecord
@@ -132,9 +133,9 @@ fun ServiceOrdersListScreen(
                     items(filteredOrders) { order ->
                         ServiceOrderItem(order = order) {
                             if (order.isPendingCare()) {
-                                navController.navigateToNursingExecution(order.orderId)
+                                navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = order.orderId, planId = 0))
                             } else {
-                                navController.navigateToService(order.orderId)
+                                navController.navigateToService(OrderInfoRequestModel(orderId = order.orderId, planId = 0))
                             }
                         }
                     }

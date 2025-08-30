@@ -32,6 +32,7 @@ import com.ytone.longcare.features.photoupload.utils.launchCameraWithPermission
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.navigation.navigateToSelectService
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.di.IdentificationEntryPoint
 import com.ytone.longcare.common.utils.UnifiedBackHandler
@@ -48,9 +49,9 @@ private object IdentificationConstants {
 @Composable
 fun IdentificationScreen(
     navController: NavController,
-    orderId: Long = 0L,
-    viewModel: IdentificationViewModel = hiltViewModel(),
-    sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel()
+    orderInfoRequest: OrderInfoRequestModel,
+    sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel(),
+    identificationViewModel: IdentificationViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val faceVerificationStatusManager = EntryPointAccessors.fromApplication(
@@ -66,31 +67,29 @@ fun IdentificationScreen(
     // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
     UnifiedBackHandler(navController = navController)
     // 观察状态
-    val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
-    val faceVerificationState by viewModel.faceVerificationState.collectAsStateWithLifecycle()
-    val photoUploadState by viewModel.photoUploadState.collectAsStateWithLifecycle()
+    val identificationState by identificationViewModel.identificationState.collectAsStateWithLifecycle()
+    val faceVerificationState by identificationViewModel.faceVerificationState.collectAsStateWithLifecycle()
+    val photoUploadState by identificationViewModel.photoUploadState.collectAsStateWithLifecycle()
 
     // 相机拍照启动器（带权限申请功能）
     val (cameraLauncher, permissionLauncher) = rememberCameraLauncherWithPermission(
         onPhotoTaken = { uri ->
-            viewModel.processElderPhoto(uri, orderId)
+            identificationViewModel.processElderPhoto(uri, orderInfoRequest.orderId)
         },
         onError = { errorMessage ->
-            viewModel.resetPhotoUploadState()
+            identificationViewModel.resetPhotoUploadState()
             // 这里可以显示错误提示，或者通过ViewModel处理
         },
         onPermissionDenied = {
-            viewModel.resetPhotoUploadState()
+            identificationViewModel.resetPhotoUploadState()
             // 权限被拒绝的处理
         }
     )
-    val currentVerificationType by viewModel.currentVerificationType.collectAsStateWithLifecycle()
+    val currentVerificationType by identificationViewModel.currentVerificationType.collectAsStateWithLifecycle()
     
     // 预加载订单详情
-    LaunchedEffect(orderId) {
-        if (orderId > 0) {
-            sharedOrderDetailViewModel.getOrderInfo(orderId)
-        }
+    LaunchedEffect(orderInfoRequest.orderId) {
+        sharedOrderDetailViewModel.getOrderInfo(orderInfoRequest)
     }
     
     // 处理人脸验证结果
@@ -100,13 +99,13 @@ fun IdentificationScreen(
                 // 验证成功，根据验证类型更新身份认证状态
                 when (currentVerificationType) {
                     IdentificationViewModel.VerificationType.SERVICE_PERSON -> {
-                        viewModel.setServicePersonVerified()
+                        identificationViewModel.setServicePersonVerified()
                     }
                     IdentificationViewModel.VerificationType.ELDER -> {
-                        viewModel.setElderVerified()
+                        identificationViewModel.setElderVerified()
                         // 老人验证成功后，保存人脸验证完成状态
-                        if (orderId > 0) {
-                            faceVerificationStatusManager.saveFaceVerificationCompleted(orderId)
+                        if (orderInfoRequest.orderId > 0) {
+                            faceVerificationStatusManager.saveFaceVerificationCompleted(orderInfoRequest.orderId)
                         }
                     }
                     null -> { /* 无验证类型，不处理 */ }
@@ -127,13 +126,13 @@ fun IdentificationScreen(
         when (photoUploadState) {
             is IdentificationViewModel.PhotoUploadState.Success -> {
                 // 上传成功，自动跳转到下一步
-                navController.navigateToSelectService(orderId)
+                navController.navigateToSelectService(orderInfoRequest)
                 // 重置状态
-                viewModel.resetPhotoUploadState()
+                identificationViewModel.resetPhotoUploadState()
             }
             is IdentificationViewModel.PhotoUploadState.Error -> {
                 // 上传失败，重置状态
-                viewModel.resetPhotoUploadState()
+                identificationViewModel.resetPhotoUploadState()
             }
             else -> {}
         }
@@ -185,10 +184,10 @@ fun IdentificationScreen(
                     personType = IdentificationConstants.SERVICE_PERSON,
                     isVerified = identificationState.ordinal >= IdentificationState.SERVICE_VERIFIED.ordinal,
                     onVerifyClick = {
-                        viewModel.setServicePersonVerified()
-//                        viewModel.verifyServicePerson(context)
+                        identificationViewModel.setServicePersonVerified()
+//                        identificationViewModel.verifyServicePerson(context)
                     },
-                    viewModel = viewModel,
+                    viewModel = identificationViewModel,
                     faceVerificationState = faceVerificationState
                 )
                 
@@ -205,14 +204,14 @@ fun IdentificationScreen(
                             permissionLauncher = permissionLauncher,
                             context = context,
                             onError = { errorMessage ->
-                                viewModel.resetPhotoUploadState()
+                                identificationViewModel.resetPhotoUploadState()
                                 // 可以通过Toast显示错误信息
                             }
                         )
                         // 保留人脸识别功能（注释状态，后续需求）
-                        // viewModel.verifyElder(context, orderId)
+                        // identificationViewModel.verifyElder(context, orderInfoRequest.orderId)
                     },
-                    viewModel = viewModel,
+                    viewModel = identificationViewModel,
                     faceVerificationState = faceVerificationState,
                     photoUploadState = photoUploadState
                 )
@@ -221,7 +220,7 @@ fun IdentificationScreen(
 
                 // 下一步按钮
                 Button(
-                    onClick = { navController.navigateToSelectService(orderId) },
+                    onClick = { navController.navigateToSelectService(orderInfoRequest) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
@@ -230,7 +229,7 @@ fun IdentificationScreen(
                         containerColor = Color(0xFF4A90E2), // 蓝色
                         disabledContainerColor = Color(0xFF4A90E2).copy(alpha = 0.5f)
                     ),
-                    enabled = identificationState == IdentificationState.ELDER_VERIFIED
+//                    enabled = identificationState == IdentificationState.ELDER_VERIFIED
                 ) {
                     Text("下一步", fontSize = 16.sp, color = Color.White)
                 }

@@ -2,6 +2,7 @@ package com.ytone.longcare.navigation
 
 import androidx.annotation.Keep
 import kotlinx.serialization.Serializable
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 
 /**
  * 类型安全的导航路由定义
@@ -24,19 +25,19 @@ object HomeRoute
 
 /**
  * 服务详情页面路由
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
 @Keep
 @Serializable
-data class ServiceRoute(val orderId: Long)
+data class ServiceRoute(val orderInfoRequest: OrderInfoRequestModel)
 
 /**
  * 护理执行页面路由
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
 @Keep
 @Serializable
-data class NursingExecutionRoute(val orderId: Long)
+data class NursingExecutionRoute(val orderInfoRequest: OrderInfoRequestModel)
 
 /**
  * NFC签到模式枚举
@@ -57,25 +58,25 @@ enum class SignInMode {
 
 /**
  * NFC签到路由
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  * @param signInMode 签到模式（开始订单或结束订单）
  * @param endOrderParams 结束订单时的参数信息
  */
 @Keep
 @Serializable
 data class NfcSignInRoute(
-    val orderId: Long, val signInMode: SignInMode, val endOrderParams: EndOderInfo? = null
+    val orderInfoRequest: OrderInfoRequestModel, val signInMode: SignInMode, val endOrderParams: EndOderInfo? = null
 )
 
 /**
  * 服务倒计时页面路由
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  * @param projectIdList 项目ID列表
  */
 @Keep
 @Serializable
 data class ServiceCountdownRoute(
-    val orderId: Long,
+    val orderInfoRequest: OrderInfoRequestModel,
     val projectIdList: List<Int>
 )
 
@@ -97,19 +98,19 @@ data class EndOderInfo(
 
 /**
  * 选择服务页面路由
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
 @Keep
 @Serializable
-data class SelectServiceRoute(val orderId: Long)
+data class SelectServiceRoute(val orderInfoRequest: OrderInfoRequestModel)
 
 /**
  * 照片上传页面路由
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
 @Keep
 @Serializable
-data class PhotoUploadRoute(val orderId: Long)
+data class PhotoUploadRoute(val orderInfoRequest: OrderInfoRequestModel)
 
 /**
  * 护理计划列表页面路由
@@ -141,34 +142,35 @@ object LocationTrackingRoute
 
 /**
  * 服务完成页面路由
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
 @Keep
 @Serializable
-data class ServiceCompleteRoute(val orderId: Long)
+data class ServiceCompleteRoute(val orderInfoRequest: OrderInfoRequestModel)
 
 /**
  * 人脸识别引导页面路由
+ * @param orderInfoRequest 订单信息请求模型
  */
 @Keep
 @Serializable
-data class FaceRecognitionGuideRoute(val orderId: Long)
+data class FaceRecognitionGuideRoute(val orderInfoRequest: OrderInfoRequestModel)
 
 /**
  * 选择设备页面路由
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
 @Keep
 @Serializable
-data class SelectDeviceRoute(val orderId: Long)
+data class SelectDeviceRoute(val orderInfoRequest: OrderInfoRequestModel)
 
 /**
  * 身份认证页面路由
- * @param orderId 订单ID
+ * @param orderInfoRequest 订单信息请求模型
  */
 @Keep
 @Serializable
-data class IdentificationRoute(val orderId: Long)
+data class IdentificationRoute(val orderInfoRequest: OrderInfoRequestModel)
 
 /**
  * 用户列表页面路由

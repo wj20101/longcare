@@ -38,6 +38,7 @@ import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.navigation.EndOderInfo
@@ -66,10 +67,10 @@ enum class ServiceCountdownState {
 @Composable
 fun ServiceCountdownScreen(
     navController: NavController,
-    orderId: Long,
-    projectIdList: List<Int>,
-    viewModel: ServiceCountdownViewModel = hiltViewModel(),
+    orderInfoRequest: OrderInfoRequestModel,
+    projectIdList: List<String>,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
+    countdownViewModel: ServiceCountdownViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
     // ==========================================================
@@ -81,8 +82,8 @@ fun ServiceCountdownScreen(
     HomeBackHandler(navController = navController)
 
     // 从ViewModel获取状态
-    val countdownState by viewModel.countdownState.collectAsStateWithLifecycle()
-    val formattedTime by viewModel.formattedTime.collectAsStateWithLifecycle()
+    val countdownState by countdownViewModel.countdownState.collectAsStateWithLifecycle()
+    val formattedTime by countdownViewModel.formattedTime.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -124,7 +125,7 @@ fun ServiceCountdownScreen(
 
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
-        locationTrackingViewModel = locationTrackingViewModel, orderId = orderId
+        locationTrackingViewModel = locationTrackingViewModel, orderId = orderInfoRequest.orderId
     )
 
     // 检查定位权限和服务的函数
@@ -180,11 +181,9 @@ fun ServiceCountdownScreen(
         }
     }
 
-    LaunchedEffect(orderId) {
-        // 确保订单详情已加载到SharedViewModel中
-        if (sharedViewModel.getCachedOrderInfo(orderId) == null) {
-            sharedViewModel.getOrderInfo(orderId)
-        }
+    LaunchedEffect(orderInfoRequest.orderId) {
+        sharedViewModel.getCachedOrderInfo(orderInfoRequest.orderId)
+        sharedViewModel.getOrderInfo(orderInfoRequest)
 
         // 检查并启动定位服务
         checkLocationPermissionAndStart()
@@ -195,7 +194,7 @@ fun ServiceCountdownScreen(
         )?.collect { result ->
             result?.let {
                 // 调用ViewModel处理图片上传结果
-                viewModel.handlePhotoUploadResult(it)
+                countdownViewModel.handlePhotoUploadResult(it)
 
                 // 清除结果，避免重复处理
                 navController.currentBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<String>>>(
@@ -223,16 +222,16 @@ fun ServiceCountdownScreen(
             return
         }
         
-        val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
+        val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest.orderId)
         orderInfo?.let {
             // 计算总服务时间（分钟）
             val totalMinutes = it.projectList
-                .filter { project -> project.projectId in projectIdList }
+                .filter { project -> project.projectId in projectIdList.map { it.toInt() } }
                 .sumOf { project -> project.serviceTime }
             
             // 检查是否需要重新初始化
             val needsReinit = !isCountdownInitialized || 
-                             lastProjectIdList != projectIdList ||
+                             lastProjectIdList != projectIdList.map { it.toInt() } ||
                              countdownState == ServiceCountdownState.ENDED
             
             if (needsReinit && totalMinutes > 0) {
@@ -243,21 +242,21 @@ fun ServiceCountdownScreen(
                 }
                 
                 // 设置ViewModel的倒计时
-                viewModel.setCountdownTimeFromProjects(
-                    orderId = orderId,
+                countdownViewModel.setCountdownTimeFromProjects(
+                    orderId = orderInfoRequest.orderId,
                     projectList = it.projectList,
-                    selectedProjectIds = projectIdList
+                    selectedProjectIds = projectIdList.map { it.toInt() }
                 )
                 
                 // 启动前台服务显示倒计时通知
                 val serviceName = it.projectList
-                    .filter { project -> project.projectId in projectIdList }
+                    .filter { project -> project.projectId in projectIdList.map { it.toInt() } }
                     .joinToString(", ") { project -> project.projectName }
                 val totalSeconds = totalMinutes * 60L
                 
-                viewModel.startForegroundService(
+                countdownViewModel.startForegroundService(
                     context = context,
-                    orderId = orderId,
+                    orderId = orderInfoRequest.orderId,
                     serviceName = serviceName,
                     totalSeconds = totalSeconds
                 )
@@ -267,7 +266,7 @@ fun ServiceCountdownScreen(
 
                     val completionTime = countdownNotificationManager.calculateCompletionTime(totalMinutes * 60 * 1000L)
                     countdownNotificationManager.scheduleCountdownAlarm(
-                        orderId = orderId,
+                        orderId = orderInfoRequest.orderId,
                         serviceName = serviceName,
                         triggerTimeMillis = completionTime
                     )
@@ -279,7 +278,7 @@ fun ServiceCountdownScreen(
                 
                 // 更新状态
                 isCountdownInitialized = true
-                lastProjectIdList = projectIdList
+                lastProjectIdList = projectIdList.map { it.toInt() }
             }
             
             lastSetupTime = currentTime
@@ -287,7 +286,7 @@ fun ServiceCountdownScreen(
     }
 
     // 初始设置倒计时时间
-    LaunchedEffect(orderId, projectIdList) {
+    LaunchedEffect(orderInfoRequest.orderId, projectIdList) {
         setupCountdownTime()
     }
 
@@ -339,16 +338,16 @@ fun ServiceCountdownScreen(
             // Countdown Timer Card
             CountdownTimerCard(
                 navController = navController,
-                orderId = orderId,
                 countdownState = countdownState,
                 formattedTime = formattedTime,
-                viewModel = viewModel
+                countdownViewModel = countdownViewModel,
+                orderInfoRequest = orderInfoRequest
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             SelectedServicesCard(
-                orderId = orderId, projectIdList = projectIdList, sharedViewModel = sharedViewModel
+                orderInfoRequest = orderInfoRequest, projectIdList = projectIdList.map { it.toString() }, sharedViewModel = sharedViewModel
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -357,8 +356,8 @@ fun ServiceCountdownScreen(
             Button(
                 onClick = {
                     // 验证照片是否已上传
-                    if (!viewModel.validatePhotosUploaded()) {
-                        viewModel.showToast("请上传照片")
+                    if (!countdownViewModel.validatePhotosUploaded()) {
+                        countdownViewModel.showToast("请上传照片")
                         return@Button
                     }
 
@@ -367,18 +366,18 @@ fun ServiceCountdownScreen(
                         showConfirmDialog = true
                     } else {
                         // 直接结束服务
-                        viewModel.endService(orderId, context)
+                        countdownViewModel.endService(orderInfoRequest.orderId, context)
                         // 取消倒计时闹钟
                         countdownNotificationManager.cancelCountdownAlarm()
                         
-                        val uploadedImages = viewModel.getCurrentUploadedImages()
-                        val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
-                        val endImgList = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
+                        val uploadedImages = countdownViewModel.getCurrentUploadedImages()
+                        val beginImgList: List<String> = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
+                        val endImgList: List<String> = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
 
                         navController.navigateToNfcSignInForEndOrder(
-                            orderId = orderId,
+                            orderInfoRequest = orderInfoRequest,
                             params = EndOderInfo(
-                                projectIdList = projectIdList,
+                                projectIdList = projectIdList.map { it.toInt() },
                                 beginImgList = beginImgList,
                                 endImgList = endImgList,
                                 endType = 1
@@ -462,23 +461,23 @@ fun ServiceCountdownScreen(
                 TextButton(
                     onClick = {
                         showConfirmDialog = false
-                        viewModel.endService(orderId, context)
+                        countdownViewModel.endService(orderInfoRequest.orderId, context)
                         // 取消倒计时闹钟
                         countdownNotificationManager.cancelCountdownAlarm()
                         
-                        val uploadedImages = viewModel.getCurrentUploadedImages()
-                        val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
-                        val endImgList = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
+                        val uploadedImages: Map<ImageTaskType, List<String>> = countdownViewModel.getCurrentUploadedImages()
+                        val beginImgList: List<String> = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
+                        val endImgList: List<String> = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
 
                         navController.navigateToNfcSignInForEndOrder(
-                             orderId = orderId,
-                             params = EndOderInfo(
-                                 projectIdList = projectIdList,
-                                 beginImgList = beginImgList,
-                                 endImgList = endImgList,
-                                 endType = 2  // 提前结束
-                             ),
-                         )
+                            orderInfoRequest = orderInfoRequest,
+                            params = EndOderInfo(
+                                projectIdList = projectIdList.map { it.toInt() },
+                                beginImgList = beginImgList,
+                                endImgList = endImgList,
+                                endType = 2  // 提前结束
+                            ),
+                        )
                     }
                 ) {
                     Text("确定")
@@ -498,10 +497,10 @@ fun ServiceCountdownScreen(
 @Composable
 fun CountdownTimerCard(
     navController: NavController,
-    orderId: Long,
     countdownState: ServiceCountdownState,
     formattedTime: String = "12:00:00",
-    viewModel: ServiceCountdownViewModel
+    countdownViewModel: ServiceCountdownViewModel,
+    orderInfoRequest: OrderInfoRequestModel
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -541,12 +540,12 @@ fun CountdownTimerCard(
             }
             Button(
                 onClick = {
-                    val existingImages = viewModel.getCurrentUploadedImages()
+                    val existingImages: Map<ImageTaskType, List<String>> = countdownViewModel.getCurrentUploadedImages()
                     // 通过savedStateHandle传递已有的图片数据
                     navController.currentBackStackEntry?.savedStateHandle?.set(
                         NavigationConstants.EXISTING_IMAGES_KEY, existingImages
                     )
-                    navController.navigateToPhotoUpload(orderId = orderId)
+                    navController.navigateToPhotoUpload(orderInfoRequest = orderInfoRequest)
                 }, shape = RoundedCornerShape(50), colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFF5A623) // 橙色
                 )
@@ -559,24 +558,24 @@ fun CountdownTimerCard(
 
 @Composable
 fun SelectedServicesCard(
-    orderId: Long, projectIdList: List<Int>, sharedViewModel: SharedOrderDetailViewModel
+    orderInfoRequest: OrderInfoRequestModel, projectIdList: List<String>, sharedViewModel: SharedOrderDetailViewModel
 ) {
     val tagHeightEstimate = 32.dp
     val tagOverlap = 12.dp
 
     // 获取订单详情
-    val orderInfo = sharedViewModel.getCachedOrderInfo(orderId)
+    val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
     val allProjects = orderInfo?.projectList ?: emptyList()
 
     // 判断是否为全选状态
     val isAllSelected = projectIdList.isEmpty() || 
-        (allProjects.isNotEmpty() && projectIdList.containsAll(allProjects.map { it.projectId }))
+        (allProjects.isNotEmpty() && projectIdList.containsAll(allProjects.map { it.projectId.toString() }))
 
     // 根据是否全选来确定显示的项目
     val selectedProjects = if (isAllSelected) {
         allProjects
     } else {
-        allProjects.filter { it.projectId in projectIdList }
+        allProjects.filter { it.projectId.toString() in projectIdList }
     }
 
     Box {
@@ -617,6 +616,6 @@ fun SelectedServicesCard(
 @Composable
 fun SelectedServicesCardPreview() {
     SelectedServicesCard(
-        orderId = 12345L, projectIdList = listOf(1, 2), sharedViewModel = hiltViewModel()
+        orderInfoRequest = OrderInfoRequestModel(orderId = 12345L, planId = 0), projectIdList = listOf("1", "2"), sharedViewModel = hiltViewModel()
     )
 }

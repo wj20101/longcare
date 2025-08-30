@@ -15,6 +15,7 @@ import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.order.SharedOrderRepository
 import com.ytone.longcare.domain.order.OrderRepository
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.photoupload.utils.ImageProcessor
@@ -130,7 +131,7 @@ class IdentificationViewModel @Inject constructor(
      */
     fun verifyElder(context: Context, orderId: Long) {
         viewModelScope.launch {
-            val orderInfo = sharedOrderRepository.getCachedOrderInfo(orderId)
+            val orderInfo = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))
             if (orderInfo != null) {
                 val userInfo = orderInfo.userInfo
                 startFaceVerification(
@@ -329,7 +330,7 @@ class IdentificationViewModel @Inject constructor(
         val currentTime = dateFormat.format(Date())
         
         // 获取订单地址
-        val address = sharedOrderRepository.getCachedOrderInfo(orderId)?.userInfo?.address ?: "未知地址"
+        val address = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))?.userInfo?.address ?: "未知地址"
         
         return listOf(
             "老人身份验证 - 长护险服务",

@@ -49,6 +49,8 @@ import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSetti
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.common.utils.UnifiedBackHandler
+import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 
 
 // --- 状态定义 ---
@@ -63,13 +65,14 @@ enum class SignInState {
 @Composable
 fun NfcWorkflowScreen(
     navController: NavController,
-    orderId: Long,
+    orderInfoRequest: OrderInfoRequestModel,
     signInMode: SignInMode,
-    endOderInfo: EndOderInfo?,
-    viewModel: NfcWorkflowViewModel = hiltViewModel(),
+    endOderInfo: EndOderInfo? = null,
+    sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
+    nfcViewModel: NfcWorkflowViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by nfcViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
     
@@ -79,7 +82,7 @@ fun NfcWorkflowScreen(
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
         locationTrackingViewModel = locationTrackingViewModel,
-        orderId = orderId
+        orderId = orderInfoRequest.orderId
     )
 
     // 检查定位权限和服务的函数
@@ -119,7 +122,7 @@ fun NfcWorkflowScreen(
             if (!UnifiedPermissionHelper.isLocationServiceEnabled(context)) {
                 // 提醒用户开启定位服务
                 openLocationSettings(context)
-                viewModel.showError("请开启定位服务以获取位置信息")
+                nfcViewModel.showError("请开启定位服务以获取位置信息")
                 return Pair("", "")
             }
             
@@ -140,7 +143,7 @@ fun NfcWorkflowScreen(
             when {
                 !NfcUtils.isNfcSupported(context) -> {
                     // 设备不支持NFC，显示错误信息
-                    viewModel.showError("设备不支持NFC功能")
+                    nfcViewModel.showError("设备不支持NFC功能")
                 }
 
                 else -> {
@@ -152,9 +155,9 @@ fun NfcWorkflowScreen(
     }
 
     // 监听NFC事件
-    LaunchedEffect(orderId, signInMode) {
-        viewModel.observeNfcEvents(
-            orderId = orderId,
+    LaunchedEffect(orderInfoRequest.orderId, signInMode) {
+        nfcViewModel.observeNfcEvents(
+            orderId = orderInfoRequest.orderId,
             signInMode = signInMode,
             endOderInfo = endOderInfo,
             onLocationRequest = { getCurrentLocationCoordinates() }
@@ -252,12 +255,12 @@ fun NfcWorkflowScreen(
                                         // 签到成功时开启定位上报任务
                                         checkLocationPermissionAndStart()
                                         // 签到成功后跳转到身份认证页面
-                                        navController.navigateToIdentification(orderId)
+                                        navController.navigateToIdentification(orderInfoRequest)
                                     }
                                     SignInMode.END_ORDER -> {
                                         // 签退时停止定位上报任务
                                         locationTrackingViewModel.onStopClicked()
-                                        navController.navigateToServiceComplete(orderId)
+                                        navController.navigateToServiceComplete(orderInfoRequest)
                                     }
                                 }
                             }
@@ -267,7 +270,7 @@ fun NfcWorkflowScreen(
                     SignInState.FAILURE -> ActionButton(
                         text = stringResource(R.string.nfc_sign_in_retry),
                         onClick = {
-                            viewModel.resetState()
+                            nfcViewModel.resetState()
                             // 重置状态后等待用户重新靠近NFC设备
                         }
                     )

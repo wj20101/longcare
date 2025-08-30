@@ -27,11 +27,12 @@ import com.ytone.longcare.R
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.navigation.navigateToNfcSignInForStartOrder
 import com.ytone.longcare.theme.bgButtonGradientBrush
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 
 // --- 数据模型 ---
 data class Device(
     val id: String,
-    val name: String,
+    val name: String
 )
 
 // --- 主屏幕入口 ---
@@ -39,7 +40,7 @@ data class Device(
 @Composable
 fun SelectDeviceScreen(
     navController: NavController = rememberNavController(),
-    orderId: Long = 0L
+    orderInfoRequest: OrderInfoRequestModel? = null
 ) {
     // 模拟设备数据
     val devices = remember {
@@ -103,7 +104,7 @@ fun SelectDeviceScreen(
                 NextStepButton(
                     text = stringResource(R.string.common_next_step), enabled = true/* selectedDeviceIndex != null*/, // 仅当有设备选中时才可用
                     onClick = { 
-                        navController.navigateToNfcSignInForStartOrder(orderId)
+                        navController.navigateToNfcSignInForStartOrder(orderInfoRequest ?: OrderInfoRequestModel(orderId = 0L, planId = 0))
                     })
 
                 Spacer(modifier = Modifier.height(32.dp)) // 按钮与屏幕底部的间距
@@ -115,7 +116,9 @@ fun SelectDeviceScreen(
 @Preview
 @Composable
 fun SelectDeviceScreenPreview() {
-    SelectDeviceScreen()
+    SelectDeviceScreen(
+        orderInfoRequest = OrderInfoRequestModel(orderId = 1L, planId = 0)
+    )
 }
 
 @Composable
@@ -224,5 +227,5 @@ fun NextStepButtonPreview() {
 @Composable
 fun SelectDeviceScreenWithNavControllerPreview() {
     val navController = rememberNavController()
-    SelectDeviceScreen(navController = navController, orderId = 12345L)
+    SelectDeviceScreen(navController = navController, orderInfoRequest = OrderInfoRequestModel(orderId = 12345L, planId = 0))
 }

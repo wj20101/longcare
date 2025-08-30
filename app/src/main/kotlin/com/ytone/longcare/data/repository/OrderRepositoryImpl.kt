@@ -5,6 +5,7 @@ import com.ytone.longcare.api.request.CheckOrderParamModel
 import com.ytone.longcare.api.request.EndOrderParamModel
 import com.ytone.longcare.api.request.OrderListParamModel
 import com.ytone.longcare.api.request.OrderInfoParamModel
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.request.StarOrderParamModel
 import com.ytone.longcare.api.request.UpUserStartImgParamModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
@@ -40,14 +41,14 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getOrderInfo(orderId: Long): ApiResult<ServiceOrderInfoModel> {
+    override suspend fun getOrderInfo(request: OrderInfoRequestModel): ApiResult<ServiceOrderInfoModel> {
         return safeApiCall(ioDispatcher, eventBus) {
-            apiService.getOrderInfo(OrderInfoParamModel(orderId = orderId))
+            apiService.getOrderInfo(OrderInfoParamModel(orderId = request.orderId, planId = request.planId))
         }
     }
 
     override suspend fun startOrder(
-        orderId: Long, 
+        orderId: Long,
         nfcDeviceId: String,
         longitude: String,
         latitude: String
@@ -55,7 +56,7 @@ class OrderRepositoryImpl @Inject constructor(
         return safeApiCall(ioDispatcher, eventBus) {
             apiService.checkOrder(
                 CheckOrderParamModel(
-                    orderId = orderId, 
+                    orderId = orderId,
                     nfc = nfcDeviceId,
                     longitude = longitude,
                     latitude = latitude

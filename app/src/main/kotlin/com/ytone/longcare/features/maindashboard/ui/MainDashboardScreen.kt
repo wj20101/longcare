@@ -60,6 +60,7 @@ import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import kotlinx.coroutines.flow.first
 import dagger.hilt.android.EntryPointAccessors
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 
 @Composable
 fun MainDashboardScreen(
@@ -482,9 +483,9 @@ fun OrderTabLayout(
                     pendingOrders.forEach { order ->
                         ServiceOrderItem(order = order) {
                             if (order.isPendingCare()) {
-                                navController.navigateToNursingExecution(order.orderId)
+                                navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = order.orderId, planId = 0))
                             } else {
-                                navController.navigateToService(order.orderId)
+                                navController.navigateToService(OrderInfoRequestModel(orderId = order.orderId, planId = 0))
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -503,7 +504,8 @@ fun OrderTabLayout(
                     inOrderList.forEach { order ->
                         InOrderServiceItem(order = order) {
                             // 先尝试从缓存获取projectList
-                            val cachedOrderInfo = sharedOrderDetailViewModel.getCachedOrderInfo(order.orderId)
+                            val orderInfoRequest = OrderInfoRequestModel(orderId = order.orderId, planId = 0)
+                            val cachedOrderInfo = sharedOrderDetailViewModel.getCachedOrderInfo(orderInfoRequest)
                             if (cachedOrderInfo != null) {
                                 // 缓存存在，直接跳转
                                 val projectList = cachedOrderInfo.projectList
@@ -517,7 +519,7 @@ fun OrderTabLayout(
                                  coroutineScope.launch {
                                      try {
                                          // 启动异步获取订单详情
-                                         sharedOrderDetailViewModel.getOrderInfo(order.orderId)
+                                         sharedOrderDetailViewModel.getOrderInfo(orderInfoRequest)
                                          
                                          // 等待获取完成，使用first来避免持续监听
                                          val finalState = sharedOrderDetailViewModel.uiState

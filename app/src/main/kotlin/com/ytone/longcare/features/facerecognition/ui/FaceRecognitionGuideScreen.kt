@@ -34,6 +34,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.facerecognition.vm.FaceRecognitionViewModel
 import com.ytone.longcare.navigation.navigateToSelectService
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 
@@ -41,7 +42,7 @@ import com.ytone.longcare.common.utils.UnifiedBackHandler
 @Composable
 fun FaceRecognitionGuideScreen(
     navController: NavController,
-    orderId: Long,
+    orderInfoRequest: OrderInfoRequestModel,
     viewModel: FaceRecognitionViewModel = hiltViewModel()
 ) {
 
@@ -127,7 +128,7 @@ fun FaceRecognitionGuideScreen(
                         // 调用ViewModel的方法开始人脸识别
                         viewModel.startFaceRecognition()
                         // 跳转到选择服务页面
-                        navController.navigateToSelectService(orderId)
+                        navController.navigateToSelectService(orderInfoRequest)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -180,7 +181,7 @@ fun FaceRecognitionGuideScreenPreview() {
     CompositionLocalProvider(LocalViewModelStoreOwner provides PreviewViewModelStoreOwner()) {
         FaceRecognitionGuideScreen(
             navController = rememberNavController(),
-            orderId = 1,
+            orderInfoRequest = OrderInfoRequestModel(orderId = 1, planId = 0),
             viewModel = previewViewModel
         )
     }

@@ -28,6 +28,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import com.ytone.longcare.common.utils.HomeBackHandler
@@ -47,10 +48,10 @@ data class ServiceSummary(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceCompleteScreen(
-    navController: NavController, 
-    orderId: Long, 
-    sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
-    selectedProjectsManager: SelectedProjectsManager
+    navController: NavController,
+    orderInfoRequest: OrderInfoRequestModel,
+    selectedProjectsManager: SelectedProjectsManager,
+    sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     val uiState by sharedViewModel.uiState.collectAsStateWithLifecycle()
     
@@ -58,13 +59,13 @@ fun ServiceCompleteScreen(
     HomeBackHandler(navController = navController)
 
     // 在组件初始化时获取订单详情（如果缓存中没有）
-    LaunchedEffect(orderId) {
+    LaunchedEffect(orderInfoRequest.orderId) {
         // 先检查缓存，如果没有缓存数据才请求
-        if (sharedViewModel.getCachedOrderInfo(orderId) == null) {
-            sharedViewModel.getOrderInfo(orderId)
+        if (sharedViewModel.getCachedOrderInfo(orderInfoRequest.orderId) == null) {
+            sharedViewModel.getOrderInfo(orderInfoRequest)
         } else {
             // 如果有缓存数据，直接设置为成功状态
-            sharedViewModel.getOrderInfo(orderId, forceRefresh = false)
+            sharedViewModel.getOrderInfo(orderInfoRequest, forceRefresh = false)
         }
     }
 
@@ -138,8 +139,8 @@ fun ServiceCompleteScreen(
                                 clientAge = orderInfo.userInfo.age,
                                 clientIdNumber = orderInfo.userInfo.identityCardNumber,
                                 clientAddress = orderInfo.userInfo.address,
-                                serviceContent = getSelectedProjectsContent(orderInfo.projectList, selectedProjectsManager, orderId),
-                                duration = formatSelectedProjectsDuration(orderInfo.projectList, selectedProjectsManager, orderId)
+                                serviceContent = getSelectedProjectsContent(orderInfo.projectList, selectedProjectsManager, orderInfoRequest.orderId),
+                                duration = formatSelectedProjectsDuration(orderInfo.projectList, selectedProjectsManager, orderInfoRequest.orderId)
                             )
                             ServiceChecklistSection(summary = serviceSummary)
                         }
