@@ -1,5 +1,6 @@
 package com.ytone.longcare.domain.order
 
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
@@ -27,9 +28,9 @@ interface OrderRepository {
 
     /**
      * 获取服务订单详情
-     * @param orderId 订单号
+     * @param request 订单详情请求参数
      */
-    suspend fun getOrderInfo(orderId: Long): ApiResult<ServiceOrderInfoModel>
+    suspend fun getOrderInfo(request: OrderInfoRequestModel): ApiResult<ServiceOrderInfoModel>
 
     /**
      * 开始订单服务（NFC签到）
@@ -39,7 +40,7 @@ interface OrderRepository {
      * @param latitude 纬度
      */
     suspend fun startOrder(
-        orderId: Long, 
+        orderId: Long,
         nfcDeviceId: String,
         longitude: String = "",
         latitude: String = ""
@@ -50,7 +51,10 @@ interface OrderRepository {
      * @param orderId 订单号
      * @param selectedProjectIds 选中的项目ID列表
      */
-    suspend fun starOrder(orderId: Long, selectedProjectIds: List<Long> = emptyList()): ApiResult<Unit>
+    suspend fun starOrder(
+        orderId: Long,
+        selectedProjectIds: List<Long> = emptyList()
+    ): ApiResult<Unit>
 
     /**
      * 添加开始老人照片

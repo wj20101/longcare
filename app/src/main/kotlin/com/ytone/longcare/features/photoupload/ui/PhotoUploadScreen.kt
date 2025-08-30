@@ -60,6 +60,7 @@ import androidx.core.net.toUri
 import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.common.utils.UnifiedBackHandler
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
@@ -72,7 +73,7 @@ enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
 @Composable
 fun PhotoUploadScreen(
     navController: NavController,
-    orderId: Long,
+    orderInfoRequest: OrderInfoRequestModel,
     viewModel: PhotoProcessingViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
@@ -80,13 +81,13 @@ fun PhotoUploadScreen(
     UnifiedBackHandler(navController = navController)
 
     // 在组件初始化时加载订单信息（如果缓存中没有）
-    LaunchedEffect(orderId) {
+    LaunchedEffect(orderInfoRequest.orderId) {
         // 先检查缓存，如果没有缓存数据才请求
-        if (sharedViewModel.getCachedOrderInfo(orderId) == null) {
-            sharedViewModel.getOrderInfo(orderId)
+        if (sharedViewModel.getCachedOrderInfo(orderInfoRequest.orderId) == null) {
+            sharedViewModel.getOrderInfo(orderInfoRequest)
         } else {
             // 如果有缓存数据，直接设置为成功状态
-            sharedViewModel.getOrderInfo(orderId, forceRefresh = false)
+            sharedViewModel.getOrderInfo(orderInfoRequest, forceRefresh = false)
         }
     }
 
@@ -127,7 +128,7 @@ fun PhotoUploadScreen(
                 viewModel.addImagesToProcess(
                     uris = listOf(uri),
                     taskType = taskType,
-                    address = sharedViewModel.getUserAddress(orderId)
+                    address = sharedViewModel.getUserAddress(orderInfoRequest.orderId)
                 )
             }
         },

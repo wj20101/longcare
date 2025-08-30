@@ -31,6 +31,7 @@ import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.model.isExecutingState
 import com.ytone.longcare.model.isPendingExecutionState
 import com.ytone.longcare.navigation.navigateToSelectDevice
@@ -44,7 +45,7 @@ import com.ytone.longcare.di.NursingExecutionEntryPoint
 @Composable
 fun NursingExecutionScreen(
     navController: NavController,
-    orderId: Long,
+    orderInfoRequest: OrderInfoRequestModel,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -64,13 +65,13 @@ fun NursingExecutionScreen(
     UnifiedBackHandler(navController = navController)
     
     // 在组件初始化时加载订单信息（如果缓存中没有）
-    LaunchedEffect(orderId) {
+    LaunchedEffect(orderInfoRequest.orderId) {
         // 先检查缓存，如果没有缓存数据才请求
-        if (sharedViewModel.getCachedOrderInfo(orderId) == null) {
-            sharedViewModel.getOrderInfo(orderId)
+        if (sharedViewModel.getCachedOrderInfo(orderInfoRequest.orderId) == null) {
+            sharedViewModel.getOrderInfo(orderInfoRequest)
         } else {
             // 如果有缓存数据，直接设置为成功状态
-            sharedViewModel.getOrderInfo(orderId, forceRefresh = false)
+            sharedViewModel.getOrderInfo(orderInfoRequest, forceRefresh = false)
         }
     }
     when (val state = uiState) {
@@ -82,7 +83,7 @@ fun NursingExecutionScreen(
             NursingExecutionContent(
                 navController = navController,
                 orderInfo = state.orderInfo,
-                orderId = orderId,
+                orderId = orderInfoRequest.orderId,
                 navigationHelper = navigationHelper
             )
         }
@@ -90,7 +91,7 @@ fun NursingExecutionScreen(
         is OrderDetailUiState.Error -> {
             ErrorScreen(
                 message = state.message,
-                onRetry = { sharedViewModel.getOrderInfo(orderId, forceRefresh = true) }
+                onRetry = { sharedViewModel.getOrderInfo(orderInfoRequest, forceRefresh = true) }
             )
         }
         
@@ -217,7 +218,7 @@ fun NursingExecutionContent(
                                     projectList = orderInfo.projectList
                                 )
                             }
-                            orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(orderId)
+                            orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(OrderInfoRequestModel(orderId = orderId, planId = 0))
                             else -> navController.popBackStack()
                         }
                     }

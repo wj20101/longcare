@@ -21,6 +21,18 @@ data class ServiceOrderInfoModel(
     val state: Int = 0,
 
     /**
+     * 服务开始时间
+     */
+    @param:Json(name = "startTime")
+    val startTime: String = "",
+
+    /**
+     * 服务结束时间
+     */
+    @param:Json(name = "endTime")
+    val endTime: String = "",
+
+    /**
      * 用户信息
      */
     @param:Json(name = "userInfo")
@@ -90,7 +102,19 @@ data class UserInfoM(
      * 本月未服务时间
      */
     @param:Json(name = "monthNoServiceTime")
-    val monthNoServiceTime: Int = 0
+    val monthNoServiceTime: Int = 0,
+
+    /**
+     * 经度
+     */
+    @param:Json(name = "lng")
+    val lng: String = "",
+
+    /**
+     * 纬度
+     */
+    @param:Json(name = "lat")
+    val lat: String = ""
 )
 
 /**
@@ -120,5 +144,11 @@ data class ServiceProjectM(
      * 最后服务的时间
      */
     @param:Json(name = "lastServiceTime")
-    val lastServiceTime: String = ""
+    val lastServiceTime: String = "",
+
+    /**
+     * 是否完成
+     */
+    @param:Json(name = "isComplete")
+    val isComplete: Int = 0
 )

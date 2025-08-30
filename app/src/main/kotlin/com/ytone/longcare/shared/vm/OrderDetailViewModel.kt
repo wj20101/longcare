@@ -2,6 +2,7 @@ package com.ytone.longcare.shared.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
@@ -24,12 +25,23 @@ class OrderDetailViewModel @Inject constructor(
 
     /**
      * 获取订单详情
+     * @param orderId 订单ID
+     * @param planId 计划ID，默认值为0
      */
-    fun getOrderInfo(orderId: Long) {
+    fun getOrderInfo(orderId: Long, planId: Int) {
+        val request = OrderInfoRequestModel(orderId = orderId, planId = planId)
+        getOrderInfo(request)
+    }
+    
+    /**
+     * 获取订单详情
+     * @param request 订单详情请求参数
+     */
+    fun getOrderInfo(request: OrderInfoRequestModel) {
         viewModelScope.launch {
             _uiState.value = OrderDetailUiState.Loading
 
-            when (val result = orderRepository.getOrderInfo(orderId)) {
+            when (val result = orderRepository.getOrderInfo(request)) {
                 is ApiResult.Success -> {
                     _uiState.value = OrderDetailUiState.Success(result.data)
                 }

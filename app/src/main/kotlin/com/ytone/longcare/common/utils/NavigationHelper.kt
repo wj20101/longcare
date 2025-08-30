@@ -2,6 +2,7 @@ package com.ytone.longcare.common.utils
 
 import androidx.navigation.NavController
 import com.ytone.longcare.api.response.ServiceProjectM
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.navigation.navigateToServiceCountdown
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,7 +43,7 @@ class NavigationHelper @Inject constructor(
         }
         
         // 执行导航
-        navController.navigateToServiceCountdown(orderId, finalProjectIds)
+        navController.navigateToServiceCountdown(OrderInfoRequestModel(orderId = orderId, planId = 0), finalProjectIds)
     }
     
     /**

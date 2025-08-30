@@ -31,15 +31,17 @@ import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.common.utils.SelectedProjectsManager
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceHoursScreen(
     navController: NavController, 
-    orderId: Long, 
+    orderInfoRequest: OrderInfoRequestModel, 
     viewModel: OrderDetailViewModel = hiltViewModel(),
     selectedProjectsManager: SelectedProjectsManager
 ) {
+    val orderId = orderInfoRequest.orderId
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -53,8 +55,8 @@ fun ServiceHoursScreen(
     UnifiedBackHandler(navController = navController)
 
     // 页面初始化时获取订单详情
-    LaunchedEffect(orderId) {
-        viewModel.getOrderInfo(orderId)
+    LaunchedEffect(orderInfoRequest) {
+        viewModel.getOrderInfo(orderInfoRequest)
     }
 
     Box(

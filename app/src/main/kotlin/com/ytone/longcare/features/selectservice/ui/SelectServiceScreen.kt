@@ -29,13 +29,12 @@ import androidx.compose.ui.platform.LocalContext
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.UnifiedBackHandler
-import com.ytone.longcare.common.utils.SelectedProjectsManager
-import com.ytone.longcare.common.utils.NavigationHelper
 import com.ytone.longcare.di.SelectServiceEntryPoint
-import com.ytone.longcare.theme.bgGradientBrush
-import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
+import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.StarOrderUiState
+import com.ytone.longcare.theme.bgGradientBrush
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 
 // --- 数据模型 ---
 data class ServiceItem(
@@ -48,7 +47,7 @@ data class ServiceItem(
 @Composable
 fun SelectServiceScreen(
     navController: NavController, 
-    orderId: Long, 
+    orderInfoRequest: OrderInfoRequestModel, 
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -69,13 +68,13 @@ fun SelectServiceScreen(
     UnifiedBackHandler(navController = navController)
 
     // 在组件初始化时加载订单信息（如果缓存中没有）
-    LaunchedEffect(orderId) {
+    LaunchedEffect(orderInfoRequest.orderId) {
         // 先检查缓存，如果没有缓存数据才请求
-        if (sharedViewModel.getCachedOrderInfo(orderId) == null) {
-            sharedViewModel.getOrderInfo(orderId)
+        if (sharedViewModel.getCachedOrderInfo(orderInfoRequest.orderId) == null) {
+            sharedViewModel.getOrderInfo(orderInfoRequest)
         } else {
             // 如果有缓存数据，直接设置为成功状态
-            sharedViewModel.getOrderInfo(orderId, forceRefresh = false)
+            sharedViewModel.getOrderInfo(orderInfoRequest, forceRefresh = false)
         }
     }
 
@@ -238,16 +237,16 @@ fun SelectServiceScreen(
                             val selectedProjectIds =
                                 serviceItems.filter { it.isSelected }.map { it.id }
                             // 先调用starOrder接口
-                            sharedViewModel.starOrder(orderId, selectedProjectIds.map { it.toLong() }) {
+                            sharedViewModel.starOrder(orderInfoRequest.orderId, selectedProjectIds.map { it.toLong() }) {
                                 // 成功后保存选中的项目ID到本地存储
-                                selectedProjectsManager.saveSelectedProjects(orderId, selectedProjectIds)
+                                selectedProjectsManager.saveSelectedProjects(orderInfoRequest.orderId, selectedProjectIds)
                                 // 从uiState获取orderInfo
                                 val currentState = uiState
                                 if (currentState is OrderDetailUiState.Success) {
                                     // 使用NavigationHelper统一处理跳转逻辑
                                     navigationHelper.navigateToServiceCountdownWithLogic(
                                         navController = navController,
-                                        orderId = orderId,
+                                        orderId = orderInfoRequest.orderId,
                                         projectList = currentState.orderInfo.projectList,
                                         selectedProjectIds = selectedProjectIds
                                     )

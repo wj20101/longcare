@@ -12,5 +12,10 @@ data class OrderInfoParamModel(
      * 查询的订单号
      */
     @param:Json(name = "orderid")
-    val orderId: Long = 0L
+    val orderId: Long = 0L,
+    /**
+     * 计划Id
+     */
+    @param:Json(name = "planid")
+    val planId: Int = 0
 )

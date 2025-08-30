@@ -39,6 +39,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.R
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.common.utils.DisplayDate
 import com.ytone.longcare.common.utils.TimeUtils
@@ -191,9 +192,9 @@ fun NursingScreen(
             ) { page ->
                 PlanList(plans = orderList, isLoading = isLoading) { order ->
                     if (order.state.isPendingCareState()) {
-                        navController.navigateToNursingExecution(order.orderId)
+                        navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = order.orderId, planId = 0))
                     } else {
-                        navController.navigateToService(order.orderId)
+                        navController.navigateToService(OrderInfoRequestModel(orderId = order.orderId, planId = 0))
                     }
                 }
             }
