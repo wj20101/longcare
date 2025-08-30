@@ -194,7 +194,7 @@ fun ServiceCountdownScreen(
         )?.collect { result ->
             result?.let {
                 // 调用ViewModel处理图片上传结果
-                countdownViewModel.handlePhotoUploadResult(it)
+                countdownViewModel.handlePhotoUploadResult(orderInfoRequest, it)
 
                 // 清除结果，避免重复处理
                 navController.currentBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<String>>>(
@@ -244,7 +244,7 @@ fun ServiceCountdownScreen(
                 
                 // 设置ViewModel的倒计时
                 countdownViewModel.setCountdownTimeFromProjects(
-                    orderId = orderInfoRequest.orderId,
+                    orderRequest = orderInfoRequest,
                     projectList = it.projectList,
                     selectedProjectIds = projectIdList.map { it.toInt() }
                 )
@@ -306,7 +306,7 @@ fun ServiceCountdownScreen(
                 if (totalMinutes > 0) {
                     // 强制重新计算倒计时状态，不受防抖限制
                     countdownViewModel.setCountdownTimeFromProjects(
-                        orderId = orderInfoRequest.orderId,
+                        orderRequest = orderInfoRequest,
                         projectList = it.projectList,
                         selectedProjectIds = projectIdList.map { it.toInt() }
                     )
@@ -381,7 +381,7 @@ fun ServiceCountdownScreen(
                         showConfirmDialog = true
                     } else {
                         // 直接结束服务
-                        countdownViewModel.endService(orderInfoRequest.orderId, context)
+                        countdownViewModel.endService(orderInfoRequest, context)
                         // 取消倒计时闹钟
                         countdownNotificationManager.cancelCountdownAlarm()
                         
@@ -476,7 +476,7 @@ fun ServiceCountdownScreen(
                 TextButton(
                     onClick = {
                         showConfirmDialog = false
-                        countdownViewModel.endService(orderInfoRequest.orderId, context)
+                        countdownViewModel.endService(orderInfoRequest, context)
                         // 取消倒计时闹钟
                         countdownNotificationManager.cancelCountdownAlarm()
                         
