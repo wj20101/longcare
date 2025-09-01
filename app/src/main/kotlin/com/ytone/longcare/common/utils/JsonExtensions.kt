@@ -6,6 +6,7 @@ import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.squareup.wire.WireJsonAdapterFactory
 import com.ytone.longcare.di.UnitJsonAdapter
+import com.ytone.longcare.features.photoupload.model.ImageTaskTypeAdapter
 import java.lang.reflect.Type
 
 /**
@@ -14,6 +15,7 @@ import java.lang.reflect.Type
  */
 val DefaultMoshi: Moshi = Moshi.Builder()
     .add(Unit::class.java, UnitJsonAdapter)
+    .add(ImageTaskTypeAdapter()) // 添加 ImageTaskType 的自定义适配器
     .add(WireJsonAdapterFactory()) // 添加 WireJsonAdapterFactory 来处理所有 Wire 生成的类型
     .add(KotlinJsonAdapterFactory()) // 添加 KotlinJsonAdapterFactory 来处理常规的 Kotlin 类
     .build()
