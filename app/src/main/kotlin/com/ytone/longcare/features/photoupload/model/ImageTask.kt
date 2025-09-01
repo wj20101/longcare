@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.photoupload.model
 
 import android.net.Uri
+import com.squareup.moshi.Json
 
 /**
  * 图片处理任务数据模型
@@ -21,7 +22,10 @@ data class ImageTask(
  * 图片处理任务类型枚举
  */
 enum class ImageTaskType {
+    @Json(name = "BEFORE_CARE")
     BEFORE_CARE,  // 护理前
+    
+    @Json(name = "AFTER_CARE")
     AFTER_CARE    // 护理后
 }
 
