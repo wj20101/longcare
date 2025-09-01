@@ -62,6 +62,7 @@ import com.ytone.longcare.shared.vm.OrderDetailUiState
 import kotlinx.coroutines.flow.first
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.api.response.isNotStarted
 
 @Composable
 fun MainDashboardScreen(
@@ -479,7 +480,7 @@ fun OrderTabLayout(
         
         when (selectedTabIndex) {
             0 -> {
-                val pendingOrders = todayOrderList.filter { it.isPendingCare() }
+                val pendingOrders = todayOrderList.filter { it.isNotStarted() }
                 if (pendingOrders.isNotEmpty()) {
                     pendingOrders.forEach { order ->
                         ServiceOrderItem(order = order) {
