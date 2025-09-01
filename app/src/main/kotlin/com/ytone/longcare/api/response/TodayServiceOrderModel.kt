@@ -3,6 +3,7 @@ package com.ytone.longcare.api.response
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 import com.ytone.longcare.model.isCancelledState
+import com.ytone.longcare.model.isNotStartedState
 import com.ytone.longcare.model.isPendingCareState
 import com.ytone.longcare.model.isServiceRecordState
 
@@ -77,6 +78,13 @@ data class TodayServiceOrderModel(
  */
 fun TodayServiceOrderModel.isPendingCare(): Boolean {
     return state.isPendingCareState()
+}
+
+/**
+ * 判断是否为未开单计划
+ */
+fun TodayServiceOrderModel.isNotStarted(): Boolean {
+    return state.isNotStartedState()
 }
 
 /**
