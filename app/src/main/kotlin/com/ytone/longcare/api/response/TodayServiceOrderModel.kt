@@ -5,6 +5,7 @@ import com.squareup.moshi.JsonClass
 import com.ytone.longcare.model.isCancelledState
 import com.ytone.longcare.model.isNotStartedState
 import com.ytone.longcare.model.isPendingCareState
+import com.ytone.longcare.model.isPendingExecutionState
 import com.ytone.longcare.model.isServiceRecordState
 
 /**
@@ -85,6 +86,13 @@ fun TodayServiceOrderModel.isPendingCare(): Boolean {
  */
 fun TodayServiceOrderModel.isNotStarted(): Boolean {
     return state.isNotStartedState()
+}
+
+/**
+ * 判断是否为待执行计划
+ */
+fun TodayServiceOrderModel.isPendingExecution(): Boolean {
+    return state.isPendingExecutionState()
 }
 
 /**
