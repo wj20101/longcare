@@ -187,6 +187,9 @@ fun ServiceCountdownScreen(
 
         // 检查并启动定位服务
         checkLocationPermissionAndStart()
+        
+        // 恢复本地保存的图片数据
+        countdownViewModel.loadUploadedImagesFromLocal(orderInfoRequest)
 
         // 监听图片上传结果
         navController.currentBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<String>>?>(
