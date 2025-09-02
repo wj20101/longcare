@@ -147,7 +147,7 @@ fun PhotoUploadScreen(
     // 检查三个分类是否都有成功上传的图片
     val hasBeforeCareSuccess = beforeCareTasks.any { it.status == ImageTaskStatus.SUCCESS }
     val hasAfterCareSuccess = afterCareTasks.any { it.status == ImageTaskStatus.SUCCESS }
-    val allCategoriesHaveImages = hasBeforeCareSuccess && hasAfterCareSuccess
+    val hasCategoriesHaveImages = hasBeforeCareSuccess || hasAfterCareSuccess
 
     Box(
         modifier = Modifier
@@ -178,7 +178,7 @@ fun PhotoUploadScreen(
             Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
                 ConfirmAndNextButton(
                     text = if (isUploading) "上传中..." else stringResource(R.string.photo_upload_confirm_and_next),
-                    enabled = allCategoriesHaveImages && !isUploading,
+                    enabled = hasCategoriesHaveImages && !isUploading,
                     isLoading = isUploading,
                     onClick = {
                         // 上传图片到云端后再导航
