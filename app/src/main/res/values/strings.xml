@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">长护</string>
+    <string name="app_name">长护盾</string>
     <string name="hello_world">你好世界！</string>
     <string name="coil_image_description">由Coil加载的图片</string>
     <string name="camera_permission_granted">相机权限已授予</string>
