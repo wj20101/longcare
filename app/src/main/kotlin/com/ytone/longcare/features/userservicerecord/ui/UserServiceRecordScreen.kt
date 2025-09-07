@@ -28,6 +28,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.theme.bgGradientBrush
 
@@ -196,7 +198,7 @@ fun ServiceRecordItem(
 
         // 工时信息
         Text(
-            text = "工时：${record.totalServiceTime}", fontSize = 14.sp, color = Color.Gray
+            text = stringResource(id = R.string.service_order_work_hours, record.totalServiceTime), fontSize = 14.sp, color = Color.Gray
         )
 
         Spacer(modifier = Modifier.height(4.dp))

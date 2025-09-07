@@ -156,7 +156,9 @@ fun NavController.navigateToFaceRecognitionGuide(orderInfoRequest: OrderInfoRequ
  * @param orderInfoRequest 订单信息请求模型
  */
 fun NavController.navigateToSelectDevice(orderInfoRequest: OrderInfoRequestModel) {
-    navigate(SelectDeviceRoute(orderInfoRequest))
+    navigateToNfcSignInForStartOrder(orderInfoRequest)
+    // 暂时先去掉 设备选择页
+//    navigate(SelectDeviceRoute(orderInfoRequest))
 }
 
 /**

@@ -268,7 +268,7 @@ fun ServiceRecordItem(project: ServiceProjectM, orderInfo: ServiceOrderInfoModel
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "工时: ${project.serviceTime}", color = Color.Gray, fontSize = 14.sp
+                    text = stringResource(id = R.string.service_order_work_hours, project.serviceTime), color = Color.Gray, fontSize = 14.sp
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))

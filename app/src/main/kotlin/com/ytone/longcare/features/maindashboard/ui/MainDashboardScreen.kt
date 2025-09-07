@@ -414,7 +414,7 @@ fun InOrderServiceItem(
                         color = Color(0xFFFFF3E0)
                     ) {
                         Text(
-                            text = "工时: ${order.planTotalTime}",
+                            text = stringResource(id = R.string.service_order_work_hours, order.planTotalTime),
                             color = Color(0xFFFF9800),
                             fontSize = 12.sp,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)

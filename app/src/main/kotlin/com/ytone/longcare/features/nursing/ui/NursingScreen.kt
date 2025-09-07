@@ -302,7 +302,7 @@ fun OrderListItem(modifier: Modifier = Modifier, item: ServiceOrderModel) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "工时: ${item.planTotalTime}",
+                    text = stringResource(id = R.string.service_order_work_hours, item.planTotalTime),
                     color = Color.Gray,
                     fontSize = 14.sp
                 )
