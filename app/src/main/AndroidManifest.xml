@@ -143,10 +143,7 @@
                 android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup"
                 tools:node="remove" />
-            <!-- 系统配置初始化器 -->
-            <meta-data
-                android:name="com.ytone.longcare.common.initializer.SystemConfigInitializer"
-                android:value="androidx.startup" />
+
         </provider>
 
     </application>
