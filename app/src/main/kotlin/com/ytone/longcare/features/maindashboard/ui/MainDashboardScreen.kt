@@ -64,6 +64,7 @@ import kotlinx.coroutines.flow.first
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.isPendingExecution
+import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
 
 @Composable
 fun MainDashboardScreen(
@@ -181,27 +182,46 @@ private fun MainDashboardContent(
  */
 @Composable
 fun TopHeader(user: User) {
-    Row(
-        modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
-    ) {
-        ImageWithAdaptiveWidth(
-            drawableResId = R.drawable.app_logo_small_white,
-            fixedHeight = 34.dp,
-            contentDescription = stringResource(R.string.main_dashboard_logo)
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = user.userName, fontWeight = FontWeight.Bold, color = Color.White
-            )
-            Text(
-                text = user.userIdentityShow(),
-                fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f)
-            )
-        }
-        Spacer(modifier = Modifier.width(12.dp))
+    val systemConfigManager = hiltViewModel<MainDashboardViewModel>().systemConfigManager
+    var companyName by remember { mutableStateOf("") }
+    
+    LaunchedEffect(Unit) {
+        companyName = systemConfigManager.getCompanyName()
+    }
+    
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                ImageWithAdaptiveWidth(
+                    drawableResId = R.drawable.app_logo_small_white,
+                    fixedHeight = 34.dp,
+                    contentDescription = stringResource(R.string.main_dashboard_logo)
+                )
+                if (companyName.isNotEmpty()) {
+                    Text(
+                        text = companyName,
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = user.userName, fontWeight = FontWeight.Bold, color = Color.White
+                )
+                Text(
+                    text = user.userIdentityShow(),
+                    fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
 
-        UserAvatar(avatarUrl = user.headUrl)
+            UserAvatar(avatarUrl = user.headUrl)
+        }
     }
 }
 
