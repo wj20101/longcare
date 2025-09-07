@@ -4,11 +4,19 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.response.SystemConfigModel
+import com.ytone.longcare.common.event.AppEventBus
+import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.common.network.safeApiCall
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import androidx.core.content.edit
+import com.ytone.longcare.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * 系统配置管理器
@@ -16,7 +24,10 @@ import androidx.core.content.edit
  */
 @Singleton
 class SystemConfigManager @Inject constructor(
-    @param:ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
+    private val apiService: LongCareApiService,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val eventBus: AppEventBus
 ) {
     companion object {
         private const val PREFS_NAME = "system_config_prefs"
@@ -39,6 +50,9 @@ class SystemConfigManager @Inject constructor(
     // 缓存是否已初始化
     @Volatile
     private var cacheInitialized = false
+    
+    // 用于同步网络请求的互斥锁
+    private val loadMutex = Mutex()
 
     /**
      * 保存系统配置
@@ -109,23 +123,84 @@ class SystemConfigManager @Inject constructor(
     }
     
     /**
+     * 获取系统配置（懒加载）
+     * 优先从内存缓存获取，如果不存在则通过网络加载并缓存
+     */
+    private suspend fun getSystemConfigLazy(): SystemConfigModel? {
+        // 如果缓存已初始化，直接返回缓存数据
+        if (cacheInitialized) {
+            return cachedConfig
+        }
+        
+        // 使用互斥锁确保只有一个协程执行网络请求
+        return loadMutex.withLock {
+            // 双重检查，防止多个协程同时进入
+            if (cacheInitialized) {
+                return@withLock cachedConfig
+            }
+            
+            // 先尝试从SharedPreferences读取
+            val configJson = sharedPreferences.getString(KEY_SYSTEM_CONFIG, null)
+            val localConfig = configJson?.let { 
+                try {
+                    systemConfigAdapter.fromJson(it)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            
+            if (localConfig != null) {
+                // 如果本地有缓存，先使用本地缓存
+                cachedConfig = localConfig
+                cacheInitialized = true
+                
+                // 异步更新缓存（可选：在后台刷新最新数据）
+                try {
+                    val result = safeApiCall(ioDispatcher, eventBus) { apiService.getSystemConfig() }
+                    if (result is ApiResult.Success) {
+                        cachedConfig = result.data
+                        saveSystemConfig(result.data)
+                    }
+                } catch (e: Exception) {
+                    // 静默处理异步更新失败
+                }
+                
+                return@withLock localConfig
+            } else {
+                // 本地没有缓存，从网络加载
+                try {
+                    val result = safeApiCall(ioDispatcher, eventBus) { apiService.getSystemConfig() }
+                    if (result is ApiResult.Success) {
+                        cachedConfig = result.data
+                        saveSystemConfig(result.data)
+                        return@withLock result.data
+                    }
+                } catch (e: Exception) {
+                    // 网络请求失败，返回null
+                }
+                null
+            }
+        }
+    }
+    
+    /**
      * 获取公司名称
      */
-    fun getCompanyName(): String {
-        return getSystemConfig()?.companyName ?: ""
+    suspend fun getCompanyName(): String {
+        return getSystemConfigLazy()?.companyName ?: ""
     }
 
     /**
      * 获取最大上传图片数量
      */
-    fun getMaxImgNum(): Int {
-        return getSystemConfig()?.maxImgNum ?: 0
+    suspend fun getMaxImgNum(): Int {
+        return getSystemConfigLazy()?.maxImgNum ?: 0
     }
 
     /**
      * 获取水印logo图片
      */
-    fun getSyLogoImg(): String {
-        return getSystemConfig()?.syLogoImg ?: ""
+    suspend fun getSyLogoImg(): String {
+        return getSystemConfigLazy()?.syLogoImg ?: ""
     }
 }
