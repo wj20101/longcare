@@ -3,25 +3,35 @@ package com.ytone.longcare.features.photoupload.utils
 import android.content.Context
 import android.graphics.*
 import android.net.Uri
+import android.os.Build
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.BitmapCompat
 import androidx.core.graphics.createBitmap
-import androidx.core.graphics.scale
 import androidx.core.graphics.withTranslation
+import coil3.ImageLoader
+import coil3.request.ImageRequest
+import coil3.toBitmap
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.FileProviderHelper
+import com.ytone.longcare.common.utils.SystemConfigManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.FileOutputStream
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 
 /**
  * 图片处理工具类
  * 负责添加水印、缩放图片等功能
  */
-class ImageProcessor(private val context: Context) {
+class ImageProcessor @Inject constructor(
+    @param:ApplicationContext private val context: Context,
+    private val systemConfigManager: SystemConfigManager
+) {
 
     companion object {
         private const val MAX_IMAGE_SIZE = 1920 // 图片最大尺寸，防止OOM
@@ -95,15 +105,22 @@ class ImageProcessor(private val context: Context) {
     }
 
     private fun scaleImageIfNeeded(bitmap: Bitmap): Bitmap {
-        val width = bitmap.width
-        val height = bitmap.height
+        // 检查并转换硬件位图为软件位图（API 26+才支持HARDWARE配置）
+        val softwareBitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && bitmap.config == Bitmap.Config.HARDWARE) {
+            bitmap.copy(Bitmap.Config.ARGB_8888, false)
+        } else {
+            bitmap
+        }
+        
+        val width = softwareBitmap.width
+        val height = softwareBitmap.height
         if (width <= MAX_IMAGE_SIZE && height <= MAX_IMAGE_SIZE) {
-            return bitmap
+            return softwareBitmap
         }
         val scale = minOf(MAX_IMAGE_SIZE.toFloat() / width, MAX_IMAGE_SIZE.toFloat() / height)
         val newWidth = (width * scale).toInt()
         val newHeight = (height * scale).toInt()
-        return bitmap.scale(newWidth, newHeight, false)
+        return BitmapCompat.createScaledBitmap(softwareBitmap, newWidth, newHeight, null, true)
     }
 
     private fun saveBitmapToCache(bitmap: Bitmap): Uri {
@@ -119,6 +136,39 @@ class ImageProcessor(private val context: Context) {
         return FileProviderHelper.getUriForFile(context, file)
     }
 
+    /**
+     * 加载logo图片，优先使用远端图片，失败时使用本地默认图片
+     * @param targetImageWidth 目标图片宽度，用于计算合适的logo尺寸
+     * @return 处理后的bitmap
+     */
+    private suspend fun loadLogoBitmap(targetImageWidth: Int): Bitmap? {
+        return try {
+            // 尝试从SystemConfigManager获取远端logo图片URL
+            val logoUrl = systemConfigManager.getSyLogoImg()
+            
+            if (logoUrl.isNotEmpty()) {
+                // 使用Coil加载远端图片
+                val imageLoader = ImageLoader(context)
+                val request = ImageRequest.Builder(context)
+                    .data(logoUrl)
+                    .build()
+                
+                val result = imageLoader.execute(request)
+                result.image?.let { image -> 
+                    val bitmap = image.toBitmap()
+                    return scaleBitmapToTargetSize(bitmap, targetImageWidth)
+                }
+            }
+            
+            // 远端图片加载失败，使用本地默认图片
+            drawableToBitmap(R.drawable.app_watermark_image, targetImageWidth)
+        } catch (e: Exception) {
+            logE(message = "加载远端logo失败，使用本地默认图片", throwable = e)
+            // 异常时使用本地默认图片
+            drawableToBitmap(R.drawable.app_watermark_image, targetImageWidth)
+        }
+    }
+    
     /**
      * 将drawable转换为bitmap，并根据图片尺寸控制logo大小
      * @param drawableId drawable资源ID
@@ -155,19 +205,68 @@ class ImageProcessor(private val context: Context) {
         drawable.draw(canvas)
         return bitmap
     }
+    
+    /**
+     * 将bitmap缩放到目标尺寸
+     * @param bitmap 原始bitmap
+     * @param targetImageWidth 目标图片宽度
+     * @return 缩放后的bitmap
+     */
+    private fun scaleBitmapToTargetSize(bitmap: Bitmap, targetImageWidth: Int): Bitmap {
+        // 检查并转换硬件位图为软件位图（API 26+才支持HARDWARE配置）
+        val softwareBitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && bitmap.config == Bitmap.Config.HARDWARE) {
+            bitmap.copy(Bitmap.Config.ARGB_8888, false)
+        } else {
+            bitmap
+        }
+        
+        // 根据图片宽度动态计算logo尺寸
+        val logoMaxWidth = (targetImageWidth * 0.3f).toInt()
+        val originalWidth = softwareBitmap.width
+        val originalHeight = softwareBitmap.height
+        
+        // 如果原始logo太大，按比例缩放
+        val (finalWidth, finalHeight) = if (originalWidth > logoMaxWidth) {
+            val scale = logoMaxWidth.toFloat() / originalWidth
+            Pair((originalWidth * scale).toInt(), (originalHeight * scale).toInt())
+        } else {
+            // 如果原始logo太小，适当放大，但不超过最大限制
+            val minLogoWidth = (targetImageWidth * 0.3f).toInt()
+            if (originalWidth < minLogoWidth) {
+                val scale = minLogoWidth.toFloat() / originalWidth
+                Pair((originalWidth * scale).toInt(), (originalHeight * scale).toInt())
+            } else {
+                Pair(originalWidth, originalHeight)
+            }
+        }
+        
+        return if (finalWidth != originalWidth || finalHeight != originalHeight) {
+            BitmapCompat.createScaledBitmap(softwareBitmap, finalWidth, finalHeight, null, true)
+        } else {
+            softwareBitmap
+        }
+    }
 
     /**
      * 为图片添加完整的水印效果。
      */
-    private fun addWatermark(bitmap: Bitmap, watermarkLines: List<String>): Bitmap {
-        val result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+    private suspend fun addWatermark(bitmap: Bitmap, watermarkLines: List<String>): Bitmap {
+        // 检查并转换硬件位图为软件位图（API 26+才支持HARDWARE配置）
+        val softwareBitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && bitmap.config == Bitmap.Config.HARDWARE) {
+            bitmap.copy(Bitmap.Config.ARGB_8888, false)
+        } else {
+            bitmap
+        }
+        
+        val result = softwareBitmap.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(result)
         val imageWidth = result.width
         val imageHeight = result.height
 
         var logoBitmap: Bitmap? = null
         try {
-            logoBitmap = drawableToBitmap(R.drawable.app_watermark_image, imageWidth)
+            // 尝试加载远端logo图片，失败时使用本地默认图片
+            logoBitmap = loadLogoBitmap(imageWidth)
             val lineIndicator =
                 ContextCompat.getDrawable(context, R.drawable.watermark_indicator_line)
 
@@ -204,9 +303,20 @@ class ImageProcessor(private val context: Context) {
 
             var currentY = imageHeight - bottomPadding - totalContentHeight
 
-            logoBitmap?.let {
-                canvas.drawBitmap(it, horizontalPadding, currentY, null)
-                currentY += it.height + logoTextSpacing
+            logoBitmap?.let { logo ->
+                // 确保logo也是软件位图
+                val softwareLogo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && logo.config == Bitmap.Config.HARDWARE) {
+                    logo.copy(Bitmap.Config.ARGB_8888, false)
+                } else {
+                    logo
+                }
+                canvas.drawBitmap(softwareLogo, horizontalPadding, currentY, null)
+                currentY += softwareLogo.height + logoTextSpacing
+                
+                // 如果创建了副本，需要回收
+                if (softwareLogo != logo) {
+                    softwareLogo.recycle()
+                }
             }
 
             // 绘制左侧装饰线

@@ -8,10 +8,16 @@ import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.domain.cos.repository.CosRepository
+import com.ytone.longcare.domain.order.SharedOrderRepository
+import com.ytone.longcare.domain.repository.SessionState
+import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import com.ytone.longcare.features.photoupload.utils.ImageProcessor
+import com.ytone.longcare.models.protos.User
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,10 +37,12 @@ import javax.inject.Inject
 class PhotoProcessingViewModel @Inject constructor(
     @param:ApplicationContext private val applicationContext: Context,
     private val toastHelper: ToastHelper,
-    private val cosRepository: CosRepository
+    private val cosRepository: CosRepository,
+    private val userSessionRepository: UserSessionRepository,
+    private val sharedOrderRepository: SharedOrderRepository,
+    private val compositeLocationProvider: CompositeLocationProvider,
+    private val imageProcessor: ImageProcessor
 ) : ViewModel() {
-
-    private val imageProcessor = ImageProcessor(applicationContext)
 
     // 图片任务列表的私有状态
     private val _imageTasks = MutableStateFlow<List<ImageTask>>(emptyList())
@@ -57,45 +65,96 @@ class PhotoProcessingViewModel @Inject constructor(
     /**
      * 添加单张图片到处理队列
      */
-    fun addImageToProcess(uri: Uri, taskType: ImageTaskType, address: String) {
-        addImagesToProcess(listOf(uri), taskType, address)
+    fun addImageToProcess(uri: Uri, taskType: ImageTaskType, address: String, orderId: Long? = null) {
+        addImagesToProcess(listOf(uri), taskType, address, orderId)
     }
 
     /**
      * 添加多张图片到处理队列
      */
-    fun addImagesToProcess(uris: List<Uri>, taskType: ImageTaskType, address: String) {
-        val watermarkLines = generateWatermarkLines(taskType, address)
-        val newTasks = uris.map { uri ->
-            ImageTask(
-                id = UUID.randomUUID().toString(),
-                originalUri = uri,
-                taskType = taskType,
-                watermarkLines = watermarkLines,
-                status = ImageTaskStatus.PROCESSING
-            )
-        }
+    fun addImagesToProcess(uris: List<Uri>, taskType: ImageTaskType, address: String, orderId: Long? = null) {
+        viewModelScope.launch {
+            val watermarkLines = generateWatermarkLines(taskType, address, orderId)
+            val newTasks = uris.map { uri ->
+                ImageTask(
+                    id = UUID.randomUUID().toString(),
+                    originalUri = uri,
+                    taskType = taskType,
+                    watermarkLines = watermarkLines,
+                    status = ImageTaskStatus.PROCESSING
+                )
+            }
 
-        // 更新任务列表
-        _imageTasks.update { it + newTasks }
+            // 更新任务列表
+            _imageTasks.update { it + newTasks }
 
-        // 开始处理每个任务
-        newTasks.forEach { task ->
-            processImageTask(task)
+            // 开始处理每个任务
+            newTasks.forEach { task ->
+                processImageTask(task)
+            }
         }
     }
 
     /**
      * 生成水印内容
      */
-    private fun generateWatermarkLines(taskType: ImageTaskType, address: String): List<String> {
+    private suspend fun generateWatermarkLines(taskType: ImageTaskType, address: String, orderId: Long? = null): List<String> {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val currentTime = dateFormat.format(Date())
         val watermarkTitle = when (taskType) {
             ImageTaskType.BEFORE_CARE -> "服务前"
             ImageTaskType.AFTER_CARE -> "服务后"
         }
-        return listOf(watermarkTitle, "时间: $currentTime", "地址: $address")
+        
+        // 获取当前登录用户（护工）信息
+        val currentUser = getCurrentUser()
+        val caregiverName = currentUser?.userName ?: "未知护工"
+        
+        // 获取老人信息
+        val elderName = if (orderId != null) {
+            val orderInfo = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))
+            orderInfo?.userInfo?.name ?: "未知老人"
+        } else {
+            "未知老人"
+        }
+        
+        // 获取定位信息
+        val locationInfo = getCurrentLocationInfo()
+        
+        return listOf(
+            watermarkTitle,
+            "参保人:$elderName",
+            "护工:$caregiverName",
+            "时间: $currentTime",
+            "地址: $address",
+            locationInfo
+        )
+    }
+    
+    /**
+     * 获取当前登录用户
+     */
+    private suspend fun getCurrentUser(): User? {
+        return when (val sessionState = userSessionRepository.sessionState.value) {
+            is SessionState.LoggedIn -> sessionState.user
+            else -> null
+        }
+    }
+    
+    /**
+     * 获取当前定位信息
+     */
+    private suspend fun getCurrentLocationInfo(): String {
+        return try {
+            val locationResult = compositeLocationProvider.getCurrentLocation()
+            if (locationResult != null) {
+                "定位:${locationResult.longitude},${locationResult.latitude}"
+            } else {
+                "定位:未获取"
+            }
+        } catch (e: Exception) {
+            "定位:获取失败"
+        }
     }
 
     /**
