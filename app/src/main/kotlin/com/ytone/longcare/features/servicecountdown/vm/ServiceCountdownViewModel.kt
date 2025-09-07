@@ -12,6 +12,7 @@ import com.ytone.longcare.common.utils.UploadedImagesManager
 import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.features.photoupload.model.ImageTask
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -51,8 +52,8 @@ class ServiceCountdownViewModel @Inject constructor(
     private var countdownJob: Job? = null
     
     // 已上传的图片数据
-    private val _uploadedImages = MutableStateFlow<Map<ImageTaskType, List<String>>>(emptyMap())
-    val uploadedImages: StateFlow<Map<ImageTaskType, List<String>>> = _uploadedImages.asStateFlow()
+    private val _uploadedImages = MutableStateFlow<Map<ImageTaskType, List<ImageTask>>>(emptyMap())
+    val uploadedImages: StateFlow<Map<ImageTaskType, List<ImageTask>>> = _uploadedImages.asStateFlow()
     
     // 当前订单和项目信息，用于超时计时中重新计算时间
     private var currentOrderId: Long = 0
@@ -299,11 +300,11 @@ class ServiceCountdownViewModel @Inject constructor(
     /**
      * 处理图片上传结果
      * @param orderRequest 订单信息请求模型
-     * @param uploadResult 按ImageTaskType分组的图片URL列表
+     * @param uploadResult 按ImageTaskType分组的ImageTask列表
      */
-    fun handlePhotoUploadResult(orderRequest: OrderInfoRequestModel, uploadResult: Map<ImageTaskType, List<String>>) {
-        val beforeCareImages = uploadResult[ImageTaskType.BEFORE_CARE] ?: emptyList()
-        val afterCareImages = uploadResult[ImageTaskType.AFTER_CARE] ?: emptyList()
+    fun handlePhotoUploadResult(orderRequest: OrderInfoRequestModel, uploadResult: Map<ImageTaskType, List<ImageTask>>) {
+        val beforeCareTasks = uploadResult[ImageTaskType.BEFORE_CARE] ?: emptyList()
+        val afterCareTasks = uploadResult[ImageTaskType.AFTER_CARE] ?: emptyList()
         
         // 保存上传的图片数据到状态中
         _uploadedImages.value = uploadResult
@@ -311,16 +312,16 @@ class ServiceCountdownViewModel @Inject constructor(
         // 保存到本地存储，与订单关联
         uploadedImagesManager.saveUploadedImages(orderRequest, uploadResult)
         
-        println("收到护理前图片: $beforeCareImages")
-        println("收到护理后图片: $afterCareImages")
+        println("收到护理前图片: $beforeCareTasks")
+        println("收到护理后图片: $afterCareTasks")
         println("已保存图片数据到ViewModel状态和本地存储中")
     }
     
     /**
      * 获取当前已上传的图片数据
-     * @return 按ImageTaskType分组的图片URL列表
+     * @return 按ImageTaskType分组的ImageTask列表
      */
-    fun getCurrentUploadedImages(): Map<ImageTaskType, List<String>> {
+    fun getCurrentUploadedImages(): Map<ImageTaskType, List<ImageTask>> {
         return _uploadedImages.value
     }
     
@@ -330,10 +331,10 @@ class ServiceCountdownViewModel @Inject constructor(
      */
     fun validatePhotosUploaded(): Boolean {
         val uploadedImages = _uploadedImages.value
-        val beforeCareImages = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
-        val afterCareImages = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
+        val beforeCareTasks = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
+        val afterCareTasks = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
         
-        return beforeCareImages.isNotEmpty() && afterCareImages.isNotEmpty()
+        return beforeCareTasks.isNotEmpty() && afterCareTasks.isNotEmpty()
     }
     
     /**

@@ -1,9 +1,11 @@
 package com.ytone.longcare.di
 
+import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.common.utils.FaceVerificationStatusManager
 import com.ytone.longcare.common.utils.NavigationHelper
 import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.SelectedProjectsManager
+import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
@@ -60,4 +62,14 @@ interface SelectedProjectsManagerEntryPoint {
 @InstallIn(SingletonComponent::class)
 interface ServiceCountdownEntryPoint {
     fun countdownNotificationManager(): CountdownNotificationManager
+}
+
+/**
+ * Hilt EntryPoint接口，用于在非Hilt管理的类中获取依赖
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface SystemConfigInitializerEntryPoint {
+    fun getSystemConfigManager(): SystemConfigManager
+    fun getApiService(): LongCareApiService
 }

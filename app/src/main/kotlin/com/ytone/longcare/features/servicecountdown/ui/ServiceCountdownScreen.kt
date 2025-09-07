@@ -48,11 +48,12 @@ import com.ytone.longcare.navigation.navigateToHomeAndClearStack
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
+import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import androidx.core.net.toUri
 import com.ytone.longcare.common.utils.HomeBackHandler
 import com.ytone.longcare.di.ServiceCountdownEntryPoint
 import dagger.hilt.android.EntryPointAccessors
-import androidx.core.net.toUri
 
 
 // 服务倒计时页面状态
@@ -180,6 +181,27 @@ fun ServiceCountdownScreen(
             return
         }
     }
+    
+    // 处理结束服务的公共逻辑
+    fun handleEndService(endType: Int) {
+        countdownViewModel.endService(orderInfoRequest, context)
+        // 取消倒计时闹钟
+        countdownNotificationManager.cancelCountdownAlarm()
+        
+        val uploadedImages = countdownViewModel.getCurrentUploadedImages()
+        val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE]?.mapNotNull { it.key } ?: emptyList()
+        val endImgList = uploadedImages[ImageTaskType.AFTER_CARE]?.mapNotNull { it.key } ?: emptyList()
+
+        navController.navigateToNfcSignInForEndOrder(
+            orderInfoRequest = orderInfoRequest,
+            params = EndOderInfo(
+                projectIdList = projectIdList.map { it.toInt() },
+                beginImgList = beginImgList,
+                endImgList = endImgList,
+                endType = endType
+            ),
+        )
+    }
 
     LaunchedEffect(orderInfoRequest) {
         sharedViewModel.getCachedOrderInfo(orderInfoRequest)
@@ -192,7 +214,7 @@ fun ServiceCountdownScreen(
         countdownViewModel.loadUploadedImagesFromLocal(orderInfoRequest)
 
         // 监听图片上传结果
-        navController.currentBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<String>>?>(
+        navController.currentBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<ImageTask>>?>(
             NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, null
         )?.collect { result ->
             result?.let {
@@ -200,7 +222,7 @@ fun ServiceCountdownScreen(
                 countdownViewModel.handlePhotoUploadResult(orderInfoRequest, it)
 
                 // 清除结果，避免重复处理
-                navController.currentBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<String>>>(
+                navController.currentBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<ImageTask>>>(
                     NavigationConstants.PHOTO_UPLOAD_RESULT_KEY
                 )
             }
@@ -384,23 +406,7 @@ fun ServiceCountdownScreen(
                         showConfirmDialog = true
                     } else {
                         // 直接结束服务
-                        countdownViewModel.endService(orderInfoRequest, context)
-                        // 取消倒计时闹钟
-                        countdownNotificationManager.cancelCountdownAlarm()
-                        
-                        val uploadedImages = countdownViewModel.getCurrentUploadedImages()
-                        val beginImgList: List<String> = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
-                        val endImgList: List<String> = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
-
-                        navController.navigateToNfcSignInForEndOrder(
-                            orderInfoRequest = orderInfoRequest,
-                            params = EndOderInfo(
-                                projectIdList = projectIdList.map { it.toInt() },
-                                beginImgList = beginImgList,
-                                endImgList = endImgList,
-                                endType = 1
-                            ),
-                        )
+                        handleEndService(1)
                     }
                 },
                 enabled = countdownState != ServiceCountdownState.ENDED,
@@ -479,23 +485,7 @@ fun ServiceCountdownScreen(
                 TextButton(
                     onClick = {
                         showConfirmDialog = false
-                        countdownViewModel.endService(orderInfoRequest, context)
-                        // 取消倒计时闹钟
-                        countdownNotificationManager.cancelCountdownAlarm()
-                        
-                        val uploadedImages: Map<ImageTaskType, List<String>> = countdownViewModel.getCurrentUploadedImages()
-                        val beginImgList: List<String> = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
-                        val endImgList: List<String> = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
-
-                        navController.navigateToNfcSignInForEndOrder(
-                            orderInfoRequest = orderInfoRequest,
-                            params = EndOderInfo(
-                                projectIdList = projectIdList.map { it.toInt() },
-                                beginImgList = beginImgList,
-                                endImgList = endImgList,
-                                endType = 2  // 提前结束
-                            ),
-                        )
+                        handleEndService(2)  // 提前结束
                     }
                 ) {
                     Text("确定")
@@ -558,7 +548,7 @@ fun CountdownTimerCard(
             }
             Button(
                 onClick = {
-                    val existingImages: Map<ImageTaskType, List<String>> = countdownViewModel.getCurrentUploadedImages()
+                    val existingImages = countdownViewModel.getCurrentUploadedImages()
                     // 通过savedStateHandle传递已有的图片数据
                     navController.currentBackStackEntry?.savedStateHandle?.set(
                         NavigationConstants.EXISTING_IMAGES_KEY, existingImages

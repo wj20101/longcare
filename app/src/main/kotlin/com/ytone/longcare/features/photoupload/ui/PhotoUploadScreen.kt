@@ -98,15 +98,15 @@ fun PhotoUploadScreen(
 
     // 监听已有图片数据
     LaunchedEffect(navController.previousBackStackEntry?.savedStateHandle) {
-        navController.previousBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<String>>?>(
+        navController.previousBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<ImageTask>>?>(
             NavigationConstants.EXISTING_IMAGES_KEY, null
         )?.collect { existingImages ->
             existingImages?.let {
                 // 将已有图片数据同步到ViewModel
-                viewModel.loadExistingImages(it)
+                viewModel.loadExistingImageTasks(it)
 
                 // 清除数据，避免重复处理
-                navController.previousBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<String>>>(
+                navController.previousBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<ImageTask>>>(
                     NavigationConstants.EXISTING_IMAGES_KEY
                 )
             }
