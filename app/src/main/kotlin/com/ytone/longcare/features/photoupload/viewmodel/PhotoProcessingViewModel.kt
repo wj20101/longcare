@@ -92,10 +92,10 @@ class PhotoProcessingViewModel @Inject constructor(
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val currentTime = dateFormat.format(Date())
         val watermarkTitle = when (taskType) {
-            ImageTaskType.BEFORE_CARE -> "护理前 - 长护险服务"
-            ImageTaskType.AFTER_CARE -> "护理后 - 长护险服务"
+            ImageTaskType.BEFORE_CARE -> "服务前"
+            ImageTaskType.AFTER_CARE -> "服务后"
         }
-        return listOf(watermarkTitle, "上传时间: $currentTime", "地址: $address")
+        return listOf(watermarkTitle, "时间: $currentTime", "地址: $address")
     }
 
     /**

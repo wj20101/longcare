@@ -335,8 +335,8 @@ class IdentificationViewModel @Inject constructor(
         val address = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))?.userInfo?.address ?: "未知地址"
         
         return listOf(
-            "老人身份验证 - 长护险服务",
-            "拍摄时间: $currentTime",
+            "老人照片",
+            "时间: $currentTime",
             "地址: $address"
         )
     }
