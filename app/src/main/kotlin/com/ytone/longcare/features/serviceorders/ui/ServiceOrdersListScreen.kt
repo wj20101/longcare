@@ -190,7 +190,7 @@ fun ServiceOrderItem(
                                 shape = RoundedCornerShape(4.dp), color = Color(0xFFE8F4FF)
                             ) {
                                 Text(
-                                    text = "工时: ${order.totalServiceTime}",
+                                    text = stringResource(id = R.string.service_order_work_hours, order.totalServiceTime),
                                     color = MaterialTheme.colorScheme.primary,
                                     fontSize = 12.sp,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -214,7 +214,7 @@ fun ServiceOrderItem(
                                 shape = RoundedCornerShape(4.dp), color = Color(0xFFE8F4FF)
                             ) {
                                 Text(
-                                    text = "工时: ${order.completeTotalTime}",
+                                    text = stringResource(id = R.string.service_order_work_hours, order.completeTotalTime),
                                     color = MaterialTheme.colorScheme.primary,
                                     fontSize = 12.sp,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -227,7 +227,7 @@ fun ServiceOrderItem(
                                 shape = RoundedCornerShape(4.dp), color = Color(0xFFE8F4FF)
                             ) {
                                 Text(
-                                    text = "工时: ${order.totalServiceTime}",
+                                    text = stringResource(id = R.string.service_order_work_hours, order.totalServiceTime),
                                     color = MaterialTheme.colorScheme.primary,
                                     fontSize = 12.sp,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
