@@ -15,6 +15,7 @@ object NavigationConstants {
     /**
      * 已有图片数据的键值
      * 用于向PhotoUploadScreen传递已有的图片数据
+     * 数据类型: Map<ImageTaskType, List<ImageTask>>
      */
     const val EXISTING_IMAGES_KEY = "existing_images"
     
