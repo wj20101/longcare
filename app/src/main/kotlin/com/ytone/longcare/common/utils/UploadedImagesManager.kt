@@ -6,6 +6,7 @@ import com.squareup.moshi.Types
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.di.OrderStorage
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.features.photoupload.model.ImageTask
 import javax.inject.Inject
 import javax.inject.Singleton
 import androidx.core.content.edit
@@ -28,11 +29,11 @@ class UploadedImagesManager @Inject constructor(
      * @param orderRequest 订单信息请求模型
      * @param images 图片数据，按任务类型分组
      */
-    fun saveUploadedImages(orderRequest: OrderInfoRequestModel, images: Map<ImageTaskType, List<String>>) {
+    fun saveUploadedImages(orderRequest: OrderInfoRequestModel, images: Map<ImageTaskType, List<ImageTask>>) {
         val key = getUploadedImagesKey(orderRequest.orderId)
         val type = Types.newParameterizedType(Map::class.java, ImageTaskType::class.java, 
-            Types.newParameterizedType(List::class.java, String::class.java))
-        val adapter = moshi.adapter<Map<ImageTaskType, List<String>>>(type)
+            Types.newParameterizedType(List::class.java, ImageTask::class.java))
+        val adapter = moshi.adapter<Map<ImageTaskType, List<ImageTask>>>(type)
         val json = adapter.toJson(images)
         sharedPreferences.edit {
             putString(key, json)
@@ -42,16 +43,16 @@ class UploadedImagesManager @Inject constructor(
     /**
      * 获取已上传的图片数据
      * @param orderRequest 订单信息请求模型
-     * @return 按ImageTaskType分组的图片URL列表
+     * @return 图片数据，按任务类型分组
      */
-    fun getUploadedImages(orderRequest: OrderInfoRequestModel): Map<ImageTaskType, List<String>> {
+    fun getUploadedImages(orderRequest: OrderInfoRequestModel): Map<ImageTaskType, List<ImageTask>> {
         val key = getUploadedImagesKey(orderRequest.orderId)
         val json = sharedPreferences.getString(key, null) ?: return emptyMap()
         
         return try {
             val type = Types.newParameterizedType(Map::class.java, ImageTaskType::class.java, 
-                Types.newParameterizedType(List::class.java, String::class.java))
-            val adapter = moshi.adapter<Map<ImageTaskType, List<String>>>(type)
+            Types.newParameterizedType(List::class.java, ImageTask::class.java))
+        val adapter = moshi.adapter<Map<ImageTaskType, List<ImageTask>>>(type)
             adapter.fromJson(json) ?: emptyMap()
         } catch (e: Exception) {
             // JSON解析失败时返回空Map

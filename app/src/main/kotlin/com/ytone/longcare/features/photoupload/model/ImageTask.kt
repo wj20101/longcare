@@ -1,11 +1,13 @@
 package com.ytone.longcare.features.photoupload.model
 
 import android.net.Uri
+import androidx.annotation.Keep
 import com.squareup.moshi.Json
 
 /**
  * 图片处理任务数据模型
  */
+@Keep
 data class ImageTask(
     val id: String,
     val originalUri: Uri,
@@ -15,6 +17,7 @@ data class ImageTask(
     val status: ImageTaskStatus = ImageTaskStatus.PROCESSING,
     val errorMessage: String? = null,
     val isUploaded: Boolean = false, // 标识是否已经上传到云端
+    val key: String? = null, // 云端Key
     val cloudUrl: String? = null // 云端URL
 )
 

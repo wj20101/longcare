@@ -18,5 +18,11 @@ data class SystemConfigModel(
      * 上传最大的数量
      */
     @param:Json(name = "maxImgNum")
-    val maxImgNum: Int = 0
+    val maxImgNum: Int = 0,
+
+    /**
+     * 水印logo图片
+     */
+    @param:Json(name = "syLogoImg")
+    val syLogoImg: String = ""
 )

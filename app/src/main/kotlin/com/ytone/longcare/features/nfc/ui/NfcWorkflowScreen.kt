@@ -50,7 +50,6 @@ import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 
 
 // --- 状态定义 ---
@@ -68,7 +67,6 @@ fun NfcWorkflowScreen(
     orderInfoRequest: OrderInfoRequestModel,
     signInMode: SignInMode,
     endOderInfo: EndOderInfo? = null,
-    sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     nfcViewModel: NfcWorkflowViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {

@@ -154,7 +154,7 @@ interface LongCareApiService {
     /**
      * 系统相关配置
      */
-    @GET("/V1/Common/Config")
+    @GET("/V1/System/Config")
     suspend fun getSystemConfig(): Response<SystemConfigModel>
 
     /**
