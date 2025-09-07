@@ -19,6 +19,7 @@ import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.photoupload.utils.ImageProcessor
+import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.models.protos.User
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -47,10 +48,10 @@ class IdentificationViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val cosRepository: CosRepository,
     private val toastHelper: ToastHelper,
+    private val compositeLocationProvider: CompositeLocationProvider,
+    private val imageProcessor: ImageProcessor,
     @param:ApplicationContext private val applicationContext: Context
 ) : ViewModel() {
-
-    private val imageProcessor = ImageProcessor(applicationContext)
     
     // 移除重复的常量定义，使用统一的 CosConstants
     
@@ -221,6 +222,22 @@ class IdentificationViewModel @Inject constructor(
     }
     
     /**
+     * 获取当前定位信息
+     */
+    private suspend fun getCurrentLocationInfo(): String {
+        return try {
+            val locationResult = compositeLocationProvider.getCurrentLocation()
+            if (locationResult != null) {
+                "定位:${locationResult.longitude},${locationResult.latitude}"
+            } else {
+                "定位:未获取"
+            }
+        } catch (e: Exception) {
+            "定位:获取失败"
+        }
+    }
+    
+    /**
      * 重置人脸验证状态
      */
     fun resetFaceVerificationState() {
@@ -327,17 +344,29 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 生成水印内容
      */
-    private fun generateWatermarkLines(orderId: Long): List<String> {
+    private suspend fun generateWatermarkLines(orderId: Long): List<String> {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val currentTime = dateFormat.format(Date())
         
-        // 获取订单地址
-        val address = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))?.userInfo?.address ?: "未知地址"
+        // 获取订单信息
+        val orderInfo = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))
+        val address = orderInfo?.userInfo?.address ?: "未知地址"
+        val elderName = orderInfo?.userInfo?.name ?: "未知老人"
+        
+        // 获取当前登录用户（护工）信息
+        val currentUser = getCurrentUser()
+        val caregiverName = currentUser?.userName ?: "未知护工"
+        
+        // 获取定位信息
+        val locationInfo = getCurrentLocationInfo()
         
         return listOf(
             "老人照片",
+            "参保人:$elderName",
+            "护工:$caregiverName",
             "时间: $currentTime",
-            "地址: $address"
+            "地址: $address",
+            locationInfo
         )
     }
     

@@ -128,7 +128,8 @@ fun PhotoUploadScreen(
                 viewModel.addImagesToProcess(
                     uris = listOf(uri),
                     taskType = taskType,
-                    address = sharedViewModel.getUserAddress(orderInfoRequest)
+                    address = sharedViewModel.getUserAddress(orderInfoRequest),
+                    orderId = orderInfoRequest.orderId
                 )
             }
         },
