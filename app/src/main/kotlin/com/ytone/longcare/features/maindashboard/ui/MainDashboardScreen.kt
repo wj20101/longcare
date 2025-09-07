@@ -58,6 +58,7 @@ import com.ytone.longcare.navigation.navigateToServiceRecordsList
 import com.ytone.longcare.ui.components.UserAvatar
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.features.shared.ui.EmptyView
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import kotlinx.coroutines.flow.first
 import dagger.hilt.android.EntryPointAccessors
@@ -384,7 +385,7 @@ fun ImageWithAdaptiveWidth(
 // --- Preview ---
 @Composable
 fun InOrderServiceItem(
-    order: ServiceOrderModel, 
+    order: ServiceOrderModel,
     onClick: () -> Unit = { }
 ) {
     Card(
@@ -395,21 +396,21 @@ fun InOrderServiceItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp), 
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = order.name, 
-                        fontWeight = FontWeight.Bold, 
+                        text = order.name,
+                        fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    
+
                     // 服务中状态标签
                     Surface(
-                        shape = RoundedCornerShape(4.dp), 
+                        shape = RoundedCornerShape(4.dp),
                         color = Color(0xFFFFF3E0)
                     ) {
                         Text(
@@ -420,16 +421,16 @@ fun InOrderServiceItem(
                         )
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(4.dp))
-                
+
                 Text(
                     text = "地址: ${order.liveAddress}",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
             }
-            
+
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                 contentDescription = "进入详情",
@@ -453,7 +454,7 @@ fun OrderTabLayout(
     val selectedTabIndex by homeSharedViewModel.selectedTabIndex.collectAsStateWithLifecycle()
     val tabs = listOf("待护理计划", "服务中")
     val coroutineScope = rememberCoroutineScope()
-    
+
     Column {
         TabRow(
             selectedTabIndex = selectedTabIndex,
@@ -475,9 +476,9 @@ fun OrderTabLayout(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         when (selectedTabIndex) {
             0 -> {
                 val pendingOrders = todayOrderList.filter { it.isPendingExecution() }
@@ -502,12 +503,7 @@ fun OrderTabLayout(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 } else {
-                    Text(
-                        text = "暂无待护理计划",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    EmptyView(modifier = Modifier.height(376.dp), message = "暂无待护理计划")
                 }
             }
             1 -> {
@@ -570,12 +566,7 @@ fun OrderTabLayout(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 } else {
-                    Text(
-                        text = "暂无服务中订单",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    EmptyView(modifier = Modifier.height(376.dp), message = "暂无服务中订单")
                 }
             }
         }
@@ -589,7 +580,7 @@ fun CustomTabItem(
 ) {
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -599,9 +590,9 @@ fun CustomTabItem(
             color = if (isSelected) Color(0xFF007AFF) else Color(0xFF999999),
             fontSize = 16.sp
         )
-        
+
         Spacer(modifier = Modifier.height(4.dp))
-        
+
         // 自定义指示器，宽度与文字宽度一致
         if (isSelected) {
             val textLayoutResult = textMeasurer.measure(
@@ -612,7 +603,7 @@ fun CustomTabItem(
                 )
             )
             val textWidthDp = with(density) { textLayoutResult.size.width.toDp() }
-            
+
             Box(
                 modifier = Modifier
                     .width(textWidthDp)

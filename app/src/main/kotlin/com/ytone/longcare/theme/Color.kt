@@ -63,3 +63,5 @@ val BottomNavUnselectedText = Color(0xFF8A8A8F) // 未选中项文字颜色 (设
 // 指示器渐变色
 val IndicatorGradientStart = Color(0xFF00A2FF) // 渐变起始色 (蓝色)
 val IndicatorGradientEnd = Color(0xFF00FFC2)   // 渐变结束色 (青绿色)
+
+val EmptyTextColor = Color(0xFF999999)
