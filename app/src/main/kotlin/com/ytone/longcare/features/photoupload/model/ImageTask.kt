@@ -26,6 +26,7 @@ data class ImageTask(
 /**
  * 图片处理任务类型枚举
  */
+@Keep
 enum class ImageTaskType {
     @Json(name = "BEFORE_CARE")
     BEFORE_CARE,  // 护理前
@@ -37,6 +38,7 @@ enum class ImageTaskType {
 /**
  * 图片处理任务状态枚举
  */
+@Keep
 enum class ImageTaskStatus {
     @Json(name = "PROCESSING")
     PROCESSING,  // 处理中
