@@ -228,12 +228,12 @@ class IdentificationViewModel @Inject constructor(
         return try {
             val locationResult = compositeLocationProvider.getCurrentLocation()
             if (locationResult != null) {
-                "定位:${locationResult.longitude},${locationResult.latitude}"
+                "卫星定位:${locationResult.longitude},${locationResult.latitude}"
             } else {
-                "定位:未获取"
+                "卫星定位:未获取"
             }
         } catch (e: Exception) {
-            "定位:获取失败"
+            "卫星定位:获取失败"
         }
     }
     
@@ -362,11 +362,11 @@ class IdentificationViewModel @Inject constructor(
         
         return listOf(
             "老人照片",
-            "参保人:$elderName",
-            "护工:$caregiverName",
-            "时间: $currentTime",
-            "地址: $address",
-            locationInfo
+            "参保人员:$elderName",
+            "护理人员:$caregiverName",
+            "拍摄时间:$currentTime",
+            locationInfo,
+            "拍摄地址:$address"
         )
     }
     

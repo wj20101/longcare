@@ -5,6 +5,10 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.features.photoupload.model.ImageTask
+import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
+import android.net.Uri
+import io.mockk.mockkStatic
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -35,14 +39,35 @@ class UploadedImagesManagerTest {
     @Test
     fun `saveUploadedImages should save images to SharedPreferences`() {
         // Given
+        mockkStatic(Uri::class)
+        val mockUri1 = mockk<Uri>()
+        val mockUri2 = mockk<Uri>()
+        every { Uri.parse(any()) } returns mockUri1
+        every { mockUri1.toString() } returns "content://test1"
+        every { mockUri2.toString() } returns "content://test2"
+        
         val orderRequest = OrderInfoRequestModel(orderId = 12345L, planId = 1)
+        val imageTask1 = ImageTask(
+            id = "1",
+            originalUri = mockUri1,
+            taskType = ImageTaskType.BEFORE_CARE,
+            watermarkLines = listOf("test"),
+            status = ImageTaskStatus.SUCCESS
+        )
+        val imageTask2 = ImageTask(
+            id = "2",
+            originalUri = mockUri2,
+            taskType = ImageTaskType.AFTER_CARE,
+            watermarkLines = listOf("test"),
+            status = ImageTaskStatus.SUCCESS
+        )
         val uploadedImages = mapOf(
-            ImageTaskType.BEFORE_CARE to listOf("url1", "url2"),
-            ImageTaskType.AFTER_CARE to listOf("url3", "url4")
+            ImageTaskType.BEFORE_CARE to listOf(imageTask1),
+            ImageTaskType.AFTER_CARE to listOf(imageTask2)
         )
         val type = Types.newParameterizedType(Map::class.java, ImageTaskType::class.java, 
-            Types.newParameterizedType(List::class.java, String::class.java))
-        val adapter = moshi.adapter<Map<ImageTaskType, List<String>>>(type)
+            Types.newParameterizedType(List::class.java, ImageTask::class.java))
+        val adapter = moshi.adapter<Map<ImageTaskType, List<ImageTask>>>(type)
         val expectedJson = adapter.toJson(uploadedImages)
         
         // When
@@ -57,21 +82,33 @@ class UploadedImagesManagerTest {
     fun `getUploadedImages should return saved images`() {
         // Given
         val orderRequest = OrderInfoRequestModel(orderId = 12345L, planId = 1)
-        val uploadedImages = mapOf(
-            ImageTaskType.BEFORE_CARE to listOf("url1", "url2"),
-            ImageTaskType.AFTER_CARE to listOf("url3", "url4")
-        )
-        val type = Types.newParameterizedType(Map::class.java, ImageTaskType::class.java, 
-            Types.newParameterizedType(List::class.java, String::class.java))
-        val adapter = moshi.adapter<Map<ImageTaskType, List<String>>>(type)
-        val json = adapter.toJson(uploadedImages)
+        val json = """
+            {
+                "BEFORE_CARE": [
+                    {
+                        "id": "1",
+                        "originalUri": "content://test1",
+                        "taskType": "BEFORE_CARE",
+                        "watermarkLines": ["test"],
+                        "resultUri": null,
+                        "status": "SUCCESS",
+                        "errorMessage": null,
+                        "isUploaded": false,
+                        "key": null,
+                        "cloudUrl": null
+                    }
+                ]
+            }
+        """.trimIndent()
         every { mockSharedPreferences.getString("uploaded_images_12345", null) } returns json
 
         // When
         val result = uploadedImagesManager.getUploadedImages(orderRequest)
 
         // Then
-        assertEquals(uploadedImages, result)
+        assertEquals(1, result.size)
+        assertTrue(result.containsKey(ImageTaskType.BEFORE_CARE))
+        assertEquals(1, result[ImageTaskType.BEFORE_CARE]?.size)
     }
 
     @Test
@@ -91,13 +128,24 @@ class UploadedImagesManagerTest {
     fun `hasUploadedImages should return true when images exist`() {
         // Given
         val orderRequest = OrderInfoRequestModel(orderId = 12345L, planId = 1)
-        val uploadedImages = mapOf(
-            ImageTaskType.BEFORE_CARE to listOf("url1", "url2")
-        )
-        val type = Types.newParameterizedType(Map::class.java, ImageTaskType::class.java, 
-            Types.newParameterizedType(List::class.java, String::class.java))
-        val adapter = moshi.adapter<Map<ImageTaskType, List<String>>>(type)
-        val json = adapter.toJson(uploadedImages)
+        val json = """
+            {
+                "BEFORE_CARE": [
+                    {
+                        "id": "1",
+                        "originalUri": "content://test1",
+                        "taskType": "BEFORE_CARE",
+                        "watermarkLines": ["test"],
+                        "resultUri": null,
+                        "status": "SUCCESS",
+                        "errorMessage": null,
+                        "isUploaded": false,
+                        "key": null,
+                        "cloudUrl": null
+                    }
+                ]
+            }
+        """.trimIndent()
         every { mockSharedPreferences.getString("uploaded_images_12345", null) } returns json
 
         // When
