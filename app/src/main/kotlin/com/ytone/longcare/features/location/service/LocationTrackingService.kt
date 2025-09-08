@@ -11,6 +11,8 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.ytone.longcare.R
+import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.location.LocationRepository
@@ -39,6 +41,9 @@ class LocationTrackingService : Service() {
     
     @Inject
     lateinit var compositeLocationProvider: CompositeLocationProvider
+
+    @Inject
+    lateinit var toastHelper: ToastHelper
 
     // 创建一个与 Service 生命周期绑定的协程作用域
     // 使用 SupervisorJob 确保一个子任务的失败不会影响其他任务
@@ -123,8 +128,21 @@ class LocationTrackingService : Service() {
 
         // 在IO线程中执行网络请求
         serviceScope.launch {
-            locationRepository.addPosition(currentOrderId, locationResult.latitude, locationResult.longitude)
-            logI("位置上报API调用完成。")
+            when (val result = locationRepository.addPosition(currentOrderId, locationResult.latitude, locationResult.longitude)) {
+                is ApiResult.Success -> {
+                    // 请求成功，更新状态
+                    logI("位置上报API调用完成。")
+                }
+
+                is ApiResult.Failure -> {
+                    // 这里可以添加错误处理逻辑，例如通过另一个 StateFlow 显示Toast
+                    toastHelper.showShort(result.message)
+                }
+
+                is ApiResult.Exception -> {
+                    logE(message = "定位上报接口失败", throwable = result.exception)
+                }
+            }
         }
     }
 
