@@ -2,6 +2,9 @@
   "resultCode": 1000,
   "resultMsg": "成功",
   "data": {
+    "companyName": "长护科技有限公司",
+    "maxImgNum": 9,
+    "syLogoImg": "https://longcare-bucket-1234567890.cos.ap-beijing.myqcloud.com/logo/watermark_logo.png",
     "TencentMapKey": "MOCK-TENCENT-MAP-KEY",
     "TencentMapFenceRadius": 500,
     "TencentMapUploadInterval": 60,
