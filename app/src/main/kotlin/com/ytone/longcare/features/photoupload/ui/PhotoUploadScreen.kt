@@ -187,9 +187,22 @@ fun PhotoUploadScreen(
                             try {
                                 val uploadResult = viewModel.uploadSuccessfulImagesToCloud()
                                 uploadResult.fold(onSuccess = { cloudUrlsMap ->
-                                    // 将上传结果回传给上一个页面
+                                    // 将 Map<ImageTaskType, List<String>> 转换为 Map<ImageTaskType, List<ImageTask>>
+                                    val currentTasks = viewModel.imageTasks.value
+                                    val imageTasksMap = cloudUrlsMap.mapValues { (taskType, keys) ->
+                                        // 根据 key 找到对应的 ImageTask
+                                        keys.mapNotNull { key ->
+                                            currentTasks.find { task ->
+                                                task.taskType == taskType && 
+                                                task.key == key && 
+                                                task.status == ImageTaskStatus.SUCCESS
+                                            }
+                                        }
+                                    }
+                                    
+                                    // 将转换后的结果回传给上一个页面
                                     navController.previousBackStackEntry?.savedStateHandle?.set(
-                                        NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, cloudUrlsMap
+                                        NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, imageTasksMap
                                     )
                                     navController.popBackStack()
                                 }, onFailure = { error ->
