@@ -3,11 +3,13 @@ package com.ytone.longcare.features.photoupload.model
 import android.net.Uri
 import androidx.annotation.Keep
 import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
 /**
  * 图片处理任务数据模型
  */
 @Keep
+@JsonClass(generateAdapter = true)
 data class ImageTask(
     val id: String,
     val originalUri: Uri,
@@ -36,7 +38,12 @@ enum class ImageTaskType {
  * 图片处理任务状态枚举
  */
 enum class ImageTaskStatus {
+    @Json(name = "PROCESSING")
     PROCESSING,  // 处理中
+    
+    @Json(name = "SUCCESS")
     SUCCESS,     // 成功
+    
+    @Json(name = "FAILED")
     FAILED       // 失败
 }
