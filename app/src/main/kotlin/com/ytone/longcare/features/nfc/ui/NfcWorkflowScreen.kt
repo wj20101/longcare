@@ -153,9 +153,9 @@ fun NfcWorkflowScreen(
     }
 
     // 监听NFC事件
-    LaunchedEffect(orderInfoRequest.orderId, signInMode) {
+    LaunchedEffect(orderInfoRequest, signInMode) {
         nfcViewModel.observeNfcEvents(
-            orderId = orderInfoRequest.orderId,
+            orderInfoRequest = orderInfoRequest,
             signInMode = signInMode,
             endOderInfo = endOderInfo,
             onLocationRequest = { getCurrentLocationCoordinates() }

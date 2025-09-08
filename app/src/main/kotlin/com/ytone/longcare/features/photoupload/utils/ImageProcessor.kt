@@ -12,10 +12,7 @@ import androidx.core.graphics.BitmapCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.withTranslation
 import coil3.ImageLoader
-import coil3.request.CachePolicy
 import coil3.request.ImageRequest
-import coil3.request.allowHardware
-import coil3.request.crossfade
 import coil3.toBitmap
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
@@ -34,7 +31,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class ImageProcessor @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val systemConfigManager: SystemConfigManager,
     private val imageLoader: ImageLoader
 ) {
@@ -154,29 +151,9 @@ class ImageProcessor @Inject constructor(
             val logoUrl = systemConfigManager.getSyLogoImg()
             
             if (logoUrl.isNotEmpty()) {
-                // 计算目标logo尺寸
-                val logoMaxWidth = (targetImageWidth * 0.3f).toInt()
-                
-                // 创建自定义缓存键，包含URL和目标尺寸信息
-                // 这样不同尺寸的logo会分别缓存，避免重复缩放
-                val cacheKey = "logo_${logoUrl.hashCode()}_${logoMaxWidth}"
-                
                 // 使用优化的ImageRequest配置
                 val request = ImageRequest.Builder(context)
                     .data(logoUrl)
-                    // 设置自定义缓存键
-                    .memoryCacheKey(cacheKey)
-                    .diskCacheKey(cacheKey)
-                    // 启用所有缓存策略
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .networkCachePolicy(CachePolicy.ENABLED)
-                    // 设置目标尺寸，让Coil在加载时就进行优化
-                    .size(logoMaxWidth, logoMaxWidth)
-                    // 允许硬件加速（如果支持）
-                    .allowHardware(true)
-                    // 设置合理的错误和占位符策略
-                    .crossfade(true)
                     .build()
                 
                 val result = imageLoader.execute(request)

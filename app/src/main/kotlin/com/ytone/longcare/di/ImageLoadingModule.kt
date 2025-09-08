@@ -18,6 +18,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.Dispatchers
 import javax.inject.Singleton
 
 @Module
@@ -58,7 +59,7 @@ object ImageLoadingModule {
                     // 根据设备存储空间动态调整磁盘缓存大小
                     .maxSizeBytes(getOptimalDiskCacheSize(context))
                     // 设置缓存清理策略
-                    .cleanupDispatcher(kotlinx.coroutines.Dispatchers.IO)
+                    .cleanupCoroutineContext(Dispatchers.IO)
                     .build()
             }
             // 启用交叉淡入动画

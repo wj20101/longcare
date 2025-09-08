@@ -42,7 +42,6 @@ import com.ytone.longcare.features.userlist.ui.UserListScreen
 import com.ytone.longcare.features.userlist.ui.UserListType
 import com.ytone.longcare.features.userservicerecord.ui.UserServiceRecordScreen
 import kotlin.reflect.typeOf
-import com.ytone.longcare.navigation.OrderInfoRequestModelNavType
 
 /**
  * 从登录页面导航到主页，并清除登录页面的返回栈
@@ -140,7 +139,18 @@ fun NavController.navigateToServiceCountdown(
  * @param orderInfoRequest 订单信息请求模型
  */
 fun NavController.navigateToServiceComplete(orderInfoRequest: OrderInfoRequestModel) {
-    navigate(ServiceCompleteRoute(orderInfoRequest))
+    // 获取当前页面的路由，以便之后将其弹出
+    val currentRoute = this.currentBackStackEntry?.destination?.route ?: return
+
+    navigate(ServiceCompleteRoute(orderInfoRequest)) {
+        // popUpTo 会从返回堆栈中移除目标路由（及之上）的所有页面
+        popUpTo(currentRoute) {
+            inclusive = true // inclusive = true 表示连同 currentRoute 页面本身也一起移除
+        }
+
+        // (可选但推荐) 防止在快速点击时重复创建页面
+        launchSingleTop = true
+    }
 }
 
 /**
@@ -166,7 +176,18 @@ fun NavController.navigateToSelectDevice(orderInfoRequest: OrderInfoRequestModel
  * @param orderInfoRequest 订单信息请求模型
  */
 fun NavController.navigateToIdentification(orderInfoRequest: OrderInfoRequestModel) {
-    navigate(IdentificationRoute(orderInfoRequest))
+    // 获取当前页面的路由，以便之后将其弹出
+    val currentRoute = this.currentBackStackEntry?.destination?.route ?: return
+
+    navigate(IdentificationRoute(orderInfoRequest)) {
+        // popUpTo 会从返回堆栈中移除目标路由（及之上）的所有页面
+        popUpTo(currentRoute) {
+            inclusive = true // inclusive = true 表示连同 currentRoute 页面本身也一起移除
+        }
+
+        // (可选但推荐) 防止在快速点击时重复创建页面
+        launchSingleTop = true
+    }
 }
 
 /**
