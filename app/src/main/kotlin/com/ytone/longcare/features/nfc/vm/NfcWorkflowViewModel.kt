@@ -2,6 +2,7 @@ package com.ytone.longcare.features.nfc.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
@@ -34,13 +35,13 @@ class NfcWorkflowViewModel @Inject constructor(
 
     /**
      * 开始服务工单
-     * @param orderId 订单ID
+     * @param orderInfoRequest 订单信息
      * @param nfcDeviceId NFC设备号
      * @param longitude 经度
      * @param latitude 纬度
      */
     fun startOrder(
-        orderId: Long, 
+        orderInfoRequest: OrderInfoRequestModel,
         nfcDeviceId: String,
         longitude: String = "",
         latitude: String = ""
@@ -48,7 +49,7 @@ class NfcWorkflowViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = NfcSignInUiState.Loading
 
-            when (val result = orderRepository.startOrder(orderId, nfcDeviceId, longitude, latitude)) {
+            when (val result = orderRepository.startOrder(orderInfoRequest.orderId, nfcDeviceId, longitude, latitude)) {
                 is ApiResult.Success -> {
                     _uiState.value = NfcSignInUiState.Success
                 }
@@ -69,7 +70,7 @@ class NfcWorkflowViewModel @Inject constructor(
 
     /**
      * 结束服务工单
-     * @param orderId 订单ID
+     * @param orderInfoRequest 订单信息
      * @param nfcDeviceId NFC设备号
      * @param projectIdList 完成的服务项目ID集合
      * @param beginImgList 开始图片集合
@@ -79,7 +80,7 @@ class NfcWorkflowViewModel @Inject constructor(
      * @param endType 结束类型：1=正常结束，2=提前结束
      */
     fun endOrder(
-        orderId: Long,
+        orderInfoRequest: OrderInfoRequestModel,
         nfcDeviceId: String,
         projectIdList: List<Int>,
         beginImgList: List<String>,
@@ -92,7 +93,7 @@ class NfcWorkflowViewModel @Inject constructor(
             _uiState.value = NfcSignInUiState.Loading
 
             when (val result = orderRepository.endOrder(
-                orderId,
+                orderInfoRequest.orderId,
                 nfcDeviceId,
                 projectIdList,
                 beginImgList,
@@ -103,7 +104,7 @@ class NfcWorkflowViewModel @Inject constructor(
             )) {
                 is ApiResult.Success -> {
                     // 订单结束成功后清除本地存储的选中项目数据
-                    selectedProjectsManager.clearSelectedProjects(orderId)
+                    selectedProjectsManager.clearSelectedProjects(orderInfoRequest.orderId)
                     _uiState.value = NfcSignInUiState.Success
                 }
 
@@ -137,7 +138,7 @@ class NfcWorkflowViewModel @Inject constructor(
     }
 
     fun observeNfcEvents(
-        orderId: Long,
+        orderInfoRequest: OrderInfoRequestModel,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
         onLocationRequest: suspend () -> Pair<String, String>
@@ -159,12 +160,12 @@ class NfcWorkflowViewModel @Inject constructor(
                             }
                             
                             when (signInMode) {
-                                SignInMode.START_ORDER -> startOrder(orderId, tagId, longitude, latitude)
+                                SignInMode.START_ORDER -> startOrder(orderInfoRequest, tagId, longitude, latitude)
 
                                 SignInMode.END_ORDER -> {
                                     endOderInfo?.let {
                                         endOrder(
-                                            orderId = orderId,
+                                            orderInfoRequest = orderInfoRequest,
                                             nfcDeviceId = tagId,
                                             projectIdList = it.projectIdList,
                                             beginImgList = it.beginImgList,
