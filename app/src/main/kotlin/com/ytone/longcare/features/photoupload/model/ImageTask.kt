@@ -31,6 +31,9 @@ enum class ImageTaskType {
     @Json(name = "BEFORE_CARE")
     BEFORE_CARE,  // 护理前
     
+    @Json(name = "CENTER_CARE")
+    CENTER_CARE,  // 护理中
+    
     @Json(name = "AFTER_CARE")
     AFTER_CARE    // 护理后
 }

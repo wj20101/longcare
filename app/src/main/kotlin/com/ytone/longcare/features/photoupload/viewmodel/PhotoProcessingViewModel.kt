@@ -103,6 +103,7 @@ class PhotoProcessingViewModel @Inject constructor(
         val currentTime = dateFormat.format(Date())
         val watermarkTitle = when (taskType) {
             ImageTaskType.BEFORE_CARE -> "服务前"
+            ImageTaskType.CENTER_CARE -> "服务中"
             ImageTaskType.AFTER_CARE -> "服务后"
         }
         

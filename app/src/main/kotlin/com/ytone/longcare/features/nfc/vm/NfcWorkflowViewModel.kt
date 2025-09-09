@@ -49,7 +49,7 @@ class NfcWorkflowViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = NfcSignInUiState.Loading
 
-            when (val result = orderRepository.startOrder(orderInfoRequest.orderId, nfcDeviceId, longitude, latitude)) {
+            when (val result = orderRepository.checkOrder(orderInfoRequest.orderId, nfcDeviceId, longitude, latitude)) {
                 is ApiResult.Success -> {
                     _uiState.value = NfcSignInUiState.Success
                 }
@@ -72,9 +72,10 @@ class NfcWorkflowViewModel @Inject constructor(
      * 结束服务工单
      * @param orderInfoRequest 订单信息
      * @param nfcDeviceId NFC设备号
-     * @param projectIdList 完成的服务项目ID集合
+     * @param porjectIdList 完成的服务项目ID集合
      * @param beginImgList 开始图片集合
      * @param endImageList 结束图片集合
+     * @param centerImgList 服务中图片集合
      * @param longitude 经度
      * @param latitude 纬度
      * @param endType 结束类型：1=正常结束，2=提前结束
@@ -82,9 +83,10 @@ class NfcWorkflowViewModel @Inject constructor(
     fun endOrder(
         orderInfoRequest: OrderInfoRequestModel,
         nfcDeviceId: String,
-        projectIdList: List<Int>,
+        porjectIdList: List<Int>,
         beginImgList: List<String>,
         endImageList: List<String>,
+        centerImgList: List<String> = emptyList(),
         longitude: String = "",
         latitude: String = "",
         endType: Int = 1
@@ -93,14 +95,15 @@ class NfcWorkflowViewModel @Inject constructor(
             _uiState.value = NfcSignInUiState.Loading
 
             when (val result = orderRepository.endOrder(
-                orderInfoRequest.orderId,
-                nfcDeviceId,
-                projectIdList,
-                beginImgList,
-                endImageList,
-                longitude,
-                latitude,
-                endType
+                orderId = orderInfoRequest.orderId,
+                nfcDeviceId = nfcDeviceId,
+                projectIdList = porjectIdList,
+                beginImgList = beginImgList,
+                centerImgList = centerImgList,
+                endImageList = endImageList,
+                longitude = longitude,
+                latitude = latitude,
+                endType = endType
             )) {
                 is ApiResult.Success -> {
                     // 订单结束成功后清除本地存储的选中项目数据
@@ -167,8 +170,9 @@ class NfcWorkflowViewModel @Inject constructor(
                                         endOrder(
                                             orderInfoRequest = orderInfoRequest,
                                             nfcDeviceId = tagId,
-                                            projectIdList = it.projectIdList,
+                                            porjectIdList = it.projectIdList,
                                             beginImgList = it.beginImgList,
+                                            centerImgList = it.centerImgList,
                                             endImageList = it.endImgList,
                                             longitude = longitude,
                                             latitude = latitude,

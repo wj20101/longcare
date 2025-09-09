@@ -65,6 +65,7 @@ import com.ytone.longcare.api.request.OrderInfoRequestModel
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
     BEFORE_CARE("护理前照片", tagCategory = TagCategory.DEFAULT),
+    CENTER_CARE("护理中照片", tagCategory = TagCategory.ORANGE),
     AFTER_CARE("护理后照片", tagCategory = TagCategory.BLUE)
 }
 
@@ -123,6 +124,7 @@ fun PhotoUploadScreen(
             currentCategory?.let { category ->
                 val taskType = when (category) {
                     PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
+                    PhotoCategory.CENTER_CARE -> ImageTaskType.CENTER_CARE
                     PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
                 }
                 viewModel.addImagesToProcess(
@@ -143,12 +145,14 @@ fun PhotoUploadScreen(
 
     // 根据任务类型获取不同分类的任务
     val beforeCareTasks = imageTasks.filter { it.taskType == ImageTaskType.BEFORE_CARE }
+    val centerCareTasks = imageTasks.filter { it.taskType == ImageTaskType.CENTER_CARE }
     val afterCareTasks = imageTasks.filter { it.taskType == ImageTaskType.AFTER_CARE }
 
     // 检查三个分类是否都有成功上传的图片
     val hasBeforeCareSuccess = beforeCareTasks.any { it.status == ImageTaskStatus.SUCCESS }
+    val hasCenterCareSuccess = centerCareTasks.any { it.status == ImageTaskStatus.SUCCESS }
     val hasAfterCareSuccess = afterCareTasks.any { it.status == ImageTaskStatus.SUCCESS }
-    val hasCategoriesHaveImages = hasBeforeCareSuccess || hasAfterCareSuccess
+    val hasCategoriesHaveImages = hasBeforeCareSuccess || hasCenterCareSuccess || hasAfterCareSuccess
 
     Box(
         modifier = Modifier
@@ -243,6 +247,24 @@ fun PhotoUploadScreen(
                         isUploading = isUploading,
                         onAddPhoto = {
                             currentCategory = PhotoCategory.BEFORE_CARE
+                            launchCameraWithPermission(
+                                cameraLauncher = cameraLauncher,
+                                permissionLauncher = permissionLauncher,
+                                context = context
+                            )
+                        },
+                        onRetryTask = { taskId -> viewModel.retryTask(taskId) },
+                        onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+
+                item {
+                    PhotoUploadSection(
+                        category = PhotoCategory.CENTER_CARE,
+                        tasks = centerCareTasks,
+                        isUploading = isUploading,
+                        onAddPhoto = {
+                            currentCategory = PhotoCategory.CENTER_CARE
                             launchCameraWithPermission(
                                 cameraLauncher = cameraLauncher,
                                 permissionLauncher = permissionLauncher,
