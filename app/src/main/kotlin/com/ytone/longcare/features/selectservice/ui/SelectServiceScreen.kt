@@ -231,7 +231,7 @@ fun SelectServiceScreen(
 
                     // 下一步按钮
                     NextStepButton(
-                        text = "下一步",
+                        text = "开始服务",
                         enabled = serviceItems.any { it.isSelected } && starOrderState !is StarOrderUiState.Loading,
                         onClick = {
                             val selectedProjectIds =
@@ -393,13 +393,13 @@ fun ServiceSelectionItemUnselectedPreview() {
 @Preview
 @Composable
 fun NextStepButtonEnabledPreview() {
-    NextStepButton(text = "下一步", enabled = true, onClick = {})
+    NextStepButton(text = "开始服务", enabled = true, onClick = {})
 }
 
 @Preview
 @Composable
 fun NextStepButtonDisabledPreview() {
-    NextStepButton(text = "下一步", enabled = false, onClick = {})
+    NextStepButton(text = "开始服务", enabled = false, onClick = {})
 }
 
 @Composable
