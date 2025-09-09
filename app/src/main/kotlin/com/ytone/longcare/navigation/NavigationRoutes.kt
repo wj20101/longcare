@@ -84,6 +84,7 @@ data class ServiceCountdownRoute(
  * 结束订单信息数据类
  * @param projectIdList 项目ID列表
  * @param beginImgList 开始时的图片列表
+ * @param centerImgList 服务中的图片列表
  * @param endImgList 结束时的图片列表
  * @param endType 结束类型：1=正常结束，2=提前结束
  */
@@ -92,6 +93,7 @@ data class ServiceCountdownRoute(
 data class EndOderInfo(
     val projectIdList: List<Int> = emptyList(),
     val beginImgList: List<String> = emptyList(),
+    val centerImgList: List<String> = emptyList(),
     val endImgList: List<String> = emptyList(),
     val endType: Int = 1
 )

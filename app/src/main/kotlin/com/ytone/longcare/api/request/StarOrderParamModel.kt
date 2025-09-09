@@ -12,8 +12,20 @@ data class StarOrderParamModel(
     val orderId: Long,
     
     /**
-     * 选中的项目ID列表
+     * 经度
      */
-    @param:Json(name = "selectedProjectIds")
-    val selectedProjectIds: List<Long> = emptyList()
+    @param:Json(name = "longitude")
+    val longitude: String = "",
+    
+    /**
+     * 纬度
+     */
+    @param:Json(name = "latitude")
+    val latitude: String = "",
+    
+    /**
+     * 选中的服务项目ID集合
+     */
+    @param:Json(name = "porjectIdList")
+    val porjectIdList: List<Int> = emptyList()
 )

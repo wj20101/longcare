@@ -190,6 +190,7 @@ fun ServiceCountdownScreen(
         
         val uploadedImages = countdownViewModel.getCurrentUploadedImages()
         val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE]?.mapNotNull { it.key } ?: emptyList()
+        val centerImgList = uploadedImages[ImageTaskType.CENTER_CARE]?.mapNotNull { it.key } ?: emptyList()
         val endImgList = uploadedImages[ImageTaskType.AFTER_CARE]?.mapNotNull { it.key } ?: emptyList()
 
         navController.navigateToNfcSignInForEndOrder(
@@ -197,6 +198,7 @@ fun ServiceCountdownScreen(
             params = EndOderInfo(
                 projectIdList = projectIdList.map { it.toInt() },
                 beginImgList = beginImgList,
+                centerImgList = centerImgList,
                 endImgList = endImgList,
                 endType = endType
             ),

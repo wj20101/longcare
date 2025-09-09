@@ -47,7 +47,7 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun startOrder(
+    override suspend fun checkOrder(
         orderId: Long,
         nfcDeviceId: String,
         longitude: String,
@@ -65,10 +65,20 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun starOrder(orderId: Long, selectedProjectIds: List<Long>): ApiResult<Unit> {
+    override suspend fun starOrder(
+        orderId: Long, 
+        selectedProjectIds: List<Long>,
+        longitude: String,
+        latitude: String
+    ): ApiResult<Unit> {
         return safeApiCall(ioDispatcher, eventBus) {
             apiService.starOrder(
-                StarOrderParamModel(orderId = orderId, selectedProjectIds = selectedProjectIds)
+                StarOrderParamModel(
+                    orderId = orderId, 
+                    porjectIdList = selectedProjectIds.map { it.toInt() },
+                    longitude = longitude,
+                    latitude = latitude
+                )
             )
         }
     }
@@ -89,6 +99,7 @@ class OrderRepositoryImpl @Inject constructor(
         nfcDeviceId: String,
         projectIdList: List<Int>,
         beginImgList: List<String>,
+        centerImgList: List<String>,
         endImageList: List<String>,
         longitude: String,
         latitude: String,
@@ -101,8 +112,9 @@ class OrderRepositoryImpl @Inject constructor(
                     nfc = nfcDeviceId,
                     longitude = longitude,
                     latitude = latitude,
-                    projectIdList = projectIdList,
+                    porjectIdList = projectIdList,
                     beginImgList = beginImgList,
+                    centerImgList = centerImgList,
                     endImgList = endImageList,
                     endType = endType
                 )

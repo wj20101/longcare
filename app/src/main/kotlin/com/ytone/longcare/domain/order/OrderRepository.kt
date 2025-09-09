@@ -33,13 +33,13 @@ interface OrderRepository {
     suspend fun getOrderInfo(request: OrderInfoRequestModel): ApiResult<ServiceOrderInfoModel>
 
     /**
-     * 开始订单服务（NFC签到）
+     * 检查订单（NFC签到）
      * @param orderId 订单号
      * @param nfcDeviceId NFC设备ID
      * @param longitude 经度
      * @param latitude 纬度
      */
-    suspend fun startOrder(
+    suspend fun checkOrder(
         orderId: Long,
         nfcDeviceId: String,
         longitude: String = "",
@@ -50,10 +50,14 @@ interface OrderRepository {
      * 工单开始(正式计时)
      * @param orderId 订单号
      * @param selectedProjectIds 选中的项目ID列表
+     * @param longitude 经度
+     * @param latitude 纬度
      */
     suspend fun starOrder(
         orderId: Long,
-        selectedProjectIds: List<Long> = emptyList()
+        selectedProjectIds: List<Long> = emptyList(),
+        longitude: String = "",
+        latitude: String = ""
     ): ApiResult<Unit>
 
     /**
@@ -69,6 +73,7 @@ interface OrderRepository {
      * @param nfcDeviceId NFC设备ID
      * @param projectIdList 完成的服务项目ID集合
      * @param beginImgList 开始图片集合
+     * @param centerImgList 服务中图片集合
      * @param endImageList 结束图片集合
      * @param longitude 经度
      * @param latitude 纬度
@@ -79,6 +84,7 @@ interface OrderRepository {
         nfcDeviceId: String,
         projectIdList: List<Int>,
         beginImgList: List<String>,
+        centerImgList: List<String>,
         endImageList: List<String>,
         longitude: String = "",
         latitude: String = "",
