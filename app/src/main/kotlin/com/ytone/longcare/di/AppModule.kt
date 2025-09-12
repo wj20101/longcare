@@ -16,6 +16,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
+import com.ytone.longcare.features.maindashboard.utils.NfcTestHelper
+import com.ytone.longcare.common.event.AppEventBus
+import com.ytone.longcare.common.utils.ToastHelper
 
 
 @Module
@@ -90,5 +93,17 @@ object AppModule {
     fun provideAlarmManager(@ApplicationContext context: Context): AlarmManager {
         return ContextCompat.getSystemService(context, AlarmManager::class.java)
             ?: throw IllegalStateException("AlarmManager not found")
+    }
+
+    /**
+     * 提供 NfcTestHelper 的单例。
+     */
+    @Provides
+    @Singleton
+    fun provideNfcTestHelper(
+        appEventBus: AppEventBus,
+        toastHelper: ToastHelper
+    ): NfcTestHelper {
+        return NfcTestHelper(appEventBus, toastHelper)
     }
 }
