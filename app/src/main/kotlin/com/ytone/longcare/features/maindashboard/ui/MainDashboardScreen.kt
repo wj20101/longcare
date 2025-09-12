@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.maindashboard.ui
 
+import android.app.Activity
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -80,6 +81,9 @@ fun MainDashboardScreen(
     )
     val navigationHelper = entryPoint.navigationHelper()
     val toastHelper = entryPoint.toastHelper()
+    
+    // 获取NfcTestHelper实例
+    val nfcTestHelper = entryPoint.nfcTestHelper()
     val homeSharedViewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
     val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
     val sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel()
@@ -89,6 +93,25 @@ fun MainDashboardScreen(
     val inOrderList by todayOrderViewModel.inOrderListState.collectAsStateWithLifecycle()
 
     val lifecycleOwner = LocalLifecycleOwner.current
+    
+    // NFC测试功能管理
+    LaunchedEffect(context) {
+        val activity = context as? Activity
+        activity?.let {
+            nfcTestHelper.enable(it)
+        }
+    }
+    
+    // 在Composable销毁时禁用NFC功能
+    DisposableEffect(context) {
+        onDispose {
+            val activity = context as? Activity
+            activity?.let {
+                nfcTestHelper.disable(it)
+            }
+        }
+    }
+    
     LaunchedEffect(lifecycleOwner) {
         // 当此 Composable 的生命周期进入 RESUMED 状态时（即回到此页面），
         // 就会执行刷新操作。
@@ -125,6 +148,9 @@ fun MainDashboardScreen(
             }
         }
     }
+    
+    // NFC标签检测弹窗
+    nfcTestHelper.NfcTagDialog()
 }
 
 /**
