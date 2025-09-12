@@ -154,11 +154,12 @@ class NfcTestHelper @Inject constructor(
                 nfcTagId = tagId
                 showDialog = true
                 
-                // 发送事件
+                // 发送统一的NFC事件（与业务NFC处理保持一致）
                 currentActivity?.let { activity ->
                     if (activity is LifecycleOwner) {
                         activity.lifecycleScope.launch {
-                            appEventBus.send(AppEvent.NfcTagDetected(tagId))
+                            // 使用与NfcManager一致的事件类型
+                            appEventBus.send(AppEvent.NfcIntentReceived(intent))
                         }
                     }
                 }

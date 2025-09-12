@@ -73,10 +73,6 @@ class MainActivity : AppCompatActivity() {
                     is AppEvent.AppUpdate -> {
                         viewModel.setAppVersionModel(event.appVersionModel)
                     }
-
-                    is AppEvent.NfcTagDetected -> {
-                        // NFC标签检测事件由具体的Screen监听处理
-                    }
                 }
             }
         }
