@@ -31,5 +31,4 @@ sealed class AppEvent {
     data class ForceLogout(val reason: String) : AppEvent()
     data class NfcIntentReceived(val intent: Intent) : AppEvent()
     data class AppUpdate(val appVersionModel: AppVersionModel) : AppEvent()
-    data class NfcTagDetected(val tagId: String) : AppEvent()
 }
