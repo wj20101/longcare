@@ -19,6 +19,7 @@ import javax.inject.Singleton
 import com.ytone.longcare.features.maindashboard.utils.NfcTestHelper
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.common.utils.NfcManager
 
 
 @Module
@@ -102,8 +103,9 @@ object AppModule {
     @Singleton
     fun provideNfcTestHelper(
         appEventBus: AppEventBus,
-        toastHelper: ToastHelper
+        toastHelper: ToastHelper,
+        nfcManager: NfcManager
     ): NfcTestHelper {
-        return NfcTestHelper(appEventBus, toastHelper)
+        return NfcTestHelper(appEventBus, toastHelper, nfcManager)
     }
 }

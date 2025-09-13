@@ -31,6 +31,7 @@ class NfcManager @Inject constructor(
      * @param activity 需要启用NFC的Activity
      */
     fun enableNfcForActivity(activity: Activity) {
+        logD("NfcManager", "enableNfcForActivity called for ${activity::class.java.simpleName}")
         currentActivity = activity
         isNfcEnabled = true
         
@@ -39,10 +40,14 @@ class NfcManager @Inject constructor(
             activity.lifecycle.addObserver(this)
             // 只有在Activity已经处于resumed状态时才立即启用NFC
             if (activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                logD("NfcManager", "Activity已resumed，立即检查并启用NFC")
                 checkAndEnableNfc(activity)
+            } else {
+                logD("NfcManager", "Activity未 resumed，等待onResume时启用NFC")
             }
         } else {
             // 如果不是LifecycleOwner，直接尝试启用（兼容性处理）
+            logD("NfcManager", "Activity不是LifecycleOwner，直接启用NFC")
             checkAndEnableNfc(activity)
         }
     }
@@ -52,19 +57,33 @@ class NfcManager @Inject constructor(
      * @param activity 需要禁用NFC的Activity
      */
     fun disableNfcForActivity(activity: Activity) {
+        logD("NfcManager", "disableNfcForActivity called for ${activity::class.java.simpleName}")
+        logD("NfcManager", "  - currentActivity: ${currentActivity?.javaClass?.simpleName}")
+        logD("NfcManager", "  - activity == currentActivity: ${activity == currentActivity}")
+        
         if (currentActivity == activity) {
+            logD("NfcManager", "禁用NFC功能")
+            
+            // 只设置isNfcEnabled为false，但不清空当前Activity的引用
+            // 这样在onResume时可以重新启用
             isNfcEnabled = false
             
             // 检查Activity是否处于resumed状态，只有在resumed状态才能安全地禁用前台调度
             if (activity is LifecycleOwner && 
                 activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-                NfcUtils.disableForegroundDispatch(activity)
+                try {
+                    NfcUtils.disableForegroundDispatch(activity)
+                    logD("NfcManager", "NFC前台调度已禁用")
+                } catch (e: IllegalStateException) {
+                    logD("NfcManager", "禁用NFC前台调度失败: ${e.message}")
+                }
             } else if (activity !is LifecycleOwner) {
                 // 如果不是LifecycleOwner，直接尝试禁用（兼容性处理）
                 try {
                     NfcUtils.disableForegroundDispatch(activity)
+                    logD("NfcManager", "NFC前台调度已禁用")
                 } catch (e: IllegalStateException) {
-                    // 忽略IllegalStateException，因为Activity可能已经不在resumed状态
+                    logD("NfcManager", "禁用NFC前台调度失败: ${e.message}")
                 }
             }
             
@@ -73,7 +92,10 @@ class NfcManager @Inject constructor(
                 activity.lifecycle.removeObserver(this)
             }
             
-            currentActivity = null
+            // 只有在完全销毁时才清空currentActivity
+            // currentActivity = null
+        } else {
+            logD("NfcManager", "currentActivity不匹配，跳过禁用NFC")
         }
     }
     
@@ -83,15 +105,34 @@ class NfcManager @Inject constructor(
      * @param intent NFC Intent
      */
     fun handleNfcIntent(activity: Activity, intent: Intent) {
+        logD("NfcManager", "handleNfcIntent called")
+        logD("NfcManager", "  - activity: ${activity::class.java.simpleName}")
+        logD("NfcManager", "  - currentActivity: ${currentActivity?.javaClass?.simpleName}")
+        logD("NfcManager", "  - isNfcEnabled: $isNfcEnabled")
+        logD("NfcManager", "  - intent action: ${intent.action}")
+        logD("NfcManager", "  - activity == currentActivity: ${activity == currentActivity}")
+        
         if (currentActivity == activity && isNfcEnabled) {
             // 更新Activity的Intent
             activity.intent = intent
             
             // 发送NFC Intent事件
             if (activity is LifecycleOwner) {
+                logD("NfcManager", "发送NFC Intent事件到AppEventBus")
                 activity.lifecycleScope.launch {
                     appEventBus.send(AppEvent.NfcIntentReceived(intent))
+                    logD("NfcManager", "NFC Intent事件已发送")
                 }
+            } else {
+                logD("NfcManager", "Activity不是LifecycleOwner，无法发送事件")
+            }
+        } else {
+            logD("NfcManager", "handleNfcIntent 条件不满足，忽略 Intent")
+            if (currentActivity != activity) {
+                logD("NfcManager", "  - currentActivity不等于activity")
+            }
+            if (!isNfcEnabled) {
+                logD("NfcManager", "  - isNfcEnabled为false")
             }
         }
     }
@@ -100,20 +141,24 @@ class NfcManager @Inject constructor(
      * 检查NFC状态并启用前台调度
      */
     private fun checkAndEnableNfc(activity: Activity) {
+        logD("NfcManager", "checkAndEnableNfc called")
         // 检查Activity是否处于resumed状态
         if (activity is LifecycleOwner && 
             !activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-            // Activity未处于resumed状态，不能启用前台调度
+            // Activity未resumed状态，不能启用前台调度
+            logD("NfcManager", "Activity未resumed状态，跳过启用NFC")
             return
         }
         
         when {
             !NfcUtils.isNfcSupported(activity) -> {
                 // 设备不支持NFC，不做任何操作
+                logD("NfcManager", "设备不支持NFC")
                 return
             }
             !NfcUtils.isNfcEnabled(activity) -> {
                 // NFC未开启，显示提示对话框
+                logD("NfcManager", "NFC未开启，显示提示对话框")
                 NfcUtils.showEnableNfcDialog(
                     activity,
                     title = "NFC未开启",
@@ -123,7 +168,9 @@ class NfcManager @Inject constructor(
             }
             else -> {
                 // NFC已开启，启用前台调度
+                logD("NfcManager", "NFC已开启，启用前台调度")
                 NfcUtils.enableForegroundDispatch(activity)
+                logD("NfcManager", "NFC前台调度已启用")
             }
         }
     }
@@ -131,10 +178,11 @@ class NfcManager @Inject constructor(
     // LifecycleObserver 方法
     override fun onResume(owner: LifecycleOwner) {
         super.onResume(owner)
+        logD("NfcManager", "onResume called")
         currentActivity?.let { activity ->
-            if (isNfcEnabled) {
-                checkAndEnableNfc(activity)
-            }
+            logD("NfcManager", "onResume - 重新启用NFC")
+            isNfcEnabled = true  // 重新启用NFC
+            checkAndEnableNfc(activity)
         }
     }
     
@@ -154,8 +202,12 @@ class NfcManager @Inject constructor(
     
     override fun onDestroy(owner: LifecycleOwner) {
         super.onDestroy(owner)
+        logD("NfcManager", "onDestroy called")
         currentActivity?.let { activity ->
-            disableNfcForActivity(activity)
+            logD("NfcManager", "在onDestroy中清理NFC状态")
+            // 在销毁时彻底清理状态
+            isNfcEnabled = false
+            currentActivity = null
         }
     }
 }
