@@ -97,7 +97,7 @@ object AppModule {
     }
 
     /**
-     * 提供 NfcTestHelper 的单例。
+     * 【测试功能】提供 NfcTestHelper 的单例 - 后期可删除整个方法
      */
     @Provides
     @Singleton

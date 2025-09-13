@@ -44,14 +44,14 @@ class MainActivity : AppCompatActivity() {
         // 启动全局事件监听
         observeAppEvents()
         
-        // 检查启动Intent是否是NFC Intent
+        // 【日志调试】检查启动Intent是否是NFC Intent - 与测试功能无关
         intent?.let {
             logD("MainActivity", "onCreate - intent action: ${it.action}")
             if (it.action?.startsWith("android.nfc.action") == true) {
                 logD("MainActivity", "onCreate收到NFC Intent，延迟处理")
                 // 延迟处理，确保NfcManager已经初始化
                 lifecycleScope.launch {
-                    kotlinx.coroutines.delay(500)
+                    delay(500)
                     nfcManager.handleNfcIntent(this@MainActivity, it)
                 }
             }
@@ -68,7 +68,7 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         logD("MainActivity", "onNewIntent called with action: ${intent.action}")
         
-        // 延迟处理NFC Intent，确保所有初始化完成
+        // 【业务功能】延迟处理NFC Intent，确保所有初始化完成 - 与测试功能无关
         if (intent.action?.startsWith("android.nfc.action") == true) {
             lifecycleScope.launch {
                 // 等待一个较短的时间，确保组件已初始化
@@ -93,7 +93,7 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     is AppEvent.NfcIntentReceived -> {
-                        // NFC事件由具体的Screen监听处理
+                        // 【业务功能】NFC事件由具体的Screen监听处理 - 与测试功能无关
                     }
 
                     is AppEvent.AppUpdate -> {

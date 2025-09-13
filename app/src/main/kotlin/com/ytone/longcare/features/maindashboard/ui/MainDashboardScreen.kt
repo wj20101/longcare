@@ -66,6 +66,7 @@ import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.isPendingExecution
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
+import com.ytone.longcare.debug.NfcTestConfig
 
 @Composable
 fun MainDashboardScreen(
@@ -82,8 +83,10 @@ fun MainDashboardScreen(
     val navigationHelper = entryPoint.navigationHelper()
     val toastHelper = entryPoint.toastHelper()
     
-    // 获取NfcTestHelper实例
-    val nfcTestHelper = entryPoint.nfcTestHelper()
+    // 【测试功能】获取NfcTestHelper实例 - 后期可删除
+    val nfcTestHelper = if (NfcTestConfig.ENABLE_NFC_TEST) {
+        entryPoint.nfcTestHelper()
+    } else null
     val homeSharedViewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
     val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
     val sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel()
@@ -94,20 +97,22 @@ fun MainDashboardScreen(
 
     val lifecycleOwner = LocalLifecycleOwner.current
     
-    // NFC测试功能管理
-    LaunchedEffect(context) {
-        val activity = context as? Activity
-        activity?.let {
-            nfcTestHelper.enable(it)
-        }
-    }
-    
-    // 在Composable销毁时禁用NFC功能
-    DisposableEffect(context) {
-        onDispose {
+    // 【测试功能】NFC测试功能管理 - 后期可删除整个代码块
+    if (NfcTestConfig.ENABLE_NFC_TEST && nfcTestHelper != null) {
+        LaunchedEffect(context) {
             val activity = context as? Activity
             activity?.let {
-                nfcTestHelper.disable(it)
+                nfcTestHelper.enable(it)
+            }
+        }
+        
+        // 在Composable销毁时禁用NFC功能
+        DisposableEffect(context) {
+            onDispose {
+                val activity = context as? Activity
+                activity?.let {
+                    nfcTestHelper.disable(it)
+                }
             }
         }
     }
@@ -149,8 +154,10 @@ fun MainDashboardScreen(
         }
     }
     
-    // NFC标签检测弹窗
-    nfcTestHelper.NfcTagDialog()
+    // 【测试功能】NFC标签检测弹窗 - 后期可删除整行
+    if (NfcTestConfig.ENABLE_NFC_TEST && nfcTestHelper != null) {
+        nfcTestHelper.NfcTagDialog()
+    }
 }
 
 /**
