@@ -11,10 +11,12 @@ import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.navigation.MainApp
 import com.ytone.longcare.theme.LongCareTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -41,6 +43,19 @@ class MainActivity : AppCompatActivity() {
 
         // 启动全局事件监听
         observeAppEvents()
+        
+        // 检查启动Intent是否是NFC Intent
+        intent?.let {
+            logD("MainActivity", "onCreate - intent action: ${it.action}")
+            if (it.action?.startsWith("android.nfc.action") == true) {
+                logD("MainActivity", "onCreate收到NFC Intent，延迟处理")
+                // 延迟处理，确保NfcManager已经初始化
+                lifecycleScope.launch {
+                    kotlinx.coroutines.delay(500)
+                    nfcManager.handleNfcIntent(this@MainActivity, it)
+                }
+            }
+        }
 
         setContent {
             LongCareTheme {
@@ -51,8 +66,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // 委托给NfcManager处理NFC Intent
-        nfcManager.handleNfcIntent(this, intent)
+        logD("MainActivity", "onNewIntent called with action: ${intent.action}")
+        
+        // 延迟处理NFC Intent，确保所有初始化完成
+        if (intent.action?.startsWith("android.nfc.action") == true) {
+            lifecycleScope.launch {
+                // 等待一个较短的时间，确保组件已初始化
+                delay(100)
+                nfcManager.handleNfcIntent(this@MainActivity, intent)
+            }
+        } else {
+            // 非NFC Intent直接处理
+            nfcManager.handleNfcIntent(this, intent)
+        }
     }
 
     private fun observeAppEvents() {
