@@ -10,7 +10,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -18,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -361,79 +364,104 @@ fun ServiceCountdownScreen(
                 )
             )
         }, containerColor = Color.Transparent, modifier = Modifier.background(bgGradientBrush)
-    ) {
-        Column(
+    ) { paddingValues ->
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(it)
-                .padding(horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(paddingValues)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "请在服务倒计时结束后10分钟内结束服务",
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 14.sp
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Countdown Timer Card
-            CountdownTimerCard(
-                navController = navController,
-                countdownState = countdownState,
-                formattedTime = formattedTime,
-                countdownViewModel = countdownViewModel,
-                orderInfoRequest = orderInfoRequest
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            SelectedServicesCard(
-                orderInfoRequest = orderInfoRequest, projectIdList = projectIdList.map { it.toString() }, sharedViewModel = sharedViewModel
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // End Service Button
-            Button(
-                onClick = {
-                    // 验证照片是否已上传
-                    if (!countdownViewModel.validatePhotosUploaded()) {
-                        countdownViewModel.showToast("请上传照片")
-                        return@Button
-                    }
-
-                    // 如果倒计时还在进行中，显示确认弹窗
-                    if (countdownState == ServiceCountdownState.RUNNING) {
-                        showConfirmDialog = true
-                    } else {
-                        // 直接结束服务
-                        handleEndService(1)
-                    }
-                },
-                enabled = countdownState != ServiceCountdownState.ENDED,
+            // 可滚动的内容区域
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = when (countdownState) {
-                        ServiceCountdownState.RUNNING -> Color(0xFFFF9500) // 橙色（提前结束）
-                        ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> Color(0xFF4A90E2) // 蓝色（正常结束）
-                        ServiceCountdownState.ENDED -> Color.Gray // 灰色（已结束）
-                    }
-                )
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 100.dp), // 为底部按钮留出空间
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = when (countdownState) {
-                        ServiceCountdownState.RUNNING -> "提前结束服务"
-                        ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> "结束服务"
-                        ServiceCountdownState.ENDED -> "服务已结束"
-                    }, fontSize = 18.sp, color = Color.White
+                    text = "请在服务倒计时结束后10分钟内结束服务",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 14.sp
                 )
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Countdown Timer Card
+                CountdownTimerCard(
+                    navController = navController,
+                    countdownState = countdownState,
+                    formattedTime = formattedTime,
+                    countdownViewModel = countdownViewModel,
+                    orderInfoRequest = orderInfoRequest
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                SelectedServicesCard(
+                    orderInfoRequest = orderInfoRequest, projectIdList = projectIdList.map { it.toString() }, sharedViewModel = sharedViewModel
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            // 固定在底部的按钮
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color(0xFFF6F9FF).copy(alpha = 0.9f),
+                                Color(0xFFF6F9FF)
+                            ),
+                            startY = 0f,
+                            endY = 100f
+                        )
+                    )
+                    .padding(horizontal = 16.dp, vertical = 32.dp)
+            ) {
+                // End Service Button
+                Button(
+                    onClick = {
+                        // 验证照片是否已上传
+                        if (!countdownViewModel.validatePhotosUploaded()) {
+                            countdownViewModel.showToast("请上传照片")
+                            return@Button
+                        }
+
+                        // 如果倒计时还在进行中，显示确认弹窗
+                        if (countdownState == ServiceCountdownState.RUNNING) {
+                            showConfirmDialog = true
+                        } else {
+                            // 直接结束服务
+                            handleEndService(1)
+                        }
+                    },
+                    enabled = countdownState != ServiceCountdownState.ENDED,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(50),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = when (countdownState) {
+                            ServiceCountdownState.RUNNING -> Color(0xFFFF9500) // 橙色（提前结束）
+                            ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> Color(0xFF4A90E2) // 蓝色（正常结束）
+                            ServiceCountdownState.ENDED -> Color.Gray // 灰色（已结束）
+                        }
+                    )
+                ) {
+                    Text(
+                        text = when (countdownState) {
+                            ServiceCountdownState.RUNNING -> "提前结束服务"
+                            ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> "结束服务"
+                            ServiceCountdownState.ENDED -> "服务已结束"
+                        }, fontSize = 18.sp, color = Color.White
+                    )
+                }
+            }
         }
     }
     
