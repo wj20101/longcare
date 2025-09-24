@@ -7,7 +7,7 @@ import android.os.PowerManager
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
-import com.longcare.presentation.countdown.CountdownAlarmActivity
+import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject

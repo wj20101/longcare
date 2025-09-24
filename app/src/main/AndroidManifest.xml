@@ -126,7 +126,7 @@
             
         <!-- 倒计时响铃全屏Activity -->
         <activity
-            android:name="com.longcare.presentation.countdown.CountdownAlarmActivity"
+            android:name=".presentation.countdown.CountdownAlarmActivity"
             android:exported="false"
             android:launchMode="singleTop"
             android:showOnLockScreen="true"

@@ -1,4 +1,4 @@
-package com.longcare.presentation.countdown
+package com.ytone.longcare.presentation.countdown
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -10,7 +10,6 @@ import android.os.Handler
 import android.os.Looper
 import android.view.WindowManager
 import androidx.core.content.ContextCompat
-import androidx.core.os.BuildCompat
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -26,8 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.receiver.DismissAlarmReceiver
@@ -74,7 +71,7 @@ class CountdownAlarmActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         
         // 设置为全屏显示，在锁屏上方显示
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
         } else {
