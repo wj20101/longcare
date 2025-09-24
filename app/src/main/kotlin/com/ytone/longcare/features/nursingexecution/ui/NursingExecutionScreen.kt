@@ -3,7 +3,9 @@ package com.ytone.longcare.features.nursingexecution.ui
 import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -178,53 +180,78 @@ fun NursingExecutionContent(
             }, 
             containerColor = Color.Transparent
         ) { paddingValues ->
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 16.dp)
             ) {
-                Spacer(modifier = Modifier.height(16.dp))
+                // 可滚动的内容区域
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 90.dp) // 为底部按钮留出空间
+                ) {
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = stringResource(R.string.nursing_execution_instruction),
-                    fontSize = 14.sp,
-                    color = Color.White,
-                    lineHeight = 20.sp
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Box {
-                    ClientInfoCard(
-                        modifier = Modifier.padding(top = 8.dp), 
-                        orderInfo = orderInfo
+                    Text(
+                        text = stringResource(R.string.nursing_execution_instruction),
+                        fontSize = 14.sp,
+                        color = Color.White,
+                        lineHeight = 20.sp
                     )
 
-                    ServiceHoursTag(tagText = stringResource(R.string.nursing_execution_client_info_tag))
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Box {
+                        ClientInfoCard(
+                            modifier = Modifier.padding(top = 8.dp), 
+                            orderInfo = orderInfo
+                        )
+
+                        ServiceHoursTag(tagText = stringResource(R.string.nursing_execution_client_info_tag))
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                ConfirmButton(
-                    text = stringResource(R.string.nursing_execution_confirm_button), 
-                    onClick = {
-                        when {
-                            orderInfo.state.isExecutingState() -> {
-                                // 使用NavigationHelper统一处理跳转逻辑
-                                navigationHelper.navigateToServiceCountdownWithLogic(
-                                    navController = navController,
-                                    orderId = orderInfoRequest.orderId,
-                                    projectList = orderInfo.projectList ?: emptyList()
-                                )
+                // 固定在底部的按钮
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color(0xFFF6F9FF).copy(alpha = 0.9f),
+                                    Color(0xFFF6F9FF)
+                                ),
+                                startY = 0f,
+                                endY = 100f
+                            )
+                        )
+                        .padding(horizontal = 16.dp, vertical = 24.dp)
+                ) {
+                    ConfirmButton(
+                        text = stringResource(R.string.nursing_execution_confirm_button), 
+                        onClick = {
+                            when {
+                                orderInfo.state.isExecutingState() -> {
+                                    // 使用NavigationHelper统一处理跳转逻辑
+                                    navigationHelper.navigateToServiceCountdownWithLogic(
+                                        navController = navController,
+                                        orderId = orderInfoRequest.orderId,
+                                        projectList = orderInfo.projectList ?: emptyList()
+                                    )
+                                }
+                                orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(orderInfoRequest)
+                                else -> navController.popBackStack()
                             }
-                            orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(orderInfoRequest)
-                            else -> navController.popBackStack()
                         }
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
+                    )
+                }
             }
         }
     }
