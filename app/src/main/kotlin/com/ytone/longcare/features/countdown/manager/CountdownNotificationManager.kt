@@ -11,7 +11,7 @@ import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.AlarmManagerCompat
 import androidx.core.app.NotificationCompat
-import com.longcare.presentation.countdown.CountdownAlarmActivity
+import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
