@@ -13,7 +13,9 @@
       "address": "杭州市西湖区模拟街道模拟小区1号楼2单元1001室",
       "lastServiceTime": "2025-05-20 10:00:00",
       "monthServiceTime": 8,
-      "monthNoServiceTime": 12
+      "monthNoServiceTime": 12,
+      "lng": "50",
+      "lat": "50"
     },
     "projectList": [
       {
@@ -24,6 +26,120 @@
       },
       {
         "projectId": 2,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 2,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 3,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 4,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 5,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 6,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 7,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 8,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 9,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 10,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 11,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 12,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 13,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 14,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 15,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 16,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 17,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 18,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 19,
+        "projectName": "清洁服务 (Mock)",
+        "serviceTime": 6,
+        "lastServiceTime": "2025-05-18 14:00:00"
+      },
+      {
+        "projectId": 20,
         "projectName": "清洁服务 (Mock)",
         "serviceTime": 6,
         "lastServiceTime": "2025-05-18 14:00:00"

@@ -3,10 +3,10 @@ package com.ytone.longcare.features.selectservice.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -139,122 +139,148 @@ fun SelectServiceScreen(
                 )
             }, containerColor = Color.Transparent
         ) { paddingValues ->
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 20.dp), horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(24.dp))
+                // 可滚动的内容区域
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp)
+                        .padding(bottom = 120.dp), // 为底部按钮留出空间
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                TotalDurationDisplay(totalDuration = serviceItems.filter { it.isSelected }
-                    .sumOf { it.duration })
+                    TotalDurationDisplay(totalDuration = serviceItems.filter { it.isSelected }
+                        .sumOf { it.duration })
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                // 根据UI状态显示不同内容
-                when (val currentState = uiState) {
-                    is OrderDetailUiState.Loading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = Color.White)
+                    // 根据UI状态显示不同内容
+                    when (val currentState = uiState) {
+                        is OrderDetailUiState.Loading -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = Color.White)
+                            }
+                        }
+
+                        is OrderDetailUiState.Error -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "加载失败: ${currentState.message}",
+                                    color = Color.White,
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+
+                        is OrderDetailUiState.Success -> {
+                            ServiceSelectionList(
+                                serviceItems = serviceItems, onItemClick = { clickedIndex ->
+                                    // 创建一个新的列表副本并修改选中状态，以触发 recomposition
+                                    val currentItem = serviceItems[clickedIndex]
+                                    serviceItems[clickedIndex] =
+                                        currentItem.copy(isSelected = !currentItem.isSelected)
+                                })
+                        }
+
+                        is OrderDetailUiState.Initial -> {
+                            // 初始状态，显示空白或占位符
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "正在初始化...", color = Color.White, fontSize = 16.sp
+                                )
+                            }
                         }
                     }
 
-                    is OrderDetailUiState.Error -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "加载失败: ${currentState.message}",
-                                color = Color.White,
-                                fontSize = 16.sp
-                            )
-                        }
-                    }
-
-                    is OrderDetailUiState.Success -> {
-                        ServiceSelectionList(
-                            serviceItems = serviceItems, onItemClick = { clickedIndex ->
-                                // 创建一个新的列表副本并修改选中状态，以触发 recomposition
-                                val currentItem = serviceItems[clickedIndex]
-                                serviceItems[clickedIndex] =
-                                    currentItem.copy(isSelected = !currentItem.isSelected)
-                            })
-                    }
-
-                    is OrderDetailUiState.Initial -> {
-                        // 初始状态，显示空白或占位符
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "正在初始化...", color = Color.White, fontSize = 16.sp
-                            )
-                        }
-                    }
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                // 底部按钮行
-                Row(
+                // 固定在底部的按钮区域
+                Box(
                     modifier = Modifier
+                        .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .padding(bottom = 32.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color(0xFFF6F9FF).copy(alpha = 0.9f),
+                                    Color(0xFFF6F9FF)
+                                ),
+                                startY = 0f,
+                                endY = 100f
+                            )
+                        )
+                        .padding(horizontal = 20.dp, vertical = 32.dp)
                 ) {
-                    // 全选按钮
-                    SelectAllButton(
-                        isAllSelected = serviceItems.isNotEmpty() && serviceItems.all { it.isSelected },
-                        onClick = {
-                            val isAllSelected = serviceItems.all { it.isSelected }
-                            for (i in serviceItems.indices) {
-                                serviceItems[i] = serviceItems[i].copy(isSelected = !isAllSelected)
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // 下一步按钮
-                    NextStepButton(
-                        text = "开始服务",
-                        enabled = serviceItems.any { it.isSelected } && starOrderState !is StarOrderUiState.Loading,
-                        onClick = {
-                            val selectedProjectIds =
-                                serviceItems.filter { it.isSelected }.map { it.id }
-                            // 先调用starOrder接口
-                            sharedViewModel.starOrder(orderInfoRequest.orderId, selectedProjectIds.map { it.toLong() }) {
-                                // 成功后保存选中的项目ID到本地存储
-                                selectedProjectsManager.saveSelectedProjects(orderInfoRequest.orderId, selectedProjectIds)
-                                // 从uiState获取orderInfo
-                                val currentState = uiState
-                                if (currentState is OrderDetailUiState.Success) {
-                                    // 使用NavigationHelper统一处理跳转逻辑
-                                    navigationHelper.navigateToServiceCountdownWithLogic(
-                                        navController = navController,
-                                        orderId = orderInfoRequest.orderId,
-                                        projectList = currentState.orderInfo.projectList ?: emptyList(),
-                                        selectedProjectIds = selectedProjectIds
-                                    )
+                    // 底部按钮行
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 全选按钮
+                        SelectAllButton(
+                            isAllSelected = serviceItems.isNotEmpty() && serviceItems.all { it.isSelected },
+                            onClick = {
+                                val isAllSelected = serviceItems.all { it.isSelected }
+                                for (i in serviceItems.indices) {
+                                    serviceItems[i] = serviceItems[i].copy(isSelected = !isAllSelected)
                                 }
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // 下一步按钮
+                        NextStepButton(
+                            text = "开始服务",
+                            enabled = serviceItems.any { it.isSelected } && starOrderState !is StarOrderUiState.Loading,
+                            onClick = {
+                                val selectedProjectIds =
+                                    serviceItems.filter { it.isSelected }.map { it.id }
+                                // 先调用starOrder接口
+                                sharedViewModel.starOrder(orderInfoRequest.orderId, selectedProjectIds.map { it.toLong() }) {
+                                    // 成功后保存选中的项目ID到本地存储
+                                    selectedProjectsManager.saveSelectedProjects(orderInfoRequest.orderId, selectedProjectIds)
+                                    // 从uiState获取orderInfo
+                                    val currentState = uiState
+                                    if (currentState is OrderDetailUiState.Success) {
+                                        // 使用NavigationHelper统一处理跳转逻辑
+                                        navigationHelper.navigateToServiceCountdownWithLogic(
+                                            navController = navController,
+                                            orderId = orderInfoRequest.orderId,
+                                            projectList = currentState.orderInfo.projectList ?: emptyList(),
+                                            selectedProjectIds = selectedProjectIds
+                                        )
+                                    }
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
@@ -281,11 +307,11 @@ fun TotalDurationDisplay(totalDuration: Int) {
 fun ServiceSelectionList(
     serviceItems: List<ServiceItem>, onItemClick: (Int) -> Unit, modifier: Modifier = Modifier
 ) {
-    LazyColumn(
+    Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp) // 列表项之间的间距
     ) {
-        itemsIndexed(serviceItems) { index, item ->
+        serviceItems.forEachIndexed { index, item ->
             ServiceSelectionItem(
                 item = item, onClick = { onItemClick(index) })
         }
