@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -50,6 +51,7 @@ import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 
 
 // --- 状态定义 ---
@@ -68,9 +70,11 @@ fun NfcWorkflowScreen(
     signInMode: SignInMode,
     endOderInfo: EndOderInfo? = null,
     nfcViewModel: NfcWorkflowViewModel = hiltViewModel(),
-    locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
+    locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel(),
+    sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     val uiState by nfcViewModel.uiState.collectAsStateWithLifecycle()
+    val showLocationActivationDialog by nfcViewModel.showLocationActivationDialog.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
     
@@ -158,7 +162,8 @@ fun NfcWorkflowScreen(
             orderInfoRequest = orderInfoRequest,
             signInMode = signInMode,
             endOderInfo = endOderInfo,
-            onLocationRequest = { getCurrentLocationCoordinates() }
+            onLocationRequest = { getCurrentLocationCoordinates() },
+            sharedOrderDetailViewModel = sharedOrderDetailViewModel
         )
     }
 
@@ -297,6 +302,14 @@ fun NfcWorkflowScreen(
                 Spacer(modifier = Modifier.height(32.dp)) // 按钮与屏幕底部的间距
             }
         }
+        
+        // 定位激活弹窗
+        if (showLocationActivationDialog) {
+            LocationActivationDialog(
+                onConfirm = { nfcViewModel.confirmLocationActivation() },
+                onCancel = { nfcViewModel.cancelLocationActivation() }
+            )
+        }
     }
 }
 
@@ -393,6 +406,68 @@ fun ActionButton(text: String, onClick: () -> Unit) {
     ) {
         Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
+}
+
+@Composable
+fun LocationActivationDialog(
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = {
+            Text(
+                text = "激活定位",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Text(
+                text = "定位未激活，需激活方可操作，激活后不可改",
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF3A86FF)
+                ),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.width(100.dp)
+            ) {
+                Text(
+                    text = "确定激活",
+                    color = Color.White,
+                    fontSize = 14.sp
+                )
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onCancel,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color.Gray
+                ),
+                border = BorderStroke(1.dp, Color.Gray),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.width(80.dp)
+            ) {
+                Text(
+                    text = "取消",
+                    fontSize = 14.sp
+                )
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(12.dp)
+    )
 }
 
 

@@ -8,6 +8,7 @@ import com.ytone.longcare.api.request.OrderInfoParamModel
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.request.StarOrderParamModel
 import com.ytone.longcare.api.request.UpUserStartImgParamModel
+import com.ytone.longcare.api.request.BindLocationParamModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
@@ -117,6 +118,24 @@ class OrderRepositoryImpl @Inject constructor(
                     centerImgList = centerImgList,
                     endImgList = endImageList,
                     endType = endType
+                )
+            )
+        }
+    }
+
+    override suspend fun bindLocation(
+        orderId: Long,
+        nfc: String,
+        longitude: String,
+        latitude: String
+    ): ApiResult<Unit> {
+        return safeApiCall(ioDispatcher, eventBus) {
+            apiService.bindLocation(
+                BindLocationParamModel(
+                    orderId = orderId,
+                    nfc = nfc,
+                    longitude = longitude,
+                    latitude = latitude
                 )
             )
         }
