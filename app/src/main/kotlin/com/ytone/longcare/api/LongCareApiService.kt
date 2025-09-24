@@ -12,6 +12,7 @@ import com.ytone.longcare.api.request.SaveFileParamModel
 import com.ytone.longcare.api.request.CheckOrderParamModel
 import com.ytone.longcare.api.request.StarOrderParamModel
 import com.ytone.longcare.api.request.UpUserStartImgParamModel
+import com.ytone.longcare.api.request.BindLocationParamModel
 import com.ytone.longcare.api.response.LoginResultModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.api.response.ServiceOrderModel
@@ -186,5 +187,14 @@ interface LongCareApiService {
      */
     @GET("/V1/System/ChecVersion")
     suspend fun checkVersion(): Response<AppVersionModel>
+
+    /**
+     * 绑定定位
+     *
+     * @param bindLocationParamModel 请求参数
+     * @return 无返回值
+     */
+    @POST("/V1/Service/BindLocation")
+    suspend fun bindLocation(@Body bindLocationParamModel: BindLocationParamModel): Response<Unit>
 
 }
