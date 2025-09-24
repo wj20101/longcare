@@ -12,6 +12,9 @@ import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
+import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
+import com.ytone.longcare.shared.vm.OrderDetailUiState
+import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +35,22 @@ class NfcWorkflowViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
     val uiState: StateFlow<NfcSignInUiState> = _uiState.asStateFlow()
+
+    // 定位激活弹窗状态
+    private val _showLocationActivationDialog = MutableStateFlow(false)
+    val showLocationActivationDialog: StateFlow<Boolean> = _showLocationActivationDialog.asStateFlow()
+
+    // 当前待处理的NFC数据
+    private var pendingNfcData: PendingNfcData? = null
+
+    data class PendingNfcData(
+        val orderInfoRequest: OrderInfoRequestModel,
+        val signInMode: SignInMode,
+        val endOderInfo: EndOderInfo?,
+        val tagId: String,
+        val longitude: String,
+        val latitude: String
+    )
 
     /**
      * 开始服务工单
@@ -144,7 +163,8 @@ class NfcWorkflowViewModel @Inject constructor(
         orderInfoRequest: OrderInfoRequestModel,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
-        onLocationRequest: suspend () -> Pair<String, String>
+        onLocationRequest: suspend () -> Pair<String, String>,
+        sharedOrderDetailViewModel: SharedOrderDetailViewModel
     ) {
         viewModelScope.launch {
             appEventBus.events.collect { event ->
@@ -163,7 +183,18 @@ class NfcWorkflowViewModel @Inject constructor(
                             }
                             
                             when (signInMode) {
-                                SignInMode.START_ORDER -> startOrder(orderInfoRequest, tagId, longitude, latitude)
+                                SignInMode.START_ORDER -> {
+                                    // 检查用户位置信息
+                                    checkUserLocationAndProceed(
+                                        orderInfoRequest = orderInfoRequest,
+                                        signInMode = signInMode,
+                                        endOderInfo = endOderInfo,
+                                        tagId = tagId,
+                                        longitude = longitude,
+                                        latitude = latitude,
+                                        sharedOrderDetailViewModel = sharedOrderDetailViewModel
+                                    )
+                                }
 
                                 SignInMode.END_ORDER -> {
                                     endOderInfo?.let {
@@ -186,6 +217,135 @@ class NfcWorkflowViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * 检查用户位置信息并决定是否需要弹出定位激活弹窗
+     */
+    private fun checkUserLocationAndProceed(
+        orderInfoRequest: OrderInfoRequestModel,
+        signInMode: SignInMode,
+        endOderInfo: EndOderInfo?,
+        tagId: String,
+        longitude: String,
+        latitude: String,
+        sharedOrderDetailViewModel: SharedOrderDetailViewModel
+    ) {
+        // 获取订单详情
+        val orderInfo = sharedOrderDetailViewModel.getCachedOrderInfo(orderInfoRequest)
+        
+        if (orderInfo == null) {
+            // 如果缓存中没有订单详情，先获取订单详情
+            sharedOrderDetailViewModel.getOrderInfo(orderInfoRequest)
+            // 启动一个新的协程来监听状态变化
+            viewModelScope.launch {
+                sharedOrderDetailViewModel.uiState.collect { state ->
+                    when (state) {
+                        is OrderDetailUiState.Success -> {
+                            checkLocationAndShowDialog(
+                                orderInfo = state.orderInfo,
+                                orderInfoRequest = orderInfoRequest,
+                                signInMode = signInMode,
+                                endOderInfo = endOderInfo,
+                                tagId = tagId,
+                                longitude = longitude,
+                                latitude = latitude
+                            )
+                            return@collect // 处理完成后退出collect
+                        }
+                        is OrderDetailUiState.Error -> {
+                            showError("获取订单详情失败: ${state.message}")
+                            return@collect // 出错后退出collect
+                        }
+                        else -> {
+                            // Loading或Initial状态，继续等待
+                        }
+                    }
+                }
+            }
+        } else {
+            checkLocationAndShowDialog(
+                orderInfo = orderInfo,
+                orderInfoRequest = orderInfoRequest,
+                signInMode = signInMode,
+                endOderInfo = endOderInfo,
+                tagId = tagId,
+                longitude = longitude,
+                latitude = latitude
+            )
+        }
+    }
+
+    /**
+     * 检查位置信息并显示弹窗或直接执行
+     */
+    private fun checkLocationAndShowDialog(
+        orderInfo: ServiceOrderInfoModel,
+        orderInfoRequest: OrderInfoRequestModel,
+        signInMode: SignInMode,
+        endOderInfo: EndOderInfo?,
+        tagId: String,
+        longitude: String,
+        latitude: String
+    ) {
+        val userLng = orderInfo.userInfo?.lng ?: ""
+        val userLat = orderInfo.userInfo?.lat ?: ""
+        
+        if (userLng.isEmpty() || userLat.isEmpty()) {
+            // 用户位置信息为空，显示定位激活弹窗
+            pendingNfcData = PendingNfcData(
+                orderInfoRequest = orderInfoRequest,
+                signInMode = signInMode,
+                endOderInfo = endOderInfo,
+                tagId = tagId,
+                longitude = longitude,
+                latitude = latitude
+            )
+            _showLocationActivationDialog.value = true
+        } else {
+            // 用户位置信息不为空，直接执行签到
+            startOrder(orderInfoRequest, tagId, longitude, latitude)
+        }
+    }
+
+    /**
+     * 确认激活定位
+     */
+    fun confirmLocationActivation() {
+        viewModelScope.launch {
+            pendingNfcData?.let { data ->
+                _showLocationActivationDialog.value = false
+                
+                // 调用绑定定位接口
+                when (val result = orderRepository.bindLocation(
+                    orderId = data.orderInfoRequest.orderId,
+                    nfc = data.tagId,
+                    longitude = data.longitude,
+                    latitude = data.latitude
+                )) {
+                    is ApiResult.Success -> {
+                        // 绑定成功后执行签到
+                        startOrder(data.orderInfoRequest, data.tagId, data.longitude, data.latitude)
+                    }
+                    is ApiResult.Exception -> {
+                        showError(result.exception.message ?: "绑定定位失败")
+                    }
+                    is ApiResult.Failure -> {
+                        showError(result.message)
+                    }
+                }
+                
+                pendingNfcData = null
+            }
+        }
+    }
+
+    /**
+     * 取消定位激活
+     */
+    fun cancelLocationActivation() {
+        _showLocationActivationDialog.value = false
+        pendingNfcData = null
     }
 }
 

@@ -90,4 +90,18 @@ interface OrderRepository {
         latitude: String = "",
         endType: Int = 1
     ): ApiResult<Unit>
+
+    /**
+     * 绑定定位
+     * @param orderId 订单号
+     * @param nfc NFC设备ID
+     * @param longitude 经度
+     * @param latitude 纬度
+     */
+    suspend fun bindLocation(
+        orderId: Long,
+        nfc: String,
+        longitude: String,
+        latitude: String
+    ): ApiResult<Unit>
 }
