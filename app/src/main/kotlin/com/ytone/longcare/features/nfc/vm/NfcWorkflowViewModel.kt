@@ -36,12 +36,9 @@ class NfcWorkflowViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
     val uiState: StateFlow<NfcSignInUiState> = _uiState.asStateFlow()
 
-    // 定位激活弹窗状态
-    private val _showLocationActivationDialog = MutableStateFlow(false)
-    val showLocationActivationDialog: StateFlow<Boolean> = _showLocationActivationDialog.asStateFlow()
-
-    // 当前待处理的NFC数据
-    private var pendingNfcData: PendingNfcData? = null
+    // 当前待处理的NFC数据, 当这个值不为空时，UI层应该显示一个对话框
+    private val _pendingNfcData = MutableStateFlow<PendingNfcData?>(null)
+    val pendingNfcData: StateFlow<PendingNfcData?> = _pendingNfcData.asStateFlow()
 
     data class PendingNfcData(
         val orderInfoRequest: OrderInfoRequestModel,
@@ -292,8 +289,8 @@ class NfcWorkflowViewModel @Inject constructor(
         val userLat = orderInfo.userInfo?.lat ?: ""
         
         if (userLng.isEmpty() || userLat.isEmpty()) {
-            // 用户位置信息为空，显示定位激活弹窗
-            pendingNfcData = PendingNfcData(
+            // 用户位置信息为空，更新待处理数据以显示弹窗
+            _pendingNfcData.value = PendingNfcData(
                 orderInfoRequest = orderInfoRequest,
                 signInMode = signInMode,
                 endOderInfo = endOderInfo,
@@ -301,7 +298,6 @@ class NfcWorkflowViewModel @Inject constructor(
                 longitude = longitude,
                 latitude = latitude
             )
-            _showLocationActivationDialog.value = true
         } else {
             // 用户位置信息不为空，直接执行签到
             startOrder(orderInfoRequest, tagId, longitude, latitude)
@@ -311,32 +307,28 @@ class NfcWorkflowViewModel @Inject constructor(
     /**
      * 确认激活定位
      */
-    fun confirmLocationActivation() {
+    fun confirmLocationActivation(data: PendingNfcData) {
         viewModelScope.launch {
-            pendingNfcData?.let { data ->
-                _showLocationActivationDialog.value = false
-                
-                // 调用绑定定位接口
-                when (val result = orderRepository.bindLocation(
-                    orderId = data.orderInfoRequest.orderId,
-                    nfc = data.tagId,
-                    longitude = data.longitude,
-                    latitude = data.latitude
-                )) {
-                    is ApiResult.Success -> {
-                        // 绑定成功后执行签到
-                        startOrder(data.orderInfoRequest, data.tagId, data.longitude, data.latitude)
-                    }
-                    is ApiResult.Exception -> {
-                        showError(result.exception.message ?: "绑定定位失败")
-                    }
-                    is ApiResult.Failure -> {
-                        showError(result.message)
-                    }
+            // 调用绑定定位接口
+            when (val result = orderRepository.bindLocation(
+                orderId = data.orderInfoRequest.orderId,
+                nfc = data.tagId,
+                longitude = data.longitude,
+                latitude = data.latitude
+            )) {
+                is ApiResult.Success -> {
+                    // 绑定成功后执行签到
+                    startOrder(data.orderInfoRequest, data.tagId, data.longitude, data.latitude)
                 }
-                
-                pendingNfcData = null
+                is ApiResult.Exception -> {
+                    showError(result.exception.message ?: "绑定定位失败")
+                }
+                is ApiResult.Failure -> {
+                    showError(result.message)
+                }
             }
+            // 清空待处理数据，这将自动隐藏对话框
+            _pendingNfcData.value = null
         }
     }
 
@@ -344,8 +336,8 @@ class NfcWorkflowViewModel @Inject constructor(
      * 取消定位激活
      */
     fun cancelLocationActivation() {
-        _showLocationActivationDialog.value = false
-        pendingNfcData = null
+        // 清空待处理数据，这将自动隐藏对话框
+        _pendingNfcData.value = null
     }
 }
 

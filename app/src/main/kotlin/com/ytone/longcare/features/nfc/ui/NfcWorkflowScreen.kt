@@ -74,7 +74,7 @@ fun NfcWorkflowScreen(
     sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     val uiState by nfcViewModel.uiState.collectAsStateWithLifecycle()
-    val showLocationActivationDialog by nfcViewModel.showLocationActivationDialog.collectAsStateWithLifecycle()
+    val pendingNfcData by nfcViewModel.pendingNfcData.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
     
@@ -304,9 +304,9 @@ fun NfcWorkflowScreen(
         }
         
         // 定位激活弹窗
-        if (showLocationActivationDialog) {
+        pendingNfcData?.let { data ->
             LocationActivationDialog(
-                onConfirm = { nfcViewModel.confirmLocationActivation() },
+                onConfirm = { nfcViewModel.confirmLocationActivation(data) },
                 onCancel = { nfcViewModel.cancelLocationActivation() }
             )
         }
