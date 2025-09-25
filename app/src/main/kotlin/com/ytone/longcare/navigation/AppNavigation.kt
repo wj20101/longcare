@@ -41,6 +41,7 @@ import com.ytone.longcare.features.selectdevice.ui.SelectDeviceScreen
 import com.ytone.longcare.features.userlist.ui.UserListScreen
 import com.ytone.longcare.features.userlist.ui.UserListType
 import com.ytone.longcare.features.userservicerecord.ui.UserServiceRecordScreen
+import com.ytone.longcare.features.nfctest.ui.NfcTestScreen
 import kotlin.reflect.typeOf
 
 /**
@@ -230,6 +231,13 @@ fun NavController.navigateToHomeAndClearStack() {
  */
 fun NavController.navigateToUserServiceRecord(userId: Long, userName: String, userAddress: String) {
     navigate(UserServiceRecordRoute(userId, userName, userAddress))
+}
+
+/**
+ * 导航到NFC测试页面
+ */
+fun NavController.navigateToNfcTest() {
+    navigate(NfcTestRoute)
 }
 
 /**
@@ -454,6 +462,10 @@ fun AppNavigation(startDestination: Any) {
                 userAddress = route.userAddress,
                 onBackClick = { navController.popBackStack() }
             )
+        }
+        
+        composable<NfcTestRoute> {
+            NfcTestScreen(navController = navController)
         }
     }
 }

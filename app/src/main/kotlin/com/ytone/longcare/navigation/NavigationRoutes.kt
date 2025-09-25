@@ -191,3 +191,10 @@ data class UserListRoute(val listType: String)
 @Keep
 @Serializable
 data class UserServiceRecordRoute(val userId: Long, val userName: String, val userAddress: String)
+
+/**
+ * NFC测试页面路由
+ */
+@Keep
+@Serializable
+object NfcTestRoute
