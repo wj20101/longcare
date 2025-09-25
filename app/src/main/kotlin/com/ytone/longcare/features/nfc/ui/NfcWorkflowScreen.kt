@@ -439,8 +439,7 @@ fun LocationActivationDialog(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF3A86FF)
                 ),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.width(100.dp)
+                shape = RoundedCornerShape(20.dp)
             ) {
                 Text(
                     text = "确定激活",
@@ -456,8 +455,7 @@ fun LocationActivationDialog(
                     contentColor = Color.Gray
                 ),
                 border = BorderStroke(1.dp, Color.Gray),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.width(80.dp)
+                shape = RoundedCornerShape(20.dp)
             ) {
                 Text(
                     text = "取消",
@@ -583,5 +581,13 @@ private fun NfcSignInScreenContentForPreview(
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+}
+
+@Preview(showBackground = true, device = "id:pixel_6")
+@Composable
+private fun LocationActivationDialogPreview() {
+    MaterialTheme {
+        LocationActivationDialog(onConfirm = {}, onCancel = {})
     }
 }
