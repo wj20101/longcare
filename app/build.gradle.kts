@@ -122,14 +122,16 @@ android {
     applicationVariants.all {
         val variant = this
         val versionName = variant.versionName
+        val versionCode = variant.versionCode
 
         outputs.configureEach {
-            val date = SimpleDateFormat("MMdd-HH", Locale.getDefault()).format(Date())
+            val date = SimpleDateFormat("yyMMdd", Locale.US).format(Date())
             val fileName =
                 buildString {
                     append("app")
                     append("-v$versionName")
                     append("-$date")
+                    append("-$versionCode")
 //                    append("-")
 //                    append(variant.productFlavors.joinToString("-") { it.name })
                     append("-${variant.buildType.name}")
