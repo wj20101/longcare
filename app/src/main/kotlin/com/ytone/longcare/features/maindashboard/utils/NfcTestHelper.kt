@@ -132,8 +132,7 @@ class NfcTestHelper @Inject constructor(
             logD(NfcTestConfig.TEST_TAG, "通过NfcManager启用NFC功能")
             nfcManager.enableNfcForActivity(activity)
             isListening = true
-            toastHelper.showShort("NFC测试模式已启用，请靠近NFC标签")
-            
+
             // 取消之前的事件监听
             eventJob?.cancel()
             

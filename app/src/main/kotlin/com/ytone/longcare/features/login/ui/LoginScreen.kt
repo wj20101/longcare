@@ -47,6 +47,8 @@ import com.ytone.longcare.theme.TextColorSecondary
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import com.ytone.longcare.features.login.ext.maxPhoneLength
+import com.ytone.longcare.debug.NfcTestConfig
+import com.ytone.longcare.navigation.navigateToNfcTest
 
 
 @Composable
@@ -83,7 +85,7 @@ fun LoginScreen(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
             // 创建所有UI元素的引用
-            val (smallLogo, logo, phoneField, codeField, sendCodeButton, loginButton, agreementText) = createRefs()
+            val (smallLogo, logo, phoneField, codeField, sendCodeButton, loginButton, agreementText, nfcTestButton) = createRefs()
 
             val horizontalMargin = 48.dp
 
@@ -215,11 +217,29 @@ fun LoginScreen(
                 onUserAgreementClick = { context.showLongToast(context.getString(R.string.login_user_agreement_toast)) },
                 onPrivacyPolicyClick = { context.showLongToast(context.getString(R.string.login_privacy_policy_toast)) },
                 modifier = Modifier.constrainAs(agreementText) {
-                    bottom.linkTo(parent.bottom, margin = 32.dp)
+                    bottom.linkTo(if (NfcTestConfig.ENABLE_NFC_TEST) nfcTestButton.top else parent.bottom, margin = 32.dp)
                     start.linkTo(parent.start, margin = 32.dp) // 应用边距以控制文本块宽度
                     end.linkTo(parent.end, margin = 32.dp)     // 应用边距
                     width = Dimension.fillToConstraints // 确保文本在约束内正确换行和居中
                 })
+
+            // NFC Test Button (只在测试模式下显示)
+            if (NfcTestConfig.ENABLE_NFC_TEST) {
+                TextButton(
+                    onClick = { navController.navigateToNfcTest() },
+                    modifier = Modifier.constrainAs(nfcTestButton) {
+                        bottom.linkTo(parent.bottom, margin = 16.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }
+                ) {
+                    Text(
+                        text = "NFC测试",
+                        color = TextColorSecondary,
+                        fontSize = 14.sp
+                    )
+                }
+            }
         }
     }
 
