@@ -234,7 +234,7 @@ fun LoginScreen(
                     }
                 ) {
                     Text(
-                        text = "NFC测试",
+                        text = "碰一碰测试",
                         color = TextColorSecondary,
                         fontSize = 14.sp
                     )
