@@ -75,7 +75,7 @@ fun NfcTestScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "NFC测试",
+                        text = "碰一碰测试",
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
@@ -120,7 +120,7 @@ fun NfcTestScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "NFC测试功能",
+                            text = "碰一碰ID读取",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -129,7 +129,7 @@ fun NfcTestScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         Text(
-                            text = "请将NFC标签靠近设备进行测试",
+                            text = "请将碰一碰靠近智能手机进行测试",
                             fontSize = 16.sp,
                             color = Color.Gray
                         )
@@ -146,7 +146,7 @@ fun NfcTestScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         
                         Text(
-                            text = "• 检测NFC标签ID\n• 自动复制到剪贴板\n• 显示标签信息弹窗",
+                            text = "• 检测碰一碰的ID编码\n• 自动复制到剪贴板\n• 显示标签信息弹窗",
                             fontSize = 14.sp,
                             color = Color.Gray
                         )
