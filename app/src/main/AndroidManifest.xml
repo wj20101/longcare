@@ -84,7 +84,7 @@
         <activity
             android:name=".features.photoupload.ui.CameraActivity"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.AppCompat.NoActionBar" />
+            android:theme="@style/Theme.LongCare" />
 
         <provider
             android:name="com.ytone.longcare.common.provider.CustomFileProvider"
