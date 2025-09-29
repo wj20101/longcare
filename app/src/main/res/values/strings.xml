@@ -2,10 +2,6 @@
     <string name="app_name">长护盾</string>
     <string name="hello_world">你好世界！</string>
     <string name="coil_image_description">由Coil加载的图片</string>
-    <string name="camera_permission_granted">相机权限已授予</string>
-    <string name="camera_permission_denied">相机权限被拒绝。请授予权限。</string>
-    <string name="camera_permission_rationale">此应用需要相机权限来拍照。</string>
-    <string name="request_camera_permission">请求相机权限</string>
     <string name="nfc_sign_in_title">进门碰一碰</string>
     <string name="nfc_sign_out_title">出门碰一碰</string>
     <string name="common_back">返回</string>
@@ -63,7 +59,7 @@
     <string name="main_dashboard_nursing_staff_avatar">护理员头像</string>
     <string name="user_avatar_description">头像</string>
     <string name="nfc_sign_out_complete_service">服务完成，结束签到</string>
-    
+
     <!-- 人脸识别指导页面 -->
     <string name="face_recognition_guide_title">身份认证</string>
     <string name="face_recognition_guide_subtitle">请按照要求进行人脸识别</string>
@@ -77,4 +73,10 @@
     <string name="update_now">立即更新</string>
     <string name="update_later">稍后更新</string>
     <string name="service_order_work_hours">工时: %1$s 分钟</string>
+
+    <string name="ok_button">确定</string>
+    <string name="cancel_button">取消</string>
+    <string name="switch_camera_content_description">切换摄像头</string>
+    <string name="take_picture_content_description">拍照</string>
+    <string name="flash_mode_content_description">切换闪光灯模式</string>
 </resources>

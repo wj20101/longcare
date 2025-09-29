@@ -198,3 +198,11 @@ data class UserServiceRecordRoute(val userId: Long, val userName: String, val us
 @Keep
 @Serializable
 object NfcTestRoute
+
+/**
+ * 相机页面路由
+ * @param orderInfoRequest 订单信息请求模型
+ */
+@Keep
+@Serializable
+data class CameraRoute(val orderInfoRequest: OrderInfoRequestModel)

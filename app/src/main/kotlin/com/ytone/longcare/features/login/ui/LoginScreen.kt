@@ -46,8 +46,10 @@ import com.ytone.longcare.theme.TextColorPrimary
 import com.ytone.longcare.theme.TextColorSecondary
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.features.login.ext.maxPhoneLength
 import com.ytone.longcare.debug.NfcTestConfig
+import com.ytone.longcare.navigation.navigateToCamera
 import com.ytone.longcare.navigation.navigateToNfcTest
 
 
@@ -85,7 +87,7 @@ fun LoginScreen(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
             // 创建所有UI元素的引用
-            val (smallLogo, logo, phoneField, codeField, sendCodeButton, loginButton, agreementText, nfcTestButton) = createRefs()
+            val (smallLogo, logo, phoneField, codeField, sendCodeButton, loginButton, agreementText, nfcTestButton, cameraTestButton) = createRefs()
 
             val horizontalMargin = 48.dp
 
@@ -174,13 +176,15 @@ fun LoginScreen(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 textStyle = TextStyle(fontSize = 15.sp, color = TextColorPrimary),
-                modifier = Modifier.constrainAs(codeField) {
-                    start.linkTo(parent.start, margin = horizontalMargin)
-                    end.linkTo(sendCodeButton.start, margin = 8.dp) // 结束于发送按钮的开始处
-                    bottom.linkTo(loginButton.top)
-                    width = Dimension.fillToConstraints // 宽度填充约束
-                    centerVerticallyTo(sendCodeButton) // 简便的垂直对齐方式
-                }.focusRequester(verificationCodeFocusRequester)
+                modifier = Modifier
+                    .constrainAs(codeField) {
+                        start.linkTo(parent.start, margin = horizontalMargin)
+                        end.linkTo(sendCodeButton.start, margin = 8.dp) // 结束于发送按钮的开始处
+                        bottom.linkTo(loginButton.top)
+                        width = Dimension.fillToConstraints // 宽度填充约束
+                        centerVerticallyTo(sendCodeButton) // 简便的垂直对齐方式
+                    }
+                    .focusRequester(verificationCodeFocusRequester)
             )
 
             // Login Button
@@ -228,13 +232,31 @@ fun LoginScreen(
                 TextButton(
                     onClick = { navController.navigateToNfcTest() },
                     modifier = Modifier.constrainAs(nfcTestButton) {
-                        bottom.linkTo(parent.bottom, margin = 16.dp)
+                        bottom.linkTo(cameraTestButton.top)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                     }
                 ) {
                     Text(
                         text = "碰一碰测试",
+                        color = TextColorSecondary,
+                        fontSize = 14.sp
+                    )
+                }
+
+                TextButton(
+                    onClick = {
+                        val mockOrderInfo = OrderInfoRequestModel(orderId = 123456L, planId = 1)
+                        navController.navigateToCamera(mockOrderInfo)
+                    },
+                    modifier = Modifier.constrainAs(cameraTestButton) {
+                        bottom.linkTo(parent.bottom, margin = 16.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }
+                ) {
+                    Text(
+                        text = "相机测试",
                         color = TextColorSecondary,
                         fontSize = 14.sp
                     )

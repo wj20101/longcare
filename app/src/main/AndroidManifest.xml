@@ -81,6 +81,11 @@
                 android:resource="@xml/nfc_tech_filter" />
         </activity>
 
+        <activity
+            android:name=".features.photoupload.ui.CameraActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
+
         <provider
             android:name="com.ytone.longcare.common.provider.CustomFileProvider"
             android:authorities="${applicationId}.fileprovider"
