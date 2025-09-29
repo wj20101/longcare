@@ -21,6 +21,8 @@ constraintlayoutCompose = "1.1.1"
 benchmark = "1.4.1"
 baselineprofile = "1.4.1"
 profileinstaller = "1.4.1"
+camerax = "1.5.0"
+constraintlayout = "2.2.1"
 
 # Data Persistence
 datastore = "1.1.7"
@@ -62,6 +64,7 @@ benchmarkMacroJunit4 = "1.4.1"
 
 [libraries]
 # AndroidX Core & Lifecycle
+androidx-constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraintlayout" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-appcompat-resources = { group = "androidx.appcompat", name = "appcompat-resources", version.ref = "appcompat" }
@@ -75,6 +78,15 @@ mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 startup-runtime = { group = "androidx.startup", name = "startup-runtime", version.ref = "startup" }
 constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayoutCompose" }
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
+
+# CameraX
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+androidx-camera-video = { group = "androidx.camera", name = "camera-video", version.ref = "camerax" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+androidx-camera-extensions = { group = "androidx.camera", name = "camera-extensions", version.ref = "camerax" }
+androidx-camera-compose = { group = "androidx.camera", name = "camera-compose", version.ref = "camerax" }
 
 # Jetpack Compose (using BOM)
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
