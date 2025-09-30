@@ -1,0 +1,256 @@
+package com.ytone.longcare.features.photoupload.ui
+
+import android.Manifest
+import android.content.Context
+import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Matrix
+import android.util.Size
+import android.view.LayoutInflater
+import android.view.View
+import android.widget.FrameLayout
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
+import androidx.camera.view.LifecycleCameraController
+import androidx.camera.view.PreviewView
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.ytone.longcare.common.utils.LockScreenOrientation
+import com.ytone.longcare.databinding.WatermarkViewBinding
+import java.io.File
+import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.util.concurrent.Executor
+import androidx.core.graphics.createBitmap
+
+@Composable
+fun CameraScreen(
+    onImageCaptured: (File) -> Unit
+) {
+
+    // ==========================================================
+    // 在这里调用函数，将此页面强制设置为竖屏
+    // ==========================================================
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+
+    val context = LocalContext.current
+    var hasPermission by remember { mutableStateOf(false) }
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted ->
+            hasPermission = granted
+        }
+    )
+
+    LaunchedEffect(Unit) {
+        launcher.launch(Manifest.permission.CAMERA)
+    }
+
+    if (hasPermission) {
+        CameraContent(
+            context = context,
+            onImageCaptured = onImageCaptured,
+        )
+    } else {
+        // You can optionally show a message or a button to re-request permission
+        Box(modifier = Modifier.fillMaxSize()) {
+            Button(onClick = { launcher.launch(Manifest.permission.CAMERA) }) {
+                Text("Request Camera Permission")
+            }
+        }
+    }
+
+}
+
+@Composable
+private fun CameraContent(
+    context: Context,
+    onImageCaptured: (File) -> Unit,
+) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val cameraController = remember {
+        LifecycleCameraController(context).apply {
+            val resolutionSelector = ResolutionSelector.Builder()
+                .setResolutionStrategy(
+                    ResolutionStrategy(
+                        Size(1920, 1080),
+                        ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                    )
+                )
+                .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+                .build()
+            this.previewResolutionSelector = resolutionSelector
+            this.imageCaptureResolutionSelector = resolutionSelector
+        }
+    }
+    var watermarkView by remember { mutableStateOf<View?>(null) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        CameraPreview(
+            cameraController = cameraController,
+            lifecycleOwner = lifecycleOwner,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = androidx.compose.ui.graphics.Color.Transparent
+        ) { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                AndroidView(
+                    factory = { ctx ->
+                        val binding = WatermarkViewBinding.inflate(
+                            LayoutInflater.from(ctx),
+                            FrameLayout(ctx),
+                            false
+                        )
+                        binding.root.also {
+                            watermarkView = it
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 13.dp, bottom = 14.dp)
+                )
+
+                Button(
+                    onClick = {
+                        val executor = ContextCompat.getMainExecutor(context)
+                        watermarkView?.let {
+                            takePhoto(
+                                context,
+                                cameraController,
+                                executor,
+                                it,
+                                onImageCaptured
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp)
+                ) {
+                    Text("Take Photo")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CameraPreview(
+    cameraController: LifecycleCameraController,
+    lifecycleOwner: LifecycleOwner,
+    modifier: Modifier = Modifier
+) {
+    AndroidView(
+        factory = { context ->
+            PreviewView(context).apply {
+                controller = cameraController
+                cameraController.bindToLifecycle(lifecycleOwner)
+            }
+        },
+        modifier = modifier
+    )
+}
+
+private fun takePhoto(
+    context: Context,
+    cameraController: LifecycleCameraController,
+    executor: Executor,
+    watermarkView: View,
+    onImageCaptured: (File) -> Unit
+) {
+    cameraController.takePicture(
+        executor,
+        object : ImageCapture.OnImageCapturedCallback() {
+            override fun onCaptureSuccess(image: ImageProxy) {
+                val bitmap = imageProxyToBitmap(image)
+                val rotationDegrees = image.imageInfo.rotationDegrees.toFloat()
+                val rotatedBitmap = rotateBitmap(bitmap, rotationDegrees)
+                val watermarkBitmap = viewToBitmap(watermarkView)
+                val density = context.resources.displayMetrics.density
+                val startPx = (13 * density)
+                val bottomPx = (14 * density)
+                val watermarkedBitmap = addWatermark(rotatedBitmap, watermarkBitmap, startPx, bottomPx)
+
+                val photoFile = File(
+                    context.cacheDir,
+                    "captured_image_${System.currentTimeMillis()}.jpg"
+                )
+
+                FileOutputStream(photoFile).use { out ->
+                    watermarkedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                }
+                onImageCaptured(photoFile)
+
+                image.close()
+            }
+
+            override fun onError(exc: ImageCaptureException) {
+                Toast.makeText(context, "Photo capture failed: ${exc.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
+}
+
+
+private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
+    val planeProxy = image.planes[0]
+    val buffer: ByteBuffer = planeProxy.buffer
+    val bytes = ByteArray(buffer.remaining())
+    buffer.get(bytes)
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+}
+
+private fun rotateBitmap(bitmap: Bitmap, degrees: Float): Bitmap {
+    val matrix = Matrix()
+    matrix.postRotate(degrees)
+    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+}
+
+private fun viewToBitmap(view: View): Bitmap {
+    val bitmap = createBitmap(view.width, view.height)
+    val canvas = Canvas(bitmap)
+    view.draw(canvas)
+    return bitmap
+}
+
+private fun addWatermark(bitmap: Bitmap, watermark: Bitmap, startPx: Float, bottomPx: Float): Bitmap {
+    val result = createBitmap(bitmap.width, bitmap.height)
+    val canvas = Canvas(result)
+    canvas.drawBitmap(bitmap, 0f, 0f, null)
+    canvas.drawBitmap(watermark, startPx, (bitmap.height - watermark.height - bottomPx), null)
+    return result
+}

@@ -1,14 +1,10 @@
 package com.ytone.longcare.navigation
 
-import android.app.Activity
-import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,7 +38,7 @@ import com.ytone.longcare.features.servicecomplete.ui.ServiceCompleteScreen
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
 import com.ytone.longcare.features.identification.ui.IdentificationScreen
-import com.ytone.longcare.features.photoupload.ui.CameraActivity
+import com.ytone.longcare.features.photoupload.ui.CameraScreen
 import com.ytone.longcare.features.selectdevice.ui.SelectDeviceScreen
 import com.ytone.longcare.features.userlist.ui.UserListScreen
 import com.ytone.longcare.features.userlist.ui.UserListType
@@ -481,23 +477,13 @@ fun AppNavigation(startDestination: Any) {
         composable<CameraRoute>(
             typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
         ) { backStackEntry ->
-            val context = LocalContext.current
-            val launcher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.StartActivityForResult()
-            ) { result ->
-                if (result.resultCode == Activity.RESULT_OK) {
-                    val uri = result.data?.getStringExtra("captured_image_uri")
-                    navController.previousBackStackEntry?.savedStateHandle?.set("captured_image_uri", uri)
+            CameraScreen(
+                onImageCaptured = { file ->
+                    val savedUri = Uri.fromFile(file)
+                    navController.previousBackStackEntry?.savedStateHandle?.set("captured_image_uri", savedUri.toString())
                     navController.popBackStack()
                 }
-            }
-
-            LaunchedEffect(Unit) {
-                val intent = Intent(context, CameraActivity::class.java).apply {
-                    putStringArrayListExtra("watermarkLines", ArrayList(listOf("护理前", "2024-01-15 10:30")))
-                }
-                launcher.launch(intent)
-            }
+            )
         }
     }
 }
