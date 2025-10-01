@@ -148,7 +148,7 @@ class PhotoProcessingViewModel @Inject constructor(
             title = watermarkTitle,
             insuredPerson = elderName,
             caregiver = caregiverName,
-            time = currentTime,
+            time = "$currentTime",
             location = locationInfo,
             address = address
         )
