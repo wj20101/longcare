@@ -68,7 +68,7 @@
         android:id="@+id/caregiverLabelTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
+        android:layout_marginStart="8dp"
         android:text="护理人员: "
         android:textColor="#333333"
         android:textSize="7sp"
