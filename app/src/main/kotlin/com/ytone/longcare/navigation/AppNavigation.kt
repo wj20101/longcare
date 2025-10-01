@@ -476,14 +476,8 @@ fun AppNavigation(startDestination: Any) {
         
         composable<CameraRoute>(
             typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
-        ) { backStackEntry ->
-            CameraScreen(
-                onImageCaptured = { file ->
-                    val savedUri = Uri.fromFile(file)
-                    navController.previousBackStackEntry?.savedStateHandle?.set("captured_image_uri", savedUri.toString())
-                    navController.popBackStack()
-                }
-            )
+        ) {
+            CameraScreen(navController = navController)
         }
     }
 }

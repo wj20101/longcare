@@ -4,9 +4,10 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.common.constants.CosConstants
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.CosUtils
+import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.order.SharedOrderRepository
 import com.ytone.longcare.domain.repository.SessionState
@@ -15,9 +16,9 @@ import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
-import com.ytone.longcare.features.photoupload.utils.ImageProcessor
+import com.ytone.longcare.features.photoupload.model.WatermarkData
+import com.ytone.longcare.features.photoupload.ui.PhotoCategory
 import com.ytone.longcare.models.protos.User
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,8 +41,7 @@ class PhotoProcessingViewModel @Inject constructor(
     private val cosRepository: CosRepository,
     private val userSessionRepository: UserSessionRepository,
     private val sharedOrderRepository: SharedOrderRepository,
-    private val compositeLocationProvider: CompositeLocationProvider,
-    private val imageProcessor: ImageProcessor
+    private val compositeLocationProvider: CompositeLocationProvider
 ) : ViewModel() {
 
     // 图片任务列表的私有状态
@@ -60,6 +60,13 @@ class PhotoProcessingViewModel @Inject constructor(
 
     fun showToast(string: String) {
         toastHelper.showShort(string)
+    }
+
+    private val _currentCategory = MutableStateFlow<PhotoCategory?>(null)
+    val currentCategory: StateFlow<PhotoCategory?> = _currentCategory.asStateFlow()
+
+    fun setCurrentCategory(category: PhotoCategory) {
+        _currentCategory.value = category
     }
 
     /**
@@ -99,6 +106,21 @@ class PhotoProcessingViewModel @Inject constructor(
      * 生成水印内容
      */
     private suspend fun generateWatermarkLines(taskType: ImageTaskType, address: String, orderId: Long? = null): List<String> {
+        val watermarkData = generateWatermarkData(taskType, address, orderId)
+        return listOf(
+            watermarkData.title,
+            watermarkData.insuredPerson,
+            watermarkData.caregiver,
+            watermarkData.time,
+            watermarkData.location,
+            watermarkData.address
+        )
+    }
+
+    /**
+     * 生成水印数据对象
+     */
+    suspend fun generateWatermarkData(taskType: ImageTaskType, address: String, orderId: Long? = null): WatermarkData {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val currentTime = dateFormat.format(Date())
         val watermarkTitle = when (taskType) {
@@ -106,11 +128,11 @@ class PhotoProcessingViewModel @Inject constructor(
             ImageTaskType.CENTER_CARE -> "服务中"
             ImageTaskType.AFTER_CARE -> "服务后"
         }
-        
+
         // 获取当前登录用户（护工）信息
         val currentUser = getCurrentUser()
         val caregiverName = currentUser?.userName ?: "未知护工"
-        
+
         // 获取老人信息
         val elderName = if (orderId != null) {
             val orderInfo = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))
@@ -118,20 +140,20 @@ class PhotoProcessingViewModel @Inject constructor(
         } else {
             "未知老人"
         }
-        
+
         // 获取定位信息
         val locationInfo = getCurrentLocationInfo()
-        
-        return listOf(
-            watermarkTitle,
-            "参保人员:$elderName",
-            "护理人员:$caregiverName",
-            "拍摄时间:$currentTime",
-            locationInfo,
-            "拍摄地址:$address"
+
+        return WatermarkData(
+            title = watermarkTitle,
+            insuredPerson = "参保人员:$elderName",
+            caregiver = "护理人员:$caregiverName",
+            time = "拍摄时间:$currentTime",
+            location = locationInfo,
+            address = "拍摄地址:$address"
         )
     }
-    
+
     /**
      * 获取当前登录用户
      */
@@ -164,23 +186,11 @@ class PhotoProcessingViewModel @Inject constructor(
     private fun processImageTask(task: ImageTask) {
         viewModelScope.launch {
             _isProcessing.value = true
-
             try {
-                val result = imageProcessor.processImage(task.originalUri, task.watermarkLines)
-
-                if (result.isSuccess) {
-                    // 处理成功
-                    updateTaskStatus(
-                        task.id, ImageTaskStatus.SUCCESS, resultUri = result.getOrNull()
-                    )
-                } else {
-                    // 处理失败
-                    updateTaskStatus(
-                        task.id,
-                        ImageTaskStatus.FAILED,
-                        errorMessage = result.exceptionOrNull()?.message ?: "处理失败"
-                    )
-                }
+                // 处理成功
+                updateTaskStatus(
+                    task.id, ImageTaskStatus.SUCCESS, resultUri = task.originalUri
+                )
             } catch (e: Exception) {
                 // 异常处理
                 updateTaskStatus(
