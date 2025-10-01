@@ -23,10 +23,18 @@ import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +45,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -174,7 +184,7 @@ private fun CameraContent(
                 )
 
 
-                Button(
+                ShutterButton(
                     onClick = {
                         val executor = ContextCompat.getMainExecutor(context)
                         watermarkView?.let {
@@ -190,13 +200,34 @@ private fun CameraContent(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 32.dp)
-                ) {
-                    Text("Take Photo")
-                }
+                )
             }
         }
     }
 }
+
+@Composable
+private fun ShutterButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier
+            .size(72.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.5f))
+            .border(2.dp, Color.Gray, CircleShape)
+    ) {
+        Icon(
+            imageVector = Icons.Filled.RadioButtonChecked,
+            contentDescription = "Take Photo",
+            modifier = Modifier.size(64.dp),
+            tint = Color.White
+        )
+    }
+}
+
 
 @Composable
 fun CameraPreview(
