@@ -90,7 +90,7 @@ fun ServiceOrdersListScreen(
                             tint = Color.White
                         )
                     }
-                }, colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                }, colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
