@@ -7,19 +7,20 @@ import androidx.lifecycle.viewModelScope
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.ytone.longcare.BuildConfig
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.common.constants.CosConstants
+import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.common.utils.FaceVerificationManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.cos.repository.CosRepository
-import com.ytone.longcare.domain.order.SharedOrderRepository
 import com.ytone.longcare.domain.order.OrderRepository
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.domain.order.SharedOrderRepository
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
-import com.ytone.longcare.features.photoupload.utils.ImageProcessor
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
+import com.ytone.longcare.features.photoupload.model.WatermarkData
+import com.ytone.longcare.features.photoupload.utils.ImageProcessor
 import com.ytone.longcare.models.protos.User
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -368,6 +369,44 @@ class IdentificationViewModel @Inject constructor(
             locationInfo,
             "拍摄地址:$address"
         )
+    }
+
+    /**
+     * 生成用于相机屏幕的水印数据
+     * @param address 拍摄地址
+     * @param orderId 订单ID
+     * @return WatermarkData
+     */
+    suspend fun generateWatermarkData(address: String, orderId: Long): WatermarkData {
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val currentTime = dateFormat.format(Date())
+
+        // 获取订单信息
+        val orderInfo = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))
+        val elderName = orderInfo?.userInfo?.name ?: "未知老人"
+
+        // 获取当前登录用户（护工）信息
+        val currentUser = getCurrentUser()
+        val caregiverName = currentUser?.userName ?: "未知护工"
+
+        // 获取定位信息
+        val locationInfo = getCurrentLocationInfo()
+
+        return WatermarkData(
+            title = "老人照片",
+            insuredPerson = elderName,
+            caregiver = caregiverName,
+            time = "$currentTime",
+            location = locationInfo,
+            address = address
+        )
+    }
+
+    /**
+     * 显示一个Toast消息
+     */
+    fun showToast(message: String) {
+        toastHelper.showShort(message)
     }
     
     /**

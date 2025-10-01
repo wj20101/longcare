@@ -1,6 +1,9 @@
 package com.ytone.longcare.features.identification.ui
 
+import android.Manifest
 import android.content.pm.ActivityInfo
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,22 +23,24 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.R
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.common.utils.LockScreenOrientation
-import com.ytone.longcare.features.identification.vm.IdentificationViewModel
+import com.ytone.longcare.common.utils.UnifiedBackHandler
+import com.ytone.longcare.core.navigation.NavigationConstants
+import com.ytone.longcare.di.IdentificationEntryPoint
 import com.ytone.longcare.features.identification.vm.IdentificationState
-import com.ytone.longcare.features.photoupload.utils.rememberCameraLauncherWithPermission
-import com.ytone.longcare.features.photoupload.utils.launchCameraWithPermission
+import com.ytone.longcare.features.identification.vm.IdentificationViewModel
+import com.ytone.longcare.navigation.navigateToCamera
+import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
-import com.ytone.longcare.navigation.navigateToSelectService
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 import dagger.hilt.android.EntryPointAccessors
-import com.ytone.longcare.di.IdentificationEntryPoint
-import com.ytone.longcare.common.utils.UnifiedBackHandler
+import kotlinx.coroutines.launch
 
 /**
  * 身份认证相关常量
@@ -70,21 +75,35 @@ fun IdentificationScreen(
     val identificationState by identificationViewModel.identificationState.collectAsStateWithLifecycle()
     val faceVerificationState by identificationViewModel.faceVerificationState.collectAsStateWithLifecycle()
     val photoUploadState by identificationViewModel.photoUploadState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
-    // 相机拍照启动器（带权限申请功能）
-    val (cameraLauncher, permissionLauncher) = rememberCameraLauncherWithPermission(
-        onPhotoTaken = { uri ->
-            identificationViewModel.processElderPhoto(uri, orderInfoRequest.orderId)
-        },
-        onError = { errorMessage ->
-            identificationViewModel.resetPhotoUploadState()
-            // 这里可以显示错误提示，或者通过ViewModel处理
-        },
-        onPermissionDenied = {
-            identificationViewModel.resetPhotoUploadState()
-            // 权限被拒绝的处理
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                scope.launch {
+                    val watermarkData = identificationViewModel.generateWatermarkData(
+                        address = sharedOrderDetailViewModel.getUserAddress(orderInfoRequest),
+                        orderId = orderInfoRequest.orderId
+                    )
+                    navController.navigateToCamera(watermarkData)
+                }
+            } else {
+                identificationViewModel.showToast("需要相机权限才能拍照")
+            }
         }
     )
+
+    // 从CameraScreen获取返回的URI
+    LaunchedEffect(navController.currentBackStackEntry?.savedStateHandle) {
+        navController.currentBackStackEntry?.savedStateHandle?.get<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)?.let { uriString ->
+            val uri = uriString.toUri()
+            identificationViewModel.processElderPhoto(uri, orderInfoRequest.orderId)
+            // 清除数据，避免重复处理
+            navController.currentBackStackEntry?.savedStateHandle?.remove<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)
+        }
+    }
+
     val currentVerificationType by identificationViewModel.currentVerificationType.collectAsStateWithLifecycle()
     
     // 预加载订单详情
@@ -198,18 +217,7 @@ fun IdentificationScreen(
                     personType = IdentificationConstants.ELDER,
                     isVerified = identificationState.ordinal >= IdentificationState.ELDER_VERIFIED.ordinal,
                     onVerifyClick = {
-                        // 启动相机拍照（自动处理权限申请）
-                        launchCameraWithPermission(
-                            cameraLauncher = cameraLauncher,
-                            permissionLauncher = permissionLauncher,
-                            context = context,
-                            onError = { errorMessage ->
-                                identificationViewModel.resetPhotoUploadState()
-                                // 可以通过Toast显示错误信息
-                            }
-                        )
-                        // 保留人脸识别功能（注释状态，后续需求）
-                        // identificationViewModel.verifyElder(context, orderInfoRequest.orderId)
+                        permissionLauncher.launch(Manifest.permission.CAMERA)
                     },
                     viewModel = identificationViewModel,
                     faceVerificationState = faceVerificationState,
