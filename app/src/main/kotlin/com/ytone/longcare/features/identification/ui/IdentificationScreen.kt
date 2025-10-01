@@ -218,6 +218,8 @@ fun IdentificationScreen(
                     isVerified = identificationState.ordinal >= IdentificationState.ELDER_VERIFIED.ordinal,
                     onVerifyClick = {
                         permissionLauncher.launch(Manifest.permission.CAMERA)
+                        // 保留人脸识别功能（注释状态，后续需求）
+                        // identificationViewModel.verifyElder(context, orderInfoRequest.orderId)
                     },
                     viewModel = identificationViewModel,
                     faceVerificationState = faceVerificationState,
