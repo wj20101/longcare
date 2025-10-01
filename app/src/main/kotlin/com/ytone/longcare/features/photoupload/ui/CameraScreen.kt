@@ -38,7 +38,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +53,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
@@ -58,16 +62,22 @@ import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.databinding.WatermarkViewBinding
 import com.ytone.longcare.features.photoupload.model.WatermarkData
+import com.ytone.longcare.features.photoupload.vm.CameraViewModel
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.Executor
 import androidx.core.graphics.createBitmap
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
 fun CameraScreen(
     navController: NavController,
-    watermarkData: WatermarkData
+    watermarkData: WatermarkData,
+    viewModel: CameraViewModel = hiltViewModel()
 ) {
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -91,6 +101,7 @@ fun CameraScreen(
         CameraContent(
             context = context,
             watermarkData = watermarkData,
+            viewModel = viewModel,
             onImageCaptured = { file ->
                 val savedUri = Uri.fromFile(file)
                 navController.previousBackStackEntry?.savedStateHandle?.set(
@@ -114,6 +125,7 @@ fun CameraScreen(
 private fun CameraContent(
     context: Context,
     watermarkData: WatermarkData?,
+    viewModel: CameraViewModel,
     onImageCaptured: (File) -> Unit,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -133,6 +145,37 @@ private fun CameraContent(
         }
     }
     var watermarkView by remember { mutableStateOf<View?>(null) }
+    val location by viewModel.location.collectAsState()
+    var time by remember { mutableStateOf("") }
+
+
+    val locationPermissions = arrayOf(
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    )
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions ->
+            if (permissions.values.all { it }) {
+                viewModel.getCurrentLocationInfo()
+            }
+        }
+    )
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+                launcher.launch(locationPermissions)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         CameraPreview(
@@ -143,7 +186,7 @@ private fun CameraContent(
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = androidx.compose.ui.graphics.Color.Transparent
+            containerColor = Color.Transparent
         ) { padding ->
             Box(
                 modifier = Modifier
@@ -174,8 +217,8 @@ private fun CameraContent(
                         binding.serviceTypeTextView.text = watermarkData?.title ?: ""
                         binding.insuredPersonTextView.text = watermarkData?.insuredPerson ?: ""
                         binding.caregiverTextView.text = watermarkData?.caregiver ?: ""
-                        binding.captureTimeTextView.text = watermarkData?.time ?: ""
-                        binding.coordinatesTextView.text = watermarkData?.location ?: ""
+                        binding.captureTimeTextView.text = time
+                        binding.coordinatesTextView.text = location
                         binding.captureLocationTextView.text = watermarkData?.address ?: ""
                     },
                     modifier = Modifier

@@ -18,9 +18,7 @@ import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.order.SharedOrderRepository
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
-import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.features.photoupload.model.WatermarkData
-import com.ytone.longcare.features.photoupload.utils.ImageProcessor
 import com.ytone.longcare.models.protos.User
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -28,8 +26,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 import javax.inject.Inject
 
 /**
@@ -49,8 +45,6 @@ class IdentificationViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val cosRepository: CosRepository,
     private val toastHelper: ToastHelper,
-    private val compositeLocationProvider: CompositeLocationProvider,
-    private val imageProcessor: ImageProcessor,
     @param:ApplicationContext private val applicationContext: Context
 ) : ViewModel() {
     
@@ -221,23 +215,7 @@ class IdentificationViewModel @Inject constructor(
             else -> null
         }
     }
-    
-    /**
-     * 获取当前定位信息
-     */
-    private suspend fun getCurrentLocationInfo(): String {
-        return try {
-            val locationResult = compositeLocationProvider.getCurrentLocation()
-            if (locationResult != null) {
-                "卫星定位:${locationResult.longitude},${locationResult.latitude}"
-            } else {
-                "卫星定位:未获取"
-            }
-        } catch (e: Exception) {
-            "卫星定位:获取失败"
-        }
-    }
-    
+
     /**
      * 重置人脸验证状态
      */
@@ -278,32 +256,13 @@ class IdentificationViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _photoUploadState.value = PhotoUploadState.Processing
-                
-                // 生成水印内容
-                val watermarkLines = generateWatermarkLines(orderId)
-                
-                // 处理图片（添加水印）
-                val processResult = imageProcessor.processImage(photoUri, watermarkLines)
-                
-                if (processResult.isFailure) {
-                    _photoUploadState.value = PhotoUploadState.Error(
-                        processResult.exceptionOrNull()?.message ?: "图片处理失败"
-                    )
-                    return@launch
-                }
-                
-                val processedUri = processResult.getOrNull()
-                if (processedUri == null) {
-                    _photoUploadState.value = PhotoUploadState.Error("图片处理结果为空")
-                    return@launch
-                }
-                
+
                 _photoUploadState.value = PhotoUploadState.Uploading
                 
                 // 使用CosUtils上传图片到云端
                 val uploadParams = CosUtils.createUploadParams(
                     context = applicationContext,
-                    fileUri = processedUri,
+                    fileUri = photoUri,
                     folderType = CosConstants.DEFAULT_FOLDER_TYPE
                 )
                 
@@ -341,35 +300,6 @@ class IdentificationViewModel @Inject constructor(
             }
         }
     }
-    
-    /**
-     * 生成水印内容
-     */
-    private suspend fun generateWatermarkLines(orderId: Long): List<String> {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        val currentTime = dateFormat.format(Date())
-        
-        // 获取订单信息
-        val orderInfo = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))
-        val address = orderInfo?.userInfo?.address ?: "未知地址"
-        val elderName = orderInfo?.userInfo?.name ?: "未知老人"
-        
-        // 获取当前登录用户（护工）信息
-        val currentUser = getCurrentUser()
-        val caregiverName = currentUser?.userName ?: "未知护工"
-        
-        // 获取定位信息
-        val locationInfo = getCurrentLocationInfo()
-        
-        return listOf(
-            "老人照片",
-            "参保人员:$elderName",
-            "护理人员:$caregiverName",
-            "拍摄时间:$currentTime",
-            locationInfo,
-            "拍摄地址:$address"
-        )
-    }
 
     /**
      * 生成用于相机屏幕的水印数据
@@ -378,9 +308,6 @@ class IdentificationViewModel @Inject constructor(
      * @return WatermarkData
      */
     suspend fun generateWatermarkData(address: String, orderId: Long): WatermarkData {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        val currentTime = dateFormat.format(Date())
-
         // 获取订单信息
         val orderInfo = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))
         val elderName = orderInfo?.userInfo?.name ?: "未知老人"
@@ -389,15 +316,10 @@ class IdentificationViewModel @Inject constructor(
         val currentUser = getCurrentUser()
         val caregiverName = currentUser?.userName ?: "未知护工"
 
-        // 获取定位信息
-        val locationInfo = getCurrentLocationInfo()
-
         return WatermarkData(
             title = "老人照片",
             insuredPerson = elderName,
             caregiver = caregiverName,
-            time = "$currentTime",
-            location = locationInfo,
             address = address
         )
     }
