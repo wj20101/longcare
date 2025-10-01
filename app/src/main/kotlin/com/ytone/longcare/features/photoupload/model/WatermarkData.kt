@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.photoupload.model
 
-import android.os.Parcelable
-import kotlinx.parcelize.Parcelize
+import androidx.annotation.Keep
+import kotlinx.serialization.Serializable
 
 /**
  * 水印数据模型
@@ -13,7 +13,8 @@ import kotlinx.parcelize.Parcelize
  * @property location 定位信息 (例如 "卫星定位:116.12345,39.54321")
  * @property address 拍摄地址 (例如 "拍摄地址:北京市朝阳区xx路xx号")
  */
-@Parcelize
+@Keep
+@Serializable
 data class WatermarkData(
     val title: String,
     val insuredPerson: String,
@@ -21,4 +22,4 @@ data class WatermarkData(
     val time: String,
     val location: String,
     val address: String
-) : Parcelable
+)

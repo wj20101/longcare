@@ -44,6 +44,7 @@ import com.ytone.longcare.features.userlist.ui.UserListScreen
 import com.ytone.longcare.features.userlist.ui.UserListType
 import com.ytone.longcare.features.userservicerecord.ui.UserServiceRecordScreen
 import com.ytone.longcare.features.nfctest.ui.NfcTestScreen
+import com.ytone.longcare.features.photoupload.model.WatermarkData
 import kotlin.reflect.typeOf
 
 /**
@@ -242,8 +243,8 @@ fun NavController.navigateToNfcTest() {
     navigate(NfcTestRoute)
 }
 
-fun NavController.navigateToCamera(orderInfoRequest: OrderInfoRequestModel) {
-    navigate(CameraRoute(orderInfoRequest))
+fun NavController.navigateToCamera(watermarkData: WatermarkData) {
+    navigate(CameraRoute(watermarkData))
 }
 
 /**
@@ -475,9 +476,13 @@ fun AppNavigation(startDestination: Any) {
         }
         
         composable<CameraRoute>(
-            typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
-        ) {
-            CameraScreen(navController = navController)
+            typeMap = mapOf(typeOf<WatermarkData>() to WatermarkDataNavType)
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<CameraRoute>()
+            CameraScreen(
+                navController = navController,
+                watermarkData = route.watermarkData
+            )
         }
     }
 }

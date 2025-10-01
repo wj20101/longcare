@@ -1,8 +1,9 @@
 package com.ytone.longcare.navigation
 
 import androidx.annotation.Keep
-import kotlinx.serialization.Serializable
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.features.photoupload.model.WatermarkData
+import kotlinx.serialization.Serializable
 
 /**
  * 类型安全的导航路由定义
@@ -48,8 +49,8 @@ enum class SignInMode {
     /**
      * 开始订单模式
      */
-    START_ORDER, 
-    
+    START_ORDER,
+
     /**
      * 结束订单模式
      */
@@ -201,8 +202,8 @@ object NfcTestRoute
 
 /**
  * 相机页面路由
- * @param orderInfoRequest 订单信息请求模型
+ * @param watermarkData 水印数据
  */
 @Keep
 @Serializable
-data class CameraRoute(val orderInfoRequest: OrderInfoRequestModel)
+data class CameraRoute(val watermarkData: WatermarkData)

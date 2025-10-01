@@ -56,7 +56,8 @@ import androidx.core.graphics.createBitmap
 
 @Composable
 fun CameraScreen(
-    navController: NavController
+    navController: NavController,
+    watermarkData: WatermarkData
 ) {
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -77,12 +78,6 @@ fun CameraScreen(
     }
 
     if (hasPermission) {
-        // 从导航中获取水印数据
-        val watermarkData =
-            navController.previousBackStackEntry?.savedStateHandle?.get<WatermarkData>(
-                NavigationConstants.WATERMARK_DATA_KEY
-            )
-
         CameraContent(
             context = context,
             watermarkData = watermarkData,
