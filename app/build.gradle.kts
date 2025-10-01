@@ -13,6 +13,7 @@ plugins {
     alias(libs.plugins.room)
     alias(libs.plugins.wire)
     alias(libs.plugins.baselineprofile)
+    id("kotlin-parcelize")
 }
 
 wire {

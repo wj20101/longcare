@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Matrix
+import android.net.Uri
 import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
@@ -42,8 +43,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.navigation.NavController
 import com.ytone.longcare.common.utils.LockScreenOrientation
+import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.databinding.WatermarkViewBinding
+import com.ytone.longcare.features.photoupload.model.WatermarkData
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
@@ -52,9 +56,8 @@ import androidx.core.graphics.createBitmap
 
 @Composable
 fun CameraScreen(
-    onImageCaptured: (File) -> Unit
+    navController: NavController
 ) {
-
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
     // ==========================================================
@@ -74,9 +77,23 @@ fun CameraScreen(
     }
 
     if (hasPermission) {
+        // 从导航中获取水印数据
+        val watermarkData =
+            navController.previousBackStackEntry?.savedStateHandle?.get<WatermarkData>(
+                NavigationConstants.WATERMARK_DATA_KEY
+            )
+
         CameraContent(
             context = context,
-            onImageCaptured = onImageCaptured,
+            watermarkData = watermarkData,
+            onImageCaptured = { file ->
+                val savedUri = Uri.fromFile(file)
+                navController.previousBackStackEntry?.savedStateHandle?.set(
+                    NavigationConstants.CAPTURED_IMAGE_URI_KEY,
+                    savedUri.toString()
+                )
+                navController.popBackStack()
+            },
         )
     } else {
         // You can optionally show a message or a button to re-request permission
@@ -86,12 +103,12 @@ fun CameraScreen(
             }
         }
     }
-
 }
 
 @Composable
 private fun CameraContent(
     context: Context,
+    watermarkData: WatermarkData?,
     onImageCaptured: (File) -> Unit,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -130,19 +147,37 @@ private fun CameraContent(
             ) {
                 AndroidView(
                     factory = { ctx ->
+                        // 1. Inflate the layout and get the binding object
                         val binding = WatermarkViewBinding.inflate(
                             LayoutInflater.from(ctx),
                             FrameLayout(ctx),
                             false
                         )
-                        binding.root.also {
-                            watermarkView = it
-                        }
+                        // 2. Get the root view
+                        val view = binding.root
+                        // 3. Store the binding in the view's tag for later access in `update`
+                        view.tag = binding
+                        // 4. Set the view in the state variable to be used by takePhoto
+                        watermarkView = view
+                        // 5. Return the root view
+                        view
+                    },
+                    update = { view ->
+                        // 6. Retrieve the binding from the tag
+                        val binding = view.tag as WatermarkViewBinding
+                        // 7. Update the TextViews with the watermark data
+                        binding.serviceTypeTextView.text = watermarkData?.title ?: ""
+                        binding.insuredPersonTextView.text = watermarkData?.insuredPerson ?: ""
+                        binding.caregiverTextView.text = watermarkData?.caregiver ?: ""
+                        binding.captureTimeTextView.text = watermarkData?.time ?: ""
+                        binding.coordinatesTextView.text = watermarkData?.location ?: ""
+                        binding.captureLocationTextView.text = watermarkData?.address ?: ""
                     },
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(start = 13.dp, bottom = 14.dp)
                 )
+
 
                 Button(
                     onClick = {
@@ -203,7 +238,8 @@ private fun takePhoto(
                 val density = context.resources.displayMetrics.density
                 val startPx = (13 * density)
                 val bottomPx = (14 * density)
-                val watermarkedBitmap = addWatermark(rotatedBitmap, watermarkBitmap, startPx, bottomPx)
+                val watermarkedBitmap =
+                    addWatermark(rotatedBitmap, watermarkBitmap, startPx, bottomPx)
 
                 val photoFile = File(
                     context.cacheDir,
@@ -219,7 +255,8 @@ private fun takePhoto(
             }
 
             override fun onError(exc: ImageCaptureException) {
-                Toast.makeText(context, "Photo capture failed: ${exc.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Photo capture failed: ${exc.message}", Toast.LENGTH_SHORT)
+                    .show()
             }
         }
     )
@@ -247,7 +284,12 @@ private fun viewToBitmap(view: View): Bitmap {
     return bitmap
 }
 
-private fun addWatermark(bitmap: Bitmap, watermark: Bitmap, startPx: Float, bottomPx: Float): Bitmap {
+private fun addWatermark(
+    bitmap: Bitmap,
+    watermark: Bitmap,
+    startPx: Float,
+    bottomPx: Float
+): Bitmap {
     val result = createBitmap(bitmap.width, bitmap.height)
     val canvas = Canvas(result)
     canvas.drawBitmap(bitmap, 0f, 0f, null)

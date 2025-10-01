@@ -1,6 +1,9 @@
 package com.ytone.longcare.features.photoupload.ui
 
+import android.Manifest
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -50,9 +53,7 @@ import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
-import com.ytone.longcare.features.photoupload.utils.rememberCameraLauncherWithPermission
-import com.ytone.longcare.features.photoupload.utils.launchCameraWithPermission
-import androidx.compose.ui.platform.LocalContext
+import com.ytone.longcare.navigation.navigateToCamera
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
@@ -96,6 +97,7 @@ fun PhotoUploadScreen(
     val imageTasks by viewModel.imageTasks.collectAsState()
     val isUploading by viewModel.isUploading.collectAsState()
     val scope = rememberCoroutineScope()
+    val currentCategory by viewModel.currentCategory.collectAsState()
 
     // 监听已有图片数据
     LaunchedEffect(navController.previousBackStackEntry?.savedStateHandle) {
@@ -113,14 +115,42 @@ fun PhotoUploadScreen(
             }
         }
     }
+    
+    val cameraResultLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                scope.launch {
+                    currentCategory?.let { category ->
+                        val taskType = when (category) {
+                            PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
+                            PhotoCategory.CENTER_CARE -> ImageTaskType.CENTER_CARE
+                            PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
+                        }
+                        val watermarkData = viewModel.generateWatermarkData(
+                            taskType = taskType,
+                            address = sharedViewModel.getUserAddress(orderInfoRequest),
+                            orderId = orderInfoRequest.orderId
+                        )
+                        // Set the data on the CURRENT screen's state handle
+                        navController.currentBackStackEntry?.savedStateHandle?.set(
+                            NavigationConstants.WATERMARK_DATA_KEY,
+                            watermarkData
+                        )
+                        // Now navigate
+                        navController.navigateToCamera(orderInfoRequest)
+                    }
+                }
+            } else {
+                viewModel.showToast("需要相机权限才能拍照")
+            }
+        }
+    )
 
-    // 当前选择的分类
-    var currentCategory by remember { mutableStateOf<PhotoCategory?>(null) }
-    val context = LocalContext.current
-
-    // 相机拍照启动器（带权限申请功能）
-    val (cameraLauncher, permissionLauncher) = rememberCameraLauncherWithPermission(
-        onPhotoTaken = { uri ->
+    // 从CameraScreen获取返回的URI
+    LaunchedEffect(navController.currentBackStackEntry?.savedStateHandle) {
+        navController.currentBackStackEntry?.savedStateHandle?.get<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)?.let { uriString ->
+            val uri = uriString.toUri()
             currentCategory?.let { category ->
                 val taskType = when (category) {
                     PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
@@ -134,14 +164,10 @@ fun PhotoUploadScreen(
                     orderId = orderInfoRequest.orderId
                 )
             }
-        },
-        onError = { errorMessage ->
-            viewModel.showToast(errorMessage)
-        },
-        onPermissionDenied = {
-            viewModel.showToast("需要相机权限才能拍照")
+            // 清除数据，避免重复处理
+            navController.currentBackStackEntry?.savedStateHandle?.remove<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)
         }
-    )
+    }
 
     // 根据任务类型获取不同分类的任务
     val beforeCareTasks = imageTasks.filter { it.taskType == ImageTaskType.BEFORE_CARE }
@@ -197,13 +223,13 @@ fun PhotoUploadScreen(
                                         // 根据 key 找到对应的 ImageTask
                                         keys.mapNotNull { key ->
                                             currentTasks.find { task ->
-                                                task.taskType == taskType && 
-                                                task.key == key && 
-                                                task.status == ImageTaskStatus.SUCCESS
+                                                task.taskType == taskType &&
+                                                        task.key == key &&
+                                                        task.status == ImageTaskStatus.SUCCESS
                                             }
                                         }
                                     }
-                                    
+
                                     // 将转换后的结果回传给上一个页面
                                     navController.previousBackStackEntry?.savedStateHandle?.set(
                                         NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, imageTasksMap
@@ -246,12 +272,8 @@ fun PhotoUploadScreen(
                         tasks = beforeCareTasks,
                         isUploading = isUploading,
                         onAddPhoto = {
-                            currentCategory = PhotoCategory.BEFORE_CARE
-                            launchCameraWithPermission(
-                                cameraLauncher = cameraLauncher,
-                                permissionLauncher = permissionLauncher,
-                                context = context
-                            )
+                            viewModel.setCurrentCategory(PhotoCategory.BEFORE_CARE)
+                            cameraResultLauncher.launch(Manifest.permission.CAMERA)
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
                         onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
@@ -264,12 +286,8 @@ fun PhotoUploadScreen(
                         tasks = centerCareTasks,
                         isUploading = isUploading,
                         onAddPhoto = {
-                            currentCategory = PhotoCategory.CENTER_CARE
-                            launchCameraWithPermission(
-                                cameraLauncher = cameraLauncher,
-                                permissionLauncher = permissionLauncher,
-                                context = context
-                            )
+                            viewModel.setCurrentCategory(PhotoCategory.CENTER_CARE)
+                            cameraResultLauncher.launch(Manifest.permission.CAMERA)
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
                         onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
@@ -282,12 +300,8 @@ fun PhotoUploadScreen(
                         tasks = afterCareTasks,
                         isUploading = isUploading,
                         onAddPhoto = {
-                            currentCategory = PhotoCategory.AFTER_CARE
-                            launchCameraWithPermission(
-                                cameraLauncher = cameraLauncher,
-                                permissionLauncher = permissionLauncher,
-                                context = context
-                            )
+                            viewModel.setCurrentCategory(PhotoCategory.AFTER_CARE)
+                            cameraResultLauncher.launch(Manifest.permission.CAMERA)
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
                         onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
