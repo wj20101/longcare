@@ -53,6 +53,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -66,12 +67,12 @@ import com.ytone.longcare.features.photoupload.vm.CameraViewModel
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.concurrent.Executor
 import androidx.core.graphics.createBitmap
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import coil3.load
+import coil3.request.error
+import coil3.request.placeholder
+import com.ytone.longcare.R
 
 @Composable
 fun CameraScreen(
@@ -146,7 +147,8 @@ private fun CameraContent(
     }
     var watermarkView by remember { mutableStateOf<View?>(null) }
     val location by viewModel.location.collectAsState()
-    var time by remember { mutableStateOf("") }
+    val time by viewModel.time.collectAsState()
+    val logoImg by viewModel.syLogoImg.collectAsState()
 
 
     val locationPermissions = arrayOf(
@@ -158,7 +160,7 @@ private fun CameraContent(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
         onResult = { permissions ->
             if (permissions.values.all { it }) {
-                viewModel.getCurrentLocationInfo()
+                viewModel.updateCurrentLocationInfo()
             }
         }
     )
@@ -166,7 +168,8 @@ private fun CameraContent(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+                viewModel.updateTime()
+                viewModel.updateSyLogoImg()
                 launcher.launch(locationPermissions)
             }
         }
@@ -220,6 +223,10 @@ private fun CameraContent(
                         binding.captureTimeTextView.text = time
                         binding.coordinatesTextView.text = location
                         binding.captureLocationTextView.text = watermarkData?.address ?: ""
+                        binding.logoImageView.load(logoImg) {
+                            placeholder(R.drawable.app_watermark_image)
+                            error(R.drawable.app_watermark_image)
+                        }
                     },
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -229,6 +236,8 @@ private fun CameraContent(
 
                 ShutterButton(
                     onClick = {
+                        viewModel.updateCurrentLocationInfo()
+                        viewModel.updateTime()
                         val executor = ContextCompat.getMainExecutor(context)
                         watermarkView?.let {
                             takePhoto(
