@@ -46,9 +46,9 @@ import com.ytone.longcare.theme.TextColorPrimary
 import com.ytone.longcare.theme.TextColorSecondary
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.features.login.ext.maxPhoneLength
 import com.ytone.longcare.debug.NfcTestConfig
+import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.navigation.navigateToCamera
 import com.ytone.longcare.navigation.navigateToNfcTest
 
@@ -246,8 +246,15 @@ fun LoginScreen(
 
                 TextButton(
                     onClick = {
-                        val mockOrderInfo = OrderInfoRequestModel(orderId = 123456L, planId = 1)
-                        navController.navigateToCamera(mockOrderInfo)
+                        val mockWatermarkData = WatermarkData(
+                            title = "服务前",
+                            insuredPerson = "参保人员:张三",
+                            caregiver = "护理人员:李四",
+                            time = "2023-10-27 10:00:00",
+                            location = "卫星定位:116.12345,39.54321",
+                            address = "拍摄地址:北京市朝阳区xx路xx号"
+                        )
+                        navController.navigateToCamera(mockWatermarkData)
                     },
                     modifier = Modifier.constrainAs(cameraTestButton) {
                         bottom.linkTo(parent.bottom, margin = 16.dp)

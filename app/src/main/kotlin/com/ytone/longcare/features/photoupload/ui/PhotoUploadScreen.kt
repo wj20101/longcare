@@ -132,13 +132,8 @@ fun PhotoUploadScreen(
                             address = sharedViewModel.getUserAddress(orderInfoRequest),
                             orderId = orderInfoRequest.orderId
                         )
-                        // Set the data on the CURRENT screen's state handle
-                        navController.currentBackStackEntry?.savedStateHandle?.set(
-                            NavigationConstants.WATERMARK_DATA_KEY,
-                            watermarkData
-                        )
                         // Now navigate
-                        navController.navigateToCamera(orderInfoRequest)
+                        navController.navigateToCamera(watermarkData)
                     }
                 }
             } else {
