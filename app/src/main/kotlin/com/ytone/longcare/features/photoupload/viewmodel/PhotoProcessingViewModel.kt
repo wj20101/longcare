@@ -146,11 +146,11 @@ class PhotoProcessingViewModel @Inject constructor(
 
         return WatermarkData(
             title = watermarkTitle,
-            insuredPerson = "参保人员:$elderName",
-            caregiver = "护理人员:$caregiverName",
-            time = "拍摄时间:$currentTime",
+            insuredPerson = elderName,
+            caregiver = caregiverName,
+            time = currentTime,
             location = locationInfo,
-            address = "拍摄地址:$address"
+            address = address
         )
     }
 
@@ -171,12 +171,12 @@ class PhotoProcessingViewModel @Inject constructor(
         return try {
             val locationResult = compositeLocationProvider.getCurrentLocation()
             if (locationResult != null) {
-                "卫星定位:${locationResult.longitude},${locationResult.latitude}"
+                "${locationResult.longitude},${locationResult.latitude}"
             } else {
-                "卫星定位:未获取"
+                "未获取"
             }
         } catch (_: Exception) {
-            "卫星定位:获取失败"
+            "获取失败"
         }
     }
 
