@@ -14,7 +14,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.ytone.longcare.common.utils.FileProviderHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
-import java.io.File
 
 /**
  * 检查现代图片选择器（Photo Picker）是否可用。
