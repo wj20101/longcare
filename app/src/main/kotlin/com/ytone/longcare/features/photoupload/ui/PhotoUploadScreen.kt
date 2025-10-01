@@ -628,20 +628,17 @@ fun PhotoUploadSectionPreview() {
             id = "1",
             originalUri = Uri.EMPTY,
             taskType = ImageTaskType.BEFORE_CARE,
-            watermarkLines = listOf("Watermark"),
             status = ImageTaskStatus.SUCCESS,
             resultUri = "content://media/picker/0/com.android.providers.media.photopicker/media/1000000033".toUri()
         ), ImageTask(
             id = "2",
             originalUri = Uri.EMPTY,
             taskType = ImageTaskType.BEFORE_CARE,
-            watermarkLines = listOf("Watermark"),
             status = ImageTaskStatus.PROCESSING
         ), ImageTask(
             id = "3",
             originalUri = Uri.EMPTY,
             taskType = ImageTaskType.BEFORE_CARE,
-            watermarkLines = listOf("Watermark"),
             status = ImageTaskStatus.FAILED,
             errorMessage = "Upload failed"
         )
@@ -668,7 +665,6 @@ fun ImageTaskItemPreview() {
         id = "1",
         originalUri = Uri.EMPTY,
         taskType = ImageTaskType.BEFORE_CARE,
-        watermarkLines = listOf("Watermark")
     )
     ImageTaskItem(task = task, onRetry = {}, onRemove = {})
 }

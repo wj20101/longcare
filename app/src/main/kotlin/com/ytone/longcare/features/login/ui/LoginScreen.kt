@@ -248,11 +248,9 @@ fun LoginScreen(
                     onClick = {
                         val mockWatermarkData = WatermarkData(
                             title = "服务前",
-                            insuredPerson = "参保人员:张三",
-                            caregiver = "护理人员:李四",
-                            time = "2023-10-27 10:00:00",
-                            location = "卫星定位:116.12345,39.54321",
-                            address = "拍摄地址:北京市朝阳区xx路xx号"
+                            insuredPerson = "张三",
+                            caregiver = "李四",
+                            address = "北京市朝阳区xx路xx号"
                         )
                         navController.navigateToCamera(mockWatermarkData)
                     },

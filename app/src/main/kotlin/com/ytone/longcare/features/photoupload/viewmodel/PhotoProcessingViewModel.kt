@@ -12,7 +12,6 @@ import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.order.SharedOrderRepository
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
-import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
@@ -26,7 +25,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 
@@ -41,7 +39,6 @@ class PhotoProcessingViewModel @Inject constructor(
     private val cosRepository: CosRepository,
     private val userSessionRepository: UserSessionRepository,
     private val sharedOrderRepository: SharedOrderRepository,
-    private val compositeLocationProvider: CompositeLocationProvider
 ) : ViewModel() {
 
     // 图片任务列表的私有状态
@@ -81,13 +78,11 @@ class PhotoProcessingViewModel @Inject constructor(
      */
     fun addImagesToProcess(uris: List<Uri>, taskType: ImageTaskType, address: String, orderId: Long? = null) {
         viewModelScope.launch {
-            val watermarkLines = generateWatermarkLines(taskType, address, orderId)
             val newTasks = uris.map { uri ->
                 ImageTask(
                     id = UUID.randomUUID().toString(),
                     originalUri = uri,
                     taskType = taskType,
-                    watermarkLines = watermarkLines,
                     status = ImageTaskStatus.PROCESSING
                 )
             }
@@ -103,26 +98,9 @@ class PhotoProcessingViewModel @Inject constructor(
     }
 
     /**
-     * 生成水印内容
-     */
-    private suspend fun generateWatermarkLines(taskType: ImageTaskType, address: String, orderId: Long? = null): List<String> {
-        val watermarkData = generateWatermarkData(taskType, address, orderId)
-        return listOf(
-            watermarkData.title,
-            watermarkData.insuredPerson,
-            watermarkData.caregiver,
-            watermarkData.time,
-            watermarkData.location,
-            watermarkData.address
-        )
-    }
-
-    /**
      * 生成水印数据对象
      */
     suspend fun generateWatermarkData(taskType: ImageTaskType, address: String, orderId: Long? = null): WatermarkData {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        val currentTime = dateFormat.format(Date())
         val watermarkTitle = when (taskType) {
             ImageTaskType.BEFORE_CARE -> "服务前"
             ImageTaskType.CENTER_CARE -> "服务中"
@@ -141,15 +119,10 @@ class PhotoProcessingViewModel @Inject constructor(
             "未知老人"
         }
 
-        // 获取定位信息
-        val locationInfo = getCurrentLocationInfo()
-
         return WatermarkData(
             title = watermarkTitle,
             insuredPerson = elderName,
             caregiver = caregiverName,
-            time = "$currentTime",
-            location = locationInfo,
             address = address
         )
     }
@@ -161,22 +134,6 @@ class PhotoProcessingViewModel @Inject constructor(
         return when (val sessionState = userSessionRepository.sessionState.value) {
             is SessionState.LoggedIn -> sessionState.user
             else -> null
-        }
-    }
-    
-    /**
-     * 获取当前定位信息
-     */
-    private suspend fun getCurrentLocationInfo(): String {
-        return try {
-            val locationResult = compositeLocationProvider.getCurrentLocation()
-            if (locationResult != null) {
-                "${locationResult.longitude},${locationResult.latitude}"
-            } else {
-                "未获取"
-            }
-        } catch (_: Exception) {
-            "获取失败"
         }
     }
 
