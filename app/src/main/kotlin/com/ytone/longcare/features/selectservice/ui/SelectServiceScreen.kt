@@ -113,6 +113,12 @@ fun SelectServiceScreen(
         }
     }
 
+    var selectServiceType by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        selectServiceType = selectServiceViewModel.systemConfigManager.getSelectServiceType()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -242,19 +248,22 @@ fun SelectServiceScreen(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 全选按钮
-                        SelectAllButton(
-                            isAllSelected = serviceItems.isNotEmpty() && serviceItems.all { it.isSelected },
-                            onClick = {
-                                val isAllSelected = serviceItems.all { it.isSelected }
-                                for (i in serviceItems.indices) {
-                                    serviceItems[i] = serviceItems[i].copy(isSelected = !isAllSelected)
-                                }
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
+                        if (selectServiceType == 0) {
+                            // 全选按钮
+                            SelectAllButton(
+                                isAllSelected = serviceItems.isNotEmpty() && serviceItems.all { it.isSelected },
+                                onClick = {
+                                    val isAllSelected = serviceItems.all { it.isSelected }
+                                    for (i in serviceItems.indices) {
+                                        serviceItems[i] =
+                                            serviceItems[i].copy(isSelected = !isAllSelected)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
 
-                        Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
 
                         // 下一步按钮
                         NextStepButton(

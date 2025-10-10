@@ -8,6 +8,7 @@
     "TencentMapKey": "MOCK-TENCENT-MAP-KEY",
     "TencentMapFenceRadius": 500,
     "TencentMapUploadInterval": 60,
-    "TencentMapUploadDistance": 100
+    "TencentMapUploadDistance": 100,
+    "selectServiceType": 0
   }
 }
