@@ -24,5 +24,11 @@ data class SystemConfigModel(
      * 水印logo图片
      */
     @param:Json(name = "syLogoImg")
-    val syLogoImg: String = ""
+    val syLogoImg: String = "",
+
+    /**
+     * 选择服务的类型0:默认不全选可改变 1:默认全选不能改变
+     */
+    @param:Json(name = "selectServiceType")
+    val selectServiceType: Int = 0
 )

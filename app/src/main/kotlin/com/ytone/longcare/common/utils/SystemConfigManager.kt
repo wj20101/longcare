@@ -203,4 +203,11 @@ class SystemConfigManager @Inject constructor(
     suspend fun getSyLogoImg(): String {
         return getSystemConfigLazy()?.syLogoImg ?: ""
     }
+
+    /**
+     * 获取全选状态配置
+     */
+    suspend fun getSelectServiceType(): Int {
+        return getSystemConfigLazy()?.selectServiceType ?: 0
+    }
 }
