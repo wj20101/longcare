@@ -35,6 +35,7 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.StarOrderUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.features.selectservice.vm.SelectServiceViewModel
 
 // --- 数据模型 ---
 data class ServiceItem(
@@ -46,8 +47,9 @@ data class ServiceItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectServiceScreen(
-    navController: NavController, 
-    orderInfoRequest: OrderInfoRequestModel, 
+    navController: NavController,
+    orderInfoRequest: OrderInfoRequestModel,
+    selectServiceViewModel: SelectServiceViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
