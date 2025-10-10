@@ -70,6 +70,7 @@ import java.util.concurrent.Executor
 import androidx.core.graphics.createBitmap
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.load
+import coil3.request.allowHardware
 import coil3.request.error
 import com.ytone.longcare.R
 
@@ -224,6 +225,7 @@ private fun CameraContent(
                         binding.captureLocationTextView.text = watermarkData.address
                         if (logoImg.isNotEmpty()) {
                             binding.logoImageView.load(logoImg) {
+                                allowHardware(false)
                                 error(R.drawable.app_watermark_image)
                             }
                         }
