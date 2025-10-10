@@ -8,6 +8,4 @@ import javax.inject.Inject
 @HiltViewModel
 class MainDashboardViewModel @Inject constructor(
     val systemConfigManager: SystemConfigManager
-) : ViewModel() {
-
-}
+) : ViewModel()
