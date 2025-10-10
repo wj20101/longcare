@@ -13,7 +13,7 @@ legacySupport = "1.0.0"
 lifecycle = "2.9.4"
 activityCompose = "1.11.0"
 fragmentCompose = "1.8.9"
-mockk = "1.14.5"
+mockk = "1.14.6"
 navigationCompose = "2.9.5"
 appcompat = "1.7.1"
 startup = "1.2.0"
@@ -21,7 +21,7 @@ constraintlayoutCompose = "1.1.1"
 benchmark = "1.4.1"
 baselineprofile = "1.4.1"
 profileinstaller = "1.4.1"
-camerax = "1.5.0"
+camerax = "1.5.1"
 constraintlayout = "2.2.1"
 
 # Data Persistence
@@ -41,7 +41,7 @@ wire = "5.4.0"
 
 # Networking
 retrofit = "3.0.0"
-okhttp = "5.1.0"
+okhttp = "5.2.1"
 okio = "3.16.1"
 moshi = "1.15.2"
 kotlinxDatetime = "0.7.1"
@@ -64,17 +64,17 @@ benchmarkMacroJunit4 = "1.4.1"
 
 [libraries]
 # AndroidX Core & Lifecycle
-androidx-constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraintlayout" }
+androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-appcompat-resources = { group = "androidx.appcompat", name = "appcompat-resources", version.ref = "appcompat" }
-androidx-legacy-support-core-utils = { module = "androidx.legacy:legacy-support-core-utils", version.ref = "legacySupport" }
-androidx-legacy-support-v4 = { module = "androidx.legacy:legacy-support-v4", version.ref = "legacySupport" }
+androidx-legacy-support-core-utils = { group = "androidx.legacy", name = "legacy-support-core-utils", version.ref = "legacySupport" }
+androidx-legacy-support-v4 = { group = "androidx.legacy", name = "legacy-support-v4", version.ref = "legacySupport" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-fragment-compose = { group = "androidx.fragment", name = "fragment-compose", version.ref = "fragmentCompose" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
-mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 startup-runtime = { group = "androidx.startup", name = "startup-runtime", version.ref = "startup" }
 constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayoutCompose" }
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
@@ -148,7 +148,7 @@ coil-video = { group = "io.coil-kt.coil3", name = "coil-video", version.ref = "c
 tencent-cos-android = { group = "com.qcloud.cos", name = "cos-android", version.ref = "tencentCos" }
 
 # amap
-amap-location = { module = "com.amap.api:location", version.ref = "amapLocation" }
+amap-location = { group = "com.amap.api", name = "location", version.ref = "amapLocation" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
