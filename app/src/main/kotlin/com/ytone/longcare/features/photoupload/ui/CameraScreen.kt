@@ -53,7 +53,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -69,9 +68,9 @@ import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.util.concurrent.Executor
 import androidx.core.graphics.createBitmap
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.load
 import coil3.request.error
-import coil3.request.placeholder
 import com.ytone.longcare.R
 
 @Composable
@@ -125,7 +124,7 @@ fun CameraScreen(
 @Composable
 private fun CameraContent(
     context: Context,
-    watermarkData: WatermarkData?,
+    watermarkData: WatermarkData,
     viewModel: CameraViewModel,
     onImageCaptured: (File) -> Unit,
 ) {
@@ -217,15 +216,16 @@ private fun CameraContent(
                         // 6. Retrieve the binding from the tag
                         val binding = view.tag as WatermarkViewBinding
                         // 7. Update the TextViews with the watermark data
-                        binding.serviceTypeTextView.text = watermarkData?.title ?: ""
-                        binding.insuredPersonTextView.text = watermarkData?.insuredPerson ?: ""
-                        binding.caregiverTextView.text = watermarkData?.caregiver ?: ""
+                        binding.serviceTypeTextView.text = watermarkData.title
+                        binding.insuredPersonTextView.text = watermarkData.insuredPerson
+                        binding.caregiverTextView.text = watermarkData.caregiver
                         binding.captureTimeTextView.text = time
                         binding.coordinatesTextView.text = location
-                        binding.captureLocationTextView.text = watermarkData?.address ?: ""
-                        binding.logoImageView.load(logoImg) {
-                            placeholder(R.drawable.app_watermark_image)
-                            error(R.drawable.app_watermark_image)
+                        binding.captureLocationTextView.text = watermarkData.address
+                        if (logoImg.isNotEmpty()) {
+                            binding.logoImageView.load(logoImg) {
+                                error(R.drawable.app_watermark_image)
+                            }
                         }
                     },
                     modifier = Modifier
