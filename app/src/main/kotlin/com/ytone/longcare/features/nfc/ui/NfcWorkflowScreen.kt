@@ -175,6 +175,13 @@ fun NfcWorkflowScreen(
         }
     }
 
+    // 签退成功，关闭定位上传
+    LaunchedEffect(uiState) {
+        if (signInMode == SignInMode.END_ORDER){
+            locationTrackingViewModel.onStopClicked()
+        }
+    }
+
     // 根据ViewModel状态确定SignInState
     val signInState = when (uiState) {
         is NfcSignInUiState.Loading -> SignInState.IDLE
