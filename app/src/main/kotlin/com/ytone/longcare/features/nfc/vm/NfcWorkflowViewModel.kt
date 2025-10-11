@@ -71,9 +71,9 @@ class NfcWorkflowViewModel @Inject constructor(
                 }
 
                 is ApiResult.Exception -> {
-                    _uiState.value = NfcSignInUiState.Error(
-                        result.exception.message ?: "网络错误，请检查网络连接"
-                    )
+                    val message = result.exception.message ?: "网络错误，请检查网络连接"
+                    toastHelper.showShort(message)
+                    _uiState.value = NfcSignInUiState.Error(message)
                 }
 
                 is ApiResult.Failure -> {
@@ -128,9 +128,9 @@ class NfcWorkflowViewModel @Inject constructor(
                 }
 
                 is ApiResult.Exception -> {
-                    _uiState.value = NfcSignInUiState.Error(
-                        result.exception.message ?: "网络错误，请检查网络连接"
-                    )
+                    val message = result.exception.message ?: "网络错误，请检查网络连接"
+                    toastHelper.showShort(message)
+                    _uiState.value = NfcSignInUiState.Error(message)
                 }
 
                 is ApiResult.Failure -> {
@@ -153,6 +153,7 @@ class NfcWorkflowViewModel @Inject constructor(
      * @param message 错误信息
      */
     fun showError(message: String) {
+        toastHelper.showShort(message)
         _uiState.value = NfcSignInUiState.Error(message)
     }
 
