@@ -46,6 +46,7 @@ import com.ytone.longcare.common.utils.TimeUtils
 import com.ytone.longcare.features.nursing.vm.NursingViewModel
 import com.ytone.longcare.model.handleOrderNavigation
 import com.ytone.longcare.model.isPendingCareState
+import com.ytone.longcare.model.isServiceRecordState
 import com.ytone.longcare.model.toStateDisplayText
 import com.ytone.longcare.navigation.navigateToNursingExecution
 import com.ytone.longcare.navigation.navigateToService
@@ -318,7 +319,7 @@ fun OrderListItem(modifier: Modifier = Modifier, item: ServiceOrderModel) {
 
         Text(
             text = item.state.toStateDisplayText(),
-            color = Color.Red,
+            color = if (item.state.isServiceRecordState()) Color.Green else Color.Red,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
             modifier = Modifier.padding(horizontal = 8.dp)
