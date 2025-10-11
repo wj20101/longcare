@@ -252,6 +252,7 @@ fun SelectServiceScreen(
                             // 全选按钮
                             SelectAllButton(
                                 isAllSelected = serviceItems.isNotEmpty() && serviceItems.all { it.isSelected },
+                                enabled = starOrderState !is StarOrderUiState.Loading,
                                 onClick = {
                                     val isAllSelected = serviceItems.all { it.isSelected }
                                     for (i in serviceItems.indices) {
@@ -441,11 +442,12 @@ fun NextStepButtonDisabledPreview() {
 
 @Composable
 fun SelectAllButton(
-    isAllSelected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier
+    isAllSelected: Boolean, enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier
 ) {
     OutlinedButton(
         onClick = onClick,
         modifier = modifier.height(50.dp),
+        enabled = enabled,
         shape = CircleShape,
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = MaterialTheme.colorScheme.primary, containerColor = Color.White
@@ -473,5 +475,5 @@ fun SelectAllButton(
 @Preview
 @Composable
 fun SelectAllButtonPreview() {
-    SelectAllButton(isAllSelected = true, onClick = {})
+    SelectAllButton(isAllSelected = true,enabled = true, onClick = {})
 }
