@@ -268,7 +268,7 @@ fun SelectServiceScreen(
 
                         // 下一步按钮
                         NextStepButton(
-                            text = "开始服务",
+                            text = if (starOrderState !is StarOrderUiState.Loading) "开始服务" else "正在处理...",
                             enabled = serviceItems.any { it.isSelected } && starOrderState !is StarOrderUiState.Loading,
                             onClick = {
                                 val selectedProjectIds =
