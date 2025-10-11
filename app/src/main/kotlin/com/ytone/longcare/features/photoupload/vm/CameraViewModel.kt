@@ -34,7 +34,7 @@ class CameraViewModel @Inject constructor(
             try {
                 val locationResult = compositeLocationProvider.getCurrentLocation()
                 _location.value = if (locationResult != null) {
-                    "卫星定位:${locationResult.longitude},${locationResult.latitude}"
+                    "${locationResult.longitude},${locationResult.latitude}"
                 } else {
                     "未获取到定位"
                 }
