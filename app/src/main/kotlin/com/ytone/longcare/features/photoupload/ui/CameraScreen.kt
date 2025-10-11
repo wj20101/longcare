@@ -159,7 +159,7 @@ private fun CameraContent(
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
         onResult = { permissions ->
-            if (permissions.values.all { it }) {
+            if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
                 viewModel.updateCurrentLocationInfo()
             }
         }
@@ -238,7 +238,6 @@ private fun CameraContent(
 
                 ShutterButton(
                     onClick = {
-                        viewModel.updateCurrentLocationInfo()
                         viewModel.updateTime()
                         val executor = ContextCompat.getMainExecutor(context)
                         watermarkView?.let {
