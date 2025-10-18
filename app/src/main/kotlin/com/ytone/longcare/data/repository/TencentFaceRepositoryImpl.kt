@@ -21,7 +21,7 @@ class TencentFaceRepositoryImpl @Inject constructor(
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val eventBus: AppEventBus
 ) : TencentFaceRepository {
-    
+
     override suspend fun getAccessToken(
         appId: String,
         secret: String
@@ -31,7 +31,7 @@ class TencentFaceRepositoryImpl @Inject constructor(
             secret = secret
         )
     }
-    
+
     override suspend fun getApiTicket(
         appId: String,
         accessToken: String,
@@ -43,7 +43,7 @@ class TencentFaceRepositoryImpl @Inject constructor(
             userId = userId
         )
     }
-    
+
     override suspend fun getSignTicket(
         appId: String,
         accessToken: String
@@ -53,15 +53,17 @@ class TencentFaceRepositoryImpl @Inject constructor(
             accessToken = accessToken
         )
     }
-    
+
     override suspend fun getFaceId(
         appId: String,
         orderNo: String,
-        name: String,
-        idNo: String,
+        name: String?,
+        idNo: String?,
         userId: String,
         sign: String,
-        nonce: String
+        nonce: String,
+        sourcePhotoStr: String?,
+        sourcePhotoType: String?
     ): ApiResult<TencentFaceIdResponse> = safeTencentApiCall(ioDispatcher, eventBus) {
         val request = GetFaceIdRequest(
             appId = appId,
@@ -70,7 +72,9 @@ class TencentFaceRepositoryImpl @Inject constructor(
             idNo = idNo,
             userId = userId,
             sign = sign,
-            nonce = nonce
+            nonce = nonce,
+            sourcePhotoStr = sourcePhotoStr,
+            sourcePhotoType = sourcePhotoType
         )
         apiService.getFaceId(
             request = request,
