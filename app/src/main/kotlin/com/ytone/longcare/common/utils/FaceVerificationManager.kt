@@ -16,7 +16,7 @@ import javax.inject.Singleton
 
 /**
  * 腾讯人脸识别管理器
- * 
+ *
  * 职责：
  * 1. 管理腾讯云人脸识别的完整流程
  * 2. 处理认证凭据的获取和管理
@@ -31,7 +31,7 @@ class FaceVerificationManager @Inject constructor(
     // ================================
     // 数据模型定义
     // ================================
-    
+
     /**
      * 腾讯云配置参数
      */
@@ -39,15 +39,22 @@ class FaceVerificationManager @Inject constructor(
         val appId: String,
         val secret: String
     )
-    
+
     /**
      * 人脸验证请求参数
+     *
+     * @param name 姓名(自带源比对时，非必填)
+     * @param idNo 证件号(自带源比对时，非必填)
+     * @param orderNo 订单号
+     * @param userId 用户ID
+     * @param sourcePhotoStr 比对源照片(Base64, 自带源比对时，必填)
      */
     data class FaceVerifyRequest(
-        val name: String,
-        val idNo: String,
+        val name: String?,
+        val idNo: String?,
         val orderNo: String,
-        val userId: String
+        val userId: String,
+        val sourcePhotoStr: String? = null
     )
 
     /**
@@ -64,30 +71,30 @@ class FaceVerificationManager @Inject constructor(
         val keyLicence: String,
         val mode: FaceVerifyStatus.Mode = FaceVerifyStatus.Mode.GRADE
     )
-    
+
     /**
      * 认证凭据数据
      */
     // ================================
     // 回调接口定义
     // ================================
-    
+
     /**
      * 人脸验证回调接口
      */
     interface FaceVerifyCallback {
         /** 初始化成功 */
         fun onInitSuccess()
-        
+
         /** 初始化失败 */
         fun onInitFailed(error: WbFaceError?)
-        
+
         /** 验证成功 */
         fun onVerifySuccess(result: WbFaceVerifyResult)
-        
+
         /** 验证失败 */
         fun onVerifyFailed(error: WbFaceError?)
-        
+
         /** 用户取消验证 */
         fun onVerifyCancel()
     }
@@ -98,7 +105,7 @@ class FaceVerificationManager @Inject constructor(
 
     /**
      * 开始人脸验证（自动获取所有必要参数）
-     * 
+     *
      * @param context Android上下文
      * @param config 腾讯云配置
      * @param request 验证请求参数
@@ -113,7 +120,7 @@ class FaceVerificationManager @Inject constructor(
         try {
             // 统一生成nonce，避免在不同地方创建不同的nonce
             val nonce = generateNonce()
-            
+
             // 按需获取访问令牌
             val accessToken = getAccessToken(config)
             if (accessToken == null) {
@@ -154,7 +161,7 @@ class FaceVerificationManager @Inject constructor(
     // ================================
     // 核心流程方法
     // ================================
-    
+
     /**
      * 获取访问令牌
      */
@@ -207,12 +214,12 @@ class FaceVerificationManager @Inject constructor(
         nonce: String
     ): String? {
         return try {
-             val sign = generateSign(
-                 appId = config.appId,
-                 nonce = nonce,
-                 apiTicket = signTicket,
-                 userId = request.userId
-             )
+            val sign = generateSign(
+                appId = config.appId,
+                nonce = nonce,
+                apiTicket = signTicket,
+                userId = request.userId
+            )
 
             val result = tencentFaceRepository.getFaceId(
                 appId = config.appId,
@@ -221,7 +228,9 @@ class FaceVerificationManager @Inject constructor(
                 idNo = request.idNo,
                 userId = request.userId,
                 sign = sign,
-                nonce = nonce
+                nonce = nonce,
+                sourcePhotoStr = request.sourcePhotoStr,
+                sourcePhotoType = if (request.sourcePhotoStr != null) SOURCE_PHOTO_TYPE_HD else null
             )
 
             if (result is ApiResult.Success) {
@@ -243,22 +252,22 @@ class FaceVerificationManager @Inject constructor(
         nonce: String
     ): FaceVerifyParams {
         val sign = generateSign(
-             appId = config.appId,
-             nonce = nonce,
-             apiTicket = nonceTicket,
-             userId = request.userId,
-         )
+            appId = config.appId,
+            nonce = nonce,
+            apiTicket = nonceTicket,
+            userId = request.userId,
+        )
 
-         return FaceVerifyParams(
-             faceId = faceId,
-             orderNo = request.orderNo,
-             appId = config.appId,
-             nonce = nonce,
-             userId = request.userId,
-             sign = sign,
-             keyLicence = BuildConfig.TX_Licence
-         )
-     }
+        return FaceVerifyParams(
+            faceId = faceId,
+            orderNo = request.orderNo,
+            appId = config.appId,
+            nonce = nonce,
+            userId = request.userId,
+            sign = sign,
+            keyLicence = BuildConfig.TX_Licence
+        )
+    }
 
     // ================================
     // SDK操作方法
@@ -360,7 +369,7 @@ class FaceVerificationManager @Inject constructor(
     // ================================
     // 工具方法
     // ================================
-    
+
     /**
      * 生成随机字符串（nonce）
      */
@@ -421,7 +430,7 @@ class FaceVerificationManager @Inject constructor(
     // ================================
     // 资源管理
     // ================================
-    
+
     /**
      * 释放SDK资源
      */
@@ -435,5 +444,11 @@ class FaceVerificationManager @Inject constructor(
 
     companion object {
         const val FACE_VERSION = "1.0.0"
+        /**
+         * 比对源照片类型
+         * 1: 水纹正脸照
+         * 2: 高清正脸照
+         */
+        const val SOURCE_PHOTO_TYPE_HD = "2"
     }
 }

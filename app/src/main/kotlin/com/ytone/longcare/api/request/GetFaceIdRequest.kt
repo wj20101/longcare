@@ -25,18 +25,18 @@ data class GetFaceIdRequest(
     /**
      * 姓名
      * 使用权威源比对时：姓名+证件号必须输入
-     * 使用自带源比对时：姓名+证件号可不输入
+     * 使用自带源比对时：可不输入
      */
     @param:Json(name = "name")
-    val name: String,
+    val name: String?,
 
     /**
      * 证件号码
      * 使用权威源比对时：姓名+证件号必须输入
-     * 使用自带源比对时：姓名+证件号可不输入
+     * 使用自带源比对时：可不输入
      */
     @param:Json(name = "idNo")
-    val idNo: String,
+    val idNo: String?,
 
     /**
      * 用户 ID ，用户的唯一标识（不能带有特殊字符），需要跟生成签名的 userId 保持一致。同一个用户的 userId 请保持一致，不同用户请不要使用同一个userId，我们会根据 userId 来做防重复点击优化以及登录态校验
