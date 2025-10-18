@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.NurseServiceTimeModel
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
@@ -96,7 +97,13 @@ fun ProfileScreen(
                 OptionsCard()
                 Spacer(modifier = Modifier.weight(1f))
                 LogoutButton(onClick = { viewModel.logout() })
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "版本号: ${BuildConfig.VERSION_NAME}.${BuildConfig.VERSION_CODE}",
+                    color = Color.Black.copy(alpha = 0.5f),
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
         } ?: run {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
