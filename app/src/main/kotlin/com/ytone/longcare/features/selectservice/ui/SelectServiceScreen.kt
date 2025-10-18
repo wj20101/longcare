@@ -54,13 +54,11 @@ fun SelectServiceScreen(
 ) {
     val context = LocalContext.current
     val selectedProjectsManager = EntryPointAccessors.fromApplication(
-        context.applicationContext,
-        SelectServiceEntryPoint::class.java
+        context.applicationContext, SelectServiceEntryPoint::class.java
     ).selectedProjectsManager()
-    
+
     val navigationHelper = EntryPointAccessors.fromApplication(
-        context.applicationContext,
-        SelectServiceEntryPoint::class.java
+        context.applicationContext, SelectServiceEntryPoint::class.java
     ).navigationHelper()
     // 使用SharedViewModel获取订单详情
     val uiState by sharedViewModel.uiState.collectAsState()
@@ -88,11 +86,17 @@ fun SelectServiceScreen(
         }
     }
 
+    var selectServiceType by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        selectServiceType = selectServiceViewModel.systemConfigManager.getSelectServiceType()
+    }
+
     // 根据API返回的数据转换为UI需要的ServiceItem格式
     val serviceItems = remember { mutableStateListOf<ServiceItem>() }
 
     // 当uiState变化时更新serviceItems
-    LaunchedEffect(uiState) {
+    LaunchedEffect(uiState, selectServiceType) {
         when (val currentState = uiState) {
             is OrderDetailUiState.Success -> {
                 serviceItems.clear()
@@ -102,7 +106,7 @@ fun SelectServiceScreen(
                             id = project.projectId,
                             name = project.projectName,
                             duration = project.serviceTime,
-                            isSelected = false // 默认不选中，用户可以手动选择
+                            isSelected = selectServiceType != 0 // 如果不等于0，则默认全选
                         )
                     })
             }
@@ -111,12 +115,6 @@ fun SelectServiceScreen(
                 serviceItems.clear()
             }
         }
-    }
-
-    var selectServiceType by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(Unit) {
-        selectServiceType = selectServiceViewModel.systemConfigManager.getSelectServiceType()
     }
 
     Box(
@@ -128,22 +126,22 @@ fun SelectServiceScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
-                        Text(
-                            "请选择服务项目", fontWeight = FontWeight.Bold
-                        )
-                    }, navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.common_back),
-                                tint = Color.White
-                            )
-                        }
-                    }, colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White
+                    Text(
+                        "请选择服务项目", fontWeight = FontWeight.Bold
                     )
+                }, navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            tint = Color.White
+                        )
+                    }
+                }, colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
                 )
             }, containerColor = Color.Transparent
         ) { paddingValues ->
@@ -235,9 +233,7 @@ fun SelectServiceScreen(
                                     Color.Transparent,
                                     Color(0xFFF6F9FF).copy(alpha = 0.9f),
                                     Color(0xFFF6F9FF)
-                                ),
-                                startY = 0f,
-                                endY = 100f
+                                ), startY = 0f, endY = 100f
                             )
                         )
                         .padding(horizontal = 20.dp, vertical = 32.dp)
@@ -274,9 +270,13 @@ fun SelectServiceScreen(
                                 val selectedProjectIds =
                                     serviceItems.filter { it.isSelected }.map { it.id }
                                 // 先调用starOrder接口
-                                sharedViewModel.starOrder(orderInfoRequest.orderId, selectedProjectIds.map { it.toLong() }) {
+                                sharedViewModel.starOrder(
+                                    orderInfoRequest.orderId,
+                                    selectedProjectIds.map { it.toLong() }) {
                                     // 成功后保存选中的项目ID到本地存储
-                                    selectedProjectsManager.saveSelectedProjects(orderInfoRequest.orderId, selectedProjectIds)
+                                    selectedProjectsManager.saveSelectedProjects(
+                                        orderInfoRequest.orderId, selectedProjectIds
+                                    )
                                     // 从uiState获取orderInfo
                                     val currentState = uiState
                                     if (currentState is OrderDetailUiState.Success) {
@@ -284,7 +284,8 @@ fun SelectServiceScreen(
                                         navigationHelper.navigateToServiceCountdownWithLogic(
                                             navController = navController,
                                             orderId = orderInfoRequest.orderId,
-                                            projectList = currentState.orderInfo.projectList ?: emptyList(),
+                                            projectList = currentState.orderInfo.projectList
+                                                ?: emptyList(),
                                             selectedProjectIds = selectedProjectIds
                                         )
                                     }
@@ -464,10 +465,7 @@ fun SelectAllButton(
             Spacer(modifier = Modifier.width(4.dp))
         }
         Text(
-            text = "全选",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF2C85FE)
+            text = "全选", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C85FE)
         )
     }
 }
@@ -475,5 +473,5 @@ fun SelectAllButton(
 @Preview
 @Composable
 fun SelectAllButtonPreview() {
-    SelectAllButton(isAllSelected = true,enabled = true, onClick = {})
+    SelectAllButton(isAllSelected = true, enabled = true, onClick = {})
 }
