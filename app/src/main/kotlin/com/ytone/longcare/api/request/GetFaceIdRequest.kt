@@ -24,12 +24,16 @@ data class GetFaceIdRequest(
 
     /**
      * 姓名
+     * 使用权威源比对时：姓名+证件号必须输入
+     * 使用自带源比对时：姓名+证件号可不输入
      */
     @param:Json(name = "name")
     val name: String,
 
     /**
      * 证件号码
+     * 使用权威源比对时：姓名+证件号必须输入
+     * 使用自带源比对时：姓名+证件号可不输入
      */
     @param:Json(name = "idNo")
     val idNo: String,
@@ -62,6 +66,9 @@ data class GetFaceIdRequest(
      * 比对源照片，注意：原始图片不能超过500k，且必须为 JPG 或 PNG、BMP 格式。
      * 参数有值：使用合作伙伴提供的比对源照片进行比对，必须注意是正脸可信照片，照片质量由合作方保证
      * 参数为空 ：根据身份证号 + 姓名使用权威数据源比对
+     *
+     * 是否必填:否，非必填请使用标准的图片转 base64方法，base64编码不可包含换行符，不需要加前缀
+     * 注意：只有您需要使用自带比对源比对时上传，使用权威比对源比对时请不要上传该字段
      */
     @param:Json(name = "sourcePhotoStr")
     val sourcePhotoStr: String? = null,
@@ -72,6 +79,9 @@ data class GetFaceIdRequest(
      * 参数值为 2 时是：高清正脸照
      * 重要提示：照片上无水波纹的为高清照，请勿传错，否则影响比对准确率。
      * 如有疑问，请联系腾讯云技术支持线下确认
+     *
+     * 是否必填:否，提供比对源照片需要传
+     * 注意：只有您需要使用自带比对源比对时上传，使用权威比对源比对时请不要上传该字段
      */
     @param:Json(name = "sourcePhotoType")
     val sourcePhotoType: String? = null
