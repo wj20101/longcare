@@ -50,6 +50,7 @@ import com.ytone.longcare.features.login.ext.maxPhoneLength
 import com.ytone.longcare.debug.NfcTestConfig
 import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.navigation.navigateToCamera
+import com.ytone.longcare.navigation.navigateToFaceVerificationWithAutoSign
 import com.ytone.longcare.navigation.navigateToNfcTest
 
 
@@ -87,7 +88,7 @@ fun LoginScreen(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
             // 创建所有UI元素的引用
-            val (smallLogo, logo, phoneField, codeField, sendCodeButton, loginButton, agreementText, nfcTestButton, cameraTestButton) = createRefs()
+            val (smallLogo, logo, phoneField, codeField, sendCodeButton, loginButton, agreementText, nfcTestButton, cameraTestButton, faceVerificationTestButton) = createRefs()
 
             val horizontalMargin = 48.dp
 
@@ -256,6 +257,7 @@ fun LoginScreen(
                     },
                     modifier = Modifier.constrainAs(cameraTestButton) {
                         bottom.linkTo(parent.bottom, margin = 16.dp)
+//                        bottom.linkTo(faceVerificationTestButton.top)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                     }
@@ -266,6 +268,21 @@ fun LoginScreen(
                         fontSize = 14.sp
                     )
                 }
+
+//                TextButton(
+//                    onClick = { navController.navigateToFaceVerificationWithAutoSign() },
+//                    modifier = Modifier.constrainAs(faceVerificationTestButton) {
+//                        bottom.linkTo(parent.bottom, margin = 16.dp)
+//                        start.linkTo(parent.start)
+//                        end.linkTo(parent.end)
+//                    }
+//                ) {
+//                    Text(
+//                        text = "人脸验证测试",
+//                        color = TextColorSecondary,
+//                        fontSize = 14.sp
+//                    )
+//                }
             }
         }
     }

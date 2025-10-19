@@ -1,6 +1,5 @@
 package com.ytone.longcare.navigation
 
-import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -247,6 +246,10 @@ fun NavController.navigateToCamera(watermarkData: WatermarkData) {
     navigate(CameraRoute(watermarkData))
 }
 
+fun NavController.navigateToFaceVerificationWithAutoSign() {
+    navigate(TxFaceRoute)
+}
+
 /**
  * 应用的顶层 Composable，负责根据认证状态决定初始导航。
  * @param viewModel 主要的ViewModel，用于获取会话状态
@@ -398,8 +401,8 @@ fun AppNavigation(startDestination: Any) {
         composable<TxFaceRoute> { backStackEntry ->
             FaceVerificationWithAutoSignScreen(
                 navController = navController,
-                {},
-                {},
+                onNavigateBack = { navController.popBackStack() },
+                onVerificationSuccess = {},
             )
         }
         composable<LocationTrackingRoute> { backStackEntry ->
