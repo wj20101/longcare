@@ -9,7 +9,6 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
-import androidx.camera.compose.CameraXViewfinder
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
@@ -194,16 +193,6 @@ fun FaceCaptureScreen(
                 quality = uiState.faceQuality,
                 modifier = Modifier.align(Alignment.Center)
             )
-            
-            // 处理状态指示器 - 只在未检测到人脸且正在处理时显示
-            if (uiState.isProcessing && !uiState.faceDetected) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(48.dp),
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
             
             // 底部UI
             Column(
