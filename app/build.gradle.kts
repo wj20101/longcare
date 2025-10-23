@@ -218,7 +218,7 @@ dependencies {
     // Image Loading
     implementation(libs.bundles.coil)
 
-    // CameraX
+    // CameraX - Updated for modern face capture
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
@@ -226,6 +226,13 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.extensions)
     implementation(libs.androidx.camera.compose)
+    
+    // ML Kit Face Detection for face capture feature
+    implementation(libs.face.detection)
+    
+    // Additional Lifecycle components for modern state management
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
     // constraintlayout
     implementation(libs.androidx.constraintlayout)

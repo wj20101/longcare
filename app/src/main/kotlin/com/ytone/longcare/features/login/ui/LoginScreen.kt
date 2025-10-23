@@ -4,11 +4,14 @@ import android.content.pm.ActivityInfo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -48,6 +51,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import com.ytone.longcare.features.login.ext.maxPhoneLength
 import com.ytone.longcare.debug.NfcTestConfig
+import com.ytone.longcare.features.facecapture.FaceCaptureTestLauncher
 import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.navigation.navigateToCamera
 import com.ytone.longcare.navigation.navigateToFaceVerificationWithAutoSign
@@ -88,7 +92,7 @@ fun LoginScreen(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
             // 创建所有UI元素的引用
-            val (smallLogo, logo, phoneField, codeField, sendCodeButton, loginButton, agreementText, nfcTestButton, cameraTestButton, faceVerificationTestButton) = createRefs()
+            val (smallLogo, logo, phoneField, codeField, sendCodeButton, loginButton, agreementText, testButtons) = createRefs()
 
             val horizontalMargin = 48.dp
 
@@ -222,67 +226,88 @@ fun LoginScreen(
                 onUserAgreementClick = { context.showLongToast(context.getString(R.string.login_user_agreement_toast)) },
                 onPrivacyPolicyClick = { context.showLongToast(context.getString(R.string.login_privacy_policy_toast)) },
                 modifier = Modifier.constrainAs(agreementText) {
-                    bottom.linkTo(if (NfcTestConfig.ENABLE_NFC_TEST) nfcTestButton.top else parent.bottom, margin = 32.dp)
+                    bottom.linkTo(if (NfcTestConfig.ENABLE_NFC_TEST) testButtons.top else parent.bottom, margin = 32.dp)
                     start.linkTo(parent.start, margin = 32.dp) // 应用边距以控制文本块宽度
                     end.linkTo(parent.end, margin = 32.dp)     // 应用边距
                     width = Dimension.fillToConstraints // 确保文本在约束内正确换行和居中
                 })
 
-            // NFC Test Button (只在测试模式下显示)
+            // Test Buttons (只在测试模式下显示)
             if (NfcTestConfig.ENABLE_NFC_TEST) {
-                TextButton(
-                    onClick = { navController.navigateToNfcTest() },
-                    modifier = Modifier.constrainAs(nfcTestButton) {
-                        bottom.linkTo(cameraTestButton.top)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    }
+                Row(
+                    modifier = Modifier
+                        .constrainAs(testButtons) {
+                            bottom.linkTo(parent.bottom, margin = 16.dp)
+                            start.linkTo(parent.start, margin = 16.dp)
+                            end.linkTo(parent.end, margin = 16.dp)
+                            width = Dimension.fillToConstraints
+                        }
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "碰一碰测试",
-                        color = TextColorSecondary,
-                        fontSize = 14.sp
-                    )
-                }
+                    val buttonColors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue.copy(alpha = 0.1f))
+                    val buttonShape = RoundedCornerShape(8.dp)
 
-                TextButton(
-                    onClick = {
-                        val mockWatermarkData = WatermarkData(
-                            title = "服务前",
-                            insuredPerson = "张三",
-                            caregiver = "李四",
-                            address = "北京市朝阳区xx路xx号"
+                    Button(
+                        onClick = { navController.navigateToNfcTest() },
+                        shape = buttonShape,
+                        colors = buttonColors,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "碰一碰测试",
+                            color = PrimaryBlue,
+                            fontSize = 14.sp
                         )
-                        navController.navigateToCamera(mockWatermarkData)
-                    },
-                    modifier = Modifier.constrainAs(cameraTestButton) {
-                        bottom.linkTo(parent.bottom, margin = 16.dp)
-//                        bottom.linkTo(faceVerificationTestButton.top)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
                     }
-                ) {
-                    Text(
-                        text = "相机测试",
-                        color = TextColorSecondary,
-                        fontSize = 14.sp
-                    )
-                }
 
-//                TextButton(
-//                    onClick = { navController.navigateToFaceVerificationWithAutoSign() },
-//                    modifier = Modifier.constrainAs(faceVerificationTestButton) {
-//                        bottom.linkTo(parent.bottom, margin = 16.dp)
-//                        start.linkTo(parent.start)
-//                        end.linkTo(parent.end)
-//                    }
-//                ) {
-//                    Text(
-//                        text = "人脸验证测试",
-//                        color = TextColorSecondary,
-//                        fontSize = 14.sp
-//                    )
-//                }
+                    Button(
+                        onClick = {
+                            val mockWatermarkData = WatermarkData(
+                                title = "服务前",
+                                insuredPerson = "张三",
+                                caregiver = "李四",
+                                address = "北京市朝阳区xx路xx号"
+                            )
+                            navController.navigateToCamera(mockWatermarkData)
+                        },
+                        shape = buttonShape,
+                        colors = buttonColors,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "相机测试",
+                            color = PrimaryBlue,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    Button(
+                        onClick = { navController.navigateToFaceVerificationWithAutoSign() },
+                        shape = buttonShape,
+                        colors = buttonColors,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "人脸验证测试",
+                            color = PrimaryBlue,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    Button(
+                        onClick = { FaceCaptureTestLauncher.launch(context) },
+                        shape = buttonShape,
+                        colors = buttonColors,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "人脸采集测试",
+                            color = PrimaryBlue,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
             }
         }
     }

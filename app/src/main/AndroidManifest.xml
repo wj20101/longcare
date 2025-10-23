@@ -132,6 +132,18 @@
             android:showOnLockScreen="true"
             android:turnScreenOn="true"
             android:theme="@style/Theme.LongCare" />
+            
+        <!-- 人脸捕获测试Activity -->
+        <activity
+            android:name=".features.facecapture.FaceCaptureTestActivity"
+            android:exported="true"
+            android:theme="@style/Theme.LongCare">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="longcare" android:host="facecapture" />
+            </intent-filter>
+        </activity>
 
         <!-- Disable WorkManager automatic initialization -->
         <provider
