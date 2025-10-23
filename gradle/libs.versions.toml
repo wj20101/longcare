@@ -42,11 +42,11 @@ wire = "5.4.0"
 # Networking
 retrofit = "3.0.0"
 okhttp = "5.2.1"
-okio = "3.16.1"
+okio = "3.16.2"
 moshi = "1.15.2"
 kotlinxDatetime = "0.7.1"
 kotlinxSerialization = "1.9.0"
-
+faceDetection = "16.1.7"
 coil = "3.3.0"
 
 # Tencent COS
@@ -70,10 +70,13 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 androidx-appcompat-resources = { group = "androidx.appcompat", name = "appcompat-resources", version.ref = "appcompat" }
 androidx-legacy-support-core-utils = { group = "androidx.legacy", name = "legacy-support-core-utils", version.ref = "legacySupport" }
 androidx-legacy-support-v4 = { group = "androidx.legacy", name = "legacy-support-v4", version.ref = "legacySupport" }
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-fragment-compose = { group = "androidx.fragment", name = "fragment-compose", version.ref = "fragmentCompose" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetection" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 startup-runtime = { group = "androidx.startup", name = "startup-runtime", version.ref = "startup" }
 constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayoutCompose" }
