@@ -235,24 +235,33 @@ fun FaceCaptureScreen(
                     
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        modifier = Modifier.padding(bottom = 8.dp) // Adjusted padding
                     ) {
                         itemsIndexed(uiState.capturedFaces) { index, bitmap ->
+                            val isSelected = index == uiState.selectedFaceIndex
                             FaceThumbnail(
                                 bitmap = bitmap,
-                                isSelected = index == uiState.selectedFaceIndex,
-                                onClick = { 
-                                    previewBitmap = bitmap
+                                isSelected = isSelected,
+                                onClick = {
+                                    if (isSelected) {
+                                        previewBitmap = bitmap
+                                    } else {
+                                        viewModel.selectFace(index)
+                                    }
                                 },
-                                onLongClick = {
-                                    viewModel.selectFace(index)
-                                },
-                                onDoubleClick = {
+                                onDelete = {
                                     viewModel.removeFace(index)
                                 }
                             )
                         }
                     }
+                    
+                    Text(
+                        text = "提示: 单击选择, 再次单击预览, 点击右上角删除",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
                 }
                 
                 // 操作按钮
@@ -377,32 +386,26 @@ private fun FaceThumbnail(
     bitmap: Bitmap,
     isSelected: Boolean,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    onDoubleClick: () -> Unit = {}
+    onDelete: () -> Unit,
 ) {
     Box(
-        modifier = Modifier
-            .size(60.dp)
-            .clip(CircleShape)
-            .border(
-                width = if (isSelected) 3.dp else 1.dp,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
-                shape = CircleShape
-            )
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { onClick() },
-                    onLongPress = { onLongClick() },
-                    onDoubleTap = { onDoubleClick() }
-                )
-            }
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(64.dp) // 调整大小以适应较小的删除按钮
     ) {
         Image(
             bitmap = bitmap.asImageBitmap(),
             contentDescription = "人脸照片",
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .size(60.dp)
+                .clip(CircleShape)
+                .border(
+                    width = if (isSelected) 3.dp else 1.dp,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
+                    shape = CircleShape
+                )
+                .clickable(onClick = onClick)
         )
-        
+
         if (isSelected) {
             Icon(
                 Icons.Default.CheckCircle,
@@ -410,8 +413,27 @@ private fun FaceThumbnail(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
+                    .padding(end = 4.dp, bottom = 4.dp)
                     .size(20.dp)
                     .background(Color.White, CircleShape)
+            )
+        }
+
+        // 删除按钮
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(18.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.5f))
+                .clickable { onDelete() }
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "删除照片",
+                tint = Color.White,
+                modifier = Modifier.size(10.dp)
             )
         }
     }
