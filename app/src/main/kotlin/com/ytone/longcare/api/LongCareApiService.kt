@@ -13,6 +13,8 @@ import com.ytone.longcare.api.request.CheckOrderParamModel
 import com.ytone.longcare.api.request.StarOrderParamModel
 import com.ytone.longcare.api.request.UpUserStartImgParamModel
 import com.ytone.longcare.api.request.BindLocationParamModel
+import com.ytone.longcare.api.request.SetFaceParamModel
+import com.ytone.longcare.api.request.CheckEndOrderParamModel
 import com.ytone.longcare.api.response.LoginResultModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.api.response.ServiceOrderModel
@@ -196,5 +198,23 @@ interface LongCareApiService {
      */
     @POST("/V1/Service/BindLocation")
     suspend fun bindLocation(@Body bindLocationParamModel: BindLocationParamModel): Response<Unit>
+
+    /**
+     * 设置人脸信息
+     *
+     * @param setFaceParamModel 请求参数，包含人脸图片信息
+     * @return 无返回值
+     */
+    @POST("/V1/User/SetFace")
+    suspend fun setFace(@Body setFaceParamModel: SetFaceParamModel): Response<Unit>
+
+    /**
+     * 检测结束工单
+     *
+     * @param checkEndOrderParamModel 请求参数，包含订单ID和完成的服务项目ID集合
+     * @return 无返回值
+     */
+    @POST("/V1/Service/CheckEndOrder")
+    suspend fun checkEndOrder(@Body checkEndOrderParamModel: CheckEndOrderParamModel): Response<Unit>
 
 }

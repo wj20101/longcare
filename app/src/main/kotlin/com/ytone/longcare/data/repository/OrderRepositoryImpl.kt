@@ -9,6 +9,7 @@ import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.request.StarOrderParamModel
 import com.ytone.longcare.api.request.UpUserStartImgParamModel
 import com.ytone.longcare.api.request.BindLocationParamModel
+import com.ytone.longcare.api.request.CheckEndOrderParamModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
@@ -136,6 +137,20 @@ class OrderRepositoryImpl @Inject constructor(
                     nfc = nfc,
                     longitude = longitude,
                     latitude = latitude
+                )
+            )
+        }
+    }
+
+    override suspend fun checkEndOrder(
+        orderId: Long,
+        projectIdList: List<Int>
+    ): ApiResult<Unit> {
+        return safeApiCall(ioDispatcher, eventBus) {
+            apiService.checkEndOrder(
+                CheckEndOrderParamModel(
+                    orderid = orderId,
+                    porjectIdList = projectIdList
                 )
             )
         }
