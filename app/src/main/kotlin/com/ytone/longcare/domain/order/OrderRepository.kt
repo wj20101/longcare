@@ -104,4 +104,14 @@ interface OrderRepository {
         longitude: String,
         latitude: String
     ): ApiResult<Unit>
+
+    /**
+     * 检测结束工单
+     * @param orderId 订单号
+     * @param projectIdList 完成的服务项目ID集合
+     */
+    suspend fun checkEndOrder(
+        orderId: Long,
+        projectIdList: List<Int>
+    ): ApiResult<Unit>
 }

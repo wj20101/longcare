@@ -36,6 +36,25 @@ class MockInterceptor(private val context: Context) : Interceptor {
     }
 
     private fun findMockData(path: String, method: String): String? {
+        // CheckEndOrder 接口特殊处理：动态返回成功或3005错误
+        if (path == "/V1/Service/CheckEndOrder") {
+            // 使用随机数决定返回成功还是3005错误，50%概率返回3005错误
+            val mockFile = if (kotlin.random.Random.nextBoolean()) {
+                "mock/check_end_order_error_3005.json"
+            } else {
+                "mock/common_success_unit.json"
+            }
+            
+            return try {
+                context.assets.open(mockFile).bufferedReader().use { reader ->
+                    reader.readText()
+                }
+            } catch (e: Exception) {
+                // 如果文件读取失败，可以返回一个错误信息的JSON
+                """{"resultCode": 500, "resultMsg": "Mock文件读取失败: ${e.message}", "data": null}"""
+            }
+        }
+        
         val mockFile = when (path) {
             // 返回 Unit 的通用成功响应
             "/V1/Phone/SendSmsCode",
@@ -45,6 +64,7 @@ class MockInterceptor(private val context: Context) : Interceptor {
             "/V1/Service/AddPostion",
             "/V1/Service/CheckOrder",  // 新增：工单前校验
             "/V1/Service/UpUserStartImg",  // 新增：添加开始老人照片
+            "/V1/User/SetFace",  // 新增：设置人脸信息
             "/V1/Login/Out" -> "mock/common_success_unit.json"  // 新增：退出登录
 
             // 具体数据模型的响应

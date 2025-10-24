@@ -110,35 +110,128 @@ class NfcWorkflowViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = NfcSignInUiState.Loading
 
-            when (val result = orderRepository.endOrder(
+            // 先调用 checkEndOrder
+            when (val checkResult = orderRepository.checkEndOrder(
                 orderId = orderInfoRequest.orderId,
-                nfcDeviceId = nfcDeviceId,
-                projectIdList = porjectIdList,
-                beginImgList = beginImgList,
-                centerImgList = centerImgList,
-                endImageList = endImageList,
-                longitude = longitude,
-                latitude = latitude,
-                endType = endType
+                projectIdList = porjectIdList
             )) {
                 is ApiResult.Success -> {
-                    // 订单结束成功后清除本地存储的选中项目数据
-                    selectedProjectsManager.clearSelectedProjects(orderInfoRequest.orderId)
-                    _uiState.value = NfcSignInUiState.Success
+                    // checkEndOrder 成功，直接调用 endOrder
+                    executeEndOrder(
+                        orderInfoRequest = orderInfoRequest,
+                        nfcDeviceId = nfcDeviceId,
+                        porjectIdList = porjectIdList,
+                        beginImgList = beginImgList,
+                        endImageList = endImageList,
+                        centerImgList = centerImgList,
+                        longitude = longitude,
+                        latitude = latitude,
+                        endType = endType
+                    )
                 }
 
                 is ApiResult.Exception -> {
-                    val message = result.exception.message ?: "网络错误，请检查网络连接"
+                    val message = checkResult.exception.message ?: "网络错误，请检查网络连接"
                     toastHelper.showShort(message)
                     _uiState.value = NfcSignInUiState.Error(message)
                 }
 
                 is ApiResult.Failure -> {
-                    toastHelper.showShort(result.message)
-                    _uiState.value = NfcSignInUiState.Error(result.message)
+                    // 检查是否是状态码 3005
+                    if (checkResult.code == 3005) {
+                        // 显示确认对话框
+                        _uiState.value = NfcSignInUiState.ShowConfirmDialog(
+                            message = checkResult.message,
+                            endOrderParams = EndOrderParams(
+                                orderInfoRequest = orderInfoRequest,
+                                nfcDeviceId = nfcDeviceId,
+                                porjectIdList = porjectIdList,
+                                beginImgList = beginImgList,
+                                endImageList = endImageList,
+                                centerImgList = centerImgList,
+                                longitude = longitude,
+                                latitude = latitude,
+                                endType = endType
+                            )
+                        )
+                    } else {
+                        toastHelper.showShort(checkResult.message)
+                        _uiState.value = NfcSignInUiState.Error(checkResult.message)
+                    }
                 }
             }
         }
+    }
+
+    /**
+     * 执行结束订单操作
+     */
+    private suspend fun executeEndOrder(
+        orderInfoRequest: OrderInfoRequestModel,
+        nfcDeviceId: String,
+        porjectIdList: List<Int>,
+        beginImgList: List<String>,
+        endImageList: List<String>,
+        centerImgList: List<String>,
+        longitude: String,
+        latitude: String,
+        endType: Int
+    ) {
+        when (val result = orderRepository.endOrder(
+            orderId = orderInfoRequest.orderId,
+            nfcDeviceId = nfcDeviceId,
+            projectIdList = porjectIdList,
+            beginImgList = beginImgList,
+            centerImgList = centerImgList,
+            endImageList = endImageList,
+            longitude = longitude,
+            latitude = latitude,
+            endType = endType
+        )) {
+            is ApiResult.Success -> {
+                // 订单结束成功后清除本地存储的选中项目数据
+                selectedProjectsManager.clearSelectedProjects(orderInfoRequest.orderId)
+                _uiState.value = NfcSignInUiState.Success
+            }
+
+            is ApiResult.Exception -> {
+                val message = result.exception.message ?: "网络错误，请检查网络连接"
+                toastHelper.showShort(message)
+                _uiState.value = NfcSignInUiState.Error(message)
+            }
+
+            is ApiResult.Failure -> {
+                toastHelper.showShort(result.message)
+                _uiState.value = NfcSignInUiState.Error(result.message)
+            }
+        }
+    }
+
+    /**
+     * 确认结束订单（用户点击确认按钮后调用）
+     */
+    fun confirmEndOrder(params: EndOrderParams) {
+        viewModelScope.launch {
+            _uiState.value = NfcSignInUiState.Loading
+            executeEndOrder(
+                orderInfoRequest = params.orderInfoRequest,
+                nfcDeviceId = params.nfcDeviceId,
+                porjectIdList = params.porjectIdList,
+                beginImgList = params.beginImgList,
+                endImageList = params.endImageList,
+                centerImgList = params.centerImgList,
+                longitude = params.longitude,
+                latitude = params.latitude,
+                endType = params.endType
+            )
+        }
+    }
+
+    /**
+     * 取消结束订单（用户点击取消按钮后调用）
+     */
+    fun cancelEndOrder() {
+        _uiState.value = NfcSignInUiState.Initial
     }
 
     /**
@@ -350,4 +443,20 @@ sealed class NfcSignInUiState {
     data object Success : NfcSignInUiState()
     data class Error(val message: String) : NfcSignInUiState()
     data object Initial : NfcSignInUiState()
+    data class ShowConfirmDialog(
+        val message: String,
+        val endOrderParams: EndOrderParams
+    ) : NfcSignInUiState()
 }
+
+data class EndOrderParams(
+    val orderInfoRequest: OrderInfoRequestModel,
+    val nfcDeviceId: String,
+    val porjectIdList: List<Int>,
+    val beginImgList: List<String>,
+    val endImageList: List<String>,
+    val centerImgList: List<String>,
+    val longitude: String,
+    val latitude: String,
+    val endType: Int
+)

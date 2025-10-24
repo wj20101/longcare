@@ -188,6 +188,7 @@ fun NfcWorkflowScreen(
         is NfcSignInUiState.Success -> SignInState.SUCCESS
         is NfcSignInUiState.Error -> SignInState.FAILURE
         is NfcSignInUiState.Initial -> SignInState.IDLE
+        is NfcSignInUiState.ShowConfirmDialog -> SignInState.IDLE
     }
 
     val titleRes = when (signInMode) {
@@ -316,6 +317,18 @@ fun NfcWorkflowScreen(
                 onConfirm = { nfcViewModel.confirmLocationActivation(data) },
                 onCancel = { nfcViewModel.cancelLocationActivation() }
             )
+        }
+        
+        // 结束工单确认对话框
+        when (val currentState = uiState) {
+            is NfcSignInUiState.ShowConfirmDialog -> {
+                EndOrderConfirmDialog(
+                    message = currentState.message,
+                    onConfirm = { nfcViewModel.confirmEndOrder(currentState.endOrderParams) },
+                    onCancel = { nfcViewModel.cancelEndOrder() }
+                )
+            }
+            else -> { /* 其他状态不需要显示对话框 */ }
         }
     }
 }
@@ -450,6 +463,67 @@ fun LocationActivationDialog(
             ) {
                 Text(
                     text = "确定激活",
+                    color = Color.White,
+                    fontSize = 14.sp
+                )
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onCancel,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color.Gray
+                ),
+                border = BorderStroke(1.dp, Color.Gray),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Text(
+                    text = "取消",
+                    fontSize = 14.sp
+                )
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(12.dp)
+    )
+}
+
+@Composable
+fun EndOrderConfirmDialog(
+    message: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = {
+            Text(
+                text = "确认结束工单",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Text(
+                text = message,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF3A86FF)
+                ),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Text(
+                    text = "确认",
                     color = Color.White,
                     fontSize = 14.sp
                 )
