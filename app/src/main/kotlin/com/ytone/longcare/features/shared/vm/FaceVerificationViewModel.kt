@@ -73,6 +73,40 @@ class FaceVerificationViewModel @Inject constructor(
     }
     
     /**
+     * 开始人脸验证（自带源比对，自动获取签名参数）
+     * @param config 腾讯云配置
+     * @param orderNo 订单号
+     * @param userId 用户ID
+     * @param sourcePhotoStr 比对源照片(Base64)
+     */
+    fun startFaceVerificationWithAutoSign(
+        context: Context,
+        config: FaceVerificationManager.TencentCloudConfig,
+        orderNo: String,
+        userId: String,
+        sourcePhotoStr: String
+    ) {
+        viewModelScope.launch {
+            _uiState.value = FaceVerifyUiState.Initializing
+
+            val request = FaceVerificationManager.FaceVerifyRequest(
+                name = null, // 自带源比对时不需要姓名
+                idNo = null, // 自带源比对时不需要身份证号
+                orderNo = orderNo,
+                userId = userId,
+                sourcePhotoStr = sourcePhotoStr
+            )
+            
+            faceVerificationManager.startFaceVerification(
+                context = context,
+                config = config,
+                request = request,
+                callback = createFaceVerifyCallback()
+            )
+        }
+    }
+    
+    /**
      * 创建人脸验证回调
      */
     private fun createFaceVerifyCallback() = object : FaceVerificationManager.FaceVerifyCallback {

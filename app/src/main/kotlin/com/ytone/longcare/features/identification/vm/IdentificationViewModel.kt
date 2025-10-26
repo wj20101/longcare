@@ -7,7 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.ytone.longcare.BuildConfig
+import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.api.request.SetFaceParamModel
 import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.CosUtils
@@ -20,6 +22,12 @@ import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.models.protos.User
+import android.util.Base64
+import androidx.core.net.toUri
+import java.io.File
+import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +52,7 @@ class IdentificationViewModel @Inject constructor(
     private val sharedOrderRepository: SharedOrderRepository,
     private val orderRepository: OrderRepository,
     private val cosRepository: CosRepository,
+    private val apiService: LongCareApiService,
     private val toastHelper: ToastHelper,
     @param:ApplicationContext private val applicationContext: Context
 ) : ViewModel() {
@@ -65,6 +74,14 @@ class IdentificationViewModel @Inject constructor(
     // 拍照上传状态
     private val _photoUploadState = MutableStateFlow<PhotoUploadState>(PhotoUploadState.Initial)
     val photoUploadState: StateFlow<PhotoUploadState> = _photoUploadState.asStateFlow()
+    
+    // 人脸设置状态
+    private val _faceSetupState = MutableStateFlow<FaceSetupState>(FaceSetupState.Initial)
+    val faceSetupState: StateFlow<FaceSetupState> = _faceSetupState.asStateFlow()
+    
+    // 导航到人脸捕获页面的状态
+    private val _navigateToFaceCapture = MutableStateFlow(false)
+    val navigateToFaceCapture: StateFlow<Boolean> = _navigateToFaceCapture.asStateFlow()
     
     // 腾讯云配置
     private val tencentCloudConfig = FaceVerificationManager.TencentCloudConfig(
@@ -104,20 +121,39 @@ class IdentificationViewModel @Inject constructor(
     }
     
     /**
+     * 人脸设置状态
+     */
+    sealed class FaceSetupState {
+        object Initial : FaceSetupState()
+        object UploadingImage : FaceSetupState()
+        object UpdatingServer : FaceSetupState()
+        object UpdatingLocal : FaceSetupState()
+        object Success : FaceSetupState()
+        data class Error(val message: String) : FaceSetupState()
+    }
+    
+    /**
      * 验证服务人员
      */
     fun verifyServicePerson(context: Context) {
         viewModelScope.launch {
             val currentUser = getCurrentUser()
             if (currentUser != null) {
-                startFaceVerification(
-                    context = context,
-                    name = currentUser.userName,
-                    idNo = currentUser.identityCardNumber,
-                    orderNo = "service_${System.currentTimeMillis()}",
-                    userId = currentUser.userId.toString(),
-                    verificationType = VerificationType.SERVICE_PERSON
-                )
+                // 检查用户是否已有人脸图片
+                if (currentUser.faceImgUrl.isBlank()) {
+                    // 如果没有人脸图片，跳转到人脸捕获页面
+                    _navigateToFaceCapture.value = true
+                } else {
+                    // 如果有人脸图片，使用自带源比对模式
+                    startSelfProvidedFaceVerification(
+                        context = context,
+                        name = currentUser.userName,
+                        idNo = currentUser.identityCardNumber,
+                        orderNo = "service_${System.currentTimeMillis()}",
+                        userId = currentUser.userId.toString(),
+                        sourcePhotoUrl = currentUser.faceImgUrl
+                    )
+                }
             }
         }
     }
@@ -140,6 +176,48 @@ class IdentificationViewModel @Inject constructor(
                         verificationType = VerificationType.ELDER
                     )
                 }
+            }
+        }
+    }
+    
+    /**
+     * 开始自带源比对人脸验证
+     */
+    private fun startSelfProvidedFaceVerification(
+        context: Context,
+        name: String,
+        idNo: String,
+        orderNo: String,
+        userId: String,
+        sourcePhotoUrl: String
+    ) {
+        viewModelScope.launch {
+            _currentVerificationType.value = VerificationType.SERVICE_PERSON
+            _faceVerificationState.value = FaceVerificationState.Initializing
+            
+            try {
+                // 下载源照片并转换为 Base64
+                val sourcePhotoBase64 = downloadAndConvertToBase64(sourcePhotoUrl)
+                
+                val request = FaceVerificationManager.FaceVerifyRequest(
+                    name = name,
+                    idNo = idNo,
+                    orderNo = orderNo,
+                    userId = userId,
+                    sourcePhotoStr = sourcePhotoBase64
+                )
+                
+                faceVerificationManager.startFaceVerification(
+                    context = context,
+                    config = tencentCloudConfig,
+                    request = request,
+                    callback = createFaceVerifyCallback()
+                )
+            } catch (e: Exception) {
+                _faceVerificationState.value = FaceVerificationState.Error(
+                    error = null,
+                    message = "获取人脸照片失败: ${e.message}"
+                )
             }
         }
     }
@@ -336,6 +414,186 @@ class IdentificationViewModel @Inject constructor(
      */
     fun resetPhotoUploadState() {
         _photoUploadState.value = PhotoUploadState.Initial
+    }
+    
+    /**
+     * 处理人脸捕获结果
+     * @param imagePath 捕获的人脸图片路径
+     */
+    fun handleFaceCaptureResult(imagePath: String) {
+        viewModelScope.launch {
+            try {
+                _faceSetupState.value = FaceSetupState.UploadingImage
+                
+                // 读取图片文件并转换为 Base64
+                val imageFile = File(imagePath)
+                if (!imageFile.exists()) {
+                    _faceSetupState.value = FaceSetupState.Error("图片文件不存在")
+                    return@launch
+                }
+                
+                val imageBytes = imageFile.readBytes()
+                val base64Image = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+                
+                // 获取当前用户信息
+                val currentUser = getCurrentUser()
+                if (currentUser == null) {
+                    _faceSetupState.value = FaceSetupState.Error("获取用户信息失败")
+                    return@launch
+                }
+                
+                // 先进行人脸验证（使用捕获的图片作为源比对）
+                _currentVerificationType.value = VerificationType.SERVICE_PERSON
+                _faceVerificationState.value = FaceVerificationState.Initializing
+                
+                val request = FaceVerificationManager.FaceVerifyRequest(
+                    name = currentUser.userName,
+                    idNo = currentUser.identityCardNumber,
+                    orderNo = "service_${System.currentTimeMillis()}",
+                    userId = currentUser.userId.toString(),
+                    sourcePhotoStr = base64Image
+                )
+                
+                faceVerificationManager.startFaceVerification(
+                    context = applicationContext,
+                    config = tencentCloudConfig,
+                    request = request,
+                    callback = createFaceSetupVerifyCallback(imageFile, base64Image)
+                )
+                
+            } catch (e: Exception) {
+                _faceSetupState.value = FaceSetupState.Error("处理失败: ${e.message}")
+                toastHelper.showShort("处理失败: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * 创建人脸设置验证回调（验证通过后才进行上传和设置）
+     */
+    private fun createFaceSetupVerifyCallback(imageFile: File, base64Image: String) = 
+        object : FaceVerificationManager.FaceVerifyCallback {
+            override fun onInitSuccess() {
+                _faceVerificationState.value = FaceVerificationState.Verifying
+            }
+            
+            override fun onInitFailed(error: WbFaceError?) {
+                _faceSetupState.value = FaceSetupState.Error("人脸识别初始化失败: ${error?.desc ?: "未知错误"}")
+                _faceVerificationState.value = FaceVerificationState.Error(
+                    error = error,
+                    message = "人脸识别初始化失败: ${error?.desc ?: "未知错误"}"
+                )
+            }
+            
+            override fun onVerifySuccess(result: WbFaceVerifyResult) {
+                // 验证成功，开始上传图片和设置人脸信息
+                _faceVerificationState.value = FaceVerificationState.Success(result)
+                uploadAndSetFaceInfo(imageFile, base64Image)
+            }
+            
+            override fun onVerifyFailed(error: WbFaceError?) {
+                _faceSetupState.value = FaceSetupState.Error("人脸验证失败: ${error?.desc ?: "未知错误"}")
+                _faceVerificationState.value = FaceVerificationState.Error(
+                    error = error,
+                    message = "人脸验证失败: ${error?.desc ?: "未知错误"}"
+                )
+            }
+            
+            override fun onVerifyCancel() {
+                _faceSetupState.value = FaceSetupState.Error("用户取消了人脸验证")
+                _faceVerificationState.value = FaceVerificationState.Cancelled
+            }
+        }
+    
+    /**
+     * 上传图片并设置人脸信息（仅在验证通过后调用）
+     */
+    private fun uploadAndSetFaceInfo(imageFile: File, base64Image: String) {
+        viewModelScope.launch {
+            try {
+                _faceSetupState.value = FaceSetupState.UploadingImage
+                
+                // 上传图片到 COS
+                val uploadParams = CosUtils.createUploadParams(
+                    context = applicationContext,
+                    fileUri = imageFile.toUri(),
+                    folderType = CosConstants.DEFAULT_FACE_TYPE
+                )
+                
+                val uploadResult = cosRepository.uploadFile(uploadParams)
+                
+                if (uploadResult.success && uploadResult.key != null) {
+                    _faceSetupState.value = FaceSetupState.UpdatingServer
+                    
+                    // 调用 setFace API
+                    val setFaceResult = apiService.setFace(
+                        SetFaceParamModel(
+                            faceImg = base64Image,
+                            faceImgUrl = uploadResult.key
+                        )
+                    )
+                    
+                    if (setFaceResult.isSuccess()) {
+                        _faceSetupState.value = FaceSetupState.UpdatingLocal
+                        
+                        // 更新本地用户数据
+                        val currentUser = getCurrentUser()
+                        if (currentUser != null) {
+                            val updatedUser = currentUser.copy(faceImgUrl = uploadResult.key)
+                            userSessionRepository.updateUser(updatedUser)
+                            
+                            _faceSetupState.value = FaceSetupState.Success
+                            toastHelper.showShort("人脸信息设置成功")
+                            
+                            // 设置成功后，更新身份认证状态
+                            setServicePersonVerified()
+                        }
+                    } else {
+                        _faceSetupState.value = FaceSetupState.Error("服务器更新失败")
+                    }
+                } else {
+                    _faceSetupState.value = FaceSetupState.Error(uploadResult.errorMessage ?: "图片上传失败")
+                }
+                
+            } catch (e: Exception) {
+                _faceSetupState.value = FaceSetupState.Error("上传失败: ${e.message}")
+                toastHelper.showShort("上传失败: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * 下载图片并转换为 Base64
+     */
+    private suspend fun downloadAndConvertToBase64(imageUrl: String): String {
+        return withContext(Dispatchers.IO) {
+            try {
+                val url = URL(imageUrl)
+                val connection = url.openConnection()
+                connection.doInput = true
+                connection.connect()
+                val inputStream = connection.getInputStream()
+                val bytes = inputStream.readBytes()
+                inputStream.close()
+                Base64.encodeToString(bytes, Base64.NO_WRAP)
+            } catch (e: Exception) {
+                throw Exception("下载图片失败: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * 重置导航状态
+     */
+    fun resetNavigationState() {
+        _navigateToFaceCapture.value = false
+    }
+    
+    /**
+     * 重置人脸设置状态
+     */
+    fun resetFaceSetupState() {
+        _faceSetupState.value = FaceSetupState.Initial
     }
 
     override fun onCleared() {

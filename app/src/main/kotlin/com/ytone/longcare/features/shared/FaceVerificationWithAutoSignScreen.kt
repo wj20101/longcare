@@ -1,16 +1,23 @@
 package com.ytone.longcare.features.shared
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -31,7 +38,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -40,12 +51,15 @@ import androidx.navigation.NavController
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.common.utils.FaceVerificationManager
+import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.shared.vm.FaceVerificationViewModel
+import java.io.ByteArrayOutputStream
+import java.io.File
 
 /**
- * 带自动签名的人脸验证页面
- * 展示如何使用自动获取签名参数的人脸验证功能
+ * 带自动签名的人脸验证页面（拍照自带源比对方案）
+ * 用户先拍摄一张人脸照片作为比对源，然后进行人脸验证
  * 
  * @param onNavigateBack 返回回调
  * @param onVerificationSuccess 验证成功回调
@@ -65,6 +79,12 @@ fun FaceVerificationWithAutoSignScreen(
     var snackbarMessage by remember { mutableStateOf("") }
     val context = LocalContext.current
     
+    // 拍照相关状态
+    var capturedPhoto by remember { mutableStateOf<Bitmap?>(null) }
+    var sourcePhotoBase64 by remember { mutableStateOf<String?>(null) }
+    var isProcessingPhoto by remember { mutableStateOf(false) }
+    var showFaceCapture by remember { mutableStateOf(false) }
+    
     // 默认配置（实际使用时应该从配置文件或服务器获取）
     val defaultConfig = remember {
         FaceVerificationManager.TencentCloudConfig(
@@ -73,10 +93,42 @@ fun FaceVerificationWithAutoSignScreen(
         )
     }
     val config = defaultConfig
-    val currentName = user?.userName ?: "默认姓名"
-    val currentIdNo = user?.identityCardNumber ?: "默认身份证号"
     val currentOrderNo = "order_${System.currentTimeMillis()}"
     val currentUserId = "124"
+    
+    // 处理人脸捕获结果
+    val handleFaceCaptured = { imagePath: String ->
+        isProcessingPhoto = true
+        try {
+            val imageFile = File(imagePath)
+            if (imageFile.exists()) {
+                val bitmap = BitmapFactory.decodeFile(imagePath)
+                if (bitmap != null) {
+                    capturedPhoto = bitmap
+                    
+                    // 转换为Base64
+                    val outputStream = ByteArrayOutputStream()
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+                    val imageBytes = outputStream.toByteArray()
+                    sourcePhotoBase64 = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+                    outputStream.close()
+                    
+                    showFaceCapture = false
+                } else {
+                    snackbarMessage = "图片处理失败"
+                    showSnackbar = true
+                }
+            } else {
+                snackbarMessage = "图片文件不存在"
+                showSnackbar = true
+            }
+        } catch (e: Exception) {
+            snackbarMessage = "图片处理失败: ${e.message}"
+            showSnackbar = true
+        } finally {
+            isProcessingPhoto = false
+        }
+    }
     
     // 处理验证结果
     LaunchedEffect(uiState) {
@@ -96,6 +148,15 @@ fun FaceVerificationWithAutoSignScreen(
             }
             else -> { /* 其他状态不需要处理 */ }
         }
+    }
+    
+    // 如果显示人脸捕获界面
+    if (showFaceCapture) {
+        ManualFaceCaptureScreen(
+            onNavigateBack = { showFaceCapture = false },
+            onFaceCaptured = handleFaceCaptured
+        )
+        return
     }
     
     Scaffold(
@@ -146,19 +207,19 @@ fun FaceVerificationWithAutoSignScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "智能人脸验证",
+                        text = "拍照人脸验证",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Text(
-                        text = "• 自动获取腾讯云签名参数\n• 无需手动配置复杂参数\n• 一键完成人脸验证流程",
+                        text = "• 先拍摄一张清晰的人脸照片\n• 系统将使用此照片进行比对验证\n• 确保光线充足，面部清晰可见",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
             
-            // 验证状态显示
+            // 拍照区域
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -167,187 +228,230 @@ fun FaceVerificationWithAutoSignScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    when (val state = uiState) {
-                        is FaceVerificationViewModel.FaceVerifyUiState.Idle -> {
-                            Text(
-                                text = "准备开始智能人脸验证",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            
-                            Button(
+                    Text(
+                        text = "第一步：拍摄人脸照片",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    
+                    // 显示拍摄的照片或拍照按钮
+                    if (capturedPhoto != null) {
+                        Image(
+                            bitmap = capturedPhoto!!.asImageBitmap(),
+                            contentDescription = "拍摄的人脸照片",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
                                 onClick = {
-                                    viewModel.startFaceVerificationWithAutoSign(
-                                        context = context,
-                                        config = config,
-                                        name = currentName,
-                                        idNo = currentIdNo,
-                                        orderNo = currentOrderNo,
-                                        userId = currentUserId
-                                    )
+                                    capturedPhoto = null
+                                    sourcePhotoBase64 = null
                                 },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.weight(1f)
                             ) {
-                                Text("开始智能验证")
+                                Text("重新拍照")
                             }
                         }
-                        
-                        is FaceVerificationViewModel.FaceVerifyUiState.Initializing -> {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                Column {
-                                    Text(
-                                        text = "正在初始化...",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    Text(
-                                        text = "获取签名参数中",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                    } else {
+                        Button(
+                            onClick = {
+                                showFaceCapture = true
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isProcessingPhoto
+                        ) {
+                            if (isProcessingPhoto) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.CameraAlt,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
-                        }
-                        
-                        is FaceVerificationViewModel.FaceVerifyUiState.Verifying -> {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                Column {
-                                    Text(
-                                        text = "正在进行人脸验证...",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    Text(
-                                        text = "请按照提示完成人脸验证",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                        
-                        is FaceVerificationViewModel.FaceVerifyUiState.Success -> {
                             Text(
-                                text = "✓ 人脸验证成功",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.primary
+                                text = if (isProcessingPhoto) "处理中..." else "拍摄人脸照片",
+                                modifier = Modifier.padding(start = 8.dp)
                             )
-                            
-                            Button(
-                                onClick = { viewModel.resetState() },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("重新验证")
-                            }
                         }
+                    }
+                }
+            }
+            
+            // 验证区域
+            if (sourcePhotoBase64 != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "第二步：开始人脸验证",
+                            style = MaterialTheme.typography.titleMedium
+                        )
                         
-                        is FaceVerificationViewModel.FaceVerifyUiState.Error -> {
-                            Text(
-                                text = "✗ 验证失败",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            
-                            Text(
-                                text = state.message,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = { viewModel.clearError() },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("取消")
-                                }
+                        when (val state = uiState) {
+                            is FaceVerificationViewModel.FaceVerifyUiState.Idle -> {
+                                Text(
+                                    text = "准备开始人脸验证",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
                                 
                                 Button(
                                     onClick = {
                                         viewModel.startFaceVerificationWithAutoSign(
                                             context = context,
                                             config = config,
-                                            name = currentName,
-                                            idNo = currentIdNo,
                                             orderNo = currentOrderNo,
-                                            userId = currentUserId
+                                            userId = currentUserId,
+                                            sourcePhotoStr = sourcePhotoBase64!!
                                         )
                                     },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text("重试")
+                                    Text("开始验证")
+                                }
+                            }
+                            
+                            is FaceVerificationViewModel.FaceVerifyUiState.Initializing -> {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    Column {
+                                        Text(
+                                            text = "正在初始化...",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        Text(
+                                            text = "获取签名参数中",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                            
+                            is FaceVerificationViewModel.FaceVerifyUiState.Verifying -> {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    Column {
+                                        Text(
+                                            text = "正在进行人脸验证...",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        Text(
+                                            text = "请按照提示完成人脸验证",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                            
+                            is FaceVerificationViewModel.FaceVerifyUiState.Success -> {
+                                Text(
+                                    text = "✓ 人脸验证成功",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                
+                                Button(
+                                    onClick = { 
+                                        viewModel.resetState()
+                                        capturedPhoto = null
+                                        sourcePhotoBase64 = null
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("重新验证")
+                                }
+                            }
+                            
+                            is FaceVerificationViewModel.FaceVerifyUiState.Error -> {
+                                Text(
+                                    text = "✗ 验证失败",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                
+                                Text(
+                                    text = state.message,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { viewModel.clearError() },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("取消")
+                                    }
+                                    
+                                    Button(
+                                        onClick = {
+                                            viewModel.startFaceVerificationWithAutoSign(
+                                                context = context,
+                                                config = config,
+                                                orderNo = currentOrderNo,
+                                                userId = currentUserId,
+                                                sourcePhotoStr = sourcePhotoBase64!!
+                                            )
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("重试")
+                                    }
+                                }
+                            }
+                            
+                            is FaceVerificationViewModel.FaceVerifyUiState.Cancelled -> {
+                                Text(
+                                    text = "✗ 验证已取消",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                
+                                Button(
+                                    onClick = {
+                                        viewModel.startFaceVerificationWithAutoSign(
+                                            context = context,
+                                            config = config,
+                                            orderNo = currentOrderNo,
+                                            userId = currentUserId,
+                                            sourcePhotoStr = sourcePhotoBase64!!
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("重新开始验证")
                                 }
                             }
                         }
-                        
-                        is FaceVerificationViewModel.FaceVerifyUiState.Cancelled -> {
-                            Text(
-                                text = "用户取消了验证",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            
-                            Button(
-                                onClick = { viewModel.resetState() },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("重新开始")
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // 参数信息（仅用于调试）
-            if (BuildConfig.DEBUG) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = "调试信息",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "App ID: ${config.appId}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "Name: $currentName",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "ID No: $currentIdNo",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "Order No: $currentOrderNo",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "User ID: $currentUserId",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
             }
