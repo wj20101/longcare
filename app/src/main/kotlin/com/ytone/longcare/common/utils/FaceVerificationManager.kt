@@ -224,8 +224,8 @@ class FaceVerificationManager @Inject constructor(
             val result = tencentFaceRepository.getFaceId(
                 appId = config.appId,
                 orderNo = request.orderNo,
-                name = request.name,
-                idNo = request.idNo,
+                name = if (request.sourcePhotoStr != null) null else request.name,
+                idNo = if (request.sourcePhotoStr != null) null else request.idNo,
                 userId = request.userId,
                 sign = sign,
                 nonce = nonce,

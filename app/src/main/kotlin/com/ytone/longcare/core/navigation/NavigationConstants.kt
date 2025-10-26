@@ -23,5 +23,11 @@ object NavigationConstants {
      */
     const val CAPTURED_IMAGE_URI_KEY = "captured_image_uri"
 
+    /**
+     * 用于通过 `SavedStateHandle` 从 `ManualFaceCaptureScreen` 检索捕获的人脸图片路径的键。
+     * 该值为图片文件路径的 `String` 表示形式。
+     */
+    const val FACE_IMAGE_PATH_KEY = "face_image_path"
+
     const val WATERMARK_DATA_KEY = "watermark_data_key"
 }

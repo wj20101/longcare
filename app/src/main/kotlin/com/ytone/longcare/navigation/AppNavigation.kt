@@ -45,6 +45,7 @@ import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.userservicerecord.ui.UserServiceRecordScreen
 import com.ytone.longcare.features.nfctest.ui.NfcTestScreen
 import com.ytone.longcare.features.photoupload.model.WatermarkData
+import com.ytone.longcare.core.navigation.NavigationConstants
 import kotlin.reflect.typeOf
 
 /**
@@ -501,7 +502,7 @@ fun AppNavigation(startDestination: Any) {
                 onNavigateBack = { navController.popBackStack() },
                 onFaceCaptured = { imagePath ->
                     // 返回到上一页面，并传递结果
-                    navController.previousBackStackEntry?.savedStateHandle?.set("face_image_path", imagePath)
+                    navController.previousBackStackEntry?.savedStateHandle?.set(NavigationConstants.FACE_IMAGE_PATH_KEY, imagePath)
                     navController.popBackStack()
                 }
             )

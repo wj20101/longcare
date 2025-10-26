@@ -37,6 +37,7 @@ import com.ytone.longcare.features.identification.vm.IdentificationState
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.navigation.navigateToCamera
 import com.ytone.longcare.navigation.navigateToSelectService
+import com.ytone.longcare.navigation.navigateToManualFaceCapture
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import dagger.hilt.android.EntryPointAccessors
@@ -75,6 +76,8 @@ fun IdentificationScreen(
     val identificationState by identificationViewModel.identificationState.collectAsStateWithLifecycle()
     val faceVerificationState by identificationViewModel.faceVerificationState.collectAsStateWithLifecycle()
     val photoUploadState by identificationViewModel.photoUploadState.collectAsStateWithLifecycle()
+    val navigateToFaceCapture by identificationViewModel.navigateToFaceCapture.collectAsStateWithLifecycle()
+    val faceSetupState by identificationViewModel.faceSetupState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -137,6 +140,27 @@ fun IdentificationScreen(
                 // 用户取消验证
             }
             else -> { /* 其他状态不需要处理 */ }
+        }
+    }
+
+    // 监听导航到人脸采集页面的状态
+    LaunchedEffect(navigateToFaceCapture) {
+        if (navigateToFaceCapture) {
+            navController.navigateToManualFaceCapture()
+            identificationViewModel.resetNavigationState()
+        }
+    }
+
+    // 监听从人脸采集页面返回的结果
+    LaunchedEffect(navController.currentBackStackEntry) {
+        navController.currentBackStackEntry?.savedStateHandle?.let { savedStateHandle ->
+            val imagePath = savedStateHandle.get<String>(NavigationConstants.FACE_IMAGE_PATH_KEY)
+            if (imagePath != null) {
+                // 处理捕获的人脸图片
+                identificationViewModel.handleFaceCaptureResult(imagePath)
+                // 清除保存的状态
+                savedStateHandle.remove<String>(NavigationConstants.FACE_IMAGE_PATH_KEY)
+            }
         }
     }
     
@@ -203,11 +227,12 @@ fun IdentificationScreen(
                     personType = IdentificationConstants.SERVICE_PERSON,
                     isVerified = identificationState.ordinal >= IdentificationState.SERVICE_VERIFIED.ordinal,
                     onVerifyClick = {
-                        identificationViewModel.setServicePersonVerified()
-//                        identificationViewModel.verifyServicePerson(context)
+//                        identificationViewModel.setServicePersonVerified()
+                        identificationViewModel.verifyServicePerson(context)
                     },
                     viewModel = identificationViewModel,
-                    faceVerificationState = faceVerificationState
+                    faceVerificationState = faceVerificationState,
+                    faceSetupState = faceSetupState
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -257,7 +282,8 @@ fun IdentificationCard(
     onVerifyClick: () -> Unit,
     viewModel: IdentificationViewModel,
     faceVerificationState: IdentificationViewModel.FaceVerificationState,
-    photoUploadState: IdentificationViewModel.PhotoUploadState = IdentificationViewModel.PhotoUploadState.Initial
+    photoUploadState: IdentificationViewModel.PhotoUploadState = IdentificationViewModel.PhotoUploadState.Initial,
+    faceSetupState: IdentificationViewModel.FaceSetupState = IdentificationViewModel.FaceSetupState.Initial
 ) {
     val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
     val currentVerificationType by viewModel.currentVerificationType.collectAsStateWithLifecycle()
@@ -333,6 +359,80 @@ fun IdentificationCard(
                 } else {
                     // 未验证状态，根据人脸验证状态显示不同UI
                     when {
+                        // 人脸设置状态处理（仅服务人员）
+                        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is IdentificationViewModel.FaceSetupState.UploadingImage -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Text(
+                                    text = "上传图片中...",
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF666666)
+                                )
+                            }
+                        }
+                        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is IdentificationViewModel.FaceSetupState.UpdatingServer -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Text(
+                                    text = "更新服务器...",
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF666666)
+                                )
+                            }
+                        }
+                        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is IdentificationViewModel.FaceSetupState.UpdatingLocal -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Text(
+                                    text = "更新本地数据...",
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF666666)
+                                )
+                            }
+                        }
+                        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is IdentificationViewModel.FaceSetupState.Error -> {
+                            Column(
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Text(
+                                    text = "设置失败",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFFFF3B30)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Button(
+                                    onClick = {
+                                        viewModel.resetFaceSetupState()
+                                        onVerifyClick()
+                                    },
+                                    shape = RoundedCornerShape(50),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFF5A623)
+                                    ),
+                                    modifier = Modifier.height(36.dp)
+                                ) {
+                                    Text("重试", color = Color.White)
+                                }
+                            }
+                        }
                         isCurrentlyVerifying && faceVerificationState is IdentificationViewModel.FaceVerificationState.Initializing -> {
                             // 初始化中（仅当前卡片正在验证时显示）
                             Row(
