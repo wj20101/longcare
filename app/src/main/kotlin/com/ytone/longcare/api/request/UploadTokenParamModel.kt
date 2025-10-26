@@ -9,7 +9,7 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class UploadTokenParamModel(
     /**
-     * 文件夹类型 13 服务图片
+     * 文件夹类型 13 服务图片 14人脸照片目录
      */
     @param:Json(name = "folderType")
     val folderType: Int? = null
