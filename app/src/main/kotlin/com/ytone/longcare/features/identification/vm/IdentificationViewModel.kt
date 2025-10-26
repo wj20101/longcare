@@ -254,32 +254,54 @@ class IdentificationViewModel @Inject constructor(
     }
     
     /**
-     * 创建人脸验证回调
+     * 创建人脸验证回调 - 用于正常的身份验证流程
      */
     private fun createFaceVerifyCallback() = object : FaceVerificationManager.FaceVerifyCallback {
         override fun onInitSuccess() {
+            toastHelper.showShort("人脸验证初始化成功")
             _faceVerificationState.value = FaceVerificationState.Verifying
         }
         
         override fun onInitFailed(error: WbFaceError?) {
+            val errorMsg = "人脸识别初始化失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
+            toastHelper.showShort(errorMsg)
             _faceVerificationState.value = FaceVerificationState.Error(
                 error = error,
-                message = "人脸识别初始化失败: ${error?.desc ?: "未知错误"}"
+                message = errorMsg
             )
         }
         
         override fun onVerifySuccess(result: WbFaceVerifyResult) {
+            toastHelper.showShort("人脸验证成功")
             _faceVerificationState.value = FaceVerificationState.Success(result)
+            
+            // 根据当前验证类型设置相应的身份验证状态
+            when (_currentVerificationType.value) {
+                VerificationType.SERVICE_PERSON -> {
+                    setServicePersonVerified()
+                    toastHelper.showShort("服务人员身份验证成功")
+                }
+                VerificationType.ELDER -> {
+                    setElderVerified()
+                    toastHelper.showShort("老人身份验证成功")
+                }
+                null -> {
+                    toastHelper.showShort("验证类型未知，请重新操作")
+                }
+            }
         }
         
         override fun onVerifyFailed(error: WbFaceError?) {
+            val errorMsg = "人脸验证失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
+            toastHelper.showShort(errorMsg)
             _faceVerificationState.value = FaceVerificationState.Error(
                 error = error,
-                message = "人脸验证失败: ${error?.desc ?: "未知错误"}"
+                message = errorMsg
             )
         }
         
         override fun onVerifyCancel() {
+            toastHelper.showShort("人脸验证已取消")
             _faceVerificationState.value = FaceVerificationState.Cancelled
         }
     }
@@ -417,91 +439,109 @@ class IdentificationViewModel @Inject constructor(
     }
     
     /**
-     * 处理人脸捕获结果
+     * 处理人脸捕获结果 - 用于首次设置人脸信息
+     * @param context Activity Context，用于启动人脸验证
      * @param imagePath 捕获的人脸图片路径
      */
-    fun handleFaceCaptureResult(imagePath: String) {
+    fun handleFaceCaptureResult(context: Context, imagePath: String) {
         viewModelScope.launch {
             try {
-                _faceSetupState.value = FaceSetupState.UploadingImage
+                // 重置状态
+                _faceSetupState.value = FaceSetupState.Initial
+                _faceVerificationState.value = FaceVerificationState.Idle
                 
-                // 读取图片文件并转换为 Base64
+                toastHelper.showShort("开始处理人脸图片...")
+                
+                // 检查图片文件是否存在
                 val imageFile = File(imagePath)
                 if (!imageFile.exists()) {
-                    _faceSetupState.value = FaceSetupState.Error("图片文件不存在")
+                    val errorMsg = "图片文件不存在: $imagePath"
+                    toastHelper.showShort(errorMsg)
+                    _faceSetupState.value = FaceSetupState.Error(errorMsg)
                     return@launch
                 }
                 
-                val imageBytes = imageFile.readBytes()
-                val base64Image = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+                // 转换图片为 Base64
+                val base64Image = withContext(Dispatchers.IO) {
+                    val bytes = imageFile.readBytes()
+                    Base64.encodeToString(bytes, Base64.NO_WRAP)
+                }
                 
                 // 获取当前用户信息
                 val currentUser = getCurrentUser()
                 if (currentUser == null) {
-                    _faceSetupState.value = FaceSetupState.Error("获取用户信息失败")
+                    val errorMsg = "无法获取用户信息"
+                    toastHelper.showShort(errorMsg)
+                    _faceSetupState.value = FaceSetupState.Error(errorMsg)
                     return@launch
                 }
                 
-                // 先进行人脸验证（使用捕获的图片作为源比对）
-                _currentVerificationType.value = VerificationType.SERVICE_PERSON
-                _faceVerificationState.value = FaceVerificationState.Initializing
+                // 检查用户信息完整性
+                if (currentUser.userName.isBlank() || currentUser.identityCardNumber.isBlank()) {
+                    val errorMsg = "用户信息不完整，无法进行人脸验证"
+                    toastHelper.showShort(errorMsg)
+                    _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                    return@launch
+                }
                 
+                toastHelper.showShort("开始人脸验证和设置...")
+                
+                // 创建人脸验证请求
                 val request = FaceVerificationManager.FaceVerifyRequest(
                     name = currentUser.userName,
                     idNo = currentUser.identityCardNumber,
-                    orderNo = "service_${System.currentTimeMillis()}",
+                    orderNo = "face_setup_${System.currentTimeMillis()}",
                     userId = currentUser.userId.toString(),
                     sourcePhotoStr = base64Image
                 )
                 
+                // 启动人脸验证（用于设置人脸信息）
                 faceVerificationManager.startFaceVerification(
-                    context = applicationContext,
+                    context = context,
                     config = tencentCloudConfig,
                     request = request,
                     callback = createFaceSetupVerifyCallback(imageFile, base64Image)
                 )
                 
             } catch (e: Exception) {
-                _faceSetupState.value = FaceSetupState.Error("处理失败: ${e.message}")
-                toastHelper.showShort("处理失败: ${e.message}")
+                val errorMsg = "处理人脸图片时发生错误: ${e.message}"
+                toastHelper.showShort(errorMsg)
+                _faceSetupState.value = FaceSetupState.Error(errorMsg)
             }
         }
     }
     
     /**
-     * 创建人脸设置验证回调（验证通过后才进行上传和设置）
+     * 创建人脸设置验证回调 - 专门用于首次设置人脸信息
      */
     private fun createFaceSetupVerifyCallback(imageFile: File, base64Image: String) = 
         object : FaceVerificationManager.FaceVerifyCallback {
             override fun onInitSuccess() {
-                _faceVerificationState.value = FaceVerificationState.Verifying
+                toastHelper.showShort("人脸验证初始化成功")
+                _faceSetupState.value = FaceSetupState.Initial
             }
             
             override fun onInitFailed(error: WbFaceError?) {
-                _faceSetupState.value = FaceSetupState.Error("人脸识别初始化失败: ${error?.desc ?: "未知错误"}")
-                _faceVerificationState.value = FaceVerificationState.Error(
-                    error = error,
-                    message = "人脸识别初始化失败: ${error?.desc ?: "未知错误"}"
-                )
+                val errorMsg = "人脸验证初始化失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
+                toastHelper.showShort(errorMsg)
+                _faceSetupState.value = FaceSetupState.Error(errorMsg)
             }
             
             override fun onVerifySuccess(result: WbFaceVerifyResult) {
-                // 验证成功，开始上传图片和设置人脸信息
-                _faceVerificationState.value = FaceVerificationState.Success(result)
+                toastHelper.showShort("人脸验证成功，开始上传设置...")
+                // 验证成功后，上传并设置人脸信息
                 uploadAndSetFaceInfo(imageFile, base64Image)
             }
             
             override fun onVerifyFailed(error: WbFaceError?) {
-                _faceSetupState.value = FaceSetupState.Error("人脸验证失败: ${error?.desc ?: "未知错误"}")
-                _faceVerificationState.value = FaceVerificationState.Error(
-                    error = error,
-                    message = "人脸验证失败: ${error?.desc ?: "未知错误"}"
-                )
+                val errorMsg = "人脸验证失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
+                toastHelper.showShort(errorMsg)
+                _faceSetupState.value = FaceSetupState.Error(errorMsg)
             }
             
             override fun onVerifyCancel() {
+                toastHelper.showShort("人脸验证已取消")
                 _faceSetupState.value = FaceSetupState.Error("用户取消了人脸验证")
-                _faceVerificationState.value = FaceVerificationState.Cancelled
             }
         }
     
@@ -547,17 +587,26 @@ class IdentificationViewModel @Inject constructor(
                             
                             // 设置成功后，更新身份认证状态
                             setServicePersonVerified()
+                        } else {
+                            val errorMsg = "更新本地用户数据失败：用户信息为空"
+                            _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                            toastHelper.showShort(errorMsg)
                         }
                     } else {
-                        _faceSetupState.value = FaceSetupState.Error("服务器更新失败")
+                        val errorMsg = "服务器更新失败: ${setFaceResult.resultMsg}"
+                        _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                        toastHelper.showShort(errorMsg)
                     }
                 } else {
-                    _faceSetupState.value = FaceSetupState.Error(uploadResult.errorMessage ?: "图片上传失败")
+                    val errorMsg = uploadResult.errorMessage ?: "图片上传失败"
+                    _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                    toastHelper.showShort(errorMsg)
                 }
                 
             } catch (e: Exception) {
-                _faceSetupState.value = FaceSetupState.Error("上传失败: ${e.message}")
-                toastHelper.showShort("上传失败: ${e.message}")
+                val errorMsg = "上传失败: ${e.message}"
+                _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                toastHelper.showShort(errorMsg)
             }
         }
     }
