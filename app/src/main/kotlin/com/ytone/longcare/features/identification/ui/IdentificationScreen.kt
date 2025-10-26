@@ -157,7 +157,7 @@ fun IdentificationScreen(
             val imagePath = savedStateHandle.get<String>(NavigationConstants.FACE_IMAGE_PATH_KEY)
             if (imagePath != null) {
                 // 处理捕获的人脸图片
-                identificationViewModel.handleFaceCaptureResult(imagePath)
+                identificationViewModel.handleFaceCaptureResult(context, imagePath)
                 // 清除保存的状态
                 savedStateHandle.remove<String>(NavigationConstants.FACE_IMAGE_PATH_KEY)
             }
