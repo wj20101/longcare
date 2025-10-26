@@ -56,6 +56,7 @@ import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.navigation.navigateToCamera
 import com.ytone.longcare.navigation.navigateToFaceVerificationWithAutoSign
 import com.ytone.longcare.navigation.navigateToNfcTest
+import com.ytone.longcare.navigation.navigateToManualFaceCapture
 
 
 @Composable
@@ -303,6 +304,19 @@ fun LoginScreen(
                     ) {
                         Text(
                             text = "人脸采集测试",
+                            color = PrimaryBlue,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    Button(
+                        onClick = { navController.navigateToManualFaceCapture() },
+                        shape = buttonShape,
+                        colors = buttonColors,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "手动人脸捕获",
                             color = PrimaryBlue,
                             fontSize = 14.sp
                         )

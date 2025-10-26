@@ -41,6 +41,7 @@ import com.ytone.longcare.features.photoupload.ui.CameraScreen
 import com.ytone.longcare.features.selectdevice.ui.SelectDeviceScreen
 import com.ytone.longcare.features.userlist.ui.UserListScreen
 import com.ytone.longcare.features.userlist.ui.UserListType
+import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.userservicerecord.ui.UserServiceRecordScreen
 import com.ytone.longcare.features.nfctest.ui.NfcTestScreen
 import com.ytone.longcare.features.photoupload.model.WatermarkData
@@ -248,6 +249,13 @@ fun NavController.navigateToCamera(watermarkData: WatermarkData) {
 
 fun NavController.navigateToFaceVerificationWithAutoSign() {
     navigate(TxFaceRoute)
+}
+
+/**
+ * 导航到手动人脸捕获页面
+ */
+fun NavController.navigateToManualFaceCapture() {
+    navigate(ManualFaceCaptureRoute)
 }
 
 /**
@@ -485,6 +493,17 @@ fun AppNavigation(startDestination: Any) {
             CameraScreen(
                 navController = navController,
                 watermarkData = route.watermarkData
+            )
+        }
+        
+        composable<ManualFaceCaptureRoute> {
+            ManualFaceCaptureScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onFaceCaptured = { imagePath ->
+                    // 返回到上一页面，并传递结果
+                    navController.previousBackStackEntry?.savedStateHandle?.set("face_image_path", imagePath)
+                    navController.popBackStack()
+                }
             )
         }
     }

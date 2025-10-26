@@ -207,3 +207,10 @@ object NfcTestRoute
 @Keep
 @Serializable
 data class CameraRoute(val watermarkData: WatermarkData)
+
+/**
+ * 手动人脸捕获页面路由
+ */
+@Keep
+@Serializable
+object ManualFaceCaptureRoute
