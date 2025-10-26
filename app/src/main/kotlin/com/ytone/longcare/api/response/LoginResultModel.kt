@@ -60,5 +60,11 @@ data class LoginResultModel(
      * 用户身份token
      */
     @param:Json(name = "token")
-    val token: String = ""
+    val token: String = "",
+
+    /**
+     * 人脸照片地址
+     */
+    @param:Json(name = "faceImgUrl")
+    val faceImgUrl: String = ""
 )
