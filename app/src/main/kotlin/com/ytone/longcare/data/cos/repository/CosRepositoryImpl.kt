@@ -35,6 +35,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -74,42 +75,53 @@ class CosRepositoryImpl @Inject constructor(
     /**
      * CosConfig缓存管理类
      * 统一管理COS配置信息，包括临时密钥、bucket、region等
+     * 支持按folderType分别缓存不同的配置
      */
     private class CosConfigCache {
-        @Volatile
-        var cosConfig: CosConfig? = null
+        private val configMap = ConcurrentHashMap<Int, CosConfig>()
 
-        fun isValid(): Boolean {
-            val config = cosConfig ?: return false
+        fun isValid(folderType: Int): Boolean {
+            val config = configMap[folderType] ?: return false
             return !config.isExpiringSoon(TOKEN_REFRESH_THRESHOLD_SECONDS)
         }
 
+        fun getConfig(folderType: Int): CosConfig? {
+            return configMap[folderType]
+        }
+
         fun clear() {
-            cosConfig = null
+            configMap.clear()
         }
 
-        fun update(config: CosConfig) {
-            cosConfig = config
+        fun clearForType(folderType: Int) {
+            configMap.remove(folderType)
         }
 
-        fun updateFromToken(token: UploadTokenResultModel) {
-            cosConfig = token.toCosConfig()
+        fun update(folderType: Int, config: CosConfig) {
+            configMap[folderType] = config
+        }
+
+        fun updateFromToken(folderType: Int, token: UploadTokenResultModel) {
+            configMap[folderType] = token.toCosConfig()
         }
     }
 
     /**
      * 动态密钥提供者 - 支持自动刷新临时密钥
+     * 使用默认的folderType来获取凭证，适用于大多数场景
      */
-    private inner class DynamicCredentialProvider : QCloudCredentialProvider {
+    private inner class DynamicCredentialProvider(
+        private val defaultFolderType: Int = CosConstants.DEFAULT_FOLDER_TYPE
+    ) : QCloudCredentialProvider {
 
         override fun getCredentials(): QCloudLifecycleCredentials? {
             return try {
                 // 检查并刷新配置
-                if (!configCache.isValid()) {
+                if (!configCache.isValid(defaultFolderType)) {
                     refreshConfigSync()
                 }
 
-                configCache.cosConfig?.let { config ->
+                configCache.getConfig(defaultFolderType)?.let { config ->
                     SessionQCloudCredentials(
                         config.tmpSecretId,
                         config.tmpSecretKey,
@@ -138,13 +150,14 @@ class CosRepositoryImpl @Inject constructor(
          */
         private fun refreshConfigSync() {
             runBlocking {
-                refreshCosConfig()
+                refreshCosConfig(defaultFolderType)
             }
         }
     }
 
     /**
      * 获取有效的COS服务实例
+     * 使用默认的folderType来初始化服务
      */
     private suspend fun getCosService(): CosXmlService {
         serviceRef.get()?.let { return it }
@@ -154,7 +167,7 @@ class CosRepositoryImpl @Inject constructor(
             serviceRef.get()?.let { return@withLock it }
 
             // 获取配置并初始化服务
-            val config = getValidCosConfig()
+            val config = getValidCosConfig(CosConstants.DEFAULT_FOLDER_TYPE)
             val service = createCosService(config)
             serviceRef.set(service)
 
@@ -183,14 +196,16 @@ class CosRepositoryImpl @Inject constructor(
      * 获取有效的COS配置
      */
     private suspend fun getValidCosConfig(folderType: Int = CosConstants.DEFAULT_FOLDER_TYPE): CosConfig {
-        if (configCache.isValid()) {
-            return configCache.cosConfig!!
+        if (configCache.isValid(folderType)) {
+            return configCache.getConfig(folderType) 
+                ?: throw IllegalStateException("Config cache is valid but config is null for folderType: $folderType")
         }
 
         return configMutex.withLock {
             // 双重检查
-            if (configCache.isValid()) {
-                return@withLock configCache.cosConfig!!
+            if (configCache.isValid(folderType)) {
+                return@withLock configCache.getConfig(folderType) 
+                    ?: throw IllegalStateException("Config cache is valid but config is null for folderType: $folderType")
             }
 
             refreshCosConfig(folderType)
@@ -219,10 +234,10 @@ class CosRepositoryImpl @Inject constructor(
                     is ApiResult.Success -> {
                         val token = response.data
                         val config = token.toCosConfig()
-                        configCache.update(config)
+                        configCache.update(folderType, config)
                         Log.d(
                             TAG,
-                            "COS config refreshed successfully, expires at: ${config.expiredTime}"
+                            "COS config refreshed successfully for folderType: $folderType, expires at: ${config.expiredTime}"
                         )
                         config
                     }
@@ -266,7 +281,7 @@ class CosRepositoryImpl @Inject constructor(
     override suspend fun deleteFile(key: String): Boolean = withContext(Dispatchers.IO) {
         try {
             val service = getCosService()
-            val config = getValidCosConfig()
+            val config = getValidCosConfig(CosConstants.DEFAULT_FOLDER_TYPE)
 
             val request = DeleteObjectRequest(config.bucket, key)
             service.deleteObject(request)
@@ -282,7 +297,7 @@ class CosRepositoryImpl @Inject constructor(
     override suspend fun fileExists(key: String): Boolean = withContext(Dispatchers.IO) {
         try {
             val service = getCosService()
-            val config = getValidCosConfig()
+            val config = getValidCosConfig(CosConstants.DEFAULT_FOLDER_TYPE)
 
             val request = HeadObjectRequest(config.bucket, key)
             service.headObject(request)
@@ -298,7 +313,7 @@ class CosRepositoryImpl @Inject constructor(
     override suspend fun getFileSize(key: String): Long? = withContext(Dispatchers.IO) {
         try {
             val service = getCosService()
-            val config = getValidCosConfig()
+            val config = getValidCosConfig(CosConstants.DEFAULT_FOLDER_TYPE)
 
             val request = HeadObjectRequest(config.bucket, key)
             val result = service.headObject(request)

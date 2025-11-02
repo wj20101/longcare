@@ -201,45 +201,47 @@ fun PhotoUploadScreen(
                 )
             )
         }, containerColor = Color.Transparent, bottomBar = { // 将按钮放在 bottomBar 中使其固定在底部
-            Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
-                ConfirmAndNextButton(
-                    text = if (isUploading) "上传中..." else stringResource(R.string.photo_upload_confirm_and_next),
-                    enabled = hasCategoriesHaveImages && !isUploading,
-                    isLoading = isUploading,
-                    onClick = {
-                        // 上传图片到云端后再导航
-                        scope.launch {
-                            try {
-                                val uploadResult = viewModel.uploadSuccessfulImagesToCloud()
-                                uploadResult.fold(onSuccess = { cloudUrlsMap ->
-                                    // 将 Map<ImageTaskType, List<String>> 转换为 Map<ImageTaskType, List<ImageTask>>
-                                    val currentTasks = viewModel.imageTasks.value
-                                    val imageTasksMap = cloudUrlsMap.mapValues { (taskType, keys) ->
-                                        // 根据 key 找到对应的 ImageTask
-                                        keys.mapNotNull { key ->
-                                            currentTasks.find { task ->
-                                                task.taskType == taskType &&
-                                                        task.key == key &&
-                                                        task.status == ImageTaskStatus.SUCCESS
+            Surface(modifier = Modifier.fillMaxWidth()) {
+                Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+                    ConfirmAndNextButton(
+                        text = if (isUploading) "上传中..." else stringResource(R.string.photo_upload_confirm_and_next),
+                        enabled = hasCategoriesHaveImages && !isUploading,
+                        isLoading = isUploading,
+                        onClick = {
+                            // 上传图片到云端后再导航
+                            scope.launch {
+                                try {
+                                    val uploadResult = viewModel.uploadSuccessfulImagesToCloud()
+                                    uploadResult.fold(onSuccess = { cloudUrlsMap ->
+                                        // 将 Map<ImageTaskType, List<String>> 转换为 Map<ImageTaskType, List<ImageTask>>
+                                        val currentTasks = viewModel.imageTasks.value
+                                        val imageTasksMap = cloudUrlsMap.mapValues { (taskType, keys) ->
+                                            // 根据 key 找到对应的 ImageTask
+                                            keys.mapNotNull { key ->
+                                                currentTasks.find { task ->
+                                                    task.taskType == taskType &&
+                                                            task.key == key &&
+                                                            task.status == ImageTaskStatus.SUCCESS
+                                                }
                                             }
                                         }
-                                    }
 
-                                    // 将转换后的结果回传给上一个页面
-                                    navController.previousBackStackEntry?.savedStateHandle?.set(
-                                        NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, imageTasksMap
-                                    )
-                                    navController.popBackStack()
-                                }, onFailure = { error ->
-                                    // 显示上传失败的错误信息
-                                    viewModel.showToast("图片上传失败: ${error.message}")
-                                })
-                            } catch (e: Exception) {
-                                // 处理异常情况
-                                viewModel.showToast("上传过程中发生错误: ${e.message}")
+                                        // 将转换后的结果回传给上一个页面
+                                        navController.previousBackStackEntry?.savedStateHandle?.set(
+                                            NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, imageTasksMap
+                                        )
+                                        navController.popBackStack()
+                                    }, onFailure = { error ->
+                                        // 显示上传失败的错误信息
+                                        viewModel.showToast("图片上传失败: ${error.message}")
+                                    })
+                                } catch (e: Exception) {
+                                    // 处理异常情况
+                                    viewModel.showToast("上传过程中发生错误: ${e.message}")
+                                }
                             }
-                        }
-                    })
+                        })
+                }
             }
         }) { paddingValues ->
             LazyColumn(
@@ -247,10 +249,13 @@ fun PhotoUploadScreen(
                     .fillMaxSize()
                     .padding(paddingValues) // 应用来自Scaffold的padding (包括了底部按钮的空间)
                     .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(bottom = 16.dp) // 为列表底部额外增加一些边距
+                contentPadding = PaddingValues(
+                    top = 20.dp,
+                    bottom = 24.dp // 增加底部间距，确保内容不会太贴近底部按钮
+                ),
+                verticalArrangement = Arrangement.spacedBy(8.dp) // 添加统一的垂直间距
             ) {
                 item {
-                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = stringResource(R.string.photo_upload_description),
                         fontSize = 13.sp,
@@ -258,7 +263,7 @@ fun PhotoUploadScreen(
                         lineHeight = 18.sp,
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
                 }
 
                 item {
@@ -272,7 +277,7 @@ fun PhotoUploadScreen(
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
                         onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
                 item {
@@ -286,7 +291,7 @@ fun PhotoUploadScreen(
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
                         onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
                 item {
@@ -300,7 +305,6 @@ fun PhotoUploadScreen(
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
                         onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
-                    Spacer(modifier = Modifier.height(20.dp)) // 额外的底部间距
                 }
             }
         }

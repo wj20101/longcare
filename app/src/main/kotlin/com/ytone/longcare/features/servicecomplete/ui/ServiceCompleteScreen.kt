@@ -94,10 +94,14 @@ fun ServiceCompleteScreen(
             )
         }, containerColor = Color.Transparent, bottomBar = {
             // 将按钮放在 bottomBar 中使其固定在底部
-            Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
-                ActionButton(text = "完成", onClick = {
-                    navController.navigateToHomeAndClearStack()
-                })
+            Surface(modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+                ) {
+                    ActionButton(text = "完成", onClick = {
+                        navController.navigateToHomeAndClearStack()
+                    })
+                }
             }
         }) { paddingValues ->
             LazyColumn(
