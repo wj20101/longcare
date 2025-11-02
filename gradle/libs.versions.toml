@@ -1,8 +1,8 @@
 [versions]
 # Build Tool Versions
 agp = "8.13.0"
-kotlin = "2.2.20"
-ksp = "2.2.20-2.0.4"
+kotlin = "2.2.21"
+ksp = "2.2.21-2.0.4"
 
 # Compose Versions
 composeBom = "2025.10.01"
@@ -41,7 +41,7 @@ wire = "5.4.0"
 
 # Networking
 retrofit = "3.0.0"
-okhttp = "5.2.1"
+okhttp = "5.3.0"
 okio = "3.16.2"
 moshi = "1.15.2"
 kotlinxDatetime = "0.7.1"
@@ -50,10 +50,10 @@ faceDetection = "16.1.7"
 coil = "3.3.0"
 
 # Tencent COS
-tencentCos = "5.9.46"
+tencentCos = "5.9.47"
 
 # amap
-amapLocation = "6.5.0"
+amapLocation = "6.5.1"
 
 # Testing
 junit = "4.13.2"
