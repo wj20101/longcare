@@ -19,4 +19,11 @@ object DataStoreKeys {
      * 正如您提供的示例：val APP_USER_KEY = byteArrayPreferencesKey("app_user")
      */
     val APP_USER = byteArrayPreferencesKey("app_user")
+
+    /**
+     * 存储用户人脸信息（Base64）的 Key，按用户ID区分
+     * 由于 DataStore Preferences 不支持动态Key生成，这里定义基础前缀，实际读写时拼接 userId
+     * 完整Key格式：face_base64_user_<userId>
+     */
+    const val FACE_BASE64_KEY_PREFIX = "face_base64_user_"
 }
