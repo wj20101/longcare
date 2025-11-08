@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.ytone.longcare.BuildConfig
-import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.request.SetFaceParamModel
 import com.ytone.longcare.common.constants.CosConstants
@@ -16,6 +15,7 @@ import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.common.utils.FaceVerificationManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.cos.repository.CosRepository
+import com.ytone.longcare.domain.identification.IdentificationRepository
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.order.SharedOrderRepository
 import com.ytone.longcare.domain.repository.SessionState
@@ -24,12 +24,19 @@ import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.models.protos.User
 import android.util.Base64
 import androidx.core.net.toUri
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import com.ytone.longcare.data.storage.DataStoreKeys
+import com.ytone.longcare.data.storage.UserSpecificDataStoreManager
 import java.io.File
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,7 +59,8 @@ class IdentificationViewModel @Inject constructor(
     private val sharedOrderRepository: SharedOrderRepository,
     private val orderRepository: OrderRepository,
     private val cosRepository: CosRepository,
-    private val apiService: LongCareApiService,
+    private val identificationRepository: IdentificationRepository,
+    private val userSpecificDataStoreManager: UserSpecificDataStoreManager,
     private val toastHelper: ToastHelper,
     @param:ApplicationContext private val applicationContext: Context
 ) : ViewModel() {
@@ -139,20 +147,43 @@ class IdentificationViewModel @Inject constructor(
         viewModelScope.launch {
             val currentUser = getCurrentUser()
             if (currentUser != null) {
-                // 检查用户是否已有人脸图片
-                if (currentUser.faceImgUrl.isBlank()) {
-                    // 如果没有人脸图片，跳转到人脸捕获页面
-                    _navigateToFaceCapture.value = true
-                } else {
-                    // 如果有人脸图片，使用自带源比对模式
-                    startSelfProvidedFaceVerification(
+                // 优先本地缓存：读取用户人脸Base64
+                val cachedBase64 = readUserFaceBase64(currentUser.userId)
+                if (!cachedBase64.isNullOrBlank()) {
+                    // 本地存在Base64，直接自带源比对
+                    startSelfProvidedFaceVerificationWithBase64(
                         context = context,
                         name = currentUser.userName,
                         idNo = currentUser.identityCardNumber,
                         orderNo = "service_${System.currentTimeMillis()}",
                         userId = currentUser.userId.toString(),
-                        sourcePhotoUrl = currentUser.faceImgUrl
+                        sourcePhotoBase64 = cachedBase64
                     )
+                } else {
+                    // 本地无缓存，调用接口获取人脸地址
+                    when (val faceResult = identificationRepository.getFace()) {
+                        is ApiResult.Success -> {
+                            val url = faceResult.data.faceImgUrl
+                            if (url.isBlank()) {
+                                // 无人脸数据，跳到人脸捕获
+                                _navigateToFaceCapture.value = true
+                            } else {
+                                // 使用URL进行自带源比对（下载再比对）
+                                startSelfProvidedFaceVerification(
+                                    context = context,
+                                    name = currentUser.userName,
+                                    idNo = currentUser.identityCardNumber,
+                                    orderNo = "service_${System.currentTimeMillis()}",
+                                    userId = currentUser.userId.toString(),
+                                    sourcePhotoUrl = url
+                                )
+                            }
+                        }
+                        is ApiResult.Failure, is ApiResult.Exception -> {
+                            // 接口异常或失败，回退到人脸捕获
+                            _navigateToFaceCapture.value = true
+                        }
+                    }
                 }
             }
         }
@@ -211,7 +242,50 @@ class IdentificationViewModel @Inject constructor(
                     context = context,
                     config = tencentCloudConfig,
                     request = request,
-                    callback = createFaceVerifyCallback()
+                    // 验证成功后，缓存当前使用的Base64
+                    callback = createFaceVerifyCallbackWithCache(sourcePhotoBase64)
+                )
+            } catch (e: Exception) {
+                _faceVerificationState.value = FaceVerificationState.Error(
+                    error = null,
+                    message = "获取人脸照片失败: ${e.message}"
+                )
+                // 链接访问失败或下载异常，回退到本地拍照逻辑
+                _navigateToFaceCapture.value = true
+            }
+        }
+    }
+
+    /**
+     * 开始自带源比对人脸验证（直接使用Base64）
+     */
+    private fun startSelfProvidedFaceVerificationWithBase64(
+        context: Context,
+        name: String,
+        idNo: String,
+        orderNo: String,
+        userId: String,
+        sourcePhotoBase64: String
+    ) {
+        viewModelScope.launch {
+            _currentVerificationType.value = VerificationType.SERVICE_PERSON
+            _faceVerificationState.value = FaceVerificationState.Initializing
+
+            try {
+                val request = FaceVerificationManager.FaceVerifyRequest(
+                    name = name,
+                    idNo = idNo,
+                    orderNo = orderNo,
+                    userId = userId,
+                    sourcePhotoStr = sourcePhotoBase64
+                )
+
+                faceVerificationManager.startFaceVerification(
+                    context = context,
+                    config = tencentCloudConfig,
+                    request = request,
+                    // 验证成功后，缓存当前使用的Base64
+                    callback = createFaceVerifyCallbackWithCache(sourcePhotoBase64)
                 )
             } catch (e: Exception) {
                 _faceVerificationState.value = FaceVerificationState.Error(
@@ -219,6 +293,70 @@ class IdentificationViewModel @Inject constructor(
                     message = "获取人脸照片失败: ${e.message}"
                 )
             }
+        }
+    }
+
+    /**
+     * 创建人脸验证回调（服务人员验证场景），在验证成功后更新本地人脸Base64缓存
+     */
+    private fun createFaceVerifyCallbackWithCache(base64ForCache: String?) = object : FaceVerificationManager.FaceVerifyCallback {
+        override fun onInitSuccess() {
+            toastHelper.showShort("人脸验证初始化成功")
+            _faceVerificationState.value = FaceVerificationState.Verifying
+        }
+
+        override fun onInitFailed(error: WbFaceError?) {
+            val errorMsg = "人脸识别初始化失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
+            toastHelper.showShort(errorMsg)
+            _faceVerificationState.value = FaceVerificationState.Error(
+                error = error,
+                message = errorMsg
+            )
+        }
+
+        override fun onVerifySuccess(result: WbFaceVerifyResult) {
+            toastHelper.showShort("人脸验证成功")
+            _faceVerificationState.value = FaceVerificationState.Success(result)
+
+            // 根据当前验证类型设置相应的身份验证状态
+            when (_currentVerificationType.value) {
+                VerificationType.SERVICE_PERSON -> {
+                    setServicePersonVerified()
+                    toastHelper.showShort("服务人员身份验证成功")
+
+                    // 在服务人员自带源比对成功后，更新本地缓存
+                    if (!base64ForCache.isNullOrBlank()) {
+                        val sessionState = userSessionRepository.sessionState.value
+                        if (sessionState is SessionState.LoggedIn) {
+                            val userId = sessionState.user.userId
+                            viewModelScope.launch {
+                                writeUserFaceBase64(userId, base64ForCache)
+                            }
+                        }
+                    }
+                }
+                VerificationType.ELDER -> {
+                    setElderVerified()
+                    toastHelper.showShort("老人身份验证成功")
+                }
+                null -> {
+                    toastHelper.showShort("验证类型未知，请重新操作")
+                }
+            }
+        }
+
+        override fun onVerifyFailed(error: WbFaceError?) {
+            val errorMsg = "人脸验证失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
+            toastHelper.showShort(errorMsg)
+            _faceVerificationState.value = FaceVerificationState.Error(
+                error = error,
+                message = errorMsg
+            )
+        }
+
+        override fun onVerifyCancel() {
+            toastHelper.showShort("人脸验证已取消")
+            _faceVerificationState.value = FaceVerificationState.Cancelled
         }
     }
     
@@ -566,36 +704,84 @@ class IdentificationViewModel @Inject constructor(
                     _faceSetupState.value = FaceSetupState.UpdatingServer
                     
                     // 调用 setFace API
-                    val setFaceResult = apiService.setFace(
+                    val setFaceResult = identificationRepository.setFace(
                         SetFaceParamModel(
                             faceImg = base64Image,
                             faceImgUrl = uploadResult.key
                         )
                     )
                     
-                    if (setFaceResult.isSuccess()) {
-                        _faceSetupState.value = FaceSetupState.UpdatingLocal
-                        
-                        // 更新本地用户数据
-                        val currentUser = getCurrentUser()
-                        if (currentUser != null) {
-                            val updatedUser = currentUser.copy(faceImgUrl = uploadResult.key)
-                            userSessionRepository.updateUser(updatedUser)
-                            
-                            _faceSetupState.value = FaceSetupState.Success
-                            toastHelper.showShort("人脸信息设置成功")
-                            
-                            // 设置成功后，更新身份认证状态
-                            setServicePersonVerified()
-                        } else {
-                            val errorMsg = "更新本地用户数据失败：用户信息为空"
+                    when (setFaceResult) {
+                        is ApiResult.Success -> {
+                            _faceSetupState.value = FaceSetupState.UpdatingLocal
+                            // 更新本地用户数据，并写入人脸Base64到用户特定的DataStore
+                            val currentUser = getCurrentUser()
+                            if (currentUser != null) {
+                                val userId = currentUser.userId
+
+                                // 构造用户特定的人脸Base64存储Key
+                                val faceKey = stringPreferencesKey(DataStoreKeys.FACE_BASE64_KEY_PREFIX + userId)
+
+                                // 读取已有缓存，没有则通过接口获取URL并转换
+                                val userDataStore = userSpecificDataStoreManager.userDataStore.value
+                                if (userDataStore != null) {
+                                    val existing = userDataStore.data.first()[faceKey]
+                                    val base64ToStore = when {
+                                        base64Image.isNotBlank() -> base64Image
+                                        !existing.isNullOrBlank() -> existing
+                                        else -> {
+                                            // 本地无缓存则通过接口获取人脸地址并转换为Base64
+                                            val faceResult = identificationRepository.getFace()
+                                            val url = when (faceResult) {
+                                                is ApiResult.Success -> faceResult.data.faceImgUrl
+                                                is ApiResult.Failure -> ""
+                                                is ApiResult.Exception -> ""
+                                            }
+                                            if (url.isNotBlank()) {
+                                                try {
+                                                    downloadAndConvertToBase64(url)
+                                                } catch (e: Exception) {
+                                                    ""
+                                                }
+                                            } else {
+                                                ""
+                                            }
+                                        }
+                                    }
+
+                                    // 写入DataStore缓存
+                                    if (base64ToStore.isNotBlank()) {
+                                        userDataStore.edit { prefs ->
+                                            prefs[faceKey] = base64ToStore
+                                        }
+                                    }
+                                }
+
+                                // 同步更新用户的 faceImgUrl（供服务器源比对模式使用）
+                                // 同步更新用户会话（无需变更字段）
+                                userSessionRepository.updateUser(currentUser)
+
+                                _faceSetupState.value = FaceSetupState.Success
+                                toastHelper.showShort("人脸信息设置成功")
+
+                                // 设置成功后，更新身份认证状态
+                                setServicePersonVerified()
+                            } else {
+                                val errorMsg = "更新本地用户数据失败：用户信息为空"
+                                _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                                toastHelper.showShort(errorMsg)
+                            }
+                        }
+                        is ApiResult.Failure -> {
+                            val errorMsg = "服务器更新失败: ${setFaceResult.message}"
                             _faceSetupState.value = FaceSetupState.Error(errorMsg)
                             toastHelper.showShort(errorMsg)
                         }
-                    } else {
-                        val errorMsg = "服务器更新失败: ${setFaceResult.resultMsg}"
-                        _faceSetupState.value = FaceSetupState.Error(errorMsg)
-                        toastHelper.showShort(errorMsg)
+                        is ApiResult.Exception -> {
+                            val errorMsg = "网络请求异常: ${setFaceResult.exception.message}"
+                            _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                            toastHelper.showShort(errorMsg)
+                        }
                     }
                 } else {
                     val errorMsg = uploadResult.errorMessage ?: "图片上传失败"
@@ -608,6 +794,27 @@ class IdentificationViewModel @Inject constructor(
                 _faceSetupState.value = FaceSetupState.Error(errorMsg)
                 toastHelper.showShort(errorMsg)
             }
+        }
+    }
+
+    /**
+     * 读取当前用户的人脸Base64缓存
+     */
+    private suspend fun readUserFaceBase64(userId: Int): String? {
+        val ds: DataStore<Preferences> = userSpecificDataStoreManager.userDataStore.value ?: return null
+        val key = stringPreferencesKey(DataStoreKeys.FACE_BASE64_KEY_PREFIX + userId)
+        val prefs = ds.data.first()
+        return prefs[key]
+    }
+
+    /**
+     * 写入当前用户的人脸Base64缓存
+     */
+    private suspend fun writeUserFaceBase64(userId: Int, base64: String) {
+        val ds: DataStore<Preferences> = userSpecificDataStoreManager.userDataStore.value ?: return
+        val key = stringPreferencesKey(DataStoreKeys.FACE_BASE64_KEY_PREFIX + userId)
+        ds.edit { prefs ->
+            prefs[key] = base64
         }
     }
     

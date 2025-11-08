@@ -14,6 +14,7 @@ import com.ytone.longcare.api.request.StarOrderParamModel
 import com.ytone.longcare.api.request.UpUserStartImgParamModel
 import com.ytone.longcare.api.request.BindLocationParamModel
 import com.ytone.longcare.api.request.SetFaceParamModel
+import com.ytone.longcare.api.response.FaceResultModel
 import com.ytone.longcare.api.request.CheckEndOrderParamModel
 import com.ytone.longcare.api.response.LoginResultModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
@@ -207,6 +208,14 @@ interface LongCareApiService {
      */
     @POST("/V1/User/SetFace")
     suspend fun setFace(@Body setFaceParamModel: SetFaceParamModel): Response<Unit>
+
+    /**
+     * 获取人脸信息
+     *
+     * @return FaceResultModel，包含人脸图片地址
+     */
+    @GET("/V1/User/GetFace")
+    suspend fun getFace(): Response<FaceResultModel>
 
     /**
      * 检测结束工单
