@@ -264,7 +264,7 @@ fun IdentificationScreen(
                         containerColor = Color(0xFF4A90E2), // 蓝色
                         disabledContainerColor = Color(0xFF4A90E2).copy(alpha = 0.5f)
                     ),
-//                    enabled = identificationState == IdentificationState.ELDER_VERIFIED
+                    enabled = identificationState == IdentificationState.ELDER_VERIFIED
                 ) {
 
                     Text("下一步", fontSize = 16.sp, color = Color.White)
