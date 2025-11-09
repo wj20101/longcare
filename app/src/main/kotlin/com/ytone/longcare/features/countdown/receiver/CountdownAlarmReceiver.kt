@@ -4,12 +4,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.PowerManager
+import androidx.core.content.getSystemService
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
-import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
-import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
+import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
+import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -35,14 +36,14 @@ class CountdownAlarmReceiver : BroadcastReceiver() {
         }
 
         // 获取WakeLock确保设备唤醒
-        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-        val wakeLock = powerManager.newWakeLock(
+        val powerManager = context.getSystemService<PowerManager>()
+        val wakeLock = powerManager?.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
             "LongCare:CountdownAlarm"
         )
         
         try {
-            wakeLock.acquire(10000) // 持有10秒，足够启动Activity
+            wakeLock?.acquire(10000) // 持有10秒，足够启动Activity
             
             // 先停止前台服务，清除进行中的通知
             CountdownForegroundService.stopCountdown(context)
@@ -66,11 +67,9 @@ class CountdownAlarmReceiver : BroadcastReceiver() {
         } catch (e: Exception) {
             logE("处理倒计时闹钟失败: ${e.message}")
         } finally {
-            if (wakeLock.isHeld) {
+            if (wakeLock?.isHeld == true) {
                 wakeLock.release()
             }
         }
     }
-
-
 }

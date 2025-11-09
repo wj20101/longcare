@@ -61,12 +61,9 @@ class CountdownAlarmActivity : AppCompatActivity() {
     
     private val stopAlarmReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            // 收到停止响铃广播，关闭Activity
             stopAlarmAndFinish()
         }
     }
-    
-
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,9 +90,6 @@ class CountdownAlarmActivity : AppCompatActivity() {
         val filter = IntentFilter(DismissAlarmReceiver.ACTION_STOP_ALARM)
         ContextCompat.registerReceiver(this, stopAlarmReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         
-        // CountdownAlarmActivity现在只作为确认页面，不播放声音和震动
-        // 声音和震动由通知本身处理
-        
         // 如果启用自动关闭，设置30秒后自动关闭
         if (autoCloseEnabled) {
             setupAutoClose()
@@ -113,8 +107,6 @@ class CountdownAlarmActivity : AppCompatActivity() {
             }
         }
     }
-    
-
     
     private fun setupAutoClose() {
         autoCloseHandler = Handler(Looper.getMainLooper())
@@ -156,12 +148,9 @@ class CountdownAlarmActivity : AppCompatActivity() {
         stopAlarmAndFinish()
     }
     
-    @Suppress("DEPRECATION")
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         // 禁用返回键，强制用户点击关闭按钮
-        // 调用super来满足lint要求，但不执行默认的返回操作
-        super.onBackPressed()
-        // 实际上我们重写了行为，强制用户使用关闭按钮
     }
 }
 
