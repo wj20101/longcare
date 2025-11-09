@@ -51,14 +51,12 @@ class UploadedImagesManagerTest {
             id = "1",
             originalUri = mockUri1,
             taskType = ImageTaskType.BEFORE_CARE,
-            watermarkLines = listOf("test"),
             status = ImageTaskStatus.SUCCESS
         )
         val imageTask2 = ImageTask(
             id = "2",
             originalUri = mockUri2,
             taskType = ImageTaskType.AFTER_CARE,
-            watermarkLines = listOf("test"),
             status = ImageTaskStatus.SUCCESS
         )
         val uploadedImages = mapOf(
@@ -89,7 +87,6 @@ class UploadedImagesManagerTest {
                         "id": "1",
                         "originalUri": "content://test1",
                         "taskType": "BEFORE_CARE",
-                        "watermarkLines": ["test"],
                         "resultUri": null,
                         "status": "SUCCESS",
                         "errorMessage": null,
@@ -135,7 +132,6 @@ class UploadedImagesManagerTest {
                         "id": "1",
                         "originalUri": "content://test1",
                         "taskType": "BEFORE_CARE",
-                        "watermarkLines": ["test"],
                         "resultUri": null,
                         "status": "SUCCESS",
                         "errorMessage": null,

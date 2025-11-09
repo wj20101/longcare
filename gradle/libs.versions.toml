@@ -1,11 +1,12 @@
 [versions]
 # Build Tool Versions
 agp = "8.13.0"
+core = "1.7.0"
 kotlin = "2.2.21"
 ksp = "2.2.21-2.0.4"
 
 # Compose Versions
-composeBom = "2025.10.01"
+composeBom = "2025.11.00"
 
 # AndroidX Core & Lifecycle
 coreKtx = "1.17.0"
@@ -14,8 +15,9 @@ lifecycle = "2.9.4"
 activityCompose = "1.11.0"
 fragmentCompose = "1.8.9"
 mockk = "1.14.6"
-navigationCompose = "2.9.5"
+navigationCompose = "2.9.6"
 appcompat = "1.7.1"
+robolectric = "4.16"
 startup = "1.2.0"
 constraintlayoutCompose = "1.1.1"
 benchmark = "1.4.1"
@@ -78,6 +80,7 @@ androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetection" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 startup-runtime = { group = "androidx.startup", name = "startup-runtime", version.ref = "startup" }
 constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayoutCompose" }
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
@@ -108,6 +111,7 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 
 # Work
 work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
+androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
 
 # window
 window = { group = "androidx.window", name = "window", version.ref = "window" }
@@ -155,6 +159,7 @@ amap-location = { group = "com.amap.api", name = "location", version.ref = "amap
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-test-core = { module = "androidx.test:core", version.ref = "core" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxJunit" }
 androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" } # Version from BOM
