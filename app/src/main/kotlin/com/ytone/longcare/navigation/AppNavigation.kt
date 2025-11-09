@@ -260,6 +260,15 @@ fun NavController.navigateToManualFaceCapture() {
 }
 
 /**
+ * 导航到WebView页面
+ * @param url 要加载的网页URL
+ * @param title 页面标题
+ */
+fun NavController.navigateToWebView(url: String, title: String) {
+    navigate(WebViewRoute(url, title))
+}
+
+/**
  * 应用的顶层 Composable，负责根据认证状态决定初始导航。
  * @param viewModel 主要的ViewModel，用于获取会话状态
  */
@@ -505,6 +514,15 @@ fun AppNavigation(startDestination: Any) {
                     navController.previousBackStackEntry?.savedStateHandle?.set(NavigationConstants.FACE_IMAGE_PATH_KEY, imagePath)
                     navController.popBackStack()
                 }
+            )
+        }
+        
+        composable<WebViewRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<WebViewRoute>()
+            com.ytone.longcare.features.webview.ui.WebViewScreen(
+                navController = navController,
+                url = route.url,
+                title = route.title
             )
         }
     }

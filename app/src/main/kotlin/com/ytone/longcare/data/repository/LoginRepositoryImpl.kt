@@ -27,4 +27,8 @@ class LoginRepositoryImpl @Inject constructor(
     override suspend fun sendSmsCode(mobile: String) = safeApiCall(ioDispatcher, eventBus) {
         apiService.sendSmsCode(SendSmsCodeParamModel(mobile = mobile, codeType = 1))
     }
+
+    override suspend fun getStartConfig() = safeApiCall(ioDispatcher, eventBus) {
+        apiService.getStartConfig()
+    }
 }
