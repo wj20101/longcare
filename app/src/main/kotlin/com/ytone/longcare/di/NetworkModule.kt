@@ -9,7 +9,10 @@ import com.ytone.longcare.api.TencentFaceApiService
 import com.ytone.longcare.common.utils.DefaultMoshi
 import com.ytone.longcare.common.utils.DeviceUtils
 import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.network.interceptor.AesKeyManager
 import com.ytone.longcare.network.interceptor.RequestInterceptor
+import com.ytone.longcare.network.interceptor.ResponseDecryptInterceptor
+import com.ytone.longcare.network.processor.ResponseProcessor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -51,9 +54,20 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideRequestInterceptor(
-        userSessionRepository: UserSessionRepository, deviceUtils: DeviceUtils
+        userSessionRepository: UserSessionRepository,
+        deviceUtils: DeviceUtils,
+        aesKeyManager: AesKeyManager
     ): RequestInterceptor {
-        return RequestInterceptor(userSessionRepository, deviceUtils)
+        return RequestInterceptor(userSessionRepository, deviceUtils, aesKeyManager)
+    }
+
+    @Provides
+    @Singleton
+    fun provideResponseDecryptInterceptor(
+        aesKeyManager: AesKeyManager,
+        processors: Set<@JvmSuppressWildcards ResponseProcessor>
+    ): ResponseDecryptInterceptor {
+        return ResponseDecryptInterceptor(aesKeyManager, processors)
     }
 
     @Provides
@@ -70,10 +84,12 @@ object NetworkModule {
         @ApplicationContext context: Context,
         loggingInterceptor: HttpLoggingInterceptor,
         requestInterceptor: RequestInterceptor,
+        responseDecryptInterceptor: ResponseDecryptInterceptor,
         cache: Cache
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(requestInterceptor) // 自定义参数加密逻辑
+            .addInterceptor(responseDecryptInterceptor) // 响应解密拦截器
             .addInterceptor(loggingInterceptor) // 添加日志拦截器
             .cache(cache) // 设置缓存
             .connectTimeout(30, TimeUnit.SECONDS) // 连接超时时间
