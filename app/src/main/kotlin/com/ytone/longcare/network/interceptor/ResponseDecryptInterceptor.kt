@@ -14,9 +14,9 @@ import javax.inject.Inject
  * 1. 低耦合：每个接口的处理逻辑独立在各自的Processor中
  * 2. 易扩展：新增接口处理只需实现ResponseProcessor接口并注册
  * 3. 单一职责：拦截器只负责调度，不包含具体业务逻辑
+ * 4. 安全性：使用OkHttp的tag机制传递密钥，避免内存泄漏
  */
 class ResponseDecryptInterceptor @Inject constructor(
-    private val aesKeyManager: AesKeyManager,
     private val processors: Set<@JvmSuppressWildcards ResponseProcessor>
 ) : Interceptor {
 
@@ -38,8 +38,11 @@ class ResponseDecryptInterceptor @Inject constructor(
             if (processor != null) {
                 logD(TAG, "Found processor for path: $path")
                 
-                // 获取AES密钥
-                val aesKey = aesKeyManager.getKey()
+                // 从请求的tag中获取AES密钥
+                // 使用OkHttp的tag机制，密钥只存在于当前请求的生命周期内
+                // 请求完成后自动释放，无需手动清理
+                val aesKeyTag = request.tag(AesKeyTag::class.java)
+                val aesKey = aesKeyTag?.key
                 
                 // 使用处理器处理响应
                 return processor.process(response, aesKey)
@@ -51,9 +54,6 @@ class ResponseDecryptInterceptor @Inject constructor(
         } catch (e: Exception) {
             // 发生异常时返回原始响应
             return response
-        } finally {
-            // 清除密钥
-            aesKeyManager.clearKey()
         }
     }
 }

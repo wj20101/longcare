@@ -18,8 +18,7 @@ import javax.inject.Inject
 
 class RequestInterceptor @Inject constructor(
     private val userSessionRepository: UserSessionRepository,
-    private val deviceUtils: DeviceUtils,
-    private val aesKeyManager: AesKeyManager
+    private val deviceUtils: DeviceUtils
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -34,8 +33,9 @@ class RequestInterceptor @Inject constructor(
         val newRequestBuilder = request.newBuilder()
         val randomString = RandomUtils.generateRandomStringKotlin(32)
         
-        // 保存AES密钥供响应拦截器使用
-        aesKeyManager.saveKey(randomString)
+        // 使用OkHttp的tag机制传递AES密钥
+        // 密钥只存在于当前请求的生命周期内，请求完成后自动释放
+        newRequestBuilder.tag(AesKeyTag::class.java, AesKeyTag(randomString))
         
         val map = iniHttpHeader(randomString)
         if (map.isNotEmpty()) {

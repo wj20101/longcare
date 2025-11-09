@@ -9,7 +9,6 @@ import com.ytone.longcare.api.TencentFaceApiService
 import com.ytone.longcare.common.utils.DefaultMoshi
 import com.ytone.longcare.common.utils.DeviceUtils
 import com.ytone.longcare.domain.repository.UserSessionRepository
-import com.ytone.longcare.network.interceptor.AesKeyManager
 import com.ytone.longcare.network.interceptor.RequestInterceptor
 import com.ytone.longcare.network.interceptor.ResponseDecryptInterceptor
 import com.ytone.longcare.network.processor.ResponseProcessor
@@ -55,19 +54,17 @@ object NetworkModule {
     @Singleton
     fun provideRequestInterceptor(
         userSessionRepository: UserSessionRepository,
-        deviceUtils: DeviceUtils,
-        aesKeyManager: AesKeyManager
+        deviceUtils: DeviceUtils
     ): RequestInterceptor {
-        return RequestInterceptor(userSessionRepository, deviceUtils, aesKeyManager)
+        return RequestInterceptor(userSessionRepository, deviceUtils)
     }
 
     @Provides
     @Singleton
     fun provideResponseDecryptInterceptor(
-        aesKeyManager: AesKeyManager,
         processors: Set<@JvmSuppressWildcards ResponseProcessor>
     ): ResponseDecryptInterceptor {
-        return ResponseDecryptInterceptor(aesKeyManager, processors)
+        return ResponseDecryptInterceptor(processors)
     }
 
     @Provides
