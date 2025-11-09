@@ -293,8 +293,8 @@ fun ServiceCountdownScreen(
                 )
                 
                 // 设置系统级倒计时闹钟（只有在权限充足时）
-                if (checkNotificationPermission() && countdownNotificationManager.canScheduleExactAlarms()) {
-
+                if (checkNotificationPermission()) {
+                    // 即使没有精确闹钟权限，内部会使用AlarmClock兜底
                     val completionTime = countdownNotificationManager.calculateCompletionTime(totalMinutes * 60 * 1000L)
                     countdownNotificationManager.scheduleCountdownAlarm(
                         orderId = orderInfoRequest.orderId,
@@ -302,8 +302,7 @@ fun ServiceCountdownScreen(
                         triggerTimeMillis = completionTime
                     )
                 } else {
-                    // 权限不足时显示提示
-                    permissionDialogMessage = "缺少必要权限，可能无法收到倒计时完成提醒。请检查通知权限和精确闹钟权限设置。"
+                    permissionDialogMessage = "通知权限被拒绝，可能无法收到倒计时完成提醒。请到设置中手动开启通知权限。"
                     showPermissionDialog = true
                 }
                 
