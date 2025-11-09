@@ -79,4 +79,5 @@
     <string name="switch_camera_content_description">切换摄像头</string>
     <string name="take_picture_content_description">拍照</string>
     <string name="flash_mode_content_description">切换闪光灯模式</string>
+    <string name="back_button_description">返回</string>
 </resources>

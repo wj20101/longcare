@@ -9,6 +9,7 @@
     "TencentMapFenceRadius": 500,
     "TencentMapUploadInterval": 60,
     "TencentMapUploadDistance": 100,
-    "selectServiceType": 0
+    "selectServiceType": 0,
+    "thirdKeyStr": "MOCK_ENCRYPTED_THIRD_KEY_STRING_HEX_FORMAT"
   }
 }

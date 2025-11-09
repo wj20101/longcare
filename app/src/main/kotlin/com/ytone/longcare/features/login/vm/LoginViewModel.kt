@@ -33,8 +33,37 @@ class LoginViewModel @Inject constructor(
 
     private val _countdownSeconds = MutableStateFlow(0)
     val countdownSeconds: StateFlow<Int> = _countdownSeconds
+    
+    private val _startConfigState = MutableStateFlow<StartConfigUiState>(StartConfigUiState.Idle)
+    val startConfigState: StateFlow<StartConfigUiState> = _startConfigState
+    
     private var countdownJob: Job? = null
     private var nfcEventJob: Job? = null
+
+    init {
+        // 初始化时获取启动配置
+        loadStartConfig()
+    }
+
+    /**
+     * 加载启动配置（用户协议和隐私政策URL）
+     */
+    private fun loadStartConfig() {
+        viewModelScope.launch {
+            _startConfigState.value = StartConfigUiState.Loading
+            when (val result = loginRepository.getStartConfig()) {
+                is ApiResult.Success -> {
+                    _startConfigState.value = StartConfigUiState.Success(result.data)
+                }
+                is ApiResult.Failure -> {
+                    _startConfigState.value = StartConfigUiState.Error(result.message)
+                }
+                is ApiResult.Exception -> {
+                    _startConfigState.value = StartConfigUiState.Error(result.exception.message ?: "网络异常")
+                }
+            }
+        }
+    }
 
     /**
      * 发送短信验证码
@@ -173,4 +202,11 @@ sealed class SendSmsCodeUiState {
     data object Loading : SendSmsCodeUiState()
     data object Success : SendSmsCodeUiState()
     data class Error(val message: String) : SendSmsCodeUiState()
+}
+
+sealed class StartConfigUiState {
+    data object Idle : StartConfigUiState()
+    data object Loading : StartConfigUiState()
+    data class Success(val data: com.ytone.longcare.api.response.StartConfigResultModel) : StartConfigUiState()
+    data class Error(val message: String) : StartConfigUiState()
 }

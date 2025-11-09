@@ -81,6 +81,7 @@ class MockInterceptor(private val context: Context) : Interceptor {
             "/V1/File/GetFileUrl" -> "mock/file_url.json"  // 新增：获取文件访问链接
             "/V1/Common/Config" -> "mock/system_config.json"
             "/V1/System/Config" -> "mock/system_config.json"  // 新增：系统配置接口
+            "/V1/System/Start" -> "mock/start_config.json"  // 新增：启动前配置
             "/V1/System/ChecVersion" -> "mock/app_version.json"
 
             else -> null

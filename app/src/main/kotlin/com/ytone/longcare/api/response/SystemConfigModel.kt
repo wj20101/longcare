@@ -30,5 +30,12 @@ data class SystemConfigModel(
      * 选择服务的类型0:默认不全选可改变 1:默认全选不能改变
      */
     @param:Json(name = "selectServiceType")
-    val selectServiceType: Int = 0
+    val selectServiceType: Int = 0,
+
+    /**
+     * 第三方密钥字符串（AES加密后的ThirdKeyReturnModel JSON）
+     * 解密规则: AES解密(thirdKeyStr, 请求Config接口头部的AESKEY)
+     */
+    @param:Json(name = "thirdKeyStr")
+    val thirdKeyStr: String = ""
 )

@@ -26,6 +26,7 @@ import com.ytone.longcare.api.response.UserOrderModel
 import com.ytone.longcare.api.response.UploadTokenResultModel
 import com.ytone.longcare.api.response.SystemConfigModel
 import com.ytone.longcare.api.response.AppVersionModel
+import com.ytone.longcare.api.response.StartConfigResultModel
 import com.ytone.longcare.api.request.SendSmsCodeParamModel
 import com.ytone.longcare.model.Response
 import retrofit2.http.Body
@@ -33,6 +34,15 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 
 interface LongCareApiService {
+
+    /**
+     * 启动前的配置信息
+     * 获取用户协议和隐私政策的URL
+     *
+     * @return 启动配置信息
+     */
+    @GET("/V1/System/Start")
+    suspend fun getStartConfig(): Response<StartConfigResultModel>
 
     /**
      * 发送短信验证码

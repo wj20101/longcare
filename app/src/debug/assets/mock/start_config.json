@@ -1,0 +1,8 @@
+{
+  "resultCode": 1000,
+  "resultMsg": "成功",
+  "data": {
+    "userXieYiUrl": "https://www.baidu.com",
+    "yinSiXieYiUrl": "https://www.bing.com"
+  }
+}

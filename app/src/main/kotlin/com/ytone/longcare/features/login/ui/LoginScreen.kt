@@ -39,6 +39,7 @@ import com.ytone.longcare.features.login.vm.LoginViewModel
 import com.ytone.longcare.features.login.vm.LoginUiState
 import com.ytone.longcare.features.login.vm.SendSmsCodeUiState
 import com.ytone.longcare.navigation.navigateToHomeFromLogin
+import com.ytone.longcare.navigation.navigateToWebView
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.InputFieldBackground
 import com.ytone.longcare.theme.InputFieldBorderColor
@@ -223,9 +224,38 @@ fun LoginScreen(
             }
 
             // Agreement Text
+            val startConfigState by viewModel.startConfigState.collectAsState()
             AgreementText( // AgreementText 组件复用之前的实现
-                onUserAgreementClick = { context.showLongToast(context.getString(R.string.login_user_agreement_toast)) },
-                onPrivacyPolicyClick = { context.showLongToast(context.getString(R.string.login_privacy_policy_toast)) },
+                onUserAgreementClick = {
+                    when (val state = startConfigState) {
+                        is com.ytone.longcare.features.login.vm.StartConfigUiState.Success -> {
+                            if (state.data.userXieYiUrl.isNotEmpty()) {
+                                navController.navigateToWebView(
+                                    url = state.data.userXieYiUrl,
+                                    title = ""
+                                )
+                            } else {
+                                context.showLongToast(context.getString(R.string.login_user_agreement_toast))
+                            }
+                        }
+                        else -> context.showLongToast(context.getString(R.string.login_user_agreement_toast))
+                    }
+                },
+                onPrivacyPolicyClick = {
+                    when (val state = startConfigState) {
+                        is com.ytone.longcare.features.login.vm.StartConfigUiState.Success -> {
+                            if (state.data.yinSiXieYiUrl.isNotEmpty()) {
+                                navController.navigateToWebView(
+                                    url = state.data.yinSiXieYiUrl,
+                                    title = ""
+                                )
+                            } else {
+                                context.showLongToast(context.getString(R.string.login_privacy_policy_toast))
+                            }
+                        }
+                        else -> context.showLongToast(context.getString(R.string.login_privacy_policy_toast))
+                    }
+                },
                 modifier = Modifier.constrainAs(agreementText) {
                     bottom.linkTo(if (NfcTestConfig.ENABLE_NFC_TEST) testButtons.top else parent.bottom, margin = 32.dp)
                     start.linkTo(parent.start, margin = 32.dp) // 应用边距以控制文本块宽度

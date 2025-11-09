@@ -100,6 +100,18 @@ data class EndOderInfo(
 )
 
 /**
+ * WebView页面路由
+ * @param url 要加载的网页URL
+ * @param title 页面标题
+ */
+@Keep
+@Serializable
+data class WebViewRoute(
+    val url: String,
+    val title: String
+)
+
+/**
  * 选择服务页面路由
  * @param orderInfoRequest 订单信息请求模型
  */
