@@ -9,6 +9,7 @@ import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
+import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -46,15 +47,18 @@ class CountdownAlarmReceiver : BroadcastReceiver() {
             // 先停止前台服务，清除进行中的通知
             CountdownForegroundService.stopCountdown(context)
             
+            // 启动响铃服务（持续播放声音和震动）
+            AlarmRingtoneService.startRingtone(context, orderId.toString(), serviceName)
+            
             // 显示完成通知（带关闭按钮）
             countdownNotificationManager.showCountdownCompletionNotification(orderId, serviceName)
             
-            // 启动全屏响铃Activity（默认启用30秒自动关闭）
+            // 启动全屏响铃Activity（禁用自动关闭，必须手动点击关闭）
             val alarmIntent = CountdownAlarmActivity.createIntent(
                 context, 
                 orderId.toString(), 
                 serviceName,
-                autoCloseEnabled = true
+                autoCloseEnabled = false // 禁用自动关闭
             )
             context.startActivity(alarmIntent)
             
