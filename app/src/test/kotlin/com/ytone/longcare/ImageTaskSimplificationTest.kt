@@ -25,7 +25,6 @@ class ImageTaskSimplificationTest {
             "id" to "test123",
             "originalUri" to "file:///test/path/image.jpg",
             "taskType" to "BEFORE_CARE",
-            "watermarkLines" to listOf("Line 1", "Line 2"),
             "resultUri" to "file:///test/path/result.jpg",
             "status" to "SUCCESS",
             "errorMessage" to null,

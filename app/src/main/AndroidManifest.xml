@@ -126,6 +126,29 @@
             android:enabled="true"
             android:exported="false" />
             
+        <!-- 服务时间结束闹钟广播接收器 -->
+        <receiver
+            android:name=".features.service.receiver.ServiceTimeAlarmReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.ytone.longcare.SERVICE_TIME_END_ALARM" />
+            </intent-filter>
+        </receiver>
+        
+        <!-- 设备重启完成广播接收器 -->
+        <receiver
+            android:name=".features.service.receiver.BootCompletedReceiver"
+            android:enabled="true"
+            android:exported="false"
+            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+            <intent-filter android:priority="1000">
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+            
         <!-- 倒计时响铃全屏Activity -->
         <activity
             android:name=".presentation.countdown.CountdownAlarmActivity"

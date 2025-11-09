@@ -62,7 +62,6 @@ class UriJsonAdapterTest {
             id = "test-id",
             originalUri = mockUri,
             taskType = ImageTaskType.BEFORE_CARE,
-            watermarkLines = listOf("Test watermark"),
             status = ImageTaskStatus.PROCESSING
         )
         
