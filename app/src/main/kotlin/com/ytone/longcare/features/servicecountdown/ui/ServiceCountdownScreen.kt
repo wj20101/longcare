@@ -56,6 +56,8 @@ import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import androidx.core.net.toUri
 import com.ytone.longcare.common.utils.HomeBackHandler
 import com.ytone.longcare.di.ServiceCountdownEntryPoint
+import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
+import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import dagger.hilt.android.EntryPointAccessors
 
 
@@ -77,9 +79,7 @@ fun ServiceCountdownScreen(
     countdownViewModel: ServiceCountdownViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
-    // ==========================================================
-    // 在这里调用函数，将此页面强制设置为竖屏
-    // ==========================================================
+    // 强制设置为竖屏
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
     
     // 统一处理系统返回键，确保与导航按钮行为一致
@@ -187,15 +187,28 @@ fun ServiceCountdownScreen(
     
     // 处理结束服务的公共逻辑
     fun handleEndService(endType: Int) {
-        countdownViewModel.endService(orderInfoRequest, context)
-        // 取消倒计时闹钟
+        // 1. 停止倒计时前台服务
+        CountdownForegroundService.stopCountdown(context)
+        
+        // 2. 停止定位跟踪服务
+        locationTrackingViewModel.onStopClicked()
+        
+        // 3. 取消倒计时闹钟
         countdownNotificationManager.cancelCountdownAlarm()
         
+        // 4. 停止响铃服务（如果正在响铃）
+        AlarmRingtoneService.stopRingtone(context)
+        
+        // 5. 调用ViewModel结束服务
+        countdownViewModel.endService(orderInfoRequest, context)
+        
+        // 6. 获取上传的图片列表
         val uploadedImages = countdownViewModel.getCurrentUploadedImages()
         val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE]?.mapNotNull { it.key } ?: emptyList()
         val centerImgList = uploadedImages[ImageTaskType.CENTER_CARE]?.mapNotNull { it.key } ?: emptyList()
         val endImgList = uploadedImages[ImageTaskType.AFTER_CARE]?.mapNotNull { it.key } ?: emptyList()
 
+        // 7. 导航到NFC签到页面
         navController.navigateToNfcSignInForEndOrder(
             orderInfoRequest = orderInfoRequest,
             params = EndOderInfo(
@@ -239,8 +252,6 @@ fun ServiceCountdownScreen(
     var lastSetupTime by remember { mutableLongStateOf(0L) }
     var lastProjectIdList by remember { mutableStateOf(emptyList<Int>()) }
     var permissionsChecked by remember { mutableStateOf(false) }
-    
-    // 防抖延迟时间（毫秒）
     val debounceDelay = 500L
     
     // 设置倒计时时间的通用函数
@@ -254,13 +265,10 @@ fun ServiceCountdownScreen(
         
         val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
         orderInfo?.let {
-            // 计算总服务时间（分钟）
             val totalMinutes = (it.projectList ?: emptyList())
                 .filter { project -> project.projectId in projectIdList.map { it.toInt() } }
                 .sumOf { project -> project.serviceTime }
             
-            // 检查是否需要重新初始化
-            // 允许在锁屏解锁后重新刷新倒计时状态，确保显示正确的超时状态
             val needsReinit = lastProjectIdList != projectIdList.map { it.toInt() } ||
                              countdownState == ServiceCountdownState.ENDED ||
                              !isCountdownInitialized
@@ -292,9 +300,8 @@ fun ServiceCountdownScreen(
                     totalSeconds = totalSeconds
                 )
                 
-                // 设置系统级倒计时闹钟（只有在权限充足时）
+                // 设置系统级倒计时闹钟
                 if (checkNotificationPermission()) {
-                    // 即使没有精确闹钟权限，内部会使用AlarmClock兜底
                     val completionTime = countdownNotificationManager.calculateCompletionTime(totalMinutes * 60 * 1000L)
                     countdownNotificationManager.scheduleCountdownAlarm(
                         orderId = orderInfoRequest.orderId,
@@ -306,7 +313,6 @@ fun ServiceCountdownScreen(
                     showPermissionDialog = true
                 }
                 
-                // 更新状态
                 isCountdownInitialized = true
                 lastProjectIdList = projectIdList.map { it.toInt() }
             }
@@ -323,17 +329,13 @@ fun ServiceCountdownScreen(
     // 监听生命周期变化，在RESUMED状态下重新计算倒计时
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            // 在RESUMED状态下强制重新设置倒计时，忽略防抖机制
-            // 确保锁屏解锁后状态正确，显示当前真实的倒计时状态
             val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
             orderInfo?.let {
-                // 计算总服务时间（分钟）
                 val totalMinutes = (it.projectList ?: emptyList())
                     .filter { project -> project.projectId in projectIdList.map { it.toInt() } }
                     .sumOf { project -> project.serviceTime }
                 
                 if (totalMinutes > 0) {
-                    // 强制重新计算倒计时状态，不受防抖限制
                     countdownViewModel.setCountdownTimeFromProjects(
                         orderRequest = orderInfoRequest,
                         projectList = it.projectList ?: emptyList(),
@@ -401,7 +403,6 @@ fun ServiceCountdownScreen(
                     orderInfoRequest = orderInfoRequest, projectIdList = projectIdList.map { it.toString() }, sharedViewModel = sharedViewModel
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
             }
 
             // 固定在底部的按钮
@@ -422,7 +423,6 @@ fun ServiceCountdownScreen(
                     )
                     .padding(horizontal = 16.dp, vertical = 32.dp)
             ) {
-                // End Service Button
                 Button(
                     onClick = {
                         // 验证照片是否已上传
@@ -435,7 +435,6 @@ fun ServiceCountdownScreen(
                         if (countdownState == ServiceCountdownState.RUNNING) {
                             showConfirmDialog = true
                         } else {
-                            // 直接结束服务
                             handleEndService(1)
                         }
                     },
@@ -550,8 +549,6 @@ fun CountdownTimerCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                // 根据状态显示不同的倒计时文本
-                // 倒计时显示
                 val (timeText, statusText) = when (countdownState) {
                     ServiceCountdownState.RUNNING -> formattedTime to "服务倒计时"
                     ServiceCountdownState.COMPLETED -> "00:00:00" to "服务倒计时"
@@ -600,20 +597,11 @@ fun SelectedServicesCard(
     val tagHeightEstimate = 32.dp
     val tagOverlap = 12.dp
 
-    // 获取订单详情
     val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
     val allProjects = orderInfo?.projectList ?: emptyList()
-
-    // 判断是否为全选状态
     val isAllSelected = projectIdList.isEmpty() || 
         (allProjects.isNotEmpty() && projectIdList.containsAll(allProjects.map { it.projectId.toString() }))
-
-    // 根据是否全选来确定显示的项目
-    val selectedProjects = if (isAllSelected) {
-        allProjects
-    } else {
-        allProjects.filter { it.projectId.toString() in projectIdList }
-    }
+    val selectedProjects = if (isAllSelected) allProjects else allProjects.filter { it.projectId.toString() in projectIdList }
 
     Box {
         Card(

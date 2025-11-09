@@ -4,7 +4,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
-import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.os.Build
@@ -12,6 +11,7 @@ import android.os.IBinder
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.core.content.getSystemService
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 
@@ -129,11 +129,9 @@ class AlarmRingtoneService : Service() {
     private fun initializeVibrator() {
         try {
             vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-                vibratorManager.defaultVibrator
+                getSystemService<VibratorManager>()?.defaultVibrator
             } else {
-                @Suppress("DEPRECATION")
-                getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                getSystemService<Vibrator>()
             }
             
             // 震动模式：等待0ms -> 震动1000ms -> 暂停500ms -> 循环
