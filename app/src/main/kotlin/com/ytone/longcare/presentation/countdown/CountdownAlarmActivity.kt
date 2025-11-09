@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.receiver.DismissAlarmReceiver
+import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -135,7 +136,10 @@ class CountdownAlarmActivity : AppCompatActivity() {
         // 取消自动关闭
         cancelAutoClose()
         
-        // 取消通知（这会停止通知的声音和震动）
+        // 停止响铃服务
+        AlarmRingtoneService.stopRingtone(this)
+        
+        // 取消通知
         countdownNotificationManager.cancelCountdownCompletionNotification()
         
         // 关闭Activity

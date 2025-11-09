@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -23,6 +24,9 @@ class DismissAlarmReceiver : BroadcastReceiver() {
         
         val orderId = intent.getLongExtra(CountdownNotificationManager.EXTRA_ORDER_ID, 0L)
         val serviceName = intent.getStringExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME) ?: ""
+        
+        // 停止响铃服务
+        AlarmRingtoneService.stopRingtone(context)
         
         // 取消通知
         countdownNotificationManager.cancelCountdownCompletionNotification()

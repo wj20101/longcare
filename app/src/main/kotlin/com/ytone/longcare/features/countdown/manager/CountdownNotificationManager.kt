@@ -173,10 +173,7 @@ class CountdownNotificationManager @Inject constructor(
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            // 通知负责响闹铃和震动
-            val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            
+            // 通知仅用于显示信息和提供操作按钮，声音和震动由AlarmRingtoneService处理
             val notification = NotificationCompat.Builder(context, COUNTDOWN_NOTIFICATION_CHANNEL_ID)
                 .setContentTitle("⏰ 服务倒计时完成")
                 .setContentText("$serviceName 服务时间已到，请及时处理")
@@ -185,9 +182,9 @@ class CountdownNotificationManager @Inject constructor(
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setAutoCancel(false) // 不自动取消，需要用户手动关闭
                 .setOngoing(true) // 设置为持续通知，不能滑动删除
-                .setDefaults(0) // 清除默认设置，使用自定义配置
-                .setSound(alarmUri) // 播放闹铃声音
-                .setVibrate(longArrayOf(0, 1000, 500, 1000, 500, 1000)) // 设置震动模式
+                .setDefaults(0) // 清除默认设置，不使用默认声音和震动
+                .setSound(null) // 不播放声音（由AlarmRingtoneService处理）
+                .setVibrate(null) // 不震动（由AlarmRingtoneService处理）
                 .setLights(0xFF0000FF.toInt(), 1000, 500) // 设置LED灯光
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // 锁屏可见
                 .setContentIntent(alarmActivityPendingIntent) // 点击通知时启动闹铃页面
@@ -237,22 +234,13 @@ class CountdownNotificationManager @Inject constructor(
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "服务倒计时完成时的提醒通知"
-                enableVibration(true)
+                enableVibration(false) // 不使用通知震动，由AlarmRingtoneService处理
                 enableLights(true)
                 setShowBadge(true)
                 lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
                 
-                // 设置闹铃声音
-                val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                    ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                val audioAttributes = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-                setSound(alarmUri, audioAttributes)
-                
-                // 设置震动模式
-                vibrationPattern = longArrayOf(0, 1000, 500, 1000, 500, 1000)
+                // 不设置声音，由AlarmRingtoneService处理
+                setSound(null, null)
                 
                 // 允许绕过勿扰模式
                 setBypassDnd(true)

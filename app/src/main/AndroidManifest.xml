@@ -110,6 +110,12 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="countdown" />
         </service>
+        
+        <!-- 闹铃响铃服务 -->
+        <service
+            android:name=".features.countdown.service.AlarmRingtoneService"
+            android:enabled="true"
+            android:exported="false" />
             
         <!-- 高德地图定位服务 -->
         <service android:name="com.amap.api.location.APSService" />
