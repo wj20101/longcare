@@ -37,6 +37,7 @@ class CountdownNotificationManager @Inject constructor(
         private const val COUNTDOWN_NOTIFICATION_ID = 2001
         private const val COUNTDOWN_ALARM_REQUEST_CODE = 3001
         private const val DISMISS_ALARM_REQUEST_CODE = 3002
+        private const val COUNTDOWN_ALARM_ACTIVITY_REQUEST_CODE = 3003
         
         // Intent extras
         const val EXTRA_ORDER_ID = "extra_order_id"
@@ -72,13 +73,41 @@ class CountdownNotificationManager @Inject constructor(
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            // 使用精确闹钟确保准时触发
-            AlarmManagerCompat.setExactAndAllowWhileIdle(
-                alarmManager,
-                AlarmManager.RTC_WAKEUP,
-                triggerTimeMillis,
-                pendingIntent
+            // Activity PendingIntent 用于 AlarmClock 的显示入口和全屏
+            val alarmActivityIntent = CountdownAlarmActivity.createIntent(
+                context,
+                orderId.toString(),
+                serviceName,
+                autoCloseEnabled = true
             )
+            val alarmActivityPendingIntent = PendingIntent.getActivity(
+                context,
+                COUNTDOWN_ALARM_ACTIVITY_REQUEST_CODE,
+                alarmActivityIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // Android 12+ 若没有精确闹钟权限，使用 AlarmClock 兜底以确保锁屏提醒
+            val useAlarmClockFallback =
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) && !canScheduleExactAlarms()
+
+            if (useAlarmClockFallback) {
+                val alarmClockInfo = AlarmManager.AlarmClockInfo(
+                    triggerTimeMillis,
+                    alarmActivityPendingIntent
+                )
+                alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+                logI("通过AlarmClock设置倒计时闹钟(兜底): orderId=$orderId, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+            } else {
+                // 使用精确闹钟确保准时触发（可绕过Doze/Idle）
+                AlarmManagerCompat.setExactAndAllowWhileIdle(
+                    alarmManager,
+                    AlarmManager.RTC_WAKEUP,
+                    triggerTimeMillis,
+                    pendingIntent
+                )
+                logI("通过ExactAndAllowWhileIdle设置倒计时闹钟: orderId=$orderId, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+            }
 
             logI("倒计时闹钟已设置: orderId=$orderId, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
         } catch (e: Exception) {
@@ -139,7 +168,7 @@ class CountdownNotificationManager @Inject constructor(
             )
             val alarmActivityPendingIntent = PendingIntent.getActivity(
                 context,
-                COUNTDOWN_ALARM_REQUEST_CODE,
+                COUNTDOWN_ALARM_ACTIVITY_REQUEST_CODE,
                 alarmActivityIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
