@@ -18,7 +18,8 @@ import javax.inject.Inject
 
 class RequestInterceptor @Inject constructor(
     private val userSessionRepository: UserSessionRepository,
-    private val deviceUtils: DeviceUtils
+    private val deviceUtils: DeviceUtils,
+    private val aesKeyManager: AesKeyManager
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -32,6 +33,10 @@ class RequestInterceptor @Inject constructor(
         val method = request.method
         val newRequestBuilder = request.newBuilder()
         val randomString = RandomUtils.generateRandomStringKotlin(32)
+        
+        // 保存AES密钥供响应拦截器使用
+        aesKeyManager.saveKey(randomString)
+        
         val map = iniHttpHeader(randomString)
         if (map.isNotEmpty()) {
             for (head in map) {

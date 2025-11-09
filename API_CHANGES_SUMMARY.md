@@ -80,7 +80,10 @@ data class ThirdKeyReturnModel(
 - ✅ `api/response/SystemConfigModel.kt` - 更新响应模型
 - ✅ `api/response/ThirdKeyReturnModel.kt` - 第三方密钥模型
 - ✅ `common/utils/ThirdKeyDecryptUtils.kt` - 解密工具类
-- ✅ `common/utils/ThirdKeyDecryptUsageExample.kt` - 使用示例
+- ✅ `network/interceptor/AesKeyManager.kt` - AES密钥管理器（新增）
+- ✅ `network/interceptor/RequestInterceptor.kt` - 请求拦截器（已更新）
+- ✅ `network/interceptor/ResponseDecryptInterceptor.kt` - 响应解密拦截器（新增）
+- ✅ `di/NetworkModule.kt` - 网络模块配置（已更新）
 
 ### 加密规则
 `thirdKeyStr` 的生成规则：
@@ -96,27 +99,41 @@ thirdKeyStr = AES加密(ThirdKeyReturnModel的JSON字符串, 请求Config接口�
 - **密钥**: 来自请求头的AESKEY（32字节随机字符串）
 - **输出格式**: 16进制字符串（IV + 密文）
 
-### 解密使用方法
+### 自动解密机制
+
+**重要更新**：`thirdKeyStr` 现在由网络层自动解密，业务层直接获取解密后的JSON字符串！
+
+#### 工作原理
+1. `RequestInterceptor` 生成AES密钥并保存到 `AesKeyManager`
+2. `ResponseDecryptInterceptor` 自动拦截 `/V1/System/Config` 响应
+3. 使用保存的AES密钥解密 `thirdKeyStr`
+4. 将解密后的JSON字符串替换原始加密数据
+5. 业务层直接获取解密后的内容
 
 #### 基本用法
 ```kotlin
-// 1. 获取SystemConfig
+// 1. 获取SystemConfig（thirdKeyStr已自动解密）
 val systemConfig: SystemConfigModel = apiService.getSystemConfig()
 
-// 2. 获取当前请求的AES密钥（需要从RequestInterceptor中保存）
-val aesKey: String = getCurrentAesKey()
+// 2. thirdKeyStr现在是JSON字符串，需要解析为对象
+val thirdKeyModel = parseThirdKeyJson(systemConfig.thirdKeyStr)
 
-// 3. 解密thirdKeyStr
-val thirdKeyModel = ThirdKeyDecryptUtils.decryptThirdKeyStr(
-    encryptedThirdKeyStr = systemConfig.thirdKeyStr,
-    aesKey = aesKey
-)
-
-// 4. 使用解密后的密钥
+// 3. 使用解密后的密钥
 thirdKeyModel?.let {
     configureTencentCOS(it.cosSecretId, it.cosSecretKey)
     configureTencentFace(it.faceSecretId, it.faceSecretKey)
     configureAmapSDK(it.amapKey)
+}
+
+// 辅助函数：解析JSON
+private fun parseThirdKeyJson(json: String): ThirdKeyReturnModel? {
+    return try {
+        val moshi = Moshi.Builder().build()
+        val adapter = moshi.adapter(ThirdKeyReturnModel::class.java)
+        adapter.fromJson(json)
+    } catch (e: Exception) {
+        null
+    }
 }
 ```
 
@@ -162,6 +179,9 @@ app/src/main/kotlin/com/ytone/longcare/
 ├── common/utils/
 │   ├── ThirdKeyDecryptUtils.kt            # 解密工具类
 │   └── ThirdKeyDecryptUsageExample.kt     # 使用示例
+├── network/interceptor/
+│   ├── AesKeyManager.kt                   # AES密钥管理器
+│   └── ResponseDecryptInterceptor.kt      # 响应解密拦截器
 └── features/webview/ui/
     └── WebViewScreen.kt                    # WebView页面
 
@@ -182,9 +202,13 @@ app/src/main/kotlin/com/ytone/longcare/
 ├── features/login/
 │   ├── vm/LoginViewModel.kt                # 添加启动配置状态管理
 │   └── ui/LoginScreen.kt                   # 集成协议链接点击
-└── navigation/
-    ├── NavigationRoutes.kt                 # 添加WebViewRoute
-    └── AppNavigation.kt                    # 添加WebView导航
+├── navigation/
+│   ├── NavigationRoutes.kt                 # 添加WebViewRoute
+│   └── AppNavigation.kt                    # 添加WebView导航
+├── network/interceptor/
+│   └── RequestInterceptor.kt               # 添加AES密钥保存逻辑
+└── di/
+    └── NetworkModule.kt                    # 注册响应解密拦截器
 
 app/src/debug/
 ├── assets/mock/
@@ -206,23 +230,26 @@ app/src/main/res/values/
 5. ✅ 测试网络异常情况下的降级处理（显示Toast）
 
 ### 第三方密钥解密测试
-1. ⚠️ 需要实现AES密钥管理机制（保存RequestInterceptor中的randomString）
-2. ⚠️ 测试解密功能是否正常工作
-3. ⚠️ 测试解密失败的错误处理
-4. ⚠️ 验证解密后的密钥是否正确
+1. ✅ AES密钥管理机制已实现（AesKeyManager + ThreadLocal）
+2. ✅ 自动解密功能已实现（ResponseDecryptInterceptor）
+3. ✅ 解密失败的错误处理已实现
+4. ⚠️ 需要测试实际API返回的加密数据
+5. ⚠️ 需要验证解密后的密钥格式是否正确
 
 ## 6. 待完成事项
 
 ### 高优先级
-- [ ] **实现AES密钥管理机制**
-  - 在RequestInterceptor中保存当前请求的randomString
-  - 创建KeyManager来管理会话级别的AES密钥
-  - 在获取SystemConfig后使用正确的密钥解密thirdKeyStr
+- [x] **实现AES密钥管理机制** ✅
+  - ✅ 创建 `AesKeyManager` 使用ThreadLocal管理密钥
+  - ✅ 在 `RequestInterceptor` 中保存AES密钥
+  - ✅ 在 `ResponseDecryptInterceptor` 中自动解密thirdKeyStr
+  - ✅ 响应处理完成后自动清除密钥
 
 - [ ] **集成第三方SDK配置**
   - 在获取并解密thirdKeyStr后，配置腾讯云COS SDK
   - 配置腾讯云人脸识别SDK
   - 配置高德地图SDK
+  - 创建统一的SDK配置管理器
 
 ### 中优先级
 - [ ] **添加单元测试**
@@ -244,9 +271,11 @@ app/src/main/res/values/
 ## 7. 注意事项
 
 ### 安全性
-1. ⚠️ `thirdKeyStr` 包含敏感的第三方密钥信息，必须妥善处理
-2. ⚠️ AES密钥（randomString）不应该持久化存储
-3. ⚠️ 解密后的ThirdKeyReturnModel应该安全存储（考虑使用EncryptedSharedPreferences）
+1. ✅ `thirdKeyStr` 在网络层自动解密，业务层获取JSON格式
+2. ✅ AES密钥使用ThreadLocal存储，线程隔离，用后即清
+3. ✅ 密钥不会持久化存储，每个请求独立
+4. ⚠️ 解密后的ThirdKeyReturnModel应该安全存储（考虑使用EncryptedSharedPreferences）
+5. ⚠️ 业务层需要将JSON解析为对象后使用
 
 ### 兼容性
 1. ✅ 所有新增字段都有默认值，向后兼容
@@ -262,6 +291,7 @@ app/src/main/res/values/
 
 - [通用本地通知系统技术架构文档](通用本地通知系统技术架构文档.md)
 - [项目开发规范](project-standards.md)
+- [ThirdKey自动解密指南](THIRD_KEY_AUTO_DECRYPT_GUIDE.md) ⭐ **重要**
 - [ThirdKeyDecryptUtils使用示例](app/src/main/kotlin/com/ytone/longcare/common/utils/ThirdKeyDecryptUsageExample.kt)
 
 ## 9. 联系方式
