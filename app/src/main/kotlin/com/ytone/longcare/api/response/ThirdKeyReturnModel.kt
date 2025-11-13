@@ -10,32 +10,26 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class ThirdKeyReturnModel(
     /**
-     * 腾讯云COS SecretId
+     * 高德地图API Key
      */
-    @param:Json(name = "cosSecretId")
-    val cosSecretId: String = "",
+    @param:Json(name = "GaoDeMapApiKey")
+    val gaoDeMapApiKey: String = "",
 
     /**
-     * 腾讯云COS SecretKey
+     * 腾讯云人脸识别AppId
      */
-    @param:Json(name = "cosSecretKey")
-    val cosSecretKey: String = "",
+    @param:Json(name = "TxFaceAppId")
+    val txFaceAppId: String = "",
 
     /**
-     * 腾讯云人脸识别SecretId
+     * 腾讯云人脸识别AppSecret
      */
-    @param:Json(name = "faceSecretId")
-    val faceSecretId: String = "",
+    @param:Json(name = "TxFaceAppSecret")
+    val txFaceAppSecret: String = "",
 
     /**
-     * 腾讯云人脸识别SecretKey
+     * 腾讯云人脸识别AppLicence
      */
-    @param:Json(name = "faceSecretKey")
-    val faceSecretKey: String = "",
-
-    /**
-     * 高德地图Key
-     */
-    @param:Json(name = "amapKey")
-    val amapKey: String = ""
+    @param:Json(name = "TxFaceAppLicence")
+    val txFaceAppLicence: String = ""
 )
