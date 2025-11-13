@@ -43,7 +43,7 @@ object ThirdKeyDecryptUtils {
             // 确定IV：根据RequestInterceptor的逻辑
             // 如果密钥长度 > 16，使用固定的IV；否则使用密钥本身作为IV
             val iv = if (aesKey.length > 16) {
-                getInitializationVectorConcise()
+                CryptoUtils.getInitializationVectorConcise()
             } else {
                 aesKey.toByteArray()
             }
@@ -99,7 +99,7 @@ object ThirdKeyDecryptUtils {
             // 确定IV：根据RequestInterceptor的逻辑
             // 如果密钥长度 > 16，使用固定的IV；否则使用密钥本身作为IV
             val iv = if (aesKey.length > 16) {
-                getInitializationVectorConcise()
+                CryptoUtils.getInitializationVectorConcise()
             } else {
                 aesKey.toByteArray()
             }
@@ -123,24 +123,5 @@ object ThirdKeyDecryptUtils {
     /**
      * 获取初始化向量（与RequestInterceptor保持一致）
      */
-    private fun getInitializationVectorConcise(): ByteArray {
-        return byteArrayOf(
-            0x41.toByte(),
-            0x72.toByte(),
-            0x65.toByte(),
-            0x79.toByte(),
-            0x6F.toByte(),
-            0x75.toByte(),
-            0x6D.toByte(),
-            0x79.toByte(),
-            0x53.toByte(),
-            0x6E.toByte(),
-            0x6F.toByte(),
-            0x77.toByte(),
-            0x6D.toByte(),
-            0x61.toByte(),
-            0x6E.toByte(),
-            0x3F.toByte()
-        )
-    }
+    
 }
