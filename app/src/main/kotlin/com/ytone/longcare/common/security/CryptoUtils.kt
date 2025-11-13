@@ -1075,4 +1075,25 @@ object CryptoUtils {
         }
     }
 
+    fun getInitializationVectorConcise(): ByteArray {
+        return byteArrayOf(
+            0x41.toByte(),
+            0x72.toByte(),
+            0x65.toByte(),
+            0x79.toByte(),
+            0x6F.toByte(),
+            0x75.toByte(),
+            0x6D.toByte(),
+            0x79.toByte(),
+            0x53.toByte(),
+            0x6E.toByte(),
+            0x6F.toByte(),
+            0x77.toByte(),
+            0x6D.toByte(),
+            0x61.toByte(),
+            0x6E.toByte(),
+            0x3F.toByte()
+        )
+    }
+
 }
