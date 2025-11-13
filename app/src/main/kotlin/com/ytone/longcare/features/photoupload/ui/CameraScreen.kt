@@ -25,13 +25,17 @@ import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.RadioButtonChecked
+import androidx.compose.material.icons.filled.Cameraswitch
+import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -149,6 +153,9 @@ private fun CameraContent(
     val location by viewModel.location.collectAsState()
     val time by viewModel.time.collectAsState()
     val logoImg by viewModel.syLogoImg.collectAsState()
+    
+    // 摄像头切换状态
+    var isFrontCamera by remember { mutableStateOf(false) }
 
 
     val locationPermissions = arrayOf(
@@ -236,47 +243,106 @@ private fun CameraContent(
                 )
 
 
-                ShutterButton(
-                    onClick = {
-                        viewModel.updateTime()
-                        val executor = ContextCompat.getMainExecutor(context)
-                        watermarkView?.let {
-                            takePhoto(
-                                context,
-                                cameraController,
-                                executor,
-                                it,
-                                onImageCaptured
-                            )
-                        }
-                    },
+                // 底部控制栏
+                Row(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 32.dp)
-                )
+                        .fillMaxWidth()
+                        .padding(bottom = 32.dp, start = 32.dp, end = 32.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 占位符（保持布局对称）
+                    Box(modifier = Modifier.size(56.dp))
+                    
+                    // 拍照按钮
+                    ShutterButton(
+                        onClick = {
+                            viewModel.updateTime()
+                            val executor = ContextCompat.getMainExecutor(context)
+                            watermarkView?.let {
+                                takePhoto(
+                                    context,
+                                    cameraController,
+                                    executor,
+                                    it,
+                                    onImageCaptured
+                                )
+                            }
+                        }
+                    )
+                    
+                    // 切换摄像头按钮
+                    CameraSwitchButton(
+                        onClick = {
+                            isFrontCamera = !isFrontCamera
+                            cameraController.cameraSelector = if (isFrontCamera) {
+                                androidx.camera.core.CameraSelector.DEFAULT_FRONT_CAMERA
+                            } else {
+                                androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
+                            }
+                        }
+                    )
+                }
             }
         }
     }
 }
 
+/**
+ * 拍照按钮
+ * 美化设计：外圈白色边框 + 内圈白色实心圆
+ */
 @Composable
 private fun ShutterButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(80.dp)
+            .clip(CircleShape)
+            .background(Color.Transparent)
+            .border(4.dp, Color.White, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        IconButton(
+            onClick = onClick,
+            modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .background(Color.White)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Circle,
+                contentDescription = "拍照",
+                modifier = Modifier.size(56.dp),
+                tint = Color.White
+            )
+        }
+    }
+}
+
+/**
+ * 摄像头切换按钮
+ */
+@Composable
+private fun CameraSwitchButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     IconButton(
         onClick = onClick,
         modifier = modifier
-            .size(72.dp)
+            .size(56.dp)
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.5f))
-            .border(2.dp, Color.Gray, CircleShape)
+            .background(Color.Black.copy(alpha = 0.5f))
     ) {
         Icon(
-            imageVector = Icons.Filled.RadioButtonChecked,
-            contentDescription = "Take Photo",
-            modifier = Modifier.size(64.dp),
-            tint = Color.White
+            imageVector = Icons.Filled.Cameraswitch,
+            contentDescription = "切换摄像头",
+            tint = Color.White,
+            modifier = Modifier.size(32.dp)
         )
     }
 }
