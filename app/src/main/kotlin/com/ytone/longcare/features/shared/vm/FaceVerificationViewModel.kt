@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.ytone.longcare.common.utils.FaceVerificationManager
+import com.ytone.longcare.common.utils.SystemConfigManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +20,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class FaceVerificationViewModel @Inject constructor(
-    private val faceVerificationManager: FaceVerificationManager
+    private val faceVerificationManager: FaceVerificationManager,
+    private val systemConfigManager: SystemConfigManager
 ) : ViewModel() {
     
     /**
@@ -47,7 +49,6 @@ class FaceVerificationViewModel @Inject constructor(
      */
     fun startFaceVerificationWithAutoSign(
         context: Context,
-        config: FaceVerificationManager.TencentCloudConfig,
         name: String,
         idNo: String,
         orderNo: String,
@@ -63,9 +64,19 @@ class FaceVerificationViewModel @Inject constructor(
                 userId = userId
             )
             
+            val third = systemConfigManager.getThirdKey()
+            if (third == null || third.txFaceAppId.isBlank() || third.txFaceAppSecret.isBlank() || third.txFaceAppLicence.isBlank()) {
+                _uiState.value = FaceVerifyUiState.Error(error = null, message = "人脸配置不可用")
+                return@launch
+            }
+            val cfg = FaceVerificationManager.TencentCloudConfig(
+                appId = third.txFaceAppId,
+                secret = third.txFaceAppSecret,
+                licence = third.txFaceAppLicence
+            )
             faceVerificationManager.startFaceVerification(
                 context = context,
-                config = config,
+                config = cfg,
                 request = request,
                 callback = createFaceVerifyCallback()
             )
@@ -81,7 +92,6 @@ class FaceVerificationViewModel @Inject constructor(
      */
     fun startFaceVerificationWithAutoSign(
         context: Context,
-        config: FaceVerificationManager.TencentCloudConfig,
         orderNo: String,
         userId: String,
         sourcePhotoStr: String
@@ -97,9 +107,19 @@ class FaceVerificationViewModel @Inject constructor(
                 sourcePhotoStr = sourcePhotoStr
             )
             
+            val third = systemConfigManager.getThirdKey()
+            if (third == null || third.txFaceAppId.isBlank() || third.txFaceAppSecret.isBlank() || third.txFaceAppLicence.isBlank()) {
+                _uiState.value = FaceVerifyUiState.Error(error = null, message = "人脸配置不可用")
+                return@launch
+            }
+            val cfg = FaceVerificationManager.TencentCloudConfig(
+                appId = third.txFaceAppId,
+                secret = third.txFaceAppSecret,
+                licence = third.txFaceAppLicence
+            )
             faceVerificationManager.startFaceVerification(
                 context = context,
-                config = config,
+                config = cfg,
                 request = request,
                 callback = createFaceVerifyCallback()
             )
