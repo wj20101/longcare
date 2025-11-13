@@ -6,13 +6,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
-import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.request.SetFaceParamModel
 import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.common.utils.FaceVerificationManager
+import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.identification.IdentificationRepository
@@ -56,6 +56,7 @@ enum class IdentificationState {
 @HiltViewModel
 class IdentificationViewModel @Inject constructor(
     private val faceVerificationManager: FaceVerificationManager,
+    private val systemConfigManager: SystemConfigManager,
     private val userSessionRepository: UserSessionRepository,
     private val sharedOrderRepository: SharedOrderRepository,
     private val orderRepository: OrderRepository,
@@ -92,11 +93,15 @@ class IdentificationViewModel @Inject constructor(
     private val _navigateToFaceCapture = MutableStateFlow(false)
     val navigateToFaceCapture: StateFlow<Boolean> = _navigateToFaceCapture.asStateFlow()
     
-    // 腾讯云配置
-    private val tencentCloudConfig = FaceVerificationManager.TencentCloudConfig(
-        appId = BuildConfig.TX_ID,
-        secret = BuildConfig.TX_Secret
-    )
+    private suspend fun getTencentCloudConfig(): FaceVerificationManager.TencentCloudConfig? {
+        val third = systemConfigManager.getThirdKey() ?: return null
+        if (third.txFaceAppId.isBlank() || third.txFaceAppSecret.isBlank() || third.txFaceAppLicence.isBlank()) return null
+        return FaceVerificationManager.TencentCloudConfig(
+            appId = third.txFaceAppId,
+            secret = third.txFaceAppSecret,
+            licence = third.txFaceAppLicence
+        )
+    }
     
     /**
      * 验证类型枚举
@@ -278,9 +283,15 @@ class IdentificationViewModel @Inject constructor(
                     sourcePhotoStr = sourcePhotoBase64
                 )
                 
+                val cfg = getTencentCloudConfig()
+                if (cfg == null) {
+                    _faceVerificationState.value = FaceVerificationState.Error(error = null, message = "人脸配置不可用")
+                    toastHelper.showShort("人脸配置不可用")
+                    return@launch
+                }
                 faceVerificationManager.startFaceVerification(
                     context = context,
-                    config = tencentCloudConfig,
+                    config = cfg,
                     request = request,
                     // 使用普通回调即可，因为已经保存到本地了
                     callback = createFaceVerifyCallback()
@@ -324,9 +335,15 @@ class IdentificationViewModel @Inject constructor(
                     sourcePhotoStr = sourcePhotoBase64
                 )
 
+                val cfg = getTencentCloudConfig()
+                if (cfg == null) {
+                    _faceVerificationState.value = FaceVerificationState.Error(error = null, message = "人脸配置不可用")
+                    toastHelper.showShort("人脸配置不可用")
+                    return@launch
+                }
                 faceVerificationManager.startFaceVerification(
                     context = context,
-                    config = tencentCloudConfig,
+                    config = cfg,
                     request = request,
                     // 使用普通回调即可，因为已经是从本地缓存读取的
                     callback = createFaceVerifyCallback()
@@ -365,9 +382,15 @@ class IdentificationViewModel @Inject constructor(
                 userId = userId
             )
             
+            val cfg = getTencentCloudConfig()
+            if (cfg == null) {
+                _faceVerificationState.value = FaceVerificationState.Error(error = null, message = "人脸配置不可用")
+                toastHelper.showShort("人脸配置不可用")
+                return@launch
+            }
             faceVerificationManager.startFaceVerification(
                 context = context,
-                config = tencentCloudConfig,
+                config = cfg,
                 request = request,
                 callback = createFaceVerifyCallback()
             )
@@ -617,9 +640,16 @@ class IdentificationViewModel @Inject constructor(
                 )
                 
                 // 启动人脸验证（用于设置人脸信息）
+                val cfg = getTencentCloudConfig()
+                if (cfg == null) {
+                    val errorMsg = "人脸配置不可用"
+                    toastHelper.showShort(errorMsg)
+                    _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                    return@launch
+                }
                 faceVerificationManager.startFaceVerification(
                     context = context,
-                    config = tencentCloudConfig,
+                    config = cfg,
                     request = request,
                     callback = createFaceSetupVerifyCallback(imageFile, base64Image)
                 )

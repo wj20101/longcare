@@ -5,7 +5,7 @@ import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClient
 import com.amap.api.location.AMapLocationClientOption
 import com.amap.api.location.AMapLocationListener
-import com.ytone.longcare.BuildConfig
+import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -20,7 +20,8 @@ import kotlin.coroutines.resume
  */
 @Singleton
 class AmapLocationManager @Inject constructor(
-    @param:ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
+    private val systemConfigManager: SystemConfigManager
 ) {
     private var locationClient: AMapLocationClient? = null
     private var isInitialized = false
@@ -28,12 +29,12 @@ class AmapLocationManager @Inject constructor(
     /**
      * 初始化高德定位客户端
      */
-    private fun initLocationClient() {
+    private fun initLocationClient(apiKey: String) {
         if (isInitialized) return
         
         try {
             // 设置高德地图API Key
-            AMapLocationClient.setApiKey(BuildConfig.AMAP_API_KEY)
+            AMapLocationClient.setApiKey(apiKey)
             // 设置隐私合规
             AMapLocationClient.updatePrivacyShow(context, true, true)
             AMapLocationClient.updatePrivacyAgree(context, true)
@@ -71,8 +72,16 @@ class AmapLocationManager @Inject constructor(
      * 获取当前位置（协程版本）
      * @return 定位结果，包含经纬度信息，失败时返回null
      */
-    suspend fun getCurrentLocation(): LocationResult? = suspendCancellableCoroutine { continuation ->
-        initLocationClient()
+    suspend fun getCurrentLocation(): LocationResult? {
+        val third = systemConfigManager.getThirdKey()
+        val apiKey = third?.gaoDeMapApiKey?.takeIf { it.isNotBlank() } ?: ""
+        return suspendCancellableCoroutine { continuation ->
+            if (apiKey.isBlank()) {
+                logE("高德定位API Key不可用")
+                continuation.resume(null)
+                return@suspendCancellableCoroutine
+            }
+            initLocationClient(apiKey)
         
         val client = locationClient
         if (client == null) {
@@ -105,16 +114,17 @@ class AmapLocationManager @Inject constructor(
             }
         }
 
-        // 设置定位监听器
-        client.setLocationListener(listener)
-        
-        // 启动定位
-        client.startLocation()
-        
-        // 设置取消回调
-        continuation.invokeOnCancellation {
-            client.unRegisterLocationListener(listener)
-            client.stopLocation()
+            // 设置定位监听器
+            client.setLocationListener(listener)
+            
+            // 启动定位
+            client.startLocation()
+            
+            // 设置取消回调
+            continuation.invokeOnCancellation {
+                client.unRegisterLocationListener(listener)
+                client.stopLocation()
+            }
         }
     }
 

@@ -49,7 +49,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
-import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.common.utils.FaceVerificationManager
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
@@ -85,14 +84,6 @@ fun FaceVerificationWithAutoSignScreen(
     var isProcessingPhoto by remember { mutableStateOf(false) }
     var showFaceCapture by remember { mutableStateOf(false) }
     
-    // 默认配置（实际使用时应该从配置文件或服务器获取）
-    val defaultConfig = remember {
-        FaceVerificationManager.TencentCloudConfig(
-            appId = BuildConfig.TX_ID,
-            secret = BuildConfig.TX_Secret
-        )
-    }
-    val config = defaultConfig
     val currentOrderNo = "order_${System.currentTimeMillis()}"
     val currentUserId = "124"
     
@@ -319,7 +310,6 @@ fun FaceVerificationWithAutoSignScreen(
                                     onClick = {
                                         viewModel.startFaceVerificationWithAutoSign(
                                             context = context,
-                                            config = config,
                                             orderNo = currentOrderNo,
                                             userId = currentUserId,
                                             sourcePhotoStr = sourcePhotoBase64!!
@@ -416,7 +406,6 @@ fun FaceVerificationWithAutoSignScreen(
                                         onClick = {
                                             viewModel.startFaceVerificationWithAutoSign(
                                                 context = context,
-                                                config = config,
                                                 orderNo = currentOrderNo,
                                                 userId = currentUserId,
                                                 sourcePhotoStr = sourcePhotoBase64!!
@@ -440,7 +429,6 @@ fun FaceVerificationWithAutoSignScreen(
                                     onClick = {
                                         viewModel.startFaceVerificationWithAutoSign(
                                             context = context,
-                                            config = config,
                                             orderNo = currentOrderNo,
                                             userId = currentUserId,
                                             sourcePhotoStr = sourcePhotoBase64!!

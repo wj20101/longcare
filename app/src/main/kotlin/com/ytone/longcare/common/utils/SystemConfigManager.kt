@@ -6,6 +6,7 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.response.SystemConfigModel
+import com.ytone.longcare.api.response.ThirdKeyReturnModel
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.network.safeApiCall
@@ -42,6 +43,7 @@ class SystemConfigManager @Inject constructor(
         .build()
     
     private val systemConfigAdapter = moshi.adapter(SystemConfigModel::class.java)
+    private val thirdKeyAdapter = moshi.adapter(ThirdKeyReturnModel::class.java)
     
     // 内存缓存，使用volatile确保线程安全
     @Volatile
@@ -209,5 +211,19 @@ class SystemConfigManager @Inject constructor(
      */
     suspend fun getSelectServiceType(): Int {
         return getSystemConfigLazy()?.selectServiceType ?: 0
+    }
+
+    suspend fun getThirdKey(): ThirdKeyReturnModel? {
+        val config = getSystemConfigLazy() ?: return null
+        val str = config.thirdKeyStr
+        if (str.isBlank()) return null
+        return try { thirdKeyAdapter.fromJson(str) } catch (_: Exception) { null }
+    }
+    
+    fun getThirdKeySync(): ThirdKeyReturnModel? {
+        val config = getSystemConfig() ?: return null
+        val str = config.thirdKeyStr
+        if (str.isBlank()) return null
+        return try { thirdKeyAdapter.fromJson(str) } catch (_: Exception) { null }
     }
 }

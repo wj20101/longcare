@@ -1,6 +1,7 @@
 package com.ytone.longcare.common.utils
 
 import android.content.Context
+import com.ytone.longcare.BuildConfig
 import androidx.core.os.bundleOf
 import com.tencent.cloud.huiyansdkface.facelight.api.WbCloudFaceContant
 import com.tencent.cloud.huiyansdkface.facelight.api.WbCloudFaceVerifySdk
@@ -8,7 +9,6 @@ import com.tencent.cloud.huiyansdkface.facelight.api.listeners.WbCloudFaceVerify
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.tencent.cloud.huiyansdkface.facelight.process.FaceVerifyStatus
-import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository
 import javax.inject.Inject
@@ -37,7 +37,8 @@ class FaceVerificationManager @Inject constructor(
      */
     data class TencentCloudConfig(
         val appId: String,
-        val secret: String
+        val secret: String,
+        val licence: String
     )
 
     /**
@@ -265,7 +266,7 @@ class FaceVerificationManager @Inject constructor(
             nonce = nonce,
             userId = request.userId,
             sign = sign,
-            keyLicence = BuildConfig.TX_Licence
+            keyLicence = config.licence
         )
     }
 
