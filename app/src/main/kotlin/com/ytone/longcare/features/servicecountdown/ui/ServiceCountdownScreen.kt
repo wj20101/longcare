@@ -300,15 +300,16 @@ fun ServiceCountdownScreen(
                     totalSeconds = totalSeconds
                 )
                 
-                // 设置系统级倒计时闹钟
-                if (checkNotificationPermission()) {
-                    val completionTime = countdownNotificationManager.calculateCompletionTime(totalMinutes * 60 * 1000L)
-                    countdownNotificationManager.scheduleCountdownAlarm(
-                        orderId = orderInfoRequest.orderId,
-                        serviceName = serviceName,
-                        triggerTimeMillis = completionTime
-                    )
-                } else {
+                // 设置系统级倒计时闹钟（无论权限状态都尝试设置）
+                val completionTime = countdownNotificationManager.calculateCompletionTime(totalMinutes * 60 * 1000L)
+                countdownNotificationManager.scheduleCountdownAlarm(
+                    orderId = orderInfoRequest.orderId,
+                    serviceName = serviceName,
+                    triggerTimeMillis = completionTime
+                )
+                
+                // 如果没有通知权限，显示提示
+                if (!checkNotificationPermission()) {
                     permissionDialogMessage = "通知权限被拒绝，可能无法收到倒计时完成提醒。请到设置中手动开启通知权限。"
                     showPermissionDialog = true
                 }
