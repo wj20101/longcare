@@ -31,6 +31,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.ytone.longcare.data.storage.DataStoreKeys
 import com.ytone.longcare.data.storage.UserSpecificDataStoreManager
+import com.ytone.longcare.model.isSucceed
 import java.io.File
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
@@ -158,16 +159,19 @@ class IdentificationViewModel @Inject constructor(
         viewModelScope.launch {
             val currentUser = getCurrentUser()
             if (currentUser == null) {
+                Log.e("IdentificationVM", "无法获取用户信息")
                 toastHelper.showShort("无法获取用户信息")
                 return@launch
             }
+            
+            Log.d("IdentificationVM", "开始验证服务人员 (userId=${currentUser.userId}, userName=${currentUser.userName})")
             
             // 步骤1：优先检查本地缓存
             val cachedBase64 = readUserFaceBase64(currentUser.userId)
             
             if (!cachedBase64.isNullOrBlank()) {
                 // ✅ 本地存在Base64，直接使用缓存进行验证
-                Log.d("IdentificationVM", "步骤1: 使用本地缓存进行验证，长度: ${cachedBase64.length}")
+                Log.d("IdentificationVM", "步骤1: 使用本地缓存进行验证 (userId=${currentUser.userId}, 长度=${cachedBase64.length})")
                 startSelfProvidedFaceVerificationWithBase64(
                     context = context,
                     name = currentUser.userName,
@@ -201,13 +205,21 @@ class IdentificationViewModel @Inject constructor(
                         }
                     }
                     is ApiResult.Failure -> {
-                        // 接口失败，提示错误
-                        Log.e("IdentificationVM", "获取人脸信息失败: ${faceResult.message}")
-                        toastHelper.showShort("获取人脸信息失败: ${faceResult.message}")
-                        _faceVerificationState.value = FaceVerificationState.Error(
-                            error = null,
-                            message = faceResult.message
-                        )
+                        // 接口成功，data为null，默认走成功且没数据流程
+                        if (faceResult.code.isSucceed()) {
+                            // 步骤3：接口返回成功但无数据，跳转到人脸捕获
+                            Log.d("IdentificationVM", "步骤3: 接口返回成功但无人脸数据，跳转到人脸捕获")
+                            toastHelper.showShort("请先设置人脸信息")
+                            _navigateToFaceCapture.value = true
+                        } else {
+                            // 接口失败，提示错误
+                            Log.e("IdentificationVM", "获取人脸信息失败: ${faceResult.message}")
+                            toastHelper.showShort("获取人脸信息失败: ${faceResult.message}")
+                            _faceVerificationState.value = FaceVerificationState.Error(
+                                error = null,
+                                message = faceResult.message
+                            )
+                        }
                     }
                     is ApiResult.Exception -> {
                         // 网络异常，提示错误
@@ -731,16 +743,11 @@ class IdentificationViewModel @Inject constructor(
                             val currentUser = getCurrentUser()
                             if (currentUser != null) {
                                 val userId = currentUser.userId
+                                
+                                Log.d("IdentificationVM", "开始保存人脸信息到本地 (userId=$userId)")
 
-                                // 写入人脸Base64到用户特定的DataStore
-                                val userDataStore = userSpecificDataStoreManager.userDataStore.value
-                                if (userDataStore != null && base64Image.isNotBlank()) {
-                                    // ✅ 修复：直接使用新上传的base64Image，不要使用旧缓存
-                                    val faceKey = stringPreferencesKey(DataStoreKeys.FACE_BASE64_KEY_PREFIX + userId)
-                                    userDataStore.edit { prefs ->
-                                        prefs[faceKey] = base64Image
-                                    }
-                                }
+                                // 使用统一的写入方法写入人脸Base64
+                                writeUserFaceBase64(userId, base64Image)
 
                                 // 同步更新用户会话
                                 userSessionRepository.updateUser(currentUser)
@@ -782,23 +789,62 @@ class IdentificationViewModel @Inject constructor(
     }
 
     /**
+     * 获取用户的DataStore实例
+     * 使用UserSpecificDataStoreManager确保单例，避免创建多个DataStore实例
+     */
+    private fun getUserDataStore(userId: Int): DataStore<Preferences> {
+        return userSpecificDataStoreManager.getDataStoreForUser(userId)
+    }
+    
+    /**
      * 读取当前用户的人脸Base64缓存
      */
     private suspend fun readUserFaceBase64(userId: Int): String? {
-        val ds: DataStore<Preferences> = userSpecificDataStoreManager.userDataStore.value ?: return null
-        val key = stringPreferencesKey(DataStoreKeys.FACE_BASE64_KEY_PREFIX + userId)
-        val prefs = ds.data.first()
-        return prefs[key]
+        return try {
+            val ds = getUserDataStore(userId)
+            val key = stringPreferencesKey(DataStoreKeys.FACE_BASE64_KEY_PREFIX + userId)
+            val prefs = ds.data.first()
+            val result = prefs[key]
+            
+            if (result != null) {
+                Log.d("IdentificationVM", "成功读取人脸缓存 (userId=$userId, 长度=${result.length})")
+            } else {
+                Log.d("IdentificationVM", "人脸缓存为空 (userId=$userId)")
+            }
+            
+            result
+        } catch (e: Exception) {
+            Log.e("IdentificationVM", "读取人脸缓存异常 (userId=$userId)", e)
+            null
+        }
     }
 
     /**
      * 写入当前用户的人脸Base64缓存
      */
     private suspend fun writeUserFaceBase64(userId: Int, base64: String) {
-        val ds: DataStore<Preferences> = userSpecificDataStoreManager.userDataStore.value ?: return
-        val key = stringPreferencesKey(DataStoreKeys.FACE_BASE64_KEY_PREFIX + userId)
-        ds.edit { prefs ->
-            prefs[key] = base64
+        try {
+            val ds = getUserDataStore(userId)
+            val key = stringPreferencesKey(DataStoreKeys.FACE_BASE64_KEY_PREFIX + userId)
+            
+            ds.edit { prefs ->
+                prefs[key] = base64
+            }
+
+            Log.d("IdentificationVM", "成功写入人脸缓存 (userId=$userId, 长度=${base64.length})")
+
+            // 验证写入是否成功
+            val verifyRead = ds.data.first()[key]
+            if (verifyRead != null) {
+                Log.d(
+                    "IdentificationVM",
+                    "验证写入成功 (userId=$userId, 读取长度=${verifyRead.length})"
+                )
+            } else {
+                Log.e("IdentificationVM", "验证写入失败: 写入后立即读取为空 (userId=$userId)")
+            }
+        } catch (e: Exception) {
+            Log.e("IdentificationVM", "写入人脸缓存异常 (userId=$userId)", e)
         }
     }
     

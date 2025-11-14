@@ -41,4 +41,12 @@ class UserSpecificDataStoreManager @Inject constructor(
             preferencesDataStore(name = "user_${userId}_prefs").getValue(context, this::javaClass)
         }
     }
+    
+    /**
+     * 公开方法：根据userId获取或创建DataStore实例
+     * 用于需要直接访问特定用户DataStore的场景
+     */
+    fun getDataStoreForUser(userId: Int): DataStore<Preferences> {
+        return getOrCreateDataStoreForUser(userId)
+    }
 }
