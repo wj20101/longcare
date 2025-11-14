@@ -58,10 +58,16 @@ class CountdownNotificationManager @Inject constructor(
         triggerTimeMillis: Long
     ) {
         try {
-            logE("scheduleCountdownAlarm ------------------>")
+            logI("开始设置倒计时闹钟: orderId=$orderId, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+            
+            // 先取消已存在的闹钟，避免重复
+            cancelCountdownAlarm()
+            
             val intent = Intent(context, CountdownAlarmReceiver::class.java).apply {
                 putExtra(EXTRA_ORDER_ID, orderId)
                 putExtra(EXTRA_SERVICE_NAME, serviceName)
+                // 添加唯一标识，确保Intent不会被复用
+                action = "COUNTDOWN_ALARM_$orderId"
             }
 
             val pendingIntent = PendingIntent.getBroadcast(
@@ -76,7 +82,7 @@ class CountdownNotificationManager @Inject constructor(
                 context,
                 orderId.toString(),
                 serviceName,
-                autoCloseEnabled = true
+                autoCloseEnabled = false // 禁用自动关闭，确保用户看到提醒
             )
             val alarmActivityPendingIntent = PendingIntent.getActivity(
                 context,
@@ -85,31 +91,39 @@ class CountdownNotificationManager @Inject constructor(
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            // Android 12+ 若没有精确闹钟权限，使用 AlarmClock 兜底以确保锁屏提醒
-            val useAlarmClockFallback =
-                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) && !canScheduleExactAlarms()
-
-            if (useAlarmClockFallback) {
+            // 优先使用 AlarmClock 确保锁屏提醒（Android 12+）
+            // AlarmClock 可以绕过Doze模式和电池优化，确保在锁屏状态下也能触发
+            val shouldUseAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            
+            if (shouldUseAlarmClock) {
+                // 使用 AlarmClock 确保锁屏提醒
                 val alarmClockInfo = AlarmManager.AlarmClockInfo(
                     triggerTimeMillis,
                     alarmActivityPendingIntent
                 )
                 alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
-                logI("通过AlarmClock设置倒计时闹钟(兜底): orderId=$orderId, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+                logI("✅ 通过AlarmClock设置倒计时闹钟(确保锁屏提醒): orderId=$orderId, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
             } else {
-                // 使用精确闹钟确保准时触发（可绕过Doze/Idle）
+                // Android 12以下使用精确闹钟
                 AlarmManagerCompat.setExactAndAllowWhileIdle(
                     alarmManager,
                     AlarmManager.RTC_WAKEUP,
                     triggerTimeMillis,
                     pendingIntent
                 )
-                logI("通过ExactAndAllowWhileIdle设置倒计时闹钟: orderId=$orderId, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+                logI("✅ 通过ExactAndAllowWhileIdle设置倒计时闹钟: orderId=$orderId, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
             }
 
-            logI("倒计时闹钟已设置: orderId=$orderId, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+            // 验证闹钟是否设置成功
+            val nextAlarmClock = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                alarmManager.nextAlarmClock
+            } else {
+                null
+            }
+            logI("下一个闹钟时间: ${nextAlarmClock?.triggerTime}")
+            
         } catch (e: Exception) {
-            logE("设置倒计时闹钟失败: ${e.message}")
+            logE("❌ 设置倒计时闹钟失败: ${e.message}", throwable = e)
         }
     }
 
@@ -118,20 +132,24 @@ class CountdownNotificationManager @Inject constructor(
      */
     fun cancelCountdownAlarm() {
         try {
+            // 取消所有可能的闹钟（包括不同action的）
             val intent = Intent(context, CountdownAlarmReceiver::class.java)
             val pendingIntent = PendingIntent.getBroadcast(
                 context,
                 COUNTDOWN_ALARM_REQUEST_CODE,
                 intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
             )
 
-            alarmManager.cancel(pendingIntent)
-            pendingIntent.cancel()
-            
-            logI("倒计时闹钟已取消")
+            if (pendingIntent != null) {
+                alarmManager.cancel(pendingIntent)
+                pendingIntent.cancel()
+                logI("✅ 倒计时闹钟已取消")
+            } else {
+                logI("⚠️ 没有找到待取消的倒计时闹钟")
+            }
         } catch (e: Exception) {
-            logE("取消倒计时闹钟失败: ${e.message}")
+            logE("❌ 取消倒计时闹钟失败: ${e.message}", throwable = e)
         }
     }
 
