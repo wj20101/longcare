@@ -18,3 +18,8 @@ data class Response<T>(
 data class ListResponse<T>(
     @param:Json(name = "data") val data: T, @param:Json(name = "hasNext") val hasNext: Int
 )
+
+/**
+ * 是否是成功状态码
+ */
+fun Int.isSucceed() = this == SUCCESS_CODE
