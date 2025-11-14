@@ -93,6 +93,14 @@ class IdentificationViewModel @Inject constructor(
     // 导航到人脸捕获页面的状态
     private val _navigateToFaceCapture = MutableStateFlow(false)
     val navigateToFaceCapture: StateFlow<Boolean> = _navigateToFaceCapture.asStateFlow()
+    private fun setFaceVerificationError(message: String, error: WbFaceError? = null) {
+        _faceVerificationState.value = FaceVerificationState.Error(error = error, message = message)
+        toastHelper.showShort(message)
+    }
+    private fun setFaceSetupError(message: String) {
+        _faceSetupState.value = FaceSetupState.Error(message)
+        toastHelper.showShort(message)
+    }
     
     private suspend fun getTencentCloudConfig(): FaceVerificationManager.TencentCloudConfig? {
         val third = systemConfigManager.getThirdKey() ?: return null
@@ -211,26 +219,18 @@ class IdentificationViewModel @Inject constructor(
                             Log.d("IdentificationVM", "步骤3: 接口返回成功但无人脸数据，跳转到人脸捕获")
                             toastHelper.showShort("请先设置人脸信息")
                             _navigateToFaceCapture.value = true
-                        } else {
-                            // 接口失败，提示错误
-                            Log.e("IdentificationVM", "获取人脸信息失败: ${faceResult.message}")
-                            toastHelper.showShort("获取人脸信息失败: ${faceResult.message}")
-                            _faceVerificationState.value = FaceVerificationState.Error(
-                                error = null,
-                                message = faceResult.message
-                            )
-                        }
-                    }
-                    is ApiResult.Exception -> {
-                        // 网络异常，提示错误
-                        Log.e("IdentificationVM", "网络异常: ${faceResult.exception.message}")
-                        toastHelper.showShort("网络异常，请检查网络连接")
-                        _faceVerificationState.value = FaceVerificationState.Error(
-                            error = null,
-                            message = "网络异常: ${faceResult.exception.message}"
-                        )
-                    }
+                } else {
+                    // 接口失败，提示错误
+                    Log.e("IdentificationVM", "获取人脸信息失败: ${faceResult.message}")
+                    setFaceVerificationError(faceResult.message)
                 }
+            }
+            is ApiResult.Exception -> {
+                // 网络异常，提示错误
+                Log.e("IdentificationVM", "网络异常: ${faceResult.exception.message}")
+                setFaceVerificationError("网络异常: ${faceResult.exception.message}")
+            }
+        }
             }
         }
     }
@@ -297,8 +297,7 @@ class IdentificationViewModel @Inject constructor(
                 
                 val cfg = getTencentCloudConfig()
                 if (cfg == null) {
-                    _faceVerificationState.value = FaceVerificationState.Error(error = null, message = "人脸配置不可用")
-                    toastHelper.showShort("人脸配置不可用")
+                    setFaceVerificationError("人脸配置不可用")
                     return@launch
                 }
                 faceVerificationManager.startFaceVerification(
@@ -311,11 +310,7 @@ class IdentificationViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e("IdentificationVM", "下载人脸图片失败", e)
                 val errorMsg = "获取人脸照片失败: ${e.message}"
-                _faceVerificationState.value = FaceVerificationState.Error(
-                    error = null,
-                    message = errorMsg
-                )
-                toastHelper.showShort(errorMsg)
+                setFaceVerificationError(errorMsg)
                 // 下载失败，提示用户重试
             }
         }
@@ -349,8 +344,7 @@ class IdentificationViewModel @Inject constructor(
 
                 val cfg = getTencentCloudConfig()
                 if (cfg == null) {
-                    _faceVerificationState.value = FaceVerificationState.Error(error = null, message = "人脸配置不可用")
-                    toastHelper.showShort("人脸配置不可用")
+                    setFaceVerificationError("人脸配置不可用")
                     return@launch
                 }
                 faceVerificationManager.startFaceVerification(
@@ -362,11 +356,7 @@ class IdentificationViewModel @Inject constructor(
                 )
             } catch (e: Exception) {
                 Log.e("IdentificationVM", "人脸验证失败", e)
-                _faceVerificationState.value = FaceVerificationState.Error(
-                    error = null,
-                    message = "人脸验证失败: ${e.message}"
-                )
-                toastHelper.showShort("人脸验证失败: ${e.message}")
+                setFaceVerificationError("人脸验证失败: ${e.message}")
             }
         }
     }
@@ -396,8 +386,7 @@ class IdentificationViewModel @Inject constructor(
             
             val cfg = getTencentCloudConfig()
             if (cfg == null) {
-                _faceVerificationState.value = FaceVerificationState.Error(error = null, message = "人脸配置不可用")
-                toastHelper.showShort("人脸配置不可用")
+                setFaceVerificationError("人脸配置不可用")
                 return@launch
             }
             faceVerificationManager.startFaceVerification(
@@ -420,11 +409,7 @@ class IdentificationViewModel @Inject constructor(
         
         override fun onInitFailed(error: WbFaceError?) {
             val errorMsg = "人脸识别初始化失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
-            toastHelper.showShort(errorMsg)
-            _faceVerificationState.value = FaceVerificationState.Error(
-                error = error,
-                message = errorMsg
-            )
+            setFaceVerificationError(errorMsg, error)
         }
         
         override fun onVerifySuccess(result: WbFaceVerifyResult) {
@@ -449,11 +434,7 @@ class IdentificationViewModel @Inject constructor(
         
         override fun onVerifyFailed(error: WbFaceError?) {
             val errorMsg = "人脸验证失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
-            toastHelper.showShort(errorMsg)
-            _faceVerificationState.value = FaceVerificationState.Error(
-                error = error,
-                message = errorMsg
-            )
+            setFaceVerificationError(errorMsg, error)
         }
         
         override fun onVerifyCancel() {
@@ -612,8 +593,7 @@ class IdentificationViewModel @Inject constructor(
                 val imageFile = File(imagePath)
                 if (!imageFile.exists()) {
                     val errorMsg = "图片文件不存在: $imagePath"
-                    toastHelper.showShort(errorMsg)
-                    _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                    setFaceSetupError(errorMsg)
                     return@launch
                 }
                 
@@ -627,16 +607,14 @@ class IdentificationViewModel @Inject constructor(
                 val currentUser = getCurrentUser()
                 if (currentUser == null) {
                     val errorMsg = "无法获取用户信息"
-                    toastHelper.showShort(errorMsg)
-                    _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                    setFaceSetupError(errorMsg)
                     return@launch
                 }
                 
                 // 检查用户信息完整性
                 if (currentUser.userName.isBlank() || currentUser.identityCardNumber.isBlank()) {
                     val errorMsg = "用户信息不完整，无法进行人脸验证"
-                    toastHelper.showShort(errorMsg)
-                    _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                    setFaceSetupError(errorMsg)
                     return@launch
                 }
                 
@@ -655,8 +633,7 @@ class IdentificationViewModel @Inject constructor(
                 val cfg = getTencentCloudConfig()
                 if (cfg == null) {
                     val errorMsg = "人脸配置不可用"
-                    toastHelper.showShort(errorMsg)
-                    _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                    setFaceSetupError(errorMsg)
                     return@launch
                 }
                 faceVerificationManager.startFaceVerification(
@@ -668,8 +645,7 @@ class IdentificationViewModel @Inject constructor(
                 
             } catch (e: Exception) {
                 val errorMsg = "处理人脸图片时发生错误: ${e.message}"
-                toastHelper.showShort(errorMsg)
-                _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                setFaceSetupError(errorMsg)
             }
         }
     }
@@ -686,8 +662,7 @@ class IdentificationViewModel @Inject constructor(
             
             override fun onInitFailed(error: WbFaceError?) {
                 val errorMsg = "人脸验证初始化失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
-                toastHelper.showShort(errorMsg)
-                _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                setFaceSetupError(errorMsg)
             }
             
             override fun onVerifySuccess(result: WbFaceVerifyResult) {
@@ -698,13 +673,11 @@ class IdentificationViewModel @Inject constructor(
             
             override fun onVerifyFailed(error: WbFaceError?) {
                 val errorMsg = "人脸验证失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
-                toastHelper.showShort(errorMsg)
-                _faceSetupState.value = FaceSetupState.Error(errorMsg)
+                setFaceSetupError(errorMsg)
             }
             
             override fun onVerifyCancel() {
-                toastHelper.showShort("人脸验证已取消")
-                _faceSetupState.value = FaceSetupState.Error("用户取消了人脸验证")
+                setFaceSetupError("用户取消了人脸验证")
             }
         }
     
@@ -759,31 +732,26 @@ class IdentificationViewModel @Inject constructor(
                                 setServicePersonVerified()
                             } else {
                                 val errorMsg = "更新本地用户数据失败：用户信息为空"
-                                _faceSetupState.value = FaceSetupState.Error(errorMsg)
-                                toastHelper.showShort(errorMsg)
+                                setFaceSetupError(errorMsg)
                             }
                         }
                         is ApiResult.Failure -> {
                             val errorMsg = "服务器更新失败: ${setFaceResult.message}"
-                            _faceSetupState.value = FaceSetupState.Error(errorMsg)
-                            toastHelper.showShort(errorMsg)
+                            setFaceSetupError(errorMsg)
                         }
                         is ApiResult.Exception -> {
                             val errorMsg = "网络请求异常: ${setFaceResult.exception.message}"
-                            _faceSetupState.value = FaceSetupState.Error(errorMsg)
-                            toastHelper.showShort(errorMsg)
+                            setFaceSetupError(errorMsg)
                         }
                     }
                 } else {
                     val errorMsg = uploadResult.errorMessage ?: "图片上传失败"
-                    _faceSetupState.value = FaceSetupState.Error(errorMsg)
-                    toastHelper.showShort(errorMsg)
+                    setFaceSetupError(errorMsg)
                 }
                 
             } catch (e: Exception) {
                 val errorMsg = "上传失败: ${e.message}"
-                _faceSetupState.value = FaceSetupState.Error(errorMsg)
-                toastHelper.showShort(errorMsg)
+                setFaceSetupError(errorMsg)
             }
         }
     }
