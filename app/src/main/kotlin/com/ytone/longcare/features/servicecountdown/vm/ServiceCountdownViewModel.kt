@@ -71,56 +71,100 @@ class ServiceCountdownViewModel @Inject constructor(
         projectList: List<ServiceProjectM>, 
         selectedProjectIds: List<Int>
     ) {
+        // 保存当前订单ID和项目信息，用于后续重新计算
+        currentOrderId = orderRequest.orderId
+        currentProjectList = projectList
+        currentSelectedProjectIds = selectedProjectIds
+        
+        // 计算并更新倒计时状态
+        val (state, remainingTime, overtimeTime) = calculateCountdownState(
+            orderRequest.orderId,
+            projectList,
+            selectedProjectIds
+        )
+        
+        // 更新状态
+        _countdownState.value = state
+        _remainingTimeMillis.value = remainingTime
+        _overtimeMillis.value = overtimeTime
+        updateFormattedTime()
+        
+        // 根据状态启动相应的倒计时
+        when (state) {
+            ServiceCountdownState.RUNNING -> startCountdown()
+            ServiceCountdownState.OVERTIME -> startOvertimeCountdown()
+            else -> {
+                // COMPLETED 或 ENDED 状态不需要启动倒计时
+                countdownJob?.cancel()
+            }
+        }
+    }
+    
+    /**
+     * 计算倒计时状态（统一的时间计算逻辑）
+     * 
+     * 这是唯一的时间计算入口，确保：
+     * 1. UI显示的倒计时时间
+     * 2. 前台服务通知的时间
+     * 3. 系统闹钟的触发时间
+     * 都使用相同的计算逻辑，避免时间不一致的问题
+     * 
+     * @param orderId 订单ID
+     * @param projectList 所有项目列表
+     * @param selectedProjectIds 选中的项目ID列表
+     * @return Triple(状态, 剩余时间毫秒, 超时时间毫秒)
+     */
+    private fun calculateCountdownState(
+        orderId: Long,
+        projectList: List<ServiceProjectM>,
+        selectedProjectIds: List<Int>
+    ): Triple<ServiceCountdownState, Long, Long> {
+        // 计算总服务时长（分钟）
         val totalMinutes = projectList
             .filter { it.projectId in selectedProjectIds }
             .sumOf { it.serviceTime }
         
-        if (totalMinutes > 0) {
-            // 获取或创建服务开始时间
-            val serviceStartTime = serviceTimeManager.getOrCreateServiceStartTime(orderRequest.orderId)
-            
-            // 计算总服务时长（毫秒）
-            val totalServiceTimeMillis = totalMinutes * 60 * 1000L
-            
-            // 计算已经过去的时间
-            val elapsedTime = System.currentTimeMillis() - serviceStartTime
-            
-            // 计算剩余时间
-            val remainingTime = maxOf(0L, totalServiceTimeMillis - elapsedTime)
-            
-            if (remainingTime > 0) {
-                // 还有剩余时间，启动正常倒计时
-                _remainingTimeMillis.value = remainingTime
-                _countdownState.value = ServiceCountdownState.RUNNING
-                updateFormattedTime()
-                startCountdown()
-            } else {
-                // 已经超时，计算超时时长
-                val overtimeMillis = elapsedTime - totalServiceTimeMillis
-                
-                // 停止之前的倒计时任务
-                countdownJob?.cancel()
-                
-                // 设置为已完成状态
-                _remainingTimeMillis.value = 0
-                _countdownState.value = ServiceCountdownState.COMPLETED
-                updateFormattedTime()
-                
-                // 立即进入OVERTIME状态
-                _countdownState.value = ServiceCountdownState.OVERTIME
-                _overtimeMillis.value = overtimeMillis
-                
-                // 保存当前订单ID和项目信息，用于超时计时中重新计算
-                currentOrderId = orderRequest.orderId
-                currentProjectList = projectList
-                currentSelectedProjectIds = selectedProjectIds
-                
-                updateFormattedTime()
-                
-                // 启动超时计时（确保从当前超时时间开始计时）
-                startOvertimeCountdown()
-            }
+        if (totalMinutes <= 0) {
+            return Triple(ServiceCountdownState.ENDED, 0L, 0L)
         }
+        
+        // 获取或创建服务开始时间
+        val serviceStartTime = serviceTimeManager.getOrCreateServiceStartTime(orderId)
+        
+        // 计算总服务时长（毫秒）
+        val totalServiceTimeMillis = totalMinutes * 60 * 1000L
+        
+        // 计算已经过去的时间
+        val elapsedTime = System.currentTimeMillis() - serviceStartTime
+        
+        // 计算剩余时间
+        val remainingTime = totalServiceTimeMillis - elapsedTime
+        
+        return if (remainingTime > 0) {
+            // 还有剩余时间，正常倒计时
+            Triple(ServiceCountdownState.RUNNING, remainingTime, 0L)
+        } else {
+            // 已经超时
+            val overtimeMillis = -remainingTime
+            Triple(ServiceCountdownState.OVERTIME, 0L, overtimeMillis)
+        }
+    }
+    
+    /**
+     * 获取当前倒计时状态（用于前台服务等外部调用）
+     * @return Triple(状态, 剩余时间毫秒, 超时时间毫秒)
+     */
+    fun getCurrentCountdownState(): Triple<ServiceCountdownState, Long, Long> {
+        if (currentOrderId == 0L || currentProjectList.isEmpty()) {
+            return Triple(_countdownState.value, _remainingTimeMillis.value, _overtimeMillis.value)
+        }
+        
+        // 重新计算最新的状态
+        return calculateCountdownState(
+            currentOrderId,
+            currentProjectList,
+            currentSelectedProjectIds
+        )
     }
     
     // 启动超时计时
@@ -132,15 +176,12 @@ class ServiceCountdownViewModel @Inject constructor(
                 
                 // 重新计算当前的超时时间，确保锁屏解锁后时间正确
                 if (currentOrderId != 0L && currentProjectList.isNotEmpty()) {
-                    val serviceStartTime = serviceTimeManager.getServiceStartTime(currentOrderId) ?: System.currentTimeMillis()
-                    val totalMinutes = currentProjectList
-                        .filter { it.projectId in currentSelectedProjectIds }
-                        .sumOf { it.serviceTime }
-                    val totalServiceTimeMillis = totalMinutes * 60 * 1000L
-                    val elapsedTime = System.currentTimeMillis() - serviceStartTime
-                    val actualOvertimeMillis = maxOf(0L, elapsedTime - totalServiceTimeMillis)
-                    
-                    _overtimeMillis.value = actualOvertimeMillis
+                    val (_, _, overtimeMillis) = calculateCountdownState(
+                        currentOrderId,
+                        currentProjectList,
+                        currentSelectedProjectIds
+                    )
+                    _overtimeMillis.value = overtimeMillis
                 }
                 
                 updateFormattedTime()

@@ -265,11 +265,12 @@ fun ServiceCountdownScreen(
         
         val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
         orderInfo?.let {
+            val selectedProjectIdList = projectIdList.map { it.toInt() }
             val totalMinutes = (it.projectList ?: emptyList())
-                .filter { project -> project.projectId in projectIdList.map { it.toInt() } }
+                .filter { project -> project.projectId in selectedProjectIdList }
                 .sumOf { project -> project.serviceTime }
             
-            val needsReinit = lastProjectIdList != projectIdList.map { it.toInt() } ||
+            val needsReinit = lastProjectIdList != selectedProjectIdList ||
                              countdownState == ServiceCountdownState.ENDED ||
                              !isCountdownInitialized
             
@@ -280,33 +281,35 @@ fun ServiceCountdownScreen(
                     permissionsChecked = true
                 }
                 
-                // 设置ViewModel的倒计时
+                // 设置ViewModel的倒计时（统一的时间计算逻辑）
                 countdownViewModel.setCountdownTimeFromProjects(
                     orderRequest = orderInfoRequest,
                     projectList = it.projectList ?: emptyList(),
-                    selectedProjectIds = projectIdList.map { it.toInt() }
+                    selectedProjectIds = selectedProjectIdList
                 )
                 
                 // 启动前台服务显示倒计时通知
                 val serviceName = (it.projectList ?: emptyList())
-                    .filter { project -> project.projectId in projectIdList.map { it.toInt() } }
+                    .filter { project -> project.projectId in selectedProjectIdList }
                     .joinToString(", ") { project -> project.projectName }
-                val totalSeconds = totalMinutes * 60L
                 
                 countdownViewModel.startForegroundService(
                     context = context,
                     orderId = orderInfoRequest.orderId,
                     serviceName = serviceName,
-                    totalSeconds = totalSeconds
+                    totalSeconds = totalMinutes * 60L
                 )
                 
-                // 设置系统级倒计时闹钟（无论权限状态都尝试设置）
-                val completionTime = countdownNotificationManager.calculateCompletionTime(totalMinutes * 60 * 1000L)
-                countdownNotificationManager.scheduleCountdownAlarm(
-                    orderId = orderInfoRequest.orderId,
-                    serviceName = serviceName,
-                    triggerTimeMillis = completionTime
-                )
+                // 设置系统级倒计时闹钟（使用ViewModel计算的完成时间）
+                val (state, remainingMillis, _) = countdownViewModel.getCurrentCountdownState()
+                if (state == ServiceCountdownState.RUNNING && remainingMillis > 0) {
+                    val completionTime = System.currentTimeMillis() + remainingMillis
+                    countdownNotificationManager.scheduleCountdownAlarm(
+                        orderId = orderInfoRequest.orderId,
+                        serviceName = serviceName,
+                        triggerTimeMillis = completionTime
+                    )
+                }
                 
                 // 如果没有通知权限，显示提示
                 if (!checkNotificationPermission()) {
@@ -315,7 +318,7 @@ fun ServiceCountdownScreen(
                 }
                 
                 isCountdownInitialized = true
-                lastProjectIdList = projectIdList.map { it.toInt() }
+                lastProjectIdList = selectedProjectIdList
             }
             
             lastSetupTime = currentTime
@@ -332,17 +335,12 @@ fun ServiceCountdownScreen(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
             orderInfo?.let {
-                val totalMinutes = (it.projectList ?: emptyList())
-                    .filter { project -> project.projectId in projectIdList.map { it.toInt() } }
-                    .sumOf { project -> project.serviceTime }
-                
-                if (totalMinutes > 0) {
-                    countdownViewModel.setCountdownTimeFromProjects(
-                        orderRequest = orderInfoRequest,
-                        projectList = it.projectList ?: emptyList(),
-                        selectedProjectIds = projectIdList.map { it.toInt() }
-                    )
-                }
+                // 使用ViewModel统一的时间计算逻辑
+                countdownViewModel.setCountdownTimeFromProjects(
+                    orderRequest = orderInfoRequest,
+                    projectList = it.projectList ?: emptyList(),
+                    selectedProjectIds = projectIdList.map { it.toInt() }
+                )
             }
         }
     }
