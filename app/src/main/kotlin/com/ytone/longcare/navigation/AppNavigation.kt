@@ -413,7 +413,7 @@ fun AppNavigation(startDestination: Any) {
             ServiceCountdownScreen(
                 navController = navController,
                 orderInfoRequest = route.orderInfoRequest,
-                projectIdList = route.projectIdList.map { it.toString() }
+                projectIdList = route.projectIdList
             )
         }
         composable<TxFaceRoute> { backStackEntry ->

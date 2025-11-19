@@ -74,14 +74,14 @@ enum class ServiceCountdownState {
 fun ServiceCountdownScreen(
     navController: NavController,
     orderInfoRequest: OrderInfoRequestModel,
-    projectIdList: List<String>,
+    projectIdList: List<Int>,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     countdownViewModel: ServiceCountdownViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
     // 强制设置为竖屏
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
-    
+
     // 统一处理系统返回键，确保与导航按钮行为一致
     HomeBackHandler(navController = navController)
 
@@ -91,38 +91,39 @@ fun ServiceCountdownScreen(
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    
+
     // 获取CountdownNotificationManager实例
     val entryPoint = EntryPointAccessors.fromApplication(
-        context.applicationContext,
-        ServiceCountdownEntryPoint::class.java
+        context.applicationContext, ServiceCountdownEntryPoint::class.java
     )
     val countdownNotificationManager = entryPoint.countdownNotificationManager()
 
     // 二次确认弹窗状态
     var showConfirmDialog by remember { mutableStateOf(false) }
-    
+
     // 权限相关状态
     var showPermissionDialog by remember { mutableStateOf(false) }
     var permissionDialogMessage by remember { mutableStateOf("") }
-    
+
     // 通知权限请求启动器
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (!isGranted) {
-            permissionDialogMessage = "通知权限被拒绝，可能无法收到倒计时完成提醒。请到设置中手动开启通知权限。"
+            permissionDialogMessage =
+                "通知权限被拒绝，可能无法收到倒计时完成提醒。请到设置中手动开启通知权限。"
             showPermissionDialog = true
         }
     }
-    
+
     // 精确闹钟权限请求启动器
     val exactAlarmPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { _ ->
         // 检查权限是否已授予
         if (!countdownNotificationManager.canScheduleExactAlarms()) {
-            permissionDialogMessage = "精确闹钟权限被拒绝，可能无法准时收到倒计时完成提醒。请到设置中手动开启精确闹钟权限。"
+            permissionDialogMessage =
+                "精确闹钟权限被拒绝，可能无法准时收到倒计时完成提醒。请到设置中手动开启精确闹钟权限。"
             showPermissionDialog = true
         }
     }
@@ -136,19 +137,18 @@ fun ServiceCountdownScreen(
     fun checkLocationPermissionAndStart() {
         UnifiedPermissionHelper.checkLocationPermissionAndStart(context, permissionLauncher)
     }
-    
+
     // 检查通知权限
     fun checkNotificationPermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
+                context, Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
         } else {
             true // Android 13以下不需要运行时权限
         }
     }
-    
+
     // 请求通知权限
     fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -157,7 +157,7 @@ fun ServiceCountdownScreen(
             }
         }
     }
-    
+
     // 请求精确闹钟权限
     fun requestExactAlarmPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -169,7 +169,7 @@ fun ServiceCountdownScreen(
             }
         }
     }
-    
+
     // 检查所有必需权限
     fun checkAndRequestPermissions() {
         // 检查通知权限
@@ -177,42 +177,45 @@ fun ServiceCountdownScreen(
             requestNotificationPermission()
             return
         }
-        
+
         // 检查精确闹钟权限
         if (!countdownNotificationManager.canScheduleExactAlarms()) {
             requestExactAlarmPermission()
             return
         }
     }
-    
+
     // 处理结束服务的公共逻辑
     fun handleEndService(endType: Int) {
         // 1. 停止倒计时前台服务
         CountdownForegroundService.stopCountdown(context)
-        
+
         // 2. 停止定位跟踪服务
         locationTrackingViewModel.onStopClicked()
-        
+
         // 3. 取消倒计时闹钟
         countdownNotificationManager.cancelCountdownAlarm()
-        
+
         // 4. 停止响铃服务（如果正在响铃）
         AlarmRingtoneService.stopRingtone(context)
-        
+
         // 5. 调用ViewModel结束服务
         countdownViewModel.endService(orderInfoRequest, context)
-        
+
         // 6. 获取上传的图片列表
         val uploadedImages = countdownViewModel.getCurrentUploadedImages()
-        val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE]?.mapNotNull { it.key } ?: emptyList()
-        val centerImgList = uploadedImages[ImageTaskType.CENTER_CARE]?.mapNotNull { it.key } ?: emptyList()
-        val endImgList = uploadedImages[ImageTaskType.AFTER_CARE]?.mapNotNull { it.key } ?: emptyList()
+        val beginImgList =
+            uploadedImages[ImageTaskType.BEFORE_CARE]?.mapNotNull { it.key } ?: emptyList()
+        val centerImgList =
+            uploadedImages[ImageTaskType.CENTER_CARE]?.mapNotNull { it.key } ?: emptyList()
+        val endImgList =
+            uploadedImages[ImageTaskType.AFTER_CARE]?.mapNotNull { it.key } ?: emptyList()
 
         // 7. 导航到NFC签到页面
         navController.navigateToNfcSignInForEndOrder(
             orderInfoRequest = orderInfoRequest,
             params = EndOderInfo(
-                projectIdList = projectIdList.map { it.toInt() },
+                projectIdList = projectIdList,
                 beginImgList = beginImgList,
                 centerImgList = centerImgList,
                 endImgList = endImgList,
@@ -227,7 +230,7 @@ fun ServiceCountdownScreen(
 
         // 检查并启动定位服务
         checkLocationPermissionAndStart()
-        
+
         // 恢复本地保存的图片数据
         countdownViewModel.loadUploadedImagesFromLocal(orderInfoRequest)
 
@@ -253,53 +256,51 @@ fun ServiceCountdownScreen(
     var lastProjectIdList by remember { mutableStateOf(emptyList<Int>()) }
     var permissionsChecked by remember { mutableStateOf(false) }
     val debounceDelay = 500L
-    
+
     // 设置倒计时时间的通用函数
     fun setupCountdownTime() {
         val currentTime = System.currentTimeMillis()
-        
+
         // 防抖检查：如果距离上次调用时间太短，则跳过
         if (currentTime - lastSetupTime < debounceDelay) {
             return
         }
-        
+
         val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
         orderInfo?.let {
-            val selectedProjectIdList = projectIdList.map { it.toInt() }
-            val totalMinutes = (it.projectList ?: emptyList())
-                .filter { project -> project.projectId in selectedProjectIdList }
+            val totalMinutes = (it.projectList
+                ?: emptyList()).filter { project -> project.projectId in projectIdList }
                 .sumOf { project -> project.serviceTime }
-            
-            val needsReinit = lastProjectIdList != selectedProjectIdList ||
-                             countdownState == ServiceCountdownState.ENDED ||
-                             !isCountdownInitialized
-            
+
+            val needsReinit =
+                lastProjectIdList != projectIdList || countdownState == ServiceCountdownState.ENDED || !isCountdownInitialized
+
             if (needsReinit && totalMinutes > 0) {
                 // 首次初始化时检查权限
                 if (!permissionsChecked) {
                     checkAndRequestPermissions()
                     permissionsChecked = true
                 }
-                
+
                 // 设置ViewModel的倒计时（统一的时间计算逻辑）
                 countdownViewModel.setCountdownTimeFromProjects(
                     orderRequest = orderInfoRequest,
                     projectList = it.projectList ?: emptyList(),
-                    selectedProjectIds = selectedProjectIdList
+                    selectedProjectIds = projectIdList
                 )
-                
+
                 // 启动前台服务显示倒计时通知
-                val serviceName = (it.projectList ?: emptyList())
-                    .filter { project -> project.projectId in selectedProjectIdList }
+                val serviceName = (it.projectList
+                    ?: emptyList()).filter { project -> project.projectId in projectIdList }
                     .joinToString(", ") { project -> project.projectName }
-                
+
                 countdownViewModel.startForegroundService(
                     context = context,
                     orderId = orderInfoRequest.orderId,
                     serviceName = serviceName,
                     totalSeconds = totalMinutes * 60L
                 )
-                
+
                 // 设置系统级倒计时闹钟（使用ViewModel计算的完成时间）
                 val (state, remainingMillis, _) = countdownViewModel.getCurrentCountdownState()
                 if (state == ServiceCountdownState.RUNNING && remainingMillis > 0) {
@@ -310,17 +311,18 @@ fun ServiceCountdownScreen(
                         triggerTimeMillis = completionTime
                     )
                 }
-                
+
                 // 如果没有通知权限，显示提示
                 if (!checkNotificationPermission()) {
-                    permissionDialogMessage = "通知权限被拒绝，可能无法收到倒计时完成提醒。请到设置中手动开启通知权限。"
+                    permissionDialogMessage =
+                        "通知权限被拒绝，可能无法收到倒计时完成提醒。请到设置中手动开启通知权限。"
                     showPermissionDialog = true
                 }
-                
+
                 isCountdownInitialized = true
-                lastProjectIdList = selectedProjectIdList
+                lastProjectIdList = projectIdList
             }
-            
+
             lastSetupTime = currentTime
         }
     }
@@ -339,12 +341,12 @@ fun ServiceCountdownScreen(
                 countdownViewModel.setCountdownTimeFromProjects(
                     orderRequest = orderInfoRequest,
                     projectList = it.projectList ?: emptyList(),
-                    selectedProjectIds = projectIdList.map { it.toInt() }
+                    selectedProjectIds = projectIdList
                 )
             }
         }
     }
-    
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -399,7 +401,9 @@ fun ServiceCountdownScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 SelectedServicesCard(
-                    orderInfoRequest = orderInfoRequest, projectIdList = projectIdList.map { it.toString() }, sharedViewModel = sharedViewModel
+                    orderInfoRequest = orderInfoRequest,
+                    projectIdList = projectIdList,
+                    sharedViewModel = sharedViewModel
                 )
 
             }
@@ -415,9 +419,7 @@ fun ServiceCountdownScreen(
                                 Color.Transparent,
                                 Color(0xFFF6F9FF).copy(alpha = 0.9f),
                                 Color(0xFFF6F9FF)
-                            ),
-                            startY = 0f,
-                            endY = 100f
+                            ), startY = 0f, endY = 100f
                         )
                     )
                     .padding(horizontal = 16.dp, vertical = 32.dp)
@@ -445,7 +447,9 @@ fun ServiceCountdownScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = when (countdownState) {
                             ServiceCountdownState.RUNNING -> Color(0xFFFF9500) // 橙色（提前结束）
-                            ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> Color(0xFF4A90E2) // 蓝色（正常结束）
+                            ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> Color(
+                                0xFF4A90E2
+                            ) // 蓝色（正常结束）
                             ServiceCountdownState.ENDED -> Color.Gray // 灰色（已结束）
                         }
                     )
@@ -461,7 +465,7 @@ fun ServiceCountdownScreen(
             }
         }
     }
-    
+
     // 页面销毁时清理资源
     DisposableEffect(Unit) {
         onDispose {
@@ -471,7 +475,7 @@ fun ServiceCountdownScreen(
             }
         }
     }
-    
+
     // 权限提示对话框
     if (showPermissionDialog) {
         AlertDialog(
@@ -487,21 +491,18 @@ fun ServiceCountdownScreen(
                             data = "package:${context.packageName}".toUri()
                         }
                         context.startActivity(intent)
-                    }
-                ) {
+                    }) {
                     Text("去设置")
                 }
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showPermissionDialog = false }
-                ) {
+                    onClick = { showPermissionDialog = false }) {
                     Text("稍后")
                 }
-            }
-        )
+            })
     }
-    
+
     // 二次确认弹窗
     if (showConfirmDialog) {
         AlertDialog(
@@ -513,19 +514,16 @@ fun ServiceCountdownScreen(
                     onClick = {
                         showConfirmDialog = false
                         handleEndService(2)  // 提前结束
-                    }
-                ) {
+                    }) {
                     Text("确定")
                 }
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showConfirmDialog = false }
-                ) {
+                    onClick = { showConfirmDialog = false }) {
                     Text("取消")
                 }
-            }
-        )
+            })
     }
 }
 
@@ -591,16 +589,20 @@ fun CountdownTimerCard(
 
 @Composable
 fun SelectedServicesCard(
-    orderInfoRequest: OrderInfoRequestModel, projectIdList: List<String>, sharedViewModel: SharedOrderDetailViewModel
+    orderInfoRequest: OrderInfoRequestModel,
+    projectIdList: List<Int>,
+    sharedViewModel: SharedOrderDetailViewModel
 ) {
     val tagHeightEstimate = 32.dp
     val tagOverlap = 12.dp
 
     val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
     val allProjects = orderInfo?.projectList ?: emptyList()
-    val isAllSelected = projectIdList.isEmpty() || 
-        (allProjects.isNotEmpty() && projectIdList.containsAll(allProjects.map { it.projectId.toString() }))
-    val selectedProjects = if (isAllSelected) allProjects else allProjects.filter { it.projectId.toString() in projectIdList }
+    val isAllSelected =
+        projectIdList.isEmpty() || (allProjects.isNotEmpty() && projectIdList.containsAll(
+            allProjects.map { it.projectId }))
+    val selectedProjects =
+        if (isAllSelected) allProjects else allProjects.filter { it.projectId in projectIdList }
 
     Box {
         Card(
@@ -640,6 +642,8 @@ fun SelectedServicesCard(
 @Composable
 fun SelectedServicesCardPreview() {
     SelectedServicesCard(
-        orderInfoRequest = OrderInfoRequestModel(orderId = 12345L, planId = 0), projectIdList = listOf("1", "2"), sharedViewModel = hiltViewModel()
+        orderInfoRequest = OrderInfoRequestModel(orderId = 12345L, planId = 0),
+        projectIdList = listOf(1, 2),
+        sharedViewModel = hiltViewModel()
     )
 }
