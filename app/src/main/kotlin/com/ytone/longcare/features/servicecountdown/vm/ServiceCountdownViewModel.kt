@@ -167,6 +167,47 @@ class ServiceCountdownViewModel @Inject constructor(
         )
     }
     
+    /**
+     * 仅刷新倒计时显示，不重新启动倒计时
+     * 用于生命周期恢复时更新UI显示，避免重复初始化
+     * 
+     * @param orderRequest 订单信息请求模型
+     * @param projectList 所有项目列表
+     * @param selectedProjectIds 选中的项目ID列表
+     */
+    fun refreshCountdownDisplay(
+        orderRequest: OrderInfoRequestModel,
+        projectList: List<ServiceProjectM>,
+        selectedProjectIds: List<Int>
+    ) {
+        // 保存当前订单ID和项目信息
+        currentOrderId = orderRequest.orderId
+        currentProjectList = projectList
+        currentSelectedProjectIds = selectedProjectIds
+        
+        // 重新计算当前状态
+        val (state, remainingTime, overtimeTime) = calculateCountdownState(
+            orderRequest.orderId,
+            projectList,
+            selectedProjectIds
+        )
+        
+        // 仅更新显示值，不改变倒计时Job的运行状态
+        _remainingTimeMillis.value = remainingTime
+        _overtimeMillis.value = overtimeTime
+        updateFormattedTime()
+        
+        // 如果状态发生变化（比如从RUNNING变为OVERTIME），才更新状态
+        if (_countdownState.value != state) {
+            _countdownState.value = state
+            
+            // 如果进入超时状态且倒计时Job未运行，启动超时计时
+            if (state == ServiceCountdownState.OVERTIME && countdownJob?.isActive != true) {
+                startOvertimeCountdown()
+            }
+        }
+    }
+    
     // 启动超时计时
     private fun startOvertimeCountdown() {
         countdownJob?.cancel()
@@ -175,6 +216,7 @@ class ServiceCountdownViewModel @Inject constructor(
                 delay(1000)
                 
                 // 重新计算当前的超时时间，确保锁屏解锁后时间正确
+                // 使用重新计算而不是累加，避免时间不准确
                 if (currentOrderId != 0L && currentProjectList.isNotEmpty()) {
                     val (_, _, overtimeMillis) = calculateCountdownState(
                         currentOrderId,
@@ -189,8 +231,6 @@ class ServiceCountdownViewModel @Inject constructor(
         }
     }
     
-
-    
     // 启动倒计时
     fun startCountdown() {
         // 取消之前的倒计时
@@ -201,37 +241,54 @@ class ServiceCountdownViewModel @Inject constructor(
         
         // 启动新的倒计时
         countdownJob = viewModelScope.launch {
-            // 倒计时阶段
-            while (_remainingTimeMillis.value > 0) {
+            // 倒计时阶段 - 使用重新计算而不是递减，确保时间准确
+            while (_countdownState.value == ServiceCountdownState.RUNNING) {
+                // 重新计算剩余时间，避免累加误差
+                if (currentOrderId != 0L && currentProjectList.isNotEmpty()) {
+                    val (state, remainingTime, _) = calculateCountdownState(
+                        currentOrderId,
+                        currentProjectList,
+                        currentSelectedProjectIds
+                    )
+                    
+                    if (state != ServiceCountdownState.RUNNING) {
+                        // 状态变化，退出循环
+                        break
+                    }
+                    
+                    _remainingTimeMillis.value = remainingTime
+                }
+                
                 // 更新格式化时间
                 updateFormattedTime()
                 
                 // 延迟1秒
                 delay(1000)
-                
-                // 减少剩余时间
-                _remainingTimeMillis.value -= 1000
             }
             
-            // 倒计时结束，立即进入超时计时阶段
-            _remainingTimeMillis.value = 0
-            _countdownState.value = ServiceCountdownState.COMPLETED
-            updateFormattedTime()
-            
-            // 立即进入超时状态（移除5秒延迟）
-            _countdownState.value = ServiceCountdownState.OVERTIME
-            _overtimeMillis.value = 0
-            
-            // 超时计时阶段
-            while (_countdownState.value == ServiceCountdownState.OVERTIME) {
-                // 延迟1秒
-                delay(1000)
+            // 检查是否进入超时状态
+            if (currentOrderId != 0L && currentProjectList.isNotEmpty()) {
+                val (state, _, overtimeMillis) = calculateCountdownState(
+                    currentOrderId,
+                    currentProjectList,
+                    currentSelectedProjectIds
+                )
                 
-                // 增加超时时间
-                _overtimeMillis.value += 1000
-                
-                // 更新格式化时间显示超时时长
-                updateFormattedTime()
+                if (state == ServiceCountdownState.OVERTIME) {
+                    // 倒计时结束，进入超时状态
+                    _remainingTimeMillis.value = 0
+                    _countdownState.value = ServiceCountdownState.COMPLETED
+                    updateFormattedTime()
+                    
+                    // 短暂延迟后进入超时状态
+                    delay(100)
+                    _countdownState.value = ServiceCountdownState.OVERTIME
+                    _overtimeMillis.value = overtimeMillis
+                    updateFormattedTime()
+                    
+                    // 启动超时计时
+                    startOvertimeCountdown()
+                }
             }
         }
     }
