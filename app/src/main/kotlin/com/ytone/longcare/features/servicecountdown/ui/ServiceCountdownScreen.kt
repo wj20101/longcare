@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -42,6 +41,7 @@ import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.navigation.EndOderInfo
@@ -69,6 +69,46 @@ enum class ServiceCountdownState {
     ENDED       // 服务已结束
 }
 
+/**
+ * 倒计时初始化状态
+ * 用于统一管理初始化相关的状态变量
+ */
+private data class CountdownInitState(
+    val isInitialized: Boolean = false,
+    val lastProjectIdList: List<Int> = emptyList(),
+    val permissionsChecked: Boolean = false
+)
+
+/**
+ * 服务信息
+ * 用于缓存计算结果，避免重复计算
+ */
+private data class ServiceInfo(
+    val serviceName: String,
+    val totalMinutes: Int
+)
+
+/**
+ * 服务倒计时页面
+ * 
+ * 功能：
+ * 1. 显示服务倒计时和超时计时
+ * 2. 管理前台服务和系统闹钟
+ * 3. 处理照片上传和定位追踪
+ * 4. 支持提前结束和正常结束服务
+ * 
+ * 优化点：
+ * - 使用统一的时间计算逻辑，确保UI、通知、闹钟时间一致
+ * - 生命周期恢复时仅刷新显示，不重新初始化
+ * - 完善的资源清理机制
+ * 
+ * @param navController 导航控制器
+ * @param orderInfoRequest 订单信息请求模型
+ * @param projectIdList 选中的项目ID列表
+ * @param sharedViewModel 共享的订单详情ViewModel
+ * @param countdownViewModel 倒计时ViewModel
+ * @param locationTrackingViewModel 定位追踪ViewModel
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceCountdownScreen(
@@ -250,81 +290,78 @@ fun ServiceCountdownScreen(
         }
     }
 
-    // 状态跟踪变量
-    var isCountdownInitialized by remember { mutableStateOf(false) }
-    var lastSetupTime by remember { mutableLongStateOf(0L) }
-    var lastProjectIdList by remember { mutableStateOf(emptyList<Int>()) }
-    var permissionsChecked by remember { mutableStateOf(false) }
-    val debounceDelay = 500L
+    // 初始化状态（使用data class统一管理）
+    val initState = remember { mutableStateOf(CountdownInitState()) }
+    
+    // 计算服务信息的辅助函数
+    fun calculateServiceInfo(orderInfo: ServiceOrderInfoModel): ServiceInfo {
+        val selectedProjects = (orderInfo.projectList ?: emptyList())
+            .filter { it.projectId in projectIdList }
+        
+        val serviceName = selectedProjects.joinToString(", ") { it.projectName }
+        val totalMinutes = selectedProjects.sumOf { it.serviceTime }
+        
+        return ServiceInfo(serviceName, totalMinutes)
+    }
 
     // 设置倒计时时间的通用函数
     fun setupCountdownTime() {
-        val currentTime = System.currentTimeMillis()
+        val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest) ?: return
+        
+        val serviceInfo = calculateServiceInfo(orderInfo)
+        
+        // 检查是否需要重新初始化
+        val needsReinit = initState.value.lastProjectIdList != projectIdList ||
+                         countdownState == ServiceCountdownState.ENDED ||
+                         !initState.value.isInitialized
 
-        // 防抖检查：如果距离上次调用时间太短，则跳过
-        if (currentTime - lastSetupTime < debounceDelay) {
+        if (!needsReinit || serviceInfo.totalMinutes <= 0) {
             return
         }
 
-        val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
-        orderInfo?.let {
-            val totalMinutes = (it.projectList
-                ?: emptyList()).filter { project -> project.projectId in projectIdList }
-                .sumOf { project -> project.serviceTime }
-
-            val needsReinit =
-                lastProjectIdList != projectIdList || countdownState == ServiceCountdownState.ENDED || !isCountdownInitialized
-
-            if (needsReinit && totalMinutes > 0) {
-                // 首次初始化时检查权限
-                if (!permissionsChecked) {
-                    checkAndRequestPermissions()
-                    permissionsChecked = true
-                }
-
-                // 设置ViewModel的倒计时（统一的时间计算逻辑）
-                countdownViewModel.setCountdownTimeFromProjects(
-                    orderRequest = orderInfoRequest,
-                    projectList = it.projectList ?: emptyList(),
-                    selectedProjectIds = projectIdList
-                )
-
-                // 启动前台服务显示倒计时通知
-                val serviceName = (it.projectList
-                    ?: emptyList()).filter { project -> project.projectId in projectIdList }
-                    .joinToString(", ") { project -> project.projectName }
-
-                countdownViewModel.startForegroundService(
-                    context = context,
-                    orderId = orderInfoRequest.orderId,
-                    serviceName = serviceName,
-                    totalSeconds = totalMinutes * 60L
-                )
-
-                // 设置系统级倒计时闹钟（使用ViewModel计算的完成时间）
-                val (state, remainingMillis, _) = countdownViewModel.getCurrentCountdownState()
-                if (state == ServiceCountdownState.RUNNING && remainingMillis > 0) {
-                    val completionTime = System.currentTimeMillis() + remainingMillis
-                    countdownNotificationManager.scheduleCountdownAlarm(
-                        orderId = orderInfoRequest.orderId,
-                        serviceName = serviceName,
-                        triggerTimeMillis = completionTime
-                    )
-                }
-
-                // 如果没有通知权限，显示提示
-                if (!checkNotificationPermission()) {
-                    permissionDialogMessage =
-                        "通知权限被拒绝，可能无法收到倒计时完成提醒。请到设置中手动开启通知权限。"
-                    showPermissionDialog = true
-                }
-
-                isCountdownInitialized = true
-                lastProjectIdList = projectIdList
-            }
-
-            lastSetupTime = currentTime
+        // 首次初始化时检查权限（在设置倒计时之前）
+        if (!initState.value.permissionsChecked) {
+            checkAndRequestPermissions()
+            initState.value = initState.value.copy(permissionsChecked = true)
         }
+
+        // 设置ViewModel的倒计时（统一的时间计算逻辑）
+        countdownViewModel.setCountdownTimeFromProjects(
+            orderRequest = orderInfoRequest,
+            projectList = orderInfo.projectList ?: emptyList(),
+            selectedProjectIds = projectIdList
+        )
+
+        // 启动前台服务显示倒计时通知
+        countdownViewModel.startForegroundService(
+            context = context,
+            orderId = orderInfoRequest.orderId,
+            serviceName = serviceInfo.serviceName,
+            totalSeconds = serviceInfo.totalMinutes * 60L
+        )
+
+        // 设置系统级倒计时闹钟（使用ViewModel计算的完成时间）
+        val (state, remainingMillis, _) = countdownViewModel.getCurrentCountdownState()
+        if (state == ServiceCountdownState.RUNNING && remainingMillis > 0) {
+            val completionTime = System.currentTimeMillis() + remainingMillis
+            countdownNotificationManager.scheduleCountdownAlarm(
+                orderId = orderInfoRequest.orderId,
+                serviceName = serviceInfo.serviceName,
+                triggerTimeMillis = completionTime
+            )
+        }
+
+        // 如果没有通知权限，显示提示
+        if (!checkNotificationPermission()) {
+            permissionDialogMessage = "通知权限被拒绝，可能无法收到倒计时完成提醒。请到设置中手动开启通知权限。"
+            showPermissionDialog = true
+        }
+
+        // 更新初始化状态
+        initState.value = initState.value.copy(
+            isInitialized = true,
+            lastProjectIdList = projectIdList
+        )
     }
 
     // 初始设置倒计时时间
@@ -332,17 +369,20 @@ fun ServiceCountdownScreen(
         setupCountdownTime()
     }
 
-    // 监听生命周期变化，在RESUMED状态下重新计算倒计时
+    // 监听生命周期变化，在RESUMED状态下仅更新时间显示，不重新初始化
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
-            orderInfo?.let {
-                // 使用ViewModel统一的时间计算逻辑
-                countdownViewModel.setCountdownTimeFromProjects(
-                    orderRequest = orderInfoRequest,
-                    projectList = it.projectList ?: emptyList(),
-                    selectedProjectIds = projectIdList
-                )
+            // 只在已初始化且未结束的情况下更新显示
+            if (initState.value.isInitialized && countdownState != ServiceCountdownState.ENDED) {
+                val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
+                orderInfo?.let {
+                    // 仅刷新显示，不重新启动倒计时
+                    countdownViewModel.refreshCountdownDisplay(
+                        orderRequest = orderInfoRequest,
+                        projectList = it.projectList ?: emptyList(),
+                        selectedProjectIds = projectIdList
+                    )
+                }
             }
         }
     }
@@ -469,9 +509,16 @@ fun ServiceCountdownScreen(
     // 页面销毁时清理资源
     DisposableEffect(Unit) {
         onDispose {
-            // 如果服务未正常结束，取消倒计时闹钟
+            // 如果服务未正常结束，清理相关资源
             if (countdownState != ServiceCountdownState.ENDED) {
+                // 1. 取消倒计时闹钟
                 countdownNotificationManager.cancelCountdownAlarm()
+                
+                // 2. 停止响铃服务（如果正在响铃）
+                AlarmRingtoneService.stopRingtone(context)
+                
+                // 注意：不停止前台服务和定位服务，因为用户可能只是退出页面
+                // 服务应该继续在后台运行，直到用户主动结束服务
             }
         }
     }
