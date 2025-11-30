@@ -169,7 +169,7 @@ dependencies {
     implementation(libs.androidx.profileinstaller)
 
     // Navigation
-    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.navigation3.ui)
 
     // Hilt
     implementation(libs.bundles.hilt)
