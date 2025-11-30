@@ -115,7 +115,8 @@
         <service
             android:name=".features.countdown.service.AlarmRingtoneService"
             android:enabled="true"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
             
         <!-- 高德地图定位服务 -->
         <service android:name="com.amap.api.location.APSService" />

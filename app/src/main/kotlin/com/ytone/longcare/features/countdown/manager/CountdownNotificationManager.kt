@@ -99,8 +99,9 @@ class CountdownNotificationManager @Inject constructor(
                 // 使用 AlarmClock 确保锁屏提醒
                 val alarmClockInfo = AlarmManager.AlarmClockInfo(
                     triggerTimeMillis,
-                    alarmActivityPendingIntent
+                    alarmActivityPendingIntent // 直接使用Activity PendingIntent作为ShowIntent，点击系统闹钟图标时跳转
                 )
+                // AlarmManagerCompat 目前没有 setAlarmClock 方法，直接使用 alarmManager
                 alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
                 logI("✅ 通过AlarmClock设置倒计时闹钟(确保锁屏提醒): orderId=$orderId, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
             } else {
@@ -154,65 +155,78 @@ class CountdownNotificationManager @Inject constructor(
     }
 
     /**
-     * 显示倒计时完成通知
+     * 构建倒计时完成通知
+     * @param orderId 订单ID
+     * @param serviceName 服务名称
+     * @return Notification对象
+     */
+    fun buildCountdownCompletionNotification(
+        orderId: Long,
+        serviceName: String
+    ): android.app.Notification {
+        // 创建关闭响铃的PendingIntent
+        val dismissIntent = Intent(context, DismissAlarmReceiver::class.java).apply {
+            putExtra(EXTRA_ORDER_ID, orderId)
+            putExtra(EXTRA_SERVICE_NAME, serviceName)
+        }
+        val dismissPendingIntent = PendingIntent.getBroadcast(
+            context,
+            DISMISS_ALARM_REQUEST_CODE,
+            dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        // 创建启动CountdownAlarmActivity的PendingIntent
+        val alarmActivityIntent = CountdownAlarmActivity.createIntent(
+            context,
+            orderId.toString(),
+            serviceName,
+            autoCloseEnabled = true
+        )
+        val alarmActivityPendingIntent = PendingIntent.getActivity(
+            context,
+            COUNTDOWN_ALARM_ACTIVITY_REQUEST_CODE,
+            alarmActivityIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // 通知仅用于显示信息和提供操作按钮，声音和震动由AlarmRingtoneService处理
+        return NotificationCompat.Builder(context, COUNTDOWN_NOTIFICATION_CHANNEL_ID)
+            .setContentTitle("⏰ 服务倒计时完成")
+            .setContentText("$serviceName 服务时间已到，请及时处理")
+            .setSmallIcon(R.mipmap.app_logo_round)
+            .setPriority(NotificationCompat.PRIORITY_MAX) // 使用最高优先级
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setAutoCancel(false) // 不自动取消，需要用户手动关闭
+            .setOngoing(true) // 设置为持续通知，不能滑动删除
+            .setDefaults(0) // 清除默认设置，不使用默认声音和震动
+            .setSound(null) // 不播放声音（由AlarmRingtoneService处理）
+            .setVibrate(null) // 不震动（由AlarmRingtoneService处理）
+            .setLights(0xFF0000FF.toInt(), 1000, 500) // 设置LED灯光
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // 锁屏可见
+            .setContentIntent(alarmActivityPendingIntent) // 点击通知时启动闹铃页面
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "关闭响铃",
+                dismissPendingIntent
+            )
+            .setFullScreenIntent(alarmActivityPendingIntent, true) // 全屏显示闹铃页面
+            .setTimeoutAfter(0) // 不自动超时
+            .build()
+    }
+
+    /**
+     * 显示倒计时完成通知 (已废弃，请使用 buildCountdownCompletionNotification 配合前台服务)
      * @param orderId 订单ID
      * @param serviceName 服务名称
      */
+    @Deprecated("请在前台服务中使用 buildCountdownCompletionNotification")
     fun showCountdownCompletionNotification(
         orderId: Long,
         serviceName: String
     ) {
         try {
-            // 创建关闭响铃的PendingIntent
-            val dismissIntent = Intent(context, DismissAlarmReceiver::class.java).apply {
-                putExtra(EXTRA_ORDER_ID, orderId)
-                putExtra(EXTRA_SERVICE_NAME, serviceName)
-            }
-            val dismissPendingIntent = PendingIntent.getBroadcast(
-                context,
-                DISMISS_ALARM_REQUEST_CODE,
-                dismissIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            
-            // 创建启动CountdownAlarmActivity的PendingIntent
-            val alarmActivityIntent = CountdownAlarmActivity.createIntent(
-                context,
-                orderId.toString(),
-                serviceName,
-                autoCloseEnabled = true
-            )
-            val alarmActivityPendingIntent = PendingIntent.getActivity(
-                context,
-                COUNTDOWN_ALARM_ACTIVITY_REQUEST_CODE,
-                alarmActivityIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            // 通知仅用于显示信息和提供操作按钮，声音和震动由AlarmRingtoneService处理
-            val notification = NotificationCompat.Builder(context, COUNTDOWN_NOTIFICATION_CHANNEL_ID)
-                .setContentTitle("⏰ 服务倒计时完成")
-                .setContentText("$serviceName 服务时间已到，请及时处理")
-                .setSmallIcon(R.mipmap.app_logo_round)
-                .setPriority(NotificationCompat.PRIORITY_MAX) // 使用最高优先级
-                .setCategory(NotificationCompat.CATEGORY_ALARM)
-                .setAutoCancel(false) // 不自动取消，需要用户手动关闭
-                .setOngoing(true) // 设置为持续通知，不能滑动删除
-                .setDefaults(0) // 清除默认设置，不使用默认声音和震动
-                .setSound(null) // 不播放声音（由AlarmRingtoneService处理）
-                .setVibrate(null) // 不震动（由AlarmRingtoneService处理）
-                .setLights(0xFF0000FF.toInt(), 1000, 500) // 设置LED灯光
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // 锁屏可见
-                .setContentIntent(alarmActivityPendingIntent) // 点击通知时启动闹铃页面
-                .addAction(
-                    android.R.drawable.ic_menu_close_clear_cancel,
-                    "关闭响铃",
-                    dismissPendingIntent
-                )
-                .setFullScreenIntent(alarmActivityPendingIntent, true) // 全屏显示闹铃页面
-                .setTimeoutAfter(0) // 不自动超时
-                .build()
-
+            val notification = buildCountdownCompletionNotification(orderId, serviceName)
             notificationManager.notify(COUNTDOWN_NOTIFICATION_ID, notification)
             logI("倒计时完成通知已显示: orderId=$orderId, serviceName=$serviceName")
         } catch (e: Exception) {

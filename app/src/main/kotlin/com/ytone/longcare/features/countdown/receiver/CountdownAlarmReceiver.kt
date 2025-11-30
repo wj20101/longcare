@@ -57,31 +57,14 @@ class CountdownAlarmReceiver : BroadcastReceiver() {
             CountdownForegroundService.stopCountdown(context)
             logI("✅ 倒计时前台服务已停止")
             
-            // 2. 启动响铃服务（持续播放声音和震动）
+            // 2. 启动响铃服务（持续播放声音和震动，并负责显示全屏通知和启动Activity）
+            // 注意：我们将显示UI和播放声音的逻辑全部移交给了AlarmRingtoneService
+            // 这样可以通过前台服务获得更高的优先级，解决华为/三星等设备后台无法启动Activity的问题
             AlarmRingtoneService.startRingtone(context, orderId.toString(), serviceName)
             logI("✅ 响铃服务已启动")
             
-            // 3. 显示完成通知（带关闭按钮）
-            countdownNotificationManager.showCountdownCompletionNotification(orderId, serviceName)
-            logI("✅ 完成通知已显示")
-            
-            // 4. 启动全屏响铃Activity（禁用自动关闭，必须手动点击关闭）
-            val alarmIntent = CountdownAlarmActivity.createIntent(
-                context, 
-                orderId.toString(), 
-                serviceName,
-                autoCloseEnabled = false // 禁用自动关闭
-            ).apply {
-                // 添加必要的标志确保在锁屏状态下也能启动
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
-                       Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                       Intent.FLAG_ACTIVITY_NO_USER_ACTION
-            }
-            context.startActivity(alarmIntent)
-            logI("✅ 全屏响铃Activity已启动")
-            
             logI("========================================")
-            logI("✅ 倒计时完成处理完毕")
+            logI("✅ 倒计时完成处理完毕 (后续逻辑由Service接管)")
             logI("========================================")
         } catch (e: Exception) {
             logE("========================================")
