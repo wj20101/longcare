@@ -170,12 +170,16 @@ fun ServiceCountdownScreen(
 
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
-        locationTrackingViewModel = locationTrackingViewModel, orderId = orderInfoRequest.orderId
+        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest.orderId) }
     )
 
     // 检查定位权限和服务的函数
     fun checkLocationPermissionAndStart() {
-        UnifiedPermissionHelper.checkLocationPermissionAndStart(context, permissionLauncher)
+        UnifiedPermissionHelper.checkLocationPermissionAndStart(
+            context = context,
+            permissionLauncher = permissionLauncher,
+            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest.orderId) }
+        )
     }
 
     // 检查通知权限

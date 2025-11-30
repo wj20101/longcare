@@ -15,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
-import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 
 /**
  * 统一权限管理工具类
@@ -132,12 +131,11 @@ object UnifiedPermissionHelper {
     fun handleLocationPermissionResult(
         permissions: Map<String, Boolean>,
         context: Context,
-        locationTrackingViewModel: LocationTrackingViewModel,
-        orderId: Long
+        onPermissionGranted: () -> Unit
     ) {
         if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
-            // 权限获取成功，启动定位服务
-            locationTrackingViewModel.onStartClicked(orderId)
+            // 权限获取成功，执行回调
+            onPermissionGranted()
         } else {
             Toast.makeText(context, "需要定位权限才能开始服务", Toast.LENGTH_LONG).show()
         }
@@ -145,16 +143,25 @@ object UnifiedPermissionHelper {
 
     /**
      * 检查定位权限和服务
+     * 如果已有权限，直接执行回调；否则请求权限
      */
     fun checkLocationPermissionAndStart(
         context: Context,
-        permissionLauncher: ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>
+        permissionLauncher: ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>,
+        onPermissionGranted: () -> Unit
     ) {
         if (!isLocationServiceEnabled(context)) {
             openLocationSettings(context)
             return
         }
-        permissionLauncher.launch(getLocationRequiredPermissions())
+        
+        if (hasLocationPermission(context)) {
+            // 已有权限，直接执行回调
+            onPermissionGranted()
+        } else {
+            // 请求权限
+            permissionLauncher.launch(getLocationRequiredPermissions())
+        }
     }
 
     // ==================== 通用权限检查 ====================
@@ -201,8 +208,7 @@ object UnifiedPermissionHelper {
  */
 @Composable
 fun rememberLocationPermissionLauncher(
-    locationTrackingViewModel: LocationTrackingViewModel,
-    orderId: Long
+    onPermissionGranted: () -> Unit
 ): ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>> {
     val context = LocalContext.current
     
@@ -212,28 +218,10 @@ fun rememberLocationPermissionLauncher(
             UnifiedPermissionHelper.handleLocationPermissionResult(
                 permissions = permissions,
                 context = context,
-                locationTrackingViewModel = locationTrackingViewModel,
-                orderId = orderId
+                onPermissionGranted = onPermissionGranted
             )
         }
     )
-}
-
-/**
- * Composable函数：检查定位权限和服务
- */
-@Composable
-fun CheckLocationPermissionAndStart(
-    locationTrackingViewModel: LocationTrackingViewModel,
-    orderId: Long,
-) {
-    val context = LocalContext.current
-    val permissionLauncher = rememberLocationPermissionLauncher(
-        locationTrackingViewModel = locationTrackingViewModel,
-        orderId = orderId
-    )
-    
-    UnifiedPermissionHelper.checkLocationPermissionAndStart(context, permissionLauncher)
 }
 
 /**
