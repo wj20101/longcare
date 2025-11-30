@@ -77,27 +77,26 @@ fun NfcWorkflowScreen(
     val pendingNfcData by nfcViewModel.pendingNfcData.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
-    
+
     // 统一处理系统返回键，与导航按钮行为一致
     UnifiedBackHandler(navController = navController)
 
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
-        locationTrackingViewModel = locationTrackingViewModel,
-        orderId = orderInfoRequest.orderId
+        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest.orderId) }
     )
 
     // 检查定位权限和服务的函数
     fun checkLocationPermissionAndStart() {
-        UnifiedPermissionHelper.checkLocationPermissionAndStart(context, permissionLauncher)
+        UnifiedPermissionHelper.checkLocationPermissionAndStart(
+            context = context, permissionLauncher = permissionLauncher, onPermissionGranted = { })
     }
 
     // 获取NfcManager实例
     val nfcManager: NfcManager = remember {
         val appContext: Context = context.applicationContext
         EntryPointAccessors.fromApplication(
-            appContext,
-            NfcManagerEntryPoint::class.java
+            appContext, NfcManagerEntryPoint::class.java
         ).nfcManager()
     }
 
@@ -105,8 +104,7 @@ fun NfcWorkflowScreen(
     val locationProvider: CompositeLocationProvider = remember {
         val appContext: Context = context.applicationContext
         EntryPointAccessors.fromApplication(
-            appContext,
-            NfcLocationEntryPoint::class.java
+            appContext, NfcLocationEntryPoint::class.java
         ).compositeLocationProvider()
     }
 
@@ -119,7 +117,7 @@ fun NfcWorkflowScreen(
                 checkLocationPermissionAndStart()
                 return Pair("", "")
             }
-            
+
             // 检查定位服务是否开启
             if (!UnifiedPermissionHelper.isLocationServiceEnabled(context)) {
                 // 提醒用户开启定位服务
@@ -127,7 +125,7 @@ fun NfcWorkflowScreen(
                 nfcViewModel.showError("请开启定位服务以获取位置信息")
                 return Pair("", "")
             }
-            
+
             val location = locationProvider.getCurrentLocation()
             if (location != null) {
                 Pair(location.longitude.toString(), location.latitude.toString())
@@ -177,7 +175,7 @@ fun NfcWorkflowScreen(
 
     // 签退成功，关闭定位上传
     LaunchedEffect(uiState) {
-        if (signInMode == SignInMode.END_ORDER){
+        if (signInMode == SignInMode.END_ORDER) {
             locationTrackingViewModel.onStopClicked()
         }
     }
@@ -205,35 +203,30 @@ fun NfcWorkflowScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
-                        Text(
-                            stringResource(titleRes),
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.common_back),
-                                tint = Color.White
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White
+                    Text(
+                        stringResource(titleRes), fontWeight = FontWeight.Bold
                     )
+                }, navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            tint = Color.White
+                        )
+                    }
+                }, colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
                 )
-            },
-            containerColor = Color.Transparent
+                )
+            }, containerColor = Color.Transparent
         ) { paddingValues ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -259,8 +252,7 @@ fun NfcWorkflowScreen(
                             SignInMode.END_ORDER -> stringResource(R.string.nfc_sign_out_complete_service)
                         }
                         ActionButton(
-                            text = buttonText,
-                            onClick = {
+                            text = buttonText, onClick = {
                                 when (signInMode) {
                                     SignInMode.START_ORDER -> {
                                         // 签到成功时开启定位上报任务
@@ -268,23 +260,21 @@ fun NfcWorkflowScreen(
                                         // 签到成功后跳转到身份认证页面
                                         navController.navigateToIdentification(orderInfoRequest)
                                     }
+
                                     SignInMode.END_ORDER -> {
                                         // 签退时停止定位上报任务
                                         locationTrackingViewModel.onStopClicked()
                                         navController.navigateToServiceComplete(orderInfoRequest)
                                     }
                                 }
-                            }
-                        )
+                            })
                     }
 
                     SignInState.FAILURE -> ActionButton(
-                        text = stringResource(R.string.nfc_sign_in_retry),
-                        onClick = {
+                        text = stringResource(R.string.nfc_sign_in_retry), onClick = {
                             nfcViewModel.resetState()
                             // 重置状态后等待用户重新靠近NFC设备
-                        }
-                    )
+                        })
 
                     SignInState.IDLE -> {
                         // 初始状态显示等待NFC的提示
@@ -310,25 +300,25 @@ fun NfcWorkflowScreen(
                 Spacer(modifier = Modifier.height(32.dp)) // 按钮与屏幕底部的间距
             }
         }
-        
+
         // 定位激活弹窗
         pendingNfcData?.let { data ->
             LocationActivationDialog(
                 onConfirm = { nfcViewModel.confirmLocationActivation(data) },
-                onCancel = { nfcViewModel.cancelLocationActivation() }
-            )
+                onCancel = { nfcViewModel.cancelLocationActivation() })
         }
-        
+
         // 结束工单确认对话框
         when (val currentState = uiState) {
             is NfcSignInUiState.ShowConfirmDialog -> {
                 EndOrderConfirmDialog(
                     message = currentState.message,
                     onConfirm = { nfcViewModel.confirmEndOrder(currentState.endOrderParams) },
-                    onCancel = { nfcViewModel.cancelEndOrder() }
-                )
+                    onCancel = { nfcViewModel.cancelEndOrder() })
             }
-            else -> { /* 其他状态不需要显示对话框 */ }
+
+            else -> { /* 其他状态不需要显示对话框 */
+            }
         }
     }
 }
@@ -430,122 +420,91 @@ fun ActionButton(text: String, onClick: () -> Unit) {
 
 @Composable
 fun LocationActivationDialog(
-    onConfirm: () -> Unit,
-    onCancel: () -> Unit
+    onConfirm: () -> Unit, onCancel: () -> Unit
 ) {
     AlertDialog(
-        onDismissRequest = onCancel,
-        title = {
+        onDismissRequest = onCancel, title = {
+        Text(
+            text = "激活定位",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }, text = {
+        Text(
+            text = "定位未激活，需激活方可操作，激活后不可改",
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }, confirmButton = {
+        Button(
+            onClick = onConfirm, colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF3A86FF)
+            ), shape = RoundedCornerShape(20.dp)
+        ) {
             Text(
-                text = "激活定位",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                text = "确定激活", color = Color.White, fontSize = 14.sp
             )
-        },
-        text = {
+        }
+    }, dismissButton = {
+        OutlinedButton(
+            onClick = onCancel, colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color.Gray
+            ), border = BorderStroke(1.dp, Color.Gray), shape = RoundedCornerShape(20.dp)
+        ) {
             Text(
-                text = "定位未激活，需激活方可操作，激活后不可改",
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 20.sp,
-                modifier = Modifier.fillMaxWidth()
+                text = "取消", fontSize = 14.sp
             )
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF3A86FF)
-                ),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Text(
-                    text = "确定激活",
-                    color = Color.White,
-                    fontSize = 14.sp
-                )
-            }
-        },
-        dismissButton = {
-            OutlinedButton(
-                onClick = onCancel,
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color.Gray
-                ),
-                border = BorderStroke(1.dp, Color.Gray),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Text(
-                    text = "取消",
-                    fontSize = 14.sp
-                )
-            }
-        },
-        containerColor = Color.White,
-        shape = RoundedCornerShape(12.dp)
+        }
+    }, containerColor = Color.White, shape = RoundedCornerShape(12.dp)
     )
 }
 
 @Composable
 fun EndOrderConfirmDialog(
-    message: String,
-    onConfirm: () -> Unit,
-    onCancel: () -> Unit
+    message: String, onConfirm: () -> Unit, onCancel: () -> Unit
 ) {
     AlertDialog(
-        onDismissRequest = onCancel,
-        title = {
+        onDismissRequest = onCancel, title = {
+        Text(
+            text = "确认结束工单",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }, text = {
+        Text(
+            text = message,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }, confirmButton = {
+        Button(
+            onClick = onConfirm, colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF3A86FF)
+            ), shape = RoundedCornerShape(20.dp)
+        ) {
             Text(
-                text = "确认结束工单",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                text = "确认", color = Color.White, fontSize = 14.sp
             )
-        },
-        text = {
+        }
+    }, dismissButton = {
+        OutlinedButton(
+            onClick = onCancel, colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color.Gray
+            ), border = BorderStroke(1.dp, Color.Gray), shape = RoundedCornerShape(20.dp)
+        ) {
             Text(
-                text = message,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 20.sp,
-                modifier = Modifier.fillMaxWidth()
+                text = "取消", fontSize = 14.sp
             )
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF3A86FF)
-                ),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Text(
-                    text = "确认",
-                    color = Color.White,
-                    fontSize = 14.sp
-                )
-            }
-        },
-        dismissButton = {
-            OutlinedButton(
-                onClick = onCancel,
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color.Gray
-                ),
-                border = BorderStroke(1.dp, Color.Gray),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Text(
-                    text = "取消",
-                    fontSize = 14.sp
-                )
-            }
-        },
-        containerColor = Color.White,
-        shape = RoundedCornerShape(12.dp)
+        }
+    }, containerColor = Color.White, shape = RoundedCornerShape(12.dp)
     )
 }
 
@@ -579,8 +538,7 @@ fun NfcSignInScreenFailurePreview() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NfcSignInScreenContentForPreview(
-    initialState: SignInState,
-    onStateChange: (SignInState) -> Unit
+    initialState: SignInState, onStateChange: (SignInState) -> Unit
 ) {
     val signInState by remember { mutableStateOf(initialState) }
 
@@ -598,35 +556,30 @@ private fun NfcSignInScreenContentForPreview(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
-                        Text(
-                            stringResource(R.string.nfc_sign_in_title),
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { /* TODO: 返回操作 */ }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.common_back),
-                                tint = Color.White
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White
+                    Text(
+                        stringResource(R.string.nfc_sign_in_title), fontWeight = FontWeight.Bold
                     )
+                }, navigationIcon = {
+                    IconButton(onClick = { /* TODO: 返回操作 */ }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            tint = Color.White
+                        )
+                    }
+                }, colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
                 )
-            },
-            containerColor = Color.Transparent
+                )
+            }, containerColor = Color.Transparent
         ) { paddingValues ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
@@ -641,8 +594,7 @@ private fun NfcSignInScreenContentForPreview(
                 Spacer(modifier = Modifier.weight(1f))
                 when (signInState) {
                     SignInState.SUCCESS -> ActionButton(
-                        text = stringResource(R.string.common_next_step),
-                        onClick = { })
+                        text = stringResource(R.string.common_next_step), onClick = { })
 
                     SignInState.FAILURE -> ActionButton(
                         text = stringResource(R.string.nfc_sign_in_retry),
