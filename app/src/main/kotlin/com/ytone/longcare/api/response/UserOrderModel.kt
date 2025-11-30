@@ -30,5 +30,11 @@ data class UserOrderModel(
      * 总的服务时长
      */
     @param:Json(name = "totalServiceTime")
-    val totalServiceTime: Int = 0
+    val totalServiceTime: Int = 0,
+
+    /**
+     * 实际服务时长
+     */
+    @param:Json(name = "trueServiceTime")
+    val trueServiceTime: Int = 0
 )

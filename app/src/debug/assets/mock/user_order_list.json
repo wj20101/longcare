@@ -6,31 +6,36 @@
       "ordreId": 1001,
       "startTime": "2025-04-30 09:00:00",
       "endTime": "2025-04-30 17:00:00",
-      "totalServiceTime": 8
+      "totalServiceTime": 8,
+      "trueServiceTime": 8
     },
     {
       "ordreId": 1002,
       "startTime": "2025-04-29 10:30:00",
       "endTime": "2025-04-29 18:30:00",
-      "totalServiceTime": 8
+      "totalServiceTime": 8,
+      "trueServiceTime": 8
     },
     {
       "ordreId": 1003,
       "startTime": "2025-04-28 08:00:00",
       "endTime": "2025-04-28 16:00:00",
-      "totalServiceTime": 8
+      "totalServiceTime": 8,
+      "trueServiceTime": 8
     },
     {
       "ordreId": 1004,
       "startTime": "2025-04-27 09:30:00",
       "endTime": "2025-04-27 17:30:00",
-      "totalServiceTime": 8
+      "totalServiceTime": 8,
+      "trueServiceTime": 8
     },
     {
       "ordreId": 1005,
       "startTime": "2025-04-26 11:00:00",
       "endTime": "2025-04-26 19:00:00",
-      "totalServiceTime": 8
+      "totalServiceTime": 8,
+      "trueServiceTime": 8
     }
   ]
 }
