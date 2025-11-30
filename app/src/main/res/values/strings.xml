@@ -73,8 +73,8 @@
     <string name="update_now">立即更新</string>
     <string name="update_later">稍后更新</string>
     <string name="service_order_work_hours">工时: %1$s 分钟</string>
-    <string name="service_order_work_hours_total">总工时: %1$s 分钟</string>
-    <string name="service_order_work_hours_true">实际工时: %1$s 分钟</string>
+    <string name="service_order_work_hours_total">计划服务工时: %1$s 分钟</string>
+    <string name="service_order_work_hours_true">实际服务工时: %1$s 分钟</string>
 
     <string name="ok_button">确定</string>
     <string name="cancel_button">取消</string>
