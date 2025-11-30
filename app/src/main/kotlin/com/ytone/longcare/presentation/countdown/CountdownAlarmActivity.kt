@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.WindowManager
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
@@ -75,9 +76,18 @@ class CountdownAlarmActivity : AppCompatActivity() {
         Log.i(TAG, "========================================")
         
         // 设置锁屏显示和点亮屏幕
-        // Android 8.1+ (API 27+) 使用 Activity 的方法
-        setShowWhenLocked(true)
-        setTurnScreenOn(true)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+            // Android 8.1+ (API 27+) 使用 Activity 的方法
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            // 旧版本使用 WindowManager flags
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            )
+        }
         Log.i(TAG, "使用 setShowWhenLocked/setTurnScreenOn 设置锁屏显示")
         
         // 设置Window flags保持屏幕常亮
@@ -112,6 +122,13 @@ class CountdownAlarmActivity : AppCompatActivity() {
                 )
             }
         }
+
+        // 禁用返回键，强制用户点击关闭按钮
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                // 拦截返回键，不做任何操作
+            }
+        })
     }
     
     private fun setupAutoClose() {
@@ -152,11 +169,6 @@ class CountdownAlarmActivity : AppCompatActivity() {
             // 忽略取消注册失败的异常
         }
         stopAlarmAndFinish()
-    }
-    
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        // 禁用返回键，强制用户点击关闭按钮
     }
 }
 
