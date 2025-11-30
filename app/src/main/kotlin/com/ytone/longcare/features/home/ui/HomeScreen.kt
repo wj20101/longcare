@@ -53,6 +53,7 @@ fun HomeScreen(
                 when (permission) {
                     Manifest.permission.ACCESS_FINE_LOCATION -> "精确定位"
                     Manifest.permission.CAMERA -> "拍照"
+                    Manifest.permission.POST_NOTIFICATIONS -> "通知提醒"
                     else -> permission
                 }
             }
@@ -63,10 +64,15 @@ fun HomeScreen(
 
     // 检查并请求权限
     LaunchedEffect(Unit) {
-        val requiredPermissions = arrayOf(
+        val requiredPermissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.CAMERA
         )
+        
+        // Android 13 (API 33) 及以上版本添加通知权限
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            requiredPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
         
         val missingPermissions = requiredPermissions.filter { permission ->
             ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED
@@ -88,11 +94,15 @@ fun HomeScreen(
                     onClick = {
                         showPermissionDialog = false
                         // 重新请求权限
-                        val requiredPermissions = arrayOf(
+                        val requiredPermissions = mutableListOf(
                             Manifest.permission.ACCESS_FINE_LOCATION,
                             Manifest.permission.CAMERA
                         )
-                        permissionLauncher.launch(requiredPermissions)
+                        // Android 13+ 添加通知权限
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                            requiredPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        permissionLauncher.launch(requiredPermissions.toTypedArray())
                     }
                 ) {
                     Text("重新授权")
