@@ -213,6 +213,27 @@ fun ServiceCountdownScreen(
             }
         }
     }
+    
+    // 检查全屏Intent权限（Android 14+）
+    fun checkFullScreenIntentPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            countdownNotificationManager.canUseFullScreenIntent()
+        } else {
+            true
+        }
+    }
+    
+    // 请求全屏Intent权限
+    fun requestFullScreenIntentPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (!checkFullScreenIntentPermission()) {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                    data = "package:${context.packageName}".toUri()
+                }
+                exactAlarmPermissionLauncher.launch(intent)
+            }
+        }
+    }
 
     // 检查所有必需权限
     fun checkAndRequestPermissions() {
@@ -226,6 +247,12 @@ fun ServiceCountdownScreen(
         if (!countdownNotificationManager.canScheduleExactAlarms()) {
             requestExactAlarmPermission()
             return
+        }
+        
+        // 检查全屏Intent权限（Android 14+）
+        if (!checkFullScreenIntentPermission()) {
+            permissionDialogMessage = "需要「全屏通知」权限才能在锁屏时显示倒计时完成提醒。请点击「去设置」开启权限。"
+            showPermissionDialog = true
         }
     }
 
@@ -537,9 +564,18 @@ fun ServiceCountdownScreen(
                 TextButton(
                     onClick = {
                         showPermissionDialog = false
-                        // 引导用户到设置页面
-                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = "package:${context.packageName}".toUri()
+                        // 根据权限类型跳转到对应设置页面
+                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && 
+                            permissionDialogMessage.contains("全屏通知")) {
+                            // Android 14+ 全屏Intent权限设置
+                            Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                                data = "package:${context.packageName}".toUri()
+                            }
+                        } else {
+                            // 通用应用设置页面
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = "package:${context.packageName}".toUri()
+                            }
                         }
                         context.startActivity(intent)
                     }) {

@@ -4,14 +4,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.WindowManager
-import androidx.core.content.ContextCompat
-import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,15 +19,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ytone.longcare.theme.LongCareTheme
+import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.receiver.DismissAlarmReceiver
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
+import com.ytone.longcare.theme.LongCareTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -42,6 +42,7 @@ class CountdownAlarmActivity : AppCompatActivity() {
     private var autoCloseRunnable: Runnable? = null
     
     companion object {
+        private const val TAG = "CountdownAlarmActivity"
         private const val EXTRA_ORDER_ID = "order_id"
         private const val EXTRA_SERVICE_NAME = "service_name"
         private const val EXTRA_AUTO_CLOSE_ENABLED = "auto_close_enabled"
@@ -52,6 +53,7 @@ class CountdownAlarmActivity : AppCompatActivity() {
                 putExtra(EXTRA_ORDER_ID, orderId)
                 putExtra(EXTRA_SERVICE_NAME, serviceName)
                 putExtra(EXTRA_AUTO_CLOSE_ENABLED, autoCloseEnabled)
+                // 确保Activity可以从后台启动
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
                        Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -68,19 +70,23 @@ class CountdownAlarmActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // 设置为全屏显示，在锁屏上方显示
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        } else {
-            @Suppress("DEPRECATION")
-            window.addFlags(
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
-                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
-            )
-        }
+        Log.i(TAG, "========================================")
+        Log.i(TAG, "✅ CountdownAlarmActivity onCreate 被调用")
+        Log.i(TAG, "========================================")
+        
+        // 设置锁屏显示和点亮屏幕
+        // Android 8.1+ (API 27+) 使用 Activity 的方法
+        setShowWhenLocked(true)
+        setTurnScreenOn(true)
+        Log.i(TAG, "使用 setShowWhenLocked/setTurnScreenOn 设置锁屏显示")
+        
+        // 设置Window flags保持屏幕常亮
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        
+        // 使用 WindowCompat 设置全屏显示
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        
+        Log.i(TAG, "Window flags 已设置")
         
         val orderId = intent.getStringExtra(EXTRA_ORDER_ID) ?: ""
         val serviceName = intent.getStringExtra(EXTRA_SERVICE_NAME) ?: "护理服务"
@@ -160,8 +166,6 @@ fun CountdownAlarmScreen(
     serviceName: String,
     onDismiss: () -> Unit
 ) {
-    val context = LocalContext.current
-    
     Box(
         modifier = Modifier
             .fillMaxSize()

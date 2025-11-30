@@ -8,7 +8,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.AlarmManagerCompat
+import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
@@ -164,6 +166,8 @@ class CountdownNotificationManager @Inject constructor(
         orderId: Long,
         serviceName: String
     ): android.app.Notification {
+        logI("构建倒计时完成通知: orderId=$orderId, serviceName=$serviceName")
+        
         // 创建关闭响铃的PendingIntent
         val dismissIntent = Intent(context, DismissAlarmReceiver::class.java).apply {
             putExtra(EXTRA_ORDER_ID, orderId)
@@ -177,42 +181,63 @@ class CountdownNotificationManager @Inject constructor(
         )
         
         // 创建启动CountdownAlarmActivity的PendingIntent
+        // 注意：fullScreenIntent需要使用FLAG_ACTIVITY_NEW_TASK
         val alarmActivityIntent = CountdownAlarmActivity.createIntent(
             context,
             orderId.toString(),
             serviceName,
             autoCloseEnabled = true
-        )
+        ).apply {
+            // 确保Activity可以从后台启动
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
         val alarmActivityPendingIntent = PendingIntent.getActivity(
             context,
             COUNTDOWN_ALARM_ACTIVITY_REQUEST_CODE,
             alarmActivityIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        
+        // 检查是否有全屏Intent权限（使用Compat API）
+        val notificationManagerCompat = NotificationManagerCompat.from(context)
+        val canUseFullScreenIntent = notificationManagerCompat.canUseFullScreenIntent()
+        logI("全屏Intent权限: canUseFullScreenIntent=$canUseFullScreenIntent, SDK=${Build.VERSION.SDK_INT}")
 
-        // 通知仅用于显示信息和提供操作按钮，声音和震动由AlarmRingtoneService处理
-        return NotificationCompat.Builder(context, COUNTDOWN_NOTIFICATION_CHANNEL_ID)
+        // 构建通知
+        val builder = NotificationCompat.Builder(context, COUNTDOWN_NOTIFICATION_CHANNEL_ID)
             .setContentTitle("⏰ 服务倒计时完成")
             .setContentText("$serviceName 服务时间已到，请及时处理")
             .setSmallIcon(R.mipmap.app_logo_round)
-            .setPriority(NotificationCompat.PRIORITY_MAX) // 使用最高优先级
+            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setAutoCancel(false) // 不自动取消，需要用户手动关闭
-            .setOngoing(true) // 设置为持续通知，不能滑动删除
-            .setDefaults(0) // 清除默认设置，不使用默认声音和震动
-            .setSound(null) // 不播放声音（由AlarmRingtoneService处理）
-            .setVibrate(null) // 不震动（由AlarmRingtoneService处理）
-            .setLights(0xFF0000FF.toInt(), 1000, 500) // 设置LED灯光
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // 锁屏可见
-            .setContentIntent(alarmActivityPendingIntent) // 点击通知时启动闹铃页面
+            .setAutoCancel(false)
+            .setOngoing(true)
+            .setDefaults(0)
+            .setSound(null)
+            .setVibrate(null)
+            .setLights(0xFF0000FF.toInt(), 1000, 500)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(alarmActivityPendingIntent)
             .addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
                 "关闭响铃",
                 dismissPendingIntent
             )
-            .setFullScreenIntent(alarmActivityPendingIntent, true) // 全屏显示闹铃页面
-            .setTimeoutAfter(0) // 不自动超时
-            .build()
+            .setTimeoutAfter(0)
+        
+        // 设置全屏Intent（关键：在锁屏时显示Activity）
+        if (canUseFullScreenIntent) {
+            builder.setFullScreenIntent(alarmActivityPendingIntent, true)
+            logI("✅ 已设置fullScreenIntent")
+        } else {
+            logE("❌ 无法使用fullScreenIntent，需要用户授权")
+        }
+        
+        val notification = builder.build()
+        logI("✅ 通知构建完成")
+        return notification
     }
 
     /**
@@ -248,42 +273,33 @@ class CountdownNotificationManager @Inject constructor(
 
     /**
      * 创建通知渠道
+     * 使用 NotificationChannelCompat 确保版本兼容性
      */
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // 先删除旧的通知渠道（如果存在）
-            try {
-                notificationManager.deleteNotificationChannel("countdown_completion_channel")
-            } catch (e: Exception) {
-                // 忽略删除失败的错误
-            }
-            
-            val channel = NotificationChannel(
-                COUNTDOWN_NOTIFICATION_CHANNEL_ID,
-                "倒计时完成通知",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "服务倒计时完成时的提醒通知"
-                enableVibration(false) // 不使用通知震动，由AlarmRingtoneService处理
-                enableLights(true)
-                setShowBadge(true)
-                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
-                
-                // 不设置声音，由AlarmRingtoneService处理
-                setSound(null, null)
-                
-                // 允许绕过勿扰模式
-                setBypassDnd(true)
-                
-                // 设置为可以在锁屏上显示
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    setAllowBubbles(true)
-                }
-            }
-            
-            notificationManager.createNotificationChannel(channel)
-            logI("倒计时通知渠道已重新创建: $COUNTDOWN_NOTIFICATION_CHANNEL_ID")
+        val notificationManagerCompat = NotificationManagerCompat.from(context)
+        
+        // 先删除旧的通知渠道（如果存在）
+        try {
+            notificationManagerCompat.deleteNotificationChannel("countdown_completion_channel")
+        } catch (e: Exception) {
+            // 忽略删除失败的错误
         }
+        
+        // 使用 NotificationChannelCompat.Builder 创建通知渠道
+        val channel = NotificationChannelCompat.Builder(
+            COUNTDOWN_NOTIFICATION_CHANNEL_ID,
+            NotificationManagerCompat.IMPORTANCE_HIGH
+        )
+            .setName("倒计时完成通知")
+            .setDescription("服务倒计时完成时的提醒通知")
+            .setVibrationEnabled(false) // 不使用通知震动，由AlarmRingtoneService处理
+            .setLightsEnabled(true)
+            .setShowBadge(true)
+            .setSound(null, null) // 不设置声音，由AlarmRingtoneService处理
+            .build()
+        
+        notificationManagerCompat.createNotificationChannel(channel)
+        logI("倒计时通知渠道已重新创建: $COUNTDOWN_NOTIFICATION_CHANNEL_ID")
     }
 
     /**
@@ -295,6 +311,15 @@ class CountdownNotificationManager @Inject constructor(
         } else {
             true
         }
+    }
+    
+    /**
+     * 检查是否有全屏Intent权限（Android 14+）
+     * 在Android 14+上，应用需要用户授权才能使用全屏Intent在锁屏上显示Activity
+     * 使用 NotificationManagerCompat 确保版本兼容性
+     */
+    fun canUseFullScreenIntent(): Boolean {
+        return NotificationManagerCompat.from(context).canUseFullScreenIntent()
     }
 
     /**

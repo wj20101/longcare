@@ -1,9 +1,11 @@
 package com.ytone.longcare.features.countdown.service
 
-import android.app.NotificationManager
+import android.Manifest
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.MediaPlayer
@@ -13,7 +15,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.os.VibratorManager
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
@@ -35,12 +37,12 @@ class AlarmRingtoneService : Service() {
     private var isPlaying = false
     private var wakeLock: PowerManager.WakeLock? = null
     
-    // 通知ID，与CountdownNotificationManager中保持一致
-    private val NOTIFICATION_ID = 2001
-
     companion object {
         private const val EXTRA_ORDER_ID = "extra_order_id"
         private const val EXTRA_SERVICE_NAME = "extra_service_name"
+
+        // 通知ID，与CountdownNotificationManager中保持一致
+        private const val NOTIFICATION_ID = 2001
         
         /**
          * 启动响铃服务
@@ -68,11 +70,10 @@ class AlarmRingtoneService : Service() {
         logI("AlarmRingtoneService: 服务创建")
         
         // 初始化WakeLock
+        // 使用 PARTIAL_WAKE_LOCK 保持CPU运行，屏幕点亮由 Activity 的 setTurnScreenOn 处理
         val powerManager = getSystemService<PowerManager>()
         wakeLock = powerManager?.newWakeLock(
-            PowerManager.FULL_WAKE_LOCK or
-            PowerManager.ACQUIRE_CAUSES_WAKEUP or
-            PowerManager.ON_AFTER_RELEASE,
+            PowerManager.PARTIAL_WAKE_LOCK,
             "LongCare:AlarmRingtoneService"
         )
     }
@@ -119,36 +120,87 @@ class AlarmRingtoneService : Service() {
                 serviceName
             )
             
-            // 使用Compat库启动前台服务，自动适配不同版本
-            // 注意：这里必须使用 ServiceCompat.startForeground，并且传入正确的 foregroundServiceType
-            // 否则在 Android 14+ 上会抛出 SecurityException 或不显示通知
-            ServiceCompat.startForeground(
-                this,
-                NOTIFICATION_ID,
-                notification,
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // 检查通知权限（使用 NotificationManagerCompat，自动处理版本兼容）
+            val notificationManagerCompat = NotificationManagerCompat.from(this)
+            val hasNotificationPermission = notificationManagerCompat.areNotificationsEnabled()
+            
+            logI("AlarmRingtoneService: 通知权限状态=$hasNotificationPermission")
+            
+            // 确定前台服务类型
+            val foregroundServiceType = when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                    // Android 14+ 需要明确指定类型
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-                } else {
-                    0
                 }
-            )
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                }
+                else -> 0
+            }
             
-            // 强制刷新通知，确保它显示出来
-            val notificationManager = getSystemService<NotificationManager>()
-            notificationManager?.notify(NOTIFICATION_ID, notification)
+            logI("AlarmRingtoneService: 前台服务类型=$foregroundServiceType, SDK=${Build.VERSION.SDK_INT}")
             
-            logI("AlarmRingtoneService: 已升级为前台服务 (ID=$NOTIFICATION_ID)")
+            // 使用Compat库启动前台服务
+            try {
+                ServiceCompat.startForeground(
+                    this,
+                    NOTIFICATION_ID,
+                    notification,
+                    foregroundServiceType
+                )
+                logI("AlarmRingtoneService: ✅ 前台服务启动成功 (ID=$NOTIFICATION_ID)")
+            } catch (e: Exception) {
+                logE("AlarmRingtoneService: ❌ ServiceCompat.startForeground失败: ${e.message}")
+            }
+            
+            // 强制刷新通知，确保它显示出来（使用 NotificationManagerCompat）
+            // 使用 try-catch 处理可能的 SecurityException
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    // Android 13+ 需要检查 POST_NOTIFICATIONS 权限
+                    if (ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        notificationManagerCompat.notify(NOTIFICATION_ID, notification)
+                    }
+                } else {
+                    // Android 13 以下不需要运行时权限
+                    notificationManagerCompat.notify(NOTIFICATION_ID, notification)
+                }
+            } catch (e: SecurityException) {
+                logE("AlarmRingtoneService: 通知权限被拒绝 - ${e.message}")
+            }
+            
+            logI("AlarmRingtoneService: ✅ 已升级为前台服务并刷新通知 (ID=$NOTIFICATION_ID)")
         } catch (e: Exception) {
-            logE("AlarmRingtoneService: 启动前台服务失败 - ${e.message}")
+            logE("AlarmRingtoneService: ❌ 启动前台服务失败 - ${e.message}")
+            e.printStackTrace()
         }
     }
     
     /**
      * 尝试启动Activity
+     * 
+     * Android 14+ 对后台启动Activity有严格限制，即使是前台服务也需要满足特定条件：
+     * 1. 使用 fullScreenIntent 通知（推荐方式）
+     * 2. 应用具有 SYSTEM_ALERT_WINDOW 权限
+     * 3. 应用是设备所有者或配置文件所有者
+     * 
+     * 我们主要依赖 fullScreenIntent，这里的直接启动作为补充尝试
      */
     private fun tryStartActivity(orderId: String, serviceName: String) {
         try {
-            logI("AlarmRingtoneService: 尝试启动全屏 Activity")
+            logI("AlarmRingtoneService: 尝试启动全屏 Activity (SDK=${Build.VERSION.SDK_INT})")
+            
+            // Android 14+ 后台启动Activity受限，主要依赖fullScreenIntent
+            // 这里仅作为补充尝试，失败是正常的
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                logI("AlarmRingtoneService: Android 14+，跳过直接启动Activity，依赖fullScreenIntent")
+                return
+            }
+            
             val alarmIntent = CountdownAlarmActivity.createIntent(
                 this, 
                 orderId, 
@@ -158,29 +210,28 @@ class AlarmRingtoneService : Service() {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
                        Intent.FLAG_ACTIVITY_NO_USER_ACTION or
-                       Intent.FLAG_ACTIVITY_REORDER_TO_FRONT // 确保Activity被带到前台
+                       Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
             }
             
-            // 针对 Android 10+ 后台启动限制的额外处理
-            val pendingIntent = android.app.PendingIntent.getActivity(
+            // 针对 Android 10-13 的处理
+            val pendingIntent = PendingIntent.getActivity(
                 this,
                 0,
                 alarmIntent,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             
-            // 尝试直接发送 PendingIntent，有时比 startActivity 更能绕过限制
             try {
                 pendingIntent.send()
-                logI("AlarmRingtoneService: 通过 PendingIntent 启动 Activity 成功")
+                logI("AlarmRingtoneService: ✅ 通过 PendingIntent 启动 Activity 成功")
             } catch (e: Exception) {
-                logE("AlarmRingtoneService: PendingIntent 启动失败，尝试直接 startActivity")
+                logE("AlarmRingtoneService: PendingIntent 启动失败，尝试直接 startActivity: ${e.message}")
                 startActivity(alarmIntent)
-                logI("AlarmRingtoneService: 通过 startActivity 启动 Activity 成功")
+                logI("AlarmRingtoneService: ✅ 通过 startActivity 启动 Activity 成功")
             }
             
         } catch (e: Exception) {
-            logE("AlarmRingtoneService: 尝试启动Activity失败 (正常现象，如果应用在后台) - ${e.message}")
+            logI("AlarmRingtoneService: ⚠️ 直接启动Activity失败 (Android 10+正常现象，依赖fullScreenIntent) - ${e.message}")
         }
     }
 
@@ -248,25 +299,26 @@ class AlarmRingtoneService : Service() {
 
     /**
      * 初始化Vibrator开始震动
+     * 使用兼容方式获取Vibrator实例
      */
     private fun initializeVibrator() {
         try {
-            vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                getSystemService<VibratorManager>()?.defaultVibrator
-            } else {
-                getSystemService<Vibrator>()
-            }
+            // 使用 ContextCompat 获取 Vibrator（兼容所有版本）
+            vibrator = getSystemService<Vibrator>()
             
             // 震动模式：等待0ms -> 震动1000ms -> 暂停500ms -> 循环
             val vibrationPattern = longArrayOf(0, 1000, 500)
-            
+
+            // 根据 API 版本选择震动方式
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // Android 8.0+ 使用 VibrationEffect
                 val vibrationEffect = VibrationEffect.createWaveform(
                     vibrationPattern,
                     0 // 从索引0开始循环
                 )
                 vibrator?.vibrate(vibrationEffect)
             } else {
+                // Android 8.0 以下使用旧 API
                 @Suppress("DEPRECATION")
                 vibrator?.vibrate(vibrationPattern, 0)
             }
