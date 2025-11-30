@@ -196,25 +196,23 @@ fun ServiceRecordItem(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        Row() {
-            // 总的服务时长
-            Text(
-                text = stringResource(
-                    id = R.string.service_order_work_hours_total,
-                    record.totalServiceTime
-                ), fontSize = 14.sp, color = Color.Gray
-            )
+        // 总的服务时长
+        Text(
+            text = stringResource(
+                id = R.string.service_order_work_hours_total,
+                record.totalServiceTime
+            ), fontSize = 14.sp, color = Color.Gray
+        )
 
-            Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-            // 实际服务时长
-            Text(
-                text = stringResource(
-                    id = R.string.service_order_work_hours_true,
-                    record.trueServiceTime
-                ), fontSize = 14.sp, color = Color.Gray
-            )
-        }
+        // 实际服务时长
+        Text(
+            text = stringResource(
+                id = R.string.service_order_work_hours_true,
+                record.trueServiceTime
+            ), fontSize = 14.sp, color = Color.Gray
+        )
 
         Spacer(modifier = Modifier.height(4.dp))
 
