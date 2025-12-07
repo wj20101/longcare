@@ -16,7 +16,9 @@ import com.ytone.longcare.api.request.BindLocationParamModel
 import com.ytone.longcare.api.request.SetFaceParamModel
 import com.ytone.longcare.api.response.FaceResultModel
 import com.ytone.longcare.api.request.CheckEndOrderParamModel
+import com.ytone.longcare.api.request.OrderStateParamModel
 import com.ytone.longcare.api.response.LoginResultModel
+import com.ytone.longcare.api.response.ServiceOrderStateModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
@@ -236,4 +238,12 @@ interface LongCareApiService {
     @POST("/V1/Service/CheckEndOrder")
     suspend fun checkEndOrder(@Body checkEndOrderParamModel: CheckEndOrderParamModel): Response<Unit>
 
+    /**
+     * 查询服务订单状态
+     *
+     * @param orderStateParamModel 请求参数，包含订单ID
+     * @return 订单状态信息
+     */
+    @POST("/V1/Service/OrderState")
+    suspend fun getOrderState(@Body orderStateParamModel: OrderStateParamModel): Response<ServiceOrderStateModel>
 }

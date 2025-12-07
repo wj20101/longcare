@@ -53,6 +53,27 @@ class LocationTrackingManager @Inject constructor(
             context.startService(it)
         }
     }
+    
+    /**
+     * 强制停止定位追踪服务。
+     * 无论当前状态如何，都会发送停止命令。
+     * 用于异常情况下确保服务被停止。
+     */
+    fun forceStopTracking() {
+        android.util.Log.i("LocationTrackingManager", "========================================")
+        android.util.Log.i("LocationTrackingManager", "🛑 强制停止定位追踪服务...")
+        android.util.Log.i("LocationTrackingManager", "当前状态: isTracking=${_isTracking.value}")
+        android.util.Log.i("LocationTrackingManager", "========================================")
+        
+        _isTracking.value = false
+        Intent(context, LocationTrackingService::class.java).apply {
+            action = LocationTrackingService.ACTION_STOP
+        }.also {
+            android.util.Log.i("LocationTrackingManager", "📤 发送停止Intent: action=${it.action}")
+            context.startService(it)
+            android.util.Log.i("LocationTrackingManager", "✅ 停止Intent已发送")
+        }
+    }
 
     /**
      * 此方法由Service在其生命周期变化时内部调用，以确保状态在任何情况下都保持同步。

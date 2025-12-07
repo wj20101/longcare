@@ -132,11 +132,63 @@ class CountdownNotificationManager @Inject constructor(
 
     /**
      * 取消倒计时闹钟
+     * 
+     * 注意：由于设置闹钟时使用了动态action，取消时需要使用相同的方式创建PendingIntent
+     * 或者使用FLAG_UPDATE_CURRENT来确保能找到对应的PendingIntent
      */
     fun cancelCountdownAlarm() {
         try {
-            // 取消所有可能的闹钟（包括不同action的）
+            logI("开始取消倒计时闹钟...")
+            
+            // 方法1：使用FLAG_UPDATE_CURRENT创建PendingIntent来取消
+            // 这种方式不需要知道原来的action，只要requestCode相同就能取消
             val intent = Intent(context, CountdownAlarmReceiver::class.java)
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                COUNTDOWN_ALARM_REQUEST_CODE,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // 取消AlarmManager中的闹钟
+            alarmManager.cancel(pendingIntent)
+            pendingIntent.cancel()
+            logI("✅ 倒计时闹钟已取消 (通过FLAG_UPDATE_CURRENT)")
+            
+            // 方法2：额外尝试取消可能存在的AlarmClock
+            // AlarmClock设置的闹钟可能需要单独取消
+            try {
+                val nextAlarmClock = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    alarmManager.nextAlarmClock
+                } else {
+                    null
+                }
+                if (nextAlarmClock != null) {
+                    logI("当前系统下一个闹钟时间: ${nextAlarmClock.triggerTime}")
+                }
+            } catch (e: Exception) {
+                // 忽略获取下一个闹钟信息的错误
+            }
+            
+        } catch (e: Exception) {
+            logE("❌ 取消倒计时闹钟失败: ${e.message}", throwable = e)
+        }
+    }
+    
+    /**
+     * 取消指定订单的倒计时闹钟
+     * 
+     * @param orderId 订单ID，用于匹配设置闹钟时使用的action
+     */
+    fun cancelCountdownAlarmForOrder(orderId: Long) {
+        try {
+            logI("开始取消订单 $orderId 的倒计时闹钟...")
+            
+            // 使用与设置闹钟时相同的action来创建Intent
+            val intent = Intent(context, CountdownAlarmReceiver::class.java).apply {
+                action = "COUNTDOWN_ALARM_$orderId"
+            }
+            
             val pendingIntent = PendingIntent.getBroadcast(
                 context,
                 COUNTDOWN_ALARM_REQUEST_CODE,
@@ -147,12 +199,16 @@ class CountdownNotificationManager @Inject constructor(
             if (pendingIntent != null) {
                 alarmManager.cancel(pendingIntent)
                 pendingIntent.cancel()
-                logI("✅ 倒计时闹钟已取消")
+                logI("✅ 订单 $orderId 的倒计时闹钟已取消")
             } else {
-                logI("⚠️ 没有找到待取消的倒计时闹钟")
+                logI("⚠️ 没有找到订单 $orderId 的待取消闹钟，尝试通用取消...")
+                // 如果找不到特定订单的闹钟，尝试通用取消
+                cancelCountdownAlarm()
             }
         } catch (e: Exception) {
-            logE("❌ 取消倒计时闹钟失败: ${e.message}", throwable = e)
+            logE("❌ 取消订单 $orderId 的倒计时闹钟失败: ${e.message}", throwable = e)
+            // 失败时尝试通用取消
+            cancelCountdownAlarm()
         }
     }
 

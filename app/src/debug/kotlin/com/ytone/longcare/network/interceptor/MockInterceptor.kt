@@ -2,6 +2,7 @@ package com.ytone.longcare.network.interceptor
 
 import android.content.Context
 import com.ytone.longcare.BuildConfig
+import com.ytone.longcare.api.response.ServiceOrderStateModel
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Protocol
@@ -9,6 +10,11 @@ import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 
 class MockInterceptor(private val context: Context) : Interceptor {
+    
+    companion object {
+        /** 随机模式标识 */
+        private const val RANDOM_MODE = -99
+    }
 
     override fun intercept(chain: Interceptor.Chain): Response {
         if (!BuildConfig.USE_MOCK_DATA) {
@@ -51,6 +57,45 @@ class MockInterceptor(private val context: Context) : Interceptor {
                 }
             } catch (e: Exception) {
                 // 如果文件读取失败，可以返回一个错误信息的JSON
+                """{"resultCode": 500, "resultMsg": "Mock文件读取失败: ${e.message}", "data": null}"""
+            }
+        }
+        
+        // OrderState 接口特殊处理：可配置返回不同状态
+        // 修改 ORDER_STATE_MOCK_VALUE 的值来测试不同场景，使用 ServiceOrderStateModel 中的常量：
+        // STATE_IN_PROGRESS (1) = 执行中（正常状态，不触发弹窗）
+        // STATE_COMPLETED (2) = 任务完成（触发异常弹窗）
+        // STATE_CANCELLED (3) = 作废（触发异常弹窗）
+        // STATE_PENDING (0) = 待执行（触发异常弹窗）
+        // STATE_NOT_CREATED (-1) = 未开单（触发异常弹窗）
+        // RANDOM_MODE (-99) = 随机返回（用于测试）
+        if (path == "/V1/Service/OrderState") {
+            // ========== 修改此值来测试不同场景 ==========
+            val ORDER_STATE_MOCK_VALUE = RANDOM_MODE
+            // ============================================
+            
+            val mockFile = when (ORDER_STATE_MOCK_VALUE) {
+                ServiceOrderStateModel.STATE_IN_PROGRESS -> "mock/order_state_in_progress.json"
+                ServiceOrderStateModel.STATE_COMPLETED -> "mock/order_state_completed.json"
+                ServiceOrderStateModel.STATE_CANCELLED -> "mock/order_state_cancelled.json"
+                ServiceOrderStateModel.STATE_PENDING -> "mock/order_state_pending.json"
+                ServiceOrderStateModel.STATE_NOT_CREATED -> "mock/order_state_not_created.json"
+                RANDOM_MODE -> {
+                    // 随机返回：90%概率返回执行中，10%概率返回异常状态
+                    val random = kotlin.random.Random.nextInt(10)
+                    when {
+                        random < 9 -> "mock/order_state_in_progress.json"
+                        else -> "mock/order_state_completed.json"
+                    }
+                }
+                else -> "mock/order_state_in_progress.json"
+            }
+            
+            return try {
+                context.assets.open(mockFile).bufferedReader().use { reader ->
+                    reader.readText()
+                }
+            } catch (e: Exception) {
                 """{"resultCode": 500, "resultMsg": "Mock文件读取失败: ${e.message}", "data": null}"""
             }
         }

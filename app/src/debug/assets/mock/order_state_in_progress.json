@@ -1,0 +1,9 @@
+{
+  "resultCode": 1000,
+  "resultMsg": "操作成功 (来自本地Mock数据)",
+  "data": {
+    "orderId": 12345,
+    "state": 1,
+    "stateDesc": "执行中"
+  }
+}

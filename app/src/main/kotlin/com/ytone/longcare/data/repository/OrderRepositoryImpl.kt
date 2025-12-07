@@ -10,6 +10,8 @@ import com.ytone.longcare.api.request.StarOrderParamModel
 import com.ytone.longcare.api.request.UpUserStartImgParamModel
 import com.ytone.longcare.api.request.BindLocationParamModel
 import com.ytone.longcare.api.request.CheckEndOrderParamModel
+import com.ytone.longcare.api.request.OrderStateParamModel
+import com.ytone.longcare.api.response.ServiceOrderStateModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
@@ -153,6 +155,12 @@ class OrderRepositoryImpl @Inject constructor(
                     porjectIdList = projectIdList
                 )
             )
+        }
+    }
+
+    override suspend fun getOrderState(orderId: Long): ApiResult<ServiceOrderStateModel> {
+        return safeApiCall(ioDispatcher, eventBus) {
+            apiService.getOrderState(OrderStateParamModel(orderId = orderId))
         }
     }
 }
