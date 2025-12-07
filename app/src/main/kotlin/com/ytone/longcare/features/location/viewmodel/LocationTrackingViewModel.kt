@@ -17,7 +17,7 @@ class LocationTrackingViewModel @Inject constructor(
     val isTracking: StateFlow<Boolean> = trackingManager.isTracking
 
     /**
-     * 当UI层的“开启”按钮被点击时调用。
+     * 当UI层的"开启"按钮被点击时调用。
      * 将操作委托给 Manager。
      */
     fun onStartClicked(orderId: Long) {
@@ -25,10 +25,19 @@ class LocationTrackingViewModel @Inject constructor(
     }
 
     /**
-     * 当UI层的“结束”按钮被点击时调用。
+     * 当UI层的"结束"按钮被点击时调用。
      * 将操作委托给 Manager。
      */
     fun onStopClicked() {
         trackingManager.stopTracking()
+    }
+    
+    /**
+     * 强制停止定位追踪服务。
+     * 无论当前状态如何，都会发送停止命令。
+     * 用于异常情况下确保服务被停止。
+     */
+    fun forceStop() {
+        trackingManager.forceStopTracking()
     }
 }

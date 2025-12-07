@@ -54,6 +54,7 @@ import com.ytone.longcare.ui.screen.TagCategory
 import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import androidx.core.net.toUri
+import com.ytone.longcare.api.response.ServiceOrderStateModel
 import com.ytone.longcare.common.utils.HomeBackHandler
 import com.ytone.longcare.di.ServiceCountdownEntryPoint
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
@@ -128,9 +129,14 @@ fun ServiceCountdownScreen(
     // 从ViewModel获取状态
     val countdownState by countdownViewModel.countdownState.collectAsStateWithLifecycle()
     val formattedTime by countdownViewModel.formattedTime.collectAsStateWithLifecycle()
+    val orderStateError by countdownViewModel.orderStateError.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    
+    // 订单状态异常弹窗状态
+    var showOrderStateErrorDialog by remember { mutableStateOf(false) }
+    var orderStateErrorMessage by remember { mutableStateOf("") }
 
     // 获取CountdownNotificationManager实例
     val entryPoint = EntryPointAccessors.fromApplication(
@@ -258,17 +264,25 @@ fun ServiceCountdownScreen(
 
     // 处理结束服务的公共逻辑
     fun handleEndService(endType: Int) {
+        android.util.Log.i("ServiceCountdownScreen", "========================================")
+        android.util.Log.i("ServiceCountdownScreen", "🛑 开始处理结束服务 (endType=$endType)...")
+        android.util.Log.i("ServiceCountdownScreen", "========================================")
+        
         // 1. 停止倒计时前台服务
         CountdownForegroundService.stopCountdown(context)
+        android.util.Log.i("ServiceCountdownScreen", "✅ 1. 已停止倒计时前台服务")
 
         // 2. 停止定位跟踪服务
         locationTrackingViewModel.onStopClicked()
+        android.util.Log.i("ServiceCountdownScreen", "✅ 2. 已停止定位跟踪服务")
 
-        // 3. 取消倒计时闹钟
-        countdownNotificationManager.cancelCountdownAlarm()
+        // 3. 取消倒计时闹钟（使用订单ID精确取消）
+        countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest.orderId)
+        android.util.Log.i("ServiceCountdownScreen", "✅ 3. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
 
         // 4. 停止响铃服务（如果正在响铃）
         AlarmRingtoneService.stopRingtone(context)
+        android.util.Log.i("ServiceCountdownScreen", "✅ 4. 已停止响铃服务")
 
         // 5. 调用ViewModel结束服务
         countdownViewModel.endService(orderInfoRequest, context)
@@ -295,6 +309,21 @@ fun ServiceCountdownScreen(
         )
     }
 
+    // 监听订单状态异常事件
+    LaunchedEffect(orderStateError) {
+        orderStateError?.let { stateModel ->
+            // 构建错误提示信息
+            orderStateErrorMessage = when (stateModel.state) {
+                ServiceOrderStateModel.STATE_NOT_CREATED -> "订单未开单，无法继续服务"
+                ServiceOrderStateModel.STATE_PENDING -> "订单状态异常：待执行"
+                ServiceOrderStateModel.STATE_COMPLETED -> "订单已完成，无法继续服务"
+                ServiceOrderStateModel.STATE_CANCELLED -> "订单已作废，无法继续服务"
+                else -> stateModel.stateDesc ?: "订单状态异常，无法继续服务"
+            }
+            showOrderStateErrorDialog = true
+        }
+    }
+    
     LaunchedEffect(orderInfoRequest) {
         sharedViewModel.getCachedOrderInfo(orderInfoRequest)
         sharedViewModel.getOrderInfo(orderInfoRequest)
@@ -304,6 +333,9 @@ fun ServiceCountdownScreen(
 
         // 恢复本地保存的图片数据
         countdownViewModel.loadUploadedImagesFromLocal(orderInfoRequest)
+        
+        // 启动订单状态轮询（每5秒查询一次）
+        countdownViewModel.startOrderStatePolling(orderInfoRequest.orderId)
 
         // 监听图片上传结果
         navController.currentBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<ImageTask>>?>(
@@ -540,6 +572,9 @@ fun ServiceCountdownScreen(
     // 页面销毁时清理资源
     DisposableEffect(Unit) {
         onDispose {
+            // 停止订单状态轮询
+            countdownViewModel.stopOrderStatePolling()
+            
             // 如果服务未正常结束，清理相关资源
             if (countdownState != ServiceCountdownState.ENDED) {
                 // 1. 取消倒计时闹钟
@@ -609,6 +644,61 @@ fun ServiceCountdownScreen(
                 TextButton(
                     onClick = { showConfirmDialog = false }) {
                     Text("取消")
+                }
+            })
+    }
+    
+    // 订单状态异常弹窗
+    if (showOrderStateErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { /* 不允许点击外部关闭 */ },
+            title = { Text("订单状态异常") },
+            text = { Text(orderStateErrorMessage) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showOrderStateErrorDialog = false
+                        
+                        android.util.Log.i("ServiceCountdownScreen", "========================================")
+                        android.util.Log.i("ServiceCountdownScreen", "🛑 开始处理订单状态异常，停止所有服务...")
+                        android.util.Log.i("ServiceCountdownScreen", "========================================")
+                        
+                        // 1. 清除错误状态
+                        countdownViewModel.clearOrderStateError()
+                        android.util.Log.i("ServiceCountdownScreen", "✅ 1. 已清除错误状态")
+                        
+                        // 2. 停止订单状态轮询
+                        countdownViewModel.stopOrderStatePolling()
+                        android.util.Log.i("ServiceCountdownScreen", "✅ 2. 已停止订单状态轮询")
+                        
+                        // 3. 停止倒计时前台服务
+                        CountdownForegroundService.stopCountdown(context)
+                        android.util.Log.i("ServiceCountdownScreen", "✅ 3. 已停止倒计时前台服务")
+                        
+                        // 4. 强制停止定位跟踪服务（使用forceStop确保停止）
+                        locationTrackingViewModel.forceStop()
+                        android.util.Log.i("ServiceCountdownScreen", "✅ 4. 已强制停止定位跟踪服务")
+                        
+                        // 5. 取消倒计时闹钟（使用订单ID精确取消）
+                        countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest.orderId)
+                        android.util.Log.i("ServiceCountdownScreen", "✅ 5. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
+                        
+                        // 6. 停止响铃服务（如果正在响铃）
+                        AlarmRingtoneService.stopRingtone(context)
+                        android.util.Log.i("ServiceCountdownScreen", "✅ 6. 已停止响铃服务")
+                        
+                        // 7. 清理ViewModel状态和本地数据（不清除图片数据，因为订单可能需要重新开始）
+                        countdownViewModel.endServiceWithoutClearingImages(orderInfoRequest, context)
+                        android.util.Log.i("ServiceCountdownScreen", "✅ 7. 已清理ViewModel状态")
+                        
+                        android.util.Log.i("ServiceCountdownScreen", "========================================")
+                        android.util.Log.i("ServiceCountdownScreen", "✅ 所有服务已停止，准备返回首页")
+                        android.util.Log.i("ServiceCountdownScreen", "========================================")
+                        
+                        // 8. 返回首页
+                        navController.navigateToHomeAndClearStack()
+                    }) {
+                    Text("确定")
                 }
             })
     }

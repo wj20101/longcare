@@ -1,9 +1,10 @@
 package com.ytone.longcare.domain.order
 
 import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.api.response.TodayServiceOrderModel
-import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
+import com.ytone.longcare.api.response.ServiceOrderModel
+import com.ytone.longcare.api.response.ServiceOrderStateModel
+import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.common.network.ApiResult
 
 /**
@@ -114,4 +115,11 @@ interface OrderRepository {
         orderId: Long,
         projectIdList: List<Int>
     ): ApiResult<Unit>
+
+    /**
+     * 查询服务订单状态
+     * @param orderId 订单号
+     * @return 订单状态信息
+     */
+    suspend fun getOrderState(orderId: Long): ApiResult<ServiceOrderStateModel>
 }

@@ -61,9 +61,12 @@ class LocationTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        logI("📥 收到Intent: action=${intent?.action}")
+        
         when (intent?.action) {
             ACTION_START -> {
                 val orderId = intent.getLongExtra(EXTRA_ORDER_ID, INVALID_ORDER_ID)
+                logI("📥 收到启动命令: orderId=$orderId")
                 if (orderId == INVALID_ORDER_ID) {
                     logE("启动服务失败：未提供有效的 orderId。")
                     stopTracking() // 如果没有 orderId，则不启动并立即停止
@@ -72,7 +75,13 @@ class LocationTrackingService : Service() {
                     startTracking()
                 }
             }
-            ACTION_STOP -> stopTracking()
+            ACTION_STOP -> {
+                logI("📥 收到停止命令")
+                stopTracking()
+            }
+            else -> {
+                logI("📥 收到未知命令: ${intent?.action}")
+            }
         }
         // 使用 START_NOT_STICKY，避免服务在被意外杀死后自动重启，将控制权交由用户或业务逻辑
         return START_NOT_STICKY
@@ -147,12 +156,38 @@ class LocationTrackingService : Service() {
     }
 
     private fun stopTracking() {
-        logI("停止定位上报循环...")
+        logI("========================================")
+        logI("🛑 停止定位上报服务...")
+        logI("========================================")
+        
+        // 1. 取消定位任务
         trackingJob?.cancel()
         trackingJob = null
-        currentOrderId = INVALID_ORDER_ID // 重置 orderId
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        logI("✅ 1. 定位任务已取消")
+        
+        // 2. 重置 orderId
+        currentOrderId = INVALID_ORDER_ID
+        logI("✅ 2. orderId已重置")
+        
+        // 3. 停止前台服务
+        try {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            logI("✅ 3. 前台服务已停止")
+        } catch (e: Exception) {
+            logE("❌ 停止前台服务失败: ${e.message}")
+        }
+        
+        // 4. 停止服务自身
+        try {
+            stopSelf()
+            logI("✅ 4. 服务已停止")
+        } catch (e: Exception) {
+            logE("❌ 停止服务失败: ${e.message}")
+        }
+        
+        logI("========================================")
+        logI("✅ 定位上报服务停止完成")
+        logI("========================================")
     }
 
     private fun createNotification(contentText: String): Notification {

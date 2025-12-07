@@ -4,15 +4,18 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.api.response.ServiceOrderStateModel
 import com.ytone.longcare.api.response.ServiceProjectM
+import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.SelectedProjectsManager
 import com.ytone.longcare.common.utils.ServiceTimeManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.UploadedImagesManager
-import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
-import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
-import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.features.photoupload.model.ImageTask
+import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
+import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -29,7 +32,8 @@ class ServiceCountdownViewModel @Inject constructor(
     private val toastHelper: ToastHelper,
     private val serviceTimeManager: ServiceTimeManager,
     private val selectedProjectsManager: SelectedProjectsManager,
-    private val uploadedImagesManager: UploadedImagesManager
+    private val uploadedImagesManager: UploadedImagesManager,
+    private val orderRepository: OrderRepository
 ) : ViewModel() {
     
     // 倒计时状态
@@ -51,14 +55,26 @@ class ServiceCountdownViewModel @Inject constructor(
     // 倒计时Job
     private var countdownJob: Job? = null
     
+    // 订单状态轮询Job
+    private var orderStatePollingJob: Job? = null
+    
     // 已上传的图片数据
     private val _uploadedImages = MutableStateFlow<Map<ImageTaskType, List<ImageTask>>>(emptyMap())
     val uploadedImages: StateFlow<Map<ImageTaskType, List<ImageTask>>> = _uploadedImages.asStateFlow()
+    
+    // 订单状态异常事件（用于通知UI显示弹窗）
+    private val _orderStateError = MutableStateFlow<ServiceOrderStateModel?>(null)
+    val orderStateError: StateFlow<ServiceOrderStateModel?> = _orderStateError.asStateFlow()
     
     // 当前订单和项目信息，用于超时计时中重新计算时间
     private var currentOrderId: Long = 0
     private var currentProjectList: List<ServiceProjectM> = emptyList()
     private var currentSelectedProjectIds: List<Int> = emptyList()
+    
+    companion object {
+        /** 订单状态轮询间隔（毫秒） */
+        private const val ORDER_STATE_POLLING_INTERVAL = 5000L
+    }
     
     /**
      * 根据项目列表设置倒计时时间
@@ -368,6 +384,7 @@ class ServiceCountdownViewModel @Inject constructor(
      */
     fun endService(orderInfoRequest: OrderInfoRequestModel, context: Context? = null) {
         countdownJob?.cancel()
+        orderStatePollingJob?.cancel()
         _countdownState.value = ServiceCountdownState.ENDED
         
         // 停止前台服务
@@ -378,6 +395,27 @@ class ServiceCountdownViewModel @Inject constructor(
         selectedProjectsManager.clearSelectedProjects(orderInfoRequest.orderId)
         // 清除本地存储的图片数据
         clearUploadedImagesFromLocal(orderInfoRequest)
+    }
+    
+    /**
+     * 结束服务但不清除图片数据
+     * 用于订单状态异常时的清理，保留图片数据以便订单重新开始时使用
+     * 
+     * @param orderInfoRequest 订单信息请求模型
+     * @param context 上下文，用于停止前台服务
+     */
+    fun endServiceWithoutClearingImages(orderInfoRequest: OrderInfoRequestModel, context: Context? = null) {
+        countdownJob?.cancel()
+        orderStatePollingJob?.cancel()
+        _countdownState.value = ServiceCountdownState.ENDED
+        
+        // 停止前台服务
+        context?.let { stopForegroundService(it) }
+        
+        // 清除服务时间记录和选中项目记录（但保留图片数据）
+        serviceTimeManager.clearServiceTime(orderInfoRequest.orderId)
+        selectedProjectsManager.clearSelectedProjects(orderInfoRequest.orderId)
+        // 注意：不清除图片数据，因为订单可能需要重新开始
     }
     
     // 设置倒计时时间（用于测试或手动设置）
@@ -393,6 +431,67 @@ class ServiceCountdownViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         countdownJob?.cancel()
+        orderStatePollingJob?.cancel()
+    }
+    
+    /**
+     * 启动订单状态轮询
+     * 每5秒查询一次订单状态，如果订单不是"执行中"状态，则触发异常事件
+     * 
+     * @param orderId 订单ID
+     */
+    fun startOrderStatePolling(orderId: Long) {
+        // 取消之前的轮询
+        orderStatePollingJob?.cancel()
+        
+        orderStatePollingJob = viewModelScope.launch {
+            while (true) {
+                // 等待5秒
+                delay(ORDER_STATE_POLLING_INTERVAL)
+                
+                // 如果服务已结束，停止轮询
+                if (_countdownState.value == ServiceCountdownState.ENDED) {
+                    break
+                }
+                
+                // 查询订单状态
+                when (val result = orderRepository.getOrderState(orderId)) {
+                    is ApiResult.Success -> {
+                        val orderState = result.data
+                        // 如果订单不是"执行中"状态，触发异常事件
+                        if (!orderState.isInProgress()) {
+                            _orderStateError.value = orderState
+                            // 停止轮询
+                            break
+                        }
+                    }
+                    is ApiResult.Failure -> {
+                        // 业务错误时不处理，继续轮询
+                        println("查询订单状态失败: ${result.message}")
+                    }
+                    is ApiResult.Exception -> {
+                        // 网络异常时不处理，继续轮询
+                        println("查询订单状态异常: ${result.exception.message}")
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * 停止订单状态轮询
+     */
+    fun stopOrderStatePolling() {
+        orderStatePollingJob?.cancel()
+        orderStatePollingJob = null
+    }
+    
+    /**
+     * 清除订单状态异常事件
+     * 在UI处理完弹窗后调用
+     */
+    fun clearOrderStateError() {
+        _orderStateError.value = null
     }
     
     /**
