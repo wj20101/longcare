@@ -192,6 +192,11 @@
 
         </provider>
 
+        <!-- 配置APP ID -->
+        <meta-data
+            android:name="BUGLY_APPID"
+            android:value="db63032858" />
+
     </application>
 
 </manifest>

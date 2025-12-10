@@ -244,6 +244,9 @@ dependencies {
     // 高德地图定位SDK
     implementation(libs.amap.location)
 
+    // Bugly
+    implementation(libs.crashreport)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

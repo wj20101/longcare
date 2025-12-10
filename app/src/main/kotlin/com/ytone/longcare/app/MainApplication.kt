@@ -1,12 +1,14 @@
 package com.ytone.longcare.app
 
 import android.app.Application
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
+import androidx.work.WorkManager
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
-import androidx.work.Configuration
-import androidx.work.WorkManager
-import androidx.hilt.work.HiltWorkerFactory
+import com.tencent.bugly.crashreport.CrashReport
+import com.ytone.longcare.common.utils.CrashLogManager
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +17,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Provider
-import com.ytone.longcare.common.utils.CrashLogManager
 
 @HiltAndroidApp
 class MainApplication : Application(), SingletonImageLoader.Factory, Configuration.Provider {
@@ -46,6 +47,10 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
 
         // Initialize WorkManager with custom configuration
         WorkManager.initialize(this, workManagerConfiguration)
+
+        // 初始化Bugly
+        val userStrategy = CrashReport.UserStrategy(this)
+        CrashReport.initCrashReport(this, userStrategy)
 
         // Setup Global Uncaught Exception Handler
         setupGlobalExceptionHandler()
