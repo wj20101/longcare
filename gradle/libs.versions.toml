@@ -54,6 +54,9 @@ coil = "3.3.0"
 # Tencent COS
 tencentCos = "5.9.47"
 
+# Bugly
+crashreport = "4.1.9.3"
+
 # amap
 amapLocation = "6.5.1"
 
@@ -78,6 +81,7 @@ androidx-activity-compose = { group = "androidx.activity", name = "activity-comp
 androidx-fragment-compose = { group = "androidx.fragment", name = "fragment-compose", version.ref = "fragmentCompose" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-navigation3-ui = { group = "androidx.navigation3", name = "navigation3-ui", version.ref = "navigation3" }
+crashreport = { module = "com.tencent.bugly:crashreport", version.ref = "crashreport" }
 face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetection" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
