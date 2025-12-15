@@ -15,6 +15,7 @@ import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
@@ -275,11 +276,17 @@ private fun CameraContent(
                     // 切换摄像头按钮
                     CameraSwitchButton(
                         onClick = {
-                            isFrontCamera = !isFrontCamera
-                            cameraController.cameraSelector = if (isFrontCamera) {
-                                androidx.camera.core.CameraSelector.DEFAULT_FRONT_CAMERA
-                            } else {
-                                androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
+                            try {
+                                val newSelector = if (isFrontCamera) {
+                                    CameraSelector.DEFAULT_BACK_CAMERA
+                                } else {
+                                    CameraSelector.DEFAULT_FRONT_CAMERA
+                                }
+                                cameraController.cameraSelector = newSelector
+                                isFrontCamera = !isFrontCamera
+                            } catch (e: Exception) {
+                                // 相机不支持切换（例如设备只有一个摄像头，或前置摄像头不支持所需功能）
+                                Toast.makeText(context, "无法切换摄像头", Toast.LENGTH_SHORT).show()
                             }
                         }
                     )
