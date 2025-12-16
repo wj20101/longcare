@@ -59,6 +59,7 @@ import com.ytone.longcare.common.utils.HomeBackHandler
 import com.ytone.longcare.di.ServiceCountdownEntryPoint
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
+import com.ytone.longcare.common.utils.DeviceCompatibilityHelper
 import dagger.hilt.android.EntryPointAccessors
 
 
@@ -150,6 +151,10 @@ fun ServiceCountdownScreen(
     // 权限相关状态
     var showPermissionDialog by remember { mutableStateOf(false) }
     var permissionDialogMessage by remember { mutableStateOf("") }
+    
+    // 厂商设备引导弹窗状态
+    var showDeviceGuideDialog by remember { mutableStateOf(false) }
+    var deviceGuideMessage by remember { mutableStateOf("") }
 
     // 通知权限请求启动器
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -257,8 +262,22 @@ fun ServiceCountdownScreen(
         
         // 检查全屏Intent权限（Android 14+）
         if (!checkFullScreenIntentPermission()) {
-            permissionDialogMessage = "需要「全屏通知」权限才能在锁屏时显示倒计时完成提醒。请点击「去设置」开启权限。"
+            permissionDialogMessage = """
+                为了在服务时间结束时能准时提醒您，需要开启「全屏通知」权限。
+                
+                请在设置中找到「全屏通知」或「显示在其他应用上层」选项并开启。
+            """.trimIndent()
             showPermissionDialog = true
+        }
+        
+        // 检查是否需要显示厂商设备引导
+        if (DeviceCompatibilityHelper.needsSpecialAdaptation() &&
+            !DeviceCompatibilityHelper.hasShownDeviceGuide(context)) {
+            val guideMessage = DeviceCompatibilityHelper.getDeviceSpecificGuideMessage()
+            if (guideMessage != null) {
+                deviceGuideMessage = guideMessage
+                showDeviceGuideDialog = true
+            }
         }
     }
 
@@ -699,6 +718,50 @@ fun ServiceCountdownScreen(
                         navController.navigateToHomeAndClearStack()
                     }) {
                     Text("确定")
+                }
+            })
+    }
+    
+    // 厂商设备引导弹窗
+    if (showDeviceGuideDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeviceGuideDialog = false },
+            title = { 
+                Text(
+                    text = "${DeviceCompatibilityHelper.getManufacturerDisplayName()}设备设置建议",
+                    fontWeight = FontWeight.Bold
+                ) 
+            },
+            text = { 
+                Column {
+                    Text(deviceGuideMessage)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "完成以上设置后，服务结束提醒将更加可靠。",
+                        color = Color.Gray,
+                        fontSize = 12.sp
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeviceGuideDialog = false
+                        DeviceCompatibilityHelper.markDeviceGuideShown(context)
+                        // 尝试跳转到厂商设置页面
+                        val intent = DeviceCompatibilityHelper.getBatteryOptimizationIntent(context)
+                        DeviceCompatibilityHelper.safeStartActivity(context, intent)
+                    }) {
+                    Text("去设置")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showDeviceGuideDialog = false
+                        DeviceCompatibilityHelper.markDeviceGuideShown(context)
+                    }) {
+                    Text("我知道了")
                 }
             })
     }

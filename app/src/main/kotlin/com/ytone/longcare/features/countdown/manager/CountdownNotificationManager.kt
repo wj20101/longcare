@@ -16,6 +16,7 @@ import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.receiver.CountdownAlarmReceiver
 import com.ytone.longcare.features.countdown.receiver.DismissAlarmReceiver
+import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
 import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -125,8 +126,31 @@ class CountdownNotificationManager @Inject constructor(
             }
             logI("下一个闹钟时间: ${nextAlarmClock?.triggerTime}")
             
+            // 追踪闹钟设置成功事件
+            CountdownEventTracker.trackEvent(
+                eventType = CountdownEventTracker.EventType.ALARM_SCHEDULE_SUCCESS,
+                orderId = orderId,
+                extras = mapOf(
+                    "serviceName" to serviceName,
+                    "triggerTime" to triggerTimeMillis,
+                    "useAlarmClock" to shouldUseAlarmClock,
+                    "nextAlarmTime" to nextAlarmClock?.triggerTime
+                )
+            )
+            
         } catch (e: Exception) {
             logE("❌ 设置倒计时闹钟失败: ${e.message}", throwable = e)
+            
+            // 追踪闹钟设置失败事件
+            CountdownEventTracker.trackError(
+                eventType = CountdownEventTracker.EventType.ALARM_SCHEDULE_FAILED,
+                orderId = orderId,
+                throwable = e,
+                extras = mapOf(
+                    "serviceName" to serviceName,
+                    "triggerTime" to triggerTimeMillis
+                )
+            )
         }
     }
 
@@ -289,30 +313,15 @@ class CountdownNotificationManager @Inject constructor(
             logI("✅ 已设置fullScreenIntent")
         } else {
             logE("❌ 无法使用fullScreenIntent，需要用户授权")
+            // Fallback: 增强 Heads-up 通知效果
+            builder.setDefaults(NotificationCompat.DEFAULT_ALL) // 启用声音和震动
+            builder.setVibrate(longArrayOf(0, 500, 200, 500, 200, 500)) // 自定义震动模式
+            logI("⚠️ 使用 Fallback Heads-up 通知")
         }
         
         val notification = builder.build()
         logI("✅ 通知构建完成")
         return notification
-    }
-
-    /**
-     * 显示倒计时完成通知 (已废弃，请使用 buildCountdownCompletionNotification 配合前台服务)
-     * @param orderId 订单ID
-     * @param serviceName 服务名称
-     */
-    @Deprecated("请在前台服务中使用 buildCountdownCompletionNotification")
-    fun showCountdownCompletionNotification(
-        orderId: Long,
-        serviceName: String
-    ) {
-        try {
-            val notification = buildCountdownCompletionNotification(orderId, serviceName)
-            notificationManager.notify(COUNTDOWN_NOTIFICATION_ID, notification)
-            logI("倒计时完成通知已显示: orderId=$orderId, serviceName=$serviceName")
-        } catch (e: Exception) {
-            logE("显示倒计时完成通知失败: ${e.message}")
-        }
     }
 
     /**
@@ -375,15 +384,39 @@ class CountdownNotificationManager @Inject constructor(
      * 使用 NotificationManagerCompat 确保版本兼容性
      */
     fun canUseFullScreenIntent(): Boolean {
-        return NotificationManagerCompat.from(context).canUseFullScreenIntent()
+        val canUse = NotificationManagerCompat.from(context).canUseFullScreenIntent()
+        logI("fullScreenIntent权限检查: canUse=$canUse, SDK=${Build.VERSION.SDK_INT}")
+        return canUse
     }
-
+    
     /**
-     * 计算倒计时完成的绝对时间
-     * @param countdownDurationMillis 倒计时持续时间（毫秒）
-     * @return 完成时间的时间戳
+     * 检查 fullScreenIntent 权限，返回详细状态
+     * @return FullScreenIntentStatus 包含权限状态和API级别信息
      */
-    fun calculateCompletionTime(countdownDurationMillis: Long): Long {
-        return System.currentTimeMillis() + countdownDurationMillis
+    fun getFullScreenIntentPermissionStatus(): FullScreenIntentStatus {
+        return when {
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                // Android 14 (API 34) 以下无需权限，自动授予
+                FullScreenIntentStatus.GRANTED_BY_DEFAULT
+            }
+            NotificationManagerCompat.from(context).canUseFullScreenIntent() -> {
+                FullScreenIntentStatus.GRANTED
+            }
+            else -> {
+                FullScreenIntentStatus.DENIED
+            }
+        }
+    }
+    
+    /**
+     * fullScreenIntent 权限状态枚举
+     */
+    enum class FullScreenIntentStatus {
+        /** Android 14以下，默认授予 */
+        GRANTED_BY_DEFAULT,
+        /** 用户已授权 */
+        GRANTED,
+        /** 用户拒绝或未授权 */
+        DENIED
     }
 }

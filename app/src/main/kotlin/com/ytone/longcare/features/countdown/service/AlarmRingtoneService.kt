@@ -22,6 +22,7 @@ import androidx.core.content.getSystemService
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.di.ServiceCountdownEntryPoint
+import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
 import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
 import dagger.hilt.android.EntryPointAccessors
 
@@ -87,6 +88,13 @@ class AlarmRingtoneService : Service() {
         val orderId = intent?.getStringExtra(EXTRA_ORDER_ID) ?: ""
         val serviceName = intent?.getStringExtra(EXTRA_SERVICE_NAME) ?: "未知服务"
         
+        // 追踪响铃服务启动事件
+        CountdownEventTracker.trackEvent(
+            eventType = CountdownEventTracker.EventType.RINGTONE_SERVICE_START,
+            orderId = orderId.toLongOrNull(),
+            extras = mapOf("serviceName" to serviceName)
+        )
+        
         // 立即升级为前台服务，显示高优先级通知
         startForegroundWithNotification(orderId, serviceName)
         
@@ -126,16 +134,11 @@ class AlarmRingtoneService : Service() {
             
             logI("AlarmRingtoneService: 通知权限状态=$hasNotificationPermission")
             
-            // 确定前台服务类型
-            val foregroundServiceType = when {
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
-                    // Android 14+ 需要明确指定类型
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-                }
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-                }
-                else -> 0
+            // 确定前台服务类型（Android 10+ 需要指定）
+            val foregroundServiceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            } else {
+                0
             }
             
             logI("AlarmRingtoneService: 前台服务类型=$foregroundServiceType, SDK=${Build.VERSION.SDK_INT}")
@@ -177,6 +180,14 @@ class AlarmRingtoneService : Service() {
         } catch (e: Exception) {
             logE("AlarmRingtoneService: ❌ 启动前台服务失败 - ${e.message}")
             e.printStackTrace()
+            
+            // 追踪响铃服务错误事件
+            CountdownEventTracker.trackError(
+                eventType = CountdownEventTracker.EventType.RINGTONE_SERVICE_ERROR,
+                orderId = orderId.toLongOrNull(),
+                throwable = e,
+                extras = mapOf("serviceName" to serviceName, "stage" to "startForeground")
+            )
         }
     }
     
