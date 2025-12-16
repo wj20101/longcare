@@ -3,16 +3,18 @@ package com.ytone.longcare.features.countdown.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import androidx.core.content.getSystemService
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
+import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
+import com.ytone.longcare.features.countdown.worker.CountdownBackupWorker
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
-import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
 import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 
 /**
  * 倒计时闹钟广播接收器
@@ -20,9 +22,6 @@ import javax.inject.Inject
  */
 @AndroidEntryPoint
 class CountdownAlarmReceiver : BroadcastReceiver() {
-
-    @Inject
-    lateinit var countdownNotificationManager: CountdownNotificationManager
 
     override fun onReceive(context: Context, intent: Intent) {
         logI("========================================")
@@ -38,13 +37,18 @@ class CountdownAlarmReceiver : BroadcastReceiver() {
         }
 
         logI("📋 订单信息: orderId=$orderId, serviceName=$serviceName")
+        
+        // 记录闹钟触发事件（用于问题排查）
+        logAlarmTriggerEvent(orderId, serviceName)
+        
+        // 标记闹钟已触发（通知备份Worker不需要再次触发）
+        CountdownBackupWorker.markAlarmTriggered(context, orderId)
 
-        // 获取WakeLock确保设备唤醒（使用FULL_WAKE_LOCK确保屏幕点亮）
+        // 获取WakeLock确保设备唤醒
+        // 使用 PARTIAL_WAKE_LOCK 保持CPU运行，屏幕点亮由 Activity 的 setTurnScreenOn 处理
         val powerManager = context.getSystemService<PowerManager>()
         val wakeLock = powerManager?.newWakeLock(
-            PowerManager.FULL_WAKE_LOCK or 
-            PowerManager.ACQUIRE_CAUSES_WAKEUP or 
-            PowerManager.ON_AFTER_RELEASE,
+            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
             "LongCare:CountdownAlarm"
         )
         
@@ -73,11 +77,26 @@ class CountdownAlarmReceiver : BroadcastReceiver() {
         } finally {
             // 延迟释放WakeLock，确保Activity完全启动
             if (wakeLock?.isHeld == true) {
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                Handler(Looper.getMainLooper()).postDelayed({
                     wakeLock.release()
                     logI("✅ WakeLock已释放")
                 }, 5000) // 5秒后释放
             }
         }
+    }
+    
+    /**
+     * 记录闹钟触发事件（用于问题排查）
+     * 使用 CountdownEventTracker 进行统一上报
+     */
+    private fun logAlarmTriggerEvent(orderId: Long, serviceName: String) {
+        CountdownEventTracker.trackEvent(
+            eventType = CountdownEventTracker.EventType.ALARM_TRIGGERED,
+            orderId = orderId,
+            extras = mapOf(
+                "serviceName" to serviceName,
+                "triggerTime" to System.currentTimeMillis()
+            )
+        )
     }
 }
