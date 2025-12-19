@@ -1,14 +1,17 @@
 package com.ytone.longcare.features.photoupload.model
 
 import android.net.Uri
+import android.os.Parcelable
 import androidx.annotation.Keep
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
+import kotlinx.parcelize.Parcelize
 
 /**
  * 图片处理任务数据模型
  */
 @Keep
+@Parcelize
 @JsonClass(generateAdapter = true)
 data class ImageTask(
     val id: String,
@@ -20,7 +23,7 @@ data class ImageTask(
     val isUploaded: Boolean = false, // 标识是否已经上传到云端
     val key: String? = null, // 云端Key
     val cloudUrl: String? = null // 云端URL
-)
+) : Parcelable
 
 /**
  * 图片处理任务类型枚举

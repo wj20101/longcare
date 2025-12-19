@@ -2,17 +2,17 @@
 # Build Tool Versions
 agp = "8.13.2"
 core = "1.7.0"
-kotlin = "2.2.21"
-ksp = "2.3.3"
+kotlin = "2.3.0"
+ksp = "2.3.4"
 
 # Compose Versions
-composeBom = "2025.12.00"
+composeBom = "2025.12.01"
 
 # AndroidX Core & Lifecycle
 coreKtx = "1.17.0"
 legacySupport = "1.0.0"
 lifecycle = "2.10.0"
-activityCompose = "1.12.1"
+activityCompose = "1.12.2"
 fragmentCompose = "1.8.9"
 mockk = "1.14.7"
 navigation3 = "1.0.0"
