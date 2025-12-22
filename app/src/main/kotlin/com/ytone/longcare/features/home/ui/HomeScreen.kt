@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.ytone.longcare.common.utils.DeviceCompatibilityHelper
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.home.vm.HomeViewModel
 import com.ytone.longcare.features.maindashboard.ui.MainDashboardScreen
@@ -42,6 +43,12 @@ fun HomeScreen(
     val context = LocalContext.current
     var showPermissionDialog by remember { mutableStateOf(false) }
     var permissionDeniedMessage by remember { mutableStateOf("") }
+    
+    // 厂商设备弹窗权限引导状态
+    var showPopupPermissionDialog by remember { mutableStateOf(false) }
+    var popupPermissionMessage by remember { mutableStateOf("") }
+    var showBatteryDialog by remember { mutableStateOf(false) }
+    var batteryMessage by remember { mutableStateOf("") }
 
     // 权限请求启动器
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -81,6 +88,27 @@ fun HomeScreen(
         if (missingPermissions.isNotEmpty()) {
             permissionLauncher.launch(missingPermissions.toTypedArray())
         }
+        
+        // 检查厂商特有的后台弹出权限（小米/华为/OPPO/vivo）
+        if (DeviceCompatibilityHelper.needsSpecialAdaptation()) {
+            if (!DeviceCompatibilityHelper.hasBgStartPermission(context)) {
+                // 权限未授予，准备显示弹窗权限引导
+                val popupGuide = DeviceCompatibilityHelper.getPopupPermissionGuideMessage()
+                if (popupGuide != null) {
+                    popupPermissionMessage = popupGuide
+                    showPopupPermissionDialog = true
+                }
+            } else if (!DeviceCompatibilityHelper.hasShownDeviceGuide(context)) {
+                // 权限已授予但未显示过省电策略引导
+                val batteryGuide = DeviceCompatibilityHelper.getBatteryGuideMessage()
+                if (batteryGuide != null) {
+                    batteryMessage = batteryGuide
+                    showBatteryDialog = true
+                } else {
+                    DeviceCompatibilityHelper.markDeviceGuideShown(context)
+                }
+            }
+        }
     }
 
     // 权限被拒绝时的对话框
@@ -113,6 +141,85 @@ fun HomeScreen(
                     onClick = { showPermissionDialog = false }
                 ) {
                     Text("稍后再说")
+                }
+            }
+        )
+    }
+    
+    // 弹窗权限引导弹窗（第一步）
+    if (showPopupPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showPopupPermissionDialog = false },
+            title = { Text("开启弹窗权限") },
+            text = { Text(popupPermissionMessage) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPopupPermissionDialog = false
+                        // 跳转到弹窗权限设置
+                        val intent = DeviceCompatibilityHelper.getPopupPermissionIntent(context)
+                        DeviceCompatibilityHelper.safeStartActivity(context, intent)
+                        
+                        // 准备第二步：省电策略弹窗
+                        val batteryGuide = DeviceCompatibilityHelper.getBatteryGuideMessage()
+                        if (batteryGuide != null) {
+                            batteryMessage = batteryGuide
+                            showBatteryDialog = true
+                        } else {
+                            DeviceCompatibilityHelper.markDeviceGuideShown(context)
+                        }
+                    }
+                ) {
+                    Text("去设置")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showPopupPermissionDialog = false
+                        // 跳到第二步
+                        val batteryGuide = DeviceCompatibilityHelper.getBatteryGuideMessage()
+                        if (batteryGuide != null) {
+                            batteryMessage = batteryGuide
+                            showBatteryDialog = true
+                        } else {
+                            DeviceCompatibilityHelper.markDeviceGuideShown(context)
+                        }
+                    }
+                ) {
+                    Text("跳过")
+                }
+            }
+        )
+    }
+    
+    // 省电策略引导弹窗（第二步）
+    if (showBatteryDialog) {
+        AlertDialog(
+            onDismissRequest = { showBatteryDialog = false },
+            title = { Text("设置省电策略") },
+            text = { Text(batteryMessage) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBatteryDialog = false
+                        DeviceCompatibilityHelper.markDeviceGuideShown(context)
+                        // 跳转到省电策略设置
+                        val intent = DeviceCompatibilityHelper.getBatteryOptimizationIntent(context)
+                        DeviceCompatibilityHelper.safeStartActivity(context, intent)
+                    }
+                ) {
+                    Text("去设置")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showBatteryDialog = false
+                        DeviceCompatibilityHelper.markDeviceGuideShown(context)
+                    }
+                ) {
+                    Text("我知道了")
                 }
             }
         )

@@ -6,6 +6,7 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -152,17 +153,6 @@ fun ServiceCountdownScreen(
     var showPermissionDialog by remember { mutableStateOf(false) }
     var permissionDialogMessage by remember { mutableStateOf("") }
     
-    // 厂商设备引导弹窗状态 - 分步骤显示
-    // 步骤 1: 弹窗权限（后台弹出界面、锁屏显示）
-    // 步骤 2: 省电策略
-    var showPopupPermissionDialog by remember { mutableStateOf(false) }
-    var popupPermissionMessage by remember { mutableStateOf("") }
-    var showBatteryDialog by remember { mutableStateOf(false) }
-    var batteryMessage by remember { mutableStateOf("") }
-    
-    // 兼容旧的 deviceGuideDialog（已废弃）
-    var showDeviceGuideDialog by remember { mutableStateOf(false) }
-    var deviceGuideMessage by remember { mutableStateOf("") }
 
     // 通知权限请求启动器
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -277,53 +267,29 @@ fun ServiceCountdownScreen(
             """.trimIndent()
             showPermissionDialog = true
         }
-        // 检查是否需要显示厂商设备引导（分步骤：先弹窗权限，再省电策略）
-        // 只有当权限未授予时才显示弹窗，已授予则跳过
-        if (DeviceCompatibilityHelper.needsSpecialAdaptation()) {
-            // 第一步：检查弹窗权限是否已授予
-            if (!DeviceCompatibilityHelper.hasBgStartPermission(context)) {
-                // 权限未授予，显示弹窗权限引导
-                val popupGuide = DeviceCompatibilityHelper.getPopupPermissionGuideMessage()
-                if (popupGuide != null) {
-                    popupPermissionMessage = popupGuide
-                    showPopupPermissionDialog = true
-                }
-            } else if (!DeviceCompatibilityHelper.hasShownDeviceGuide(context)) {
-                // 权限已授予但未显示过省电策略引导，直接显示第二步
-                val batteryGuide = DeviceCompatibilityHelper.getBatteryGuideMessage()
-                if (batteryGuide != null) {
-                    batteryMessage = batteryGuide
-                    showBatteryDialog = true
-                } else {
-                    // 没有省电策略引导，标记已完成
-                    DeviceCompatibilityHelper.markDeviceGuideShown(context)
-                }
-            }
-            // 如果权限已授予且已显示过引导，则不再显示任何弹窗
-        }
     }
 
     // 处理结束服务的公共逻辑
     fun handleEndService(endType: Int) {
-        android.util.Log.i("ServiceCountdownScreen", "========================================")
-        android.util.Log.i("ServiceCountdownScreen", "🛑 开始处理结束服务 (endType=$endType)...")
-        android.util.Log.i("ServiceCountdownScreen", "========================================")
+        Log.i("ServiceCountdownScreen", "========================================")
+        Log.i("ServiceCountdownScreen", "🛑 开始处理结束服务 (endType=$endType)...")
+        Log.i("ServiceCountdownScreen", "========================================")
         
         // 1. 停止倒计时前台服务
         CountdownForegroundService.stopCountdown(context)
-        android.util.Log.i("ServiceCountdownScreen", "✅ 1. 已停止倒计时前台服务")
+        Log.i("ServiceCountdownScreen", "✅ 1. 已停止倒计时前台服务")
 
         // 2. 停止定位跟踪服务
         locationTrackingViewModel.onStopClicked()
-        android.util.Log.i("ServiceCountdownScreen", "✅ 2. 已停止定位跟踪服务")
+        Log.i("ServiceCountdownScreen", "✅ 2. 已停止定位跟踪服务")
 
         // 3. 取消倒计时闹钟（使用订单ID精确取消）
         countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest.orderId)
-        android.util.Log.i("ServiceCountdownScreen", "✅ 3. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
+        Log.i("ServiceCountdownScreen", "✅ 3. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
 
         // 4. 停止响铃服务（如果正在响铃）
         AlarmRingtoneService.stopRingtone(context)
-        android.util.Log.i("ServiceCountdownScreen", "✅ 4. 已停止响铃服务")
+        Log.i("ServiceCountdownScreen", "✅ 4. 已停止响铃服务")
 
         // 5. 调用ViewModel结束服务
         countdownViewModel.endService(orderInfoRequest, context)
@@ -700,149 +666,46 @@ fun ServiceCountdownScreen(
                     onClick = {
                         showOrderStateErrorDialog = false
                         
-                        android.util.Log.i("ServiceCountdownScreen", "========================================")
-                        android.util.Log.i("ServiceCountdownScreen", "🛑 开始处理订单状态异常，停止所有服务...")
-                        android.util.Log.i("ServiceCountdownScreen", "========================================")
+                        Log.i("ServiceCountdownScreen", "========================================")
+                        Log.i("ServiceCountdownScreen", "🛑 开始处理订单状态异常，停止所有服务...")
+                        Log.i("ServiceCountdownScreen", "========================================")
                         
                         // 1. 清除错误状态
                         countdownViewModel.clearOrderStateError()
-                        android.util.Log.i("ServiceCountdownScreen", "✅ 1. 已清除错误状态")
+                        Log.i("ServiceCountdownScreen", "✅ 1. 已清除错误状态")
                         
                         // 2. 停止订单状态轮询
                         countdownViewModel.stopOrderStatePolling()
-                        android.util.Log.i("ServiceCountdownScreen", "✅ 2. 已停止订单状态轮询")
+                        Log.i("ServiceCountdownScreen", "✅ 2. 已停止订单状态轮询")
                         
                         // 3. 停止倒计时前台服务
                         CountdownForegroundService.stopCountdown(context)
-                        android.util.Log.i("ServiceCountdownScreen", "✅ 3. 已停止倒计时前台服务")
+                        Log.i("ServiceCountdownScreen", "✅ 3. 已停止倒计时前台服务")
                         
                         // 4. 强制停止定位跟踪服务（使用forceStop确保停止）
                         locationTrackingViewModel.forceStop()
-                        android.util.Log.i("ServiceCountdownScreen", "✅ 4. 已强制停止定位跟踪服务")
+                        Log.i("ServiceCountdownScreen", "✅ 4. 已强制停止定位跟踪服务")
                         
                         // 5. 取消倒计时闹钟（使用订单ID精确取消）
                         countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest.orderId)
-                        android.util.Log.i("ServiceCountdownScreen", "✅ 5. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
+                        Log.i("ServiceCountdownScreen", "✅ 5. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
                         
                         // 6. 停止响铃服务（如果正在响铃）
                         AlarmRingtoneService.stopRingtone(context)
-                        android.util.Log.i("ServiceCountdownScreen", "✅ 6. 已停止响铃服务")
+                        Log.i("ServiceCountdownScreen", "✅ 6. 已停止响铃服务")
                         
                         // 7. 清理ViewModel状态和本地数据（不清除图片数据，因为订单可能需要重新开始）
                         countdownViewModel.endServiceWithoutClearingImages(orderInfoRequest, context)
-                        android.util.Log.i("ServiceCountdownScreen", "✅ 7. 已清理ViewModel状态")
+                        Log.i("ServiceCountdownScreen", "✅ 7. 已清理ViewModel状态")
                         
-                        android.util.Log.i("ServiceCountdownScreen", "========================================")
-                        android.util.Log.i("ServiceCountdownScreen", "✅ 所有服务已停止，准备返回首页")
-                        android.util.Log.i("ServiceCountdownScreen", "========================================")
+                        Log.i("ServiceCountdownScreen", "========================================")
+                        Log.i("ServiceCountdownScreen", "✅ 所有服务已停止，准备返回首页")
+                        Log.i("ServiceCountdownScreen", "========================================")
                         
                         // 8. 返回首页
                         navController.navigateToHomeAndClearStack()
                     }) {
                     Text("确定")
-                }
-            })
-    }
-    
-    // 弹窗权限引导弹窗（第一步）
-    if (showPopupPermissionDialog) {
-        AlertDialog(
-            onDismissRequest = { showPopupPermissionDialog = false },
-            title = { 
-                Text(
-                    text = "开启弹窗权限",
-                    fontWeight = FontWeight.Bold
-                ) 
-            },
-            text = { 
-                Column {
-                    Text(popupPermissionMessage)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "这些权限是全屏提醒正常工作的关键。",
-                        color = Color.Gray,
-                        fontSize = 12.sp
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showPopupPermissionDialog = false
-                        // 跳转到弹窗权限设置
-                        val intent = DeviceCompatibilityHelper.getPopupPermissionIntent(context)
-                        DeviceCompatibilityHelper.safeStartActivity(context, intent)
-                        
-                        // 准备第二步：省电策略弹窗
-                        val batteryGuide = DeviceCompatibilityHelper.getBatteryGuideMessage()
-                        if (batteryGuide != null) {
-                            batteryMessage = batteryGuide
-                            showBatteryDialog = true
-                        } else {
-                            DeviceCompatibilityHelper.markDeviceGuideShown(context)
-                        }
-                    }) {
-                    Text("去设置")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { 
-                        showPopupPermissionDialog = false
-                        // 跳到第二步
-                        val batteryGuide = DeviceCompatibilityHelper.getBatteryGuideMessage()
-                        if (batteryGuide != null) {
-                            batteryMessage = batteryGuide
-                            showBatteryDialog = true
-                        } else {
-                            DeviceCompatibilityHelper.markDeviceGuideShown(context)
-                        }
-                    }) {
-                    Text("跳过")
-                }
-            })
-    }
-    
-    // 省电策略引导弹窗（第二步）
-    if (showBatteryDialog) {
-        AlertDialog(
-            onDismissRequest = { showBatteryDialog = false },
-            title = { 
-                Text(
-                    text = "设置省电策略",
-                    fontWeight = FontWeight.Bold
-                ) 
-            },
-            text = { 
-                Column {
-                    Text(batteryMessage)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "设置后可避免系统在后台终止应用。",
-                        color = Color.Gray,
-                        fontSize = 12.sp
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showBatteryDialog = false
-                        DeviceCompatibilityHelper.markDeviceGuideShown(context)
-                        // 跳转到省电策略设置
-                        val intent = DeviceCompatibilityHelper.getBatteryOptimizationIntent(context)
-                        DeviceCompatibilityHelper.safeStartActivity(context, intent)
-                    }) {
-                    Text("去设置")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { 
-                        showBatteryDialog = false
-                        DeviceCompatibilityHelper.markDeviceGuideShown(context)
-                    }) {
-                    Text("我知道了")
                 }
             })
     }
