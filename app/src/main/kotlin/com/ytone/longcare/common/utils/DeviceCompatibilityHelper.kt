@@ -152,6 +152,34 @@ object DeviceCompatibilityHelper {
     }
     
     /**
+     * 获取后台弹出界面权限设置 Intent（小米特有）
+     * 这是小米设备上 fullScreenIntent 不工作的核心原因
+     */
+    fun getBackgroundPopupIntent(context: Context): Intent? {
+        if (!isXiaomi()) return null
+        
+        return try {
+            // 方法 1: 直接打开应用的权限设置页面
+            Intent("miui.intent.action.APP_PERM_EDITOR").apply {
+                setClassName(
+                    "com.miui.securitycenter",
+                    "com.miui.permcenter.permissions.PermissionsEditorActivity"
+                )
+                putExtra("extra_pkgname", context.packageName)
+            }
+        } catch (e: Exception) {
+            try {
+                // 方法 2: 打开应用详情页面
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = "package:${context.packageName}".toUri()
+                }
+            } catch (e2: Exception) {
+                null
+            }
+        }
+    }
+    
+    /**
      * 获取通用应用设置 Intent
      */
     fun getAppSettingsIntent(context: Context): Intent {
@@ -173,11 +201,13 @@ object DeviceCompatibilityHelper {
                 3. 手动开启「允许自启动」和「允许后台活动」
             """.trimIndent()
             isXiaomi() -> """
-                检测到您使用的是小米/红米手机，为保证服务结束时能准时提醒，请：
+                检测到您使用的是小米/红米手机，为保证服务结束时能弹出全屏提醒，请：
                 
                 1. 进入「设置 → 应用设置 → 应用管理」
-                2. 找到本应用 → 省电策略 → 选择「无限制」
-                3. 开启「自启动」权限
+                2. 找到本应用 → 点击「其他权限」
+                3. ✅ 开启「后台弹出界面」（最关键！）
+                4. 开启「显示在其他应用上层」
+                5. 省电策略 → 选择「无限制」
             """.trimIndent()
             isOppo() -> """
                 检测到您使用的是 OPPO 手机，为保证服务结束时能准时提醒，请：

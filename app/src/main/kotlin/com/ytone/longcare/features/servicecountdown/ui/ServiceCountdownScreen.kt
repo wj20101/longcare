@@ -748,8 +748,8 @@ fun ServiceCountdownScreen(
                     onClick = {
                         showDeviceGuideDialog = false
                         DeviceCompatibilityHelper.markDeviceGuideShown(context)
-                        // 尝试跳转到厂商设置页面
-                        val intent = DeviceCompatibilityHelper.getBatteryOptimizationIntent(context)
+                        // 优先尝试打开小米后台弹出界面权限设置
+                        val intent = DeviceCompatibilityHelper.getBackgroundPopupIntent(context) ?: DeviceCompatibilityHelper.getBatteryOptimizationIntent(context)
                         DeviceCompatibilityHelper.safeStartActivity(context, intent)
                     }) {
                     Text("去设置")
