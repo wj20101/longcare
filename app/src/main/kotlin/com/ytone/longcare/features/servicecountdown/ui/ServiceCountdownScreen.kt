@@ -277,16 +277,29 @@ fun ServiceCountdownScreen(
             """.trimIndent()
             showPermissionDialog = true
         }
-        
         // 检查是否需要显示厂商设备引导（分步骤：先弹窗权限，再省电策略）
-        if (DeviceCompatibilityHelper.needsSpecialAdaptation() &&
-            !DeviceCompatibilityHelper.hasShownDeviceGuide(context)) {
-            // 第一步：显示弹窗权限引导
-            val popupGuide = DeviceCompatibilityHelper.getPopupPermissionGuideMessage()
-            if (popupGuide != null) {
-                popupPermissionMessage = popupGuide
-                showPopupPermissionDialog = true
+        // 只有当权限未授予时才显示弹窗，已授予则跳过
+        if (DeviceCompatibilityHelper.needsSpecialAdaptation()) {
+            // 第一步：检查弹窗权限是否已授予
+            if (!DeviceCompatibilityHelper.hasBgStartPermission(context)) {
+                // 权限未授予，显示弹窗权限引导
+                val popupGuide = DeviceCompatibilityHelper.getPopupPermissionGuideMessage()
+                if (popupGuide != null) {
+                    popupPermissionMessage = popupGuide
+                    showPopupPermissionDialog = true
+                }
+            } else if (!DeviceCompatibilityHelper.hasShownDeviceGuide(context)) {
+                // 权限已授予但未显示过省电策略引导，直接显示第二步
+                val batteryGuide = DeviceCompatibilityHelper.getBatteryGuideMessage()
+                if (batteryGuide != null) {
+                    batteryMessage = batteryGuide
+                    showBatteryDialog = true
+                } else {
+                    // 没有省电策略引导，标记已完成
+                    DeviceCompatibilityHelper.markDeviceGuideShown(context)
+                }
             }
+            // 如果权限已授予且已显示过引导，则不再显示任何弹窗
         }
     }
 

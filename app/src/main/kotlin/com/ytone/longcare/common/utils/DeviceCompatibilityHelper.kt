@@ -1,7 +1,9 @@
 package com.ytone.longcare.common.utils
 
+import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
+import android.os.Binder
 import android.os.Build
 import android.provider.Settings
 import androidx.core.net.toUri
@@ -56,6 +58,115 @@ object DeviceCompatibilityHelper {
      */
     fun needsSpecialAdaptation(): Boolean =
         isHuawei() || isXiaomi() || isOppo() || isVivo()
+    
+    /**
+     * 检查是否已获取后台弹出界面权限
+     * 参考 BGStart 库实现
+     * @return true 表示已获取权限，false 表示未获取或无法检测
+     */
+    fun hasBgStartPermission(context: Context): Boolean {
+        return try {
+            when {
+                isXiaomi() -> checkXiaomiBgStartPermission(context)
+                isVivo() -> checkVivoBgStartPermission(context)
+                isOppo() -> checkOppoBgStartPermission(context)
+                isHuawei() -> checkHuaweiBgStartPermission(context)
+                else -> true // 非特殊厂商默认有权限
+            }
+        } catch (e: Exception) {
+            // Assuming logE is a defined logging function, otherwise replace with standard logging
+            // For example: Log.e("DeviceCompatibilityHelper", "检查后台弹出权限失败: ${e.message}")
+            logE("检查后台弹出权限失败: ${e.message}")
+            true // 检查失败时默认有权限，避免影响用户体验
+        }
+    }
+    
+    /**
+     * 小米：通过 AppOpsManager 检查 opCode 10021
+     */
+    private fun checkXiaomiBgStartPermission(context: Context): Boolean {
+        return try {
+            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+            val method = appOps.javaClass.getMethod(
+                "checkOpNoThrow",
+                Int::class.java,
+                Int::class.java,
+                String::class.java
+            )
+            // 小米后台弹出界面权限 opCode = 10021
+            val result = method.invoke(appOps, 10021, Binder.getCallingUid(), context.packageName) as Int
+            result == AppOpsManager.MODE_ALLOWED
+        } catch (e: Exception) {
+            logE("小米权限检查失败: ${e.message}")
+            true // 失败时默认有权限
+        }
+    }
+    
+    /**
+     * vivo：通过 ContentProvider 检查
+     */
+    private fun checkVivoBgStartPermission(context: Context): Boolean {
+        return try {
+            val uri = "content://com.vivo.permissionmanager.provider.permission/start_bg_activity".toUri()
+            val cursor = context.contentResolver.query(uri, null, "pkgname = ?", arrayOf(context.packageName), null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val state = it.getInt(it.getColumnIndexOrThrow("currentstate"))
+                    return state == 0 // 0 表示允许
+                }
+            }
+            true // 查询失败默认有权限
+        } catch (e: Exception) {
+            logE("vivo权限检查失败: ${e.message}")
+            true
+        }
+    }
+    
+    /**
+     * OPPO：通过 AppOpsManager 检查 OP_BACKGROUND_START_ACTIVITY
+     */
+    private fun checkOppoBgStartPermission(context: Context): Boolean {
+        return try {
+            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+            // OPPO 使用标准的 OP_BACKGROUND_START_ACTIVITY (66)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val method = appOps.javaClass.getMethod(
+                    "checkOpNoThrow",
+                    Int::class.java,
+                    Int::class.java,
+                    String::class.java
+                )
+                val result = method.invoke(appOps, 66, Binder.getCallingUid(), context.packageName) as Int
+                result == AppOpsManager.MODE_ALLOWED
+            } else {
+                true
+            }
+        } catch (e: Exception) {
+            logE("OPPO权限检查失败: ${e.message}")
+            true
+        }
+    }
+    
+    /**
+     * 华为：通过 AppOpsManager 检查
+     */
+    private fun checkHuaweiBgStartPermission(context: Context): Boolean {
+        return try {
+            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+            val method = appOps.javaClass.getMethod(
+                "checkOpNoThrow",
+                Int::class.java,
+                Int::class.java,
+                String::class.java
+            )
+            // 华为后台弹窗权限 opCode = 100000 (不同版本可能不同)
+            val result = method.invoke(appOps, 100000, Binder.getCallingUid(), context.packageName) as Int
+            result == AppOpsManager.MODE_ALLOWED
+        } catch (e: Exception) {
+            logE("华为权限检查失败: ${e.message}")
+            true // 失败时默认有权限
+        }
+    }
     
     /**
      * 获取电池优化设置 Intent
