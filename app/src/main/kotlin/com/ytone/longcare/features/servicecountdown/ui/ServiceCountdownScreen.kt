@@ -152,7 +152,15 @@ fun ServiceCountdownScreen(
     var showPermissionDialog by remember { mutableStateOf(false) }
     var permissionDialogMessage by remember { mutableStateOf("") }
     
-    // 厂商设备引导弹窗状态
+    // 厂商设备引导弹窗状态 - 分步骤显示
+    // 步骤 1: 弹窗权限（后台弹出界面、锁屏显示）
+    // 步骤 2: 省电策略
+    var showPopupPermissionDialog by remember { mutableStateOf(false) }
+    var popupPermissionMessage by remember { mutableStateOf("") }
+    var showBatteryDialog by remember { mutableStateOf(false) }
+    var batteryMessage by remember { mutableStateOf("") }
+    
+    // 兼容旧的 deviceGuideDialog（已废弃）
     var showDeviceGuideDialog by remember { mutableStateOf(false) }
     var deviceGuideMessage by remember { mutableStateOf("") }
 
@@ -270,13 +278,14 @@ fun ServiceCountdownScreen(
             showPermissionDialog = true
         }
         
-        // 检查是否需要显示厂商设备引导
+        // 检查是否需要显示厂商设备引导（分步骤：先弹窗权限，再省电策略）
         if (DeviceCompatibilityHelper.needsSpecialAdaptation() &&
             !DeviceCompatibilityHelper.hasShownDeviceGuide(context)) {
-            val guideMessage = DeviceCompatibilityHelper.getDeviceSpecificGuideMessage()
-            if (guideMessage != null) {
-                deviceGuideMessage = guideMessage
-                showDeviceGuideDialog = true
+            // 第一步：显示弹窗权限引导
+            val popupGuide = DeviceCompatibilityHelper.getPopupPermissionGuideMessage()
+            if (popupGuide != null) {
+                popupPermissionMessage = popupGuide
+                showPopupPermissionDialog = true
             }
         }
     }
@@ -722,22 +731,22 @@ fun ServiceCountdownScreen(
             })
     }
     
-    // 厂商设备引导弹窗
-    if (showDeviceGuideDialog) {
+    // 弹窗权限引导弹窗（第一步）
+    if (showPopupPermissionDialog) {
         AlertDialog(
-            onDismissRequest = { showDeviceGuideDialog = false },
+            onDismissRequest = { showPopupPermissionDialog = false },
             title = { 
                 Text(
-                    text = "${DeviceCompatibilityHelper.getManufacturerDisplayName()}设备设置建议",
+                    text = "开启弹窗权限",
                     fontWeight = FontWeight.Bold
                 ) 
             },
             text = { 
                 Column {
-                    Text(deviceGuideMessage)
+                    Text(popupPermissionMessage)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "完成以上设置后，服务结束提醒将更加可靠。",
+                        text = "这些权限是全屏提醒正常工作的关键。",
                         color = Color.Gray,
                         fontSize = 12.sp
                     )
@@ -746,10 +755,69 @@ fun ServiceCountdownScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showDeviceGuideDialog = false
+                        showPopupPermissionDialog = false
+                        // 跳转到弹窗权限设置
+                        val intent = DeviceCompatibilityHelper.getPopupPermissionIntent(context)
+                        DeviceCompatibilityHelper.safeStartActivity(context, intent)
+                        
+                        // 准备第二步：省电策略弹窗
+                        val batteryGuide = DeviceCompatibilityHelper.getBatteryGuideMessage()
+                        if (batteryGuide != null) {
+                            batteryMessage = batteryGuide
+                            showBatteryDialog = true
+                        } else {
+                            DeviceCompatibilityHelper.markDeviceGuideShown(context)
+                        }
+                    }) {
+                    Text("去设置")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showPopupPermissionDialog = false
+                        // 跳到第二步
+                        val batteryGuide = DeviceCompatibilityHelper.getBatteryGuideMessage()
+                        if (batteryGuide != null) {
+                            batteryMessage = batteryGuide
+                            showBatteryDialog = true
+                        } else {
+                            DeviceCompatibilityHelper.markDeviceGuideShown(context)
+                        }
+                    }) {
+                    Text("跳过")
+                }
+            })
+    }
+    
+    // 省电策略引导弹窗（第二步）
+    if (showBatteryDialog) {
+        AlertDialog(
+            onDismissRequest = { showBatteryDialog = false },
+            title = { 
+                Text(
+                    text = "设置省电策略",
+                    fontWeight = FontWeight.Bold
+                ) 
+            },
+            text = { 
+                Column {
+                    Text(batteryMessage)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "设置后可避免系统在后台终止应用。",
+                        color = Color.Gray,
+                        fontSize = 12.sp
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBatteryDialog = false
                         DeviceCompatibilityHelper.markDeviceGuideShown(context)
-                        // 优先尝试打开小米后台弹出界面权限设置
-                        val intent = DeviceCompatibilityHelper.getBackgroundPopupIntent(context) ?: DeviceCompatibilityHelper.getBatteryOptimizationIntent(context)
+                        // 跳转到省电策略设置
+                        val intent = DeviceCompatibilityHelper.getBatteryOptimizationIntent(context)
                         DeviceCompatibilityHelper.safeStartActivity(context, intent)
                     }) {
                     Text("去设置")
@@ -758,7 +826,7 @@ fun ServiceCountdownScreen(
             dismissButton = {
                 TextButton(
                     onClick = { 
-                        showDeviceGuideDialog = false
+                        showBatteryDialog = false
                         DeviceCompatibilityHelper.markDeviceGuideShown(context)
                     }) {
                     Text("我知道了")
