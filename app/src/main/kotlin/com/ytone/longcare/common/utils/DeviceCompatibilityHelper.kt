@@ -189,43 +189,140 @@ object DeviceCompatibilityHelper {
     }
     
     /**
-     * 获取针对当前设备的提示信息
+     * 获取弹窗权限提示信息（第一步）
+     * 包含「锁屏显示」和「后台弹出界面」权限
      */
-    fun getDeviceSpecificGuideMessage(): String? {
+    fun getPopupPermissionGuideMessage(): String? {
         return when {
-            isHuawei() -> """
-                检测到您使用的是华为/荣耀手机，为保证服务结束时能准时提醒，请：
-                
-                1. 进入「设置 → 应用 → 应用启动管理」
-                2. 找到本应用，关闭「自动管理」
-                3. 手动开启「允许自启动」和「允许后台活动」
-            """.trimIndent()
             isXiaomi() -> """
-                检测到您使用的是小米/红米手机，为保证服务结束时能弹出全屏提醒，请：
+                为保证服务结束时能弹出全屏提醒，请开启以下权限：
                 
                 1. 进入「设置 → 应用设置 → 应用管理」
                 2. 找到本应用 → 点击「其他权限」
-                3. ✅ 开启「后台弹出界面」（最关键！）
-                4. 开启「显示在其他应用上层」
-                5. 省电策略 → 选择「无限制」
+                3. ✅ 开启「后台弹出界面」
+                4. ✅ 开启「锁屏显示」
+                5. ✅ 开启「显示在其他应用上层」
+            """.trimIndent()
+            isHuawei() -> """
+                为保证服务结束时能弹出全屏提醒，请开启以下权限：
+                
+                1. 进入「设置 → 应用 → 应用管理」
+                2. 找到本应用 → 点击「权限」
+                3. ✅ 开启「后台弹窗」
+                4. ✅ 开启「锁屏显示」
+                5. ✅ 开启「悬浮窗」
             """.trimIndent()
             isOppo() -> """
-                检测到您使用的是 OPPO 手机，为保证服务结束时能准时提醒，请：
+                为保证服务结束时能弹出全屏提醒，请开启以下权限：
                 
-                1. 进入「设置 → 电池 → 更多电池设置」
-                2. 关闭「休眠时快速耗电检测」
-                3. 找到本应用，设为「不优化」
+                1. 进入「设置 → 权限隐私 → 权限管理」
+                2. 找到本应用
+                3. ✅ 开启「后台弹出界面」
+                4. ✅ 开启「锁屏界面显示」
+                5. ✅ 开启「悬浮窗」
             """.trimIndent()
             isVivo() -> """
-                检测到您使用的是 vivo 手机，为保证服务结束时能准时提醒，请：
+                为保证服务结束时能弹出全屏提醒，请开启以下权限：
                 
                 1. 进入「i管家 → 应用管理 → 权限管理」
-                2. 找到本应用，开启「后台弹窗」和「自启动」
+                2. 找到本应用
+                3. ✅ 开启「后台弹出界面」
+                4. ✅ 开启「锁屏显示」
+                5. ✅ 开启「悬浮窗」
             """.trimIndent()
             else -> null
         }
     }
     
+    /**
+     * 获取省电策略提示信息（第二步）
+     */
+    fun getBatteryGuideMessage(): String? {
+        return when {
+            isXiaomi() -> """
+                为保证服务倒计时不被系统中断，请设置省电策略：
+                
+                1. 进入「设置 → 应用设置 → 应用管理」
+                2. 找到本应用 → 点击「省电策略」
+                3. ✅ 选择「无限制」
+                4. 返回 → 开启「自启动」
+            """.trimIndent()
+            isHuawei() -> """
+                为保证服务倒计时不被系统中断，请设置电池优化：
+                
+                1. 进入「设置 → 应用 → 应用启动管理」
+                2. 找到本应用，关闭「自动管理」
+                3. ✅ 开启「允许自启动」
+                4. ✅ 开启「允许后台活动」
+                5. ✅ 开启「允许关联启动」
+            """.trimIndent()
+            isOppo() -> """
+                为保证服务倒计时不被系统中断，请设置电池优化：
+                
+                1. 进入「设置 → 电池 → 更多电池设置」
+                2. 关闭「休眠时快速耗电检测」
+                3. 进入「设置 → 电池 → 耗电管理」
+                4. 找到本应用 → 设置为「不优化」
+            """.trimIndent()
+            isVivo() -> """
+                为保证服务倒计时不被系统中断，请设置电池优化：
+                
+                1. 进入「设置 → 电池 → 后台耗电管理」
+                2. 找到本应用 → 设置为「允许后台高耗电」
+                3. 回到「设置 → 应用 → 自启动」
+                4. 找到本应用 → 开启自启动
+            """.trimIndent()
+            else -> null
+        }
+    }
+    
+    /**
+     * 获取弹窗权限设置 Intent（统一各厂商）
+     */
+    fun getPopupPermissionIntent(context: Context): Intent {
+        return when {
+            isXiaomi() -> getBackgroundPopupIntent(context) ?: getAppSettingsIntent(context)
+            isHuawei() -> Intent().apply {
+                try {
+                    setClassName(
+                        "com.huawei.systemmanager",
+                        "com.huawei.permissionmanager.ui.SingleAppActivity"
+                    )
+                    putExtra("packageName", context.packageName)
+                } catch (e: Exception) {
+                    action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                    data = "package:${context.packageName}".toUri()
+                }
+            }
+            isOppo() -> Intent().apply {
+                try {
+                    setClassName(
+                        "com.coloros.safecenter",
+                        "com.coloros.privacypermissionsentry.PermissionDetailActivity"
+                    )
+                    putExtra("packageName", context.packageName)
+                } catch (e: Exception) {
+                    action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                    data = "package:${context.packageName}".toUri()
+                }
+            }
+            isVivo() -> Intent().apply {
+                try {
+                    setClassName(
+                        "com.vivo.permissionmanager",
+                        "com.vivo.permissionmanager.activity.SoftPermissionDetailActivity"
+                    )
+                    putExtra("packagename", context.packageName)
+                } catch (e: Exception) {
+                    action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                    data = "package:${context.packageName}".toUri()
+                }
+            }
+            else -> getAppSettingsIntent(context)
+        }
+    }
+    
+
     /**
      * 获取厂商名称（用于显示）
      */
