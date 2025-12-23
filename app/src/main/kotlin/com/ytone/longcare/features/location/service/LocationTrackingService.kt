@@ -214,6 +214,18 @@ class LocationTrackingService : Service() {
         }
     }
 
+    /**
+     * 当用户从最近任务中滑掉应用时调用
+     * 确保服务随应用进程一起停止
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        logI("========================================")
+        logI("🗑️ 应用被移除，停止定位服务...")
+        logI("========================================")
+        stopTracking()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         // 当服务被销毁时（无论正常停止还是被系统杀死），向Manager同步状态
@@ -222,6 +234,7 @@ class LocationTrackingService : Service() {
         compositeLocationProvider.destroy()
         // 取消所有正在运行的协程任务，防止内存泄漏
         serviceScope.cancel()
+        logI("✅ LocationTrackingService 已销毁")
     }
 
     /**
