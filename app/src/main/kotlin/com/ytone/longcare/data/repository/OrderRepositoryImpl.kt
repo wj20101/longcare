@@ -15,6 +15,7 @@ import com.ytone.longcare.api.response.ServiceOrderStateModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
+import com.ytone.longcare.api.response.EndOrderResultModel
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.network.safeApiCall
@@ -108,7 +109,7 @@ class OrderRepositoryImpl @Inject constructor(
         longitude: String,
         latitude: String,
         endType: Int
-    ): ApiResult<Unit> {
+    ): ApiResult<EndOrderResultModel> {
         return safeApiCall(ioDispatcher, eventBus) {
             apiService.endOrder(
                 EndOrderParamModel(

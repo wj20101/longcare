@@ -67,7 +67,7 @@ class NfcWorkflowViewModel @Inject constructor(
 
             when (val result = orderRepository.checkOrder(orderInfoRequest.orderId, nfcDeviceId, longitude, latitude)) {
                 is ApiResult.Success -> {
-                    _uiState.value = NfcSignInUiState.Success
+                    _uiState.value = NfcSignInUiState.Success()
                 }
 
                 is ApiResult.Exception -> {
@@ -189,9 +189,12 @@ class NfcWorkflowViewModel @Inject constructor(
             endType = endType
         )) {
             is ApiResult.Success -> {
-                // 订单结束成功后清除本地存储的选中项目数据
-                selectedProjectsManager.clearSelectedProjects(orderInfoRequest.orderId)
-                _uiState.value = NfcSignInUiState.Success
+                // 注意：不在此处清除选中项目数据，改为在 ServiceCompleteScreen 离开时清除
+                _uiState.value = NfcSignInUiState.Success(
+                    endOrderSuccessData = EndOrderSuccessData(
+                        trueServiceTime = result.data.trueServiceTime
+                    )
+                )
             }
 
             is ApiResult.Exception -> {
@@ -440,7 +443,9 @@ class NfcWorkflowViewModel @Inject constructor(
  */
 sealed class NfcSignInUiState {
     data object Loading : NfcSignInUiState()
-    data object Success : NfcSignInUiState()
+    data class Success(
+        val endOrderSuccessData: EndOrderSuccessData? = null
+    ) : NfcSignInUiState()
     data class Error(val message: String) : NfcSignInUiState()
     data object Initial : NfcSignInUiState()
     data class ShowConfirmDialog(
@@ -448,6 +453,13 @@ sealed class NfcSignInUiState {
         val endOrderParams: EndOrderParams
     ) : NfcSignInUiState()
 }
+
+/**
+ * 结束订单成功后的数据
+ */
+data class EndOrderSuccessData(
+    val trueServiceTime: Int
+)
 
 data class EndOrderParams(
     val orderInfoRequest: OrderInfoRequestModel,

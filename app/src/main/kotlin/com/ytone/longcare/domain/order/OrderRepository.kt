@@ -1,6 +1,7 @@
 package com.ytone.longcare.domain.order
 
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.api.response.EndOrderResultModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderStateModel
@@ -90,7 +91,7 @@ interface OrderRepository {
         longitude: String = "",
         latitude: String = "",
         endType: Int = 1
-    ): ApiResult<Unit>
+    ): ApiResult<EndOrderResultModel>
 
     /**
      * 绑定定位

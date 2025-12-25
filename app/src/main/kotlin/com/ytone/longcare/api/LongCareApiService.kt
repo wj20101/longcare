@@ -29,6 +29,7 @@ import com.ytone.longcare.api.response.UploadTokenResultModel
 import com.ytone.longcare.api.response.SystemConfigModel
 import com.ytone.longcare.api.response.AppVersionModel
 import com.ytone.longcare.api.response.StartConfigResultModel
+import com.ytone.longcare.api.response.EndOrderResultModel
 import com.ytone.longcare.api.request.SendSmsCodeParamModel
 import com.ytone.longcare.model.Response
 import retrofit2.http.Body
@@ -123,7 +124,7 @@ interface LongCareApiService {
      * @return 无返回值
      */
     @POST("/V1/Service/EndOrder")
-    suspend fun endOrder(@Body endOrderParamModel: EndOrderParamModel): Response<Unit>
+    suspend fun endOrder(@Body endOrderParamModel: EndOrderParamModel): Response<EndOrderResultModel>
 
     /**
      * 添加定位
