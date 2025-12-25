@@ -158,10 +158,34 @@ object LocationTrackingRoute
 /**
  * 服务完成页面路由
  * @param orderInfoRequest 订单信息请求模型
+ * @param serviceCompleteData 服务完成数据
  */
 @Keep
 @Serializable
-data class ServiceCompleteRoute(val orderInfoRequest: OrderInfoRequestModel)
+data class ServiceCompleteRoute(
+    val orderInfoRequest: OrderInfoRequestModel,
+    val serviceCompleteData: ServiceCompleteData
+)
+
+/**
+ * 服务完成页面所需的数据
+ * @param clientName 客户姓名
+ * @param clientAge 客户年龄
+ * @param clientIdNumber 客户身份证号
+ * @param clientAddress 客户地址
+ * @param serviceContent 服务内容（已计算好的字符串）
+ * @param trueServiceTime 实际服务时长（分钟）
+ */
+@Keep
+@Serializable
+data class ServiceCompleteData(
+    val clientName: String = "",
+    val clientAge: Int = 0,
+    val clientIdNumber: String = "",
+    val clientAddress: String = "",
+    val serviceContent: String = "",
+    val trueServiceTime: Int = 0
+)
 
 /**
  * 人脸识别引导页面路由

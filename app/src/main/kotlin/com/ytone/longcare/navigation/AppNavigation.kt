@@ -142,12 +142,16 @@ fun NavController.navigateToServiceCountdown(
 /**
  * 导航到服务完成页面
  * @param orderInfoRequest 订单信息请求模型
+ * @param serviceCompleteData 服务完成数据
  */
-fun NavController.navigateToServiceComplete(orderInfoRequest: OrderInfoRequestModel) {
+fun NavController.navigateToServiceComplete(
+    orderInfoRequest: OrderInfoRequestModel,
+    serviceCompleteData: ServiceCompleteData
+) {
     // 获取当前页面的路由，以便之后将其弹出
     val currentRoute = this.currentBackStackEntry?.destination?.route ?: return
 
-    navigate(ServiceCompleteRoute(orderInfoRequest)) {
+    navigate(ServiceCompleteRoute(orderInfoRequest, serviceCompleteData)) {
         // popUpTo 会从返回堆栈中移除目标路由（及之上）的所有页面
         popUpTo(currentRoute) {
             inclusive = true // inclusive = true 表示连同 currentRoute 页面本身也一起移除
@@ -427,7 +431,10 @@ fun AppNavigation(startDestination: Any) {
             LocationTrackingScreen()
         }
         composable<ServiceCompleteRoute>(
-            typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
+            typeMap = mapOf(
+                typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType,
+                typeOf<ServiceCompleteData>() to ServiceCompleteDataNavType
+            )
         ) { backStackEntry ->
             val route = backStackEntry.toRoute<ServiceCompleteRoute>()
             val context = LocalContext.current
@@ -438,6 +445,7 @@ fun AppNavigation(startDestination: Any) {
             ServiceCompleteScreen(
                 navController = navController,
                 orderInfoRequest = route.orderInfoRequest,
+                serviceCompleteData = route.serviceCompleteData,
                 selectedProjectsManager = selectedProjectsManager
             )
         }

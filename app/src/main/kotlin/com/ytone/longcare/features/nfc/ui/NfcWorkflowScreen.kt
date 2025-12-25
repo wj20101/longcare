@@ -39,7 +39,9 @@ import com.ytone.longcare.di.NfcLocationEntryPoint
 import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
+import com.ytone.longcare.features.nfc.vm.EndOrderSuccessData
 import com.ytone.longcare.navigation.navigateToServiceComplete
+import com.ytone.longcare.navigation.ServiceCompleteData
 import com.ytone.longcare.navigation.navigateToIdentification
 import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.navigation.SignInMode
@@ -264,7 +266,30 @@ fun NfcWorkflowScreen(
                                     SignInMode.END_ORDER -> {
                                         // 签退时停止定位上报任务
                                         locationTrackingViewModel.onStopClicked()
-                                        navController.navigateToServiceComplete(orderInfoRequest)
+                                        // 从状态中获取trueServiceTime
+                                        val successState = uiState as? NfcSignInUiState.Success
+                                        val trueServiceTime = successState?.endOrderSuccessData?.trueServiceTime ?: 0
+                                        // 从缓存中获取订单信息
+                                        val cachedOrderInfo = sharedOrderDetailViewModel.getCachedOrderInfo(orderInfoRequest)
+                                        val userInfo = cachedOrderInfo?.userInfo
+                                        val projectList = cachedOrderInfo?.projectList ?: emptyList()
+                                        // 获取选中的项目并计算服务内容
+                                        val selectedProjectIds = endOderInfo?.projectIdList ?: emptyList()
+                                        val serviceContent = projectList
+                                            .filter { selectedProjectIds.contains(it.projectId) }
+                                            .joinToString(", ") { it.projectName }
+                                        
+                                        navController.navigateToServiceComplete(
+                                            orderInfoRequest = orderInfoRequest,
+                                            serviceCompleteData = ServiceCompleteData(
+                                                clientName = userInfo?.name ?: "",
+                                                clientAge = userInfo?.age ?: 0,
+                                                clientIdNumber = userInfo?.identityCardNumber ?: "",
+                                                clientAddress = userInfo?.address ?: "",
+                                                serviceContent = serviceContent,
+                                                trueServiceTime = trueServiceTime
+                                            )
+                                        )
                                     }
                                 }
                             })

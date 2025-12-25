@@ -20,19 +20,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.navigation.navigateToHomeAndClearStack
 import com.ytone.longcare.R
-import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
-import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import com.ytone.longcare.common.utils.HomeBackHandler
 import com.ytone.longcare.common.utils.SelectedProjectsManager
+import com.ytone.longcare.navigation.ServiceCompleteData
 
 // --- 数据模型 ---
 data class ServiceSummary(
@@ -50,24 +48,21 @@ data class ServiceSummary(
 fun ServiceCompleteScreen(
     navController: NavController,
     orderInfoRequest: OrderInfoRequestModel,
-    selectedProjectsManager: SelectedProjectsManager,
-    sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
+    serviceCompleteData: ServiceCompleteData,
+    selectedProjectsManager: SelectedProjectsManager
 ) {
-    val uiState by sharedViewModel.uiState.collectAsStateWithLifecycle()
-    
     // 统一处理系统返回键，与导航按钮行为一致（返回首页并清空堆栈）
     HomeBackHandler(navController = navController)
 
-    // 在组件初始化时获取订单详情（如果缓存中没有）
-    LaunchedEffect(orderInfoRequest) {
-        // 先检查缓存，如果没有缓存数据才请求
-        if (sharedViewModel.getCachedOrderInfo(orderInfoRequest) == null) {
-            sharedViewModel.getOrderInfo(orderInfoRequest)
-        } else {
-            // 如果有缓存数据，直接设置为成功状态
-            sharedViewModel.getOrderInfo(orderInfoRequest, forceRefresh = false)
-        }
-    }
+    // 直接使用传入的数据创建 ServiceSummary
+    val serviceSummary = ServiceSummary(
+        clientName = serviceCompleteData.clientName,
+        clientAge = serviceCompleteData.clientAge,
+        clientIdNumber = serviceCompleteData.clientIdNumber,
+        clientAddress = serviceCompleteData.clientAddress,
+        serviceContent = serviceCompleteData.serviceContent,
+        duration = formatServiceDuration(serviceCompleteData.trueServiceTime)
+    )
 
     Box(
         modifier = Modifier
@@ -78,7 +73,11 @@ fun ServiceCompleteScreen(
             CenterAlignedTopAppBar(
                 title = { Text("服务完成", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateToHomeAndClearStack() }) {
+                    IconButton(onClick = {
+                        // 清除选中项目数据后再返回
+                        selectedProjectsManager.clearSelectedProjects(orderInfoRequest.orderId)
+                        navController.navigateToHomeAndClearStack()
+                    }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回",
@@ -99,6 +98,8 @@ fun ServiceCompleteScreen(
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
                 ) {
                     ActionButton(text = "完成", onClick = {
+                        // 清除选中项目数据后再返回首页
+                        selectedProjectsManager.clearSelectedProjects(orderInfoRequest.orderId)
                         navController.navigateToHomeAndClearStack()
                     })
                 }
@@ -124,70 +125,7 @@ fun ServiceCompleteScreen(
                 }
 
                 item {
-                    when (val state = uiState) {
-                        is OrderDetailUiState.Loading -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(color = Color.White)
-                            }
-                        }
-
-                        is OrderDetailUiState.Success -> {
-                            val orderInfo = state.orderInfo
-                            val serviceSummary = ServiceSummary(
-                                clientName = orderInfo.userInfo?.name ?: "",
-                                clientAge = orderInfo.userInfo?.age ?: 0,
-                                clientIdNumber = orderInfo.userInfo?.identityCardNumber ?: "",
-                                clientAddress = orderInfo.userInfo?.address ?: "",
-                                serviceContent = getSelectedProjectsContent(orderInfo.projectList ?: emptyList(), selectedProjectsManager, orderInfoRequest.orderId),
-                                duration = formatSelectedProjectsDuration(orderInfo.projectList ?: emptyList(), selectedProjectsManager, orderInfoRequest.orderId)
-                            )
-                            ServiceChecklistSection(summary = serviceSummary)
-                        }
-
-                        is OrderDetailUiState.Error -> {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(24.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text = "加载订单信息失败",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = state.message,
-                                        fontSize = 14.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-
-                        is OrderDetailUiState.Initial -> {
-                            // 初始状态，显示加载指示器
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(color = Color.White)
-                            }
-                        }
-                    }
+                    ServiceChecklistSection(summary = serviceSummary)
                 }
             }
         }
@@ -202,16 +140,36 @@ fun ServiceCompleteScreen(
  * @return 选中项目的名称字符串
  */
 fun getSelectedProjectsContent(
-    allProjects: List<com.ytone.longcare.api.response.ServiceProjectM>,
+    allProjects: List<ServiceProjectM>,
     selectedProjectsManager: SelectedProjectsManager,
     orderId: Long
 ): String {
     val selectedProjectIds = selectedProjectsManager.getSelectedProjects(orderId)
-    
+
     return if (selectedProjectIds?.isNotEmpty() == true) {
         // 根据选中的项目ID过滤项目列表
-        allProjects.filter { project -> 
-            selectedProjectIds.contains(project.projectId) 
+        allProjects.filter { project ->
+            selectedProjectIds.contains(project.projectId)
+        }.joinToString(", ") { it.projectName }
+    } else {
+        // 如果没有选中项目数据，显示所有项目（兼容性处理）
+        allProjects.joinToString(", ") { it.projectName }
+    }
+}
+
+/**
+ * 根据项目ID列表获取选中项目的服务内容
+ * @param allProjects 所有项目列表
+ * @param selectedProjectIds 选中的项目ID列表
+ * @return 选中项目的名称字符串
+ */
+fun getSelectedProjectsContentByIds(
+    allProjects: List<ServiceProjectM>, selectedProjectIds: List<Int>
+): String {
+    return if (selectedProjectIds.isNotEmpty()) {
+        // 根据选中的项目ID过滤项目列表
+        allProjects.filter { project ->
+            selectedProjectIds.contains(project.projectId)
         }.joinToString(", ") { it.projectName }
     } else {
         // 如果没有选中项目数据，显示所有项目（兼容性处理）
@@ -227,22 +185,22 @@ fun getSelectedProjectsContent(
  * @return 格式化后的时长字符串
  */
 fun formatSelectedProjectsDuration(
-    allProjects: List<com.ytone.longcare.api.response.ServiceProjectM>,
+    allProjects: List<ServiceProjectM>,
     selectedProjectsManager: SelectedProjectsManager,
     orderId: Long
 ): String {
     val selectedProjectIds = selectedProjectsManager.getSelectedProjects(orderId)
-    
+
     val totalMinutes = if (selectedProjectIds?.isNotEmpty() == true) {
         // 根据选中的项目ID计算总时长
-        allProjects.filter { project -> 
-            selectedProjectIds.contains(project.projectId) 
+        allProjects.filter { project ->
+            selectedProjectIds.contains(project.projectId)
         }.sumOf { it.serviceTime }
     } else {
         // 如果没有选中项目数据，计算所有项目时长（兼容性处理）
         allProjects.sumOf { it.serviceTime }
     }
-    
+
     return formatServiceDuration(totalMinutes)
 }
 
