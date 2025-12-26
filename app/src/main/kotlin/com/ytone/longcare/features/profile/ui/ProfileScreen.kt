@@ -3,8 +3,10 @@ package com.ytone.longcare.features.profile.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Description
@@ -79,14 +81,40 @@ fun ProfileScreen(
                     titleContentColor = Color.White
                 )
             )
-        }, containerColor = Color.Transparent
+        },
+        bottomBar = {
+            user?.let {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.Transparent
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 8.dp, top = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        LogoutButton(onClick = { viewModel.logout() })
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "版本号: ${BuildConfig.VERSION_NAME}.${BuildConfig.VERSION_CODE}",
+                            color = Color.Black.copy(alpha = 0.5f),
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
+        },
+        containerColor = Color.Transparent
     ) { paddingValues ->
         user?.let { loggedInUser ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
@@ -95,15 +123,7 @@ fun ProfileScreen(
                 StatsCard(navController = navController, stats = statsState)
                 Spacer(modifier = Modifier.height(24.dp))
                 OptionsCard()
-                Spacer(modifier = Modifier.weight(1f))
-                LogoutButton(onClick = { viewModel.logout() })
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "版本号: ${BuildConfig.VERSION_NAME}.${BuildConfig.VERSION_CODE}",
-                    color = Color.Black.copy(alpha = 0.5f),
-                    fontSize = 12.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
         } ?: run {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

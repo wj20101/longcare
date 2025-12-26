@@ -8,7 +8,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -205,13 +207,42 @@ fun IdentificationScreen(
                     )
                 )
             },
+            bottomBar = {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.Transparent
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 20.dp)
+                            .padding(bottom = 24.dp, top = 16.dp)
+                    ) {
+                        // 下一步按钮
+                        Button(
+                            onClick = { navController.navigateToSelectService(orderInfoRequest) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4A90E2),
+                                disabledContainerColor = Color(0xFF4A90E2).copy(alpha = 0.5f)
+                            ),
+                            enabled = identificationState == IdentificationState.ELDER_VERIFIED
+                        ) {
+                            Text("下一步", fontSize = 16.sp, color = Color.White)
+                        }
+                    }
+                }
+            },
             containerColor = Color.Transparent,
         ) { paddingValues ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 20.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(4.dp))
@@ -227,7 +258,6 @@ fun IdentificationScreen(
                     personType = IdentificationConstants.SERVICE_PERSON,
                     isVerified = identificationState.ordinal >= IdentificationState.SERVICE_VERIFIED.ordinal,
                     onVerifyClick = {
-//                        identificationViewModel.setServicePersonVerified()
                         identificationViewModel.verifyServicePerson(context)
                     },
                     viewModel = identificationViewModel,
@@ -243,32 +273,11 @@ fun IdentificationScreen(
                     isVerified = identificationState.ordinal >= IdentificationState.ELDER_VERIFIED.ordinal,
                     onVerifyClick = {
                         permissionLauncher.launch(Manifest.permission.CAMERA)
-                        // 保留人脸识别功能（注释状态，后续需求）
-                        // identificationViewModel.verifyElder(context, orderInfoRequest.orderId)
                     },
                     viewModel = identificationViewModel,
                     faceVerificationState = faceVerificationState,
                     photoUploadState = photoUploadState
                 )
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // 下一步按钮
-                Button(
-                    onClick = { navController.navigateToSelectService(orderInfoRequest) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4A90E2), // 蓝色
-                        disabledContainerColor = Color(0xFF4A90E2).copy(alpha = 0.5f)
-                    ),
-                    enabled = identificationState == IdentificationState.ELDER_VERIFIED
-                ) {
-
-                    Text("下一步", fontSize = 16.sp, color = Color.White)
-                }
 
                 Spacer(modifier = Modifier.height(24.dp))
             }

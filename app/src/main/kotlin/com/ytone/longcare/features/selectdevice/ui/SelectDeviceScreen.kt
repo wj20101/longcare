@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -72,13 +74,35 @@ fun SelectDeviceScreen(
                         navigationIconContentColor = Color.White
                     )
                 )
-            }, containerColor = Color.Transparent // Scaffold 透明
+            },
+            bottomBar = {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.Transparent
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 32.dp, top = 16.dp)
+                    ) {
+                        NextStepButton(
+                            text = stringResource(R.string.common_next_step),
+                            enabled = true,
+                            onClick = { 
+                                navController.navigateToNfcSignInForStartOrder(orderInfoRequest ?: OrderInfoRequestModel(orderId = 0L, planId = 0))
+                            }
+                        )
+                    }
+                }
+            },
+            containerColor = Color.Transparent
         ) { paddingValues ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 16.dp), // 页面左右边距
+                    .padding(horizontal = 16.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -99,15 +123,7 @@ fun SelectDeviceScreen(
                         selectedDeviceIndex = if (selectedDeviceIndex == index) null else index
                     })
 
-                Spacer(modifier = Modifier.weight(1f)) // 将按钮推到底部
-
-                NextStepButton(
-                    text = stringResource(R.string.common_next_step), enabled = true/* selectedDeviceIndex != null*/, // 仅当有设备选中时才可用
-                    onClick = { 
-                        navController.navigateToNfcSignInForStartOrder(orderInfoRequest ?: OrderInfoRequestModel(orderId = 0L, planId = 0))
-                    })
-
-                Spacer(modifier = Modifier.height(32.dp)) // 按钮与屏幕底部的间距
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
