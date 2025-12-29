@@ -35,13 +35,14 @@ object NfcUtils {
 
     /**
      * 提示用户去设置中开启 NFC
+     * @return 显示的 AlertDialog 对象，调用者可以管理其生命周期
      */
     fun showEnableNfcDialog(
         activity: Activity,
         title: String = "NFC Disabled",
         message: String = "Please enable NFC in settings to use this feature."
-    ) {
-        AlertDialog.Builder(activity).setTitle(title).setMessage(message)
+    ): AlertDialog {
+        return AlertDialog.Builder(activity).setTitle(title).setMessage(message)
             .setPositiveButton("Settings") { _, _ ->
                 activity.startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
             }.setNegativeButton("Cancel", null).show()
