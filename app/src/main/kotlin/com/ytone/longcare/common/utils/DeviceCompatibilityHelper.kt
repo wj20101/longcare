@@ -407,25 +407,30 @@ object DeviceCompatibilityHelper {
     fun getBackgroundPopupIntent(context: Context): Intent? {
         if (!isXiaomi()) return null
         
-        return try {
-            // 方法 1: 直接打开应用的权限设置页面
-            Intent("miui.intent.action.APP_PERM_EDITOR").apply {
-                setClassName(
-                    "com.miui.securitycenter",
-                    "com.miui.permcenter.permissions.PermissionsEditorActivity"
-                )
-                putExtra("extra_pkgname", context.packageName)
-            }
-        } catch (e: Exception) {
-            try {
-                // 方法 2: 打开应用详情页面
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = "package:${context.packageName}".toUri()
-                }
-            } catch (e2: Exception) {
-                null
-            }
-        }
+        // 小米/MIUI 备选 Activity 列表（不同 MIUI 版本有不同的 Activity）
+        // 方法 1: MIUI 权限编辑页面（较新版本）
+        createComponentIntentIfAvailable(
+            context,
+            "com.miui.securitycenter",
+            "com.miui.permcenter.permissions.PermissionsEditorActivity",
+            mapOf("extra_pkgname" to context.packageName)
+        )?.let { return it }
+        
+        // 方法 2: MIUI 应用权限页面
+        createComponentIntentIfAvailable(
+            context,
+            "com.miui.securitycenter",
+            "com.miui.permcenter.permissions.AppPermissionsEditorActivity",
+            mapOf("extra_pkgname" to context.packageName)
+        )?.let { return it }
+        
+        // 方法 3: 尝试使用 action 启动
+        Intent("miui.intent.action.APP_PERM_EDITOR").apply {
+            putExtra("extra_pkgname", context.packageName)
+        }.takeIf { isActivityAvailable(context, it) }?.let { return it }
+        
+        // 方法 4: 回退到系统应用设置页
+        return null
     }
     
     /**
@@ -526,46 +531,95 @@ object DeviceCompatibilityHelper {
     }
     
     /**
+     * 检查 Intent 对应的 Activity 是否存在
+     */
+    private fun isActivityAvailable(context: Context, intent: Intent): Boolean {
+        return try {
+            val resolveInfo = context.packageManager.resolveActivity(intent, 0)
+            resolveInfo != null
+        } catch (e: Exception) {
+            false
+        }
+    }
+    
+    /**
+     * 创建指定组件的 Intent（如果存在）
+     */
+    private fun createComponentIntentIfAvailable(
+        context: Context,
+        packageName: String,
+        className: String,
+        extras: Map<String, String> = emptyMap()
+    ): Intent? {
+        val intent = Intent().apply {
+            setClassName(packageName, className)
+            extras.forEach { (key, value) -> putExtra(key, value) }
+        }
+        return if (isActivityAvailable(context, intent)) intent else null
+    }
+    
+    /**
      * 获取弹窗权限设置 Intent（统一各厂商）
+     * 每个厂商尝试多个可能的 Activity，直到找到可用的
      */
     fun getPopupPermissionIntent(context: Context): Intent {
         return when {
             isXiaomi() -> getBackgroundPopupIntent(context) ?: getAppSettingsIntent(context)
-            isHuawei() -> Intent().apply {
-                try {
-                    setClassName(
-                        "com.huawei.systemmanager",
-                        "com.huawei.permissionmanager.ui.SingleAppActivity"
-                    )
-                    putExtra("packageName", context.packageName)
-                } catch (e: Exception) {
-                    action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-                    data = "package:${context.packageName}".toUri()
-                }
+            isHuawei() -> {
+                // 华为备选 Activity 列表
+                createComponentIntentIfAvailable(
+                    context,
+                    "com.huawei.systemmanager",
+                    "com.huawei.permissionmanager.ui.SingleAppActivity",
+                    mapOf("packageName" to context.packageName)
+                ) ?: createComponentIntentIfAvailable(
+                    context,
+                    "com.huawei.systemmanager",
+                    "com.huawei.permissionmanager.ui.MainActivity"
+                ) ?: getAppSettingsIntent(context)
             }
-            isOppo() -> Intent().apply {
-                try {
-                    setClassName(
-                        "com.coloros.safecenter",
-                        "com.coloros.privacypermissionsentry.PermissionDetailActivity"
-                    )
-                    putExtra("packageName", context.packageName)
-                } catch (e: Exception) {
-                    action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-                    data = "package:${context.packageName}".toUri()
-                }
+            isOppo() -> {
+                // OPPO/realme/ColorOS 备选 Activity 列表（不同版本有不同的 Activity）
+                createComponentIntentIfAvailable(
+                    context,
+                    "com.coloros.safecenter",
+                    "com.coloros.privacypermissionsentry.PermissionDetailActivity",
+                    mapOf("packageName" to context.packageName)
+                ) ?: createComponentIntentIfAvailable(
+                    context,
+                    "com.coloros.safecenter",
+                    "com.coloros.safecenter.permission.PermissionAppAllPermissionActivity",
+                    mapOf("packageName" to context.packageName)
+                ) ?: createComponentIntentIfAvailable(
+                    context,
+                    "com.oplus.safecenter",
+                    "com.oplus.safecenter.permission.PermissionAppAllPermissionActivity",
+                    mapOf("packageName" to context.packageName)
+                ) ?: createComponentIntentIfAvailable(
+                    context,
+                    "com.coloros.safecenter",
+                    "com.coloros.safecenter.permission.singlepage.PermissionSinglePageActivity",
+                    mapOf("packageName" to context.packageName)
+                ) ?: createComponentIntentIfAvailable(
+                    context,
+                    "com.oppo.safe",
+                    "com.oppo.safe.permission.PermissionAppAllPermissionActivity",
+                    mapOf("packageName" to context.packageName)
+                ) ?: getAppSettingsIntent(context)
             }
-            isVivo() -> Intent().apply {
-                try {
-                    setClassName(
-                        "com.vivo.permissionmanager",
-                        "com.vivo.permissionmanager.activity.SoftPermissionDetailActivity"
-                    )
-                    putExtra("packagename", context.packageName)
-                } catch (e: Exception) {
-                    action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-                    data = "package:${context.packageName}".toUri()
-                }
+            isVivo() -> {
+                // vivo 备选 Activity 列表
+                createComponentIntentIfAvailable(
+                    context,
+                    "com.vivo.permissionmanager",
+                    "com.vivo.permissionmanager.activity.SoftPermissionDetailActivity",
+                    mapOf("packagename" to context.packageName)
+                ) ?: createComponentIntentIfAvailable(
+                    context,
+                    "com.vivo.permissionmanager",
+                    "com.vivo.permissionmanager.activity.PurviewTabActivity",
+                    mapOf("packagename" to context.packageName)
+                ) ?: getAppSettingsIntent(context)
             }
             else -> getAppSettingsIntent(context)
         }
