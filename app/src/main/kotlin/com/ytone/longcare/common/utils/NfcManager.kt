@@ -2,6 +2,7 @@ package com.ytone.longcare.common.utils
 
 import android.app.Activity
 import android.content.Intent
+import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -25,6 +26,7 @@ class NfcManager @Inject constructor(
     
     private var currentActivity: Activity? = null
     private var isNfcEnabled = false
+    private var nfcEnableDialog: AlertDialog? = null
     
     /**
      * 为指定Activity启用NFC功能
@@ -154,25 +156,44 @@ class NfcManager @Inject constructor(
             !NfcUtils.isNfcSupported(activity) -> {
                 // 设备不支持NFC，不做任何操作
                 logD("NfcManager", "设备不支持NFC")
+                dismissNfcDialog()
                 return
             }
             !NfcUtils.isNfcEnabled(activity) -> {
-                // NFC未开启，显示提示对话框
-                logD("NfcManager", "NFC未开启，显示提示对话框")
-                NfcUtils.showEnableNfcDialog(
-                    activity,
-                    title = "NFC未开启",
-                    message = "请在设置中开启NFC功能以使用签到功能"
-                )
+                // NFC未开启，显示提示对话框（仅在对话框未显示时显示）
+                if (nfcEnableDialog?.isShowing != true) {
+                    logD("NfcManager", "NFC未开启，显示提示对话框")
+                    nfcEnableDialog = NfcUtils.showEnableNfcDialog(
+                        activity,
+                        title = "NFC未开启",
+                        message = "请在设置中开启NFC功能以使用签到功能"
+                    )
+                } else {
+                    logD("NfcManager", "NFC未开启，对话框已显示")
+                }
                 return
             }
             else -> {
-                // NFC已开启，启用前台调度
+                // NFC已开启，关闭提示对话框并启用前台调度
+                dismissNfcDialog()
                 logD("NfcManager", "NFC已开启，启用前台调度")
                 NfcUtils.enableForegroundDispatch(activity)
                 logD("NfcManager", "NFC前台调度已启用")
             }
         }
+    }
+    
+    /**
+     * 关闭NFC提示对话框
+     */
+    private fun dismissNfcDialog() {
+        nfcEnableDialog?.let { dialog ->
+            if (dialog.isShowing) {
+                logD("NfcManager", "关闭NFC提示对话框")
+                dialog.dismiss()
+            }
+        }
+        nfcEnableDialog = null
     }
     
     // LifecycleObserver 方法
@@ -203,6 +224,8 @@ class NfcManager @Inject constructor(
     override fun onDestroy(owner: LifecycleOwner) {
         super.onDestroy(owner)
         logD("NfcManager", "onDestroy called")
+        // 关闭对话框，避免内存泄漏
+        dismissNfcDialog()
         currentActivity?.let { activity ->
             logD("NfcManager", "在onDestroy中清理NFC状态")
             // 在销毁时彻底清理状态
