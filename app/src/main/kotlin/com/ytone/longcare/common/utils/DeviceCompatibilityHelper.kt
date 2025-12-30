@@ -1,14 +1,17 @@
 package com.ytone.longcare.common.utils
 
+import android.annotation.SuppressLint
 import android.app.AppOpsManager
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.net.toUri
 import androidx.core.content.edit
+import androidx.core.content.getSystemService
 
 /**
  * 全屏通知权限状态
@@ -101,8 +104,8 @@ object DeviceCompatibilityHelper {
     fun getFullScreenIntentStatus(context: Context): FullScreenIntentStatus {
         return when {
             Build.VERSION.SDK_INT >= 34 -> {
-                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                if (notificationManager.canUseFullScreenIntent()) {
+                val notificationManager = context.getSystemService<NotificationManager>()
+                if (notificationManager?.canUseFullScreenIntent() == true) {
                     FullScreenIntentStatus.GRANTED
                 } else {
                     FullScreenIntentStatus.DENIED
@@ -126,31 +129,31 @@ object DeviceCompatibilityHelper {
     
     /**
      * 获取需要引导的权限类型（只返回首个需要引导的权限，每种只显示一次）
+     * 优先级：1. 省电策略（所有设备） → 2. 厂商弹窗权限 / 悬浮窗权限
      */
     fun getRequiredPermissionGuide(context: Context): PermissionGuideType {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         
-        // 1. 特殊厂商（小米/华为/OPPO/vivo）优先检查厂商权限
+        // 1. 省电策略（适用于所有设备，优先引导）
+        if (!prefs.getBoolean(KEY_BATTERY_GUIDE_SHOWN, false)) {
+            return PermissionGuideType.BATTERY
+        }
+        
+        // 2. 特殊厂商（小米/华为/OPPO/vivo）检查厂商弹窗权限
         if (needsSpecialAdaptation()) {
-            // 先检查厂商特有的弹窗权限
             if (!hasBgStartPermission(context)) {
                 if (!prefs.getBoolean(KEY_MANUFACTURER_GUIDE_SHOWN, false)) {
                     return PermissionGuideType.MANUFACTURER_POPUP
                 }
             }
         } else {
-            // 2. 非特殊厂商：检查悬浮窗权限（作为全屏通知的备选）
+            // 3. 非特殊厂商：检查悬浮窗权限（作为全屏通知的备选）
             val fullScreenStatus = getFullScreenIntentStatus(context)
             if (fullScreenStatus == FullScreenIntentStatus.DENIED && !hasOverlayPermission(context)) {
                 if (!prefs.getBoolean(KEY_OVERLAY_GUIDE_SHOWN, false)) {
                     return PermissionGuideType.OVERLAY
                 }
             }
-        }
-        
-        // 3. 省电策略（仅特殊厂商）
-        if (needsSpecialAdaptation() && !prefs.getBoolean(KEY_BATTERY_GUIDE_SHOWN, false)) {
-            return PermissionGuideType.BATTERY
         }
         
         return PermissionGuideType.NONE
@@ -224,7 +227,7 @@ object DeviceCompatibilityHelper {
      */
     private fun checkXiaomiBgStartPermission(context: Context): Boolean {
         return try {
-            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+            val appOps = context.getSystemService<AppOpsManager>() ?: return true
             val method = appOps.javaClass.getMethod(
                 "checkOpNoThrow",
                 Int::class.java,
@@ -265,7 +268,7 @@ object DeviceCompatibilityHelper {
      */
     private fun checkOppoBgStartPermission(context: Context): Boolean {
         return try {
-            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+            val appOps = context.getSystemService<AppOpsManager>() ?: return true
             // OPPO 使用标准的 OP_BACKGROUND_START_ACTIVITY (66)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val method = appOps.javaClass.getMethod(
@@ -290,7 +293,7 @@ object DeviceCompatibilityHelper {
      */
     private fun checkHuaweiBgStartPermission(context: Context): Boolean {
         return try {
-            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+            val appOps = context.getSystemService<AppOpsManager>() ?: return true
             val method = appOps.javaClass.getMethod(
                 "checkOpNoThrow",
                 Int::class.java,
@@ -308,54 +311,88 @@ object DeviceCompatibilityHelper {
     
     /**
      * 获取电池优化设置 Intent
+     * 针对不同 Android 版本和厂商提供正确的 Intent
      */
     fun getBatteryOptimizationIntent(context: Context): Intent {
-        return when {
-            isHuawei() -> Intent().apply {
-                try {
-                    setClassName(
-                        "com.huawei.systemmanager",
-                        "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"
-                    )
-                } catch (e: Exception) {
-                    // 回退到通用设置
-                    action = Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
-                }
-            }
+        // Android 6.0 以下不需要电池优化设置
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return getAppSettingsIntent(context)
+        }
+        
+        // 优先尝试厂商特定的设置页面
+        val manufacturerIntent = getManufacturerBatteryIntent(context)
+        if (manufacturerIntent != null) {
+            return manufacturerIntent
+        }
+        
+        // 通用 Android 6.0+ 电池优化设置
+        return Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+    }
+    
+    /**
+     * 获取厂商特定的电池优化 Intent
+     * 如果厂商没有特定设置或 Activity 不存在，返回 null
+     */
+    private fun getManufacturerBatteryIntent(context: Context): Intent? {
+        val intent = when {
             isXiaomi() -> Intent().apply {
-                try {
-                    setClassName(
-                        "com.miui.powerkeeper",
-                        "com.miui.powerkeeper.ui.HiddenAppsConfigActivity"
-                    )
-                    putExtra("package_name", context.packageName)
-                    putExtra("package_label", context.applicationInfo.loadLabel(context.packageManager))
-                } catch (e: Exception) {
-                    action = Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
-                }
+                setClassName(
+                    "com.miui.powerkeeper",
+                    "com.miui.powerkeeper.ui.HiddenAppsConfigActivity"
+                )
+                putExtra("package_name", context.packageName)
+                putExtra("package_label", context.applicationInfo.loadLabel(context.packageManager))
+            }
+            isHuawei() -> Intent().apply {
+                setClassName(
+                    "com.huawei.systemmanager",
+                    "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"
+                )
             }
             isOppo() -> Intent().apply {
-                try {
-                    setClassName(
-                        "com.coloros.oppoguardelf",
-                        "com.coloros.powermanager.fuelgaue.PowerConsumptionActivity"
-                    )
-                } catch (e: Exception) {
-                    action = Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
-                }
+                setClassName(
+                    "com.coloros.oppoguardelf",
+                    "com.coloros.powermanager.fuelgaue.PowerConsumptionActivity"
+                )
             }
             isVivo() -> Intent().apply {
-                try {
-                    setClassName(
-                        "com.vivo.abe",
-                        "com.vivo.applicationbehaviorengine.ui.ExcessivePowerManagerActivity"
-                    )
-                } catch (e: Exception) {
-                    action = Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
-                }
+                setClassName(
+                    "com.vivo.abe",
+                    "com.vivo.applicationbehaviorengine.ui.ExcessivePowerManagerActivity"
+                )
             }
-            else -> Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+            else -> null
         }
+        
+        // 验证 Intent 对应的 Activity 是否存在
+        return intent?.takeIf { 
+            context.packageManager.resolveActivity(it, 0) != null 
+        }
+    }
+    
+    /**
+     * 请求免电池优化权限（会弹出系统对话框）
+     * 仅 Android 6.0+ 可用
+     */
+    @SuppressLint("BatteryLife")
+    fun getRequestIgnoreBatteryOptimizationIntent(context: Context): Intent? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return null
+        }
+        return Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = "package:${context.packageName}".toUri()
+        }
+    }
+    
+    /**
+     * 检查应用是否已加入电池优化白名单
+     */
+    fun isIgnoringBatteryOptimizations(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return true // 低版本不需要白名单
+        }
+        val powerManager = context.getSystemService<PowerManager>()
+        return powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
     }
     
     /**
@@ -489,9 +526,9 @@ object DeviceCompatibilityHelper {
     }
     
     /**
-     * 获取省电策略提示信息（第二步）
+     * 获取省电策略提示信息（适用于所有设备）
      */
-    fun getBatteryGuideMessage(): String? {
+    fun getBatteryGuideMessage(): String {
         return when {
             isXiaomi() -> """
                 为保证服务倒计时不被系统中断，请设置省电策略：
@@ -526,7 +563,14 @@ object DeviceCompatibilityHelper {
                 3. 回到「设置 → 应用 → 自启动」
                 4. 找到本应用 → 开启自启动
             """.trimIndent()
-            else -> null
+            else -> """
+                为保证服务倒计时不被系统中断，请设置电池优化：
+                
+                1. 进入「设置 → 电池」或「设置 → 应用管理」
+                2. 找到本应用的电池/耗电设置
+                3. ✅ 关闭电池优化 或 设置为「不限制后台」
+                4. ✅ 允许后台运行
+            """.trimIndent()
         }
     }
     
