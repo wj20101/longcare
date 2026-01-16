@@ -49,6 +49,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,6 +73,8 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.util.concurrent.Executor
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.core.graphics.createBitmap
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.load
@@ -157,6 +160,11 @@ private fun CameraContent(
     
     // 摄像头切换状态
     var isFrontCamera by remember { mutableStateOf(false) }
+    // 相机是否正在切换中（用于防止切换时拍照导致崩溃）
+    var isCameraSwitching by remember { mutableStateOf(false) }
+    // 是否正在拍照中（防止连续点击导致重复拍照）
+    var isCapturing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
 
     val locationPermissions = arrayOf(
@@ -259,36 +267,69 @@ private fun CameraContent(
                     // 拍照按钮
                     ShutterButton(
                         onClick = {
-                            viewModel.updateTime()
-                            val executor = ContextCompat.getMainExecutor(context)
-                            watermarkView?.let {
+                            // 如果相机正在切换中或正在拍照中，不允许拍照
+                            if (isCameraSwitching || isCapturing) return@ShutterButton
+                            
+                            watermarkView?.let { view ->
+                                // 检查 watermark view 是否已经正确渲染
+                                if (view.width <= 0 || view.height <= 0) {
+                                    Toast.makeText(context, "请稍候，正在准备中...", Toast.LENGTH_SHORT).show()
+                                    return@ShutterButton
+                                }
+                                
+                                isCapturing = true
+                                viewModel.updateTime()
+                                val executor = ContextCompat.getMainExecutor(context)
                                 takePhoto(
-                                    context,
-                                    cameraController,
-                                    executor,
-                                    it,
-                                    onImageCaptured
+                                    context = context,
+                                    cameraController = cameraController,
+                                    executor = executor,
+                                    watermarkView = view,
+                                    isFrontCamera = isFrontCamera,
+                                    onImageCaptured = { file ->
+                                        isCapturing = false
+                                        onImageCaptured(file)
+                                    },
+                                    onError = {
+                                        isCapturing = false
+                                    }
                                 )
                             }
-                        }
+                        },
+                        enabled = !isCameraSwitching && !isCapturing
                     )
                     
                     // 切换摄像头按钮
                     CameraSwitchButton(
                         onClick = {
-                            try {
-                                val newSelector = if (isFrontCamera) {
-                                    CameraSelector.DEFAULT_BACK_CAMERA
-                                } else {
-                                    CameraSelector.DEFAULT_FRONT_CAMERA
+                            // 如果已经在切换中，忽略点击
+                            if (isCameraSwitching) return@CameraSwitchButton
+                            
+                            scope.launch {
+                                try {
+                                    // 标记相机正在切换
+                                    isCameraSwitching = true
+                                    
+                                    val newSelector = if (isFrontCamera) {
+                                        CameraSelector.DEFAULT_BACK_CAMERA
+                                    } else {
+                                        CameraSelector.DEFAULT_FRONT_CAMERA
+                                    }
+                                    cameraController.cameraSelector = newSelector
+                                    isFrontCamera = !isFrontCamera
+                                    
+                                    // 等待相机初始化完成
+                                    delay(500)
+                                } catch (e: Exception) {
+                                    // 相机不支持切换（例如设备只有一个摄像头，或前置摄像头不支持所需功能）
+                                    Toast.makeText(context, "无法切换摄像头", Toast.LENGTH_SHORT).show()
+                                } finally {
+                                    // 无论成功与否，都要重置标记
+                                    isCameraSwitching = false
                                 }
-                                cameraController.cameraSelector = newSelector
-                                isFrontCamera = !isFrontCamera
-                            } catch (e: Exception) {
-                                // 相机不支持切换（例如设备只有一个摄像头，或前置摄像头不支持所需功能）
-                                Toast.makeText(context, "无法切换摄像头", Toast.LENGTH_SHORT).show()
                             }
-                        }
+                        },
+                        enabled = !isCameraSwitching
                     )
                 }
             }
@@ -303,28 +344,33 @@ private fun CameraContent(
 @Composable
 private fun ShutterButton(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
+    val borderColor = if (enabled) Color.White else Color.White.copy(alpha = 0.5f)
+    val backgroundColor = if (enabled) Color.White else Color.White.copy(alpha = 0.5f)
+    
     Box(
         modifier = modifier
             .size(80.dp)
             .clip(CircleShape)
             .background(Color.Transparent)
-            .border(4.dp, Color.White, CircleShape),
+            .border(4.dp, borderColor, CircleShape),
         contentAlignment = Alignment.Center
     ) {
         IconButton(
             onClick = onClick,
+            enabled = enabled,
             modifier = Modifier
                 .size(64.dp)
                 .clip(CircleShape)
-                .background(Color.White)
+                .background(backgroundColor)
         ) {
             Icon(
                 imageVector = Icons.Filled.Circle,
                 contentDescription = "拍照",
                 modifier = Modifier.size(56.dp),
-                tint = Color.White
+                tint = backgroundColor
             )
         }
     }
@@ -336,10 +382,14 @@ private fun ShutterButton(
 @Composable
 private fun CameraSwitchButton(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
+    val iconTint = if (enabled) Color.White else Color.White.copy(alpha = 0.5f)
+    
     IconButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier
             .size(56.dp)
             .clip(CircleShape)
@@ -348,7 +398,7 @@ private fun CameraSwitchButton(
         Icon(
             imageVector = Icons.Filled.Cameraswitch,
             contentDescription = "切换摄像头",
-            tint = Color.White,
+            tint = iconTint,
             modifier = Modifier.size(32.dp)
         )
     }
@@ -377,38 +427,68 @@ private fun takePhoto(
     cameraController: LifecycleCameraController,
     executor: Executor,
     watermarkView: View,
-    onImageCaptured: (File) -> Unit
+    isFrontCamera: Boolean,
+    onImageCaptured: (File) -> Unit,
+    onError: () -> Unit
 ) {
     cameraController.takePicture(
         executor,
         object : ImageCapture.OnImageCapturedCallback() {
             override fun onCaptureSuccess(image: ImageProxy) {
-                val bitmap = imageProxyToBitmap(image)
-                val rotationDegrees = image.imageInfo.rotationDegrees.toFloat()
-                val rotatedBitmap = rotateBitmap(bitmap, rotationDegrees)
-                val watermarkBitmap = viewToBitmap(watermarkView)
-                val density = context.resources.displayMetrics.density
-                val startPx = (13 * density)
-                val bottomPx = (14 * density)
-                val watermarkedBitmap =
-                    addWatermark(rotatedBitmap, watermarkBitmap, startPx, bottomPx)
+                try {
+                    val bitmap = imageProxyToBitmap(image)
+                    val rotationDegrees = image.imageInfo.rotationDegrees.toFloat()
+                    var rotatedBitmap = rotateBitmap(bitmap, rotationDegrees)
+                    
+                    // 如果是前置摄像头，进行水平翻转使照片更自然
+                    if (isFrontCamera) {
+                        val flippedBitmap = flipBitmapHorizontally(rotatedBitmap)
+                        if (rotatedBitmap != flippedBitmap) {
+                            rotatedBitmap.recycle()
+                        }
+                        rotatedBitmap = flippedBitmap
+                    }
+                    
+                    // 回收原始 bitmap
+                    if (bitmap != rotatedBitmap) {
+                        bitmap.recycle()
+                    }
+                    
+                    val watermarkBitmap = viewToBitmap(watermarkView)
+                    val density = context.resources.displayMetrics.density
+                    val startPx = (13 * density)
+                    val bottomPx = (14 * density)
+                    val watermarkedBitmap =
+                        addWatermark(rotatedBitmap, watermarkBitmap, startPx, bottomPx)
+                    
+                    // 回收中间 bitmap
+                    rotatedBitmap.recycle()
+                    watermarkBitmap.recycle()
 
-                val photoFile = File(
-                    context.cacheDir,
-                    "captured_image_${System.currentTimeMillis()}.jpg"
-                )
+                    val photoFile = File(
+                        context.cacheDir,
+                        "captured_image_${System.currentTimeMillis()}.jpg"
+                    )
 
-                FileOutputStream(photoFile).use { out ->
-                    watermarkedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                    FileOutputStream(photoFile).use { out ->
+                        watermarkedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                    }
+                    
+                    // 回收最终 bitmap
+                    watermarkedBitmap.recycle()
+                    
+                    onImageCaptured(photoFile)
+                } catch (e: Exception) {
+                    Toast.makeText(context, "图片处理失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    onError()
+                } finally {
+                    image.close()
                 }
-                onImageCaptured(photoFile)
-
-                image.close()
             }
 
             override fun onError(exc: ImageCaptureException) {
-                Toast.makeText(context, "Photo capture failed: ${exc.message}", Toast.LENGTH_SHORT)
-                    .show()
+                Toast.makeText(context, "拍照失败: ${exc.message}", Toast.LENGTH_SHORT).show()
+                onError()
             }
         }
     )
@@ -424,8 +504,15 @@ private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
 }
 
 private fun rotateBitmap(bitmap: Bitmap, degrees: Float): Bitmap {
+    if (degrees == 0f) return bitmap
     val matrix = Matrix()
     matrix.postRotate(degrees)
+    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+}
+
+private fun flipBitmapHorizontally(bitmap: Bitmap): Bitmap {
+    val matrix = Matrix()
+    matrix.preScale(-1f, 1f)
     return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 }
 
