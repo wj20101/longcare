@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.photoupload.ui
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,6 +61,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.content.getSystemService
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -73,14 +76,20 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.util.concurrent.Executor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import androidx.core.graphics.createBitmap
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.load
 import coil3.request.allowHardware
 import coil3.request.error
 import com.ytone.longcare.R
+import com.ytone.longcare.features.photoupload.tracker.CameraEventTracker
+import kotlinx.coroutines.CoroutineScope
 
 @Composable
 fun CameraScreen(
@@ -99,6 +108,12 @@ fun CameraScreen(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { granted ->
             hasPermission = granted
+            // 记录权限结果
+            if (granted) {
+                CameraEventTracker.trackEvent(CameraEventTracker.EventType.CAMERA_PERMISSION_GRANTED)
+            } else {
+                CameraEventTracker.trackEvent(CameraEventTracker.EventType.CAMERA_PERMISSION_DENIED)
+            }
         }
     )
 
@@ -140,10 +155,16 @@ private fun CameraContent(
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraController = remember {
         LifecycleCameraController(context).apply {
+            // 根据设备性能动态选择分辨率
+            val targetResolution = if (isLowEndDevice(context)) {
+                Size(1280, 720)  // 低端设备使用 720p
+            } else {
+                Size(1920, 1080) // 正常设备使用 1080p
+            }
             val resolutionSelector = ResolutionSelector.Builder()
                 .setResolutionStrategy(
                     ResolutionStrategy(
-                        Size(1920, 1080),
+                        targetResolution,
                         ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
                     )
                 )
@@ -164,7 +185,60 @@ private fun CameraContent(
     var isCameraSwitching by remember { mutableStateOf(false) }
     // 是否正在拍照中（防止连续点击导致重复拍照）
     var isCapturing by remember { mutableStateOf(false) }
+    // 是否有前置摄像头（默认 false，等待检测）
+    var hasFrontCamera by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    
+    // 检测前置摄像头可用性并记录设备信息
+    LaunchedEffect(cameraController) {
+        // 记录相机初始化开始
+        CameraEventTracker.trackEvent(
+            CameraEventTracker.EventType.CAMERA_INIT_START,
+            mapOf(
+                "isLowEndDevice" to isLowEndDevice(context),
+                "targetResolution" to if (isLowEndDevice(context)) "720p" else "1080p"
+            )
+        )
+        
+        // 等待相机绑定完成
+        delay(300)
+        
+        // 使用多种方式检测前置摄像头
+        hasFrontCamera = try {
+            // 方式1：使用 CameraController 检测
+            val hasCamera = cameraController.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
+            if (hasCamera) {
+                true
+            } else {
+                // 方式2：使用 CameraManager 作为备选
+                val cameraManager = context.getSystemService(android.hardware.camera2.CameraManager::class.java)
+                cameraManager?.cameraIdList?.any { id ->
+                    val characteristics = cameraManager.getCameraCharacteristics(id)
+                    val facing = characteristics.get(android.hardware.camera2.CameraCharacteristics.LENS_FACING)
+                    facing == android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT
+                } ?: false
+            }
+        } catch (e: Exception) {
+            CameraEventTracker.trackError(
+                CameraEventTracker.EventType.CAMERA_INIT_ERROR,
+                e,
+                mapOf("reason" to "检测前置摄像头失败")
+            )
+            // 检测失败时默认显示切换按钮，让用户尝试
+            true
+        }
+        
+        // 记录相机初始化成功
+        CameraEventTracker.trackEvent(
+            CameraEventTracker.EventType.CAMERA_INIT_SUCCESS,
+            mapOf("hasFrontCamera" to hasFrontCamera)
+        )
+        
+        // 如果是低端设备，记录设备信息
+        if (isLowEndDevice(context)) {
+            CameraEventTracker.trackEvent(CameraEventTracker.EventType.LOW_END_DEVICE_DETECTED)
+        }
+    }
 
 
     val locationPermissions = arrayOf(
@@ -277,6 +351,15 @@ private fun CameraContent(
                                     return@ShutterButton
                                 }
                                 
+                                // 记录拍照开始
+                                CameraEventTracker.trackEvent(
+                                    CameraEventTracker.EventType.CAPTURE_START,
+                                    mapOf(
+                                        "isFrontCamera" to isFrontCamera,
+                                        "watermarkSize" to "${view.width}x${view.height}"
+                                    )
+                                )
+                                
                                 isCapturing = true
                                 viewModel.updateTime()
                                 val executor = ContextCompat.getMainExecutor(context)
@@ -286,6 +369,7 @@ private fun CameraContent(
                                     executor = executor,
                                     watermarkView = view,
                                     isFrontCamera = isFrontCamera,
+                                    scope = scope,
                                     onImageCaptured = { file ->
                                         isCapturing = false
                                         onImageCaptured(file)
@@ -299,38 +383,96 @@ private fun CameraContent(
                         enabled = !isCameraSwitching && !isCapturing
                     )
                     
-                    // 切换摄像头按钮
-                    CameraSwitchButton(
-                        onClick = {
-                            // 如果已经在切换中，忽略点击
-                            if (isCameraSwitching) return@CameraSwitchButton
-                            
-                            scope.launch {
-                                try {
-                                    // 标记相机正在切换
-                                    isCameraSwitching = true
-                                    
-                                    val newSelector = if (isFrontCamera) {
-                                        CameraSelector.DEFAULT_BACK_CAMERA
-                                    } else {
-                                        CameraSelector.DEFAULT_FRONT_CAMERA
+                    // 切换摄像头按钮（只在有前置摄像头时显示）
+                    if (hasFrontCamera) {
+                        CameraSwitchButton(
+                            onClick = {
+                                // 如果已经在切换中或正在拍照，忽略点击
+                                if (isCameraSwitching || isCapturing) return@CameraSwitchButton
+                                
+                                // 保存当前状态，用于失败时回滚
+                                val wasUsingFrontCamera = isFrontCamera
+                                
+                                // 记录摄像头切换开始
+                                CameraEventTracker.trackEvent(
+                                    CameraEventTracker.EventType.CAMERA_SWITCH_START,
+                                    mapOf("from" to if (wasUsingFrontCamera) "front" else "back")
+                                )
+                                
+                                scope.launch {
+                                    try {
+                                        // 标记相机正在切换
+                                        isCameraSwitching = true
+                                        
+                                        // 确定目标摄像头
+                                        val newSelector = if (wasUsingFrontCamera) {
+                                            CameraSelector.DEFAULT_BACK_CAMERA
+                                        } else {
+                                            CameraSelector.DEFAULT_FRONT_CAMERA
+                                        }
+                                        
+                                        // 验证目标摄像头可用
+                                        val targetAvailable = try {
+                                            cameraController.hasCamera(newSelector)
+                                        } catch (e: Exception) {
+                                            false
+                                        }
+                                        
+                                        if (!targetAvailable) {
+                                            Toast.makeText(context, "目标摄像头不可用", Toast.LENGTH_SHORT).show()
+                                            CameraEventTracker.trackError(
+                                                CameraEventTracker.EventType.CAMERA_SWITCH_ERROR,
+                                                null,
+                                                mapOf("reason" to "目标摄像头不可用")
+                                            )
+                                            return@launch
+                                        }
+                                        
+                                        // 执行切换
+                                        cameraController.cameraSelector = newSelector
+                                        
+                                        // 切换成功，更新状态
+                                        isFrontCamera = !wasUsingFrontCamera
+                                        
+                                        // 等待相机初始化完成
+                                        delay(500)
+                                        
+                                        // 记录摄像头切换成功
+                                        CameraEventTracker.trackEvent(
+                                            CameraEventTracker.EventType.CAMERA_SWITCH_SUCCESS,
+                                            mapOf("to" to if (isFrontCamera) "front" else "back")
+                                        )
+                                    } catch (e: Exception) {
+                                        // 切换失败，状态保持不变（无需回滚，因为还没更新）
+                                        CameraEventTracker.trackError(
+                                            CameraEventTracker.EventType.CAMERA_SWITCH_ERROR,
+                                            e
+                                        )
+                                        Toast.makeText(context, "切换摄像头失败", Toast.LENGTH_SHORT).show()
+                                    } finally {
+                                        // 无论成功与否，都要重置切换标记
+                                        isCameraSwitching = false
                                     }
-                                    cameraController.cameraSelector = newSelector
-                                    isFrontCamera = !isFrontCamera
-                                    
-                                    // 等待相机初始化完成
-                                    delay(500)
-                                } catch (e: Exception) {
-                                    // 相机不支持切换（例如设备只有一个摄像头，或前置摄像头不支持所需功能）
-                                    Toast.makeText(context, "无法切换摄像头", Toast.LENGTH_SHORT).show()
-                                } finally {
-                                    // 无论成功与否，都要重置标记
-                                    isCameraSwitching = false
                                 }
-                            }
-                        },
-                        enabled = !isCameraSwitching
-                    )
+                            },
+                            enabled = !isCameraSwitching && !isCapturing
+                        )
+                    } else {
+                        // 占位符保持布局对称
+                        Box(modifier = Modifier.size(56.dp))
+                    }
+                }
+                
+                // 拍照中遮罩
+                if (isCapturing) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.5f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Color.White)
+                    }
                 }
             }
         }
@@ -415,6 +557,9 @@ fun CameraPreview(
         factory = { context ->
             PreviewView(context).apply {
                 controller = cameraController
+                // 使用 COMPATIBLE 模式提升老旧设备兼容性
+                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                scaleType = PreviewView.ScaleType.FILL_CENTER
                 cameraController.bindToLifecycle(lifecycleOwner)
             }
         },
@@ -428,65 +573,141 @@ private fun takePhoto(
     executor: Executor,
     watermarkView: View,
     isFrontCamera: Boolean,
+    scope: CoroutineScope,
     onImageCaptured: (File) -> Unit,
     onError: () -> Unit
 ) {
+    // 先在主线程捕获水印视图的 bitmap（View 必须在主线程访问）
+    val watermarkBitmap = viewToBitmap(watermarkView)
+    val density = context.resources.displayMetrics.density
+    val startPx = (13 * density)
+    val bottomPx = (14 * density)
+    val captureStartTime = System.currentTimeMillis()
+    
     cameraController.takePicture(
         executor,
         object : ImageCapture.OnImageCapturedCallback() {
             override fun onCaptureSuccess(image: ImageProxy) {
-                try {
-                    val bitmap = imageProxyToBitmap(image)
-                    val rotationDegrees = image.imageInfo.rotationDegrees.toFloat()
-                    var rotatedBitmap = rotateBitmap(bitmap, rotationDegrees)
-                    
-                    // 如果是前置摄像头，进行水平翻转使照片更自然
-                    if (isFrontCamera) {
-                        val flippedBitmap = flipBitmapHorizontally(rotatedBitmap)
-                        if (rotatedBitmap != flippedBitmap) {
-                            rotatedBitmap.recycle()
-                        }
-                        rotatedBitmap = flippedBitmap
-                    }
-                    
-                    // 回收原始 bitmap
-                    if (bitmap != rotatedBitmap) {
-                        bitmap.recycle()
-                    }
-                    
-                    val watermarkBitmap = viewToBitmap(watermarkView)
-                    val density = context.resources.displayMetrics.density
-                    val startPx = (13 * density)
-                    val bottomPx = (14 * density)
-                    val watermarkedBitmap =
-                        addWatermark(rotatedBitmap, watermarkBitmap, startPx, bottomPx)
-                    
-                    // 回收中间 bitmap
-                    rotatedBitmap.recycle()
-                    watermarkBitmap.recycle()
-
-                    val photoFile = File(
-                        context.cacheDir,
-                        "captured_image_${System.currentTimeMillis()}.jpg"
+                // 记录拍照回调接收
+                val callbackTime = System.currentTimeMillis() - captureStartTime
+                CameraEventTracker.trackEvent(
+                    CameraEventTracker.EventType.CAPTURE_CALLBACK_RECEIVED,
+                    mapOf(
+                        "callbackTimeMs" to callbackTime,
+                        "imageSize" to "${image.width}x${image.height}",
+                        "rotationDegrees" to image.imageInfo.rotationDegrees
                     )
+                )
+                
+                // 在后台线程处理图片，避免阻塞UI
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        // 添加超时保护，避免处理时间过长导致卡死
+                        withTimeout(15_000L) {
+                            // 记录图片解码开始
+                            CameraEventTracker.trackEvent(CameraEventTracker.EventType.IMAGE_DECODE_START)
+                            
+                            val rotationDegrees = image.imageInfo.rotationDegrees.toFloat()
+                            val bitmap = imageProxyToBitmap(image, context)
+                            
+                            // 记录图片解码成功
+                            CameraEventTracker.trackEvent(
+                                CameraEventTracker.EventType.IMAGE_DECODE_SUCCESS,
+                                mapOf("bitmapSize" to "${bitmap.width}x${bitmap.height}")
+                            )
+                            
+                            // 记录图片旋转开始
+                            CameraEventTracker.trackEvent(CameraEventTracker.EventType.IMAGE_ROTATE_START)
+                            var rotatedBitmap = rotateBitmap(bitmap, rotationDegrees)
+                            
+                            // 如果是前置摄像头，进行水平翻转使照片更自然
+                            if (isFrontCamera) {
+                                val flippedBitmap = flipBitmapHorizontally(rotatedBitmap)
+                                if (rotatedBitmap != flippedBitmap) {
+                                    rotatedBitmap.recycle()
+                                }
+                                rotatedBitmap = flippedBitmap
+                            }
+                            
+                            // 回收原始 bitmap
+                            if (bitmap != rotatedBitmap) {
+                                bitmap.recycle()
+                            }
+                            
+                            // 记录添加水印开始
+                            CameraEventTracker.trackEvent(CameraEventTracker.EventType.IMAGE_WATERMARK_START)
+                            val watermarkedBitmap =
+                                addWatermark(rotatedBitmap, watermarkBitmap, startPx, bottomPx)
+                            
+                            // 回收中间 bitmap
+                            rotatedBitmap.recycle()
+                            watermarkBitmap.recycle()
 
-                    FileOutputStream(photoFile).use { out ->
-                        watermarkedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                            // 记录图片保存开始
+                            CameraEventTracker.trackEvent(CameraEventTracker.EventType.IMAGE_SAVE_START)
+                            val photoFile = File(
+                                context.cacheDir,
+                                "captured_image_${System.currentTimeMillis()}.jpg"
+                            )
+
+                            FileOutputStream(photoFile).use { out ->
+                                // 使用 90% 质量，平衡质量和性能
+                                watermarkedBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                            }
+                            
+                            // 回收最终 bitmap
+                            watermarkedBitmap.recycle()
+                            
+                            // 记录拍照成功
+                            val totalTime = System.currentTimeMillis() - captureStartTime
+                            CameraEventTracker.trackEvent(
+                                CameraEventTracker.EventType.CAPTURE_SUCCESS,
+                                mapOf(
+                                    "totalTimeMs" to totalTime,
+                                    "fileSize" to photoFile.length()
+                                )
+                            )
+                            
+                            // 切回主线程回调
+                            withContext(Dispatchers.Main) {
+                                onImageCaptured(photoFile)
+                            }
+                        }
+                    } catch (e: TimeoutCancellationException) {
+                        // 记录超时
+                        CameraEventTracker.trackError(
+                            CameraEventTracker.EventType.CAPTURE_TIMEOUT,
+                            e,
+                            mapOf("elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime))
+                        )
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "拍照处理超时，请重试", Toast.LENGTH_SHORT).show()
+                            onError()
+                        }
+                    } catch (e: Exception) {
+                        // 记录图片处理错误
+                        CameraEventTracker.trackError(
+                            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+                            e,
+                            mapOf("elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime))
+                        )
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "图片处理失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            onError()
+                        }
+                    } finally {
+                        image.close()
                     }
-                    
-                    // 回收最终 bitmap
-                    watermarkedBitmap.recycle()
-                    
-                    onImageCaptured(photoFile)
-                } catch (e: Exception) {
-                    Toast.makeText(context, "图片处理失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                    onError()
-                } finally {
-                    image.close()
                 }
             }
 
             override fun onError(exc: ImageCaptureException) {
+                // 记录拍照失败
+                CameraEventTracker.trackError(
+                    CameraEventTracker.EventType.CAPTURE_ERROR,
+                    exc,
+                    mapOf("elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime))
+                )
                 Toast.makeText(context, "拍照失败: ${exc.message}", Toast.LENGTH_SHORT).show()
                 onError()
             }
@@ -495,12 +716,21 @@ private fun takePhoto(
 }
 
 
-private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
+private fun imageProxyToBitmap(image: ImageProxy, context: Context): Bitmap {
     val planeProxy = image.planes[0]
     val buffer: ByteBuffer = planeProxy.buffer
     val bytes = ByteArray(buffer.remaining())
     buffer.get(bytes)
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    // 仅低端设备使用 RGB_565 减少内存，正常设备保持高质量
+    val options = BitmapFactory.Options().apply {
+        inPreferredConfig = if (isLowEndDevice(context)) {
+            Bitmap.Config.RGB_565  // 低端设备：内存减半
+        } else {
+            Bitmap.Config.ARGB_8888  // 正常设备：保持高质量
+        }
+        inMutable = false
+    }
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
 }
 
 private fun rotateBitmap(bitmap: Bitmap, degrees: Float): Bitmap {
@@ -534,4 +764,14 @@ private fun addWatermark(
     canvas.drawBitmap(bitmap, 0f, 0f, null)
     canvas.drawBitmap(watermark, startPx, (bitmap.height - watermark.height - bottomPx), null)
     return result
+}
+
+/**
+ * 检测是否为低端设备
+ * 低端设备标准：系统标记为低内存设备，或可用堆内存小于 256MB
+ */
+private fun isLowEndDevice(context: Context): Boolean {
+    val activityManager = context.getSystemService<ActivityManager>()
+    return activityManager?.isLowRamDevice == true ||
+           Runtime.getRuntime().maxMemory() < 256 * 1024 * 1024
 }
