@@ -8,13 +8,7 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import com.tencent.bugly.crashreport.CrashReport
-import com.ytone.longcare.common.utils.CrashLogManager
 import dagger.hilt.android.HiltAndroidApp
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Provider
 
@@ -34,14 +28,6 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
             .setWorkerFactory(workerFactory)
             .build()
 
-    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-    // Coroutine Exception Handler
-    private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
-        // Optionally: Restart the app or navigate to an error screen
-        // handleCrash()
-    }
-
     override fun onCreate() {
         super.onCreate()
 
@@ -52,49 +38,8 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
         val userStrategy = CrashReport.UserStrategy(this)
         CrashReport.initCrashReport(this, userStrategy)
 
-        // Setup Global Uncaught Exception Handler
-        setupGlobalExceptionHandler()
-
-        // Example of using the application scope with the handler
-        applicationScope.launch(coroutineExceptionHandler) {
-            // Example coroutine work
-            // For testing: throw RuntimeException("Test coroutine exception from MainApplication")
-        }
-
-    }
-
-    private fun setupGlobalExceptionHandler() {
-        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            // Log to your crash reporting tool here in a real app
-            // FirebaseCrashlytics.getInstance().recordException(throwable)
-
-            // Optional: Custom crash handling logic (e.g., show a crash screen, restart app)
-            handleCrash(throwable)
-
-            // It's important to call the original handler if you want the OS to handle it (e.g., force close)
-            // or if you have other crash reporting SDKs that need to process the exception.
-            defaultHandler?.uncaughtException(thread, throwable)
-            // For a cleaner exit after logging, though defaultHandler might do this.
-            // exitProcess(1)
-        }
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = imageLoaderProvider.get()
-
-    // Example of a custom crash handling function
-    private fun handleCrash(throwable: Throwable) {
-        // 在后台线程中保存崩溃日志
-        applicationScope.launch(Dispatchers.IO) {
-            try {
-                CrashLogManager.saveCrashLog(this@MainApplication, throwable)
-                // 清理旧的崩溃日志文件
-                CrashLogManager.cleanOldCrashLogs(this@MainApplication)
-            } catch (e: Exception) {
-                // 如果保存崩溃日志失败，至少打印到控制台
-                e.printStackTrace()
-            }
-        }
-    }
 }
 

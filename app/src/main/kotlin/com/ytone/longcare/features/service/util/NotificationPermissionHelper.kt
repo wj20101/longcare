@@ -13,6 +13,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
+import androidx.core.net.toUri
 
 /**
  * 通知权限帮助类
@@ -84,7 +85,7 @@ object NotificationPermissionHelper {
             if (!hasExactAlarmPermission(activity)) {
                 try {
                     val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-                    intent.data = Uri.parse("package:${activity.packageName}")
+                    intent.data = "package:${activity.packageName}".toUri()
                     activity.startActivityForResult(intent, REQUEST_CODE_SCHEDULE_EXACT_ALARM)
                 } catch (e: Exception) {
                     logE("请求精确闹钟权限失败: ${e.message}")
@@ -124,7 +125,7 @@ object NotificationPermissionHelper {
     fun openAppSettings(activity: Activity) {
         try {
             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-            intent.data = Uri.parse("package:${activity.packageName}")
+            intent.data = "package:${activity.packageName}".toUri()
             activity.startActivity(intent)
         } catch (e: Exception) {
             logE("打开应用设置失败: ${e.message}")

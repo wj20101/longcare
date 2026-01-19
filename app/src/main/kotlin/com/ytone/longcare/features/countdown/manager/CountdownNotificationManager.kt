@@ -1,7 +1,6 @@
 package com.ytone.longcare.features.countdown.manager
 
 import android.app.AlarmManager
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
