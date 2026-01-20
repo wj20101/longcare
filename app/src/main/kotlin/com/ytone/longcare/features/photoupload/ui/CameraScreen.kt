@@ -76,9 +76,11 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.util.concurrent.Executor
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -414,7 +416,7 @@ private fun CameraContent(
                                         // 验证目标摄像头可用
                                         val targetAvailable = try {
                                             cameraController.hasCamera(newSelector)
-                                        } catch (e: Exception) {
+                                        } catch (_: Exception) {
                                             false
                                         }
                                         
@@ -577,12 +579,55 @@ private fun takePhoto(
     onImageCaptured: (File) -> Unit,
     onError: () -> Unit
 ) {
+    val captureStartTime = System.currentTimeMillis()
+    
+    // 记录水印视图捕获开始
+    CameraEventTracker.trackEvent(
+        CameraEventTracker.EventType.IMAGE_WATERMARK_START,
+        mapOf(
+            "step" to "捕获水印视图",
+            "viewSize" to "${watermarkView.width}x${watermarkView.height}"
+        )
+    )
+    
     // 先在主线程捕获水印视图的 bitmap（View 必须在主线程访问）
-    val watermarkBitmap = viewToBitmap(watermarkView)
+    val watermarkBitmap = try {
+        viewToBitmapSafe(watermarkView)
+    } catch (e: Exception) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+            e,
+            mapOf("reason" to "水印视图捕获失败")
+        )
+        Toast.makeText(context, "水印处理失败，请重试", Toast.LENGTH_SHORT).show()
+        onError()
+        return
+    }
+    
+    if (watermarkBitmap == null) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+            null,
+            mapOf("reason" to "水印Bitmap为null")
+        )
+        Toast.makeText(context, "水印处理失败，请重试", Toast.LENGTH_SHORT).show()
+        onError()
+        return
+    }
+    
+    val watermarkCaptureTime = System.currentTimeMillis() - captureStartTime
+    CameraEventTracker.trackEvent(
+        CameraEventTracker.EventType.IMAGE_WATERMARK_START,
+        mapOf(
+            "step" to "水印视图捕获完成",
+            "watermarkCaptureTimeMs" to watermarkCaptureTime,
+            "watermarkSize" to "${watermarkBitmap.width}x${watermarkBitmap.height}"
+        )
+    )
+    
     val density = context.resources.displayMetrics.density
     val startPx = (13 * density)
     val bottomPx = (14 * density)
-    val captureStartTime = System.currentTimeMillis()
     
     cameraController.takePicture(
         executor,
@@ -601,14 +646,42 @@ private fun takePhoto(
                 
                 // 在后台线程处理图片，避免阻塞UI
                 scope.launch(Dispatchers.IO) {
+                    var bitmap: Bitmap? = null
+                    var rotatedBitmap: Bitmap? = null
+                    var watermarkedBitmap: Bitmap? = null
+                    
                     try {
                         // 添加超时保护，避免处理时间过长导致卡死
                         withTimeout(15_000L) {
                             // 记录图片解码开始
                             CameraEventTracker.trackEvent(CameraEventTracker.EventType.IMAGE_DECODE_START)
                             
+                            // 检查协程是否已取消
+                            ensureActive()
+                            
                             val rotationDegrees = image.imageInfo.rotationDegrees.toFloat()
-                            val bitmap = imageProxyToBitmap(image, context)
+                            
+                            // 使用增强的解码函数，包含详细日志和错误处理
+                            bitmap = imageProxyToBitmapSafe(image, context)
+                            
+                            if (bitmap == null) {
+                                CameraEventTracker.trackError(
+                                    CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+                                    null,
+                                    mapOf(
+                                        "reason" to "图片解码返回null",
+                                        "elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime)
+                                    )
+                                )
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "图片解码失败，请重试", Toast.LENGTH_SHORT).show()
+                                    onError()
+                                }
+                                return@withTimeout
+                            }
+                            
+                            // 检查协程是否已取消
+                            ensureActive()
                             
                             // 记录图片解码成功
                             CameraEventTracker.trackEvent(
@@ -617,34 +690,147 @@ private fun takePhoto(
                             )
                             
                             // 记录图片旋转开始
-                            CameraEventTracker.trackEvent(CameraEventTracker.EventType.IMAGE_ROTATE_START)
-                            var rotatedBitmap = rotateBitmap(bitmap, rotationDegrees)
+                            val rotateStartTime = System.currentTimeMillis()
+                            CameraEventTracker.trackEvent(
+                                CameraEventTracker.EventType.IMAGE_ROTATE_START,
+                                mapOf(
+                                    "rotationDegrees" to rotationDegrees,
+                                    "inputSize" to "${bitmap.width}x${bitmap.height}"
+                                )
+                            )
+                            
+                            rotatedBitmap = rotateBitmapSafe(bitmap, rotationDegrees)
+                            
+                            if (rotatedBitmap == null) {
+                                CameraEventTracker.trackError(
+                                    CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+                                    null,
+                                    mapOf(
+                                        "reason" to "图片旋转失败",
+                                        "elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime)
+                                    )
+                                )
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "图片处理失败，请重试", Toast.LENGTH_SHORT).show()
+                                    onError()
+                                }
+                                return@withTimeout
+                            }
+                            
+                            val rotateTime = System.currentTimeMillis() - rotateStartTime
+                            CameraEventTracker.trackEvent(
+                                CameraEventTracker.EventType.IMAGE_ROTATE_START,
+                                mapOf(
+                                    "step" to "旋转完成",
+                                    "rotateTimeMs" to rotateTime,
+                                    "outputSize" to "${rotatedBitmap.width}x${rotatedBitmap.height}"
+                                )
+                            )
                             
                             // 如果是前置摄像头，进行水平翻转使照片更自然
                             if (isFrontCamera) {
-                                val flippedBitmap = flipBitmapHorizontally(rotatedBitmap)
+                                val flipStartTime = System.currentTimeMillis()
+                                CameraEventTracker.trackEvent(
+                                    CameraEventTracker.EventType.IMAGE_ROTATE_START,
+                                    mapOf("step" to "开始水平翻转(前置摄像头)")
+                                )
+                                
+                                val flippedBitmap = flipBitmapHorizontallySafe(rotatedBitmap)
+                                
+                                if (flippedBitmap == null) {
+                                    CameraEventTracker.trackError(
+                                        CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+                                        null,
+                                        mapOf("reason" to "图片翻转失败")
+                                    )
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "图片处理失败，请重试", Toast.LENGTH_SHORT).show()
+                                        onError()
+                                    }
+                                    return@withTimeout
+                                }
+                                
                                 if (rotatedBitmap != flippedBitmap) {
                                     rotatedBitmap.recycle()
                                 }
                                 rotatedBitmap = flippedBitmap
+                                
+                                val flipTime = System.currentTimeMillis() - flipStartTime
+                                CameraEventTracker.trackEvent(
+                                    CameraEventTracker.EventType.IMAGE_ROTATE_START,
+                                    mapOf(
+                                        "step" to "水平翻转完成",
+                                        "flipTimeMs" to flipTime
+                                    )
+                                )
                             }
                             
                             // 回收原始 bitmap
                             if (bitmap != rotatedBitmap) {
                                 bitmap.recycle()
+                                bitmap = null
                             }
                             
+                            // 检查协程是否已取消
+                            ensureActive()
+                            
                             // 记录添加水印开始
-                            CameraEventTracker.trackEvent(CameraEventTracker.EventType.IMAGE_WATERMARK_START)
-                            val watermarkedBitmap =
-                                addWatermark(rotatedBitmap, watermarkBitmap, startPx, bottomPx)
+                            val watermarkStartTime = System.currentTimeMillis()
+                            CameraEventTracker.trackEvent(
+                                CameraEventTracker.EventType.IMAGE_WATERMARK_START,
+                                mapOf(
+                                    "step" to "开始合成水印",
+                                    "photoSize" to "${rotatedBitmap.width}x${rotatedBitmap.height}",
+                                    "watermarkSize" to "${watermarkBitmap.width}x${watermarkBitmap.height}"
+                                )
+                            )
+                            
+                            watermarkedBitmap = addWatermarkSafe(rotatedBitmap, watermarkBitmap, startPx, bottomPx)
+                            
+                            if (watermarkedBitmap == null) {
+                                CameraEventTracker.trackError(
+                                    CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+                                    null,
+                                    mapOf(
+                                        "reason" to "水印合成失败",
+                                        "elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime)
+                                    )
+                                )
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "水印处理失败，请重试", Toast.LENGTH_SHORT).show()
+                                    onError()
+                                }
+                                return@withTimeout
+                            }
+                            
+                            val watermarkTime = System.currentTimeMillis() - watermarkStartTime
+                            CameraEventTracker.trackEvent(
+                                CameraEventTracker.EventType.IMAGE_WATERMARK_START,
+                                mapOf(
+                                    "step" to "水印合成完成",
+                                    "watermarkTimeMs" to watermarkTime,
+                                    "resultSize" to "${watermarkedBitmap.width}x${watermarkedBitmap.height}"
+                                )
+                            )
                             
                             // 回收中间 bitmap
                             rotatedBitmap.recycle()
+                            rotatedBitmap = null
                             watermarkBitmap.recycle()
 
+                            // 检查协程是否已取消
+                            ensureActive()
+                            
                             // 记录图片保存开始
-                            CameraEventTracker.trackEvent(CameraEventTracker.EventType.IMAGE_SAVE_START)
+                            val saveStartTime = System.currentTimeMillis()
+                            CameraEventTracker.trackEvent(
+                                CameraEventTracker.EventType.IMAGE_SAVE_START,
+                                mapOf(
+                                    "imageSize" to "${watermarkedBitmap.width}x${watermarkedBitmap.height}",
+                                    "byteCount" to watermarkedBitmap.byteCount
+                                )
+                            )
+                            
                             val photoFile = File(
                                 context.cacheDir,
                                 "captured_image_${System.currentTimeMillis()}.jpg"
@@ -652,11 +838,23 @@ private fun takePhoto(
 
                             FileOutputStream(photoFile).use { out ->
                                 // 使用 90% 质量，平衡质量和性能
-                                watermarkedBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                                watermarkedBitmap!!.compress(Bitmap.CompressFormat.JPEG, 90, out)
                             }
+                            
+                            val saveTime = System.currentTimeMillis() - saveStartTime
+                            CameraEventTracker.trackEvent(
+                                CameraEventTracker.EventType.IMAGE_SAVE_START,
+                                mapOf(
+                                    "step" to "保存完成",
+                                    "saveTimeMs" to saveTime,
+                                    "fileSizeBytes" to photoFile.length(),
+                                    "filePath" to photoFile.name
+                                )
+                            )
                             
                             // 回收最终 bitmap
                             watermarkedBitmap.recycle()
+                            watermarkedBitmap = null
                             
                             // 记录拍照成功
                             val totalTime = System.currentTimeMillis() - captureStartTime
@@ -673,6 +871,21 @@ private fun takePhoto(
                                 onImageCaptured(photoFile)
                             }
                         }
+                    } catch (e: CancellationException) {
+                        // 协程被取消（例如用户按返回键）
+                        CameraEventTracker.trackError(
+                            CameraEventTracker.EventType.CAPTURE_ERROR,
+                            e,
+                            mapOf(
+                                "reason" to "协程被取消",
+                                "elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime)
+                            )
+                        )
+                        // 不显示 Toast，因为用户主动取消
+                        withContext(Dispatchers.Main) {
+                            onError()
+                        }
+                        throw e  // 重新抛出让协程正常取消
                     } catch (e: TimeoutCancellationException) {
                         // 记录超时
                         CameraEventTracker.trackError(
@@ -696,7 +909,24 @@ private fun takePhoto(
                             onError()
                         }
                     } finally {
-                        image.close()
+                        // 确保所有 bitmap 都被回收
+                        try {
+                            bitmap?.recycle()
+                            rotatedBitmap?.recycle()
+                            watermarkedBitmap?.recycle()
+                        } catch (_: Exception) {
+                            // 忽略回收错误
+                        }
+                        // 确保 ImageProxy 总是被关闭
+                        try {
+                            image.close()
+                        } catch (e: Exception) {
+                            CameraEventTracker.trackError(
+                                CameraEventTracker.EventType.CAPTURE_ERROR,
+                                e,
+                                mapOf("reason" to "ImageProxy关闭失败")
+                            )
+                        }
                     }
                 }
             }
@@ -716,54 +946,262 @@ private fun takePhoto(
 }
 
 
-private fun imageProxyToBitmap(image: ImageProxy, context: Context): Bitmap {
-    val planeProxy = image.planes[0]
-    val buffer: ByteBuffer = planeProxy.buffer
-    val bytes = ByteArray(buffer.remaining())
-    buffer.get(bytes)
-    // 仅低端设备使用 RGB_565 减少内存，正常设备保持高质量
-    val options = BitmapFactory.Options().apply {
-        inPreferredConfig = if (isLowEndDevice(context)) {
-            Bitmap.Config.RGB_565  // 低端设备：内存减半
-        } else {
-            Bitmap.Config.ARGB_8888  // 正常设备：保持高质量
+/**
+ * 安全的图片解码函数，包含详细日志和异常处理
+ * @return 解码后的 Bitmap，如果解码失败返回 null
+ */
+private fun imageProxyToBitmapSafe(image: ImageProxy, context: Context): Bitmap? {
+    return try {
+        val decodeStartTime = System.currentTimeMillis()
+        
+        // 记录开始读取图片数据
+        CameraEventTracker.trackEvent(
+            CameraEventTracker.EventType.IMAGE_DECODE_START,
+            mapOf("step" to "读取ImageProxy数据")
+        )
+        
+        val planeProxy = image.planes[0]
+        val buffer: ByteBuffer = planeProxy.buffer
+        val bytes = ByteArray(buffer.remaining())
+        buffer.get(bytes)
+        
+        val bufferReadTime = System.currentTimeMillis() - decodeStartTime
+        CameraEventTracker.trackEvent(
+            CameraEventTracker.EventType.IMAGE_DECODE_START,
+            mapOf(
+                "step" to "Buffer读取完成",
+                "bufferReadTimeMs" to bufferReadTime,
+                "bytesSize" to bytes.size
+            )
+        )
+        
+        // 检查数据有效性
+        if (bytes.isEmpty()) {
+            CameraEventTracker.trackError(
+                CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+                null,
+                mapOf("reason" to "图片数据为空")
+            )
+            return null
         }
-        inMutable = false
+        
+        // 仅低端设备使用 RGB_565 减少内存，正常设备保持高质量
+        val isLowEnd = isLowEndDevice(context)
+        val options = BitmapFactory.Options().apply {
+            inPreferredConfig = if (isLowEnd) {
+                Bitmap.Config.RGB_565  // 低端设备：内存减半
+            } else {
+                Bitmap.Config.ARGB_8888  // 正常设备：保持高质量
+            }
+            inMutable = false
+            // 对于某些设备，尝试使用 inSampleSize 降低内存压力
+            if (isLowEnd && bytes.size > 5 * 1024 * 1024) {
+                inSampleSize = 2  // 如果图片大于5MB且是低端设备，缩小一半
+            }
+        }
+        
+        CameraEventTracker.trackEvent(
+            CameraEventTracker.EventType.IMAGE_DECODE_START,
+            mapOf(
+                "step" to "开始BitmapFactory.decodeByteArray",
+                "isLowEnd" to isLowEnd,
+                "config" to options.inPreferredConfig.toString(),
+                "inSampleSize" to options.inSampleSize
+            )
+        )
+        
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+        
+        val totalDecodeTime = System.currentTimeMillis() - decodeStartTime
+        
+        if (bitmap == null) {
+            CameraEventTracker.trackError(
+                CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+                null,
+                mapOf(
+                    "reason" to "BitmapFactory.decodeByteArray返回null",
+                    "bytesSize" to bytes.size,
+                    "decodeTimeMs" to totalDecodeTime
+                )
+            )
+            return null
+        }
+        
+        CameraEventTracker.trackEvent(
+            CameraEventTracker.EventType.IMAGE_DECODE_START,
+            mapOf(
+                "step" to "解码完成",
+                "totalDecodeTimeMs" to totalDecodeTime,
+                "bitmapWidth" to bitmap.width,
+                "bitmapHeight" to bitmap.height,
+                "bitmapByteCount" to bitmap.byteCount
+            )
+        )
+        
+        bitmap
+    } catch (e: OutOfMemoryError) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+            RuntimeException("OOM during image decode: ${e.message}", e),
+            mapOf(
+                "reason" to "内存不足",
+                "maxMemory" to "${Runtime.getRuntime().maxMemory() / 1024 / 1024}MB",
+                "freeMemory" to "${Runtime.getRuntime().freeMemory() / 1024 / 1024}MB"
+            )
+        )
+        // 尝试触发 GC 后重试
+        System.gc()
+        null
+    } catch (e: Exception) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+            e,
+            mapOf("reason" to "图片解码异常: ${e.javaClass.simpleName}")
+        )
+        null
     }
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
 }
 
-private fun rotateBitmap(bitmap: Bitmap, degrees: Float): Bitmap {
+/**
+ * 安全的图片旋转函数，包含异常处理
+ * @return 旋转后的 Bitmap，如果失败返回 null
+ */
+private fun rotateBitmapSafe(bitmap: Bitmap, degrees: Float): Bitmap? {
     if (degrees == 0f) return bitmap
-    val matrix = Matrix()
-    matrix.postRotate(degrees)
-    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    return try {
+        val matrix = Matrix()
+        matrix.postRotate(degrees)
+        Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    } catch (e: OutOfMemoryError) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+            RuntimeException("OOM during rotate: ${e.message}", e),
+            mapOf(
+                "reason" to "旋转时内存不足",
+                "bitmapSize" to "${bitmap.width}x${bitmap.height}",
+                "degrees" to degrees
+            )
+        )
+        System.gc()
+        null
+    } catch (e: Exception) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+            e,
+            mapOf("reason" to "图片旋转异常: ${e.javaClass.simpleName}")
+        )
+        null
+    }
 }
 
-private fun flipBitmapHorizontally(bitmap: Bitmap): Bitmap {
-    val matrix = Matrix()
-    matrix.preScale(-1f, 1f)
-    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+/**
+ * 安全的图片水平翻转函数，包含异常处理
+ * @return 翻转后的 Bitmap，如果失败返回 null
+ */
+private fun flipBitmapHorizontallySafe(bitmap: Bitmap): Bitmap? {
+    return try {
+        val matrix = Matrix()
+        matrix.preScale(-1f, 1f)
+        Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    } catch (e: OutOfMemoryError) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+            RuntimeException("OOM during flip: ${e.message}", e),
+            mapOf(
+                "reason" to "翻转时内存不足",
+                "bitmapSize" to "${bitmap.width}x${bitmap.height}"
+            )
+        )
+        System.gc()
+        null
+    } catch (e: Exception) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+            e,
+            mapOf("reason" to "图片翻转异常: ${e.javaClass.simpleName}")
+        )
+        null
+    }
 }
 
-private fun viewToBitmap(view: View): Bitmap {
-    val bitmap = createBitmap(view.width, view.height)
-    val canvas = Canvas(bitmap)
-    view.draw(canvas)
-    return bitmap
+/**
+ * 安全的视图转Bitmap函数，包含异常处理
+ * @return 视图的 Bitmap，如果失败返回 null
+ */
+private fun viewToBitmapSafe(view: View): Bitmap? {
+    return try {
+        if (view.width <= 0 || view.height <= 0) {
+            CameraEventTracker.trackError(
+                CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+                null,
+                mapOf(
+                    "reason" to "视图尺寸无效",
+                    "viewSize" to "${view.width}x${view.height}"
+                )
+            )
+            return null
+        }
+        val bitmap = createBitmap(view.width, view.height)
+        val canvas = Canvas(bitmap)
+        view.draw(canvas)
+        bitmap
+    } catch (e: OutOfMemoryError) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+            RuntimeException("OOM during viewToBitmap: ${e.message}", e),
+            mapOf(
+                "reason" to "视图转Bitmap时内存不足",
+                "viewSize" to "${view.width}x${view.height}"
+            )
+        )
+        System.gc()
+        null
+    } catch (e: Exception) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+            e,
+            mapOf("reason" to "视图转Bitmap异常: ${e.javaClass.simpleName}")
+        )
+        null
+    }
 }
 
-private fun addWatermark(
+/**
+ * 安全的添加水印函数，包含异常处理
+ * @return 添加水印后的 Bitmap，如果失败返回 null
+ */
+private fun addWatermarkSafe(
     bitmap: Bitmap,
     watermark: Bitmap,
     startPx: Float,
     bottomPx: Float
-): Bitmap {
-    val result = createBitmap(bitmap.width, bitmap.height)
-    val canvas = Canvas(result)
-    canvas.drawBitmap(bitmap, 0f, 0f, null)
-    canvas.drawBitmap(watermark, startPx, (bitmap.height - watermark.height - bottomPx), null)
-    return result
+): Bitmap? {
+    return try {
+        val result = createBitmap(bitmap.width, bitmap.height)
+        val canvas = Canvas(result)
+        canvas.drawBitmap(bitmap, 0f, 0f, null)
+        canvas.drawBitmap(watermark, startPx, (bitmap.height - watermark.height - bottomPx), null)
+        result
+    } catch (e: OutOfMemoryError) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+            RuntimeException("OOM during addWatermark: ${e.message}", e),
+            mapOf(
+                "reason" to "添加水印时内存不足",
+                "bitmapSize" to "${bitmap.width}x${bitmap.height}",
+                "watermarkSize" to "${watermark.width}x${watermark.height}"
+            )
+        )
+        System.gc()
+        null
+    } catch (e: Exception) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+            e,
+            mapOf("reason" to "添加水印异常: ${e.javaClass.simpleName}")
+        )
+        null
+    }
 }
 
 /**
