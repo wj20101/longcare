@@ -341,21 +341,27 @@ fun ServiceSelectionItem(item: ServiceItem, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // name文本，最多2行显示，使用weight确保不会挤掉右侧内容
             Text(
                 text = item.name,
                 fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.onSurface,
+                lineHeight = 22.sp,
+                modifier = Modifier.weight(1f)
             )
             Spacer(modifier = Modifier.width(8.dp))
+            // duration文本
             Text(
                 text = "${item.duration}分钟",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.width(8.dp))
             // 自定义勾选图标
             Icon(
                 imageVector = if (item.isSelected) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
