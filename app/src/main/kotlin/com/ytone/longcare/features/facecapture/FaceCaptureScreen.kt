@@ -1,8 +1,12 @@
 package com.ytone.longcare.features.facecapture
 
+import android.content.Context
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -43,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.content.getSystemService
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
@@ -99,8 +104,13 @@ fun FaceCaptureScreen(
     }
 
     if (hasCamPermission) {
+        // 检查前置摄像头是否可用，不可用则回退到后置摄像头
+        val availableCameraSelector = remember {
+            getAvailableCameraSelector(context)
+        }
+        
         // 创建相机控制器
-        val cameraController = remember {
+        val cameraController = remember(availableCameraSelector) {
             LifecycleCameraController(context).apply {
                 val analyzer = FaceCaptureAnalyzer(
                     onFaceCaptured = { bitmap, quality -> 
@@ -125,7 +135,7 @@ fun FaceCaptureScreen(
                 
                 // 优化设置
                 imageAnalysisBackpressureStrategy = ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
-                cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+                cameraSelector = availableCameraSelector
                 setEnabledUseCases(
                     CameraController.IMAGE_ANALYSIS or CameraController.IMAGE_CAPTURE
                 )
@@ -587,5 +597,39 @@ private fun ImagePreviewDialog(
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             )
         }
+    }
+}
+
+/**
+ * 获取可用的相机选择器
+ * 优先使用前置摄像头，如果不可用则回退到后置摄像头
+ * 
+ * @param context 上下文
+ * @return 可用的 CameraSelector
+ */
+private fun getAvailableCameraSelector(context: Context): CameraSelector {
+    return try {
+        val cameraManager = context.getSystemService<CameraManager>()
+            ?: return CameraSelector.DEFAULT_FRONT_CAMERA
+        val cameraIds = cameraManager.cameraIdList
+        
+        // 检查是否有前置摄像头
+        val hasFrontCamera = cameraIds.any { id ->
+            val characteristics = cameraManager.getCameraCharacteristics(id)
+            val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
+            facing == CameraCharacteristics.LENS_FACING_FRONT
+        }
+        
+        if (hasFrontCamera) {
+            CameraSelector.DEFAULT_FRONT_CAMERA
+        } else {
+            // 没有前置摄像头，使用后置摄像头
+            Log.w("FaceCaptureScreen", "前置摄像头不可用，回退到后置摄像头")
+            CameraSelector.DEFAULT_BACK_CAMERA
+        }
+    } catch (e: Exception) {
+        Log.e("FaceCaptureScreen", "检测相机失败: ${e.message}", e)
+        // 发生错误时默认尝试前置摄像头
+        CameraSelector.DEFAULT_FRONT_CAMERA
     }
 }
