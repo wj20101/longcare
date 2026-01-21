@@ -343,44 +343,85 @@ private fun CameraContent(
                     // 拍照按钮
                     ShutterButton(
                         onClick = {
-                            // 如果相机正在切换中或正在拍照中，不允许拍照
-                            if (isCameraSwitching || isCapturing) return@ShutterButton
+                            // 记录拍照按钮点击
+                            CameraEventTracker.trackEvent(
+                                CameraEventTracker.EventType.CAPTURE_START,
+                                mapOf(
+                                    "step" to "拍照按钮点击",
+                                    "isCameraSwitching" to isCameraSwitching,
+                                    "isCapturing" to isCapturing,
+                                    "watermarkViewNull" to (watermarkView == null),
+                                    "isFrontCamera" to isFrontCamera
+                                )
+                            )
                             
-                            watermarkView?.let { view ->
-                                // 检查 watermark view 是否已经正确渲染
-                                if (view.width <= 0 || view.height <= 0) {
-                                    Toast.makeText(context, "请稍候，正在准备中...", Toast.LENGTH_SHORT).show()
-                                    return@ShutterButton
-                                }
-                                
-                                // 记录拍照开始
+                            // 如果相机正在切换中或正在拍照中，不允许拍照
+                            if (isCameraSwitching || isCapturing) {
                                 CameraEventTracker.trackEvent(
                                     CameraEventTracker.EventType.CAPTURE_START,
                                     mapOf(
-                                        "isFrontCamera" to isFrontCamera,
-                                        "watermarkSize" to "${view.width}x${view.height}"
+                                        "step" to "拍照被阻止",
+                                        "reason" to if (isCameraSwitching) "相机切换中" else "正在拍照中"
                                     )
                                 )
-                                
-                                isCapturing = true
-                                viewModel.updateTime()
-                                val executor = ContextCompat.getMainExecutor(context)
-                                takePhoto(
-                                    context = context,
-                                    cameraController = cameraController,
-                                    executor = executor,
-                                    watermarkView = view,
-                                    isFrontCamera = isFrontCamera,
-                                    scope = scope,
-                                    onImageCaptured = { file ->
-                                        isCapturing = false
-                                        onImageCaptured(file)
-                                    },
-                                    onError = {
-                                        isCapturing = false
-                                    }
-                                )
+                                return@ShutterButton
                             }
+                            
+                            if (watermarkView == null) {
+                                CameraEventTracker.trackError(
+                                    CameraEventTracker.EventType.CAPTURE_ERROR,
+                                    null,
+                                    mapOf("reason" to "watermarkView为null")
+                                )
+                                Toast.makeText(context, "请稍候，正在准备中...", Toast.LENGTH_SHORT).show()
+                                return@ShutterButton
+                            }
+                            
+                            val view = watermarkView ?: return@ShutterButton
+                            
+                            // 检查 watermark view 是否已经正确渲染
+                            if (view.width <= 0 || view.height <= 0) {
+                                CameraEventTracker.trackError(
+                                    CameraEventTracker.EventType.CAPTURE_ERROR,
+                                    null,
+                                    mapOf(
+                                        "reason" to "watermarkView尺寸无效",
+                                        "viewWidth" to view.width,
+                                        "viewHeight" to view.height
+                                    )
+                                )
+                                Toast.makeText(context, "请稍候，正在准备中...", Toast.LENGTH_SHORT).show()
+                                return@ShutterButton
+                            }
+                            
+                            // 记录开始执行拍照
+                            CameraEventTracker.trackEvent(
+                                CameraEventTracker.EventType.CAPTURE_START,
+                                mapOf(
+                                    "step" to "开始执行拍照",
+                                    "isFrontCamera" to isFrontCamera,
+                                    "watermarkSize" to "${view.width}x${view.height}"
+                                )
+                            )
+                            
+                            isCapturing = true
+                            viewModel.updateTime()
+                            val executor = ContextCompat.getMainExecutor(context)
+                            takePhoto(
+                                context = context,
+                                cameraController = cameraController,
+                                executor = executor,
+                                watermarkView = view,
+                                isFrontCamera = isFrontCamera,
+                                scope = scope,
+                                onImageCaptured = { file ->
+                                    isCapturing = false
+                                    onImageCaptured(file)
+                                },
+                                onError = {
+                                    isCapturing = false
+                                }
+                            )
                         },
                         enabled = !isCameraSwitching && !isCapturing
                     )
@@ -838,7 +879,8 @@ private fun takePhoto(
 
                             FileOutputStream(photoFile).use { out ->
                                 // 使用 90% 质量，平衡质量和性能
-                                watermarkedBitmap!!.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                                val finalBitmap = watermarkedBitmap ?: return@use
+                                finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
                             }
                             
                             val saveTime = System.currentTimeMillis() - saveStartTime
