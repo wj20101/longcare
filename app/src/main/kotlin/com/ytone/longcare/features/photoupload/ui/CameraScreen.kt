@@ -387,12 +387,7 @@ private fun CameraContent(
                     DelayTimerButton(
                         currentMode = delayMode,
                         onClick = {
-                            delayMode = when (delayMode) {
-                                DelayMode.OFF -> DelayMode.SECONDS_3
-                                DelayMode.SECONDS_3 -> DelayMode.SECONDS_5
-                                DelayMode.SECONDS_5 -> DelayMode.SECONDS_10
-                                DelayMode.SECONDS_10 -> DelayMode.OFF
-                            }
+                            delayMode = delayMode.next()
                         },
                         enabled = !isCapturing && !isCountingDown
                     )
@@ -566,7 +561,12 @@ enum class DelayMode(val seconds: Int, val label: String) {
     OFF(0, "关闭"),
     SECONDS_3(3, "3秒"),
     SECONDS_5(5, "5秒"),
-    SECONDS_10(10, "10秒")
+    SECONDS_10(10, "10秒");
+
+    fun next(): DelayMode {
+        val values = entries.toTypedArray()
+        return values[(ordinal + 1) % values.size]
+    }
 }
 
 @Composable
