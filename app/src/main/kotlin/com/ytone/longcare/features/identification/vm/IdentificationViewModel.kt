@@ -798,42 +798,41 @@ class IdentificationViewModel @Inject constructor(
             ds.edit { prefs ->
                 prefs[key] = base64
             }
-
             Log.d("IdentificationVM", "成功写入人脸缓存 (userId=$userId, 长度=${base64.length})")
-
-            // 验证写入是否成功
-            val verifyRead = ds.data.first()[key]
-            if (verifyRead != null) {
-                Log.d(
-                    "IdentificationVM",
-                    "验证写入成功 (userId=$userId, 读取长度=${verifyRead.length})"
-                )
-            } else {
-                Log.e("IdentificationVM", "验证写入失败: 写入后立即读取为空 (userId=$userId)")
-            }
         } catch (e: Exception) {
             Log.e("IdentificationVM", "写入人脸缓存异常 (userId=$userId)", e)
         }
     }
-    
+
     /**
-     * 下载图片并转换为 Base64
+     * 下载图片并转换为Base64
      */
-    private suspend fun downloadAndConvertToBase64(imageUrl: String): String {
+    private suspend fun downloadAndConvertToBase64(url: String): String {
         return withContext(Dispatchers.IO) {
             try {
-                val url = URL(imageUrl)
-                val connection = url.openConnection()
-                connection.doInput = true
-                connection.connect()
-                val inputStream = connection.getInputStream()
-                val bytes = inputStream.readBytes()
-                inputStream.close()
+                val bytes = URL(url).readBytes()
                 Base64.encodeToString(bytes, Base64.NO_WRAP)
             } catch (e: Exception) {
-                throw Exception("下载图片失败: ${e.message}")
+                Log.e("IdentificationVM", "下载图片失败: $url", e)
+                throw e
             }
         }
+    }
+
+    /**
+     * 模拟服务人员验证通过 (Mock模式)
+     */
+    fun mockVerifyServicePerson() {
+        setServicePersonVerified()
+        toastHelper.showShort("Mock: 服务人员验证通过")
+    }
+
+    /**
+     * 模拟老人验证通过 (Mock模式)
+     */
+    fun mockVerifyElder() {
+        setElderVerified()
+        toastHelper.showShort("Mock: 老人验证通过")
     }
     
     /**

@@ -247,6 +247,19 @@ data class CameraRoute(val watermarkData: WatermarkData)
 /**
  * 手动人脸捕获页面路由
  */
-@Keep
 @Serializable
 object ManualFaceCaptureRoute
+
+/**
+ * 结束服务选择页面路由
+ * @param orderInfoRequest 订单信息请求模型
+ * @param projectIdList 初始选中的项目ID列表
+ * @param endType 结束类型
+ */
+@Keep
+@Serializable
+data class EndServiceSelectionRoute(
+    val orderInfoRequest: OrderInfoRequestModel,
+    val projectIdList: List<Int>,
+    val endType: Int
+)

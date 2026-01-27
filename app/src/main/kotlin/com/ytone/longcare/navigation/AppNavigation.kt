@@ -140,6 +140,20 @@ fun NavController.navigateToServiceCountdown(
 }
 
 /**
+ * 导航到结束服务选择页面
+ * @param orderInfoRequest 订单信息请求模型
+ * @param projectIdList 初始选中的项目ID列表
+ * @param endType 结束类型
+ */
+fun NavController.navigateToEndServiceSelection(
+    orderInfoRequest: OrderInfoRequestModel,
+    projectIdList: List<Int>,
+    endType: Int
+) {
+    navigate(EndServiceSelectionRoute(orderInfoRequest, projectIdList, endType))
+}
+
+/**
  * 导航到服务完成页面
  * @param orderInfoRequest 订单信息请求模型
  * @param serviceCompleteData 服务完成数据
@@ -525,12 +539,25 @@ fun AppNavigation(startDestination: Any) {
             )
         }
         
+
         composable<WebViewRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<WebViewRoute>()
             com.ytone.longcare.features.webview.ui.WebViewScreen(
                 navController = navController,
                 url = route.url,
                 title = route.title
+            )
+        }
+        
+        composable<EndServiceSelectionRoute>(
+            typeMap = mapOf(typeOf<OrderInfoRequestModel>() to OrderInfoRequestModelNavType)
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<EndServiceSelectionRoute>()
+            com.ytone.longcare.features.endservice.ui.EndServiceSelectionScreen(
+                navController = navController,
+                orderInfoRequest = route.orderInfoRequest,
+                initialProjectIdList = route.projectIdList,
+                endType = route.endType
             )
         }
     }

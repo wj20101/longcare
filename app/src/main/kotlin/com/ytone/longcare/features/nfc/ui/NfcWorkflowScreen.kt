@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.ytone.longcare.BuildConfig
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.NfcManager
@@ -338,6 +339,25 @@ fun NfcWorkflowScreen(
                 SignInContentCard(signInState = signInState)
 
                 Spacer(modifier = Modifier.height(24.dp))
+
+                // Mock Scan Button
+                if (BuildConfig.USE_MOCK_DATA) {
+                    Button(
+                        onClick = {
+                            nfcViewModel.mockNfcScan(
+                                orderInfoRequest = orderInfoRequest,
+                                signInMode = signInMode,
+                                endOderInfo = endOderInfo,
+                                sharedOrderDetailViewModel = sharedOrderDetailViewModel
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Magenta),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Mock NFC Scan (Debug Only)")
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
             }
         }
 

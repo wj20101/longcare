@@ -29,6 +29,7 @@ import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.R
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.common.utils.LockScreenOrientation
@@ -279,6 +280,26 @@ fun IdentificationScreen(
                     photoUploadState = photoUploadState
                 )
 
+                // Mock Buttons (Debug Only)
+                if (BuildConfig.USE_MOCK_DATA) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { identificationViewModel.mockVerifyServicePerson() },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Magenta),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Mock: 服务人员验证通过")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { identificationViewModel.mockVerifyElder() },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Magenta),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Mock: 老人验证通过")
+                    }
+                }
+                
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }

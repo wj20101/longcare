@@ -436,6 +436,52 @@ class NfcWorkflowViewModel @Inject constructor(
         // 清空待处理数据，这将自动隐藏对话框
         _pendingNfcData.value = null
     }
+
+    /**
+     * 模拟NFC扫描 (Mock模式)
+     */
+    fun mockNfcScan(
+        orderInfoRequest: OrderInfoRequestModel,
+        signInMode: SignInMode,
+        endOderInfo: EndOderInfo?,
+        sharedOrderDetailViewModel: SharedOrderDetailViewModel
+    ) {
+        val mockTagId = "MOCK_TAG_ID_123456"
+        val mockLongitude = "121.4737" // 上海坐标
+        val mockLatitude = "31.2304"
+
+        viewModelScope.launch {
+            when (signInMode) {
+                SignInMode.START_ORDER -> {
+                    checkUserLocationAndProceed(
+                        orderInfoRequest = orderInfoRequest,
+                        signInMode = signInMode,
+                        endOderInfo = endOderInfo,
+                        tagId = mockTagId,
+                        longitude = mockLongitude,
+                        latitude = mockLatitude,
+                        sharedOrderDetailViewModel = sharedOrderDetailViewModel
+                    )
+                }
+
+                SignInMode.END_ORDER -> {
+                    endOderInfo?.let {
+                        endOrder(
+                            orderInfoRequest = orderInfoRequest,
+                            nfcDeviceId = mockTagId,
+                            porjectIdList = it.projectIdList,
+                            beginImgList = it.beginImgList,
+                            centerImgList = it.centerImgList,
+                            endImageList = it.endImgList,
+                            longitude = mockLongitude,
+                            latitude = mockLatitude,
+                            endType = it.endType
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 /**
