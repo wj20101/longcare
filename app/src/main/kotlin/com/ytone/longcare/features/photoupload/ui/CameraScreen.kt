@@ -758,7 +758,14 @@ private fun takePhoto(
     val startPx = (13 * density)
     val bottomPx = (14 * density)
     
-    cameraController.takePicture(
+    // 记录调用 takePicture 前的状态
+    CameraEventTracker.trackEvent(
+        CameraEventTracker.EventType.CAPTURE_START,
+        mapOf("step" to "调用takePicture")
+    )
+    
+    try {
+        cameraController.takePicture(
         executor,
         object : ImageCapture.OnImageCapturedCallback() {
             override fun onCaptureSuccess(image: ImageProxy) {
@@ -768,7 +775,8 @@ private fun takePhoto(
                     mapOf(
                         "callbackTimeMs" to callbackTime,
                         "imageSize" to "${image.width}x${image.height}",
-                        "rotationDegrees" to image.imageInfo.rotationDegrees
+                        "rotationDegrees" to image.imageInfo.rotationDegrees,
+                        "format" to image.format
                     )
                 )
                 
@@ -1033,13 +1041,28 @@ private fun takePhoto(
                 CameraEventTracker.trackError(
                     CameraEventTracker.EventType.CAPTURE_ERROR,
                     exc,
-                    mapOf("elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime))
+                    mapOf(
+                        "elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime),
+                        "errorCode" to exc.imageCaptureError
+                    )
                 )
                 Toast.makeText(context, "拍照失败: ${exc.message}", Toast.LENGTH_SHORT).show()
                 onError()
             }
         }
     )
+    } catch (e: Exception) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.CAPTURE_ERROR,
+            e,
+            mapOf(
+                "step" to "调用takePicture异常",
+                "elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime)
+            )
+        )
+        Toast.makeText(context, "调用相机失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        onError()
+    }
 }
 
 private fun imageProxyToBitmapSafe(image: ImageProxy, context: Context): Bitmap? {
