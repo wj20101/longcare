@@ -31,12 +31,6 @@
         "lastServiceTime": "2025-05-18 14:00:00"
       },
       {
-        "projectId": 2,
-        "projectName": "清洁服务 (Mock)",
-        "serviceTime": 1,
-        "lastServiceTime": "2025-05-18 14:00:00"
-      },
-      {
         "projectId": 3,
         "projectName": "清洁服务 (Mock)",
         "serviceTime": 1,

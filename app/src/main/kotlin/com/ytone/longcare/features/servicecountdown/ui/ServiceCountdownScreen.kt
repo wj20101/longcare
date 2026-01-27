@@ -47,6 +47,7 @@ import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
+import com.ytone.longcare.navigation.navigateToEndServiceSelection
 import com.ytone.longcare.navigation.navigateToPhotoUpload
 import com.ytone.longcare.navigation.navigateToHomeAndClearStack
 import com.ytone.longcare.theme.bgGradientBrush
@@ -55,6 +56,7 @@ import com.ytone.longcare.ui.screen.TagCategory
 import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import androidx.core.net.toUri
+import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.api.response.ServiceOrderStateModel
 import com.ytone.longcare.common.utils.HomeBackHandler
 import com.ytone.longcare.di.ServiceCountdownEntryPoint
@@ -294,25 +296,11 @@ fun ServiceCountdownScreen(
         // 5. 调用ViewModel结束服务
         countdownViewModel.endService(orderInfoRequest, context)
 
-        // 6. 获取上传的图片列表
-        val uploadedImages = countdownViewModel.getCurrentUploadedImages()
-        val beginImgList =
-            uploadedImages[ImageTaskType.BEFORE_CARE]?.mapNotNull { it.key } ?: emptyList()
-        val centerImgList =
-            uploadedImages[ImageTaskType.CENTER_CARE]?.mapNotNull { it.key } ?: emptyList()
-        val endImgList =
-            uploadedImages[ImageTaskType.AFTER_CARE]?.mapNotNull { it.key } ?: emptyList()
-
-        // 7. 导航到NFC签到页面
-        navController.navigateToNfcSignInForEndOrder(
+        // 6. 导航到结束服务选择页面
+        navController.navigateToEndServiceSelection(
             orderInfoRequest = orderInfoRequest,
-            params = EndOderInfo(
-                projectIdList = projectIdList,
-                beginImgList = beginImgList,
-                centerImgList = centerImgList,
-                endImgList = endImgList,
-                endType = endType
-            ),
+            projectIdList = projectIdList,
+            endType = endType
         )
     }
 
@@ -536,8 +524,8 @@ fun ServiceCountdownScreen(
             ) {
                 Button(
                     onClick = {
-                        // 验证照片是否已上传
-                        if (!countdownViewModel.validatePhotosUploaded()) {
+                        // 验证照片是否已上传 (Mock模式下跳过验证)
+                        if (!BuildConfig.USE_MOCK_DATA && !countdownViewModel.validatePhotosUploaded()) {
                             countdownViewModel.showToast("请上传照片")
                             return@Button
                         }
