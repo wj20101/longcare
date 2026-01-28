@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -45,7 +44,6 @@ import com.ytone.longcare.common.utils.DisplayDate
 import com.ytone.longcare.common.utils.TimeUtils
 import com.ytone.longcare.features.nursing.vm.NursingViewModel
 import com.ytone.longcare.model.handleOrderNavigation
-import com.ytone.longcare.model.isPendingCareState
 import com.ytone.longcare.model.isServiceRecordState
 import com.ytone.longcare.model.toStateDisplayText
 import com.ytone.longcare.navigation.navigateToNursingExecution
