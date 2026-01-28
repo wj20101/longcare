@@ -259,14 +259,17 @@ fun ServiceRecordItem(project: ServiceProjectM, orderInfo: ServiceOrderInfoModel
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Row {
+            // 使用 FlowRow 让内容在大字体时自动换行
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
                     text = project.projectName,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = stringResource(id = R.string.service_order_work_hours, project.serviceTime), color = Color.Gray, fontSize = 14.sp
                 )

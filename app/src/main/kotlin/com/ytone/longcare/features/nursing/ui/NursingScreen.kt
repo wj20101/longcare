@@ -295,13 +295,16 @@ fun OrderListItem(modifier: Modifier = Modifier, item: ServiceOrderModel) {
     ) {
 
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // 使用 FlowRow 让内容在大字体时自动换行
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
                     text = item.name,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = stringResource(id = R.string.service_order_work_hours, item.planTotalTime),
                     color = Color.Gray,
