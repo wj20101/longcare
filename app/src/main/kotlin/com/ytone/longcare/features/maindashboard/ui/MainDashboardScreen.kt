@@ -421,13 +421,16 @@ fun InOrderServiceItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // 使用 FlowRow 让内容在大字体时自动换行
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
                         text = order.name,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
 
                     // 服务中状态标签
                     Surface(
