@@ -382,7 +382,7 @@ fun IdentificationCard(
                         )
                         Text(
                             text = "${personType}识别成功",
-                            fontSize = 16.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color = Color(0xFF34C759) // 绿色
                         )
@@ -458,9 +458,14 @@ fun IdentificationCard(
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color(0xFFF5A623)
                                     ),
-                                    modifier = Modifier.height(36.dp)
+                                    modifier = Modifier.heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                                 ) {
-                                    Text("重试", color = Color.White)
+                                    Text(
+                                        text = "重试",
+                                        color = Color.White,
+                                        fontSize = 14.sp
+                                    )
                                 }
                             }
                         }
@@ -518,9 +523,14 @@ fun IdentificationCard(
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color(0xFFF5A623)
                                     ),
-                                    modifier = Modifier.height(36.dp)
+                                    modifier = Modifier.heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                                 ) {
-                                    Text("重试", color = Color.White)
+                                    Text(
+                                        text = "重试",
+                                        color = Color.White,
+                                        fontSize = 14.sp
+                                    )
                                 }
                             }
                         }
@@ -544,9 +554,14 @@ fun IdentificationCard(
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color(0xFFF5A623)
                                     ),
-                                    modifier = Modifier.height(36.dp)
+                                    modifier = Modifier.heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                                 ) {
-                                    Text("重新识别", color = Color.White)
+                                    Text(
+                                        text = "重新识别",
+                                        color = Color.White,
+                                        fontSize = 14.sp
+                                    )
                                 }
                             }
                         }
@@ -592,11 +607,13 @@ fun IdentificationCard(
                                         containerColor = Color(0xFFF5A623) // 橙色
                                     ),
                                     enabled = isButtonEnabled,
-                                    modifier = Modifier.height(36.dp)
+                                    modifier = Modifier.heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                                 ) {
                                     Text(
                                         text = if (personType == IdentificationConstants.ELDER) "拍照验证" else "进行${personType}识别",
-                                        color = Color.White
+                                        color = Color.White,
+                                        fontSize = 12.sp
                                     )
                                 }
                             }
