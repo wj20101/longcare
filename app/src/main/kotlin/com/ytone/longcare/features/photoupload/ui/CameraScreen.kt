@@ -11,6 +11,7 @@ import android.graphics.Matrix
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.net.Uri
+import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.FrameLayout
@@ -20,6 +21,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
@@ -146,7 +149,21 @@ private fun CameraContent(
     onImageCaptured: (File) -> Unit,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
-    val cameraController = remember { LifecycleCameraController(context) }
+    val cameraController = remember {
+        LifecycleCameraController(context).apply {
+            // 配置 ImageCapture 目标分辨率 1920x1080
+            // CameraX 会选择最接近目标尺寸的可用分辨率
+            val resolutionSelector = ResolutionSelector.Builder()
+                .setResolutionStrategy(
+                    ResolutionStrategy(
+                        Size(1920, 1080),
+                        ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                    )
+                )
+                .build()
+            imageCaptureResolutionSelector = resolutionSelector
+        }
+    }
     var watermarkView by remember { mutableStateOf<View?>(null) }
     val location by viewModel.location.collectAsState()
     val time by viewModel.time.collectAsState()
