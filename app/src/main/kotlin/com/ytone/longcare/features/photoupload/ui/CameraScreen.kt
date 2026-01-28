@@ -1,15 +1,15 @@
 package com.ytone.longcare.features.photoupload.ui
 
 import android.Manifest
-import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Matrix
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.net.Uri
-import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.FrameLayout
@@ -19,10 +19,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
-import androidx.camera.core.resolutionselector.AspectRatioStrategy
-import androidx.camera.core.resolutionselector.ResolutionSelector
-import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
@@ -38,7 +34,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Circle
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TimerOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -63,8 +58,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
-import androidx.core.content.getSystemService
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -77,11 +70,8 @@ import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.features.photoupload.vm.CameraViewModel
 import java.io.File
 import java.io.FileOutputStream
-import java.nio.ByteBuffer
 import java.util.concurrent.Executor
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
@@ -95,6 +85,7 @@ import coil3.request.error
 import com.ytone.longcare.R
 import com.ytone.longcare.features.photoupload.tracker.CameraEventTracker
 import kotlinx.coroutines.CoroutineScope
+import androidx.core.content.ContextCompat
 
 @Composable
 fun CameraScreen(
@@ -113,12 +104,6 @@ fun CameraScreen(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { granted ->
             hasPermission = granted
-            // 记录权限结果
-            if (granted) {
-                CameraEventTracker.trackEvent(CameraEventTracker.EventType.CAMERA_PERMISSION_GRANTED)
-            } else {
-                CameraEventTracker.trackEvent(CameraEventTracker.EventType.CAMERA_PERMISSION_DENIED)
-            }
         }
     )
 
@@ -158,27 +143,7 @@ private fun CameraContent(
     onImageCaptured: (File) -> Unit,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
-    val cameraController = remember {
-        LifecycleCameraController(context).apply {
-            // 根据设备性能动态选择分辨率
-            val targetResolution = if (isLowEndDevice(context)) {
-                Size(1280, 720)  // 低端设备使用 720p
-            } else {
-                Size(1920, 1080) // 正常设备使用 1080p
-            }
-            val resolutionSelector = ResolutionSelector.Builder()
-                .setResolutionStrategy(
-                    ResolutionStrategy(
-                        targetResolution,
-                        ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
-                    )
-                )
-                .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
-                .build()
-            this.previewResolutionSelector = resolutionSelector
-            this.imageCaptureResolutionSelector = resolutionSelector
-        }
-    }
+    val cameraController = remember { LifecycleCameraController(context) }
     var watermarkView by remember { mutableStateOf<View?>(null) }
     val location by viewModel.location.collectAsState()
     val time by viewModel.time.collectAsState()
@@ -196,15 +161,6 @@ private fun CameraContent(
     
     // 检测前置摄像头可用性并记录设备信息
     LaunchedEffect(cameraController) {
-        // 记录相机初始化开始
-        CameraEventTracker.trackEvent(
-            CameraEventTracker.EventType.CAMERA_INIT_START,
-            mapOf(
-                "isLowEndDevice" to isLowEndDevice(context),
-                "targetResolution" to if (isLowEndDevice(context)) "720p" else "1080p"
-            )
-        )
-        
         // 等待相机绑定完成
         delay(300)
         
@@ -216,11 +172,11 @@ private fun CameraContent(
                 true
             } else {
                 // 方式2：使用 CameraManager 作为备选
-                val cameraManager = context.getSystemService(android.hardware.camera2.CameraManager::class.java)
+                val cameraManager = context.getSystemService(CameraManager::class.java)
                 cameraManager?.cameraIdList?.any { id ->
                     val characteristics = cameraManager.getCameraCharacteristics(id)
-                    val facing = characteristics.get(android.hardware.camera2.CameraCharacteristics.LENS_FACING)
-                    facing == android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT
+                    val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
+                    facing == CameraCharacteristics.LENS_FACING_FRONT
                 } ?: false
             }
         } catch (e: Exception) {
@@ -231,17 +187,6 @@ private fun CameraContent(
             )
             // 检测失败时默认显示切换按钮，让用户尝试
             true
-        }
-        
-        // 记录相机初始化成功
-        CameraEventTracker.trackEvent(
-            CameraEventTracker.EventType.CAMERA_INIT_SUCCESS,
-            mapOf("hasFrontCamera" to hasFrontCamera)
-        )
-        
-        // 如果是低端设备，记录设备信息
-        if (isLowEndDevice(context)) {
-            CameraEventTracker.trackEvent(CameraEventTracker.EventType.LOW_END_DEVICE_DETECTED)
         }
     }
 
@@ -283,15 +228,6 @@ private fun CameraContent(
 
     // 用于触发实际拍照的 Action
     val performCapture = {
-        // 记录拍照触发
-        CameraEventTracker.trackEvent(
-            CameraEventTracker.EventType.CAPTURE_START,
-            mapOf(
-                "step" to "倒计时结束触发拍照",
-                "isFrontCamera" to isFrontCamera
-            )
-        )
-
         val view = watermarkView
         if (view != null && view.width > 0 && view.height > 0) {
            isCapturing = true
@@ -469,10 +405,6 @@ private fun CameraContent(
                                 }
 
                                 val wasUsingFrontCamera = isFrontCamera
-                                CameraEventTracker.trackEvent(
-                                    CameraEventTracker.EventType.CAMERA_SWITCH_START,
-                                    mapOf("from" to if (wasUsingFrontCamera) "front" else "back")
-                                )
                                 
                                 scope.launch {
                                     try {
@@ -498,10 +430,6 @@ private fun CameraContent(
                                         isFrontCamera = !wasUsingFrontCamera
                                         delay(500)
                                         
-                                        CameraEventTracker.trackEvent(
-                                            CameraEventTracker.EventType.CAMERA_SWITCH_SUCCESS,
-                                            mapOf("to" to if (isFrontCamera) "front" else "back")
-                                        )
                                     } catch (e: Exception) {
                                         CameraEventTracker.trackError(
                                             CameraEventTracker.EventType.CAMERA_SWITCH_ERROR,
@@ -586,7 +514,7 @@ private fun DelayTimerButton(
         Box(contentAlignment = Alignment.Center) {
              if (currentMode == DelayMode.OFF) {
                  Icon(
-                     imageVector = androidx.compose.material.icons.Icons.Filled.TimerOff,
+                     imageVector = Icons.Filled.TimerOff,
                      contentDescription = "延迟拍照: 关闭",
                      tint = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
                      modifier = Modifier.size(24.dp)
@@ -633,7 +561,7 @@ private fun ShutterButton(
         ) {
             if (isCountingDown) {
                 Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Filled.Circle, // Stop icon doesn't exist in standard filled? Use Circle for now effectively or fix import.
+                    imageVector = Icons.Filled.Circle, // Stop icon doesn't exist in standard filled? Use Circle for now effectively or fix import.
                     // Wait, Step 149 showed Icons.Filled.Stop. I need to make sure I import it or use full path.
                     // The original code used androidx.compose.material.icons.Icons.Filled.Stop.
                     // But Stop might not be in Filled.
@@ -712,14 +640,6 @@ private fun takePhoto(
 ) {
     val captureStartTime = System.currentTimeMillis()
     
-    CameraEventTracker.trackEvent(
-        CameraEventTracker.EventType.IMAGE_WATERMARK_START,
-        mapOf(
-            "step" to "捕获水印视图",
-            "viewSize" to "${watermarkView.width}x${watermarkView.height}"
-        )
-    )
-    
     val watermarkBitmap = try {
         viewToBitmapSafe(watermarkView)
     } catch (e: Exception) {
@@ -744,314 +664,156 @@ private fun takePhoto(
         return
     }
     
-    val watermarkCaptureTime = System.currentTimeMillis() - captureStartTime
-    CameraEventTracker.trackEvent(
-        CameraEventTracker.EventType.IMAGE_WATERMARK_START,
-        mapOf(
-            "step" to "水印视图捕获完成",
-            "watermarkCaptureTimeMs" to watermarkCaptureTime,
-            "watermarkSize" to "${watermarkBitmap.width}x${watermarkBitmap.height}"
-        )
-    )
-    
     val density = context.resources.displayMetrics.density
     val startPx = (13 * density)
     val bottomPx = (14 * density)
     
-    // 记录调用 takePicture 前的状态
-    CameraEventTracker.trackEvent(
-        CameraEventTracker.EventType.CAPTURE_START,
-        mapOf("step" to "调用takePicture")
-    )
-    
+    // Use a temp file for initial capture
+    val tempFile = File(context.cacheDir, "temp_capture_${System.currentTimeMillis()}.jpg")
+    val outputOptions = ImageCapture.OutputFileOptions.Builder(tempFile).build()
+
     try {
         cameraController.takePicture(
-        executor,
-        object : ImageCapture.OnImageCapturedCallback() {
-            override fun onCaptureSuccess(image: ImageProxy) {
-                val callbackTime = System.currentTimeMillis() - captureStartTime
-                CameraEventTracker.trackEvent(
-                    CameraEventTracker.EventType.CAPTURE_CALLBACK_RECEIVED,
-                    mapOf(
-                        "callbackTimeMs" to callbackTime,
-                        "imageSize" to "${image.width}x${image.height}",
-                        "rotationDegrees" to image.imageInfo.rotationDegrees,
-                        "format" to image.format
-                    )
-                )
-                
-                scope.launch(Dispatchers.IO) {
-                    var bitmap: Bitmap? = null
-                    var rotatedBitmap: Bitmap? = null
-                    var watermarkedBitmap: Bitmap? = null
-                    
-                    try {
-                        withTimeout(15_000L) {
-                            CameraEventTracker.trackEvent(CameraEventTracker.EventType.IMAGE_DECODE_START)
-                            ensureActive()
-                            
-                            val rotationDegrees = image.imageInfo.rotationDegrees.toFloat()
-                            bitmap = imageProxyToBitmapSafe(image, context)
-                            
-                            if (bitmap == null) {
-                                CameraEventTracker.trackError(
-                                    CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-                                    null,
-                                    mapOf(
-                                        "reason" to "图片解码返回null",
-                                        "elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime)
-                                    )
-                                )
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "图片解码失败，请重试", Toast.LENGTH_SHORT).show()
-                                    onError()
-                                }
-                                return@withTimeout
-                            }
-                            
-                            ensureActive()
-                            CameraEventTracker.trackEvent(
-                                CameraEventTracker.EventType.IMAGE_DECODE_SUCCESS,
-                                mapOf("bitmapSize" to "${bitmap.width}x${bitmap.height}")
-                            )
-                            
-                            val rotateStartTime = System.currentTimeMillis()
-                            CameraEventTracker.trackEvent(
-                                CameraEventTracker.EventType.IMAGE_ROTATE_START,
-                                mapOf(
-                                    "rotationDegrees" to rotationDegrees,
-                                    "inputSize" to "${bitmap.width}x${bitmap.height}"
-                                )
-                            )
-                            
-                            rotatedBitmap = rotateBitmapSafe(bitmap, rotationDegrees)
-                            
-                            if (rotatedBitmap == null) {
-                                CameraEventTracker.trackError(
-                                    CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-                                    null,
-                                    mapOf(
-                                        "reason" to "图片旋转失败",
-                                        "elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime)
-                                    )
-                                )
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "图片处理失败，请重试", Toast.LENGTH_SHORT).show()
-                                    onError()
-                                }
-                                return@withTimeout
-                            }
-                            
-                            val rotateTime = System.currentTimeMillis() - rotateStartTime
-                            CameraEventTracker.trackEvent(
-                                CameraEventTracker.EventType.IMAGE_ROTATE_START,
-                                mapOf(
-                                    "step" to "旋转完成",
-                                    "rotateTimeMs" to rotateTime,
-                                    "outputSize" to "${rotatedBitmap.width}x${rotatedBitmap.height}"
-                                )
-                            )
-                            
-                            if (isFrontCamera) {
-                                val flipStartTime = System.currentTimeMillis()
-                                CameraEventTracker.trackEvent(
-                                    CameraEventTracker.EventType.IMAGE_ROTATE_START,
-                                    mapOf("step" to "开始水平翻转(前置摄像头)")
-                                )
+            outputOptions,
+            executor,
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+
+                    scope.launch(Dispatchers.IO) {
+                        var bitmap: Bitmap? = null
+                        var watermarkedBitmap: Bitmap? = null
+                        
+                        try {
+                            withTimeout(15_000L) {
+
+                                ensureActive()
                                 
-                                val flippedBitmap = flipBitmapHorizontallySafe(rotatedBitmap)
+                                // Decode file to bitmap (mutable for modification if needed, though we create new bitmap for watermark)
+                                // Note: CameraX handles rotation in the saved file usually, but we should check Exif if needed.
+                                // However, OutputFileOptions usually applies rotation.
+                                // Let's simplify: read bitmap, apply watermark.
                                 
-                                if (flippedBitmap == null) {
-                                    CameraEventTracker.trackError(
-                                        CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-                                        null,
-                                        mapOf("reason" to "图片翻转失败")
-                                    )
+                                val options = BitmapFactory.Options()
+                                options.inJustDecodeBounds = true
+                                BitmapFactory.decodeFile(tempFile.absolutePath, options)
+                                
+                                // Calculate inSampleSize to keep max dimension <= 1920 (approx 1080p target)
+                                var inSampleSize = 1
+                                val maxDimension = 1920 // Target close to 1080p
+                                    // height and width larger than the requested height and width.
+                                    while ((options.outHeight / inSampleSize) > maxDimension && (options.outWidth / inSampleSize) > maxDimension) {
+                                        inSampleSize *= 2
+                                    }
+
+                                
+                                options.inJustDecodeBounds = false
+                                options.inSampleSize = inSampleSize
+                                options.inPreferredConfig = Bitmap.Config.ARGB_8888
+                                options.inMutable = true
+                                
+                                bitmap = BitmapFactory.decodeFile(tempFile.absolutePath, options)
+                                
+                                if (bitmap == null) {
                                     withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, "图片处理失败，请重试", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "图片读取失败，请重试", Toast.LENGTH_SHORT).show()
                                         onError()
                                     }
                                     return@withTimeout
                                 }
                                 
-                                if (rotatedBitmap != flippedBitmap) {
-                                    rotatedBitmap.recycle()
-                                }
-                                rotatedBitmap = flippedBitmap
+                                // Clean up temp file immediately
+                                tempFile.delete()
                                 
-                                val flipTime = System.currentTimeMillis() - flipStartTime
-                                CameraEventTracker.trackEvent(
-                                    CameraEventTracker.EventType.IMAGE_ROTATE_START,
-                                    mapOf(
-                                        "step" to "水平翻转完成",
-                                        "flipTimeMs" to flipTime
-                                    )
-                                )
-                            }
-                            
-                            if (bitmap != rotatedBitmap) {
-                                bitmap.recycle()
-                                bitmap = null
-                            }
-                            
-                            ensureActive()
-                            val watermarkStartTime = System.currentTimeMillis()
-                            CameraEventTracker.trackEvent(
-                                CameraEventTracker.EventType.IMAGE_WATERMARK_START,
-                                mapOf(
-                                    "step" to "开始合成水印",
-                                    "photoSize" to "${rotatedBitmap.width}x${rotatedBitmap.height}",
-                                    "watermarkSize" to "${watermarkBitmap.width}x${watermarkBitmap.height}"
-                                )
-                            )
-                            
-                            watermarkedBitmap = addWatermarkSafe(rotatedBitmap, watermarkBitmap, startPx, bottomPx)
-                            
-                            if (watermarkedBitmap == null) {
-                                CameraEventTracker.trackError(
-                                    CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-                                    null,
-                                    mapOf(
-                                        "reason" to "水印合成失败",
-                                        "elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime)
-                                    )
-                                )
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "水印处理失败，请重试", Toast.LENGTH_SHORT).show()
-                                    onError()
+                                // Handle front camera mirroring if needed?
+                                // CameraX with OutputFileOptions might NOT flip front camera automatically depending on configuration.
+                                // But usually it respects the view. Let's assume standard behavior first.
+                                // If mirroring is needed, we can check isFrontCamera and flip.
+
+                                var processedBitmap = bitmap
+                                if (isFrontCamera) {
+                                     // Front camera might need mirroring if the saved file is not mirrored.
+                                     // Usually CameraX saves what is 'seen' or 'captured'.
+                                     // Let's check rotation/flip. For now, we trust CameraX but we might need to flip if user expects mirror.
+                                     // The previous code did manual flip. Let's keep it safe:
+                                     // Check if we want to flip. Standard CameraX might not flip.
+                                     val flipped = flipBitmapHorizontallySafe(processedBitmap)
+                                     if (flipped != null) {
+                                         if (processedBitmap != flipped) processedBitmap.recycle()
+                                         processedBitmap = flipped
+
+                                     }
                                 }
-                                return@withTimeout
-                            }
-                            
-                            val watermarkTime = System.currentTimeMillis() - watermarkStartTime
-                            CameraEventTracker.trackEvent(
-                                CameraEventTracker.EventType.IMAGE_WATERMARK_START,
-                                mapOf(
-                                    "step" to "水印合成完成",
-                                    "watermarkTimeMs" to watermarkTime,
-                                    "resultSize" to "${watermarkedBitmap.width}x${watermarkedBitmap.height}"
-                                )
-                            )
-                            
-                            rotatedBitmap.recycle()
-                            rotatedBitmap = null
-                            watermarkBitmap.recycle()
 
-                            ensureActive()
-                            val saveStartTime = System.currentTimeMillis()
-                            CameraEventTracker.trackEvent(
-                                CameraEventTracker.EventType.IMAGE_SAVE_START,
-                                mapOf(
-                                    "imageSize" to "${watermarkedBitmap.width}x${watermarkedBitmap.height}",
-                                    "byteCount" to watermarkedBitmap.byteCount
-                                )
-                            )
-                            
-                            val photoFile = File(
-                                context.cacheDir,
-                                "captured_image_${System.currentTimeMillis()}.jpg"
-                            )
+                                ensureActive()
 
-                            FileOutputStream(photoFile).use { out ->
-                                val finalBitmap = watermarkedBitmap ?: return@use
-                                finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
-                            }
-                            
-                            val saveTime = System.currentTimeMillis() - saveStartTime
-                            CameraEventTracker.trackEvent(
-                                CameraEventTracker.EventType.IMAGE_SAVE_START,
-                                mapOf(
-                                    "step" to "保存完成",
-                                    "saveTimeMs" to saveTime,
-                                    "fileSizeBytes" to photoFile.length(),
-                                    "filePath" to photoFile.name
+                                watermarkedBitmap = addWatermarkSafe(processedBitmap, watermarkBitmap, startPx, bottomPx)
+                                
+                                if (watermarkedBitmap == null) {
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "水印处理失败，请重试", Toast.LENGTH_SHORT).show()
+                                        onError()
+                                    }
+                                    return@withTimeout
+                                }
+                                
+                                // Recycle intermediate bitmaps
+                                if (processedBitmap != watermarkedBitmap) processedBitmap.recycle()
+                                watermarkBitmap.recycle()
+
+                                ensureActive()
+                                val finalFile = File(
+                                    context.cacheDir,
+                                    "captured_image_${System.currentTimeMillis()}.jpg"
                                 )
-                            )
-                            
-                            watermarkedBitmap.recycle()
-                            watermarkedBitmap = null
-                            
-                            val totalTime = System.currentTimeMillis() - captureStartTime
-                            CameraEventTracker.trackEvent(
-                                CameraEventTracker.EventType.CAPTURE_SUCCESS,
-                                mapOf(
-                                    "totalTimeMs" to totalTime,
-                                    "fileSize" to photoFile.length()
-                                )
-                            )
-                            
-                            withContext(Dispatchers.Main) {
-                                onImageCaptured(photoFile)
+                                
+                                FileOutputStream(finalFile).use { out ->
+                                    val finalBitmap = watermarkedBitmap ?: return@use
+                                    finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                                }
+                                
+                                watermarkedBitmap.recycle()
+                                watermarkedBitmap = null
+                                
+                                withContext(Dispatchers.Main) {
+                                    onImageCaptured(finalFile)
+                                }
                             }
-                        }
-                    } catch (e: CancellationException) {
-                        CameraEventTracker.trackError(
-                            CameraEventTracker.EventType.CAPTURE_ERROR,
-                            e,
-                            mapOf(
-                                "reason" to "协程被取消",
-                                "elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime)
-                            )
-                        )
-                        withContext(Dispatchers.Main) {
-                            onError()
-                        }
-                        throw e
-                    } catch (e: TimeoutCancellationException) {
-                        CameraEventTracker.trackError(
-                            CameraEventTracker.EventType.CAPTURE_TIMEOUT,
-                            e,
-                            mapOf("elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime))
-                        )
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(context, "拍照处理超时，请重试", Toast.LENGTH_SHORT).show()
-                            onError()
-                        }
-                    } catch (e: Exception) {
-                        CameraEventTracker.trackError(
-                            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-                            e,
-                            mapOf("elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime))
-                        )
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(context, "图片处理失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                            onError()
-                        }
-                    } finally {
-                        try {
-                            bitmap?.recycle()
-                            rotatedBitmap?.recycle()
-                            watermarkedBitmap?.recycle()
-                        } catch (_: Exception) {
-                        }
-                        try {
-                            image.close()
                         } catch (e: Exception) {
                             CameraEventTracker.trackError(
-                                CameraEventTracker.EventType.CAPTURE_ERROR,
+                                CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
                                 e,
-                                mapOf("reason" to "ImageProxy关闭失败")
+                                mapOf("reason" to "图片处理失败: ${e.message}")
                             )
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "图片处理失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                onError()
+                            }
+                        } finally {
+                             try {
+                                bitmap?.recycle()
+                                watermarkedBitmap?.recycle()
+                                // Ensure temp file is deleted
+                                if (tempFile.exists()) tempFile.delete()
+                             } catch (_: Exception) {}
                         }
                     }
                 }
-            }
-
-            override fun onError(exc: ImageCaptureException) {
-                CameraEventTracker.trackError(
-                    CameraEventTracker.EventType.CAPTURE_ERROR,
-                    exc,
-                    mapOf(
-                        "elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime),
-                        "errorCode" to exc.imageCaptureError
+                
+                override fun onError(exc: ImageCaptureException) {
+                    CameraEventTracker.trackError(
+                        CameraEventTracker.EventType.CAPTURE_ERROR,
+                        exc,
+                        mapOf("reason" to "拍照保存失败: ${exc.message}")
                     )
-                )
-                Toast.makeText(context, "拍照失败: ${exc.message}", Toast.LENGTH_SHORT).show()
-                onError()
+                    scope.launch(Dispatchers.Main) {
+                        Toast.makeText(context, "拍照失败: ${exc.message}", Toast.LENGTH_SHORT).show()
+                        onError()
+                    }
+                }
             }
-        }
-    )
-    } catch (e: Exception) {
+        )
+
+    } catch (e: Throwable) {
         CameraEventTracker.trackError(
             CameraEventTracker.EventType.CAPTURE_ERROR,
             e,
@@ -1065,140 +827,6 @@ private fun takePhoto(
     }
 }
 
-private fun imageProxyToBitmapSafe(image: ImageProxy, context: Context): Bitmap? {
-    return try {
-        val decodeStartTime = System.currentTimeMillis()
-        
-        CameraEventTracker.trackEvent(
-            CameraEventTracker.EventType.IMAGE_DECODE_START,
-            mapOf("step" to "读取ImageProxy数据")
-        )
-        
-        val planeProxy = image.planes[0]
-        val buffer: ByteBuffer = planeProxy.buffer
-        val bytes = ByteArray(buffer.remaining())
-        buffer.get(bytes)
-        
-        val bufferReadTime = System.currentTimeMillis() - decodeStartTime
-        CameraEventTracker.trackEvent(
-            CameraEventTracker.EventType.IMAGE_DECODE_START,
-            mapOf(
-                "step" to "Buffer读取完成",
-                "bufferReadTimeMs" to bufferReadTime,
-                "bytesSize" to bytes.size
-            )
-        )
-        
-        if (bytes.isEmpty()) {
-            CameraEventTracker.trackError(
-                CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-                null,
-                mapOf("reason" to "图片数据为空")
-            )
-            return null
-        }
-        
-        val isLowEnd = isLowEndDevice(context)
-        val options = BitmapFactory.Options().apply {
-            inPreferredConfig = if (isLowEnd) {
-                Bitmap.Config.RGB_565
-            } else {
-                Bitmap.Config.ARGB_8888
-            }
-            inMutable = false
-            if (isLowEnd && bytes.size > 5 * 1024 * 1024) {
-                inSampleSize = 2
-            }
-        }
-        
-        CameraEventTracker.trackEvent(
-            CameraEventTracker.EventType.IMAGE_DECODE_START,
-            mapOf(
-                "step" to "开始BitmapFactory.decodeByteArray",
-                "isLowEnd" to isLowEnd,
-                "config" to options.inPreferredConfig.toString(),
-                "inSampleSize" to options.inSampleSize
-            )
-        )
-        
-        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
-        
-        val totalDecodeTime = System.currentTimeMillis() - decodeStartTime
-        
-        if (bitmap == null) {
-            CameraEventTracker.trackError(
-                CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-                null,
-                mapOf(
-                    "reason" to "BitmapFactory.decodeByteArray返回null",
-                    "bytesSize" to bytes.size,
-                    "decodeTimeMs" to totalDecodeTime
-                )
-            )
-            return null
-        }
-        
-        CameraEventTracker.trackEvent(
-            CameraEventTracker.EventType.IMAGE_DECODE_START,
-            mapOf(
-                "step" to "解码完成",
-                "totalDecodeTimeMs" to totalDecodeTime,
-                "bitmapWidth" to bitmap.width,
-                "bitmapHeight" to bitmap.height,
-                "bitmapByteCount" to bitmap.byteCount
-            )
-        )
-        
-        bitmap
-    } catch (e: OutOfMemoryError) {
-        CameraEventTracker.trackError(
-            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-            RuntimeException("OOM during image decode: ${e.message}", e),
-            mapOf(
-                "reason" to "内存不足",
-                "maxMemory" to "${Runtime.getRuntime().maxMemory() / 1024 / 1024}MB",
-                "freeMemory" to "${Runtime.getRuntime().freeMemory() / 1024 / 1024}MB"
-            )
-        )
-        System.gc()
-        null
-    } catch (e: Exception) {
-        CameraEventTracker.trackError(
-            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-            e,
-            mapOf("reason" to "图片解码异常: ${e.javaClass.simpleName}")
-        )
-        null
-    }
-}
-
-private fun rotateBitmapSafe(bitmap: Bitmap, degrees: Float): Bitmap? {
-    if (degrees == 0f) return bitmap
-    return try {
-        val matrix = Matrix()
-        matrix.postRotate(degrees)
-        Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-    } catch (e: OutOfMemoryError) {
-        CameraEventTracker.trackError(
-            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-            RuntimeException("OOM during rotate: ${e.message}", e),
-            mapOf(
-                "reason" to "旋转时内存不足",
-                "bitmapSize" to "${bitmap.width}x${bitmap.height}",
-                "degrees" to degrees
-            )
-        )
-        System.gc()
-        null
-    } catch (e: Exception) {
-        CameraEventTracker.trackError(
-            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-            e,
-            mapOf("reason" to "图片旋转异常: ${e.javaClass.simpleName}")
-        )
-        null
-    }
-}
 
 private fun flipBitmapHorizontallySafe(bitmap: Bitmap): Bitmap? {
     return try {
@@ -1296,10 +924,4 @@ private fun addWatermarkSafe(
         )
         null
     }
-}
-
-private fun isLowEndDevice(context: Context): Boolean {
-    val activityManager = context.getSystemService<ActivityManager>()
-    return activityManager?.isLowRamDevice == true ||
-           Runtime.getRuntime().maxMemory() < 256 * 1024 * 1024
 }
