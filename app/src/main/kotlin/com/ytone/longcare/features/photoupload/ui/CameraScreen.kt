@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.photoupload.ui
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
@@ -58,6 +59,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -86,6 +88,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.features.photoupload.tracker.CameraEventTracker
 import kotlinx.coroutines.CoroutineScope
 import androidx.core.content.ContextCompat
+import androidx.core.content.getSystemService
 
 @Composable
 fun CameraScreen(
@@ -159,35 +162,43 @@ private fun CameraContent(
     var hasFrontCamera by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     
-    // 检测前置摄像头可用性并记录设备信息
+    // 检测前置摄像头可用性并记录设备信息（增加重试机制）
     LaunchedEffect(cameraController) {
-        // 等待相机绑定完成
-        delay(300)
-        
-        // 使用多种方式检测前置摄像头
-        hasFrontCamera = try {
-            // 方式1：使用 CameraController 检测
-            val hasCamera = cameraController.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
-            if (hasCamera) {
-                true
-            } else {
-                // 方式2：使用 CameraManager 作为备选
-                val cameraManager = context.getSystemService(CameraManager::class.java)
-                cameraManager?.cameraIdList?.any { id ->
-                    val characteristics = cameraManager.getCameraCharacteristics(id)
-                    val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
-                    facing == CameraCharacteristics.LENS_FACING_FRONT
-                } ?: false
+        // 重试机制：最多重试 3 次，每次增加延迟
+        var detected = false
+        for (attempt in 1..3) {
+            delay(200L * attempt)  // 200ms, 400ms, 600ms
+            
+            detected = try {
+                // 方式1：使用 CameraController 检测
+                val hasCamera = cameraController.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
+                if (hasCamera) {
+                    true
+                } else {
+                    // 方式2：使用 CameraManager 作为备选
+                    val cameraManager = context.getSystemService(CameraManager::class.java)
+                    cameraManager?.cameraIdList?.any { id ->
+                        val characteristics = cameraManager.getCameraCharacteristics(id)
+                        val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
+                        facing == CameraCharacteristics.LENS_FACING_FRONT
+                    } ?: false
+                }
+            } catch (e: Exception) {
+                if (attempt == 3) {
+                    CameraEventTracker.trackError(
+                        CameraEventTracker.EventType.CAMERA_INIT_ERROR,
+                        e,
+                        mapOf("reason" to "检测前置摄像头失败", "attempt" to attempt)
+                    )
+                }
+                false
             }
-        } catch (e: Exception) {
-            CameraEventTracker.trackError(
-                CameraEventTracker.EventType.CAMERA_INIT_ERROR,
-                e,
-                mapOf("reason" to "检测前置摄像头失败")
-            )
-            // 检测失败时默认显示切换按钮，让用户尝试
-            true
+            
+            if (detected) break
         }
+        
+        // 检测结果赋值（如果检测失败则不显示切换按钮）
+        hasFrontCamera = detected
     }
 
 
@@ -428,7 +439,19 @@ private fun CameraContent(
                                         
                                         cameraController.cameraSelector = newSelector
                                         isFrontCamera = !wasUsingFrontCamera
-                                        delay(500)
+                                        
+                                        // 动态等待：检测相机是否就绪，最长等待 1500ms
+                                        var waitTime = 0L
+                                        val maxWaitTime = 1500L
+                                        val checkInterval = 100L
+                                        while (waitTime < maxWaitTime) {
+                                            delay(checkInterval)
+                                            waitTime += checkInterval
+                                            // 检测相机是否已就绪
+                                            try {
+                                                if (cameraController.cameraInfo != null) break
+                                            } catch (_: Exception) { }
+                                        }
                                         
                                     } catch (e: Exception) {
                                         CameraEventTracker.trackError(
@@ -684,7 +707,9 @@ private fun takePhoto(
                         var watermarkedBitmap: Bitmap? = null
                         
                         try {
-                            withTimeout(15_000L) {
+                            // 动态超时：低端设备给予更长时间
+                            val timeoutMs = calculateDynamicTimeout(context)
+                            withTimeout(timeoutMs) {
 
                                 ensureActive()
                                 
@@ -697,15 +722,24 @@ private fun takePhoto(
                                 options.inJustDecodeBounds = true
                                 BitmapFactory.decodeFile(tempFile.absolutePath, options)
                                 
-                                // Calculate inSampleSize to keep max dimension <= 1920 (approx 1080p target)
+                                // 保证短边 >= 1080
+                                // 这样竖屏图片会缩放到约 1080x2240 左右
+                                val minTargetDimension = 1080
                                 var inSampleSize = 1
-                                val maxDimension = 1920 // Target close to 1080p
-                                    // height and width larger than the requested height and width.
-                                    while ((options.outHeight / inSampleSize) > maxDimension && (options.outWidth / inSampleSize) > maxDimension) {
-                                        inSampleSize *= 2
-                                    }
-
                                 
+                                while (true) {
+                                    val nextSampleSize = inSampleSize * 2
+                                    val scaledWidth = options.outWidth / nextSampleSize
+                                    val scaledHeight = options.outHeight / nextSampleSize
+                                    // 取短边进行判断，确保短边 >= 1080
+                                    val scaledMinDimension = minOf(scaledWidth, scaledHeight)
+                                    if (scaledMinDimension >= minTargetDimension) {
+                                        inSampleSize = nextSampleSize
+                                    } else {
+                                        break
+                                    }
+                                }
+
                                 options.inJustDecodeBounds = false
                                 options.inSampleSize = inSampleSize
                                 options.inPreferredConfig = Bitmap.Config.ARGB_8888
@@ -719,6 +753,14 @@ private fun takePhoto(
                                         onError()
                                     }
                                     return@withTimeout
+                                }
+                                
+                                // 处理 EXIF 方向 - 某些设备会将竖拍照片保存为横向，通过 EXIF 记录旋转角度
+                                val currentBitmap = bitmap
+                                val rotatedBitmap = rotateBitmapByExif(currentBitmap, tempFile.absolutePath)
+                                if (rotatedBitmap != null && rotatedBitmap != currentBitmap) {
+                                    currentBitmap.recycle()
+                                    bitmap = rotatedBitmap
                                 }
                                 
                                 // Clean up temp file immediately
@@ -738,9 +780,13 @@ private fun takePhoto(
                                      // Check if we want to flip. Standard CameraX might not flip.
                                      val flipped = flipBitmapHorizontallySafe(processedBitmap)
                                      if (flipped != null) {
-                                         if (processedBitmap != flipped) processedBitmap.recycle()
+                                         // 翻转成功后立即回收原图以降低内存峰值
+                                         if (processedBitmap != flipped) {
+                                             processedBitmap.recycle()
+                                         }
                                          processedBitmap = flipped
-
+                                         // 同时清空 bitmap 引用，避免 finally 中重复回收
+                                         bitmap = null
                                      }
                                 }
 
@@ -756,8 +802,12 @@ private fun takePhoto(
                                     return@withTimeout
                                 }
                                 
-                                // Recycle intermediate bitmaps
-                                if (processedBitmap != watermarkedBitmap) processedBitmap.recycle()
+                                // Recycle intermediate bitmaps - 及时回收降低内存峰值
+                                if (processedBitmap != watermarkedBitmap) {
+                                    processedBitmap.recycle()
+                                }
+                                // 清空 bitmap 引用，避免 finally 中重复回收
+                                bitmap = null
                                 watermarkBitmap.recycle()
 
                                 ensureActive()
@@ -842,7 +892,6 @@ private fun flipBitmapHorizontallySafe(bitmap: Bitmap): Bitmap? {
                 "bitmapSize" to "${bitmap.width}x${bitmap.height}"
             )
         )
-        System.gc()
         null
     } catch (e: Exception) {
         CameraEventTracker.trackError(
@@ -880,7 +929,6 @@ private fun viewToBitmapSafe(view: View): Bitmap? {
                 "viewSize" to "${view.width}x${view.height}"
             )
         )
-        System.gc()
         null
     } catch (e: Exception) {
         CameraEventTracker.trackError(
@@ -914,7 +962,6 @@ private fun addWatermarkSafe(
                 "watermarkSize" to "${watermark.width}x${watermark.height}"
             )
         )
-        System.gc()
         null
     } catch (e: Exception) {
         CameraEventTracker.trackError(
@@ -923,5 +970,62 @@ private fun addWatermarkSafe(
             mapOf("reason" to "添加水印异常: ${e.javaClass.simpleName}")
         )
         null
+    }
+}
+
+/**
+ * 根据设备性能动态计算超时时间
+ * - 高端设备（memoryClass >= 256）：15秒
+ * - 中端设备（memoryClass >= 128）：25秒
+ * - 低端设备：35秒
+ */
+private fun calculateDynamicTimeout(context: Context): Long {
+    val activityManager = context.getSystemService<ActivityManager>()
+    val memoryClass = activityManager?.memoryClass ?: 128
+    
+    return when {
+        memoryClass >= 256 -> 15_000L  // 高端设备：15秒
+        memoryClass >= 128 -> 25_000L  // 中端设备：25秒
+        else -> 35_000L                // 低端设备：35秒
+    }
+}
+
+/**
+ * 根据 EXIF 方向信息旋转 Bitmap
+ * 某些设备会将竖拍照片保存为横向，然后在 EXIF 中记录旋转角度
+ */
+private fun rotateBitmapByExif(bitmap: Bitmap, filePath: String): Bitmap? {
+    return try {
+        val exif = ExifInterface(filePath)
+        val orientation = exif.getAttributeInt(
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.ORIENTATION_NORMAL
+        )
+        
+        val rotationDegrees = when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> 0f
+        }
+        
+        if (rotationDegrees == 0f) {
+            // 无需旋转
+            bitmap
+        } else {
+            val matrix = Matrix()
+            matrix.postRotate(rotationDegrees)
+            val rotatedBitmap = Bitmap.createBitmap(
+                bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+            )
+            rotatedBitmap
+        }
+    } catch (e: Exception) {
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+            e,
+            mapOf("reason" to "EXIF旋转处理失败: ${e.javaClass.simpleName}")
+        )
+        bitmap // 失败时返回原图
     }
 }
