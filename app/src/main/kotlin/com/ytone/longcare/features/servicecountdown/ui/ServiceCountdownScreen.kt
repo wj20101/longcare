@@ -293,8 +293,9 @@ fun ServiceCountdownScreen(
         AlarmRingtoneService.stopRingtone(context)
         Log.i("ServiceCountdownScreen", "✅ 4. 已停止响铃服务")
 
-        // 5. 调用ViewModel结束服务
-        countdownViewModel.endService(orderInfoRequest, context)
+        // 5. 调用ViewModel结束服务（但不清除图片数据，保留给EndServiceSelectionScreen使用）
+        countdownViewModel.endServiceWithoutClearingImages(orderInfoRequest, context)
+        Log.i("ServiceCountdownScreen", "✅ 5. 已结束服务（保留图片数据）")
 
         // 6. 导航到结束服务选择页面
         navController.navigateToEndServiceSelection(

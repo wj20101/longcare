@@ -500,18 +500,11 @@ class ServiceCountdownViewModel @Inject constructor(
      * @param uploadResult 按ImageTaskType分组的ImageTask列表
      */
     fun handlePhotoUploadResult(orderRequest: OrderInfoRequestModel, uploadResult: Map<ImageTaskType, List<ImageTask>>) {
-        val beforeCareTasks = uploadResult[ImageTaskType.BEFORE_CARE] ?: emptyList()
-        val afterCareTasks = uploadResult[ImageTaskType.AFTER_CARE] ?: emptyList()
-        
         // 保存上传的图片数据到状态中
         _uploadedImages.value = uploadResult
-        
+
         // 保存到本地存储，与订单关联
         uploadedImagesManager.saveUploadedImages(orderRequest, uploadResult)
-        
-        println("收到护理前图片: $beforeCareTasks")
-        println("收到护理后图片: $afterCareTasks")
-        println("已保存图片数据到ViewModel状态和本地存储中")
     }
     
     /**
