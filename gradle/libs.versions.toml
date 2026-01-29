@@ -6,13 +6,13 @@ kotlin = "2.3.0"
 ksp = "2.3.4"
 
 # Compose Versions
-composeBom = "2026.01.00"
+composeBom = "2026.01.01"
 
 # AndroidX Core & Lifecycle
 coreKtx = "1.17.0"
 legacySupport = "1.0.0"
 lifecycle = "2.10.0"
-activityCompose = "1.12.2"
+activityCompose = "1.12.3"
 fragmentCompose = "1.8.9"
 mockk = "1.14.9"
 navigation3 = "1.0.0"
@@ -23,7 +23,7 @@ constraintlayoutCompose = "1.1.1"
 benchmark = "1.4.1"
 baselineprofile = "1.4.1"
 profileinstaller = "1.4.1"
-camerax = "1.5.2"
+camerax = "1.5.3"
 constraintlayout = "2.2.1"
 
 # Data Persistence
@@ -31,7 +31,7 @@ datastore = "1.2.0"
 room = "2.8.4"
 
 # Work
-work = "2.11.0"
+work = "2.11.1"
 
 # Window
 window = "1.5.1"
