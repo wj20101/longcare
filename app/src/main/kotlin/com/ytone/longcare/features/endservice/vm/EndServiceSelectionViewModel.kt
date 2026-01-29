@@ -4,12 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.ServiceProjectM
+import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.domain.order.SharedOrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -36,31 +36,36 @@ class EndServiceSelectionViewModel @Inject constructor(
     /**
      * 初始化数据
      * @param orderInfoRequest 订单信息请求
-     * @param initialSelectedIds 初始选中的项目ID列表
+     * @param initialSelectedIds 初始选中的项目ID列表（开始服务时选择的项目）
      */
     fun initData(orderInfoRequest: OrderInfoRequestModel, initialSelectedIds: List<Int>) {
         viewModelScope.launch {
-            // 初始化选中状态
-            _selectedProjectIds.value = initialSelectedIds.toSet()
-
             // 尝试获取缓存的订单详情
             val cachedOrderInfo = sharedOrderRepository.getCachedOrderInfo(orderInfoRequest)
             if (cachedOrderInfo != null) {
-                // 如果有缓存，直接使用
-                _projectList.value = cachedOrderInfo.projectList ?: emptyList()
+                // 只显示开始服务时选择的项目（过滤后的列表）
+                val selectedProjects = (cachedOrderInfo.projectList ?: emptyList())
+                    .filter { initialSelectedIds.contains(it.projectId) }
+                _projectList.value = selectedProjects
+                // 默认全部选中
+                _selectedProjectIds.value = selectedProjects.map { it.projectId }.toSet()
                 _uiState.value = EndServiceSelectionUiState.Success
             } else {
                 // 如果没有缓存，尝试从网络加载
-                val result = sharedOrderRepository.getOrderInfo(orderInfoRequest)
-                when (result) {
-                    is com.ytone.longcare.common.network.ApiResult.Success -> {
-                       _projectList.value = result.data.projectList ?: emptyList()
-                       _uiState.value = EndServiceSelectionUiState.Success
+                when (val result = sharedOrderRepository.getOrderInfo(orderInfoRequest)) {
+                    is ApiResult.Success -> {
+                        // 只显示开始服务时选择的项目（过滤后的列表）
+                        val selectedProjects = (result.data.projectList ?: emptyList())
+                            .filter { initialSelectedIds.contains(it.projectId) }
+                        _projectList.value = selectedProjects
+                        // 默认全部选中
+                        _selectedProjectIds.value = selectedProjects.map { it.projectId }.toSet()
+                        _uiState.value = EndServiceSelectionUiState.Success
                     }
-                    is com.ytone.longcare.common.network.ApiResult.Failure -> {
+                    is ApiResult.Failure -> {
                         _uiState.value = EndServiceSelectionUiState.Error(result.message)
                     }
-                    is com.ytone.longcare.common.network.ApiResult.Exception -> {
+                    is ApiResult.Exception -> {
                         _uiState.value = EndServiceSelectionUiState.Error(result.exception.message ?: "未知错误")
                     }
                 }
