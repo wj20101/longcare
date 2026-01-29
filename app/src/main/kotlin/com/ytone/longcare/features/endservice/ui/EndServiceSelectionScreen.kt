@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -31,15 +30,12 @@ import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
 import com.ytone.longcare.theme.bgGradientBrush
-import com.ytone.longcare.common.utils.ToastHelper
 import androidx.compose.ui.platform.LocalContext
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
-import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.di.ServiceCountdownEntryPoint
-import android.util.Log
 import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -198,22 +194,21 @@ fun EndServiceSelectionScreen(
                                         Toast.makeText(context, "请至少选择一个服务项目", Toast.LENGTH_SHORT).show()
                                         return@NextStepButton
                                     }
-                                    
+
+                                    // --- 先加载已上传的图片数据（在清理前获取） ---
+                                    countdownViewModel.loadUploadedImagesFromLocal(orderInfoRequest)
+                                    val uploadedImages = countdownViewModel.getCurrentUploadedImages()
+
                                     // --- 执行资源清理逻辑 ---
-                                    Log.i("EndServiceSelection", "🛑 确认结束服务，开始清理资源...")
-                                    
                                     CountdownForegroundService.stopCountdown(context)
                                     countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest.orderId)
                                     AlarmRingtoneService.stopRingtone(context)
                                     countdownViewModel.endService(orderInfoRequest, context)
-                                    
-                                    countdownViewModel.loadUploadedImagesFromLocal(orderInfoRequest)
-                                    val uploadedImages = countdownViewModel.getCurrentUploadedImages()
-                                    
+
                                     val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE]?.mapNotNull { it.key } ?: emptyList()
                                     val centerImgList = uploadedImages[ImageTaskType.CENTER_CARE]?.mapNotNull { it.key } ?: emptyList()
                                     val endImgList = uploadedImages[ImageTaskType.AFTER_CARE]?.mapNotNull { it.key } ?: emptyList()
-                                    
+
                                     navController.navigateToNfcSignInForEndOrder(
                                         orderInfoRequest = orderInfoRequest,
                                         params = EndOderInfo(

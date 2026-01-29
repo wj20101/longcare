@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
+import androidx.core.net.toUri
 
 /**
  * 图片处理ViewModel
@@ -357,6 +358,58 @@ class PhotoProcessingViewModel @Inject constructor(
             processing = tasks.count { it.status == ImageTaskStatus.PROCESSING },
             success = tasks.count { it.status == ImageTaskStatus.SUCCESS },
             failed = tasks.count { it.status == ImageTaskStatus.FAILED })
+    }
+    
+    // =====================================================================
+    // Mock 方法（仅用于开发调试）
+    // =====================================================================
+    
+    /**
+     * [Mock] 模拟添加指定类型的已上传成功照片
+     * 用于开发调试，跳过拍照和上传流程
+     */
+    fun mockAddUploadedPhoto(taskType: ImageTaskType) {
+        val mockTask = ImageTask(
+            id = UUID.randomUUID().toString(),
+            originalUri = "content://mock/image_${System.currentTimeMillis()}".toUri(),
+            taskType = taskType,
+            status = ImageTaskStatus.SUCCESS,
+            resultUri = "content://mock/result_${System.currentTimeMillis()}".toUri(),
+            isUploaded = true,
+            cloudUrl = "https://mock.cos.example.com/mock_image_${System.currentTimeMillis()}.jpg",
+            key = "mock_key_${System.currentTimeMillis()}"
+        )
+        _imageTasks.update { it + mockTask }
+    }
+    
+    /**
+     * [Mock] 模拟添加护理前照片
+     */
+    fun mockAddBeforeCarePhoto() {
+        mockAddUploadedPhoto(ImageTaskType.BEFORE_CARE)
+    }
+    
+    /**
+     * [Mock] 模拟添加护理中照片
+     */
+    fun mockAddCenterCarePhoto() {
+        mockAddUploadedPhoto(ImageTaskType.CENTER_CARE)
+    }
+    
+    /**
+     * [Mock] 模拟添加护理后照片
+     */
+    fun mockAddAfterCarePhoto() {
+        mockAddUploadedPhoto(ImageTaskType.AFTER_CARE)
+    }
+    
+    /**
+     * [Mock] 一键模拟添加所有类型的照片（护理前、护理中、护理后各一张）
+     */
+    fun mockAddAllPhotos() {
+        mockAddBeforeCarePhoto()
+        mockAddCenterCarePhoto()
+        mockAddAfterCarePhoto()
     }
 }
 

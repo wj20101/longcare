@@ -62,6 +62,7 @@ import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewMode
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.BuildConfig
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
@@ -208,8 +209,23 @@ fun PhotoUploadScreen(
                         enabled = hasCategoriesHaveImages && !isUploading,
                         isLoading = isUploading,
                         onClick = {
-                            // 上传图片到云端后再导航
                             scope.launch {
+                                // Mock 模式下跳过实际上传，直接返回 Mock 数据
+                                if (BuildConfig.USE_MOCK_DATA) {
+                                    // 获取当前所有成功的任务，直接作为结果返回
+                                    val currentTasks = viewModel.imageTasks.value
+                                    val imageTasksMap = currentTasks
+                                        .filter { it.status == ImageTaskStatus.SUCCESS }
+                                        .groupBy { it.taskType }
+                                    
+                                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                                        NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, imageTasksMap
+                                    )
+                                    navController.popBackStack()
+                                    return@launch
+                                }
+                                
+                                // 正常模式：上传图片到云端后再导航
                                 try {
                                     val uploadResult = viewModel.uploadSuccessfulImagesToCloud()
                                     uploadResult.fold(onSuccess = { cloudUrlsMap ->
@@ -305,6 +321,65 @@ fun PhotoUploadScreen(
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
                         onRemoveTask = { taskId -> viewModel.removeTask(taskId) })
+                }
+                
+                // Mock 按钮区域（仅在 Debug 模式下显示）
+                if (BuildConfig.USE_MOCK_DATA) {
+                    item {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFE4F3))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "🧪 Mock 调试工具",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = Color(0xFFD81B60)
+                                )
+                                
+                                Button(
+                                    onClick = { viewModel.mockAddAllPhotos() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Magenta),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("一键添加所有照片")
+                                }
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Button(
+                                        onClick = { viewModel.mockAddBeforeCarePhoto() },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C27B0)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("护理前", fontSize = 12.sp)
+                                    }
+                                    Button(
+                                        onClick = { viewModel.mockAddCenterCarePhoto() },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("护理中", fontSize = 12.sp)
+                                    }
+                                    Button(
+                                        onClick = { viewModel.mockAddAfterCarePhoto() },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("护理后", fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
