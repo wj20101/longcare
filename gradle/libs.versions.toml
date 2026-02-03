@@ -3,7 +3,7 @@
 agp = "9.0.0"
 core = "1.7.0"
 kotlin = "2.3.0"
-ksp = "2.3.4"
+ksp = "2.3.5"
 
 # Compose Versions
 composeBom = "2026.01.01"
