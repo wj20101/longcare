@@ -48,6 +48,7 @@ import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.common.utils.singleClick
 
 /**
  * 身份认证相关常量
@@ -202,7 +203,7 @@ fun IdentificationScreen(
                 CenterAlignedTopAppBar(
                     title = { Text("身份认证", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        IconButton(onClick = singleClick { navController.popBackStack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "返回",
@@ -228,7 +229,7 @@ fun IdentificationScreen(
                     ) {
                         // 下一步按钮
                         Button(
-                            onClick = { navController.navigateToSelectService(orderParams) },
+                            onClick = singleClick { navController.navigateToSelectService(orderParams) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 48.dp),

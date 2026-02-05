@@ -87,6 +87,7 @@ class PhotoProcessingViewModel @Inject constructor(
      * @param orderKey 订单标识符
      */
     fun setOrderKey(orderKey: OrderKey) {
+        android.util.Log.d("PhotoVM", "setOrderKey: $orderKey (current: ${_currentOrderKey.value})")
         if (_currentOrderKey.value == orderKey) return
         _currentOrderKey.value = orderKey
         loadImagesFromRoom(orderKey)
@@ -98,6 +99,10 @@ class PhotoProcessingViewModel @Inject constructor(
     private fun loadImagesFromRoom(orderKey: OrderKey) {
         viewModelScope.launch {
             val entities = imageRepository.getImagesByOrderId(orderKey)
+            android.util.Log.d("PhotoVM", "loadImagesFromRoom: orderId=${orderKey.orderId}, found ${entities.size} entities")
+            entities.forEach { 
+                android.util.Log.d("PhotoVM", "  - Image: id=${it.id}, uri=${it.localUri}, status=${it.uploadStatus}")
+            }
             val tasks = entities.map { it.toImageTask() }
             _imageTasks.value = tasks
         }
@@ -170,20 +175,29 @@ class PhotoProcessingViewModel @Inject constructor(
         viewModelScope.launch {
             // 使用传入的orderKey或当前订单Key
             val effectiveOrderKey = orderKey ?: _currentOrderKey.value
+            android.util.Log.d("PhotoVM", "addImagesToProcess: count=${uris.size}, key=$effectiveOrderKey")
             
             val newTasks = mutableListOf<ImageTask>()
             
             for (uri in uris) {
                 // 如果有订单Key，先保存到Room，获取数据库ID
                 val dbId = if (effectiveOrderKey != null) {
-                    imageRepository.addImage(
-                        orderKey = effectiveOrderKey,
-                        imageType = taskType.toImageType(),
-                        localUri = uri.toString(),
-                        localPath = uri.path
-                    )
+                    try {
+                        val id = imageRepository.addImage(
+                            orderKey = effectiveOrderKey,
+                            imageType = taskType.toImageType(),
+                            localUri = uri.toString(),
+                            localPath = uri.path
+                        )
+                        android.util.Log.d("PhotoVM", "Saved to DB: id=$id, type=$taskType")
+                        id
+                    } catch (e: Exception) {
+                        android.util.Log.e("PhotoVM", "Failed to save image to DB", e)
+                        null
+                    }
                 } else {
                     // 没有订单Key时使用UUID作为临时ID
+                    android.util.Log.w("PhotoVM", "No effectiveOrderKey, using UUID")
                     null
                 }
                 

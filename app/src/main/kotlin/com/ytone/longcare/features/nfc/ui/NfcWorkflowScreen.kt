@@ -40,6 +40,7 @@ import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.di.NfcManagerEntryPoint
 import com.ytone.longcare.di.NfcLocationEntryPoint
 import com.ytone.longcare.common.utils.NfcUtils
+import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
 import com.ytone.longcare.features.nfc.vm.EndOrderSuccessData
@@ -217,7 +218,7 @@ fun NfcWorkflowScreen(
                         stringResource(titleRes), fontWeight = FontWeight.Bold
                     )
                 }, navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = singleClick { navController.popBackStack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
@@ -249,7 +250,7 @@ fun NfcWorkflowScreen(
                                     SignInMode.END_ORDER -> stringResource(R.string.nfc_sign_out_complete_service)
                                 }
                                 ActionButton(
-                                    text = buttonText, onClick = {
+                                    text = buttonText, onClick = singleClick {
                                         when (signInMode) {
                                             SignInMode.START_ORDER -> {
                                                 // 签到成功时开启定位上报任务

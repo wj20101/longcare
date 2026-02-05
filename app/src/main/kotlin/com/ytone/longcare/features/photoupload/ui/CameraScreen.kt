@@ -92,6 +92,7 @@ import com.ytone.longcare.features.photoupload.tracker.CameraEventTracker
 import kotlinx.coroutines.CoroutineScope
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
+import android.os.Environment
 
 @Composable
 fun CameraScreen(
@@ -828,8 +829,9 @@ private fun takePhoto(
                                 watermarkBitmap.recycle()
 
                                 ensureActive()
+                                val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: context.filesDir
                                 val finalFile = File(
-                                    context.cacheDir,
+                                    storageDir,
                                     "captured_image_${System.currentTimeMillis()}.jpg"
                                 )
                                 

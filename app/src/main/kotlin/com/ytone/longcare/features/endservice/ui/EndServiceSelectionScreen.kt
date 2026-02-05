@@ -40,6 +40,7 @@ import android.widget.Toast
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.navigation.toRequestModel
 import com.ytone.longcare.model.toOrderKey
+import com.ytone.longcare.common.utils.singleClick
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,7 +78,7 @@ fun EndServiceSelectionScreen(
             CenterAlignedTopAppBar(
                 title = { Text("确认服务项目", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = singleClick { navController.popBackStack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
@@ -195,10 +196,10 @@ fun EndServiceSelectionScreen(
                             NextStepButton(
                                 text = "确认结束服务",
                                 enabled = selectedProjectIds.isNotEmpty(),
-                                onClick = {
+                                onClick = singleClick {
                                     if (selectedProjectIds.isEmpty()) {
                                         Toast.makeText(context, "请至少选择一个服务项目", Toast.LENGTH_SHORT).show()
-                                        return@NextStepButton
+                                        return@singleClick
                                     }
 
                                     // --- 先加载已上传的图片数据（在清理前获取） ---

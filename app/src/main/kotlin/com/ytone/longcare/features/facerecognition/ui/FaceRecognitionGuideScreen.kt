@@ -30,6 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.compose.runtime.CompositionLocalProvider
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
+import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.facerecognition.vm.FaceRecognitionViewModel
 import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.api.request.OrderInfoRequestModel
@@ -71,7 +72,7 @@ fun FaceRecognitionGuideScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        IconButton(onClick = singleClick { navController.popBackStack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "返回",
@@ -101,7 +102,7 @@ fun FaceRecognitionGuideScreen(
                     ) {
                         // 开始人脸识别按钮
                         Button(
-                            onClick = {
+                            onClick = singleClick {
                                 viewModel.startFaceRecognition()
                                 navController.navigateToSelectService(orderParams)
                             },

@@ -15,6 +15,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.ytone.longcare.common.utils.safeNavigate
 import com.ytone.longcare.MainViewModel
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.home.ui.HomeScreen
@@ -142,7 +143,7 @@ fun NavController.navigateToServiceCountdown(orderParams: OrderNavParams, projec
  * @param projectIdList 项目ID列表
  */
 fun NavController.navigateToEndServiceSelection(orderParams: OrderNavParams, endType: Int, projectIdList: List<Int> = emptyList()) {
-    navigate(EndServiceSelectionRoute(orderParams = orderParams, endType = endType, initialProjectIdList = projectIdList))
+    safeNavigate(EndServiceSelectionRoute(orderParams = orderParams, endType = endType, initialProjectIdList = projectIdList))
 }
 
 /**
@@ -205,7 +206,7 @@ fun NavController.navigateToNoServiceUserList() {
 }
 
 fun NavController.navigateToHomeAndClearStack() {
-    navigate(HomeRoute) {
+    safeNavigate(HomeRoute) {
         popUpTo(0) { inclusive = false }
         launchSingleTop = true
     }

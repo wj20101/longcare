@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.navigation.navigateToNfcSignInForStartOrder
 import com.ytone.longcare.theme.bgButtonGradientBrush
@@ -65,7 +66,7 @@ fun SelectDeviceScreen(
                 CenterAlignedTopAppBar(
                     title = { Text(stringResource(R.string.select_device_title), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        IconButton(onClick = singleClick { navController.popBackStack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.common_back),
@@ -93,7 +94,7 @@ fun SelectDeviceScreen(
                         NextStepButton(
                             text = stringResource(R.string.common_next_step),
                             enabled = true,
-                            onClick = { 
+                            onClick = singleClick { 
                                 navController.navigateToNfcSignInForStartOrder(orderParams)
                             }
                         )
