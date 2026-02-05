@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.UnifiedBackHandler
+import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.di.SelectServiceEntryPoint
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
@@ -140,7 +141,7 @@ fun SelectServiceScreen(
                         "请选择服务项目", fontWeight = FontWeight.Bold
                     )
                 }, navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = singleClick { navController.popBackStack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
@@ -276,7 +277,7 @@ fun SelectServiceScreen(
                         NextStepButton(
                             text = if (starOrderState !is StarOrderUiState.Loading) "开始服务" else "正在处理...",
                             enabled = serviceItems.any { it.isSelected } && starOrderState !is StarOrderUiState.Loading,
-                            onClick = {
+                            onClick = singleClick {
                                 val selectedProjectIds =
                                     serviceItems.filter { it.isSelected }.map { it.id }
                                 // 先调用starOrder接口

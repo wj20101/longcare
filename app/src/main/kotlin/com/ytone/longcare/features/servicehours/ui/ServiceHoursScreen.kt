@@ -27,6 +27,7 @@ import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
+import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
@@ -110,7 +111,7 @@ fun ServiceHoursScreen(
                                     }
                                 }
                             }, navigationIcon = {
-                                IconButton(onClick = { navController.popBackStack() }) {
+                                IconButton(onClick = singleClick { navController.popBackStack() }) {
                                     Icon(
                                         Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = stringResource(R.string.common_back)

@@ -45,9 +45,7 @@ import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
-import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.model.toOrderKey
-import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
 import com.ytone.longcare.navigation.navigateToEndServiceSelection
 import com.ytone.longcare.navigation.navigateToPhotoUpload
 import com.ytone.longcare.navigation.navigateToHomeAndClearStack
@@ -63,10 +61,10 @@ import com.ytone.longcare.common.utils.HomeBackHandler
 import com.ytone.longcare.di.ServiceCountdownEntryPoint
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
-import com.ytone.longcare.common.utils.DeviceCompatibilityHelper
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.common.utils.singleClick
 
 
 // 服务倒计时页面状态
@@ -111,7 +109,7 @@ private data class ServiceInfo(
  * - 完善的资源清理机制
  * 
  * @param navController 导航控制器
- * @param orderInfoRequest 订单信息请求模型
+ * @param orderParams 订单信息请求模型
  * @param projectIdList 选中的项目ID列表
  * @param sharedViewModel 共享的订单详情ViewModel
  * @param countdownViewModel 倒计时ViewModel
@@ -279,6 +277,7 @@ fun ServiceCountdownScreen(
 
     // 处理结束服务的公共逻辑
     fun handleEndService(endType: Int) {
+        Log.w("NavigationDebug", "ServiceCountdownScreen: handleEndService called with endType=$endType")
         Log.i("ServiceCountdownScreen", "========================================")
         Log.i("ServiceCountdownScreen", "🛑 开始处理结束服务 (endType=$endType)...")
         Log.i("ServiceCountdownScreen", "========================================")
@@ -457,7 +456,7 @@ fun ServiceCountdownScreen(
             CenterAlignedTopAppBar(
                 title = { Text("服务时间倒计时", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateToHomeAndClearStack() }) {
+                    IconButton(onClick = singleClick { navController.navigateToHomeAndClearStack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
@@ -530,11 +529,11 @@ fun ServiceCountdownScreen(
                     .padding(horizontal = 16.dp, vertical = 32.dp)
             ) {
                 Button(
-                    onClick = {
+                    onClick = singleClick {
                         // 验证照片是否已上传 (Mock模式下跳过验证)
                         if (!BuildConfig.USE_MOCK_DATA && !countdownViewModel.validatePhotosUploaded()) {
                             countdownViewModel.showToast("请上传照片")
-                            return@Button
+                            return@singleClick
                         }
 
                         // 如果倒计时还在进行中，显示确认弹窗
@@ -599,7 +598,7 @@ fun ServiceCountdownScreen(
             text = { Text(permissionDialogMessage) },
             confirmButton = {
                 TextButton(
-                    onClick = {
+                    onClick = singleClick {
                         showPermissionDialog = false
                         // 根据权限类型跳转到对应设置页面
                         val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && 
@@ -621,7 +620,7 @@ fun ServiceCountdownScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showPermissionDialog = false }) {
+                    onClick = singleClick { showPermissionDialog = false }) {
                     Text("稍后")
                 }
             })
@@ -635,7 +634,7 @@ fun ServiceCountdownScreen(
             text = { Text("服务时间尚未结束，确定要提前结束服务吗？") },
             confirmButton = {
                 TextButton(
-                    onClick = {
+                    onClick = singleClick {
                         showConfirmDialog = false
                         handleEndService(2)  // 提前结束
                     }) {
@@ -644,7 +643,7 @@ fun ServiceCountdownScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showConfirmDialog = false }) {
+                    onClick = singleClick { showConfirmDialog = false }) {
                     Text("取消")
                 }
             })
@@ -658,7 +657,7 @@ fun ServiceCountdownScreen(
             text = { Text(orderStateErrorMessage) },
             confirmButton = {
                 TextButton(
-                    onClick = {
+                    onClick = singleClick {
                         showOrderStateErrorDialog = false
                         
                         Log.i("ServiceCountdownScreen", "========================================")
@@ -749,7 +748,7 @@ fun CountdownTimerCard(
                 )
             }
             Button(
-                onClick = {
+                onClick = singleClick {
                     val existingImages = countdownViewModel.getCurrentUploadedImages()
                     // 通过savedStateHandle传递已有的图片数据
                     navController.currentBackStackEntry?.savedStateHandle?.set(

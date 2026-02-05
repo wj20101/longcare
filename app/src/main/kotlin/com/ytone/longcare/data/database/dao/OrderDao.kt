@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.ytone.longcare.data.database.entity.OrderEntity
 import kotlinx.coroutines.flow.Flow
@@ -30,14 +31,24 @@ interface OrderDao {
     
     // ========== 写入操作 ==========
     
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertOrUpdate(order: OrderEntity): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIgnore(order: OrderEntity): Long
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateAll(orders: List<OrderEntity>)
     
     @Update
     suspend fun update(order: OrderEntity)
+
+    @Transaction
+    suspend fun insertOrUpdate(order: OrderEntity): Long {
+        val id = insertIgnore(order)
+        if (id == -1L) {
+            update(order)
+            return order.orderId
+        }
+        return id
+    }
     
     // ========== 更新操作 ==========
     

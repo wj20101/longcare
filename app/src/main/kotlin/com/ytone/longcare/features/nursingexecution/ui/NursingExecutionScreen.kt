@@ -30,6 +30,7 @@ import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.api.response.UserInfoM
 import com.ytone.longcare.common.utils.NavigationHelper
+import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
@@ -179,7 +180,7 @@ fun NursingExecutionContent(
                 CenterAlignedTopAppBar(
                     title = { Text(stringResource(R.string.nursing_execution_title), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        IconButton(onClick = singleClick { navController.popBackStack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                         }
                     },
@@ -248,7 +249,7 @@ fun NursingExecutionContent(
                 ) {
                     ConfirmButton(
                         text = stringResource(R.string.nursing_execution_confirm_button), 
-                        onClick = {
+                        onClick = singleClick {
                             when {
                                 orderInfo.state.isExecutingState() -> {
                                     // 使用NavigationHelper统一处理跳转逻辑

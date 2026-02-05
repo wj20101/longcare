@@ -29,6 +29,7 @@ import com.ytone.longcare.api.response.isServiceRecord
 import com.ytone.longcare.model.handleOrderNavigation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
+import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.navigation.HomeRoute
 import com.ytone.longcare.navigation.navigateToNursingExecution
 import com.ytone.longcare.navigation.navigateToService
@@ -84,7 +85,7 @@ fun ServiceOrdersListScreen(
                         text = title, fontWeight = FontWeight.Bold
                     )
                 }, navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = singleClick { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回",
@@ -133,7 +134,7 @@ fun ServiceOrdersListScreen(
                     }
                 } else {
                     items(filteredOrders) { order ->
-                        ServiceOrderItem(order = order) {
+                        ServiceOrderItem(order = order, onClick = singleClick {
                     handleOrderNavigation(
                          state = order.state,
                          orderId = order.orderId,
@@ -148,7 +149,7 @@ fun ServiceOrdersListScreen(
                              // 未开单状态，不允许跳转
                          }
                      )
-                }
+                })
                     }
                 }
             }
