@@ -41,10 +41,12 @@ import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.navigation.navigateToCamera
 import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.navigation.navigateToManualFaceCapture
+import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
+import com.ytone.longcare.navigation.OrderNavParams
 
 /**
  * 身份认证相关常量
@@ -58,15 +60,18 @@ private object IdentificationConstants {
 @Composable
 fun IdentificationScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     identificationViewModel: IdentificationViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    
     val context = LocalContext.current
-    val faceVerificationStatusManager = EntryPointAccessors.fromApplication(
+    val unifiedOrderRepository = EntryPointAccessors.fromApplication(
         context.applicationContext,
         IdentificationEntryPoint::class.java
-    ).faceVerificationStatusManager()
+    ).unifiedOrderRepository()
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -128,9 +133,11 @@ fun IdentificationScreen(
                     }
                     IdentificationViewModel.VerificationType.ELDER -> {
                         identificationViewModel.setElderVerified()
-                        // 老人验证成功后，保存人脸验证完成状态
+                        // 老人验证成功后，保存人脸验证完成状态到Room
                         if (orderInfoRequest.orderId > 0) {
-                            faceVerificationStatusManager.saveFaceVerificationCompleted(orderInfoRequest.orderId)
+                            scope.launch {
+                                unifiedOrderRepository.updateFaceVerification(orderInfoRequest.toOrderKey(), true)
+                            }
                         }
                     }
                     null -> { /* 无验证类型，不处理 */ }
@@ -172,7 +179,7 @@ fun IdentificationScreen(
         when (photoUploadState) {
             is IdentificationViewModel.PhotoUploadState.Success -> {
                 // 上传成功，自动跳转到下一步
-                navController.navigateToSelectService(orderInfoRequest)
+                navController.navigateToSelectService(orderParams)
                 // 重置状态
                 identificationViewModel.resetPhotoUploadState()
             }
@@ -220,7 +227,7 @@ fun IdentificationScreen(
                     ) {
                         // 下一步按钮
                         Button(
-                            onClick = { navController.navigateToSelectService(orderInfoRequest) },
+                            onClick = { navController.navigateToSelectService(orderParams) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 48.dp),

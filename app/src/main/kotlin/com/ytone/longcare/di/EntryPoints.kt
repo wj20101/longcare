@@ -1,10 +1,9 @@
 package com.ytone.longcare.di
 
-import com.ytone.longcare.common.utils.FaceVerificationStatusManager
 import com.ytone.longcare.common.utils.NavigationHelper
 import com.ytone.longcare.common.utils.NfcManager
-import com.ytone.longcare.common.utils.SelectedProjectsManager
 import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.features.maindashboard.utils.NfcTestHelper
@@ -20,7 +19,7 @@ import dagger.hilt.components.SingletonComponent
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface IdentificationEntryPoint {
-    fun faceVerificationStatusManager(): FaceVerificationStatusManager
+    fun unifiedOrderRepository(): UnifiedOrderRepository
 }
 
 @EntryPoint
@@ -38,15 +37,13 @@ interface NfcLocationEntryPoint {
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface SelectServiceEntryPoint {
-    fun selectedProjectsManager(): SelectedProjectsManager
+    fun unifiedOrderRepository(): UnifiedOrderRepository
     fun navigationHelper(): NavigationHelper
 }
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface NursingExecutionEntryPoint {
-    fun faceVerificationStatusManager(): FaceVerificationStatusManager
-    fun selectedProjectsManager(): SelectedProjectsManager
     fun navigationHelper(): NavigationHelper
     fun toastHelper(): ToastHelper
     fun nfcTestHelper(): NfcTestHelper
@@ -54,8 +51,10 @@ interface NursingExecutionEntryPoint {
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
-interface SelectedProjectsManagerEntryPoint {
-    fun selectedProjectsManager(): SelectedProjectsManager
+interface MainDashboardEntryPoint {
+    fun navigationHelper(): NavigationHelper
+    fun toastHelper(): ToastHelper
+    fun nfcTestHelper(): NfcTestHelper
 }
 
 @EntryPoint

@@ -46,6 +46,7 @@ import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.navigation.EndOderInfo
+import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
 import com.ytone.longcare.navigation.navigateToEndServiceSelection
 import com.ytone.longcare.navigation.navigateToPhotoUpload
@@ -64,6 +65,7 @@ import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.common.utils.DeviceCompatibilityHelper
 import dagger.hilt.android.EntryPointAccessors
+import com.ytone.longcare.navigation.OrderNavParams
 
 
 // 服务倒计时页面状态
@@ -118,12 +120,15 @@ private data class ServiceInfo(
 @Composable
 fun ServiceCountdownScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     projectIdList: List<Int>,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     countdownViewModel: ServiceCountdownViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    
     // 强制设置为竖屏
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
@@ -299,9 +304,9 @@ fun ServiceCountdownScreen(
 
         // 6. 导航到结束服务选择页面
         navController.navigateToEndServiceSelection(
-            orderInfoRequest = orderInfoRequest,
-            projectIdList = projectIdList,
-            endType = endType
+            orderParams = orderParams,
+            endType = endType,
+            projectIdList = projectIdList
         )
     }
 
@@ -328,10 +333,10 @@ fun ServiceCountdownScreen(
         checkLocationPermissionAndStart()
 
         // 恢复本地保存的图片数据
-        countdownViewModel.loadUploadedImagesFromLocal(orderInfoRequest)
+        countdownViewModel.loadUploadedImagesFromRepository(orderInfoRequest.toOrderKey())
         
         // 启动订单状态轮询（每5秒查询一次）
-        countdownViewModel.startOrderStatePolling(orderInfoRequest.orderId)
+        countdownViewModel.startOrderStatePolling(orderInfoRequest.toOrderKey())
 
         // 监听图片上传结果
         navController.currentBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<ImageTask>>?>(
@@ -494,7 +499,7 @@ fun ServiceCountdownScreen(
                     countdownState = countdownState,
                     formattedTime = formattedTime,
                     countdownViewModel = countdownViewModel,
-                    orderInfoRequest = orderInfoRequest
+                    orderParams = orderParams
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -706,7 +711,7 @@ fun CountdownTimerCard(
     countdownState: ServiceCountdownState,
     formattedTime: String = "12:00:00",
     countdownViewModel: ServiceCountdownViewModel,
-    orderInfoRequest: OrderInfoRequestModel
+    orderParams: OrderNavParams
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -749,7 +754,7 @@ fun CountdownTimerCard(
                     navController.currentBackStackEntry?.savedStateHandle?.set(
                         NavigationConstants.EXISTING_IMAGES_KEY, existingImages
                     )
-                    navController.navigateToPhotoUpload(orderInfoRequest = orderInfoRequest)
+                    navController.navigateToPhotoUpload(orderParams = orderParams)
                 }, shape = RoundedCornerShape(50), colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFF5A623) // 橙色
                 )

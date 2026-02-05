@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -35,7 +36,9 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.StarOrderUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.features.selectservice.vm.SelectServiceViewModel
+import com.ytone.longcare.navigation.OrderNavParams
 
 // --- 数据模型 ---
 data class ServiceItem(
@@ -48,18 +51,24 @@ data class ServiceItem(
 @Composable
 fun SelectServiceScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     selectServiceViewModel: SelectServiceViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    
     val context = LocalContext.current
-    val selectedProjectsManager = EntryPointAccessors.fromApplication(
+    val unifiedOrderRepository = EntryPointAccessors.fromApplication(
         context.applicationContext, SelectServiceEntryPoint::class.java
-    ).selectedProjectsManager()
+    ).unifiedOrderRepository()
 
     val navigationHelper = EntryPointAccessors.fromApplication(
         context.applicationContext, SelectServiceEntryPoint::class.java
     ).navigationHelper()
+    
+    val coroutineScope = rememberCoroutineScope()
+    
     // 使用SharedViewModel获取订单详情
     val uiState by sharedViewModel.uiState.collectAsState()
     val starOrderState by sharedViewModel.starOrderState.collectAsStateWithLifecycle()
@@ -273,21 +282,23 @@ fun SelectServiceScreen(
                                 sharedViewModel.starOrder(
                                     orderInfoRequest.orderId,
                                     selectedProjectIds.map { it.toLong() }) {
-                                    // 成功后保存选中的项目ID到本地存储
-                                    selectedProjectsManager.saveSelectedProjects(
-                                        orderInfoRequest.orderId, selectedProjectIds
-                                    )
-                                    // 从uiState获取orderInfo
-                                    val currentState = uiState
-                                    if (currentState is OrderDetailUiState.Success) {
-                                        // 使用NavigationHelper统一处理跳转逻辑
-                                        navigationHelper.navigateToServiceCountdownWithLogic(
-                                            navController = navController,
-                                            orderId = orderInfoRequest.orderId,
-                                            projectList = currentState.orderInfo.projectList
-                                                ?: emptyList(),
-                                            selectedProjectIds = selectedProjectIds
+                                    // 成功后保存选中的项目ID到Room
+                                    coroutineScope.launch {
+                                        unifiedOrderRepository.updateSelectedProjects(
+                                            orderInfoRequest.toOrderKey(), selectedProjectIds
                                         )
+                                        // 从uiState获取orderInfo
+                                        val currentState = uiState
+                                        if (currentState is OrderDetailUiState.Success) {
+                                            // 使用NavigationHelper统一处理跳转逻辑
+                                            navigationHelper.navigateToServiceCountdownWithLogic(
+                                                navController = navController,
+                                                orderParams = orderParams,
+                                                projectList = currentState.orderInfo.projectList
+                                                    ?: emptyList(),
+                                                selectedProjectIds = selectedProjectIds
+                                            )
+                                        }
                                     }
                                 }
                             },

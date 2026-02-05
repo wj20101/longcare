@@ -63,6 +63,8 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.BuildConfig
+import com.ytone.longcare.model.toOrderKey
+import com.ytone.longcare.navigation.OrderNavParams
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
@@ -76,10 +78,13 @@ enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
 @Composable
 fun PhotoUploadScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     viewModel: PhotoProcessingViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    
     // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
     UnifiedBackHandler(navController = navController)
 
@@ -157,7 +162,7 @@ fun PhotoUploadScreen(
                     uris = listOf(uri),
                     taskType = taskType,
                     address = sharedViewModel.getUserAddress(orderInfoRequest),
-                    orderId = orderInfoRequest.orderId
+                    orderKey = orderInfoRequest.toOrderKey()
                 )
             }
             // 清除数据，避免重复处理

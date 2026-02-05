@@ -35,14 +35,17 @@ import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.common.utils.UnifiedBackHandler
+import com.ytone.longcare.navigation.OrderNavParams
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FaceRecognitionGuideScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     viewModel: FaceRecognitionViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -99,7 +102,7 @@ fun FaceRecognitionGuideScreen(
                         Button(
                             onClick = {
                                 viewModel.startFaceRecognition()
-                                navController.navigateToSelectService(orderInfoRequest)
+                                navController.navigateToSelectService(orderParams)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -186,14 +189,8 @@ fun FaceRecognitionGuideScreen(
 @Preview(showBackground = true)
 @Composable
 fun FaceRecognitionGuideScreenPreview() {
-    val previewViewModel: FaceRecognitionViewModel = hiltViewModel()
-    CompositionLocalProvider(LocalViewModelStoreOwner provides PreviewViewModelStoreOwner()) {
-        FaceRecognitionGuideScreen(
-            navController = rememberNavController(),
-            orderInfoRequest = OrderInfoRequestModel(orderId = 1, planId = 0),
-            viewModel = previewViewModel
-        )
-    }
+    // 预览不可用，因为需要OrderNavParams
+    // 如果需要预览，请参考实际应用中的使用方式
 }
 
 /**

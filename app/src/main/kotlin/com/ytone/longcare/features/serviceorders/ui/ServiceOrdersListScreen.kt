@@ -32,6 +32,7 @@ import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.navigation.HomeRoute
 import com.ytone.longcare.navigation.navigateToNursingExecution
 import com.ytone.longcare.navigation.navigateToService
+import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.theme.bgGradientBrush
 
 enum class ServiceOrderType {
@@ -138,10 +139,10 @@ fun ServiceOrdersListScreen(
                          orderId = order.orderId,
                          planId = 0,
                          onNavigateToNursingExecution = { orderId, planId ->
-                             navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = orderId, planId = planId))
+                             navController.navigateToNursingExecution(OrderNavParams(orderId, planId))
                          },
                          onNavigateToService = { orderId, planId ->
-                             navController.navigateToService(OrderInfoRequestModel(orderId = orderId, planId = planId))
+                             navController.navigateToService(OrderNavParams(orderId, planId))
                          },
                          onNotStartedState = {
                              // 未开单状态，不允许跳转
