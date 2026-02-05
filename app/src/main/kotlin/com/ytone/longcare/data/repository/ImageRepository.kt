@@ -166,6 +166,13 @@ class ImageRepository @Inject constructor(
     suspend fun resetToPending(imageId: Long) {
         orderImageDao.updateStatus(imageId, ImageUploadStatus.PENDING.value)
     }
+
+    /**
+     * 更新状态（通用）
+     */
+    suspend fun updateStatus(imageId: Long, status: ImageUploadStatus) {
+        orderImageDao.updateStatus(imageId, status.value)
+    }
     
     // ========== 删除操作 ==========
     

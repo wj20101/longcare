@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import java.util.Locale
 import javax.inject.Inject
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 
 /**
  * 服务倒计时前台服务
@@ -50,13 +51,13 @@ class CountdownForegroundService : Service() {
          */
         fun startCountdown(
             context: Context,
-            orderId: Long,
+            request: OrderInfoRequestModel,
             serviceName: String,
             totalSeconds: Long
         ) {
             val intent = Intent(context, CountdownForegroundService::class.java).apply {
                 action = ACTION_START_COUNTDOWN
-                putExtra(EXTRA_ORDER_ID, orderId)
+                putExtra(EXTRA_ORDER_ID, request.orderId)
                 putExtra(EXTRA_SERVICE_NAME, serviceName)
                 putExtra(EXTRA_TOTAL_SECONDS, totalSeconds)
             }

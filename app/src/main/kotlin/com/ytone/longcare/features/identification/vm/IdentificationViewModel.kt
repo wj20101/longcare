@@ -19,6 +19,7 @@ import com.ytone.longcare.domain.identification.IdentificationRepository
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.photoupload.model.WatermarkData
@@ -239,9 +240,9 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 验证老人
      */
-    fun verifyElder(context: Context, orderId: Long) {
+    fun verifyElder(context: Context, request: OrderInfoRequestModel) {
         viewModelScope.launch {
-            val orderInfo = unifiedOrderRepository.getCachedOrderInfo(OrderKey(orderId))
+            val orderInfo = unifiedOrderRepository.getCachedOrderInfo(request.toOrderKey())
             if (orderInfo != null) {
                 val userInfo = orderInfo.userInfo
                 if (userInfo != null) {
@@ -249,7 +250,7 @@ class IdentificationViewModel @Inject constructor(
                         context = context,
                         name = userInfo.name,
                         idNo = userInfo.identityCardNumber,
-                        orderNo = "elder_${orderId}_${System.currentTimeMillis()}",
+                        orderNo = "elder_${request.orderId}_${System.currentTimeMillis()}",
                         userId = userInfo.userId.toString(),
                         verificationType = VerificationType.ELDER
                     )
@@ -487,10 +488,10 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 处理拍照并上传老人照片
      * @param photoUri 拍照的图片URI
-     * @param orderId 订单ID
+     * @param request 订单请求模型
      * @param onSuccess 成功回调
      */
-    fun processElderPhoto(photoUri: Uri, orderId: Long, onSuccess: () -> Unit = {}) {
+    fun processElderPhoto(photoUri: Uri, request: OrderInfoRequestModel, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             try {
                 _photoUploadState.value = PhotoUploadState.Processing
@@ -508,7 +509,7 @@ class IdentificationViewModel @Inject constructor(
                 
                 if (uploadResult.success && uploadResult.key != null) {
                     // 上传成功，调用后端接口
-                    when (val result = orderRepository.upUserStartImg(orderId, listOf(uploadResult.key))) {
+                    when (val result = orderRepository.upUserStartImg(request.orderId, listOf(uploadResult.key))) {
                         is ApiResult.Success -> {
                             _photoUploadState.value = PhotoUploadState.Success
                             toastHelper.showShort("老人照片上传成功")
@@ -542,12 +543,12 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 生成用于相机屏幕的水印数据
      * @param address 拍摄地址
-     * @param orderId 订单ID
+     * @param request 订单请求模型
      * @return WatermarkData
      */
-    suspend fun generateWatermarkData(address: String, orderId: Long): WatermarkData {
+    suspend fun generateWatermarkData(address: String, request: OrderInfoRequestModel): WatermarkData {
         // 获取订单信息
-        val orderInfo = unifiedOrderRepository.getCachedOrderInfo(OrderKey(orderId))
+        val orderInfo = unifiedOrderRepository.getCachedOrderInfo(request.toOrderKey())
         val elderName = orderInfo?.userInfo?.name ?: "未知老人"
 
         // 获取当前登录用户（护工）信息

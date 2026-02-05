@@ -10,9 +10,16 @@ import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.location.provider.LocationResult
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -94,9 +101,13 @@ class ContinuousAmapLocationManager @Inject constructor(
      * @param interval 定位间隔（毫秒）
      * @return 位置更新Flow，收集时自动开始定位，取消收集时自动停止
      */
-    fun startContinuousLocation(
-        interval: Long = DEFAULT_INTERVAL
-    ): Flow<LocationResult> = callbackFlow {
+    private val scope = CoroutineScope(SupervisorJob())
+
+    /**
+     * 共享的持续定位流
+     * 使用 shareIn 实现多播，当订阅者 > 0 时自动启动定位，无订阅者后延时 5秒 停止定位
+     */
+    private val _locationFlow = callbackFlow {
         val third = systemConfigManager.getThirdKey()
         val apiKey = third?.gaoDeMapApiKey?.takeIf { it.isNotBlank() } ?: ""
         
@@ -106,7 +117,8 @@ class ContinuousAmapLocationManager @Inject constructor(
             return@callbackFlow
         }
         
-        initContinuousLocationClient(apiKey, interval)
+        // 确保初始化，使用当前的配置间隔
+        initContinuousLocationClient(apiKey, DEFAULT_INTERVAL)
         
         val client = locationClient
         if (client == null) {
@@ -133,12 +145,57 @@ class ContinuousAmapLocationManager @Inject constructor(
         
         client.setLocationListener(listener)
         client.startLocation()
-        logI("持续定位已启动")
+        logI("持续定位引擎已启动 (Subscriber Added)")
         
         awaitClose {
-            logI("持续定位已停止")
+            logI("持续定位引擎已停止 (No Subscribers)")
             client.unRegisterLocationListener(listener)
             client.stopLocation()
+        }
+    }.shareIn(
+        scope = scope,
+        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000L), // 5秒缓冲，避免页面切换时频繁启停
+        replay = 1 // 保留最新一个位置，新订阅者秒开
+    )
+
+    /**
+     * 获取持续定位流
+     * 
+     * @param interval 定位间隔（毫秒），注意：多个订阅者将共享同一个间隔配置，后调用者会覆盖前调用者的间隔
+     * @return 共享的位置更新Flow
+     */
+    fun startContinuousLocation(
+        interval: Long = DEFAULT_INTERVAL
+    ): Flow<LocationResult> {
+        // 更新间隔配置（如果有变化）
+        updateInterval(interval)
+        return _locationFlow
+    }
+
+    /**
+     * 单次获取当前位置（复用持续定位流）
+     * 
+     * 逻辑：
+     * 1. 尝试从活动流中获取最新的位置
+     * 2. 如果成功，直接返回
+     * 3. 如果超时（默认10秒），返回null
+     * 
+     * 优势：
+     * - 复用了 ContinuousAmapLocationManager 的 Flow
+     * - 不会创建新的 AMapLocationClient 实例
+     * - 自动处理已启动会话的情况 (StateFlow piggyback)
+     */
+    suspend fun getCurrentLocation(timeoutMs: Long = 10_000L): LocationResult? {
+        // 如果已经有缓存且很新（Replay=1），first()会立即返回
+        // 即使没有，startContinuousLocation()会触发定位（如果尚未启动）
+        return try {
+            withTimeoutOrNull(timeoutMs) {
+                // 调用此方法会自动增加订阅者计数，触发定位启动
+                startContinuousLocation().first() 
+            }
+        } catch (e: Exception) {
+            logE("单次定位获取失败: ${e.message}")
+            null
         }
     }
     

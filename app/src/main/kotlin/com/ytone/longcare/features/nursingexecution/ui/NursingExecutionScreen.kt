@@ -34,7 +34,6 @@ import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.model.isExecutingState
 import com.ytone.longcare.model.isPendingExecutionState
 import com.ytone.longcare.navigation.navigateToSelectDevice
@@ -43,6 +42,7 @@ import com.ytone.longcare.ui.screen.ServiceHoursTag
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.di.NursingExecutionEntryPoint
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
 
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,13 +53,25 @@ fun NursingExecutionScreen(
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
     
     val context = LocalContext.current
     val navigationHelper = EntryPointAccessors.fromApplication(
         context.applicationContext,
         NursingExecutionEntryPoint::class.java
     ).navigationHelper()
+    
+    // 获取单例 LocationTrackingManager
+    val locationTrackingManager = EntryPointAccessors.fromApplication(
+        context.applicationContext,
+        NursingExecutionEntryPoint::class.java
+    ).locationTrackingManager()
+
+    // 开启定位会话 (Session Start)
+    // 只要进入工单流程，就开启持续定位，无论页面如何跳转，只要不显式停止，定位就会一直保持
+    LaunchedEffect(Unit) {
+        locationTrackingManager.startLocationSession()
+    }
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -84,7 +96,6 @@ fun NursingExecutionScreen(
             NursingExecutionContent(
                 navController = navController,
                 orderInfo = state.orderInfo,
-                orderInfoRequest = orderInfoRequest,
                 orderParams = orderParams,
                 navigationHelper = navigationHelper
             )
@@ -154,7 +165,6 @@ fun ErrorScreen(
 fun NursingExecutionContent(
     navController: NavController,
     orderInfo: ServiceOrderInfoModel,
-    orderInfoRequest: OrderInfoRequestModel,
     orderParams: OrderNavParams,
     navigationHelper: NavigationHelper
 ) {

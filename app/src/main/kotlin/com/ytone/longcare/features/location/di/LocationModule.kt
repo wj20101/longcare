@@ -3,7 +3,6 @@ package com.ytone.longcare.features.location.di
 import android.content.Context
 import android.location.LocationManager
 import androidx.core.content.ContextCompat
-import com.ytone.longcare.features.location.provider.AmapLocationProvider
 import com.ytone.longcare.features.location.provider.SystemLocationProvider
 import dagger.Module
 import dagger.Provides

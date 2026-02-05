@@ -61,10 +61,10 @@ import androidx.core.net.toUri
 import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.common.utils.UnifiedBackHandler
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
@@ -83,13 +83,16 @@ fun PhotoUploadScreen(
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
     
     // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
     UnifiedBackHandler(navController = navController)
 
     // 在组件初始化时加载订单信息（如果缓存中没有）
     LaunchedEffect(orderInfoRequest) {
+        // 设置ViewModel的OrderKey以加载图片数据
+        viewModel.setOrderKey(orderInfoRequest.toOrderKey())
+        
         // 先检查缓存，如果没有缓存数据才请求
         if (sharedViewModel.getCachedOrderInfo(orderInfoRequest) == null) {
             sharedViewModel.getOrderInfo(orderInfoRequest)

@@ -6,6 +6,7 @@ import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
+import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import com.ytone.longcare.features.maindashboard.utils.NfcTestHelper
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -47,6 +48,7 @@ interface NursingExecutionEntryPoint {
     fun navigationHelper(): NavigationHelper
     fun toastHelper(): ToastHelper
     fun nfcTestHelper(): NfcTestHelper
+    fun locationTrackingManager(): LocationTrackingManager
 }
 
 @EntryPoint
@@ -61,4 +63,16 @@ interface MainDashboardEntryPoint {
 @InstallIn(SingletonComponent::class)
 interface ServiceCountdownEntryPoint {
     fun countdownNotificationManager(): CountdownNotificationManager
+}
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface ServiceCompleteEntryPoint {
+    fun locationTrackingManager(): LocationTrackingManager
+}
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface HomeEntryPoint {
+    fun locationTrackingManager(): LocationTrackingManager
 }

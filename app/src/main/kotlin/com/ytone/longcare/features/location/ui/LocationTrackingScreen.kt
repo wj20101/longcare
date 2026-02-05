@@ -36,7 +36,13 @@ fun LocationTrackingScreen(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
         onResult = { permissions ->
             if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
-                viewModel.onStartClicked(123456L)
+                // 测试用的 OrderInfoRequestModel
+                viewModel.onStartClicked(
+                    com.ytone.longcare.api.request.OrderInfoRequestModel(
+                        orderId = 123456L,
+                        planId = 0
+                    )
+                )
             } else {
                 Toast.makeText(context, "需要定位权限才能开始任务", Toast.LENGTH_LONG).show()
             }

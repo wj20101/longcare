@@ -36,6 +36,7 @@ import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +46,7 @@ fun FaceRecognitionGuideScreen(
     viewModel: FaceRecognitionViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏

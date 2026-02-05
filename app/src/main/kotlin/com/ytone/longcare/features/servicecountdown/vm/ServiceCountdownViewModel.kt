@@ -320,11 +320,11 @@ class ServiceCountdownViewModel @Inject constructor(
      */
     fun startForegroundService(
         context: Context,
-        orderId: Long,
+        request: OrderInfoRequestModel,
         serviceName: String,
         totalSeconds: Long
     ) {
-        CountdownForegroundService.startCountdown(context, orderId, serviceName, totalSeconds)
+        CountdownForegroundService.startCountdown(context, request, serviceName, totalSeconds)
     }
     
     /**

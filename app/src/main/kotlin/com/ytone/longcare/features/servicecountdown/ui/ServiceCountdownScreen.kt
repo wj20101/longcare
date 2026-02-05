@@ -66,6 +66,7 @@ import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundS
 import com.ytone.longcare.common.utils.DeviceCompatibilityHelper
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
 
 
 // 服务倒计时页面状态
@@ -127,7 +128,7 @@ fun ServiceCountdownScreen(
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
     
     // 强制设置为竖屏
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
@@ -186,7 +187,7 @@ fun ServiceCountdownScreen(
 
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
-        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest.orderId) }
+        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest) }
     )
 
     // 检查定位权限和服务的函数
@@ -194,7 +195,7 @@ fun ServiceCountdownScreen(
         UnifiedPermissionHelper.checkLocationPermissionAndStart(
             context = context,
             permissionLauncher = permissionLauncher,
-            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest.orderId) }
+            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest) }
         )
     }
 
@@ -291,7 +292,7 @@ fun ServiceCountdownScreen(
         Log.i("ServiceCountdownScreen", "✅ 2. 已停止定位跟踪服务")
 
         // 3. 取消倒计时闹钟（使用订单ID精确取消）
-        countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest.orderId)
+        countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest)
         Log.i("ServiceCountdownScreen", "✅ 3. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
 
         // 4. 停止响铃服务（如果正在响铃）
@@ -399,7 +400,7 @@ fun ServiceCountdownScreen(
         // 启动前台服务显示倒计时通知
         countdownViewModel.startForegroundService(
             context = context,
-            orderId = orderInfoRequest.orderId,
+            request = orderInfoRequest,
             serviceName = serviceInfo.serviceName,
             totalSeconds = serviceInfo.totalMinutes * 60L
         )
@@ -409,7 +410,7 @@ fun ServiceCountdownScreen(
         if (state == ServiceCountdownState.RUNNING && remainingMillis > 0) {
             val completionTime = System.currentTimeMillis() + remainingMillis
             countdownNotificationManager.scheduleCountdownAlarm(
-                orderId = orderInfoRequest.orderId,
+                request = orderInfoRequest,
                 serviceName = serviceInfo.serviceName,
                 triggerTimeMillis = completionTime
             )
@@ -681,7 +682,7 @@ fun ServiceCountdownScreen(
                         Log.i("ServiceCountdownScreen", "✅ 4. 已强制停止定位跟踪服务")
                         
                         // 5. 取消倒计时闹钟（使用订单ID精确取消）
-                        countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest.orderId)
+                        countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest)
                         Log.i("ServiceCountdownScreen", "✅ 5. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
                         
                         // 6. 停止响铃服务（如果正在响铃）

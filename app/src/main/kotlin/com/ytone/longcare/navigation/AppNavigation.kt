@@ -154,9 +154,9 @@ fun NavController.navigateToServiceComplete(
     orderParams: OrderNavParams,
     serviceCompleteData: ServiceCompleteData
 ) {
-    val currentRoute = this.currentBackStackEntry?.destination?.route ?: return
     navigate(ServiceCompleteRoute(orderParams = orderParams, serviceCompleteData = serviceCompleteData)) {
-        popUpTo(currentRoute) { inclusive = true }
+        // 服务完成时，清除之前所有的服务流程页面（保留Home），确保 SharedOrderDetailViewModel 被销毁 -> 停止定位
+        popUpTo(HomeRoute) { inclusive = false }
         launchSingleTop = true
     }
 }
