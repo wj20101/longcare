@@ -17,7 +17,8 @@ import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.identification.IdentificationRepository
 import com.ytone.longcare.domain.order.OrderRepository
-import com.ytone.longcare.domain.order.SharedOrderRepository
+import com.ytone.longcare.data.repository.UnifiedOrderRepository
+import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.photoupload.model.WatermarkData
@@ -59,7 +60,7 @@ class IdentificationViewModel @Inject constructor(
     private val faceVerificationManager: FaceVerificationManager,
     private val systemConfigManager: SystemConfigManager,
     private val userSessionRepository: UserSessionRepository,
-    private val sharedOrderRepository: SharedOrderRepository,
+    private val unifiedOrderRepository: UnifiedOrderRepository,
     private val orderRepository: OrderRepository,
     private val cosRepository: CosRepository,
     private val identificationRepository: IdentificationRepository,
@@ -240,7 +241,7 @@ class IdentificationViewModel @Inject constructor(
      */
     fun verifyElder(context: Context, orderId: Long) {
         viewModelScope.launch {
-            val orderInfo = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))
+            val orderInfo = unifiedOrderRepository.getCachedOrderInfo(OrderKey(orderId))
             if (orderInfo != null) {
                 val userInfo = orderInfo.userInfo
                 if (userInfo != null) {
@@ -546,7 +547,7 @@ class IdentificationViewModel @Inject constructor(
      */
     suspend fun generateWatermarkData(address: String, orderId: Long): WatermarkData {
         // 获取订单信息
-        val orderInfo = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))
+        val orderInfo = unifiedOrderRepository.getCachedOrderInfo(OrderKey(orderId))
         val elderName = orderInfo?.userInfo?.name ?: "未知老人"
 
         // 获取当前登录用户（护工）信息

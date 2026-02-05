@@ -37,17 +37,22 @@ import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundS
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.di.ServiceCountdownEntryPoint
 import android.widget.Toast
+import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.model.toOrderKey
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EndServiceSelectionScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     initialProjectIdList: List<Int>,
     endType: Int,
     viewModel: EndServiceSelectionViewModel = hiltViewModel(),
     countdownViewModel: ServiceCountdownViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val projectList by viewModel.projectList.collectAsStateWithLifecycle()
     val selectedProjectIds by viewModel.selectedProjectIds.collectAsStateWithLifecycle()
@@ -196,7 +201,7 @@ fun EndServiceSelectionScreen(
                                     }
 
                                     // --- 先加载已上传的图片数据（在清理前获取） ---
-                                    countdownViewModel.loadUploadedImagesFromLocal(orderInfoRequest)
+                                    countdownViewModel.loadUploadedImagesFromRepository(orderInfoRequest.toOrderKey())
                                     val uploadedImages = countdownViewModel.getCurrentUploadedImages()
 
                                     // --- 执行资源清理逻辑 ---
@@ -210,7 +215,7 @@ fun EndServiceSelectionScreen(
                                     val endImgList = uploadedImages[ImageTaskType.AFTER_CARE]?.mapNotNull { it.key } ?: emptyList()
 
                                     navController.navigateToNfcSignInForEndOrder(
-                                        orderInfoRequest = orderInfoRequest,
+                                        orderParams = orderParams,
                                         params = EndOderInfo(
                                             projectIdList = viewModel.getConfirmedProjectIds(),
                                             beginImgList = beginImgList,

@@ -30,6 +30,7 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.navigation.navigateToNfcSignInForStartOrder
 import com.ytone.longcare.theme.bgButtonGradientBrush
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.navigation.OrderNavParams
 
 // --- 数据模型 ---
 data class Device(
@@ -42,8 +43,11 @@ data class Device(
 @Composable
 fun SelectDeviceScreen(
     navController: NavController = rememberNavController(),
-    orderInfoRequest: OrderInfoRequestModel? = null
+    orderParams: OrderNavParams
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    
     // 模拟设备数据
     val devices = remember {
         List(6) { index -> Device(id = "id_$index", name = "设备名称") }
@@ -89,7 +93,7 @@ fun SelectDeviceScreen(
                             text = stringResource(R.string.common_next_step),
                             enabled = true,
                             onClick = { 
-                                navController.navigateToNfcSignInForStartOrder(orderInfoRequest ?: OrderInfoRequestModel(orderId = 0L, planId = 0))
+                                navController.navigateToNfcSignInForStartOrder(orderParams)
                             }
                         )
                     }
@@ -132,9 +136,7 @@ fun SelectDeviceScreen(
 @Preview
 @Composable
 fun SelectDeviceScreenPreview() {
-    SelectDeviceScreen(
-        orderInfoRequest = OrderInfoRequestModel(orderId = 1L, planId = 0)
-    )
+    // 预览不可用，因为需要OrderNavParams
 }
 
 @Composable
@@ -242,6 +244,5 @@ fun NextStepButtonPreview() {
 @Preview
 @Composable
 fun SelectDeviceScreenWithNavControllerPreview() {
-    val navController = rememberNavController()
-    SelectDeviceScreen(navController = navController, orderInfoRequest = OrderInfoRequestModel(orderId = 12345L, planId = 0))
+    // 预览不可用，因为需要OrderNavParams
 }

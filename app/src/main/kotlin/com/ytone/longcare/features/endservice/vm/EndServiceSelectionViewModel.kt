@@ -5,7 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.domain.order.SharedOrderRepository
+import com.ytone.longcare.data.repository.UnifiedOrderRepository
+import com.ytone.longcare.model.toOrderKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +19,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class EndServiceSelectionViewModel @Inject constructor(
-    private val sharedOrderRepository: SharedOrderRepository
+    private val unifiedOrderRepository: UnifiedOrderRepository
 ) : ViewModel() {
 
     // 页面状态
@@ -41,7 +42,7 @@ class EndServiceSelectionViewModel @Inject constructor(
     fun initData(orderInfoRequest: OrderInfoRequestModel, initialSelectedIds: List<Int>) {
         viewModelScope.launch {
             // 尝试获取缓存的订单详情
-            val cachedOrderInfo = sharedOrderRepository.getCachedOrderInfo(orderInfoRequest)
+            val cachedOrderInfo = unifiedOrderRepository.getCachedOrderInfo(orderInfoRequest.toOrderKey())
             if (cachedOrderInfo != null) {
                 // 只显示开始服务时选择的项目（过滤后的列表）
                 val selectedProjects = (cachedOrderInfo.projectList ?: emptyList())
@@ -52,7 +53,7 @@ class EndServiceSelectionViewModel @Inject constructor(
                 _uiState.value = EndServiceSelectionUiState.Success
             } else {
                 // 如果没有缓存，尝试从网络加载
-                when (val result = sharedOrderRepository.getOrderInfo(orderInfoRequest)) {
+                when (val result = unifiedOrderRepository.getOrderInfo(orderInfoRequest.toOrderKey())) {
                     is ApiResult.Success -> {
                         // 只显示开始服务时选择的项目（过滤后的列表）
                         val selectedProjects = (result.data.projectList ?: emptyList())

@@ -57,6 +57,7 @@ import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
+import com.ytone.longcare.navigation.OrderNavParams
 
 
 // --- 状态定义 ---
@@ -71,13 +72,16 @@ enum class SignInState {
 @Composable
 fun NfcWorkflowScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     signInMode: SignInMode,
     endOderInfo: EndOderInfo? = null,
     nfcViewModel: NfcWorkflowViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel(),
     sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    
     val uiState by nfcViewModel.uiState.collectAsStateWithLifecycle()
     val pendingNfcData by nfcViewModel.pendingNfcData.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -88,7 +92,7 @@ fun NfcWorkflowScreen(
 
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
-        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest.orderId) }
+        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderParams.orderId) }
     )
 
     // 检查定位权限和服务的函数
@@ -250,7 +254,7 @@ fun NfcWorkflowScreen(
                                                 // 签到成功时开启定位上报任务
                                                 checkLocationPermissionAndStart()
                                                 // 签到成功后跳转到身份认证页面
-                                                navController.navigateToIdentification(orderInfoRequest)
+                                                navController.navigateToIdentification(orderParams)
                                             }
 
                                             SignInMode.END_ORDER -> {
@@ -270,7 +274,7 @@ fun NfcWorkflowScreen(
                                                     .joinToString(", ") { it.projectName }
                                                 
                                                 navController.navigateToServiceComplete(
-                                                    orderInfoRequest = orderInfoRequest,
+                                                    orderParams = orderParams,
                                                     serviceCompleteData = ServiceCompleteData(
                                                         clientName = userInfo?.name ?: "",
                                                         clientAge = userInfo?.age ?: 0,

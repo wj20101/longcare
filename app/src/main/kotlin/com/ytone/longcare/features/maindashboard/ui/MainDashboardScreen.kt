@@ -65,6 +65,7 @@ import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.isPendingExecution
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
+import com.ytone.longcare.navigation.OrderNavParams
 
 @Composable
 fun MainDashboardScreen(
@@ -514,10 +515,10 @@ fun OrderTabLayout(
                                  orderId = order.orderId,
                                  planId = 0,
                                  onNavigateToNursingExecution = { orderId, planId ->
-                                     navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = orderId, planId = planId))
+                                     navController.navigateToNursingExecution(OrderNavParams(orderId, planId))
                                  },
                                  onNavigateToService = { orderId, planId ->
-                                     navController.navigateToService(OrderInfoRequestModel(orderId = orderId, planId = planId))
+                                     navController.navigateToService(OrderNavParams(orderId, planId))
                                  },
                                  onNotStartedState = {
                                      // 未开单状态，不允许跳转
@@ -540,11 +541,13 @@ fun OrderTabLayout(
                             if (cachedOrderInfo != null) {
                                 // 缓存存在，直接跳转
                                 val projectList = cachedOrderInfo.projectList ?: emptyList()
-                                navigationHelper.navigateToServiceCountdownWithLogic(
-                                    navController = navController,
-                                    orderId = order.orderId,
-                                    projectList = projectList
-                                )
+                                coroutineScope.launch {
+                                    navigationHelper.navigateToServiceCountdownWithLogic(
+                                        navController = navController,
+                                        orderParams = OrderNavParams(order.orderId, 0),
+                                        projectList = projectList
+                                    )
+                                }
                             } else {
                                  // 缓存不存在，先查询订单详情
                                  coroutineScope.launch {
@@ -564,7 +567,7 @@ fun OrderTabLayout(
                                                  val projectList = finalState.orderInfo.projectList ?: emptyList()
                                                  navigationHelper.navigateToServiceCountdownWithLogic(
                                                      navController = navController,
-                                                     orderId = order.orderId,
+                                                     orderParams = OrderNavParams(order.orderId, 0),
                                                      projectList = projectList
                                                  )
                                              }

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -41,15 +42,19 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.di.NursingExecutionEntryPoint
+import com.ytone.longcare.navigation.OrderNavParams
 
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NursingExecutionScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    
     val context = LocalContext.current
     val navigationHelper = EntryPointAccessors.fromApplication(
         context.applicationContext,
@@ -80,6 +85,7 @@ fun NursingExecutionScreen(
                 navController = navController,
                 orderInfo = state.orderInfo,
                 orderInfoRequest = orderInfoRequest,
+                orderParams = orderParams,
                 navigationHelper = navigationHelper
             )
         }
@@ -149,8 +155,10 @@ fun NursingExecutionContent(
     navController: NavController,
     orderInfo: ServiceOrderInfoModel,
     orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     navigationHelper: NavigationHelper
 ) {
+    val coroutineScope = rememberCoroutineScope()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -234,13 +242,15 @@ fun NursingExecutionContent(
                             when {
                                 orderInfo.state.isExecutingState() -> {
                                     // 使用NavigationHelper统一处理跳转逻辑
-                                    navigationHelper.navigateToServiceCountdownWithLogic(
-                                        navController = navController,
-                                        orderId = orderInfoRequest.orderId,
-                                        projectList = orderInfo.projectList ?: emptyList()
-                                    )
+                                    coroutineScope.launch {
+                                        navigationHelper.navigateToServiceCountdownWithLogic(
+                                            navController = navController,
+                                            orderParams = orderParams,
+                                            projectList = orderInfo.projectList ?: emptyList()
+                                        )
+                                    }
                                 }
-                                orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(orderInfoRequest)
+                                orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(orderParams)
                                 else -> navController.popBackStack()
                             }
                         }

@@ -16,6 +16,7 @@ import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.location.LocationRepository
+import com.ytone.longcare.features.location.manager.LocationStateManager
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.features.location.provider.LocationResult
@@ -38,6 +39,9 @@ class LocationTrackingService : Service() {
 
     @Inject
     lateinit var trackingManager: LocationTrackingManager
+    
+    @Inject
+    lateinit var locationStateManager: LocationStateManager
     
     @Inject
     lateinit var compositeLocationProvider: CompositeLocationProvider
@@ -117,14 +121,20 @@ class LocationTrackingService : Service() {
             val locationResult = compositeLocationProvider.getCurrentLocation()
             
             if (locationResult != null) {
+                // 记录定位成功
+                locationStateManager.recordLocationSuccess(locationResult)
                 handleLocationUpdate(locationResult)
             } else {
                 logE("所有定位方式都获取位置失败")
                 updateNotification("获取位置失败，请检查网络和GPS信号。")
+                // 记录定位失败
+                locationStateManager.recordLocationFailure("所有定位方式都获取位置失败")
             }
         } catch (e: Exception) {
             logE("定位过程中发生异常: ${e.message}")
             updateNotification("定位异常: ${e.message}")
+            // 记录定位异常
+            locationStateManager.recordLocationFailure("定位异常: ${e.message}")
         }
     }
 
