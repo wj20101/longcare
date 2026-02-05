@@ -44,6 +44,7 @@ import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.di.NursingExecutionEntryPoint
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.common.utils.logI
 
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,6 +72,16 @@ fun NursingExecutionScreen(
     // 开启定位会话 (Session Start)
     // 只要进入工单流程，就开启持续定位，无论页面如何跳转，只要不显式停止，定位就会一直保持
     LaunchedEffect(Unit) {
+        // 检查服务是否正在运行且属于其他订单
+        val isTracking = locationTrackingManager.isTracking.value
+        val trackingRequest = locationTrackingManager.currentTrackingRequest.value
+        
+        if (isTracking && trackingRequest != null && trackingRequest.orderId != orderParams.orderId) {
+            logI("⚠️ 检测到定位服务正在为其他订单(OrderId=${trackingRequest.orderId})运行，当前订单(OrderId=${orderParams.orderId})，正在停止旧服务...")
+            locationTrackingManager.stopTracking()
+        }
+        
+        com.ytone.longcare.common.utils.KLogger.e("LocSession", "NursingExecutionScreen: LaunchedEffect - calling startLocationSession")
         locationTrackingManager.startLocationSession()
     }
 

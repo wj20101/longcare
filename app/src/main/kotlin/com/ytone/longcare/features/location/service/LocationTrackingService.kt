@@ -10,6 +10,7 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.IntentCompat
 import com.ytone.longcare.R
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
@@ -20,10 +21,10 @@ import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManage
 import com.ytone.longcare.features.location.manager.LocationStateManager
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import com.ytone.longcare.features.location.provider.LocationResult
-import com.ytone.longcare.features.location.provider.LocationStrategy
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import javax.inject.Inject
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 
 @AndroidEntryPoint
 class LocationTrackingService : Service() {
@@ -39,10 +40,10 @@ class LocationTrackingService : Service() {
 
     @Inject
     lateinit var trackingManager: LocationTrackingManager
-    
+
     @Inject
     lateinit var locationStateManager: LocationStateManager
-    
+
     @Inject
     lateinit var continuousAmapLocationManager: ContinuousAmapLocationManager
 
@@ -54,7 +55,7 @@ class LocationTrackingService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var trackingJob: Job? = null
 
-    private var currentOrderId: Long = INVALID_ORDER_ID
+    private var currentOrderRequest: OrderInfoRequestModel? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -66,23 +67,28 @@ class LocationTrackingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         logI("📥 收到Intent: action=${intent?.action}")
-        
+
         when (intent?.action) {
             ACTION_START -> {
-                val orderId = intent.getLongExtra(EXTRA_ORDER_ID, INVALID_ORDER_ID)
-                logI("📥 收到启动命令: orderId=$orderId")
-                if (orderId == INVALID_ORDER_ID) {
-                    logE("启动服务失败：未提供有效的 orderId。")
-                    stopTracking() // 如果没有 orderId，则不启动并立即停止
+                // 获取请求模型()
+                val request = IntentCompat.getParcelableExtra(
+                    intent, EXTRA_ORDER_REQUEST, OrderInfoRequestModel::class.java
+                )
+                logI("📥 收到启动命令: request=$request")
+                if (request == null) {
+                    logE("启动服务失败：未提供有效的 request。")
+                    stopTracking() // 如果没有 request，则不启动并立即停止
                 } else {
-                    currentOrderId = orderId
+                    currentOrderRequest = request
                     startTracking()
                 }
             }
+
             ACTION_STOP -> {
                 logI("📥 收到停止命令")
                 stopTracking()
             }
+
             else -> {
                 logI("📥 收到未知命令: ${intent?.action}")
             }
@@ -103,6 +109,9 @@ class LocationTrackingService : Service() {
         startForeground(NOTIFICATION_ID, createNotification("服务已启动，正在准备定位..."))
 
         trackingJob = serviceScope.launch {
+            // 更新 Manager 中的 currentTrackingRequest
+            trackingManager.setTrackingRequest(currentOrderRequest)
+
             continuousAmapLocationManager.startContinuousLocation(30_000L)
                 .collect { locationResult ->
                     // 记录定位成功，这会自动更新 LocationStateManager 的缓存
@@ -121,7 +130,15 @@ class LocationTrackingService : Service() {
 
         // 在IO线程中执行网络请求
         serviceScope.launch {
-            when (val result = locationRepository.addPosition(currentOrderId, locationResult.latitude, locationResult.longitude)) {
+            val orderId = currentOrderRequest?.orderId
+            if (orderId == null) {
+                logE("无法上报位置：orderId 为空")
+                return@launch
+            }
+
+            when (val result = locationRepository.addPosition(
+                orderId, locationResult.latitude, locationResult.longitude
+            )) {
                 is ApiResult.Success -> {
                     // 请求成功，更新状态
                     logI("位置上报API调用完成。")
@@ -143,16 +160,16 @@ class LocationTrackingService : Service() {
         logI("========================================")
         logI("🛑 停止定位上报服务...")
         logI("========================================")
-        
+
         // 1. 取消定位任务
         trackingJob?.cancel()
         trackingJob = null
         logI("✅ 1. 定位任务已取消")
-        
-        // 2. 重置 orderId
-        currentOrderId = INVALID_ORDER_ID
-        logI("✅ 2. orderId已重置")
-        
+
+        // 2. 重置 orderRequest
+        currentOrderRequest = null
+        logI("✅ 2. orderRequest已重置")
+
         // 3. 停止前台服务
         try {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -160,7 +177,7 @@ class LocationTrackingService : Service() {
         } catch (e: Exception) {
             logE("❌ 停止前台服务失败: ${e.message}")
         }
-        
+
         // 4. 停止服务自身
         try {
             stopSelf()
@@ -168,7 +185,10 @@ class LocationTrackingService : Service() {
         } catch (e: Exception) {
             logE("❌ 停止服务失败: ${e.message}")
         }
-        
+
+        // 5. 清除 Manager 中的 trackingRequest
+        trackingManager.setTrackingRequest(null)
+
         logI("========================================")
         logI("✅ 定位上报服务停止完成")
         logI("========================================")
@@ -176,8 +196,7 @@ class LocationTrackingService : Service() {
 
     private fun createNotification(contentText: String): Notification {
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("后台定位服务")
-            .setContentText(contentText)
+            .setContentTitle("后台定位服务").setContentText(contentText)
             .setSmallIcon(R.mipmap.app_logo_round) // 请务必替换为您的应用图标
             .setOngoing(true) // 使通知不可被用户轻易划掉
             .build()
@@ -214,20 +233,19 @@ class LocationTrackingService : Service() {
         super.onDestroy()
         // 当服务被销毁时（无论正常停止还是被系统杀死），向Manager同步状态
         trackingManager.updateTrackingState(false)
-        // 销毁定位提供者资源
-        continuousAmapLocationManager.destroy()
+        // 移除 continuousAmapLocationManager.destroy() 调用
+        // ContinuousAmapLocationManager 是 Singleton，由 Service 销毁会导致其他订阅者（如 SessionJob）无法使用
+        // continuousAmapLocationManager.destroy()
         // 取消所有正在运行的协程任务，防止内存泄漏
         serviceScope.cancel()
         logI("✅ LocationTrackingService 已销毁")
     }
 
 
-
     companion object {
         const val ACTION_START = "ACTION_START_LOCATION_TRACKING"
         const val ACTION_STOP = "ACTION_STOP_LOCATION_TRACKING"
-        const val EXTRA_ORDER_ID = "EXTRA_ORDER_ID"
-        private const val INVALID_ORDER_ID = -1L
+        const val EXTRA_ORDER_REQUEST = "EXTRA_ORDER_REQUEST"
         private const val NOTIFICATION_ID = 1
         private const val NOTIFICATION_CHANNEL_ID = "location_tracking_channel"
     }

@@ -8,6 +8,7 @@ import com.ytone.longcare.api.response.ServiceOrderStateModel
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.data.database.entity.ImageType
 import com.ytone.longcare.data.repository.ImageRepository
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.model.OrderKey
@@ -17,6 +18,8 @@ import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
+import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -27,13 +30,16 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import androidx.core.net.toUri
+import com.ytone.longcare.common.utils.logI
 
 @HiltViewModel
 class ServiceCountdownViewModel @Inject constructor(
     private val toastHelper: ToastHelper,
     private val unifiedOrderRepository: UnifiedOrderRepository,
     private val imageRepository: ImageRepository,
-    private val orderRepository: OrderRepository
+    private val orderRepository: OrderRepository,
+    private val countdownNotificationManager: CountdownNotificationManager
 ) : ViewModel() {
     
     // 倒计时状态
@@ -335,22 +341,6 @@ class ServiceCountdownViewModel @Inject constructor(
         CountdownForegroundService.stopCountdown(context)
     }
     
-    /**
-     * 更新前台服务的倒计时时间（已废弃，通知改为静态显示）
-     * @param context 上下文
-     * @param remainingSeconds 剩余秒数
-     * @param serviceName 服务名称
-     */
-    @Deprecated("通知已改为静态显示，不再需要更新时间")
-    fun updateForegroundServiceTime(
-        context: Context,
-        remainingSeconds: Long,
-        serviceName: String
-    ) {
-        // 不再执行任何操作
-        // CountdownForegroundService.updateTime(context, remainingSeconds, serviceName)
-    }
-    
     // 更新格式化时间
     private fun updateFormattedTime() {
         val timeToFormat = if (_countdownState.value == ServiceCountdownState.OVERTIME) {
@@ -389,8 +379,14 @@ class ServiceCountdownViewModel @Inject constructor(
         orderStatePollingJob?.cancel()
         _countdownState.value = ServiceCountdownState.ENDED
         
-        // 停止前台服务
-        context?.let { stopForegroundService(it) }
+        // 停止前台服务和响铃服务
+        context?.let { 
+            stopForegroundService(it) 
+            AlarmRingtoneService.stopRingtone(it)
+        }
+        
+        // 取消倒计时闹钟
+        countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest)
         
         // 使用unifiedOrderRepository结束服务并清除图片数据
         viewModelScope.launch {
@@ -499,13 +495,11 @@ class ServiceCountdownViewModel @Inject constructor(
     
     /**
      * 处理图片上传结果
-     * @param orderRequest 订单信息请求模型
      * @param uploadResult 按ImageTaskType分组的ImageTask列表
      */
-    fun handlePhotoUploadResult(orderRequest: OrderInfoRequestModel, uploadResult: Map<ImageTaskType, List<ImageTask>>) {
+    fun handlePhotoUploadResult(uploadResult: Map<ImageTaskType, List<ImageTask>>) {
         // 保存上传的图片数据到状态中
         _uploadedImages.value = uploadResult
-        // 图片数据已在PhotoProcessingViewModel中保存到ImageRepository
     }
     
     /**
@@ -527,6 +521,57 @@ class ServiceCountdownViewModel @Inject constructor(
         
         return beforeCareTasks.isNotEmpty() && afterCareTasks.isNotEmpty()
     }
+
+    /**
+     * 挂起函数：从ImageRepository加载图片数据并返回
+     * 用于需要确保数据已加载完成后再进行后续操作的场景
+     * @param orderKey 订单标识符
+     * @return 按ImageTaskType分组的ImageTask列表
+     */
+    suspend fun getUploadedImagesSuspend(orderKey: OrderKey): Map<ImageTaskType, List<ImageTask>> {
+        val images = imageRepository.getImagesByOrderId(orderKey)
+        // 将OrderImageEntity转换为ImageTask并按类型分组
+        val groupedImages = images
+            .filter { entity ->
+                // 只处理支持的类型
+                val type = entity.getImageTypeEnum()
+                type == ImageType.BEFORE_CARE ||
+                type == ImageType.CENTER_CARE ||
+                type == ImageType.AFTER_CARE
+            }
+            .groupBy { entity ->
+                when (entity.getImageTypeEnum()) {
+                    ImageType.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
+                    ImageType.CENTER_CARE -> ImageTaskType.CENTER_CARE
+                    ImageType.AFTER_CARE -> ImageTaskType.AFTER_CARE
+                    else -> ImageTaskType.BEFORE_CARE // 默认值，不应到达
+                }
+            }
+            .mapValues { (_, entities) ->
+                entities.map { entity ->
+                    ImageTask(
+                        id = entity.id.toString(),
+                        originalUri = entity.localUri.toUri(),
+                        taskType = when (entity.getImageTypeEnum()) {
+                            ImageType.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
+                            ImageType.CENTER_CARE -> ImageTaskType.CENTER_CARE
+                            ImageType.AFTER_CARE -> ImageTaskType.AFTER_CARE
+                            else -> ImageTaskType.BEFORE_CARE
+                        },
+                        key = entity.cloudKey,
+                        cloudUrl = entity.cloudUrl
+                    )
+                }
+            }
+        
+        // 同时更新状态
+        if (groupedImages.isNotEmpty()) {
+            _uploadedImages.value = groupedImages
+        }
+
+        logI("getUploadedImagesSuspend: Loaded ${images.size} images from DB for order $orderKey. Grouped: ${groupedImages.mapValues { it.value.size }}")
+        return groupedImages
+    }
     
     /**
      * 从ImageRepository加载图片数据（用于页面恢复）
@@ -534,41 +579,7 @@ class ServiceCountdownViewModel @Inject constructor(
      */
     fun loadUploadedImagesFromRepository(orderKey: OrderKey) {
         viewModelScope.launch {
-            val images = imageRepository.getImagesByOrderId(orderKey)
-            // 将OrderImageEntity转换为ImageTask并按类型分组
-            val groupedImages = images
-                .filter { entity ->
-                    // 只处理支持的类型
-                    val type = entity.getImageTypeEnum()
-                    type == com.ytone.longcare.data.database.entity.ImageType.BEFORE_CARE ||
-                    type == com.ytone.longcare.data.database.entity.ImageType.CENTER_CARE ||
-                    type == com.ytone.longcare.data.database.entity.ImageType.AFTER_CARE
-                }
-                .groupBy { entity ->
-                    when (entity.getImageTypeEnum()) {
-                        com.ytone.longcare.data.database.entity.ImageType.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
-                        com.ytone.longcare.data.database.entity.ImageType.CENTER_CARE -> ImageTaskType.CENTER_CARE
-                        com.ytone.longcare.data.database.entity.ImageType.AFTER_CARE -> ImageTaskType.AFTER_CARE
-                        else -> ImageTaskType.BEFORE_CARE // 默认值，不应到达
-                    }
-                }
-                .mapValues { (_, entities) ->
-                    entities.map { entity ->
-                        ImageTask(
-                            id = entity.id.toString(),
-                            originalUri = android.net.Uri.parse(entity.localUri),
-                            taskType = when (entity.getImageTypeEnum()) {
-                                com.ytone.longcare.data.database.entity.ImageType.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
-                                com.ytone.longcare.data.database.entity.ImageType.CENTER_CARE -> ImageTaskType.CENTER_CARE
-                                com.ytone.longcare.data.database.entity.ImageType.AFTER_CARE -> ImageTaskType.AFTER_CARE
-                                else -> ImageTaskType.BEFORE_CARE
-                            }
-                        )
-                    }
-                }
-            if (groupedImages.isNotEmpty()) {
-                _uploadedImages.value = groupedImages
-            }
+            getUploadedImagesSuspend(orderKey)
         }
     }
     

@@ -68,22 +68,8 @@ class CountdownForegroundService : Service() {
          * 停止倒计时前台服务
          */
         fun stopCountdown(context: Context) {
-            val intent = Intent(context, CountdownForegroundService::class.java).apply {
-                action = ACTION_STOP_COUNTDOWN
-            }
-            context.startService(intent)
-        }
-
-        /**
-         * 更新倒计时时间（已废弃，通知改为静态显示）
-         */
-        @Deprecated("通知已改为静态显示，不再需要更新时间")
-        fun updateTime(
-            context: Context,
-            remainingSeconds: Long,
-            serviceName: String
-        ) {
-            // 不再执行任何操作
+            val intent = Intent(context, CountdownForegroundService::class.java)
+            context.stopService(intent)
         }
     }
 
@@ -121,11 +107,16 @@ class CountdownForegroundService : Service() {
                 
                 // 立即启动前台服务，避免超时异常
                 val notification = createCountdownNotification()
+                val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                } else {
+                    0
+                }
                 ServiceCompat.startForeground(
                     this,
                     FOREGROUND_NOTIFICATION_ID,
                     notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                    type
                 )
                 // 然后进行其他初始化
                 startCountdownTimer()

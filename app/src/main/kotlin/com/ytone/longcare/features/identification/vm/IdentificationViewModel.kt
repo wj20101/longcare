@@ -25,7 +25,6 @@ import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.models.protos.User
 import android.util.Base64
-import android.util.Log
 import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -46,6 +45,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.ytone.longcare.common.utils.logD
+import com.ytone.longcare.common.utils.logE
 
 /**
  * 身份认证状态枚举
@@ -169,19 +170,19 @@ class IdentificationViewModel @Inject constructor(
         viewModelScope.launch {
             val currentUser = getCurrentUser()
             if (currentUser == null) {
-                Log.e("IdentificationVM", "无法获取用户信息")
+                logE("无法获取用户信息", tag = "IdentificationVM")
                 toastHelper.showShort("无法获取用户信息")
                 return@launch
             }
             
-            Log.d("IdentificationVM", "开始验证服务人员 (userId=${currentUser.userId}, userName=${currentUser.userName})")
+            logD("开始验证服务人员 (userId=${currentUser.userId}, userName=${currentUser.userName})", tag = "IdentificationVM")
             
             // 步骤1：优先检查本地缓存
             val cachedBase64 = readUserFaceBase64(currentUser.userId)
             
             if (!cachedBase64.isNullOrBlank()) {
                 // ✅ 本地存在Base64，直接使用缓存进行验证
-                Log.d("IdentificationVM", "步骤1: 使用本地缓存进行验证 (userId=${currentUser.userId}, 长度=${cachedBase64.length})")
+                logD("步骤1: 使用本地缓存进行验证 (userId=${currentUser.userId}, 长度=${cachedBase64.length})", tag = "IdentificationVM")
                 startSelfProvidedFaceVerificationWithBase64(
                     context = context,
                     name = currentUser.userName,
@@ -192,18 +193,18 @@ class IdentificationViewModel @Inject constructor(
                 )
             } else {
                 // 步骤2：本地无缓存，调用接口获取
-                Log.d("IdentificationVM", "步骤2: 本地无缓存，从服务器获取人脸信息")
+                logD("步骤2: 本地无缓存，从服务器获取人脸信息", tag = "IdentificationVM")
                 when (val faceResult = identificationRepository.getFace()) {
                     is ApiResult.Success -> {
                         val url = faceResult.data.faceImgUrl
                         if (url.isBlank()) {
                             // 步骤3：接口也没有数据，跳到人脸捕获
-                            Log.d("IdentificationVM", "步骤3: 服务器无人脸数据，跳转到人脸捕获")
+                            logD("步骤3: 服务器无人脸数据，跳转到人脸捕获", tag = "IdentificationVM")
                             toastHelper.showShort("请先设置人脸信息")
                             _navigateToFaceCapture.value = true
                         } else {
                             // 接口有数据，下载并保存到本地，然后验证
-                            Log.d("IdentificationVM", "步骤2: 从服务器下载人脸图片并保存到本地")
+                            logD("步骤2: 从服务器下载人脸图片并保存到本地", tag = "IdentificationVM")
                             startSelfProvidedFaceVerificationAndCache(
                                 context = context,
                                 name = currentUser.userName,
@@ -218,18 +219,18 @@ class IdentificationViewModel @Inject constructor(
                         // 接口成功，data为null，默认走成功且没数据流程
                         if (faceResult.code.isSucceed()) {
                             // 步骤3：接口返回成功但无数据，跳转到人脸捕获
-                            Log.d("IdentificationVM", "步骤3: 接口返回成功但无人脸数据，跳转到人脸捕获")
+                            logD("步骤3: 接口返回成功但无人脸数据，跳转到人脸捕获", tag = "IdentificationVM")
                             toastHelper.showShort("请先设置人脸信息")
                             _navigateToFaceCapture.value = true
                 } else {
                     // 接口失败，提示错误
-                    Log.e("IdentificationVM", "获取人脸信息失败: ${faceResult.message}")
+                    logE("获取人脸信息失败: ${faceResult.message}", tag = "IdentificationVM")
                     setFaceVerificationError(faceResult.message)
                 }
             }
             is ApiResult.Exception -> {
                 // 网络异常，提示错误
-                Log.e("IdentificationVM", "网络异常: ${faceResult.exception.message}")
+                logE("网络异常: ${faceResult.exception.message}", tag = "IdentificationVM")
                 setFaceVerificationError("网络异常: ${faceResult.exception.message}")
             }
         }
@@ -277,16 +278,16 @@ class IdentificationViewModel @Inject constructor(
             _faceVerificationState.value = FaceVerificationState.Initializing
             
             try {
-                Log.d("IdentificationVM", "从服务器下载人脸图片: $sourcePhotoUrl")
+                logD("从服务器下载人脸图片: $sourcePhotoUrl", tag = "IdentificationVM")
                 // 下载源照片并转换为 Base64
                 val sourcePhotoBase64 = downloadAndConvertToBase64(sourcePhotoUrl)
-                Log.d("IdentificationVM", "下载成功，Base64长度: ${sourcePhotoBase64.length}")
+                logD("下载成功，Base64长度: ${sourcePhotoBase64.length}", tag = "IdentificationVM")
                 
                 // 立即保存到本地缓存（在验证之前）
                 val currentUser = getCurrentUser()
                 if (currentUser != null) {
                     writeUserFaceBase64(currentUser.userId, sourcePhotoBase64)
-                    Log.d("IdentificationVM", "已保存到本地缓存")
+                    logD("已保存到本地缓存", tag = "IdentificationVM")
                 }
                 
                 val request = FaceVerificationManager.FaceVerifyRequest(
@@ -310,7 +311,7 @@ class IdentificationViewModel @Inject constructor(
                     callback = createFaceVerifyCallback()
                 )
             } catch (e: Exception) {
-                Log.e("IdentificationVM", "下载人脸图片失败", e)
+                logE("下载人脸图片失败", tag = "IdentificationVM", throwable = e)
                 val errorMsg = "获取人脸照片失败: ${e.message}"
                 setFaceVerificationError(errorMsg)
                 // 下载失败，提示用户重试
@@ -357,7 +358,7 @@ class IdentificationViewModel @Inject constructor(
                     callback = createFaceVerifyCallback()
                 )
             } catch (e: Exception) {
-                Log.e("IdentificationVM", "人脸验证失败", e)
+                logE("人脸验证失败", tag = "IdentificationVM", throwable = e)
                 setFaceVerificationError("人脸验证失败: ${e.message}")
             }
         }
@@ -719,7 +720,7 @@ class IdentificationViewModel @Inject constructor(
                             if (currentUser != null) {
                                 val userId = currentUser.userId
                                 
-                                Log.d("IdentificationVM", "开始保存人脸信息到本地 (userId=$userId)")
+                                logD("开始保存人脸信息到本地 (userId=$userId)", tag = "IdentificationVM")
 
                                 // 使用统一的写入方法写入人脸Base64
                                 writeUserFaceBase64(userId, base64Image)
@@ -777,14 +778,14 @@ class IdentificationViewModel @Inject constructor(
             val result = prefs[key]
             
             if (result != null) {
-                Log.d("IdentificationVM", "成功读取人脸缓存 (userId=$userId, 长度=${result.length})")
+                logD("成功读取人脸缓存 (userId=$userId, 长度=${result.length})", tag = "IdentificationVM")
             } else {
-                Log.d("IdentificationVM", "人脸缓存为空 (userId=$userId)")
+                logD("人脸缓存为空 (userId=$userId)", tag = "IdentificationVM")
             }
             
             result
         } catch (e: Exception) {
-            Log.e("IdentificationVM", "读取人脸缓存异常 (userId=$userId)", e)
+            logE("读取人脸缓存异常 (userId=$userId)", tag = "IdentificationVM", throwable = e)
             null
         }
     }
@@ -800,9 +801,9 @@ class IdentificationViewModel @Inject constructor(
             ds.edit { prefs ->
                 prefs[key] = base64
             }
-            Log.d("IdentificationVM", "成功写入人脸缓存 (userId=$userId, 长度=${base64.length})")
+            logD("成功写入人脸缓存 (userId=$userId, 长度=${base64.length})", tag = "IdentificationVM")
         } catch (e: Exception) {
-            Log.e("IdentificationVM", "写入人脸缓存异常 (userId=$userId)", e)
+            logE("写入人脸缓存异常 (userId=$userId)", tag = "IdentificationVM", throwable = e)
         }
     }
 
@@ -815,7 +816,7 @@ class IdentificationViewModel @Inject constructor(
                 val bytes = URL(url).readBytes()
                 Base64.encodeToString(bytes, Base64.NO_WRAP)
             } catch (e: Exception) {
-                Log.e("IdentificationVM", "下载图片失败: $url", e)
+                logE("下载图片失败: $url", tag = "IdentificationVM", throwable = e)
                 throw e
             }
         }

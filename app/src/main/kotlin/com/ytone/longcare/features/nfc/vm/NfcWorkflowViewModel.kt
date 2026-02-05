@@ -1,5 +1,8 @@
 package com.ytone.longcare.features.nfc.vm
 
+
+import com.ytone.longcare.common.utils.logI
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.request.OrderInfoRequestModel
@@ -9,17 +12,22 @@ import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.OrderRepository
-import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
+import com.ytone.longcare.data.repository.ImageRepository
+import com.ytone.longcare.data.repository.UnifiedOrderRepository
+import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
+import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
+import com.ytone.longcare.model.toOrderKey
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,13 +36,14 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class NfcWorkflowViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val orderRepository: OrderRepository,
     private val toastHelper: ToastHelper,
     private val appEventBus: AppEventBus,
-    private val compositeLocationProvider: CompositeLocationProvider // 保留用于单次定位请求
+    private val unifiedOrderRepository: UnifiedOrderRepository,
+    private val imageRepository: ImageRepository,
+    private val countdownNotificationManager: CountdownNotificationManager
 ) : ViewModel() {
-
-    // 移除 init 块中的 startProactiveLocation 调用，因为已由 SharedOrderDetailViewModel 统一管理
 
     private val _uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
     val uiState: StateFlow<NfcSignInUiState> = _uiState.asStateFlow()
@@ -68,7 +77,12 @@ class NfcWorkflowViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = NfcSignInUiState.Loading
 
-            when (val result = orderRepository.checkOrder(orderInfoRequest.orderId, nfcDeviceId, longitude, latitude)) {
+            when (val result = orderRepository.checkOrder(
+                orderInfoRequest.orderId,
+                nfcDeviceId,
+                longitude,
+                latitude
+            )) {
                 is ApiResult.Success -> {
                     _uiState.value = NfcSignInUiState.Success()
                 }
@@ -91,7 +105,7 @@ class NfcWorkflowViewModel @Inject constructor(
      * 结束服务工单
      * @param orderInfoRequest 订单信息
      * @param nfcDeviceId NFC设备号
-     * @param porjectIdList 完成的服务项目ID集合
+     * @param projectIdList 完成的服务项目ID集合
      * @param beginImgList 开始图片集合
      * @param endImageList 结束图片集合
      * @param centerImgList 服务中图片集合
@@ -102,7 +116,7 @@ class NfcWorkflowViewModel @Inject constructor(
     fun endOrder(
         orderInfoRequest: OrderInfoRequestModel,
         nfcDeviceId: String,
-        porjectIdList: List<Int>,
+        projectIdList: List<Int>,
         beginImgList: List<String>,
         endImageList: List<String>,
         centerImgList: List<String> = emptyList(),
@@ -116,14 +130,14 @@ class NfcWorkflowViewModel @Inject constructor(
             // 先调用 checkEndOrder
             when (val checkResult = orderRepository.checkEndOrder(
                 orderId = orderInfoRequest.orderId,
-                projectIdList = porjectIdList
+                projectIdList = projectIdList
             )) {
                 is ApiResult.Success -> {
                     // checkEndOrder 成功，直接调用 endOrder
                     executeEndOrder(
                         orderInfoRequest = orderInfoRequest,
                         nfcDeviceId = nfcDeviceId,
-                        porjectIdList = porjectIdList,
+                        projectIdList = projectIdList,
                         beginImgList = beginImgList,
                         endImageList = endImageList,
                         centerImgList = centerImgList,
@@ -148,7 +162,7 @@ class NfcWorkflowViewModel @Inject constructor(
                             endOrderParams = EndOrderParams(
                                 orderInfoRequest = orderInfoRequest,
                                 nfcDeviceId = nfcDeviceId,
-                                porjectIdList = porjectIdList,
+                                porjectIdList = projectIdList,
                                 beginImgList = beginImgList,
                                 endImageList = endImageList,
                                 centerImgList = centerImgList,
@@ -172,7 +186,7 @@ class NfcWorkflowViewModel @Inject constructor(
     private suspend fun executeEndOrder(
         orderInfoRequest: OrderInfoRequestModel,
         nfcDeviceId: String,
-        porjectIdList: List<Int>,
+        projectIdList: List<Int>,
         beginImgList: List<String>,
         endImageList: List<String>,
         centerImgList: List<String>,
@@ -180,10 +194,12 @@ class NfcWorkflowViewModel @Inject constructor(
         latitude: String,
         endType: Int
     ) {
+        logI("executeEndOrder: Begin: ${beginImgList.size}, Center: ${centerImgList.size}, End: ${endImageList.size}", tag = "NfcWorkflowViewModel")
+        
         when (val result = orderRepository.endOrder(
             orderId = orderInfoRequest.orderId,
             nfcDeviceId = nfcDeviceId,
-            projectIdList = porjectIdList,
+            projectIdList = projectIdList,
             beginImgList = beginImgList,
             centerImgList = centerImgList,
             endImageList = endImageList,
@@ -192,7 +208,9 @@ class NfcWorkflowViewModel @Inject constructor(
             endType = endType
         )) {
             is ApiResult.Success -> {
-                // 注意：不在此处清除选中项目数据，改为在 ServiceCompleteScreen 离开时清除
+                // 执行资源清理逻辑
+                cleanupResources(orderInfoRequest)
+
                 _uiState.value = NfcSignInUiState.Success(
                     endOrderSuccessData = EndOrderSuccessData(
                         trueServiceTime = result.data.trueServiceTime
@@ -222,7 +240,7 @@ class NfcWorkflowViewModel @Inject constructor(
             executeEndOrder(
                 orderInfoRequest = params.orderInfoRequest,
                 nfcDeviceId = params.nfcDeviceId,
-                porjectIdList = params.porjectIdList,
+                projectIdList = params.porjectIdList,
                 beginImgList = params.beginImgList,
                 endImageList = params.endImageList,
                 centerImgList = params.centerImgList,
@@ -278,13 +296,13 @@ class NfcWorkflowViewModel @Inject constructor(
                             // 调用 CompositeLocationProvider 获取位置
                             // 内部已集成缓存优先逻辑：Cache (0ms) -> Fallback -> Realtime
                             val (longitude, latitude) = onLocationRequest()
-                            
+
                             // 如果定位信息为空，则中断流程，因为参数无效
                             if (longitude.isEmpty() || latitude.isEmpty()) {
                                 showError("无法获取位置信息，请检查定位权限和服务")
                                 return@collect
                             }
-                            
+
                             when (signInMode) {
                                 SignInMode.START_ORDER -> {
                                     // 检查用户位置信息
@@ -304,7 +322,7 @@ class NfcWorkflowViewModel @Inject constructor(
                                         endOrder(
                                             orderInfoRequest = orderInfoRequest,
                                             nfcDeviceId = tagId,
-                                            porjectIdList = it.projectIdList,
+                                            projectIdList = it.projectIdList,
                                             beginImgList = it.beginImgList,
                                             centerImgList = it.centerImgList,
                                             endImageList = it.endImgList,
@@ -336,7 +354,7 @@ class NfcWorkflowViewModel @Inject constructor(
     ) {
         // 获取订单详情
         val orderInfo = sharedOrderDetailViewModel.getCachedOrderInfo(orderInfoRequest)
-        
+
         if (orderInfo == null) {
             // 如果缓存中没有订单详情，先获取订单详情
             sharedOrderDetailViewModel.getOrderInfo(orderInfoRequest)
@@ -356,10 +374,12 @@ class NfcWorkflowViewModel @Inject constructor(
                             )
                             return@collect // 处理完成后退出collect
                         }
+
                         is OrderDetailUiState.Error -> {
                             showError("获取订单详情失败: ${state.message}")
                             return@collect // 出错后退出collect
                         }
+
                         else -> {
                             // Loading或Initial状态，继续等待
                         }
@@ -393,7 +413,7 @@ class NfcWorkflowViewModel @Inject constructor(
     ) {
         val userLng = orderInfo.userInfo?.lng ?: ""
         val userLat = orderInfo.userInfo?.lat ?: ""
-        
+
         if (userLng.isEmpty() || userLat.isEmpty()) {
             // 用户位置信息为空，更新待处理数据以显示弹窗
             _pendingNfcData.value = PendingNfcData(
@@ -426,9 +446,11 @@ class NfcWorkflowViewModel @Inject constructor(
                     // 绑定成功后执行签到
                     startOrder(data.orderInfoRequest, data.tagId, data.longitude, data.latitude)
                 }
+
                 is ApiResult.Exception -> {
                     showError(result.exception.message ?: "绑定定位失败")
                 }
+
                 is ApiResult.Failure -> {
                     showError(result.message)
                 }
@@ -478,7 +500,7 @@ class NfcWorkflowViewModel @Inject constructor(
                         endOrder(
                             orderInfoRequest = orderInfoRequest,
                             nfcDeviceId = mockTagId,
-                            porjectIdList = it.projectIdList,
+                            projectIdList = it.projectIdList,
                             beginImgList = it.beginImgList,
                             centerImgList = it.centerImgList,
                             endImageList = it.endImgList,
@@ -491,6 +513,28 @@ class NfcWorkflowViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * 清理服务相关资源
+     */
+    private fun cleanupResources(orderInfoRequest: OrderInfoRequestModel) {
+        try {
+            // 停止前台服务
+            CountdownForegroundService.stopCountdown(context)
+            // 停止响铃
+            AlarmRingtoneService.stopRingtone(context)
+            // 取消倒计时闹钟
+            countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest)
+
+            // 清除本地状态和图片数据
+            viewModelScope.launch {
+                unifiedOrderRepository.endLocalService(orderInfoRequest.toOrderKey())
+                imageRepository.deleteImagesByOrderId(orderInfoRequest.toOrderKey())
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }
 
 /**
@@ -501,6 +545,7 @@ sealed class NfcSignInUiState {
     data class Success(
         val endOrderSuccessData: EndOrderSuccessData? = null
     ) : NfcSignInUiState()
+
     data class Error(val message: String) : NfcSignInUiState()
     data object Initial : NfcSignInUiState()
     data class ShowConfirmDialog(
