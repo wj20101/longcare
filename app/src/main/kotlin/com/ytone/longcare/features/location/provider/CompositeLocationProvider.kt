@@ -131,7 +131,7 @@ class CompositeLocationProvider @Inject constructor(
     override fun destroy() {
         systemLocationProvider.destroy()
         // AmapLocationManager 由 ContinuousAmapLocationManager 自行管理生命周期
-        continuousAmapLocationManager.destroy()
+        // continuousAmapLocationManager.destroy()
         logI("复合定位提供者已销毁")
     }
 }

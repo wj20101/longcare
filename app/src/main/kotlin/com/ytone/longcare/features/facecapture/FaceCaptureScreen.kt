@@ -6,7 +6,8 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
-import android.util.Log
+import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.common.utils.logW
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -52,6 +53,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
 import java.util.concurrent.Executors
+import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.common.utils.logW
 
 /**
  * 人脸捕获主界面
@@ -624,11 +627,11 @@ private fun getAvailableCameraSelector(context: Context): CameraSelector {
             CameraSelector.DEFAULT_FRONT_CAMERA
         } else {
             // 没有前置摄像头，使用后置摄像头
-            Log.w("FaceCaptureScreen", "前置摄像头不可用，回退到后置摄像头")
+            com.ytone.longcare.common.utils.KLogger.w("FaceCaptureScreen", "前置摄像头不可用，回退到后置摄像头")
             CameraSelector.DEFAULT_BACK_CAMERA
         }
     } catch (e: Exception) {
-        Log.e("FaceCaptureScreen", "检测相机失败: ${e.message}", e)
+        com.ytone.longcare.common.utils.KLogger.e("FaceCaptureScreen", "检测相机失败: ${e.message}", e)
         // 发生错误时默认尝试前置摄像头
         CameraSelector.DEFAULT_FRONT_CAMERA
     }

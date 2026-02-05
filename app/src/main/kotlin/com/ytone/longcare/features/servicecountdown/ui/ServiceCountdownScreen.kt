@@ -6,7 +6,6 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -277,30 +276,30 @@ fun ServiceCountdownScreen(
 
     // 处理结束服务的公共逻辑
     fun handleEndService(endType: Int) {
-        Log.w("NavigationDebug", "ServiceCountdownScreen: handleEndService called with endType=$endType")
-        Log.i("ServiceCountdownScreen", "========================================")
-        Log.i("ServiceCountdownScreen", "🛑 开始处理结束服务 (endType=$endType)...")
-        Log.i("ServiceCountdownScreen", "========================================")
+        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "ServiceCountdownScreen: handleEndService called with endType=$endType")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "🛑 开始处理结束服务 (endType=$endType)...")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
         
         // 1. 停止倒计时前台服务
         CountdownForegroundService.stopCountdown(context)
-        Log.i("ServiceCountdownScreen", "✅ 1. 已停止倒计时前台服务")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 1. 已停止倒计时前台服务")
 
         // 2. 停止定位跟踪服务
         locationTrackingViewModel.onStopClicked()
-        Log.i("ServiceCountdownScreen", "✅ 2. 已停止定位跟踪服务")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 2. 已停止定位跟踪服务")
 
         // 3. 取消倒计时闹钟（使用订单ID精确取消）
         countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest)
-        Log.i("ServiceCountdownScreen", "✅ 3. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 3. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
 
         // 4. 停止响铃服务（如果正在响铃）
         AlarmRingtoneService.stopRingtone(context)
-        Log.i("ServiceCountdownScreen", "✅ 4. 已停止响铃服务")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 4. 已停止响铃服务")
 
         // 5. 调用ViewModel结束服务（但不清除图片数据，保留给EndServiceSelectionScreen使用）
         countdownViewModel.endServiceWithoutClearingImages(orderInfoRequest, context)
-        Log.i("ServiceCountdownScreen", "✅ 5. 已结束服务（保留图片数据）")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 5. 已结束服务（保留图片数据）")
 
         // 6. 导航到结束服务选择页面
         navController.navigateToEndServiceSelection(
@@ -344,7 +343,7 @@ fun ServiceCountdownScreen(
         )?.collect { result ->
             result?.let {
                 // 调用ViewModel处理图片上传结果
-                countdownViewModel.handlePhotoUploadResult(orderInfoRequest, it)
+                countdownViewModel.handlePhotoUploadResult(it)
 
                 // 清除结果，避免重复处理
                 navController.currentBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<ImageTask>>>(
@@ -660,41 +659,41 @@ fun ServiceCountdownScreen(
                     onClick = singleClick {
                         showOrderStateErrorDialog = false
                         
-                        Log.i("ServiceCountdownScreen", "========================================")
-                        Log.i("ServiceCountdownScreen", "🛑 开始处理订单状态异常，停止所有服务...")
-                        Log.i("ServiceCountdownScreen", "========================================")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "🛑 开始处理订单状态异常，停止所有服务...")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
                         
                         // 1. 清除错误状态
                         countdownViewModel.clearOrderStateError()
-                        Log.i("ServiceCountdownScreen", "✅ 1. 已清除错误状态")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 1. 已清除错误状态")
                         
                         // 2. 停止订单状态轮询
                         countdownViewModel.stopOrderStatePolling()
-                        Log.i("ServiceCountdownScreen", "✅ 2. 已停止订单状态轮询")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 2. 已停止订单状态轮询")
                         
                         // 3. 停止倒计时前台服务
                         CountdownForegroundService.stopCountdown(context)
-                        Log.i("ServiceCountdownScreen", "✅ 3. 已停止倒计时前台服务")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 3. 已停止倒计时前台服务")
                         
                         // 4. 强制停止定位跟踪服务（使用forceStop确保停止）
                         locationTrackingViewModel.forceStop()
-                        Log.i("ServiceCountdownScreen", "✅ 4. 已强制停止定位跟踪服务")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 4. 已强制停止定位跟踪服务")
                         
                         // 5. 取消倒计时闹钟（使用订单ID精确取消）
                         countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest)
-                        Log.i("ServiceCountdownScreen", "✅ 5. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 5. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
                         
                         // 6. 停止响铃服务（如果正在响铃）
                         AlarmRingtoneService.stopRingtone(context)
-                        Log.i("ServiceCountdownScreen", "✅ 6. 已停止响铃服务")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 6. 已停止响铃服务")
                         
                         // 7. 清理ViewModel状态和本地数据（不清除图片数据，因为订单可能需要重新开始）
                         countdownViewModel.endServiceWithoutClearingImages(orderInfoRequest, context)
-                        Log.i("ServiceCountdownScreen", "✅ 7. 已清理ViewModel状态")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 7. 已清理ViewModel状态")
                         
-                        Log.i("ServiceCountdownScreen", "========================================")
-                        Log.i("ServiceCountdownScreen", "✅ 所有服务已停止，准备返回首页")
-                        Log.i("ServiceCountdownScreen", "========================================")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 所有服务已停止，准备返回首页")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
                         
                         // 8. 返回首页
                         navController.navigateToHomeAndClearStack()

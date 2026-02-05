@@ -16,6 +16,11 @@ class LocationTrackingViewModel @Inject constructor(
      * 直接将 Manager 的追踪状态暴露给UI层。
      */
     val isTracking: StateFlow<Boolean> = trackingManager.isTracking
+    
+    /**
+     * 当前正在追踪的订单请求模型。
+     */
+    val currentTrackingRequest: StateFlow<OrderInfoRequestModel?> = trackingManager.currentTrackingRequest
 
     /**
      * 当UI层的"开启"按钮被点击时调用。

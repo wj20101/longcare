@@ -2,7 +2,6 @@ package com.ytone.longcare.di
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabaseCorruptException
-import android.util.Log
 import androidx.room.Room
 import com.ytone.longcare.data.database.LongCareDatabase
 import com.ytone.longcare.data.database.dao.OrderDao
@@ -18,6 +17,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import java.io.File
 import javax.inject.Singleton
+import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.common.utils.logW
 
 /**
  * 数据库DI Module
@@ -43,17 +44,17 @@ object DatabaseModule {
             buildDatabase(context)
         } catch (e: SQLiteDatabaseCorruptException) {
             // 数据库损坏，删除后重建
-            Log.e(TAG, "Database corrupted, deleting and recreating", e)
+            logE("Database corrupted, deleting and recreating", tag = TAG, throwable = e)
             deleteDatabase(context)
             buildDatabase(context)
         } catch (e: Exception) {
             // 其他异常，尝试删除重建
-            Log.e(TAG, "Database creation failed, attempting recovery", e)
+            logE("Database creation failed, attempting recovery", tag = TAG, throwable = e)
             try {
                 deleteDatabase(context)
                 buildDatabase(context)
             } catch (e2: Exception) {
-                Log.e(TAG, "Database recovery failed", e2)
+                logE("Database recovery failed", tag = TAG, throwable = e2)
                 throw e2
             }
         }
@@ -83,9 +84,9 @@ object DatabaseModule {
         val deleted = context.deleteDatabase(dbName)
         
         if (deleted) {
-            Log.w(TAG, "Database deleted successfully: $dbName")
+            logW("Database deleted successfully: $dbName", tag = TAG)
         } else {
-            Log.w(TAG, "Database deletion returned false, may not exist: $dbName")
+            logW("Database deletion returned false, may not exist: $dbName", tag = TAG)
             // 即使deleteDatabase返回false，也尝试手动清理可能残留的文件
             cleanupDatabaseFiles(context, dbName)
         }
@@ -108,7 +109,7 @@ object DatabaseModule {
         filesToDelete.forEach { file ->
             if (file.exists()) {
                 val success = file.delete()
-                Log.w(TAG, "Manual cleanup ${file.name}: ${if (success) "success" else "failed"}")
+                logW("Manual cleanup ${file.name}: ${if (success) "success" else "failed"}", tag = TAG)
             }
         }
     }

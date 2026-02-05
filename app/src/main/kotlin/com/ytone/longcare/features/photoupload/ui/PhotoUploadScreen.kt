@@ -3,7 +3,6 @@ package com.ytone.longcare.features.photoupload.ui
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.common.utils.safePopBackStack
 import android.Manifest
-import android.util.Log
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -91,10 +90,10 @@ fun PhotoUploadScreen(
     // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
     UnifiedBackHandler(navController = navController)
 
-    DisposableEffect(Unit) {
-        Log.w("NavigationDebug", "PhotoUploadScreen: 🟢 Enter Composition")
+     DisposableEffect(Unit) {
+        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: 🟢 Enter Composition")
         onDispose {
-            Log.w("NavigationDebug", "PhotoUploadScreen: 🔴 Leave Composition (onDispose)")
+            com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: 🔴 Leave Composition (onDispose)")
         }
     }
 
@@ -210,7 +209,7 @@ fun PhotoUploadScreen(
                     )
                 }, navigationIcon = {
                     IconButton(onClick = singleClick {
-                        Log.w("NavigationDebug", "PhotoUploadScreen: Back Button Clicked -> safePopBackStack")
+                        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Back Button Clicked -> safePopBackStack")
                         navController.safePopBackStack()
                     }) {
                         Icon(
@@ -233,7 +232,7 @@ fun PhotoUploadScreen(
                         enabled = hasCategoriesHaveImages && !isUploading,
                         isLoading = isUploading,
                         onClick = singleClick {
-                            Log.w("NavigationDebug", "PhotoUploadScreen: Confirm Button Clicked")
+                            com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Confirm Button Clicked")
                             scope.launch {
                                 // Mock 模式下跳过实际上传，直接返回 Mock 数据
                                 if (BuildConfig.USE_MOCK_DATA) {
@@ -246,7 +245,7 @@ fun PhotoUploadScreen(
                                     navController.previousBackStackEntry?.savedStateHandle?.set(
                                         NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, imageTasksMap
                                     )
-                                    Log.w("NavigationDebug", "PhotoUploadScreen: Mock Success -> safePopBackStack")
+                                    com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Mock Success -> safePopBackStack")
                                     navController.safePopBackStack()
                                     return@launch
                                 }
@@ -272,7 +271,7 @@ fun PhotoUploadScreen(
                                         navController.previousBackStackEntry?.savedStateHandle?.set(
                                             NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, imageTasksMap
                                         )
-                                        Log.w("NavigationDebug", "PhotoUploadScreen: Upload Success -> safePopBackStack")
+                                        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Upload Success -> safePopBackStack")
                                         navController.safePopBackStack()
                                     }, onFailure = { error ->
                                         // 显示上传失败的错误信息

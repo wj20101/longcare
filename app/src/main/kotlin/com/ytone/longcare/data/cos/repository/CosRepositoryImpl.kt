@@ -1,7 +1,6 @@
 package com.ytone.longcare.data.cos.repository
 
 import android.content.Context
-import android.util.Log
 import com.tencent.cos.xml.CosXmlService
 import com.tencent.cos.xml.CosXmlServiceConfig
 import com.tencent.cos.xml.exception.CosXmlServiceException
@@ -39,6 +38,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.ytone.longcare.common.utils.logD
+import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.common.utils.logW
 
 /**
  * 腾讯云COS存储服务实现类
@@ -131,7 +133,7 @@ class CosRepositoryImpl @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to get credentials", e)
+                logE("Failed to get credentials", tag = TAG, throwable = e)
                 null
             }
         }
@@ -139,9 +141,9 @@ class CosRepositoryImpl @Inject constructor(
         override fun refresh() {
             try {
                 refreshConfigSync()
-                Log.d(TAG, "Credentials refreshed successfully")
+                logD("Credentials refreshed successfully", tag = TAG)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to refresh credentials", e)
+                logE("Failed to refresh credentials", tag = TAG, throwable = e)
             }
         }
 
@@ -171,9 +173,9 @@ class CosRepositoryImpl @Inject constructor(
             val service = createCosService(config)
             serviceRef.set(service)
 
-            Log.d(
-                TAG,
-                "COS service initialized with bucket: ${config.bucket}, region: ${config.region}"
+            logD(
+                "COS service initialized with bucket: ${config.bucket}, region: ${config.region}",
+                tag = TAG
             )
             service
         }
@@ -218,7 +220,7 @@ class CosRepositoryImpl @Inject constructor(
     private suspend fun refreshCosConfig(folderType: Int = CosConstants.DEFAULT_FOLDER_TYPE): CosConfig =
         withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "Refreshing COS config...")
+                logD("Refreshing COS config...", tag = TAG)
                 val response = safeApiCall(ioDispatcher, eventBus) {
                     apiService.getUploadToken(UploadTokenParamModel(folderType = folderType))
                 }
@@ -235,15 +237,15 @@ class CosRepositoryImpl @Inject constructor(
                         val token = response.data
                         val config = token.toCosConfig()
                         configCache.update(folderType, config)
-                        Log.d(
-                            TAG,
-                            "COS config refreshed successfully for folderType: $folderType, expires at: ${config.expiredTime}"
+                        logD(
+                            "COS config refreshed successfully for folderType: $folderType, expires at: ${config.expiredTime}",
+                            tag = TAG
                         )
                         config
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to refresh COS config", e)
+                logE("Failed to refresh COS config", tag = TAG, throwable = e)
                 throw e
             }
         }
@@ -259,7 +261,7 @@ class CosRepositoryImpl @Inject constructor(
         configMutex.withLock {
             configCache.clear()
         }
-        Log.d(TAG, "Cache cleared")
+        logD("Cache cleared", tag = TAG)
     }
 
     // ==================== 公共接口实现 ====================
@@ -286,10 +288,10 @@ class CosRepositoryImpl @Inject constructor(
             val request = DeleteObjectRequest(config.bucket, key)
             service.deleteObject(request)
 
-            Log.d(TAG, "File deleted successfully: $key")
+            logD("File deleted successfully: $key", tag = TAG)
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to delete file: $key", e)
+            logE("Failed to delete file: $key", tag = TAG, throwable = e)
             false
         }
     }
@@ -305,7 +307,7 @@ class CosRepositoryImpl @Inject constructor(
         } catch (e: CosXmlServiceException) {
             e.statusCode != 404
         } catch (e: Exception) {
-            Log.e(TAG, "Error checking file existence: $key", e)
+            logE("Error checking file existence: $key", tag = TAG, throwable = e)
             false
         }
     }
@@ -319,7 +321,7 @@ class CosRepositoryImpl @Inject constructor(
             val result = service.headObject(request)
             result.headers?.get("Content-Length")?.firstOrNull()?.toLongOrNull()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get file size for: $key", e)
+            logE("Failed to get file size for: $key", tag = TAG, throwable = e)
             null
         }
     }
@@ -333,12 +335,12 @@ class CosRepositoryImpl @Inject constructor(
         return try {
             operation()
         } catch (e: Exception) {
-            Log.w(TAG, "Operation failed, attempting retry after cache clear", e)
+            logW("Operation failed, attempting retry after cache clear", tag = TAG, throwable = e)
             try {
                 clearCache()
                 operation()
             } catch (retryException: Exception) {
-                Log.e(TAG, "Operation failed after retry", retryException)
+                logE("Operation failed after retry", tag = TAG, throwable = retryException)
                 throw retryException
             }
         }
@@ -383,7 +385,7 @@ class CosRepositoryImpl @Inject constructor(
                 url = getPublicUrl(service, newParams, config)
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Upload failed for key: ${params.key}", e)
+            logE("Upload failed for key: ${params.key}", tag = TAG, throwable = e)
             CosUploadResult(
                 success = false,
                 key = params.key,
@@ -401,7 +403,7 @@ class CosRepositoryImpl @Inject constructor(
         config: CosConfig
     ): String {
         val fallbackUrl = service.getObjectUrl(config.bucket, config.region, params.key)
-        Log.e("getPublicUrl", "fallbackUrl: $fallbackUrl")
+        logE("fallbackUrl: $fallbackUrl", tag = "getPublicUrl")
         return try {
             val fileSize = params.fileUri.getFileSize(context)
             val saveFileParam = SaveFileParamModel(
@@ -411,14 +413,14 @@ class CosRepositoryImpl @Inject constructor(
             )
             val response = apiService.getFileUrl(saveFileParam)
             if (response.isSuccess()) {
-                Log.e("getPublicUrl", "response.data: ${response.data}")
+                logE("response.data: ${response.data}", tag = "getPublicUrl")
                 response.data ?: fallbackUrl
             } else {
-                Log.w(TAG, "Failed to get file URL from API, using fallback")
+                logW("Failed to get file URL from API, using fallback", tag = TAG)
                 fallbackUrl
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting file URL from API, using fallback", e)
+            logE("Error getting file URL from API, using fallback", tag = TAG, throwable = e)
             fallbackUrl
         }
     }

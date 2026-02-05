@@ -2,6 +2,7 @@ package com.ytone.longcare.features.photoupload.viewmodel
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.request.OrderInfoRequestModel
@@ -37,7 +38,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
-import androidx.core.net.toUri
+import com.ytone.longcare.common.utils.logD
+import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.common.utils.logW
 
 /**
  * 图片处理ViewModel
@@ -87,7 +90,7 @@ class PhotoProcessingViewModel @Inject constructor(
      * @param orderKey 订单标识符
      */
     fun setOrderKey(orderKey: OrderKey) {
-        android.util.Log.d("PhotoVM", "setOrderKey: $orderKey (current: ${_currentOrderKey.value})")
+        logD("setOrderKey: $orderKey (current: ${_currentOrderKey.value})", tag = "PhotoVM")
         if (_currentOrderKey.value == orderKey) return
         _currentOrderKey.value = orderKey
         loadImagesFromRoom(orderKey)
@@ -99,9 +102,9 @@ class PhotoProcessingViewModel @Inject constructor(
     private fun loadImagesFromRoom(orderKey: OrderKey) {
         viewModelScope.launch {
             val entities = imageRepository.getImagesByOrderId(orderKey)
-            android.util.Log.d("PhotoVM", "loadImagesFromRoom: orderId=${orderKey.orderId}, found ${entities.size} entities")
+            logD("loadImagesFromRoom: orderId=${orderKey.orderId}, found ${entities.size} entities", tag = "PhotoVM")
             entities.forEach { 
-                android.util.Log.d("PhotoVM", "  - Image: id=${it.id}, uri=${it.localUri}, status=${it.uploadStatus}")
+                logD("  - Image: id=${it.id}, uri=${it.localUri}, status=${it.uploadStatus}", tag = "PhotoVM")
             }
             val tasks = entities.map { it.toImageTask() }
             _imageTasks.value = tasks
@@ -175,7 +178,7 @@ class PhotoProcessingViewModel @Inject constructor(
         viewModelScope.launch {
             // 使用传入的orderKey或当前订单Key
             val effectiveOrderKey = orderKey ?: _currentOrderKey.value
-            android.util.Log.d("PhotoVM", "addImagesToProcess: count=${uris.size}, key=$effectiveOrderKey")
+            logD("addImagesToProcess: count=${uris.size}, key=$effectiveOrderKey", tag = "PhotoVM")
             
             val newTasks = mutableListOf<ImageTask>()
             
@@ -189,15 +192,15 @@ class PhotoProcessingViewModel @Inject constructor(
                             localUri = uri.toString(),
                             localPath = uri.path
                         )
-                        android.util.Log.d("PhotoVM", "Saved to DB: id=$id, type=$taskType")
+                        logD("Saved to DB: id=$id, type=$taskType", tag = "PhotoVM")
                         id
                     } catch (e: Exception) {
-                        android.util.Log.e("PhotoVM", "Failed to save image to DB", e)
+                        logE("Failed to save image to DB", tag = "PhotoVM", throwable = e)
                         null
                     }
                 } else {
                     // 没有订单Key时使用UUID作为临时ID
-                    android.util.Log.w("PhotoVM", "No effectiveOrderKey, using UUID")
+                    logW("No effectiveOrderKey, using UUID", tag = "PhotoVM")
                     null
                 }
                 

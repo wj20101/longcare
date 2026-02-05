@@ -7,7 +7,7 @@ import android.content.IntentFilter
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
+import com.ytone.longcare.common.utils.logI
 import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
@@ -71,9 +71,9 @@ class CountdownAlarmActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        Log.i(TAG, "========================================")
-        Log.i(TAG, "✅ CountdownAlarmActivity onCreate 被调用")
-        Log.i(TAG, "========================================")
+        logI("========================================")
+        logI("✅ CountdownAlarmActivity onCreate 被调用")
+        logI("========================================")
         
         // 设置锁屏显示和点亮屏幕
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
@@ -88,7 +88,7 @@ class CountdownAlarmActivity : AppCompatActivity() {
                 WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
             )
         }
-        Log.i(TAG, "使用 setShowWhenLocked/setTurnScreenOn 设置锁屏显示")
+        logI("使用 setShowWhenLocked/setTurnScreenOn 设置锁屏显示")
         
         // 设置Window flags保持屏幕常亮
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -96,7 +96,7 @@ class CountdownAlarmActivity : AppCompatActivity() {
         // 使用 WindowCompat 设置全屏显示
         WindowCompat.setDecorFitsSystemWindows(window, false)
         
-        Log.i(TAG, "Window flags 已设置")
+        logI("Window flags 已设置")
         
         val request = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(EXTRA_REQUEST, com.ytone.longcare.api.request.OrderInfoRequestModel::class.java)

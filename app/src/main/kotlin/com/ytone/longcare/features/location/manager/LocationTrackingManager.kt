@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.location.service.LocationTrackingService
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +34,12 @@ class LocationTrackingManager @Inject constructor(
      */
     val isTracking = _isTracking.asStateFlow()
 
+    private val _currentTrackingRequest = MutableStateFlow<OrderInfoRequestModel?>(null)
+    /**
+     * 当前正在追踪的订单请求模型。如果没有在追踪，则为null。
+     */
+    val currentTrackingRequest = _currentTrackingRequest.asStateFlow()
+
     // 全局协程作用域，用于维持Session期间的定位流订阅
     private val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var sessionJob: Job? = null
@@ -46,20 +53,36 @@ class LocationTrackingManager @Inject constructor(
      */
     fun startLocationSession() {
         if (sessionJob?.isActive == true) {
-            logI("定位会话(Session)已存在，跳过启动")
+            logI("定位会话(Session)已存在，跳过启动 (sessionJob=$sessionJob)")
             return
         }
         
+        logE("🚀 启动定位会话 (Session Start)...", tag = "LocSession")
         logI("🚀 启动定位会话 (Session Start)...")
         // 启动一个长期运行的Job来订阅定位流
         // 因为 ContinuousAmapLocationManager 使用 shareIn(started = WhileSubscribed)，
         // 只要有至少一个订阅者，它就会保持定位开启。
         sessionJob = sessionScope.launch {
-            continuousAmapLocationManager.startContinuousLocation()
-                .collect { location ->
-                    // 顺便把预热的数据也记录到 StateManager，确保缓存最新
-                    locationStateManager.recordLocationSuccess(location)
-                }
+            logE("Session Job Started, subscribing to location flow...", tag = "LocSession")
+            logI("Session Job Started, subscribing to location flow...")
+            try {
+                continuousAmapLocationManager.startContinuousLocation()
+                    .collect { location ->
+                        logE("Session received location: ${location.provider} ${location.latitude},${location.longitude}", tag = "LocSession")
+                        // 顺便把预热的数据也记录到 StateManager，确保缓存最新
+                        // logI("Session received location: $location") // Reduce log noise if frequent
+                        toLocationResult(location)?.let {
+                            locationStateManager.recordLocationSuccess(it)
+                        } ?: locationStateManager.recordLocationSuccess(location) // Fallback if type match
+                    }
+            } catch (e: Exception) {
+                logE("❌ 定位会话异常终止: ${e.message}", tag = "LocSession")
+                logE("❌ 定位会话异常终止: ${e.message}")
+                e.printStackTrace()
+            } finally {
+                logE("Session Job Finished", tag = "LocSession")
+                logI("Session Job Finished")
+            }
         }
     }
 
@@ -75,10 +98,18 @@ class LocationTrackingManager @Inject constructor(
      */
     fun stopLocationSession() {
         if (sessionJob?.isActive == true) {
+            logE("🛑 停止定位会话 (Session Stop)", tag = "LocSession")
             logI("🛑 停止定位会话 (Session Stop)")
             sessionJob?.cancel()
             sessionJob = null
+        } else {
+            logE("停止定位会话: Session inactive or null", tag = "LocSession")
+            logI("停止定位会话: Session inactive or null")
         }
+    }
+
+    private fun toLocationResult(location: com.ytone.longcare.features.location.provider.LocationResult): com.ytone.longcare.features.location.provider.LocationResult? {
+        return location
     }
 
     /**
@@ -90,7 +121,7 @@ class LocationTrackingManager @Inject constructor(
         _isTracking.value = true
         Intent(context, LocationTrackingService::class.java).apply {
             action = LocationTrackingService.ACTION_START
-            putExtra(LocationTrackingService.EXTRA_ORDER_ID, request.orderId)
+            putExtra(LocationTrackingService.EXTRA_ORDER_REQUEST, request)
         }.also {
             ContextCompat.startForegroundService(context, it)
         }
@@ -139,5 +170,13 @@ class LocationTrackingManager @Inject constructor(
      */
     internal fun updateTrackingState(isTracking: Boolean) {
         _isTracking.value = isTracking
+    }
+
+    /**
+     * 更新当前正在追踪的订单请求模型。
+     * internal修饰符确保了它只能在同一个模块内被调用。
+     */
+    internal fun setTrackingRequest(request: OrderInfoRequestModel?) {
+        _currentTrackingRequest.value = request
     }
 }
