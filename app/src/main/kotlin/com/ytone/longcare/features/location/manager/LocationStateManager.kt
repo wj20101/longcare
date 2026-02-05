@@ -1,11 +1,6 @@
 package com.ytone.longcare.features.location.manager
 
-import android.content.Context
-import android.content.Intent
-import androidx.core.content.ContextCompat
 import com.ytone.longcare.features.location.provider.LocationResult
-import com.ytone.longcare.features.location.service.LocationTrackingService
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,81 +20,14 @@ import javax.inject.Singleton
  * 替代原有的LocationTrackingManager，提供更丰富的状态信息。
  */
 @Singleton
-class LocationStateManager @Inject constructor(
-    @param:ApplicationContext private val context: Context
-) {
+class LocationStateManager @Inject constructor() {
     // ========== 状态定义 ==========
     
     private val _state = MutableStateFlow(LocationState())
     val state: StateFlow<LocationState> = _state.asStateFlow()
-    
-    /**
-     * 当前是否正在追踪
-     */
-    val isTracking: StateFlow<Boolean> 
-        get() = MutableStateFlow(_state.value.isTracking).asStateFlow()
-    
+
     // ========== 服务控制 ==========
-    
-    /**
-     * 启动定位追踪服务
-     */
-    fun startTracking(orderId: Long) {
-        if (_state.value.isTracking) return
-        
-        _state.update { it.copy(
-            isTracking = true,
-            currentOrderId = orderId,
-            startTime = System.currentTimeMillis(),
-            error = null
-        )}
-        
-        Intent(context, LocationTrackingService::class.java).apply {
-            action = LocationTrackingService.ACTION_START
-            putExtra(LocationTrackingService.EXTRA_ORDER_ID, orderId)
-        }.also {
-            ContextCompat.startForegroundService(context, it)
-        }
-    }
-    
-    /**
-     * 停止定位追踪服务
-     */
-    fun stopTracking() {
-        if (!_state.value.isTracking) return
-        
-        _state.update { it.copy(
-            isTracking = false,
-            currentOrderId = null,
-            startTime = null
-        )}
-        
-        Intent(context, LocationTrackingService::class.java).apply {
-            action = LocationTrackingService.ACTION_STOP
-        }.also {
-            context.startService(it)
-        }
-    }
-    
-    /**
-     * 强制停止定位追踪服务
-     */
-    fun forceStopTracking() {
-        _state.update { it.copy(
-            isTracking = false,
-            currentOrderId = null,
-            startTime = null
-        )}
-        
-        Intent(context, LocationTrackingService::class.java).apply {
-            action = LocationTrackingService.ACTION_STOP
-        }.also {
-            context.startService(it)
-        }
-    }
-    
-    // ========== 状态更新（由Service调用） ==========
-    
+
     /**
      * 更新追踪状态
      */
@@ -163,6 +91,23 @@ class LocationStateManager @Inject constructor(
         }
     }
     
+    /**
+     * 获取有效的缓存位置
+     * 
+     * @param maxAgeMs 最大有效时间（毫秒），默认30秒
+     * @return 如果缓存位置在有效期内则返回，否则返回null
+     */
+    fun getValidLocation(maxAgeMs: Long = 30_000L): LocationResult? {
+        val state = _state.value
+        val location = state.lastLocation ?: return null
+        val time = state.lastLocationTime ?: return null
+        
+        if (System.currentTimeMillis() - time > maxAgeMs) {
+            return null
+        }
+        return location
+    }
+
     /**
      * 获取成功率
      */

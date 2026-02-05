@@ -24,6 +24,8 @@ import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.PermissionGuideType
 import com.ytone.longcare.features.home.vm.HomeViewModel
 import com.ytone.longcare.features.maindashboard.ui.MainDashboardScreen
+import dagger.hilt.android.EntryPointAccessors
+import com.ytone.longcare.di.HomeEntryPoint
 import com.ytone.longcare.features.nursing.ui.NursingScreen
 import com.ytone.longcare.features.profile.ui.ProfileScreen
 import com.ytone.longcare.theme.LongCareTheme

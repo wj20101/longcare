@@ -16,9 +16,9 @@ import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.location.LocationRepository
+import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
 import com.ytone.longcare.features.location.manager.LocationStateManager
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
-import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.features.location.provider.LocationResult
 import com.ytone.longcare.features.location.provider.LocationStrategy
 import dagger.hilt.android.AndroidEntryPoint
@@ -44,7 +44,7 @@ class LocationTrackingService : Service() {
     lateinit var locationStateManager: LocationStateManager
     
     @Inject
-    lateinit var compositeLocationProvider: CompositeLocationProvider
+    lateinit var continuousAmapLocationManager: ContinuousAmapLocationManager
 
     @Inject
     lateinit var toastHelper: ToastHelper
@@ -103,38 +103,12 @@ class LocationTrackingService : Service() {
         startForeground(NOTIFICATION_ID, createNotification("服务已启动，正在准备定位..."))
 
         trackingJob = serviceScope.launch {
-            while (isActive) {
-                logI("开始新一轮的定位获取...")
-                fetchCurrentLocation()
-                // 等待30秒，实现精准的间隔
-                delay(30_000L)
-            }
-        }
-    }
-
-    /**
-     * 获取当前位置的方法，使用新的定位提供者系统
-     */
-    private suspend fun fetchCurrentLocation() {
-        try {
-            logI("开始获取位置...")
-            val locationResult = compositeLocationProvider.getCurrentLocation()
-            
-            if (locationResult != null) {
-                // 记录定位成功
-                locationStateManager.recordLocationSuccess(locationResult)
-                handleLocationUpdate(locationResult)
-            } else {
-                logE("所有定位方式都获取位置失败")
-                updateNotification("获取位置失败，请检查网络和GPS信号。")
-                // 记录定位失败
-                locationStateManager.recordLocationFailure("所有定位方式都获取位置失败")
-            }
-        } catch (e: Exception) {
-            logE("定位过程中发生异常: ${e.message}")
-            updateNotification("定位异常: ${e.message}")
-            // 记录定位异常
-            locationStateManager.recordLocationFailure("定位异常: ${e.message}")
+            continuousAmapLocationManager.startContinuousLocation(30_000L)
+                .collect { locationResult ->
+                    // 记录定位成功，这会自动更新 LocationStateManager 的缓存
+                    locationStateManager.recordLocationSuccess(locationResult)
+                    handleLocationUpdate(locationResult)
+                }
         }
     }
 
@@ -241,26 +215,13 @@ class LocationTrackingService : Service() {
         // 当服务被销毁时（无论正常停止还是被系统杀死），向Manager同步状态
         trackingManager.updateTrackingState(false)
         // 销毁定位提供者资源
-        compositeLocationProvider.destroy()
+        continuousAmapLocationManager.destroy()
         // 取消所有正在运行的协程任务，防止内存泄漏
         serviceScope.cancel()
         logI("✅ LocationTrackingService 已销毁")
     }
 
-    /**
-     * 设置定位策略
-     */
-    fun setLocationStrategy(strategy: LocationStrategy) {
-        compositeLocationProvider.setLocationStrategy(strategy)
-        logI("定位服务策略已更新为: $strategy")
-    }
-    
-    /**
-     * 获取当前定位策略
-     */
-    fun getCurrentLocationStrategy(): LocationStrategy {
-        return compositeLocationProvider.getCurrentStrategy()
-    }
+
 
     companion object {
         const val ACTION_START = "ACTION_START_LOCATION_TRACKING"

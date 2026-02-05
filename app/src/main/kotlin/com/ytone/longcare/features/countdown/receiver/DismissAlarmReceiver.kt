@@ -8,6 +8,7 @@ import com.ytone.longcare.features.countdown.manager.CountdownNotificationManage
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 
 /**
  * 关闭响铃广播接收器
@@ -22,7 +23,14 @@ class DismissAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         logI("DismissAlarmReceiver: 收到关闭响铃广播")
         
-        val orderId = intent.getLongExtra(CountdownNotificationManager.EXTRA_ORDER_ID, 0L)
+        val request = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(CountdownNotificationManager.EXTRA_REQUEST, OrderInfoRequestModel::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(CountdownNotificationManager.EXTRA_REQUEST)
+        } ?: OrderInfoRequestModel(orderId = 0L, planId = 0)
+        
+        val orderId = request.orderId
         val serviceName = intent.getStringExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME) ?: ""
         
         // 停止响铃服务
@@ -34,7 +42,7 @@ class DismissAlarmReceiver : BroadcastReceiver() {
         // 发送广播通知其他组件停止响铃
         val stopAlarmIntent = Intent(ACTION_STOP_ALARM).apply {
             setPackage(context.packageName)
-            putExtra(CountdownNotificationManager.EXTRA_ORDER_ID, orderId)
+            putExtra(CountdownNotificationManager.EXTRA_REQUEST, request)
             putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, serviceName)
         }
         context.sendBroadcast(stopAlarmIntent)

@@ -38,6 +38,7 @@ import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.di.ServiceCountdownEntryPoint
 import android.widget.Toast
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
 import com.ytone.longcare.model.toOrderKey
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,7 +52,7 @@ fun EndServiceSelectionScreen(
     countdownViewModel: ServiceCountdownViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
     
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val projectList by viewModel.projectList.collectAsStateWithLifecycle()
@@ -206,7 +207,7 @@ fun EndServiceSelectionScreen(
 
                                     // --- 执行资源清理逻辑 ---
                                     CountdownForegroundService.stopCountdown(context)
-                                    countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest.orderId)
+                                    countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest)
                                     AlarmRingtoneService.stopRingtone(context)
                                     countdownViewModel.endService(orderInfoRequest, context)
 

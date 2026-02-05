@@ -33,6 +33,10 @@ import com.ytone.longcare.common.utils.HomeBackHandler
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.navigation.ServiceCompleteData
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
+import dagger.hilt.android.EntryPointAccessors
+import com.ytone.longcare.di.ServiceCompleteEntryPoint
+import androidx.compose.ui.platform.LocalContext
 
 // --- 数据模型 ---
 data class ServiceSummary(
@@ -54,10 +58,24 @@ fun ServiceCompleteScreen(
     viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
     
     // 统一处理系统返回键，与导航按钮行为一致（返回首页并清空堆栈）
     HomeBackHandler(navController = navController)
+    
+    val context = LocalContext.current
+    // 获取单例 LocationTrackingManager
+    val locationTrackingManager = remember {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            ServiceCompleteEntryPoint::class.java
+        ).locationTrackingManager()
+    }
+    
+    // 进入服务完成页面时，停止定位会话 (Session Stop)
+    LaunchedEffect(Unit) {
+        locationTrackingManager.stopLocationSession()
+    }
 
     // 直接使用传入的数据创建 ServiceSummary
     val serviceSummary = ServiceSummary(

@@ -148,7 +148,9 @@ class PhotoProcessingViewModel @Inject constructor(
      */
     private fun ImageUploadStatus.toImageTaskStatus(): ImageTaskStatus {
         return when (this) {
-            ImageUploadStatus.PENDING, ImageUploadStatus.UPLOADING -> ImageTaskStatus.PROCESSING
+            // PENDING/UPLOADING 在重新加载时应视为本地已就绪 (SUCCESS)，
+            // 因为没有后台进程在跑，且文件存在。这允许用户再次点击上传按钮。
+            ImageUploadStatus.PENDING, ImageUploadStatus.UPLOADING -> ImageTaskStatus.SUCCESS 
             ImageUploadStatus.SUCCESS -> ImageTaskStatus.SUCCESS
             ImageUploadStatus.FAILED, ImageUploadStatus.CANCELLED -> ImageTaskStatus.FAILED
         }

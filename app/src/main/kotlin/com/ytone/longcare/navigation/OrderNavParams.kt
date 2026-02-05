@@ -1,6 +1,7 @@
 package com.ytone.longcare.navigation
 
 import androidx.annotation.Keep
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import kotlinx.serialization.Serializable
 
 /**
@@ -15,4 +16,12 @@ import kotlinx.serialization.Serializable
 data class OrderNavParams(
     val orderId: Long,
     val planId: Int = 0
+)
+
+/**
+ * 转换为订单信息请求模型
+ */
+fun OrderNavParams.toRequestModel() = OrderInfoRequestModel(
+    orderId = orderId,
+    planId = planId
 )

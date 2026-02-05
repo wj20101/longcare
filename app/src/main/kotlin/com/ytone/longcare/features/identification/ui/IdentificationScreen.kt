@@ -47,6 +47,7 @@ import com.ytone.longcare.theme.bgGradientBrush
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
 
 /**
  * 身份认证相关常量
@@ -65,7 +66,7 @@ fun IdentificationScreen(
     identificationViewModel: IdentificationViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
     
     val context = LocalContext.current
     val unifiedOrderRepository = EntryPointAccessors.fromApplication(
@@ -95,7 +96,7 @@ fun IdentificationScreen(
                 scope.launch {
                     val watermarkData = identificationViewModel.generateWatermarkData(
                         address = sharedOrderDetailViewModel.getUserAddress(orderInfoRequest),
-                        orderId = orderInfoRequest.orderId
+                        request = orderInfoRequest
                     )
                     navController.navigateToCamera(watermarkData)
                 }
@@ -109,7 +110,7 @@ fun IdentificationScreen(
     LaunchedEffect(navController.currentBackStackEntry?.savedStateHandle) {
         navController.currentBackStackEntry?.savedStateHandle?.get<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)?.let { uriString ->
             val uri = uriString.toUri()
-            identificationViewModel.processElderPhoto(uri, orderInfoRequest.orderId)
+            identificationViewModel.processElderPhoto(uri, orderInfoRequest)
             // 清除数据，避免重复处理
             navController.currentBackStackEntry?.savedStateHandle?.remove<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)
         }

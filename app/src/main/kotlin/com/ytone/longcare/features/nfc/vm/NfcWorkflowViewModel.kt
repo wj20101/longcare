@@ -9,6 +9,7 @@ import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.OrderRepository
+import com.ytone.longcare.features.location.provider.CompositeLocationProvider
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
@@ -18,6 +19,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,8 +30,11 @@ import javax.inject.Inject
 class NfcWorkflowViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val toastHelper: ToastHelper,
-    private val appEventBus: AppEventBus
+    private val appEventBus: AppEventBus,
+    private val compositeLocationProvider: CompositeLocationProvider // 保留用于单次定位请求
 ) : ViewModel() {
+
+    // 移除 init 块中的 startProactiveLocation 调用，因为已由 SharedOrderDetailViewModel 统一管理
 
     private val _uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
     val uiState: StateFlow<NfcSignInUiState> = _uiState.asStateFlow()
@@ -261,11 +266,17 @@ class NfcWorkflowViewModel @Inject constructor(
         viewModelScope.launch {
             appEventBus.events.collect { event ->
                 if (event is AppEvent.NfcIntentReceived) {
+                    // 如果已经签到/签退成功，忽略后续的NFC事件
+                    if (_uiState.value is NfcSignInUiState.Success) {
+                        return@collect
+                    }
+
                     val tag = NfcUtils.getTagFromIntent(event.intent)
                     if (tag != null) {
                         val tagId = NfcUtils.bytesToHexString(tag.id)
                         if (tagId.isNotEmpty()) {
-                            // 实时获取位置信息
+                            // 调用 CompositeLocationProvider 获取位置
+                            // 内部已集成缓存优先逻辑：Cache (0ms) -> Fallback -> Realtime
                             val (longitude, latitude) = onLocationRequest()
                             
                             // 如果定位信息为空，则中断流程，因为参数无效

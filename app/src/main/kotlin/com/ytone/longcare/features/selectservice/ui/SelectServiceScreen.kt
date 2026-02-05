@@ -39,6 +39,7 @@ import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.features.selectservice.vm.SelectServiceViewModel
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
 
 // --- 数据模型 ---
 data class ServiceItem(
@@ -56,7 +57,7 @@ fun SelectServiceScreen(
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
     
     val context = LocalContext.current
     val unifiedOrderRepository = EntryPointAccessors.fromApplication(

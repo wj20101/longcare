@@ -44,14 +44,14 @@ class CountdownAlarmActivity : AppCompatActivity() {
     
     companion object {
         private const val TAG = "CountdownAlarmActivity"
-        private const val EXTRA_ORDER_ID = "order_id"
+        private const val EXTRA_REQUEST = "extra_request"
         private const val EXTRA_SERVICE_NAME = "service_name"
         private const val EXTRA_AUTO_CLOSE_ENABLED = "auto_close_enabled"
         private const val AUTO_CLOSE_DELAY_MS = 30000L // 30秒
         
-        fun createIntent(context: Context, orderId: String, serviceName: String, autoCloseEnabled: Boolean = true): Intent {
+        fun createIntent(context: Context, request: com.ytone.longcare.api.request.OrderInfoRequestModel, serviceName: String, autoCloseEnabled: Boolean = true): Intent {
             return Intent(context, CountdownAlarmActivity::class.java).apply {
-                putExtra(EXTRA_ORDER_ID, orderId)
+                putExtra(EXTRA_REQUEST, request)
                 putExtra(EXTRA_SERVICE_NAME, serviceName)
                 putExtra(EXTRA_AUTO_CLOSE_ENABLED, autoCloseEnabled)
                 // 确保Activity可以从后台启动
@@ -98,7 +98,14 @@ class CountdownAlarmActivity : AppCompatActivity() {
         
         Log.i(TAG, "Window flags 已设置")
         
-        val orderId = intent.getStringExtra(EXTRA_ORDER_ID) ?: ""
+        val request = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(EXTRA_REQUEST, com.ytone.longcare.api.request.OrderInfoRequestModel::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(EXTRA_REQUEST)
+        } ?: com.ytone.longcare.api.request.OrderInfoRequestModel(orderId = -1L, planId = 0)
+        
+        val orderId = request.orderId.toString()
         val serviceName = intent.getStringExtra(EXTRA_SERVICE_NAME) ?: "护理服务"
         val autoCloseEnabled = intent.getBooleanExtra(EXTRA_AUTO_CLOSE_ENABLED, true)
         

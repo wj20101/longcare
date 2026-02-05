@@ -33,6 +33,7 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,7 +43,7 @@ fun ServiceHoursScreen(
     viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
     // 从orderParams构建请求模型
-    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
     
     // 获取选中的项目ID
     val selectedProjectIds by viewModel.selectedProjectIds.collectAsStateWithLifecycle()

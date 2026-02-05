@@ -58,6 +58,7 @@ import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
 
 
 // --- 状态定义 ---
@@ -80,7 +81,7 @@ fun NfcWorkflowScreen(
     sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { OrderInfoRequestModel(orderId = orderParams.orderId, planId = orderParams.planId) }
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
     
     val uiState by nfcViewModel.uiState.collectAsStateWithLifecycle()
     val pendingNfcData by nfcViewModel.pendingNfcData.collectAsStateWithLifecycle()
@@ -92,7 +93,7 @@ fun NfcWorkflowScreen(
 
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
-        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderParams.orderId) }
+        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest) }
     )
 
     // 检查定位权限和服务的函数
