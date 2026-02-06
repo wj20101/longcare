@@ -60,6 +60,8 @@ import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.common.utils.BackHandlerUtils
+import com.ytone.longcare.navigation.navigateToHomeAndClearStack
 
 
 // --- 状态定义 ---
@@ -89,8 +91,30 @@ fun NfcWorkflowScreen(
     val context = LocalContext.current
     val activity = context as? Activity
 
+    // 根据ViewModel状态确定SignInState
+    val signInState = when (uiState) {
+        is NfcSignInUiState.Loading -> SignInState.IDLE
+        is NfcSignInUiState.Success -> SignInState.SUCCESS
+        is NfcSignInUiState.Error -> SignInState.FAILURE
+        is NfcSignInUiState.Initial -> SignInState.IDLE
+        is NfcSignInUiState.ShowConfirmDialog -> SignInState.IDLE
+    }
+
+    // 定义统一的返回逻辑
+    val onBack: () -> Unit = {
+        if (signInMode == SignInMode.END_ORDER && signInState == SignInState.SUCCESS) {
+            navController.navigateToHomeAndClearStack()
+        } else {
+            navController.popBackStack()
+        }
+    }
+
     // 统一处理系统返回键，与导航按钮行为一致
-    UnifiedBackHandler(navController = navController)
+    UnifiedBackHandler(
+        navController = navController,
+        behavior = BackHandlerUtils.BackBehavior.CUSTOM,
+        customAction = onBack
+    )
 
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
@@ -191,14 +215,7 @@ fun NfcWorkflowScreen(
         }
     }
 
-    // 根据ViewModel状态确定SignInState
-    val signInState = when (uiState) {
-        is NfcSignInUiState.Loading -> SignInState.IDLE
-        is NfcSignInUiState.Success -> SignInState.SUCCESS
-        is NfcSignInUiState.Error -> SignInState.FAILURE
-        is NfcSignInUiState.Initial -> SignInState.IDLE
-        is NfcSignInUiState.ShowConfirmDialog -> SignInState.IDLE
-    }
+
 
     val titleRes = when (signInMode) {
         SignInMode.START_ORDER -> R.string.nfc_sign_in_title
@@ -218,7 +235,7 @@ fun NfcWorkflowScreen(
                         stringResource(titleRes), fontWeight = FontWeight.Bold
                     )
                 }, navigationIcon = {
-                    IconButton(onClick = singleClick { navController.popBackStack() }) {
+                    IconButton(onClick = singleClick { onBack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
