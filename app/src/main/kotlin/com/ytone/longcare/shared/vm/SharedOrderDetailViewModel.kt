@@ -11,7 +11,7 @@ import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.model.toOrderKey
-import com.ytone.longcare.features.location.provider.CompositeLocationProvider
+import com.ytone.longcare.features.location.core.LocationFacade
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +29,7 @@ class SharedOrderDetailViewModel @Inject constructor(
     private val unifiedOrderRepository: UnifiedOrderRepository,
     private val orderRepository: OrderRepository,
     private val toastHelper: ToastHelper,
-    private val locationProvider: CompositeLocationProvider,
+    private val locationFacade: LocationFacade,
     @param:ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -172,7 +172,7 @@ class SharedOrderDetailViewModel @Inject constructor(
                 return Pair("", "")
             }
             
-            val location = locationProvider.getCurrentLocation()
+            val location = locationFacade.getCurrentLocation()
             if (location != null) {
                 Pair(location.longitude.toString(), location.latitude.toString())
             } else {

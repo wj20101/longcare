@@ -26,6 +26,9 @@ interface OrderLocationDao {
     
     @Query("SELECT * FROM order_locations WHERE upload_status = :status")
     suspend fun getLocationsByStatus(status: Int): List<OrderLocationEntity>
+
+    @Query("SELECT * FROM order_locations WHERE upload_status IN (:statuses) ORDER BY timestamp ASC LIMIT :limit")
+    suspend fun getUploadQueue(statuses: List<Int>, limit: Int = 50): List<OrderLocationEntity>
     
     // ========== 写入操作 ==========
     
@@ -50,6 +53,9 @@ interface OrderLocationDao {
     
     @Query("DELETE FROM order_locations WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM order_locations WHERE upload_status = :status AND timestamp < :beforeTime")
+    suspend fun deleteByStatusBefore(status: Int, beforeTime: Long): Int
     
     // ========== 统计操作 ==========
     

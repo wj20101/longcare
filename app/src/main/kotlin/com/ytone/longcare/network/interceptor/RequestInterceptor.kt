@@ -8,6 +8,7 @@ import com.ytone.longcare.common.utils.DeviceUtils
 import com.ytone.longcare.common.utils.RandomUtils
 import com.ytone.longcare.common.utils.TimeUtils
 import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.common.utils.toJsonStringMap
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import okhttp3.Interceptor
@@ -58,6 +59,13 @@ class RequestInterceptor @Inject constructor(
                 val buffer = Buffer()
                 requestBody.writeTo(buffer)
                 val requestBodyBytes = buffer.readByteArray()
+
+                // 记录加密前的原始请求参数
+                if (BuildConfig.DEBUG) {
+                    val originalRequestBody = String(requestBodyBytes, Charsets.UTF_8)
+                    logI("【请求加密前】URL: ${url}\n原始请求体: $originalRequestBody", tag = "RequestInterceptor")
+                }
+
                 val encryptRequest = encryptRequest(randomString, requestBodyBytes)
                 val bodyMap = mapOf("ParamJsonString" to encryptRequest)
                 val encryptData = bodyMap.toJsonStringMap().orEmpty()
@@ -94,6 +102,12 @@ class RequestInterceptor @Inject constructor(
             "channel" to "office"
         )
         val headerInfo = map.toJsonStringMap().orEmpty()
+
+        // 记录加密前的原始Header信息
+        if (BuildConfig.DEBUG) {
+            logI("【请求Header加密前】原始Header参数: $headerInfo", tag = "RequestInterceptor")
+        }
+
         return mapOf(
             "AesKeyString" to getAKHead(randomString),
             "BaseParamString" to encryptRequest(randomString, headerInfo)

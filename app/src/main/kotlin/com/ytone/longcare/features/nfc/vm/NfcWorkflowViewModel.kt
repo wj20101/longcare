@@ -293,8 +293,7 @@ class NfcWorkflowViewModel @Inject constructor(
                     if (tag != null) {
                         val tagId = NfcUtils.bytesToHexString(tag.id)
                         if (tagId.isNotEmpty()) {
-                            // 调用 CompositeLocationProvider 获取位置
-                            // 内部已集成缓存优先逻辑：Cache (0ms) -> Fallback -> Realtime
+                            // 通过定位门面获取位置（缓存优先，失败自动回退）
                             val (longitude, latitude) = onLocationRequest()
 
                             // 如果定位信息为空，则中断流程，因为参数无效

@@ -10,6 +10,7 @@ import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.data.repository.ImageRepository
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.domain.order.OrderRepository
+import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.util.MainDispatcherRule
@@ -36,6 +37,7 @@ class ServiceCountdownViewModelTest {
     private lateinit var unifiedOrderRepository: UnifiedOrderRepository
     private lateinit var imageRepository: ImageRepository
     private lateinit var orderRepository: OrderRepository
+    private lateinit var countdownNotificationManager: CountdownNotificationManager
     private lateinit var toastHelper: ToastHelper
     private lateinit var viewModel: ServiceCountdownViewModel
 
@@ -44,6 +46,7 @@ class ServiceCountdownViewModelTest {
         unifiedOrderRepository = mockk(relaxed = true)
         imageRepository = mockk(relaxed = true)
         orderRepository = mockk(relaxed = true)
+        countdownNotificationManager = mockk(relaxed = true)
         toastHelper = mockk(relaxed = true)
         
         // Mock default flows
@@ -53,7 +56,8 @@ class ServiceCountdownViewModelTest {
             toastHelper,
             unifiedOrderRepository,
             imageRepository,
-            orderRepository
+            orderRepository,
+            countdownNotificationManager
         )
     }
 

@@ -48,6 +48,9 @@ class ContinuousAmapLocationManager @Inject constructor(
         const val MAX_INTERVAL = 120_000L
     }
     
+    // 缓存待绑定的通知，用于解决初始化时序问题
+    private var pendingNotification: Pair<Int, android.app.Notification>? = null
+    
     /**
      * 初始化持续定位客户端
      * 
@@ -90,6 +93,12 @@ class ContinuousAmapLocationManager @Inject constructor(
             locationClient?.setLocationOption(option)
             isInitialized = true
             logI("持续高德定位客户端初始化成功，间隔: ${interval}ms")
+            
+            // 如果有待绑定的后台通知，立即应用
+            pendingNotification?.let { (id, notification) ->
+                locationClient?.enableBackgroundLocation(id, notification)
+                logI("初始化时应用后台定位保活 (NotificationId: $id)")
+            }
         } catch (e: Exception) {
             logE("持续高德定位客户端初始化失败: ${e.message}")
         }
@@ -230,5 +239,44 @@ class ContinuousAmapLocationManager @Inject constructor(
             }
         )
         logI("定位间隔已更新为: ${coercedInterval}ms")
+    }
+
+    /**
+     * 开启后台定位（绑定前台服务通知）
+     * 解决锁屏后网络定位失败(Error 13)的问题
+     *
+     * @param notificationId 通知的ID
+     * @param notification 通知对象
+     */
+    fun enableBackgroundLocation(notificationId: Int, notification: android.app.Notification) {
+        // 无论是否初始化，都缓存通知，确保重建时能自动恢复
+        pendingNotification = notificationId to notification
+        
+        if (locationClient == null) {
+            logI("已缓存后台定位通知 (客户端尚未初始化)")
+            return
+        }
+        try {
+            locationClient?.enableBackgroundLocation(notificationId, notification)
+            logI("已开启后台定位保活 (NotificationId: $notificationId)")
+        } catch (e: Exception) {
+            logE("开启后台定位失败: ${e.message}")
+        }
+    }
+
+    /**
+     * 关闭后台定位
+     *
+     * @param removeNotification 是否移除通知
+     */
+    fun disableBackgroundLocation(removeNotification: Boolean) {
+        pendingNotification = null
+        if (locationClient == null) return
+        try {
+            locationClient?.disableBackgroundLocation(removeNotification)
+            logI("已关闭后台定位保活")
+        } catch (e: Exception) {
+            logE("关闭后台定位失败: ${e.message}")
+        }
     }
 }

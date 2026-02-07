@@ -1,209 +1,92 @@
 package com.ytone.longcare.features.location.service
 
-import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
-import android.location.LocationManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import androidx.core.content.IntentCompat
 import com.ytone.longcare.R
-import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
-import com.ytone.longcare.domain.location.LocationRepository
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
-import com.ytone.longcare.features.location.manager.LocationStateManager
-import com.ytone.longcare.features.location.manager.LocationTrackingManager
-import com.ytone.longcare.features.location.provider.LocationResult
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.*
 import javax.inject.Inject
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 
 @AndroidEntryPoint
 class LocationTrackingService : Service() {
 
     @Inject
-    lateinit var locationManager: LocationManager
-
-    @Inject
     lateinit var notificationManager: NotificationManager
-
-    @Inject
-    lateinit var locationRepository: LocationRepository
-
-    @Inject
-    lateinit var trackingManager: LocationTrackingManager
-
-    @Inject
-    lateinit var locationStateManager: LocationStateManager
 
     @Inject
     lateinit var continuousAmapLocationManager: ContinuousAmapLocationManager
 
-    @Inject
-    lateinit var toastHelper: ToastHelper
-
-    // 创建一个与 Service 生命周期绑定的协程作用域
-    // 使用 SupervisorJob 确保一个子任务的失败不会影响其他任务
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var trackingJob: Job? = null
-
-    private var currentOrderRequest: OrderInfoRequestModel? = null
+    private var isKeepAliveStarted = false
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    override fun onCreate() {
-        super.onCreate()
-        // 服务被创建时，立即向 Manager 同步状态，确保UI能感知到服务正在运行
-        trackingManager.updateTrackingState(true)
-    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         logI("📥 收到Intent: action=${intent?.action}")
 
         when (intent?.action) {
-            ACTION_START -> {
-                // 获取请求模型()
-                val request = IntentCompat.getParcelableExtra(
-                    intent, EXTRA_ORDER_REQUEST, OrderInfoRequestModel::class.java
-                )
-                logI("📥 收到启动命令: request=$request")
-                if (request == null) {
-                    logE("启动服务失败：未提供有效的 request。")
-                    stopTracking() // 如果没有 request，则不启动并立即停止
-                } else {
-                    currentOrderRequest = request
-                    startTracking()
-                }
+            ACTION_ACQUIRE_KEEP_ALIVE -> {
+                val owner = intent.getStringExtra(EXTRA_OWNER) ?: "anonymous"
+                startKeepAlive(owner)
             }
 
-            ACTION_STOP -> {
-                logI("📥 收到停止命令")
-                stopTracking()
+            ACTION_RELEASE_KEEP_ALIVE -> {
+                stopKeepAlive()
             }
 
             else -> {
                 logI("📥 收到未知命令: ${intent?.action}")
             }
         }
-        // 使用 START_NOT_STICKY，避免服务在被意外杀死后自动重启，将控制权交由用户或业务逻辑
         return START_NOT_STICKY
     }
 
-    @SuppressLint("MissingPermission") // 权限检查已在UI层完成
-    private fun startTracking() {
-        if (trackingJob?.isActive == true) {
-            logI("定位上报任务已在运行中，无需重复启动。")
+    private fun startKeepAlive(owner: String) {
+        if (isKeepAliveStarted) {
+            logI("定位保活服务已运行，跳过重复启动 (owner=$owner)")
             return
         }
 
-        logI("启动定位上报循环...")
+        logI("启动定位前台保活 (owner=$owner)")
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, createNotification("服务已启动，正在准备定位..."))
+        val notification = createNotification("后台定位服务运行中...")
+        startForeground(NOTIFICATION_ID, notification)
 
-        trackingJob = serviceScope.launch {
-            // 更新 Manager 中的 currentTrackingRequest
-            trackingManager.setTrackingRequest(currentOrderRequest)
-
-            continuousAmapLocationManager.startContinuousLocation(30_000L)
-                .collect { locationResult ->
-                    // 记录定位成功，这会自动更新 LocationStateManager 的缓存
-                    locationStateManager.recordLocationSuccess(locationResult)
-                    handleLocationUpdate(locationResult)
-                }
-        }
+        continuousAmapLocationManager.enableBackgroundLocation(NOTIFICATION_ID, notification)
+        isKeepAliveStarted = true
     }
 
-    /**
-     * 处理位置更新和上报的统一方法。
-     */
-    private fun handleLocationUpdate(locationResult: LocationResult) {
-        logI("成功获取到位置: Provider=${locationResult.provider}, Lat=${locationResult.latitude}, Lng=${locationResult.longitude}")
-        updateNotification("位置已更新")
-
-        // 在IO线程中执行网络请求
-        serviceScope.launch {
-            val orderId = currentOrderRequest?.orderId
-            if (orderId == null) {
-                logE("无法上报位置：orderId 为空")
-                return@launch
-            }
-
-            when (val result = locationRepository.addPosition(
-                orderId, locationResult.latitude, locationResult.longitude
-            )) {
-                is ApiResult.Success -> {
-                    // 请求成功，更新状态
-                    logI("位置上报API调用完成。")
-                }
-
-                is ApiResult.Failure -> {
-                    // 这里可以添加错误处理逻辑，例如通过另一个 StateFlow 显示Toast
-                    toastHelper.showShort(result.message)
-                }
-
-                is ApiResult.Exception -> {
-                    logE(message = "定位上报接口失败", throwable = result.exception)
-                }
-            }
+    private fun stopKeepAlive() {
+        if (!isKeepAliveStarted) {
+            stopSelf()
+            return
         }
-    }
 
-    private fun stopTracking() {
-        logI("========================================")
-        logI("🛑 停止定位上报服务...")
-        logI("========================================")
+        continuousAmapLocationManager.disableBackgroundLocation(true)
 
-        // 1. 取消定位任务
-        trackingJob?.cancel()
-        trackingJob = null
-        logI("✅ 1. 定位任务已取消")
-
-        // 2. 重置 orderRequest
-        currentOrderRequest = null
-        logI("✅ 2. orderRequest已重置")
-
-        // 3. 停止前台服务
         try {
             stopForeground(STOP_FOREGROUND_REMOVE)
-            logI("✅ 3. 前台服务已停止")
-        } catch (e: Exception) {
-            logE("❌ 停止前台服务失败: ${e.message}")
-        }
-
-        // 4. 停止服务自身
-        try {
             stopSelf()
-            logI("✅ 4. 服务已停止")
+            isKeepAliveStarted = false
+            logI("定位前台保活已停止")
         } catch (e: Exception) {
-            logE("❌ 停止服务失败: ${e.message}")
+            logE("停止定位前台保活失败: ${e.message}")
         }
-
-        // 5. 清除 Manager 中的 trackingRequest
-        trackingManager.setTrackingRequest(null)
-
-        logI("========================================")
-        logI("✅ 定位上报服务停止完成")
-        logI("========================================")
     }
 
     private fun createNotification(contentText: String): Notification {
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("后台定位服务").setContentText(contentText)
-            .setSmallIcon(R.mipmap.app_logo_round) // 请务必替换为您的应用图标
-            .setOngoing(true) // 使通知不可被用户轻易划掉
+            .setSmallIcon(R.mipmap.app_logo_round)
+            .setOngoing(true)
             .build()
-    }
-
-    private fun updateNotification(contentText: String) {
-        notificationManager.notify(NOTIFICATION_ID, createNotification(contentText))
     }
 
     private fun createNotificationChannel() {
@@ -211,7 +94,7 @@ class LocationTrackingService : Service() {
             val channel = NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
                 "后台定位服务",
-                NotificationManager.IMPORTANCE_LOW // 设置为LOW，避免声音和振动打扰用户
+                NotificationManager.IMPORTANCE_LOW
             )
             notificationManager.createNotificationChannel(channel)
         }
@@ -223,29 +106,19 @@ class LocationTrackingService : Service() {
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        logI("========================================")
-        logI("🗑️ 应用被移除，停止定位服务...")
-        logI("========================================")
-        stopTracking()
+        stopKeepAlive()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        // 当服务被销毁时（无论正常停止还是被系统杀死），向Manager同步状态
-        trackingManager.updateTrackingState(false)
-        // 移除 continuousAmapLocationManager.destroy() 调用
-        // ContinuousAmapLocationManager 是 Singleton，由 Service 销毁会导致其他订阅者（如 SessionJob）无法使用
-        // continuousAmapLocationManager.destroy()
-        // 取消所有正在运行的协程任务，防止内存泄漏
-        serviceScope.cancel()
         logI("✅ LocationTrackingService 已销毁")
     }
 
 
     companion object {
-        const val ACTION_START = "ACTION_START_LOCATION_TRACKING"
-        const val ACTION_STOP = "ACTION_STOP_LOCATION_TRACKING"
-        const val EXTRA_ORDER_REQUEST = "EXTRA_ORDER_REQUEST"
+        const val ACTION_ACQUIRE_KEEP_ALIVE = "ACTION_ACQUIRE_LOCATION_KEEPALIVE"
+        const val ACTION_RELEASE_KEEP_ALIVE = "ACTION_RELEASE_LOCATION_KEEPALIVE"
+        const val EXTRA_OWNER = "EXTRA_OWNER"
         private const val NOTIFICATION_ID = 1
         private const val NOTIFICATION_CHANNEL_ID = "location_tracking_channel"
     }
