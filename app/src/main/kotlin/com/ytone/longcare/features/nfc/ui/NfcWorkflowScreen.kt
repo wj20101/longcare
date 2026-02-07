@@ -54,7 +54,7 @@ import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSettings
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
-import com.ytone.longcare.features.location.provider.CompositeLocationProvider
+import com.ytone.longcare.features.location.core.LocationFacade
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
@@ -135,12 +135,12 @@ fun NfcWorkflowScreen(
         ).nfcManager()
     }
 
-    // 获取CompositeLocationProvider实例
-    val locationProvider: CompositeLocationProvider = remember {
+    // 获取统一定位门面实例
+    val locationFacade: LocationFacade = remember {
         val appContext: Context = context.applicationContext
         EntryPointAccessors.fromApplication(
             appContext, NfcLocationEntryPoint::class.java
-        ).compositeLocationProvider()
+        ).locationFacade()
     }
 
     // 获取当前位置的函数（使用高德定位）
@@ -161,7 +161,7 @@ fun NfcWorkflowScreen(
                 return Pair("", "")
             }
 
-            val location = locationProvider.getCurrentLocation()
+            val location = locationFacade.getCurrentLocation()
             if (location != null) {
                 Pair(location.longitude.toString(), location.latitude.toString())
             } else {

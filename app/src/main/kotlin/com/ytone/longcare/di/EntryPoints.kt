@@ -5,7 +5,7 @@ import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
-import com.ytone.longcare.features.location.provider.CompositeLocationProvider
+import com.ytone.longcare.features.location.core.LocationFacade
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import com.ytone.longcare.features.maindashboard.utils.NfcTestHelper
 import dagger.hilt.EntryPoint
@@ -32,7 +32,7 @@ interface NfcManagerEntryPoint {
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface NfcLocationEntryPoint {
-    fun compositeLocationProvider(): CompositeLocationProvider
+    fun locationFacade(): LocationFacade
 }
 
 @EntryPoint
