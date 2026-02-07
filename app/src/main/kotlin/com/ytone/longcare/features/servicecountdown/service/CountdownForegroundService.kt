@@ -138,6 +138,12 @@ class CountdownForegroundService : Service() {
         return binder
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        logI("App task removed, stopping CountdownForegroundService")
+        stopCountdownNotification()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         stopCountdownNotification()
