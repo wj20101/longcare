@@ -2,12 +2,12 @@ package com.ytone.longcare.features.service
 
 import android.app.NotificationManager
 import android.content.Context
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.work.Configuration
 import androidx.work.WorkManager
 import com.ytone.longcare.features.service.ServiceTimeNotificationManager
+import com.ytone.longcare.features.service.storage.PendingOrdersStorage
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -41,11 +41,13 @@ class ServiceTimeNotificationIntegrationTest {
         
         // 使用真实的服务管理器
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+        val pendingOrdersStorage = PendingOrdersStorage(context)
         serviceTimeNotificationManager = ServiceTimeNotificationManager(
             context,
             notificationManager,
             alarmManager,
-            workManager
+            workManager,
+            pendingOrdersStorage
         )
     }
 

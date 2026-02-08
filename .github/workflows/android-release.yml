@@ -37,8 +37,19 @@ jobs:
       - name: Verify quality gates
         run: ./gradlew --no-daemon :app:lintDebug :app:testDebugUnitTest
 
+      - name: Validate release signing secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          [ -n "$ANDROID_KEYSTORE_BASE64" ] || { echo "Missing secret: ANDROID_KEYSTORE_BASE64"; exit 1; }
+          [ -n "$RELEASE_STORE_PASSWORD" ] || { echo "Missing secret: RELEASE_STORE_PASSWORD"; exit 1; }
+          [ -n "$RELEASE_KEY_ALIAS" ] || { echo "Missing secret: RELEASE_KEY_ALIAS"; exit 1; }
+          [ -n "$RELEASE_KEY_PASSWORD" ] || { echo "Missing secret: RELEASE_KEY_PASSWORD"; exit 1; }
+
       - name: Decode Android keystore
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > $RUNNER_TEMP/release.keystore
 
@@ -48,7 +59,7 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease
+        run: ./gradlew --no-daemon -PREQUIRE_RELEASE_SIGNING=true :app:assembleRelease :app:bundleRelease
 
       - name: Generate release checksums
         run: |

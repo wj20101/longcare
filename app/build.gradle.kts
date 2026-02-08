@@ -1,3 +1,5 @@
+import org.gradle.api.GradleException
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinCompose)
@@ -37,6 +39,16 @@ val hasReleaseSigning =
         !releaseStorePassword.orNull.isNullOrBlank() &&
         !releaseKeyAlias.orNull.isNullOrBlank() &&
         !releaseKeyPassword.orNull.isNullOrBlank()
+val requireReleaseSigning =
+    providers.gradleProperty("REQUIRE_RELEASE_SIGNING").orNull?.toBooleanStrictOrNull() == true
+
+if (requireReleaseSigning && !hasReleaseSigning) {
+    throw GradleException(
+        "Release signing is required but missing. " +
+            "Provide RELEASE_STORE_FILE/ANDROID_KEYSTORE_PATH, RELEASE_STORE_PASSWORD, " +
+            "RELEASE_KEY_ALIAS, and RELEASE_KEY_PASSWORD."
+    )
+}
 
 android {
     namespace = "com.ytone.longcare"
