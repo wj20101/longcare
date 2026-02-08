@@ -19,7 +19,7 @@ env:
 jobs:
   release-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
       - name: Checkout
@@ -54,8 +54,11 @@ jobs:
           fi
 
       - name: Generate baseline profile on emulator
+        timeout-minutes: 75
         env:
           BASELINE_API_LEVEL: "30"
+          BASELINE_BOOT_TIMEOUT_SECS: "900"
+          BASELINE_GRADLE_TIMEOUT_SECS: "2700"
           BASELINE_GRADLE_TASK: ":app:generateBaselineProfile"
         run: ./.github/scripts/run-baseline-profile.sh
 
@@ -66,6 +69,7 @@ jobs:
           name: baseline-debug-logs-release
           path: |
             ${{ runner.temp }}/baseline-emulator.log
+            ${{ runner.temp }}/baseline-logcat.txt
             app/build/outputs/managed_device_android_test_additional_output/**
             app/build/reports/**
             baselineprofile/build/reports/**
