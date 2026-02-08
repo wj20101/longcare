@@ -34,8 +34,11 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+        run: chmod +x gradlew .github/scripts/run-baseline-profile.sh
 
       - name: Verify quality gates
         run: ./gradlew --no-daemon :app:lintDebug :app:testDebugUnitTest
@@ -51,15 +54,23 @@ jobs:
           fi
 
       - name: Generate baseline profile on emulator
-        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          BASELINE_API_LEVEL: "30"
+          BASELINE_GRADLE_TASK: ":app:generateBaselineProfile"
+        run: ./.github/scripts/run-baseline-profile.sh
+
+      - name: Upload baseline debug logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
         with:
-          api-level: 30
-          arch: x86_64
-          emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -accel off -no-snapshot-load -no-snapshot-save
-          disable-animations: false
-          disable-linux-hw-accel: true
-          script: ./gradlew --no-daemon :app:generateBaselineProfile -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile
+          name: baseline-debug-logs-release
+          path: |
+            ${{ runner.temp }}/baseline-emulator.log
+            app/build/outputs/managed_device_android_test_additional_output/**
+            app/build/reports/**
+            baselineprofile/build/reports/**
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Verify baseline profile output
         run: |
