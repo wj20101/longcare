@@ -55,7 +55,6 @@ jobs:
         with:
           api-level: 35
           arch: x86_64
-          profile: pixel_8
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           script: ./gradlew --no-daemon :app:generateBaselineProfile -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile
