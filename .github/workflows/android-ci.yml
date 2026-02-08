@@ -16,6 +16,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
+
 jobs:
   verify-build:
     runs-on: ubuntu-latest
