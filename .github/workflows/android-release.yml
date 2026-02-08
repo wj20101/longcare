@@ -18,7 +18,7 @@ env:
 
 jobs:
   release-build:
-    runs-on: ubuntu-latest
+    runs-on: macos-13
     timeout-minutes: 90
 
     steps:
@@ -58,7 +58,6 @@ jobs:
           emulator-boot-timeout: 900
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: false
-          disable-linux-hw-accel: true
           script: ./gradlew --no-daemon :app:generateBaselineProfile -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile
 
       - name: Verify baseline profile output
