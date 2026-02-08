@@ -13,6 +13,9 @@ concurrency:
 permissions:
   contents: write
 
+env:
+  JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
+
 jobs:
   release-build:
     runs-on: ubuntu-latest

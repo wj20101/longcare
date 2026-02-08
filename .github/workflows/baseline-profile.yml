@@ -23,6 +23,9 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
+
 jobs:
   generate-baseline-profile:
     runs-on: ubuntu-latest
