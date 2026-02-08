@@ -22,7 +22,6 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
-import retrofit2.converter.wire.WireConverterFactory
 import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -112,18 +111,9 @@ object NetworkModule {
     fun provideRetrofit(
         okHttpClient: OkHttpClient, moshi: Moshi // 注入 Moshi 实例
     ): Retrofit {
-        // 1. 创建 Moshi 和 Wire 各自的转换器工厂
-        val moshiConverterFactory = MoshiConverterFactory.create(moshi)
-        val wireConverterFactory = WireConverterFactory.create()
-
-        // 2. 创建我们的“调度中心”工厂
-        val qualifiedTypeConverterFactory = QualifiedTypeConverterFactory(
-            jsonFactory = moshiConverterFactory, protobufFactory = wireConverterFactory
-        )
-
-        // 3. 构建 Retrofit 实例，只添加我们的调度工厂
+        // 当前仅使用 JSON 协议，统一使用 Moshi 转换器
         return Retrofit.Builder().baseUrl(BuildConfig.BASE_URL).client(okHttpClient)
-            .addConverterFactory(qualifiedTypeConverterFactory)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
     }
 

@@ -56,7 +56,7 @@ class CountdownAlarmReceiver : BroadcastReceiver() {
         // 使用 PARTIAL_WAKE_LOCK 保持CPU运行，屏幕点亮由 Activity 的 setTurnScreenOn 处理
         val powerManager = context.getSystemService<PowerManager>()
         val wakeLock = powerManager?.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            PowerManager.PARTIAL_WAKE_LOCK,
             "LongCare:CountdownAlarm"
         )
         

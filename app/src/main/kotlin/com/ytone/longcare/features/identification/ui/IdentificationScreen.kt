@@ -599,10 +599,10 @@ fun IdentificationCard(
                                         strokeWidth = 2.dp
                                     )
                                     Text(
-                                        text = when (photoUploadState) {
-                                            is IdentificationViewModel.PhotoUploadState.Processing -> "处理中..."
-                                            is IdentificationViewModel.PhotoUploadState.Uploading -> "上传中..."
-                                            else -> "处理中..."
+                                        text = if (photoUploadState is IdentificationViewModel.PhotoUploadState.Uploading) {
+                                            "上传中..."
+                                        } else {
+                                            "处理中..."
                                         },
                                         fontSize = 14.sp,
                                         color = Color(0xFF666666)
