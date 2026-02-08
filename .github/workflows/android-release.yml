@@ -38,9 +38,14 @@ jobs:
         run: ./gradlew --no-daemon :app:lintDebug :app:testDebugUnitTest
 
       - name: Decode Android keystore
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > $RUNNER_TEMP/release.keystore
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+          else
+            echo "ANDROID_KEYSTORE_BASE64 is empty, skip keystore decode."
+          fi
 
       - name: Build release APK and AAB
         env:
