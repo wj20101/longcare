@@ -18,6 +18,14 @@ fi
 
 export ANDROID_SDK_ROOT
 export PATH="${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${PATH}"
+SDKMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
+AVDMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/avdmanager"
+
+if [[ ! -x "${SDKMANAGER}" || ! -x "${AVDMANAGER}" ]]; then
+  echo "Missing sdkmanager/avdmanager under ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin."
+  echo "Ensure android-actions/setup-android@v3 runs before this script."
+  exit 1
+fi
 
 SYSTEM_IMAGE="system-images;android-${API_LEVEL};${TARGET};${ABI}"
 IMAGE_ABI="${TARGET}/${ABI}"
@@ -33,18 +41,16 @@ cleanup() {
 trap cleanup EXIT
 
 set +o pipefail
-yes 2>/dev/null | sdkmanager --licenses >/dev/null
+yes 2>/dev/null | "${SDKMANAGER}" --licenses >/dev/null
 set -o pipefail
 
-# Keep cmdline tools in sync with repository metadata to reduce sdkmanager protocol warnings.
-sdkmanager --install "cmdline-tools;latest" >/dev/null
-sdkmanager --install \
+"${SDKMANAGER}" --install \
   "platform-tools" \
   "emulator" \
   "platforms;android-${API_LEVEL}" \
   "${SYSTEM_IMAGE}" >/dev/null
 
-echo "no" | avdmanager create avd --force -n "${AVD_NAME}" --abi "${IMAGE_ABI}" --package "${SYSTEM_IMAGE}"
+echo "no" | "${AVDMANAGER}" create avd --force -n "${AVD_NAME}" --abi "${IMAGE_ABI}" --package "${SYSTEM_IMAGE}"
 
 emulator \
   -port "${EMULATOR_PORT}" \
