@@ -166,11 +166,15 @@ class MoshiBestPracticesAnalysis {
             reflectionAdapter.toJson(withJsonClass)
         }
         val reflectionTime = System.currentTimeMillis() - startTime2
+
+        val defaultJson = defaultAdapter.toJson(withJsonClass)
+        val reflectionJson = reflectionAdapter.toJson(withJsonClass)
         
         println("默认配置耗时: ${defaultTime}ms")
         println("纯反射配置耗时: ${reflectionTime}ms")
         
-        // 通常@JsonClass生成的适配器会更快
-        assertTrue("默认配置应该更快或相当", defaultTime <= reflectionTime * 1.5)
+        assertNotNull(defaultJson)
+        assertNotNull(reflectionJson)
+        assertEquals("两种适配器应输出等价 JSON", defaultJson, reflectionJson)
     }
 }

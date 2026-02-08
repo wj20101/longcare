@@ -12,6 +12,31 @@ import org.junit.Assert.*
  */
 class JsonClassAnnotationTest {
 
+    private data class SimpleTask(
+        val id: String,
+        val type: String,
+        val status: String,
+        val lines: List<String>
+    )
+
+    private data class TaskInfo(
+        val id: String,
+        val type: ImageTaskType,
+        val status: ImageTaskStatus,
+        val metadata: Map<String, Any>
+    )
+
+    private data class BasicTypes(
+        val stringValue: String,
+        val intValue: Int,
+        val longValue: Long,
+        val doubleValue: Double,
+        val booleanValue: Boolean,
+        val listValue: List<String>,
+        val nullableString: String?,
+        val enumValue: ImageTaskType
+    )
+
     // 仅使用KotlinJsonAdapterFactory的简化配置
     private val simplifiedMoshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
@@ -47,14 +72,6 @@ class JsonClassAnnotationTest {
 
     @Test
     fun `test data class without JsonClass annotation`() {
-        // 创建一个没有@JsonClass注解的data class进行对比
-        data class SimpleTask(
-            val id: String,
-            val type: String,
-            val status: String,
-            val lines: List<String>
-        )
-        
         val simpleTask = SimpleTask(
             id = "simple-123",
             type = "BEFORE_CARE",
@@ -87,14 +104,6 @@ class JsonClassAnnotationTest {
 
     @Test
     fun `test complex nested structure`() {
-        // 测试复杂嵌套结构
-        data class TaskInfo(
-            val id: String,
-            val type: ImageTaskType,
-            val status: ImageTaskStatus,
-            val metadata: Map<String, Any>
-        )
-        
         val taskInfo = TaskInfo(
             id = "nested-456",
             type = ImageTaskType.AFTER_CARE,
@@ -140,18 +149,6 @@ class JsonClassAnnotationTest {
 
     @Test
     fun `test KotlinJsonAdapterFactory capabilities`() {
-        // 测试KotlinJsonAdapterFactory的能力边界
-        data class BasicTypes(
-            val stringValue: String,
-            val intValue: Int,
-            val longValue: Long,
-            val doubleValue: Double,
-            val booleanValue: Boolean,
-            val listValue: List<String>,
-            val nullableString: String?,
-            val enumValue: ImageTaskType
-        )
-        
         val basicTypes = BasicTypes(
             stringValue = "测试字符串",
             intValue = 42,
