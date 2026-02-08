@@ -89,7 +89,7 @@ jobs:
 
   instrumentation-smoke:
     needs: verify-build
-    runs-on: macos-13
+    runs-on: ubuntu-latest
     timeout-minutes: 35
 
     steps:
@@ -111,11 +111,12 @@ jobs:
       - name: Run instrumentation smoke test on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 30
           arch: x86_64
           emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -accel off -no-snapshot-load -no-snapshot-save
           disable-animations: false
+          disable-linux-hw-accel: true
           script: ./gradlew --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.ytone.longcare.smoke.MainActivitySmokeTest
 
       - name: Upload instrumentation reports

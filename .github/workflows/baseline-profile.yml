@@ -28,7 +28,7 @@ env:
 
 jobs:
   generate-baseline-profile:
-    runs-on: macos-13
+    runs-on: ubuntu-latest
     timeout-minutes: 60
 
     steps:
@@ -50,11 +50,12 @@ jobs:
       - name: Generate baseline profile on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 30
           arch: x86_64
           emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -accel off -no-snapshot-load -no-snapshot-save
           disable-animations: false
+          disable-linux-hw-accel: true
           script: ./gradlew --no-daemon :app:generateBaselineProfile -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile
 
       - name: Verify baseline profile output
