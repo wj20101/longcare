@@ -11,20 +11,6 @@ annotation class DeviceIdStorage // 用于 DeviceUtils 存储设备ID的 SharedP
 annotation class AppPrefs // 用于 AppPrefs 存储设备ID的 SharedPreferences
 
 /**
- * 一个注解，用于标记某个 Retrofit API 方法应使用 JSON (Moshi) 进行序列化/反序列化。
- */
-@Qualifier
-@Retention(AnnotationRetention.RUNTIME)
-annotation class UseJson
-
-/**
- * 一个注解，用于标记某个 Retrofit API 方法应使用 Protobuf (Wire) 进行序列化/反序列化。
- */
-@Qualifier
-@Retention(AnnotationRetention.RUNTIME)
-annotation class UseProtobuf
-
-/**
  * 一个 Hilt 限定符，用于标识腾讯人脸识别API的 Retrofit 实例。
  */
 @Qualifier

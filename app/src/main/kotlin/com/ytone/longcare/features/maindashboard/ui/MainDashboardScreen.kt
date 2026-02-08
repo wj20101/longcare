@@ -481,7 +481,7 @@ fun OrderTabLayout(
     val coroutineScope = rememberCoroutineScope()
 
     Column {
-        TabRow(
+        PrimaryTabRow(
             selectedTabIndex = selectedTabIndex,
             modifier = Modifier.fillMaxWidth(),
             containerColor = Color.Transparent,

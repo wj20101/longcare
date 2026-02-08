@@ -10,6 +10,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -28,8 +29,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.Dimension
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.ytone.longcare.R
@@ -70,6 +69,8 @@ fun LoginScreen(
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     val context = LocalContext.current
+    val userAgreementToast = stringResource(R.string.login_user_agreement_toast)
+    val privacyPolicyToast = stringResource(R.string.login_privacy_policy_toast)
     var phoneNumber by remember { mutableStateOf(viewModel.getLastLoginPhoneNumber()) }
     var verificationCode by remember { mutableStateOf("") }
     val loginState by viewModel.loginState.collectAsState()
@@ -88,26 +89,20 @@ fun LoginScreen(
             contentScale = ContentScale.Crop // 或者 ContentScale.FillBounds，根据需要选择
         )
 
-        ConstraintLayout(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
-            // 创建所有UI元素的引用
-            val (smallLogo, logo, phoneField, codeField, sendCodeButton, loginButton, agreementText, testButtons) = createRefs()
-
-            val horizontalMargin = 48.dp
-
             // Small Logo
             Image(
                 painter = painterResource(R.drawable.app_logo_small),
                 contentDescription = stringResource(R.string.login_small_logo_description),
                 modifier = Modifier
                     .width(86.dp)
-                    .constrainAs(smallLogo) {
-                        top.linkTo(parent.top, margin = 20.dp)
-                        start.linkTo(parent.start)
-                    })
+                    .align(Alignment.TopStart)
+                    .padding(top = 20.dp)
+            )
 
             // Logo
             Image(
@@ -115,241 +110,245 @@ fun LoginScreen(
                 contentDescription = stringResource(R.string.login_app_logo_description),
                 modifier = Modifier
                     .width(200.dp)
-                    .constrainAs(logo) {
-                        top.linkTo(parent.top, margin = 80.dp)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    }
+                    .align(Alignment.TopCenter)
+                    .padding(top = 80.dp)
             )
 
-            // Phone Number Input Field
-            OutlinedTextField(
-                value = phoneNumber,
-                onValueChange = { newValue ->
-                    val digitsOnly = newValue.filter { it.isDigit() }
-                    if (digitsOnly.length <= maxPhoneLength) {
-                        phoneNumber = digitsOnly
-                    }
-                },
-                placeholder = {
-                    Text(stringResource(R.string.login_phone_number_hint), color = TextColorHint, fontSize = 15.sp)
-                },
-                shape = RoundedCornerShape(50),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = InputFieldBackground,
-                    unfocusedContainerColor = InputFieldBackground,
-                    disabledContainerColor = InputFieldBackground,
-                    focusedBorderColor = PrimaryBlue,
-                    unfocusedBorderColor = InputFieldBorderColor,
-                    cursorColor = PrimaryBlue
-                ),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                textStyle = TextStyle(fontSize = 15.sp, color = TextColorPrimary),
-                modifier = Modifier.constrainAs(phoneField) {
-                    start.linkTo(parent.start, margin = horizontalMargin)
-                    end.linkTo(parent.end, margin = horizontalMargin)
-                    bottom.linkTo(codeField.top, margin = 12.dp)
-                    width = Dimension.fillToConstraints // 宽度填充约束
-                })
-
-            // Send Verification Code Button
-            SendVerificationCodeButton(
-                modifier = Modifier.constrainAs(sendCodeButton) {
-                    bottom.linkTo(phoneField.bottom)
-                    end.linkTo(parent.end, margin = horizontalMargin)
-                    bottom.linkTo(loginButton.top, margin = 18.dp)
-                },
-                viewModel = viewModel, // 传入 ViewModel
-                onSendCodeClick = {
-                    viewModel.sendSmsCode(phoneNumber)
-                }
-            )
-
-            // Verification Code Input Field
-            OutlinedTextField(
-                value = verificationCode,
-                onValueChange = { verificationCode = it },
-                placeholder = { Text(stringResource(R.string.login_verification_code_hint), color = TextColorHint, fontSize = 15.sp) },
-                shape = RoundedCornerShape(50),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = InputFieldBackground,
-                    unfocusedContainerColor = InputFieldBackground,
-                    disabledContainerColor = InputFieldBackground,
-                    focusedBorderColor = PrimaryBlue,
-                    unfocusedBorderColor = InputFieldBorderColor,
-                    cursorColor = PrimaryBlue
-                ),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                textStyle = TextStyle(fontSize = 15.sp, color = TextColorPrimary),
-                modifier = Modifier
-                    .constrainAs(codeField) {
-                        start.linkTo(parent.start, margin = horizontalMargin)
-                        end.linkTo(sendCodeButton.start, margin = 8.dp) // 结束于发送按钮的开始处
-                        bottom.linkTo(loginButton.top)
-                        width = Dimension.fillToConstraints // 宽度填充约束
-                        centerVerticallyTo(sendCodeButton) // 简便的垂直对齐方式
-                    }
-                    .focusRequester(verificationCodeFocusRequester)
-            )
-
-            // Login Button
-            Button(
-                onClick = { viewModel.login(phoneNumber, verificationCode) },
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                enabled = phoneNumber.length == maxPhoneLength && verificationCode.isNotEmpty() && loginState !is LoginUiState.Loading,
-                modifier = Modifier
-                    .height(48.dp) // 明确按钮高度
-                    .constrainAs(loginButton) {
-                        start.linkTo(parent.start, margin = horizontalMargin)
-                        end.linkTo(parent.end, margin = horizontalMargin)
-                        bottom.linkTo(agreementText.top, margin = 48.dp)
-                        width = Dimension.fillToConstraints // 宽度填充约束
-                    }) {
-                Text(
-                    stringResource(R.string.login_button_text),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                if (loginState is LoginUiState.Loading) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
-                    )
-                }
-            }
-
-            // Agreement Text
             val startConfigState by viewModel.startConfigState.collectAsState()
-            AgreementText( // AgreementText 组件复用之前的实现
-                onUserAgreementClick = {
-                    when (val state = startConfigState) {
-                        is com.ytone.longcare.features.login.vm.StartConfigUiState.Success -> {
-                            if (state.data.userXieYiUrl.isNotEmpty()) {
-                                navController.navigateToWebView(
-                                    url = state.data.userXieYiUrl,
-                                    title = ""
-                                )
-                            } else {
-                                context.showLongToast(context.getString(R.string.login_user_agreement_toast))
-                            }
-                        }
-                        else -> context.showLongToast(context.getString(R.string.login_user_agreement_toast))
-                    }
-                },
-                onPrivacyPolicyClick = {
-                    when (val state = startConfigState) {
-                        is com.ytone.longcare.features.login.vm.StartConfigUiState.Success -> {
-                            if (state.data.yinSiXieYiUrl.isNotEmpty()) {
-                                navController.navigateToWebView(
-                                    url = state.data.yinSiXieYiUrl,
-                                    title = ""
-                                )
-                            } else {
-                                context.showLongToast(context.getString(R.string.login_privacy_policy_toast))
-                            }
-                        }
-                        else -> context.showLongToast(context.getString(R.string.login_privacy_policy_toast))
-                    }
-                },
-                modifier = Modifier.constrainAs(agreementText) {
-                    bottom.linkTo(if (NfcTestConfig.ENABLE_NFC_TEST) testButtons.top else parent.bottom, margin = 32.dp)
-                    start.linkTo(parent.start, margin = 32.dp) // 应用边距以控制文本块宽度
-                    end.linkTo(parent.end, margin = 32.dp)     // 应用边距
-                    width = Dimension.fillToConstraints // 确保文本在约束内正确换行和居中
-                })
 
-            // Test Buttons (只在测试模式下显示)
-            if (NfcTestConfig.ENABLE_NFC_TEST) {
-                Row(
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(bottom = if (NfcTestConfig.ENABLE_NFC_TEST) 16.dp else 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Column(
                     modifier = Modifier
-                        .constrainAs(testButtons) {
-                            bottom.linkTo(parent.bottom, margin = 16.dp)
-                            start.linkTo(parent.start, margin = 16.dp)
-                            end.linkTo(parent.end, margin = 16.dp)
-                            width = Dimension.fillToConstraints
-                        }
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 48.dp)
                 ) {
-                    val buttonColors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue.copy(alpha = 0.1f))
-                    val buttonShape = RoundedCornerShape(8.dp)
-
-                    Button(
-                        onClick = { navController.navigateToNfcTest() },
-                        shape = buttonShape,
-                        colors = buttonColors,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = "碰一碰测试",
-                            color = PrimaryBlue,
-                            fontSize = 14.sp
-                        )
-                    }
-
-                    Button(
-                        onClick = {
-                            val mockWatermarkData = WatermarkData(
-                                title = "服务前",
-                                insuredPerson = "张三",
-                                caregiver = "李四",
-                                address = "北京市朝阳区xx路xx号"
-                            )
-                            navController.navigateToCamera(mockWatermarkData)
+                    // Phone Number Input Field
+                    OutlinedTextField(
+                        value = phoneNumber,
+                        onValueChange = { newValue ->
+                            val digitsOnly = newValue.filter { it.isDigit() }
+                            if (digitsOnly.length <= maxPhoneLength) {
+                                phoneNumber = digitsOnly
+                            }
                         },
-                        shape = buttonShape,
-                        colors = buttonColors,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        placeholder = {
+                            Text(stringResource(R.string.login_phone_number_hint), color = TextColorHint, fontSize = 15.sp)
+                        },
+                        shape = RoundedCornerShape(50),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = InputFieldBackground,
+                            unfocusedContainerColor = InputFieldBackground,
+                            disabledContainerColor = InputFieldBackground,
+                            focusedBorderColor = PrimaryBlue,
+                            unfocusedBorderColor = InputFieldBorderColor,
+                            cursorColor = PrimaryBlue
+                        ),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        textStyle = TextStyle(fontSize = 15.sp, color = TextColorPrimary),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Bottom
                     ) {
-                        Text(
-                            text = "相机测试",
-                            color = PrimaryBlue,
-                            fontSize = 14.sp
+                        // Verification Code Input Field
+                        OutlinedTextField(
+                            value = verificationCode,
+                            onValueChange = { verificationCode = it },
+                            placeholder = {
+                                Text(
+                                    stringResource(R.string.login_verification_code_hint),
+                                    color = TextColorHint,
+                                    fontSize = 15.sp
+                                )
+                            },
+                            shape = RoundedCornerShape(50),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = InputFieldBackground,
+                                unfocusedContainerColor = InputFieldBackground,
+                                disabledContainerColor = InputFieldBackground,
+                                focusedBorderColor = PrimaryBlue,
+                                unfocusedBorderColor = InputFieldBorderColor,
+                                cursorColor = PrimaryBlue
+                            ),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            textStyle = TextStyle(fontSize = 15.sp, color = TextColorPrimary),
+                            modifier = Modifier
+                                .weight(1f)
+                                .focusRequester(verificationCodeFocusRequester)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Send Verification Code Button
+                        SendVerificationCodeButton(
+                            modifier = Modifier.padding(bottom = 18.dp),
+                            viewModel = viewModel,
+                            onSendCodeClick = { viewModel.sendSmsCode(phoneNumber) }
                         )
                     }
 
+                    // Login Button
                     Button(
-                        onClick = { navController.navigateToFaceVerificationWithAutoSign() },
-                        shape = buttonShape,
-                        colors = buttonColors,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        onClick = { viewModel.login(phoneNumber, verificationCode) },
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                        enabled = phoneNumber.length == maxPhoneLength && verificationCode.isNotEmpty() && loginState !is LoginUiState.Loading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
                     ) {
                         Text(
-                            text = "人脸验证测试",
-                            color = PrimaryBlue,
-                            fontSize = 14.sp
+                            stringResource(R.string.login_button_text),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium
                         )
+                        if (loginState is LoginUiState.Loading) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        }
                     }
+                }
 
-                    Button(
-                        onClick = { FaceCaptureTestLauncher.launch(context) },
-                        shape = buttonShape,
-                        colors = buttonColors,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = "人脸采集测试",
-                            color = PrimaryBlue,
-                            fontSize = 14.sp
-                        )
-                    }
+                Spacer(modifier = Modifier.height(48.dp))
 
-                    Button(
-                        onClick = { navController.navigateToManualFaceCapture() },
-                        shape = buttonShape,
-                        colors = buttonColors,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                AgreementText(
+                    onUserAgreementClick = {
+                        when (val state = startConfigState) {
+                            is com.ytone.longcare.features.login.vm.StartConfigUiState.Success -> {
+                                if (state.data.userXieYiUrl.isNotEmpty()) {
+                                    navController.navigateToWebView(
+                                        url = state.data.userXieYiUrl,
+                                        title = ""
+                                    )
+                                } else {
+                                    context.showLongToast(userAgreementToast)
+                                }
+                            }
+                            else -> context.showLongToast(userAgreementToast)
+                        }
+                    },
+                    onPrivacyPolicyClick = {
+                        when (val state = startConfigState) {
+                            is com.ytone.longcare.features.login.vm.StartConfigUiState.Success -> {
+                                if (state.data.yinSiXieYiUrl.isNotEmpty()) {
+                                    navController.navigateToWebView(
+                                        url = state.data.yinSiXieYiUrl,
+                                        title = ""
+                                    )
+                                } else {
+                                    context.showLongToast(privacyPolicyToast)
+                                }
+                            }
+                            else -> context.showLongToast(privacyPolicyToast)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp)
+                )
+
+                // Test Buttons (只在测试模式下显示)
+                if (NfcTestConfig.ENABLE_NFC_TEST) {
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = "手动人脸捕获",
-                            color = PrimaryBlue,
-                            fontSize = 14.sp
-                        )
+                        val buttonColors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue.copy(alpha = 0.1f))
+                        val buttonShape = RoundedCornerShape(8.dp)
+
+                        Button(
+                            onClick = { navController.navigateToNfcTest() },
+                            shape = buttonShape,
+                            colors = buttonColors,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "碰一碰测试",
+                                color = PrimaryBlue,
+                                fontSize = 14.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                val mockWatermarkData = WatermarkData(
+                                    title = "服务前",
+                                    insuredPerson = "张三",
+                                    caregiver = "李四",
+                                    address = "北京市朝阳区xx路xx号"
+                                )
+                                navController.navigateToCamera(mockWatermarkData)
+                            },
+                            shape = buttonShape,
+                            colors = buttonColors,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "相机测试",
+                                color = PrimaryBlue,
+                                fontSize = 14.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = { navController.navigateToFaceVerificationWithAutoSign() },
+                            shape = buttonShape,
+                            colors = buttonColors,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "人脸验证测试",
+                                color = PrimaryBlue,
+                                fontSize = 14.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = { FaceCaptureTestLauncher.launch(context) },
+                            shape = buttonShape,
+                            colors = buttonColors,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "人脸采集测试",
+                                color = PrimaryBlue,
+                                fontSize = 14.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = { navController.navigateToManualFaceCapture() },
+                            shape = buttonShape,
+                            colors = buttonColors,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "手动人脸捕获",
+                                color = PrimaryBlue,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 }
             }
