@@ -1,5 +1,5 @@
 val appCompileSdkVersion by extra(36)
-val appTargetSdkVersion by extra(34)
+val appTargetSdkVersion by extra(36)
 val appMinSdkVersion by extra(24)
 val appJdkVersion by extra(21)
 val appVersionCode by extra(24)
