@@ -12,6 +12,8 @@ concurrency:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   release-build:
@@ -65,6 +67,20 @@ jobs:
         run: |
           sha256sum app/build/outputs/apk/release/*.apk app/build/outputs/bundle/release/*.aab > app/build/outputs/release-checksums.txt
 
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: app/build/outputs/release-sbom.cdx.json
+
+      - name: Attest release artifacts
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -74,6 +90,7 @@ jobs:
             app/build/outputs/bundle/release/*.aab
             app/build/outputs/mapping/release/**
             app/build/outputs/release-checksums.txt
+            app/build/outputs/release-sbom.cdx.json
           if-no-files-found: error
           retention-days: 30
 
@@ -85,3 +102,4 @@ jobs:
             app/build/outputs/apk/release/*.apk
             app/build/outputs/bundle/release/*.aab
             app/build/outputs/release-checksums.txt
+            app/build/outputs/release-sbom.cdx.json
