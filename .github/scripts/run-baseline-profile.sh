@@ -10,6 +10,7 @@ BASELINE_ANDROID_AVD_HOME="${BASELINE_AVD_HOME:-${BASELINE_ANDROID_SDK_HOME}/avd
 EMULATOR_PORT="${BASELINE_EMULATOR_PORT:-5554}"
 BOOT_TIMEOUT_SECS="${BASELINE_BOOT_TIMEOUT_SECS:-900}"
 DEVICE_READY_TIMEOUT_SECS="${BASELINE_DEVICE_READY_TIMEOUT_SECS:-300}"
+PARTITION_SIZE_MB="${BASELINE_PARTITION_SIZE_MB:-2048}"
 GRADLE_TIMEOUT_SECS="${BASELINE_GRADLE_TIMEOUT_SECS:-2700}"
 GRADLE_TASK="${BASELINE_GRADLE_TASK:-:app:generateReleaseBaselineProfile}"
 
@@ -49,6 +50,7 @@ mkdir -p "${ANDROID_SDK_HOME}" "${ANDROID_AVD_HOME}"
 rm -rf "${ANDROID_AVD_HOME:?}/${AVD_NAME}.avd" "${ANDROID_AVD_HOME:?}/${AVD_NAME}.ini"
 echo "Using ANDROID_SDK_HOME=${ANDROID_SDK_HOME}"
 echo "Using ANDROID_AVD_HOME=${ANDROID_AVD_HOME}"
+echo "Using BASELINE_PARTITION_SIZE_MB=${PARTITION_SIZE_MB}"
 
 set +o pipefail
 yes 2>/dev/null | "${SDKMANAGER}" --licenses >/dev/null
@@ -79,6 +81,8 @@ emulator \
   -noaudio \
   -no-boot-anim \
   -accel off \
+  -partition-size "${PARTITION_SIZE_MB}" \
+  -no-metrics \
   -no-snapshot-load \
   -no-snapshot-save >"${EMULATOR_LOG}" 2>&1 &
 EMULATOR_PID=$!
