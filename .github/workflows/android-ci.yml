@@ -133,12 +133,13 @@ jobs:
           disable-animations: true
           disable-linux-hw-accel: true
           script: |
-            set -euo pipefail
+            set -eu
 
             ensure_device_ready() {
-              for i in {1..12}; do
+              i=1
+              while [ "$i" -le 12 ]; do
                 api_level="$(adb shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')"
-                if [[ "${api_level}" =~ ^[0-9]+$ ]]; then
+                if echo "${api_level}" | grep -Eq '^[0-9]+$'; then
                   echo "Device API level: ${api_level}"
                   return 0
                 fi
@@ -147,6 +148,7 @@ jobs:
                 adb start-server
                 adb wait-for-device
                 sleep 5
+                i=$((i + 1))
               done
 
               echo "Device never reported a valid API level."
