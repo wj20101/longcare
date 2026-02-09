@@ -24,7 +24,7 @@ env:
 
 jobs:
   release-build:
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' && 'macos-14' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 120
 
     steps:
@@ -44,15 +44,6 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
-
-      - name: Free disk space for emulator
-        if: ${{ runner.os == 'Linux' && github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
-        run: |
-          echo "Disk usage before cleanup:"
-          df -h
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL
-          echo "Disk usage after cleanup:"
-          df -h
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew .github/scripts/run-baseline-profile.sh
@@ -79,52 +70,11 @@ jobs:
             echo "::warning::No committed baseline profile files found in app/src. Release will continue."
           fi
 
-      - name: Generate baseline profile on emulator
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
-        timeout-minutes: 75
-        env:
-          BASELINE_API_LEVEL: "33"
-          BASELINE_TARGET: "default"
-          BASELINE_ABI: "arm64-v8a"
-          BASELINE_ANDROID_SDK_HOME: "${{ runner.temp }}/android-sdk-home"
-          BASELINE_AVD_HOME: "${{ runner.temp }}/android-avd"
-          BASELINE_BOOT_TIMEOUT_SECS: "900"
-          BASELINE_BOOT_STABILIZE_SECS: "45"
-          BASELINE_EMULATOR_MEMORY_MB: "3072"
-          BASELINE_GRADLE_RETRIES: "2"
-          BASELINE_GRADLE_RETRY_DELAY_SECS: "90"
-          BASELINE_MIN_FREE_MB: "6144"
-          BASELINE_PARTITION_SIZE_MB: "2048"
-          BASELINE_GRADLE_TIMEOUT_SECS: "2700"
-          BASELINE_GRADLE_TASK: ":app:generateReleaseBaselineProfile"
-        run: ./.github/scripts/run-baseline-profile.sh
-
-      - name: Upload baseline debug logs
-        if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: baseline-debug-logs-release
-          path: |
-            ${{ runner.temp }}/baseline-emulator.log
-            ${{ runner.temp }}/baseline-logcat.txt
-            app/build/outputs/managed_device_android_test_additional_output/**
-            app/build/reports/**
-            baselineprofile/build/reports/**
-          if-no-files-found: warn
-          retention-days: 14
-
-      - name: Verify baseline profile output
+      - name: Baseline generation policy
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
         run: |
-          FILE_COUNT=$(find app/src -type f \( -name 'baseline-prof.txt' -o -name 'startup-prof.txt' -o -path '*/generated/baselineProfiles/*.txt' \) | wc -l | tr -d ' ')
-          echo "Baseline profile files found: ${FILE_COUNT}"
-          find app/src -type f \( -name 'baseline-prof.txt' -o -name 'startup-prof.txt' -o -path '*/generated/baselineProfiles/*.txt' \) | sort || true
-          if [ "${FILE_COUNT}" -eq 0 ]; then
-            echo "No baseline profile output was generated."
-            echo "Profile-like files under build outputs:"
-            find app/build baselineprofile/build -type f \( -name '*-prof.txt' -o -path '*/generated/baselineProfiles/*' \) | sort || true
-            exit 1
-          fi
+          echo "::notice::Baseline generation is skipped on GitHub-hosted release runners."
+          echo "::notice::Run .github/workflows/baseline-profile.yml on a self-hosted runner with labels [self-hosted, macOS, ARM64]."
 
       - name: Build release APK and AAB
         env:
