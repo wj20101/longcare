@@ -5,6 +5,8 @@ API_LEVEL="${BASELINE_API_LEVEL:-30}"
 TARGET="${BASELINE_TARGET:-default}"
 ABI="${BASELINE_ABI:-x86_64}"
 AVD_NAME="${BASELINE_AVD_NAME:-baseline-ci}"
+BASELINE_ANDROID_SDK_HOME="${BASELINE_ANDROID_SDK_HOME:-${RUNNER_TEMP:-/tmp}/android-sdk-home}"
+BASELINE_ANDROID_AVD_HOME="${BASELINE_AVD_HOME:-${BASELINE_ANDROID_SDK_HOME}/avd}"
 EMULATOR_PORT="${BASELINE_EMULATOR_PORT:-5554}"
 BOOT_TIMEOUT_SECS="${BASELINE_BOOT_TIMEOUT_SECS:-900}"
 GRADLE_TIMEOUT_SECS="${BASELINE_GRADLE_TIMEOUT_SECS:-2700}"
@@ -17,6 +19,8 @@ if [[ -z "${ANDROID_SDK_ROOT}" ]]; then
 fi
 
 export ANDROID_SDK_ROOT
+export ANDROID_SDK_HOME="${BASELINE_ANDROID_SDK_HOME}"
+export ANDROID_AVD_HOME="${BASELINE_ANDROID_AVD_HOME}"
 export PATH="${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${PATH}"
 SDKMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
 AVDMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/avdmanager"
@@ -40,6 +44,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
+mkdir -p "${ANDROID_SDK_HOME}" "${ANDROID_AVD_HOME}"
+rm -rf "${ANDROID_AVD_HOME:?}/${AVD_NAME}.avd" "${ANDROID_AVD_HOME:?}/${AVD_NAME}.ini"
+echo "Using ANDROID_SDK_HOME=${ANDROID_SDK_HOME}"
+echo "Using ANDROID_AVD_HOME=${ANDROID_AVD_HOME}"
+
 set +o pipefail
 yes 2>/dev/null | "${SDKMANAGER}" --licenses >/dev/null
 set -o pipefail
@@ -52,6 +61,15 @@ set -o pipefail
 
 echo "no" | "${AVDMANAGER}" create avd --force -n "${AVD_NAME}" --abi "${IMAGE_ABI}" --package "${SYSTEM_IMAGE}"
 
+if ! emulator -list-avds | grep -Fxq "${AVD_NAME}"; then
+  echo "AVD ${AVD_NAME} was not registered after creation."
+  echo "Available AVDs:"
+  emulator -list-avds || true
+  echo "Contents of ${ANDROID_AVD_HOME}:"
+  ls -la "${ANDROID_AVD_HOME}" || true
+  exit 1
+fi
+
 emulator \
   -port "${EMULATOR_PORT}" \
   -avd "${AVD_NAME}" \
@@ -62,9 +80,20 @@ emulator \
   -accel off \
   -no-snapshot-load \
   -no-snapshot-save >"${EMULATOR_LOG}" 2>&1 &
+EMULATOR_PID=$!
+sleep 5
+if ! kill -0 "${EMULATOR_PID}" 2>/dev/null; then
+  echo "Emulator process exited before boot finished."
+  tail -n 200 "${EMULATOR_LOG}" || true
+  echo "Available AVDs:"
+  emulator -list-avds || true
+  exit 1
+fi
 
 if ! timeout "${BOOT_TIMEOUT_SECS}" adb -s "${EMULATOR_SERIAL}" wait-for-device; then
   echo "Emulator device was not detected within ${BOOT_TIMEOUT_SECS}s."
+  echo "Available AVDs:"
+  emulator -list-avds || true
   tail -n 200 "${EMULATOR_LOG}" || true
   exit 1
 fi

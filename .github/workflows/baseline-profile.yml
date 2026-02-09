@@ -55,6 +55,7 @@ jobs:
         timeout-minutes: 75
         env:
           BASELINE_API_LEVEL: "30"
+          BASELINE_AVD_HOME: "${{ runner.temp }}/android-avd"
           BASELINE_BOOT_TIMEOUT_SECS: "900"
           BASELINE_GRADLE_TIMEOUT_SECS: "2700"
           BASELINE_GRADLE_TASK: ":app:generateBaselineProfile"
