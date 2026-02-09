@@ -82,9 +82,25 @@ fun FaceVerificationWithAutoSignScreen(
     var sourcePhotoBase64 by remember { mutableStateOf<String?>(null) }
     var isProcessingPhoto by remember { mutableStateOf(false) }
     var showFaceCapture by remember { mutableStateOf(false) }
-    
-    val currentOrderNo = "order_${System.currentTimeMillis()}"
-    val currentUserId = "124"
+    val currentUserId = user?.userId?.toString()
+
+    val startVerification = {
+        val sourcePhoto = sourcePhotoBase64
+        if (sourcePhoto == null) {
+            snackbarMessage = "请先拍摄人脸照片"
+            showSnackbar = true
+        } else if (currentUserId.isNullOrBlank()) {
+            snackbarMessage = "用户信息不可用，请重新登录后重试"
+            showSnackbar = true
+        } else {
+            viewModel.startFaceVerificationWithAutoSign(
+                context = context,
+                orderNo = "order_${System.currentTimeMillis()}",
+                userId = currentUserId,
+                sourcePhotoStr = sourcePhoto
+            )
+        }
+    }
     
     // 处理人脸捕获结果
     val handleFaceCaptured = { imagePath: String ->
@@ -306,15 +322,9 @@ fun FaceVerificationWithAutoSignScreen(
                                 )
                                 
                                 Button(
-                                    onClick = {
-                                        viewModel.startFaceVerificationWithAutoSign(
-                                            context = context,
-                                            orderNo = currentOrderNo,
-                                            userId = currentUserId,
-                                            sourcePhotoStr = sourcePhotoBase64!!
-                                        )
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
+                                    onClick = startVerification,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !currentUserId.isNullOrBlank()
                                 ) {
                                     Text("开始验证")
                                 }
@@ -402,15 +412,9 @@ fun FaceVerificationWithAutoSignScreen(
                                     }
                                     
                                     Button(
-                                        onClick = {
-                                            viewModel.startFaceVerificationWithAutoSign(
-                                                context = context,
-                                                orderNo = currentOrderNo,
-                                                userId = currentUserId,
-                                                sourcePhotoStr = sourcePhotoBase64!!
-                                            )
-                                        },
-                                        modifier = Modifier.weight(1f)
+                                        onClick = startVerification,
+                                        modifier = Modifier.weight(1f),
+                                        enabled = !currentUserId.isNullOrBlank()
                                     ) {
                                         Text("重试")
                                     }
@@ -425,15 +429,9 @@ fun FaceVerificationWithAutoSignScreen(
                                 )
                                 
                                 Button(
-                                    onClick = {
-                                        viewModel.startFaceVerificationWithAutoSign(
-                                            context = context,
-                                            orderNo = currentOrderNo,
-                                            userId = currentUserId,
-                                            sourcePhotoStr = sourcePhotoBase64!!
-                                        )
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
+                                    onClick = startVerification,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !currentUserId.isNullOrBlank()
                                 ) {
                                     Text("重新开始验证")
                                 }
