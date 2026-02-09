@@ -118,22 +118,41 @@ set -o pipefail
 
 "${SDKMANAGER}" --install \
   "platform-tools" \
-  "emulator" \
   "platforms;android-${API_LEVEL}" \
   "${SYSTEM_IMAGE}" >/dev/null
 
+set +e
+"${SDKMANAGER}" --install "emulator" >/dev/null 2>&1
+emulator_install_status=$?
+set -e
+if [[ "${emulator_install_status}" -ne 0 ]]; then
+  echo "Warning: Failed to install package 'emulator' via sdkmanager."
+  echo "Proceeding with any preinstalled emulator binary on this runner."
+fi
+
+EMULATOR_BIN="${ANDROID_SDK_ROOT}/emulator/emulator"
+if [[ ! -x "${EMULATOR_BIN}" ]]; then
+  EMULATOR_BIN="$(command -v emulator || true)"
+fi
+if [[ -z "${EMULATOR_BIN}" || ! -x "${EMULATOR_BIN}" ]]; then
+  echo "Android emulator binary was not found on this runner."
+  echo "Checked: ${ANDROID_SDK_ROOT}/emulator/emulator and PATH lookup."
+  exit 1
+fi
+echo "Using EMULATOR_BIN=${EMULATOR_BIN}"
+
 echo "no" | "${AVDMANAGER}" create avd --force -n "${AVD_NAME}" --abi "${IMAGE_ABI}" --package "${SYSTEM_IMAGE}"
 
-if ! emulator -list-avds | grep -Fxq "${AVD_NAME}"; then
+if ! "${EMULATOR_BIN}" -list-avds | grep -Fxq "${AVD_NAME}"; then
   echo "AVD ${AVD_NAME} was not registered after creation."
   echo "Available AVDs:"
-  emulator -list-avds || true
+  "${EMULATOR_BIN}" -list-avds || true
   echo "Contents of ${ANDROID_AVD_HOME}:"
   ls -la "${ANDROID_AVD_HOME}" || true
   exit 1
 fi
 
-emulator \
+"${EMULATOR_BIN}" \
   -port "${EMULATOR_PORT}" \
   -avd "${AVD_NAME}" \
   -memory "${EMULATOR_MEMORY_MB}" \
@@ -152,14 +171,14 @@ if ! kill -0 "${EMULATOR_PID}" 2>/dev/null; then
   echo "Emulator process exited before boot finished."
   tail -n 200 "${EMULATOR_LOG}" || true
   echo "Available AVDs:"
-  emulator -list-avds || true
+  "${EMULATOR_BIN}" -list-avds || true
   exit 1
 fi
 
 if ! timeout "${BOOT_TIMEOUT_SECS}" adb -s "${EMULATOR_SERIAL}" wait-for-device; then
   echo "Emulator device was not detected within ${BOOT_TIMEOUT_SECS}s."
   echo "Available AVDs:"
-  emulator -list-avds || true
+  "${EMULATOR_BIN}" -list-avds || true
   tail -n 200 "${EMULATOR_LOG}" || true
   exit 1
 fi
