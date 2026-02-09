@@ -24,7 +24,7 @@ env:
 
 jobs:
   release-build:
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' && 'macos-14' || 'ubuntu-latest' }}
     timeout-minutes: 120
 
     steps:
@@ -46,7 +46,7 @@ jobs:
           packages: platform-tools
 
       - name: Free disk space for emulator
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
+        if: ${{ runner.os == 'Linux' && github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
         run: |
           echo "Disk usage before cleanup:"
           df -h

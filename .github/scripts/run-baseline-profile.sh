@@ -34,6 +34,23 @@ if [[ "${ABI}" == "arm64-v8a" && "${HOST_ARCH}" != "aarch64" && "${HOST_ARCH}" !
   exit 1
 fi
 
+TIMEOUT_BIN=""
+if command -v timeout >/dev/null 2>&1; then
+  TIMEOUT_BIN="timeout"
+elif command -v gtimeout >/dev/null 2>&1; then
+  TIMEOUT_BIN="gtimeout"
+fi
+
+run_with_timeout() {
+  local timeout_secs="$1"
+  shift
+  if [[ -n "${TIMEOUT_BIN}" ]]; then
+    "${TIMEOUT_BIN}" "${timeout_secs}" "$@"
+  else
+    "$@"
+  fi
+}
+
 select_writable_dir() {
   local requested="$1"
   local fallback="$2"
@@ -59,7 +76,7 @@ else
       CMDLINE_TOOLS_BIN="${bin_dir}"
       break
     fi
-  done < <(find "${ANDROID_SDK_ROOT}/cmdline-tools" -mindepth 2 -maxdepth 2 -type d -name bin 2>/dev/null | sort -Vr)
+  done < <(find "${ANDROID_SDK_ROOT}/cmdline-tools" -mindepth 2 -maxdepth 2 -type d -name bin 2>/dev/null | sort -r)
 fi
 
 SDKMANAGER="${CMDLINE_TOOLS_BIN}/sdkmanager"
@@ -206,7 +223,7 @@ if ! kill -0 "${EMULATOR_PID}" 2>/dev/null; then
   exit 1
 fi
 
-if ! timeout "${BOOT_TIMEOUT_SECS}" adb -s "${EMULATOR_SERIAL}" wait-for-device; then
+if ! run_with_timeout "${BOOT_TIMEOUT_SECS}" adb -s "${EMULATOR_SERIAL}" wait-for-device; then
   echo "Emulator device was not detected within ${BOOT_TIMEOUT_SECS}s."
   echo "Available AVDs:"
   "${EMULATOR_BIN}" -list-avds || true
@@ -273,14 +290,14 @@ while true; do
   fi
 
   set +e
-  timeout "${GRADLE_TIMEOUT_SECS}" ./gradlew --no-daemon "${GRADLE_TASK}" \
+  run_with_timeout "${GRADLE_TIMEOUT_SECS}" ./gradlew --no-daemon "${GRADLE_TASK}" \
     -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile
   status=$?
   set -e
   if [[ "${status}" -eq 0 ]]; then
     break
   fi
-  if [[ "${status}" -eq 124 ]]; then
+  if [[ -n "${TIMEOUT_BIN}" && "${status}" -eq 124 ]]; then
     echo "Gradle baseline task timed out after ${GRADLE_TIMEOUT_SECS}s on attempt ${attempt}."
   else
     echo "Gradle baseline task failed with status ${status} on attempt ${attempt}."
