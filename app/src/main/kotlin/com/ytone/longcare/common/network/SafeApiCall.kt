@@ -4,6 +4,7 @@ import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.model.Response
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
@@ -53,6 +54,9 @@ suspend fun <T> safeApiCall(
                 ApiResult.Failure(response.resultCode, response.resultMsg)
             }
         } catch (throwable: Throwable) {
+            if (throwable is CancellationException) {
+                throw throwable
+            }
             logE(message = "api fail" , throwable = throwable)
             // 捕获所有可能的异常
             when (throwable) {

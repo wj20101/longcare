@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -40,9 +39,6 @@ import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.isPendingCare
 import com.ytone.longcare.model.handleOrderNavigation
-import com.ytone.longcare.common.utils.NavigationHelper
-import com.ytone.longcare.di.NursingExecutionEntryPoint
-import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.theme.IndicatorGradientStart
@@ -54,15 +50,11 @@ import com.ytone.longcare.navigation.HomeRoute
 import com.ytone.longcare.navigation.navigateToCarePlansList
 import com.ytone.longcare.navigation.navigateToNursingExecution
 import com.ytone.longcare.navigation.navigateToService
+import com.ytone.longcare.navigation.navigateToServiceCountdown
 import com.ytone.longcare.navigation.navigateToServiceRecordsList
 import com.ytone.longcare.ui.components.UserAvatar
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.features.shared.ui.EmptyView
-import com.ytone.longcare.shared.vm.OrderDetailUiState
-import kotlinx.coroutines.flow.first
-import dagger.hilt.android.EntryPointAccessors
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.isPendingExecution
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
 import com.ytone.longcare.navigation.OrderNavParams
@@ -74,17 +66,11 @@ fun MainDashboardScreen(
     val parentEntry = remember(navController.currentBackStackEntry) {
         navController.getBackStackEntry(HomeRoute)
     }
-    val context = LocalContext.current
-    val entryPoint = EntryPointAccessors.fromApplication(
-        context.applicationContext,
-        NursingExecutionEntryPoint::class.java
-    )
-    val navigationHelper = entryPoint.navigationHelper()
-    val toastHelper = entryPoint.toastHelper()
+    val mainDashboardViewModel: MainDashboardViewModel = hiltViewModel()
     val homeSharedViewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
     val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
-    val sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel()
     val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
+    val companyName by mainDashboardViewModel.companyName.collectAsStateWithLifecycle()
 
     val todayOrderList by todayOrderViewModel.todayOrderListState.collectAsStateWithLifecycle()
     val inOrderList by todayOrderViewModel.inOrderListState.collectAsStateWithLifecycle()
@@ -98,6 +84,10 @@ fun MainDashboardScreen(
             todayOrderViewModel.loadTodayOrders()
             todayOrderViewModel.loadInOrders()
         }
+    }
+
+    LaunchedEffect(Unit) {
+        mainDashboardViewModel.loadCompanyName()
     }
 
     Scaffold(
@@ -116,9 +106,8 @@ fun MainDashboardScreen(
                     end = 16.dp,
                     top = paddingValues.calculateTopPadding()
                 ),
-                navigationHelper = navigationHelper,
-                sharedOrderDetailViewModel = sharedOrderDetailViewModel,
-                toastHelper = toastHelper
+                companyName = companyName,
+                mainDashboardViewModel = mainDashboardViewModel
             )
         } ?: run {
             // 如果 user 为 null (例如正在登出或初始化)，显示加载指示器
@@ -141,9 +130,8 @@ private fun MainDashboardContent(
     navController: NavController,
     homeSharedViewModel: HomeSharedViewModel,
     modifier: Modifier = Modifier,
-    navigationHelper: NavigationHelper,
-    sharedOrderDetailViewModel: SharedOrderDetailViewModel,
-    toastHelper: ToastHelper
+    companyName: String,
+    mainDashboardViewModel: MainDashboardViewModel
 ) {
     LazyColumn(
         modifier = modifier,
@@ -152,7 +140,7 @@ private fun MainDashboardContent(
     ) {
         item {
             Spacer(modifier = Modifier.height(8.dp))
-            TopHeader(user = user)
+            TopHeader(user = user, companyName = companyName)
         }
         item {
             HomeBannerCard()
@@ -170,9 +158,7 @@ private fun MainDashboardContent(
                 inOrderList = inOrderList,
                 navController = navController,
                 homeSharedViewModel = homeSharedViewModel,
-                navigationHelper = navigationHelper,
-                sharedOrderDetailViewModel = sharedOrderDetailViewModel,
-                toastHelper = toastHelper
+                mainDashboardViewModel = mainDashboardViewModel
             )
         }
     }
@@ -183,14 +169,7 @@ private fun MainDashboardContent(
  * @param user Protobuf 生成的 User 对象，保证非空
  */
 @Composable
-fun TopHeader(user: User) {
-    val systemConfigManager = hiltViewModel<MainDashboardViewModel>().systemConfigManager
-    var companyName by remember { mutableStateOf("") }
-    
-    LaunchedEffect(Unit) {
-        companyName = systemConfigManager.getCompanyName()
-    }
-    
+fun TopHeader(user: User, companyName: String) {
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
@@ -472,9 +451,7 @@ fun OrderTabLayout(
     inOrderList: List<ServiceOrderModel>,
     navController: NavController,
     homeSharedViewModel: HomeSharedViewModel,
-    navigationHelper: NavigationHelper,
-    sharedOrderDetailViewModel: SharedOrderDetailViewModel,
-    toastHelper: ToastHelper
+    mainDashboardViewModel: MainDashboardViewModel
 ) {
     val selectedTabIndex by homeSharedViewModel.selectedTabIndex.collectAsStateWithLifecycle()
     val tabs = listOf("待护理计划", "服务中")
@@ -535,60 +512,26 @@ fun OrderTabLayout(
                 if (inOrderList.isNotEmpty()) {
                     inOrderList.forEach { order ->
                         InOrderServiceItem(order = order) {
-                            // 先尝试从缓存获取projectList
-                            val orderInfoRequest = OrderInfoRequestModel(orderId = order.orderId, planId = 0)
-                            val cachedOrderInfo = sharedOrderDetailViewModel.getCachedOrderInfo(orderInfoRequest)
-                            if (cachedOrderInfo != null) {
-                                // 缓存存在，直接跳转
-                                val projectList = cachedOrderInfo.projectList ?: emptyList()
-                                coroutineScope.launch {
-                                    navigationHelper.navigateToServiceCountdownWithLogic(
-                                        navController = navController,
-                                        orderParams = OrderNavParams(order.orderId, 0),
-                                        projectList = projectList
+                            coroutineScope.launch {
+                                try {
+                                    val navigationData =
+                                        mainDashboardViewModel.buildServiceCountdownNavigationData(
+                                            orderId = order.orderId,
+                                            planId = 0
+                                        )
+                                    if (navigationData == null) {
+                                        logE("跳转到服务倒计时页面失败: orderId=${order.orderId}, navigationData=null")
+                                        return@launch
+                                    }
+
+                                    navController.navigateToServiceCountdown(
+                                        orderParams = navigationData.orderParams,
+                                        projectIdList = navigationData.projectIdList
                                     )
+                                } catch (e: Exception) {
+                                    logE("跳转到服务倒计时页面失败: orderId=${order.orderId}", throwable = e)
                                 }
-                            } else {
-                                 // 缓存不存在，先查询订单详情
-                                 coroutineScope.launch {
-                                     try {
-                                         // 启动异步获取订单详情
-                                         sharedOrderDetailViewModel.getOrderInfo(orderInfoRequest)
-                                         
-                                         // 等待获取完成，使用first来避免持续监听
-                                         val finalState = sharedOrderDetailViewModel.uiState
-                                             .first { state ->
-                                                 state is OrderDetailUiState.Success || state is OrderDetailUiState.Error
-                                             }
-                                         
-                                         when (finalState) {
-                                             is OrderDetailUiState.Success -> {
-                                                 // 获取成功，直接使用返回的数据跳转
-                                                 val projectList = finalState.orderInfo.projectList ?: emptyList()
-                                                 navigationHelper.navigateToServiceCountdownWithLogic(
-                                                     navController = navController,
-                                                     orderParams = OrderNavParams(order.orderId, 0),
-                                                     projectList = projectList
-                                                 )
-                                             }
-                                             is OrderDetailUiState.Error -> {
-                                                 // 获取失败，显示错误信息
-                                                 toastHelper.showShort("获取订单详情失败：${finalState.message}")
-                                                 logE("获取订单详情失败: orderId=${order.orderId}, error=${finalState.message}")
-                                             }
-                                             else -> {
-                                                 // 理论上不会到达这里，因为first已经过滤了状态
-                                                 toastHelper.showShort("获取订单详情失败，请稍后重试")
-                                                 logE("获取订单详情失败: orderId=${order.orderId}, 未知状态")
-                                             }
-                                         }
-                                     } catch (e: Exception) {
-                                         // 网络请求失败或其他异常，添加错误处理
-                                         toastHelper.showShort("网络连接异常，请检查网络后重试")
-                                         logE("跳转到服务倒计时页面失败: orderId=${order.orderId}", throwable = e)
-                                     }
-                                 }
-                             }
+                            }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     }

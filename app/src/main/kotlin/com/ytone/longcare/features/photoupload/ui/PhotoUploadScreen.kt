@@ -48,6 +48,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.rememberAsyncImagePainter
 import com.ytone.longcare.R
@@ -115,10 +116,10 @@ fun PhotoUploadScreen(
     }
 
     // 收集ViewModel状态
-    val imageTasks by viewModel.imageTasks.collectAsState()
-    val isUploading by viewModel.isUploading.collectAsState()
+    val imageTasks by viewModel.imageTasks.collectAsStateWithLifecycle()
+    val isUploading by viewModel.isUploading.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    val currentCategory by viewModel.currentCategory.collectAsState()
+    val currentCategory by viewModel.currentCategory.collectAsStateWithLifecycle()
 
     // 监听已有图片数据
     LaunchedEffect(navController.previousBackStackEntry?.savedStateHandle) {

@@ -26,20 +26,16 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.ui.platform.LocalContext
-import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.common.utils.singleClick
-import com.ytone.longcare.di.SelectServiceEntryPoint
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.StarOrderUiState
 import com.ytone.longcare.theme.bgGradientBrush
-import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.features.selectservice.vm.SelectServiceViewModel
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.navigateToServiceCountdown
 import com.ytone.longcare.navigation.toRequestModel
 
 // --- 数据模型 ---
@@ -59,20 +55,11 @@ fun SelectServiceScreen(
 ) {
     // 从订单导航参数构建请求模型
     val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
-    
-    val context = LocalContext.current
-    val unifiedOrderRepository = EntryPointAccessors.fromApplication(
-        context.applicationContext, SelectServiceEntryPoint::class.java
-    ).unifiedOrderRepository()
 
-    val navigationHelper = EntryPointAccessors.fromApplication(
-        context.applicationContext, SelectServiceEntryPoint::class.java
-    ).navigationHelper()
-    
     val coroutineScope = rememberCoroutineScope()
     
     // 使用SharedViewModel获取订单详情
-    val uiState by sharedViewModel.uiState.collectAsState()
+    val uiState by sharedViewModel.uiState.collectAsStateWithLifecycle()
     val starOrderState by sharedViewModel.starOrderState.collectAsStateWithLifecycle()
 
     // 统一处理系统返回键
@@ -100,7 +87,7 @@ fun SelectServiceScreen(
     var selectServiceType by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
-        selectServiceType = selectServiceViewModel.systemConfigManager.getSelectServiceType()
+        selectServiceType = selectServiceViewModel.getSelectServiceType()
     }
 
     // 根据API返回的数据转换为UI需要的ServiceItem格式
@@ -286,21 +273,14 @@ fun SelectServiceScreen(
                                     selectedProjectIds.map { it.toLong() }) {
                                     // 成功后保存选中的项目ID到Room
                                     coroutineScope.launch {
-                                        unifiedOrderRepository.updateSelectedProjects(
-                                            orderInfoRequest.toOrderKey(), selectedProjectIds
+                                        selectServiceViewModel.updateSelectedProjects(
+                                            orderInfoRequest = orderInfoRequest,
+                                            selectedProjectIds = selectedProjectIds
                                         )
-                                        // 从uiState获取orderInfo
-                                        val currentState = uiState
-                                        if (currentState is OrderDetailUiState.Success) {
-                                            // 使用NavigationHelper统一处理跳转逻辑
-                                            navigationHelper.navigateToServiceCountdownWithLogic(
-                                                navController = navController,
-                                                orderParams = orderParams,
-                                                projectList = currentState.orderInfo.projectList
-                                                    ?: emptyList(),
-                                                selectedProjectIds = selectedProjectIds
-                                            )
-                                        }
+                                        navController.navigateToServiceCountdown(
+                                            orderParams = orderParams,
+                                            projectIdList = selectedProjectIds
+                                        )
                                     }
                                 }
                             },

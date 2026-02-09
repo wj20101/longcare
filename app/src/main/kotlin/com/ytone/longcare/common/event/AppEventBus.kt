@@ -2,6 +2,7 @@ package com.ytone.longcare.common.event
 
 import android.content.Intent
 import com.ytone.longcare.api.response.AppVersionModel
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import javax.inject.Inject
@@ -12,8 +13,12 @@ import javax.inject.Singleton
  */
 @Singleton
 class AppEventBus @Inject constructor() {
-    // 创建一个私有的、可变的 SharedFlow
-    private val _events = MutableSharedFlow<AppEvent>()
+    // 为事件流提供缓冲，避免在无订阅者或慢订阅者场景下阻塞发送方。
+    private val _events = MutableSharedFlow<AppEvent>(
+        replay = 0,
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
 
     // 对外暴露一个不可变的 SharedFlow，供订阅者使用
     val events = _events.asSharedFlow()
@@ -23,7 +28,9 @@ class AppEventBus @Inject constructor() {
      * @param event 要发送的事件。
      */
     suspend fun send(event: AppEvent) {
-        _events.emit(event)
+        if (!_events.tryEmit(event)) {
+            _events.emit(event)
+        }
     }
 }
 

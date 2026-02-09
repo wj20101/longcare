@@ -1,7 +1,6 @@
 package com.ytone.longcare.features.nfc.ui
 
 import android.app.Activity
-import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -34,11 +33,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.BuildConfig
-import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.R
-import com.ytone.longcare.common.utils.NfcManager
-import com.ytone.longcare.di.NfcManagerEntryPoint
-import com.ytone.longcare.di.NfcLocationEntryPoint
 import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.navigation.EndOderInfo
@@ -54,10 +49,8 @@ import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSettings
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
-import com.ytone.longcare.features.location.core.LocationFacade
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.navigation.toRequestModel
 import com.ytone.longcare.common.utils.BackHandlerUtils
@@ -80,8 +73,7 @@ fun NfcWorkflowScreen(
     signInMode: SignInMode,
     endOderInfo: EndOderInfo? = null,
     nfcViewModel: NfcWorkflowViewModel = hiltViewModel(),
-    locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel(),
-    sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel()
+    locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
     val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
@@ -116,31 +108,30 @@ fun NfcWorkflowScreen(
         customAction = onBack
     )
 
-    // 权限请求启动器
-    val permissionLauncher = rememberLocationPermissionLauncher(
+    // 权限请求启动器（用于开启定位追踪）
+    val trackingPermissionLauncher = rememberLocationPermissionLauncher(
         onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest) }
     )
 
-    // 检查定位权限和服务的函数
-    fun checkLocationPermissionAndStart() {
+    // 权限请求启动器（仅用于获取当前位置，不触发追踪）
+    val locationOnlyPermissionLauncher = rememberLocationPermissionLauncher(
+        onPermissionGranted = { }
+    )
+
+    // 检查定位权限和服务并启动追踪
+    fun checkLocationPermissionAndStartTracking() {
         UnifiedPermissionHelper.checkLocationPermissionAndStart(
-            context = context, permissionLauncher = permissionLauncher, onPermissionGranted = { })
+            context = context,
+            permissionLauncher = trackingPermissionLauncher,
+            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest) }
+        )
     }
 
-    // 获取NfcManager实例
-    val nfcManager: NfcManager = remember {
-        val appContext: Context = context.applicationContext
-        EntryPointAccessors.fromApplication(
-            appContext, NfcManagerEntryPoint::class.java
-        ).nfcManager()
-    }
-
-    // 获取统一定位门面实例
-    val locationFacade: LocationFacade = remember {
-        val appContext: Context = context.applicationContext
-        EntryPointAccessors.fromApplication(
-            appContext, NfcLocationEntryPoint::class.java
-        ).locationFacade()
+    // 仅请求定位权限，不触发追踪逻辑
+    fun requestLocationPermissionOnly() {
+        if (!UnifiedPermissionHelper.hasLocationPermission(context)) {
+            locationOnlyPermissionLauncher.launch(UnifiedPermissionHelper.getLocationRequiredPermissions())
+        }
     }
 
     // 获取当前位置的函数（使用高德定位）
@@ -149,7 +140,7 @@ fun NfcWorkflowScreen(
             // 检查定位权限
             if (!UnifiedPermissionHelper.hasLocationPermission(context)) {
                 // 申请定位权限
-                checkLocationPermissionAndStart()
+                requestLocationPermissionOnly()
                 return Pair("", "")
             }
 
@@ -161,12 +152,7 @@ fun NfcWorkflowScreen(
                 return Pair("", "")
             }
 
-            val location = locationFacade.getCurrentLocation()
-            if (location != null) {
-                Pair(location.longitude.toString(), location.latitude.toString())
-            } else {
-                Pair("", "")
-            }
+            nfcViewModel.getCurrentLocationCoordinates()
         } catch (e: Exception) {
             Pair("", "")
         }
@@ -176,14 +162,14 @@ fun NfcWorkflowScreen(
     LaunchedEffect(Unit) {
         if (activity != null) {
             when {
-                !NfcUtils.isNfcSupported(context) -> {
+                !nfcViewModel.isNfcSupported() -> {
                     // 设备不支持NFC，显示错误信息
                     nfcViewModel.showError("设备不支持NFC功能")
                 }
 
                 else -> {
                     // 启用NFC功能
-                    nfcManager.enableNfcForActivity(activity)
+                    nfcViewModel.enableNfcForActivity(activity)
                 }
             }
         }
@@ -195,8 +181,7 @@ fun NfcWorkflowScreen(
             orderInfoRequest = orderInfoRequest,
             signInMode = signInMode,
             endOderInfo = endOderInfo,
-            onLocationRequest = { getCurrentLocationCoordinates() },
-            sharedOrderDetailViewModel = sharedOrderDetailViewModel
+            onLocationRequest = { getCurrentLocationCoordinates() }
         )
     }
 
@@ -204,13 +189,13 @@ fun NfcWorkflowScreen(
     DisposableEffect(activity) {
         onDispose {
             // 禁用NFC功能
-            activity?.let { nfcManager.disableNfcForActivity(it) }
+            activity?.let { nfcViewModel.disableNfcForActivity(it) }
         }
     }
 
     // 签退成功，关闭定位上传
     LaunchedEffect(uiState) {
-        if (signInMode == SignInMode.END_ORDER) {
+        if (signInMode == SignInMode.END_ORDER && uiState is NfcSignInUiState.Success) {
             locationTrackingViewModel.onStopClicked()
         }
     }
@@ -271,7 +256,7 @@ fun NfcWorkflowScreen(
                                         when (signInMode) {
                                             SignInMode.START_ORDER -> {
                                                 // 签到成功时开启定位上报任务
-                                                checkLocationPermissionAndStart()
+                                                checkLocationPermissionAndStartTracking()
                                                 // 签到成功后跳转到身份认证页面
                                                 navController.navigateToIdentification(orderParams)
                                             }
@@ -282,26 +267,15 @@ fun NfcWorkflowScreen(
                                                 // 从状态中获取trueServiceTime
                                                 val successState = uiState as? NfcSignInUiState.Success
                                                 val trueServiceTime = successState?.endOrderSuccessData?.trueServiceTime ?: 0
-                                                // 从缓存中获取订单信息
-                                                val cachedOrderInfo = sharedOrderDetailViewModel.getCachedOrderInfo(orderInfoRequest)
-                                                val userInfo = cachedOrderInfo?.userInfo
-                                                val projectList = cachedOrderInfo?.projectList ?: emptyList()
-                                                // 获取选中的项目并计算服务内容
-                                                val selectedProjectIds = endOderInfo?.projectIdList ?: emptyList()
-                                                val serviceContent = projectList
-                                                    .filter { selectedProjectIds.contains(it.projectId) }
-                                                    .joinToString(", ") { it.projectName }
-                                                
-                                                navController.navigateToServiceComplete(
-                                                    orderParams = orderParams,
-                                                    serviceCompleteData = ServiceCompleteData(
-                                                        clientName = userInfo?.name ?: "",
-                                                        clientAge = userInfo?.age ?: 0,
-                                                        clientIdNumber = userInfo?.identityCardNumber ?: "",
-                                                        clientAddress = userInfo?.address ?: "",
-                                                        serviceContent = serviceContent,
+                                                val serviceCompleteData =
+                                                    nfcViewModel.buildServiceCompleteDataFromCache(
+                                                        orderInfoRequest = orderInfoRequest,
+                                                        endOderInfo = endOderInfo,
                                                         trueServiceTime = trueServiceTime
                                                     )
+                                                navController.navigateToServiceComplete(
+                                                    orderParams = orderParams,
+                                                    serviceCompleteData = serviceCompleteData
                                                 )
                                             }
                                         }
@@ -370,8 +344,7 @@ fun NfcWorkflowScreen(
                             nfcViewModel.mockNfcScan(
                                 orderInfoRequest = orderInfoRequest,
                                 signInMode = signInMode,
-                                endOderInfo = endOderInfo,
-                                sharedOrderDetailViewModel = sharedOrderDetailViewModel
+                                endOderInfo = endOderInfo
                             )
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Magenta),

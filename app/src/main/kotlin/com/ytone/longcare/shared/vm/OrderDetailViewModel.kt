@@ -7,6 +7,7 @@ import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
+import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.toRequestModel
 import com.ytone.longcare.domain.order.OrderRepository
@@ -21,7 +22,8 @@ import javax.inject.Inject
 class OrderDetailViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val unifiedOrderRepository: UnifiedOrderRepository,
-    private val toastHelper: ToastHelper
+    private val toastHelper: ToastHelper,
+    private val locationTrackingManager: LocationTrackingManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<OrderDetailUiState>(OrderDetailUiState.Initial)
@@ -87,6 +89,10 @@ class OrderDetailViewModel @Inject constructor(
             unifiedOrderRepository.updateSelectedProjects(OrderKey(orderId), emptyList())
             _selectedProjectIds.value = emptyList()
         }
+    }
+
+    fun stopLocationSession() {
+        locationTrackingManager.stopLocationSession()
     }
 
 }

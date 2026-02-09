@@ -48,7 +48,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,6 +65,7 @@ import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.ytone.longcare.common.utils.LockScreenOrientation
@@ -166,9 +166,9 @@ private fun CameraContent(
         }
     }
     var watermarkView by remember { mutableStateOf<View?>(null) }
-    val location by viewModel.location.collectAsState()
-    val time by viewModel.time.collectAsState()
-    val logoImg by viewModel.syLogoImg.collectAsState()
+    val location by viewModel.location.collectAsStateWithLifecycle()
+    val time by viewModel.time.collectAsStateWithLifecycle()
+    val logoImg by viewModel.syLogoImg.collectAsStateWithLifecycle()
     
     // 摄像头切换状态
     var isFrontCamera by remember { mutableStateOf(false) }

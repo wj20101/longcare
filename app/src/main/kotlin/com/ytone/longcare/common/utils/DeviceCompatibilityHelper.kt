@@ -91,11 +91,7 @@ object DeviceCompatibilityHelper {
      * 检查是否有悬浮窗权限（SYSTEM_ALERT_WINDOW）
      */
     fun hasOverlayPermission(context: Context): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Settings.canDrawOverlays(context)
-        } else {
-            true
-        }
+        return Settings.canDrawOverlays(context)
     }
     
     /**
@@ -191,12 +187,8 @@ object DeviceCompatibilityHelper {
      * 获取悬浮窗权限设置 Intent
      */
     fun getOverlayPermissionIntent(context: Context): Intent {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
-                data = "package:${context.packageName}".toUri()
-            }
-        } else {
-            getAppSettingsIntent(context)
+        return Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+            data = "package:${context.packageName}".toUri()
         }
     }
     
@@ -314,11 +306,6 @@ object DeviceCompatibilityHelper {
      * 针对不同 Android 版本和厂商提供正确的 Intent
      */
     fun getBatteryOptimizationIntent(context: Context): Intent {
-        // Android 6.0 以下不需要电池优化设置
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return getAppSettingsIntent(context)
-        }
-        
         // 优先尝试厂商特定的设置页面
         val manufacturerIntent = getManufacturerBatteryIntent(context)
         if (manufacturerIntent != null) {
@@ -372,13 +359,10 @@ object DeviceCompatibilityHelper {
     
     /**
      * 请求免电池优化权限（会弹出系统对话框）
-     * 仅 Android 6.0+ 可用
+     * minSdk=24，始终可用
      */
     @SuppressLint("BatteryLife")
-    fun getRequestIgnoreBatteryOptimizationIntent(context: Context): Intent? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return null
-        }
+    fun getRequestIgnoreBatteryOptimizationIntent(context: Context): Intent {
         return Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
             data = "package:${context.packageName}".toUri()
         }
@@ -388,9 +372,6 @@ object DeviceCompatibilityHelper {
      * 检查应用是否已加入电池优化白名单
      */
     fun isIgnoringBatteryOptimizations(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return true // 低版本不需要白名单
-        }
         val powerManager = context.getSystemService<PowerManager>()
         return powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
     }

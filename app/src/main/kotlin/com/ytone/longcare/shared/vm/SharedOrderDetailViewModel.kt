@@ -3,6 +3,7 @@ package com.ytone.longcare.shared.vm
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
@@ -109,6 +110,18 @@ class SharedOrderDetailViewModel @Inject constructor(
      */
     fun getProjectIdList(request: OrderInfoRequestModel): List<Int> {
         return getCachedOrderInfo(request)?.projectList?.map { it.projectId } ?: emptyList()
+    }
+
+    suspend fun getSelectedProjectIdsOrDefault(
+        request: OrderInfoRequestModel,
+        projectList: List<ServiceProjectM>
+    ): List<Int> {
+        val savedProjectIds = unifiedOrderRepository.getSelectedProjectIds(request.toOrderKey())
+        return if (savedProjectIds.isEmpty()) {
+            projectList.map { it.projectId }
+        } else {
+            savedProjectIds
+        }
     }
 
     /**

@@ -1,8 +1,8 @@
 package com.ytone.longcare
 
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
-import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
 import org.junit.Test
@@ -17,6 +17,12 @@ class ImageTaskSimplificationTest {
     private val simplifiedMoshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
         .build()
+    private val stringAnyMapType =
+        Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
+    private val stringStringMapType =
+        Types.newParameterizedType(Map::class.java, String::class.java, String::class.java)
+    private val stringListType =
+        Types.newParameterizedType(List::class.java, String::class.java)
 
     @Test
     fun `test ImageTask serialization without Uri`() {
@@ -33,7 +39,7 @@ class ImageTaskSimplificationTest {
             "cloudUrl" to "https://example.com/image.jpg"
         )
         
-        val adapter = simplifiedMoshi.adapter(Map::class.java)
+        val adapter = simplifiedMoshi.adapter<Map<String, Any?>>(stringAnyMapType)
         
         // 测试序列化
         val json = adapter.toJson(testData)
@@ -43,7 +49,7 @@ class ImageTaskSimplificationTest {
         assertTrue(json.contains("SUCCESS"))
         
         // 测试反序列化
-        val deserialized = adapter.fromJson(json) as Map<String, Any?>
+        val deserialized = requireNotNull(adapter.fromJson(json))
         assertEquals("test123", deserialized["id"])
         assertEquals("BEFORE_CARE", deserialized["taskType"])
         assertEquals("SUCCESS", deserialized["status"])
@@ -85,8 +91,8 @@ class ImageTaskSimplificationTest {
             "version" to "1.0.0"
         )
         
-        val listAdapter = simplifiedMoshi.adapter(List::class.java)
-        val mapAdapter = simplifiedMoshi.adapter(Map::class.java)
+        val listAdapter = simplifiedMoshi.adapter<List<String>>(stringListType)
+        val mapAdapter = simplifiedMoshi.adapter<Map<String, String>>(stringStringMapType)
         
         // 序列化
         val listJson = listAdapter.toJson(watermarkLines)
@@ -98,8 +104,8 @@ class ImageTaskSimplificationTest {
         assertTrue(mapJson.contains("北京市朝阳区"))
         
         // 反序列化
-        val deserializedList = listAdapter.fromJson(listJson) as List<String>
-        val deserializedMap = mapAdapter.fromJson(mapJson) as Map<String, String>
+        val deserializedList = requireNotNull(listAdapter.fromJson(listJson))
+        val deserializedMap = requireNotNull(mapAdapter.fromJson(mapJson))
         
         assertEquals(2, deserializedList.size)
         assertEquals("护理前", deserializedList[0])
@@ -127,7 +133,7 @@ class ImageTaskSimplificationTest {
             )
         )
         
-        val adapter = simplifiedMoshi.adapter(Map::class.java)
+        val adapter = simplifiedMoshi.adapter<Map<String, Any?>>(stringAnyMapType)
         
         // 序列化
         val json = adapter.toJson(complexData)
@@ -137,9 +143,11 @@ class ImageTaskSimplificationTest {
         assertTrue(json.contains("张护士"))
         
         // 反序列化
-        val deserialized = adapter.fromJson(json) as Map<String, Any?>
-        val task = deserialized["task"] as Map<String, Any?>
-        val upload = deserialized["upload"] as Map<String, Any?>
+        val deserialized = requireNotNull(adapter.fromJson(json))
+        val task = (requireNotNull(deserialized["task"] as? Map<*, *>))
+            .mapKeys { it.key.toString() }
+        val upload = (requireNotNull(deserialized["upload"] as? Map<*, *>))
+            .mapKeys { it.key.toString() }
         
         assertEquals("complex123", task["id"])
         assertEquals("AFTER_CARE", task["type"])

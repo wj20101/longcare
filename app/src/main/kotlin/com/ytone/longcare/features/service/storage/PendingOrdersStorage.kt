@@ -2,6 +2,7 @@ package com.ytone.longcare.features.service.storage
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.squareup.moshi.JsonClass
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -125,7 +126,7 @@ class PendingOrdersStorage @Inject constructor(
      */
     fun clearAllPendingOrders() {
         try {
-            sharedPreferences.edit().remove(KEY_PENDING_ORDERS).apply()
+            sharedPreferences.edit { remove(KEY_PENDING_ORDERS) }
             logI("清空所有待处理订单")
         } catch (e: Exception) {
             logE("清空待处理订单失败: ${e.message}")
@@ -138,9 +139,7 @@ class PendingOrdersStorage @Inject constructor(
     private fun saveOrders(orders: List<PendingOrder>) {
         try {
             val json = adapter.toJson(orders)
-            sharedPreferences.edit()
-                .putString(KEY_PENDING_ORDERS, json)
-                .apply()
+            sharedPreferences.edit { putString(KEY_PENDING_ORDERS, json) }
         } catch (e: Exception) {
             logE("保存待处理订单失败: ${e.message}")
         }

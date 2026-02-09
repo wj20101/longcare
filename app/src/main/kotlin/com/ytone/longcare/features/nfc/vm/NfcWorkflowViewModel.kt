@@ -2,6 +2,7 @@ package com.ytone.longcare.features.nfc.vm
 
 
 import com.ytone.longcare.common.utils.logI
+import android.app.Activity
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,13 +10,12 @@ import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
-import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
-import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.data.repository.ImageRepository
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
@@ -23,11 +23,14 @@ import com.ytone.longcare.features.countdown.manager.CountdownNotificationManage
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.model.toOrderKey
+import com.ytone.longcare.features.location.core.LocationFacade
+import com.ytone.longcare.navigation.ServiceCompleteData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -40,10 +43,13 @@ class NfcWorkflowViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val toastHelper: ToastHelper,
     private val appEventBus: AppEventBus,
+    private val nfcManager: NfcManager,
+    private val locationFacade: LocationFacade,
     private val unifiedOrderRepository: UnifiedOrderRepository,
     private val imageRepository: ImageRepository,
     private val countdownNotificationManager: CountdownNotificationManager
 ) : ViewModel() {
+    private var nfcEventJob: Job? = null
 
     private val _uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
     val uiState: StateFlow<NfcSignInUiState> = _uiState.asStateFlow()
@@ -274,14 +280,66 @@ class NfcWorkflowViewModel @Inject constructor(
         _uiState.value = NfcSignInUiState.Error(message)
     }
 
+    fun buildServiceCompleteDataFromCache(
+        orderInfoRequest: OrderInfoRequestModel,
+        endOderInfo: EndOderInfo?,
+        trueServiceTime: Int
+    ): ServiceCompleteData {
+        val cachedOrderInfo = unifiedOrderRepository.getCachedOrderInfo(orderInfoRequest.toOrderKey())
+        val userInfo = cachedOrderInfo?.userInfo
+        val projectList = cachedOrderInfo?.projectList ?: emptyList()
+        val selectedProjectIds = endOderInfo?.projectIdList ?: emptyList()
+        val serviceContent = if (selectedProjectIds.isNotEmpty()) {
+            projectList
+                .filter { selectedProjectIds.contains(it.projectId) }
+                .joinToString(", ") { it.projectName }
+        } else {
+            projectList.joinToString(", ") { it.projectName }
+        }
+
+        return ServiceCompleteData(
+            clientName = userInfo?.name ?: "",
+            clientAge = userInfo?.age ?: 0,
+            clientIdNumber = userInfo?.identityCardNumber ?: "",
+            clientAddress = userInfo?.address ?: "",
+            serviceContent = serviceContent,
+            trueServiceTime = trueServiceTime
+        )
+    }
+
+    fun isNfcSupported(): Boolean {
+        return NfcUtils.isNfcSupported(context)
+    }
+
+    fun enableNfcForActivity(activity: Activity) {
+        nfcManager.enableNfcForActivity(activity)
+    }
+
+    fun disableNfcForActivity(activity: Activity) {
+        nfcManager.disableNfcForActivity(activity)
+    }
+
+    suspend fun getCurrentLocationCoordinates(): Pair<String, String> {
+        return try {
+            val location = locationFacade.getCurrentLocation()
+            if (location != null) {
+                Pair(location.longitude.toString(), location.latitude.toString())
+            } else {
+                Pair("", "")
+            }
+        } catch (_: Exception) {
+            Pair("", "")
+        }
+    }
+
     fun observeNfcEvents(
         orderInfoRequest: OrderInfoRequestModel,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
-        onLocationRequest: suspend () -> Pair<String, String>,
-        sharedOrderDetailViewModel: SharedOrderDetailViewModel
+        onLocationRequest: suspend () -> Pair<String, String>
     ) {
-        viewModelScope.launch {
+        nfcEventJob?.cancel()
+        nfcEventJob = viewModelScope.launch {
             appEventBus.events.collect { event ->
                 if (event is AppEvent.NfcIntentReceived) {
                     // 如果已经签到/签退成功，忽略后续的NFC事件
@@ -311,8 +369,7 @@ class NfcWorkflowViewModel @Inject constructor(
                                         endOderInfo = endOderInfo,
                                         tagId = tagId,
                                         longitude = longitude,
-                                        latitude = latitude,
-                                        sharedOrderDetailViewModel = sharedOrderDetailViewModel
+                                        latitude = latitude
                                     )
                                 }
 
@@ -342,60 +399,37 @@ class NfcWorkflowViewModel @Inject constructor(
     /**
      * 检查用户位置信息并决定是否需要弹出定位激活弹窗
      */
-    private fun checkUserLocationAndProceed(
+    private suspend fun checkUserLocationAndProceed(
         orderInfoRequest: OrderInfoRequestModel,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
         tagId: String,
         longitude: String,
-        latitude: String,
-        sharedOrderDetailViewModel: SharedOrderDetailViewModel
+        latitude: String
     ) {
         // 获取订单详情
-        val orderInfo = sharedOrderDetailViewModel.getCachedOrderInfo(orderInfoRequest)
-
-        if (orderInfo == null) {
-            // 如果缓存中没有订单详情，先获取订单详情
-            sharedOrderDetailViewModel.getOrderInfo(orderInfoRequest)
-            // 启动一个新的协程来监听状态变化
-            viewModelScope.launch {
-                sharedOrderDetailViewModel.uiState.collect { state ->
-                    when (state) {
-                        is OrderDetailUiState.Success -> {
-                            checkLocationAndShowDialog(
-                                orderInfo = state.orderInfo,
-                                orderInfoRequest = orderInfoRequest,
-                                signInMode = signInMode,
-                                endOderInfo = endOderInfo,
-                                tagId = tagId,
-                                longitude = longitude,
-                                latitude = latitude
-                            )
-                            return@collect // 处理完成后退出collect
-                        }
-
-                        is OrderDetailUiState.Error -> {
-                            showError("获取订单详情失败: ${state.message}")
-                            return@collect // 出错后退出collect
-                        }
-
-                        else -> {
-                            // Loading或Initial状态，继续等待
-                        }
-                    }
+        val orderInfo = unifiedOrderRepository.getCachedOrderInfo(orderInfoRequest.toOrderKey())
+            ?: when (val result = unifiedOrderRepository.getOrderInfo(orderInfoRequest.toOrderKey())) {
+                is ApiResult.Success -> result.data
+                is ApiResult.Exception -> {
+                    showError("获取订单详情失败: ${result.exception.message ?: "网络异常"}")
+                    return
+                }
+                is ApiResult.Failure -> {
+                    showError("获取订单详情失败: ${result.message}")
+                    return
                 }
             }
-        } else {
-            checkLocationAndShowDialog(
-                orderInfo = orderInfo,
-                orderInfoRequest = orderInfoRequest,
-                signInMode = signInMode,
-                endOderInfo = endOderInfo,
-                tagId = tagId,
-                longitude = longitude,
-                latitude = latitude
-            )
-        }
+
+        checkLocationAndShowDialog(
+            orderInfo = orderInfo,
+            orderInfoRequest = orderInfoRequest,
+            signInMode = signInMode,
+            endOderInfo = endOderInfo,
+            tagId = tagId,
+            longitude = longitude,
+            latitude = latitude
+        )
     }
 
     /**
@@ -473,8 +507,7 @@ class NfcWorkflowViewModel @Inject constructor(
     fun mockNfcScan(
         orderInfoRequest: OrderInfoRequestModel,
         signInMode: SignInMode,
-        endOderInfo: EndOderInfo?,
-        sharedOrderDetailViewModel: SharedOrderDetailViewModel
+        endOderInfo: EndOderInfo?
     ) {
         val mockTagId = "MOCK_TAG_ID_123456"
         val mockLongitude = "121.4737" // 上海坐标
@@ -489,8 +522,7 @@ class NfcWorkflowViewModel @Inject constructor(
                         endOderInfo = endOderInfo,
                         tagId = mockTagId,
                         longitude = mockLongitude,
-                        latitude = mockLatitude,
-                        sharedOrderDetailViewModel = sharedOrderDetailViewModel
+                        latitude = mockLatitude
                     )
                 }
 
@@ -533,6 +565,11 @@ class NfcWorkflowViewModel @Inject constructor(
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    override fun onCleared() {
+        nfcEventJob?.cancel()
+        super.onCleared()
     }
 }
 

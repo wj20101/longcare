@@ -119,11 +119,7 @@ class CountdownNotificationManager @Inject constructor(
             }
 
             // 验证闹钟是否设置成功
-            val nextAlarmClock = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                alarmManager.nextAlarmClock
-            } else {
-                null
-            }
+            val nextAlarmClock = alarmManager.nextAlarmClock
             logI("下一个闹钟时间: ${nextAlarmClock?.triggerTime}")
             
             // 追踪闹钟设置成功事件
@@ -182,11 +178,7 @@ class CountdownNotificationManager @Inject constructor(
             // 方法2：额外尝试取消可能存在的AlarmClock
             // AlarmClock设置的闹钟可能需要单独取消
             try {
-                val nextAlarmClock = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    alarmManager.nextAlarmClock
-                } else {
-                    null
-                }
+                val nextAlarmClock = alarmManager.nextAlarmClock
                 if (nextAlarmClock != null) {
                     logI("当前系统下一个闹钟时间: ${nextAlarmClock.triggerTime}")
                 }

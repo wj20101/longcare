@@ -21,18 +21,23 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
-import com.ytone.longcare.di.ServiceCountdownEntryPoint
+import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
 import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
-import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * 闹铃响铃服务
  * 负责持续播放闹铃声音和震动，直到用户手动关闭
  * 升级为前台服务以确保在后台/锁屏时的优先级
  */
+@AndroidEntryPoint
 class AlarmRingtoneService : Service() {
+
+    @Inject
+    lateinit var countdownNotificationManager: CountdownNotificationManager
 
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
@@ -125,13 +130,7 @@ class AlarmRingtoneService : Service() {
      */
     private fun startForegroundWithNotification(request: OrderInfoRequestModel, serviceName: String) {
         try {
-            val entryPoint = EntryPointAccessors.fromApplication(
-                applicationContext,
-                ServiceCountdownEntryPoint::class.java
-            )
-            val manager = entryPoint.countdownNotificationManager()
-            
-            val notification = manager.buildCountdownCompletionNotification(
+            val notification = countdownNotificationManager.buildCountdownCompletionNotification(
                 request,
                 serviceName
             )

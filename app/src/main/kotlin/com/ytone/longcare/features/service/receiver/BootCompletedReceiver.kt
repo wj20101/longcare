@@ -3,12 +3,14 @@ package com.ytone.longcare.features.service.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.di.ApplicationScope
 import com.ytone.longcare.features.service.ServiceTimeNotificationManager
 import com.ytone.longcare.features.service.storage.PendingOrdersStorage
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -24,6 +26,10 @@ class BootCompletedReceiver : BroadcastReceiver() {
     @Inject
     lateinit var pendingOrdersStorage: PendingOrdersStorage
 
+    @Inject
+    @ApplicationScope
+    lateinit var applicationScope: CoroutineScope
+
     override fun onReceive(context: Context, intent: Intent) {
         logI("收到设备重启完成广播: ${intent.action}")
         
@@ -35,20 +41,16 @@ class BootCompletedReceiver : BroadcastReceiver() {
             return
         }
 
-        try {
-            // 在后台线程中恢复通知任务
-            Thread {
-                try {
-                    recoverServiceTimeNotifications(context)
-                } catch (e: Exception) {
-                    logE("恢复服务时间通知失败: ${e.message}")
-                }
-            }.start()
-            
-            logI("设备重启后通知恢复任务已启动")
-            
-        } catch (e: Exception) {
-            logE("处理设备重启广播失败: ${e.message}")
+        val pendingResult = goAsync()
+        applicationScope.launch {
+            try {
+                recoverServiceTimeNotifications()
+                logI("设备重启后通知恢复任务已完成")
+            } catch (e: Exception) {
+                logE("恢复服务时间通知失败: ${e.message}")
+            } finally {
+                pendingResult.finish()
+            }
         }
     }
 
@@ -56,7 +58,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
      * 恢复服务时间通知
      * 从持久化存储中读取未完成的通知任务并重新调度
      */
-    private fun recoverServiceTimeNotifications(context: Context) {
+    private fun recoverServiceTimeNotifications() {
         logI("开始恢复服务时间通知任务...")
         
         try {

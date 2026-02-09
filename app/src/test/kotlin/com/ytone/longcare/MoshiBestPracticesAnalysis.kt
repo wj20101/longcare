@@ -154,16 +154,17 @@ class MoshiBestPracticesAnalysis {
         
         // 性能测试（简单示例）
         val iterations = 1000
+        var sink: String? = null
         
         val startTime1 = System.currentTimeMillis()
         repeat(iterations) {
-            defaultAdapter.toJson(withJsonClass)
+            sink = defaultAdapter.toJson(withJsonClass)
         }
         val defaultTime = System.currentTimeMillis() - startTime1
         
         val startTime2 = System.currentTimeMillis()
         repeat(iterations) {
-            reflectionAdapter.toJson(withJsonClass)
+            sink = reflectionAdapter.toJson(withJsonClass)
         }
         val reflectionTime = System.currentTimeMillis() - startTime2
 
@@ -173,6 +174,7 @@ class MoshiBestPracticesAnalysis {
         println("默认配置耗时: ${defaultTime}ms")
         println("纯反射配置耗时: ${reflectionTime}ms")
         
+        assertNotNull(sink)
         assertNotNull(defaultJson)
         assertNotNull(reflectionJson)
         assertEquals("两种适配器应输出等价 JSON", defaultJson, reflectionJson)

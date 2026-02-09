@@ -1,6 +1,7 @@
 package com.ytone.longcare
 
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
 import com.ytone.longcare.common.utils.DefaultMoshi
 import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
@@ -11,6 +12,8 @@ import org.junit.Test
  * 测试Moshi序列化优化后的功能
  */
 class MoshiOptimizationTest {
+    private val stringAnyMapType =
+        Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
 
     @Test
     fun `test ImageTask serialization with JsonClass annotation`() {
@@ -24,7 +27,7 @@ class MoshiOptimizationTest {
         )
 
         // 序列化测试数据
-        val adapter = DefaultMoshi.adapter(Map::class.java)
+        val adapter = DefaultMoshi.adapter<Map<String, Any>>(stringAnyMapType)
         val json = adapter.toJson(testData)
         
         // 验证序列化结果
@@ -32,9 +35,8 @@ class MoshiOptimizationTest {
         assertTrue("JSON应该包含taskType", json.contains("\"taskType\":\"UPLOAD\""))
         
         // 反序列化
-        val deserializedData = adapter.fromJson(json) as? Map<String, Any>
-        assertNotNull("反序列化结果不应为null", deserializedData)
-        assertEquals("id应该匹配", "test-id", deserializedData!!["id"])
+        val deserializedData = requireNotNull(adapter.fromJson(json))
+        assertEquals("id应该匹配", "test-id", deserializedData["id"])
         assertEquals("taskType应该匹配", "UPLOAD", deserializedData["taskType"])
     }
     
@@ -70,7 +72,7 @@ class MoshiOptimizationTest {
         )
         
         // 序列化
-        val adapter = DefaultMoshi.adapter(Map::class.java)
+        val adapter = DefaultMoshi.adapter<Map<String, Any>>(stringAnyMapType)
         val json = adapter.toJson(testMap)
         
         // 验证序列化结果
@@ -80,9 +82,8 @@ class MoshiOptimizationTest {
         assertTrue("JSON应该包含compress路径", json.contains("file:///compress/path"))
         
         // 反序列化
-        val deserializedMap = adapter.fromJson(json) as? Map<String, Any>
-        assertNotNull("反序列化结果不应为null", deserializedMap)
-        assertEquals("应该包含2个键", 2, deserializedMap!!.keys.size)
+        val deserializedMap = requireNotNull(adapter.fromJson(json))
+        assertEquals("应该包含2个键", 2, deserializedMap.keys.size)
         assertTrue("应该包含UPLOAD键", deserializedMap.containsKey("UPLOAD"))
         assertTrue("应该包含COMPRESS键", deserializedMap.containsKey("COMPRESS"))
     }

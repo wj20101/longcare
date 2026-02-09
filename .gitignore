@@ -18,6 +18,9 @@ generated/
 
 # Local configuration file (sdk path, etc)
 local.properties
+*.jks
+*.keystore
+keystore.properties
 
 # Eclipse project files
 .classpath

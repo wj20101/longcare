@@ -9,6 +9,8 @@ import androidx.work.Configuration
 import androidx.work.WorkManager
 import androidx.work.testing.WorkManagerTestInitHelper
 import com.ytone.longcare.features.service.storage.PendingOrdersStorage
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -73,9 +75,9 @@ class ServiceTimeNotificationIntegrationTest {
         
         // 验证待处理订单已保存
         val pendingOrders = pendingOrdersStorage.getAllPendingOrders()
-        assert(pendingOrders.size == 1)
-        assert(pendingOrders[0].orderId == orderId)
-        assert(pendingOrders[0].serviceName == serviceName)
+        assertEquals(1, pendingOrders.size)
+        assertEquals(orderId, pendingOrders[0].orderId)
+        assertEquals(serviceName, pendingOrders[0].serviceName)
         
         // 2. 模拟时间到达（立即触发）
         serviceTimeNotificationManager.showServiceTimeEndNotification(orderId, serviceName)
@@ -85,7 +87,7 @@ class ServiceTimeNotificationIntegrationTest {
         pendingOrdersStorage.removePendingOrder(orderId)
         
         val updatedPendingOrders = pendingOrdersStorage.getAllPendingOrders()
-        assert(updatedPendingOrders.isEmpty())
+        assertTrue(updatedPendingOrders.isEmpty())
     }
 
     @Test
@@ -110,7 +112,7 @@ class ServiceTimeNotificationIntegrationTest {
         
         // 验证只有一个待处理订单
         val pendingOrders = pendingOrdersStorage.getAllPendingOrders()
-        assert(pendingOrders.size == 1)
+        assertEquals(1, pendingOrders.size)
     }
 
     @Test
@@ -128,14 +130,14 @@ class ServiceTimeNotificationIntegrationTest {
         
         // 验证待处理订单存在
         var pendingOrders = pendingOrdersStorage.getAllPendingOrders()
-        assert(pendingOrders.size == 1)
+        assertEquals(1, pendingOrders.size)
         
         // 取消通知
         serviceTimeNotificationManager.cancelServiceTimeEndNotification(orderId)
         
         // 验证待处理订单已移除
         pendingOrders = pendingOrdersStorage.getAllPendingOrders()
-        assert(pendingOrders.isEmpty())
+        assertTrue(pendingOrders.isEmpty())
     }
 
     @Test
@@ -161,8 +163,8 @@ class ServiceTimeNotificationIntegrationTest {
         
         // 验证只有未来订单保留
         val pendingOrders = pendingOrdersStorage.getAllPendingOrders()
-        assert(pendingOrders.size == 1)
-        assert(pendingOrders[0].orderId == 88888L)
+        assertEquals(1, pendingOrders.size)
+        assertEquals(88888L, pendingOrders[0].orderId)
     }
 
     @Test
@@ -202,10 +204,10 @@ class ServiceTimeNotificationIntegrationTest {
         }
         
         // 验证恢复结果
-        assert(recoveredCount == 1)
+        assertEquals(1, recoveredCount)
         
         val remainingOrders = pendingOrdersStorage.getAllPendingOrders()
-        assert(remainingOrders.size == 1)
-        assert(remainingOrders[0].orderId == orderId1)
+        assertEquals(1, remainingOrders.size)
+        assertEquals(orderId1, remainingOrders[0].orderId)
     }
 }

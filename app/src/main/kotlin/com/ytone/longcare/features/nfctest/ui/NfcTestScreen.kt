@@ -14,28 +14,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.debug.NfcTestConfig
-import com.ytone.longcare.di.NursingExecutionEntryPoint
-import dagger.hilt.android.EntryPointAccessors
+import com.ytone.longcare.features.nfctest.vm.NfcTestViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NfcTestScreen(
     navController: NavController
 ) {
+    val nfcTestViewModel: NfcTestViewModel = hiltViewModel()
     val context = LocalContext.current
-    val entryPoint = EntryPointAccessors.fromApplication(
-        context.applicationContext,
-        NursingExecutionEntryPoint::class.java
-    )
-    
+
     // 获取NfcTestHelper实例
     val nfcTestHelper = if (NfcTestConfig.ENABLE_NFC_TEST) {
-        entryPoint.nfcTestHelper()
+        nfcTestViewModel.getHelper()
     } else null
     
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -45,7 +42,7 @@ fun NfcTestScreen(
         LaunchedEffect(context) {
             val activity = context as? Activity
             activity?.let {
-                nfcTestHelper.enable(it)
+                nfcTestViewModel.enableNfcTest(it)
             }
         }
         
@@ -54,7 +51,7 @@ fun NfcTestScreen(
             onDispose {
                 val activity = context as? Activity
                 activity?.let {
-                    nfcTestHelper.disable(it)
+                    nfcTestViewModel.disableNfcTest(it)
                 }
             }
         }
@@ -64,7 +61,7 @@ fun NfcTestScreen(
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 val activity = context as? Activity
                 activity?.let {
-                    nfcTestHelper.enable(it)
+                    nfcTestViewModel.enableNfcTest(it)
                 }
             }
         }

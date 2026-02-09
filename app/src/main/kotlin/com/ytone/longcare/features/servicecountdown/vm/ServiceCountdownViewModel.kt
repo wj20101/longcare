@@ -26,6 +26,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -236,7 +237,7 @@ class ServiceCountdownViewModel @Inject constructor(
     private fun startOvertimeCountdown() {
         countdownJob?.cancel()
         countdownJob = viewModelScope.launch {
-            while (_countdownState.value == ServiceCountdownState.OVERTIME) {
+            while (isActive && _countdownState.value == ServiceCountdownState.OVERTIME) {
                 delay(1000)
                 
                 // 重新计算当前的超时时间，确保锁屏解锁后时间正确
@@ -266,7 +267,7 @@ class ServiceCountdownViewModel @Inject constructor(
         // 启动新的倒计时
         countdownJob = viewModelScope.launch {
             // 倒计时阶段 - 使用重新计算而不是递减，确保时间准确
-            while (_countdownState.value == ServiceCountdownState.RUNNING) {
+            while (isActive && _countdownState.value == ServiceCountdownState.RUNNING) {
                 // 重新计算剩余时间，避免累加误差
                 if (currentOrderKey != null && currentProjectList.isNotEmpty()) {
                     val (state, remainingTime, _) = calculateCountdownState(
@@ -444,7 +445,7 @@ class ServiceCountdownViewModel @Inject constructor(
         orderStatePollingJob?.cancel()
         
         orderStatePollingJob = viewModelScope.launch {
-            while (true) {
+            while (isActive) {
                 // 等待5秒
                 delay(ORDER_STATE_POLLING_INTERVAL)
                 
@@ -466,11 +467,11 @@ class ServiceCountdownViewModel @Inject constructor(
                     }
                     is ApiResult.Failure -> {
                         // 业务错误时不处理，继续轮询
-                        println("查询订单状态失败: ${result.message}")
+                        logI("查询订单状态失败: ${result.message}", tag = "ServiceCountdownViewModel")
                     }
                     is ApiResult.Exception -> {
                         // 网络异常时不处理，继续轮询
-                        println("查询订单状态异常: ${result.exception.message}")
+                        logI("查询订单状态异常: ${result.exception.message}", tag = "ServiceCountdownViewModel")
                     }
                 }
             }
@@ -601,6 +602,34 @@ class ServiceCountdownViewModel @Inject constructor(
             imageRepository.deleteImagesByOrderId(orderKey)
             _uploadedImages.value = emptyMap()
         }
+    }
+
+    fun canScheduleExactAlarms(): Boolean {
+        return countdownNotificationManager.canScheduleExactAlarms()
+    }
+
+    fun canUseFullScreenIntent(): Boolean {
+        return countdownNotificationManager.canUseFullScreenIntent()
+    }
+
+    fun scheduleCountdownAlarm(
+        request: OrderInfoRequestModel,
+        serviceName: String,
+        triggerTimeMillis: Long
+    ) {
+        countdownNotificationManager.scheduleCountdownAlarm(
+            request = request,
+            serviceName = serviceName,
+            triggerTimeMillis = triggerTimeMillis
+        )
+    }
+
+    fun cancelCountdownAlarm() {
+        countdownNotificationManager.cancelCountdownAlarm()
+    }
+
+    fun cancelCountdownAlarmForOrder(request: OrderInfoRequestModel) {
+        countdownNotificationManager.cancelCountdownAlarmForOrder(request)
     }
 
     /**

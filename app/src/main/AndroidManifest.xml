@@ -181,6 +181,7 @@
             android:launchMode="singleTop"
             android:showOnLockScreen="true"
             android:turnScreenOn="true"
+            tools:targetApi="o_mr1"
             android:theme="@style/Theme.LongCare" />
             
         <!-- 人脸捕获测试Activity -->

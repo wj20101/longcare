@@ -8,6 +8,7 @@ import android.graphics.Rect
 import android.graphics.YuvImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import androidx.core.graphics.scale
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
@@ -265,9 +266,7 @@ class FaceCaptureAnalyzer(
                 val scaledWidth = (croppedBitmap.width * scale).toInt()
                 val scaledHeight = (croppedBitmap.height * scale).toInt()
                 
-                val scaledBitmap = Bitmap.createScaledBitmap(
-                    croppedBitmap, scaledWidth, scaledHeight, true
-                )
+                val scaledBitmap = croppedBitmap.scale(scaledWidth, scaledHeight, true)
                 
                 // 回收原始裁剪图片
                 if (scaledBitmap != croppedBitmap) {

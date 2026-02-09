@@ -3,6 +3,7 @@ package com.ytone.longcare.features.face.detector
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.graphics.Rect
+import androidx.core.graphics.scale
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
@@ -108,7 +109,11 @@ class StaticImageFaceDetector {
         
         // 缩放到目标尺寸 (512x512)
         val targetSize = 512
-        return Bitmap.createScaledBitmap(croppedBitmap, targetSize, targetSize, true)
+        val scaledBitmap = croppedBitmap.scale(targetSize, targetSize, true)
+        if (scaledBitmap != croppedBitmap) {
+            croppedBitmap.recycle()
+        }
+        return scaledBitmap
     }
 
     /**

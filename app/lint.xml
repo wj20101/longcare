@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- 当前构建策略固定 arm64-v8a（受第三方 native 依赖约束），暂不按 ChromeOS x86_64 扩展。 -->
+    <issue id="ChromeOsAbiSupport">
+        <ignore path="build.gradle.kts" />
+    </issue>
+
+    <!-- 资源以矢量图 + 现有位图为主，暂不维护完整密度目录矩阵。 -->
+    <issue id="IconMissingDensityFolder">
+        <ignore path="src/main/res" />
+    </issue>
+
+    <!-- 外部依赖告警（当前依赖已是可用最新版本，待供应商提供修复后再移除抑制）。 -->
+    <issue id="Aligned16KB" severity="ignore" />
+    <issue id="GlobalOptionInConsumerRules" severity="ignore" />
+    <issue id="TrustAllX509TrustManager" severity="ignore" />
+</lint>
