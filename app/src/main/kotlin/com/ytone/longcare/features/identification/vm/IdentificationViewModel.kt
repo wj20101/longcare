@@ -14,7 +14,6 @@ import com.ytone.longcare.common.utils.FaceVerifier
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.cos.repository.CosRepository
-import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
@@ -106,16 +105,6 @@ class IdentificationViewModel @Inject constructor(
     private fun setFaceSetupError(message: String) {
         _faceSetupState.value = FaceSetupState.Error(message)
         toastHelper.showShort(message)
-    }
-    
-    private suspend fun getTencentCloudConfig(): FaceVerificationConfig? {
-        val third = systemConfigManager.getThirdKey() ?: return null
-        if (third.txFaceAppId.isBlank() || third.txFaceAppSecret.isBlank() || third.txFaceAppLicence.isBlank()) return null
-        return FaceVerificationConfig(
-            appId = third.txFaceAppId,
-            secret = third.txFaceAppSecret,
-            licence = third.txFaceAppLicence
-        )
     }
     
     /**
@@ -395,7 +384,7 @@ class IdentificationViewModel @Inject constructor(
         callback: FaceVerifyCallback,
         onConfigMissing: () -> Unit
     ) {
-        val config = getTencentCloudConfig()
+        val config = systemConfigManager.getFaceVerificationConfig()
         if (config == null) {
             onConfigMissing()
             return

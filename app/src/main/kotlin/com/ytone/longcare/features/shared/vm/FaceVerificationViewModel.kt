@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.utils.FaceVerifyCallback
 import com.ytone.longcare.common.utils.FaceVerifier
 import com.ytone.longcare.common.utils.SystemConfigManager
-import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
@@ -115,17 +114,7 @@ class FaceVerificationViewModel @Inject constructor(
         )
     }
 
-    private suspend fun resolveFaceConfig(): FaceVerificationConfig? {
-        val third = systemConfigManager.getThirdKey() ?: return null
-        if (third.txFaceAppId.isBlank() || third.txFaceAppSecret.isBlank() || third.txFaceAppLicence.isBlank()) {
-            return null
-        }
-        return FaceVerificationConfig(
-            appId = third.txFaceAppId,
-            secret = third.txFaceAppSecret,
-            licence = third.txFaceAppLicence
-        )
-    }
+    private suspend fun resolveFaceConfig() = systemConfigManager.getFaceVerificationConfig()
     
     /**
      * 创建人脸验证回调
