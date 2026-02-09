@@ -56,8 +56,10 @@ jobs:
         env:
           BASELINE_API_LEVEL: "33"
           BASELINE_TARGET: "google_apis"
-          BASELINE_AVD_HOME: "${{ runner.temp }}/android-avd"
+          BASELINE_ANDROID_SDK_HOME: "/mnt/android-sdk-home"
+          BASELINE_AVD_HOME: "/mnt/android-avd"
           BASELINE_BOOT_TIMEOUT_SECS: "900"
+          BASELINE_PARTITION_SIZE_MB: "2048"
           BASELINE_GRADLE_TIMEOUT_SECS: "2700"
           BASELINE_GRADLE_TASK: ":app:generateReleaseBaselineProfile"
         run: ./.github/scripts/run-baseline-profile.sh
