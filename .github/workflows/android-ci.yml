@@ -117,7 +117,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -accel off -no-snapshot-load -no-snapshot-save
           disable-animations: false
           disable-linux-hw-accel: true
-          script: ./gradlew --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.ytone.longcare.smoke.MainActivitySmokeTest
+          script: ./gradlew --no-daemon :app:connectedDebugAndroidTest -Pbaseline.enableX86_64=true -Pandroid.testInstrumentationRunnerArguments.class=com.ytone.longcare.smoke.MainActivitySmokeTest
 
       - name: Upload instrumentation reports
         if: always()
