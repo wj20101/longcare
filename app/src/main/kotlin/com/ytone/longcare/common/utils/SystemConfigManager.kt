@@ -13,10 +13,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import androidx.core.content.edit
+import com.ytone.longcare.di.ApplicationScope
 import com.ytone.longcare.di.IoDispatcher
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -27,6 +30,7 @@ import kotlinx.coroutines.sync.withLock
 @Singleton
 class SystemConfigManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    @param:ApplicationScope private val applicationScope: CoroutineScope,
     private val moshi: Moshi,
     private val apiService: LongCareApiService,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -153,20 +157,9 @@ class SystemConfigManager @Inject constructor(
                 // 如果本地有缓存，先使用本地缓存
                 cachedConfig = localConfig
                 cacheInitialized = true
-                
-                // 异步更新缓存（可选：在后台刷新最新数据）
-                try {
-                    val result = safeApiCall(ioDispatcher, eventBus) { apiService.getSystemConfig() }
-                    if (result is ApiResult.Success) {
-                        cachedConfig = result.data
-                        saveSystemConfig(result.data)
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    // 静默处理异步更新失败
-                }
-                
+
+                // 在后台刷新缓存，避免阻塞首次读取。
+                refreshSystemConfigInBackground()
                 return@withLock localConfig
             } else {
                 // 本地没有缓存，从网络加载
@@ -183,6 +176,19 @@ class SystemConfigManager @Inject constructor(
                     // 网络请求失败，返回null
                 }
                 null
+            }
+        }
+    }
+
+    private fun refreshSystemConfigInBackground() {
+        applicationScope.launch {
+            try {
+                val result = safeApiCall(ioDispatcher, eventBus) { apiService.getSystemConfig() }
+                if (result is ApiResult.Success) {
+                    saveSystemConfig(result.data)
+                }
+            } catch (_: Exception) {
+                // 静默处理后台刷新失败
             }
         }
     }
