@@ -29,7 +29,7 @@ env:
 
 jobs:
   generate-baseline-profile:
-    runs-on: ubuntu-24.04-arm
+    runs-on: macos-14
     timeout-minutes: 120
 
     steps:
@@ -51,6 +51,7 @@ jobs:
           packages: platform-tools
 
       - name: Free disk space for emulator
+        if: ${{ runner.os == 'Linux' }}
         run: |
           echo "Disk usage before cleanup:"
           df -h
