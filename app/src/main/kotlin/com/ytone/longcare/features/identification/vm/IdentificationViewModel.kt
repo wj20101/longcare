@@ -9,10 +9,13 @@ import com.ytone.longcare.api.request.SetFaceParamModel
 import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.CosUtils
-import com.ytone.longcare.common.utils.FaceVerificationManager
+import com.ytone.longcare.common.utils.FaceVerifyCallback
+import com.ytone.longcare.common.utils.FaceVerifier
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.cos.repository.CosRepository
+import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
+import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.domain.identification.IdentificationRepository
@@ -59,7 +62,7 @@ enum class IdentificationState {
 
 @HiltViewModel
 class IdentificationViewModel @Inject constructor(
-    private val faceVerificationManager: FaceVerificationManager,
+    private val faceVerifier: FaceVerifier,
     private val systemConfigManager: SystemConfigManager,
     private val userSessionRepository: UserSessionRepository,
     private val unifiedOrderRepository: UnifiedOrderRepository,
@@ -105,10 +108,10 @@ class IdentificationViewModel @Inject constructor(
         toastHelper.showShort(message)
     }
     
-    private suspend fun getTencentCloudConfig(): FaceVerificationManager.TencentCloudConfig? {
+    private suspend fun getTencentCloudConfig(): FaceVerificationConfig? {
         val third = systemConfigManager.getThirdKey() ?: return null
         if (third.txFaceAppId.isBlank() || third.txFaceAppSecret.isBlank() || third.txFaceAppLicence.isBlank()) return null
-        return FaceVerificationManager.TencentCloudConfig(
+        return FaceVerificationConfig(
             appId = third.txFaceAppId,
             secret = third.txFaceAppSecret,
             licence = third.txFaceAppLicence
@@ -290,7 +293,7 @@ class IdentificationViewModel @Inject constructor(
                     logD("已保存到本地缓存", tag = "IdentificationVM")
                 }
                 
-                val request = FaceVerificationManager.FaceVerifyRequest(
+                val request = FaceVerificationRequest(
                     name = name,
                     idNo = idNo,
                     orderNo = orderNo,
@@ -303,7 +306,7 @@ class IdentificationViewModel @Inject constructor(
                     setFaceVerificationError("人脸配置不可用")
                     return@launch
                 }
-                faceVerificationManager.startFaceVerification(
+                faceVerifier.startFaceVerification(
                     context = context,
                     config = cfg,
                     request = request,
@@ -337,7 +340,7 @@ class IdentificationViewModel @Inject constructor(
             _faceVerificationState.value = FaceVerificationState.Initializing
 
             try {
-                val request = FaceVerificationManager.FaceVerifyRequest(
+                val request = FaceVerificationRequest(
                     name = name,
                     idNo = idNo,
                     orderNo = orderNo,
@@ -350,7 +353,7 @@ class IdentificationViewModel @Inject constructor(
                     setFaceVerificationError("人脸配置不可用")
                     return@launch
                 }
-                faceVerificationManager.startFaceVerification(
+                faceVerifier.startFaceVerification(
                     context = context,
                     config = cfg,
                     request = request,
@@ -380,7 +383,7 @@ class IdentificationViewModel @Inject constructor(
             _currentVerificationType.value = verificationType
             _faceVerificationState.value = FaceVerificationState.Initializing
             
-            val request = FaceVerificationManager.FaceVerifyRequest(
+            val request = FaceVerificationRequest(
                 name = name,
                 idNo = idNo,
                 orderNo = orderNo,
@@ -392,7 +395,7 @@ class IdentificationViewModel @Inject constructor(
                 setFaceVerificationError("人脸配置不可用")
                 return@launch
             }
-            faceVerificationManager.startFaceVerification(
+            faceVerifier.startFaceVerification(
                 context = context,
                 config = cfg,
                 request = request,
@@ -404,7 +407,7 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 创建人脸验证回调 - 用于正常的身份验证流程
      */
-    private fun createFaceVerifyCallback() = object : FaceVerificationManager.FaceVerifyCallback {
+    private fun createFaceVerifyCallback() = object : FaceVerifyCallback {
         override fun onInitSuccess() {
             toastHelper.showShort("人脸验证初始化成功")
             _faceVerificationState.value = FaceVerificationState.Verifying
@@ -633,7 +636,7 @@ class IdentificationViewModel @Inject constructor(
                 toastHelper.showShort("开始人脸验证和设置...")
                 
                 // 创建人脸验证请求
-                val request = FaceVerificationManager.FaceVerifyRequest(
+                val request = FaceVerificationRequest(
                     name = currentUser.userName,
                     idNo = currentUser.identityCardNumber,
                     orderNo = "face_setup_${System.currentTimeMillis()}",
@@ -648,7 +651,7 @@ class IdentificationViewModel @Inject constructor(
                     setFaceSetupError(errorMsg)
                     return@launch
                 }
-                faceVerificationManager.startFaceVerification(
+                faceVerifier.startFaceVerification(
                     context = context,
                     config = cfg,
                     request = request,
@@ -666,7 +669,7 @@ class IdentificationViewModel @Inject constructor(
      * 创建人脸设置验证回调 - 专门用于首次设置人脸信息
      */
     private fun createFaceSetupVerifyCallback(imageFile: File, base64Image: String) = 
-        object : FaceVerificationManager.FaceVerifyCallback {
+        object : FaceVerifyCallback {
             override fun onInitSuccess() {
                 toastHelper.showShort("人脸验证初始化成功")
                 _faceSetupState.value = FaceSetupState.Initial
@@ -864,6 +867,6 @@ class IdentificationViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         // 释放人脸识别SDK资源
-        faceVerificationManager.release()
+        faceVerifier.release()
     }
 }
