@@ -125,6 +125,19 @@ jobs:
             exit 1
           fi
 
+      - name: Extract app version metadata
+        id: app_version
+        run: |
+          VERSION_CODE=$(sed -nE 's/.*appVersionCode by extra\(([0-9]+)\).*/\1/p' constants.gradle.kts | head -n1)
+          VERSION_NAME=$(sed -nE 's/.*appVersionName by extra\("([^"]+)"\).*/\1/p' constants.gradle.kts | head -n1)
+          if [ -z "$VERSION_CODE" ] || [ -z "$VERSION_NAME" ]; then
+            echo "Failed to parse app version from constants.gradle.kts"
+            exit 1
+          fi
+          echo "version_code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
+          echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Parsed version: ${VERSION_NAME} (${VERSION_CODE})"
+
       - name: Build release APK and AAB
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
@@ -132,6 +145,28 @@ jobs:
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease
+
+      - name: Rename release APK with version metadata
+        id: release_apk
+        run: |
+          VERSION_CODE="${{ steps.app_version.outputs.version_code }}"
+          VERSION_NAME="${{ steps.app_version.outputs.version_name }}"
+          DATE_STR=$(date +'%y%m%d')
+
+          APK_SOURCE=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" | head -n1)
+          if [ -z "$APK_SOURCE" ]; then
+            echo "No release APK found under app/build/outputs/apk/release"
+            exit 1
+          fi
+
+          APK_TARGET="app/build/outputs/apk/release/app-v${VERSION_NAME}-${DATE_STR}-${VERSION_CODE}-release.apk"
+          if [ "$APK_SOURCE" != "$APK_TARGET" ]; then
+            mv "$APK_SOURCE" "$APK_TARGET"
+          fi
+
+          echo "apk_path=${APK_TARGET}" >> "$GITHUB_OUTPUT"
+          echo "Final APK name: ${APK_TARGET}"
+          ls -lah app/build/outputs/apk/release
 
       - name: Generate release checksums
         run: |
@@ -161,17 +196,41 @@ jobs:
       - name: Compute release metadata
         id: release_meta
         run: |
+          VERSION_CODE="${{ steps.app_version.outputs.version_code }}"
+          VERSION_NAME="${{ steps.app_version.outputs.version_name }}"
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"
             echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
-            echo "release_name=Release ${TAG_NAME}" >> "$GITHUB_OUTPUT"
+            echo "release_name=Release ${TAG_NAME} (v${VERSION_NAME}, code ${VERSION_CODE})" >> "$GITHUB_OUTPUT"
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
           else
-            TAG_NAME="manual-${GITHUB_RUN_NUMBER}"
+            TAG_NAME="v${VERSION_NAME}-${VERSION_CODE}"
             echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
-            echo "release_name=Manual build ${TAG_NAME}" >> "$GITHUB_OUTPUT"
+            echo "release_name=Manual Release v${VERSION_NAME} (${VERSION_CODE})" >> "$GITHUB_OUTPUT"
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Generate release description
+        id: release_notes
+        run: |
+          NOTES_FILE="${RUNNER_TEMP}/release-notes.md"
+          VERSION_CODE="${{ steps.app_version.outputs.version_code }}"
+          VERSION_NAME="${{ steps.app_version.outputs.version_name }}"
+          TAG_NAME="${{ steps.release_meta.outputs.tag_name }}"
+          SHORT_SHA="${GITHUB_SHA::7}"
+
+          {
+            echo "## LongCare ${VERSION_NAME} (${VERSION_CODE})"
+            echo
+            echo "- Tag: \`${TAG_NAME}\`"
+            echo "- Commit: \`${SHORT_SHA}\`"
+            echo
+            echo "### Latest commits"
+            git log --no-merges -n 12 --pretty=format:'- %s (%h)'
+            echo
+          } > "${NOTES_FILE}"
+
+          echo "path=${NOTES_FILE}" >> "$GITHUB_OUTPUT"
 
       - name: Publish artifacts to GitHub Releases
         uses: softprops/action-gh-release@v2
@@ -180,6 +239,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: ${{ steps.release_meta.outputs.release_name }}
           prerelease: ${{ steps.release_meta.outputs.prerelease }}
+          body_path: ${{ steps.release_notes.outputs.path }}
           files: |
             app/build/outputs/apk/release/*.apk
             app/build/outputs/bundle/release/*.aab
