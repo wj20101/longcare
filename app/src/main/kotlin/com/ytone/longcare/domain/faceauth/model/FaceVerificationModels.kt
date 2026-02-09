@@ -4,6 +4,26 @@ const val FACE_AUTH_API_VERSION = "1.0.0"
 const val FACE_AUTH_SOURCE_PHOTO_TYPE_HD = "2"
 
 /**
+ * 腾讯云鉴权配置（SDK无关领域模型）
+ */
+data class FaceVerificationConfig(
+    val appId: String,
+    val secret: String,
+    val licence: String
+)
+
+/**
+ * 人脸验证请求（SDK无关领域模型）
+ */
+data class FaceVerificationRequest(
+    val name: String?,
+    val idNo: String?,
+    val orderNo: String,
+    val userId: String,
+    val sourcePhotoStr: String? = null
+)
+
+/**
  * 人脸验证错误（SDK无关领域模型）
  */
 data class FaceVerifyError(

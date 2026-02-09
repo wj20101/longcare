@@ -13,6 +13,8 @@ import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository
 import com.ytone.longcare.domain.faceauth.model.FACE_AUTH_API_VERSION
 import com.ytone.longcare.domain.faceauth.model.FACE_AUTH_SOURCE_PHOTO_TYPE_HD
+import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
+import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import javax.inject.Inject
@@ -30,37 +32,11 @@ import javax.inject.Singleton
 @Singleton
 class FaceVerificationManager @Inject constructor(
     private val tencentFaceRepository: TencentFaceRepository
-) {
+) : FaceVerifier {
 
     // ================================
     // 数据模型定义
     // ================================
-
-    /**
-     * 腾讯云配置参数
-     */
-    data class TencentCloudConfig(
-        val appId: String,
-        val secret: String,
-        val licence: String
-    )
-
-    /**
-     * 人脸验证请求参数
-     *
-     * @param name 姓名(自带源比对时，非必填)
-     * @param idNo 证件号(自带源比对时，非必填)
-     * @param orderNo 订单号
-     * @param userId 用户ID
-     * @param sourcePhotoStr 比对源照片(Base64, 自带源比对时，必填)
-     */
-    data class FaceVerifyRequest(
-        val name: String?,
-        val idNo: String?,
-        val orderNo: String,
-        val userId: String,
-        val sourcePhotoStr: String? = null
-    )
 
     /**
      * 人脸验证参数（SDK使用）
@@ -77,33 +53,6 @@ class FaceVerificationManager @Inject constructor(
         val mode: FaceVerifyStatus.Mode = FaceVerifyStatus.Mode.GRADE
     )
 
-    /**
-     * 认证凭据数据
-     */
-    // ================================
-    // 回调接口定义
-    // ================================
-
-    /**
-     * 人脸验证回调接口
-     */
-    interface FaceVerifyCallback {
-        /** 初始化成功 */
-        fun onInitSuccess()
-
-        /** 初始化失败 */
-        fun onInitFailed(error: FaceVerifyError?)
-
-        /** 验证成功 */
-        fun onVerifySuccess(result: FaceVerifyResult)
-
-        /** 验证失败 */
-        fun onVerifyFailed(error: FaceVerifyError?)
-
-        /** 用户取消验证 */
-        fun onVerifyCancel()
-    }
-
     // ================================
     // 公共API方法
     // ================================
@@ -116,10 +65,10 @@ class FaceVerificationManager @Inject constructor(
      * @param request 验证请求参数
      * @param callback 验证回调
      */
-    suspend fun startFaceVerification(
+    override suspend fun startFaceVerification(
         context: Context,
-        config: TencentCloudConfig,
-        request: FaceVerifyRequest,
+        config: FaceVerificationConfig,
+        request: FaceVerificationRequest,
         callback: FaceVerifyCallback
     ) {
         try {
@@ -170,7 +119,7 @@ class FaceVerificationManager @Inject constructor(
     /**
      * 获取访问令牌
      */
-    private suspend fun getAccessToken(config: TencentCloudConfig): String? {
+    private suspend fun getAccessToken(config: FaceVerificationConfig): String? {
         return try {
             val result = tencentFaceRepository.getAccessToken(config.appId, config.secret)
             if (result is ApiResult.Success) {
@@ -184,7 +133,7 @@ class FaceVerificationManager @Inject constructor(
     /**
      * 获取SIGN类型票据
      */
-    private suspend fun getSignTicket(config: TencentCloudConfig, accessToken: String): String? {
+    private suspend fun getSignTicket(config: FaceVerificationConfig, accessToken: String): String? {
         return try {
             val result = tencentFaceRepository.getSignTicket(config.appId, accessToken)
             if (result is ApiResult.Success) {
@@ -198,7 +147,7 @@ class FaceVerificationManager @Inject constructor(
     /**
      * 获取NONCE类型票据
      */
-    private suspend fun getNonceTicket(config: TencentCloudConfig, accessToken: String, userId: String): String? {
+    private suspend fun getNonceTicket(config: FaceVerificationConfig, accessToken: String, userId: String): String? {
         return try {
             val result = tencentFaceRepository.getApiTicket(config.appId, accessToken, userId)
             if (result is ApiResult.Success) {
@@ -213,8 +162,8 @@ class FaceVerificationManager @Inject constructor(
      * 获取人脸ID
      */
     private suspend fun getFaceId(
-        config: TencentCloudConfig,
-        request: FaceVerifyRequest,
+        config: FaceVerificationConfig,
+        request: FaceVerificationRequest,
         signTicket: String,
         nonce: String
     ): String? {
@@ -250,8 +199,8 @@ class FaceVerificationManager @Inject constructor(
      * 创建人脸验证参数
      */
     private fun createFaceVerifyParams(
-        config: TencentCloudConfig,
-        request: FaceVerifyRequest,
+        config: FaceVerificationConfig,
+        request: FaceVerificationRequest,
         faceId: String,
         nonceTicket: String,
         nonce: String
@@ -455,7 +404,7 @@ class FaceVerificationManager @Inject constructor(
     /**
      * 释放SDK资源
      */
-    fun release() {
+    override fun release() {
         try {
             WbCloudFaceVerifySdk.getInstance().release()
         } catch (_: Exception) {

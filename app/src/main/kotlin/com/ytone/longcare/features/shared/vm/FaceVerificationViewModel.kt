@@ -3,8 +3,11 @@ package com.ytone.longcare.features.shared.vm
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.common.utils.FaceVerificationManager
+import com.ytone.longcare.common.utils.FaceVerifyCallback
+import com.ytone.longcare.common.utils.FaceVerifier
 import com.ytone.longcare.common.utils.SystemConfigManager
+import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
+import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,7 +23,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class FaceVerificationViewModel @Inject constructor(
-    private val faceVerificationManager: FaceVerificationManager,
+    private val faceVerifier: FaceVerifier,
     private val systemConfigManager: SystemConfigManager
 ) : ViewModel() {
     
@@ -57,7 +60,7 @@ class FaceVerificationViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = FaceVerifyUiState.Initializing
 
-            val request = FaceVerificationManager.FaceVerifyRequest(
+            val request = FaceVerificationRequest(
                 name = name,
                 idNo = idNo,
                 orderNo = orderNo,
@@ -69,12 +72,12 @@ class FaceVerificationViewModel @Inject constructor(
                 _uiState.value = FaceVerifyUiState.Error(error = null, message = "人脸配置不可用")
                 return@launch
             }
-            val cfg = FaceVerificationManager.TencentCloudConfig(
+            val cfg = FaceVerificationConfig(
                 appId = third.txFaceAppId,
                 secret = third.txFaceAppSecret,
                 licence = third.txFaceAppLicence
             )
-            faceVerificationManager.startFaceVerification(
+            faceVerifier.startFaceVerification(
                 context = context,
                 config = cfg,
                 request = request,
@@ -99,7 +102,7 @@ class FaceVerificationViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = FaceVerifyUiState.Initializing
 
-            val request = FaceVerificationManager.FaceVerifyRequest(
+            val request = FaceVerificationRequest(
                 name = null, // 自带源比对时不需要姓名
                 idNo = null, // 自带源比对时不需要身份证号
                 orderNo = orderNo,
@@ -112,12 +115,12 @@ class FaceVerificationViewModel @Inject constructor(
                 _uiState.value = FaceVerifyUiState.Error(error = null, message = "人脸配置不可用")
                 return@launch
             }
-            val cfg = FaceVerificationManager.TencentCloudConfig(
+            val cfg = FaceVerificationConfig(
                 appId = third.txFaceAppId,
                 secret = third.txFaceAppSecret,
                 licence = third.txFaceAppLicence
             )
-            faceVerificationManager.startFaceVerification(
+            faceVerifier.startFaceVerification(
                 context = context,
                 config = cfg,
                 request = request,
@@ -129,7 +132,7 @@ class FaceVerificationViewModel @Inject constructor(
     /**
      * 创建人脸验证回调
      */
-    private fun createFaceVerifyCallback() = object : FaceVerificationManager.FaceVerifyCallback {
+    private fun createFaceVerifyCallback() = object : FaceVerifyCallback {
         override fun onInitSuccess() {
             _uiState.value = FaceVerifyUiState.Verifying
         }
@@ -176,6 +179,6 @@ class FaceVerificationViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         // 释放人脸识别SDK资源
-        faceVerificationManager.release()
+        faceVerifier.release()
     }
 }
