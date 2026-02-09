@@ -3,7 +3,6 @@ package com.ytone.longcare.common.utils
 import android.content.Context
 import android.content.SharedPreferences
 import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.response.SystemConfigModel
 import com.ytone.longcare.api.response.ThirdKeyReturnModel
@@ -16,6 +15,7 @@ import javax.inject.Singleton
 import androidx.core.content.edit
 import com.ytone.longcare.di.IoDispatcher
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -27,6 +27,7 @@ import kotlinx.coroutines.sync.withLock
 @Singleton
 class SystemConfigManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val moshi: Moshi,
     private val apiService: LongCareApiService,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val eventBus: AppEventBus
@@ -38,11 +39,7 @@ class SystemConfigManager @Inject constructor(
 
     private val sharedPreferences: SharedPreferences = 
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    
-    private val moshi = Moshi.Builder()
-        .add(KotlinJsonAdapterFactory())
-        .build()
-    
+
     private val systemConfigAdapter = moshi.adapter(SystemConfigModel::class.java)
     private val thirdKeyAdapter = moshi.adapter(ThirdKeyReturnModel::class.java)
     
@@ -164,6 +161,8 @@ class SystemConfigManager @Inject constructor(
                         cachedConfig = result.data
                         saveSystemConfig(result.data)
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     // 静默处理异步更新失败
                 }
@@ -178,6 +177,8 @@ class SystemConfigManager @Inject constructor(
                         saveSystemConfig(result.data)
                         return@withLock result.data
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     // 网络请求失败，返回null
                 }
