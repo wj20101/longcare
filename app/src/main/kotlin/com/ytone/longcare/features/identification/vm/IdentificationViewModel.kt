@@ -9,11 +9,11 @@ import com.ytone.longcare.api.request.SetFaceParamModel
 import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.CosUtils
-import com.ytone.longcare.common.utils.FaceVerifyCallback
-import com.ytone.longcare.common.utils.FaceVerifier
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.cos.repository.CosRepository
+import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
+import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult

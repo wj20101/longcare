@@ -3,9 +3,9 @@ package com.ytone.longcare.features.shared.vm
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.common.utils.FaceVerifyCallback
-import com.ytone.longcare.common.utils.FaceVerifier
 import com.ytone.longcare.common.utils.SystemConfigManager
+import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
+import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
