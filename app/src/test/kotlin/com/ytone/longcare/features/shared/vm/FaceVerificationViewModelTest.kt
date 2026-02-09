@@ -115,6 +115,30 @@ class FaceVerificationViewModelTest {
     }
 
     @Test
+    fun `startFaceVerificationWithAutoSign should expose init success as verifying state`() = runTest {
+        coEvery { systemConfigManager.getFaceVerificationConfig() } returns FaceVerificationConfig(
+            appId = "appId",
+            secret = "secret",
+            licence = "licence"
+        )
+        coEvery { faceVerifier.startFaceVerification(any(), any(), any(), any()) } coAnswers {
+            val callback = arg<FaceVerifyCallback>(3)
+            callback.onInitSuccess()
+        }
+        val viewModel = createViewModel()
+
+        viewModel.startFaceVerificationWithAutoSign(
+            context = context,
+            orderNo = "order",
+            userId = "user",
+            sourcePhotoStr = "base64"
+        )
+        advanceUntilIdle()
+
+        assertEquals(FaceVerificationViewModel.FaceVerifyUiState.Verifying, viewModel.uiState.value)
+    }
+
+    @Test
     fun `startFaceVerificationWithAutoSign should expose callback success as ui success`() = runTest {
         val result = FaceVerifyResult(isSuccess = true, error = null)
         coEvery { systemConfigManager.getFaceVerificationConfig() } returns FaceVerificationConfig(
