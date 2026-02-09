@@ -60,6 +60,6 @@ dependencies {
 
 androidComponents {
     onVariants { v ->
-        v.instrumentationRunnerArguments.put("targetAppId", v.testedApplicationId)
+        v.instrumentationRunnerArguments.put("targetAppId", "com.ytone.longcare")
     }
 }
