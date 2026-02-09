@@ -71,6 +71,14 @@
    - 依赖回退到旧坐标/旧分支。
    - 不改接口协议，确保服务端无感回滚。
 
+## 迁移命令模板
+- 本地 AAR 模式（默认）：
+  - `./gradlew :app:compileDebugKotlin`
+- Maven 模式（坐标切换验证）：
+  - `./gradlew :app:compileDebugKotlin -PTX_FACE_SDK_SOURCE=maven -PTX_FACE_LIVE_COORD=<group:artifact:version> -PTX_FACE_NORMAL_COORD=<group:artifact:version> -PTX_FACE_MAVEN_REPO_URL=<repo-url>`
+- 回滚到本地 AAR：
+  - `./gradlew :app:compileDebugKotlin -PTX_FACE_SDK_SOURCE=local`
+
 ## 5. 验收标准
 - UI/ViewModel 不再直接依赖腾讯 SDK 类型（当前已完成）。
 - release 与 debug 构建一致通过，无新增混淆/native 崩溃。
