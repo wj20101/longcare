@@ -47,7 +47,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
@@ -65,7 +64,6 @@ import java.io.File
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FaceVerificationWithAutoSignScreen(
-    navController: NavController,
     onNavigateBack: () -> Unit,
     onVerificationSuccess: (FaceVerifyResult) -> Unit,
     viewModel: FaceVerificationViewModel = hiltViewModel()
