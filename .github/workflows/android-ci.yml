@@ -44,7 +44,7 @@ jobs:
         run: ./gradlew --no-daemon :app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:bundleDebug :baselineprofile:assemble :app:bundleRelease
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/*.apk
@@ -52,7 +52,7 @@ jobs:
           retention-days: 14
 
       - name: Upload AAB
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: app-debug-aab
           path: app/build/outputs/bundle/debug/*.aab
@@ -60,7 +60,7 @@ jobs:
           retention-days: 14
 
       - name: Upload release AAB
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: app-release-aab
           path: app/build/outputs/bundle/release/*.aab
@@ -68,7 +68,7 @@ jobs:
           retention-days: 14
 
       - name: Upload baselineprofile APKs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: baselineprofile-apks
           path: baselineprofile/build/outputs/apk/**/*.apk
@@ -77,7 +77,7 @@ jobs:
 
       - name: Upload test and lint reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: app-reports
           path: |
@@ -121,7 +121,7 @@ jobs:
 
       - name: Upload instrumentation reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: instrumentation-smoke-reports
           path: |
