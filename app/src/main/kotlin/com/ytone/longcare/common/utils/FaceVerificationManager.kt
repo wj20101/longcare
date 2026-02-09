@@ -10,6 +10,8 @@ import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.tencent.cloud.huiyansdkface.facelight.process.FaceVerifyStatus
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
+import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository
 import com.ytone.longcare.domain.faceauth.model.FACE_AUTH_API_VERSION
 import com.ytone.longcare.domain.faceauth.model.FACE_AUTH_SOURCE_PHOTO_TYPE_HD

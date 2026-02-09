@@ -1,8 +1,9 @@
 package com.ytone.longcare.features.shared.vm
 
 import android.content.Context
-import com.ytone.longcare.common.utils.FaceVerifier
 import com.ytone.longcare.common.utils.SystemConfigManager
+import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
+import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
@@ -93,7 +94,7 @@ class FaceVerificationViewModelTest {
             licence = "licence"
         )
         coEvery { faceVerifier.startFaceVerification(any(), any(), any(), any()) } coAnswers {
-            val callback = arg<com.ytone.longcare.common.utils.FaceVerifyCallback>(3)
+            val callback = arg<FaceVerifyCallback>(3)
             callback.onVerifyFailed(sdkError)
         }
         val viewModel = createViewModel()
@@ -122,7 +123,7 @@ class FaceVerificationViewModelTest {
             licence = "licence"
         )
         coEvery { faceVerifier.startFaceVerification(any(), any(), any(), any()) } coAnswers {
-            val callback = arg<com.ytone.longcare.common.utils.FaceVerifyCallback>(3)
+            val callback = arg<FaceVerifyCallback>(3)
             callback.onVerifySuccess(result)
         }
         val viewModel = createViewModel()

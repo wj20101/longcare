@@ -1,4 +1,4 @@
-package com.ytone.longcare.common.utils
+package com.ytone.longcare.domain.faceauth
 
 import android.content.Context
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig

@@ -1,7 +1,7 @@
 package com.ytone.longcare.di
 
-import com.ytone.longcare.common.utils.FaceVerifier
 import com.ytone.longcare.common.utils.FaceVerificationManager
+import com.ytone.longcare.domain.faceauth.FaceVerifier
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
