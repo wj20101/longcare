@@ -108,12 +108,26 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Free disk space for emulator
+        run: |
+          echo "Disk usage before cleanup:"
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL || true
+          echo "Disk usage after cleanup:"
+          df -h /
+          FREE_MB=$(df -Pm / | awk 'NR==2 {print $4}')
+          if [ "$FREE_MB" -lt 8192 ]; then
+            echo "Insufficient free disk space for emulator userdata partition: ${FREE_MB}MB available."
+            exit 1
+          fi
+
       - name: Run instrumentation smoke test on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
           target: google_apis
           arch: x86_64
+          disk-size: 2048M
           emulator-boot-timeout: 900
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -accel off -no-snapshot-load -no-snapshot-save -no-metrics
           disable-animations: true
