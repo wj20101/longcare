@@ -4,8 +4,6 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
-import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.request.SetFaceParamModel
 import com.ytone.longcare.common.constants.CosConstants
@@ -15,6 +13,8 @@ import com.ytone.longcare.common.utils.FaceVerificationManager
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.cos.repository.CosRepository
+import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
+import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.domain.identification.IdentificationRepository
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
@@ -96,7 +96,7 @@ class IdentificationViewModel @Inject constructor(
     // 导航到人脸捕获页面的状态
     private val _navigateToFaceCapture = MutableStateFlow(false)
     val navigateToFaceCapture: StateFlow<Boolean> = _navigateToFaceCapture.asStateFlow()
-    private fun setFaceVerificationError(message: String, error: WbFaceError? = null) {
+    private fun setFaceVerificationError(message: String, error: FaceVerifyError? = null) {
         _faceVerificationState.value = FaceVerificationState.Error(error = error, message = message)
         toastHelper.showShort(message)
     }
@@ -130,8 +130,8 @@ class IdentificationViewModel @Inject constructor(
         object Idle : FaceVerificationState()
         object Initializing : FaceVerificationState()
         object Verifying : FaceVerificationState()
-        data class Success(val result: WbFaceVerifyResult) : FaceVerificationState()
-        data class Error(val error: WbFaceError?, val message: String) : FaceVerificationState()
+        data class Success(val result: FaceVerifyResult) : FaceVerificationState()
+        data class Error(val error: FaceVerifyError?, val message: String) : FaceVerificationState()
         object Cancelled : FaceVerificationState()
     }
 
@@ -410,12 +410,12 @@ class IdentificationViewModel @Inject constructor(
             _faceVerificationState.value = FaceVerificationState.Verifying
         }
         
-        override fun onInitFailed(error: WbFaceError?) {
-            val errorMsg = "人脸识别初始化失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
+        override fun onInitFailed(error: FaceVerifyError?) {
+            val errorMsg = "人脸识别初始化失败: ${error?.description ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
             setFaceVerificationError(errorMsg, error)
         }
         
-        override fun onVerifySuccess(result: WbFaceVerifyResult) {
+        override fun onVerifySuccess(result: FaceVerifyResult) {
             toastHelper.showShort("人脸验证成功")
             _faceVerificationState.value = FaceVerificationState.Success(result)
             
@@ -435,8 +435,8 @@ class IdentificationViewModel @Inject constructor(
             }
         }
         
-        override fun onVerifyFailed(error: WbFaceError?) {
-            val errorMsg = "人脸验证失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
+        override fun onVerifyFailed(error: FaceVerifyError?) {
+            val errorMsg = "人脸验证失败: ${error?.description ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
             setFaceVerificationError(errorMsg, error)
         }
         
@@ -476,6 +476,15 @@ class IdentificationViewModel @Inject constructor(
      */
     fun setElderVerified() {
         _identificationState.value = IdentificationState.ELDER_VERIFIED
+    }
+
+    fun updateFaceVerificationStatus(
+        request: OrderInfoRequestModel,
+        verified: Boolean
+    ) {
+        viewModelScope.launch {
+            unifiedOrderRepository.updateFaceVerification(request.toOrderKey(), verified)
+        }
     }
     
     /**
@@ -663,19 +672,19 @@ class IdentificationViewModel @Inject constructor(
                 _faceSetupState.value = FaceSetupState.Initial
             }
             
-            override fun onInitFailed(error: WbFaceError?) {
-                val errorMsg = "人脸验证初始化失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
+            override fun onInitFailed(error: FaceVerifyError?) {
+                val errorMsg = "人脸验证初始化失败: ${error?.description ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
                 setFaceSetupError(errorMsg)
             }
             
-            override fun onVerifySuccess(result: WbFaceVerifyResult) {
+            override fun onVerifySuccess(result: FaceVerifyResult) {
                 toastHelper.showShort("人脸验证成功，开始上传设置...")
                 // 验证成功后，上传并设置人脸信息
                 uploadAndSetFaceInfo(imageFile, base64Image)
             }
             
-            override fun onVerifyFailed(error: WbFaceError?) {
-                val errorMsg = "人脸验证失败: ${error?.desc ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
+            override fun onVerifyFailed(error: FaceVerifyError?) {
+                val errorMsg = "人脸验证失败: ${error?.description ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
                 setFaceSetupError(errorMsg)
             }
             

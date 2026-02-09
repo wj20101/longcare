@@ -4,7 +4,7 @@ import com.ytone.longcare.api.request.GetFaceIdRequest
 import com.ytone.longcare.api.response.TencentAccessTokenResponse
 import com.ytone.longcare.api.response.TencentApiTicketResponse
 import com.ytone.longcare.api.response.TencentFaceIdResponse
-import com.ytone.longcare.common.utils.FaceVerificationManager.Companion.FACE_VERSION
+import com.ytone.longcare.domain.faceauth.model.FACE_AUTH_API_VERSION
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -30,7 +30,7 @@ interface TencentFaceApiService {
         @Query("appId") appId: String,
         @Query("secret") secret: String,
         @Query("grant_type") grantType: String = "client_credential",
-        @Query("version") version: String = FACE_VERSION
+        @Query("version") version: String = FACE_AUTH_API_VERSION
     ): TencentAccessTokenResponse
     
     /**
@@ -49,7 +49,7 @@ interface TencentFaceApiService {
         @Query("appId") appId: String,
         @Query("access_token") accessToken: String,
         @Query("type") type: String = "NONCE",
-        @Query("version") version: String = FACE_VERSION,
+        @Query("version") version: String = FACE_AUTH_API_VERSION,
         @Query("user_id") userId: String
     ): TencentApiTicketResponse
     
@@ -69,7 +69,7 @@ interface TencentFaceApiService {
         @Query("appId") appId: String,
         @Query("access_token") accessToken: String,
         @Query("type") type: String = "SIGN",
-        @Query("version") version: String = FACE_VERSION
+        @Query("version") version: String = FACE_AUTH_API_VERSION
     ): TencentApiTicketResponse
     
     /**

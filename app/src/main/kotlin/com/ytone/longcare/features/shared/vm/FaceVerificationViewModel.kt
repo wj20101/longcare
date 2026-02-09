@@ -3,10 +3,10 @@ package com.ytone.longcare.features.shared.vm
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
-import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.ytone.longcare.common.utils.FaceVerificationManager
 import com.ytone.longcare.common.utils.SystemConfigManager
+import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
+import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,8 +31,8 @@ class FaceVerificationViewModel @Inject constructor(
         object Idle : FaceVerifyUiState()
         object Initializing : FaceVerifyUiState()
         object Verifying : FaceVerifyUiState()
-        data class Success(val result: WbFaceVerifyResult) : FaceVerifyUiState()
-        data class Error(val error: WbFaceError?, val message: String) : FaceVerifyUiState()
+        data class Success(val result: FaceVerifyResult) : FaceVerifyUiState()
+        data class Error(val error: FaceVerifyError?, val message: String) : FaceVerifyUiState()
         object Cancelled : FaceVerifyUiState()
     }
     
@@ -134,21 +134,21 @@ class FaceVerificationViewModel @Inject constructor(
             _uiState.value = FaceVerifyUiState.Verifying
         }
         
-        override fun onInitFailed(error: WbFaceError?) {
+        override fun onInitFailed(error: FaceVerifyError?) {
             _uiState.value = FaceVerifyUiState.Error(
                 error = error,
-                message = "人脸识别初始化失败: ${error?.desc ?: "未知错误"}"
+                message = "人脸识别初始化失败: ${error?.description ?: "未知错误"}"
             )
         }
         
-        override fun onVerifySuccess(result: WbFaceVerifyResult) {
+        override fun onVerifySuccess(result: FaceVerifyResult) {
             _uiState.value = FaceVerifyUiState.Success(result)
         }
         
-        override fun onVerifyFailed(error: WbFaceError?) {
+        override fun onVerifyFailed(error: FaceVerifyError?) {
             _uiState.value = FaceVerifyUiState.Error(
                 error = error,
-                message = "人脸验证失败: ${error?.desc ?: "未知错误"}"
+                message = "人脸验证失败: ${error?.description ?: "未知错误"}"
             )
         }
         

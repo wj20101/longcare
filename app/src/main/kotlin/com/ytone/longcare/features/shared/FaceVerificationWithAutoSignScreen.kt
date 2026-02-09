@@ -48,8 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
-import com.ytone.longcare.common.utils.FaceVerificationManager
+import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.shared.vm.FaceVerificationViewModel
@@ -68,7 +67,7 @@ import java.io.File
 fun FaceVerificationWithAutoSignScreen(
     navController: NavController,
     onNavigateBack: () -> Unit,
-    onVerificationSuccess: (WbFaceVerifyResult) -> Unit,
+    onVerificationSuccess: (FaceVerifyResult) -> Unit,
     viewModel: FaceVerificationViewModel = hiltViewModel()
 ) {
     val homeSharedViewModel: HomeSharedViewModel = hiltViewModel()
