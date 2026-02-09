@@ -106,7 +106,7 @@ jobs:
       - name: Create PR for baseline profile updates
         id: create_baseline_pr
         continue-on-error: true
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           # Prefer a PAT when provided. This bypasses repository policy restrictions
           # that can block pull request creation with GITHUB_TOKEN.
