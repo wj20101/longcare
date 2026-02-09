@@ -277,7 +277,7 @@ class FaceVerificationManager @Inject constructor(
         return object : WbCloudFaceVerifyLoginListener {
             override fun onLoginSuccess() {
                 // SDK登录成功，开始人脸验证
-                startFaceVerification(context, callback)
+                startSdkFaceVerification(context, callback)
             }
 
             override fun onLoginFailed(error: WbFaceError?) {
@@ -289,7 +289,7 @@ class FaceVerificationManager @Inject constructor(
     /**
      * 开始人脸验证
      */
-    private fun startFaceVerification(context: Context, callback: FaceVerifyCallback) {
+    private fun startSdkFaceVerification(context: Context, callback: FaceVerifyCallback) {
         try {
             WbCloudFaceVerifySdk.getInstance().startWbFaceVerifySdk(context) { result ->
                 handleVerificationResult(result, callback)
