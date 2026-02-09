@@ -6,7 +6,6 @@ import android.graphics.ImageFormat
 import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.YuvImage
-import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.common.InputImage
@@ -18,6 +17,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import kotlin.math.abs
+import com.ytone.longcare.common.utils.logD
+import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.common.utils.logW
 
 /**
  * 回调函数类型定义
@@ -92,7 +94,7 @@ class FaceCaptureAnalyzer(
                         try {
                             processFaces(faces, imageProxy)
                         } catch (e: Exception) {
-                            Log.e("FaceCaptureAnalyzer", "Error processing faces", e)
+                            logE("Error processing faces", tag = "FaceCaptureAnalyzer", throwable = e)
                             onHintChanged("处理失败，请重试")
                             onFaceDetectionChanged(false, 0f)
                         } finally {
@@ -102,13 +104,13 @@ class FaceCaptureAnalyzer(
                             try {
                                 imageProxy.close()
                             } catch (e: Exception) {
-                                Log.w("FaceCaptureAnalyzer", "Error closing ImageProxy", e)
+                                logW("Error closing ImageProxy", tag = "FaceCaptureAnalyzer", throwable = e)
                             }
                         }
                     }
                 }
                 .addOnFailureListener { exception ->
-                    Log.e("FaceCaptureAnalyzer", "Face detection failed", exception)
+                    logE("Face detection failed", tag = "FaceCaptureAnalyzer", throwable = exception)
                     onHintChanged("检测失败，请重试")
                     onFaceDetectionChanged(false, 0f)
                     isProcessing = false
@@ -116,7 +118,7 @@ class FaceCaptureAnalyzer(
                     try {
                         imageProxy.close()
                     } catch (e: Exception) {
-                        Log.w("FaceCaptureAnalyzer", "Error closing ImageProxy", e)
+                        logW("Error closing ImageProxy", tag = "FaceCaptureAnalyzer", throwable = e)
                     }
                 }
         } else {
@@ -286,7 +288,7 @@ class FaceCaptureAnalyzer(
             
             optimizedBitmap
         } catch (e: Exception) {
-            Log.e("FaceCaptureAnalyzer", "Error cropping face from image", e)
+            logE("Error cropping face from image", tag = "FaceCaptureAnalyzer", throwable = e)
             null
         }
     }
@@ -300,14 +302,14 @@ class FaceCaptureAnalyzer(
         return try {
             val image = imageProxy.image
             if (image == null) {
-                Log.w("FaceCaptureAnalyzer", "Image is null")
+                logW("Image is null", tag = "FaceCaptureAnalyzer")
                 return null
             }
             
             // 再次检查图像状态
             try {
                 val format = image.format
-                Log.d("FaceCaptureAnalyzer", "Converting image format: $format")
+                logD("Converting image format: $format", tag = "FaceCaptureAnalyzer")
                 
                 when (format) {
                     ImageFormat.YUV_420_888 -> {
@@ -317,19 +319,19 @@ class FaceCaptureAnalyzer(
                     ImageFormat.JPEG -> {
                         // 处理JPEG格式图像
                         if (image.planes.isEmpty()) {
-                            Log.w("FaceCaptureAnalyzer", "JPEG image has no planes")
+                            logW("JPEG image has no planes", tag = "FaceCaptureAnalyzer")
                             return null
                         }
                         
                         val plane = image.planes[0]
                         if (plane == null) {
-                            Log.w("FaceCaptureAnalyzer", "JPEG plane is null")
+                            logW("JPEG plane is null", tag = "FaceCaptureAnalyzer")
                             return null
                         }
                         
                         val buffer = plane.buffer
                         if (buffer == null) {
-                            Log.w("FaceCaptureAnalyzer", "JPEG buffer is null")
+                            logW("JPEG buffer is null", tag = "FaceCaptureAnalyzer")
                             return null
                         }
                         
@@ -342,17 +344,17 @@ class FaceCaptureAnalyzer(
                         try {
                             imageProxy.toBitmap()
                         } catch (e: Exception) {
-                            Log.w("FaceCaptureAnalyzer", "Failed to convert image format $format", e)
+                            logW("Failed to convert image format $format", tag = "FaceCaptureAnalyzer", throwable = e)
                             null
                         }
                     }
                 }
             } catch (e: IllegalStateException) {
-                Log.w("FaceCaptureAnalyzer", "Image state error: ${e.message}")
+                logW("Image state error: ${e.message}", tag = "FaceCaptureAnalyzer")
                 null
             }
         } catch (e: Exception) {
-            Log.e("FaceCaptureAnalyzer", "Error converting ImageProxy to Bitmap", e)
+            logE("Error converting ImageProxy to Bitmap", tag = "FaceCaptureAnalyzer", throwable = e)
             null
         }
     }
@@ -364,7 +366,7 @@ class FaceCaptureAnalyzer(
         return try {
             // 检查 planes 是否有效
             if (image.planes.size < 3) {
-                Log.w("FaceCaptureAnalyzer", "Invalid planes count: ${image.planes.size}")
+                logW("Invalid planes count: ${image.planes.size}", tag = "FaceCaptureAnalyzer")
                 return null
             }
             
@@ -374,7 +376,7 @@ class FaceCaptureAnalyzer(
             
             // 检查每个 plane 是否为 null
             if (yPlane == null || uPlane == null || vPlane == null) {
-                Log.w("FaceCaptureAnalyzer", "One or more planes are null")
+                logW("One or more planes are null", tag = "FaceCaptureAnalyzer")
                 return null
             }
             
@@ -384,7 +386,7 @@ class FaceCaptureAnalyzer(
             
             // 检查 buffer 是否为 null
             if (yBuffer == null || uBuffer == null || vBuffer == null) {
-                Log.w("FaceCaptureAnalyzer", "One or more buffers are null")
+                logW("One or more buffers are null", tag = "FaceCaptureAnalyzer")
                 return null
             }
 
@@ -394,7 +396,7 @@ class FaceCaptureAnalyzer(
             
             // 检查 buffer 大小是否有效
             if (ySize <= 0 || uSize <= 0 || vSize <= 0) {
-                Log.w("FaceCaptureAnalyzer", "Invalid buffer sizes: Y=$ySize, U=$uSize, V=$vSize")
+                logW("Invalid buffer sizes: Y=$ySize, U=$uSize, V=$vSize", tag = "FaceCaptureAnalyzer")
                 return null
             }
 
@@ -411,7 +413,7 @@ class FaceCaptureAnalyzer(
             val imageBytes = out.toByteArray()
             BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
         } catch (e: Exception) {
-            Log.e("FaceCaptureAnalyzer", "Error converting YUV to Bitmap", e)
+            logE("Error converting YUV to Bitmap", tag = "FaceCaptureAnalyzer", throwable = e)
             null
         }
     }
@@ -435,7 +437,7 @@ class FaceCaptureAnalyzer(
                 }
                 rotatedBitmap
             } catch (e: Exception) {
-                Log.e("FaceCaptureAnalyzer", "Error rotating bitmap", e)
+                logE("Error rotating bitmap", tag = "FaceCaptureAnalyzer", throwable = e)
                 bitmap
             }
         }

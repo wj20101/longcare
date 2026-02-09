@@ -7,7 +7,7 @@ import android.content.IntentFilter
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
+import com.ytone.longcare.common.utils.logI
 import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
@@ -44,14 +44,14 @@ class CountdownAlarmActivity : AppCompatActivity() {
     
     companion object {
         private const val TAG = "CountdownAlarmActivity"
-        private const val EXTRA_ORDER_ID = "order_id"
+        private const val EXTRA_REQUEST = "extra_request"
         private const val EXTRA_SERVICE_NAME = "service_name"
         private const val EXTRA_AUTO_CLOSE_ENABLED = "auto_close_enabled"
         private const val AUTO_CLOSE_DELAY_MS = 30000L // 30秒
         
-        fun createIntent(context: Context, orderId: String, serviceName: String, autoCloseEnabled: Boolean = true): Intent {
+        fun createIntent(context: Context, request: com.ytone.longcare.api.request.OrderInfoRequestModel, serviceName: String, autoCloseEnabled: Boolean = true): Intent {
             return Intent(context, CountdownAlarmActivity::class.java).apply {
-                putExtra(EXTRA_ORDER_ID, orderId)
+                putExtra(EXTRA_REQUEST, request)
                 putExtra(EXTRA_SERVICE_NAME, serviceName)
                 putExtra(EXTRA_AUTO_CLOSE_ENABLED, autoCloseEnabled)
                 // 确保Activity可以从后台启动
@@ -71,9 +71,9 @@ class CountdownAlarmActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        Log.i(TAG, "========================================")
-        Log.i(TAG, "✅ CountdownAlarmActivity onCreate 被调用")
-        Log.i(TAG, "========================================")
+        logI("========================================")
+        logI("✅ CountdownAlarmActivity onCreate 被调用")
+        logI("========================================")
         
         // 设置锁屏显示和点亮屏幕
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
@@ -88,7 +88,7 @@ class CountdownAlarmActivity : AppCompatActivity() {
                 WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
             )
         }
-        Log.i(TAG, "使用 setShowWhenLocked/setTurnScreenOn 设置锁屏显示")
+        logI("使用 setShowWhenLocked/setTurnScreenOn 设置锁屏显示")
         
         // 设置Window flags保持屏幕常亮
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -96,9 +96,16 @@ class CountdownAlarmActivity : AppCompatActivity() {
         // 使用 WindowCompat 设置全屏显示
         WindowCompat.setDecorFitsSystemWindows(window, false)
         
-        Log.i(TAG, "Window flags 已设置")
+        logI("Window flags 已设置")
         
-        val orderId = intent.getStringExtra(EXTRA_ORDER_ID) ?: ""
+        val request = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(EXTRA_REQUEST, com.ytone.longcare.api.request.OrderInfoRequestModel::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(EXTRA_REQUEST)
+        } ?: com.ytone.longcare.api.request.OrderInfoRequestModel(orderId = -1L, planId = 0)
+        
+        val orderId = request.orderId.toString()
         val serviceName = intent.getStringExtra(EXTRA_SERVICE_NAME) ?: "护理服务"
         val autoCloseEnabled = intent.getBooleanExtra(EXTRA_AUTO_CLOSE_ENABLED, true)
         

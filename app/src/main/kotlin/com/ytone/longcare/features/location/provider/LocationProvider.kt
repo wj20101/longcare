@@ -3,15 +3,6 @@ package com.ytone.longcare.features.location.provider
 import android.location.Location
 
 /**
- * 定位策略枚举
- */
-enum class LocationStrategy {
-    SYSTEM,  // 系统定位
-    AMAP,    // 高德定位
-    AUTO     // 自动选择（优先高德，失败时回退到系统）
-}
-
-/**
  * 定位结果数据类
  */
 data class LocationResult(

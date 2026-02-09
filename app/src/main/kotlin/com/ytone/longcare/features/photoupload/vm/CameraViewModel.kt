@@ -3,7 +3,7 @@ package com.ytone.longcare.features.photoupload.vm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.utils.SystemConfigManager
-import com.ytone.longcare.features.location.provider.CompositeLocationProvider
+import com.ytone.longcare.features.location.core.LocationFacade
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +17,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CameraViewModel @Inject constructor(
     private val systemConfigManager: SystemConfigManager,
-    private val compositeLocationProvider: CompositeLocationProvider
+    private val locationFacade: LocationFacade
 ) : ViewModel() {
 
     private val _location = MutableStateFlow("正在获取定位...")
@@ -32,7 +32,7 @@ class CameraViewModel @Inject constructor(
     fun updateCurrentLocationInfo() {
         viewModelScope.launch {
             try {
-                val locationResult = compositeLocationProvider.getCurrentLocation()
+                val locationResult = locationFacade.getCurrentLocation()
                 _location.value = if (locationResult != null) {
                     "${locationResult.longitude},${locationResult.latitude}"
                 } else {

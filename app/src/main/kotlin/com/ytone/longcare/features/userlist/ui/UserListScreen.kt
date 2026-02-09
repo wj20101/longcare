@@ -38,6 +38,7 @@ import com.ytone.longcare.api.response.UserInfoModel
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.features.userlist.vm.UserListViewModel
+import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.navigation.navigateToUserServiceRecord
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.bgGradientBrush
@@ -92,7 +93,7 @@ fun UserListScreen(
                 CenterAlignedTopAppBar(
                     title = { Text(title) },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        IconButton(onClick = singleClick { navController.popBackStack() }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "返回",
@@ -183,7 +184,7 @@ fun UserListContent(
             ) {
                 itemsIndexed(userList) { index, user ->
                     UserListItem(
-                        modifier = Modifier.clickable { onUserClick(user) },
+                        modifier = Modifier.clickable(onClick = singleClick { onUserClick(user) }),
                         user = user,
                         userListType = userListType
                     )

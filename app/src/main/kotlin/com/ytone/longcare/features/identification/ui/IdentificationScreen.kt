@@ -41,10 +41,14 @@ import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.navigation.navigateToCamera
 import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.navigation.navigateToManualFaceCapture
+import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
+import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.common.utils.singleClick
 
 /**
  * 身份认证相关常量
@@ -58,15 +62,18 @@ private object IdentificationConstants {
 @Composable
 fun IdentificationScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     identificationViewModel: IdentificationViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    
     val context = LocalContext.current
-    val faceVerificationStatusManager = EntryPointAccessors.fromApplication(
+    val unifiedOrderRepository = EntryPointAccessors.fromApplication(
         context.applicationContext,
         IdentificationEntryPoint::class.java
-    ).faceVerificationStatusManager()
+    ).unifiedOrderRepository()
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -90,7 +97,7 @@ fun IdentificationScreen(
                 scope.launch {
                     val watermarkData = identificationViewModel.generateWatermarkData(
                         address = sharedOrderDetailViewModel.getUserAddress(orderInfoRequest),
-                        orderId = orderInfoRequest.orderId
+                        request = orderInfoRequest
                     )
                     navController.navigateToCamera(watermarkData)
                 }
@@ -104,7 +111,7 @@ fun IdentificationScreen(
     LaunchedEffect(navController.currentBackStackEntry?.savedStateHandle) {
         navController.currentBackStackEntry?.savedStateHandle?.get<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)?.let { uriString ->
             val uri = uriString.toUri()
-            identificationViewModel.processElderPhoto(uri, orderInfoRequest.orderId)
+            identificationViewModel.processElderPhoto(uri, orderInfoRequest)
             // 清除数据，避免重复处理
             navController.currentBackStackEntry?.savedStateHandle?.remove<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)
         }
@@ -128,9 +135,11 @@ fun IdentificationScreen(
                     }
                     IdentificationViewModel.VerificationType.ELDER -> {
                         identificationViewModel.setElderVerified()
-                        // 老人验证成功后，保存人脸验证完成状态
+                        // 老人验证成功后，保存人脸验证完成状态到Room
                         if (orderInfoRequest.orderId > 0) {
-                            faceVerificationStatusManager.saveFaceVerificationCompleted(orderInfoRequest.orderId)
+                            scope.launch {
+                                unifiedOrderRepository.updateFaceVerification(orderInfoRequest.toOrderKey(), true)
+                            }
                         }
                     }
                     null -> { /* 无验证类型，不处理 */ }
@@ -172,7 +181,7 @@ fun IdentificationScreen(
         when (photoUploadState) {
             is IdentificationViewModel.PhotoUploadState.Success -> {
                 // 上传成功，自动跳转到下一步
-                navController.navigateToSelectService(orderInfoRequest)
+                navController.navigateToSelectService(orderParams)
                 // 重置状态
                 identificationViewModel.resetPhotoUploadState()
             }
@@ -194,7 +203,7 @@ fun IdentificationScreen(
                 CenterAlignedTopAppBar(
                     title = { Text("身份认证", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        IconButton(onClick = singleClick { navController.popBackStack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "返回",
@@ -220,7 +229,7 @@ fun IdentificationScreen(
                     ) {
                         // 下一步按钮
                         Button(
-                            onClick = { navController.navigateToSelectService(orderInfoRequest) },
+                            onClick = singleClick { navController.navigateToSelectService(orderParams) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 48.dp),
@@ -590,10 +599,10 @@ fun IdentificationCard(
                                         strokeWidth = 2.dp
                                     )
                                     Text(
-                                        text = when (photoUploadState) {
-                                            is IdentificationViewModel.PhotoUploadState.Processing -> "处理中..."
-                                            is IdentificationViewModel.PhotoUploadState.Uploading -> "上传中..."
-                                            else -> "处理中..."
+                                        text = if (photoUploadState is IdentificationViewModel.PhotoUploadState.Uploading) {
+                                            "上传中..."
+                                        } else {
+                                            "处理中..."
                                         },
                                         fontSize = 14.sp,
                                         color = Color(0xFF666666)

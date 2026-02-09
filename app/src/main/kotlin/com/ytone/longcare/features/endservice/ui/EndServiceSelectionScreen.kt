@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.endservice.ui
 
+
+import com.ytone.longcare.common.utils.logI
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +14,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,7 +26,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.R
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.features.endservice.vm.EndServiceSelectionUiState
 import com.ytone.longcare.features.endservice.vm.EndServiceSelectionViewModel
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
@@ -32,35 +34,33 @@ import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
 import com.ytone.longcare.theme.bgGradientBrush
 import androidx.compose.ui.platform.LocalContext
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
-import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
-import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
-import dagger.hilt.android.EntryPointAccessors
-import com.ytone.longcare.di.ServiceCountdownEntryPoint
 import android.widget.Toast
+import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.model.toOrderKey
+import com.ytone.longcare.common.utils.singleClick
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EndServiceSelectionScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     initialProjectIdList: List<Int>,
     endType: Int,
     viewModel: EndServiceSelectionViewModel = hiltViewModel(),
     countdownViewModel: ServiceCountdownViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val projectList by viewModel.projectList.collectAsStateWithLifecycle()
     val selectedProjectIds by viewModel.selectedProjectIds.collectAsStateWithLifecycle()
     
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    // 获取ServiceCountdownEntryPoint以访问CountdownNotificationManager
-    val entryPoint = remember {
-        EntryPointAccessors.fromApplication(
-            context.applicationContext, ServiceCountdownEntryPoint::class.java
-        )
-    }
-    val countdownNotificationManager = entryPoint.countdownNotificationManager()
+
 
     LaunchedEffect(Unit) {
         viewModel.initData(orderInfoRequest, initialProjectIdList)
@@ -71,7 +71,7 @@ fun EndServiceSelectionScreen(
             CenterAlignedTopAppBar(
                 title = { Text("确认服务项目", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = singleClick { navController.popBackStack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
@@ -189,36 +189,33 @@ fun EndServiceSelectionScreen(
                             NextStepButton(
                                 text = "确认结束服务",
                                 enabled = selectedProjectIds.isNotEmpty(),
-                                onClick = {
+                                onClick = singleClick {
                                     if (selectedProjectIds.isEmpty()) {
                                         Toast.makeText(context, "请至少选择一个服务项目", Toast.LENGTH_SHORT).show()
-                                        return@NextStepButton
+                                        return@singleClick
                                     }
 
-                                    // --- 先加载已上传的图片数据（在清理前获取） ---
-                                    countdownViewModel.loadUploadedImagesFromLocal(orderInfoRequest)
-                                    val uploadedImages = countdownViewModel.getCurrentUploadedImages()
+                                    scope.launch {
+                                        // --- 先加载已上传的图片数据 ---
+                                        val uploadedImages = countdownViewModel.getUploadedImagesSuspend(orderInfoRequest.toOrderKey())
 
-                                    // --- 执行资源清理逻辑 ---
-                                    CountdownForegroundService.stopCountdown(context)
-                                    countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest.orderId)
-                                    AlarmRingtoneService.stopRingtone(context)
-                                    countdownViewModel.endService(orderInfoRequest, context)
+                                        val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE]?.mapNotNull { it.key } ?: emptyList()
+                                        val centerImgList = uploadedImages[ImageTaskType.CENTER_CARE]?.mapNotNull { it.key } ?: emptyList()
+                                        val endImgList = uploadedImages[ImageTaskType.AFTER_CARE]?.mapNotNull { it.key } ?: emptyList()
+                                        
+                                        com.ytone.longcare.common.utils.KLogger.i("EndServiceSelection", "Navigating to NFC. Images - Begin: ${beginImgList.size}, Center: ${centerImgList.size}, End: ${endImgList.size}")
 
-                                    val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE]?.mapNotNull { it.key } ?: emptyList()
-                                    val centerImgList = uploadedImages[ImageTaskType.CENTER_CARE]?.mapNotNull { it.key } ?: emptyList()
-                                    val endImgList = uploadedImages[ImageTaskType.AFTER_CARE]?.mapNotNull { it.key } ?: emptyList()
-
-                                    navController.navigateToNfcSignInForEndOrder(
-                                        orderInfoRequest = orderInfoRequest,
-                                        params = EndOderInfo(
-                                            projectIdList = viewModel.getConfirmedProjectIds(),
-                                            beginImgList = beginImgList,
-                                            centerImgList = centerImgList,
-                                            endImgList = endImgList,
-                                            endType = endType
+                                        navController.navigateToNfcSignInForEndOrder(
+                                            orderParams = orderParams,
+                                            params = EndOderInfo(
+                                                projectIdList = viewModel.getConfirmedProjectIds(),
+                                                beginImgList = beginImgList,
+                                                centerImgList = centerImgList,
+                                                endImgList = endImgList,
+                                                endType = endType
+                                            )
                                         )
-                                    )
+                                    }
                                 },
                                 modifier = Modifier.weight(1f)
                             )

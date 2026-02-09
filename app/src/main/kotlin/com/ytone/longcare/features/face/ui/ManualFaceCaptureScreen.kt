@@ -4,7 +4,7 @@ import android.Manifest
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.util.Log
+import com.ytone.longcare.common.utils.logE
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -320,7 +320,7 @@ private fun CameraPreviewContent(
                             
                         } catch (exc: Exception) {
                             // 记录错误但不崩溃
-                            android.util.Log.e("CameraPreview", "相机初始化失败", exc)
+                            com.ytone.longcare.common.utils.KLogger.e("CameraPreview", "相机初始化失败", exc)
                         }
                     }, ContextCompat.getMainExecutor(ctx))
                 }
@@ -750,14 +750,14 @@ private fun takePhoto(
                     val correctedBitmap = correctImageOrientation(originalBitmap, rotationDegrees)
                     viewModel.onPhotoCaptured(correctedBitmap)
                 } catch (e: Exception) {
-                    Log.e("CameraCapture", "图片处理失败", e)
+                    com.ytone.longcare.common.utils.KLogger.e("CameraCapture", "图片处理失败", e)
                 } finally {
                     image.close()
                 }
             }
 
             override fun onError(exception: ImageCaptureException) {
-                Log.e("CameraCapture", "拍照失败", exception)
+                com.ytone.longcare.common.utils.KLogger.e("CameraCapture", "拍照失败", exception)
             }
         }
     )
@@ -835,7 +835,7 @@ private fun correctImageOrientation(bitmap: Bitmap, rotationDegrees: Int): Bitma
             }
         }
     } catch (e: Exception) {
-        Log.e("ImageCorrection", "图片方向修正失败", e)
+        com.ytone.longcare.common.utils.KLogger.e("ImageCorrection", "图片方向修正失败", e)
         bitmap // 如果修正失败，返回原始图片
     }
 }

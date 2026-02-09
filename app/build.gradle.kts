@@ -1,25 +1,12 @@
-import com.android.build.gradle.internal.api.ApkVariantOutputImpl
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-
 plugins {
     alias(libs.plugins.androidApplication)
-    alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
-    alias(libs.plugins.wire)
     alias(libs.plugins.baselineprofile)
     id("kotlin-parcelize")
-}
-
-wire {
-    kotlin {
-        javaInterop = true
-    }
 }
 
 val appCompileSdkVersion: Int by rootProject.extra
@@ -28,21 +15,51 @@ val appMinSdkVersion: Int by rootProject.extra
 val appJdkVersion: Int by rootProject.extra
 val appVersionCode: Int by rootProject.extra
 val appVersionName: String by rootProject.extra
+val baselineEnableX86_64 =
+    providers
+        .gradleProperty("baseline.enableX86_64")
+        .orElse("false")
+        .map { it.equals("true", ignoreCase = true) }
+        .get()
+val releaseStoreFilePath =
+    providers
+        .gradleProperty("RELEASE_STORE_FILE")
+        .orElse(providers.environmentVariable("ANDROID_KEYSTORE_PATH"))
+val releaseStorePassword =
+    providers
+        .gradleProperty("RELEASE_STORE_PASSWORD")
+        .orElse(providers.environmentVariable("RELEASE_STORE_PASSWORD"))
+val releaseKeyAlias =
+    providers
+        .gradleProperty("RELEASE_KEY_ALIAS")
+        .orElse(providers.environmentVariable("RELEASE_KEY_ALIAS"))
+val releaseKeyPassword =
+    providers
+        .gradleProperty("RELEASE_KEY_PASSWORD")
+        .orElse(providers.environmentVariable("RELEASE_KEY_PASSWORD"))
+val releaseStoreFile = releaseStoreFilePath.orNull?.let(::file) ?: file("../keystore.jks")
+val hasReleaseSigning =
+    releaseStoreFile.exists() &&
+        !releaseStorePassword.orNull.isNullOrBlank() &&
+        !releaseKeyAlias.orNull.isNullOrBlank() &&
+        !releaseKeyPassword.orNull.isNullOrBlank()
 
 android {
     namespace = "com.ytone.longcare"
     compileSdk = appCompileSdkVersion
 
     signingConfigs {
-        create("release") {
-            keyAlias = "longcare"
-            keyPassword = "longcare^&*()"
-            storeFile = file("../keystore.jks")
-            storePassword = "longcare~!@#\$%"
-            enableV1Signing = true
-            enableV2Signing = true
-            enableV3Signing = true
-            enableV4Signing = true
+        if (hasReleaseSigning) {
+            create("release") {
+                keyAlias = releaseKeyAlias.orNull
+                keyPassword = releaseKeyPassword.orNull
+                storeFile = releaseStoreFile
+                storePassword = releaseStorePassword.orNull
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = true
+            }
         }
     }
 
@@ -62,7 +79,11 @@ android {
         )
 
         ndk {
-            abiFilters += listOf("arm64-v8a")
+            val enabledAbis = mutableListOf("arm64-v8a")
+            if (baselineEnableX86_64) {
+                enabledAbis += "x86_64"
+            }
+            abiFilters += enabledAbis
         }
     }
 
@@ -84,14 +105,24 @@ android {
             buildConfigField("String", "BASE_URL", "\"https://careapi.ytone.cn\"") // 生产环境 URL
             // 在 release 版本中，定义 USE_MOCK_DATA 常量为 false
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig =
+                if (hasReleaseSigning) {
+                    signingConfigs.getByName("release")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
 
         debug {
             buildConfigField("String", "BASE_URL", "\"https://careapi.ytone.cn\"") // 测试环境 URL
-            // 在 debug 版本中，定义 USE_MOCK_DATA 常量为 true
-            buildConfigField("boolean", "USE_MOCK_DATA", "true")
-            signingConfig = signingConfigs.getByName("release")
+            // 在 debug 版本中，当前仍使用线上数据
+            buildConfigField("boolean", "USE_MOCK_DATA", "false")
+            signingConfig =
+                if (hasReleaseSigning) {
+                    signingConfigs.getByName("release")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
     }
     kotlin {
@@ -104,36 +135,44 @@ android {
         viewBinding = true
     }
 
+    packaging {
+        jniLibs {
+            keepDebugSymbols +=
+                setOf(
+                    "**/libBugly_Native.so",
+                    "**/libBugly_Native_idasc.so",
+                    "**/libYTCommonLiveness.so",
+                    "**/libandroidx.graphics.path.so",
+                    "**/libdatastore_shared_counter.so",
+                    "**/libface_detector_v2_jni.so",
+                    "**/libimage_processing_util_jni.so",
+                    "**/libkyctoolkit.so",
+                    "**/libsurface_util_jni.so",
+                    "**/libturingmfa.so",
+                    "**/libweconvert.so",
+                    "**/libweyuv.so",
+                )
+        }
+    }
+
 //    flavorDimensions += "environment"
 //    productFlavors {
 //        create("dev") { dimension = "environment" }
 //        create("prod") { dimension = "environment" }
 //    }
+}
 
-    // Custom APK naming
-    applicationVariants.all {
-        val variant = this
-        val versionName = variant.versionName
-        val versionCode = variant.versionCode
+baselineProfile {
+    warnings {
+        maxAgpVersion = false
+    }
+}
 
-        outputs.configureEach {
-            val date = SimpleDateFormat("yyMMdd", Locale.US).format(Date())
-            val fileName =
-                buildString {
-                    append("app")
-                    append("-v$versionName")
-                    append("-$date")
-                    append("-$versionCode")
-//                    append("-")
-//                    append(variant.productFlavors.joinToString("-") { it.name })
-                    append("-${variant.buildType.name}")
-                    append(".apk")
-                }
-
-            if (this is ApkVariantOutputImpl) {
-                outputFileName = fileName
-            }
-        }
+// Hilt's Java compile classpath should not pick up Moshi's processor.
+// Keep Moshi codegen on KSP only to avoid kapt deprecation warnings.
+configurations.configureEach {
+    if (name.startsWith("hiltAnnotationProcessor")) {
+        exclude(group = "com.squareup.moshi", module = "moshi-kotlin-codegen")
     }
 }
 
@@ -158,9 +197,6 @@ dependencies {
     implementation(libs.compose.material3.adaptive)
     debugImplementation(libs.compose.ui.tooling) // For UI Tooling (like Previews in debug)
     implementation(libs.compose.ui.tooling.preview) // For Previews
-
-    // Constraintlayout Compose
-    implementation(libs.constraintlayout.compose)
 
     // AndroidX Startup
     implementation(libs.startup.runtime)
@@ -192,8 +228,6 @@ dependencies {
     implementation(libs.moshi.kotlin)
     ksp(libs.moshi.kotlin.codegen)
     implementation(libs.retrofit.converter.moshi)
-    implementation(libs.wire.moshi.adapter)
-    implementation(libs.retrofit.converter.wire)
     implementation(libs.kotlinx.serialization.json)
 
     // Data Storage
@@ -253,6 +287,7 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.work.testing)
     testImplementation(libs.androidx.test.core)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(platform(libs.compose.bom)) // For Compose tests

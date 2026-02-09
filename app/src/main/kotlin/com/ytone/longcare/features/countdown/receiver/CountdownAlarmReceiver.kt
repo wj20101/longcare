@@ -9,6 +9,7 @@ import android.os.PowerManager
 import androidx.core.content.getSystemService
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
@@ -28,7 +29,14 @@ class CountdownAlarmReceiver : BroadcastReceiver() {
         logI("🔔 收到倒计时闹钟广播")
         logI("========================================")
         
-        val orderId = intent.getLongExtra(CountdownNotificationManager.EXTRA_ORDER_ID, -1L)
+        val request = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(CountdownNotificationManager.EXTRA_REQUEST, OrderInfoRequestModel::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(CountdownNotificationManager.EXTRA_REQUEST)
+        } ?: OrderInfoRequestModel(orderId = -1L, planId = 0)
+        
+        val orderId = request.orderId
         val serviceName = intent.getStringExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME) ?: "未知服务"
         
         if (orderId == -1L) {
@@ -48,7 +56,7 @@ class CountdownAlarmReceiver : BroadcastReceiver() {
         // 使用 PARTIAL_WAKE_LOCK 保持CPU运行，屏幕点亮由 Activity 的 setTurnScreenOn 处理
         val powerManager = context.getSystemService<PowerManager>()
         val wakeLock = powerManager?.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            PowerManager.PARTIAL_WAKE_LOCK,
             "LongCare:CountdownAlarm"
         )
         
@@ -64,7 +72,8 @@ class CountdownAlarmReceiver : BroadcastReceiver() {
             // 2. 启动响铃服务（持续播放声音和震动，并负责显示全屏通知和启动Activity）
             // 注意：我们将显示UI和播放声音的逻辑全部移交给了AlarmRingtoneService
             // 这样可以通过前台服务获得更高的优先级，解决华为/三星等设备后台无法启动Activity的问题
-            AlarmRingtoneService.startRingtone(context, orderId.toString(), serviceName)
+            // 这样可以通过前台服务获得更高的优先级，解决华为/三星等设备后台无法启动Activity的问题
+            AlarmRingtoneService.startRingtone(context, request, serviceName)
             logI("✅ 响铃服务已启动")
             
             logI("========================================")

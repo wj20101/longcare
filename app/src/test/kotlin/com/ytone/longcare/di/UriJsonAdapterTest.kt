@@ -7,6 +7,7 @@ import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
 import org.junit.Test
 import org.junit.Assert.*
 
@@ -31,6 +32,10 @@ class UriJsonAdapterTest {
     @Test
     fun testUriDeserialization() {
         val json = "\"content://media/external/images/media/123\""
+        val mockUri = mockk<Uri>()
+        every { mockUri.toString() } returns "content://media/external/images/media/123"
+        mockkStatic(Uri::class)
+        every { Uri.parse("content://media/external/images/media/123") } returns mockUri
         
         // 反序列化
         val adapter = DefaultMoshi.adapter(Uri::class.java)
@@ -84,6 +89,14 @@ class UriJsonAdapterTest {
     
     @Test
     fun testImageTaskWithUriDeserialization() {
+        val mockOriginalUri = mockk<Uri>()
+        val mockResultUri = mockk<Uri>()
+        every { mockOriginalUri.toString() } returns "content://original/123"
+        every { mockResultUri.toString() } returns "content://result/456"
+        mockkStatic(Uri::class)
+        every { Uri.parse("content://original/123") } returns mockOriginalUri
+        every { Uri.parse("content://result/456") } returns mockResultUri
+
         val json = """
             {
                 "id": "test-id",

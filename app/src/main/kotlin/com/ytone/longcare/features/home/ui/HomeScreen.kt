@@ -24,6 +24,8 @@ import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.PermissionGuideType
 import com.ytone.longcare.features.home.vm.HomeViewModel
 import com.ytone.longcare.features.maindashboard.ui.MainDashboardScreen
+import dagger.hilt.android.EntryPointAccessors
+import com.ytone.longcare.di.HomeEntryPoint
 import com.ytone.longcare.features.nursing.ui.NursingScreen
 import com.ytone.longcare.features.profile.ui.ProfileScreen
 import com.ytone.longcare.theme.LongCareTheme
@@ -77,11 +79,8 @@ fun HomeScreen(
         // 用户从设置页返回，检查是否还需要其他权限引导
         when (DeviceCompatibilityHelper.getRequiredPermissionGuide(context)) {
             PermissionGuideType.BATTERY -> {
-                val batteryGuide = DeviceCompatibilityHelper.getBatteryGuideMessage()
-                if (batteryGuide != null) {
-                    batteryMessage = batteryGuide
-                    showBatteryDialog = true
-                }
+                batteryMessage = DeviceCompatibilityHelper.getBatteryGuideMessage()
+                showBatteryDialog = true
             }
             else -> { /* 不需要更多引导 */ }
         }
@@ -125,11 +124,8 @@ fun HomeScreen(
                 }
             }
             PermissionGuideType.BATTERY -> {
-                val batteryGuide = DeviceCompatibilityHelper.getBatteryGuideMessage()
-                if (batteryGuide != null) {
-                    batteryMessage = batteryGuide
-                    showBatteryDialog = true
-                }
+                batteryMessage = DeviceCompatibilityHelper.getBatteryGuideMessage()
+                showBatteryDialog = true
             }
             else -> { /* 不需要引导 */ }
         }
@@ -207,11 +203,8 @@ fun HomeScreen(
                         // 检查下一个需要引导的权限
                         when (DeviceCompatibilityHelper.getRequiredPermissionGuide(context)) {
                             PermissionGuideType.BATTERY -> {
-                                val batteryGuide = DeviceCompatibilityHelper.getBatteryGuideMessage()
-                                if (batteryGuide != null) {
-                                    batteryMessage = batteryGuide
-                                    showBatteryDialog = true
-                                }
+                                batteryMessage = DeviceCompatibilityHelper.getBatteryGuideMessage()
+                                showBatteryDialog = true
                             }
                             else -> { /* 不需要更多引导 */ }
                         }
