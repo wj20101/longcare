@@ -11,14 +11,14 @@ import android.os.Handler
 import android.os.Looper
 import androidx.core.app.AlarmManagerCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.content.edit
 import androidx.work.*
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.service.receiver.ServiceTimeAlarmReceiver
 import com.ytone.longcare.features.service.storage.PendingOrdersStorage
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -36,6 +36,8 @@ class ServiceTimeNotificationManager @Inject constructor(
     private val workManager: WorkManager,
     private val pendingOrdersStorage: PendingOrdersStorage
 ) {
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val handlerRunnables = ConcurrentHashMap<Long, Runnable>()
 
     companion object {
         private const val TAG = "ServiceTimeNotificationManager"
@@ -96,7 +98,6 @@ class ServiceTimeNotificationManager @Inject constructor(
             if (delayMillis <= 0) {
                 logI("服务时间已过，立即触发通知: orderId=$orderId")
                 showServiceTimeEndNotification(orderId, serviceName)
-                markNotificationAsProcessed(orderId)
                 return
             }
             
@@ -134,7 +135,10 @@ class ServiceTimeNotificationManager @Inject constructor(
             cancelAlarmManagerNotification(orderId)
             
             // 取消WorkManager
-            cancelWorkManagerNotification()
+            cancelWorkManagerNotification(orderId)
+
+            // 取消Handler
+            cancelHandlerNotification(orderId)
             
             // 清除处理标记
             clearNotificationProcessedMark(orderId)
@@ -244,18 +248,21 @@ class ServiceTimeNotificationManager @Inject constructor(
         delayMillis: Long
     ) {
         try {
-            val handler = Handler(Looper.getMainLooper())
-            handler.postDelayed({
+            cancelHandlerNotification(orderId)
+            val runnable = Runnable {
                 try {
                     if (!isNotificationAlreadyProcessed(orderId)) {
                         logI("Handler兜底通知触发: orderId=$orderId")
                         showServiceTimeEndNotification(orderId, serviceName)
-                        markNotificationAsProcessed(orderId)
                     }
                 } catch (e: Exception) {
                     logE("Handler通知执行失败: ${e.message}")
+                } finally {
+                    handlerRunnables.remove(orderId)
                 }
-            }, delayMillis)
+            }
+            handlerRunnables[orderId] = runnable
+            mainHandler.postDelayed(runnable, delayMillis)
 
             logI("Handler通知已设置: orderId=$orderId, delay=$delayMillis")
             
@@ -270,6 +277,10 @@ class ServiceTimeNotificationManager @Inject constructor(
      */
     fun showServiceTimeEndNotification(orderId: Long, serviceName: String) {
         try {
+            if (isNotificationAlreadyProcessed(orderId)) {
+                logI("通知已处理，跳过显示: orderId=$orderId")
+                return
+            }
             logI("显示服务时间结束通知: orderId=$orderId, serviceName=$serviceName")
             
             val notification = NotificationCompat.Builder(context, SERVICE_TIME_CHANNEL_ID)
@@ -283,6 +294,8 @@ class ServiceTimeNotificationManager @Inject constructor(
                 .build()
 
             notificationManager.notify(SERVICE_TIME_NOTIFICATION_ID + orderId.toInt(), notification)
+            markNotificationAsProcessed(orderId)
+            cancelHandlerNotification(orderId)
             
             logI("服务时间结束通知已显示: orderId=$orderId")
             
@@ -336,14 +349,23 @@ class ServiceTimeNotificationManager @Inject constructor(
     /**
      * 取消WorkManager通知
      */
-    private fun cancelWorkManagerNotification() {
+    private fun cancelWorkManagerNotification(orderId: Long) {
         try {
-            workManager.cancelAllWorkByTag(WORK_TAG)
-            logI("WorkManager通知已取消")
+            workManager.cancelUniqueWork(UNIQUE_WORK_NAME + orderId)
+            logI("WorkManager通知已取消: orderId=$orderId")
             
         } catch (e: Exception) {
             logE("取消WorkManager通知失败: ${e.message}")
         }
+    }
+
+    /**
+     * 取消Handler通知
+     */
+    private fun cancelHandlerNotification(orderId: Long) {
+        val runnable = handlerRunnables.remove(orderId) ?: return
+        mainHandler.removeCallbacks(runnable)
+        logI("Handler通知已取消: orderId=$orderId")
     }
 
     /**
@@ -363,7 +385,9 @@ class ServiceTimeNotificationManager @Inject constructor(
      */
     private fun markNotificationAsProcessed(orderId: Long) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putLong(KEY_LAST_PROCESSED_ORDER + orderId, System.currentTimeMillis()).apply()
+        prefs.edit {
+            putLong(KEY_LAST_PROCESSED_ORDER + orderId, System.currentTimeMillis())
+        }
     }
 
     /**
@@ -371,7 +395,7 @@ class ServiceTimeNotificationManager @Inject constructor(
      */
     private fun clearNotificationProcessedMark(orderId: Long) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().remove(KEY_LAST_PROCESSED_ORDER + orderId).apply()
+        prefs.edit { remove(KEY_LAST_PROCESSED_ORDER + orderId) }
     }
 
     /**

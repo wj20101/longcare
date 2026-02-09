@@ -8,10 +8,11 @@ import androidx.work.Configuration
 import androidx.work.WorkManager
 import com.ytone.longcare.features.service.ServiceTimeNotificationManager
 import com.ytone.longcare.features.service.storage.PendingOrdersStorage
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
@@ -24,6 +25,7 @@ class ServiceTimeNotificationIntegrationTest {
     private lateinit var context: Context
     private lateinit var notificationManager: NotificationManager
     private lateinit var workManager: WorkManager
+    private lateinit var pendingOrdersStorage: PendingOrdersStorage
     private lateinit var serviceTimeNotificationManager: ServiceTimeNotificationManager
 
     @Before
@@ -35,13 +37,17 @@ class ServiceTimeNotificationIntegrationTest {
         val config = Configuration.Builder()
             .setMinimumLoggingLevel(android.util.Log.DEBUG)
             .build()
-        
-        WorkManager.initialize(context, config)
+
+        try {
+            WorkManager.initialize(context, config)
+        } catch (_: IllegalStateException) {
+            // WorkManager 可能已在同一进程中初始化，复用现有实例即可。
+        }
         workManager = WorkManager.getInstance(context)
         
         // 使用真实的服务管理器
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
-        val pendingOrdersStorage = PendingOrdersStorage(context)
+        pendingOrdersStorage = PendingOrdersStorage(context)
         serviceTimeNotificationManager = ServiceTimeNotificationManager(
             context,
             notificationManager,
@@ -60,23 +66,18 @@ class ServiceTimeNotificationIntegrationTest {
         val serviceName = "集成测试服务"
         val delaySeconds = 3L
         val endTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(delaySeconds)
-        
-        // 创建闩锁等待通知触发
-        val latch = CountDownLatch(1)
-        
+
         // 调度通知
         serviceTimeNotificationManager.scheduleServiceTimeEndNotification(
             orderId,
             serviceName,
             endTime
         )
-        
-        // 等待通知触发（给一些额外时间）
-        val result = latch.await(delaySeconds + 2, TimeUnit.SECONDS)
-        
-        // 验证通知系统正常工作
-        // 注意：实际的通知显示需要检查通知栏，这里主要验证无异常
-        assert(true)
+
+        val pending = pendingOrdersStorage.getAllPendingOrders()
+        assertEquals(1, pending.size)
+        assertEquals(orderId, pending[0].orderId)
+        assertEquals(serviceName, pending[0].serviceName)
     }
 
     /**
@@ -97,12 +98,9 @@ class ServiceTimeNotificationIntegrationTest {
         
         // 立即取消
         serviceTimeNotificationManager.cancelServiceTimeEndNotification(orderId)
-        
-        // 等待原定的触发时间
-        Thread.sleep(TimeUnit.SECONDS.toMillis(12))
-        
-        // 验证通知被取消（主要验证无异常）
-        assert(true)
+
+        val pending = pendingOrdersStorage.getAllPendingOrders()
+        assertTrue(pending.isEmpty())
     }
 
     /**
@@ -124,11 +122,8 @@ class ServiceTimeNotificationIntegrationTest {
                 endTime
             )
         }
-        
-        // 等待所有通知触发
-        Thread.sleep(TimeUnit.SECONDS.toMillis(8))
-        
-        // 验证多个通知正常工作
-        assert(true)
+
+        val pending = pendingOrdersStorage.getAllPendingOrders()
+        assertEquals(3, pending.size)
     }
 }

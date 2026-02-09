@@ -11,6 +11,7 @@ import coil3.svg.SvgDecoder
 import coil3.util.DebugLogger
 import coil3.video.VideoFrameDecoder
 import com.ytone.longcare.BuildConfig
+import com.ytone.longcare.common.utils.StorageSpaceUtils
 import okio.Path.Companion.toPath
 import coil3.request.crossfade
 import dagger.Module
@@ -96,7 +97,7 @@ object ImageLoadingModule {
      */
     private fun getOptimalDiskCacheSize(context: Context): Long {
         val cacheDir = context.cacheDir
-        val availableSpace = cacheDir.usableSpace
+        val availableSpace = StorageSpaceUtils.getAllocatableBytes(context, cacheDir)
         
         return when {
             // 存储空间充足（> 8GB）

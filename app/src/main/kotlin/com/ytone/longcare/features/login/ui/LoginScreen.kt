@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
@@ -73,8 +74,8 @@ fun LoginScreen(
     val privacyPolicyToast = stringResource(R.string.login_privacy_policy_toast)
     var phoneNumber by remember { mutableStateOf(viewModel.getLastLoginPhoneNumber()) }
     var verificationCode by remember { mutableStateOf("") }
-    val loginState by viewModel.loginState.collectAsState()
-    val sendSmsState by viewModel.sendSmsCodeState.collectAsState()
+    val loginState by viewModel.loginState.collectAsStateWithLifecycle()
+    val sendSmsState by viewModel.sendSmsCodeState.collectAsStateWithLifecycle()
 
     val verificationCodeFocusRequester = remember { FocusRequester() }
 
@@ -114,7 +115,7 @@ fun LoginScreen(
                     .padding(top = 80.dp)
             )
 
-            val startConfigState by viewModel.startConfigState.collectAsState()
+            val startConfigState by viewModel.startConfigState.collectAsStateWithLifecycle()
 
             Column(
                 modifier = Modifier
@@ -375,8 +376,8 @@ fun SendVerificationCodeButton(
     viewModel: LoginViewModel, // 传入 ViewModel
     onSendCodeClick: () -> Unit // 点击发送验证码时触发的回调
 ) {
-    val countdownSeconds by viewModel.countdownSeconds.collectAsState()
-    val sendSmsState by viewModel.sendSmsCodeState.collectAsState()
+    val countdownSeconds by viewModel.countdownSeconds.collectAsStateWithLifecycle()
+    val sendSmsState by viewModel.sendSmsCodeState.collectAsStateWithLifecycle()
     val isCountingDown = countdownSeconds > 0
 
     TextButton(

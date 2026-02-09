@@ -57,10 +57,8 @@ import androidx.core.net.toUri
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.api.response.ServiceOrderStateModel
 import com.ytone.longcare.common.utils.HomeBackHandler
-import com.ytone.longcare.di.ServiceCountdownEntryPoint
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
-import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.navigation.toRequestModel
 import com.ytone.longcare.common.utils.singleClick
@@ -145,12 +143,6 @@ fun ServiceCountdownScreen(
     var showOrderStateErrorDialog by remember { mutableStateOf(false) }
     var orderStateErrorMessage by remember { mutableStateOf("") }
 
-    // 获取CountdownNotificationManager实例
-    val entryPoint = EntryPointAccessors.fromApplication(
-        context.applicationContext, ServiceCountdownEntryPoint::class.java
-    )
-    val countdownNotificationManager = entryPoint.countdownNotificationManager()
-
     // 二次确认弹窗状态
     var showConfirmDialog by remember { mutableStateOf(false) }
 
@@ -175,7 +167,7 @@ fun ServiceCountdownScreen(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { _ ->
         // 检查权限是否已授予
-        if (!countdownNotificationManager.canScheduleExactAlarms()) {
+        if (!countdownViewModel.canScheduleExactAlarms()) {
             permissionDialogMessage =
                 "精确闹钟权限被拒绝，可能无法准时收到倒计时完成提醒。请到设置中手动开启精确闹钟权限。"
             showPermissionDialog = true
@@ -219,7 +211,7 @@ fun ServiceCountdownScreen(
     // 请求精确闹钟权限
     fun requestExactAlarmPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (!countdownNotificationManager.canScheduleExactAlarms()) {
+            if (!countdownViewModel.canScheduleExactAlarms()) {
                 val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
                     data = "package:${context.packageName}".toUri()
                 }
@@ -231,7 +223,7 @@ fun ServiceCountdownScreen(
     // 检查全屏Intent权限（Android 14+）
     fun checkFullScreenIntentPermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            countdownNotificationManager.canUseFullScreenIntent()
+            countdownViewModel.canUseFullScreenIntent()
         } else {
             true
         }
@@ -258,7 +250,7 @@ fun ServiceCountdownScreen(
         }
 
         // 检查精确闹钟权限
-        if (!countdownNotificationManager.canScheduleExactAlarms()) {
+        if (!countdownViewModel.canScheduleExactAlarms()) {
             requestExactAlarmPermission()
             return
         }
@@ -290,7 +282,7 @@ fun ServiceCountdownScreen(
         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 2. 已停止定位跟踪服务")
 
         // 3. 取消倒计时闹钟（使用订单ID精确取消）
-        countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest)
+        countdownViewModel.cancelCountdownAlarmForOrder(orderInfoRequest)
         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 3. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
 
         // 4. 停止响铃服务（如果正在响铃）
@@ -407,7 +399,7 @@ fun ServiceCountdownScreen(
         val (state, remainingMillis, _) = countdownViewModel.getCurrentCountdownState()
         if (state == ServiceCountdownState.RUNNING && remainingMillis > 0) {
             val completionTime = System.currentTimeMillis() + remainingMillis
-            countdownNotificationManager.scheduleCountdownAlarm(
+            countdownViewModel.scheduleCountdownAlarm(
                 request = orderInfoRequest,
                 serviceName = serviceInfo.serviceName,
                 triggerTimeMillis = completionTime
@@ -578,7 +570,7 @@ fun ServiceCountdownScreen(
             // 如果服务未正常结束，清理相关资源
             if (countdownState != ServiceCountdownState.ENDED) {
                 // 1. 取消倒计时闹钟
-                countdownNotificationManager.cancelCountdownAlarm()
+                countdownViewModel.cancelCountdownAlarm()
                 
                 // 2. 停止响铃服务（如果正在响铃）
                 AlarmRingtoneService.stopRingtone(context)
@@ -680,7 +672,7 @@ fun ServiceCountdownScreen(
                         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 4. 已强制停止定位跟踪服务")
                         
                         // 5. 取消倒计时闹钟（使用订单ID精确取消）
-                        countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest)
+                        countdownViewModel.cancelCountdownAlarmForOrder(orderInfoRequest)
                         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 5. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
                         
                         // 6. 停止响铃服务（如果正在响铃）

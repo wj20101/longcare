@@ -1,7 +1,5 @@
 <resources>
     <string name="app_name">长护盾</string>
-    <string name="hello_world">你好世界！</string>
-    <string name="coil_image_description">由Coil加载的图片</string>
     <string name="nfc_sign_in_title">进门碰一碰</string>
     <string name="nfc_sign_out_title">出门碰一碰</string>
     <string name="common_back">返回</string>
@@ -19,15 +17,10 @@
     <string name="photo_upload_description">护理执行阶段需要拍摄护理前照片、护理中照片、护理后照片。</string>
     <string name="photo_upload_add_photo">添加照片</string>
     <string name="photo_upload_add_photo_description">添加照片</string>
-    <string name="photo_upload_uploaded_image_description">已上传照片 %s</string>
-    <string name="photo_category_before_care">护理前照片</string>
-    <string name="photo_category_during_care">护理中照片</string>
-    <string name="photo_category_after_care">护理后照片</string>
     <string name="login_background_description">登录背景</string>
     <string name="login_small_logo_description">应用小图标</string>
     <string name="login_app_logo_description">应用图标</string>
     <string name="login_phone_number_hint">请输入您的手机号码</string>
-    <string name="login_send_code_toast">发送验证码</string>
     <string name="login_verification_code_hint">输入验证码</string>
     <string name="login_button_text">确定登录</string>
     <string name="login_user_agreement_toast">用户协议</string>
@@ -38,7 +31,6 @@
     <string name="login_user_agreement">《用户协议》</string>
     <string name="login_agreement_and">和</string>
     <string name="login_privacy_policy">《隐私政策》</string>
-    <string name="login_code_sent_mock">验证码已发送 (模拟)</string>
     <string name="nursing_execution_title">护理执行</string>
     <string name="nursing_execution_instruction">请阅读并确认订单服务内容以及客户信息，扫描客户容貌验证通过后，开始服务。</string>
     <string name="nursing_execution_client_info_tag">客户信息</string>
@@ -52,21 +44,15 @@
     <string name="select_device_instruction">请先选择相应设备，进行碰一碰</string>
     <string name="common_selected">已选择</string>
     <string name="common_unselected">未选择</string>
-    <string name="profile_user_avatar">用户头像</string>
     <string name="common_arrow_right">向右箭头</string>
     <string name="common_details">详情</string>
     <string name="main_dashboard_logo">标志</string>
-    <string name="main_dashboard_nursing_staff_avatar">护理员头像</string>
     <string name="user_avatar_description">头像</string>
     <string name="nfc_sign_out_complete_service">服务完成，结束签到</string>
 
     <!-- 人脸识别指导页面 -->
     <string name="face_recognition_guide_title">身份认证</string>
     <string name="face_recognition_guide_subtitle">请按照要求进行人脸识别</string>
-    <string name="face_recognition_guide_correct_example">正确的人脸识别</string>
-    <string name="face_recognition_guide_incorrect_glasses">不戴眼镜</string>
-    <string name="face_recognition_guide_incorrect_hat">不戴帽子</string>
-    <string name="face_recognition_guide_incorrect_light">光线不要太暗</string>
     <string name="face_recognition_guide_start_button">开始人脸识别</string>
     <string name="face_recognition_guide_privacy_agreement">提通科技将手机并提供您身份验证过程中产生的图像、视频、数据信息以确认您的本人身份避免的身份信息被盗用，勾选即表示您同意人脸信息的手机、使用、保存和删除</string>
     <string name="new_version_found">发现新版本</string>
@@ -76,10 +62,11 @@
     <string name="service_order_work_hours_total">计划服务工时: %1$s 分钟</string>
     <string name="service_order_work_hours_true">实际服务工时: %1$s 分钟</string>
 
-    <string name="ok_button">确定</string>
-    <string name="cancel_button">取消</string>
-    <string name="switch_camera_content_description">切换摄像头</string>
-    <string name="take_picture_content_description">拍照</string>
-    <string name="flash_mode_content_description">切换闪光灯模式</string>
     <string name="back_button_description">返回</string>
+    <string name="watermark_service_before">服务前</string>
+    <string name="watermark_insured_person_label">参保人员:</string>
+    <string name="watermark_caregiver_label">护理人员:</string>
+    <string name="watermark_capture_time_label">拍摄时间:</string>
+    <string name="watermark_capture_location_label">拍摄地址:</string>
+    <string name="watermark_coordinates_label">卫星定位:</string>
 </resources>

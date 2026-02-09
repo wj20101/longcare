@@ -35,16 +35,13 @@ import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.core.navigation.NavigationConstants
-import com.ytone.longcare.di.IdentificationEntryPoint
 import com.ytone.longcare.features.identification.vm.IdentificationState
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.navigation.navigateToCamera
 import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.navigation.navigateToManualFaceCapture
-import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
-import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.navigation.toRequestModel
@@ -68,12 +65,8 @@ fun IdentificationScreen(
 ) {
     // 从订单导航参数构建请求模型
     val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
-    
+
     val context = LocalContext.current
-    val unifiedOrderRepository = EntryPointAccessors.fromApplication(
-        context.applicationContext,
-        IdentificationEntryPoint::class.java
-    ).unifiedOrderRepository()
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -137,9 +130,10 @@ fun IdentificationScreen(
                         identificationViewModel.setElderVerified()
                         // 老人验证成功后，保存人脸验证完成状态到Room
                         if (orderInfoRequest.orderId > 0) {
-                            scope.launch {
-                                unifiedOrderRepository.updateFaceVerification(orderInfoRequest.toOrderKey(), true)
-                            }
+                            identificationViewModel.updateFaceVerificationStatus(
+                                request = orderInfoRequest,
+                                verified = true
+                            )
                         }
                     }
                     null -> { /* 无验证类型，不处理 */ }

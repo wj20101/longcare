@@ -2,11 +2,16 @@ package com.ytone.longcare.features.photoupload.utils
 
 import android.content.Context
 import coil3.ImageLoader
+import com.ytone.longcare.common.utils.StorageSpaceUtils
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,6 +26,10 @@ class ImageCacheManager @Inject constructor(
     private val imageLoader: ImageLoader
 ) {
     private val cacheScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var monitoringJob: Job? = null
+    private companion object {
+        const val CACHE_MONITOR_INTERVAL_MS = 60_000L
+    }
     
     /**
      * 获取缓存统计信息
@@ -103,7 +112,13 @@ class ImageCacheManager @Inject constructor(
                 
                 // 检查存储空间
                 val cacheDir = context.cacheDir
-                val storageUsage = (cacheDir.totalSpace - cacheDir.usableSpace).toFloat() / cacheDir.totalSpace
+                val totalSpace = cacheDir.totalSpace
+                val allocatableBytes = StorageSpaceUtils.getAllocatableBytes(context, cacheDir)
+                val storageUsage = if (totalSpace > 0) {
+                    ((totalSpace - allocatableBytes).toFloat() / totalSpace).coerceIn(0f, 1f)
+                } else {
+                    0f
+                }
                 
                 logD("内存使用率: ${(memoryPressure * 100).toInt()}%, 存储使用率: ${(storageUsage * 100).toInt()}%")
                 
@@ -129,12 +144,8 @@ class ImageCacheManager @Inject constructor(
                     // 存储空间较紧张（> 80%）
                     storageUsage > 0.80f -> {
                         logD("存储空间较紧张，清理部分磁盘缓存")
-                        // 清理一半的磁盘缓存
-                        val diskCache = imageLoader.diskCache
-                        diskCache?.let { cache ->
-                            val targetSize = cache.maxSize / 2
-                            // Coil 3.x 可能需要不同的API来清理到指定大小
-                        }
+                        // Coil 3.x 暂无稳定的“按目标大小裁剪”API，这里退化为全量清理。
+                        imageLoader.diskCache?.clear()
                     }
                 }
             } catch (e: Exception) {
@@ -179,31 +190,48 @@ class ImageCacheManager @Inject constructor(
      * 定期输出缓存统计信息
      */
     fun startCacheMonitoring() {
-        cacheScope.launch {
+        if (monitoringJob?.isActive == true) {
+            logD("缓存监控已在运行，跳过重复启动")
+            return
+        }
+
+        monitoringJob = cacheScope.launch {
             try {
-                while (true) {
-                    kotlinx.coroutines.delay(60000) // 每分钟检查一次
-                    
+                while (isActive) {
+                    delay(CACHE_MONITOR_INTERVAL_MS)
+
                     val stats = getCacheStats()
                     val memoryUsagePercent = if (stats.memoryCacheMaxSize > 0) {
                         (stats.memoryCacheSize * 100 / stats.memoryCacheMaxSize).toInt()
                     } else 0
-                    
+
                     val diskUsagePercent = if (stats.diskCacheMaxSize > 0) {
                         (stats.diskCacheSize * 100 / stats.diskCacheMaxSize).toInt()
                     } else 0
-                    
+
                     logD("缓存监控 - 内存缓存: ${memoryUsagePercent}% (${formatBytes(stats.memoryCacheSize)}/${formatBytes(stats.memoryCacheMaxSize)}), 磁盘缓存: ${diskUsagePercent}% (${formatBytes(stats.diskCacheSize)}/${formatBytes(stats.diskCacheMaxSize)})")
-                    
+
                     // 如果缓存使用率过高，触发智能清理
                     if (memoryUsagePercent > 90 || diskUsagePercent > 90) {
                         smartCacheCleanup()
                     }
                 }
+            } catch (_: CancellationException) {
+                logD("缓存监控任务已取消")
             } catch (e: Exception) {
                 logE(message = "缓存监控失败", throwable = e)
+            } finally {
+                monitoringJob = null
             }
         }
+    }
+
+    /**
+     * 停止缓存监控任务
+     */
+    fun stopCacheMonitoring() {
+        monitoringJob?.cancel()
+        monitoringJob = null
     }
     
     /**

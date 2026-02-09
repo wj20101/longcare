@@ -3,6 +3,7 @@ package com.ytone.longcare.common.network
 import com.ytone.longcare.api.response.TencentApiResponse
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.utils.logE
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
@@ -40,6 +41,9 @@ suspend fun <T : TencentApiResponse> safeTencentApiCall(
                 )
             }
         } catch (throwable: Throwable) {
+            if (throwable is CancellationException) {
+                throw throwable
+            }
             logE(message = "$logTag fail", throwable = throwable)
             // 捕获所有可能的异常
             when (throwable) {

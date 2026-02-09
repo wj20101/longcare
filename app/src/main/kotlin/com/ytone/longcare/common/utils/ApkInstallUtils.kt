@@ -25,14 +25,10 @@ object ApkInstallUtils {
 
         val intent = Intent(Intent.ACTION_VIEW)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
-        val uri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            // Android 7.0及以上版本需要使用FileProvider
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            FileProviderHelper.getUriForFile(context, file)
-        } else {
-            file.toUri()
-        }
+        // minSdk=24，统一通过 FileProvider 暴露安装包 URI
+        val uri: Uri = FileProviderHelper.getUriForFile(context, file)
 
         intent.setDataAndType(uri, "application/vnd.android.package-archive")
         

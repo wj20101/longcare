@@ -2,7 +2,6 @@ package com.ytone.longcare.features.facecapture
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.core.net.toUri
 
 /**
@@ -39,7 +38,7 @@ object FaceCaptureTestLauncher {
      */
     fun canLaunch(context: Context): Boolean {
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            data = Uri.parse("longcare://facecapture")
+            data = "longcare://facecapture".toUri()
         }
         
         return context.packageManager.queryIntentActivities(intent, 0).isNotEmpty()

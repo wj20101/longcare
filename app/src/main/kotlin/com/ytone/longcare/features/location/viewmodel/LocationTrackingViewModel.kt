@@ -3,6 +3,7 @@ package com.ytone.longcare.features.location.viewmodel
 import androidx.lifecycle.ViewModel
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
+import com.ytone.longcare.common.utils.logI
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
@@ -28,6 +29,22 @@ class LocationTrackingViewModel @Inject constructor(
      */
     fun onStartClicked(request: OrderInfoRequestModel) {
         trackingManager.startTracking(request)
+    }
+
+    /**
+     * 进入服务流程时，确保定位会话已开启。
+     * 若检测到已有其他订单的定位上报在运行，先停止旧上报再开启当前会话。
+     */
+    fun ensureLocationSessionForOrder(orderId: Long) {
+        val isTrackingNow = trackingManager.isTracking.value
+        val currentRequest = trackingManager.currentTrackingRequest.value
+
+        if (isTrackingNow && currentRequest != null && currentRequest.orderId != orderId) {
+            logI("检测到定位上报正在服务其他订单(orderId=${currentRequest.orderId})，先停止旧上报")
+            trackingManager.stopTracking()
+        }
+
+        trackingManager.startLocationSession()
     }
 
     /**

@@ -2,6 +2,7 @@ package com.ytone.longcare.common.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,9 +23,7 @@ class LoginPreferencesManager @Inject constructor(
      * 保存上次登录成功的手机号码
      */
     fun saveLastLoginPhoneNumber(phoneNumber: String) {
-        sharedPreferences.edit()
-            .putString(KEY_LAST_LOGIN_PHONE, phoneNumber)
-            .apply()
+        sharedPreferences.edit { putString(KEY_LAST_LOGIN_PHONE, phoneNumber) }
     }
 
     /**
@@ -39,9 +38,7 @@ class LoginPreferencesManager @Inject constructor(
      * 清除保存的手机号码
      */
     fun clearLastLoginPhoneNumber() {
-        sharedPreferences.edit()
-            .remove(KEY_LAST_LOGIN_PHONE)
-            .apply()
+        sharedPreferences.edit { remove(KEY_LAST_LOGIN_PHONE) }
     }
 
     companion object {
