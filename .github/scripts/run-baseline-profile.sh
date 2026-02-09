@@ -18,6 +18,7 @@ GRADLE_TIMEOUT_SECS="${BASELINE_GRADLE_TIMEOUT_SECS:-2700}"
 GRADLE_RETRIES="${BASELINE_GRADLE_RETRIES:-1}"
 GRADLE_RETRY_DELAY_SECS="${BASELINE_GRADLE_RETRY_DELAY_SECS:-90}"
 GRADLE_TASK="${BASELINE_GRADLE_TASK:-:app:generateReleaseBaselineProfile}"
+HOST_ARCH="$(uname -m)"
 
 ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
 if [[ -z "${ANDROID_SDK_ROOT}" ]]; then
@@ -26,6 +27,12 @@ if [[ -z "${ANDROID_SDK_ROOT}" ]]; then
 fi
 
 export ANDROID_SDK_ROOT
+
+if [[ "${ABI}" == "arm64-v8a" && "${HOST_ARCH}" != "aarch64" && "${HOST_ARCH}" != "arm64" ]]; then
+  echo "BASELINE_ABI=${ABI} requires an ARM64 host runner."
+  echo "Current host architecture is ${HOST_ARCH}."
+  exit 1
+fi
 
 select_writable_dir() {
   local requested="$1"
