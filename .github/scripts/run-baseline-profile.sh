@@ -9,6 +9,7 @@ BASELINE_ANDROID_SDK_HOME="${BASELINE_ANDROID_SDK_HOME:-${RUNNER_TEMP:-/tmp}/and
 BASELINE_ANDROID_AVD_HOME="${BASELINE_AVD_HOME:-${BASELINE_ANDROID_SDK_HOME}/avd}"
 EMULATOR_PORT="${BASELINE_EMULATOR_PORT:-5554}"
 BOOT_TIMEOUT_SECS="${BASELINE_BOOT_TIMEOUT_SECS:-900}"
+DEVICE_READY_TIMEOUT_SECS="${BASELINE_DEVICE_READY_TIMEOUT_SECS:-300}"
 GRADLE_TIMEOUT_SECS="${BASELINE_GRADLE_TIMEOUT_SECS:-2700}"
 GRADLE_TASK="${BASELINE_GRADLE_TASK:-:app:generateReleaseBaselineProfile}"
 
@@ -109,6 +110,29 @@ done
 
 if [[ "${boot_completed}" != "1" ]]; then
   echo "Emulator failed to finish boot within ${BOOT_TIMEOUT_SECS}s."
+  tail -n 200 "${EMULATOR_LOG}" || true
+  exit 1
+fi
+
+# Some system services (notably Package Manager) may lag behind sys.boot_completed.
+package_ready=""
+for ((elapsed=0; elapsed<DEVICE_READY_TIMEOUT_SECS; elapsed+=5)); do
+  package_service_status="$(adb -s "${EMULATOR_SERIAL}" shell service check package 2>/dev/null | tr -d '\r')"
+  if [[ "${package_service_status}" == *"Service package: found"* ]] &&
+    adb -s "${EMULATOR_SERIAL}" shell cmd package path android >/dev/null 2>&1; then
+    package_ready="1"
+    break
+  fi
+  sleep 5
+done
+
+if [[ "${package_ready}" != "1" ]]; then
+  echo "Package Manager service was not ready within ${DEVICE_READY_TIMEOUT_SECS}s after boot."
+  echo "sys.boot_completed=$(adb -s "${EMULATOR_SERIAL}" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
+  echo "dev.bootcomplete=$(adb -s "${EMULATOR_SERIAL}" shell getprop dev.bootcomplete 2>/dev/null | tr -d '\r')"
+  echo "service check package:"
+  adb -s "${EMULATOR_SERIAL}" shell service check package 2>/dev/null || true
+  echo "tail of emulator log:"
   tail -n 200 "${EMULATOR_LOG}" || true
   exit 1
 fi
