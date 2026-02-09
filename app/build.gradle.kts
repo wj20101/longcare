@@ -37,12 +37,27 @@ val releaseKeyPassword =
     providers
         .gradleProperty("RELEASE_KEY_PASSWORD")
         .orElse(providers.environmentVariable("RELEASE_KEY_PASSWORD"))
-val releaseStoreFile = releaseStoreFilePath.orNull?.let(::file) ?: file("../keystore.jks")
+val releaseStoreFile = releaseStoreFilePath.orNull?.let(::file)
 val hasReleaseSigning =
-    releaseStoreFile.exists() &&
+    releaseStoreFile?.exists() == true &&
         !releaseStorePassword.orNull.isNullOrBlank() &&
         !releaseKeyAlias.orNull.isNullOrBlank() &&
         !releaseKeyPassword.orNull.isNullOrBlank()
+val txFaceSdkSource =
+    providers
+        .gradleProperty("TX_FACE_SDK_SOURCE")
+        .orElse(providers.environmentVariable("TX_FACE_SDK_SOURCE"))
+        .orElse("local")
+        .map { it.trim().lowercase() }
+        .get()
+val txFaceLiveCoordinate =
+    providers
+        .gradleProperty("TX_FACE_LIVE_COORD")
+        .orElse(providers.environmentVariable("TX_FACE_LIVE_COORD"))
+val txFaceNormalCoordinate =
+    providers
+        .gradleProperty("TX_FACE_NORMAL_COORD")
+        .orElse(providers.environmentVariable("TX_FACE_NORMAL_COORD"))
 
 android {
     namespace = "com.ytone.longcare"
@@ -105,24 +120,16 @@ android {
             buildConfigField("String", "BASE_URL", "\"https://careapi.ytone.cn\"") // 生产环境 URL
             // 在 release 版本中，定义 USE_MOCK_DATA 常量为 false
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
-            signingConfig =
-                if (hasReleaseSigning) {
-                    signingConfigs.getByName("release")
-                } else {
-                    signingConfigs.getByName("debug")
-                }
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
 
         debug {
             buildConfigField("String", "BASE_URL", "\"https://careapi.ytone.cn\"") // 测试环境 URL
             // 在 debug 版本中，当前仍使用线上数据
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
-            signingConfig =
-                if (hasReleaseSigning) {
-                    signingConfigs.getByName("release")
-                } else {
-                    signingConfigs.getByName("debug")
-                }
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     kotlin {
@@ -264,9 +271,29 @@ dependencies {
     // kotlinx datetime
     implementation(libs.kotlinx.datetime)
 
-    // 腾讯人脸
-    implementation(files("libs/WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc.aar"))
-    implementation(files("libs/WbCloudNormal-v5.1.10-4e3e198.aar"))
+    // 腾讯人脸（默认使用本地 AAR；当 TX_FACE_SDK_SOURCE=maven 时切换到坐标依赖）
+    when (txFaceSdkSource) {
+        "local" -> {
+            implementation(files("libs/WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc.aar"))
+            implementation(files("libs/WbCloudNormal-v5.1.10-4e3e198.aar"))
+        }
+        "maven" -> {
+            val liveCoord = txFaceLiveCoordinate.orNull
+            val normalCoord = txFaceNormalCoordinate.orNull
+            if (liveCoord.isNullOrBlank() || normalCoord.isNullOrBlank()) {
+                throw org.gradle.api.GradleException(
+                    "When TX_FACE_SDK_SOURCE=maven, TX_FACE_LIVE_COORD and TX_FACE_NORMAL_COORD must be provided."
+                )
+            }
+            implementation(liveCoord)
+            implementation(normalCoord)
+        }
+        else -> {
+            throw org.gradle.api.GradleException(
+                "Unsupported TX_FACE_SDK_SOURCE=$txFaceSdkSource. Expected: local or maven."
+            )
+        }
+    }
     
     // Support Library compatibility for Tencent SDK
     implementation(libs.androidx.legacy.support.v4)

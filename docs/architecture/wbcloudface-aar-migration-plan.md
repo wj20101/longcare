@@ -32,11 +32,13 @@
 ## 阶段 A：依赖源替换（AAR -> Maven/私仓）
 1. 供应商确认目标版本（需明确修复项：16KB 对齐、consumer rules、TLS 安全实现）。
 2. 在 `gradle/libs.versions.toml` 增加腾讯人脸 SDK 坐标（若官方无公网仓库，则上传到公司私仓）。
-3. 在 `app/build.gradle.kts` 替换：
-   - 删除 `implementation(files("libs/WbCloudFaceLiveSdk-*.aar"))`
-   - 删除 `implementation(files("libs/WbCloudNormal-*.aar"))`
-   - 改为 Maven 坐标依赖。
-4. 删除 `app/libs` 中旧 AAR（在分支中执行，确保可回滚）。
+3. 使用已落地的构建开关切换依赖来源（无需改业务代码）：
+   - 默认：`TX_FACE_SDK_SOURCE=local`（使用 `app/libs/*.aar`）
+   - Maven：`TX_FACE_SDK_SOURCE=maven`，并提供：
+     - `TX_FACE_LIVE_COORD=<group:artifact:version>`
+     - `TX_FACE_NORMAL_COORD=<group:artifact:version>`
+4. 在 CI 或本地 `gradle.properties` 配置上述变量，先在预检分支跑通编译与 lint。
+5. 稳定后删除 `app/libs` 中旧 AAR（在分支中执行，确保可回滚）。
 
 ## 阶段 B：规则与 native 收敛
 1. 按新 SDK 官方说明更新 `app/txkyc-face-consumer-proguard-rules.pro`。
