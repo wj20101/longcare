@@ -5,7 +5,8 @@ API_LEVEL="${BASELINE_API_LEVEL:-33}"
 TARGET="${BASELINE_TARGET:-google_apis}"
 ABI="${BASELINE_ABI:-x86_64}"
 AVD_NAME="${BASELINE_AVD_NAME:-baseline-ci}"
-BASELINE_ANDROID_SDK_HOME="${BASELINE_ANDROID_SDK_HOME:-${RUNNER_TEMP:-/tmp}/android-sdk-home}"
+DEFAULT_BASELINE_HOME="${RUNNER_TEMP:-/tmp}"
+BASELINE_ANDROID_SDK_HOME="${BASELINE_ANDROID_SDK_HOME:-${DEFAULT_BASELINE_HOME}/android-sdk-home}"
 BASELINE_ANDROID_AVD_HOME="${BASELINE_AVD_HOME:-${BASELINE_ANDROID_SDK_HOME}/avd}"
 EMULATOR_PORT="${BASELINE_EMULATOR_PORT:-5554}"
 BOOT_TIMEOUT_SECS="${BASELINE_BOOT_TIMEOUT_SECS:-900}"
@@ -21,8 +22,22 @@ if [[ -z "${ANDROID_SDK_ROOT}" ]]; then
 fi
 
 export ANDROID_SDK_ROOT
-export ANDROID_SDK_HOME="${BASELINE_ANDROID_SDK_HOME}"
-export ANDROID_AVD_HOME="${BASELINE_ANDROID_AVD_HOME}"
+
+select_writable_dir() {
+  local requested="$1"
+  local fallback="$2"
+  local label="$3"
+  if mkdir -p "${requested}" 2>/dev/null && [[ -w "${requested}" ]]; then
+    echo "${requested}"
+    return 0
+  fi
+  echo "${label} path is not writable: ${requested}. Falling back to ${fallback}." >&2
+  mkdir -p "${fallback}"
+  echo "${fallback}"
+}
+
+export ANDROID_SDK_HOME="$(select_writable_dir "${BASELINE_ANDROID_SDK_HOME}" "${DEFAULT_BASELINE_HOME}/android-sdk-home" "ANDROID_SDK_HOME")"
+export ANDROID_AVD_HOME="$(select_writable_dir "${BASELINE_ANDROID_AVD_HOME}" "${DEFAULT_BASELINE_HOME}/android-avd" "ANDROID_AVD_HOME")"
 export PATH="${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${PATH}"
 SDKMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
 AVDMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/avdmanager"
@@ -46,7 +61,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p "${ANDROID_SDK_HOME}" "${ANDROID_AVD_HOME}"
 rm -rf "${ANDROID_AVD_HOME:?}/${AVD_NAME}.avd" "${ANDROID_AVD_HOME:?}/${AVD_NAME}.ini"
 echo "Using ANDROID_SDK_HOME=${ANDROID_SDK_HOME}"
 echo "Using ANDROID_AVD_HOME=${ANDROID_AVD_HOME}"
