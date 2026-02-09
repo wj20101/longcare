@@ -5,6 +5,12 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      run_baseline_profile:
+        description: "Generate baseline profile before release build (slow)"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: android-release-${{ github.ref }}
@@ -38,6 +44,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Free disk space for emulator
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
         run: |
           echo "Disk usage before cleanup:"
           df -h
@@ -61,7 +68,17 @@ jobs:
             echo "ANDROID_KEYSTORE_BASE64 is empty, skip keystore decode."
           fi
 
+      - name: Check committed baseline profile files
+        run: |
+          FILE_COUNT=$(find app/src -type f \( -name 'baseline-prof.txt' -o -name 'startup-prof.txt' -o -path '*/generated/baselineProfiles/*.txt' \) | wc -l | tr -d ' ')
+          echo "Committed baseline profile files found: ${FILE_COUNT}"
+          find app/src -type f \( -name 'baseline-prof.txt' -o -name 'startup-prof.txt' -o -path '*/generated/baselineProfiles/*.txt' \) | sort || true
+          if [ "${FILE_COUNT}" -eq 0 ]; then
+            echo "::warning::No committed baseline profile files found in app/src. Release will continue."
+          fi
+
       - name: Generate baseline profile on emulator
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
         timeout-minutes: 75
         env:
           BASELINE_API_LEVEL: "33"
@@ -76,7 +93,7 @@ jobs:
         run: ./.github/scripts/run-baseline-profile.sh
 
       - name: Upload baseline debug logs
-        if: ${{ always() }}
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: baseline-debug-logs-release
@@ -90,6 +107,7 @@ jobs:
           retention-days: 14
 
       - name: Verify baseline profile output
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
         run: |
           FILE_COUNT=$(find app/src -type f \( -name 'baseline-prof.txt' -o -name 'startup-prof.txt' -o -path '*/generated/baselineProfiles/*.txt' \) | wc -l | tr -d ' ')
           echo "Baseline profile files found: ${FILE_COUNT}"
