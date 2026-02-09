@@ -11,6 +11,10 @@ import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.tencent.cloud.huiyansdkface.facelight.process.FaceVerifyStatus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository
+import com.ytone.longcare.domain.faceauth.model.FACE_AUTH_API_VERSION
+import com.ytone.longcare.domain.faceauth.model.FACE_AUTH_SOURCE_PHOTO_TYPE_HD
+import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
+import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -65,7 +69,7 @@ class FaceVerificationManager @Inject constructor(
         val faceId: String,
         val orderNo: String,
         val appId: String,
-        val version: String = FACE_VERSION,
+        val version: String = FACE_AUTH_API_VERSION,
         val nonce: String,
         val userId: String,
         val sign: String,
@@ -88,13 +92,13 @@ class FaceVerificationManager @Inject constructor(
         fun onInitSuccess()
 
         /** 初始化失败 */
-        fun onInitFailed(error: WbFaceError?)
+        fun onInitFailed(error: FaceVerifyError?)
 
         /** 验证成功 */
-        fun onVerifySuccess(result: WbFaceVerifyResult)
+        fun onVerifySuccess(result: FaceVerifyResult)
 
         /** 验证失败 */
-        fun onVerifyFailed(error: WbFaceError?)
+        fun onVerifyFailed(error: FaceVerifyError?)
 
         /** 用户取消验证 */
         fun onVerifyCancel()
@@ -231,7 +235,7 @@ class FaceVerificationManager @Inject constructor(
                 sign = sign,
                 nonce = nonce,
                 sourcePhotoStr = request.sourcePhotoStr,
-                sourcePhotoType = if (request.sourcePhotoStr != null) SOURCE_PHOTO_TYPE_HD else null
+                sourcePhotoType = if (request.sourcePhotoStr != null) FACE_AUTH_SOURCE_PHOTO_TYPE_HD else null
             )
 
             if (result is ApiResult.Success) {
@@ -328,7 +332,7 @@ class FaceVerificationManager @Inject constructor(
             }
 
             override fun onLoginFailed(error: WbFaceError?) {
-                callback.onVerifyFailed(error ?: createError("SDK登录失败"))
+                callback.onVerifyFailed(error?.toDomainError() ?: createError("SDK登录失败"))
             }
         }
     }
@@ -354,14 +358,14 @@ class FaceVerificationManager @Inject constructor(
         callback: FaceVerifyCallback
     ) {
         when {
-            result.isSuccess -> callback.onVerifySuccess(result)
+            result.isSuccess -> callback.onVerifySuccess(result.toDomainResult())
             // 检查是否用户取消，根据SDK文档可能是其他属性名
             else -> {
                 if (result.error?.code?.contains("cancel", ignoreCase = true) == true ||
                     result.error?.desc?.contains("取消", ignoreCase = true) == true) {
                     callback.onVerifyCancel()
                 } else {
-                    callback.onVerifyFailed(result.error ?: createError("验证失败"))
+                    callback.onVerifyFailed(result.error?.toDomainError() ?: createError("验证失败"))
                 }
             }
         }
@@ -391,7 +395,7 @@ class FaceVerificationManager @Inject constructor(
         appId: String, nonce: String, userId: String, apiTicket: String
     ): String {
         // 固定版本号
-        val version = FACE_VERSION
+        val version = FACE_AUTH_API_VERSION
 
         // 将五个参数按字典序排序
         val params = listOf(version, appId, apiTicket, nonce, userId).sorted()
@@ -419,13 +423,29 @@ class FaceVerificationManager @Inject constructor(
     /**
      * 创建错误对象
      */
-    private fun createError(message: String): WbFaceError {
-        return WbFaceError().apply {
-            domain = WbFaceError.WBFaceErrorDomainNativeProcess
-            code = message
-            desc = message
+    private fun createError(message: String): FaceVerifyError {
+        return FaceVerifyError(
+            domain = WbFaceError.WBFaceErrorDomainNativeProcess,
+            code = message,
+            description = message,
             reason = message
-        }
+        )
+    }
+
+    private fun WbFaceError.toDomainError(): FaceVerifyError {
+        return FaceVerifyError(
+            domain = domain,
+            code = code,
+            description = desc,
+            reason = reason
+        )
+    }
+
+    private fun WbFaceVerifyResult.toDomainResult(): FaceVerifyResult {
+        return FaceVerifyResult(
+            isSuccess = isSuccess,
+            error = error?.toDomainError()
+        )
     }
 
     // ================================
@@ -443,13 +463,4 @@ class FaceVerificationManager @Inject constructor(
         }
     }
 
-    companion object {
-        const val FACE_VERSION = "1.0.0"
-        /**
-         * 比对源照片类型
-         * 1: 水纹正脸照
-         * 2: 高清正脸照
-         */
-        const val SOURCE_PHOTO_TYPE_HD = "2"
-    }
 }
