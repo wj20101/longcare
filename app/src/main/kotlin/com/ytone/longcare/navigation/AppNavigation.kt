@@ -33,7 +33,6 @@ import com.ytone.longcare.features.update.ui.AppUpdateDialog
 import com.ytone.longcare.features.update.viewmodel.AppUpdateViewModel
 import com.ytone.longcare.features.shared.FaceVerificationWithAutoSignScreen
 import com.ytone.longcare.features.servicecomplete.ui.ServiceCompleteScreen
-import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
 import com.ytone.longcare.features.identification.ui.IdentificationScreen
 import com.ytone.longcare.features.photoupload.ui.CameraScreen
@@ -353,7 +352,6 @@ fun AppNavigation(startDestination: Any) {
         }
         composable<TxFaceRoute> {
             FaceVerificationWithAutoSignScreen(
-                navController = navController,
                 onNavigateBack = { navController.popBackStack() },
                 onVerificationSuccess = {},
             )
