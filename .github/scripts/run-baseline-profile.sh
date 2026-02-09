@@ -49,17 +49,32 @@ select_writable_dir() {
 
 export ANDROID_SDK_HOME="$(select_writable_dir "${BASELINE_ANDROID_SDK_HOME}" "${DEFAULT_BASELINE_HOME}/android-sdk-home" "ANDROID_SDK_HOME")"
 export ANDROID_AVD_HOME="$(select_writable_dir "${BASELINE_ANDROID_AVD_HOME}" "${DEFAULT_BASELINE_HOME}/android-avd" "ANDROID_AVD_HOME")"
-export PATH="${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${PATH}"
-SDKMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
-AVDMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/avdmanager"
+CMDLINE_TOOLS_BIN=""
+if [[ -x "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" ]] &&
+  [[ -x "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/avdmanager" ]]; then
+  CMDLINE_TOOLS_BIN="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin"
+else
+  while IFS= read -r bin_dir; do
+    if [[ -x "${bin_dir}/sdkmanager" ]] && [[ -x "${bin_dir}/avdmanager" ]]; then
+      CMDLINE_TOOLS_BIN="${bin_dir}"
+      break
+    fi
+  done < <(find "${ANDROID_SDK_ROOT}/cmdline-tools" -mindepth 2 -maxdepth 2 -type d -name bin 2>/dev/null | sort -Vr)
+fi
+
+SDKMANAGER="${CMDLINE_TOOLS_BIN}/sdkmanager"
+AVDMANAGER="${CMDLINE_TOOLS_BIN}/avdmanager"
+export PATH="${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator:${CMDLINE_TOOLS_BIN}:${PATH}"
 
 MIN_FREE_MB="${BASELINE_MIN_FREE_MB:-}"
 if [[ -z "${MIN_FREE_MB}" ]]; then
   MIN_FREE_MB=$((PARTITION_SIZE_MB + 4096))
 fi
 
-if [[ ! -x "${SDKMANAGER}" || ! -x "${AVDMANAGER}" ]]; then
-  echo "Missing sdkmanager/avdmanager under ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin."
+if [[ -z "${CMDLINE_TOOLS_BIN}" || ! -x "${SDKMANAGER}" || ! -x "${AVDMANAGER}" ]]; then
+  echo "Missing sdkmanager/avdmanager under ${ANDROID_SDK_ROOT}/cmdline-tools/*/bin."
+  echo "Detected cmdline-tools directories:"
+  find "${ANDROID_SDK_ROOT}/cmdline-tools" -maxdepth 2 -type d 2>/dev/null | sort || true
   echo "Ensure android-actions/setup-android@v3 runs before this script."
   exit 1
 fi
