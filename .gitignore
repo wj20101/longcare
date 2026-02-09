@@ -48,3 +48,11 @@ captures/
 
 # Kotlin
 .kotlin
+
+# Baseline Profile artifacts should be versioned.
+# Keep these paths visible even though we ignore generic generated/ folders.
+!app/src/**/baseline-prof.txt
+!app/src/**/startup-prof.txt
+!app/src/**/generated/
+!app/src/**/generated/baselineProfiles/
+!app/src/**/generated/baselineProfiles/**
