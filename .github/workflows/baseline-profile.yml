@@ -81,7 +81,7 @@ jobs:
 
       - name: Upload baseline debug logs
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: baseline-debug-logs
           path: |
@@ -132,7 +132,7 @@ jobs:
           echo "::notice::Branch automation/baseline-profile-update may already be pushed and can be opened manually."
 
       - name: Upload baseline profile artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: baseline-profile-artifacts
           path: |
