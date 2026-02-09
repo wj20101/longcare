@@ -84,6 +84,9 @@ IMAGE_ABI="${TARGET}/${ABI}"
 EMULATOR_SERIAL="emulator-${EMULATOR_PORT}"
 EMULATOR_LOG="${RUNNER_TEMP:-/tmp}/baseline-emulator.log"
 LOGCAT_FILE="${RUNNER_TEMP:-/tmp}/baseline-logcat.txt"
+PLATFORM_TOOLS_ADB="${ANDROID_SDK_ROOT}/platform-tools/adb"
+PLATFORM_ANDROID_JAR="${ANDROID_SDK_ROOT}/platforms/android-${API_LEVEL}/android.jar"
+SYSTEM_IMAGE_FILE="${ANDROID_SDK_ROOT}/system-images/android-${API_LEVEL}/${TARGET}/${ABI}/system.img"
 
 cleanup() {
   adb -s "${EMULATOR_SERIAL}" logcat -d >"${LOGCAT_FILE}" 2>/dev/null || true
@@ -116,10 +119,38 @@ set +o pipefail
 yes 2>/dev/null | "${SDKMANAGER}" --licenses >/dev/null
 set -o pipefail
 
-"${SDKMANAGER}" --install \
-  "platform-tools" \
-  "platforms;android-${API_LEVEL}" \
-  "${SYSTEM_IMAGE}" >/dev/null
+install_sdk_package_if_missing() {
+  local package_id="$1"
+  local required_path="$2"
+  if [[ -e "${required_path}" ]]; then
+    echo "SDK package already available: ${package_id}"
+    return 0
+  fi
+  echo "Installing SDK package: ${package_id}"
+  set +e
+  local install_output
+  install_output="$("${SDKMANAGER}" --install "${package_id}" 2>&1)"
+  local install_status=$?
+  set -e
+  if [[ "${install_status}" -ne 0 ]]; then
+    echo "Warning: sdkmanager returned ${install_status} for package ${package_id}."
+    printf "%s\n" "${install_output}" | tail -n 60
+  fi
+  [[ -e "${required_path}" ]]
+}
+
+if ! install_sdk_package_if_missing "platform-tools" "${PLATFORM_TOOLS_ADB}"; then
+  echo "platform-tools is missing after install attempt."
+  exit 1
+fi
+if ! install_sdk_package_if_missing "platforms;android-${API_LEVEL}" "${PLATFORM_ANDROID_JAR}"; then
+  echo "Android platform android-${API_LEVEL} is missing after install attempt."
+  exit 1
+fi
+if ! install_sdk_package_if_missing "${SYSTEM_IMAGE}" "${SYSTEM_IMAGE_FILE}"; then
+  echo "System image ${SYSTEM_IMAGE} is missing after install attempt."
+  exit 1
+fi
 
 set +e
 "${SDKMANAGER}" --install "emulator" >/dev/null 2>&1
