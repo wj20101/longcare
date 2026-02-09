@@ -104,8 +104,14 @@ jobs:
           fi
 
       - name: Create PR for baseline profile updates
+        id: create_baseline_pr
+        continue-on-error: true
         uses: peter-evans/create-pull-request@v7
         with:
+          # Prefer a PAT when provided. This bypasses repository policy restrictions
+          # that can block pull request creation with GITHUB_TOKEN.
+          token: ${{ secrets.BASELINE_PROFILE_PR_TOKEN || github.token }}
+          branch-token: ${{ secrets.BASELINE_PROFILE_PR_TOKEN || github.token }}
           commit-message: "chore: update baseline profile"
           title: "chore: update baseline profile"
           body: |
@@ -116,6 +122,14 @@ jobs:
             app/src/**/baseline-prof.txt
             app/src/**/startup-prof.txt
             app/src/**/generated/baselineProfiles/**
+
+      - name: PR permission hint
+        if: ${{ steps.create_baseline_pr.outcome == 'failure' }}
+        run: |
+          echo "::warning::Baseline files were generated, but auto PR creation failed."
+          echo "::notice::Option 1: enable 'Allow GitHub Actions to create and approve pull requests' in repository Actions settings."
+          echo "::notice::Option 2: add secret BASELINE_PROFILE_PR_TOKEN (PAT with repo scope) and rerun this workflow."
+          echo "::notice::Branch automation/baseline-profile-update may already be pushed and can be opened manually."
 
       - name: Upload baseline profile artifacts
         uses: actions/upload-artifact@v4
