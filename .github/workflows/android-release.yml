@@ -87,18 +87,22 @@ jobs:
           echo "Disk usage after cleanup:"
           df -h
 
-      - name: Generate baseline profile on emulator
+      - name: Setup managed device
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
+        run: |
+          ./gradlew --no-daemon :baselineprofile:pixel6Api33Setup \
+            -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect \
+            -Pandroid.experimental.testOptions.managedDevices.emulator.showKernelLogging=true
+
+      - name: Generate baseline profile (GMD)
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
         timeout-minutes: 75
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 33
-          arch: x86_64
-          disable-animations: true
-          disk-size: 6000M
-          heap-size: 600M
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot-load -no-snapshot-save -no-boot-anim -noaudio
-          script: ./gradlew --no-daemon :app:generateReleaseBaselineProfile -Pbaseline.enableX86_64=true -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile
+        run: |
+          ./gradlew --no-daemon :app:generateReleaseBaselineProfile \
+            -Pbaseline.enableX86_64=true \
+            -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile \
+            -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect \
+            -Pandroid.experimental.testOptions.managedDevices.emulator.showKernelLogging=true
 
       - name: Upload baseline debug logs
         if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
