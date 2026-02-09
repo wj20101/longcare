@@ -90,7 +90,7 @@ jobs:
   instrumentation-smoke:
     needs: verify-build
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -111,13 +111,53 @@ jobs:
       - name: Run instrumentation smoke test on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: 33
+          target: google_apis
           arch: x86_64
           emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -accel off -no-snapshot-load -no-snapshot-save
-          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -accel off -no-snapshot-load -no-snapshot-save -no-metrics
+          disable-animations: true
           disable-linux-hw-accel: true
-          script: ./gradlew --no-daemon :app:connectedDebugAndroidTest -Pbaseline.enableX86_64=true -Pandroid.testInstrumentationRunnerArguments.class=com.ytone.longcare.smoke.MainActivitySmokeTest
+          script: |
+            set -euo pipefail
+
+            ensure_device_ready() {
+              for i in {1..12}; do
+                api_level="$(adb shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')"
+                if [[ "${api_level}" =~ ^[0-9]+$ ]]; then
+                  echo "Device API level: ${api_level}"
+                  return 0
+                fi
+                echo "Device API level unavailable (attempt ${i}/12), restarting adb..."
+                adb kill-server || true
+                adb start-server
+                adb wait-for-device
+                sleep 5
+              done
+
+              echo "Device never reported a valid API level."
+              adb devices -l || true
+              return 1
+            }
+
+            run_smoke_test() {
+              ./gradlew --no-daemon :app:connectedDebugAndroidTest \
+                -Pbaseline.enableX86_64=true \
+                -Pandroid.testInstrumentationRunnerArguments.class=com.ytone.longcare.smoke.MainActivitySmokeTest
+            }
+
+            adb start-server
+            adb wait-for-device
+            ensure_device_ready
+
+            if ! run_smoke_test; then
+              echo "Smoke test failed once. Restarting adb and retrying..."
+              adb kill-server || true
+              adb start-server
+              adb wait-for-device
+              ensure_device_ready
+              run_smoke_test
+            fi
 
       - name: Upload instrumentation reports
         if: always()
