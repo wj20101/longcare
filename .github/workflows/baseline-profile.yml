@@ -48,6 +48,14 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Free disk space for emulator
+        run: |
+          echo "Disk usage before cleanup:"
+          df -h
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+          echo "Disk usage after cleanup:"
+          df -h
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew .github/scripts/run-baseline-profile.sh
 
@@ -59,6 +67,7 @@ jobs:
           BASELINE_ANDROID_SDK_HOME: "${{ runner.temp }}/android-sdk-home"
           BASELINE_AVD_HOME: "${{ runner.temp }}/android-avd"
           BASELINE_BOOT_TIMEOUT_SECS: "900"
+          BASELINE_MIN_FREE_MB: "6144"
           BASELINE_PARTITION_SIZE_MB: "2048"
           BASELINE_GRADLE_TIMEOUT_SECS: "2700"
           BASELINE_GRADLE_TASK: ":app:generateReleaseBaselineProfile"

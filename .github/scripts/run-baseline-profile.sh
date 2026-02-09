@@ -42,6 +42,11 @@ export PATH="${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator:${A
 SDKMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
 AVDMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/avdmanager"
 
+MIN_FREE_MB="${BASELINE_MIN_FREE_MB:-}"
+if [[ -z "${MIN_FREE_MB}" ]]; then
+  MIN_FREE_MB=$((PARTITION_SIZE_MB + 4096))
+fi
+
 if [[ ! -x "${SDKMANAGER}" || ! -x "${AVDMANAGER}" ]]; then
   echo "Missing sdkmanager/avdmanager under ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin."
   echo "Ensure android-actions/setup-android@v3 runs before this script."
@@ -65,6 +70,17 @@ rm -rf "${ANDROID_AVD_HOME:?}/${AVD_NAME}.avd" "${ANDROID_AVD_HOME:?}/${AVD_NAME
 echo "Using ANDROID_SDK_HOME=${ANDROID_SDK_HOME}"
 echo "Using ANDROID_AVD_HOME=${ANDROID_AVD_HOME}"
 echo "Using BASELINE_PARTITION_SIZE_MB=${PARTITION_SIZE_MB}"
+echo "Using BASELINE_MIN_FREE_MB=${MIN_FREE_MB}"
+echo "Disk usage before emulator boot:"
+df -h "${ANDROID_AVD_HOME}" || true
+
+available_kb="$(df -Pk "${ANDROID_AVD_HOME}" | awk 'NR==2 {print $4}')"
+available_mb=$((available_kb / 1024))
+if ((available_mb < MIN_FREE_MB)); then
+  echo "Insufficient free disk for emulator boot."
+  echo "Available: ${available_mb} MB, required minimum: ${MIN_FREE_MB} MB."
+  exit 1
+fi
 
 set +o pipefail
 yes 2>/dev/null | "${SDKMANAGER}" --licenses >/dev/null
