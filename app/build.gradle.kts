@@ -15,6 +15,12 @@ val appMinSdkVersion: Int by rootProject.extra
 val appJdkVersion: Int by rootProject.extra
 val appVersionCode: Int by rootProject.extra
 val appVersionName: String by rootProject.extra
+val baselineEnableX86_64 =
+    providers
+        .gradleProperty("baseline.enableX86_64")
+        .orElse("false")
+        .map { it.equals("true", ignoreCase = true) }
+        .get()
 val releaseStoreFilePath =
     providers
         .gradleProperty("RELEASE_STORE_FILE")
@@ -73,7 +79,11 @@ android {
         )
 
         ndk {
-            abiFilters += listOf("arm64-v8a")
+            val enabledAbis = mutableListOf("arm64-v8a")
+            if (baselineEnableX86_64) {
+                enabledAbis += "x86_64"
+            }
+            abiFilters += enabledAbis
         }
     }
 
