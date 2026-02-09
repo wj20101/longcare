@@ -109,7 +109,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Assemble instrumentation APKs
-        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest -Pbaseline.enableX86_64=true
 
       - name: Free disk space for emulator
         run: |
