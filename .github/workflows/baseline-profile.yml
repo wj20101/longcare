@@ -14,7 +14,6 @@ on:
       - 'gradle/**'
       - 'gradle.properties'
       - '.github/workflows/baseline-profile.yml'
-      - '.github/scripts/run-baseline-profile.sh'
 
 concurrency:
   group: baseline-profile-${{ github.ref }}
@@ -29,13 +28,17 @@ env:
 
 jobs:
   generate-baseline-profile:
-    runs-on:
-      - self-hosted
-      - macOS
-      - ARM64
+    runs-on: ubuntu-latest
     timeout-minutes: 120
 
     steps:
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls /dev/kvm
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -54,7 +57,6 @@ jobs:
           packages: platform-tools
 
       - name: Free disk space for emulator
-        if: ${{ runner.os == 'Linux' }}
         run: |
           echo "Disk usage before cleanup:"
           df -h
@@ -63,26 +65,19 @@ jobs:
           df -h
 
       - name: Grant execute permission for gradlew
-        run: chmod +x gradlew .github/scripts/run-baseline-profile.sh
+        run: chmod +x gradlew
 
       - name: Generate baseline profile on emulator
         timeout-minutes: 75
-        env:
-          BASELINE_API_LEVEL: "33"
-          BASELINE_TARGET: "default"
-          BASELINE_ABI: "arm64-v8a"
-          BASELINE_ANDROID_SDK_HOME: "${{ runner.temp }}/android-sdk-home"
-          BASELINE_AVD_HOME: "${{ runner.temp }}/android-avd"
-          BASELINE_BOOT_TIMEOUT_SECS: "900"
-          BASELINE_BOOT_STABILIZE_SECS: "45"
-          BASELINE_EMULATOR_MEMORY_MB: "3072"
-          BASELINE_GRADLE_RETRIES: "2"
-          BASELINE_GRADLE_RETRY_DELAY_SECS: "90"
-          BASELINE_MIN_FREE_MB: "6144"
-          BASELINE_PARTITION_SIZE_MB: "2048"
-          BASELINE_GRADLE_TIMEOUT_SECS: "2700"
-          BASELINE_GRADLE_TASK: ":app:generateReleaseBaselineProfile"
-        run: ./.github/scripts/run-baseline-profile.sh
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          disable-animations: true
+          disk-size: 6000M
+          heap-size: 600M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot-load -no-snapshot-save -no-boot-anim -noaudio
+          script: ./gradlew --no-daemon :app:generateReleaseBaselineProfile -Pbaseline.enableX86_64=true -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile
 
       - name: Upload baseline debug logs
         if: ${{ always() }}
@@ -90,8 +85,6 @@ jobs:
         with:
           name: baseline-debug-logs
           path: |
-            ${{ runner.temp }}/baseline-emulator.log
-            ${{ runner.temp }}/baseline-logcat.txt
             app/build/outputs/managed_device_android_test_additional_output/**
             app/build/reports/**
             baselineprofile/build/reports/**
