@@ -64,7 +64,8 @@ jobs:
         env:
           BASELINE_API_LEVEL: "33"
           BASELINE_TARGET: "default"
-          BASELINE_ABI: "arm64-v8a"
+          BASELINE_ABI: "x86_64"
+          BASELINE_ENABLE_X86_64: "true"
           BASELINE_ANDROID_SDK_HOME: "${{ runner.temp }}/android-sdk-home"
           BASELINE_AVD_HOME: "${{ runner.temp }}/android-avd"
           BASELINE_BOOT_TIMEOUT_SECS: "900"
