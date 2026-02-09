@@ -278,6 +278,7 @@ class FaceVerificationManager @Inject constructor(
     private fun createSdkLoginListener(context: Context, callback: FaceVerifyCallback): WbCloudFaceVerifyLoginListener {
         return object : WbCloudFaceVerifyLoginListener {
             override fun onLoginSuccess() {
+                callback.onInitSuccess()
                 // SDK登录成功，开始人脸验证
                 startSdkFaceVerification(context, callback)
             }
