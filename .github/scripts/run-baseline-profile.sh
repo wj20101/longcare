@@ -13,8 +13,10 @@ BOOT_TIMEOUT_SECS="${BASELINE_BOOT_TIMEOUT_SECS:-900}"
 DEVICE_READY_TIMEOUT_SECS="${BASELINE_DEVICE_READY_TIMEOUT_SECS:-300}"
 BOOT_STABILIZE_SECS="${BASELINE_BOOT_STABILIZE_SECS:-30}"
 PARTITION_SIZE_MB="${BASELINE_PARTITION_SIZE_MB:-2048}"
+EMULATOR_MEMORY_MB="${BASELINE_EMULATOR_MEMORY_MB:-3072}"
 GRADLE_TIMEOUT_SECS="${BASELINE_GRADLE_TIMEOUT_SECS:-2700}"
 GRADLE_RETRIES="${BASELINE_GRADLE_RETRIES:-1}"
+GRADLE_RETRY_DELAY_SECS="${BASELINE_GRADLE_RETRY_DELAY_SECS:-90}"
 GRADLE_TASK="${BASELINE_GRADLE_TASK:-:app:generateReleaseBaselineProfile}"
 
 ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
@@ -74,7 +76,9 @@ echo "Using ANDROID_AVD_HOME=${ANDROID_AVD_HOME}"
 echo "Using BASELINE_PARTITION_SIZE_MB=${PARTITION_SIZE_MB}"
 echo "Using BASELINE_MIN_FREE_MB=${MIN_FREE_MB}"
 echo "Using BASELINE_BOOT_STABILIZE_SECS=${BOOT_STABILIZE_SECS}"
+echo "Using BASELINE_EMULATOR_MEMORY_MB=${EMULATOR_MEMORY_MB}"
 echo "Using BASELINE_GRADLE_RETRIES=${GRADLE_RETRIES}"
+echo "Using BASELINE_GRADLE_RETRY_DELAY_SECS=${GRADLE_RETRY_DELAY_SECS}"
 echo "Disk usage before emulator boot:"
 df -h "${ANDROID_AVD_HOME}" || true
 
@@ -110,6 +114,7 @@ fi
 emulator \
   -port "${EMULATOR_PORT}" \
   -avd "${AVD_NAME}" \
+  -memory "${EMULATOR_MEMORY_MB}" \
   -no-window \
   -gpu swiftshader_indirect \
   -noaudio \
@@ -152,19 +157,23 @@ if [[ "${boot_completed}" != "1" ]]; then
   exit 1
 fi
 
-# Some system services (notably Package Manager) may lag behind sys.boot_completed.
-package_ready=""
-for ((elapsed=0; elapsed<DEVICE_READY_TIMEOUT_SECS; elapsed+=5)); do
-  package_service_status="$(adb -s "${EMULATOR_SERIAL}" shell service check package 2>/dev/null | tr -d '\r')"
-  if [[ "${package_service_status}" == *"Service package: found"* ]] &&
-    adb -s "${EMULATOR_SERIAL}" shell cmd package path android >/dev/null 2>&1; then
-    package_ready="1"
-    break
-  fi
-  sleep 5
-done
+wait_for_package_manager() {
+  local timeout_secs="$1"
+  local package_ready=""
+  for ((elapsed=0; elapsed<timeout_secs; elapsed+=5)); do
+    package_service_status="$(adb -s "${EMULATOR_SERIAL}" shell service check package 2>/dev/null | tr -d '\r')"
+    if [[ "${package_service_status}" == *"Service package: found"* ]] &&
+      adb -s "${EMULATOR_SERIAL}" shell cmd package path android >/dev/null 2>&1; then
+      package_ready="1"
+      break
+    fi
+    sleep 5
+  done
+  [[ "${package_ready}" == "1" ]]
+}
 
-if [[ "${package_ready}" != "1" ]]; then
+# Some system services (notably Package Manager) may lag behind sys.boot_completed.
+if ! wait_for_package_manager "${DEVICE_READY_TIMEOUT_SECS}"; then
   echo "Package Manager service was not ready within ${DEVICE_READY_TIMEOUT_SECS}s after boot."
   echo "sys.boot_completed=$(adb -s "${EMULATOR_SERIAL}" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
   echo "dev.bootcomplete=$(adb -s "${EMULATOR_SERIAL}" shell getprop dev.bootcomplete 2>/dev/null | tr -d '\r')"
@@ -185,6 +194,12 @@ adb -s "${EMULATOR_SERIAL}" shell settings put global animator_duration_scale 0.
 
 attempt=1
 while true; do
+  if ! wait_for_package_manager "${DEVICE_READY_TIMEOUT_SECS}"; then
+    echo "Package Manager service was not ready before Gradle attempt ${attempt}."
+    tail -n 200 "${EMULATOR_LOG}" || true
+    exit 1
+  fi
+
   set +e
   timeout "${GRADLE_TIMEOUT_SECS}" ./gradlew --no-daemon "${GRADLE_TASK}" \
     -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile
@@ -202,8 +217,9 @@ while true; do
     tail -n 200 "${EMULATOR_LOG}" || true
     exit "${status}"
   fi
-  echo "Retrying baseline Gradle task in 20s..."
-  sleep 20
+  echo "Retrying baseline Gradle task in ${GRADLE_RETRY_DELAY_SECS}s..."
+  adb start-server >/dev/null 2>&1 || true
+  sleep "${GRADLE_RETRY_DELAY_SECS}"
   attempt=$((attempt + 1))
 done
 
