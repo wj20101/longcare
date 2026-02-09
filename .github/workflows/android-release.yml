@@ -168,6 +168,28 @@ jobs:
           echo "Final APK name: ${APK_TARGET}"
           ls -lah app/build/outputs/apk/release
 
+      - name: Rename release AAB with version metadata
+        id: release_aab
+        run: |
+          VERSION_CODE="${{ steps.app_version.outputs.version_code }}"
+          VERSION_NAME="${{ steps.app_version.outputs.version_name }}"
+          DATE_STR=$(date +'%y%m%d')
+
+          AAB_SOURCE=$(find app/build/outputs/bundle/release -maxdepth 1 -type f -name "*.aab" | head -n1)
+          if [ -z "$AAB_SOURCE" ]; then
+            echo "No release AAB found under app/build/outputs/bundle/release"
+            exit 1
+          fi
+
+          AAB_TARGET="app/build/outputs/bundle/release/app-v${VERSION_NAME}-${DATE_STR}-${VERSION_CODE}-release.aab"
+          if [ "$AAB_SOURCE" != "$AAB_TARGET" ]; then
+            mv "$AAB_SOURCE" "$AAB_TARGET"
+          fi
+
+          echo "aab_path=${AAB_TARGET}" >> "$GITHUB_OUTPUT"
+          echo "Final AAB name: ${AAB_TARGET}"
+          ls -lah app/build/outputs/bundle/release
+
       - name: Generate release checksums
         run: |
           sha256sum app/build/outputs/apk/release/*.apk app/build/outputs/bundle/release/*.aab > app/build/outputs/release-checksums.txt
