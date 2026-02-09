@@ -48,7 +48,7 @@ val txFaceSdkSource =
         .gradleProperty("TX_FACE_SDK_SOURCE")
         .orElse(providers.environmentVariable("TX_FACE_SDK_SOURCE"))
         .orElse("local")
-        .map { it.trim().lowercase() }
+        .map { raw -> raw.trim().ifBlank { "local" }.lowercase() }
         .get()
 val txFaceLiveCoordinate =
     providers
