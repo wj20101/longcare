@@ -58,6 +58,8 @@ val txFaceNormalCoordinate =
     providers
         .gradleProperty("TX_FACE_NORMAL_COORD")
         .orElse(providers.environmentVariable("TX_FACE_NORMAL_COORD"))
+val txFaceLiveAar = file("libs/WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc.aar")
+val txFaceNormalAar = file("libs/WbCloudNormal-v5.1.10-4e3e198.aar")
 
 android {
     namespace = "com.ytone.longcare"
@@ -274,8 +276,14 @@ dependencies {
     // 腾讯人脸（默认使用本地 AAR；当 TX_FACE_SDK_SOURCE=maven 时切换到坐标依赖）
     when (txFaceSdkSource) {
         "local" -> {
-            implementation(files("libs/WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc.aar"))
-            implementation(files("libs/WbCloudNormal-v5.1.10-4e3e198.aar"))
+            if (!txFaceLiveAar.exists() || !txFaceNormalAar.exists()) {
+                throw org.gradle.api.GradleException(
+                    "Local Tencent face AAR files are missing. " +
+                        "Expected: ${txFaceLiveAar.path}, ${txFaceNormalAar.path}"
+                )
+            }
+            implementation(files(txFaceLiveAar))
+            implementation(files(txFaceNormalAar))
         }
         "maven" -> {
             val liveCoord = txFaceLiveCoordinate.orNull
