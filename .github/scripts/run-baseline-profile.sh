@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API_LEVEL="${BASELINE_API_LEVEL:-30}"
-TARGET="${BASELINE_TARGET:-default}"
+API_LEVEL="${BASELINE_API_LEVEL:-33}"
+TARGET="${BASELINE_TARGET:-google_apis}"
 ABI="${BASELINE_ABI:-x86_64}"
 AVD_NAME="${BASELINE_AVD_NAME:-baseline-ci}"
 BASELINE_ANDROID_SDK_HOME="${BASELINE_ANDROID_SDK_HOME:-${RUNNER_TEMP:-/tmp}/android-sdk-home}"
@@ -10,7 +10,7 @@ BASELINE_ANDROID_AVD_HOME="${BASELINE_AVD_HOME:-${BASELINE_ANDROID_SDK_HOME}/avd
 EMULATOR_PORT="${BASELINE_EMULATOR_PORT:-5554}"
 BOOT_TIMEOUT_SECS="${BASELINE_BOOT_TIMEOUT_SECS:-900}"
 GRADLE_TIMEOUT_SECS="${BASELINE_GRADLE_TIMEOUT_SECS:-2700}"
-GRADLE_TASK="${BASELINE_GRADLE_TASK:-:app:generateBaselineProfile}"
+GRADLE_TASK="${BASELINE_GRADLE_TASK:-:app:generateReleaseBaselineProfile}"
 
 ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
 if [[ -z "${ANDROID_SDK_ROOT}" ]]; then
@@ -127,3 +127,6 @@ if ! timeout "${GRADLE_TIMEOUT_SECS}" ./gradlew --no-daemon "${GRADLE_TASK}" \
   tail -n 200 "${EMULATOR_LOG}" || true
   exit "${status}"
 fi
+
+echo "Baseline profile files under app/src after ${GRADLE_TASK}:"
+find app/src -type f \( -name "baseline-prof.txt" -o -name "startup-prof.txt" -o -path "*/generated/baselineProfiles/*.txt" \) | sort || true

@@ -56,11 +56,12 @@ jobs:
       - name: Generate baseline profile on emulator
         timeout-minutes: 75
         env:
-          BASELINE_API_LEVEL: "30"
+          BASELINE_API_LEVEL: "33"
+          BASELINE_TARGET: "google_apis"
           BASELINE_AVD_HOME: "${{ runner.temp }}/android-avd"
           BASELINE_BOOT_TIMEOUT_SECS: "900"
           BASELINE_GRADLE_TIMEOUT_SECS: "2700"
-          BASELINE_GRADLE_TASK: ":app:generateBaselineProfile"
+          BASELINE_GRADLE_TASK: ":app:generateReleaseBaselineProfile"
         run: ./.github/scripts/run-baseline-profile.sh
 
       - name: Upload baseline debug logs
@@ -79,10 +80,13 @@ jobs:
 
       - name: Verify baseline profile output
         run: |
-          FILE_COUNT=$(find app/src -name 'baseline-prof.txt' | wc -l | tr -d ' ')
+          FILE_COUNT=$(find app/src -type f \( -name 'baseline-prof.txt' -o -name 'startup-prof.txt' -o -path '*/generated/baselineProfiles/*.txt' \) | wc -l | tr -d ' ')
           echo "Baseline profile files found: ${FILE_COUNT}"
+          find app/src -type f \( -name 'baseline-prof.txt' -o -name 'startup-prof.txt' -o -path '*/generated/baselineProfiles/*.txt' \) | sort || true
           if [ "${FILE_COUNT}" -eq 0 ]; then
             echo "No baseline profile output was generated."
+            echo "Profile-like files under build outputs:"
+            find app/build baselineprofile/build -type f \( -name '*-prof.txt' -o -path '*/generated/baselineProfiles/*' \) | sort || true
             exit 1
           fi
 
@@ -109,7 +113,8 @@ jobs:
           name: app-release-artifacts
           path: |
             app/src/**/baseline-prof.txt
-            app/src/main/generated/baselineProfiles/**
+            app/src/**/startup-prof.txt
+            app/src/**/generated/baselineProfiles/**
             app/build/outputs/apk/release/*.apk
             app/build/outputs/bundle/release/*.aab
             app/build/outputs/mapping/release/**
