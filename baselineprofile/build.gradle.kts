@@ -35,7 +35,16 @@ android {
         }
     }
 
+    testOptions.managedDevices.localDevices {
+        create("pixel6Api33") {
+            device = "Pixel 6"
+            apiLevel = 33
+            systemImageSource = "aosp"
+        }
+    }
+
     targetProjectPath = ":app"
+    experimentalProperties["android.experimental.self-instrumenting"] = true
 
 //    flavorDimensions += listOf("environment")
 //    productFlavors {
@@ -48,7 +57,9 @@ android {
 // This is the configuration block for the Baseline Profile plugin.
 // You can specify to run the generators on a managed devices or connected devices.
 baselineProfile {
-    useConnectedDevices = true
+    managedDevices.clear()
+    managedDevices += "pixel6Api33"
+    useConnectedDevices = false
 }
 
 dependencies {
