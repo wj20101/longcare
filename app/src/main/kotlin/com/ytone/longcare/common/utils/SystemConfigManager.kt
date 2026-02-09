@@ -15,6 +15,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import androidx.core.content.edit
 import com.ytone.longcare.di.IoDispatcher
+import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -218,6 +219,18 @@ class SystemConfigManager @Inject constructor(
         val str = config.thirdKeyStr
         if (str.isBlank()) return null
         return try { thirdKeyAdapter.fromJson(str) } catch (_: Exception) { null }
+    }
+
+    suspend fun getFaceVerificationConfig(): FaceVerificationConfig? {
+        val third = getThirdKey() ?: return null
+        if (third.txFaceAppId.isBlank() || third.txFaceAppSecret.isBlank() || third.txFaceAppLicence.isBlank()) {
+            return null
+        }
+        return FaceVerificationConfig(
+            appId = third.txFaceAppId,
+            secret = third.txFaceAppSecret,
+            licence = third.txFaceAppLicence
+        )
     }
     
     fun getThirdKeySync(): ThirdKeyReturnModel? {

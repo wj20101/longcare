@@ -1,7 +1,6 @@
 package com.ytone.longcare.features.shared.vm
 
 import android.content.Context
-import com.ytone.longcare.api.response.ThirdKeyReturnModel
 import com.ytone.longcare.common.utils.FaceVerifier
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
@@ -38,7 +37,7 @@ class FaceVerificationViewModelTest {
 
     @Test
     fun `startFaceVerificationWithAutoSign should emit error when config missing`() = runTest {
-        coEvery { systemConfigManager.getThirdKey() } returns null
+        coEvery { systemConfigManager.getFaceVerificationConfig() } returns null
         val viewModel = createViewModel()
 
         viewModel.startFaceVerificationWithAutoSign(
@@ -58,12 +57,11 @@ class FaceVerificationViewModelTest {
 
     @Test
     fun `startFaceVerificationWithAutoSign should pass resolved config to verifier`() = runTest {
-        val third = ThirdKeyReturnModel(
-            txFaceAppId = "appId",
-            txFaceAppSecret = "secret",
-            txFaceAppLicence = "licence"
+        coEvery { systemConfigManager.getFaceVerificationConfig() } returns FaceVerificationConfig(
+            appId = "appId",
+            secret = "secret",
+            licence = "licence"
         )
-        coEvery { systemConfigManager.getThirdKey() } returns third
         coEvery { faceVerifier.startFaceVerification(any(), any(), any(), any()) } coAnswers {}
         val viewModel = createViewModel()
 
@@ -88,13 +86,12 @@ class FaceVerificationViewModelTest {
 
     @Test
     fun `startFaceVerificationWithAutoSign should expose callback failure as ui error`() = runTest {
-        val third = ThirdKeyReturnModel(
-            txFaceAppId = "appId",
-            txFaceAppSecret = "secret",
-            txFaceAppLicence = "licence"
-        )
         val sdkError = FaceVerifyError(code = "E001", description = "verify failed")
-        coEvery { systemConfigManager.getThirdKey() } returns third
+        coEvery { systemConfigManager.getFaceVerificationConfig() } returns FaceVerificationConfig(
+            appId = "appId",
+            secret = "secret",
+            licence = "licence"
+        )
         coEvery { faceVerifier.startFaceVerification(any(), any(), any(), any()) } coAnswers {
             val callback = arg<com.ytone.longcare.common.utils.FaceVerifyCallback>(3)
             callback.onVerifyFailed(sdkError)
@@ -118,13 +115,12 @@ class FaceVerificationViewModelTest {
 
     @Test
     fun `startFaceVerificationWithAutoSign should expose callback success as ui success`() = runTest {
-        val third = ThirdKeyReturnModel(
-            txFaceAppId = "appId",
-            txFaceAppSecret = "secret",
-            txFaceAppLicence = "licence"
-        )
         val result = FaceVerifyResult(isSuccess = true, error = null)
-        coEvery { systemConfigManager.getThirdKey() } returns third
+        coEvery { systemConfigManager.getFaceVerificationConfig() } returns FaceVerificationConfig(
+            appId = "appId",
+            secret = "secret",
+            licence = "licence"
+        )
         coEvery { faceVerifier.startFaceVerification(any(), any(), any(), any()) } coAnswers {
             val callback = arg<com.ytone.longcare.common.utils.FaceVerifyCallback>(3)
             callback.onVerifySuccess(result)
