@@ -66,23 +66,7 @@ class FaceVerificationViewModel @Inject constructor(
                 orderNo = orderNo,
                 userId = userId
             )
-            
-            val third = systemConfigManager.getThirdKey()
-            if (third == null || third.txFaceAppId.isBlank() || third.txFaceAppSecret.isBlank() || third.txFaceAppLicence.isBlank()) {
-                _uiState.value = FaceVerifyUiState.Error(error = null, message = "人脸配置不可用")
-                return@launch
-            }
-            val cfg = FaceVerificationConfig(
-                appId = third.txFaceAppId,
-                secret = third.txFaceAppSecret,
-                licence = third.txFaceAppLicence
-            )
-            faceVerifier.startFaceVerification(
-                context = context,
-                config = cfg,
-                request = request,
-                callback = createFaceVerifyCallback()
-            )
+            startFaceVerificationInternal(context, request)
         }
     }
     
@@ -109,24 +93,38 @@ class FaceVerificationViewModel @Inject constructor(
                 userId = userId,
                 sourcePhotoStr = sourcePhotoStr
             )
-            
-            val third = systemConfigManager.getThirdKey()
-            if (third == null || third.txFaceAppId.isBlank() || third.txFaceAppSecret.isBlank() || third.txFaceAppLicence.isBlank()) {
-                _uiState.value = FaceVerifyUiState.Error(error = null, message = "人脸配置不可用")
-                return@launch
-            }
-            val cfg = FaceVerificationConfig(
-                appId = third.txFaceAppId,
-                secret = third.txFaceAppSecret,
-                licence = third.txFaceAppLicence
-            )
-            faceVerifier.startFaceVerification(
-                context = context,
-                config = cfg,
-                request = request,
-                callback = createFaceVerifyCallback()
-            )
+            startFaceVerificationInternal(context, request)
         }
+    }
+
+    private suspend fun startFaceVerificationInternal(
+        context: Context,
+        request: FaceVerificationRequest
+    ) {
+        val config = resolveFaceConfig()
+        if (config == null) {
+            _uiState.value = FaceVerifyUiState.Error(error = null, message = "人脸配置不可用")
+            return
+        }
+
+        faceVerifier.startFaceVerification(
+            context = context,
+            config = config,
+            request = request,
+            callback = createFaceVerifyCallback()
+        )
+    }
+
+    private suspend fun resolveFaceConfig(): FaceVerificationConfig? {
+        val third = systemConfigManager.getThirdKey() ?: return null
+        if (third.txFaceAppId.isBlank() || third.txFaceAppSecret.isBlank() || third.txFaceAppLicence.isBlank()) {
+            return null
+        }
+        return FaceVerificationConfig(
+            appId = third.txFaceAppId,
+            secret = third.txFaceAppSecret,
+            licence = third.txFaceAppLicence
+        )
     }
     
     /**

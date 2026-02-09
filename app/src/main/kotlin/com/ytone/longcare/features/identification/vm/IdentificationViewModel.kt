@@ -300,18 +300,13 @@ class IdentificationViewModel @Inject constructor(
                     userId = userId,
                     sourcePhotoStr = sourcePhotoBase64
                 )
-                
-                val cfg = getTencentCloudConfig()
-                if (cfg == null) {
-                    setFaceVerificationError("人脸配置不可用")
-                    return@launch
-                }
-                faceVerifier.startFaceVerification(
+
+                startFaceVerificationWithResolvedConfig(
                     context = context,
-                    config = cfg,
                     request = request,
                     // 使用普通回调即可，因为已经保存到本地了
-                    callback = createFaceVerifyCallback()
+                    callback = createFaceVerifyCallback(),
+                    onConfigMissing = { setFaceVerificationError("人脸配置不可用") }
                 )
             } catch (e: Exception) {
                 logE("下载人脸图片失败", tag = "IdentificationVM", throwable = e)
@@ -348,17 +343,12 @@ class IdentificationViewModel @Inject constructor(
                     sourcePhotoStr = sourcePhotoBase64
                 )
 
-                val cfg = getTencentCloudConfig()
-                if (cfg == null) {
-                    setFaceVerificationError("人脸配置不可用")
-                    return@launch
-                }
-                faceVerifier.startFaceVerification(
+                startFaceVerificationWithResolvedConfig(
                     context = context,
-                    config = cfg,
                     request = request,
                     // 使用普通回调即可，因为已经是从本地缓存读取的
-                    callback = createFaceVerifyCallback()
+                    callback = createFaceVerifyCallback(),
+                    onConfigMissing = { setFaceVerificationError("人脸配置不可用") }
                 )
             } catch (e: Exception) {
                 logE("人脸验证失败", tag = "IdentificationVM", throwable = e)
@@ -389,19 +379,34 @@ class IdentificationViewModel @Inject constructor(
                 orderNo = orderNo,
                 userId = userId
             )
-            
-            val cfg = getTencentCloudConfig()
-            if (cfg == null) {
-                setFaceVerificationError("人脸配置不可用")
-                return@launch
-            }
-            faceVerifier.startFaceVerification(
+
+            startFaceVerificationWithResolvedConfig(
                 context = context,
-                config = cfg,
                 request = request,
-                callback = createFaceVerifyCallback()
+                callback = createFaceVerifyCallback(),
+                onConfigMissing = { setFaceVerificationError("人脸配置不可用") }
             )
         }
+    }
+
+    private suspend fun startFaceVerificationWithResolvedConfig(
+        context: Context,
+        request: FaceVerificationRequest,
+        callback: FaceVerifyCallback,
+        onConfigMissing: () -> Unit
+    ) {
+        val config = getTencentCloudConfig()
+        if (config == null) {
+            onConfigMissing()
+            return
+        }
+
+        faceVerifier.startFaceVerification(
+            context = context,
+            config = config,
+            request = request,
+            callback = callback
+        )
     }
     
     /**
@@ -643,19 +648,13 @@ class IdentificationViewModel @Inject constructor(
                     userId = currentUser.userId.toString(),
                     sourcePhotoStr = base64Image
                 )
-                
+
                 // 启动人脸验证（用于设置人脸信息）
-                val cfg = getTencentCloudConfig()
-                if (cfg == null) {
-                    val errorMsg = "人脸配置不可用"
-                    setFaceSetupError(errorMsg)
-                    return@launch
-                }
-                faceVerifier.startFaceVerification(
+                startFaceVerificationWithResolvedConfig(
                     context = context,
-                    config = cfg,
                     request = request,
-                    callback = createFaceSetupVerifyCallback(imageFile, base64Image)
+                    callback = createFaceSetupVerifyCallback(imageFile, base64Image),
+                    onConfigMissing = { setFaceSetupError("人脸配置不可用") }
                 )
                 
             } catch (e: Exception) {
