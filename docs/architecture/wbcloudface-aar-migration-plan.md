@@ -42,6 +42,11 @@
      - `tx_face_sdk_source`
      - `tx_face_live_coord`
      - `tx_face_normal_coord`
+   - 私仓场景可选配置：
+     - `TX_FACE_MAVEN_REPO_URL`
+     - `TX_FACE_MAVEN_REPO_USERNAME`
+     - `TX_FACE_MAVEN_REPO_PASSWORD`
+     - 仓库配置入口在 `settings.gradle.kts`，未配置时不会影响默认仓库。
 5. 稳定后删除 `app/libs` 中旧 AAR（在分支中执行，确保可回滚）。
 
 ## 阶段 B：规则与 native 收敛
