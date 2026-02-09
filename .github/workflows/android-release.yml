@@ -40,6 +40,9 @@ env:
   TX_FACE_SDK_SOURCE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_sdk_source || vars.TX_FACE_SDK_SOURCE || 'local' }}
   TX_FACE_LIVE_COORD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_live_coord || vars.TX_FACE_LIVE_COORD || '' }}
   TX_FACE_NORMAL_COORD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_normal_coord || vars.TX_FACE_NORMAL_COORD || '' }}
+  TX_FACE_MAVEN_REPO_URL: ${{ vars.TX_FACE_MAVEN_REPO_URL || '' }}
+  TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
+  TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
 
 jobs:
   release-build:
