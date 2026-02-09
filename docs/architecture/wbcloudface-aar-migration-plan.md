@@ -38,6 +38,10 @@
      - `TX_FACE_LIVE_COORD=<group:artifact:version>`
      - `TX_FACE_NORMAL_COORD=<group:artifact:version>`
 4. 在 CI 或本地 `gradle.properties` 配置上述变量，先在预检分支跑通编译与 lint。
+   - `android-release.yml` 已支持 `workflow_dispatch` 输入：
+     - `tx_face_sdk_source`
+     - `tx_face_live_coord`
+     - `tx_face_normal_coord`
 5. 稳定后删除 `app/libs` 中旧 AAR（在分支中执行，确保可回滚）。
 
 ## 阶段 B：规则与 native 收敛

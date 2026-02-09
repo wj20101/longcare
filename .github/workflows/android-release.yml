@@ -11,6 +11,22 @@ on:
         required: false
         type: boolean
         default: false
+      tx_face_sdk_source:
+        description: "Tencent face SDK source (local/maven)"
+        required: false
+        type: choice
+        options:
+          - local
+          - maven
+        default: local
+      tx_face_live_coord:
+        description: "Tencent face live SDK coordinate when source=maven"
+        required: false
+        type: string
+      tx_face_normal_coord:
+        description: "Tencent face normal SDK coordinate when source=maven"
+        required: false
+        type: string
 
 concurrency:
   group: android-release-${{ github.ref }}
@@ -21,6 +37,9 @@ permissions:
 
 env:
   JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
+  TX_FACE_SDK_SOURCE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_sdk_source || vars.TX_FACE_SDK_SOURCE || 'local' }}
+  TX_FACE_LIVE_COORD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_live_coord || vars.TX_FACE_LIVE_COORD || '' }}
+  TX_FACE_NORMAL_COORD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_normal_coord || vars.TX_FACE_NORMAL_COORD || '' }}
 
 jobs:
   release-build:
@@ -47,6 +66,16 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
+      - name: Validate face SDK source settings
+        run: |
+          echo "TX_FACE_SDK_SOURCE=${TX_FACE_SDK_SOURCE}"
+          if [ "${TX_FACE_SDK_SOURCE}" = "maven" ]; then
+            if [ -z "${TX_FACE_LIVE_COORD}" ] || [ -z "${TX_FACE_NORMAL_COORD}" ]; then
+              echo "::error::TX_FACE_LIVE_COORD and TX_FACE_NORMAL_COORD are required when TX_FACE_SDK_SOURCE=maven"
+              exit 1
+            fi
+          fi
 
       - name: Verify quality gates
         run: ./gradlew --no-daemon :app:lintDebug :app:testDebugUnitTest
