@@ -104,10 +104,6 @@ android {
         }
     }
 
-    room {
-        schemaDirectory("$projectDir/schemas")
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -169,6 +165,10 @@ android {
 //        create("dev") { dimension = "environment" }
 //        create("prod") { dimension = "environment" }
 //    }
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 baselineProfile {
