@@ -2,14 +2,20 @@ package com.ytone.longcare.features.photoupload.viewmodel
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.data.database.entity.ImageType
+import com.ytone.longcare.data.database.entity.ImageUploadStatus
+import com.ytone.longcare.data.database.entity.OrderImageEntity
+import com.ytone.longcare.data.repository.ImageRepository
+import com.ytone.longcare.data.repository.UnifiedOrderRepository
+import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.domain.cos.repository.CosRepository
-import com.ytone.longcare.domain.order.SharedOrderRepository
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.photoupload.model.ImageTask
@@ -24,10 +30,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
-import androidx.core.net.toUri
+import com.ytone.longcare.common.utils.logD
+import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.common.utils.logW
 
 /**
  * 图片处理ViewModel
@@ -39,8 +52,13 @@ class PhotoProcessingViewModel @Inject constructor(
     private val toastHelper: ToastHelper,
     private val cosRepository: CosRepository,
     private val userSessionRepository: UserSessionRepository,
-    private val sharedOrderRepository: SharedOrderRepository,
+    private val unifiedOrderRepository: UnifiedOrderRepository,
+    private val imageRepository: ImageRepository,
 ) : ViewModel() {
+
+    // 当前订单Key，用于Room持久化
+    private val _currentOrderKey = MutableStateFlow<OrderKey?>(null)
+    val currentOrderKey: StateFlow<OrderKey?> = _currentOrderKey.asStateFlow()
 
     // 图片任务列表的私有状态
     private val _imageTasks = MutableStateFlow<List<ImageTask>>(emptyList())
@@ -68,24 +86,131 @@ class PhotoProcessingViewModel @Inject constructor(
     }
 
     /**
+     * 设置当前订单Key并从Room加载图片
+     * @param orderKey 订单标识符
+     */
+    fun setOrderKey(orderKey: OrderKey) {
+        logD("setOrderKey: $orderKey (current: ${_currentOrderKey.value})", tag = "PhotoVM")
+        if (_currentOrderKey.value == orderKey) return
+        _currentOrderKey.value = orderKey
+        loadImagesFromRoom(orderKey)
+    }
+
+    /**
+     * 从Room加载订单图片
+     */
+    private fun loadImagesFromRoom(orderKey: OrderKey) {
+        viewModelScope.launch {
+            val entities = imageRepository.getImagesByOrderId(orderKey)
+            logD("loadImagesFromRoom: orderId=${orderKey.orderId}, found ${entities.size} entities", tag = "PhotoVM")
+            entities.forEach { 
+                logD("  - Image: id=${it.id}, uri=${it.localUri}, status=${it.uploadStatus}", tag = "PhotoVM")
+            }
+            val tasks = entities.map { it.toImageTask() }
+            _imageTasks.value = tasks
+        }
+    }
+
+    /**
+     * OrderImageEntity转换为ImageTask
+     */
+    private fun OrderImageEntity.toImageTask(): ImageTask {
+        return ImageTask(
+            id = id.toString(),
+            originalUri = localUri.toUri(),
+            taskType = getImageTypeEnum().toImageTaskType(),
+            resultUri = localUri.toUri(),
+            status = getUploadStatusEnum().toImageTaskStatus(),
+            errorMessage = errorMessage,
+            isUploaded = uploadStatus == ImageUploadStatus.SUCCESS.value,
+            key = cloudKey,
+            cloudUrl = cloudUrl
+        )
+    }
+
+    /**
+     * ImageType转换为ImageTaskType
+     */
+    private fun ImageType.toImageTaskType(): ImageTaskType {
+        return when (this) {
+            ImageType.CUSTOMER -> ImageTaskType.BEFORE_CARE
+            ImageType.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
+            ImageType.CENTER_CARE -> ImageTaskType.CENTER_CARE
+            ImageType.AFTER_CARE -> ImageTaskType.AFTER_CARE
+        }
+    }
+
+    /**
+     * ImageTaskType转换为ImageType
+     */
+    private fun ImageTaskType.toImageType(): ImageType {
+        return when (this) {
+            ImageTaskType.BEFORE_CARE -> ImageType.BEFORE_CARE
+            ImageTaskType.CENTER_CARE -> ImageType.CENTER_CARE
+            ImageTaskType.AFTER_CARE -> ImageType.AFTER_CARE
+        }
+    }
+
+    /**
+     * ImageUploadStatus转换为ImageTaskStatus
+     */
+    private fun ImageUploadStatus.toImageTaskStatus(): ImageTaskStatus {
+        return when (this) {
+            // PENDING/UPLOADING 在重新加载时应视为本地已就绪 (SUCCESS)，
+            // 因为没有后台进程在跑，且文件存在。这允许用户再次点击上传按钮。
+            ImageUploadStatus.PENDING, ImageUploadStatus.UPLOADING -> ImageTaskStatus.SUCCESS 
+            ImageUploadStatus.SUCCESS -> ImageTaskStatus.SUCCESS
+            ImageUploadStatus.FAILED, ImageUploadStatus.CANCELLED -> ImageTaskStatus.FAILED
+        }
+    }
+
+    /**
      * 添加单张图片到处理队列
      */
-    fun addImageToProcess(uri: Uri, taskType: ImageTaskType, address: String, orderId: Long? = null) {
-        addImagesToProcess(listOf(uri), taskType, address, orderId)
+    fun addImageToProcess(uri: Uri, taskType: ImageTaskType, address: String, orderKey: OrderKey? = null) {
+        addImagesToProcess(listOf(uri), taskType, address, orderKey)
     }
 
     /**
      * 添加多张图片到处理队列
      */
-    fun addImagesToProcess(uris: List<Uri>, taskType: ImageTaskType, address: String, orderId: Long? = null) {
+    fun addImagesToProcess(uris: List<Uri>, taskType: ImageTaskType, address: String, orderKey: OrderKey? = null) {
         viewModelScope.launch {
-            val newTasks = uris.map { uri ->
-                ImageTask(
-                    id = UUID.randomUUID().toString(),
+            // 使用传入的orderKey或当前订单Key
+            val effectiveOrderKey = orderKey ?: _currentOrderKey.value
+            logD("addImagesToProcess: count=${uris.size}, key=$effectiveOrderKey", tag = "PhotoVM")
+            
+            val newTasks = mutableListOf<ImageTask>()
+            
+            for (uri in uris) {
+                // 如果有订单Key，先保存到Room，获取数据库ID
+                val dbId = if (effectiveOrderKey != null) {
+                    try {
+                        val id = imageRepository.addImage(
+                            orderKey = effectiveOrderKey,
+                            imageType = taskType.toImageType(),
+                            localUri = uri.toString(),
+                            localPath = uri.path
+                        )
+                        logD("Saved to DB: id=$id, type=$taskType", tag = "PhotoVM")
+                        id
+                    } catch (e: Exception) {
+                        logE("Failed to save image to DB", tag = "PhotoVM", throwable = e)
+                        null
+                    }
+                } else {
+                    // 没有订单Key时使用UUID作为临时ID
+                    logW("No effectiveOrderKey, using UUID", tag = "PhotoVM")
+                    null
+                }
+                
+                val task = ImageTask(
+                    id = dbId?.toString() ?: UUID.randomUUID().toString(),
                     originalUri = uri,
                     taskType = taskType,
                     status = ImageTaskStatus.PROCESSING
                 )
+                newTasks.add(task)
             }
 
             // 更新任务列表
@@ -114,7 +239,7 @@ class PhotoProcessingViewModel @Inject constructor(
 
         // 获取老人信息
         val elderName = if (orderId != null) {
-            val orderInfo = sharedOrderRepository.getCachedOrderInfo(OrderInfoRequestModel(orderId = orderId, planId = 0))
+            val orderInfo = unifiedOrderRepository.getCachedOrderInfo(OrderKey(orderId))
             orderInfo?.userInfo?.name ?: "未知老人"
         } else {
             "未知老人"
@@ -194,6 +319,14 @@ class PhotoProcessingViewModel @Inject constructor(
                 task
             }
         }
+        
+        // 同步到Room
+        viewModelScope.launch {
+            val imageId = taskId.toLongOrNull()
+            if (imageId != null) {
+                imageRepository.markAsSuccess(imageId, key, cloudUrl)
+            }
+        }
     }
 
     /**
@@ -214,6 +347,14 @@ class PhotoProcessingViewModel @Inject constructor(
      */
     fun removeTask(taskId: String) {
         _imageTasks.value = _imageTasks.value.filter { it.id != taskId }
+        
+        // 同步到Room
+        viewModelScope.launch {
+            val imageId = taskId.toLongOrNull()
+            if (imageId != null) {
+                imageRepository.deleteImage(imageId)
+            }
+        }
     }
 
     /**
@@ -221,6 +362,14 @@ class PhotoProcessingViewModel @Inject constructor(
      */
     fun clearAllTasks() {
         _imageTasks.value = emptyList()
+        
+        // 同步到Room
+        viewModelScope.launch {
+            val orderKey = _currentOrderKey.value
+            if (orderKey != null) {
+                imageRepository.deleteImagesByOrderId(orderKey)
+            }
+        }
     }
 
     /**

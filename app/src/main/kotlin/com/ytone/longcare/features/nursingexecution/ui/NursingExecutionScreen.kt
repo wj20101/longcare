@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -29,11 +30,11 @@ import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.api.response.UserInfoM
 import com.ytone.longcare.common.utils.NavigationHelper
+import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.model.isExecutingState
 import com.ytone.longcare.model.isPendingExecutionState
 import com.ytone.longcare.navigation.navigateToSelectDevice
@@ -41,20 +42,48 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import dagger.hilt.android.EntryPointAccessors
 import com.ytone.longcare.di.NursingExecutionEntryPoint
+import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.common.utils.logI
 
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NursingExecutionScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    
     val context = LocalContext.current
     val navigationHelper = EntryPointAccessors.fromApplication(
         context.applicationContext,
         NursingExecutionEntryPoint::class.java
     ).navigationHelper()
+    
+    // 获取单例 LocationTrackingManager
+    val locationTrackingManager = EntryPointAccessors.fromApplication(
+        context.applicationContext,
+        NursingExecutionEntryPoint::class.java
+    ).locationTrackingManager()
+
+    // 开启定位会话 (Session Start)
+    // 只要进入工单流程，就开启持续定位，无论页面如何跳转，只要不显式停止，定位就会一直保持
+    LaunchedEffect(Unit) {
+        // 检查服务是否正在运行且属于其他订单
+        val isTracking = locationTrackingManager.isTracking.value
+        val trackingRequest = locationTrackingManager.currentTrackingRequest.value
+        
+        if (isTracking && trackingRequest != null && trackingRequest.orderId != orderParams.orderId) {
+            logI("⚠️ 检测到定位服务正在为其他订单(OrderId=${trackingRequest.orderId})运行，当前订单(OrderId=${orderParams.orderId})，正在停止旧服务...")
+            locationTrackingManager.stopTracking()
+        }
+        
+        com.ytone.longcare.common.utils.KLogger.e("LocSession", "NursingExecutionScreen: LaunchedEffect - calling startLocationSession")
+        locationTrackingManager.startLocationSession()
+    }
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -79,7 +108,7 @@ fun NursingExecutionScreen(
             NursingExecutionContent(
                 navController = navController,
                 orderInfo = state.orderInfo,
-                orderInfoRequest = orderInfoRequest,
+                orderParams = orderParams,
                 navigationHelper = navigationHelper
             )
         }
@@ -148,9 +177,10 @@ fun ErrorScreen(
 fun NursingExecutionContent(
     navController: NavController,
     orderInfo: ServiceOrderInfoModel,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     navigationHelper: NavigationHelper
 ) {
+    val coroutineScope = rememberCoroutineScope()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -161,7 +191,7 @@ fun NursingExecutionContent(
                 CenterAlignedTopAppBar(
                     title = { Text(stringResource(R.string.nursing_execution_title), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        IconButton(onClick = singleClick { navController.popBackStack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                         }
                     },
@@ -230,17 +260,19 @@ fun NursingExecutionContent(
                 ) {
                     ConfirmButton(
                         text = stringResource(R.string.nursing_execution_confirm_button), 
-                        onClick = {
+                        onClick = singleClick {
                             when {
                                 orderInfo.state.isExecutingState() -> {
                                     // 使用NavigationHelper统一处理跳转逻辑
-                                    navigationHelper.navigateToServiceCountdownWithLogic(
-                                        navController = navController,
-                                        orderId = orderInfoRequest.orderId,
-                                        projectList = orderInfo.projectList ?: emptyList()
-                                    )
+                                    coroutineScope.launch {
+                                        navigationHelper.navigateToServiceCountdownWithLogic(
+                                            navController = navController,
+                                            orderParams = orderParams,
+                                            projectList = orderInfo.projectList ?: emptyList()
+                                        )
+                                    }
                                 }
-                                orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(orderInfoRequest)
+                                orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(orderParams)
                                 else -> navController.popBackStack()
                             }
                         }

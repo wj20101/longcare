@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -25,6 +24,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,7 +36,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -48,10 +47,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import kotlinx.coroutines.Dispatchers
 import java.util.concurrent.Executors
+import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.common.utils.logW
 
 /**
  * 人脸捕获主界面
@@ -174,7 +176,7 @@ fun FaceCaptureScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回",
                             tint = Color.White
                         )
@@ -220,7 +222,7 @@ fun FaceCaptureScreen(
                 AnimatedContent(
                     targetState = uiState.userHint,
                     transitionSpec = {
-                        fadeIn(animationSpec = tween(300)) + slideInVertically() with 
+                        fadeIn(animationSpec = tween(300)) + slideInVertically() togetherWith
                         fadeOut(animationSpec = tween(300)) + slideOutVertically()
                     },
                     label = "hint_animation"
@@ -624,11 +626,11 @@ private fun getAvailableCameraSelector(context: Context): CameraSelector {
             CameraSelector.DEFAULT_FRONT_CAMERA
         } else {
             // 没有前置摄像头，使用后置摄像头
-            Log.w("FaceCaptureScreen", "前置摄像头不可用，回退到后置摄像头")
+            com.ytone.longcare.common.utils.KLogger.w("FaceCaptureScreen", "前置摄像头不可用，回退到后置摄像头")
             CameraSelector.DEFAULT_BACK_CAMERA
         }
     } catch (e: Exception) {
-        Log.e("FaceCaptureScreen", "检测相机失败: ${e.message}", e)
+        com.ytone.longcare.common.utils.KLogger.e("FaceCaptureScreen", "检测相机失败: ${e.message}", e)
         // 发生错误时默认尝试前置摄像头
         CameraSelector.DEFAULT_FRONT_CAMERA
     }

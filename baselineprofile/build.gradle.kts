@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.test)
-    alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.baselineprofile)
 }
 
@@ -26,6 +25,16 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    packaging {
+        jniLibs {
+            keepDebugSymbols +=
+                setOf(
+                    "**/libbenchmarkNative.so",
+                    "**/libtracing_perfetto.so",
+                )
+        }
+    }
+
     targetProjectPath = ":app"
 
 //    flavorDimensions += listOf("environment")
@@ -39,7 +48,7 @@ android {
 // This is the configuration block for the Baseline Profile plugin.
 // You can specify to run the generators on a managed devices or connected devices.
 baselineProfile {
-    useConnectedDevices = false
+    useConnectedDevices = true
 }
 
 dependencies {
@@ -51,6 +60,6 @@ dependencies {
 
 androidComponents {
     onVariants { v ->
-        v.instrumentationRunnerArguments.put("targetAppId", v.testedApplicationId)
+        v.instrumentationRunnerArguments.put("targetAppId", "com.ytone.longcare")
     }
 }

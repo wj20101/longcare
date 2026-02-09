@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.photoupload.ui
 
+import com.ytone.longcare.common.utils.singleClick
+import com.ytone.longcare.common.utils.safePopBackStack
 import android.Manifest
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -61,8 +63,10 @@ import androidx.core.net.toUri
 import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.common.utils.UnifiedBackHandler
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.BuildConfig
+import com.ytone.longcare.model.toOrderKey
+import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
@@ -76,15 +80,31 @@ enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
 @Composable
 fun PhotoUploadScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     viewModel: PhotoProcessingViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    
     // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
     UnifiedBackHandler(navController = navController)
 
+     DisposableEffect(Unit) {
+        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: 🟢 Enter Composition")
+        onDispose {
+            com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: 🔴 Leave Composition (onDispose)")
+        }
+    }
+
+    // 防止重复导航标记
+    var isNavigating by remember { mutableStateOf(false) }
+
     // 在组件初始化时加载订单信息（如果缓存中没有）
     LaunchedEffect(orderInfoRequest) {
+        // 设置ViewModel的OrderKey以加载图片数据
+        viewModel.setOrderKey(orderInfoRequest.toOrderKey())
+        
         // 先检查缓存，如果没有缓存数据才请求
         if (sharedViewModel.getCachedOrderInfo(orderInfoRequest) == null) {
             sharedViewModel.getOrderInfo(orderInfoRequest)
@@ -157,7 +177,7 @@ fun PhotoUploadScreen(
                     uris = listOf(uri),
                     taskType = taskType,
                     address = sharedViewModel.getUserAddress(orderInfoRequest),
-                    orderId = orderInfoRequest.orderId
+                    orderKey = orderInfoRequest.toOrderKey()
                 )
             }
             // 清除数据，避免重复处理
@@ -188,7 +208,10 @@ fun PhotoUploadScreen(
                         stringResource(R.string.photo_upload_title), fontWeight = FontWeight.Bold
                     )
                 }, navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = singleClick {
+                        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Back Button Clicked -> safePopBackStack")
+                        navController.safePopBackStack()
+                    }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
@@ -208,7 +231,8 @@ fun PhotoUploadScreen(
                         text = if (isUploading) "上传中..." else stringResource(R.string.photo_upload_confirm_and_next),
                         enabled = hasCategoriesHaveImages && !isUploading,
                         isLoading = isUploading,
-                        onClick = {
+                        onClick = singleClick {
+                            com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Confirm Button Clicked")
                             scope.launch {
                                 // Mock 模式下跳过实际上传，直接返回 Mock 数据
                                 if (BuildConfig.USE_MOCK_DATA) {
@@ -221,7 +245,8 @@ fun PhotoUploadScreen(
                                     navController.previousBackStackEntry?.savedStateHandle?.set(
                                         NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, imageTasksMap
                                     )
-                                    navController.popBackStack()
+                                    com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Mock Success -> safePopBackStack")
+                                    navController.safePopBackStack()
                                     return@launch
                                 }
                                 
@@ -246,7 +271,8 @@ fun PhotoUploadScreen(
                                         navController.previousBackStackEntry?.savedStateHandle?.set(
                                             NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, imageTasksMap
                                         )
-                                        navController.popBackStack()
+                                        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Upload Success -> safePopBackStack")
+                                        navController.safePopBackStack()
                                     }, onFailure = { error ->
                                         // 显示上传失败的错误信息
                                         viewModel.showToast("图片上传失败: ${error.message}")
@@ -452,7 +478,7 @@ fun AddPhotoButton(
             .fillMaxWidth()
             .aspectRatio(1f)
             .border(1.dp, color = lineColor, shape = RoundedCornerShape(12.dp))
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(enabled = enabled, onClick = singleClick(onClick = onClick))
             .padding(8.dp)
             .graphicsLayer(alpha = alpha),
         horizontalAlignment = Alignment.CenterHorizontally,

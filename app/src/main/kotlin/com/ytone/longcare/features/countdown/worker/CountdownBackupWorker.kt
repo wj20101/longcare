@@ -8,6 +8,7 @@ import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import java.util.concurrent.TimeUnit
 import androidx.core.content.edit
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 
 /**
  * 倒计时备份 Worker
@@ -135,9 +136,10 @@ class CountdownBackupWorker(
         
         try {
             // 启动响铃服务
+            val request = OrderInfoRequestModel(orderId = orderId, planId = 0)
             AlarmRingtoneService.startRingtone(
                 applicationContext, 
-                orderId.toString(), 
+                request, 
                 serviceName
             )
             logI("$TAG: ✅ 备份响铃已启动")

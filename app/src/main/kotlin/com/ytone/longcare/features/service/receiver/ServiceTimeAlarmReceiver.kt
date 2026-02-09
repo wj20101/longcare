@@ -45,7 +45,7 @@ class ServiceTimeAlarmReceiver : BroadcastReceiver() {
         // 获取WakeLock确保设备唤醒
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
         val wakeLock = powerManager.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            PowerManager.PARTIAL_WAKE_LOCK,
             "LongCare:ServiceTimeEndAlarm"
         )
         

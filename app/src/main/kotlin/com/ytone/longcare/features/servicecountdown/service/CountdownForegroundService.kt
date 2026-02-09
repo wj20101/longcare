@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import java.util.Locale
 import javax.inject.Inject
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 
 /**
  * 服务倒计时前台服务
@@ -50,13 +51,13 @@ class CountdownForegroundService : Service() {
          */
         fun startCountdown(
             context: Context,
-            orderId: Long,
+            request: OrderInfoRequestModel,
             serviceName: String,
             totalSeconds: Long
         ) {
             val intent = Intent(context, CountdownForegroundService::class.java).apply {
                 action = ACTION_START_COUNTDOWN
-                putExtra(EXTRA_ORDER_ID, orderId)
+                putExtra(EXTRA_ORDER_ID, request.orderId)
                 putExtra(EXTRA_SERVICE_NAME, serviceName)
                 putExtra(EXTRA_TOTAL_SECONDS, totalSeconds)
             }
@@ -67,22 +68,8 @@ class CountdownForegroundService : Service() {
          * 停止倒计时前台服务
          */
         fun stopCountdown(context: Context) {
-            val intent = Intent(context, CountdownForegroundService::class.java).apply {
-                action = ACTION_STOP_COUNTDOWN
-            }
-            context.startService(intent)
-        }
-
-        /**
-         * 更新倒计时时间（已废弃，通知改为静态显示）
-         */
-        @Deprecated("通知已改为静态显示，不再需要更新时间")
-        fun updateTime(
-            context: Context,
-            remainingSeconds: Long,
-            serviceName: String
-        ) {
-            // 不再执行任何操作
+            val intent = Intent(context, CountdownForegroundService::class.java)
+            context.stopService(intent)
         }
     }
 
@@ -120,11 +107,16 @@ class CountdownForegroundService : Service() {
                 
                 // 立即启动前台服务，避免超时异常
                 val notification = createCountdownNotification()
+                val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                } else {
+                    0
+                }
                 ServiceCompat.startForeground(
                     this,
                     FOREGROUND_NOTIFICATION_ID,
                     notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                    type
                 )
                 // 然后进行其他初始化
                 startCountdownTimer()
@@ -144,6 +136,12 @@ class CountdownForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder {
         return binder
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        logI("App task removed, stopping CountdownForegroundService")
+        stopCountdownNotification()
     }
 
     override fun onDestroy() {

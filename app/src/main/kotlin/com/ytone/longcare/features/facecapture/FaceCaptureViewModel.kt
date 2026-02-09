@@ -2,7 +2,6 @@ package com.ytone.longcare.features.facecapture
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,6 +19,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+import com.ytone.longcare.common.utils.logD
+import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.common.utils.logE
 
 /**
  * 人脸捕获功能的ViewModel
@@ -27,7 +29,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class FaceCaptureViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(FaceCaptureUiState())
@@ -60,7 +62,7 @@ class FaceCaptureViewModel @Inject constructor(
                 // 保存照片到files目录
                 val savedPath = saveFaceImageToFiles(faceBitmap)
                 if (savedPath != null) {
-                    Log.d("FaceCaptureViewModel", "Face image saved to: $savedPath")
+                    logD("Face image saved to: $savedPath", tag = "FaceCaptureViewModel")
                 }
                 
                 // 添加新的人脸图片
@@ -226,10 +228,10 @@ class FaceCaptureViewModel @Inject constructor(
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
                 }
                 
-                Log.i("FaceCaptureViewModel", "Face image saved successfully: ${file.absolutePath}")
+                logI("Face image saved successfully: ${file.absolutePath}", tag = "FaceCaptureViewModel")
                 file.absolutePath
             } catch (e: Exception) {
-                Log.e("FaceCaptureViewModel", "Failed to save face image", e)
+                logE("Failed to save face image", tag = "FaceCaptureViewModel", throwable = e)
                 null
             }
         }
@@ -250,7 +252,7 @@ class FaceCaptureViewModel @Inject constructor(
                 emptyList()
             }
         } catch (e: Exception) {
-            Log.e("FaceCaptureViewModel", "Failed to get saved face images", e)
+            logE("Failed to get saved face images", tag = "FaceCaptureViewModel", throwable = e)
             emptyList()
         }
     }

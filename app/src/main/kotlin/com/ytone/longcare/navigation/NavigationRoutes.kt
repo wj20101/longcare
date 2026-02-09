@@ -1,13 +1,14 @@
 package com.ytone.longcare.navigation
 
 import androidx.annotation.Keep
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.features.photoupload.model.WatermarkData
 import kotlinx.serialization.Serializable
 
 /**
  * 类型安全的导航路由定义
  * 使用 Kotlin Serialization 来确保参数传递的安全性
+ * 
+ * 设计原则：只传递orderId，通过UnifiedOrderRepository获取完整数据
  */
 
 /**
@@ -26,19 +27,19 @@ object HomeRoute
 
 /**
  * 服务详情页面路由
- * @param orderInfoRequest 订单信息请求模型
+ * @param orderParams 订单导航参数
  */
 @Keep
 @Serializable
-data class ServiceRoute(val orderInfoRequest: OrderInfoRequestModel)
+data class ServiceRoute(val orderParams: OrderNavParams)
 
 /**
  * 护理执行页面路由
- * @param orderInfoRequest 订单信息请求模型
+ * @param orderParams 订单导航参数
  */
 @Keep
 @Serializable
-data class NursingExecutionRoute(val orderInfoRequest: OrderInfoRequestModel)
+data class NursingExecutionRoute(val orderParams: OrderNavParams)
 
 /**
  * NFC签到模式枚举
@@ -46,40 +47,34 @@ data class NursingExecutionRoute(val orderInfoRequest: OrderInfoRequestModel)
 @Keep
 @Serializable
 enum class SignInMode {
-    /**
-     * 开始订单模式
-     */
+    /** 开始订单模式 */
     START_ORDER,
-
-    /**
-     * 结束订单模式
-     */
+    /** 结束订单模式 */
     END_ORDER
 }
 
 /**
  * NFC签到路由
- * @param orderInfoRequest 订单信息请求模型
+ * @param orderParams 订单导航参数
  * @param signInMode 签到模式（开始订单或结束订单）
  * @param endOrderParams 结束订单时的参数信息
  */
 @Keep
 @Serializable
 data class NfcSignInRoute(
-    val orderInfoRequest: OrderInfoRequestModel, val signInMode: SignInMode, val endOrderParams: EndOderInfo? = null
+    val orderParams: OrderNavParams,
+    val signInMode: SignInMode,
+    val endOrderParams: EndOderInfo? = null
 )
 
 /**
  * 服务倒计时页面路由
- * @param orderInfoRequest 订单信息请求模型
- * @param projectIdList 项目ID列表
+ * @param orderParams 订单导航参数
+ * @param projectIdList 选中的项目ID列表
  */
 @Keep
 @Serializable
-data class ServiceCountdownRoute(
-    val orderInfoRequest: OrderInfoRequestModel,
-    val projectIdList: List<Int>
-)
+data class ServiceCountdownRoute(val orderParams: OrderNavParams, val projectIdList: List<Int> = emptyList())
 
 /**
  * 结束订单信息数据类
@@ -113,19 +108,19 @@ data class WebViewRoute(
 
 /**
  * 选择服务页面路由
- * @param orderInfoRequest 订单信息请求模型
+ * @param orderParams 订单导航参数
  */
 @Keep
 @Serializable
-data class SelectServiceRoute(val orderInfoRequest: OrderInfoRequestModel)
+data class SelectServiceRoute(val orderParams: OrderNavParams)
 
 /**
  * 照片上传页面路由
- * @param orderInfoRequest 订单信息请求模型
+ * @param orderParams 订单导航参数
  */
 @Keep
 @Serializable
-data class PhotoUploadRoute(val orderInfoRequest: OrderInfoRequestModel)
+data class PhotoUploadRoute(val orderParams: OrderNavParams)
 
 /**
  * 护理计划列表页面路由
@@ -157,13 +152,13 @@ object LocationTrackingRoute
 
 /**
  * 服务完成页面路由
- * @param orderInfoRequest 订单信息请求模型
+ * @param orderParams 订单导航参数
  * @param serviceCompleteData 服务完成数据
  */
 @Keep
 @Serializable
 data class ServiceCompleteRoute(
-    val orderInfoRequest: OrderInfoRequestModel,
+    val orderParams: OrderNavParams,
     val serviceCompleteData: ServiceCompleteData
 )
 
@@ -189,27 +184,27 @@ data class ServiceCompleteData(
 
 /**
  * 人脸识别引导页面路由
- * @param orderInfoRequest 订单信息请求模型
+ * @param orderParams 订单导航参数
  */
 @Keep
 @Serializable
-data class FaceRecognitionGuideRoute(val orderInfoRequest: OrderInfoRequestModel)
+data class FaceRecognitionGuideRoute(val orderParams: OrderNavParams)
 
 /**
  * 选择设备页面路由
- * @param orderInfoRequest 订单信息请求模型
+ * @param orderParams 订单导航参数
  */
 @Keep
 @Serializable
-data class SelectDeviceRoute(val orderInfoRequest: OrderInfoRequestModel)
+data class SelectDeviceRoute(val orderParams: OrderNavParams)
 
 /**
  * 身份认证页面路由
- * @param orderInfoRequest 订单信息请求模型
+ * @param orderParams 订单导航参数
  */
 @Keep
 @Serializable
-data class IdentificationRoute(val orderInfoRequest: OrderInfoRequestModel)
+data class IdentificationRoute(val orderParams: OrderNavParams)
 
 /**
  * 用户列表页面路由
@@ -252,14 +247,14 @@ object ManualFaceCaptureRoute
 
 /**
  * 结束服务选择页面路由
- * @param orderInfoRequest 订单信息请求模型
- * @param projectIdList 初始选中的项目ID列表
+ * @param orderParams 订单导航参数
  * @param endType 结束类型
+ * @param initialProjectIdList 初始项目ID列表
  */
 @Keep
 @Serializable
 data class EndServiceSelectionRoute(
-    val orderInfoRequest: OrderInfoRequestModel,
-    val projectIdList: List<Int>,
-    val endType: Int
+    val orderParams: OrderNavParams,
+    val endType: Int,
+    val initialProjectIdList: List<Int> = emptyList()
 )

@@ -7,10 +7,11 @@ import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
-import com.ytone.longcare.domain.order.SharedOrderRepository
+import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.features.location.provider.CompositeLocationProvider
+import com.ytone.longcare.model.toOrderKey
+import com.ytone.longcare.features.location.core.LocationFacade
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,10 +26,10 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class SharedOrderDetailViewModel @Inject constructor(
-    private val sharedOrderRepository: SharedOrderRepository,
+    private val unifiedOrderRepository: UnifiedOrderRepository,
     private val orderRepository: OrderRepository,
     private val toastHelper: ToastHelper,
-    private val locationProvider: CompositeLocationProvider,
+    private val locationFacade: LocationFacade,
     @param:ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -56,7 +57,7 @@ class SharedOrderDetailViewModel @Inject constructor(
             _currentOrderId.value = request
             _uiState.value = OrderDetailUiState.Loading
 
-            when (val result = sharedOrderRepository.getOrderInfo(request, forceRefresh)) {
+            when (val result = unifiedOrderRepository.getOrderInfo(request.toOrderKey(), forceRefresh)) {
                 is ApiResult.Success -> {
                     _uiState.value = OrderDetailUiState.Success(result.data)
                 }
@@ -79,7 +80,7 @@ class SharedOrderDetailViewModel @Inject constructor(
      * @return 缓存的订单详情，如果不存在则返回null
      */
     fun getCachedOrderInfo(request: OrderInfoRequestModel): ServiceOrderInfoModel? {
-        return sharedOrderRepository.getCachedOrderInfo(request)
+        return unifiedOrderRepository.getCachedOrderInfo(request.toOrderKey())
     }
 
     /**
@@ -88,7 +89,7 @@ class SharedOrderDetailViewModel @Inject constructor(
      */
     fun preloadOrderInfo(request: OrderInfoRequestModel) {
         viewModelScope.launch {
-            sharedOrderRepository.preloadOrderInfo(request)
+            unifiedOrderRepository.preloadOrderInfo(request.toOrderKey())
         }
     }
 
@@ -115,7 +116,7 @@ class SharedOrderDetailViewModel @Inject constructor(
      * @param request 订单信息请求模型
      */
     fun clearOrderCache(request: OrderInfoRequestModel) {
-        sharedOrderRepository.clearOrderCache(request)
+        unifiedOrderRepository.clearOrderInfoCache(request.toOrderKey())
         if (_currentOrderId.value == request) {
             _uiState.value = OrderDetailUiState.Initial
             _currentOrderId.value = null
@@ -171,7 +172,7 @@ class SharedOrderDetailViewModel @Inject constructor(
                 return Pair("", "")
             }
             
-            val location = locationProvider.getCurrentLocation()
+            val location = locationFacade.getCurrentLocation()
             if (location != null) {
                 Pair(location.longitude.toString(), location.latitude.toString())
             } else {

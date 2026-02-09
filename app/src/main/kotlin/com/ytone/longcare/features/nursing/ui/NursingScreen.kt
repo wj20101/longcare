@@ -48,6 +48,7 @@ import com.ytone.longcare.model.isServiceRecordState
 import com.ytone.longcare.model.toStateDisplayText
 import com.ytone.longcare.navigation.navigateToNursingExecution
 import com.ytone.longcare.navigation.navigateToService
+import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.theme.LongCareTheme
 import kotlinx.coroutines.launch
 
@@ -196,10 +197,10 @@ fun NursingScreen(
                          orderId = order.orderId,
                          planId = order.planId,
                          onNavigateToNursingExecution = { orderId, planId ->
-                             navController.navigateToNursingExecution(OrderInfoRequestModel(orderId = orderId, planId = planId))
+                             navController.navigateToNursingExecution(OrderNavParams(orderId, planId))
                          },
                          onNavigateToService = { orderId, planId ->
-                             navController.navigateToService(OrderInfoRequestModel(orderId = orderId, planId = planId))
+                             navController.navigateToService(OrderNavParams(orderId, planId))
                          },
                          onNotStartedState = {
                              // 未开单状态，不允许跳转

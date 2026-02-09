@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.location.viewmodel
 
 import androidx.lifecycle.ViewModel
+import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
@@ -15,13 +16,18 @@ class LocationTrackingViewModel @Inject constructor(
      * 直接将 Manager 的追踪状态暴露给UI层。
      */
     val isTracking: StateFlow<Boolean> = trackingManager.isTracking
+    
+    /**
+     * 当前正在追踪的订单请求模型。
+     */
+    val currentTrackingRequest: StateFlow<OrderInfoRequestModel?> = trackingManager.currentTrackingRequest
 
     /**
      * 当UI层的"开启"按钮被点击时调用。
      * 将操作委托给 Manager。
      */
-    fun onStartClicked(orderId: Long) {
-        trackingManager.startTracking(orderId)
+    fun onStartClicked(request: OrderInfoRequestModel) {
+        trackingManager.startTracking(request)
     }
 
     /**

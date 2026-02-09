@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.ytone.longcare.navigation.navigateToHomeAndClearStack
 import com.ytone.longcare.R
@@ -29,8 +30,13 @@ import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import com.ytone.longcare.common.utils.HomeBackHandler
-import com.ytone.longcare.common.utils.SelectedProjectsManager
+import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.navigation.ServiceCompleteData
+import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
+import dagger.hilt.android.EntryPointAccessors
+import com.ytone.longcare.di.ServiceCompleteEntryPoint
+import androidx.compose.ui.platform.LocalContext
 
 // --- 数据模型 ---
 data class ServiceSummary(
@@ -47,12 +53,29 @@ data class ServiceSummary(
 @Composable
 fun ServiceCompleteScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     serviceCompleteData: ServiceCompleteData,
-    selectedProjectsManager: SelectedProjectsManager
+    viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    
     // 统一处理系统返回键，与导航按钮行为一致（返回首页并清空堆栈）
     HomeBackHandler(navController = navController)
+    
+    val context = LocalContext.current
+    // 获取单例 LocationTrackingManager
+    val locationTrackingManager = remember {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            ServiceCompleteEntryPoint::class.java
+        ).locationTrackingManager()
+    }
+    
+    // 进入服务完成页面时，停止定位会话 (Session Stop)
+    LaunchedEffect(Unit) {
+        locationTrackingManager.stopLocationSession()
+    }
 
     // 直接使用传入的数据创建 ServiceSummary
     val serviceSummary = ServiceSummary(
@@ -75,7 +98,7 @@ fun ServiceCompleteScreen(
                 navigationIcon = {
                     IconButton(onClick = {
                         // 清除选中项目数据后再返回
-                        selectedProjectsManager.clearSelectedProjects(orderInfoRequest.orderId)
+                        viewModel.clearSelectedProjects(orderInfoRequest.orderId)
                         navController.navigateToHomeAndClearStack()
                     }) {
                         Icon(
@@ -99,7 +122,7 @@ fun ServiceCompleteScreen(
                 ) {
                     ActionButton(text = "完成", onClick = {
                         // 清除选中项目数据后再返回首页
-                        selectedProjectsManager.clearSelectedProjects(orderInfoRequest.orderId)
+                        viewModel.clearSelectedProjects(orderInfoRequest.orderId)
                         navController.navigateToHomeAndClearStack()
                     })
                 }
@@ -133,31 +156,6 @@ fun ServiceCompleteScreen(
 }
 
 /**
- * 获取选中项目的服务内容
- * @param allProjects 所有项目列表
- * @param selectedProjectsManager 选中项目管理器
- * @param orderId 订单ID
- * @return 选中项目的名称字符串
- */
-fun getSelectedProjectsContent(
-    allProjects: List<ServiceProjectM>,
-    selectedProjectsManager: SelectedProjectsManager,
-    orderId: Long
-): String {
-    val selectedProjectIds = selectedProjectsManager.getSelectedProjects(orderId)
-
-    return if (selectedProjectIds?.isNotEmpty() == true) {
-        // 根据选中的项目ID过滤项目列表
-        allProjects.filter { project ->
-            selectedProjectIds.contains(project.projectId)
-        }.joinToString(", ") { it.projectName }
-    } else {
-        // 如果没有选中项目数据，显示所有项目（兼容性处理）
-        allProjects.joinToString(", ") { it.projectName }
-    }
-}
-
-/**
  * 根据项目ID列表获取选中项目的服务内容
  * @param allProjects 所有项目列表
  * @param selectedProjectIds 选中的项目ID列表
@@ -178,20 +176,16 @@ fun getSelectedProjectsContentByIds(
 }
 
 /**
- * 获取选中项目的服务时长
+ * 根据项目ID列表获取选中项目的服务时长
  * @param allProjects 所有项目列表
- * @param selectedProjectsManager 选中项目管理器
- * @param orderId 订单ID
+ * @param selectedProjectIds 选中的项目ID列表
  * @return 格式化后的时长字符串
  */
-fun formatSelectedProjectsDuration(
+fun formatSelectedProjectsDurationByIds(
     allProjects: List<ServiceProjectM>,
-    selectedProjectsManager: SelectedProjectsManager,
-    orderId: Long
+    selectedProjectIds: List<Int>
 ): String {
-    val selectedProjectIds = selectedProjectsManager.getSelectedProjects(orderId)
-
-    val totalMinutes = if (selectedProjectIds?.isNotEmpty() == true) {
+    val totalMinutes = if (selectedProjectIds.isNotEmpty()) {
         // 根据选中的项目ID计算总时长
         allProjects.filter { project ->
             selectedProjectIds.contains(project.projectId)

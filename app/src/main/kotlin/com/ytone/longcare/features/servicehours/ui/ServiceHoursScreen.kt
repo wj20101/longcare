@@ -27,22 +27,27 @@ import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
+import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
-import com.ytone.longcare.common.utils.SelectedProjectsManager
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceHoursScreen(
     navController: NavController, 
-    orderInfoRequest: OrderInfoRequestModel, 
-    viewModel: OrderDetailViewModel = hiltViewModel(),
-    selectedProjectsManager: SelectedProjectsManager
+    orderParams: OrderNavParams, 
+    viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
-    val orderId = orderInfoRequest.orderId
+    // 从orderParams构建请求模型
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    
+    // 获取选中的项目ID
+    val selectedProjectIds by viewModel.selectedProjectIds.collectAsStateWithLifecycle()
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -106,7 +111,7 @@ fun ServiceHoursScreen(
                                     }
                                 }
                             }, navigationIcon = {
-                                IconButton(onClick = { navController.popBackStack() }) {
+                                IconButton(onClick = singleClick { navController.popBackStack() }) {
                                     Icon(
                                         Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = stringResource(R.string.common_back)
@@ -129,8 +134,7 @@ fun ServiceHoursScreen(
                         // 列表内容区域，需要给顶部留出空间给 ServiceHoursTag
                         val selectedProjects = getSelectedProjects(
                             allProjects = state.orderInfo.projectList ?: emptyList(),
-                            selectedProjectsManager = selectedProjectsManager,
-                            orderId = orderId
+                            selectedProjectIds = selectedProjectIds
                         )
                         ServiceRecordList(
                             projects = selectedProjects,
@@ -164,18 +168,14 @@ fun ServiceHoursScreen(
 /**
  * 获取选中的项目列表
  * @param allProjects 所有项目列表
- * @param selectedProjectsManager 选中项目管理器
- * @param orderId 订单ID
+ * @param selectedProjectIds 选中的项目ID列表
  * @return 过滤后的项目列表
  */
 fun getSelectedProjects(
     allProjects: List<ServiceProjectM>,
-    selectedProjectsManager: SelectedProjectsManager,
-    orderId: Long
+    selectedProjectIds: List<Int>
 ): List<ServiceProjectM> {
-    val selectedProjectIds = selectedProjectsManager.getSelectedProjects(orderId)
-    
-    return if (selectedProjectIds?.isNotEmpty() == true) {
+    return if (selectedProjectIds.isNotEmpty()) {
         // 根据选中的项目ID过滤项目列表
         allProjects.filter { project -> 
             selectedProjectIds.contains(project.projectId) 

@@ -6,7 +6,6 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -45,8 +44,7 @@ import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
-import com.ytone.longcare.navigation.EndOderInfo
-import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
+import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.navigation.navigateToEndServiceSelection
 import com.ytone.longcare.navigation.navigateToPhotoUpload
 import com.ytone.longcare.navigation.navigateToHomeAndClearStack
@@ -62,8 +60,10 @@ import com.ytone.longcare.common.utils.HomeBackHandler
 import com.ytone.longcare.di.ServiceCountdownEntryPoint
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
-import com.ytone.longcare.common.utils.DeviceCompatibilityHelper
 import dagger.hilt.android.EntryPointAccessors
+import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.common.utils.singleClick
 
 
 // 服务倒计时页面状态
@@ -108,7 +108,7 @@ private data class ServiceInfo(
  * - 完善的资源清理机制
  * 
  * @param navController 导航控制器
- * @param orderInfoRequest 订单信息请求模型
+ * @param orderParams 订单信息请求模型
  * @param projectIdList 选中的项目ID列表
  * @param sharedViewModel 共享的订单详情ViewModel
  * @param countdownViewModel 倒计时ViewModel
@@ -118,12 +118,15 @@ private data class ServiceInfo(
 @Composable
 fun ServiceCountdownScreen(
     navController: NavController,
-    orderInfoRequest: OrderInfoRequestModel,
+    orderParams: OrderNavParams,
     projectIdList: List<Int>,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     countdownViewModel: ServiceCountdownViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
+    // 从订单导航参数构建请求模型
+    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    
     // 强制设置为竖屏
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
@@ -181,7 +184,7 @@ fun ServiceCountdownScreen(
 
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
-        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest.orderId) }
+        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest) }
     )
 
     // 检查定位权限和服务的函数
@@ -189,7 +192,7 @@ fun ServiceCountdownScreen(
         UnifiedPermissionHelper.checkLocationPermissionAndStart(
             context = context,
             permissionLauncher = permissionLauncher,
-            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest.orderId) }
+            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest) }
         )
     }
 
@@ -273,35 +276,36 @@ fun ServiceCountdownScreen(
 
     // 处理结束服务的公共逻辑
     fun handleEndService(endType: Int) {
-        Log.i("ServiceCountdownScreen", "========================================")
-        Log.i("ServiceCountdownScreen", "🛑 开始处理结束服务 (endType=$endType)...")
-        Log.i("ServiceCountdownScreen", "========================================")
+        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "ServiceCountdownScreen: handleEndService called with endType=$endType")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "🛑 开始处理结束服务 (endType=$endType)...")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
         
         // 1. 停止倒计时前台服务
         CountdownForegroundService.stopCountdown(context)
-        Log.i("ServiceCountdownScreen", "✅ 1. 已停止倒计时前台服务")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 1. 已停止倒计时前台服务")
 
         // 2. 停止定位跟踪服务
         locationTrackingViewModel.onStopClicked()
-        Log.i("ServiceCountdownScreen", "✅ 2. 已停止定位跟踪服务")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 2. 已停止定位跟踪服务")
 
         // 3. 取消倒计时闹钟（使用订单ID精确取消）
-        countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest.orderId)
-        Log.i("ServiceCountdownScreen", "✅ 3. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
+        countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest)
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 3. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
 
         // 4. 停止响铃服务（如果正在响铃）
         AlarmRingtoneService.stopRingtone(context)
-        Log.i("ServiceCountdownScreen", "✅ 4. 已停止响铃服务")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 4. 已停止响铃服务")
 
         // 5. 调用ViewModel结束服务（但不清除图片数据，保留给EndServiceSelectionScreen使用）
         countdownViewModel.endServiceWithoutClearingImages(orderInfoRequest, context)
-        Log.i("ServiceCountdownScreen", "✅ 5. 已结束服务（保留图片数据）")
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 5. 已结束服务（保留图片数据）")
 
         // 6. 导航到结束服务选择页面
         navController.navigateToEndServiceSelection(
-            orderInfoRequest = orderInfoRequest,
-            projectIdList = projectIdList,
-            endType = endType
+            orderParams = orderParams,
+            endType = endType,
+            projectIdList = projectIdList
         )
     }
 
@@ -328,10 +332,10 @@ fun ServiceCountdownScreen(
         checkLocationPermissionAndStart()
 
         // 恢复本地保存的图片数据
-        countdownViewModel.loadUploadedImagesFromLocal(orderInfoRequest)
+        countdownViewModel.loadUploadedImagesFromRepository(orderInfoRequest.toOrderKey())
         
         // 启动订单状态轮询（每5秒查询一次）
-        countdownViewModel.startOrderStatePolling(orderInfoRequest.orderId)
+        countdownViewModel.startOrderStatePolling(orderInfoRequest.toOrderKey())
 
         // 监听图片上传结果
         navController.currentBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<ImageTask>>?>(
@@ -339,7 +343,7 @@ fun ServiceCountdownScreen(
         )?.collect { result ->
             result?.let {
                 // 调用ViewModel处理图片上传结果
-                countdownViewModel.handlePhotoUploadResult(orderInfoRequest, it)
+                countdownViewModel.handlePhotoUploadResult(it)
 
                 // 清除结果，避免重复处理
                 navController.currentBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<ImageTask>>>(
@@ -394,7 +398,7 @@ fun ServiceCountdownScreen(
         // 启动前台服务显示倒计时通知
         countdownViewModel.startForegroundService(
             context = context,
-            orderId = orderInfoRequest.orderId,
+            request = orderInfoRequest,
             serviceName = serviceInfo.serviceName,
             totalSeconds = serviceInfo.totalMinutes * 60L
         )
@@ -404,7 +408,7 @@ fun ServiceCountdownScreen(
         if (state == ServiceCountdownState.RUNNING && remainingMillis > 0) {
             val completionTime = System.currentTimeMillis() + remainingMillis
             countdownNotificationManager.scheduleCountdownAlarm(
-                orderId = orderInfoRequest.orderId,
+                request = orderInfoRequest,
                 serviceName = serviceInfo.serviceName,
                 triggerTimeMillis = completionTime
             )
@@ -451,7 +455,7 @@ fun ServiceCountdownScreen(
             CenterAlignedTopAppBar(
                 title = { Text("服务时间倒计时", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateToHomeAndClearStack() }) {
+                    IconButton(onClick = singleClick { navController.navigateToHomeAndClearStack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
@@ -494,7 +498,7 @@ fun ServiceCountdownScreen(
                     countdownState = countdownState,
                     formattedTime = formattedTime,
                     countdownViewModel = countdownViewModel,
-                    orderInfoRequest = orderInfoRequest
+                    orderParams = orderParams
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -524,11 +528,11 @@ fun ServiceCountdownScreen(
                     .padding(horizontal = 16.dp, vertical = 32.dp)
             ) {
                 Button(
-                    onClick = {
+                    onClick = singleClick {
                         // 验证照片是否已上传 (Mock模式下跳过验证)
                         if (!BuildConfig.USE_MOCK_DATA && !countdownViewModel.validatePhotosUploaded()) {
                             countdownViewModel.showToast("请上传照片")
-                            return@Button
+                            return@singleClick
                         }
 
                         // 如果倒计时还在进行中，显示确认弹窗
@@ -593,7 +597,7 @@ fun ServiceCountdownScreen(
             text = { Text(permissionDialogMessage) },
             confirmButton = {
                 TextButton(
-                    onClick = {
+                    onClick = singleClick {
                         showPermissionDialog = false
                         // 根据权限类型跳转到对应设置页面
                         val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && 
@@ -615,7 +619,7 @@ fun ServiceCountdownScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showPermissionDialog = false }) {
+                    onClick = singleClick { showPermissionDialog = false }) {
                     Text("稍后")
                 }
             })
@@ -629,7 +633,7 @@ fun ServiceCountdownScreen(
             text = { Text("服务时间尚未结束，确定要提前结束服务吗？") },
             confirmButton = {
                 TextButton(
-                    onClick = {
+                    onClick = singleClick {
                         showConfirmDialog = false
                         handleEndService(2)  // 提前结束
                     }) {
@@ -638,7 +642,7 @@ fun ServiceCountdownScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showConfirmDialog = false }) {
+                    onClick = singleClick { showConfirmDialog = false }) {
                     Text("取消")
                 }
             })
@@ -652,44 +656,44 @@ fun ServiceCountdownScreen(
             text = { Text(orderStateErrorMessage) },
             confirmButton = {
                 TextButton(
-                    onClick = {
+                    onClick = singleClick {
                         showOrderStateErrorDialog = false
                         
-                        Log.i("ServiceCountdownScreen", "========================================")
-                        Log.i("ServiceCountdownScreen", "🛑 开始处理订单状态异常，停止所有服务...")
-                        Log.i("ServiceCountdownScreen", "========================================")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "🛑 开始处理订单状态异常，停止所有服务...")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
                         
                         // 1. 清除错误状态
                         countdownViewModel.clearOrderStateError()
-                        Log.i("ServiceCountdownScreen", "✅ 1. 已清除错误状态")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 1. 已清除错误状态")
                         
                         // 2. 停止订单状态轮询
                         countdownViewModel.stopOrderStatePolling()
-                        Log.i("ServiceCountdownScreen", "✅ 2. 已停止订单状态轮询")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 2. 已停止订单状态轮询")
                         
                         // 3. 停止倒计时前台服务
                         CountdownForegroundService.stopCountdown(context)
-                        Log.i("ServiceCountdownScreen", "✅ 3. 已停止倒计时前台服务")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 3. 已停止倒计时前台服务")
                         
                         // 4. 强制停止定位跟踪服务（使用forceStop确保停止）
                         locationTrackingViewModel.forceStop()
-                        Log.i("ServiceCountdownScreen", "✅ 4. 已强制停止定位跟踪服务")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 4. 已强制停止定位跟踪服务")
                         
                         // 5. 取消倒计时闹钟（使用订单ID精确取消）
-                        countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest.orderId)
-                        Log.i("ServiceCountdownScreen", "✅ 5. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
+                        countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest)
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 5. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
                         
                         // 6. 停止响铃服务（如果正在响铃）
                         AlarmRingtoneService.stopRingtone(context)
-                        Log.i("ServiceCountdownScreen", "✅ 6. 已停止响铃服务")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 6. 已停止响铃服务")
                         
                         // 7. 清理ViewModel状态和本地数据（不清除图片数据，因为订单可能需要重新开始）
                         countdownViewModel.endServiceWithoutClearingImages(orderInfoRequest, context)
-                        Log.i("ServiceCountdownScreen", "✅ 7. 已清理ViewModel状态")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 7. 已清理ViewModel状态")
                         
-                        Log.i("ServiceCountdownScreen", "========================================")
-                        Log.i("ServiceCountdownScreen", "✅ 所有服务已停止，准备返回首页")
-                        Log.i("ServiceCountdownScreen", "========================================")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 所有服务已停止，准备返回首页")
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
                         
                         // 8. 返回首页
                         navController.navigateToHomeAndClearStack()
@@ -706,7 +710,7 @@ fun CountdownTimerCard(
     countdownState: ServiceCountdownState,
     formattedTime: String = "12:00:00",
     countdownViewModel: ServiceCountdownViewModel,
-    orderInfoRequest: OrderInfoRequestModel
+    orderParams: OrderNavParams
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -743,13 +747,13 @@ fun CountdownTimerCard(
                 )
             }
             Button(
-                onClick = {
+                onClick = singleClick {
                     val existingImages = countdownViewModel.getCurrentUploadedImages()
                     // 通过savedStateHandle传递已有的图片数据
                     navController.currentBackStackEntry?.savedStateHandle?.set(
                         NavigationConstants.EXISTING_IMAGES_KEY, existingImages
                     )
-                    navController.navigateToPhotoUpload(orderInfoRequest = orderInfoRequest)
+                    navController.navigateToPhotoUpload(orderParams = orderParams)
                 }, shape = RoundedCornerShape(50), colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFF5A623) // 橙色
                 )
