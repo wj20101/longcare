@@ -63,10 +63,12 @@ jobs:
         timeout-minutes: 75
         env:
           BASELINE_API_LEVEL: "33"
-          BASELINE_TARGET: "google_apis"
+          BASELINE_TARGET: "default"
           BASELINE_ANDROID_SDK_HOME: "${{ runner.temp }}/android-sdk-home"
           BASELINE_AVD_HOME: "${{ runner.temp }}/android-avd"
           BASELINE_BOOT_TIMEOUT_SECS: "900"
+          BASELINE_BOOT_STABILIZE_SECS: "45"
+          BASELINE_GRADLE_RETRIES: "1"
           BASELINE_MIN_FREE_MB: "6144"
           BASELINE_PARTITION_SIZE_MB: "2048"
           BASELINE_GRADLE_TIMEOUT_SECS: "2700"

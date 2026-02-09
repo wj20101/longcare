@@ -2,7 +2,7 @@
 set -euo pipefail
 
 API_LEVEL="${BASELINE_API_LEVEL:-33}"
-TARGET="${BASELINE_TARGET:-google_apis}"
+TARGET="${BASELINE_TARGET:-default}"
 ABI="${BASELINE_ABI:-x86_64}"
 AVD_NAME="${BASELINE_AVD_NAME:-baseline-ci}"
 DEFAULT_BASELINE_HOME="${RUNNER_TEMP:-/tmp}"
@@ -11,8 +11,10 @@ BASELINE_ANDROID_AVD_HOME="${BASELINE_AVD_HOME:-${BASELINE_ANDROID_SDK_HOME}/avd
 EMULATOR_PORT="${BASELINE_EMULATOR_PORT:-5554}"
 BOOT_TIMEOUT_SECS="${BASELINE_BOOT_TIMEOUT_SECS:-900}"
 DEVICE_READY_TIMEOUT_SECS="${BASELINE_DEVICE_READY_TIMEOUT_SECS:-300}"
+BOOT_STABILIZE_SECS="${BASELINE_BOOT_STABILIZE_SECS:-30}"
 PARTITION_SIZE_MB="${BASELINE_PARTITION_SIZE_MB:-2048}"
 GRADLE_TIMEOUT_SECS="${BASELINE_GRADLE_TIMEOUT_SECS:-2700}"
+GRADLE_RETRIES="${BASELINE_GRADLE_RETRIES:-1}"
 GRADLE_TASK="${BASELINE_GRADLE_TASK:-:app:generateReleaseBaselineProfile}"
 
 ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
@@ -71,6 +73,8 @@ echo "Using ANDROID_SDK_HOME=${ANDROID_SDK_HOME}"
 echo "Using ANDROID_AVD_HOME=${ANDROID_AVD_HOME}"
 echo "Using BASELINE_PARTITION_SIZE_MB=${PARTITION_SIZE_MB}"
 echo "Using BASELINE_MIN_FREE_MB=${MIN_FREE_MB}"
+echo "Using BASELINE_BOOT_STABILIZE_SECS=${BOOT_STABILIZE_SECS}"
+echo "Using BASELINE_GRADLE_RETRIES=${GRADLE_RETRIES}"
 echo "Disk usage before emulator boot:"
 df -h "${ANDROID_AVD_HOME}" || true
 
@@ -171,19 +175,45 @@ if [[ "${package_ready}" != "1" ]]; then
   exit 1
 fi
 
+# Give system services additional time to settle before APK install.
+sleep "${BOOT_STABILIZE_SECS}"
+
 adb -s "${EMULATOR_SERIAL}" shell input keyevent 82 >/dev/null 2>&1 || true
 adb -s "${EMULATOR_SERIAL}" shell settings put global window_animation_scale 0.0 >/dev/null 2>&1 || true
 adb -s "${EMULATOR_SERIAL}" shell settings put global transition_animation_scale 0.0 >/dev/null 2>&1 || true
 adb -s "${EMULATOR_SERIAL}" shell settings put global animator_duration_scale 0.0 >/dev/null 2>&1 || true
 
-if ! timeout "${GRADLE_TIMEOUT_SECS}" ./gradlew --no-daemon "${GRADLE_TASK}" \
-  -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile; then
+attempt=1
+while true; do
+  set +e
+  timeout "${GRADLE_TIMEOUT_SECS}" ./gradlew --no-daemon "${GRADLE_TASK}" \
+    -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile
   status=$?
-  if [[ "${status}" -eq 124 ]]; then
-    echo "Gradle baseline task timed out after ${GRADLE_TIMEOUT_SECS}s."
+  set -e
+  if [[ "${status}" -eq 0 ]]; then
+    break
   fi
-  tail -n 200 "${EMULATOR_LOG}" || true
-  exit "${status}"
+  if [[ "${status}" -eq 124 ]]; then
+    echo "Gradle baseline task timed out after ${GRADLE_TIMEOUT_SECS}s on attempt ${attempt}."
+  else
+    echo "Gradle baseline task failed with status ${status} on attempt ${attempt}."
+  fi
+  if (( attempt > GRADLE_RETRIES )); then
+    tail -n 200 "${EMULATOR_LOG}" || true
+    exit "${status}"
+  fi
+  echo "Retrying baseline Gradle task in 20s..."
+  sleep 20
+  attempt=$((attempt + 1))
+done
+
+if ! find app/src -type f \( -name "baseline-prof.txt" -o -name "startup-prof.txt" -o -path "*/generated/baselineProfiles/*.txt" \) | grep -q .; then
+  fallback_profile="$(find app/build/intermediates -type f -name "baseline-prof.txt" \( -path "*/combined_art_profile/*" -o -path "*/merged_art_profile/*" \) | head -n 1)"
+  if [[ -n "${fallback_profile}" ]]; then
+    mkdir -p app/src/main/generated/baselineProfiles
+    cp "${fallback_profile}" app/src/main/generated/baselineProfiles/baseline-prof.txt
+    echo "Copied fallback baseline profile from ${fallback_profile} to app/src/main/generated/baselineProfiles/baseline-prof.txt"
+  fi
 fi
 
 echo "Baseline profile files under app/src after ${GRADLE_TASK}:"
