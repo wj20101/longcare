@@ -8,6 +8,7 @@ import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.service.storage.PendingOrdersStorage
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.CancellationException
 
 /**
  * 服务时间结束通知Worker
@@ -49,6 +50,9 @@ class ServiceTimeEndWorker @AssistedInject constructor(
             logI("服务时间结束Worker执行成功: orderId=$orderId")
             Result.success()
             
+        } catch (e: CancellationException) {
+            logI("服务时间结束Worker被取消: ${e.message}")
+            throw e
         } catch (e: Exception) {
             logE("服务时间结束Worker执行失败: ${e.message}")
             
