@@ -5,14 +5,14 @@ import android.content.Intent
 import androidx.core.content.ContextCompat
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.di.ApplicationScope
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
 import com.ytone.longcare.features.location.manager.LocationStateManager
 import com.ytone.longcare.features.location.service.LocationTrackingService
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,12 +24,12 @@ import javax.inject.Singleton
 @Singleton
 class LocationKeepAliveManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    @param:ApplicationScope private val applicationScope: CoroutineScope,
     private val continuousAmapLocationManager: ContinuousAmapLocationManager,
     private val locationStateManager: LocationStateManager
 ) {
     private val lock = Any()
     private val activeOwners = linkedSetOf<String>()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var cacheJob: Job? = null
 
     fun acquire(owner: String) {
@@ -80,11 +80,13 @@ class LocationKeepAliveManager @Inject constructor(
 
     private fun startCacheCollector() {
         if (cacheJob?.isActive == true) return
-        cacheJob = scope.launch {
+        cacheJob = applicationScope.launch {
             try {
                 continuousAmapLocationManager.startContinuousLocation().collect { location ->
                     locationStateManager.recordLocationSuccess(location)
                 }
+            } catch (_: CancellationException) {
+                logI("定位缓存采集任务已取消")
             } catch (e: Exception) {
                 logE("定位缓存采集异常: ${e.message}")
             }
