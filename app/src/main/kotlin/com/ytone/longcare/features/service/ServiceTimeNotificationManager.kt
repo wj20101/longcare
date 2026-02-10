@@ -65,6 +65,8 @@ class ServiceTimeNotificationManager @Inject constructor(
         // 重试配置
         const val MAX_RETRY_COUNT = 3
         private const val RETRY_DELAY_SECONDS = 30L
+
+        private const val INT_POSITIVE_MASK = 0x7fffffff
     }
 
     init {
@@ -168,7 +170,7 @@ class ServiceTimeNotificationManager @Inject constructor(
 
             val pendingIntent = PendingIntent.getBroadcast(
                 context,
-                ALARM_REQUEST_CODE + orderId.toInt(),
+                buildAlarmRequestCode(orderId),
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -293,7 +295,7 @@ class ServiceTimeNotificationManager @Inject constructor(
                 .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .build()
 
-            notificationManager.notify(SERVICE_TIME_NOTIFICATION_ID + orderId.toInt(), notification)
+            notificationManager.notify(buildNotificationId(orderId), notification)
             markNotificationAsProcessed(orderId)
             cancelHandlerNotification(orderId)
             
@@ -332,7 +334,7 @@ class ServiceTimeNotificationManager @Inject constructor(
             val intent = Intent(context, ServiceTimeAlarmReceiver::class.java)
             val pendingIntent = PendingIntent.getBroadcast(
                 context,
-                ALARM_REQUEST_CODE + orderId.toInt(),
+                buildAlarmRequestCode(orderId),
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -407,5 +409,17 @@ class ServiceTimeNotificationManager @Inject constructor(
         } else {
             true
         }
+    }
+
+    private fun buildAlarmRequestCode(orderId: Long): Int {
+        val hash = ((orderId xor (orderId ushr 32)).toInt() and INT_POSITIVE_MASK)
+        val range = Int.MAX_VALUE - ALARM_REQUEST_CODE
+        return ALARM_REQUEST_CODE + (hash % range)
+    }
+
+    private fun buildNotificationId(orderId: Long): Int {
+        val hash = ((orderId xor (orderId ushr 32)).toInt() and INT_POSITIVE_MASK)
+        val range = Int.MAX_VALUE - SERVICE_TIME_NOTIFICATION_ID
+        return SERVICE_TIME_NOTIFICATION_ID + (hash % range)
     }
 }
