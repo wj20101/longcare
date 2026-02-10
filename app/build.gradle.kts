@@ -231,12 +231,12 @@ android {
 //    }
 }
 
-kotlin {
+extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension>("kotlin") {
     // Kotlin toolchain should be configured on the project-level Kotlin extension.
     jvmToolchain(appJdkVersion)
 }
 
-room {
+extensions.configure<androidx.room.gradle.RoomExtension>("room") {
     schemaDirectory("$projectDir/schemas")
 }
 
