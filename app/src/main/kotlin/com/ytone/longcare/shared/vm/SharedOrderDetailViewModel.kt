@@ -15,6 +15,7 @@ import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.features.location.core.LocationFacade
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -191,6 +192,8 @@ class SharedOrderDetailViewModel @Inject constructor(
             } else {
                 Pair("", "")
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             // 记录异常但不抛出，返回空字符串
             Pair("", "")

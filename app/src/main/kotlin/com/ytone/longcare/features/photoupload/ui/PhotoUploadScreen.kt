@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -278,6 +279,8 @@ fun PhotoUploadScreen(
                                         // 显示上传失败的错误信息
                                         viewModel.showToast("图片上传失败: ${error.message}")
                                     })
+                                } catch (e: CancellationException) {
+                                    throw e
                                 } catch (e: Exception) {
                                     // 处理异常情况
                                     viewModel.showToast("上传过程中发生错误: ${e.message}")

@@ -76,6 +76,7 @@ import com.ytone.longcare.features.photoupload.vm.CameraViewModel
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.Executor
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -471,6 +472,8 @@ private fun CameraContent(
                                             } catch (_: Exception) { }
                                         }
                                         
+                                    } catch (e: CancellationException) {
+                                        throw e
                                     } catch (e: Exception) {
                                         CameraEventTracker.trackError(
                                             CameraEventTracker.EventType.CAMERA_SWITCH_ERROR,
@@ -847,6 +850,8 @@ private fun takePhoto(
                                     onImageCaptured(finalFile)
                                 }
                             }
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             CameraEventTracker.trackError(
                                 CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
