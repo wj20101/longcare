@@ -91,6 +91,9 @@ jobs:
       - name: Enforce coroutine cancellation guards
         run: bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
 
+      - name: Enforce target SDK upgrade gate
+        run: bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
+
       - name: Validate release signing secrets
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
