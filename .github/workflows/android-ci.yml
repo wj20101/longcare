@@ -49,6 +49,9 @@ jobs:
       - name: Enforce coroutine cancellation guards
         run: bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
 
+      - name: Enforce target SDK upgrade gate
+        run: bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
+
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
@@ -117,6 +120,17 @@ jobs:
       - name: Assemble instrumentation APKs
         run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest -Pbaseline.enableX86_64=true
 
+      - name: Resolve target SDK for emulator smoke
+        id: target_sdk
+        run: |
+          TARGET_SDK=$(sed -nE 's/.*appTargetSdkVersion by extra\(([0-9]+)\).*/\1/p' constants.gradle.kts | head -n1)
+          if [ -z "${TARGET_SDK}" ]; then
+            echo "Failed to parse appTargetSdkVersion from constants.gradle.kts"
+            exit 1
+          fi
+          echo "value=${TARGET_SDK}" >> "$GITHUB_OUTPUT"
+          echo "Using emulator API level: ${TARGET_SDK}"
+
       - name: Free disk space for emulator
         run: |
           echo "Disk usage before cleanup:"
@@ -133,7 +147,7 @@ jobs:
       - name: Run instrumentation smoke test on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: ${{ steps.target_sdk.outputs.value }}
           target: default
           arch: x86_64
           force-avd-creation: true
