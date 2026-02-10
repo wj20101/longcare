@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.features.location.core.LocationFacade
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +39,8 @@ class CameraViewModel @Inject constructor(
                 } else {
                     "未获取到定位"
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _location.value = "获取定位失败"
             }
