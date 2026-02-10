@@ -8,6 +8,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.ResponseBody
@@ -59,6 +60,8 @@ class DownloadWorker @AssistedInject constructor(
                 }
 
                 downloadWithRetrofit(url, fileName, downloadDir)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: IOException) {
                 return@withContext Result.failure(
                     workDataOf(KEY_ERROR to "网络错误: ${e.message}")
