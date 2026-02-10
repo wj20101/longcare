@@ -6,19 +6,49 @@ SMOKE_REPORT_DIR="${SMOKE_REPORT_DIR:-app/build/reports/androidTests/smoke}"
 SMOKE_REPORT_FILE="${SMOKE_REPORT_FILE:-${SMOKE_REPORT_DIR}/instrumentation-smoke-output.txt}"
 SMOKE_TEST_CLASS="${SMOKE_TEST_CLASS:-com.ytone.longcare.smoke.MainActivitySmokeTest}"
 APP_ID="${APP_ID:-com.ytone.longcare}"
+TARGET_SERIAL="${ANDROID_SERIAL:-${SMOKE_DEVICE_SERIAL:-}}"
+
+resolve_target_serial() {
+  if [ -n "${TARGET_SERIAL}" ]; then
+    return 0
+  fi
+
+  local emulators
+  emulators="$(adb devices | sed -nE 's/^(emulator-[0-9]+)[[:space:]]+device$/\1/p')"
+  if [ -n "${emulators}" ]; then
+    TARGET_SERIAL="$(echo "${emulators}" | head -n1)"
+    return 0
+  fi
+
+  local devices
+  devices="$(adb devices | sed -nE 's/^([[:alnum:]_.:-]+)[[:space:]]+device$/\1/p')"
+  local count
+  count="$(printf '%s\n' "${devices}" | sed '/^$/d' | wc -l | tr -d ' ')"
+  if [ "${count}" = "1" ]; then
+    TARGET_SERIAL="$(printf '%s\n' "${devices}" | sed '/^$/d' | head -n1)"
+  fi
+}
+
+adb_cmd() {
+  if [ -n "${TARGET_SERIAL}" ]; then
+    adb -s "${TARGET_SERIAL}" "$@"
+  else
+    adb "$@"
+  fi
+}
 
 ensure_device_ready() {
   local elapsed=0
   while [ "${elapsed}" -lt "${READY_TIMEOUT_SECS}" ]; do
     local api_level
     local boot_completed
-    api_level="$(adb shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')"
-    boot_completed="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
+    api_level="$(adb_cmd shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')"
+    boot_completed="$(adb_cmd shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
 
     if echo "${api_level}" | grep -Eq '^[0-9]+$' &&
       [ "${boot_completed}" = "1" ] &&
-      adb shell cmd package list packages >/dev/null 2>&1 &&
-      adb shell settings get global device_name >/dev/null 2>&1; then
+      adb_cmd shell cmd package list packages >/dev/null 2>&1 &&
+      adb_cmd shell settings get global device_name >/dev/null 2>&1; then
       echo "Device is ready (API ${api_level}, boot_completed=${boot_completed})."
       return 0
     fi
@@ -33,7 +63,7 @@ ensure_device_ready() {
 
   echo "Device did not become ready in ${READY_TIMEOUT_SECS}s."
   adb devices -l || true
-  adb shell getprop || true
+  adb_cmd shell getprop || true
   return 1
 }
 
@@ -64,19 +94,19 @@ install_apks() {
   echo "Using app APK: ${app_apk}"
   echo "Using test APK: ${test_apk}"
 
-  adb uninstall "${APP_ID}.test" >/dev/null 2>&1 || true
-  adb uninstall "${APP_ID}" >/dev/null 2>&1 || true
+  adb_cmd uninstall "${APP_ID}.test" >/dev/null 2>&1 || true
+  adb_cmd uninstall "${APP_ID}" >/dev/null 2>&1 || true
 
-  adb install -r -d "${app_apk}"
-  adb install -r -d -t "${test_apk}"
+  adb_cmd install -r -d "${app_apk}"
+  adb_cmd install -r -d -t "${test_apk}"
 }
 
 run_instrumentation() {
   local instrumentation
-  instrumentation="$(adb shell pm list instrumentation | tr -d '\r' | grep "${APP_ID}" | head -n 1 | sed -E 's/^instrumentation:([^ ]+) .*/\1/')"
+  instrumentation="$(adb_cmd shell pm list instrumentation | tr -d '\r' | grep "${APP_ID}" | head -n 1 | sed -E 's/^instrumentation:([^ ]+) .*/\1/')"
   if [ -z "${instrumentation}" ]; then
     echo "Unable to resolve instrumentation target for ${APP_ID}."
-    adb shell pm list instrumentation || true
+    adb_cmd shell pm list instrumentation || true
     return 1
   fi
 
@@ -84,13 +114,19 @@ run_instrumentation() {
   mkdir -p "${SMOKE_REPORT_DIR}"
 
   # Keep both console output and a persisted artifact for debugging.
-  adb shell am instrument -w -r \
+  adb_cmd shell am instrument -w -r \
     -e class "${SMOKE_TEST_CLASS}" \
     "${instrumentation}" | tee "${SMOKE_REPORT_FILE}"
 }
 
 adb start-server
-adb wait-for-device
+resolve_target_serial
+if [ -n "${TARGET_SERIAL}" ]; then
+  echo "Using adb target serial: ${TARGET_SERIAL}"
+  adb_cmd wait-for-device
+else
+  adb wait-for-device
+fi
 ensure_device_ready
 
 install_apks
