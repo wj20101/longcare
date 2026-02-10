@@ -11,6 +11,7 @@ import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import com.ytone.longcare.features.face.ui.DetectedFace
 import com.ytone.longcare.features.face.ui.FaceQualityResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -43,16 +44,22 @@ class StaticImageFaceDetector {
             val faces = suspendCancellableCoroutine<List<Face>> { continuation ->
                 faceDetector.process(inputImage)
                     .addOnSuccessListener { faces ->
-                        continuation.resume(faces)
+                        if (continuation.isActive) {
+                            continuation.resume(faces)
+                        }
                     }
                     .addOnFailureListener { exception ->
-                        continuation.resumeWithException(exception)
+                        if (continuation.isActive) {
+                            continuation.resumeWithException(exception)
+                        }
                     }
             }
             
             faces.mapNotNull { face ->
                 processFace(face, bitmap)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             emptyList()
         }
