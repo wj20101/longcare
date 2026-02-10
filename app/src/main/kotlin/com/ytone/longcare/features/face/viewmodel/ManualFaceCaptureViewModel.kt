@@ -10,6 +10,7 @@ import com.ytone.longcare.features.face.ui.ManualFaceCaptureState
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -105,6 +106,8 @@ class ManualFaceCaptureViewModel @Inject constructor(
                         _currentState.value = ManualFaceCaptureState.FacesDetected
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isProcessingFaces = false,
@@ -183,7 +186,8 @@ class ManualFaceCaptureViewModel @Inject constructor(
                     isLoading = false
                 )
                 _currentState.value = ManualFaceCaptureState.Success
-                
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
