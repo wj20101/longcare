@@ -2,6 +2,7 @@ package com.ytone.longcare.features.nfc.vm
 
 
 import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.common.utils.logE
 import android.app.Activity
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -327,6 +329,8 @@ class NfcWorkflowViewModel @Inject constructor(
             } else {
                 Pair("", "")
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             Pair("", "")
         }
@@ -563,7 +567,7 @@ class NfcWorkflowViewModel @Inject constructor(
                 imageRepository.deleteImagesByOrderId(orderInfoRequest.toOrderKey())
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("清理服务相关资源失败: ${e.message}", tag = "NfcWorkflowViewModel", throwable = e)
         }
     }
 
