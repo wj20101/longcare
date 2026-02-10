@@ -10,6 +10,16 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        val txFaceIncludeMavenLocal =
+            providers
+                .gradleProperty("TX_FACE_INCLUDE_MAVEN_LOCAL")
+                .orElse(providers.environmentVariable("TX_FACE_INCLUDE_MAVEN_LOCAL"))
+                .map { raw -> raw.equals("true", ignoreCase = true) }
+                .orElse(false)
+                .get()
+        if (txFaceIncludeMavenLocal) {
+            mavenLocal()
+        }
 
         val txFaceRepoUrl =
             providers
