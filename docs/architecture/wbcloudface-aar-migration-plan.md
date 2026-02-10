@@ -62,6 +62,9 @@
    - 私仓示例：
      - `scripts/face-sdk/publish_tx_face_aars.sh --mode deploy --repo-url https://repo.example.com/repository/maven-releases/`
 6. 稳定后删除 `app/libs` 中旧 AAR（在分支中执行，确保可回滚）。
+7. 使用 CI 回归开关链路，确保 Maven 切换不回退：
+   - `.github/workflows/face-sdk-migration-check.yml`
+   - 在 PR 或手动触发时会执行：AAR 发布到 Maven local -> `TX_FACE_SDK_SOURCE=maven` 编译验证。
 
 ## 阶段 B：规则与 native 收敛
 1. 按新 SDK 官方说明更新 `app/txkyc-face-consumer-proguard-rules.pro`。
