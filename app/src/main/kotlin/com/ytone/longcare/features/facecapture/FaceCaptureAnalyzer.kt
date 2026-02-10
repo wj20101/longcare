@@ -13,6 +13,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -98,6 +99,8 @@ class FaceCaptureAnalyzer(
                     coroutineScope.launch(Dispatchers.Default) {
                         try {
                             processFaces(faces, imageProxy)
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             logE("Error processing faces", tag = "FaceCaptureAnalyzer", throwable = e)
                             onHintChanged("处理失败，请重试")
