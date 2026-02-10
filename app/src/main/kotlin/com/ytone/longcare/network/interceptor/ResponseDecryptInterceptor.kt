@@ -1,6 +1,7 @@
 package com.ytone.longcare.network.interceptor
 
 import com.ytone.longcare.common.utils.logD
+import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.network.processor.ResponseProcessor
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -52,6 +53,7 @@ class ResponseDecryptInterceptor @Inject constructor(
             return response
             
         } catch (e: Exception) {
+            logE(message = "响应解密调度异常，返回原始响应: ${request.url.encodedPath}", throwable = e)
             // 发生异常时返回原始响应
             return response
         }
