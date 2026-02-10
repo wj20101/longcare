@@ -3,6 +3,7 @@ package com.ytone.longcare.features.servicecountdown.vm
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.data.database.entity.OrderEntity
 import com.ytone.longcare.data.database.entity.OrderLocalStateEntity
 import com.ytone.longcare.data.database.entity.OrderProjectEntity
@@ -43,6 +44,7 @@ class ServiceCountdownViewModelTest {
 
     @Before
     fun setup() {
+        KLogger.updateConfig { enabled = false }
         unifiedOrderRepository = mockk(relaxed = true)
         imageRepository = mockk(relaxed = true)
         orderRepository = mockk(relaxed = true)
