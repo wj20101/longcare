@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
@@ -194,6 +195,8 @@ class PhotoProcessingViewModel @Inject constructor(
                         )
                         logD("Saved to DB: id=$id, type=$taskType", tag = "PhotoVM")
                         id
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         logE("Failed to save image to DB", tag = "PhotoVM", throwable = e)
                         null
@@ -274,6 +277,8 @@ class PhotoProcessingViewModel @Inject constructor(
                 updateTaskStatus(
                     task.id, ImageTaskStatus.SUCCESS, resultUri = task.originalUri
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 // 异常处理
                 updateTaskStatus(
@@ -433,6 +438,9 @@ class PhotoProcessingViewModel @Inject constructor(
 
             _isUploading.value = false
             Result.success(allUploadedResults)
+        } catch (e: CancellationException) {
+            _isUploading.value = false
+            throw e
         } catch (e: Exception) {
             _isUploading.value = false
             Result.failure(e)
