@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
@@ -61,12 +62,12 @@ class FaceCaptureAnalyzer(
     // 性能优化参数
     private var frameCount = 0
     private val frameSkip = 3 // 跳帧优化，每3帧处理一次
-    private var isProcessing = false
+    private val isProcessing = AtomicBoolean(false)
 
     @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
         // 防止重复处理
-        if (isProcessing) {
+        if (isProcessing.get()) {
             imageProxy.close()
             return
         }
@@ -80,7 +81,10 @@ class FaceCaptureAnalyzer(
         
         val mediaImage = imageProxy.image
         if (mediaImage != null) {
-            isProcessing = true
+            if (!isProcessing.compareAndSet(false, true)) {
+                imageProxy.close()
+                return
+            }
             onProcessingStateChanged(true)
             
             val image = InputImage.fromMediaImage(
@@ -100,7 +104,7 @@ class FaceCaptureAnalyzer(
                             onFaceDetectionChanged(false, 0f)
                         } finally {
                             // 确保在处理完成后才关闭 ImageProxy
-                            isProcessing = false
+                            isProcessing.set(false)
                             onProcessingStateChanged(false)
                             try {
                                 imageProxy.close()
@@ -114,7 +118,7 @@ class FaceCaptureAnalyzer(
                     logE("Face detection failed", tag = "FaceCaptureAnalyzer", throwable = exception)
                     onHintChanged("检测失败，请重试")
                     onFaceDetectionChanged(false, 0f)
-                    isProcessing = false
+                    isProcessing.set(false)
                     onProcessingStateChanged(false)
                     try {
                         imageProxy.close()
