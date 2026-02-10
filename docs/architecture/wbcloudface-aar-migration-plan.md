@@ -47,7 +47,16 @@
      - `TX_FACE_MAVEN_REPO_USERNAME`
      - `TX_FACE_MAVEN_REPO_PASSWORD`
      - 仓库配置入口在 `settings.gradle.kts`，未配置时不会影响默认仓库。
-5. 稳定后删除 `app/libs` 中旧 AAR（在分支中执行，确保可回滚）。
+5. 使用脚本将本地 AAR 先发布为 Maven 坐标（推荐先发到 Maven local，再切私仓）：
+   - 脚本：`scripts/face-sdk/publish_tx_face_aars.sh`
+   - 默认会发布：
+     - `com.tencent.cloud.huiyansdkface:wbcloudface-live:6.6.2-8e4718fc`
+     - `com.tencent.cloud.huiyansdkface:wbcloudface-normal:5.1.10-4e3e198`
+   - Maven local 示例：
+     - `scripts/face-sdk/publish_tx_face_aars.sh`
+   - 私仓示例：
+     - `scripts/face-sdk/publish_tx_face_aars.sh --mode deploy --repo-url https://repo.example.com/repository/maven-releases/`
+6. 稳定后删除 `app/libs` 中旧 AAR（在分支中执行，确保可回滚）。
 
 ## 阶段 B：规则与 native 收敛
 1. 按新 SDK 官方说明更新 `app/txkyc-face-consumer-proguard-rules.pro`。
@@ -78,6 +87,12 @@
   - `./gradlew :app:compileDebugKotlin -PTX_FACE_SDK_SOURCE=maven -PTX_FACE_LIVE_COORD=<group:artifact:version> -PTX_FACE_NORMAL_COORD=<group:artifact:version> -PTX_FACE_MAVEN_REPO_URL=<repo-url>`
 - 回滚到本地 AAR：
   - `./gradlew :app:compileDebugKotlin -PTX_FACE_SDK_SOURCE=local`
+
+## 本地与 CI 一致性原则
+- 同一套构建开关：`TX_FACE_SDK_SOURCE`、`TX_FACE_LIVE_COORD`、`TX_FACE_NORMAL_COORD`。
+- 不做“仅 CI 忽略”的差异策略；本地与 CI 使用同一 lint 配置与同一验证命令。
+- 发布前统一执行：
+  - `./gradlew :app:compileDebugKotlin :app:lintDebug :app:testDebugUnitTest`
 
 ## 5. 验收标准
 - UI/ViewModel 不再直接依赖腾讯 SDK 类型（当前已完成）。
