@@ -43,10 +43,18 @@ class CountdownNotificationManager @Inject constructor(
         // Intent extras
         const val EXTRA_REQUEST = "extra_request"
         const val EXTRA_SERVICE_NAME = "extra_service_name"
+
+        private const val PREFS_NAME = "countdown_notification_prefs"
+        private const val KEY_LAST_SCHEDULED_ORDER_ID = "key_last_scheduled_order_id"
+        private const val NO_ORDER_ID = -1L
     }
 
     init {
         createNotificationChannel()
+    }
+
+    private val prefs by lazy {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
     /**
@@ -118,6 +126,8 @@ class CountdownNotificationManager @Inject constructor(
                 logI("✅ 通过ExactAndAllowWhileIdle设置倒计时闹钟: orderId=${request.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
             }
 
+            saveLastScheduledOrderId(request.orderId)
+
             // 验证闹钟是否设置成功
             val nextAlarmClock = alarmManager.nextAlarmClock
             logI("下一个闹钟时间: ${nextAlarmClock?.triggerTime}")
@@ -159,6 +169,13 @@ class CountdownNotificationManager @Inject constructor(
     fun cancelCountdownAlarm() {
         try {
             logI("开始取消倒计时闹钟...")
+
+            val lastOrderId = getLastScheduledOrderId()
+            if (lastOrderId != NO_ORDER_ID) {
+                cancelCountdownAlarmInternal(lastOrderId)
+                clearLastScheduledOrderId()
+                return
+            }
             
             // 方法1：使用FLAG_UPDATE_CURRENT创建PendingIntent来取消
             // 这种方式不需要知道原来的action，只要requestCode相同就能取消
@@ -199,27 +216,9 @@ class CountdownNotificationManager @Inject constructor(
     fun cancelCountdownAlarmForOrder(request: OrderInfoRequestModel) {
         try {
             logI("开始取消订单 ${request.orderId} 的倒计时闹钟...")
-            
-            // 使用与设置闹钟时相同的action来创建Intent
-            val intent = Intent(context, CountdownAlarmReceiver::class.java).apply {
-                action = "COUNTDOWN_ALARM_${request.orderId}"
-            }
-            
-            val pendingIntent = PendingIntent.getBroadcast(
-                context,
-                COUNTDOWN_ALARM_REQUEST_CODE,
-                intent,
-                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            if (pendingIntent != null) {
-                alarmManager.cancel(pendingIntent)
-                pendingIntent.cancel()
-                logI("✅ 订单 ${request.orderId} 的倒计时闹钟已取消")
-            } else {
-                logI("⚠️ 没有找到订单 ${request.orderId} 的待取消闹钟，尝试通用取消...")
-                // 如果找不到特定订单的闹钟，尝试通用取消
-                cancelCountdownAlarm()
+            cancelCountdownAlarmInternal(request.orderId)
+            if (getLastScheduledOrderId() == request.orderId) {
+                clearLastScheduledOrderId()
             }
         } catch (e: Exception) {
             logE("❌ 取消订单 ${request.orderId} 的倒计时闹钟失败: ${e.message}", throwable = e)
@@ -357,6 +356,33 @@ class CountdownNotificationManager @Inject constructor(
         
         notificationManagerCompat.createNotificationChannel(channel)
         logI("倒计时通知渠道已重新创建: $COUNTDOWN_NOTIFICATION_CHANNEL_ID")
+    }
+
+    private fun cancelCountdownAlarmInternal(orderId: Long) {
+        val intent = Intent(context, CountdownAlarmReceiver::class.java).apply {
+            action = "COUNTDOWN_ALARM_$orderId"
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            COUNTDOWN_ALARM_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
+        pendingIntent.cancel()
+        logI("✅ 订单 $orderId 的倒计时闹钟已取消")
+    }
+
+    private fun saveLastScheduledOrderId(orderId: Long) {
+        prefs.edit().putLong(KEY_LAST_SCHEDULED_ORDER_ID, orderId).apply()
+    }
+
+    private fun getLastScheduledOrderId(): Long {
+        return prefs.getLong(KEY_LAST_SCHEDULED_ORDER_ID, NO_ORDER_ID)
+    }
+
+    private fun clearLastScheduledOrderId() {
+        prefs.edit().remove(KEY_LAST_SCHEDULED_ORDER_ID).apply()
     }
 
     /**
