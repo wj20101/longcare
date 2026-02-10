@@ -185,8 +185,7 @@ class AlarmRingtoneService : Service() {
             
             logI("AlarmRingtoneService: ✅ 已升级为前台服务并刷新通知 (ID=$NOTIFICATION_ID)")
         } catch (e: Exception) {
-            logE("AlarmRingtoneService: ❌ 启动前台服务失败 - ${e.message}")
-            e.printStackTrace()
+            logE("AlarmRingtoneService: ❌ 启动前台服务失败 - ${e.message}", throwable = e)
             
             // 追踪响铃服务错误事件
             CountdownEventTracker.trackError(

@@ -35,7 +35,7 @@ object ApkInstallUtils {
         try {
             context.startActivity(intent)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("启动APK安装失败: ${e.message}", tag = "ApkInstallUtils", throwable = e)
         }
     }
 
@@ -64,7 +64,7 @@ object ApkInstallUtils {
             try {
                 context.startActivity(intent)
             } catch (e: Exception) {
-                e.printStackTrace()
+                logE("跳转未知来源安装权限页面失败: ${e.message}", tag = "ApkInstallUtils", throwable = e)
             }
         }
     }
