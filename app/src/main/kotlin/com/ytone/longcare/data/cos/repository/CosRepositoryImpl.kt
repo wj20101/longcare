@@ -28,6 +28,7 @@ import com.ytone.longcare.data.cos.model.toCosConfig
 import com.ytone.longcare.di.IoDispatcher
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -244,6 +245,8 @@ class CosRepositoryImpl @Inject constructor(
                         config
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logE("Failed to refresh COS config", tag = TAG, throwable = e)
                 throw e
@@ -290,6 +293,8 @@ class CosRepositoryImpl @Inject constructor(
 
             logD("File deleted successfully: $key", tag = TAG)
             true
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("Failed to delete file: $key", tag = TAG, throwable = e)
             false
@@ -306,6 +311,8 @@ class CosRepositoryImpl @Inject constructor(
             true
         } catch (e: CosXmlServiceException) {
             e.statusCode != 404
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("Error checking file existence: $key", tag = TAG, throwable = e)
             false
@@ -320,6 +327,8 @@ class CosRepositoryImpl @Inject constructor(
             val request = HeadObjectRequest(config.bucket, key)
             val result = service.headObject(request)
             result.headers?.get("Content-Length")?.firstOrNull()?.toLongOrNull()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("Failed to get file size for: $key", tag = TAG, throwable = e)
             null
@@ -334,11 +343,15 @@ class CosRepositoryImpl @Inject constructor(
     private suspend fun <T> executeWithRetry(operation: suspend () -> T): T {
         return try {
             operation()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logW("Operation failed, attempting retry after cache clear", tag = TAG, throwable = e)
             try {
                 clearCache()
                 operation()
+            } catch (e: CancellationException) {
+                throw e
             } catch (retryException: Exception) {
                 logE("Operation failed after retry", tag = TAG, throwable = retryException)
                 throw retryException
@@ -384,6 +397,8 @@ class CosRepositoryImpl @Inject constructor(
                 region = config.region,
                 url = getPublicUrl(service, newParams, config)
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("Upload failed for key: ${params.key}", tag = TAG, throwable = e)
             CosUploadResult(
@@ -419,6 +434,8 @@ class CosRepositoryImpl @Inject constructor(
                 logW("Failed to get file URL from API, using fallback", tag = TAG)
                 fallbackUrl
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("Error getting file URL from API, using fallback", tag = TAG, throwable = e)
             fallbackUrl
