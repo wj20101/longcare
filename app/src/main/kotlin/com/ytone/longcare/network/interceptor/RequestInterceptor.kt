@@ -32,7 +32,7 @@ class RequestInterceptor @Inject constructor(
 
         val method = request.method
         val newRequestBuilder = request.newBuilder()
-        val randomString = RandomUtils.generateRandomStringKotlin(32)
+        val randomString = RandomUtils.generateRandomString(32)
         
         // 使用OkHttp的tag机制传递AES密钥
         // 密钥只存在于当前请求的生命周期内，请求完成后自动释放
