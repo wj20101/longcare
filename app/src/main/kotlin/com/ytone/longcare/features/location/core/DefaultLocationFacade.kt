@@ -5,6 +5,7 @@ import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManage
 import com.ytone.longcare.features.location.manager.LocationStateManager
 import com.ytone.longcare.features.location.provider.LocationResult
 import com.ytone.longcare.features.location.provider.SystemLocationProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,6 +27,8 @@ class DefaultLocationFacade @Inject constructor(
 
         val amapResult = try {
             continuousAmapLocationManager.getCurrentLocation(timeoutMs)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("高德单次定位异常: ${e.message}")
             null
@@ -37,6 +40,8 @@ class DefaultLocationFacade @Inject constructor(
 
         val systemResult = try {
             systemLocationProvider.getCurrentLocation()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("系统单次定位异常: ${e.message}")
             null
