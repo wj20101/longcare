@@ -55,6 +55,7 @@ import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.navigation.toRequestModel
 import com.ytone.longcare.common.utils.BackHandlerUtils
 import com.ytone.longcare.navigation.navigateToHomeAndClearStack
+import kotlinx.coroutines.CancellationException
 
 
 // --- 状态定义 ---
@@ -153,6 +154,8 @@ fun NfcWorkflowScreen(
             }
 
             nfcViewModel.getCurrentLocationCoordinates()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Pair("", "")
         }
