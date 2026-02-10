@@ -128,7 +128,7 @@ class FaceVerificationManager @Inject constructor(
         return try {
             val result = tencentFaceRepository.getAccessToken(config.appId, config.secret)
             if (result is ApiResult.Success) {
-                result.data.accessToken
+                result.data.accessToken?.trim()?.takeIf { it.isNotBlank() }
             } else null
         } catch (e: CancellationException) {
             throw e
@@ -144,7 +144,9 @@ class FaceVerificationManager @Inject constructor(
         return try {
             val result = tencentFaceRepository.getSignTicket(config.appId, accessToken)
             if (result is ApiResult.Success) {
-                result.data.tickets?.firstOrNull()?.value
+                result.data.tickets
+                    ?.firstOrNull { it.value.isNotBlank() }
+                    ?.value
             } else null
         } catch (e: CancellationException) {
             throw e
@@ -160,7 +162,9 @@ class FaceVerificationManager @Inject constructor(
         return try {
             val result = tencentFaceRepository.getApiTicket(config.appId, accessToken, userId)
             if (result is ApiResult.Success) {
-                result.data.tickets?.firstOrNull()?.value
+                result.data.tickets
+                    ?.firstOrNull { it.value.isNotBlank() }
+                    ?.value
             } else null
         } catch (e: CancellationException) {
             throw e
@@ -199,7 +203,7 @@ class FaceVerificationManager @Inject constructor(
             )
 
             if (result is ApiResult.Success) {
-                result.data.result?.faceId
+                result.data.result?.faceId?.trim()?.takeIf { it.isNotBlank() }
             } else null
         } catch (e: CancellationException) {
             throw e
