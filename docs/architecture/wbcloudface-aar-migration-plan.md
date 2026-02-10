@@ -52,6 +52,9 @@
      - `TX_FACE_MAVEN_REPO_USERNAME`
      - `TX_FACE_MAVEN_REPO_PASSWORD`
      - 仓库配置入口在 `settings.gradle.kts`，未配置时不会影响默认仓库。
+   - Maven local 验证可选配置：
+     - `TX_FACE_INCLUDE_MAVEN_LOCAL=true`
+     - 用于开启 `settings.gradle.kts` 中的 `mavenLocal()` 仓库。
 5. 使用脚本将本地 AAR 先发布为 Maven 坐标（推荐先发到 Maven local，再切私仓）：
    - 脚本：`scripts/face-sdk/publish_tx_face_aars.sh`
    - 默认会发布：
@@ -64,7 +67,7 @@
 6. 稳定后删除 `app/libs` 中旧 AAR（在分支中执行，确保可回滚）。
 7. 使用 CI 回归开关链路，确保 Maven 切换不回退：
    - `.github/workflows/face-sdk-migration-check.yml`
-   - 在 PR 或手动触发时会执行：AAR 发布到 Maven local -> `TX_FACE_SDK_SOURCE=maven` 编译验证。
+   - 在 PR 或手动触发时会执行：AAR 发布到 Maven local -> `TX_FACE_SDK_SOURCE=maven` + `TX_FACE_INCLUDE_MAVEN_LOCAL=true` 质量门验证（compile/lint/test）。
 
 ## 阶段 B：规则与 native 收敛
 1. 按新 SDK 官方说明更新 `app/txkyc-face-consumer-proguard-rules.pro`。
@@ -92,12 +95,13 @@
 - 本地 AAR 模式（默认）：
   - `./gradlew :app:compileDebugKotlin`
 - Maven 模式（坐标切换验证）：
-  - `./gradlew :app:compileDebugKotlin -PTX_FACE_SDK_SOURCE=maven -PTX_FACE_LIVE_COORD=<group:artifact:version> -PTX_FACE_NORMAL_COORD=<group:artifact:version> -PTX_FACE_MAVEN_REPO_URL=<repo-url>`
+  - 私仓：`./gradlew :app:compileDebugKotlin -PTX_FACE_SDK_SOURCE=maven -PTX_FACE_LIVE_COORD=<group:artifact:version> -PTX_FACE_NORMAL_COORD=<group:artifact:version> -PTX_FACE_MAVEN_REPO_URL=<repo-url>`
+  - Maven local：`./gradlew :app:compileDebugKotlin -PTX_FACE_SDK_SOURCE=maven -PTX_FACE_INCLUDE_MAVEN_LOCAL=true -PTX_FACE_LIVE_COORD=<group:artifact:version> -PTX_FACE_NORMAL_COORD=<group:artifact:version>`
 - 回滚到本地 AAR：
   - `./gradlew :app:compileDebugKotlin -PTX_FACE_SDK_SOURCE=local`
 
 ## 本地与 CI 一致性原则
-- 同一套构建开关：`TX_FACE_SDK_SOURCE`、`TX_FACE_LIVE_COORD`、`TX_FACE_NORMAL_COORD`。
+- 同一套构建开关：`TX_FACE_SDK_SOURCE`、`TX_FACE_LIVE_COORD`、`TX_FACE_NORMAL_COORD`、`TX_FACE_INCLUDE_MAVEN_LOCAL`（仅 Maven local 验证时开启）。
 - 不做“仅 CI 忽略”的差异策略；本地与 CI 使用同一 lint 配置与同一验证命令。
 - 发布前统一执行：
   - `./gradlew :app:compileDebugKotlin :app:lintDebug :app:testDebugUnitTest`

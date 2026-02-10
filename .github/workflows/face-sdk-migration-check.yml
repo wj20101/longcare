@@ -36,9 +36,10 @@ jobs:
       - name: Publish local AARs to Maven local
         run: scripts/face-sdk/publish_tx_face_aars.sh --mode local
 
-      - name: Compile app with maven source switch
+      - name: Run quality gates with maven source switch
         run: |
-          ./gradlew --no-daemon :app:compileDebugKotlin \
+          ./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug :app:testDebugUnitTest \
             -PTX_FACE_SDK_SOURCE=maven \
+            -PTX_FACE_INCLUDE_MAVEN_LOCAL=true \
             -PTX_FACE_LIVE_COORD=com.tencent.cloud.huiyansdkface:wbcloudface-live:6.6.2-8e4718fc \
             -PTX_FACE_NORMAL_COORD=com.tencent.cloud.huiyansdkface:wbcloudface-normal:5.1.10-4e3e198
