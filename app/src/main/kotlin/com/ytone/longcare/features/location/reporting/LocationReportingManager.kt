@@ -12,6 +12,7 @@ import com.ytone.longcare.domain.location.LocationRepository
 import com.ytone.longcare.features.location.core.LocationFacade
 import com.ytone.longcare.features.location.manager.LocationStateManager
 import com.ytone.longcare.features.location.provider.LocationResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -76,6 +77,8 @@ class LocationReportingManager @Inject constructor(
                     enqueueLocation(request.orderId, location)
                     flushUploadQueue()
                 }
+            } catch (_: CancellationException) {
+                logI("位置上报任务已取消")
             } catch (e: Exception) {
                 logE("位置上报任务异常终止: ${e.message}")
             } finally {
@@ -115,6 +118,8 @@ class LocationReportingManager @Inject constructor(
                     timestamp = System.currentTimeMillis()
                 )
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("写入定位上报队列失败: ${e.message}")
         }
@@ -158,6 +163,8 @@ class LocationReportingManager @Inject constructor(
                     logE("位置上报异常 (id=${pending.id}): ${apiResult.exception.message}")
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("上传位置过程发生严重错误: ${e.message}")
             try {
@@ -176,6 +183,8 @@ class LocationReportingManager @Inject constructor(
             if (deleted > 0) {
                 logI("清理历史成功定位记录: $deleted 条")
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("清理历史成功定位记录失败: ${e.message}")
         }

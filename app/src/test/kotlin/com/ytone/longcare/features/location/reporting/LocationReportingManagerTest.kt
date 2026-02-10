@@ -15,6 +15,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -200,5 +201,60 @@ class LocationReportingManagerTest {
         verify { locationFacade.acquireKeepAlive("location_report_300") }
         verify { locationFacade.releaseKeepAlive("location_report_300") }
         verify { locationStateManager.updateTrackingState(false) }
+    }
+
+    @Test
+    fun `cancellation during upload should not mark record as failed`() = runTest {
+        val locationFacade = mockk<LocationFacade>()
+        val locationStateManager = mockk<LocationStateManager>(relaxed = true)
+        val locationRepository = mockk<LocationRepository>()
+        val orderLocationDao = mockk<OrderLocationDao>()
+        val flow = MutableSharedFlow<LocationResult>()
+        val dispatcher = StandardTestDispatcher(testScheduler)
+
+        val request = OrderInfoRequestModel(orderId = 400L, planId = 0)
+        val sample = LocationResult(30.1, 120.1, "amap_continuous", 8f)
+        val pending = OrderLocationEntity(
+            id = 4L,
+            orderId = 400L,
+            latitude = 30.1,
+            longitude = 120.1,
+            accuracy = 8f,
+            provider = "amap_continuous",
+            uploadStatus = LocationUploadStatus.PENDING.value,
+            timestamp = System.currentTimeMillis()
+        )
+
+        every { locationFacade.observeLocations(any()) } returns flow
+        every { locationFacade.acquireKeepAlive(any()) } returns Unit
+        every { locationFacade.releaseKeepAlive(any()) } returns Unit
+        coEvery { orderLocationDao.insert(any()) } returns 4L
+        coEvery { orderLocationDao.getUploadQueue(any(), any()) } returnsMany listOf(
+            emptyList(),
+            listOf(pending)
+        )
+        coEvery { orderLocationDao.deleteByStatusBefore(any(), any()) } returns 0
+        coEvery { orderLocationDao.updateStatus(any(), any()) } returns Unit
+        coEvery { locationRepository.addPosition(any(), any(), any()) } throws CancellationException("cancel")
+
+        val manager = LocationReportingManager(
+            locationFacade = locationFacade,
+            locationStateManager = locationStateManager,
+            locationRepository = locationRepository,
+            orderLocationDao = orderLocationDao,
+            ioDispatcher = dispatcher
+        )
+
+        manager.startReporting(request)
+        runCurrent()
+
+        flow.emit(sample)
+        runCurrent()
+
+        coVerify(exactly = 0) { orderLocationDao.updateStatus(4L, LocationUploadStatus.FAILED.value) }
+        coVerify(exactly = 0) { orderLocationDao.updateStatus(4L, LocationUploadStatus.SUCCESS.value) }
+
+        manager.stopReporting()
+        runCurrent()
     }
 }
