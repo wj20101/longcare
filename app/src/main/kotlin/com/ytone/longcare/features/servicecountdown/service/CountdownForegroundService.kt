@@ -18,12 +18,8 @@ import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import java.util.Locale
-import javax.inject.Inject
 import com.ytone.longcare.api.request.OrderInfoRequestModel
+import javax.inject.Inject
 
 /**
  * 服务倒计时前台服务
@@ -77,8 +73,6 @@ class CountdownForegroundService : Service() {
     lateinit var notificationManager: NotificationManager
 
     private val binder = CountdownBinder()
-    private var updateJob: Job? = null
-    private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
 
     // 倒计时状态
     private var orderId: Long = 0
@@ -163,7 +157,6 @@ class CountdownForegroundService : Service() {
      */
     private fun stopCountdownNotification() {
         isRunning = false
-        updateJob?.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
 
@@ -229,20 +222,4 @@ class CountdownForegroundService : Service() {
         }
     }
 
-    /**
-     * 格式化时间显示
-     * @param seconds 秒数
-     * @return 格式化的时间字符串 (HH:mm:ss)
-     */
-    private fun formatTime(seconds: Long): String {
-        val hours = seconds / 3600
-        val minutes = (seconds % 3600) / 60
-        val secs = seconds % 60
-
-        return if (hours > 0) {
-            String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, secs)
-        } else {
-            String.format(Locale.getDefault(), "%02d:%02d", minutes, secs)
-        }
-    }
 }
