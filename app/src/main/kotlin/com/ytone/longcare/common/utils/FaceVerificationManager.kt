@@ -21,6 +21,7 @@ import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 
 /**
  * 腾讯人脸识别管理器
@@ -109,6 +110,8 @@ class FaceVerificationManager @Inject constructor(
             val params = createFaceVerifyParams(config, request, faceId, nonceTicket, nonce)
             startSdkVerification(context, params, callback)
 
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             callback.onInitFailed(createError("人脸验证初始化失败: ${e.message}"))
         }
@@ -127,6 +130,8 @@ class FaceVerificationManager @Inject constructor(
             if (result is ApiResult.Success) {
                 result.data.accessToken
             } else null
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             null
         }
@@ -141,6 +146,8 @@ class FaceVerificationManager @Inject constructor(
             if (result is ApiResult.Success) {
                 result.data.tickets?.firstOrNull()?.value
             } else null
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             null
         }
@@ -155,6 +162,8 @@ class FaceVerificationManager @Inject constructor(
             if (result is ApiResult.Success) {
                 result.data.tickets?.firstOrNull()?.value
             } else null
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             null
         }
@@ -192,6 +201,8 @@ class FaceVerificationManager @Inject constructor(
             if (result is ApiResult.Success) {
                 result.data.result?.faceId
             } else null
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             null
         }
