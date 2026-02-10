@@ -30,6 +30,55 @@
 - `RELEASE_KEY_PASSWORD`
 - 若 secrets 未配置，构建会自动回退为 debug 签名，保证 CI 打包流程可用。
 
+### 一键同步本地 + GitHub Environment Secrets
+
+推荐使用同一套 release `jks`（同一包名升级需要签名一致）：
+
+```bash
+chmod +x ./scripts/release/setup-signing-secrets.sh
+./scripts/release/setup-signing-secrets.sh \
+  --jks /absolute/path/to/release.jks \
+  --env release \
+  --copy-base64
+```
+
+执行后会完成：
+
+- 写入本地 `~/.gradle/gradle.properties`（`LONGCARE_RELEASE_*` 配置，避免多项目冲突）
+- 同步 `release` Environment Secrets（`ANDROID_KEYSTORE_BASE64` + `RELEASE_*`）
+
+可选：需要手工粘贴时输出明文文件（使用后请删除）：
+
+```bash
+./scripts/release/setup-signing-secrets.sh \
+  --jks /absolute/path/to/release.jks \
+  --manual-file /tmp/longcare-release-secrets.env
+```
+
+仅更新本地配置：
+
+```bash
+./scripts/release/setup-signing-secrets.sh --jks /absolute/path/to/release.jks --local-only
+```
+
+仅同步 GitHub Secrets：
+
+```bash
+GH_TOKEN=你的PAT ./scripts/release/setup-signing-secrets.sh --github-only --env release
+```
+
+说明：
+
+- `--github-only` 会优先从 `~/.gradle/gradle.properties` 读取 `LONGCARE_RELEASE_*`，不需要重复输入密码
+- 若未执行 `gh auth login`，可通过 `GH_TOKEN`（或 `GITHUB_TOKEN`）临时注入认证
+
+注意：
+
+- 本地敏感信息请放 `~/.gradle/gradle.properties`，不要放到 `local.properties`
+- `app/build.gradle.kts` 会优先读取 `LONGCARE_RELEASE_*`，并兼容旧 `RELEASE_*`
+- `jks` 文件不要进入仓库
+- 若使用 `--manual-file` 生成明文 secrets 文件，使用后请立即删除
+
 ## 更新 Gradle Wrapper
 
 ```bash

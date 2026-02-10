@@ -23,19 +23,27 @@ val baselineEnableX86_64 =
         .get()
 val releaseStoreFilePath =
     providers
-        .gradleProperty("RELEASE_STORE_FILE")
+        .gradleProperty("LONGCARE_RELEASE_STORE_FILE")
+        .orElse(providers.gradleProperty("RELEASE_STORE_FILE"))
+        .orElse(providers.environmentVariable("LONGCARE_ANDROID_KEYSTORE_PATH"))
         .orElse(providers.environmentVariable("ANDROID_KEYSTORE_PATH"))
 val releaseStorePassword =
     providers
-        .gradleProperty("RELEASE_STORE_PASSWORD")
+        .gradleProperty("LONGCARE_RELEASE_STORE_PASSWORD")
+        .orElse(providers.gradleProperty("RELEASE_STORE_PASSWORD"))
+        .orElse(providers.environmentVariable("LONGCARE_RELEASE_STORE_PASSWORD"))
         .orElse(providers.environmentVariable("RELEASE_STORE_PASSWORD"))
 val releaseKeyAlias =
     providers
-        .gradleProperty("RELEASE_KEY_ALIAS")
+        .gradleProperty("LONGCARE_RELEASE_KEY_ALIAS")
+        .orElse(providers.gradleProperty("RELEASE_KEY_ALIAS"))
+        .orElse(providers.environmentVariable("LONGCARE_RELEASE_KEY_ALIAS"))
         .orElse(providers.environmentVariable("RELEASE_KEY_ALIAS"))
 val releaseKeyPassword =
     providers
-        .gradleProperty("RELEASE_KEY_PASSWORD")
+        .gradleProperty("LONGCARE_RELEASE_KEY_PASSWORD")
+        .orElse(providers.gradleProperty("RELEASE_KEY_PASSWORD"))
+        .orElse(providers.environmentVariable("LONGCARE_RELEASE_KEY_PASSWORD"))
         .orElse(providers.environmentVariable("RELEASE_KEY_PASSWORD"))
 val releaseStoreFile = releaseStoreFilePath.orNull?.let(::file)
 val hasReleaseSigning =
