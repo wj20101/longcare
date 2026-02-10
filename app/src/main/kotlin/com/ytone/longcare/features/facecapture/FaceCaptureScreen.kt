@@ -50,7 +50,6 @@ import androidx.core.content.getSystemService
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import kotlinx.coroutines.Dispatchers
 import java.util.concurrent.Executors
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logW
@@ -110,28 +109,32 @@ fun FaceCaptureScreen(
         val availableCameraSelector = remember {
             getAvailableCameraSelector(context)
         }
+
+        val analyzerScope = rememberCoroutineScope()
+        val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
+        val analyzer = remember(viewModel, analyzerScope) {
+            FaceCaptureAnalyzer(
+                onFaceCaptured = { bitmap, quality ->
+                    viewModel.onFaceCaptured(bitmap, quality)
+                },
+                onProcessingStateChanged = { isProcessing ->
+                    viewModel.updateProcessingState(isProcessing)
+                },
+                onHintChanged = { hint ->
+                    viewModel.updateUserHint(hint)
+                },
+                onFaceDetectionChanged = { detected, quality ->
+                    viewModel.updateFaceDetectionState(detected, quality)
+                },
+                coroutineScope = analyzerScope
+            )
+        }
         
         // 创建相机控制器
-        val cameraController = remember(availableCameraSelector) {
+        val cameraController = remember(availableCameraSelector, analyzer, analysisExecutor) {
             LifecycleCameraController(context).apply {
-                val analyzer = FaceCaptureAnalyzer(
-                    onFaceCaptured = { bitmap, quality -> 
-                        viewModel.onFaceCaptured(bitmap, quality) 
-                    },
-                    onProcessingStateChanged = { isProcessing -> 
-                        viewModel.updateProcessingState(isProcessing) 
-                    },
-                    onHintChanged = { hint -> 
-                        viewModel.updateUserHint(hint) 
-                    },
-                    onFaceDetectionChanged = { detected, quality ->
-                        viewModel.updateFaceDetectionState(detected, quality)
-                    },
-                    coroutineScope = kotlinx.coroutines.CoroutineScope(Dispatchers.Main)
-                )
-                
                 setImageAnalysisAnalyzer(
-                    Executors.newSingleThreadExecutor(),
+                    analysisExecutor,
                     analyzer
                 )
                 
@@ -144,8 +147,17 @@ fun FaceCaptureScreen(
             }
         }
 
+        DisposableEffect(cameraController, analyzer, analysisExecutor) {
+            onDispose {
+                cameraController.clearImageAnalysisAnalyzer()
+                cameraController.unbind()
+                analyzer.release()
+                analysisExecutor.shutdown()
+            }
+        }
+
         // 绑定相机生命周期
-        LaunchedEffect(lifecycleOwner) {
+        LaunchedEffect(lifecycleOwner, cameraController) {
             cameraController.bindToLifecycle(lifecycleOwner)
         }
 
