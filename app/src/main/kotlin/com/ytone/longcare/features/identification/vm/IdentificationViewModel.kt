@@ -38,6 +38,7 @@ import com.ytone.longcare.model.isSucceed
 import java.io.File
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -297,6 +298,8 @@ class IdentificationViewModel @Inject constructor(
                     callback = createFaceVerifyCallback(),
                     onConfigMissing = { setFaceVerificationError("人脸配置不可用") }
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logE("下载人脸图片失败", tag = "IdentificationVM", throwable = e)
                 val errorMsg = "获取人脸照片失败: ${e.message}"
@@ -339,6 +342,8 @@ class IdentificationViewModel @Inject constructor(
                     callback = createFaceVerifyCallback(),
                     onConfigMissing = { setFaceVerificationError("人脸配置不可用") }
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logE("人脸验证失败", tag = "IdentificationVM", throwable = e)
                 setFaceVerificationError("人脸验证失败: ${e.message}")
@@ -539,7 +544,8 @@ class IdentificationViewModel @Inject constructor(
                     _photoUploadState.value = PhotoUploadState.Error(errorMessage)
                     toastHelper.showShort(errorMessage)
                 }
-                
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _photoUploadState.value = PhotoUploadState.Error(e.message ?: "未知错误")
                 toastHelper.showShort("处理失败: ${e.message}")
@@ -645,7 +651,8 @@ class IdentificationViewModel @Inject constructor(
                     callback = createFaceSetupVerifyCallback(imageFile, base64Image),
                     onConfigMissing = { setFaceSetupError("人脸配置不可用") }
                 )
-                
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 val errorMsg = "处理人脸图片时发生错误: ${e.message}"
                 setFaceSetupError(errorMsg)
@@ -751,7 +758,8 @@ class IdentificationViewModel @Inject constructor(
                     val errorMsg = uploadResult.errorMessage ?: "图片上传失败"
                     setFaceSetupError(errorMsg)
                 }
-                
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 val errorMsg = "上传失败: ${e.message}"
                 setFaceSetupError(errorMsg)
@@ -784,6 +792,8 @@ class IdentificationViewModel @Inject constructor(
             }
             
             result
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("读取人脸缓存异常 (userId=$userId)", tag = "IdentificationVM", throwable = e)
             null
@@ -802,6 +812,8 @@ class IdentificationViewModel @Inject constructor(
                 prefs[key] = base64
             }
             logD("成功写入人脸缓存 (userId=$userId, 长度=${base64.length})", tag = "IdentificationVM")
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("写入人脸缓存异常 (userId=$userId)", tag = "IdentificationVM", throwable = e)
         }
@@ -815,6 +827,8 @@ class IdentificationViewModel @Inject constructor(
             try {
                 val bytes = URL(url).readBytes()
                 Base64.encodeToString(bytes, Base64.NO_WRAP)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logE("下载图片失败: $url", tag = "IdentificationVM", throwable = e)
                 throw e
