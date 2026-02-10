@@ -10,6 +10,7 @@ import androidx.core.app.AlarmManagerCompat
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.edit
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
@@ -47,6 +48,7 @@ class CountdownNotificationManager @Inject constructor(
         private const val PREFS_NAME = "countdown_notification_prefs"
         private const val KEY_LAST_SCHEDULED_ORDER_ID = "key_last_scheduled_order_id"
         private const val NO_ORDER_ID = -1L
+        private const val ACTION_COUNTDOWN_ALARM_PREFIX = "COUNTDOWN_ALARM_"
     }
 
     init {
@@ -78,7 +80,7 @@ class CountdownNotificationManager @Inject constructor(
                 putExtra(EXTRA_REQUEST, request)
                 putExtra(EXTRA_SERVICE_NAME, serviceName)
                 // 添加唯一标识，确保Intent不会被复用
-                action = "COUNTDOWN_ALARM_${request.orderId}"
+                action = "$ACTION_COUNTDOWN_ALARM_PREFIX${request.orderId}"
             }
 
             val pendingIntent = PendingIntent.getBroadcast(
@@ -184,13 +186,17 @@ class CountdownNotificationManager @Inject constructor(
                 context,
                 COUNTDOWN_ALARM_REQUEST_CODE,
                 intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
             )
+            if (pendingIntent == null) {
+                logI("未找到通用倒计时闹钟PendingIntent，跳过通用取消")
+                return
+            }
 
             // 取消AlarmManager中的闹钟
             alarmManager.cancel(pendingIntent)
             pendingIntent.cancel()
-            logI("✅ 倒计时闹钟已取消 (通过FLAG_UPDATE_CURRENT)")
+            logI("✅ 倒计时闹钟已取消 (通过通用PendingIntent)")
             
             // 方法2：额外尝试取消可能存在的AlarmClock
             // AlarmClock设置的闹钟可能需要单独取消
@@ -360,21 +366,25 @@ class CountdownNotificationManager @Inject constructor(
 
     private fun cancelCountdownAlarmInternal(orderId: Long) {
         val intent = Intent(context, CountdownAlarmReceiver::class.java).apply {
-            action = "COUNTDOWN_ALARM_$orderId"
+            action = "$ACTION_COUNTDOWN_ALARM_PREFIX$orderId"
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
             COUNTDOWN_ALARM_REQUEST_CODE,
             intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
         )
+        if (pendingIntent == null) {
+            logI("订单 $orderId 的倒计时闹钟不存在，跳过取消")
+            return
+        }
         alarmManager.cancel(pendingIntent)
         pendingIntent.cancel()
         logI("✅ 订单 $orderId 的倒计时闹钟已取消")
     }
 
     private fun saveLastScheduledOrderId(orderId: Long) {
-        prefs.edit().putLong(KEY_LAST_SCHEDULED_ORDER_ID, orderId).apply()
+        prefs.edit { putLong(KEY_LAST_SCHEDULED_ORDER_ID, orderId) }
     }
 
     private fun getLastScheduledOrderId(): Long {
@@ -382,7 +392,7 @@ class CountdownNotificationManager @Inject constructor(
     }
 
     private fun clearLastScheduledOrderId() {
-        prefs.edit().remove(KEY_LAST_SCHEDULED_ORDER_ID).apply()
+        prefs.edit { remove(KEY_LAST_SCHEDULED_ORDER_ID) }
     }
 
     /**
