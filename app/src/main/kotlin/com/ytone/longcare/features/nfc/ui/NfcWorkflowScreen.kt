@@ -619,7 +619,7 @@ private fun NfcSignInScreenContentForPreview(
                         stringResource(R.string.nfc_sign_in_title), fontWeight = FontWeight.Bold
                     )
                 }, navigationIcon = {
-                    IconButton(onClick = { /* TODO: 返回操作 */ }) {
+                    IconButton(onClick = {}) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
