@@ -26,6 +26,11 @@
 - `FaceVerificationManager` 对外回调改为领域模型，SDK 类型收敛在 manager 内部。
 - 两个 ViewModel 和共享页面移除 `WbFace*` 类型依赖。
 - `TencentFaceApiService`、`GetFaceIdRequest` 不再依赖 `FaceVerificationManager` 常量。
+- 已移除 `app/lint.xml` 中腾讯相关临时忽略项：
+  - `Aligned16KB`
+  - `GlobalOptionInConsumerRules`
+  - `TrustAllX509TrustManager`
+- `lintDebug`、`testDebugUnitTest` 在本地/CI 采用同一配置并已通过。
 
 ## 4. 分阶段迁移执行
 

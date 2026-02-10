@@ -10,8 +10,5 @@
         <ignore path="src/main/res" />
     </issue>
 
-    <!-- 外部依赖告警（当前依赖已是可用最新版本，待供应商提供修复后再移除抑制）。 -->
-    <issue id="Aligned16KB" severity="ignore" />
-    <issue id="GlobalOptionInConsumerRules" severity="ignore" />
-    <issue id="TrustAllX509TrustManager" severity="ignore" />
+    <!-- 其余告警统一按默认规则处理，不做 CI / 本地差异化忽略。 -->
 </lint>
