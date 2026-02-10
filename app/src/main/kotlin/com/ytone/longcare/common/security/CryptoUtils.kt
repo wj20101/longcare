@@ -1,6 +1,7 @@
 package com.ytone.longcare.common.security
 
 import android.util.Base64
+import com.ytone.longcare.common.utils.logE
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.MessageDigest
@@ -221,7 +222,7 @@ object CryptoUtils {
             val hashBytes = digest.digest(input.toByteArray(Charsets.UTF_8))
             bytesToHex(hashBytes)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -295,7 +296,7 @@ object CryptoUtils {
             val secretKey = keyGenerator.generateKey()
             Base64.encodeToString(secretKey.encoded, Base64.NO_WRAP)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -379,7 +380,7 @@ object CryptoUtils {
             val cipherText = cipher.doFinal(plainData)
             AESEncryptResult(cipherText, actualIV)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -480,7 +481,7 @@ object CryptoUtils {
 
             cipher.doFinal(cipherBytes)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -549,7 +550,7 @@ object CryptoUtils {
             val plainBytes = aesDecryptCore(actualCipherText, keyString, mode, actualIV)
             plainBytes?.let { String(it, Charsets.UTF_8) }
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -578,7 +579,7 @@ object CryptoUtils {
             val plainBytes = aesDecryptCore(cipherBytes, keyString, mode, ivBytes)
             plainBytes?.let { String(it, Charsets.UTF_8) }
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -646,7 +647,7 @@ object CryptoUtils {
 
             aesDecryptCore(actualCipherText, keyString, mode, actualIV)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -691,7 +692,7 @@ object CryptoUtils {
 
             Pair(publicKeyString, privateKeyString)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -735,7 +736,7 @@ object CryptoUtils {
             val keyFactory = KeyFactory.getInstance("RSA")
             keyFactory.generatePublic(spec)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -758,7 +759,7 @@ object CryptoUtils {
             val keyFactory = KeyFactory.getInstance("RSA")
             keyFactory.generatePrivate(spec)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -786,7 +787,7 @@ object CryptoUtils {
             cipher.init(Cipher.ENCRYPT_MODE, publicKey)
             cipher.doFinal(plainData)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -805,7 +806,7 @@ object CryptoUtils {
             cipher.init(Cipher.DECRYPT_MODE, privateKey)
             cipher.doFinal(cipherData)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -899,7 +900,7 @@ object CryptoUtils {
             val decryptedBytes = rsaDecryptCore(cipherData, privateKey, mode)
             decryptedBytes?.let { String(it, Charsets.UTF_8) }
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -939,7 +940,7 @@ object CryptoUtils {
             val cipherData = Base64.decode(base64CipherText, Base64.NO_WRAP)
             rsaDecryptCore(cipherData, privateKey, mode)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -980,7 +981,7 @@ object CryptoUtils {
             val decryptedBytes = rsaDecryptCore(cipherData, privateKey, mode)
             decryptedBytes?.let { String(it, Charsets.UTF_8) }
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
@@ -1020,7 +1021,7 @@ object CryptoUtils {
             val cipherData = hexToBytes(hexCipherText)
             rsaDecryptCore(cipherData, privateKey, mode)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
     }
