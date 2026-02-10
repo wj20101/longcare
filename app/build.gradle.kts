@@ -190,10 +190,6 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
-    kotlin {
-        // 这里直接设置 jvmToolchain 为 21
-        jvmToolchain(appJdkVersion)
-    }
     buildFeatures {
         buildConfig = true
         compose = true
@@ -225,6 +221,11 @@ android {
 //        create("dev") { dimension = "environment" }
 //        create("prod") { dimension = "environment" }
 //    }
+}
+
+kotlin {
+    // Kotlin toolchain should be configured on the project-level Kotlin extension.
+    jvmToolchain(appJdkVersion)
 }
 
 room {
