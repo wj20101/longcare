@@ -9,9 +9,10 @@ import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.location.provider.LocationResult
+import com.ytone.longcare.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,6 +35,7 @@ import javax.inject.Singleton
 @Singleton
 class ContinuousAmapLocationManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    @param:ApplicationScope private val applicationScope: CoroutineScope,
     private val systemConfigManager: SystemConfigManager
 ) {
     private var locationClient: AMapLocationClient? = null
@@ -47,6 +49,9 @@ class ContinuousAmapLocationManager @Inject constructor(
         /** 最大定位间隔（毫秒） */
         const val MAX_INTERVAL = 120_000L
     }
+
+    @Volatile
+    private var currentIntervalMs: Long = DEFAULT_INTERVAL
     
     // 缓存待绑定的通知，用于解决初始化时序问题
     private var pendingNotification: Pair<Int, android.app.Notification>? = null
@@ -71,28 +76,13 @@ class ContinuousAmapLocationManager @Inject constructor(
             
             // 初始化定位客户端
             locationClient = AMapLocationClient(context)
-            
+
             // 配置持续定位参数
-            val option = AMapLocationClientOption().apply {
-                // 设置定位模式为高精度模式
-                locationMode = AMapLocationClientOption.AMapLocationMode.Hight_Accuracy
-                // 设置是否返回地址信息
-                isNeedAddress = false
-                // 关闭单次定位，开启持续定位
-                isOnceLocation = false
-                // 设置是否强制刷新WIFI
-                isWifiScan = true
-                // 设置是否允许模拟位置
-                isMockEnable = false
-                // 设置定位间隔
-                this.interval = interval.coerceIn(MIN_INTERVAL, MAX_INTERVAL)
-                // 设置定位超时时间
-                httpTimeOut = 20000
-            }
-            
-            locationClient?.setLocationOption(option)
+            val coercedInterval = interval.coerceIn(MIN_INTERVAL, MAX_INTERVAL)
+            currentIntervalMs = coercedInterval
+            locationClient?.setLocationOption(buildContinuousLocationOption(coercedInterval))
             isInitialized = true
-            logI("持续高德定位客户端初始化成功，间隔: ${interval}ms")
+            logI("持续高德定位客户端初始化成功，间隔: ${coercedInterval}ms")
             
             // 如果有待绑定的后台通知，立即应用
             pendingNotification?.let { (id, notification) ->
@@ -103,6 +93,25 @@ class ContinuousAmapLocationManager @Inject constructor(
             logE("持续高德定位客户端初始化失败: ${e.message}")
         }
     }
+
+    private fun buildContinuousLocationOption(intervalMs: Long): AMapLocationClientOption {
+        return AMapLocationClientOption().apply {
+            // 设置定位模式为高精度模式
+            locationMode = AMapLocationClientOption.AMapLocationMode.Hight_Accuracy
+            // 设置是否返回地址信息
+            isNeedAddress = false
+            // 关闭单次定位，开启持续定位
+            isOnceLocation = false
+            // 设置是否强制刷新WIFI
+            isWifiScan = true
+            // 设置是否允许模拟位置
+            isMockEnable = false
+            // 设置定位间隔
+            interval = intervalMs.coerceIn(MIN_INTERVAL, MAX_INTERVAL)
+            // 设置定位超时时间
+            httpTimeOut = 20000
+        }
+    }
     
     /**
      * 开始持续定位并返回位置更新Flow
@@ -110,8 +119,6 @@ class ContinuousAmapLocationManager @Inject constructor(
      * @param interval 定位间隔（毫秒）
      * @return 位置更新Flow，收集时自动开始定位，取消收集时自动停止
      */
-    private val scope = CoroutineScope(SupervisorJob())
-
     /**
      * 共享的持续定位流
      * 使用 shareIn 实现多播，当订阅者 > 0 时自动启动定位，无订阅者后延时 5秒 停止定位
@@ -126,8 +133,8 @@ class ContinuousAmapLocationManager @Inject constructor(
             return@callbackFlow
         }
         
-        // 确保初始化，使用当前的配置间隔
-        initContinuousLocationClient(apiKey, DEFAULT_INTERVAL)
+        // 确保初始化，使用最新配置间隔
+        initContinuousLocationClient(apiKey, currentIntervalMs)
         
         val client = locationClient
         if (client == null) {
@@ -162,7 +169,7 @@ class ContinuousAmapLocationManager @Inject constructor(
             client.stopLocation()
         }
     }.shareIn(
-        scope = scope,
+        scope = applicationScope,
         started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000L), // 5秒缓冲，避免页面切换时频繁启停
         replay = 1 // 保留最新一个位置，新订阅者秒开
     )
@@ -202,6 +209,8 @@ class ContinuousAmapLocationManager @Inject constructor(
                 // 调用此方法会自动增加订阅者计数，触发定位启动
                 startContinuousLocation().first() 
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("单次定位获取失败: ${e.message}")
             null
@@ -233,11 +242,8 @@ class ContinuousAmapLocationManager @Inject constructor(
      */
     fun updateInterval(interval: Long) {
         val coercedInterval = interval.coerceIn(MIN_INTERVAL, MAX_INTERVAL)
-        locationClient?.setLocationOption(
-            AMapLocationClientOption().apply {
-                this.interval = coercedInterval
-            }
-        )
+        currentIntervalMs = coercedInterval
+        locationClient?.setLocationOption(buildContinuousLocationOption(coercedInterval))
         logI("定位间隔已更新为: ${coercedInterval}ms")
     }
 
