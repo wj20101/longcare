@@ -54,13 +54,18 @@ class LocationTrackingService : Service() {
             return
         }
 
-        logI("启动定位前台保活 (owner=$owner)")
-        createNotificationChannel()
-        val notification = createNotification("后台定位服务运行中...")
-        startForeground(NOTIFICATION_ID, notification)
-
-        continuousAmapLocationManager.enableBackgroundLocation(NOTIFICATION_ID, notification)
-        isKeepAliveStarted = true
+        try {
+            logI("启动定位前台保活 (owner=$owner)")
+            createNotificationChannel()
+            val notification = createNotification("后台定位服务运行中...")
+            startForeground(NOTIFICATION_ID, notification)
+            continuousAmapLocationManager.enableBackgroundLocation(NOTIFICATION_ID, notification)
+            isKeepAliveStarted = true
+        } catch (e: Exception) {
+            isKeepAliveStarted = false
+            logE("启动定位前台保活失败: ${e.message}")
+            stopSelf()
+        }
     }
 
     private fun stopKeepAlive() {
@@ -69,15 +74,15 @@ class LocationTrackingService : Service() {
             return
         }
 
-        continuousAmapLocationManager.disableBackgroundLocation(true)
-
         try {
+            continuousAmapLocationManager.disableBackgroundLocation(true)
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
-            isKeepAliveStarted = false
             logI("定位前台保活已停止")
         } catch (e: Exception) {
             logE("停止定位前台保活失败: ${e.message}")
+        } finally {
+            isKeepAliveStarted = false
         }
     }
 
@@ -111,6 +116,7 @@ class LocationTrackingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        isKeepAliveStarted = false
         logI("✅ LocationTrackingService 已销毁")
     }
 
