@@ -187,6 +187,8 @@ class SystemConfigManager @Inject constructor(
                 if (result is ApiResult.Success) {
                     saveSystemConfig(result.data)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
                 // 静默处理后台刷新失败
             }
