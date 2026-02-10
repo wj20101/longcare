@@ -46,6 +46,9 @@ jobs:
       - name: Enforce lint warning allowlist
         run: bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
 
+      - name: Enforce coroutine cancellation guards
+        run: bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
+
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
