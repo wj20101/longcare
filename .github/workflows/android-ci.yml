@@ -43,6 +43,9 @@ jobs:
       - name: Run verification and packaging
         run: ./gradlew --no-daemon :app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:bundleDebug :baselineprofile:assemble :app:bundleRelease
 
+      - name: Enforce lint warning allowlist
+        run: bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
+
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:

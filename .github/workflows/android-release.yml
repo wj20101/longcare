@@ -83,6 +83,9 @@ jobs:
       - name: Verify quality gates
         run: ./gradlew --no-daemon :app:lintDebug :app:testDebugUnitTest
 
+      - name: Enforce lint warning allowlist
+        run: bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
+
       - name: Decode Android keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}

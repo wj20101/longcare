@@ -43,3 +43,6 @@ jobs:
             -PTX_FACE_INCLUDE_MAVEN_LOCAL=true \
             -PTX_FACE_LIVE_COORD=com.tencent.cloud.huiyansdkface:wbcloudface-live:6.6.2-8e4718fc \
             -PTX_FACE_NORMAL_COORD=com.tencent.cloud.huiyansdkface:wbcloudface-normal:5.1.10-4e3e198
+
+      - name: Enforce lint warning allowlist
+        run: bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt

@@ -79,6 +79,7 @@
    - `./gradlew :app:compileDebugKotlin`
    - `./gradlew :app:lintDebug`
    - `./gradlew :app:testDebugUnitTest`
+   - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`
 2. 当上述任务通过后，移除 `app/lint.xml` 中以下忽略项：
    - `Aligned16KB`
    - `GlobalOptionInConsumerRules`
@@ -105,6 +106,7 @@
 - 不做“仅 CI 忽略”的差异策略；本地与 CI 使用同一 lint 配置与同一验证命令。
 - 发布前统一执行：
   - `./gradlew :app:compileDebugKotlin :app:lintDebug :app:testDebugUnitTest`
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`
 
 ## 5. 验收标准
 - UI/ViewModel 不再直接依赖腾讯 SDK 类型（当前已完成）。
