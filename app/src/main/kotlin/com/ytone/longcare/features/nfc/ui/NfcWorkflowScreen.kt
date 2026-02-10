@@ -596,7 +596,7 @@ fun NfcSignInScreenFailurePreview() {
 private fun NfcSignInScreenContentForPreview(
     initialState: SignInState, onStateChange: (SignInState) -> Unit
 ) {
-    val signInState by remember { mutableStateOf(initialState) }
+    var signInState by remember { mutableStateOf(initialState) }
 
     val gradientBrush = Brush.verticalGradient(
         colors = listOf(Color(0xFF5A9BFA), Color(0xFFE3F2FD)),
@@ -654,7 +654,10 @@ private fun NfcSignInScreenContentForPreview(
 
                     SignInState.FAILURE -> ActionButton(
                         text = stringResource(R.string.nfc_sign_in_retry),
-                        onClick = { onStateChange(SignInState.IDLE) })
+                        onClick = {
+                            signInState = SignInState.IDLE
+                            onStateChange(SignInState.IDLE)
+                        })
 
                     SignInState.IDLE -> Box(modifier = Modifier.height(50.dp))
                 }
@@ -663,9 +666,18 @@ private fun NfcSignInScreenContentForPreview(
                     Modifier.padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(onClick = { onStateChange(SignInState.IDLE) }) { Text(stringResource(R.string.common_idle)) }
-                    Button(onClick = { onStateChange(SignInState.SUCCESS) }) { Text(stringResource(R.string.common_success)) }
-                    Button(onClick = { onStateChange(SignInState.FAILURE) }) { Text(stringResource(R.string.common_failure)) }
+                    Button(onClick = {
+                        signInState = SignInState.IDLE
+                        onStateChange(SignInState.IDLE)
+                    }) { Text(stringResource(R.string.common_idle)) }
+                    Button(onClick = {
+                        signInState = SignInState.SUCCESS
+                        onStateChange(SignInState.SUCCESS)
+                    }) { Text(stringResource(R.string.common_success)) }
+                    Button(onClick = {
+                        signInState = SignInState.FAILURE
+                        onStateChange(SignInState.FAILURE)
+                    }) { Text(stringResource(R.string.common_failure)) }
                 }
                 Spacer(modifier = Modifier.height(32.dp))
             }
