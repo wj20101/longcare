@@ -28,7 +28,7 @@ class ServiceTimeAlarmReceiver : BroadcastReceiver() {
         logI("收到服务时间结束闹钟广播")
         
         // 验证Intent Action
-        if (intent.action != "com.ytone.longcare.SERVICE_TIME_END_ALARM") {
+        if (intent.action != ServiceTimeNotificationManager.ACTION_SERVICE_TIME_END_ALARM) {
             logE("收到未知Action的广播: ${intent.action}")
             return
         }
@@ -63,16 +63,7 @@ class ServiceTimeAlarmReceiver : BroadcastReceiver() {
             logI("服务时间结束通知处理完毕: orderId=$orderId")
             
         } catch (e: Exception) {
-            logE("处理服务时间结束闹钟失败: ${e.message}")
-            
-            // 即使处理失败，也要确保WakeLock释放
-            if (wakeLock.isHeld) {
-                wakeLock.release()
-            }
-            
-            // 重新抛出异常，让系统知道处理失败
-            throw e
-            
+            logE("处理服务时间结束闹钟失败: ${e::class.java.simpleName}: ${e.message}")
         } finally {
             if (wakeLock.isHeld) {
                 wakeLock.release()
