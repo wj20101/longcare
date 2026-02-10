@@ -342,8 +342,7 @@ class FaceVerificationManager @Inject constructor(
      * 生成随机字符串（nonce）
      */
     private fun generateNonce(length: Int = 32): String {
-        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-        return (1..length).map { chars.random() }.joinToString("")
+        return RandomUtils.generateRandomString(length)
     }
 
 
