@@ -40,8 +40,6 @@ class ServiceTimeNotificationManager @Inject constructor(
     private val handlerRunnables = ConcurrentHashMap<Long, Runnable>()
 
     companion object {
-        private const val TAG = "ServiceTimeNotificationManager"
-        
         // 通知渠道ID
         private const val SERVICE_TIME_CHANNEL_ID = "service_time_end_channel_v2"
         private const val SERVICE_TIME_NOTIFICATION_ID = 4001
@@ -57,6 +55,7 @@ class ServiceTimeNotificationManager @Inject constructor(
         const val EXTRA_ORDER_ID = "extra_order_id"
         const val EXTRA_SERVICE_NAME = "extra_service_name"
         const val EXTRA_SERVICE_END_TIME = "extra_service_end_time"
+        const val ACTION_SERVICE_TIME_END_ALARM = "com.ytone.longcare.SERVICE_TIME_END_ALARM"
         
         // 去重相关
         private const val PREFS_NAME = "service_time_notification_prefs"
@@ -165,7 +164,7 @@ class ServiceTimeNotificationManager @Inject constructor(
                 putExtra(EXTRA_ORDER_ID, orderId)
                 putExtra(EXTRA_SERVICE_NAME, serviceName)
                 putExtra(EXTRA_SERVICE_END_TIME, triggerTimeMillis)
-                action = "com.ytone.longcare.SERVICE_TIME_END_ALARM"
+                action = ACTION_SERVICE_TIME_END_ALARM
             }
 
             val pendingIntent = PendingIntent.getBroadcast(
@@ -331,13 +330,19 @@ class ServiceTimeNotificationManager @Inject constructor(
      */
     private fun cancelAlarmManagerNotification(orderId: Long) {
         try {
-            val intent = Intent(context, ServiceTimeAlarmReceiver::class.java)
+            val intent = Intent(context, ServiceTimeAlarmReceiver::class.java).apply {
+                action = ACTION_SERVICE_TIME_END_ALARM
+            }
             val pendingIntent = PendingIntent.getBroadcast(
                 context,
                 buildAlarmRequestCode(orderId),
                 intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
             )
+            if (pendingIntent == null) {
+                logI("AlarmManager通知不存在，跳过取消: orderId=$orderId")
+                return
+            }
             alarmManager.cancel(pendingIntent)
             pendingIntent.cancel()
             
