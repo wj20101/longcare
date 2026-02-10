@@ -61,6 +61,66 @@ val txFaceNormalCoordinate =
 val txFaceLiveAar = file("libs/WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc.aar")
 val txFaceNormalAar = file("libs/WbCloudNormal-v5.1.10-4e3e198.aar")
 
+data class TxFaceSdkDependencyConfig(
+    val source: String,
+    val liveAar: java.io.File? = null,
+    val normalAar: java.io.File? = null,
+    val liveCoordinate: String? = null,
+    val normalCoordinate: String? = null
+)
+
+fun resolveTxFaceSdkDependencyConfig(
+    source: String,
+    liveAar: java.io.File,
+    normalAar: java.io.File,
+    liveCoordinate: String?,
+    normalCoordinate: String?
+): TxFaceSdkDependencyConfig {
+    val normalizedSource = source.trim().ifBlank { "local" }.lowercase()
+    return when (normalizedSource) {
+        "local" -> {
+            if (!liveAar.exists() || !normalAar.exists()) {
+                throw org.gradle.api.GradleException(
+                    "Local Tencent face AAR files are missing. " +
+                        "Expected: ${liveAar.path}, ${normalAar.path}"
+                )
+            }
+            TxFaceSdkDependencyConfig(
+                source = "local",
+                liveAar = liveAar,
+                normalAar = normalAar
+            )
+        }
+        "maven" -> {
+            val liveCoord = liveCoordinate?.trim().orEmpty()
+            val normalCoord = normalCoordinate?.trim().orEmpty()
+            if (liveCoord.isBlank() || normalCoord.isBlank()) {
+                throw org.gradle.api.GradleException(
+                    "When TX_FACE_SDK_SOURCE=maven, TX_FACE_LIVE_COORD and TX_FACE_NORMAL_COORD must be provided."
+                )
+            }
+            TxFaceSdkDependencyConfig(
+                source = "maven",
+                liveCoordinate = liveCoord,
+                normalCoordinate = normalCoord
+            )
+        }
+        else -> {
+            throw org.gradle.api.GradleException(
+                "Unsupported TX_FACE_SDK_SOURCE=$normalizedSource. Expected: local or maven."
+            )
+        }
+    }
+}
+
+val txFaceDependencyConfig = resolveTxFaceSdkDependencyConfig(
+    source = txFaceSdkSource,
+    liveAar = txFaceLiveAar,
+    normalAar = txFaceNormalAar,
+    liveCoordinate = txFaceLiveCoordinate.orNull,
+    normalCoordinate = txFaceNormalCoordinate.orNull
+)
+
 android {
     namespace = "com.ytone.longcare"
     compileSdk = appCompileSdkVersion
@@ -273,33 +333,19 @@ dependencies {
     // kotlinx datetime
     implementation(libs.kotlinx.datetime)
 
-    // 腾讯人脸（默认使用本地 AAR；当 TX_FACE_SDK_SOURCE=maven 时切换到坐标依赖）
-    when (txFaceSdkSource) {
+    // 腾讯人脸（通过 TX_FACE_SDK_SOURCE 在 local 与 maven 之间切换）
+    when (txFaceDependencyConfig.source) {
         "local" -> {
-            if (!txFaceLiveAar.exists() || !txFaceNormalAar.exists()) {
-                throw org.gradle.api.GradleException(
-                    "Local Tencent face AAR files are missing. " +
-                        "Expected: ${txFaceLiveAar.path}, ${txFaceNormalAar.path}"
-                )
-            }
-            implementation(files(txFaceLiveAar))
-            implementation(files(txFaceNormalAar))
+            val liveAar = requireNotNull(txFaceDependencyConfig.liveAar)
+            val normalAar = requireNotNull(txFaceDependencyConfig.normalAar)
+            implementation(files(liveAar))
+            implementation(files(normalAar))
         }
         "maven" -> {
-            val liveCoord = txFaceLiveCoordinate.orNull
-            val normalCoord = txFaceNormalCoordinate.orNull
-            if (liveCoord.isNullOrBlank() || normalCoord.isNullOrBlank()) {
-                throw org.gradle.api.GradleException(
-                    "When TX_FACE_SDK_SOURCE=maven, TX_FACE_LIVE_COORD and TX_FACE_NORMAL_COORD must be provided."
-                )
-            }
+            val liveCoord = requireNotNull(txFaceDependencyConfig.liveCoordinate)
+            val normalCoord = requireNotNull(txFaceDependencyConfig.normalCoordinate)
             implementation(liveCoord)
             implementation(normalCoord)
-        }
-        else -> {
-            throw org.gradle.api.GradleException(
-                "Unsupported TX_FACE_SDK_SOURCE=$txFaceSdkSource. Expected: local or maven."
-            )
         }
     }
     
