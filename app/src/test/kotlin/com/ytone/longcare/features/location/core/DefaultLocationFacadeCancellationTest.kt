@@ -38,4 +38,32 @@ class DefaultLocationFacadeCancellationTest {
 
         assertNotNull(cancellation)
     }
+
+    @Test
+    fun `getCurrentLocation should rethrow cancellation from system provider`() = runTest {
+        val amap = mockk<ContinuousAmapLocationManager>()
+        val stateManager = mockk<LocationStateManager>()
+        val systemProvider = mockk<SystemLocationProvider>()
+        val keepAliveManager = mockk<LocationKeepAliveManager>()
+
+        coEvery { stateManager.getValidLocation(any()) } returns null
+        coEvery { amap.getCurrentLocation(any()) } returns null
+        coEvery { systemProvider.getCurrentLocation() } throws CancellationException("cancelled")
+
+        val facade = DefaultLocationFacade(
+            continuousAmapLocationManager = amap,
+            locationStateManager = stateManager,
+            systemLocationProvider = systemProvider,
+            locationKeepAliveManager = keepAliveManager
+        )
+
+        val cancellation = try {
+            facade.getCurrentLocation(timeoutMs = 1000)
+            null
+        } catch (e: CancellationException) {
+            e
+        }
+
+        assertNotNull(cancellation)
+    }
 }
