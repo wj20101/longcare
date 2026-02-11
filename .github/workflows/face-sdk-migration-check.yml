@@ -32,23 +32,7 @@ jobs:
         run: |
           chmod +x gradlew
           chmod +x scripts/face-sdk/publish_tx_face_aars.sh
+          chmod +x scripts/face-sdk/verify_tx_face_maven_switch.sh
 
-      - name: Publish local AARs to Maven local
-        run: scripts/face-sdk/publish_tx_face_aars.sh --mode local
-
-      - name: Run quality gates with maven source switch
-        run: |
-          ./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug :app:testDebugUnitTest \
-            -PTX_FACE_SDK_SOURCE=maven \
-            -PTX_FACE_INCLUDE_MAVEN_LOCAL=true \
-            -PTX_FACE_LIVE_COORD=com.tencent.cloud.huiyansdkface:wbcloudface-live:6.6.2-8e4718fc \
-            -PTX_FACE_NORMAL_COORD=com.tencent.cloud.huiyansdkface:wbcloudface-normal:5.1.10-4e3e198
-
-      - name: Enforce lint warning allowlist
-        run: bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
-
-      - name: Enforce coroutine cancellation guards
-        run: bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
-
-      - name: Enforce target SDK upgrade gate
-        run: bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
+      - name: Run face SDK maven switch verification
+        run: bash scripts/face-sdk/verify_tx_face_maven_switch.sh
