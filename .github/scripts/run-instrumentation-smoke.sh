@@ -5,6 +5,7 @@ READY_TIMEOUT_SECS="${SMOKE_READY_TIMEOUT_SECS:-360}"
 SMOKE_REPORT_DIR="${SMOKE_REPORT_DIR:-app/build/reports/androidTests/smoke}"
 SMOKE_REPORT_FILE="${SMOKE_REPORT_FILE:-${SMOKE_REPORT_DIR}/instrumentation-smoke-output.txt}"
 SMOKE_TEST_CLASS="${SMOKE_TEST_CLASS:-com.ytone.longcare.smoke.MainActivitySmokeTest}"
+SMOKE_TEST_CLASSES="${SMOKE_TEST_CLASSES:-${SMOKE_TEST_CLASS}}"
 APP_ID="${APP_ID:-com.ytone.longcare}"
 TARGET_SERIAL="${ANDROID_SERIAL:-${SMOKE_DEVICE_SERIAL:-}}"
 
@@ -101,6 +102,34 @@ install_apks() {
   adb_cmd install -r -d -t "${test_apk}"
 }
 
+run_single_instrumentation() {
+  local instrumentation="$1"
+  local test_class="$2"
+  local output_tmp
+  output_tmp="$(mktemp)"
+
+  # Keep both console output and a persisted artifact for debugging.
+  adb_cmd shell am instrument -w -r \
+    -e class "${test_class}" \
+    "${instrumentation}" | tee -a "${SMOKE_REPORT_FILE}" | tee "${output_tmp}"
+
+  if grep -q "FAILURES!!!" "${output_tmp}" ||
+    grep -q "INSTRUMENTATION_STATUS_CODE: -2" "${output_tmp}" ||
+    grep -q "INSTRUMENTATION_RESULT: shortMsg=" "${output_tmp}"; then
+    echo "Instrumentation test failed: ${test_class}"
+    rm -f "${output_tmp}"
+    return 1
+  fi
+
+  if ! grep -q "OK (" "${output_tmp}"; then
+    echo "Instrumentation result for ${test_class} did not contain an OK marker."
+    rm -f "${output_tmp}"
+    return 1
+  fi
+
+  rm -f "${output_tmp}"
+}
+
 run_instrumentation() {
   local instrumentation
   instrumentation="$(adb_cmd shell pm list instrumentation | tr -d '\r' | grep "${APP_ID}" | head -n 1 | sed -E 's/^instrumentation:([^ ]+) .*/\1/')"
@@ -110,13 +139,19 @@ run_instrumentation() {
     return 1
   fi
 
-  echo "Running instrumentation: ${instrumentation}, class=${SMOKE_TEST_CLASS}"
+  echo "Running instrumentation target: ${instrumentation}"
   mkdir -p "${SMOKE_REPORT_DIR}"
+  : > "${SMOKE_REPORT_FILE}"
 
-  # Keep both console output and a persisted artifact for debugging.
-  adb_cmd shell am instrument -w -r \
-    -e class "${SMOKE_TEST_CLASS}" \
-    "${instrumentation}" | tee "${SMOKE_REPORT_FILE}"
+  IFS=',' read -r -a classes <<< "${SMOKE_TEST_CLASSES}"
+  for raw_class in "${classes[@]}"; do
+    test_class="$(echo "${raw_class}" | xargs)"
+    if [ -z "${test_class}" ]; then
+      continue
+    fi
+    echo "Running class: ${test_class}"
+    run_single_instrumentation "${instrumentation}" "${test_class}"
+  done
 }
 
 adb start-server
