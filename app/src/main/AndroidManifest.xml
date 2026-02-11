@@ -187,6 +187,7 @@
         <!-- 人脸捕获测试Activity -->
         <activity
             android:name=".features.facecapture.FaceCaptureTestActivity"
+            android:enabled="${faceCaptureTestActivityEnabled}"
             android:exported="true"
             android:theme="@style/Theme.LongCare">
             <intent-filter>
