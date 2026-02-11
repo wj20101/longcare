@@ -179,7 +179,6 @@ android {
             isDebuggable = false
             isJniDebuggable = false
             manifestPlaceholders["faceCaptureTestActivityEnabled"] = "false"
-            manifestPlaceholders["faceCaptureTestActivityExported"] = "false"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -195,7 +194,6 @@ android {
 
         debug {
             manifestPlaceholders["faceCaptureTestActivityEnabled"] = "true"
-            manifestPlaceholders["faceCaptureTestActivityExported"] = "true"
             buildConfigField("String", "BASE_URL", "\"https://careapi.ytone.cn\"") // 测试环境 URL
             // 在 debug 版本中，当前仍使用线上数据
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
