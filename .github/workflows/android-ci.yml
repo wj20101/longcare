@@ -49,6 +49,9 @@ jobs:
       - name: Enforce coroutine cancellation guards
         run: bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
 
+      - name: Enforce no empty catch blocks
+        run: bash scripts/quality/verify_no_empty_catch_blocks.sh app/src/main/kotlin
+
       - name: Enforce target SDK upgrade gate
         run: bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
 
