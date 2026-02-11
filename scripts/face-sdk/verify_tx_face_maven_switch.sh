@@ -24,5 +24,6 @@ bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
 bash scripts/quality/verify_no_empty_catch_blocks.sh app/src/main/kotlin
 bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
 bash scripts/quality/verify_release_exported_components.sh
+bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml
 
 echo "Tencent face SDK maven switch verification passed."
