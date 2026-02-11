@@ -14,20 +14,25 @@ object FaceCaptureTestLauncher {
      * 启动人脸捕获测试Activity
      * @param context 上下文
      */
-    fun launch(context: Context) {
+    fun launch(context: Context): Boolean {
         val intent = Intent(Intent.ACTION_VIEW).apply {
             data = "longcare://facecapture".toUri()
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        
-        try {
+
+        if (intent.resolveActivity(context.packageManager) != null) {
             context.startActivity(intent)
-        } catch (e: Exception) {
-            // 如果通过URI启动失败，直接启动Activity
-            val directIntent = Intent(context, FaceCaptureTestActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
+            return true
+        }
+
+        val directIntent = Intent(context, FaceCaptureTestActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        return if (directIntent.resolveActivity(context.packageManager) != null) {
             context.startActivity(directIntent)
+            true
+        } else {
+            false
         }
     }
     
@@ -40,7 +45,11 @@ object FaceCaptureTestLauncher {
         val intent = Intent(Intent.ACTION_VIEW).apply {
             data = "longcare://facecapture".toUri()
         }
-        
-        return context.packageManager.queryIntentActivities(intent, 0).isNotEmpty()
+        if (intent.resolveActivity(context.packageManager) != null) {
+            return true
+        }
+
+        val directIntent = Intent(context, FaceCaptureTestActivity::class.java)
+        return directIntent.resolveActivity(context.packageManager) != null
     }
 }
