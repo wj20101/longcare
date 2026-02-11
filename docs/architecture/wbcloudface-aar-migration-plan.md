@@ -82,6 +82,7 @@
    - `./gradlew :app:lintDebug`
    - `./gradlew :app:testDebugUnitTest`
    - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`
+   - `bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml`
 2. 当上述任务通过后，移除 `app/lint.xml` 中以下忽略项：
    - `Aligned16KB`
    - `GlobalOptionInConsumerRules`
@@ -110,6 +111,7 @@
 - 发布前统一执行：
   - `./gradlew :app:compileDebugKotlin :app:lintDebug :app:testDebugUnitTest`
   - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`
+  - `bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml`
 
 ## 5. 验收标准
 - UI/ViewModel 不再直接依赖腾讯 SDK 类型（当前已完成）。
