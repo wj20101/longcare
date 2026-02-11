@@ -40,7 +40,7 @@ fi
 
 ci_api_levels="$(sed -nE 's/^[[:space:]]*api-level:[[:space:]]*([0-9]+).*/\1/p' "${CI_WORKFLOW_FILE}" || true)"
 has_dynamic_target_api="false"
-if grep -Eq '^[[:space:]]*api-level:[[:space:]]*\$\{\{[[:space:]]*steps\.target_sdk\.outputs\.value[[:space:]]*\}\}' "${CI_WORKFLOW_FILE}"; then
+if grep -Eq '^[[:space:]]*api-level:[[:space:]]*"?\$\{\{[[:space:]]*steps\.[A-Za-z0-9_-]+\.outputs\.[A-Za-z0-9_-]+[[:space:]]*\}\}"?' "${CI_WORKFLOW_FILE}"; then
   has_dynamic_target_api="true"
 fi
 
