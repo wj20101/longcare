@@ -326,7 +326,11 @@ fun LoginScreen(
                         }
 
                         Button(
-                            onClick = { FaceCaptureTestLauncher.launch(context) },
+                            onClick = {
+                                if (!FaceCaptureTestLauncher.launch(context)) {
+                                    context.showLongToast("当前构建暂不可用人脸采集测试入口")
+                                }
+                            },
                             shape = buttonShape,
                             colors = buttonColors,
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
