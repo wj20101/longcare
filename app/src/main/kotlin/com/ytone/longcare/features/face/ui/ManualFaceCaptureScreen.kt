@@ -54,6 +54,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.features.face.viewmodel.ManualFaceCaptureViewModel
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,6 +70,13 @@ fun ManualFaceCaptureScreen(
     val currentState by viewModel.currentState.collectAsStateWithLifecycle()
     
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
+    val captureExecutor = remember { Executors.newSingleThreadExecutor() }
+
+    DisposableEffect(captureExecutor) {
+        onDispose {
+            captureExecutor.shutdown()
+        }
+    }
 
     // 相机权限请求
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -135,7 +143,7 @@ fun ManualFaceCaptureScreen(
                         },
                         onTakePhoto = {
                             viewModel.startCapture()
-                            takePhoto(imageCapture, viewModel)
+                            takePhoto(imageCapture, captureExecutor, viewModel)
                         },
                         isCapturing = currentState is ManualFaceCaptureState.CapturingPhoto
                     )
@@ -733,10 +741,11 @@ private fun FaceConfirmationDialog(
 
 private fun takePhoto(
     imageCapture: ImageCapture?,
+    executor: Executor,
     viewModel: ManualFaceCaptureViewModel
 ) {
     imageCapture?.takePicture(
-        Executors.newSingleThreadExecutor(),
+        executor,
         object : ImageCapture.OnImageCapturedCallback() {
             override fun onCaptureSuccess(image: ImageProxy) {
                 try {
