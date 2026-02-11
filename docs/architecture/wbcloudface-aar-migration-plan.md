@@ -64,6 +64,8 @@
      - `scripts/face-sdk/publish_tx_face_aars.sh`
    - 私仓示例：
      - `scripts/face-sdk/publish_tx_face_aars.sh --mode deploy --repo-url https://repo.example.com/repository/maven-releases/`
+   - 一键本地验证（发布+切换+质量门）：
+     - `scripts/face-sdk/verify_tx_face_maven_switch.sh`
 6. 稳定后删除 `app/libs` 中旧 AAR（在分支中执行，确保可回滚）。
 7. 使用 CI 回归开关链路，确保 Maven 切换不回退：
    - `.github/workflows/face-sdk-migration-check.yml`
@@ -98,6 +100,7 @@
 - Maven 模式（坐标切换验证）：
   - 私仓：`./gradlew :app:compileDebugKotlin -PTX_FACE_SDK_SOURCE=maven -PTX_FACE_LIVE_COORD=<group:artifact:version> -PTX_FACE_NORMAL_COORD=<group:artifact:version> -PTX_FACE_MAVEN_REPO_URL=<repo-url>`
   - Maven local：`./gradlew :app:compileDebugKotlin -PTX_FACE_SDK_SOURCE=maven -PTX_FACE_INCLUDE_MAVEN_LOCAL=true -PTX_FACE_LIVE_COORD=<group:artifact:version> -PTX_FACE_NORMAL_COORD=<group:artifact:version>`
+  - 一键：`scripts/face-sdk/verify_tx_face_maven_switch.sh`
 - 回滚到本地 AAR：
   - `./gradlew :app:compileDebugKotlin -PTX_FACE_SDK_SOURCE=local`
 

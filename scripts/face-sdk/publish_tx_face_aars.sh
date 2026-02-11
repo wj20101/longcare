@@ -105,11 +105,6 @@ if [[ "${MODE}" != "local" && "${MODE}" != "deploy" ]]; then
   exit 1
 fi
 
-if ! command -v mvn >/dev/null 2>&1; then
-  echo "mvn command not found. Please install Maven first." >&2
-  exit 1
-fi
-
 if [[ ! -f "${LIVE_AAR}" ]]; then
   echo "Live AAR not found: ${LIVE_AAR}" >&2
   exit 1
@@ -124,19 +119,57 @@ if [[ "${MODE}" == "deploy" && -z "${REPO_URL}" ]]; then
   exit 1
 fi
 
+MVN_AVAILABLE="false"
+if command -v mvn >/dev/null 2>&1; then
+  MVN_AVAILABLE="true"
+fi
+
+if [[ "${MODE}" == "deploy" && "${MVN_AVAILABLE}" != "true" ]]; then
+  echo "mvn command not found. Please install Maven first for --mode=deploy." >&2
+  exit 1
+fi
+
+install_to_maven_local_without_maven() {
+  local file_path="$1"
+  local artifact_id="$2"
+  local version="$3"
+  local group_path
+  group_path="$(printf '%s' "${GROUP_ID}" | tr '.' '/')"
+  local target_dir="${HOME}/.m2/repository/${group_path}/${artifact_id}/${version}"
+  local artifact_name="${artifact_id}-${version}"
+
+  mkdir -p "${target_dir}"
+  cp "${file_path}" "${target_dir}/${artifact_name}.aar"
+  cat > "${target_dir}/${artifact_name}.pom" <<POM
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>${GROUP_ID}</groupId>
+  <artifactId>${artifact_id}</artifactId>
+  <version>${version}</version>
+  <packaging>aar</packaging>
+</project>
+POM
+}
+
 publish_one() {
   local file_path="$1"
   local artifact_id="$2"
   local version="$3"
 
   if [[ "${MODE}" == "local" ]]; then
-    mvn -q install:install-file \
-      -Dfile="${file_path}" \
-      -DgroupId="${GROUP_ID}" \
-      -DartifactId="${artifact_id}" \
-      -Dversion="${version}" \
-      -Dpackaging=aar \
-      -DgeneratePom=true
+    if [[ "${MVN_AVAILABLE}" == "true" ]]; then
+      mvn -q install:install-file \
+        -Dfile="${file_path}" \
+        -DgroupId="${GROUP_ID}" \
+        -DartifactId="${artifact_id}" \
+        -Dversion="${version}" \
+        -Dpackaging=aar \
+        -DgeneratePom=true
+    else
+      install_to_maven_local_without_maven "${file_path}" "${artifact_id}" "${version}"
+    fi
   else
     mvn -q deploy:deploy-file \
       -Dfile="${file_path}" \
@@ -151,6 +184,9 @@ publish_one() {
 }
 
 echo "Publishing Tencent face SDK AARs..."
+if [[ "${MODE}" == "local" && "${MVN_AVAILABLE}" != "true" ]]; then
+  echo "mvn not found. Falling back to direct Maven local repository install (~/.m2/repository)."
+fi
 publish_one "${LIVE_AAR}" "${LIVE_ARTIFACT_ID}" "${LIVE_VERSION}"
 publish_one "${NORMAL_AAR}" "${NORMAL_ARTIFACT_ID}" "${NORMAL_VERSION}"
 
