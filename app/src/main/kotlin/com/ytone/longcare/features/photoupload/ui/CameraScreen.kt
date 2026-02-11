@@ -19,6 +19,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.CameraInfoUnavailableException
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.resolutionselector.ResolutionSelector
@@ -447,7 +448,7 @@ private fun CameraContent(
                                         
                                         val targetAvailable = try {
                                             cameraController.hasCamera(newSelector)
-                                        } catch (_: Exception) {
+                                        } catch (_: CameraInfoUnavailableException) {
                                             false
                                         }
                                         
