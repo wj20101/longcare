@@ -32,13 +32,17 @@ is_allowed_source() {
     Aligned16KB)
       if [[ "${warning_line}" == *"crashreport-"* ]] ||
         [[ "${warning_line}" == *"WbCloudFaceLiveSdk-face-v"* ]] ||
+        [[ "${warning_line}" == *"wbcloudface-live-"* ]] ||
+        [[ "${warning_line}" == *"com.tencent.cloud.huiyansdkface:wbcloudface-live:"* ]] ||
         [[ "${warning_line}" == *"/gradle/libs.versions.toml:"* ]]; then
         return 0
       fi
       return 1
       ;;
     GlobalOptionInConsumerRules)
-      [[ "${warning_line}" == *"WbCloudFaceLiveSdk-face-v"* ]]
+      [[ "${warning_line}" == *"WbCloudFaceLiveSdk-face-v"* ]] ||
+        [[ "${warning_line}" == *"wbcloudface-live-"* ]] ||
+        [[ "${warning_line}" == *"com.tencent.cloud.huiyansdkface:wbcloudface-live:"* ]]
       return $?
       ;;
     TrustAllX509TrustManager)
