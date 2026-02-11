@@ -58,6 +58,9 @@ jobs:
       - name: Enforce target SDK upgrade gate
         run: bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
 
+      - name: Enforce exact alarm permission config
+        run: bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml
+
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:

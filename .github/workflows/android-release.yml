@@ -97,6 +97,9 @@ jobs:
       - name: Enforce target SDK upgrade gate
         run: bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
 
+      - name: Enforce exact alarm permission config
+        run: bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml
+
       - name: Validate release signing secrets
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
