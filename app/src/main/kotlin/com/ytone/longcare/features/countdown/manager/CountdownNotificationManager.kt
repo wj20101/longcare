@@ -104,10 +104,11 @@ class CountdownNotificationManager @Inject constructor(
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            // 优先使用 AlarmClock 确保锁屏提醒（Android 12+）
-            // AlarmClock 可以绕过Doze模式和电池优化，确保在锁屏状态下也能触发
-            val shouldUseAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-            
+            val canUseExactAlarm = canScheduleExactAlarms()
+            // Android 12+ 且具备精确闹钟能力时优先使用 AlarmClock 确保锁屏提醒。
+            // 无精确闹钟能力时降级为非精确闹钟，避免 SecurityException。
+            val shouldUseAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && canUseExactAlarm
+
             if (shouldUseAlarmClock) {
                 // 使用 AlarmClock 确保锁屏提醒
                 val alarmClockInfo = AlarmManager.AlarmClockInfo(
@@ -117,6 +118,13 @@ class CountdownNotificationManager @Inject constructor(
                 // AlarmManagerCompat 目前没有 setAlarmClock 方法，直接使用 alarmManager
                 alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
                 logI("✅ 通过AlarmClock设置倒计时闹钟(确保锁屏提醒): orderId=${request.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerTimeMillis,
+                    pendingIntent
+                )
+                logI("✅ 无精确闹钟能力，降级为 setAndAllowWhileIdle: orderId=${request.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
             } else {
                 // Android 12以下使用精确闹钟
                 AlarmManagerCompat.setExactAndAllowWhileIdle(

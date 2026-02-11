@@ -174,16 +174,16 @@ class ServiceTimeNotificationManager @Inject constructor(
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            // Android 12+ 检查精确闹钟权限
+            // Android 12+ 无精确闹钟权限时降级为非精确闹钟，避免 SecurityException。
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !canScheduleExactAlarms()) {
-                logE("无精确闹钟权限，使用AlarmClock兜底")
-                val alarmClockInfo = AlarmManager.AlarmClockInfo(
+                logE("无精确闹钟权限，降级为 setAndAllowWhileIdle")
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
                     triggerTimeMillis,
                     pendingIntent
                 )
-                alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
             } else {
-                // 使用精确闹钟确保准时触发
+                // 有精确闹钟能力时使用精确闹钟，确保准时触发。
                 AlarmManagerCompat.setExactAndAllowWhileIdle(
                     alarmManager,
                     AlarmManager.RTC_WAKEUP,
