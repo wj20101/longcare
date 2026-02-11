@@ -5,9 +5,12 @@ on:
   pull_request:
     paths:
       - "app/build.gradle.kts"
+      - "app/src/main/AndroidManifest.xml"
       - "settings.gradle.kts"
       - "gradle.properties"
       - "scripts/face-sdk/**"
+      - "scripts/lint/**"
+      - "scripts/quality/**"
       - ".github/workflows/face-sdk-migration-check.yml"
 
 jobs:
