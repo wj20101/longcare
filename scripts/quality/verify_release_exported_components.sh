@@ -17,14 +17,19 @@ if [[ ! -f "${MANIFEST_PATH}" ]]; then
   exit 1
 fi
 
+APP_PACKAGE="$(sed -nE 's@<manifest[^>]*package="([^"]+)".*@\1@p' "${MANIFEST_PATH}" | head -n1)"
+if [[ -z "${APP_PACKAGE}" ]]; then
+  APP_PACKAGE="com.ytone.longcare"
+fi
+
 ALLOWED_EXPORTED_COMPONENTS=(
-  "com.ytone.longcare.MainActivity"
+  "${APP_PACKAGE}.MainActivity"
 )
 
 TMP_EXPORTED="$(mktemp)"
 trap 'rm -f "${TMP_EXPORTED}"' EXIT
 
-awk '
+awk -v app_package="${APP_PACKAGE}" '
 function reset_component() {
   in_component = 0
   component_start_line = 0
@@ -33,7 +38,7 @@ function reset_component() {
   component_exported = ""
 }
 function emit_if_needed() {
-  if (in_component && component_exported == "true" && component_name ~ /^com\.ytone\.longcare\./) {
+  if (in_component && component_exported == "true" && index(component_name, app_package ".") == 1) {
     printf "%s %s\n", component_type, component_name
   }
   reset_component()
