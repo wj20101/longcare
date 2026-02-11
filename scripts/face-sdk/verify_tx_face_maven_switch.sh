@@ -21,6 +21,7 @@ echo "[2/3] Run build checks with TX_FACE_SDK_SOURCE=maven"
 echo "[3/3] Enforce repository quality gates"
 bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
 bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
+bash scripts/quality/verify_no_empty_catch_blocks.sh app/src/main/kotlin
 bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
 
 echo "Tencent face SDK maven switch verification passed."

@@ -8,6 +8,33 @@ SMOKE_TEST_CLASS="${SMOKE_TEST_CLASS:-com.ytone.longcare.smoke.MainActivitySmoke
 SMOKE_TEST_CLASSES="${SMOKE_TEST_CLASSES:-${SMOKE_TEST_CLASS}}"
 APP_ID="${APP_ID:-com.ytone.longcare}"
 TARGET_SERIAL="${ANDROID_SERIAL:-${SMOKE_DEVICE_SERIAL:-}}"
+ADB_BIN="${ADB_BIN:-}"
+
+resolve_adb_bin() {
+  if [ -n "${ADB_BIN}" ] && [ -x "${ADB_BIN}" ]; then
+    return 0
+  fi
+
+  local command_adb
+  command_adb="$(command -v adb || true)"
+  local candidates=(
+    "${command_adb}"
+    "${ANDROID_SDK_ROOT:-}/platform-tools/adb"
+    "${ANDROID_HOME:-}/platform-tools/adb"
+    "${HOME}/Library/Android/sdk/platform-tools/adb"
+  )
+
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [ -n "${candidate}" ] && [ -x "${candidate}" ]; then
+      ADB_BIN="${candidate}"
+      return 0
+    fi
+  done
+
+  echo "Unable to find adb. Set ADB_BIN or ensure platform-tools/adb is available." >&2
+  exit 1
+}
 
 resolve_target_serial() {
   if [ -n "${TARGET_SERIAL}" ]; then
@@ -15,14 +42,14 @@ resolve_target_serial() {
   fi
 
   local emulators
-  emulators="$(adb devices | sed -nE 's/^(emulator-[0-9]+)[[:space:]]+device$/\1/p')"
+  emulators="$("${ADB_BIN}" devices | sed -nE 's/^(emulator-[0-9]+)[[:space:]]+device$/\1/p')"
   if [ -n "${emulators}" ]; then
     TARGET_SERIAL="$(echo "${emulators}" | head -n1)"
     return 0
   fi
 
   local devices
-  devices="$(adb devices | sed -nE 's/^([[:alnum:]_.:-]+)[[:space:]]+device$/\1/p')"
+  devices="$("${ADB_BIN}" devices | sed -nE 's/^([[:alnum:]_.:-]+)[[:space:]]+device$/\1/p')"
   local count
   count="$(printf '%s\n' "${devices}" | sed '/^$/d' | wc -l | tr -d ' ')"
   if [ "${count}" = "1" ]; then
@@ -32,9 +59,9 @@ resolve_target_serial() {
 
 adb_cmd() {
   if [ -n "${TARGET_SERIAL}" ]; then
-    adb -s "${TARGET_SERIAL}" "$@"
+    "${ADB_BIN}" -s "${TARGET_SERIAL}" "$@"
   else
-    adb "$@"
+    "${ADB_BIN}" "$@"
   fi
 }
 
@@ -63,7 +90,7 @@ ensure_device_ready() {
   done
 
   echo "Device did not become ready in ${READY_TIMEOUT_SECS}s."
-  adb devices -l || true
+  "${ADB_BIN}" devices -l || true
   adb_cmd shell getprop || true
   return 1
 }
@@ -154,13 +181,15 @@ run_instrumentation() {
   done
 }
 
-adb start-server
+resolve_adb_bin
+echo "Using adb binary: ${ADB_BIN}"
+"${ADB_BIN}" start-server
 resolve_target_serial
 if [ -n "${TARGET_SERIAL}" ]; then
   echo "Using adb target serial: ${TARGET_SERIAL}"
   adb_cmd wait-for-device
 else
-  adb wait-for-device
+  "${ADB_BIN}" wait-for-device
 fi
 ensure_device_ready
 
