@@ -7,6 +7,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.concurrent.Executor
 import javax.inject.Inject
@@ -38,6 +39,9 @@ class SystemLocationProvider @Inject constructor(
                 cancellationSignal,
                 mainThreadExecutor
             ) { location ->
+                if (!continuation.isActive) {
+                    return@getCurrentLocation
+                }
                 if (location != null) {
                     logI("系统GPS获取位置成功")
                     continuation.resume(LocationResult.fromSystemLocation(location))
@@ -57,7 +61,7 @@ class SystemLocationProvider @Inject constructor(
     @SuppressLint("MissingPermission")
     private fun tryNetworkLocation(
         cancellationSignal: CancellationSignal,
-        continuation: kotlin.coroutines.Continuation<LocationResult?>
+        continuation: CancellableContinuation<LocationResult?>
     ) {
         if (LocationManagerCompat.hasProvider(locationManager, LocationManager.NETWORK_PROVIDER)) {
             LocationManagerCompat.getCurrentLocation(
@@ -66,6 +70,9 @@ class SystemLocationProvider @Inject constructor(
                 cancellationSignal,
                 mainThreadExecutor
             ) { location ->
+                if (!continuation.isActive) {
+                    return@getCurrentLocation
+                }
                 if (location != null) {
                     logI("系统网络定位获取位置成功")
                     continuation.resume(LocationResult.fromSystemLocation(location))
@@ -76,7 +83,9 @@ class SystemLocationProvider @Inject constructor(
             }
         } else {
             logE("系统GPS和网络定位均不可用")
-            continuation.resume(null)
+            if (continuation.isActive) {
+                continuation.resume(null)
+            }
         }
     }
     
