@@ -10,6 +10,7 @@ import com.ytone.longcare.features.service.ServiceTimeNotificationManager
 import com.ytone.longcare.features.service.storage.PendingOrdersStorage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -48,6 +49,7 @@ class ServiceTimeNotificationIntegrationTest {
         // 使用真实的服务管理器
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
         pendingOrdersStorage = PendingOrdersStorage(context)
+        pendingOrdersStorage.clearAllPendingOrders()
         serviceTimeNotificationManager = ServiceTimeNotificationManager(
             context,
             notificationManager,
@@ -55,6 +57,11 @@ class ServiceTimeNotificationIntegrationTest {
             workManager,
             pendingOrdersStorage
         )
+    }
+
+    @After
+    fun tearDown() {
+        pendingOrdersStorage.clearAllPendingOrders()
     }
 
     /**
