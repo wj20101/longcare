@@ -158,7 +158,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -accel off -no-snapshot-load -no-snapshot-save -no-metrics
           disable-animations: true
           disable-linux-hw-accel: true
-          script: bash ./.github/scripts/run-instrumentation-smoke.sh
+          script: SMOKE_TEST_CLASSES="com.ytone.longcare.smoke.MainActivitySmokeTest,com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest" bash ./.github/scripts/run-instrumentation-smoke.sh
 
       - name: Upload instrumentation reports
         if: always()
