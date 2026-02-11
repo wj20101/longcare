@@ -210,6 +210,11 @@
 
         </provider>
 
+        <!-- Remove diagnostics receiver from release/runtime manifest to reduce exported surface -->
+        <receiver
+            android:name="androidx.work.impl.diagnostics.DiagnosticsReceiver"
+            tools:node="remove" />
+
         <!-- 配置APP ID -->
         <meta-data
             android:name="BUGLY_APPID"
