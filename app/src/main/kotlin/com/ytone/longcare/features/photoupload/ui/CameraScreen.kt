@@ -895,7 +895,7 @@ private fun takePhoto(
             }
         )
 
-    } catch (e: Throwable) {
+    } catch (e: Exception) {
         CameraEventTracker.trackError(
             CameraEventTracker.EventType.CAPTURE_ERROR,
             e,
