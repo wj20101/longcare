@@ -7,6 +7,7 @@
 1. 质量门
    - `bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml`
    - `bash scripts/quality/verify_release_exported_components.sh`
+   - `bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml`
 2. 基础构建
    - `./gradlew --no-daemon :app:lintDebug :app:testDebugUnitTest`
 3. 模拟器适配 smoke（自动匹配 targetSdk 对应 AVD）
@@ -33,11 +34,13 @@ bash scripts/quality/run_target_sdk_local_smoke.sh
 ## CI 对齐项
 - `android-ci.yml` 必须包含：
   - `Enforce target SDK upgrade gate`
+  - `Enforce exact alarm permission config`
   - instrumentation job 使用 targetSdk 对应 API（当前通过 `steps.target_sdk.outputs.value` 动态解析）
 - 若 targetSdk 上调，`verify_target_sdk_upgrade.sh` 不通过时禁止合入。
 
 ## 通过标准
 - `verify_target_sdk_upgrade.sh` 返回 `Target SDK gate passed`
 - `verify_release_exported_components.sh` 返回 `Release exported component check passed`
+- `verify_exact_alarm_permission_config.sh` 返回 `Exact alarm permission config check passed`
 - `lintDebug`、`testDebugUnitTest` 通过
 - `run_target_sdk_local_smoke.sh` 返回 `Local target SDK smoke verification passed.`
