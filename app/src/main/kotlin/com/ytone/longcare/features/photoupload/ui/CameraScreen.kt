@@ -469,7 +469,9 @@ private fun CameraContent(
                                             // 检测相机是否已就绪
                                             try {
                                                 if (cameraController.cameraInfo != null) break
-                                            } catch (_: Exception) { }
+                                            } catch (_: IllegalStateException) {
+                                                // 相机切换中可能暂时取不到 cameraInfo，继续轮询即可。
+                                            }
                                         }
                                         
                                     } catch (e: CancellationException) {
@@ -863,12 +865,18 @@ private fun takePhoto(
                                 onError()
                             }
                         } finally {
-                             try {
+                            runCatching {
                                 bitmap?.recycle()
                                 watermarkedBitmap?.recycle()
                                 // Ensure temp file is deleted
                                 if (tempFile.exists()) tempFile.delete()
-                             } catch (_: Exception) {}
+                            }.onFailure { cleanupError ->
+                                CameraEventTracker.trackError(
+                                    CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+                                    cleanupError,
+                                    mapOf("reason" to "图片资源回收失败")
+                                )
+                            }
                         }
                     }
                 }
