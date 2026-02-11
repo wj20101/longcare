@@ -6,6 +6,7 @@
 ## 必跑项（本地）
 1. 质量门
    - `bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml`
+   - `bash scripts/quality/verify_release_exported_components.sh`
 2. 基础构建
    - `./gradlew --no-daemon :app:lintDebug :app:testDebugUnitTest`
 3. 模拟器适配 smoke（自动匹配 targetSdk 对应 AVD）
@@ -37,5 +38,6 @@ bash scripts/quality/run_target_sdk_local_smoke.sh
 
 ## 通过标准
 - `verify_target_sdk_upgrade.sh` 返回 `Target SDK gate passed`
+- `verify_release_exported_components.sh` 返回 `Release exported component check passed`
 - `lintDebug`、`testDebugUnitTest` 通过
 - `run_target_sdk_local_smoke.sh` 返回 `Local target SDK smoke verification passed.`
