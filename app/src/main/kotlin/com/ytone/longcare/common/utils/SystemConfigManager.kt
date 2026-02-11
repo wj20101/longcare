@@ -227,7 +227,13 @@ class SystemConfigManager @Inject constructor(
         val config = getSystemConfigLazy() ?: return null
         val str = config.thirdKeyStr
         if (str.isBlank()) return null
-        return try { thirdKeyAdapter.fromJson(str) } catch (_: Exception) { null }
+        return try {
+            thirdKeyAdapter.fromJson(str)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
     }
 
     suspend fun getFaceVerificationConfig(): FaceVerificationConfig? {
