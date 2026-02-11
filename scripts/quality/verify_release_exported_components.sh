@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MANIFEST_PATH="${1:-app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml}"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+MANIFEST_PATH="${1:-${ROOT_DIR}/app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml}"
+
+if [[ ! -f "${MANIFEST_PATH}" ]]; then
+  echo "Release merged manifest not found, generating it via :app:processReleaseMainManifest ..."
+  (
+    cd "${ROOT_DIR}"
+    ./gradlew --no-daemon :app:processReleaseMainManifest >/dev/null
+  )
+fi
 
 if [[ ! -f "${MANIFEST_PATH}" ]]; then
   echo "Release merged manifest not found: ${MANIFEST_PATH}" >&2
