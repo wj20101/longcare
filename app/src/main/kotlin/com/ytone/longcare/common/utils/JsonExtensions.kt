@@ -31,8 +31,7 @@ inline fun <reified T> T?.toJsonString(moshi: Moshi = DefaultMoshi): String? {
         val adapter: JsonAdapter<T> = moshi.adapter(T::class.java)
         adapter.toJson(this)
     } catch (e: Exception) {
-        // 可以在这里添加日志记录 e.printStackTrace()
-        logE(message = "Json Fail", throwable = e)
+        logE(message = "JSON serialization failed for ${T::class.java.simpleName}", throwable = e)
         null
     }
 }
@@ -49,8 +48,7 @@ inline fun <reified T> String?.toObject(moshi: Moshi = DefaultMoshi): T? {
         val adapter: JsonAdapter<T> = moshi.adapter(T::class.java)
         adapter.fromJson(this)
     } catch (e: Exception) {
-        // 可以在这里添加日志记录 e.printStackTrace()
-        logE(message = "Json Fail", throwable = e)
+        logE(message = "JSON parse failed for ${T::class.java.simpleName}", throwable = e)
         null
     }
 }
@@ -68,8 +66,7 @@ inline fun <reified T> String?.fromJsonToList(moshi: Moshi = DefaultMoshi): List
         val adapter: JsonAdapter<List<T>> = moshi.adapter(listType)
         adapter.fromJson(this)
     } catch (e: Exception) {
-        // 可以在这里添加日志记录 e.printStackTrace()
-        logE(message = "Json Fail", throwable = e)
+        logE(message = "JSON list parse failed for ${T::class.java.simpleName}", throwable = e)
         null
     }
 }
@@ -89,8 +86,7 @@ inline fun <reified K, reified V> Map<K, V>?.toJsonStringMap(moshi: Moshi = Defa
         val adapter: JsonAdapter<Map<K, V>> = moshi.adapter(mapType)
         adapter.toJson(this)
     } catch (e: Exception) {
-        // 可以在这里添加日志 e.printStackTrace()
-        logE(message = "Json Fail", throwable = e)
+        logE(message = "JSON map serialization failed", throwable = e)
         null
     }
 }
@@ -111,8 +107,7 @@ inline fun <reified K, reified V> String?.fromJsonToMap(moshi: Moshi = DefaultMo
         val adapter: JsonAdapter<Map<K, V>> = moshi.adapter(mapType)
         adapter.fromJson(this)
     } catch (e: Exception) {
-        // 可以在这里添加日志记录 e.printStackTrace()
-        logE(message = "Json Fail", throwable = e)
+        logE(message = "JSON map parse failed", throwable = e)
         null
     }
 }
