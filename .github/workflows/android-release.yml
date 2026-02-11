@@ -207,6 +207,9 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease
 
+      - name: Enforce release exported component allowlist
+        run: bash scripts/quality/verify_release_exported_components.sh
+
       - name: Rename release APK with version metadata
         id: release_apk
         run: |
