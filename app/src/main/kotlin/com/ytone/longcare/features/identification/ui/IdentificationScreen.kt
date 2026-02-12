@@ -37,6 +37,7 @@ import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.features.identification.vm.FaceSetupState
 import com.ytone.longcare.features.identification.vm.FaceVerificationState
+import com.ytone.longcare.features.identification.vm.IdentificationEvent
 import com.ytone.longcare.features.identification.vm.IdentificationState
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.features.identification.vm.PhotoUploadState
@@ -83,7 +84,6 @@ fun IdentificationScreen(
     val identificationState by identificationViewModel.identificationState.collectAsStateWithLifecycle()
     val faceVerificationState by identificationViewModel.faceVerificationState.collectAsStateWithLifecycle()
     val photoUploadState by identificationViewModel.photoUploadState.collectAsStateWithLifecycle()
-    val navigateToFaceCapture by identificationViewModel.navigateToFaceCapture.collectAsStateWithLifecycle()
     val faceSetupState by identificationViewModel.faceSetupState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
@@ -154,10 +154,12 @@ fun IdentificationScreen(
     }
 
     // 监听导航到人脸采集页面的状态
-    LaunchedEffect(navigateToFaceCapture) {
-        if (navigateToFaceCapture) {
-            navController.navigateToManualFaceCapture()
-            identificationViewModel.resetNavigationState()
+    LaunchedEffect(Unit) {
+        identificationViewModel.events.collect { event ->
+            when (event) {
+                IdentificationEvent.NavigateToFaceCapture -> navController.navigateToManualFaceCapture()
+                is IdentificationEvent.ShowToast -> identificationViewModel.showToast(event.message)
+            }
         }
     }
 

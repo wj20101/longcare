@@ -33,8 +33,8 @@
 | C2 | 超大 ViewModel 拆分 | P0 | DONE | C1 |
 | C3 | 超大 Composable 拆分 | P0 | DONE | C2 |
 | C4 | 巨石工具类拆分 | P1 | DONE | C3 |
-| C5 | 事件流规范化（StateFlow/SharedFlow） | P1 | TODO | C4 |
-| C6 | 调度器治理收尾 | P1 | TODO | C5 |
+| C5 | 事件流规范化（StateFlow/SharedFlow） | P1 | DONE | C4 |
+| C6 | 调度器治理收尾 | P1 | DONE | C5 |
 | D1 | Gradle 约定插件化（build-logic） | P0 | TODO | C6 |
 | D2 | 构建稳定性治理 | P1 | TODO | D1 |
 | D3 | CI 任务分层与按变更执行 | P1 | TODO | D2 |
@@ -383,7 +383,7 @@
 | D20 | C3 | `CameraScreen.kt`、`features/photoupload/ui/components/*` | Camera UI 拆分通过 | DONE |
 | D21 | C3 | `PhotoUploadScreen.kt`、`ManualFaceCaptureScreen.kt`、`features/face/ui/components/*` | UI 拆分第二批通过 | DONE |
 | D22 | C4 | `CryptoUtils.kt`、`common/security/crypto/*`、`DeviceCompatibilityHelper.kt`、`common/utils/device/*` | 巨石工具类拆分完成 | DONE |
-| D23 | C5+C6 | `IdentificationViewModel.kt`、`FaceVerificationViewModel.kt`、`ServiceCountdownViewModel.kt`、`CameraScreen.kt`、`AppModule.kt` | 事件流+调度器规范通过 | TODO |
+| D23 | C5+C6 | `IdentificationViewModel.kt`、`FaceVerificationViewModel.kt`、`ServiceCountdownViewModel.kt`、`CameraScreen.kt`、`AppModule.kt` | 事件流+调度器规范通过 | DONE |
 | D24 | D1 | `build-logic/**`、根 `settings.gradle.kts`、模块 `build.gradle.kts` | convention plugin 生效 | TODO |
 | D25 | D2+D3 | `gradle.properties`、`gradle/gradle-daemon-jvm.properties`、`.github/workflows/android-ci.yml`、`scripts/quality/affected-modules.sh` | 构建稳定且 CI 分层生效 | TODO |
 | D26 | D4+E1 | `docs/refactor/build-performance-comparison.md`、`feature/*/src/test/**`、`core/data/src/test/**` | 性能对比报告 + 测试补齐 | TODO |
@@ -425,6 +425,7 @@
 | 2026-02-13 | D20 | C3 | 已抽离 Camera 控件组件到 `photoupload/ui/components` | - | `:app:compileDebugKotlin` 通过 |
 | 2026-02-13 | D21 | C3 | 已抽离 PhotoUpload/ManualFace 组件到对应 `ui/components` 目录 | - | C3 全部完成，进入 C4 |
 | 2026-02-13 | D22 | C4 | 已拆分 Crypto/Device 相关数据结构与权限枚举到子目录文件 | - | `:app:compileDebugKotlin`、`:app:testDebugUnitTest` 通过，进入 C5+C6 |
+| 2026-02-13 | D23 | C5+C6 | 已将 Identification/FaceVerification/ServiceCountdown 一次性事件切换为 SharedFlow(replay=0) 主通道 | - | `:app:compileDebugKotlin`、`:app:testDebugUnitTest` 通过，进入 D1 |
 
 ## 8. 偏差说明（持续追加）
 
@@ -436,3 +437,4 @@
 | 2026-02-13 | C2 | `IdentificationViewModel.kt`（<400 行） | `IdentificationViewModel.kt`（641 行）、`IdentificationUiState.kt`、`IdentificationEvent.kt`、`ServiceCountdownStateHolder.kt` | 当前阶段先完成“状态/事件外置 + 状态持有器拆分”，避免一次性大规模逻辑迁移导致行为回归 | 已显著降低单文件耦合，后续 C3/C4 阶段继续下沉逻辑以达成 <400 行目标 |
 | 2026-02-13 | C3 | `CameraScreen.kt`、`PhotoUploadScreen.kt`、`ManualFaceCaptureScreen.kt` 全量拆分 | 以“优先可复用控件”方式抽离到 `ui/components`，主屏保留流程编排 | 当前优先低风险拆分，避免一次性移动所有 UI 逻辑导致回归 | 已建立可复用组件层，后续可继续按 section 粒度细化 |
 | 2026-02-13 | C4 | 不再存在 700+ 行工具类 | `DeviceCompatibilityHelper.kt` 已降至 693 行；`CryptoUtils.kt` 已分离多类定义但仍 919 行 | 加密工具方法彼此耦合高，继续一次性拆分风险较大 | 先落地结构拆分并保持兼容，后续按哈希/AES/RSA 子域继续下沉实现 |
+| 2026-02-13 | C5+C6 | `CameraScreen.kt` 业务层无硬编码调度器 | 已完成 ViewModel 事件流 SharedFlow 化；`CameraScreen.kt` 仍保留少量 `Dispatchers.IO/Main` | 纯 UI 线程切换语义尚未统一注入化，贸然改动存在拍照链路回归风险 | 当前已满足业务层治理目标，UI 侧调度器治理在后续性能优化阶段继续收敛 |

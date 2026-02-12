@@ -10,8 +10,11 @@ import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -25,6 +28,12 @@ class FaceVerificationViewModel @Inject constructor(
     private val faceVerifier: FaceVerifier,
     private val systemConfigManager: SystemConfigManager
 ) : ViewModel() {
+
+    sealed interface FaceVerifyEvent {
+        data class Success(val result: FaceVerifyResult) : FaceVerifyEvent
+        data class Error(val message: String) : FaceVerifyEvent
+        data object Cancelled : FaceVerifyEvent
+    }
     
     /**
      * 人脸验证UI状态
@@ -40,6 +49,8 @@ class FaceVerificationViewModel @Inject constructor(
     
     private val _uiState = MutableStateFlow<FaceVerifyUiState>(FaceVerifyUiState.Idle)
     val uiState: StateFlow<FaceVerifyUiState> = _uiState.asStateFlow()
+    private val _events = MutableSharedFlow<FaceVerifyEvent>(replay = 0, extraBufferCapacity = 1)
+    val events: SharedFlow<FaceVerifyEvent> = _events.asSharedFlow()
 
     /**
      * 开始人脸验证（自动获取签名参数）
@@ -125,25 +136,25 @@ class FaceVerificationViewModel @Inject constructor(
         }
         
         override fun onInitFailed(error: FaceVerifyError?) {
-            _uiState.value = FaceVerifyUiState.Error(
-                error = error,
-                message = "人脸识别初始化失败: ${error?.description ?: "未知错误"}"
-            )
+            val message = "人脸识别初始化失败: ${error?.description ?: "未知错误"}"
+            _uiState.value = FaceVerifyUiState.Error(error = error, message = message)
+            _events.tryEmit(FaceVerifyEvent.Error(message))
         }
         
         override fun onVerifySuccess(result: FaceVerifyResult) {
             _uiState.value = FaceVerifyUiState.Success(result)
+            _events.tryEmit(FaceVerifyEvent.Success(result))
         }
         
         override fun onVerifyFailed(error: FaceVerifyError?) {
-            _uiState.value = FaceVerifyUiState.Error(
-                error = error,
-                message = "人脸验证失败: ${error?.description ?: "未知错误"}"
-            )
+            val message = "人脸验证失败: ${error?.description ?: "未知错误"}"
+            _uiState.value = FaceVerifyUiState.Error(error = error, message = message)
+            _events.tryEmit(FaceVerifyEvent.Error(message))
         }
         
         override fun onVerifyCancel() {
             _uiState.value = FaceVerifyUiState.Cancelled
+            _events.tryEmit(FaceVerifyEvent.Cancelled)
         }
     }
     

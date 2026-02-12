@@ -29,8 +29,11 @@ import com.ytone.longcare.models.protos.User
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -71,17 +74,22 @@ class IdentificationViewModel @Inject constructor(
     // 人脸设置状态
     private val _faceSetupState = MutableStateFlow<FaceSetupState>(FaceSetupState.Initial)
     val faceSetupState: StateFlow<FaceSetupState> = _faceSetupState.asStateFlow()
-    
-    // 导航到人脸捕获页面的状态
-    private val _navigateToFaceCapture = MutableStateFlow(false)
-    val navigateToFaceCapture: StateFlow<Boolean> = _navigateToFaceCapture.asStateFlow()
+
+    private val _events = MutableSharedFlow<IdentificationEvent>(replay = 0, extraBufferCapacity = 1)
+    val events: SharedFlow<IdentificationEvent> = _events.asSharedFlow()
+
+    private fun emitEvent(event: IdentificationEvent) {
+        _events.tryEmit(event)
+    }
+
     private fun setFaceVerificationError(message: String, error: FaceVerifyError? = null) {
         _faceVerificationState.value = FaceVerificationState.Error(error = error, message = message)
-        toastHelper.showShort(message)
+        emitEvent(IdentificationEvent.ShowToast(message))
     }
+
     private fun setFaceSetupError(message: String) {
         _faceSetupState.value = FaceSetupState.Error(message)
-        toastHelper.showShort(message)
+        emitEvent(IdentificationEvent.ShowToast(message))
     }
     
     /**
@@ -130,8 +138,8 @@ class IdentificationViewModel @Inject constructor(
     }
 
     private fun navigateToFaceCaptureForSetup() {
-        toastHelper.showShort("请先设置人脸信息")
-        _navigateToFaceCapture.value = true
+        emitEvent(IdentificationEvent.ShowToast("请先设置人脸信息"))
+        emitEvent(IdentificationEvent.NavigateToFaceCapture)
     }
     
     /**
@@ -623,7 +631,7 @@ class IdentificationViewModel @Inject constructor(
      * 重置导航状态
      */
     fun resetNavigationState() {
-        _navigateToFaceCapture.value = false
+        // no-op: navigation now uses SharedFlow one-off events.
     }
     
     /**
