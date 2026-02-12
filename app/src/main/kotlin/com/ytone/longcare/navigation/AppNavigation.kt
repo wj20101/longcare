@@ -43,8 +43,17 @@ import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.userservicerecord.ui.UserServiceRecordScreen
 import com.ytone.longcare.features.nfctest.ui.NfcTestScreen
 import com.ytone.longcare.features.photoupload.model.WatermarkData
+import com.ytone.longcare.feature.home.FeatureEntry as HomeFeatureEntry
+import com.ytone.longcare.feature.identification.FeatureEntry as IdentificationFeatureEntry
+import com.ytone.longcare.feature.login.FeatureEntry as LoginFeatureEntry
 import com.ytone.longcare.core.navigation.NavigationConstants
 import kotlin.reflect.typeOf
+
+private val featureRouteRegistry = setOf(
+    LoginFeatureEntry.ROUTE,
+    HomeFeatureEntry.ROUTE,
+    IdentificationFeatureEntry.ROUTE
+)
 
 // ========== 导航扩展函数 ==========
 
@@ -270,6 +279,9 @@ fun SplashScreen() {
 
 @Composable
 fun AppNavigation(startDestination: Any) {
+    check(featureRouteRegistry.size == 3) {
+        "Feature route registry is incomplete."
+    }
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = startDestination) {
         composable<LoginRoute> {

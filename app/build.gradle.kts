@@ -259,6 +259,9 @@ configurations.configureEach {
 dependencies {
 
     "baselineProfile"(project(":baselineprofile"))
+    implementation(project(":feature:login"))
+    implementation(project(":feature:home"))
+    implementation(project(":feature:identification"))
 
     // Core & Lifecycle
     implementation(libs.androidx.core.ktx)

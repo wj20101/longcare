@@ -25,7 +25,7 @@
 | A3 | 架构约束文档化 | P0 | DONE | A2 |
 | A4 | 质量门禁基线 | P0 | DONE | A3 |
 | B1 | Core 模块骨架搭建 | P0 | DONE | A4 |
-| B2 | Feature 模块骨架搭建 | P0 | TODO | B1 |
+| B2 | Feature 模块骨架搭建 | P0 | DONE | B1 |
 | B3 | Repository 依赖反转改造 | P0 | TODO | B2 |
 | B4 | DI 拆分重组 | P0 | TODO | B3 |
 | B5 | App 壳层收敛 | P1 | TODO | B4 |
@@ -369,8 +369,8 @@
 | D06 | A4 | `.github/workflows/android-ci.yml`、`scripts/quality/verify_architecture_boundaries.sh`、`scripts/quality/verify_module_api_visibility.sh` | PR 门禁生效 | DONE |
 | D07 | B1 | `settings.gradle.kts`、`core/model/build.gradle.kts`、`core/domain/build.gradle.kts` | 新模块被 include，构建通过 | DONE |
 | D08 | B1 | `core/data/build.gradle.kts`、`core/ui/build.gradle.kts`、`core/common/build.gradle.kts`、各 Placeholder | 全模块 assemble 通过 | DONE |
-| D09 | B2 | `settings.gradle.kts`、`feature/login/build.gradle.kts`、`feature/home/build.gradle.kts` | feature 模块可编译 | TODO |
-| D10 | B2 | `feature/identification/build.gradle.kts`、`app/.../navigation/AppNavigation.kt`、FeatureEntry 文件 | 导航接线通过 smoke | TODO |
+| D09 | B2 | `settings.gradle.kts`、`feature/login/build.gradle.kts`、`feature/home/build.gradle.kts` | feature 模块可编译 | DONE |
+| D10 | B2 | `feature/identification/build.gradle.kts`、`app/.../navigation/AppNavigation.kt`、FeatureEntry 文件 | 导航接线通过 smoke | DONE |
 | D11 | B3 | `core/domain/.../repository/*`、`core/data/.../repository/*`（登录/首页优先） | UI 不依赖 Impl（首批） | TODO |
 | D12 | B3 | `core/domain/.../repository/*`、`core/data/.../repository/*`（identification/order） | repository 反转第二批通过 | TODO |
 | D13 | B3 | `app/.../di/RepositoryModule.kt`、迁移收尾文件 | repository 反转收口完成 | TODO |
@@ -411,6 +411,8 @@
 | 2026-02-13 | D06 | A4 | 已新增架构边界与模块可见性检查脚本并接入 CI | - | A4 全部完成，进入 B1 |
 | 2026-02-13 | D07 | B1 | 已完成 core 模块 include 与第一批骨架文件 | - | 继续完成剩余 core 模块 |
 | 2026-02-13 | D08 | B1 | 已完成 core 五模块最小可编译骨架并通过 assemble | - | B1 全部完成，进入 B2 |
+| 2026-02-13 | D09 | B2 | 已完成 feature/login、feature/home 模块骨架并通过 assemble | - | 继续完成 identification 模块与导航接线 |
+| 2026-02-13 | D10 | B2 | 已完成 feature/identification 模块骨架与 AppNavigation 模块引用接线 | - | B2 全部完成，进入 B3 |
 
 ## 8. 偏差说明（持续追加）
 
