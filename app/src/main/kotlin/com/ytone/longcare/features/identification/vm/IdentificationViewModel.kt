@@ -2,7 +2,6 @@ package com.ytone.longcare.features.identification.vm
 
 import android.content.Context
 import android.net.Uri
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.request.OrderInfoRequestModel
@@ -37,15 +36,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
-
-/**
- * 身份认证状态枚举
- */
-enum class IdentificationState {
-    INITIAL,           // 初始状态
-    SERVICE_VERIFIED,  // 服务人员已验证
-    ELDER_VERIFIED     // 老人已验证
-}
 
 @HiltViewModel
 class IdentificationViewModel @Inject constructor(
@@ -92,49 +82,6 @@ class IdentificationViewModel @Inject constructor(
     private fun setFaceSetupError(message: String) {
         _faceSetupState.value = FaceSetupState.Error(message)
         toastHelper.showShort(message)
-    }
-    
-    /**
-     * 验证类型枚举
-     */
-    enum class VerificationType {
-        SERVICE_PERSON,
-        ELDER
-    }
-    
-    /**
-     * 人脸验证状态
-     */
-    sealed class FaceVerificationState {
-        object Idle : FaceVerificationState()
-        object Initializing : FaceVerificationState()
-        object Verifying : FaceVerificationState()
-        data class Success(val result: FaceVerifyResult) : FaceVerificationState()
-        data class Error(val error: FaceVerifyError?, val message: String) : FaceVerificationState()
-        object Cancelled : FaceVerificationState()
-    }
-
-    /**
-     * 拍照上传状态
-     */
-    sealed class PhotoUploadState {
-        object Initial : PhotoUploadState()
-        object Processing : PhotoUploadState()
-        object Uploading : PhotoUploadState()
-        object Success : PhotoUploadState()
-        data class Error(val message: String) : PhotoUploadState()
-    }
-    
-    /**
-     * 人脸设置状态
-     */
-    sealed class FaceSetupState {
-        object Initial : FaceSetupState()
-        object UploadingImage : FaceSetupState()
-        object UpdatingServer : FaceSetupState()
-        object UpdatingLocal : FaceSetupState()
-        object Success : FaceSetupState()
-        data class Error(val message: String) : FaceSetupState()
     }
     
     /**
