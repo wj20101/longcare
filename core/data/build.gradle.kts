@@ -19,4 +19,5 @@ dependencies {
     implementation(project(":core:domain"))
     implementation(project(":core:model"))
     implementation(libs.bundles.hilt)
+    testImplementation(libs.junit)
 }

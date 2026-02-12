@@ -4,6 +4,7 @@ set -u -o pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUTPUT_FILE="${1:-$ROOT_DIR/docs/refactor/baseline-metrics.md}"
 LOG_DIR="${2:-/tmp/longcare_baseline_logs}"
+CLEAN_BEFORE_RUN="${BASELINE_CLEAN_BEFORE_RUN:-false}"
 
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 mkdir -p "$LOG_DIR"
@@ -44,6 +45,15 @@ gradle_info="$(cd "$ROOT_DIR" && ./gradlew -v --no-daemon 2>/dev/null | awk '/^G
 baseline_started_at="$(now)"
 
 task_rows=()
+
+if [ "${CLEAN_BEFORE_RUN}" = "true" ]; then
+  clean_log_file="$LOG_DIR/clean.log"
+  if ! (cd "$ROOT_DIR" && ./gradlew clean --no-daemon >"$clean_log_file" 2>&1); then
+    echo "Baseline preparation failed while running clean. See: $clean_log_file"
+    exit 1
+  fi
+fi
+
 task_rows+=("$(run_task ":app:compileDebugKotlin")")
 task_rows+=("$(run_task ":app:testDebugUnitTest")")
 task_rows+=("$(run_task ":app:assembleDebug")")
@@ -88,6 +98,10 @@ fi
   echo ""
   echo "### Commands"
   echo ""
+  if [ "${CLEAN_BEFORE_RUN}" = "true" ]; then
+    echo "- \`BASELINE_CLEAN_BEFORE_RUN=true ./scripts/quality/collect_build_baseline.sh\`"
+    echo "- \`./gradlew clean --no-daemon\`"
+  fi
   echo "- \`./gradlew :app:compileDebugKotlin --no-daemon\`"
   echo "- \`./gradlew :app:testDebugUnitTest --no-daemon\`"
   echo "- \`./gradlew :app:assembleDebug --no-daemon\`"
