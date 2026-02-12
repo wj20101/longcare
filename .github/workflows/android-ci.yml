@@ -20,7 +20,37 @@ env:
   JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
 
 jobs:
+  detect-affected:
+    runs-on: ubuntu-latest
+    outputs:
+      affected_scope: ${{ steps.detect.outputs.affected_scope }}
+      affected_modules: ${{ steps.detect.outputs.affected_modules }}
+      verify_tasks: ${{ steps.detect.outputs.verify_tasks }}
+      run_instrumentation: ${{ steps.detect.outputs.run_instrumentation }}
+      smoke_test_classes: ${{ steps.detect.outputs.smoke_test_classes }}
+      changed_files_count: ${{ steps.detect.outputs.changed_files_count }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect affected modules and tasks
+        id: detect
+        run: bash scripts/quality/affected-modules.sh --format github >> "$GITHUB_OUTPUT"
+
+      - name: Print affected plan
+        run: |
+          echo "scope=${{ steps.detect.outputs.affected_scope }}"
+          echo "modules=${{ steps.detect.outputs.affected_modules }}"
+          echo "verify_tasks=${{ steps.detect.outputs.verify_tasks }}"
+          echo "run_instrumentation=${{ steps.detect.outputs.run_instrumentation }}"
+          echo "smoke_test_classes=${{ steps.detect.outputs.smoke_test_classes }}"
+          echo "changed_files_count=${{ steps.detect.outputs.changed_files_count }}"
+
   verify-build:
+    needs: detect-affected
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -40,8 +70,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run verification and packaging
-        run: ./gradlew --no-daemon :app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:bundleDebug :baselineprofile:assemble :app:bundleRelease
+      - name: Verify Gradle stability
+        run: bash scripts/quality/verify_gradle_stability.sh
+
+      - name: Run affected verification tasks
+        run: ./gradlew --no-daemon ${{ needs.detect-affected.outputs.verify_tasks }}
 
       - name: Enforce release exported component allowlist
         run: bash scripts/quality/verify_release_exported_components.sh
@@ -76,6 +109,7 @@ jobs:
           retention-days: 14
 
       - name: Upload AAB
+        if: needs.detect-affected.outputs.affected_scope == 'full'
         uses: actions/upload-artifact@v6
         with:
           name: app-debug-aab
@@ -84,6 +118,7 @@ jobs:
           retention-days: 14
 
       - name: Upload release AAB
+        if: needs.detect-affected.outputs.affected_scope == 'full'
         uses: actions/upload-artifact@v6
         with:
           name: app-release-aab
@@ -92,6 +127,7 @@ jobs:
           retention-days: 14
 
       - name: Upload baselineprofile APKs
+        if: needs.detect-affected.outputs.affected_scope == 'full'
         uses: actions/upload-artifact@v6
         with:
           name: baselineprofile-apks
@@ -112,7 +148,10 @@ jobs:
           retention-days: 14
 
   instrumentation-smoke:
-    needs: verify-build
+    needs:
+      - detect-affected
+      - verify-build
+    if: needs.detect-affected.outputs.run_instrumentation == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -131,6 +170,9 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
+      - name: Verify Gradle stability
+        run: bash scripts/quality/verify_gradle_stability.sh
 
       - name: Assemble instrumentation APKs
         run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest -Pbaseline.enableX86_64=true
@@ -173,7 +215,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -accel off -no-snapshot-load -no-snapshot-save -no-metrics
           disable-animations: true
           disable-linux-hw-accel: true
-          script: SMOKE_TEST_CLASSES="com.ytone.longcare.smoke.MainActivitySmokeTest,com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest" bash ./.github/scripts/run-instrumentation-smoke.sh
+          script: SMOKE_TEST_CLASSES="${{ needs.detect-affected.outputs.smoke_test_classes }}" bash ./.github/scripts/run-instrumentation-smoke.sh
 
       - name: Upload instrumentation reports
         if: always()

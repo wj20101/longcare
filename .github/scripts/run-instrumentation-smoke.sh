@@ -6,6 +6,7 @@ SMOKE_REPORT_DIR="${SMOKE_REPORT_DIR:-app/build/reports/androidTests/smoke}"
 SMOKE_REPORT_FILE="${SMOKE_REPORT_FILE:-${SMOKE_REPORT_DIR}/instrumentation-smoke-output.txt}"
 SMOKE_TEST_CLASS="${SMOKE_TEST_CLASS:-com.ytone.longcare.smoke.MainActivitySmokeTest}"
 SMOKE_TEST_CLASSES="${SMOKE_TEST_CLASSES:-${SMOKE_TEST_CLASS}}"
+SMOKE_TEST_CLASSES_FILE="${SMOKE_TEST_CLASSES_FILE:-}"
 APP_ID="${APP_ID:-com.ytone.longcare}"
 TARGET_SERIAL="${ANDROID_SERIAL:-${SMOKE_DEVICE_SERIAL:-}}"
 ADB_BIN="${ADB_BIN:-}"
@@ -159,6 +160,7 @@ run_single_instrumentation() {
 
 run_instrumentation() {
   local instrumentation
+  local classes_payload
   instrumentation="$(adb_cmd shell pm list instrumentation | tr -d '\r' | grep "${APP_ID}" | head -n 1 | sed -E 's/^instrumentation:([^ ]+) .*/\1/')"
   if [ -z "${instrumentation}" ]; then
     echo "Unable to resolve instrumentation target for ${APP_ID}."
@@ -170,7 +172,13 @@ run_instrumentation() {
   mkdir -p "${SMOKE_REPORT_DIR}"
   : > "${SMOKE_REPORT_FILE}"
 
-  IFS=',' read -r -a classes <<< "${SMOKE_TEST_CLASSES}"
+  classes_payload="${SMOKE_TEST_CLASSES}"
+  if [ -n "${SMOKE_TEST_CLASSES_FILE}" ] && [ -f "${SMOKE_TEST_CLASSES_FILE}" ]; then
+    classes_payload="$(paste -sd',' "${SMOKE_TEST_CLASSES_FILE}")"
+  fi
+  echo "Smoke test classes: ${classes_payload}"
+
+  IFS=',' read -r -a classes <<< "${classes_payload}"
   for raw_class in "${classes[@]}"; do
     test_class="$(echo "${raw_class}" | xargs)"
     if [ -z "${test_class}" ]; then

@@ -72,6 +72,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Verify Gradle stability
+        run: bash scripts/quality/verify_gradle_stability.sh
+
       - name: Validate face SDK source settings
         run: |
           echo "TX_FACE_SDK_SOURCE=${TX_FACE_SDK_SOURCE}"
