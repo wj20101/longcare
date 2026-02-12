@@ -233,46 +233,6 @@ fun ManualFaceCaptureScreen(
 }
 
 @Composable
-private fun PermissionDeniedContent(
-    onRequestPermission: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            Icons.Default.CameraAlt,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "需要相机权限",
-            style = MaterialTheme.typography.headlineSmall,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "请授予相机权限以使用人脸捕获功能",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = onRequestPermission,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("授予权限")
-        }
-    }
-}
-
-@Composable
 private fun CameraPreviewContent(
     onImageCapture: (ImageCapture) -> Unit,
     onTakePhoto: () -> Unit,
@@ -599,7 +559,7 @@ private fun FaceSelectionItem(
 }
 
 @Composable
-private fun FaceFullScreenPreviewDialog(
+fun FaceFullScreenPreviewDialog(
     face: DetectedFace,
     onDismiss: () -> Unit
 ) {
@@ -652,90 +612,6 @@ private fun FaceFullScreenPreviewDialog(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun FaceConfirmationDialog(
-    selectedFace: DetectedFace?,
-    qualityHints: List<String>,
-    onConfirm: () -> Unit,
-    onCancel: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    // 添加全屏预览状态
-    var showFullScreenPreview by remember { mutableStateOf(false) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("确认选择的人脸") },
-        text = {
-            Column {
-                selectedFace?.let { face ->
-                    Box(
-                        modifier = Modifier
-                            .size(120.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .align(Alignment.CenterHorizontally)
-                            .clickable { showFullScreenPreview = true }
-                    ) {
-                        Image(
-                            bitmap = face.croppedFace.asImageBitmap(),
-                            contentDescription = "选择的人脸",
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        
-                        // 添加放大提示图标
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(4.dp)
-                                .background(
-                                    Color.Black.copy(alpha = 0.6f),
-                                    CircleShape
-                                )
-                                .padding(4.dp)
-                        ) {
-                            Text(
-                                text = "🔍",
-                                fontSize = 12.sp,
-                                color = Color.White
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    if (qualityHints.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        qualityHints.forEach { hint ->
-                            Text(
-                                text = "• $hint",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = onConfirm) {
-                Text("确认")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancel) {
-                Text("重新拍照")
-            }
-        }
-    )
-    
-    // 全屏预览对话框
-    if (showFullScreenPreview && selectedFace != null) {
-        FaceFullScreenPreviewDialog(
-            face = selectedFace,
-            onDismiss = { showFullScreenPreview = false }
-        )
     }
 }
 
