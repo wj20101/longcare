@@ -38,8 +38,8 @@
 | D1 | Gradle 约定插件化（build-logic） | P0 | DONE | C6 |
 | D2 | 构建稳定性治理 | P1 | DONE | D1 |
 | D3 | CI 任务分层与按变更执行 | P1 | DONE | D2 |
-| D4 | 构建性能专项优化 | P1 | TODO | D3 |
-| E1 | 模块级测试补齐 | P0 | TODO | D4 |
+| D4 | 构建性能专项优化 | P1 | DONE | D3 |
+| E1 | 模块级测试补齐 | P0 | DONE | D4 |
 | E2 | 架构守卫自动化 | P1 | TODO | E1 |
 | E3 | 发布前回归清单与收口 | P1 | TODO | E2 |
 
@@ -386,7 +386,7 @@
 | D23 | C5+C6 | `IdentificationViewModel.kt`、`FaceVerificationViewModel.kt`、`ServiceCountdownViewModel.kt`、`CameraScreen.kt`、`AppModule.kt` | 事件流+调度器规范通过 | DONE |
 | D24 | D1 | `build-logic/**`、根 `settings.gradle.kts`、模块 `build.gradle.kts` | convention plugin 生效 | DONE |
 | D25 | D2+D3 | `gradle.properties`、`gradle/gradle-daemon-jvm.properties`、`.github/workflows/android-ci.yml`、`scripts/quality/affected-modules.sh` | 构建稳定且 CI 分层生效 | DONE |
-| D26 | D4+E1 | `docs/refactor/build-performance-comparison.md`、`feature/*/src/test/**`、`core/data/src/test/**` | 性能对比报告 + 测试补齐 | TODO |
+| D26 | D4+E1 | `docs/refactor/build-performance-comparison.md`、`feature/*/src/test/**`、`core/data/src/test/**` | 性能对比报告 + 测试补齐 | DONE |
 | D27 | E2+E3 | `scripts/quality/verify_architecture_boundaries.sh`、`docs/qa/refactor-regression-checklist.md`、`docs/refactor/final-refactor-report.md`、`README.md` | 架构守卫 + 回归清单 + 终报完成 | TODO |
 
 ## 6. 执行中同步更新规则（必须执行）
@@ -428,6 +428,7 @@
 | 2026-02-13 | D23 | C5+C6 | 已将 Identification/FaceVerification/ServiceCountdown 一次性事件切换为 SharedFlow(replay=0) 主通道 | - | `:app:compileDebugKotlin`、`:app:testDebugUnitTest` 通过，进入 D1 |
 | 2026-02-13 | D24 | D1 | 已完成 build-logic convention 插件接入，并由 convention 统一应用 Android 插件 | - | `:app:compileDebugKotlin`、`:app:testDebugUnitTest`、`:app:assembleDebug` 通过，进入 D2+D3 |
 | 2026-02-13 | D25 | D2+D3 | 已新增 Gradle 稳定性校验与 affected module 脚本，并完成 CI 分层执行改造 | - | `verify_gradle_stability.sh` 通过；`:app:compileDebugKotlin`、`:app:testDebugUnitTest`、`:app:assembleDebug` 通过，进入 D4+E1 |
+| 2026-02-13 | D26 | D4+E1 | 已完成构建性能对比文档，并补齐 feature/core/app 模块级单测 | - | `:feature:*:testDebugUnitTest`、`:core:data:testDebugUnitTest`、`:app:testDebugUnitTest` 通过，进入 E2+E3 |
 
 ## 8. 偏差说明（持续追加）
 
@@ -442,3 +443,5 @@
 | 2026-02-13 | C5+C6 | `CameraScreen.kt` 业务层无硬编码调度器 | 已完成 ViewModel 事件流 SharedFlow 化；`CameraScreen.kt` 仍保留少量 `Dispatchers.IO/Main` | 纯 UI 线程切换语义尚未统一注入化，贸然改动存在拍照链路回归风险 | 当前已满足业务层治理目标，UI 侧调度器治理在后续性能优化阶段继续收敛 |
 | 2026-02-13 | D1 | 各模块使用 convention plugin，重复脚本显著减少 | 已完成 `build-logic` 插件接入并改由 convention 应用 `com.android.application/library` | 以“低风险阶段化迁移”为原则，暂未将 compileSdk/minSdk/toolchain 等共性配置完全上收 | 已实现插件化统一入口，后续 D2/D4 阶段继续收敛重复配置并量化收益 |
 | 2026-02-13 | D2 | `gradle/gradle-daemon-jvm.properties` 计划调整 | 实际未改动该文件内容，仅新增一致性校验脚本并在 CI 执行 | 当前 `toolchainVersion=21` 与 `appJdkVersion` 已一致，无需强行改值 | 通过自动校验守住稳定性约束，后续如 JDK 变更由 `updateDaemonJvm` 与脚本双重收敛 |
+| 2026-02-13 | D4 | `collect_build_baseline.sh` 与历史口径一致对比 | 已新增 clean 基线开关并完成一次 clean 口径采样，对比文档落地 | A1 与 D26 采样口径不完全一致（A1 未显式 clean） | 已在对比文档标注口径差异，后续以统一口径连续采样 |
+| 2026-02-13 | E1 | 关键模块补齐单测并包含集成测试 | feature/core 新增以契约单测为主，app 层新增跨模块路由契约测试 | 当前 `feature/*` 与 `core/data` 业务实现仍较薄，暂不具备高价值集成场景 | 先建立模块测试入口与门禁，后续随业务下沉补齐集成测试 |

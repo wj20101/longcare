@@ -64,3 +64,37 @@
 - `./gradlew :app:compileDebugKotlin --no-daemon`
 - `./gradlew :app:testDebugUnitTest --no-daemon`
 - `./gradlew :app:assembleDebug --no-daemon`
+
+## Baseline Run - 2026-02-13 07:53:52 +0800
+
+### Environment
+
+- Host: `Darwin wajiedeMac-mini.local 25.3.0 Darwin Kernel Version 25.3.0: Wed Jan 28 20:49:24 PST 2026; root:xnu-12377.81.4~5/RELEASE_ARM64_T8132 arm64`
+- Java: `openjdk version "21.0.9" 2025-10-21`
+- Gradle: `9.3.1`
+- Module Count (settings include): `10`
+
+### Build Task Metrics
+
+| Task | Status | Duration | Log |
+|---|---|---:|---|
+| `:app:compileDebugKotlin` | PASS | 16s | `/tmp/longcare_d26_logs/_app_compileDebugKotlin.log` |
+| `:app:testDebugUnitTest` | PASS | 41s | `/tmp/longcare_d26_logs/_app_testDebugUnitTest.log` |
+| `:app:assembleDebug` | PASS | 18s | `/tmp/longcare_d26_logs/_app_assembleDebug.log` |
+
+### Artifact Metrics
+
+| Metric | Value |
+|---|---|
+| APK Path | `/Users/wajie/StudioProjects/longcare/app/build/outputs/apk/debug/app-debug.apk` |
+| APK Size | 46M (48158644 bytes) |
+| Dex File Count | 27 |
+| Method Count | N/A（需要 apkanalyzer 或 dexcount，当前基线先不统计） |
+
+### Commands
+
+- `BASELINE_CLEAN_BEFORE_RUN=true ./scripts/quality/collect_build_baseline.sh`
+- `./gradlew clean --no-daemon`
+- `./gradlew :app:compileDebugKotlin --no-daemon`
+- `./gradlew :app:testDebugUnitTest --no-daemon`
+- `./gradlew :app:assembleDebug --no-daemon`
