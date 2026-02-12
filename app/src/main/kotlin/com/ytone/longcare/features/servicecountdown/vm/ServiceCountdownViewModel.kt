@@ -22,7 +22,10 @@ import com.ytone.longcare.features.countdown.manager.CountdownNotificationManage
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -48,6 +51,8 @@ class ServiceCountdownViewModel @Inject constructor(
     val overtimeMillis: StateFlow<Long> = stateHolder.overtimeMillis.asStateFlow()
     val uploadedImages: StateFlow<Map<ImageTaskType, List<ImageTask>>> = stateHolder.uploadedImages.asStateFlow()
     val orderStateError: StateFlow<ServiceOrderStateModel?> = stateHolder.orderStateError.asStateFlow()
+    private val _orderStateErrorEvents = MutableSharedFlow<ServiceOrderStateModel>(replay = 0, extraBufferCapacity = 1)
+    val orderStateErrorEvents: SharedFlow<ServiceOrderStateModel> = _orderStateErrorEvents.asSharedFlow()
     
     companion object {
         /** 订单状态轮询间隔（毫秒） */
@@ -432,6 +437,7 @@ class ServiceCountdownViewModel @Inject constructor(
                         // 如果订单不是"执行中"状态，触发异常事件
                         if (!orderState.isInProgress()) {
                             stateHolder.orderStateError.value = orderState
+                            _orderStateErrorEvents.tryEmit(orderState)
                             // 停止轮询
                             break
                         }
