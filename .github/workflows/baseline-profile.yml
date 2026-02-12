@@ -69,6 +69,12 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Enforce architecture boundaries
+        run: bash scripts/quality/verify_architecture_boundaries.sh app/src/main/kotlin/com/ytone/longcare
+
+      - name: Enforce module API visibility
+        run: bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare
+
       - name: Setup managed device
         run: |
           ./gradlew --no-daemon :baselineprofile:pixel6Api33Setup \

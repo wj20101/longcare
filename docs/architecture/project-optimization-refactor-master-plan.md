@@ -23,7 +23,7 @@
 | A1 | 基线冻结与度量 | P0 | DONE | - |
 | A2 | 收敛当前未提交改动 | P0 | DONE | A1 |
 | A3 | 架构约束文档化 | P0 | DONE | A2 |
-| A4 | 质量门禁基线 | P0 | TODO | A3 |
+| A4 | 质量门禁基线 | P0 | DONE | A3 |
 | B1 | Core 模块骨架搭建 | P0 | TODO | A4 |
 | B2 | Feature 模块骨架搭建 | P0 | TODO | B1 |
 | B3 | Repository 依赖反转改造 | P0 | TODO | B2 |
@@ -366,7 +366,7 @@
 | D03 | A2 | 当前脏改动相关文件（协程注入组） | `:app:compileDebugKotlin` 通过 | DONE |
 | D04 | A2 | 当前脏改动相关文件（Identification/Face 契约组） | `:app:testDebugUnitTest` 通过 | DONE |
 | D05 | A3 | `docs/architecture/adr/ADR-001-layer-boundary.md`、`docs/architecture/module-responsibility-map.md` | ADR 审阅通过 | DONE |
-| D06 | A4 | `.github/workflows/android-ci.yml`、`scripts/quality/verify_architecture_boundaries.sh`、`scripts/quality/verify_module_api_visibility.sh` | PR 门禁生效 | TODO |
+| D06 | A4 | `.github/workflows/android-ci.yml`、`scripts/quality/verify_architecture_boundaries.sh`、`scripts/quality/verify_module_api_visibility.sh` | PR 门禁生效 | DONE |
 | D07 | B1 | `settings.gradle.kts`、`core/model/build.gradle.kts`、`core/domain/build.gradle.kts` | 新模块被 include，构建通过 | TODO |
 | D08 | B1 | `core/data/build.gradle.kts`、`core/ui/build.gradle.kts`、`core/common/build.gradle.kts`、各 Placeholder | 全模块 assemble 通过 | TODO |
 | D09 | B2 | `settings.gradle.kts`、`feature/login/build.gradle.kts`、`feature/home/build.gradle.kts` | feature 模块可编译 | TODO |
@@ -408,6 +408,7 @@
 | 2026-02-13 | D03 | A2 | 协程注入组改动已完成并通过编译验证 | d9cd592 | 见该提交中的 dispatcher 注入改造 |
 | 2026-02-13 | D04 | A2 | Identification/Face 契约与数据源下沉改动已完成并通过单测验证 | d9cd592 | A2 全部完成，进入 A3 |
 | 2026-02-13 | D05 | A3 | 已新增 ADR、模块职责图与依赖规则文档 | - | 进入 A4 质量门禁阶段 |
+| 2026-02-13 | D06 | A4 | 已新增架构边界与模块可见性检查脚本并接入 CI | - | A4 全部完成，进入 B1 |
 
 ## 8. 偏差说明（持续追加）
 
