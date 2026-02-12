@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.data.repository.UnifiedOrderRepository
+import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.toOrderKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +19,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class EndServiceSelectionViewModel @Inject constructor(
-    private val unifiedOrderRepository: UnifiedOrderRepository
+    private val unifiedOrderRepository: OrderDetailRepository
 ) : ViewModel() {
 
     // 页面状态

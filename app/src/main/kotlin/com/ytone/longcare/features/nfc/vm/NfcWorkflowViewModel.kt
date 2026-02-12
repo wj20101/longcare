@@ -18,8 +18,8 @@ import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
-import com.ytone.longcare.data.repository.ImageRepository
-import com.ytone.longcare.data.repository.UnifiedOrderRepository
+import com.ytone.longcare.domain.repository.OrderImageRepository
+import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
@@ -47,8 +47,8 @@ class NfcWorkflowViewModel @Inject constructor(
     private val appEventBus: AppEventBus,
     private val nfcManager: NfcManager,
     private val locationFacade: LocationFacade,
-    private val unifiedOrderRepository: UnifiedOrderRepository,
-    private val imageRepository: ImageRepository,
+    private val unifiedOrderRepository: OrderDetailRepository,
+    private val imageRepository: OrderImageRepository,
     private val countdownNotificationManager: CountdownNotificationManager
 ) : ViewModel() {
     private var nfcEventJob: Job? = null

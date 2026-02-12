@@ -6,7 +6,7 @@ import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
-import com.ytone.longcare.data.repository.UnifiedOrderRepository
+import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.toRequestModel
@@ -21,7 +21,7 @@ import javax.inject.Inject
 @HiltViewModel
 class OrderDetailViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
-    private val unifiedOrderRepository: UnifiedOrderRepository,
+    private val unifiedOrderRepository: OrderDetailRepository,
     private val toastHelper: ToastHelper,
     private val locationTrackingManager: LocationTrackingManager
 ) : ViewModel() {

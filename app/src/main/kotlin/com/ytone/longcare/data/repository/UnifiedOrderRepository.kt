@@ -16,6 +16,7 @@ import com.ytone.longcare.data.database.entity.OrderProjectEntity
 import com.ytone.longcare.data.repository.OrderMapper.toOrderElderInfoEntity
 import com.ytone.longcare.data.repository.OrderMapper.toOrderEntity
 import com.ytone.longcare.data.repository.OrderMapper.toOrderProjectEntities
+import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.di.IoDispatcher
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -45,7 +46,7 @@ class UnifiedOrderRepository @Inject constructor(
     private val orderElderInfoDao: OrderElderInfoDao,
     private val orderLocalStateDao: OrderLocalStateDao,
     private val orderProjectDao: OrderProjectDao
-) {
+) : OrderDetailRepository {
     
     // ========== 内存缓存（ServiceOrderInfoModel）==========
     
@@ -70,7 +71,7 @@ class UnifiedOrderRepository @Inject constructor(
      * @param forceRefresh 是否强制刷新
      * @return 订单详情结果
      */
-    suspend fun getOrderInfo(orderKey: OrderKey, forceRefresh: Boolean = false): ApiResult<ServiceOrderInfoModel> {
+    override suspend fun getOrderInfo(orderKey: OrderKey, forceRefresh: Boolean): ApiResult<ServiceOrderInfoModel> {
         val cacheKey = orderKey.cacheKey
         
         // 快速路径：如果不强制刷新且缓存中存在数据，直接返回缓存
@@ -118,7 +119,7 @@ class UnifiedOrderRepository @Inject constructor(
      * @param orderKey 订单标识符
      * @return 缓存的订单详情，如果不存在则返回null
      */
-    fun getCachedOrderInfo(orderKey: OrderKey): ServiceOrderInfoModel? {
+    override fun getCachedOrderInfo(orderKey: OrderKey): ServiceOrderInfoModel? {
         return _cachedOrderInfo[orderKey.cacheKey]
     }
     
@@ -135,7 +136,7 @@ class UnifiedOrderRepository @Inject constructor(
      * 清除指定订单的缓存（线程安全）
      * @param orderKey 订单标识符
      */
-    fun clearOrderInfoCache(orderKey: OrderKey) {
+    override fun clearOrderInfoCache(orderKey: OrderKey) {
         _cachedOrderInfo.remove(orderKey.cacheKey)
         orderLoadMutexes.remove(orderKey.cacheKey)
     }
@@ -152,9 +153,9 @@ class UnifiedOrderRepository @Inject constructor(
      * 预加载订单详情（线程安全）
      * @param orderKey 订单标识符
      */
-    suspend fun preloadOrderInfo(orderKey: OrderKey) {
+    override suspend fun preloadOrderInfo(orderKey: OrderKey) {
         if (!_cachedOrderInfo.containsKey(orderKey.cacheKey)) {
-            getOrderInfo(orderKey)
+            getOrderInfo(orderKey, forceRefresh = false)
         }
     }
     
@@ -331,7 +332,7 @@ class UnifiedOrderRepository @Inject constructor(
      * @param orderKey 订单标识符
      * @param selectedProjectIds 选中的项目ID列表
      */
-    suspend fun updateSelectedProjects(orderKey: OrderKey, selectedProjectIds: List<Int>) {
+    override suspend fun updateSelectedProjects(orderKey: OrderKey, selectedProjectIds: List<Int>) {
         val orderId = orderKey.orderId
         orderProjectDao.updateSelectedProjects(orderId, selectedProjectIds)
         orderLocalStateDao.updateNeedsSync(orderId, true)
@@ -341,7 +342,7 @@ class UnifiedOrderRepository @Inject constructor(
      * 获取选中的项目ID列表
      * @param orderKey 订单标识符
      */
-    suspend fun getSelectedProjectIds(orderKey: OrderKey): List<Int> {
+    override suspend fun getSelectedProjectIds(orderKey: OrderKey): List<Int> {
         return orderProjectDao.getSelectedProjectIds(orderKey.orderId)
     }
     
@@ -351,7 +352,7 @@ class UnifiedOrderRepository @Inject constructor(
      * 开始服务（更新本地状态）
      * @param orderKey 订单标识符
      */
-    suspend fun startLocalService(orderKey: OrderKey) {
+    override suspend fun startLocalService(orderKey: OrderKey) {
         val orderId = orderKey.orderId
         val now = System.currentTimeMillis()
         // 确保本地状态存在
@@ -365,7 +366,7 @@ class UnifiedOrderRepository @Inject constructor(
      * 结束服务（更新本地状态）
      * @param orderKey 订单标识符
      */
-    suspend fun endLocalService(orderKey: OrderKey) {
+    override suspend fun endLocalService(orderKey: OrderKey) {
         val orderId = orderKey.orderId
         val now = System.currentTimeMillis()
         orderLocalStateDao.endService(orderId, now)
@@ -376,7 +377,7 @@ class UnifiedOrderRepository @Inject constructor(
      * @param orderKey 订单标识符
      * @param completed 是否完成
      */
-    suspend fun updateFaceVerification(orderKey: OrderKey, completed: Boolean) {
+    override suspend fun updateFaceVerification(orderKey: OrderKey, completed: Boolean) {
         orderLocalStateDao.updateFaceVerification(orderKey.orderId, completed)
     }
     
@@ -384,7 +385,7 @@ class UnifiedOrderRepository @Inject constructor(
      * 获取本地状态
      * @param orderKey 订单标识符
      */
-    suspend fun getLocalState(orderKey: OrderKey): OrderLocalStateEntity? {
+    override suspend fun getLocalState(orderKey: OrderKey): OrderLocalStateEntity? {
         return orderLocalStateDao.getByOrderId(orderKey.orderId)
     }
     

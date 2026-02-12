@@ -12,8 +12,8 @@ import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.data.database.entity.ImageType
 import com.ytone.longcare.data.database.entity.ImageUploadStatus
 import com.ytone.longcare.data.database.entity.OrderImageEntity
-import com.ytone.longcare.data.repository.ImageRepository
-import com.ytone.longcare.data.repository.UnifiedOrderRepository
+import com.ytone.longcare.domain.repository.OrderImageRepository
+import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.repository.SessionState
@@ -53,8 +53,8 @@ class PhotoProcessingViewModel @Inject constructor(
     private val toastHelper: ToastHelper,
     private val cosRepository: CosRepository,
     private val userSessionRepository: UserSessionRepository,
-    private val unifiedOrderRepository: UnifiedOrderRepository,
-    private val imageRepository: ImageRepository,
+    private val unifiedOrderRepository: OrderDetailRepository,
+    private val imageRepository: OrderImageRepository,
 ) : ViewModel() {
 
     // 当前订单Key，用于Room持久化
