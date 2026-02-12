@@ -35,7 +35,7 @@
 | C4 | 巨石工具类拆分 | P1 | DONE | C3 |
 | C5 | 事件流规范化（StateFlow/SharedFlow） | P1 | DONE | C4 |
 | C6 | 调度器治理收尾 | P1 | DONE | C5 |
-| D1 | Gradle 约定插件化（build-logic） | P0 | TODO | C6 |
+| D1 | Gradle 约定插件化（build-logic） | P0 | DONE | C6 |
 | D2 | 构建稳定性治理 | P1 | TODO | D1 |
 | D3 | CI 任务分层与按变更执行 | P1 | TODO | D2 |
 | D4 | 构建性能专项优化 | P1 | TODO | D3 |
@@ -384,7 +384,7 @@
 | D21 | C3 | `PhotoUploadScreen.kt`、`ManualFaceCaptureScreen.kt`、`features/face/ui/components/*` | UI 拆分第二批通过 | DONE |
 | D22 | C4 | `CryptoUtils.kt`、`common/security/crypto/*`、`DeviceCompatibilityHelper.kt`、`common/utils/device/*` | 巨石工具类拆分完成 | DONE |
 | D23 | C5+C6 | `IdentificationViewModel.kt`、`FaceVerificationViewModel.kt`、`ServiceCountdownViewModel.kt`、`CameraScreen.kt`、`AppModule.kt` | 事件流+调度器规范通过 | DONE |
-| D24 | D1 | `build-logic/**`、根 `settings.gradle.kts`、模块 `build.gradle.kts` | convention plugin 生效 | TODO |
+| D24 | D1 | `build-logic/**`、根 `settings.gradle.kts`、模块 `build.gradle.kts` | convention plugin 生效 | DONE |
 | D25 | D2+D3 | `gradle.properties`、`gradle/gradle-daemon-jvm.properties`、`.github/workflows/android-ci.yml`、`scripts/quality/affected-modules.sh` | 构建稳定且 CI 分层生效 | TODO |
 | D26 | D4+E1 | `docs/refactor/build-performance-comparison.md`、`feature/*/src/test/**`、`core/data/src/test/**` | 性能对比报告 + 测试补齐 | TODO |
 | D27 | E2+E3 | `scripts/quality/verify_architecture_boundaries.sh`、`docs/qa/refactor-regression-checklist.md`、`docs/refactor/final-refactor-report.md`、`README.md` | 架构守卫 + 回归清单 + 终报完成 | TODO |
@@ -426,6 +426,7 @@
 | 2026-02-13 | D21 | C3 | 已抽离 PhotoUpload/ManualFace 组件到对应 `ui/components` 目录 | - | C3 全部完成，进入 C4 |
 | 2026-02-13 | D22 | C4 | 已拆分 Crypto/Device 相关数据结构与权限枚举到子目录文件 | - | `:app:compileDebugKotlin`、`:app:testDebugUnitTest` 通过，进入 C5+C6 |
 | 2026-02-13 | D23 | C5+C6 | 已将 Identification/FaceVerification/ServiceCountdown 一次性事件切换为 SharedFlow(replay=0) 主通道 | - | `:app:compileDebugKotlin`、`:app:testDebugUnitTest` 通过，进入 D1 |
+| 2026-02-13 | D24 | D1 | 已完成 build-logic convention 插件接入，并由 convention 统一应用 Android 插件 | - | `:app:compileDebugKotlin`、`:app:testDebugUnitTest`、`:app:assembleDebug` 通过，进入 D2+D3 |
 
 ## 8. 偏差说明（持续追加）
 
@@ -438,3 +439,4 @@
 | 2026-02-13 | C3 | `CameraScreen.kt`、`PhotoUploadScreen.kt`、`ManualFaceCaptureScreen.kt` 全量拆分 | 以“优先可复用控件”方式抽离到 `ui/components`，主屏保留流程编排 | 当前优先低风险拆分，避免一次性移动所有 UI 逻辑导致回归 | 已建立可复用组件层，后续可继续按 section 粒度细化 |
 | 2026-02-13 | C4 | 不再存在 700+ 行工具类 | `DeviceCompatibilityHelper.kt` 已降至 693 行；`CryptoUtils.kt` 已分离多类定义但仍 919 行 | 加密工具方法彼此耦合高，继续一次性拆分风险较大 | 先落地结构拆分并保持兼容，后续按哈希/AES/RSA 子域继续下沉实现 |
 | 2026-02-13 | C5+C6 | `CameraScreen.kt` 业务层无硬编码调度器 | 已完成 ViewModel 事件流 SharedFlow 化；`CameraScreen.kt` 仍保留少量 `Dispatchers.IO/Main` | 纯 UI 线程切换语义尚未统一注入化，贸然改动存在拍照链路回归风险 | 当前已满足业务层治理目标，UI 侧调度器治理在后续性能优化阶段继续收敛 |
+| 2026-02-13 | D1 | 各模块使用 convention plugin，重复脚本显著减少 | 已完成 `build-logic` 插件接入并改由 convention 应用 `com.android.application/library` | 以“低风险阶段化迁移”为原则，暂未将 compileSdk/minSdk/toolchain 等共性配置完全上收 | 已实现插件化统一入口，后续 D2/D4 阶段继续收敛重复配置并量化收益 |

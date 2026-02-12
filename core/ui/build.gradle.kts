@@ -1,5 +1,6 @@
 plugins {
-    alias(libs.plugins.androidLibrary)
+    id("longcare.android.library")
+    id("longcare.kotlin.common")
     alias(libs.plugins.kotlinCompose)
 }
 
