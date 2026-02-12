@@ -613,51 +613,6 @@ fun ImageTaskItem(
 }
 
 @Composable
-fun ConfirmAndNextButton(
-    text: String, enabled: Boolean = true, isLoading: Boolean = false, onClick: () -> Unit
-) {
-    val buttonGradient = if (enabled) {
-        Brush.horizontalGradient(
-            colors = listOf(Color(0xFF5CA0FF), Color(0xFF2A8CFF))
-        )
-    } else {
-        Brush.horizontalGradient(
-            colors = listOf(Color(0xFF9E9E9E), Color(0xFF757575))
-        )
-    }
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(50.dp)
-            .background(brush = buttonGradient, shape = CircleShape),
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent,
-            contentColor = if (enabled) Color.White else Color.White.copy(alpha = 0.6f),
-            disabledContainerColor = Color.Transparent,
-            disabledContentColor = Color.White.copy(alpha = 0.6f)
-        )
-    ) {
-        if (isLoading) {
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            }
-        } else {
-            Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
 fun ImagePreviewDialog(
     imageUri: Uri, onDismiss: () -> Unit
 ) {
