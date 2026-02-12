@@ -35,8 +35,12 @@ import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.core.navigation.NavigationConstants
+import com.ytone.longcare.features.identification.vm.FaceSetupState
+import com.ytone.longcare.features.identification.vm.FaceVerificationState
 import com.ytone.longcare.features.identification.vm.IdentificationState
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
+import com.ytone.longcare.features.identification.vm.PhotoUploadState
+import com.ytone.longcare.features.identification.vm.VerificationType
 import com.ytone.longcare.navigation.navigateToCamera
 import com.ytone.longcare.navigation.navigateToSelectService
 import com.ytone.longcare.navigation.navigateToManualFaceCapture
@@ -120,13 +124,13 @@ fun IdentificationScreen(
     // 处理人脸验证结果
     LaunchedEffect(faceVerificationState, currentVerificationType) {
         when (faceVerificationState) {
-            is IdentificationViewModel.FaceVerificationState.Success -> {
+            is FaceVerificationState.Success -> {
                 // 验证成功，根据验证类型更新身份认证状态
                 when (currentVerificationType) {
-                    IdentificationViewModel.VerificationType.SERVICE_PERSON -> {
+                    VerificationType.SERVICE_PERSON -> {
                         identificationViewModel.setServicePersonVerified()
                     }
-                    IdentificationViewModel.VerificationType.ELDER -> {
+                    VerificationType.ELDER -> {
                         identificationViewModel.setElderVerified()
                         // 老人验证成功后，保存人脸验证完成状态到Room
                         if (orderInfoRequest.orderId > 0) {
@@ -139,10 +143,10 @@ fun IdentificationScreen(
                     null -> { /* 无验证类型，不处理 */ }
                 }
             }
-            is IdentificationViewModel.FaceVerificationState.Error -> {
+            is FaceVerificationState.Error -> {
                 // 验证失败，可以显示错误提示
             }
-            is IdentificationViewModel.FaceVerificationState.Cancelled -> {
+            is FaceVerificationState.Cancelled -> {
                 // 用户取消验证
             }
             else -> { /* 其他状态不需要处理 */ }
@@ -173,13 +177,13 @@ fun IdentificationScreen(
     // 监听拍照上传状态变化
     LaunchedEffect(photoUploadState) {
         when (photoUploadState) {
-            is IdentificationViewModel.PhotoUploadState.Success -> {
+            is PhotoUploadState.Success -> {
                 // 上传成功，自动跳转到下一步
                 navController.navigateToSelectService(orderParams)
                 // 重置状态
                 identificationViewModel.resetPhotoUploadState()
             }
-            is IdentificationViewModel.PhotoUploadState.Error -> {
+            is PhotoUploadState.Error -> {
                 // 上传失败，重置状态
                 identificationViewModel.resetPhotoUploadState()
             }
@@ -315,17 +319,17 @@ fun IdentificationCard(
     isVerified: Boolean,
     onVerifyClick: () -> Unit,
     viewModel: IdentificationViewModel,
-    faceVerificationState: IdentificationViewModel.FaceVerificationState,
-    photoUploadState: IdentificationViewModel.PhotoUploadState = IdentificationViewModel.PhotoUploadState.Initial,
-    faceSetupState: IdentificationViewModel.FaceSetupState = IdentificationViewModel.FaceSetupState.Initial
+    faceVerificationState: FaceVerificationState,
+    photoUploadState: PhotoUploadState = PhotoUploadState.Initial,
+    faceSetupState: FaceSetupState = FaceSetupState.Initial
 ) {
     val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
     val currentVerificationType by viewModel.currentVerificationType.collectAsStateWithLifecycle()
     
     // 判断当前卡片是否正在进行验证
     val isCurrentlyVerifying = when (personType) {
-        IdentificationConstants.SERVICE_PERSON -> currentVerificationType == IdentificationViewModel.VerificationType.SERVICE_PERSON
-        IdentificationConstants.ELDER -> currentVerificationType == IdentificationViewModel.VerificationType.ELDER
+        IdentificationConstants.SERVICE_PERSON -> currentVerificationType == VerificationType.SERVICE_PERSON
+        IdentificationConstants.ELDER -> currentVerificationType == VerificationType.ELDER
         else -> false
     }
     
@@ -394,7 +398,7 @@ fun IdentificationCard(
                     // 未验证状态，根据人脸验证状态显示不同UI
                     when {
                         // 人脸设置状态处理（仅服务人员）
-                        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is IdentificationViewModel.FaceSetupState.UploadingImage -> {
+                        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is FaceSetupState.UploadingImage -> {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -410,7 +414,7 @@ fun IdentificationCard(
                                 )
                             }
                         }
-                        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is IdentificationViewModel.FaceSetupState.UpdatingServer -> {
+                        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is FaceSetupState.UpdatingServer -> {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -426,7 +430,7 @@ fun IdentificationCard(
                                 )
                             }
                         }
-                        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is IdentificationViewModel.FaceSetupState.UpdatingLocal -> {
+                        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is FaceSetupState.UpdatingLocal -> {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -442,7 +446,7 @@ fun IdentificationCard(
                                 )
                             }
                         }
-                        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is IdentificationViewModel.FaceSetupState.Error -> {
+                        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is FaceSetupState.Error -> {
                             Column(
                                 horizontalAlignment = Alignment.End
                             ) {
@@ -472,7 +476,7 @@ fun IdentificationCard(
                                 }
                             }
                         }
-                        isCurrentlyVerifying && faceVerificationState is IdentificationViewModel.FaceVerificationState.Initializing -> {
+                        isCurrentlyVerifying && faceVerificationState is FaceVerificationState.Initializing -> {
                             // 初始化中（仅当前卡片正在验证时显示）
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -489,7 +493,7 @@ fun IdentificationCard(
                                 )
                             }
                         }
-                        isCurrentlyVerifying && faceVerificationState is IdentificationViewModel.FaceVerificationState.Verifying -> {
+                        isCurrentlyVerifying && faceVerificationState is FaceVerificationState.Verifying -> {
                             // 验证中（仅当前卡片正在验证时显示）
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -506,7 +510,7 @@ fun IdentificationCard(
                                 )
                             }
                         }
-                        isCurrentlyVerifying && faceVerificationState is IdentificationViewModel.FaceVerificationState.Error -> {
+                        isCurrentlyVerifying && faceVerificationState is FaceVerificationState.Error -> {
                             // 验证失败（仅当前卡片正在验证时显示）
                             Column(
                                 horizontalAlignment = Alignment.End
@@ -537,7 +541,7 @@ fun IdentificationCard(
                                 }
                             }
                         }
-                        isCurrentlyVerifying && faceVerificationState is IdentificationViewModel.FaceVerificationState.Cancelled -> {
+                        isCurrentlyVerifying && faceVerificationState is FaceVerificationState.Cancelled -> {
                             // 用户取消（仅当前卡片正在验证时显示）
                             Column(
                                 horizontalAlignment = Alignment.End
@@ -578,8 +582,8 @@ fun IdentificationCard(
                             
                             // 检查是否正在处理拍照上传（仅对老人卡片）
                             val isProcessing = personType == IdentificationConstants.ELDER && (
-                                photoUploadState is IdentificationViewModel.PhotoUploadState.Processing ||
-                                photoUploadState is IdentificationViewModel.PhotoUploadState.Uploading
+                                photoUploadState is PhotoUploadState.Processing ||
+                                photoUploadState is PhotoUploadState.Uploading
                             )
                             
                             if (isProcessing) {
@@ -593,7 +597,7 @@ fun IdentificationCard(
                                         strokeWidth = 2.dp
                                     )
                                     Text(
-                                        text = if (photoUploadState is IdentificationViewModel.PhotoUploadState.Uploading) {
+                                        text = if (photoUploadState is PhotoUploadState.Uploading) {
                                             "上传中..."
                                         } else {
                                             "处理中..."

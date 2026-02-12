@@ -21,9 +21,7 @@ import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
@@ -42,41 +40,14 @@ class ServiceCountdownViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val countdownNotificationManager: CountdownNotificationManager
 ) : ViewModel() {
-    
-    // 倒计时状态
-    private val _countdownState = MutableStateFlow(ServiceCountdownState.RUNNING)
-    val countdownState: StateFlow<ServiceCountdownState> = _countdownState.asStateFlow()
-    
-    // 倒计时时间（毫秒）
-    private val _remainingTimeMillis = MutableStateFlow(0L)
-    val remainingTimeMillis: StateFlow<Long> = _remainingTimeMillis.asStateFlow()
-    
-    // 格式化的倒计时时间
-    private val _formattedTime = MutableStateFlow("12:00:00")
-    val formattedTime: StateFlow<String> = _formattedTime.asStateFlow()
-    
-    // 超时时间（毫秒）
-    private val _overtimeMillis = MutableStateFlow(0L)
-    val overtimeMillis: StateFlow<Long> = _overtimeMillis.asStateFlow()
-    
-    // 倒计时Job
-    private var countdownJob: Job? = null
-    
-    // 订单状态轮询Job
-    private var orderStatePollingJob: Job? = null
-    
-    // 已上传的图片数据
-    private val _uploadedImages = MutableStateFlow<Map<ImageTaskType, List<ImageTask>>>(emptyMap())
-    val uploadedImages: StateFlow<Map<ImageTaskType, List<ImageTask>>> = _uploadedImages.asStateFlow()
-    
-    // 订单状态异常事件（用于通知UI显示弹窗）
-    private val _orderStateError = MutableStateFlow<ServiceOrderStateModel?>(null)
-    val orderStateError: StateFlow<ServiceOrderStateModel?> = _orderStateError.asStateFlow()
-    
-    // 当前订单和项目信息，用于超时计时中重新计算时间
-    private var currentOrderKey: OrderKey? = null
-    private var currentProjectList: List<ServiceProjectM> = emptyList()
-    private var currentSelectedProjectIds: List<Int> = emptyList()
+    private val stateHolder = ServiceCountdownStateHolder()
+
+    val countdownState: StateFlow<ServiceCountdownState> = stateHolder.countdownState.asStateFlow()
+    val remainingTimeMillis: StateFlow<Long> = stateHolder.remainingTimeMillis.asStateFlow()
+    val formattedTime: StateFlow<String> = stateHolder.formattedTime.asStateFlow()
+    val overtimeMillis: StateFlow<Long> = stateHolder.overtimeMillis.asStateFlow()
+    val uploadedImages: StateFlow<Map<ImageTaskType, List<ImageTask>>> = stateHolder.uploadedImages.asStateFlow()
+    val orderStateError: StateFlow<ServiceOrderStateModel?> = stateHolder.orderStateError.asStateFlow()
     
     companion object {
         /** 订单状态轮询间隔（毫秒） */
@@ -95,9 +66,9 @@ class ServiceCountdownViewModel @Inject constructor(
         selectedProjectIds: List<Int>
     ) {
         // 保存当前订单ID和项目信息，用于后续重新计算
-        currentOrderKey = orderRequest.toOrderKey()
-        currentProjectList = projectList
-        currentSelectedProjectIds = selectedProjectIds
+        stateHolder.currentOrderKey = orderRequest.toOrderKey()
+        stateHolder.currentProjectList = projectList
+        stateHolder.currentSelectedProjectIds = selectedProjectIds
         
         // 在协程中计算并更新倒计时状态
         viewModelScope.launch {
@@ -108,9 +79,9 @@ class ServiceCountdownViewModel @Inject constructor(
             )
             
             // 更新状态
-            _countdownState.value = state
-            _remainingTimeMillis.value = remainingTime
-            _overtimeMillis.value = overtimeTime
+            stateHolder.countdownState.value = state
+            stateHolder.remainingTimeMillis.value = remainingTime
+            stateHolder.overtimeMillis.value = overtimeTime
             updateFormattedTime()
             
             // 根据状态启动相应的倒计时
@@ -119,7 +90,7 @@ class ServiceCountdownViewModel @Inject constructor(
                 ServiceCountdownState.OVERTIME -> startOvertimeCountdown()
                 else -> {
                     // COMPLETED 或 ENDED 状态不需要启动倒计时
-                    countdownJob?.cancel()
+                    stateHolder.countdownJob?.cancel()
                 }
             }
         }
@@ -187,7 +158,7 @@ class ServiceCountdownViewModel @Inject constructor(
      * @return Triple(状态, 剩余时间毫秒, 超时时间毫秒)
      */
     fun getCurrentCountdownState(): Triple<ServiceCountdownState, Long, Long> {
-        return Triple(_countdownState.value, _remainingTimeMillis.value, _overtimeMillis.value)
+        return Triple(stateHolder.countdownState.value, stateHolder.remainingTimeMillis.value, stateHolder.overtimeMillis.value)
     }
     
     /**
@@ -204,9 +175,9 @@ class ServiceCountdownViewModel @Inject constructor(
         selectedProjectIds: List<Int>
     ) {
         // 保存当前订单ID和项目信息
-        currentOrderKey = orderRequest.toOrderKey()
-        currentProjectList = projectList
-        currentSelectedProjectIds = selectedProjectIds
+        stateHolder.currentOrderKey = orderRequest.toOrderKey()
+        stateHolder.currentProjectList = projectList
+        stateHolder.currentSelectedProjectIds = selectedProjectIds
         
         // 在协程中重新计算当前状态
         viewModelScope.launch {
@@ -217,16 +188,16 @@ class ServiceCountdownViewModel @Inject constructor(
             )
             
             // 仅更新显示值，不改变倒计时Job的运行状态
-            _remainingTimeMillis.value = remainingTime
-            _overtimeMillis.value = overtimeTime
+            stateHolder.remainingTimeMillis.value = remainingTime
+            stateHolder.overtimeMillis.value = overtimeTime
             updateFormattedTime()
             
             // 如果状态发生变化（比如从RUNNING变为OVERTIME），才更新状态
-            if (_countdownState.value != state) {
-                _countdownState.value = state
+            if (stateHolder.countdownState.value != state) {
+                stateHolder.countdownState.value = state
                 
                 // 如果进入超时状态且倒计时Job未运行，启动超时计时
-                if (state == ServiceCountdownState.OVERTIME && countdownJob?.isActive != true) {
+                if (state == ServiceCountdownState.OVERTIME && stateHolder.countdownJob?.isActive != true) {
                     startOvertimeCountdown()
                 }
             }
@@ -235,20 +206,20 @@ class ServiceCountdownViewModel @Inject constructor(
     
     // 启动超时计时
     private fun startOvertimeCountdown() {
-        countdownJob?.cancel()
-        countdownJob = viewModelScope.launch {
-            while (isActive && _countdownState.value == ServiceCountdownState.OVERTIME) {
+        stateHolder.countdownJob?.cancel()
+        stateHolder.countdownJob = viewModelScope.launch {
+            while (isActive && stateHolder.countdownState.value == ServiceCountdownState.OVERTIME) {
                 delay(1000)
                 
                 // 重新计算当前的超时时间，确保锁屏解锁后时间正确
                 // 使用重新计算而不是累加，避免时间不准确
-                if (currentOrderKey != null && currentProjectList.isNotEmpty()) {
+                if (stateHolder.currentOrderKey != null && stateHolder.currentProjectList.isNotEmpty()) {
                     val (_, _, overtimeMillis) = calculateCountdownState(
-                        currentOrderKey!!,
-                        currentProjectList,
-                        currentSelectedProjectIds
+                        stateHolder.currentOrderKey!!,
+                        stateHolder.currentProjectList,
+                        stateHolder.currentSelectedProjectIds
                     )
-                    _overtimeMillis.value = overtimeMillis
+                    stateHolder.overtimeMillis.value = overtimeMillis
                 }
                 
                 updateFormattedTime()
@@ -259,21 +230,21 @@ class ServiceCountdownViewModel @Inject constructor(
     // 启动倒计时
     fun startCountdown() {
         // 取消之前的倒计时
-        countdownJob?.cancel()
+        stateHolder.countdownJob?.cancel()
         
         // 设置状态为运行中
-        _countdownState.value = ServiceCountdownState.RUNNING
+        stateHolder.countdownState.value = ServiceCountdownState.RUNNING
         
         // 启动新的倒计时
-        countdownJob = viewModelScope.launch {
+        stateHolder.countdownJob = viewModelScope.launch {
             // 倒计时阶段 - 使用重新计算而不是递减，确保时间准确
-            while (isActive && _countdownState.value == ServiceCountdownState.RUNNING) {
+            while (isActive && stateHolder.countdownState.value == ServiceCountdownState.RUNNING) {
                 // 重新计算剩余时间，避免累加误差
-                if (currentOrderKey != null && currentProjectList.isNotEmpty()) {
+                if (stateHolder.currentOrderKey != null && stateHolder.currentProjectList.isNotEmpty()) {
                     val (state, remainingTime, _) = calculateCountdownState(
-                        currentOrderKey!!,
-                        currentProjectList,
-                        currentSelectedProjectIds
+                        stateHolder.currentOrderKey!!,
+                        stateHolder.currentProjectList,
+                        stateHolder.currentSelectedProjectIds
                     )
                     
                     if (state != ServiceCountdownState.RUNNING) {
@@ -281,7 +252,7 @@ class ServiceCountdownViewModel @Inject constructor(
                         break
                     }
                     
-                    _remainingTimeMillis.value = remainingTime
+                    stateHolder.remainingTimeMillis.value = remainingTime
                 }
                 
                 // 更新格式化时间
@@ -292,23 +263,23 @@ class ServiceCountdownViewModel @Inject constructor(
             }
             
             // 检查是否进入超时状态
-            if (currentOrderKey != null && currentProjectList.isNotEmpty()) {
+            if (stateHolder.currentOrderKey != null && stateHolder.currentProjectList.isNotEmpty()) {
                 val (state, _, overtimeMillis) = calculateCountdownState(
-                    currentOrderKey!!,
-                    currentProjectList,
-                    currentSelectedProjectIds
+                    stateHolder.currentOrderKey!!,
+                    stateHolder.currentProjectList,
+                    stateHolder.currentSelectedProjectIds
                 )
                 
                 if (state == ServiceCountdownState.OVERTIME) {
                     // 倒计时结束，进入超时状态
-                    _remainingTimeMillis.value = 0
-                    _countdownState.value = ServiceCountdownState.COMPLETED
+                    stateHolder.remainingTimeMillis.value = 0
+                    stateHolder.countdownState.value = ServiceCountdownState.COMPLETED
                     updateFormattedTime()
                     
                     // 短暂延迟后进入超时状态
                     delay(100)
-                    _countdownState.value = ServiceCountdownState.OVERTIME
-                    _overtimeMillis.value = overtimeMillis
+                    stateHolder.countdownState.value = ServiceCountdownState.OVERTIME
+                    stateHolder.overtimeMillis.value = overtimeMillis
                     updateFormattedTime()
                     
                     // 启动超时计时
@@ -344,30 +315,30 @@ class ServiceCountdownViewModel @Inject constructor(
     
     // 更新格式化时间
     private fun updateFormattedTime() {
-        val timeToFormat = if (_countdownState.value == ServiceCountdownState.OVERTIME) {
-            _overtimeMillis.value
+        val timeToFormat = if (stateHolder.countdownState.value == ServiceCountdownState.OVERTIME) {
+            stateHolder.overtimeMillis.value
         } else {
-            _remainingTimeMillis.value
+            stateHolder.remainingTimeMillis.value
         }
         
         val hours = TimeUnit.MILLISECONDS.toHours(timeToFormat)
         val minutes = TimeUnit.MILLISECONDS.toMinutes(timeToFormat) % 60
         val seconds = TimeUnit.MILLISECONDS.toSeconds(timeToFormat) % 60
 
-        _formattedTime.value = String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
+        stateHolder.formattedTime.value = String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
     }
     
     // 暂停倒计时
     fun pauseCountdown() {
-        countdownJob?.cancel()
+        stateHolder.countdownJob?.cancel()
     }
     
     // 重置倒计时
     fun resetCountdown(totalMinutes: Int = 0) {
-        countdownJob?.cancel()
-        _remainingTimeMillis.value = totalMinutes * 60 * 1000L
+        stateHolder.countdownJob?.cancel()
+        stateHolder.remainingTimeMillis.value = totalMinutes * 60 * 1000L
         updateFormattedTime()
-        _countdownState.value = ServiceCountdownState.RUNNING
+        stateHolder.countdownState.value = ServiceCountdownState.RUNNING
     }
     
     /**
@@ -376,9 +347,9 @@ class ServiceCountdownViewModel @Inject constructor(
      * @param context 上下文，用于停止前台服务
      */
     fun endService(orderInfoRequest: OrderInfoRequestModel, context: Context? = null) {
-        countdownJob?.cancel()
-        orderStatePollingJob?.cancel()
-        _countdownState.value = ServiceCountdownState.ENDED
+        stateHolder.countdownJob?.cancel()
+        stateHolder.orderStatePollingJob?.cancel()
+        stateHolder.countdownState.value = ServiceCountdownState.ENDED
         
         // 停止前台服务和响铃服务
         context?.let { 
@@ -404,9 +375,9 @@ class ServiceCountdownViewModel @Inject constructor(
      * @param context 上下文，用于停止前台服务
      */
     fun endServiceWithoutClearingImages(orderInfoRequest: OrderInfoRequestModel, context: Context? = null) {
-        countdownJob?.cancel()
-        orderStatePollingJob?.cancel()
-        _countdownState.value = ServiceCountdownState.ENDED
+        stateHolder.countdownJob?.cancel()
+        stateHolder.orderStatePollingJob?.cancel()
+        stateHolder.countdownState.value = ServiceCountdownState.ENDED
         
         // 停止前台服务
         context?.let { stopForegroundService(it) }
@@ -424,14 +395,14 @@ class ServiceCountdownViewModel @Inject constructor(
                           TimeUnit.MINUTES.toMillis(minutes) +
                           TimeUnit.SECONDS.toMillis(seconds)
         
-        _remainingTimeMillis.value = totalMillis
+        stateHolder.remainingTimeMillis.value = totalMillis
         updateFormattedTime()
     }
     
     override fun onCleared() {
         super.onCleared()
-        countdownJob?.cancel()
-        orderStatePollingJob?.cancel()
+        stateHolder.countdownJob?.cancel()
+        stateHolder.orderStatePollingJob?.cancel()
     }
     
     /**
@@ -442,15 +413,15 @@ class ServiceCountdownViewModel @Inject constructor(
      */
     fun startOrderStatePolling(orderKey: OrderKey) {
         // 取消之前的轮询
-        orderStatePollingJob?.cancel()
+        stateHolder.orderStatePollingJob?.cancel()
         
-        orderStatePollingJob = viewModelScope.launch {
+        stateHolder.orderStatePollingJob = viewModelScope.launch {
             while (isActive) {
                 // 等待5秒
                 delay(ORDER_STATE_POLLING_INTERVAL)
                 
                 // 如果服务已结束，停止轮询
-                if (_countdownState.value == ServiceCountdownState.ENDED) {
+                if (stateHolder.countdownState.value == ServiceCountdownState.ENDED) {
                     break
                 }
                 
@@ -460,7 +431,7 @@ class ServiceCountdownViewModel @Inject constructor(
                         val orderState = result.data
                         // 如果订单不是"执行中"状态，触发异常事件
                         if (!orderState.isInProgress()) {
-                            _orderStateError.value = orderState
+                            stateHolder.orderStateError.value = orderState
                             // 停止轮询
                             break
                         }
@@ -482,8 +453,8 @@ class ServiceCountdownViewModel @Inject constructor(
      * 停止订单状态轮询
      */
     fun stopOrderStatePolling() {
-        orderStatePollingJob?.cancel()
-        orderStatePollingJob = null
+        stateHolder.orderStatePollingJob?.cancel()
+        stateHolder.orderStatePollingJob = null
     }
     
     /**
@@ -491,7 +462,7 @@ class ServiceCountdownViewModel @Inject constructor(
      * 在UI处理完弹窗后调用
      */
     fun clearOrderStateError() {
-        _orderStateError.value = null
+        stateHolder.orderStateError.value = null
     }
     
     /**
@@ -500,7 +471,7 @@ class ServiceCountdownViewModel @Inject constructor(
      */
     fun handlePhotoUploadResult(uploadResult: Map<ImageTaskType, List<ImageTask>>) {
         // 保存上传的图片数据到状态中
-        _uploadedImages.value = uploadResult
+        stateHolder.uploadedImages.value = uploadResult
     }
     
     /**
@@ -508,7 +479,7 @@ class ServiceCountdownViewModel @Inject constructor(
      * @return 按ImageTaskType分组的ImageTask列表
      */
     fun getCurrentUploadedImages(): Map<ImageTaskType, List<ImageTask>> {
-        return _uploadedImages.value
+        return stateHolder.uploadedImages.value
     }
     
     /**
@@ -516,7 +487,7 @@ class ServiceCountdownViewModel @Inject constructor(
      * @return true表示护理前和护理后照片都已上传，false表示有照片未上传
      */
     fun validatePhotosUploaded(): Boolean {
-        val uploadedImages = _uploadedImages.value
+        val uploadedImages = stateHolder.uploadedImages.value
         val beforeCareTasks = uploadedImages[ImageTaskType.BEFORE_CARE] ?: emptyList()
         val afterCareTasks = uploadedImages[ImageTaskType.AFTER_CARE] ?: emptyList()
         
@@ -567,7 +538,7 @@ class ServiceCountdownViewModel @Inject constructor(
         
         // 同时更新状态
         if (groupedImages.isNotEmpty()) {
-            _uploadedImages.value = groupedImages
+            stateHolder.uploadedImages.value = groupedImages
         }
 
         logI("getUploadedImagesSuspend: Loaded ${images.size} images from DB for order $orderKey. Grouped: ${groupedImages.mapValues { it.value.size }}")
@@ -600,7 +571,7 @@ class ServiceCountdownViewModel @Inject constructor(
     fun clearUploadedImagesFromLocal(orderKey: OrderKey) {
         viewModelScope.launch {
             imageRepository.deleteImagesByOrderId(orderKey)
-            _uploadedImages.value = emptyMap()
+            stateHolder.uploadedImages.value = emptyMap()
         }
     }
 
