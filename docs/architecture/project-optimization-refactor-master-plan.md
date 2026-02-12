@@ -32,7 +32,7 @@
 | C1 | Identification 流程 UseCase 化 | P0 | DONE | B5 |
 | C2 | 超大 ViewModel 拆分 | P0 | DONE | C1 |
 | C3 | 超大 Composable 拆分 | P0 | DONE | C2 |
-| C4 | 巨石工具类拆分 | P1 | TODO | C3 |
+| C4 | 巨石工具类拆分 | P1 | DONE | C3 |
 | C5 | 事件流规范化（StateFlow/SharedFlow） | P1 | TODO | C4 |
 | C6 | 调度器治理收尾 | P1 | TODO | C5 |
 | D1 | Gradle 约定插件化（build-logic） | P0 | TODO | C6 |
@@ -382,7 +382,7 @@
 | D19 | C2 | `ServiceCountdownViewModel.kt`、`ServiceCountdownStateHolder.kt` | 倒计时 VM 拆分完成 | DONE |
 | D20 | C3 | `CameraScreen.kt`、`features/photoupload/ui/components/*` | Camera UI 拆分通过 | DONE |
 | D21 | C3 | `PhotoUploadScreen.kt`、`ManualFaceCaptureScreen.kt`、`features/face/ui/components/*` | UI 拆分第二批通过 | DONE |
-| D22 | C4 | `CryptoUtils.kt`、`common/security/crypto/*`、`DeviceCompatibilityHelper.kt`、`common/utils/device/*` | 巨石工具类拆分完成 | TODO |
+| D22 | C4 | `CryptoUtils.kt`、`common/security/crypto/*`、`DeviceCompatibilityHelper.kt`、`common/utils/device/*` | 巨石工具类拆分完成 | DONE |
 | D23 | C5+C6 | `IdentificationViewModel.kt`、`FaceVerificationViewModel.kt`、`ServiceCountdownViewModel.kt`、`CameraScreen.kt`、`AppModule.kt` | 事件流+调度器规范通过 | TODO |
 | D24 | D1 | `build-logic/**`、根 `settings.gradle.kts`、模块 `build.gradle.kts` | convention plugin 生效 | TODO |
 | D25 | D2+D3 | `gradle.properties`、`gradle/gradle-daemon-jvm.properties`、`.github/workflows/android-ci.yml`、`scripts/quality/affected-modules.sh` | 构建稳定且 CI 分层生效 | TODO |
@@ -424,6 +424,7 @@
 | 2026-02-13 | D19 | C2 | 已新增 ServiceCountdownStateHolder 并让 VM 通过 holder 管理状态与运行时变量 | - | C2 全部完成，进入 C3 |
 | 2026-02-13 | D20 | C3 | 已抽离 Camera 控件组件到 `photoupload/ui/components` | - | `:app:compileDebugKotlin` 通过 |
 | 2026-02-13 | D21 | C3 | 已抽离 PhotoUpload/ManualFace 组件到对应 `ui/components` 目录 | - | C3 全部完成，进入 C4 |
+| 2026-02-13 | D22 | C4 | 已拆分 Crypto/Device 相关数据结构与权限枚举到子目录文件 | - | `:app:compileDebugKotlin`、`:app:testDebugUnitTest` 通过，进入 C5+C6 |
 
 ## 8. 偏差说明（持续追加）
 
@@ -434,3 +435,4 @@
 | 2026-02-13 | C1 | `feature/identification/src/main/kotlin/com/ytone/longcare/feature/identification/domain/*` | `app/src/main/kotlin/com/ytone/longcare/features/identification/domain/*`、`app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationViewModel.kt` | 当前 feature 模块尚未承接 app 层 API/数据模型依赖，直接放入独立 module 会造成依赖断裂 | 先在 app 内完成 UseCase 化与 VM 编排收敛，后续配合模型/数据下沉再迁入 feature module |
 | 2026-02-13 | C2 | `IdentificationViewModel.kt`（<400 行） | `IdentificationViewModel.kt`（641 行）、`IdentificationUiState.kt`、`IdentificationEvent.kt`、`ServiceCountdownStateHolder.kt` | 当前阶段先完成“状态/事件外置 + 状态持有器拆分”，避免一次性大规模逻辑迁移导致行为回归 | 已显著降低单文件耦合，后续 C3/C4 阶段继续下沉逻辑以达成 <400 行目标 |
 | 2026-02-13 | C3 | `CameraScreen.kt`、`PhotoUploadScreen.kt`、`ManualFaceCaptureScreen.kt` 全量拆分 | 以“优先可复用控件”方式抽离到 `ui/components`，主屏保留流程编排 | 当前优先低风险拆分，避免一次性移动所有 UI 逻辑导致回归 | 已建立可复用组件层，后续可继续按 section 粒度细化 |
+| 2026-02-13 | C4 | 不再存在 700+ 行工具类 | `DeviceCompatibilityHelper.kt` 已降至 693 行；`CryptoUtils.kt` 已分离多类定义但仍 919 行 | 加密工具方法彼此耦合高，继续一次性拆分风险较大 | 先落地结构拆分并保持兼容，后续按哈希/AES/RSA 子域继续下沉实现 |

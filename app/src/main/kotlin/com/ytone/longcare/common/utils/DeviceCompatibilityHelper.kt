@@ -14,26 +14,6 @@ import androidx.core.content.edit
 import androidx.core.content.getSystemService
 
 /**
- * 全屏通知权限状态
- */
-enum class FullScreenIntentStatus {
-    GRANTED,           // 已授予
-    DENIED,            // 被拒绝（Android 14+）
-    NOT_REQUIRED       // 不需要此权限（Android 9及以下）
-}
-
-/**
- * 需要引导的权限类型
- */
-enum class PermissionGuideType {
-    NONE,                    // 不需要引导
-    FULL_SCREEN_INTENT,      // 需要全屏通知权限（Android 14+）
-    OVERLAY,                 // 需要悬浮窗权限
-    MANUFACTURER_POPUP,      // 需要厂商弹窗权限
-    BATTERY                  // 需要省电策略设置
-}
-
-/**
  * 设备兼容性辅助工具
  * 针对不同厂商 ROM 提供适配引导
  */
