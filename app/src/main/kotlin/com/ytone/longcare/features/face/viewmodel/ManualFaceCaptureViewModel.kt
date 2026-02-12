@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.di.DefaultDispatcher
+import com.ytone.longcare.di.IoDispatcher
 import com.ytone.longcare.features.face.detector.StaticImageFaceDetector
 import com.ytone.longcare.features.face.ui.DetectedFace
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureState
@@ -11,7 +13,7 @@ import com.ytone.longcare.features.face.ui.ManualFaceCaptureUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +29,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ManualFaceCaptureViewModel @Inject constructor(
-    @param:ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
+    @param:DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ManualFaceCaptureUiState())
@@ -81,7 +85,7 @@ class ManualFaceCaptureViewModel @Inject constructor(
             try {
                 _uiState.value = _uiState.value.copy(isProcessingFaces = true)
                 
-                val detectedFaces = withContext(Dispatchers.Default) {
+                val detectedFaces = withContext(defaultDispatcher) {
                     faceDetector.detectFaces(bitmap)
                 }
                 
@@ -177,7 +181,7 @@ class ManualFaceCaptureViewModel @Inject constructor(
                 _currentState.value = ManualFaceCaptureState.SavingFace
                 _uiState.value = _uiState.value.copy(isLoading = true)
                 
-                val savedPath = withContext(Dispatchers.IO) {
+                val savedPath = withContext(ioDispatcher) {
                     saveBitmapToFile(face.croppedFace)
                 }
                 

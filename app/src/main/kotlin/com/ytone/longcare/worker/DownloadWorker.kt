@@ -6,10 +6,11 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.ytone.longcare.di.IoDispatcher
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import okhttp3.ResponseBody
 import okio.Buffer
@@ -27,7 +28,8 @@ import java.io.IOException
 class DownloadWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
-    private val retrofit: Retrofit
+    private val retrofit: Retrofit,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : CoroutineWorker(context, workerParams) {
 
     interface DownloadApi {
@@ -48,7 +50,7 @@ class DownloadWorker @AssistedInject constructor(
             workDataOf(KEY_ERROR to "文件名不能为空")
         )
 
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 setProgressAsync(
                     workDataOf(KEY_PROGRESS to 0)

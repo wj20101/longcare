@@ -30,7 +30,6 @@ import com.ytone.longcare.domain.cos.repository.CosRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -219,7 +218,7 @@ class CosRepositoryImpl @Inject constructor(
      * 刷新COS配置（从API获取临时密钥）
      */
     private suspend fun refreshCosConfig(folderType: Int = CosConstants.DEFAULT_FOLDER_TYPE): CosConfig =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             try {
                 logD("Refreshing COS config...", tag = TAG)
                 val response = safeApiCall(ioDispatcher, eventBus) {
@@ -283,7 +282,7 @@ class CosRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun deleteFile(key: String): Boolean = withContext(Dispatchers.IO) {
+    override suspend fun deleteFile(key: String): Boolean = withContext(ioDispatcher) {
         try {
             val service = getCosService()
             val config = getValidCosConfig(CosConstants.DEFAULT_FOLDER_TYPE)
@@ -301,7 +300,7 @@ class CosRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun fileExists(key: String): Boolean = withContext(Dispatchers.IO) {
+    override suspend fun fileExists(key: String): Boolean = withContext(ioDispatcher) {
         try {
             val service = getCosService()
             val config = getValidCosConfig(CosConstants.DEFAULT_FOLDER_TYPE)
@@ -319,7 +318,7 @@ class CosRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getFileSize(key: String): Long? = withContext(Dispatchers.IO) {
+    override suspend fun getFileSize(key: String): Long? = withContext(ioDispatcher) {
         try {
             val service = getCosService()
             val config = getValidCosConfig(CosConstants.DEFAULT_FOLDER_TYPE)
@@ -365,7 +364,7 @@ class CosRepositoryImpl @Inject constructor(
     private suspend fun uploadFileInternal(
         params: UploadParams,
         onProgress: ((UploadProgress) -> Unit)?
-    ): CosUploadResult = withContext(Dispatchers.IO) {
+    ): CosUploadResult = withContext(ioDispatcher) {
         try {
             val service = getCosService()
             val config = getValidCosConfig(params.folderType)

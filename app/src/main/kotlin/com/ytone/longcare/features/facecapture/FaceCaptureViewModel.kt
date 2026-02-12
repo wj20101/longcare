@@ -4,10 +4,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,7 +31,8 @@ import com.ytone.longcare.common.utils.logE
  */
 @HiltViewModel
 class FaceCaptureViewModel @Inject constructor(
-    @param:ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(FaceCaptureUiState())
@@ -211,7 +213,7 @@ class FaceCaptureViewModel @Inject constructor(
      * @return 保存成功返回文件路径，失败返回null
      */
     private suspend fun saveFaceImageToFiles(bitmap: Bitmap): String? {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 // 创建files目录下的face_capture子目录
                 val faceCaptureDir = File(context.filesDir, "face_capture")
