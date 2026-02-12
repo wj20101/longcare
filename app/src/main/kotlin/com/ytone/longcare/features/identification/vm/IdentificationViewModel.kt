@@ -2,24 +2,24 @@ package com.ytone.longcare.features.identification.vm
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.api.request.SetFaceParamModel
-import com.ytone.longcare.common.constants.CosConstants
-import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
-import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
 import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
-import com.ytone.longcare.domain.identification.IdentificationRepository
-import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
+import com.ytone.longcare.features.identification.domain.SetupFaceResult
+import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
+import com.ytone.longcare.features.identification.domain.UploadElderPhotoResult
+import com.ytone.longcare.features.identification.domain.UploadElderPhotoUseCase
+import com.ytone.longcare.features.identification.domain.VerifyServicePersonDecision
+import com.ytone.longcare.features.identification.domain.VerifyServicePersonUseCase
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.toOrderKey
@@ -27,12 +27,9 @@ import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.models.protos.User
-import androidx.core.net.toUri
-import com.ytone.longcare.model.isSucceed
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,12 +53,11 @@ class IdentificationViewModel @Inject constructor(
     private val systemConfigManager: SystemConfigManager,
     private val userSessionRepository: UserSessionRepository,
     private val unifiedOrderRepository: OrderDetailRepository,
-    private val orderRepository: OrderRepository,
-    private val cosRepository: CosRepository,
-    private val identificationRepository: IdentificationRepository,
     private val faceDataSource: IdentificationFaceDataSource,
+    private val verifyServicePersonUseCase: VerifyServicePersonUseCase,
+    private val uploadElderPhotoUseCase: UploadElderPhotoUseCase,
+    private val setupFaceUseCase: SetupFaceUseCase,
     private val toastHelper: ToastHelper,
-    @param:ApplicationContext private val applicationContext: Context
 ) : ViewModel() {
     
     // 移除重复的常量定义，使用统一的 CosConstants
@@ -151,64 +147,36 @@ class IdentificationViewModel @Inject constructor(
      */
     fun verifyServicePerson(context: Context) {
         viewModelScope.launch {
-            val currentUser = getCurrentUser()
-            if (currentUser == null) {
-                logE("无法获取用户信息", tag = "IdentificationVM")
-                toastHelper.showShort("无法获取用户信息")
-                return@launch
-            }
-            
-            logD("开始验证服务人员 (userId=${currentUser.userId}, userName=${currentUser.userName})", tag = "IdentificationVM")
-            
-            // 步骤1：优先检查本地缓存
-            val cachedBase64 = faceDataSource.readUserFaceBase64(currentUser.userId)
-            
-            if (!cachedBase64.isNullOrBlank()) {
-                // ✅ 本地存在Base64，直接使用缓存进行验证
-                logD("步骤1: 使用本地缓存进行验证 (userId=${currentUser.userId}, 长度=${cachedBase64.length})", tag = "IdentificationVM")
-                startSelfProvidedFaceVerificationWithBase64(
-                    context = context,
-                    name = currentUser.userName,
-                    idNo = currentUser.identityCardNumber,
-                    orderNo = "service_${System.currentTimeMillis()}",
-                    userId = currentUser.userId.toString(),
-                    sourcePhotoBase64 = cachedBase64
-                )
-                return@launch
-            }
+            when (val decision = verifyServicePersonUseCase.execute(getCurrentUser())) {
+                is VerifyServicePersonDecision.UseCachedFace -> {
+                    startSelfProvidedFaceVerificationWithBase64(
+                        context = context,
+                        name = decision.user.userName,
+                        idNo = decision.user.identityCardNumber,
+                        orderNo = "service_${System.currentTimeMillis()}",
+                        userId = decision.user.userId.toString(),
+                        sourcePhotoBase64 = decision.sourcePhotoBase64,
+                    )
+                }
 
-            // 步骤2：本地无缓存，调用接口获取
-            logD("步骤2: 本地无缓存，从服务器获取人脸信息", tag = "IdentificationVM")
-            when (val faceResult = identificationRepository.getFace()) {
-                is ApiResult.Success -> {
-                    val url = faceResult.data.faceImgUrl
-                    if (url.isBlank()) {
-                        logD("步骤3: 服务器无人脸数据，跳转到人脸捕获", tag = "IdentificationVM")
-                        navigateToFaceCaptureForSetup()
-                    } else {
-                        logD("步骤2: 从服务器下载人脸图片并保存到本地", tag = "IdentificationVM")
-                        startSelfProvidedFaceVerificationAndCache(
-                            context = context,
-                            name = currentUser.userName,
-                            idNo = currentUser.identityCardNumber,
-                            orderNo = "service_${System.currentTimeMillis()}",
-                            userId = currentUser.userId.toString(),
-                            sourcePhotoUrl = url
-                        )
-                    }
+                is VerifyServicePersonDecision.DownloadAndCache -> {
+                    startSelfProvidedFaceVerificationAndCache(
+                        context = context,
+                        name = decision.user.userName,
+                        idNo = decision.user.identityCardNumber,
+                        orderNo = "service_${System.currentTimeMillis()}",
+                        userId = decision.user.userId.toString(),
+                        sourcePhotoUrl = decision.sourcePhotoUrl,
+                    )
                 }
-                is ApiResult.Failure -> {
-                    if (faceResult.code.isSucceed()) {
-                        logD("步骤3: 接口返回成功但无人脸数据，跳转到人脸捕获", tag = "IdentificationVM")
-                        navigateToFaceCaptureForSetup()
-                    } else {
-                        logE("获取人脸信息失败: ${faceResult.message}", tag = "IdentificationVM")
-                        setFaceVerificationError(faceResult.message)
-                    }
+
+                VerifyServicePersonDecision.RequireFaceSetup -> {
+                    navigateToFaceCaptureForSetup()
                 }
-                is ApiResult.Exception -> {
-                    logE("网络异常: ${faceResult.exception.message}", tag = "IdentificationVM")
-                    setFaceVerificationError("网络异常: ${faceResult.exception.message}")
+
+                is VerifyServicePersonDecision.Error -> {
+                    logE(decision.message, tag = "IdentificationVM")
+                    setFaceVerificationError(decision.message)
                 }
             }
         }
@@ -495,42 +463,20 @@ class IdentificationViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _photoUploadState.value = PhotoUploadState.Processing
-
                 _photoUploadState.value = PhotoUploadState.Uploading
-                
-                // 使用CosUtils上传图片到云端
-                val uploadParams = CosUtils.createUploadParams(
-                    context = applicationContext,
-                    fileUri = photoUri,
-                    folderType = CosConstants.DEFAULT_FOLDER_TYPE
-                )
-                
-                val uploadResult = cosRepository.uploadFile(uploadParams)
-                
-                if (uploadResult.success && uploadResult.key != null) {
-                    // 上传成功，调用后端接口
-                    when (val result = orderRepository.upUserStartImg(request.orderId, listOf(uploadResult.key))) {
-                        is ApiResult.Success -> {
-                            _photoUploadState.value = PhotoUploadState.Success
-                            toastHelper.showShort("老人照片上传成功")
-                            setElderVerified()
-                            onSuccess()
-                        }
-                        is ApiResult.Exception -> {
-                            val errorMessage = result.exception.message ?: "网络错误，请检查网络连接"
-                            _photoUploadState.value = PhotoUploadState.Error(errorMessage)
-                            toastHelper.showShort(errorMessage)
-                        }
-                        is ApiResult.Failure -> {
-                            _photoUploadState.value = PhotoUploadState.Error(result.message)
-                            toastHelper.showShort(result.message)
-                        }
+
+                when (val result = uploadElderPhotoUseCase.execute(photoUri, request.orderId)) {
+                    UploadElderPhotoResult.Success -> {
+                        _photoUploadState.value = PhotoUploadState.Success
+                        toastHelper.showShort("老人照片上传成功")
+                        setElderVerified()
+                        onSuccess()
                     }
-                } else {
-                    // 上传失败
-                    val errorMessage = uploadResult.errorMessage ?: "图片上传失败"
-                    _photoUploadState.value = PhotoUploadState.Error(errorMessage)
-                    toastHelper.showShort(errorMessage)
+
+                    is UploadElderPhotoResult.Error -> {
+                        _photoUploadState.value = PhotoUploadState.Error(result.message)
+                        toastHelper.showShort(result.message)
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -683,65 +629,23 @@ class IdentificationViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _faceSetupState.value = FaceSetupState.UploadingImage
-                
-                // 上传图片到 COS
-                val uploadParams = CosUtils.createUploadParams(
-                    context = applicationContext,
-                    fileUri = imageFile.toUri(),
-                    folderType = CosConstants.DEFAULT_FACE_TYPE
-                )
-                
-                val uploadResult = cosRepository.uploadFile(uploadParams)
-                
-                if (uploadResult.success && uploadResult.key != null) {
-                    _faceSetupState.value = FaceSetupState.UpdatingServer
-                    
-                    // 调用 setFace API
-                    val setFaceResult = identificationRepository.setFace(
-                        SetFaceParamModel(
-                            faceImg = base64Image,
-                            faceImgUrl = uploadResult.key
-                        )
+
+                when (
+                    val result = setupFaceUseCase.execute(
+                        imageFile = imageFile,
+                        base64Image = base64Image,
+                        currentUser = getCurrentUser(),
                     )
-                    
-                    when (setFaceResult) {
-                        is ApiResult.Success -> {
-                            _faceSetupState.value = FaceSetupState.UpdatingLocal
-                            // 更新本地用户数据，并写入人脸Base64到用户特定的DataStore
-                            val currentUser = getCurrentUser()
-                            if (currentUser != null) {
-                                val userId = currentUser.userId
-                                
-                                logD("开始保存人脸信息到本地 (userId=$userId)", tag = "IdentificationVM")
-
-                                // 使用统一的写入方法写入人脸Base64
-                                faceDataSource.writeUserFaceBase64(userId, base64Image)
-
-                                // 同步更新用户会话
-                                userSessionRepository.updateUser(currentUser)
-
-                                _faceSetupState.value = FaceSetupState.Success
-                                toastHelper.showShort("人脸信息设置成功")
-
-                                // 设置成功后，更新身份认证状态
-                                setServicePersonVerified()
-                            } else {
-                                val errorMsg = "更新本地用户数据失败：用户信息为空"
-                                setFaceSetupError(errorMsg)
-                            }
-                        }
-                        is ApiResult.Failure -> {
-                            val errorMsg = "服务器更新失败: ${setFaceResult.message}"
-                            setFaceSetupError(errorMsg)
-                        }
-                        is ApiResult.Exception -> {
-                            val errorMsg = "网络请求异常: ${setFaceResult.exception.message}"
-                            setFaceSetupError(errorMsg)
-                        }
+                ) {
+                    SetupFaceResult.Success -> {
+                        _faceSetupState.value = FaceSetupState.Success
+                        toastHelper.showShort("人脸信息设置成功")
+                        setServicePersonVerified()
                     }
-                } else {
-                    val errorMsg = uploadResult.errorMessage ?: "图片上传失败"
-                    setFaceSetupError(errorMsg)
+
+                    is SetupFaceResult.Error -> {
+                        setFaceSetupError(result.message)
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
