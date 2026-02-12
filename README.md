@@ -8,6 +8,17 @@
 ./gradlew :app:generateBaselineProfile
 ```
 
+## 重构基线与执行计划
+
+- 主计划文档：`docs/architecture/project-optimization-refactor-master-plan.md`
+- 构建基线文档：`docs/refactor/baseline-metrics.md`
+
+采集当前基线：
+
+```bash
+./scripts/quality/collect_build_baseline.sh
+```
+
 ## CI/CD（GitHub Actions）
 
 - `Android CI`：PR/Push 自动执行 `lint + unit test + assembleDebug + bundleDebug + baselineprofile:assemble + bundleRelease`，并上传 debug/release AAB、APK、baselineprofile APK 与报告。
