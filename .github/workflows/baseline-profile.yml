@@ -69,6 +69,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Verify Gradle stability
+        run: bash scripts/quality/verify_gradle_stability.sh
+
       - name: Enforce architecture boundaries
         run: bash scripts/quality/verify_architecture_boundaries.sh app/src/main/kotlin/com/ytone/longcare
 
