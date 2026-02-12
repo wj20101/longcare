@@ -55,6 +55,12 @@ private val featureRouteRegistry = setOf(
     IdentificationFeatureEntry.ROUTE
 )
 
+private fun resolveStartDestination(sessionState: SessionState): Any = when (sessionState) {
+    is SessionState.Unknown -> SplashRoute
+    is SessionState.LoggedIn -> HomeRoute
+    is SessionState.LoggedOut -> LoginRoute
+}
+
 // ========== 导航扩展函数 ==========
 
 /**
@@ -250,11 +256,12 @@ fun NavController.navigateToWebView(url: String, title: String) {
 fun MainApp(viewModel: MainViewModel = hiltViewModel()) {
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
     val appVersionModel by viewModel.appVersionModel.collectAsStateWithLifecycle()
+    val startDestination = resolveStartDestination(sessionState)
 
-    when (sessionState) {
-        is SessionState.Unknown -> SplashScreen()
-        is SessionState.LoggedIn -> AppNavigation(startDestination = HomeRoute)
-        is SessionState.LoggedOut -> AppNavigation(startDestination = LoginRoute)
+    if (startDestination == SplashRoute) {
+        SplashScreen()
+    } else {
+        AppNavigation(startDestination = startDestination)
     }
 
     appVersionModel?.let {
@@ -266,6 +273,8 @@ fun MainApp(viewModel: MainViewModel = hiltViewModel()) {
         )
     }
 }
+
+private object SplashRoute
 
 @Composable
 fun SplashScreen() {

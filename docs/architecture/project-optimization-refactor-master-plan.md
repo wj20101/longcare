@@ -28,7 +28,7 @@
 | B2 | Feature 模块骨架搭建 | P0 | DONE | B1 |
 | B3 | Repository 依赖反转改造 | P0 | DONE | B2 |
 | B4 | DI 拆分重组 | P0 | DONE | B3 |
-| B5 | App 壳层收敛 | P1 | TODO | B4 |
+| B5 | App 壳层收敛 | P1 | DONE | B4 |
 | C1 | Identification 流程 UseCase 化 | P0 | TODO | B5 |
 | C2 | 超大 ViewModel 拆分 | P0 | TODO | C1 |
 | C3 | 超大 Composable 拆分 | P0 | TODO | C2 |
@@ -376,7 +376,7 @@
 | D13 | B3 | `app/.../di/RepositoryModule.kt`、迁移收尾文件 | repository 反转收口完成 | DONE |
 | D14 | B4 | `core/data/.../di/CoreDataModule.kt`、`app/.../di/NetworkModule.kt`、`DatabaseModule.kt` | Hilt 图无冲突 | DONE |
 | D15 | B4 | `feature/*/di/*Module.kt`、`app/.../di/AppModule.kt` | feature DI 接入完成 | DONE |
-| D16 | B5 | `app/.../MainActivity.kt`、`MainViewModel.kt`、`navigation/AppNavigation.kt` | `:app` 壳层化完成 | TODO |
+| D16 | B5 | `app/.../MainActivity.kt`、`MainViewModel.kt`、`navigation/AppNavigation.kt` | `:app` 壳层化完成 | DONE |
 | D17 | C1 | `feature/identification/.../SetupFaceUseCase.kt`、`VerifyServicePersonUseCase.kt`、`IdentificationViewModel.kt` | UseCase 调用链通过 | TODO |
 | D18 | C2 | `IdentificationViewModel.kt`、`IdentificationUiState.kt`、`IdentificationEvent.kt` | VM 文件<400 行 | TODO |
 | D19 | C2 | `ServiceCountdownViewModel.kt`、`ServiceCountdownStateHolder.kt` | 倒计时 VM 拆分完成 | TODO |
@@ -418,6 +418,7 @@
 | 2026-02-13 | D13 | B3 | 已完成 RepositoryModule 接口绑定收口 | - | B3 全部完成，进入 B4 |
 | 2026-02-13 | D14 | B4 | 已新增 CoreDataModule 并完成多模块 Hilt 编译验证 | - | `:core:data`、`:feature:*`、`:app` 编译通过 |
 | 2026-02-13 | D15 | B4 | 已新增 login/home/identification Feature DI 模块骨架 | - | B4 全部完成，进入 B5 |
+| 2026-02-13 | D16 | B5 | 已完成 MainActivity/MainViewModel/AppNavigation/MainApplication 壳层职责收敛 | - | B5 全部完成，进入 C1 |
 
 ## 8. 偏差说明（持续追加）
 

@@ -3,11 +3,13 @@ package com.ytone.longcare.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import com.tencent.bugly.crashreport.CrashReport
+import com.ytone.longcare.worker.UpdateWorker
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import javax.inject.Provider
@@ -38,8 +40,13 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
         val userStrategy = CrashReport.UserStrategy(this)
         CrashReport.initCrashReport(this, userStrategy)
 
+        scheduleStartupWorkers()
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = imageLoaderProvider.get()
-}
 
+    private fun scheduleStartupWorkers() {
+        val updateWorkRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
+        WorkManager.getInstance(this).enqueue(updateWorkRequest)
+    }
+}

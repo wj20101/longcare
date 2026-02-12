@@ -49,11 +49,7 @@ class MainActivity : AppCompatActivity() {
             logD("MainActivity", "onCreate - intent action: ${it.action}")
             if (it.action?.startsWith("android.nfc.action") == true) {
                 logD("MainActivity", "onCreate收到NFC Intent，延迟处理")
-                // 延迟处理，确保NfcManager已经初始化
-                lifecycleScope.launch {
-                    delay(500)
-                    nfcManager.handleNfcIntent(this@MainActivity, it)
-                }
+                handleNfcIntent(it, delayMillis = 500)
             }
         }
 
@@ -70,11 +66,7 @@ class MainActivity : AppCompatActivity() {
         
         // 【业务功能】延迟处理NFC Intent，确保所有初始化完成 - 与测试功能无关
         if (intent.action?.startsWith("android.nfc.action") == true) {
-            lifecycleScope.launch {
-                // 等待一个较短的时间，确保组件已初始化
-                delay(100)
-                nfcManager.handleNfcIntent(this@MainActivity, intent)
-            }
+            handleNfcIntent(intent, delayMillis = 100)
         } else {
             // 非NFC Intent直接处理
             nfcManager.handleNfcIntent(this, intent)
@@ -101,6 +93,13 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun handleNfcIntent(intent: Intent, delayMillis: Long) {
+        lifecycleScope.launch {
+            delay(delayMillis)
+            nfcManager.handleNfcIntent(this@MainActivity, intent)
         }
     }
 }
