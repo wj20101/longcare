@@ -4,6 +4,7 @@ import com.ytone.longcare.data.database.dao.OrderImageDao
 import com.ytone.longcare.data.database.entity.ImageType
 import com.ytone.longcare.data.database.entity.ImageUploadStatus
 import com.ytone.longcare.data.database.entity.OrderImageEntity
+import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.model.OrderKey
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -20,7 +21,7 @@ import javax.inject.Singleton
 @Singleton
 class ImageRepository @Inject constructor(
     private val orderImageDao: OrderImageDao
-) {
+) : OrderImageRepository {
     
     // ========== 查询操作 ==========
     
@@ -28,7 +29,7 @@ class ImageRepository @Inject constructor(
      * 获取订单所有图片
      * @param orderKey 订单标识符
      */
-    suspend fun getImagesByOrderId(orderKey: OrderKey): List<OrderImageEntity> {
+    override suspend fun getImagesByOrderId(orderKey: OrderKey): List<OrderImageEntity> {
         return orderImageDao.getImagesByOrderId(orderKey.orderId)
     }
     
@@ -90,11 +91,11 @@ class ImageRepository @Inject constructor(
      * @param localUri 本地URI
      * @param localPath 本地路径
      */
-    suspend fun addImage(
+    override suspend fun addImage(
         orderKey: OrderKey,
         imageType: ImageType,
         localUri: String,
-        localPath: String? = null
+        localPath: String?
     ): Long {
         val entity = OrderImageEntity(
             orderId = orderKey.orderId,
@@ -140,7 +141,7 @@ class ImageRepository @Inject constructor(
     /**
      * 标记上传成功
      */
-    suspend fun markAsSuccess(imageId: Long, cloudKey: String, cloudUrl: String) {
+    override suspend fun markAsSuccess(imageId: Long, cloudKey: String, cloudUrl: String) {
         orderImageDao.updateUploadSuccess(
             id = imageId,
             status = ImageUploadStatus.SUCCESS.value,
@@ -179,7 +180,7 @@ class ImageRepository @Inject constructor(
     /**
      * 删除单张图片
      */
-    suspend fun deleteImage(imageId: Long) {
+    override suspend fun deleteImage(imageId: Long) {
         orderImageDao.deleteById(imageId)
     }
     
@@ -187,7 +188,7 @@ class ImageRepository @Inject constructor(
      * 删除订单所有图片
      * @param orderKey 订单标识符
      */
-    suspend fun deleteImagesByOrderId(orderKey: OrderKey) {
+    override suspend fun deleteImagesByOrderId(orderKey: OrderKey) {
         orderImageDao.deleteByOrderId(orderKey.orderId)
     }
     

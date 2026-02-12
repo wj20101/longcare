@@ -19,7 +19,7 @@ import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.domain.identification.IdentificationRepository
 import com.ytone.longcare.domain.order.OrderRepository
-import com.ytone.longcare.data.repository.UnifiedOrderRepository
+import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.toOrderKey
@@ -55,7 +55,7 @@ class IdentificationViewModel @Inject constructor(
     private val faceVerifier: FaceVerifier,
     private val systemConfigManager: SystemConfigManager,
     private val userSessionRepository: UserSessionRepository,
-    private val unifiedOrderRepository: UnifiedOrderRepository,
+    private val unifiedOrderRepository: OrderDetailRepository,
     private val orderRepository: OrderRepository,
     private val cosRepository: CosRepository,
     private val identificationRepository: IdentificationRepository,

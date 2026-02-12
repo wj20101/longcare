@@ -7,7 +7,7 @@ import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logE
-import com.ytone.longcare.data.repository.UnifiedOrderRepository
+import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.navigation.OrderNavParams
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,7 +25,7 @@ data class ServiceCountdownNavigationData(
 @HiltViewModel
 class MainDashboardViewModel @Inject constructor(
     private val systemConfigManager: SystemConfigManager,
-    private val unifiedOrderRepository: UnifiedOrderRepository,
+    private val unifiedOrderRepository: OrderDetailRepository,
     private val toastHelper: ToastHelper
 ) : ViewModel() {
     private val _companyName = MutableStateFlow("")

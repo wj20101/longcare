@@ -9,8 +9,8 @@ import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.data.database.entity.ImageType
-import com.ytone.longcare.data.repository.ImageRepository
-import com.ytone.longcare.data.repository.UnifiedOrderRepository
+import com.ytone.longcare.domain.repository.OrderImageRepository
+import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.domain.order.OrderRepository
@@ -37,8 +37,8 @@ import com.ytone.longcare.common.utils.logI
 @HiltViewModel
 class ServiceCountdownViewModel @Inject constructor(
     private val toastHelper: ToastHelper,
-    private val unifiedOrderRepository: UnifiedOrderRepository,
-    private val imageRepository: ImageRepository,
+    private val unifiedOrderRepository: OrderDetailRepository,
+    private val imageRepository: OrderImageRepository,
     private val orderRepository: OrderRepository,
     private val countdownNotificationManager: CountdownNotificationManager
 ) : ViewModel() {
@@ -524,7 +524,7 @@ class ServiceCountdownViewModel @Inject constructor(
     }
 
     /**
-     * 挂起函数：从ImageRepository加载图片数据并返回
+     * 挂起函数：从OrderImageRepository加载图片数据并返回
      * 用于需要确保数据已加载完成后再进行后续操作的场景
      * @param orderKey 订单标识符
      * @return 按ImageTaskType分组的ImageTask列表
@@ -575,7 +575,7 @@ class ServiceCountdownViewModel @Inject constructor(
     }
     
     /**
-     * 从ImageRepository加载图片数据（用于页面恢复）
+     * 从OrderImageRepository加载图片数据（用于页面恢复）
      * @param orderKey 订单标识符
      */
     fun loadUploadedImagesFromRepository(orderKey: OrderKey) {

@@ -26,7 +26,7 @@
 | A4 | 质量门禁基线 | P0 | DONE | A3 |
 | B1 | Core 模块骨架搭建 | P0 | DONE | A4 |
 | B2 | Feature 模块骨架搭建 | P0 | DONE | B1 |
-| B3 | Repository 依赖反转改造 | P0 | TODO | B2 |
+| B3 | Repository 依赖反转改造 | P0 | DONE | B2 |
 | B4 | DI 拆分重组 | P0 | TODO | B3 |
 | B5 | App 壳层收敛 | P1 | TODO | B4 |
 | C1 | Identification 流程 UseCase 化 | P0 | TODO | B5 |
@@ -371,9 +371,9 @@
 | D08 | B1 | `core/data/build.gradle.kts`、`core/ui/build.gradle.kts`、`core/common/build.gradle.kts`、各 Placeholder | 全模块 assemble 通过 | DONE |
 | D09 | B2 | `settings.gradle.kts`、`feature/login/build.gradle.kts`、`feature/home/build.gradle.kts` | feature 模块可编译 | DONE |
 | D10 | B2 | `feature/identification/build.gradle.kts`、`app/.../navigation/AppNavigation.kt`、FeatureEntry 文件 | 导航接线通过 smoke | DONE |
-| D11 | B3 | `core/domain/.../repository/*`、`core/data/.../repository/*`（登录/首页优先） | UI 不依赖 Impl（首批） | TODO |
-| D12 | B3 | `core/domain/.../repository/*`、`core/data/.../repository/*`（identification/order） | repository 反转第二批通过 | TODO |
-| D13 | B3 | `app/.../di/RepositoryModule.kt`、迁移收尾文件 | repository 反转收口完成 | TODO |
+| D11 | B3 | `core/domain/.../repository/*`、`core/data/.../repository/*`（登录/首页优先） | UI 不依赖 Impl（首批） | DONE |
+| D12 | B3 | `core/domain/.../repository/*`、`core/data/.../repository/*`（identification/order） | repository 反转第二批通过 | DONE |
+| D13 | B3 | `app/.../di/RepositoryModule.kt`、迁移收尾文件 | repository 反转收口完成 | DONE |
 | D14 | B4 | `core/data/.../di/CoreDataModule.kt`、`app/.../di/NetworkModule.kt`、`DatabaseModule.kt` | Hilt 图无冲突 | TODO |
 | D15 | B4 | `feature/*/di/*Module.kt`、`app/.../di/AppModule.kt` | feature DI 接入完成 | TODO |
 | D16 | B5 | `app/.../MainActivity.kt`、`MainViewModel.kt`、`navigation/AppNavigation.kt` | `:app` 壳层化完成 | TODO |
@@ -413,9 +413,12 @@
 | 2026-02-13 | D08 | B1 | 已完成 core 五模块最小可编译骨架并通过 assemble | - | B1 全部完成，进入 B2 |
 | 2026-02-13 | D09 | B2 | 已完成 feature/login、feature/home 模块骨架并通过 assemble | - | 继续完成 identification 模块与导航接线 |
 | 2026-02-13 | D10 | B2 | 已完成 feature/identification 模块骨架与 AppNavigation 模块引用接线 | - | B2 全部完成，进入 B3 |
+| 2026-02-13 | D11 | B3 | 已完成 UI 层对 UnifiedOrder/Image 的接口依赖反转（首批） | - | ViewModel 不再直接注入具体实现 |
+| 2026-02-13 | D12 | B3 | 已完成 identification/order 链路的接口注入切换与编译验证 | - | `:app:compileDebugKotlin`、`:app:testDebugUnitTest` 通过 |
+| 2026-02-13 | D13 | B3 | 已完成 RepositoryModule 接口绑定收口 | - | B3 全部完成，进入 B4 |
 
 ## 8. 偏差说明（持续追加）
 
 | 日期 | 任务ID | 计划文件 | 实际文件 | 原因 | 影响评估 |
 |---|---|---|---|---|---|
-| - | - | - | - | - | - |
+| 2026-02-13 | B3 | `core/domain/.../repository/*`、`core/data/.../repository/*` | `app/src/main/kotlin/com/ytone/longcare/domain/repository/OrderDetailRepository.kt`、`app/src/main/kotlin/com/ytone/longcare/domain/repository/OrderImageRepository.kt`、`app/src/main/kotlin/com/ytone/longcare/data/repository/*`、`app/src/main/kotlin/com/ytone/longcare/di/RepositoryModule.kt` | 现有实现强依赖 `app` 内 API/DB/Model，直接迁移到 `core:*` 会引入循环依赖 | 已先完成“UI 仅依赖接口”目标；跨模块下沉将在后续模型下沉阶段继续推进 |

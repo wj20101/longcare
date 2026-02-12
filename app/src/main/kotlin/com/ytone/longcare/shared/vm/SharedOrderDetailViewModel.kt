@@ -8,7 +8,7 @@ import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
-import com.ytone.longcare.data.repository.UnifiedOrderRepository
+import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.model.toOrderKey
@@ -28,7 +28,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class SharedOrderDetailViewModel @Inject constructor(
-    private val unifiedOrderRepository: UnifiedOrderRepository,
+    private val unifiedOrderRepository: OrderDetailRepository,
     private val orderRepository: OrderRepository,
     private val toastHelper: ToastHelper,
     private val locationFacade: LocationFacade,
