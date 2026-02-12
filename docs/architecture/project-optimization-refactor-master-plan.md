@@ -29,7 +29,7 @@
 | B3 | Repository 依赖反转改造 | P0 | DONE | B2 |
 | B4 | DI 拆分重组 | P0 | DONE | B3 |
 | B5 | App 壳层收敛 | P1 | DONE | B4 |
-| C1 | Identification 流程 UseCase 化 | P0 | TODO | B5 |
+| C1 | Identification 流程 UseCase 化 | P0 | DONE | B5 |
 | C2 | 超大 ViewModel 拆分 | P0 | TODO | C1 |
 | C3 | 超大 Composable 拆分 | P0 | TODO | C2 |
 | C4 | 巨石工具类拆分 | P1 | TODO | C3 |
@@ -377,7 +377,7 @@
 | D14 | B4 | `core/data/.../di/CoreDataModule.kt`、`app/.../di/NetworkModule.kt`、`DatabaseModule.kt` | Hilt 图无冲突 | DONE |
 | D15 | B4 | `feature/*/di/*Module.kt`、`app/.../di/AppModule.kt` | feature DI 接入完成 | DONE |
 | D16 | B5 | `app/.../MainActivity.kt`、`MainViewModel.kt`、`navigation/AppNavigation.kt` | `:app` 壳层化完成 | DONE |
-| D17 | C1 | `feature/identification/.../SetupFaceUseCase.kt`、`VerifyServicePersonUseCase.kt`、`IdentificationViewModel.kt` | UseCase 调用链通过 | TODO |
+| D17 | C1 | `feature/identification/.../SetupFaceUseCase.kt`、`VerifyServicePersonUseCase.kt`、`IdentificationViewModel.kt` | UseCase 调用链通过 | DONE |
 | D18 | C2 | `IdentificationViewModel.kt`、`IdentificationUiState.kt`、`IdentificationEvent.kt` | VM 文件<400 行 | TODO |
 | D19 | C2 | `ServiceCountdownViewModel.kt`、`ServiceCountdownStateHolder.kt` | 倒计时 VM 拆分完成 | TODO |
 | D20 | C3 | `CameraScreen.kt`、`features/photoupload/ui/components/*` | Camera UI 拆分通过 | TODO |
@@ -419,6 +419,7 @@
 | 2026-02-13 | D14 | B4 | 已新增 CoreDataModule 并完成多模块 Hilt 编译验证 | - | `:core:data`、`:feature:*`、`:app` 编译通过 |
 | 2026-02-13 | D15 | B4 | 已新增 login/home/identification Feature DI 模块骨架 | - | B4 全部完成，进入 B5 |
 | 2026-02-13 | D16 | B5 | 已完成 MainActivity/MainViewModel/AppNavigation/MainApplication 壳层职责收敛 | - | B5 全部完成，进入 C1 |
+| 2026-02-13 | D17 | C1 | 已新增 SetupFace/VerifyServicePerson/UploadElderPhoto 三个 UseCase 并接入 VM | - | `:app:compileDebugKotlin`、`:app:testDebugUnitTest` 通过 |
 
 ## 8. 偏差说明（持续追加）
 
@@ -426,3 +427,4 @@
 |---|---|---|---|---|---|
 | 2026-02-13 | B3 | `core/domain/.../repository/*`、`core/data/.../repository/*` | `app/src/main/kotlin/com/ytone/longcare/domain/repository/OrderDetailRepository.kt`、`app/src/main/kotlin/com/ytone/longcare/domain/repository/OrderImageRepository.kt`、`app/src/main/kotlin/com/ytone/longcare/data/repository/*`、`app/src/main/kotlin/com/ytone/longcare/di/RepositoryModule.kt` | 现有实现强依赖 `app` 内 API/DB/Model，直接迁移到 `core:*` 会引入循环依赖 | 已先完成“UI 仅依赖接口”目标；跨模块下沉将在后续模型下沉阶段继续推进 |
 | 2026-02-13 | B4 | `app/.../di/AppModule.kt`、`NetworkModule.kt`、`DatabaseModule.kt` | `core/data/src/main/kotlin/com/ytone/longcare/core/data/di/CoreDataModule.kt`、`feature/*/src/main/kotlin/com/ytone/longcare/feature/*/di/*FeatureModule.kt`、`*/build.gradle.kts` | 当前阶段优先完成 DI 分层入口与模块化接入，避免一次性迁移导致 Hilt 图抖动 | DI 结构已具备分层扩展点，后续可逐步把具体绑定下沉到对应模块 |
+| 2026-02-13 | C1 | `feature/identification/src/main/kotlin/com/ytone/longcare/feature/identification/domain/*` | `app/src/main/kotlin/com/ytone/longcare/features/identification/domain/*`、`app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationViewModel.kt` | 当前 feature 模块尚未承接 app 层 API/数据模型依赖，直接放入独立 module 会造成依赖断裂 | 先在 app 内完成 UseCase 化与 VM 编排收敛，后续配合模型/数据下沉再迁入 feature module |
