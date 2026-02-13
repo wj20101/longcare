@@ -84,6 +84,20 @@
   - 验证：
     - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
     - `PATH=/usr/bin:/bin bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
-  - 持续监控结果：
-    - 修复后 run `21970849721`：`success`
-    - 失败队列扫描：`status=failure` 返回 0 条，当前无待修复 workflow run。
+- 持续监控结果：
+  - 修复后 run `21970849721`：`success`
+  - 失败队列扫描：`status=failure` 返回 0 条，当前无待修复 workflow run。
+
+## 7. Android Release 执行记录（2026-02-13）
+
+- 触发方式：推送 tag `vci-20260213-024649`（匹配 `android-release.yml` 的 `push.tags: v*`）
+- workflow run：`21972693851`
+- 运行结果：`completed/success`
+- 关键步骤：
+  - `Verify quality gates`：PASS
+  - `Build release APK and AAB`：PASS
+  - `Upload release artifacts`：PASS
+  - `Publish artifacts to GitHub Releases`：PASS
+- 产物发布：
+  - Release 页面：`https://github.com/yyg20101/longcare/releases/tag/vci-20260213-024649`
+  - 包含 APK、AAB、mapping 与 checksum 文件。
