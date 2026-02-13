@@ -447,3 +447,59 @@
 | 2026-02-13 | D4 | `collect_build_baseline.sh` 与历史口径一致对比 | 已新增 clean 基线开关并完成一次 clean 口径采样，对比文档落地 | A1 与 D26 采样口径不完全一致（A1 未显式 clean） | 已在对比文档标注口径差异，后续以统一口径连续采样 |
 | 2026-02-13 | E1 | 关键模块补齐单测并包含集成测试 | feature/core 新增以契约单测为主，app 层新增跨模块路由契约测试 | 当前 `feature/*` 与 `core/data` 业务实现仍较薄，暂不具备高价值集成场景 | 先建立模块测试入口与门禁，后续随业务下沉补齐集成测试 |
 | 2026-02-13 | E2+E3 | D27 计划仅列脚本与文档文件 | 额外联动更新 `.github/workflows/android-ci.yml`、`.github/workflows/baseline-profile.yml`、`docs/architecture/dependency-rules.md` | `verify_architecture_boundaries.sh` 入参升级为项目根目录，需同步 CI 调用与规则文档 | 保持脚本/CI/文档一致性，避免门禁脚本升级后出现误用 |
+
+## 9. 增量优化阶段（F：CI/CD 与自动化）
+
+### 9.1 任务总览（F1~F6）
+
+| ID | 任务 | 优先级 | 状态 | 依赖 |
+|---|---|---|---|---|
+| F1 | CI/CD 现状审计与任务文档化 | P0 | DONE | E3 |
+| F2 | Runner 磁盘清理脚本化与复用 | P0 | DONE | F1 |
+| F3 | Workflow 质量守卫自动化 | P0 | DONE | F2 |
+| F4 | Android CI 文档变更触发优化 | P1 | DONE | F1 |
+| F5 | 失败诊断产物分层归档 | P1 | TODO | F3 |
+| F6 | Reusable workflow 抽象收敛 | P2 | TODO | F3 |
+
+### 9.2 每项任务具体文件改动清单
+
+#### F1 CI/CD 现状审计与任务文档化
+- `docs/architecture/ci-cd-automation-optimization-plan.md`（新增）
+- `task_plan.md`（新增）
+- `findings.md`（新增）
+- `progress.md`（新增）
+
+#### F2 Runner 磁盘清理脚本化与复用
+- `scripts/quality/free_runner_disk_space.sh`（新增）
+- `.github/workflows/android-ci.yml`
+- `.github/workflows/baseline-profile.yml`
+- `.github/workflows/android-release.yml`
+
+#### F3 Workflow 质量守卫自动化
+- `scripts/quality/verify_ci_workflow_quality.sh`（新增）
+- `.github/workflows/android-ci.yml`
+- `.github/workflows/baseline-profile.yml`
+- `.github/workflows/android-release.yml`
+
+#### F4 Android CI 文档变更触发优化
+- `.github/workflows/android-ci.yml`
+
+### 9.3 逐日执行计划（D28~D33）
+
+| 日程 | 对应任务 | 当日具体文件改动清单 | 当日验收门禁 | 状态 |
+|---|---|---|---|---|
+| D28 | F1 | `docs/architecture/ci-cd-automation-optimization-plan.md`、`task_plan.md`、`findings.md`、`progress.md` | 文档任务台账可追溯 | DONE |
+| D29 | F2 | `scripts/quality/free_runner_disk_space.sh`、三套 workflow 引用改造 | `free_runner_disk_space.sh --dry-run` 通过 | DONE |
+| D30 | F3 | `scripts/quality/verify_ci_workflow_quality.sh`、`android-ci.yml` | `verify_ci_workflow_quality.sh` 通过 | DONE |
+| D31 | F4 | `android-ci.yml`（`paths-ignore`） | 触发规则配置已生效 | DONE |
+| D32 | F5 | 待执行 | 待执行 | TODO |
+| D33 | F6 | 待执行 | 待执行 | TODO |
+
+### 9.4 执行日志（F 阶段）
+
+| 日期 | 日程 | 任务ID | 结果 | 提交/PR | 备注 |
+|---|---|---|---|---|---|
+| 2026-02-13 | D28 | F1 | 已完成 CI/CD 审计并产出增量任务文档 | - | 输出 F1~F6 与 D28~D33 计划 |
+| 2026-02-13 | D29 | F2 | 已完成 runner 磁盘清理脚本抽取并接入三套 workflow | - | 统一最小磁盘门禁为脚本参数 |
+| 2026-02-13 | D30 | F3 | 已新增 workflow 质量守卫脚本并接入流水线 | - | 守卫并发、超时、稳定性校验与脚本接入 |
+| 2026-02-13 | D31 | F4 | 已为 android-ci 增加 `paths-ignore` 优化触发 | - | 降低纯文档改动带来的 CI 消耗 |

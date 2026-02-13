@@ -11,6 +11,7 @@
 ## 重构基线与执行计划
 
 - 主计划文档：`docs/architecture/project-optimization-refactor-master-plan.md`
+- CI/CD 优化计划：`docs/architecture/ci-cd-automation-optimization-plan.md`
 - 构建基线文档：`docs/refactor/baseline-metrics.md`
 - 构建性能对比：`docs/refactor/build-performance-comparison.md`
 - 回归清单：`docs/qa/refactor-regression-checklist.md`
@@ -38,8 +39,10 @@
 
 ```bash
 bash scripts/quality/verify_gradle_stability.sh
+bash scripts/quality/verify_ci_workflow_quality.sh
 bash scripts/quality/verify_architecture_boundaries.sh .
 bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare
+bash scripts/quality/free_runner_disk_space.sh --dry-run --min-free-mb 1024
 ```
 
 ## CI/CD（GitHub Actions）
