@@ -20,7 +20,7 @@ if [[ -z "${WARNING_IDS}" ]]; then
   exit 0
 fi
 
-ALLOWED_IDS=$'Aligned16KB\nGlobalOptionInConsumerRules\nTrustAllX509TrustManager'
+ALLOWED_IDS=$'Aligned16KB\nGlobalOptionInConsumerRules\nTrustAllX509TrustManager\nGradleDependency'
 UNKNOWN_IDS=""
 SOURCE_VIOLATIONS=""
 
@@ -47,6 +47,10 @@ is_allowed_source() {
       ;;
     TrustAllX509TrustManager)
       [[ "${warning_line}" == *"qcloud-foundation-"* ]]
+      return $?
+      ;;
+    GradleDependency)
+      [[ "${warning_line}" == *"/gradle/libs.versions.toml:"* ]]
       return $?
       ;;
     *)

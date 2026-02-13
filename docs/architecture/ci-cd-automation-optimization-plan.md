@@ -59,3 +59,20 @@
 - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
 - `bash scripts/quality/free_runner_disk_space.sh --dry-run --min-free-mb 1024`：PASS
 - `bash scripts/quality/verify_gradle_stability.sh`：PASS
+
+## 6. Actions 运行监控与修复记录（2026-02-13）
+
+- 发现失败运行：
+  - `Android CI`：`21970264723`
+  - `Android Release`：`21969405842`
+- 失败步骤一致：`Enforce lint warning allowlist`
+- 根因：
+  - lint 报告出现 `GradleDependency`（`gradle/libs.versions.toml` 中可升级依赖提示）；
+  - allowlist 脚本未纳入该告警 ID，导致 CI 误阻断。
+- 修复：
+  - 更新 `scripts/lint/verify_lint_warning_allowlist.sh`：
+    - 增加 `GradleDependency` 到 allowlist；
+    - 严格限制来源仅允许 `gradle/libs.versions.toml`，避免放宽其它源告警。
+- 修复后本地验证：
+  - `./gradlew --no-daemon :app:lintDebug`：PASS
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS
