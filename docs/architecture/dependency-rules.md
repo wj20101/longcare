@@ -26,8 +26,9 @@
 ## 4. 自动检查建议（CI）
 
 1. `scripts/quality/verify_architecture_boundaries.sh`
-   - 拦截 `features` 对 `data` 实现依赖。
+   - 拦截 `feature`/`presentation` 对 `data` 实现依赖。
    - 拦截 `domain` 中 `android.*` 引用。
+   - 拦截 `core` 反向依赖 `feature`。
 2. `scripts/quality/verify_module_api_visibility.sh`
    - 拦截模块边界外的内部实现调用。
 

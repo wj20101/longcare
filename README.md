@@ -12,6 +12,9 @@
 
 - 主计划文档：`docs/architecture/project-optimization-refactor-master-plan.md`
 - 构建基线文档：`docs/refactor/baseline-metrics.md`
+- 构建性能对比：`docs/refactor/build-performance-comparison.md`
+- 回归清单：`docs/qa/refactor-regression-checklist.md`
+- 最终重构报告：`docs/refactor/final-refactor-report.md`
 
 采集当前基线：
 
@@ -19,9 +22,29 @@
 ./scripts/quality/collect_build_baseline.sh
 ```
 
+## 重构后模块结构（当前）
+
+- `:app`：应用壳层、启动与导航组装
+- `:core:model`：通用模型
+- `:core:domain`：领域接口与规则
+- `:core:data`：数据层实现与 DI 入口
+- `:core:ui`：通用 UI 能力
+- `:core:common`：通用基础能力
+- `:feature:login`：登录特性
+- `:feature:home`：首页特性
+- `:feature:identification`：身份识别特性
+
+## 架构守卫与稳定性检查
+
+```bash
+bash scripts/quality/verify_gradle_stability.sh
+bash scripts/quality/verify_architecture_boundaries.sh .
+bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare
+```
+
 ## CI/CD（GitHub Actions）
 
-- `Android CI`：PR/Push 自动执行 `lint + unit test + assembleDebug + bundleDebug + baselineprofile:assemble + bundleRelease`，并上传 debug/release AAB、APK、baselineprofile APK 与报告。
+- `Android CI`：PR/Push 先计算 affected scope，按 `partial/full` 执行差异化任务；`full` 路径执行 `bundleDebug + baselineprofile:assemble + bundleRelease`，并按需触发 instrumentation smoke。
 - `Baseline Profile`：在模拟器上生成 Baseline Profile，执行产物存在性校验并上传 baseline 相关文件。
 - `Android Release`：Tag（`v*`）或手动触发，执行质量校验并产出 release APK/AAB，同时生成 SHA256 校验文件并自动创建 GitHub Release。
 
