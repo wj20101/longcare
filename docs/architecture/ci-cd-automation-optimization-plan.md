@@ -76,3 +76,11 @@
 - 修复后本地验证：
   - `./gradlew --no-daemon :app:lintDebug`：PASS
   - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS
+
+- 二次观察（修复后继续监控）：
+  - 新触发 run：`Android CI` `21970794768`，失败于 `Verify CI workflow quality guardrails`。
+  - 根因：守卫脚本只使用 `rg`，在 runner 环境下命令可用性不稳定。
+  - 二次修复：`scripts/quality/verify_ci_workflow_quality.sh` 增加 `grep -E` fallback。
+  - 验证：
+    - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+    - `PATH=/usr/bin:/bin bash scripts/quality/verify_ci_workflow_quality.sh`：PASS

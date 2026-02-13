@@ -8,7 +8,16 @@ require_pattern() {
   local file_path="$1"
   local pattern="$2"
   local message="$3"
-  if rg -q --multiline "${pattern}" "${file_path}"; then
+  local matched="false"
+  if command -v rg >/dev/null 2>&1; then
+    if rg -q "${pattern}" "${file_path}"; then
+      matched="true"
+    fi
+  elif grep -Eq "${pattern}" "${file_path}"; then
+    matched="true"
+  fi
+
+  if [[ "${matched}" == "true" ]]; then
     echo "[ci-workflow-quality][PASS] ${message}"
   else
     echo "[ci-workflow-quality][FAIL] ${message} (${file_path})"
@@ -30,9 +39,9 @@ for workflow in "${WORKFLOWS[@]}"; do
   fi
 
   require_pattern "${workflow}" "concurrency:" "has concurrency block"
-  require_pattern "${workflow}" "cancel-in-progress:\\s*true" "cancel-in-progress enabled"
+  require_pattern "${workflow}" "cancel-in-progress:[[:space:]]*true" "cancel-in-progress enabled"
   require_pattern "${workflow}" "timeout-minutes:" "has job timeout"
-  require_pattern "${workflow}" "uses:\\s*gradle/actions/setup-gradle@v5" "uses setup-gradle action"
+  require_pattern "${workflow}" "uses:[[:space:]]*gradle/actions/setup-gradle@v5" "uses setup-gradle action"
   require_pattern "${workflow}" "bash scripts/quality/verify_gradle_stability\\.sh" "runs Gradle stability gate"
 done
 

@@ -18,3 +18,7 @@
   - 本地复现确认根因：`GradleDependency` 告警（来源 `gradle/libs.versions.toml`）未纳入 allowlist。
   - 已修复：更新 `scripts/lint/verify_lint_warning_allowlist.sh`，新增 `GradleDependency` 并限制来源仅允许 `libs.versions.toml`。
   - 复验通过：`./gradlew --no-daemon :app:lintDebug` + allowlist 校验脚本通过。
+  - 修复后新触发 run：`Android CI#21970794768`，失败步骤为 `Verify CI workflow quality guardrails`。
+  - 根因：`scripts/quality/verify_ci_workflow_quality.sh` 仅依赖 `rg`；在 GitHub Runner 环境可能缺失该命令。
+  - 已修复：脚本新增兼容分支，无 `rg` 时自动回退 `grep -E`。
+  - 兼容性验证：正常 PATH 与移除 `rg` 的 PATH 均通过校验脚本。
