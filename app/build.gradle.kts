@@ -72,16 +72,16 @@ val txFaceNormalAar = file("libs/WbCloudNormal-v5.1.10-4e3e198.aar")
 
 data class TxFaceSdkDependencyConfig(
     val source: String,
-    val liveAar: java.io.File? = null,
-    val normalAar: java.io.File? = null,
+    val liveAar: File? = null,
+    val normalAar: File? = null,
     val liveCoordinate: String? = null,
     val normalCoordinate: String? = null
 )
 
 fun resolveTxFaceSdkDependencyConfig(
     source: String,
-    liveAar: java.io.File,
-    normalAar: java.io.File,
+    liveAar: File,
+    normalAar: File,
     liveCoordinate: String?,
     normalCoordinate: String?
 ): TxFaceSdkDependencyConfig {
@@ -89,7 +89,7 @@ fun resolveTxFaceSdkDependencyConfig(
     return when (normalizedSource) {
         "local" -> {
             if (!liveAar.exists() || !normalAar.exists()) {
-                throw org.gradle.api.GradleException(
+                throw GradleException(
                     "Local Tencent face AAR files are missing. " +
                         "Expected: ${liveAar.path}, ${normalAar.path}"
                 )
@@ -104,7 +104,7 @@ fun resolveTxFaceSdkDependencyConfig(
             val liveCoord = liveCoordinate?.trim().orEmpty()
             val normalCoord = normalCoordinate?.trim().orEmpty()
             if (liveCoord.isBlank() || normalCoord.isBlank()) {
-                throw org.gradle.api.GradleException(
+                throw GradleException(
                     "When TX_FACE_SDK_SOURCE=maven, TX_FACE_LIVE_COORD and TX_FACE_NORMAL_COORD must be provided."
                 )
             }
@@ -115,7 +115,7 @@ fun resolveTxFaceSdkDependencyConfig(
             )
         }
         else -> {
-            throw org.gradle.api.GradleException(
+            throw GradleException(
                 "Unsupported TX_FACE_SDK_SOURCE=$normalizedSource. Expected: local or maven."
             )
         }
