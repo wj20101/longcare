@@ -6,7 +6,19 @@ on:
       - main
       - master
       - develop
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - "task_plan.md"
+      - "findings.md"
+      - "progress.md"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - "task_plan.md"
+      - "findings.md"
+      - "progress.md"
   workflow_dispatch:
 
 concurrency:
@@ -22,6 +34,7 @@ env:
 jobs:
   detect-affected:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       affected_scope: ${{ steps.detect.outputs.affected_scope }}
       affected_modules: ${{ steps.detect.outputs.affected_modules }}
@@ -72,6 +85,9 @@ jobs:
 
       - name: Verify Gradle stability
         run: bash scripts/quality/verify_gradle_stability.sh
+
+      - name: Verify CI workflow quality guardrails
+        run: bash scripts/quality/verify_ci_workflow_quality.sh
 
       - name: Run affected verification tasks
         run: ./gradlew --no-daemon ${{ needs.detect-affected.outputs.verify_tasks }}
@@ -189,17 +205,7 @@ jobs:
           echo "Using emulator API level: ${TARGET_SDK}"
 
       - name: Free disk space for emulator
-        run: |
-          echo "Disk usage before cleanup:"
-          df -h /
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL || true
-          echo "Disk usage after cleanup:"
-          df -h /
-          FREE_MB=$(df -Pm / | awk 'NR==2 {print $4}')
-          if [ "$FREE_MB" -lt 8192 ]; then
-            echo "Insufficient free disk space for emulator userdata partition: ${FREE_MB}MB available."
-            exit 1
-          fi
+        run: bash scripts/quality/free_runner_disk_space.sh --min-free-mb 8192
 
       - name: Run instrumentation smoke test on emulator
         uses: reactivecircus/android-emulator-runner@v2

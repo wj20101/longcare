@@ -75,6 +75,9 @@ jobs:
       - name: Verify Gradle stability
         run: bash scripts/quality/verify_gradle_stability.sh
 
+      - name: Verify CI workflow quality guardrails
+        run: bash scripts/quality/verify_ci_workflow_quality.sh
+
       - name: Validate face SDK source settings
         run: |
           echo "TX_FACE_SDK_SOURCE=${TX_FACE_SDK_SOURCE}"
@@ -143,12 +146,7 @@ jobs:
 
       - name: Free disk space for emulator
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
-        run: |
-          echo "Disk usage before cleanup:"
-          df -h
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL
-          echo "Disk usage after cleanup:"
-          df -h
+        run: bash scripts/quality/free_runner_disk_space.sh --min-free-mb 8192
 
       - name: Setup managed device
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
