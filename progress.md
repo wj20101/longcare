@@ -13,3 +13,8 @@
   - `verify_ci_workflow_quality.sh` 通过；
   - `free_runner_disk_space.sh --dry-run` 通过；
   - `verify_gradle_stability.sh` 通过。
+- Actions 监控与修复：
+  - 发现失败 run：`Android CI#21970264723`、`Android Release#21969405842`，失败步骤均为 `Enforce lint warning allowlist`。
+  - 本地复现确认根因：`GradleDependency` 告警（来源 `gradle/libs.versions.toml`）未纳入 allowlist。
+  - 已修复：更新 `scripts/lint/verify_lint_warning_allowlist.sh`，新增 `GradleDependency` 并限制来源仅允许 `libs.versions.toml`。
+  - 复验通过：`./gradlew --no-daemon :app:lintDebug` + allowlist 校验脚本通过。

@@ -503,3 +503,4 @@
 | 2026-02-13 | D29 | F2 | 已完成 runner 磁盘清理脚本抽取并接入三套 workflow | - | 统一最小磁盘门禁为脚本参数 |
 | 2026-02-13 | D30 | F3 | 已新增 workflow 质量守卫脚本并接入流水线 | - | 守卫并发、超时、稳定性校验与脚本接入 |
 | 2026-02-13 | D31 | F4 | 已为 android-ci 增加 `paths-ignore` 优化触发 | - | 降低纯文档改动带来的 CI 消耗 |
+| 2026-02-13 | D32 | F4 | 已完成 GitHub Actions 失败任务定位与 lint allowlist 修复 | - | 修复 `GradleDependency` 告警导致的 `Enforce lint warning allowlist` 失败 |
