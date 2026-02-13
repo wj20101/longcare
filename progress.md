@@ -22,3 +22,4 @@
   - 根因：`scripts/quality/verify_ci_workflow_quality.sh` 仅依赖 `rg`；在 GitHub Runner 环境可能缺失该命令。
   - 已修复：脚本新增兼容分支，无 `rg` 时自动回退 `grep -E`。
   - 兼容性验证：正常 PATH 与移除 `rg` 的 PATH 均通过校验脚本。
+  - 持续观察：`Android CI#21970849721` 已完成并 `success`，`verify-build` 通过，当前 failure 队列为 0。

@@ -84,3 +84,6 @@
   - 验证：
     - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
     - `PATH=/usr/bin:/bin bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+  - 持续监控结果：
+    - 修复后 run `21970849721`：`success`
+    - 失败队列扫描：`status=failure` 返回 0 条，当前无待修复 workflow run。
