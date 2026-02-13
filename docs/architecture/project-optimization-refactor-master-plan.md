@@ -506,3 +506,4 @@
 | 2026-02-13 | D32 | F4 | 已完成 GitHub Actions 失败任务定位与 lint allowlist 修复 | - | 修复 `GradleDependency` 告警导致的 `Enforce lint warning allowlist` 失败 |
 | 2026-02-13 | D33 | F4 | 已完成 workflow 守卫脚本跨环境兼容修复并复验 | - | 修复 `verify_ci_workflow_quality.sh` 对 `rg` 的单点依赖，增加 `grep` 回退 |
 | 2026-02-13 | D34 | F4 | 已完成修复后 Actions 连续观察与失败队列复核 | - | `Android CI#21970849721` 成功，当前 failure 队列为 0 |
+| 2026-02-13 | D35 | F4 | 已触发并监控 Android Release 全流程，发布成功 | - | run `21972693851` 成功，产物已发布到 tag `vci-20260213-024649` |

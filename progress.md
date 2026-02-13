@@ -23,3 +23,7 @@
   - 已修复：脚本新增兼容分支，无 `rg` 时自动回退 `grep -E`。
   - 兼容性验证：正常 PATH 与移除 `rg` 的 PATH 均通过校验脚本。
   - 持续观察：`Android CI#21970849721` 已完成并 `success`，`verify-build` 通过，当前 failure 队列为 0。
+- 执行发布工作流与监控：
+  - 通过推送 tag `vci-20260213-024649` 触发 `android-release.yml`（run: `21972693851`）。
+  - 关键阶段通过：质量门、签名校验、release 构建、artifact 上传、GitHub Release 发布。
+  - 结果：`Android Release#21972693851` `completed/success`。
