@@ -1,6 +1,7 @@
 plugins {
     id("longcare.android.library")
     id("longcare.kotlin.common")
+    alias(libs.plugins.kotlinSerialization)
 }
 
 val appCompileSdkVersion: Int by rootProject.extra
@@ -13,4 +14,8 @@ android {
     defaultConfig {
         minSdk = appMinSdkVersion
     }
+}
+
+dependencies {
+    implementation(libs.kotlinx.serialization.json)
 }

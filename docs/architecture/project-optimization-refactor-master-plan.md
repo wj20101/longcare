@@ -562,12 +562,15 @@
 - `app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationViewModel.kt`（usecase 入参适配）
 - `app/src/main/kotlin/com/ytone/longcare/features/identification/domain/*`（已迁空）
 
-#### G4 Repository 跨模块对齐（待执行）
+#### G4 Repository 跨模块对齐（进行中）
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/**`（接口下沉）
 - `core/data/src/main/kotlin/com/ytone/longcare/data/**`（实现下沉）
 - `app/src/main/kotlin/com/ytone/longcare/domain/**`、`app/src/main/kotlin/com/ytone/longcare/data/**`（收口）
 - `app/src/main/kotlin/com/ytone/longcare/di/RepositoryModule.kt`
 - `core/domain/build.gradle.kts`（补齐 `core:common` 依赖，承接 `ApiResult`）
+- `core/model/src/main/kotlin/com/ytone/longcare/models/protos/User.kt`（模型下沉）
+- `core/model/build.gradle.kts`（补齐 `kotlinSerialization` 插件与 `kotlinx-serialization-json` 依赖）
+- `app/build.gradle.kts`（补齐 `core:model` 直接依赖）
 
 #### G5 App 壳层收敛与门禁加严（待执行）
 - `app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt`
@@ -595,3 +598,4 @@
 | 2026-02-15 | D60 | G3 | 已完成第二批 usecase 下沉（`UploadElderPhotoUseCase`） | 98cbb3b | `Android CI#22035316587` success；新增 `UploadElderPhotoGateway` 契约并在 `app` 侧接入 `CosRepository/OrderRepository` |
 | 2026-02-15 | D60 | G3 | 已完成第三批 usecase 下沉（`SetupFaceUseCase`） | e79675b | `Android CI#22035472683` success；新增 `SetupFaceGateway` 契约并在 `app` 侧接入上传/服务端设置/本地缓存，`app/features/identification/domain` 已迁空 |
 | 2026-02-15 | D61 | G4 | 已完成首批契约下沉（`LocationRepository` -> `core/domain`） | 6377451 | `Android CI#22035636390` success；`core/domain` 新增对 `core:common` 依赖并通过全量门禁 |
+| 2026-02-15 | D61 | G4 | 已完成第二批契约/模型下沉（`UserSessionRepository` + `User`） | - | `core/domain` 补齐 `kotlinx-coroutines-core`、`core/model` 启用 serialization，`app` 补齐 `core:model` 直连依赖；本地编译/lint 通过 |

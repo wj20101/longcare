@@ -437,3 +437,14 @@
 - 远端验收（D61-第一批）：
   - `Android CI#22035636390`（commit `6377451`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22035636390`。
+- 执行 `D61 | G4`（第二批）：迁移 `UserSessionRepository` 契约与 `User` 模型到 Core 模块。
+  - 文件迁移：
+    - `app/src/main/kotlin/com/ytone/longcare/domain/repository/UserSessionRepository.kt` -> `core/domain/src/main/kotlin/com/ytone/longcare/domain/repository/UserSessionRepository.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/models/protos/User.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/models/protos/User.kt`
+  - 构建依赖收敛：
+    - `core/model/build.gradle.kts`：新增 `kotlinSerialization` 插件与 `kotlinx-serialization-json` 依赖；
+    - `core/domain/build.gradle.kts`：新增 `kotlinx-coroutines-core` 依赖（承接 `StateFlow`）；
+    - `app/build.gradle.kts`：新增 `implementation(project(":core:model"))`。
+- 本地验收（D61-第二批）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
