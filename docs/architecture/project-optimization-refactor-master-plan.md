@@ -580,4 +580,4 @@
 | 日期 | 日程 | 任务ID | 结果 | 提交/PR | 备注 |
 |---|---|---|---|---|---|
 | 2026-02-15 | D58 | G1 | 已完成首批低耦合实迁并通过编译/lint | eb82237 | `Android CI#22034778500` success；Core/Feature 不再仅占位，进入 G2~G5 业务迁移阶段 |
-| 2026-02-15 | D59 | G2 | 已完成登录特性导航依赖接口化（`NavController` -> `LoginFeatureActions`） | - | 本地 `:app:compileDebugKotlin`、`:app:lintDebug` 通过，等待 CI 远端验收 |
+| 2026-02-15 | D59 | G2 | 已完成登录特性导航依赖接口化（`NavController` -> `LoginFeatureActions`） | 500d8b9 | `Android CI#22034994873` success；新增 `LoginFeatureActions` 由路由层装配导航动作 |
