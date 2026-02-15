@@ -459,7 +459,7 @@
 | F3 | Workflow 质量守卫自动化 | P0 | DONE | F2 |
 | F4 | Android CI 文档变更触发优化 | P1 | DONE | F1 |
 | F5 | 失败诊断产物分层归档 | P1 | DONE | F3 |
-| F6 | Reusable workflow 抽象收敛 | P2 | TODO | F3 |
+| F6 | Reusable workflow 抽象收敛 | P2 | DONE | F3 |
 
 ### 9.2 每项任务具体文件改动清单
 
@@ -484,6 +484,19 @@
 #### F4 Android CI 文档变更触发优化
 - `.github/workflows/android-ci.yml`
 
+#### F5 失败诊断产物分层归档
+- `.github/workflows/android-ci.yml`
+- `.github/workflows/android-release.yml`
+- `.github/workflows/baseline-profile.yml`
+- `scripts/quality/verify_ci_workflow_quality.sh`
+
+#### F6 Reusable workflow 抽象收敛
+- `.github/actions/android-build-env/action.yml`（新增）
+- `.github/workflows/android-ci.yml`
+- `.github/workflows/android-release.yml`
+- `.github/workflows/baseline-profile.yml`
+- `scripts/quality/verify_ci_workflow_quality.sh`
+
 ### 9.3 逐日执行计划（D28~D33）
 
 | 日程 | 对应任务 | 当日具体文件改动清单 | 当日验收门禁 | 状态 |
@@ -493,7 +506,7 @@
 | D30 | F3 | `scripts/quality/verify_ci_workflow_quality.sh`、`android-ci.yml` | `verify_ci_workflow_quality.sh` 通过 | DONE |
 | D31 | F4 | `android-ci.yml`（`paths-ignore`） | 触发规则配置已生效 | DONE |
 | D32 | F5 | `android-ci.yml`、`android-release.yml`、`baseline-profile.yml`、`verify_ci_workflow_quality.sh` | 失败诊断产物按 job 归档并通过守卫脚本校验 | DONE |
-| D33 | F6 | 待执行 | 待执行 | TODO |
+| D33 | F6 | `android-build-env` 共享 action、三套 workflow 接入、守卫脚本适配 | 重复初始化步骤收敛并通过守卫校验 | DONE |
 
 ### 9.4 执行日志（F 阶段）
 
@@ -508,3 +521,4 @@
 | 2026-02-13 | D34 | F4 | 已完成修复后 Actions 连续观察与失败队列复核 | - | `Android CI#21970849721` 成功，当前 failure 队列为 0 |
 | 2026-02-13 | D35 | F4 | 已触发并监控 Android Release 全流程，发布成功 | - | run `21972693851` 成功，产物已发布到 tag `vci-20260213-024649` |
 | 2026-02-15 | D32 | F5 | 已完成三套 workflow 的 failure-only 诊断归档并接入守卫校验 | - | 归档命名含 `job/run_id/run_attempt`，`verify_ci_workflow_quality.sh` 验证通过 |
+| 2026-02-15 | D33 | F6 | 已完成共享 action 抽象并接入 `android-ci/release/baseline-profile` | - | 新增 `.github/actions/android-build-env/action.yml`，守卫脚本支持共享 action 模式 |
