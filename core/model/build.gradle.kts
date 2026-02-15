@@ -2,6 +2,7 @@ plugins {
     id("longcare.android.library")
     id("longcare.kotlin.common")
     alias(libs.plugins.kotlinSerialization)
+    id("kotlin-parcelize")
 }
 
 val appCompileSdkVersion: Int by rootProject.extra

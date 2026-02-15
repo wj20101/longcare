@@ -524,3 +524,18 @@
 - 远端验收（D61-第八批）：
   - `Android CI#22039685167`（commit `308358c`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22039685167`。
+- 执行 `D61 | G4`（第九批）：迁移 `OrderRepository` 契约及订单主请求/响应模型到 Core 模块。
+  - 文件迁移：
+    - `app/src/main/kotlin/com/ytone/longcare/domain/order/OrderRepository.kt` -> `core/domain/src/main/kotlin/com/ytone/longcare/domain/order/OrderRepository.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/api/request/OrderInfoRequestModel.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/api/request/OrderInfoRequestModel.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/api/response/EndOrderResultModel.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/api/response/EndOrderResultModel.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/api/response/ServiceOrderInfoModel.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/api/response/ServiceOrderInfoModel.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/api/response/ServiceOrderModel.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/api/response/ServiceOrderModel.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/api/response/ServiceOrderStateModel.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/api/response/ServiceOrderStateModel.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/api/response/TodayServiceOrderModel.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/api/response/TodayServiceOrderModel.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/model/Order.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/model/Order.kt`
+  - 构建兼容性修复：
+    - `core/model/build.gradle.kts` 新增 `id("kotlin-parcelize")`，承接 `OrderInfoRequestModel` 的 `@Parcelize`。
+- 本地验收（D61-第九批）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
