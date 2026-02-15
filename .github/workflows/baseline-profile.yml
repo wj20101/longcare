@@ -44,31 +44,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5
+      - name: Set up shared Android build environment
+        uses: ./.github/actions/android-build-env
         with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools
+          setup-android-sdk: 'true'
+          run-workflow-quality-check: 'true'
 
       - name: Free disk space for emulator
         run: bash scripts/quality/free_runner_disk_space.sh --min-free-mb 8192
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Verify Gradle stability
-        run: bash scripts/quality/verify_gradle_stability.sh
-
-      - name: Verify CI workflow quality guardrails
-        run: bash scripts/quality/verify_ci_workflow_quality.sh
 
       - name: Enforce architecture boundaries
         run: bash scripts/quality/verify_architecture_boundaries.sh .

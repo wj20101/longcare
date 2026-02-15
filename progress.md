@@ -36,3 +36,9 @@
   - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：新增三套 workflow 的 failure diagnostics 步骤守卫检查。
 - 本地验收：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- 执行 `D33 | F6`：完成共享 action 抽象并接入 release/baseline/ci。
+  - 新增 `.github/actions/android-build-env/action.yml`，统一 JDK/Gradle/Android SDK 初始化与质量守卫步骤。
+  - 三套 workflow 改为调用共享 action，减少重复步骤维护成本。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh` 支持共享 action 校验模式。
+- 本地验收：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。

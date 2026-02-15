@@ -36,7 +36,7 @@
 | D30 | F3 | `scripts/quality/verify_ci_workflow_quality.sh`、`.github/workflows/android-ci.yml`、`.github/workflows/baseline-profile.yml`、`.github/workflows/android-release.yml` | workflow 质量守卫脚本通过并接入 CI | DONE |
 | D31 | F4 | `.github/workflows/android-ci.yml` | 纯文档改动不触发 android-ci（基于 paths-ignore） | DONE |
 | D32 | F5 | `.github/workflows/android-ci.yml`、`.github/workflows/android-release.yml`、`.github/workflows/baseline-profile.yml`、`scripts/quality/verify_ci_workflow_quality.sh` | 失败诊断产物按 job 结构化上传 | DONE |
-| D33 | F6 | `.github/workflows/*.yml`（可复用 workflow 抽象） | 重复步骤收敛且功能一致 | TODO |
+| D33 | F6 | `.github/actions/android-build-env/action.yml`、`.github/workflows/android-ci.yml`、`.github/workflows/android-release.yml`、`.github/workflows/baseline-profile.yml`、`scripts/quality/verify_ci_workflow_quality.sh` | 重复步骤收敛且功能一致 | DONE |
 
 ## 4. 本轮已执行改动明细
 
@@ -116,5 +116,21 @@
   - 在 `baseline-profile` 的 `generate-baseline-profile` 增加 `if: failure()` 的诊断产物上传步骤；
   - 诊断包命名统一为 `workflow-job-run` 结构（含 `job/run_id/run_attempt`）；
   - 守卫脚本新增校验：三套 workflow 必须包含 `Upload failure diagnostics`。
+- 验证：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+
+## 9. Reusable workflow 抽象执行记录（2026-02-15）
+
+- 任务：`D33 | F6`
+- 改动文件：
+  - `.github/actions/android-build-env/action.yml`（新增）
+  - `.github/workflows/android-ci.yml`
+  - `.github/workflows/android-release.yml`
+  - `.github/workflows/baseline-profile.yml`
+  - `scripts/quality/verify_ci_workflow_quality.sh`
+- 具体改动：
+  - 新增复用 action：统一 JDK/Gradle/Android SDK 初始化与质量守卫执行；
+  - `android-release`、`baseline-profile`、`android-ci` 改为调用共享 action，减少重复步骤；
+  - 守卫脚本升级为支持“直接步骤 + 共享 action”双模式校验，并新增共享 action 接入校验。
 - 验证：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
