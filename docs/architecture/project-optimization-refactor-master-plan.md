@@ -598,4 +598,4 @@
 | 2026-02-15 | D60 | G3 | 已完成第二批 usecase 下沉（`UploadElderPhotoUseCase`） | 98cbb3b | `Android CI#22035316587` success；新增 `UploadElderPhotoGateway` 契约并在 `app` 侧接入 `CosRepository/OrderRepository` |
 | 2026-02-15 | D60 | G3 | 已完成第三批 usecase 下沉（`SetupFaceUseCase`） | e79675b | `Android CI#22035472683` success；新增 `SetupFaceGateway` 契约并在 `app` 侧接入上传/服务端设置/本地缓存，`app/features/identification/domain` 已迁空 |
 | 2026-02-15 | D61 | G4 | 已完成首批契约下沉（`LocationRepository` -> `core/domain`） | 6377451 | `Android CI#22035636390` success；`core/domain` 新增对 `core:common` 依赖并通过全量门禁 |
-| 2026-02-15 | D61 | G4 | 已完成第二批契约/模型下沉（`UserSessionRepository` + `User`） | - | `core/domain` 补齐 `kotlinx-coroutines-core`、`core/model` 启用 serialization，`app` 补齐 `core:model` 直连依赖；本地编译/lint 通过 |
+| 2026-02-15 | D61 | G4 | 已完成第二批契约/模型下沉（`UserSessionRepository` + `User`） | 380450c | `Android CI#22035810460` success；`core/domain` 补齐 `kotlinx-coroutines-core`、`core/model` 启用 serialization，`app` 补齐 `core:model` 直连依赖 |

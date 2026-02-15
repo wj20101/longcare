@@ -448,3 +448,6 @@
 - 本地验收（D61-第二批）：
   - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
   - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
+- 远端验收（D61-第二批）：
+  - `Android CI#22035810460`（commit `380450c`）`completed/success`。
+  - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22035810460`。
