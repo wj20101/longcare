@@ -17,6 +17,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
+import androidx.core.content.IntentCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.ytone.longcare.common.utils.logE
@@ -92,12 +93,14 @@ class AlarmRingtoneService : Service() {
         wakeLock?.acquire(10 * 60 * 1000L /* 10 minutes */)
         
         
-        val request = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent?.getParcelableExtra(EXTRA_REQUEST, OrderInfoRequestModel::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            intent?.getParcelableExtra(EXTRA_REQUEST)
-        } ?: OrderInfoRequestModel(orderId = -1L, planId = 0)
+        val request =
+            intent?.let {
+                IntentCompat.getParcelableExtra(
+                    it,
+                    EXTRA_REQUEST,
+                    OrderInfoRequestModel::class.java
+                )
+            } ?: OrderInfoRequestModel(orderId = -1L, planId = 0)
         
         val serviceName = intent?.getStringExtra(EXTRA_SERVICE_NAME) ?: "未知服务"
         

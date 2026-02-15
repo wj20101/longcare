@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.IntentCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
@@ -98,12 +99,12 @@ class CountdownAlarmActivity : AppCompatActivity() {
         
         logI("Window flags 已设置")
         
-        val request = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra(EXTRA_REQUEST, com.ytone.longcare.api.request.OrderInfoRequestModel::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            intent.getParcelableExtra(EXTRA_REQUEST)
-        } ?: com.ytone.longcare.api.request.OrderInfoRequestModel(orderId = -1L, planId = 0)
+        val request =
+            IntentCompat.getParcelableExtra(
+                intent,
+                EXTRA_REQUEST,
+                com.ytone.longcare.api.request.OrderInfoRequestModel::class.java
+            ) ?: com.ytone.longcare.api.request.OrderInfoRequestModel(orderId = -1L, planId = 0)
         
         val orderId = request.orderId.toString()
         val serviceName = intent.getStringExtra(EXTRA_SERVICE_NAME) ?: "护理服务"

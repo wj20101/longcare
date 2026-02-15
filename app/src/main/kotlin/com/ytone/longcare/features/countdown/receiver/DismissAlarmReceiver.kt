@@ -3,6 +3,7 @@ package com.ytone.longcare.features.countdown.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.core.content.IntentCompat
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
@@ -23,12 +24,12 @@ class DismissAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         logI("DismissAlarmReceiver: 收到关闭响铃广播")
         
-        val request = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra(CountdownNotificationManager.EXTRA_REQUEST, OrderInfoRequestModel::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            intent.getParcelableExtra(CountdownNotificationManager.EXTRA_REQUEST)
-        } ?: OrderInfoRequestModel(orderId = 0L, planId = 0)
+        val request =
+            IntentCompat.getParcelableExtra(
+                intent,
+                CountdownNotificationManager.EXTRA_REQUEST,
+                OrderInfoRequestModel::class.java
+            ) ?: OrderInfoRequestModel(orderId = 0L, planId = 0)
         
         val orderId = request.orderId
         val serviceName = intent.getStringExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME) ?: ""

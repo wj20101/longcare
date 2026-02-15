@@ -40,6 +40,16 @@
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。
   - 预期结果：日常提交只跑主 CI；baseline 仅按周定时或手动执行。
+- Jetpack 兼容函数优化（倒计时链路）
+  - 将倒计时相关组件中的 `Parcelable` 读取统一迁移到 `IntentCompat.getParcelableExtra(...)`，移除手写 `SDK_INT >= TIRAMISU` 分支与 `@Suppress(\"DEPRECATION\")`。
+  - 变更文件：
+    - `app/src/main/kotlin/com/ytone/longcare/presentation/countdown/CountdownAlarmActivity.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/features/countdown/receiver/CountdownAlarmReceiver.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/features/countdown/receiver/DismissAlarmReceiver.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/features/countdown/service/AlarmRingtoneService.kt`
+  - 验证：
+    - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS
+    - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS
 - 执行 `D33 | F6`：完成共享 action 抽象并接入 release/baseline/ci。
   - 新增 `.github/actions/android-build-env/action.yml`，统一 JDK/Gradle/Android SDK 初始化与质量守卫步骤。
   - 三套 workflow 改为调用共享 action，减少重复步骤维护成本。

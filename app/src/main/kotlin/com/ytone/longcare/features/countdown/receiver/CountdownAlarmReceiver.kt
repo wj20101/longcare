@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
+import androidx.core.content.IntentCompat
 import androidx.core.content.getSystemService
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
@@ -29,12 +30,12 @@ class CountdownAlarmReceiver : BroadcastReceiver() {
         logI("🔔 收到倒计时闹钟广播")
         logI("========================================")
         
-        val request = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra(CountdownNotificationManager.EXTRA_REQUEST, OrderInfoRequestModel::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            intent.getParcelableExtra(CountdownNotificationManager.EXTRA_REQUEST)
-        } ?: OrderInfoRequestModel(orderId = -1L, planId = 0)
+        val request =
+            IntentCompat.getParcelableExtra(
+                intent,
+                CountdownNotificationManager.EXTRA_REQUEST,
+                OrderInfoRequestModel::class.java
+            ) ?: OrderInfoRequestModel(orderId = -1L, planId = 0)
         
         val orderId = request.orderId
         val serviceName = intent.getStringExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME) ?: "未知服务"
