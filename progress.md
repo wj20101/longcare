@@ -334,3 +334,13 @@
 - 远端验收（D55）：
   - `Android CI#22033982248`（commit `3d3a594`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22033982248`。
+- 执行 `D56 | F23`：ServiceTime 通知兜底协程化。
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/features/service/ServiceTimeNotificationManager.kt`：
+    - 用 `CoroutineScope + Job` 替换 `Handler + Runnable` 兜底任务；
+    - `scheduleHandlerNotification()` 改为 `launch + delay`，增加 `CancellationException` 分支；
+    - `cancelHandlerNotification()` 改为 `Job.cancel()`，防止回调残留。
+  - 同步更新注释与日志文案为 `Coroutine fallback` 语义。
+- 本地验收（D56）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
+- 剩余未完成优化项基线（D56 后）：`F21`、`F24`。

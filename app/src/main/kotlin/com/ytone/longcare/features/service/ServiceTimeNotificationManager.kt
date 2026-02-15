@@ -6,8 +6,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import androidx.core.app.AlarmManagerCompat
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
@@ -20,6 +18,13 @@ import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.service.receiver.ServiceTimeAlarmReceiver
 import com.ytone.longcare.features.service.storage.PendingOrdersStorage
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -27,7 +32,7 @@ import javax.inject.Singleton
 
 /**
  * 服务时间结束通知管理器
- * 实现三重保障机制：AlarmManager + WorkManager + Handler
+ * 实现三重保障机制：AlarmManager + WorkManager + Coroutine fallback
  * 确保服务时间到达时100%触发通知
  */
 @Singleton
@@ -38,8 +43,8 @@ class ServiceTimeNotificationManager @Inject constructor(
     private val workManager: WorkManager,
     private val pendingOrdersStorage: PendingOrdersStorage
 ) {
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private val handlerRunnables = ConcurrentHashMap<Long, Runnable>()
+    private val fallbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val fallbackJobs = ConcurrentHashMap<Long, Job>()
 
     companion object {
         // 通知渠道ID
@@ -113,7 +118,7 @@ class ServiceTimeNotificationManager @Inject constructor(
             // 第二重保障：WorkManager（应对设备休眠）
             scheduleWorkManagerNotification(orderId, serviceName, delayMillis)
             
-            // 第三重保障：Handler（应用内兜底）
+            // 第三重保障：Coroutine fallback（应用内兜底）
             scheduleHandlerNotification(orderId, serviceName, delayMillis)
             
             logI("三重保障通知调度完成: orderId=$orderId")
@@ -140,7 +145,7 @@ class ServiceTimeNotificationManager @Inject constructor(
             // 取消WorkManager
             cancelWorkManagerNotification(orderId)
 
-            // 取消Handler
+            // 取消Coroutine fallback
             cancelHandlerNotification(orderId)
             
             // 清除处理标记
@@ -244,7 +249,7 @@ class ServiceTimeNotificationManager @Inject constructor(
     }
 
     /**
-     * 第三重保障：Handler
+     * 第三重保障：Coroutine fallback
      */
     private fun scheduleHandlerNotification(
         orderId: Long,
@@ -253,25 +258,27 @@ class ServiceTimeNotificationManager @Inject constructor(
     ) {
         try {
             cancelHandlerNotification(orderId)
-            val runnable = Runnable {
+            val job = fallbackScope.launch {
                 try {
+                    delay(delayMillis.coerceAtLeast(0L))
                     if (!isNotificationAlreadyProcessed(orderId)) {
-                        logI("Handler兜底通知触发: orderId=$orderId")
+                        logI("Coroutine兜底通知触发: orderId=$orderId")
                         showServiceTimeEndNotification(orderId, serviceName)
                     }
+                } catch (e: CancellationException) {
+                    logI("Coroutine兜底任务已取消: orderId=$orderId")
                 } catch (e: Exception) {
-                    logE("Handler通知执行失败: ${e.message}")
+                    logE("Coroutine兜底通知执行失败: ${e.message}")
                 } finally {
-                    handlerRunnables.remove(orderId)
+                    fallbackJobs.remove(orderId)
                 }
             }
-            handlerRunnables[orderId] = runnable
-            mainHandler.postDelayed(runnable, delayMillis)
+            fallbackJobs[orderId] = job
 
-            logI("Handler通知已设置: orderId=$orderId, delay=$delayMillis")
+            logI("Coroutine兜底通知已设置: orderId=$orderId, delay=$delayMillis")
             
         } catch (e: Exception) {
-            logE("设置Handler通知失败: ${e.message}")
+            logE("设置Coroutine兜底通知失败: ${e.message}")
             throw e
         }
     }
@@ -369,12 +376,12 @@ class ServiceTimeNotificationManager @Inject constructor(
     }
 
     /**
-     * 取消Handler通知
+     * 取消Coroutine fallback通知
      */
     private fun cancelHandlerNotification(orderId: Long) {
-        val runnable = handlerRunnables.remove(orderId) ?: return
-        mainHandler.removeCallbacks(runnable)
-        logI("Handler通知已取消: orderId=$orderId")
+        val job = fallbackJobs.remove(orderId) ?: return
+        job.cancel()
+        logI("Coroutine兜底通知已取消: orderId=$orderId")
     }
 
     /**
