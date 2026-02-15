@@ -62,6 +62,12 @@
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - 远端验收（D35）：
   - `Android CI#22031692880`（commit `931c3c2`）`completed/success`。
+- 执行 `D36 | F9`：新增 action 版本稳定性守卫。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：
+    - 强制关键 workflow 使用 `actions/checkout@v6`；
+    - 阻断可变 action 引用（`@main`/`@master`/`@HEAD`）。
+- 本地验收（D36）：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - CI 触发优化：减少每次提交重复流水线
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。

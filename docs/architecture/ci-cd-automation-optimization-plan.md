@@ -28,8 +28,9 @@
 | F6 | release/baseline 可复用 workflow 抽象 | P2 | 进一步减少重复配置与维护成本 |
 | F7 | face-sdk migration workflow 规范统一 | P1 | 收敛环境初始化、并发控制与失败诊断标准 |
 | F8 | workflow 最小权限守卫精确校验 | P1 | 防止 `permissions` 回退导致权限扩大 |
+| F9 | action 版本稳定性守卫 | P1 | 防止可变引用（`@main/@master`）引入不确定性 |
 
-## 3. 逐日执行计划（D28~D35）
+## 3. 逐日执行计划（D28~D36）
 
 | 日程 | 对应任务 | 具体文件改动清单 | 当日验收门禁 | 状态 |
 |---|---|---|---|---|
@@ -41,6 +42,7 @@
 | D33 | F6 | `.github/actions/android-build-env/action.yml`、`.github/workflows/android-ci.yml`、`.github/workflows/android-release.yml`、`.github/workflows/baseline-profile.yml`、`scripts/quality/verify_ci_workflow_quality.sh` | 重复步骤收敛且功能一致 | DONE |
 | D34 | F7 | `.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh` | face-sdk workflow 与主流水线守卫标准一致 | DONE |
 | D35 | F8 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 权限守卫可阻断 read/write 配置回退 | DONE |
+| D36 | F9 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Action 引用稳定性守卫可阻断可变版本 | DONE |
 
 ## 4. 本轮已执行改动明细
 
@@ -63,6 +65,9 @@
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 6. workflow 安全守卫升级：最小权限（`permissions`）精确校验  
+   - `scripts/quality/verify_ci_workflow_quality.sh`
+
+7. workflow 供应链稳定性守卫：阻断可变 action 引用  
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 ## 5. 验收记录（本轮）
@@ -177,5 +182,20 @@
     - `android-ci` 与 `face-sdk-migration-check` 必须 `contents: read`；
     - `android-release` 必须 `contents: write`；
     - `baseline-profile` 必须同时具备 `contents: write` 与 `pull-requests: write`。
+- 验证：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+
+## 12. Action 版本稳定性守卫执行记录（2026-02-15）
+
+- 任务：`D36 | F9`
+- 改动文件：
+  - `scripts/quality/verify_ci_workflow_quality.sh`
+  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `progress.md`
+- 具体改动：
+  - 在 workflow 守卫中新增 action 版本稳定性校验：
+    - 四条关键 workflow 必须使用 `actions/checkout@v6`；
+    - 禁止使用可变 action 引用（`@main`、`@master`、`@HEAD`）。
+  - 目标：降低上游 action 非预期变更导致的 CI 不确定性。
 - 验证：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS

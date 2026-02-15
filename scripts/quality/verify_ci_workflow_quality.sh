@@ -86,6 +86,8 @@ for workflow in "${WORKFLOWS[@]}"; do
   require_pattern "${workflow}" "cancel-in-progress:[[:space:]]*true" "cancel-in-progress enabled"
   require_pattern "${workflow}" "permissions:" "has permissions block"
   require_pattern "${workflow}" "timeout-minutes:" "has job timeout"
+  require_pattern "${workflow}" "uses:[[:space:]]*actions/checkout@v6" "uses pinned checkout action"
+  require_absent_pattern "${workflow}" "uses:[[:space:]]*[^[:space:]]+@(main|master|HEAD)" "does not use mutable action refs"
   require_any_pattern "${workflow}" "uses:[[:space:]]*gradle/actions/setup-gradle@v5" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "uses setup-gradle action (direct or shared)"
   require_any_pattern "${workflow}" "bash scripts/quality/verify_gradle_stability\\.sh" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "runs Gradle stability gate (direct or shared)"
 done
