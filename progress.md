@@ -60,6 +60,8 @@
     - 要求 `baseline-profile` 同时具备 `contents: write` 与 `pull-requests: write`。
 - 本地验收（D35）：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- 远端验收（D35）：
+  - `Android CI#22031692880`（commit `931c3c2`）`completed/success`。
 - CI 触发优化：减少每次提交重复流水线
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。
