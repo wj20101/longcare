@@ -385,3 +385,14 @@
 - 远端验收（D59）：
   - `Android CI#22034994873`（commit `500d8b9`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22034994873`。
+- 执行 `D60 | G3`（第一批）：下沉 `VerifyServicePersonUseCase` 到 `feature:identification` 并引入 app 侧网关适配。
+  - 新增 `feature/identification/src/main/kotlin/com/ytone/longcare/features/identification/domain/ServicePersonProfile.kt`。
+  - 新增 `feature/identification/src/main/kotlin/com/ytone/longcare/features/identification/domain/VerifyServicePersonDataGateway.kt`。
+  - 新增 `feature/identification/src/main/kotlin/com/ytone/longcare/features/identification/domain/VerifyServicePersonUseCase.kt`。
+  - 删除 `app/src/main/kotlin/com/ytone/longcare/features/identification/domain/VerifyServicePersonUseCase.kt`（迁移至 feature 模块）。
+  - 新增 `app/src/main/kotlin/com/ytone/longcare/features/identification/data/VerifyServicePersonDataGatewayImpl.kt`（桥接 `IdentificationRepository` 与本地缓存）。
+  - 新增 `app/src/main/kotlin/com/ytone/longcare/features/identification/di/IdentificationUseCaseGatewayModule.kt`（Hilt 绑定网关接口）。
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationViewModel.kt`：使用 `ServicePersonProfile` 调用迁移后的 usecase。
+- 本地验收（D60-第一批）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。

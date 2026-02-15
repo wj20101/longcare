@@ -531,7 +531,7 @@
 |---|---|---|---|---|
 | G1 | 低耦合契约首批实迁（core/common + core/domain + feature/login） | P0 | DONE | E3 |
 | G2 | 登录特性 UI/VM 解耦下沉（依赖接口化） | P1 | DONE | G1 |
-| G3 | identification 领域用例迁移到 feature module | P1 | TODO | G1 |
+| G3 | identification 领域用例迁移到 feature module | P1 | IN_PROGRESS | G1 |
 | G4 | Repository 接口与实现跨模块对齐（core/domain ↔ core/data） | P1 | TODO | G1 |
 | G5 | App 壳层二次收敛与模块可见性加严 | P1 | TODO | G2,G3,G4 |
 
@@ -571,7 +571,7 @@
 |---|---|---|---|---|
 | D58 | G1 | `ApiResult.kt`、`FaceVerificationModels.kt`、`LoginExt.kt`、`app/build.gradle.kts` | `:app:compileDebugKotlin` + `:app:lintDebug` 通过 | DONE |
 | D59 | G2 | `feature/login/**`、`app/features/login/**`、`AppNavigation.kt` | 登录链路 smoke 与 lint 通过 | DONE |
-| D60 | G3 | `feature/identification/domain/**`、`app/features/identification/domain/**` | identification 用例链路编译/单测通过 | TODO |
+| D60 | G3 | `feature/identification/domain/**`、`app/features/identification/domain/**` | identification 用例链路编译/单测通过 | IN_PROGRESS |
 | D61 | G4 | `core/domain/**`、`core/data/**`、`app/domain/**`、`app/data/**` | UI 不直接依赖 Impl，架构守卫通过 | TODO |
 | D62 | G5 | `AppNavigation.kt`、架构守卫脚本与 CI 门禁 | 模块边界回归在 CI 可阻断 | TODO |
 
@@ -581,3 +581,4 @@
 |---|---|---|---|---|---|
 | 2026-02-15 | D58 | G1 | 已完成首批低耦合实迁并通过编译/lint | eb82237 | `Android CI#22034778500` success；Core/Feature 不再仅占位，进入 G2~G5 业务迁移阶段 |
 | 2026-02-15 | D59 | G2 | 已完成登录特性导航依赖接口化（`NavController` -> `LoginFeatureActions`） | 500d8b9 | `Android CI#22034994873` success；新增 `LoginFeatureActions` 由路由层装配导航动作 |
+| 2026-02-15 | D60 | G3 | 已完成第一批 usecase 下沉（`VerifyServicePersonUseCase`） | - | 新增 `VerifyServicePersonDataGateway` 契约并在 `app` 侧落地适配实现，本地编译/lint 通过 |

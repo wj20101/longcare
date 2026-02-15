@@ -14,6 +14,7 @@ import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.features.identification.domain.SetupFaceResult
+import com.ytone.longcare.features.identification.domain.ServicePersonProfile
 import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
 import com.ytone.longcare.features.identification.domain.UploadElderPhotoResult
 import com.ytone.longcare.features.identification.domain.UploadElderPhotoUseCase
@@ -102,7 +103,7 @@ class IdentificationViewModel @Inject constructor(
      */
     fun verifyServicePerson(context: Context) {
         viewModelScope.launch {
-            when (val decision = verifyServicePersonUseCase.execute(getCurrentUser())) {
+            when (val decision = verifyServicePersonUseCase.execute(getCurrentUser()?.toServicePersonProfile())) {
                 is VerifyServicePersonDecision.UseCachedFace -> {
                     startSelfProvidedFaceVerificationWithBase64(
                         context = context,
@@ -135,6 +136,14 @@ class IdentificationViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private fun User.toServicePersonProfile(): ServicePersonProfile {
+        return ServicePersonProfile(
+            userId = userId,
+            userName = userName,
+            identityCardNumber = identityCardNumber,
+        )
     }
 
     private fun navigateToFaceCaptureForSetup() {
