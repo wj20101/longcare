@@ -319,3 +319,6 @@
   - `./gradlew --no-daemon :app:lintDebug`：PASS。
 - 剩余未完成优化项基线（D53 后）：`F21`、`F22`、`F23`、`F24`（详见 `docs/architecture/ci-cd-automation-optimization-plan.md` 第 24 节）。
 - D53 兼容性修正：`verify_lint_ignore_policy.sh` 去除 Bash 4 特性（`declare -A`、`mapfile`），确保 macOS / runner 默认 Bash 3.2 可执行。
+- 远端验收（D53）：
+  - `Android CI#22033904733`（commit `7515098`）`completed/success`。
+  - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22033904733`。
