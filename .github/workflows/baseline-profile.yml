@@ -155,3 +155,20 @@ jobs:
             baselineprofile/build/reports/**
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: baseline-profile-${{ github.job }}-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            app/build/reports/**
+            app/build/test-results/**
+            app/build/outputs/**
+            baselineprofile/build/reports/**
+            baselineprofile/build/outputs/**
+            build/reports/problems/**
+            **/hs_err_pid*.log
+            **/*.hprof
+          if-no-files-found: warn
+          retention-days: 14

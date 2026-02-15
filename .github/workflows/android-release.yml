@@ -283,6 +283,23 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-release-${{ github.job }}-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            app/build/reports/**
+            app/build/test-results/**
+            app/build/outputs/**
+            baselineprofile/build/reports/**
+            baselineprofile/build/outputs/**
+            build/reports/problems/**
+            **/hs_err_pid*.log
+            **/*.hprof
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Compute release metadata
         id: release_meta
         run: |
