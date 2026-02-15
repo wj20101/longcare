@@ -100,6 +100,12 @@ if [[ ! -f "${SHARED_ANDROID_BUILD_ENV_ACTION}" ]]; then
   EXIT_CODE=1
 else
   require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/quality/verify_jetpack_compat_apis\\.sh" "shared android build env runs jetpack compat api guard"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "uses:[[:space:]]*actions/setup-java@v5" "shared android build env pins setup-java@v5"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "uses:[[:space:]]*gradle/actions/setup-gradle@v5" "shared android build env pins setup-gradle@v5"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "uses:[[:space:]]*android-actions/setup-android@v3" "shared android build env pins setup-android@v3"
+  require_absent_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "uses:[[:space:]]*actions/setup-java@v([0-46-9]|[1-9][0-9]+)" "shared android build env does not use unexpected setup-java version"
+  require_absent_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "uses:[[:space:]]*gradle/actions/setup-gradle@v([0-46-9]|[1-9][0-9]+)" "shared android build env does not use unexpected setup-gradle version"
+  require_absent_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "uses:[[:space:]]*android-actions/setup-android@v([0-24-9]|[1-9][0-9]+)" "shared android build env does not use unexpected setup-android version"
 fi
 
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "paths-ignore:" "android-ci has paths-ignore optimization"
@@ -125,6 +131,12 @@ require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "name:[[:space:]]
 require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "name:[[:space:]]*Upload failure diagnostics" "baseline-profile uploads failure diagnostics"
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Upload failure diagnostics" "android-release uploads failure diagnostics"
 require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "name:[[:space:]]*Upload failure diagnostics" "face-sdk-migration-check uploads failure diagnostics"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "uses:[[:space:]]*reactivecircus/android-emulator-runner@v2" "android-ci pins emulator runner action"
+require_absent_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "uses:[[:space:]]*reactivecircus/android-emulator-runner@v([013-9]|[1-9][0-9]+)" "android-ci does not use unexpected emulator runner version"
+require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "uses:[[:space:]]*peter-evans/create-pull-request@v8" "baseline-profile pins create-pull-request action"
+require_absent_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "uses:[[:space:]]*peter-evans/create-pull-request@v([0-79]|[1-9][0-9]+)" "baseline-profile does not use unexpected create-pull-request version"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "uses:[[:space:]]*softprops/action-gh-release@v2" "android-release pins gh-release action"
+require_absent_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "uses:[[:space:]]*softprops/action-gh-release@v([013-9]|[1-9][0-9]+)" "android-release does not use unexpected gh-release version"
 
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[ci-workflow-quality] verification failed."

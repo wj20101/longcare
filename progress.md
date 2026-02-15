@@ -57,6 +57,21 @@
 - 远端验收（D44）：
   - `Android CI#22032667333`（commit `73fa81a`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22032667333`。
+- 执行 `D45 | F12`：新增关键外部 Action 版本守卫。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：
+    - 共享 action 固定版本守卫：
+      - `actions/setup-java@v5`
+      - `gradle/actions/setup-gradle@v5`
+      - `android-actions/setup-android@v3`
+    - workflow 固定版本守卫：
+      - `android-ci` -> `reactivecircus/android-emulator-runner@v2`
+      - `baseline-profile` -> `peter-evans/create-pull-request@v8`
+      - `android-release` -> `softprops/action-gh-release@v2`
+    - 新增反向规则：阻断上述 action 的非预期版本回归。
+  - 更新 `docs/architecture/ci-cd-automation-optimization-plan.md`：
+    - 新增 `F12` 与 `D45`，补充执行记录。
+- 本地验收（D45）：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - Actions 监控（持续）：
   - 监控 run：`Android CI#22031459440`（commit `6b25e95`），最终 `completed/success`。
   - 验证点：`detect-affected` 中新增的 `Publish affected plan summary` 步骤执行成功。

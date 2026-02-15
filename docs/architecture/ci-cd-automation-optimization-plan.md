@@ -31,6 +31,7 @@
 | F9 | action 版本稳定性守卫 | P1 | 防止可变引用（`@main/@master`）引入不确定性 |
 | F10 | artifact action 版本固定守卫 | P1 | 防止上传产物 action 版本漂移导致兼容风险 |
 | F11 | Jetpack 兼容 API 回归守卫 | P1 | 防止直接平台 API 回归导致 targetSdk 35/36 兼容风险 |
+| F12 | 关键外部 Action 版本守卫 | P1 | 防止核心三方 action 版本漂移导致 CI 行为变化 |
 
 ## 3. 逐日执行计划（D28~D44）
 
@@ -47,6 +48,7 @@
 | D36 | F9 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Action 引用稳定性守卫可阻断可变版本 | DONE |
 | D40 | F10 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 上传产物 action 版本固定守卫可阻断旧版本回归 | DONE |
 | D44 | F11 | `scripts/quality/verify_jetpack_compat_apis.sh`、`.github/actions/android-build-env/action.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Jetpack 兼容 API 回归在 CI 中可自动阻断 | DONE |
+| D45 | F12 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 关键 action 版本漂移可在 CI 守卫阶段阻断 | DONE |
 
 ## 4. 本轮已执行改动明细
 
@@ -80,6 +82,9 @@
 9. Jetpack 兼容 API 回归守卫：新增兼容 API 违规扫描并接入共享 CI action  
    - `scripts/quality/verify_jetpack_compat_apis.sh`
    - `.github/actions/android-build-env/action.yml`
+   - `scripts/quality/verify_ci_workflow_quality.sh`
+
+10. 关键外部 Action 版本守卫：固定并校验关键三方 action 版本  
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 ## 5. 验收记录（本轮）
@@ -246,4 +251,25 @@
   - workflow 守卫脚本新增共享 action 校验，确保 Jetpack 守卫不会被误删。
 - 验证：
   - `bash scripts/quality/verify_jetpack_compat_apis.sh`：PASS
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+
+## 15. 关键外部 Action 版本守卫执行记录（2026-02-15）
+
+- 任务：`D45 | F12`
+- 改动文件：
+  - `scripts/quality/verify_ci_workflow_quality.sh`
+  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `progress.md`
+- 具体改动：
+  - 对共享 action 增加版本守卫：
+    - `actions/setup-java@v5`
+    - `gradle/actions/setup-gradle@v5`
+    - `android-actions/setup-android@v3`
+    - 并阻断上述 action 的非预期版本回归。
+  - 对 workflow 增加关键 action 版本守卫：
+    - `android-ci`: `reactivecircus/android-emulator-runner@v2`
+    - `baseline-profile`: `peter-evans/create-pull-request@v8`
+    - `android-release`: `softprops/action-gh-release@v2`
+    - 并阻断上述 action 的非预期版本回归。
+- 验证：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
