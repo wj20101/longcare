@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import androidx.core.app.AlarmManagerCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.app.PendingIntentCompat
 import androidx.core.content.edit
 import androidx.work.*
 import com.ytone.longcare.common.utils.logE
@@ -167,12 +168,13 @@ class ServiceTimeNotificationManager @Inject constructor(
                 action = ACTION_SERVICE_TIME_END_ALARM
             }
 
-            val pendingIntent = PendingIntent.getBroadcast(
+            val pendingIntent = PendingIntentCompat.getBroadcast(
                 context,
                 buildAlarmRequestCode(orderId),
                 intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+                PendingIntent.FLAG_UPDATE_CURRENT,
+                false
+            ) ?: throw IllegalStateException("创建 AlarmManager PendingIntent 失败: orderId=$orderId")
 
             // Android 12+ 无精确闹钟权限时降级为非精确闹钟，避免 SecurityException。
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !canScheduleExactAlarms()) {
@@ -333,11 +335,12 @@ class ServiceTimeNotificationManager @Inject constructor(
             val intent = Intent(context, ServiceTimeAlarmReceiver::class.java).apply {
                 action = ACTION_SERVICE_TIME_END_ALARM
             }
-            val pendingIntent = PendingIntent.getBroadcast(
+            val pendingIntent = PendingIntentCompat.getBroadcast(
                 context,
                 buildAlarmRequestCode(orderId),
                 intent,
-                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_NO_CREATE,
+                false
             )
             if (pendingIntent == null) {
                 logI("AlarmManager通知不存在，跳过取消: orderId=$orderId")

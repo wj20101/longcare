@@ -12,6 +12,7 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.PendingIntentCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.ytone.longcare.R
@@ -180,24 +181,31 @@ class CountdownForegroundService : Service() {
             putExtra("orderId", orderId)
         }
 
-        val pendingIntent = PendingIntent.getActivity(
+        val pendingIntent = PendingIntentCompat.getActivity(
             this,
             0,
             intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT,
+            false
         )
 
-        return NotificationCompat.Builder(this, FOREGROUND_NOTIFICATION_CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, FOREGROUND_NOTIFICATION_CHANNEL_ID)
             .setContentTitle(contentTitle)
             .setContentText(contentText)
             .setSmallIcon(R.mipmap.app_logo_round)
-            .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setOngoing(true)
             .setAutoCancel(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .build()
+
+        if (pendingIntent != null) {
+            builder.setContentIntent(pendingIntent)
+        } else {
+            logI("CountdownForegroundService: PendingIntentCompat 返回 null，通知点击跳转不可用")
+        }
+
+        return builder.build()
     }
 
     /**

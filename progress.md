@@ -108,6 +108,17 @@
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - 远端验收（D40）：
   - `Android CI#22032172402`（commit `7c65949`）`completed/success`。
+- 执行 `D41 | Jetpack PendingIntentCompat 扩展迁移（三条通知链路）`：
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/features/countdown/manager/CountdownNotificationManager.kt`：
+    - `getBroadcast/getActivity` 统一迁移到 `PendingIntentCompat`；
+    - 对关键 PendingIntent 增加 `null` 分支，按场景降级（如 AlarmClock -> whileIdle，通知 action/contentIntent 兜底）。
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/features/service/ServiceTimeNotificationManager.kt`：
+    - `AlarmManager` 设置/取消分支改为 `PendingIntentCompat.getBroadcast`。
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/features/servicecountdown/service/CountdownForegroundService.kt`：
+    - 通知点击 PendingIntent 改为 `PendingIntentCompat.getActivity`，并在 `null` 时记录日志降级。
+- 本地验收（D41）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
 - CI 触发优化：减少每次提交重复流水线
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。

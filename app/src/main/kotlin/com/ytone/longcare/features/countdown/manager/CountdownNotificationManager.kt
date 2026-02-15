@@ -10,6 +10,7 @@ import androidx.core.app.AlarmManagerCompat
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.PendingIntentCompat
 import androidx.core.content.edit
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
@@ -83,12 +84,16 @@ class CountdownNotificationManager @Inject constructor(
                 action = "$ACTION_COUNTDOWN_ALARM_PREFIX${request.orderId}"
             }
 
-            val pendingIntent = PendingIntent.getBroadcast(
+            val pendingIntent = PendingIntentCompat.getBroadcast(
                 context,
                 COUNTDOWN_ALARM_REQUEST_CODE,
                 intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+                PendingIntent.FLAG_UPDATE_CURRENT,
+                false
+            ) ?: run {
+                logE("❌ 创建倒计时闹钟 PendingIntent 失败")
+                return
+            }
 
             // Activity PendingIntent 用于 AlarmClock 的显示入口和全屏
             val alarmActivityIntent = CountdownAlarmActivity.createIntent(
@@ -97,11 +102,12 @@ class CountdownNotificationManager @Inject constructor(
                 serviceName,
                 autoCloseEnabled = false // 禁用自动关闭，确保用户看到提醒
             )
-            val alarmActivityPendingIntent = PendingIntent.getActivity(
+            val alarmActivityPendingIntent = PendingIntentCompat.getActivity(
                 context,
                 COUNTDOWN_ALARM_ACTIVITY_REQUEST_CODE,
                 alarmActivityIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_UPDATE_CURRENT,
+                false
             )
 
             val canUseExactAlarm = canScheduleExactAlarms()
@@ -109,7 +115,7 @@ class CountdownNotificationManager @Inject constructor(
             // 无精确闹钟能力时降级为非精确闹钟，避免 SecurityException。
             val shouldUseAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && canUseExactAlarm
 
-            if (shouldUseAlarmClock) {
+            if (shouldUseAlarmClock && alarmActivityPendingIntent != null) {
                 // 使用 AlarmClock 确保锁屏提醒
                 val alarmClockInfo = AlarmManager.AlarmClockInfo(
                     triggerTimeMillis,
@@ -119,6 +125,9 @@ class CountdownNotificationManager @Inject constructor(
                 alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
                 logI("✅ 通过AlarmClock设置倒计时闹钟(确保锁屏提醒): orderId=${request.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (shouldUseAlarmClock && alarmActivityPendingIntent == null) {
+                    logE("⚠️ AlarmClock 所需 Activity PendingIntent 为空，降级为 setAndAllowWhileIdle")
+                }
                 alarmManager.setAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
                     triggerTimeMillis,
@@ -190,11 +199,12 @@ class CountdownNotificationManager @Inject constructor(
             // 方法1：使用FLAG_UPDATE_CURRENT创建PendingIntent来取消
             // 这种方式不需要知道原来的action，只要requestCode相同就能取消
             val intent = Intent(context, CountdownAlarmReceiver::class.java)
-            val pendingIntent = PendingIntent.getBroadcast(
+            val pendingIntent = PendingIntentCompat.getBroadcast(
                 context,
                 COUNTDOWN_ALARM_REQUEST_CODE,
                 intent,
-                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_NO_CREATE,
+                false
             )
             if (pendingIntent == null) {
                 logI("未找到通用倒计时闹钟PendingIntent，跳过通用取消")
@@ -258,11 +268,12 @@ class CountdownNotificationManager @Inject constructor(
             putExtra(EXTRA_REQUEST, request)
             putExtra(EXTRA_SERVICE_NAME, serviceName)
         }
-        val dismissPendingIntent = PendingIntent.getBroadcast(
+        val dismissPendingIntent = PendingIntentCompat.getBroadcast(
             context,
             DISMISS_ALARM_REQUEST_CODE,
             dismissIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT,
+            false
         )
         
         // 创建启动CountdownAlarmActivity的PendingIntent
@@ -278,11 +289,12 @@ class CountdownNotificationManager @Inject constructor(
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
-        val alarmActivityPendingIntent = PendingIntent.getActivity(
+        val alarmActivityPendingIntent = PendingIntentCompat.getActivity(
             context,
             COUNTDOWN_ALARM_ACTIVITY_REQUEST_CODE,
             alarmActivityIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT,
+            false
         )
         
         // 检查是否有全屏Intent权限（使用Compat API）
@@ -304,18 +316,30 @@ class CountdownNotificationManager @Inject constructor(
             .setVibrate(null)
             .setLights(0xFF0000FF.toInt(), 1000, 500)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setContentIntent(alarmActivityPendingIntent)
-            .addAction(
+            .setTimeoutAfter(0)
+
+        if (alarmActivityPendingIntent != null) {
+            builder.setContentIntent(alarmActivityPendingIntent)
+        } else {
+            logE("⚠️ 倒计时通知 contentIntent 为空，点击通知不会跳转")
+        }
+
+        if (dismissPendingIntent != null) {
+            builder.addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
                 "关闭响铃",
                 dismissPendingIntent
             )
-            .setTimeoutAfter(0)
+        } else {
+            logE("⚠️ 倒计时通知关闭动作 PendingIntent 为空，忽略关闭按钮")
+        }
         
         // 设置全屏Intent（关键：在锁屏时显示Activity）
-        if (canUseFullScreenIntent) {
+        if (canUseFullScreenIntent && alarmActivityPendingIntent != null) {
             builder.setFullScreenIntent(alarmActivityPendingIntent, true)
             logI("✅ 已设置fullScreenIntent")
+        } else if (canUseFullScreenIntent) {
+            logE("❌ 可用 fullScreenIntent 但 Activity PendingIntent 为空，跳过设置")
         } else {
             logE("❌ 无法使用fullScreenIntent，需要用户授权")
             // Fallback: 增强 Heads-up 通知效果
@@ -376,11 +400,12 @@ class CountdownNotificationManager @Inject constructor(
         val intent = Intent(context, CountdownAlarmReceiver::class.java).apply {
             action = "$ACTION_COUNTDOWN_ALARM_PREFIX$orderId"
         }
-        val pendingIntent = PendingIntent.getBroadcast(
+        val pendingIntent = PendingIntentCompat.getBroadcast(
             context,
             COUNTDOWN_ALARM_REQUEST_CODE,
             intent,
-            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_NO_CREATE,
+            false
         )
         if (pendingIntent == null) {
             logI("订单 $orderId 的倒计时闹钟不存在，跳过取消")
