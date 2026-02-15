@@ -607,4 +607,4 @@
 | 2026-02-15 | D61 | G4 | 已完成首批契约下沉（`LocationRepository` -> `core/domain`） | 6377451 | `Android CI#22035636390` success；`core/domain` 新增对 `core:common` 依赖并通过全量门禁 |
 | 2026-02-15 | D61 | G4 | 已完成第二批契约/模型下沉（`UserSessionRepository` + `User`） | 380450c | `Android CI#22035810460` success；`core/domain` 补齐 `kotlinx-coroutines-core`、`core/model` 启用 serialization，`app` 补齐 `core:model` 直连依赖 |
 | 2026-02-15 | D61 | G4 | 已完成第三批契约/模型下沉（`SystemRepository` + `AppVersionModel`） | 74a4561 | `Android CI#22036033588` success；`SystemRepository` 迁入 `core/domain`、`AppVersionModel` 迁入 `core/model`，`core:model` 补齐 `moshi-kotlin` |
-| 2026-02-15 | D61 | G4 | 已完成第四批契约/模型下沉（`LoginRepository`、`ProfileRepository` + 登录配置统计模型） | - | `LoginRepository/ProfileRepository` 迁入 `core/domain`，`LoginResultModel/StartConfigResultModel/NurseServiceTimeModel` 迁入 `core/model`；本地编译/lint 通过 |
+| 2026-02-15 | D61 | G4 | 已完成第四批契约/模型下沉（`LoginRepository`、`ProfileRepository` + 登录配置统计模型） | 3a779cf | `Android CI#22036335583` success；`LoginRepository/ProfileRepository` 迁入 `core/domain`，`LoginResultModel/StartConfigResultModel/NurseServiceTimeModel` 迁入 `core:model` |
