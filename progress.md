@@ -498,3 +498,10 @@
 - 远端验收（D61-第六批）：
   - `Android CI#22036557622`（commit `ddbc69b`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22036557622`。
+- 执行 `D61 | G4`（第七批）：迁移 `TencentFaceRepository` 契约及腾讯人脸 API 响应模型到 Core 模块。
+  - 文件迁移：
+    - `app/src/main/kotlin/com/ytone/longcare/domain/faceauth/TencentFaceRepository.kt` -> `core/domain/src/main/kotlin/com/ytone/longcare/domain/faceauth/TencentFaceRepository.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/api/response/TencentFaceApiResponse.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/api/response/TencentFaceApiResponse.kt`
+- 本地验收（D61-第七批）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
