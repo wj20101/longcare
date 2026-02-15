@@ -1,7 +1,6 @@
 package com.ytone.longcare.model
 
 import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.navigation.OrderNavParams
 import kotlinx.serialization.Serializable
 
 /**
@@ -44,16 +43,6 @@ data class OrderKey(
 }
 
 // ========== 转换扩展函数 ==========
-
-/**
- * OrderNavParams → OrderKey
- */
-fun OrderNavParams.toOrderKey() = OrderKey(orderId, planId)
-
-/**
- * OrderKey → OrderNavParams
- */
-fun OrderKey.toNavParams() = OrderNavParams(orderId, planId)
 
 /**
  * OrderInfoRequestModel → OrderKey

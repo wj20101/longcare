@@ -542,3 +542,15 @@
 - 远端验收（D61-第九批）：
   - `Android CI#22041190992`（commit `02cd7ba`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22041190992`。
+- 执行 `D61 | G4`（第十批）：迁移 `OrderDetailRepository/OrderImageRepository` 与订单本地实体到 Core 模块。
+  - 文件迁移：
+    - `app/src/main/kotlin/com/ytone/longcare/domain/repository/OrderDetailRepository.kt` -> `core/domain/src/main/kotlin/com/ytone/longcare/domain/repository/OrderDetailRepository.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/domain/repository/OrderImageRepository.kt` -> `core/domain/src/main/kotlin/com/ytone/longcare/domain/repository/OrderImageRepository.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/model/OrderKey.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/model/OrderKey.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/data/database/entity/*.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/data/database/entity/*.kt`
+  - 兼容性与构建修复：
+    - 新增 `app/src/main/kotlin/com/ytone/longcare/model/OrderKeyNavExt.kt`，将 `OrderNavParams` 相关扩展保留在 app 层，避免 core 依赖 navigation。
+    - `core/model/build.gradle.kts` 新增 `implementation(libs.room.runtime)`，承接 Room 注解实体编译依赖。
+- 本地验收（D61-第十批）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。

@@ -20,4 +20,5 @@ android {
 dependencies {
     implementation(libs.moshi.kotlin)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.room.runtime)
 }
