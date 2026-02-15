@@ -90,6 +90,13 @@
   - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
 - 远端验收（D38）：
   - `Android CI#22031954112`（commit `4c37335`）`completed/success`。
+- 执行 `D39 | Jetpack 兼容 PendingIntent 适配（闹铃服务）`：
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/features/countdown/service/AlarmRingtoneService.kt`：
+    - 将 `PendingIntent.getActivity(...)` 替换为 `PendingIntentCompat.getActivity(...)`；
+    - 增加 `null` 返回分支处理，失败时回退 `startActivity(...)`，避免空安全风险。
+- 本地验收（D39）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
 - CI 触发优化：减少每次提交重复流水线
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。

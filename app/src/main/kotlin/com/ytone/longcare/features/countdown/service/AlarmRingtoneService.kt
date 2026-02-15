@@ -16,6 +16,7 @@ import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.PendingIntentCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.IntentCompat
 import androidx.core.content.ContextCompat
@@ -236,16 +237,23 @@ class AlarmRingtoneService : Service() {
             }
             
             // 针对 Android 10-13 的处理
-            val pendingIntent = PendingIntent.getActivity(
+            val pendingIntent = PendingIntentCompat.getActivity(
                 this,
                 0,
                 alarmIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_UPDATE_CURRENT,
+                false
             )
             
             try {
-                pendingIntent.send()
-                logI("AlarmRingtoneService: ✅ 通过 PendingIntent 启动 Activity 成功")
+                if (pendingIntent != null) {
+                    pendingIntent.send()
+                    logI("AlarmRingtoneService: ✅ 通过 PendingIntent 启动 Activity 成功")
+                } else {
+                    logI("AlarmRingtoneService: PendingIntentCompat 返回 null，回退 direct startActivity")
+                    startActivity(alarmIntent)
+                    logI("AlarmRingtoneService: ✅ 通过 startActivity 启动 Activity 成功")
+                }
             } catch (e: Exception) {
                 logE("AlarmRingtoneService: PendingIntent 启动失败，尝试直接 startActivity: ${e.message}")
                 startActivity(alarmIntent)
