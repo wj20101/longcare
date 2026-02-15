@@ -97,6 +97,8 @@
 - 本地验收（D39）：
   - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
   - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
+- 远端验收（D39）：
+  - `Android CI#22032057428`（commit `eae295d`）`completed/success`。
 - CI 触发优化：减少每次提交重复流水线
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。
