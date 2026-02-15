@@ -592,4 +592,4 @@
 | 2026-02-15 | D59 | G2 | 已完成登录特性导航依赖接口化（`NavController` -> `LoginFeatureActions`） | 500d8b9 | `Android CI#22034994873` success；新增 `LoginFeatureActions` 由路由层装配导航动作 |
 | 2026-02-15 | D60 | G3 | 已完成第一批 usecase 下沉（`VerifyServicePersonUseCase`） | b4e57f7 | `Android CI#22035189179` success；新增 `VerifyServicePersonDataGateway` 契约并在 `app` 侧落地适配实现 |
 | 2026-02-15 | D60 | G3 | 已完成第二批 usecase 下沉（`UploadElderPhotoUseCase`） | 98cbb3b | `Android CI#22035316587` success；新增 `UploadElderPhotoGateway` 契约并在 `app` 侧接入 `CosRepository/OrderRepository` |
-| 2026-02-15 | D60 | G3 | 已完成第三批 usecase 下沉（`SetupFaceUseCase`） | - | 新增 `SetupFaceGateway` 契约并在 `app` 侧接入上传/服务端设置/本地缓存，`app/features/identification/domain` 已迁空；本地编译/lint 通过 |
+| 2026-02-15 | D60 | G3 | 已完成第三批 usecase 下沉（`SetupFaceUseCase`） | e79675b | `Android CI#22035472683` success；新增 `SetupFaceGateway` 契约并在 `app` 侧接入上传/服务端设置/本地缓存，`app/features/identification/domain` 已迁空 |
