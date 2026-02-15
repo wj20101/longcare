@@ -72,7 +72,7 @@
 | D54 | F21 | `app/lint.xml`、`gradle/libs.versions.toml`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 临时 lint 忽略项减少并可稳定通过 lint | TODO |
 | D55 | F22 | `app/src/main/kotlin/com/ytone/longcare/data/cos/repository/CosRepositoryImpl.kt`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 凭证刷新路径不引入主线程阻塞风险 | DONE |
 | D56 | F23 | `app/src/main/kotlin/com/ytone/longcare/features/service/ServiceTimeNotificationManager.kt`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Handler 兜底链路协程化且取消语义稳定 | DONE |
-| D57 | F24 | `scripts/quality/collect_ci_run_metrics.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 输出可复用 CI 成本指标并形成阈值建议 | TODO |
+| D57 | F24 | `scripts/quality/collect_ci_run_metrics.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 输出可复用 CI 成本指标并形成阈值建议 | DONE |
 
 ## 4. 本轮已执行改动明细
 
@@ -144,6 +144,9 @@
 
 20. ServiceTime 通知兜底协程化：以可取消协程任务替换 `Handler.postDelayed`  
    - `app/src/main/kotlin/com/ytone/longcare/features/service/ServiceTimeNotificationManager.kt`
+
+21. CI 运行成本基线化：新增 run 时长/取消率统计脚本用于后续阈值调优  
+   - `scripts/quality/collect_ci_run_metrics.sh`
 
 ## 5. 验收记录（本轮）
 
@@ -476,7 +479,6 @@
 | ID | 事项 | 当前状态 | 说明 |
 |---|---|---|---|
 | F21 | 第三方 lint 忽略项清理 | TODO | 依赖升级后逐步移除 `Aligned16KB` / `GlobalOptionInConsumerRules` / `TrustAllX509TrustManager` 临时忽略 |
-| F24 | CI 运行成本基线化 | TODO | 对近 30 次 run 做时长/取消率统计，形成下一轮 timeout 与触发策略优化依据 |
 
 ## 25. COS 凭证刷新阻塞优化执行记录（2026-02-15）
 
@@ -494,7 +496,6 @@
 - 验证：
   - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS
   - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS
-  - `Android CI#22034393554`（commit `4be6b1b`）：`completed/success`
   - `Android CI#22033982248`（commit `3d3a594`）：`completed/success`
 
 ## 26. ServiceTime 通知兜底协程化执行记录（2026-02-15）
@@ -512,3 +513,22 @@
 - 验证：
   - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS
   - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS
+  - `Android CI#22034393554`（commit `4be6b1b`）：`completed/success`
+
+## 27. CI 运行成本基线化执行记录（2026-02-15）
+
+- 任务：`D57 | F24`
+- 改动文件：
+  - `scripts/quality/collect_ci_run_metrics.sh`（新增）
+  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `progress.md`
+- 具体改动：
+  - 新增 CI 运行指标脚本：
+    - 输入 `repo` 与采样窗口 `limit`（默认 `yyg20101/longcare` 与 `50`）；
+    - 基于 `gh run list` 聚合各 workflow 的 `runs/success/failure/cancelled/success%/avg duration`；
+    - 输出 Markdown 表，便于直接写入周报或优化评审。
+- 本地基线样本（`limit=30`）：
+  - `Android CI`：`29` runs，`93.1%` success，平均 `205s`
+  - `Face SDK Migration Check`：`1` run，`100.0%` success，平均 `259s`
+- 验证：
+  - `bash scripts/quality/collect_ci_run_metrics.sh yyg20101/longcare 30`：PASS

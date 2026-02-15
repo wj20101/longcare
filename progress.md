@@ -347,3 +347,11 @@
 - 远端验收（D56）：
   - `Android CI#22034393554`（commit `4be6b1b`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22034393554`。
+- 执行 `D57 | F24`：CI 运行成本基线化。
+  - 新增 `scripts/quality/collect_ci_run_metrics.sh`：按 workflow 聚合近期 runs 的成功率、取消率与平均时长。
+  - 本地基线样本（`limit=30`）：
+    - `Android CI`：`29` runs，`93.1%` success，平均 `205s`；
+    - `Face SDK Migration Check`：`1` run，`100.0%` success，平均 `259s`。
+- 本地验收（D57）：
+  - `bash scripts/quality/collect_ci_run_metrics.sh yyg20101/longcare 30`：PASS。
+- 剩余未完成优化项基线（D57 后）：`F21`。
