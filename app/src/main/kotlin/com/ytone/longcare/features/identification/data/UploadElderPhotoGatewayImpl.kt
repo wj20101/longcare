@@ -26,11 +26,12 @@ class UploadElderPhotoGatewayImpl @Inject constructor(
             folderType = CosConstants.DEFAULT_FOLDER_TYPE,
         )
         val uploadResult = cosRepository.uploadFile(uploadParams)
+        val uploadedKey = uploadResult.key
 
-        return if (!uploadResult.success || uploadResult.key == null) {
+        return if (!uploadResult.success || uploadedKey == null) {
             UploadElderPhotoSourceResult.Error(uploadResult.errorMessage ?: "图片上传失败")
         } else {
-            UploadElderPhotoSourceResult.Success(uploadedKey = uploadResult.key)
+            UploadElderPhotoSourceResult.Success(uploadedKey = uploadedKey)
         }
     }
 

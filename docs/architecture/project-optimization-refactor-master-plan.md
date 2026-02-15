@@ -578,12 +578,15 @@
 - `core/model/src/main/kotlin/com/ytone/longcare/api/request/SetFaceParamModel.kt`（模型下沉）
 - `core/model/src/main/kotlin/com/ytone/longcare/api/response/FaceResultModel.kt`（模型下沉）
 - `core/model/src/main/kotlin/com/ytone/longcare/api/response/TencentFaceApiResponse.kt`（模型下沉）
+- `core/model/src/main/kotlin/com/ytone/longcare/api/response/UploadTokenResultModel.kt`（模型下沉）
+- `core/model/src/main/kotlin/com/ytone/longcare/data/cos/model/CosModels.kt`（模型下沉）
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/system/SystemRepository.kt`（契约下沉）
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/login/LoginRepository.kt`（契约下沉）
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/profile/ProfileRepository.kt`（契约下沉）
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/userlist/UserListRepository.kt`（契约下沉）
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/identification/IdentificationRepository.kt`（契约下沉）
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/faceauth/TencentFaceRepository.kt`（契约下沉）
+- `core/domain/src/main/kotlin/com/ytone/longcare/domain/cos/repository/CosRepository.kt`（契约下沉）
 - `core/model/build.gradle.kts`（补齐 `kotlinSerialization` 插件与 `kotlinx-serialization-json` 依赖）
 - `app/build.gradle.kts`（补齐 `core:model` 直接依赖）
 
@@ -619,3 +622,4 @@
 | 2026-02-15 | D61 | G4 | 已完成第五批契约/模型下沉（`UserListRepository` + 用户列表/记录模型） | d33ac97 | `Android CI#22036445733` success；`UserListRepository` 迁入 `core/domain`，`UserInfoModel/UserOrderModel` 迁入 `core:model` |
 | 2026-02-15 | D61 | G4 | 已完成第六批契约/模型下沉（`IdentificationRepository` + 人脸设置/查询模型） | ddbc69b | `Android CI#22036557622` success；`IdentificationRepository` 迁入 `core/domain`，`SetFaceParamModel/FaceResultModel` 迁入 `core:model` |
 | 2026-02-15 | D61 | G4 | 已完成第七批契约/模型下沉（`TencentFaceRepository` + 腾讯人脸 API 响应模型） | 851ff4e | `Android CI#22038070540` success；`TencentFaceRepository` 迁入 `core/domain`，`TencentFaceApiResponse` 迁入 `core:model` |
+| 2026-02-15 | D61 | G4 | 已完成第八批契约/模型下沉（`CosRepository` + COS 令牌与上传模型） | - | `CosRepository` 迁入 `core/domain`，`UploadTokenResultModel/CosModels` 迁入 `core:model`；修复跨模块 smart-cast 后本地编译/lint 通过 |

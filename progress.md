@@ -508,3 +508,16 @@
 - 远端验收（D61-第七批）：
   - `Android CI#22038070540`（commit `851ff4e`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22038070540`。
+- 执行 `D61 | G4`（第八批）：迁移 `CosRepository` 契约及 COS 相关模型到 Core 模块。
+  - 文件迁移：
+    - `app/src/main/kotlin/com/ytone/longcare/domain/cos/repository/CosRepository.kt` -> `core/domain/src/main/kotlin/com/ytone/longcare/domain/cos/repository/CosRepository.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/data/cos/model/CosModels.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/data/cos/model/CosModels.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/api/response/UploadTokenResultModel.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/api/response/UploadTokenResultModel.kt`
+  - 兼容性修复：
+    - 由于跨模块后 Kotlin 不再允许对外部模块 `public` 属性做 smart-cast，修复了以下位置的空安全判断：
+      - `app/src/main/kotlin/com/ytone/longcare/features/identification/data/SetupFaceGatewayImpl.kt`
+      - `app/src/main/kotlin/com/ytone/longcare/features/identification/data/UploadElderPhotoGatewayImpl.kt`
+      - `app/src/main/kotlin/com/ytone/longcare/features/photoupload/viewmodel/PhotoProcessingViewModel.kt`
+- 本地验收（D61-第八批）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。

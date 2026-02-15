@@ -420,10 +420,12 @@ class PhotoProcessingViewModel @Inject constructor(
                 )
 
                 val uploadResult = cosRepository.uploadFile(uploadParams)
+                val uploadedUrl = uploadResult.url
+                val uploadedKey = uploadResult.key
 
-                if (uploadResult.success && uploadResult.url != null && uploadResult.key != null) {
+                if (uploadResult.success && uploadedUrl != null && uploadedKey != null) {
                     // 更新任务状态，标记为已上传并保存云端URL
-                    updateTaskUploadStatus(task.id, uploadResult.url, uploadResult.key)
+                    updateTaskUploadStatus(task.id, uploadedUrl, uploadedKey)
                 } else {
                     _isUploading.value = false
                     return Result.failure(Exception("上传失败: ${uploadResult.errorMessage}"))

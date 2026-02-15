@@ -32,10 +32,11 @@ class SetupFaceGatewayImpl @Inject constructor(
             folderType = CosConstants.DEFAULT_FACE_TYPE,
         )
         val uploadResult = cosRepository.uploadFile(uploadParams)
-        return if (!uploadResult.success || uploadResult.key == null) {
+        val uploadedKey = uploadResult.key
+        return if (!uploadResult.success || uploadedKey == null) {
             SetupFaceUploadResult.Error(uploadResult.errorMessage ?: "图片上传失败")
         } else {
-            SetupFaceUploadResult.Success(uploadedKey = uploadResult.key)
+            SetupFaceUploadResult.Success(uploadedKey = uploadedKey)
         }
     }
 
