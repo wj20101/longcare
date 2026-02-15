@@ -80,6 +80,14 @@
   - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
 - 远端验收（D37）：
   - `Android CI#22031846593`（commit `52f1161`）`completed/success`。
+- 执行 `D38 | Kotlin/Jetpack 自动关闭逻辑收敛（倒计时闹铃页）`：
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/presentation/countdown/CountdownAlarmActivity.kt`：
+    - 将 `Handler + Runnable` 迁移为 `lifecycleScope + Job + delay`；
+    - 移除 `autoCloseRunnable!!` 非空断言；
+    - 复用 `cancelAutoClose()` 先清理再启动定时任务，保持幂等。
+- 本地验收（D38）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
 - CI 触发优化：减少每次提交重复流水线
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。

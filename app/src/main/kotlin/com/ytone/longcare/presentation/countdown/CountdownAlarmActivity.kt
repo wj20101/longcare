@@ -5,8 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import com.ytone.longcare.common.utils.logI
 import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
@@ -27,12 +25,16 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.IntentCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.lifecycleScope
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.receiver.DismissAlarmReceiver
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.theme.LongCareTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class CountdownAlarmActivity : AppCompatActivity() {
@@ -40,8 +42,7 @@ class CountdownAlarmActivity : AppCompatActivity() {
     @Inject
     lateinit var countdownNotificationManager: CountdownNotificationManager
     
-    private var autoCloseHandler: Handler? = null
-    private var autoCloseRunnable: Runnable? = null
+    private var autoCloseJob: Job? = null
     private var stopAlarmReceiverRegistered = false
     private var alarmCleanedUp = false
     
@@ -143,19 +144,16 @@ class CountdownAlarmActivity : AppCompatActivity() {
     }
     
     private fun setupAutoClose() {
-        autoCloseHandler = Handler(Looper.getMainLooper())
-        autoCloseRunnable = Runnable {
+        cancelAutoClose()
+        autoCloseJob = lifecycleScope.launch {
+            delay(AUTO_CLOSE_DELAY_MS)
             stopAlarmAndFinish()
         }
-        autoCloseHandler?.postDelayed(autoCloseRunnable!!, AUTO_CLOSE_DELAY_MS)
     }
     
     private fun cancelAutoClose() {
-        autoCloseRunnable?.let { runnable ->
-            autoCloseHandler?.removeCallbacks(runnable)
-        }
-        autoCloseHandler = null
-        autoCloseRunnable = null
+        autoCloseJob?.cancel()
+        autoCloseJob = null
     }
     
     private fun stopAlarmAndFinish() {
