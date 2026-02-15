@@ -1,7 +1,6 @@
 package com.ytone.longcare.features.service
 
 import android.app.AlarmManager
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -10,7 +9,9 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.AlarmManagerCompat
+import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.PendingIntentCompat
 import androidx.core.content.edit
 import androidx.work.*
@@ -312,19 +313,17 @@ class ServiceTimeNotificationManager @Inject constructor(
      * 创建通知渠道
      */
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                SERVICE_TIME_CHANNEL_ID,
-                "服务时间结束提醒",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "服务时间结束时的重要提醒通知"
-                enableVibration(true)
-                enableLights(true)
-                setShowBadge(true)
-            }
-            notificationManager.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannelCompat.Builder(
+            SERVICE_TIME_CHANNEL_ID,
+            NotificationManagerCompat.IMPORTANCE_HIGH
+        )
+            .setName("服务时间结束提醒")
+            .setDescription("服务时间结束时的重要提醒通知")
+            .setVibrationEnabled(true)
+            .setLightsEnabled(true)
+            .setShowBadge(true)
+            .build()
+        NotificationManagerCompat.from(context).createNotificationChannel(channel)
     }
 
     /**

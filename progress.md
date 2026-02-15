@@ -121,6 +121,15 @@
   - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
 - 远端验收（D41）：
   - `Android CI#22032267243`（commit `81c85ce`）`completed/success`。
+- 执行 `D42 | Jetpack 通知通道兼容收敛（NotificationChannelCompat）`：
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/features/service/ServiceTimeNotificationManager.kt`：
+    - 迁移通知渠道创建到 `NotificationChannelCompat + NotificationManagerCompat`。
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/features/servicecountdown/service/CountdownForegroundService.kt`：
+    - 迁移通知渠道创建到 `NotificationChannelCompat + NotificationManagerCompat`；
+    - 移除不再需要的 `NotificationManager` 注入字段。
+- 本地验收（D42）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
 - CI 触发优化：减少每次提交重复流水线
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。

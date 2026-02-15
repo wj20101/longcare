@@ -1,8 +1,6 @@
 package com.ytone.longcare.features.servicecountdown.service
 
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
@@ -12,6 +10,8 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationChannelCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.PendingIntentCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -20,7 +20,6 @@ import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import com.ytone.longcare.api.request.OrderInfoRequestModel
-import javax.inject.Inject
 
 /**
  * 服务倒计时前台服务
@@ -69,9 +68,6 @@ class CountdownForegroundService : Service() {
             context.stopService(intent)
         }
     }
-
-    @Inject
-    lateinit var notificationManager: NotificationManager
 
     private val binder = CountdownBinder()
 
@@ -212,22 +208,19 @@ class CountdownForegroundService : Service() {
      * 创建通知渠道
      */
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                FOREGROUND_NOTIFICATION_CHANNEL_ID,
-                "服务倒计时通知",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "显示服务倒计时的实时进度"
-                enableVibration(false)
-                enableLights(false)
-                setShowBadge(false)
-                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
-            }
+        val channel = NotificationChannelCompat.Builder(
+            FOREGROUND_NOTIFICATION_CHANNEL_ID,
+            NotificationManagerCompat.IMPORTANCE_LOW
+        )
+            .setName("服务倒计时通知")
+            .setDescription("显示服务倒计时的实时进度")
+            .setVibrationEnabled(false)
+            .setLightsEnabled(false)
+            .setShowBadge(false)
+            .build()
 
-            notificationManager.createNotificationChannel(channel)
-            logI("倒计时前台服务通知渠道已创建")
-        }
+        NotificationManagerCompat.from(this).createNotificationChannel(channel)
+        logI("倒计时前台服务通知渠道已创建")
     }
 
 }
