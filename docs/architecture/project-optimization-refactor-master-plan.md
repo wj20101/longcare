@@ -532,7 +532,7 @@
 | G1 | 低耦合契约首批实迁（core/common + core/domain + feature/login） | P0 | DONE | E3 |
 | G2 | 登录特性 UI/VM 解耦下沉（依赖接口化） | P1 | DONE | G1 |
 | G3 | identification 领域用例迁移到 feature module | P1 | DONE | G1 |
-| G4 | Repository 接口与实现跨模块对齐（core/domain ↔ core/data） | P1 | IN_PROGRESS | G1 |
+| G4 | Repository 接口与实现跨模块对齐（core/domain ↔ core/data） | P1 | DONE | G1 |
 | G5 | App 壳层二次收敛与模块可见性加严 | P1 | TODO | G2,G3,G4 |
 
 ### 10.2 每项任务具体文件改动清单
@@ -562,7 +562,7 @@
 - `app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationViewModel.kt`（usecase 入参适配）
 - `app/src/main/kotlin/com/ytone/longcare/features/identification/domain/*`（已迁空）
 
-#### G4 Repository 跨模块对齐（进行中）
+#### G4 Repository 跨模块对齐（已完成）
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/**`（接口下沉）
 - `core/data/src/main/kotlin/com/ytone/longcare/data/**`（实现下沉）
 - `app/src/main/kotlin/com/ytone/longcare/domain/**`、`app/src/main/kotlin/com/ytone/longcare/data/**`（收口）
@@ -619,7 +619,7 @@
 | D58 | G1 | `ApiResult.kt`、`FaceVerificationModels.kt`、`LoginExt.kt`、`app/build.gradle.kts` | `:app:compileDebugKotlin` + `:app:lintDebug` 通过 | DONE |
 | D59 | G2 | `feature/login/**`、`app/features/login/**`、`AppNavigation.kt` | 登录链路 smoke 与 lint 通过 | DONE |
 | D60 | G3 | `feature/identification/domain/**`、`app/features/identification/domain/**` | identification 用例链路编译/单测通过 | DONE |
-| D61 | G4 | `core/domain/**`、`core/data/**`、`app/domain/**`、`app/data/**` | UI 不直接依赖 Impl，架构守卫通过 | IN_PROGRESS |
+| D61 | G4 | `core/domain/**`、`core/data/**`、`app/domain/**`、`app/data/**` | UI 不直接依赖 Impl，架构守卫通过 | DONE |
 | D62 | G5 | `AppNavigation.kt`、架构守卫脚本与 CI 门禁 | 模块边界回归在 CI 可阻断 | TODO |
 
 ### 10.4 执行日志（G 阶段）
@@ -641,4 +641,4 @@
 | 2026-02-15 | D61 | G4 | 已完成第八批契约/模型下沉（`CosRepository` + COS 令牌与上传模型） | 308358c | `Android CI#22039685167` success；`CosRepository` 迁入 `core/domain`，`UploadTokenResultModel/CosModels` 迁入 `core:model`，并修复跨模块 smart-cast |
 | 2026-02-15 | D61 | G4 | 已完成第九批契约/模型下沉（`OrderRepository` + 订单主模型） | 02cd7ba | `Android CI#22041190992` success；`OrderRepository` 迁入 `core/domain`，订单请求/响应与状态扩展迁入 `core:model`，`core:model` 新增 `kotlin-parcelize` |
 | 2026-02-15 | D61 | G4 | 已完成第十批契约/模型下沉（`OrderDetailRepository`、`OrderImageRepository` + 订单本地实体） | 23d74e6 | `Android CI#22043400798` success；`OrderDetailRepository/OrderImageRepository` 迁入 `core/domain`，`OrderKey` 与订单本地实体迁入 `core:model`，新增 `OrderKeyNavExt` 并补齐 `room-runtime` |
-| 2026-02-15 | D61 | G4 | 已完成第十一批契约/模型收口（`FaceVerifier` 链路） | - | `FaceVerifier` 公共契约迁入 `core:common`，domain alias 迁入 `core:domain`，`FaceVerificationModels` 收口到 `core:model`；`app/domain` 已迁空且本地编译/lint 通过 |
+| 2026-02-15 | D61 | G4 | 已完成第十一批契约/模型收口（`FaceVerifier` 链路） | faa7b22 | `Android CI#22044964986` success；`FaceVerifier` 公共契约迁入 `core:common`，domain alias 迁入 `core:domain`，`FaceVerificationModels` 收口到 `core:model`，`app/domain` 已迁空 |
