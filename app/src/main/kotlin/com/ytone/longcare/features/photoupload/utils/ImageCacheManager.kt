@@ -5,14 +5,15 @@ import coil3.ImageLoader
 import com.ytone.longcare.common.utils.StorageSpaceUtils
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.di.IoDispatcher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,9 +24,10 @@ import javax.inject.Singleton
 @Singleton
 class ImageCacheManager @Inject constructor(
     private val context: Context,
-    private val imageLoader: ImageLoader
+    private val imageLoader: ImageLoader,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    private val cacheScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val cacheScope = CoroutineScope(SupervisorJob() + ioDispatcher)
     private var monitoringJob: Job? = null
     private companion object {
         const val CACHE_MONITOR_INTERVAL_MS = 60_000L

@@ -58,6 +58,9 @@
   - 验证：`lint-results-debug.txt` 输出 `No issues found.`。
 - CI 守卫增强
   - 更新 `scripts/quality/verify_ci_workflow_quality.sh`，新增 `baseline-profile` 禁止 `push` 触发校验，防止重复流水线回归。
+- Kotlin 协程上下文优化
+  - 更新 `features/photoupload/utils/ImageCacheManager.kt`：移除硬编码 `Dispatchers.IO`，改为注入 `@IoDispatcher CoroutineDispatcher`。
+  - 目标：统一协程调度器治理策略，提升可测试性与可替换性。
 - 执行 `D33 | F6`：完成共享 action 抽象并接入 release/baseline/ci。
   - 新增 `.github/actions/android-build-env/action.yml`，统一 JDK/Gradle/Android SDK 初始化与质量守卫步骤。
   - 三套 workflow 改为调用共享 action，减少重复步骤维护成本。
