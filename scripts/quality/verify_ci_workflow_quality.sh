@@ -88,6 +88,8 @@ for workflow in "${WORKFLOWS[@]}"; do
   require_pattern "${workflow}" "timeout-minutes:" "has job timeout"
   require_pattern "${workflow}" "uses:[[:space:]]*actions/checkout@v6" "uses pinned checkout action"
   require_absent_pattern "${workflow}" "uses:[[:space:]]*[^[:space:]]+@(main|master|HEAD)" "does not use mutable action refs"
+  require_pattern "${workflow}" "uses:[[:space:]]*actions/upload-artifact@v6" "uses pinned upload-artifact action"
+  require_absent_pattern "${workflow}" "uses:[[:space:]]*actions/upload-artifact@v([0-57-9]|[1-9][0-9]+)" "does not use outdated upload-artifact action"
   require_any_pattern "${workflow}" "uses:[[:space:]]*gradle/actions/setup-gradle@v5" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "uses setup-gradle action (direct or shared)"
   require_any_pattern "${workflow}" "bash scripts/quality/verify_gradle_stability\\.sh" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "runs Gradle stability gate (direct or shared)"
 done
