@@ -17,5 +17,6 @@ android {
 }
 
 dependencies {
+    implementation(libs.moshi.kotlin)
     implementation(libs.kotlinx.serialization.json)
 }

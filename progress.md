@@ -451,3 +451,12 @@
 - 远端验收（D61-第二批）：
   - `Android CI#22035810460`（commit `380450c`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22035810460`。
+- 执行 `D61 | G4`（第三批）：迁移 `SystemRepository` 契约与 `AppVersionModel` 模型到 Core 模块。
+  - 文件迁移：
+    - `app/src/main/kotlin/com/ytone/longcare/domain/system/SystemRepository.kt` -> `core/domain/src/main/kotlin/com/ytone/longcare/domain/system/SystemRepository.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/api/response/AppVersionModel.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/api/response/AppVersionModel.kt`
+  - 构建依赖收敛：
+    - `core/model/build.gradle.kts`：新增 `moshi-kotlin` 依赖，承接 `@JsonClass/@Json` 注解模型。
+- 本地验收（D61-第三批）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
