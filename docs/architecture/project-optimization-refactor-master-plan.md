@@ -618,4 +618,4 @@
 | 2026-02-15 | D61 | G4 | 已完成第四批契约/模型下沉（`LoginRepository`、`ProfileRepository` + 登录配置统计模型） | 3a779cf | `Android CI#22036335583` success；`LoginRepository/ProfileRepository` 迁入 `core/domain`，`LoginResultModel/StartConfigResultModel/NurseServiceTimeModel` 迁入 `core:model` |
 | 2026-02-15 | D61 | G4 | 已完成第五批契约/模型下沉（`UserListRepository` + 用户列表/记录模型） | d33ac97 | `Android CI#22036445733` success；`UserListRepository` 迁入 `core/domain`，`UserInfoModel/UserOrderModel` 迁入 `core:model` |
 | 2026-02-15 | D61 | G4 | 已完成第六批契约/模型下沉（`IdentificationRepository` + 人脸设置/查询模型） | ddbc69b | `Android CI#22036557622` success；`IdentificationRepository` 迁入 `core/domain`，`SetFaceParamModel/FaceResultModel` 迁入 `core:model` |
-| 2026-02-15 | D61 | G4 | 已完成第七批契约/模型下沉（`TencentFaceRepository` + 腾讯人脸 API 响应模型） | - | `TencentFaceRepository` 迁入 `core/domain`，`TencentFaceApiResponse` 迁入 `core:model`；本地编译/lint 通过 |
+| 2026-02-15 | D61 | G4 | 已完成第七批契约/模型下沉（`TencentFaceRepository` + 腾讯人脸 API 响应模型） | 851ff4e | `Android CI#22038070540` success；`TencentFaceRepository` 迁入 `core/domain`，`TencentFaceApiResponse` 迁入 `core:model` |
