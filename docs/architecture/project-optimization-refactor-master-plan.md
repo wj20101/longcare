@@ -458,7 +458,7 @@
 | F2 | Runner 磁盘清理脚本化与复用 | P0 | DONE | F1 |
 | F3 | Workflow 质量守卫自动化 | P0 | DONE | F2 |
 | F4 | Android CI 文档变更触发优化 | P1 | DONE | F1 |
-| F5 | 失败诊断产物分层归档 | P1 | TODO | F3 |
+| F5 | 失败诊断产物分层归档 | P1 | DONE | F3 |
 | F6 | Reusable workflow 抽象收敛 | P2 | TODO | F3 |
 
 ### 9.2 每项任务具体文件改动清单
@@ -492,7 +492,7 @@
 | D29 | F2 | `scripts/quality/free_runner_disk_space.sh`、三套 workflow 引用改造 | `free_runner_disk_space.sh --dry-run` 通过 | DONE |
 | D30 | F3 | `scripts/quality/verify_ci_workflow_quality.sh`、`android-ci.yml` | `verify_ci_workflow_quality.sh` 通过 | DONE |
 | D31 | F4 | `android-ci.yml`（`paths-ignore`） | 触发规则配置已生效 | DONE |
-| D32 | F5 | 待执行 | 待执行 | TODO |
+| D32 | F5 | `android-ci.yml`、`android-release.yml`、`baseline-profile.yml`、`verify_ci_workflow_quality.sh` | 失败诊断产物按 job 归档并通过守卫脚本校验 | DONE |
 | D33 | F6 | 待执行 | 待执行 | TODO |
 
 ### 9.4 执行日志（F 阶段）
@@ -507,3 +507,4 @@
 | 2026-02-13 | D33 | F4 | 已完成 workflow 守卫脚本跨环境兼容修复并复验 | - | 修复 `verify_ci_workflow_quality.sh` 对 `rg` 的单点依赖，增加 `grep` 回退 |
 | 2026-02-13 | D34 | F4 | 已完成修复后 Actions 连续观察与失败队列复核 | - | `Android CI#21970849721` 成功，当前 failure 队列为 0 |
 | 2026-02-13 | D35 | F4 | 已触发并监控 Android Release 全流程，发布成功 | - | run `21972693851` 成功，产物已发布到 tag `vci-20260213-024649` |
+| 2026-02-15 | D32 | F5 | 已完成三套 workflow 的 failure-only 诊断归档并接入守卫校验 | - | 归档命名含 `job/run_id/run_attempt`，`verify_ci_workflow_quality.sh` 验证通过 |

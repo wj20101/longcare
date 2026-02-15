@@ -35,7 +35,7 @@
 | D29 | F2 | `scripts/quality/free_runner_disk_space.sh`、`.github/workflows/android-ci.yml`、`.github/workflows/baseline-profile.yml`、`.github/workflows/android-release.yml` | 磁盘清理脚本统一接入并可本地 dry-run 验证 | DONE |
 | D30 | F3 | `scripts/quality/verify_ci_workflow_quality.sh`、`.github/workflows/android-ci.yml`、`.github/workflows/baseline-profile.yml`、`.github/workflows/android-release.yml` | workflow 质量守卫脚本通过并接入 CI | DONE |
 | D31 | F4 | `.github/workflows/android-ci.yml` | 纯文档改动不触发 android-ci（基于 paths-ignore） | DONE |
-| D32 | F5 | `.github/workflows/android-ci.yml`、`.github/workflows/android-release.yml`、`.github/workflows/baseline-profile.yml` | 失败诊断产物按 job 结构化上传 | TODO |
+| D32 | F5 | `.github/workflows/android-ci.yml`、`.github/workflows/android-release.yml`、`.github/workflows/baseline-profile.yml`、`scripts/quality/verify_ci_workflow_quality.sh` | 失败诊断产物按 job 结构化上传 | DONE |
 | D33 | F6 | `.github/workflows/*.yml`（可复用 workflow 抽象） | 重复步骤收敛且功能一致 | TODO |
 
 ## 4. 本轮已执行改动明细
@@ -101,3 +101,20 @@
 - 产物发布：
   - Release 页面：`https://github.com/yyg20101/longcare/releases/tag/vci-20260213-024649`
   - 包含 APK、AAB、mapping 与 checksum 文件。
+
+## 8. 失败诊断产物分层归档执行记录（2026-02-15）
+
+- 任务：`D32 | F5`
+- 改动文件：
+  - `.github/workflows/android-ci.yml`
+  - `.github/workflows/android-release.yml`
+  - `.github/workflows/baseline-profile.yml`
+  - `scripts/quality/verify_ci_workflow_quality.sh`
+- 具体改动：
+  - 在 `android-ci` 的 `verify-build`、`instrumentation-smoke` 增加 `if: failure()` 的诊断产物上传步骤；
+  - 在 `android-release` 的 `release-build` 增加 `if: failure()` 的诊断产物上传步骤；
+  - 在 `baseline-profile` 的 `generate-baseline-profile` 增加 `if: failure()` 的诊断产物上传步骤；
+  - 诊断包命名统一为 `workflow-job-run` 结构（含 `job/run_id/run_attempt`）；
+  - 守卫脚本新增校验：三套 workflow 必须包含 `Upload failure diagnostics`。
+- 验证：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS

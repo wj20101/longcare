@@ -163,6 +163,23 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-ci-${{ github.job }}-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            app/build/reports/**
+            app/build/test-results/**
+            app/build/outputs/**
+            baselineprofile/build/reports/**
+            baselineprofile/build/outputs/**
+            build/reports/problems/**
+            **/hs_err_pid*.log
+            **/*.hprof
+          if-no-files-found: warn
+          retention-days: 14
+
   instrumentation-smoke:
     needs:
       - detect-affected
@@ -231,5 +248,22 @@ jobs:
           path: |
             app/build/reports/androidTests/**
             app/build/outputs/androidTest-results/**
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-ci-${{ github.job }}-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            app/build/reports/androidTests/**
+            app/build/outputs/androidTest-results/**
+            app/build/reports/**
+            app/build/test-results/**
+            app/build/outputs/**
+            build/reports/problems/**
+            **/hs_err_pid*.log
+            **/*.hprof
           if-no-files-found: warn
           retention-days: 14

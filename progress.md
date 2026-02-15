@@ -27,3 +27,12 @@
   - 通过推送 tag `vci-20260213-024649` 触发 `android-release.yml`（run: `21972693851`）。
   - 关键阶段通过：质量门、签名校验、release 构建、artifact 上传、GitHub Release 发布。
   - 结果：`Android Release#21972693851` `completed/success`。
+
+## 2026-02-15
+- 执行 `D32 | F5`：完成失败诊断产物按 job 分组归档改造。
+  - 更新 `.github/workflows/android-ci.yml`：`verify-build`、`instrumentation-smoke` 新增 `Upload failure diagnostics`（`if: failure()`）。
+  - 更新 `.github/workflows/android-release.yml`：`release-build` 新增 `Upload failure diagnostics`（`if: failure()`）。
+  - 更新 `.github/workflows/baseline-profile.yml`：`generate-baseline-profile` 新增 `Upload failure diagnostics`（`if: failure()`）。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：新增三套 workflow 的 failure diagnostics 步骤守卫检查。
+- 本地验收：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
