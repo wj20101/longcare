@@ -70,6 +70,14 @@
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - 远端验收（D36）：
   - `Android CI#22031772685`（commit `8ff77d2`）`completed/success`。
+- 执行 `D37 | Kotlin 生命周期安全优化（倒计时闹铃页）`：
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/presentation/countdown/CountdownAlarmActivity.kt`：
+    - 新增 `alarmCleanedUp` 幂等标记；
+    - 抽取 `cleanupAlarmState()`，统一停止响铃、取消通知、清理自动关闭回调；
+    - `onDestroy()` 仅做清理，不再通过 `stopAlarmAndFinish()` 触发 `finish()`。
+- 本地验收（D37）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
 - CI 触发优化：减少每次提交重复流水线
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。

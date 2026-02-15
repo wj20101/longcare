@@ -43,6 +43,7 @@ class CountdownAlarmActivity : AppCompatActivity() {
     private var autoCloseHandler: Handler? = null
     private var autoCloseRunnable: Runnable? = null
     private var stopAlarmReceiverRegistered = false
+    private var alarmCleanedUp = false
     
     companion object {
         private const val TAG = "CountdownAlarmActivity"
@@ -158,17 +159,24 @@ class CountdownAlarmActivity : AppCompatActivity() {
     }
     
     private fun stopAlarmAndFinish() {
+        cleanupAlarmState()
+        if (!isFinishing) {
+            finish()
+        }
+    }
+
+    private fun cleanupAlarmState() {
+        if (alarmCleanedUp) {
+            return
+        }
+        alarmCleanedUp = true
+
         // 取消自动关闭
         cancelAutoClose()
-        
-        // 停止响铃服务
+
+        // 停止响铃服务并清理通知
         AlarmRingtoneService.stopRingtone(this)
-        
-        // 取消通知
         countdownNotificationManager.cancelCountdownCompletionNotification()
-        
-        // 关闭Activity
-        finish()
     }
     
     override fun onDestroy() {
@@ -177,7 +185,7 @@ class CountdownAlarmActivity : AppCompatActivity() {
             unregisterReceiver(stopAlarmReceiver)
             stopAlarmReceiverRegistered = false
         }
-        stopAlarmAndFinish()
+        cleanupAlarmState()
     }
 }
 
