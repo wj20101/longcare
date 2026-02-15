@@ -260,6 +260,8 @@ configurations.configureEach {
 dependencies {
 
     "baselineProfile"(project(":baselineprofile"))
+    implementation(project(":core:common"))
+    implementation(project(":core:domain"))
     implementation(project(":feature:login"))
     implementation(project(":feature:home"))
     implementation(project(":feature:identification"))

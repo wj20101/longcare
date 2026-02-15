@@ -522,3 +522,62 @@
 | 2026-02-13 | D35 | F4 | 已触发并监控 Android Release 全流程，发布成功 | - | run `21972693851` 成功，产物已发布到 tag `vci-20260213-024649` |
 | 2026-02-15 | D32 | F5 | 已完成三套 workflow 的 failure-only 诊断归档并接入守卫校验 | - | 归档命名含 `job/run_id/run_attempt`，`verify_ci_workflow_quality.sh` 验证通过 |
 | 2026-02-15 | D33 | F6 | 已完成共享 action 抽象并接入 `android-ci/release/baseline-profile` | - | 新增 `.github/actions/android-build-env/action.yml`，守卫脚本支持共享 action 模式 |
+
+## 10. 增量实迁阶段（G：Core/Feature 业务下沉）
+
+### 10.1 任务总览（G1~G5）
+
+| ID | 任务 | 优先级 | 状态 | 依赖 |
+|---|---|---|---|---|
+| G1 | 低耦合契约首批实迁（core/common + core/domain + feature/login） | P0 | DONE | E3 |
+| G2 | 登录特性 UI/VM 解耦下沉（依赖接口化） | P1 | TODO | G1 |
+| G3 | identification 领域用例迁移到 feature module | P1 | TODO | G1 |
+| G4 | Repository 接口与实现跨模块对齐（core/domain ↔ core/data） | P1 | TODO | G1 |
+| G5 | App 壳层二次收敛与模块可见性加严 | P1 | TODO | G2,G3,G4 |
+
+### 10.2 每项任务具体文件改动清单
+
+#### G1 低耦合契约首批实迁（已完成）
+- `core/common/src/main/kotlin/com/ytone/longcare/common/network/ApiResult.kt`（从 `:app` 迁入）
+- `core/domain/src/main/kotlin/com/ytone/longcare/domain/faceauth/model/FaceVerificationModels.kt`（从 `:app` 迁入）
+- `feature/login/src/main/kotlin/com/ytone/longcare/features/login/ext/LoginExt.kt`（从 `:app` 迁入）
+- `app/build.gradle.kts`（补充 `:core:common`、`:core:domain` 依赖）
+
+#### G2 登录特性 UI/VM 解耦下沉（待执行）
+- `feature/login/src/main/kotlin/com/ytone/longcare/feature/login/api/LoginFeatureApi.kt`（新增）
+- `feature/login/src/main/kotlin/com/ytone/longcare/feature/login/ui/`（新增并承接可迁移 UI 片段）
+- `app/src/main/kotlin/com/ytone/longcare/features/login/`（逐步缩减为适配层）
+- `app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt`
+
+#### G3 identification 领域用例迁移（待执行）
+- `feature/identification/src/main/kotlin/com/ytone/longcare/feature/identification/domain/*`（承接 UseCase）
+- `app/src/main/kotlin/com/ytone/longcare/features/identification/domain/*`（迁移或删减）
+- `app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationViewModel.kt`（依赖注入适配）
+
+#### G4 Repository 跨模块对齐（待执行）
+- `core/domain/src/main/kotlin/com/ytone/longcare/domain/**`（接口下沉）
+- `core/data/src/main/kotlin/com/ytone/longcare/data/**`（实现下沉）
+- `app/src/main/kotlin/com/ytone/longcare/domain/**`、`app/src/main/kotlin/com/ytone/longcare/data/**`（收口）
+- `app/src/main/kotlin/com/ytone/longcare/di/RepositoryModule.kt`
+
+#### G5 App 壳层收敛与门禁加严（待执行）
+- `app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt`
+- `scripts/quality/verify_architecture_boundaries.sh`
+- `scripts/quality/verify_module_api_visibility.sh`
+- `.github/workflows/android-ci.yml`
+
+### 10.3 逐日执行计划（D58~D62）
+
+| 日程 | 对应任务 | 当日具体文件改动清单 | 当日验收门禁 | 状态 |
+|---|---|---|---|---|
+| D58 | G1 | `ApiResult.kt`、`FaceVerificationModels.kt`、`LoginExt.kt`、`app/build.gradle.kts` | `:app:compileDebugKotlin` + `:app:lintDebug` 通过 | DONE |
+| D59 | G2 | `feature/login/**`、`app/features/login/**`、`AppNavigation.kt` | 登录链路 smoke 与 lint 通过 | TODO |
+| D60 | G3 | `feature/identification/domain/**`、`app/features/identification/domain/**` | identification 用例链路编译/单测通过 | TODO |
+| D61 | G4 | `core/domain/**`、`core/data/**`、`app/domain/**`、`app/data/**` | UI 不直接依赖 Impl，架构守卫通过 | TODO |
+| D62 | G5 | `AppNavigation.kt`、架构守卫脚本与 CI 门禁 | 模块边界回归在 CI 可阻断 | TODO |
+
+### 10.4 执行日志（G 阶段）
+
+| 日期 | 日程 | 任务ID | 结果 | 提交/PR | 备注 |
+|---|---|---|---|---|---|
+| 2026-02-15 | D58 | G1 | 已完成首批低耦合实迁并通过编译/lint | - | Core/Feature 不再仅占位，进入 G2~G5 业务迁移阶段 |

@@ -358,3 +358,13 @@
 - 远端验收（D57）：
   - `Android CI#22034622130`（commit `59ddc11`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22034622130`。
+- 执行 `D58 | G1`：Core/Feature 首批实迁（非占位迁移起步）。
+  - 文件迁移：
+    - `app/common/network/ApiResult.kt` -> `core/common/src/main/kotlin/com/ytone/longcare/common/network/ApiResult.kt`
+    - `app/domain/faceauth/model/FaceVerificationModels.kt` -> `core/domain/src/main/kotlin/com/ytone/longcare/domain/faceauth/model/FaceVerificationModels.kt`
+    - `app/features/login/ext/LoginExt.kt` -> `feature/login/src/main/kotlin/com/ytone/longcare/features/login/ext/LoginExt.kt`
+  - 依赖调整：更新 `app/build.gradle.kts`，新增 `implementation(project(":core:common"))` 与 `implementation(project(":core:domain"))`。
+  - 文档同步：`docs/architecture/project-optimization-refactor-master-plan.md` 新增 G 阶段（G1~G5）与 D58~D62 逐日计划。
+- 本地验收（D58）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
