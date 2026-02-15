@@ -36,6 +36,10 @@
   - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：新增三套 workflow 的 failure diagnostics 步骤守卫检查。
 - 本地验收：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- CI 触发优化：减少每次提交重复流水线
+  - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
+  - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。
+  - 预期结果：日常提交只跑主 CI；baseline 仅按周定时或手动执行。
 - 执行 `D33 | F6`：完成共享 action 抽象并接入 release/baseline/ci。
   - 新增 `.github/actions/android-build-env/action.yml`，统一 JDK/Gradle/Android SDK 初始化与质量守卫步骤。
   - 三套 workflow 改为调用共享 action，减少重复步骤维护成本。

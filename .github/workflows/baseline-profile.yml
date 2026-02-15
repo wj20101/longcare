@@ -4,18 +4,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 2 * * 1'
-  push:
-    branches:
-      - main
-      - master
-    paths:
-      - 'app/**'
-      - 'baselineprofile/**'
-      - 'build.gradle.kts'
-      - 'settings.gradle.kts'
-      - 'gradle/**'
-      - 'gradle.properties'
-      - '.github/workflows/baseline-profile.yml'
 
 concurrency:
   group: baseline-profile-${{ github.ref }}
