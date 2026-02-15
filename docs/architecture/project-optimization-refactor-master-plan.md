@@ -637,4 +637,4 @@
 | 2026-02-15 | D61 | G4 | 已完成第七批契约/模型下沉（`TencentFaceRepository` + 腾讯人脸 API 响应模型） | 851ff4e | `Android CI#22038070540` success；`TencentFaceRepository` 迁入 `core/domain`，`TencentFaceApiResponse` 迁入 `core:model` |
 | 2026-02-15 | D61 | G4 | 已完成第八批契约/模型下沉（`CosRepository` + COS 令牌与上传模型） | 308358c | `Android CI#22039685167` success；`CosRepository` 迁入 `core/domain`，`UploadTokenResultModel/CosModels` 迁入 `core:model`，并修复跨模块 smart-cast |
 | 2026-02-15 | D61 | G4 | 已完成第九批契约/模型下沉（`OrderRepository` + 订单主模型） | 02cd7ba | `Android CI#22041190992` success；`OrderRepository` 迁入 `core/domain`，订单请求/响应与状态扩展迁入 `core:model`，`core:model` 新增 `kotlin-parcelize` |
-| 2026-02-15 | D61 | G4 | 已完成第十批契约/模型下沉（`OrderDetailRepository`、`OrderImageRepository` + 订单本地实体） | - | `OrderDetailRepository/OrderImageRepository` 迁入 `core/domain`，`OrderKey` 与订单本地实体迁入 `core:model`；新增 `OrderKeyNavExt` 并补齐 `room-runtime` 后本地编译/lint 通过 |
+| 2026-02-15 | D61 | G4 | 已完成第十批契约/模型下沉（`OrderDetailRepository`、`OrderImageRepository` + 订单本地实体） | 23d74e6 | `Android CI#22043400798` success；`OrderDetailRepository/OrderImageRepository` 迁入 `core/domain`，`OrderKey` 与订单本地实体迁入 `core:model`，新增 `OrderKeyNavExt` 并补齐 `room-runtime` |
