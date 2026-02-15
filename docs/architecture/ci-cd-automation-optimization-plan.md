@@ -532,3 +532,4 @@
   - `Face SDK Migration Check`：`1` run，`100.0%` success，平均 `259s`
 - 验证：
   - `bash scripts/quality/collect_ci_run_metrics.sh yyg20101/longcare 30`：PASS
+  - `Android CI#22034622130`（commit `59ddc11`）：`completed/success`

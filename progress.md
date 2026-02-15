@@ -355,3 +355,6 @@
 - 本地验收（D57）：
   - `bash scripts/quality/collect_ci_run_metrics.sh yyg20101/longcare 30`：PASS。
 - 剩余未完成优化项基线（D57 后）：`F21`。
+- 远端验收（D57）：
+  - `Android CI#22034622130`（commit `59ddc11`）`completed/success`。
+  - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22034622130`。
