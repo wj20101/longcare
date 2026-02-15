@@ -494,6 +494,7 @@
 - 验证：
   - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS
   - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS
+  - `Android CI#22034393554`（commit `4be6b1b`）：`completed/success`
   - `Android CI#22033982248`（commit `3d3a594`）：`completed/success`
 
 ## 26. ServiceTime 通知兜底协程化执行记录（2026-02-15）

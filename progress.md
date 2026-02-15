@@ -344,3 +344,6 @@
   - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
   - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
 - 剩余未完成优化项基线（D56 后）：`F21`、`F24`。
+- 远端验收（D56）：
+  - `Android CI#22034393554`（commit `4be6b1b`）`completed/success`。
+  - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22034393554`。
