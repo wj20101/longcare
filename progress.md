@@ -411,3 +411,13 @@
 - 远端验收（D60-第二批）：
   - `Android CI#22035316587`（commit `98cbb3b`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22035316587`。
+- 执行 `D60 | G3`（第三批）：下沉 `SetupFaceUseCase` 到 `feature:identification` 并接入 app 侧 gateway 适配。
+  - 新增 `feature/identification/src/main/kotlin/com/ytone/longcare/features/identification/domain/SetupFaceGateway.kt`。
+  - 新增 `feature/identification/src/main/kotlin/com/ytone/longcare/features/identification/domain/SetupFaceUseCase.kt`。
+  - 删除 `app/src/main/kotlin/com/ytone/longcare/features/identification/domain/SetupFaceUseCase.kt`（迁移至 feature 模块）。
+  - 新增 `app/src/main/kotlin/com/ytone/longcare/features/identification/data/SetupFaceGatewayImpl.kt`（桥接 COS 上传、服务器设置与本地缓存）。
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/features/identification/di/IdentificationUseCaseGatewayModule.kt`：新增 `SetupFaceGateway` 绑定。
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationViewModel.kt`：`setupFaceUseCase.execute` 入参改为 `currentUserId`。
+- 本地验收（D60-第三批）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。

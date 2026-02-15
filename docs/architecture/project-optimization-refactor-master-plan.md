@@ -531,7 +531,7 @@
 |---|---|---|---|---|
 | G1 | 低耦合契约首批实迁（core/common + core/domain + feature/login） | P0 | DONE | E3 |
 | G2 | 登录特性 UI/VM 解耦下沉（依赖接口化） | P1 | DONE | G1 |
-| G3 | identification 领域用例迁移到 feature module | P1 | IN_PROGRESS | G1 |
+| G3 | identification 领域用例迁移到 feature module | P1 | DONE | G1 |
 | G4 | Repository 接口与实现跨模块对齐（core/domain ↔ core/data） | P1 | TODO | G1 |
 | G5 | App 壳层二次收敛与模块可见性加严 | P1 | TODO | G2,G3,G4 |
 
@@ -548,10 +548,19 @@
 - `app/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreen.kt`（移除 `NavController` 直接依赖）
 - `app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt`（路由层装配 `LoginFeatureActions`）
 
-#### G3 identification 领域用例迁移（待执行）
-- `feature/identification/src/main/kotlin/com/ytone/longcare/feature/identification/domain/*`（承接 UseCase）
-- `app/src/main/kotlin/com/ytone/longcare/features/identification/domain/*`（迁移或删减）
-- `app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationViewModel.kt`（依赖注入适配）
+#### G3 identification 领域用例迁移（已完成）
+- `feature/identification/src/main/kotlin/com/ytone/longcare/features/identification/domain/VerifyServicePersonUseCase.kt`
+- `feature/identification/src/main/kotlin/com/ytone/longcare/features/identification/domain/UploadElderPhotoUseCase.kt`
+- `feature/identification/src/main/kotlin/com/ytone/longcare/features/identification/domain/SetupFaceUseCase.kt`
+- `feature/identification/src/main/kotlin/com/ytone/longcare/features/identification/domain/VerifyServicePersonDataGateway.kt`
+- `feature/identification/src/main/kotlin/com/ytone/longcare/features/identification/domain/UploadElderPhotoGateway.kt`
+- `feature/identification/src/main/kotlin/com/ytone/longcare/features/identification/domain/SetupFaceGateway.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/identification/data/VerifyServicePersonDataGatewayImpl.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/identification/data/UploadElderPhotoGatewayImpl.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/identification/data/SetupFaceGatewayImpl.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/identification/di/IdentificationUseCaseGatewayModule.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationViewModel.kt`（usecase 入参适配）
+- `app/src/main/kotlin/com/ytone/longcare/features/identification/domain/*`（已迁空）
 
 #### G4 Repository 跨模块对齐（待执行）
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/**`（接口下沉）
@@ -571,7 +580,7 @@
 |---|---|---|---|---|
 | D58 | G1 | `ApiResult.kt`、`FaceVerificationModels.kt`、`LoginExt.kt`、`app/build.gradle.kts` | `:app:compileDebugKotlin` + `:app:lintDebug` 通过 | DONE |
 | D59 | G2 | `feature/login/**`、`app/features/login/**`、`AppNavigation.kt` | 登录链路 smoke 与 lint 通过 | DONE |
-| D60 | G3 | `feature/identification/domain/**`、`app/features/identification/domain/**` | identification 用例链路编译/单测通过 | IN_PROGRESS |
+| D60 | G3 | `feature/identification/domain/**`、`app/features/identification/domain/**` | identification 用例链路编译/单测通过 | DONE |
 | D61 | G4 | `core/domain/**`、`core/data/**`、`app/domain/**`、`app/data/**` | UI 不直接依赖 Impl，架构守卫通过 | TODO |
 | D62 | G5 | `AppNavigation.kt`、架构守卫脚本与 CI 门禁 | 模块边界回归在 CI 可阻断 | TODO |
 
@@ -583,3 +592,4 @@
 | 2026-02-15 | D59 | G2 | 已完成登录特性导航依赖接口化（`NavController` -> `LoginFeatureActions`） | 500d8b9 | `Android CI#22034994873` success；新增 `LoginFeatureActions` 由路由层装配导航动作 |
 | 2026-02-15 | D60 | G3 | 已完成第一批 usecase 下沉（`VerifyServicePersonUseCase`） | b4e57f7 | `Android CI#22035189179` success；新增 `VerifyServicePersonDataGateway` 契约并在 `app` 侧落地适配实现 |
 | 2026-02-15 | D60 | G3 | 已完成第二批 usecase 下沉（`UploadElderPhotoUseCase`） | 98cbb3b | `Android CI#22035316587` success；新增 `UploadElderPhotoGateway` 契约并在 `app` 侧接入 `CosRepository/OrderRepository` |
+| 2026-02-15 | D60 | G3 | 已完成第三批 usecase 下沉（`SetupFaceUseCase`） | - | 新增 `SetupFaceGateway` 契约并在 `app` 侧接入上传/服务端设置/本地缓存，`app/features/identification/domain` 已迁空；本地编译/lint 通过 |

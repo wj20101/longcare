@@ -598,7 +598,7 @@ class IdentificationViewModel @Inject constructor(
                     val result = setupFaceUseCase.execute(
                         imageFile = imageFile,
                         base64Image = base64Image,
-                        currentUser = getCurrentUser(),
+                        currentUserId = getCurrentUser()?.userId,
                     )
                 ) {
                     SetupFaceResult.Success -> {
