@@ -62,6 +62,19 @@ jobs:
           echo "smoke_test_classes=${{ steps.detect.outputs.smoke_test_classes }}"
           echo "changed_files_count=${{ steps.detect.outputs.changed_files_count }}"
 
+      - name: Publish affected plan summary
+        run: |
+          {
+            echo "## Android CI affected plan"
+            echo ""
+            echo "- scope: \`${{ steps.detect.outputs.affected_scope }}\`"
+            echo "- changed files: \`${{ steps.detect.outputs.changed_files_count }}\`"
+            echo "- modules: \`${{ steps.detect.outputs.affected_modules }}\`"
+            echo "- verify tasks: \`${{ steps.detect.outputs.verify_tasks }}\`"
+            echo "- run instrumentation: \`${{ steps.detect.outputs.run_instrumentation }}\`"
+            echo "- smoke test classes: \`${{ steps.detect.outputs.smoke_test_classes }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   verify-build:
     needs: detect-affected
     runs-on: ubuntu-latest

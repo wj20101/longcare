@@ -61,6 +61,9 @@
 - Kotlin 协程上下文优化
   - 更新 `features/photoupload/utils/ImageCacheManager.kt`：移除硬编码 `Dispatchers.IO`，改为注入 `@IoDispatcher CoroutineDispatcher`。
   - 目标：统一协程调度器治理策略，提升可测试性与可替换性。
+- CI 可观测性增强
+  - 更新 `.github/workflows/android-ci.yml`：在 `detect-affected` job 新增 `Publish affected plan summary`，将影响范围、任务清单和 instrumentation 决策写入 `GITHUB_STEP_SUMMARY`。
+  - 目标：提升每次 CI 运行的可读性与排障效率。
 - 执行 `D33 | F6`：完成共享 action 抽象并接入 release/baseline/ci。
   - 新增 `.github/actions/android-build-env/action.yml`，统一 JDK/Gradle/Android SDK 初始化与质量守卫步骤。
   - 三套 workflow 改为调用共享 action，减少重复步骤维护成本。
