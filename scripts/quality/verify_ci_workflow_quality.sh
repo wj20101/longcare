@@ -107,6 +107,44 @@ check_retention_values() {
   fi
 }
 
+check_job_timeout() {
+  local file_path="$1"
+  local job_name="$2"
+  local expected_timeout="$3"
+  local message="$4"
+  local actual_timeout=""
+
+  actual_timeout="$(
+    awk -v target_job="${job_name}" '
+      BEGIN {
+        in_target_job = 0
+      }
+      $0 ~ "^  " target_job ":$" {
+        in_target_job = 1
+        next
+      }
+      in_target_job && $0 ~ "^  [A-Za-z0-9_-]+:$" {
+        in_target_job = 0
+      }
+      in_target_job && $0 ~ "^[[:space:]]{4}timeout-minutes:[[:space:]]*[0-9]+" {
+        sub(/^[[:space:]]*timeout-minutes:[[:space:]]*/, "", $0)
+        print $0
+        exit
+      }
+    ' "${file_path}"
+  )"
+
+  if [[ -z "${actual_timeout}" ]]; then
+    echo "[ci-workflow-quality][FAIL] ${message} (missing timeout-minutes for job '${job_name}' in ${file_path})"
+    EXIT_CODE=1
+  elif [[ "${actual_timeout}" == "${expected_timeout}" ]]; then
+    echo "[ci-workflow-quality][PASS] ${message}"
+  else
+    echo "[ci-workflow-quality][FAIL] ${message} (expected ${expected_timeout}, got ${actual_timeout} in ${file_path})"
+    EXIT_CODE=1
+  fi
+}
+
 WORKFLOWS=(
   "${ROOT_DIR}/.github/workflows/android-ci.yml"
   "${ROOT_DIR}/.github/workflows/baseline-profile.yml"
@@ -150,6 +188,9 @@ fi
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "paths-ignore:" "android-ci has paths-ignore optimization"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "^[[:space:]]{2}push:" "android-ci keeps push trigger"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "^[[:space:]]{2}pull_request:" "android-ci keeps pull_request trigger"
+check_job_timeout "${ROOT_DIR}/.github/workflows/android-ci.yml" "detect-affected" "10" "android-ci detect-affected keeps timeout budget 10"
+check_job_timeout "${ROOT_DIR}/.github/workflows/android-ci.yml" "verify-build" "45" "android-ci verify-build keeps timeout budget 45"
+check_job_timeout "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "60" "android-ci instrumentation-smoke keeps timeout budget 60"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "-[[:space:]]*\"docs/\\*\\*\"" "android-ci paths-ignore includes docs directory"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "-[[:space:]]*\"\\*\\*/\\*\\.md\"" "android-ci paths-ignore includes markdown files"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "-[[:space:]]*\"task_plan\\.md\"" "android-ci paths-ignore includes task_plan.md"
@@ -158,15 +199,18 @@ require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "-[[:space:]]*\"p
 require_absent_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "^[[:space:]]{2}push:" "baseline-profile disables push trigger"
 require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "^[[:space:]]{2}workflow_dispatch:" "baseline-profile keeps workflow_dispatch trigger"
 require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "^[[:space:]]{2}schedule:" "baseline-profile keeps schedule trigger"
+check_job_timeout "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "generate-baseline-profile" "120" "baseline-profile generate-baseline-profile keeps timeout budget 120"
 require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "cron:[[:space:]]*'0 2 \\* \\* 1'" "baseline-profile keeps weekly schedule at 02:00 UTC Monday"
 require_absent_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "^[[:space:]]{4}branches:" "android-release push trigger does not include branches"
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "^[[:space:]]{2}push:" "android-release keeps push trigger"
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "^[[:space:]]{4}tags:" "android-release push trigger uses tags filter"
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "-[[:space:]]*'v\\*'" "android-release tags filter stays on v*"
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "^[[:space:]]{2}workflow_dispatch:" "android-release keeps workflow_dispatch trigger"
+check_job_timeout "${ROOT_DIR}/.github/workflows/android-release.yml" "release-build" "120" "android-release release-build keeps timeout budget 120"
 require_absent_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "^[[:space:]]{2}push:" "face-sdk-migration-check disables push trigger"
 require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "^[[:space:]]{2}pull_request:" "face-sdk-migration-check keeps pull_request trigger"
 require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "^[[:space:]]{4}paths:" "face-sdk-migration-check pull_request keeps paths filter"
+check_job_timeout "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "maven-switch-compile" "45" "face-sdk-migration-check maven-switch-compile keeps timeout budget 45"
 require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "-[[:space:]]*\"scripts/face-sdk/\\*\\*\"" "face-sdk-migration-check paths filter includes face-sdk scripts"
 require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "-[[:space:]]*\"\\.github/actions/android-build-env/action\\.yml\"" "face-sdk-migration-check paths filter includes shared action"
 require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "-[[:space:]]*\"scripts/lint/verify_lint_warning_allowlist\\.sh\"" "face-sdk-migration-check paths filter includes lint allowlist script"

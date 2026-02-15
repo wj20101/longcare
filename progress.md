@@ -140,6 +140,18 @@
 - 远端验收（D50）：
   - `Android CI#22033280106`（commit `e1016c0`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22033280106`。
+- 执行 `D51 | F18`：新增 job 超时预算守卫。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：
+    - 新增 job 级 timeout 校验：
+      - `android-ci`: `detect-affected=10`、`verify-build=45`、`instrumentation-smoke=60`
+      - `baseline-profile`: `generate-baseline-profile=120`
+      - `android-release`: `release-build=120`
+      - `face-sdk-migration-check`: `maven-switch-compile=45`
+    - 通过预算守卫防止 job 超时被放大导致 CI 资源占用上升。
+  - 更新 `docs/architecture/ci-cd-automation-optimization-plan.md`：
+    - 新增 `F18` 与 `D51`，补充执行记录。
+- 本地验收（D51）：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - Actions 监控（持续）：
   - 监控 run：`Android CI#22031459440`（commit `6b25e95`），最终 `completed/success`。
   - 验证点：`detect-affected` 中新增的 `Publish affected plan summary` 步骤执行成功。

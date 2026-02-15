@@ -37,6 +37,7 @@
 | F15 | Face SDK workflow 触发范围收敛 | P1 | 减少无关 PR 触发 face-sdk 校验造成的 CI 资源消耗 |
 | F16 | Baseline 定时策略稳定守卫 | P1 | 防止 baseline 定时任务被改为高频触发导致资源浪费 |
 | F17 | Artifact 保留时长成本守卫 | P1 | 防止 retention-days 非策略值导致存储成本上升 |
+| F18 | Job 超时预算守卫 | P1 | 防止关键 job 的 timeout 被放大导致 CI 资源占用上升 |
 
 ## 3. 逐日执行计划（D28~D44）
 
@@ -59,6 +60,7 @@
 | D48 | F15 | `.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | face-sdk 触发范围回归可在 CI 守卫阶段阻断 | DONE |
 | D49 | F16 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | baseline 定时策略回归可在 CI 守卫阶段阻断 | DONE |
 | D50 | F17 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | artifact retention 回归可在 CI 守卫阶段阻断 | DONE |
+| D51 | F18 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | job timeout 预算回归可在 CI 守卫阶段阻断 | DONE |
 
 ## 4. 本轮已执行改动明细
 
@@ -111,6 +113,9 @@
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 15. Artifact 保留时长成本守卫：固定各 workflow 的 retention-days 策略值  
+   - `scripts/quality/verify_ci_workflow_quality.sh`
+
+16. Job 超时预算守卫：固定关键 job 的 timeout-minutes 预算值  
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 ## 5. 验收记录（本轮）
@@ -381,5 +386,22 @@
     - `android-release` 必须存在 `30` 天保留（发布产物）；
     - `android-release` 必须存在 `14` 天保留（诊断与辅助产物）。
   - 目标：防止 artifact 留存天数被误调大导致持续存储成本上升。
+- 验证：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+
+## 21. Job 超时预算守卫执行记录（2026-02-15）
+
+- 任务：`D51 | F18`
+- 改动文件：
+  - `scripts/quality/verify_ci_workflow_quality.sh`
+  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `progress.md`
+- 具体改动：
+  - 新增 job 级 timeout 预算守卫：
+    - `android-ci`: `detect-affected=10`、`verify-build=45`、`instrumentation-smoke=60`
+    - `baseline-profile`: `generate-baseline-profile=120`
+    - `android-release`: `release-build=120`
+    - `face-sdk-migration-check`: `maven-switch-compile=45`
+  - 目标：防止关键 job 超时预算被误调大，造成 runner 占用时长和成本持续上升。
 - 验证：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
