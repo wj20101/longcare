@@ -47,6 +47,27 @@ require_any_pattern() {
   fi
 }
 
+require_absent_pattern() {
+  local file_path="$1"
+  local pattern="$2"
+  local message="$3"
+  local matched="false"
+  if command -v rg >/dev/null 2>&1; then
+    if rg -q "${pattern}" "${file_path}"; then
+      matched="true"
+    fi
+  elif grep -Eq "${pattern}" "${file_path}"; then
+    matched="true"
+  fi
+
+  if [[ "${matched}" == "false" ]]; then
+    echo "[ci-workflow-quality][PASS] ${message}"
+  else
+    echo "[ci-workflow-quality][FAIL] ${message} (${file_path})"
+    EXIT_CODE=1
+  fi
+}
+
 WORKFLOWS=(
   "${ROOT_DIR}/.github/workflows/android-ci.yml"
   "${ROOT_DIR}/.github/workflows/baseline-profile.yml"
@@ -68,6 +89,7 @@ for workflow in "${WORKFLOWS[@]}"; do
 done
 
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "paths-ignore:" "android-ci has paths-ignore optimization"
+require_absent_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "^[[:space:]]{2}push:" "baseline-profile disables push trigger"
 require_any_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "android-ci runs workflow quality gate"
 require_any_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "baseline-profile runs workflow quality gate"
 require_any_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "android-release runs workflow quality gate"

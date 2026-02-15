@@ -42,6 +42,7 @@ class CountdownAlarmActivity : AppCompatActivity() {
     
     private var autoCloseHandler: Handler? = null
     private var autoCloseRunnable: Runnable? = null
+    private var stopAlarmReceiverRegistered = false
     
     companion object {
         private const val TAG = "CountdownAlarmActivity"
@@ -113,6 +114,7 @@ class CountdownAlarmActivity : AppCompatActivity() {
         // 注册停止响铃广播接收器
         val filter = IntentFilter(DismissAlarmReceiver.ACTION_STOP_ALARM)
         ContextCompat.registerReceiver(this, stopAlarmReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        stopAlarmReceiverRegistered = true
         
         // 如果启用自动关闭，设置30秒后自动关闭
         if (autoCloseEnabled) {
@@ -171,10 +173,9 @@ class CountdownAlarmActivity : AppCompatActivity() {
     
     override fun onDestroy() {
         super.onDestroy()
-        try {
+        if (stopAlarmReceiverRegistered) {
             unregisterReceiver(stopAlarmReceiver)
-        } catch (e: Exception) {
-            // 忽略取消注册失败的异常
+            stopAlarmReceiverRegistered = false
         }
         stopAlarmAndFinish()
     }
