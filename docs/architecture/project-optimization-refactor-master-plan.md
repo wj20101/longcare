@@ -539,7 +539,7 @@
 
 #### G1 低耦合契约首批实迁（已完成）
 - `core/common/src/main/kotlin/com/ytone/longcare/common/network/ApiResult.kt`（从 `:app` 迁入）
-- `core/domain/src/main/kotlin/com/ytone/longcare/domain/faceauth/model/FaceVerificationModels.kt`（从 `:app` 迁入）
+- `core/model/src/main/kotlin/com/ytone/longcare/domain/faceauth/model/FaceVerificationModels.kt`（先迁入 `core/domain`，后在 G4 收口至 `core:model`）
 - `feature/login/src/main/kotlin/com/ytone/longcare/features/login/ext/LoginExt.kt`（从 `:app` 迁入）
 - `app/build.gradle.kts`（补充 `:core:common`、`:core:domain` 依赖）
 
@@ -588,6 +588,7 @@
 - `core/model/src/main/kotlin/com/ytone/longcare/api/response/TodayServiceOrderModel.kt`（模型下沉）
 - `core/model/src/main/kotlin/com/ytone/longcare/model/Order.kt`（订单状态扩展下沉）
 - `core/model/src/main/kotlin/com/ytone/longcare/model/OrderKey.kt`（订单标识模型下沉）
+- `core/model/src/main/kotlin/com/ytone/longcare/domain/faceauth/model/FaceVerificationModels.kt`（人脸认证模型收口到 `core:model`）
 - `core/model/src/main/kotlin/com/ytone/longcare/data/database/entity/*.kt`（订单本地实体下沉）
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/system/SystemRepository.kt`（契约下沉）
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/login/LoginRepository.kt`（契约下沉）
@@ -599,6 +600,8 @@
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/order/OrderRepository.kt`（契约下沉）
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/repository/OrderDetailRepository.kt`（契约下沉）
 - `core/domain/src/main/kotlin/com/ytone/longcare/domain/repository/OrderImageRepository.kt`（契约下沉）
+- `core/domain/src/main/kotlin/com/ytone/longcare/domain/faceauth/FaceVerifier.kt`（domain alias 下沉）
+- `core/common/src/main/kotlin/com/ytone/longcare/common/faceauth/FaceVerifier.kt`（公共契约下沉）
 - `core/model/build.gradle.kts`（补齐 `kotlinSerialization`/`kotlin-parcelize` 插件与 `kotlinx-serialization-json`/`room-runtime` 依赖）
 - `app/build.gradle.kts`（补齐 `core:model` 直接依赖）
 - `app/src/main/kotlin/com/ytone/longcare/model/OrderKeyNavExt.kt`（保留导航侧扩展，避免 core 依赖 app navigation）
@@ -638,3 +641,4 @@
 | 2026-02-15 | D61 | G4 | 已完成第八批契约/模型下沉（`CosRepository` + COS 令牌与上传模型） | 308358c | `Android CI#22039685167` success；`CosRepository` 迁入 `core/domain`，`UploadTokenResultModel/CosModels` 迁入 `core:model`，并修复跨模块 smart-cast |
 | 2026-02-15 | D61 | G4 | 已完成第九批契约/模型下沉（`OrderRepository` + 订单主模型） | 02cd7ba | `Android CI#22041190992` success；`OrderRepository` 迁入 `core/domain`，订单请求/响应与状态扩展迁入 `core:model`，`core:model` 新增 `kotlin-parcelize` |
 | 2026-02-15 | D61 | G4 | 已完成第十批契约/模型下沉（`OrderDetailRepository`、`OrderImageRepository` + 订单本地实体） | 23d74e6 | `Android CI#22043400798` success；`OrderDetailRepository/OrderImageRepository` 迁入 `core/domain`，`OrderKey` 与订单本地实体迁入 `core:model`，新增 `OrderKeyNavExt` 并补齐 `room-runtime` |
+| 2026-02-15 | D61 | G4 | 已完成第十一批契约/模型收口（`FaceVerifier` 链路） | - | `FaceVerifier` 公共契约迁入 `core:common`，domain alias 迁入 `core:domain`，`FaceVerificationModels` 收口到 `core:model`；`app/domain` 已迁空且本地编译/lint 通过 |

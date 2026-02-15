@@ -557,3 +557,13 @@
 - 远端验收（D61-第十批）：
   - `Android CI#22043400798`（commit `23d74e6`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22043400798`。
+- 执行 `D61 | G4`（第十一批）：迁移 `FaceVerifier` 契约链路并清空 `app/domain`。
+  - 文件迁移：
+    - `app/src/main/kotlin/com/ytone/longcare/common/faceauth/FaceVerifier.kt` -> `core/common/src/main/kotlin/com/ytone/longcare/common/faceauth/FaceVerifier.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/domain/faceauth/FaceVerifier.kt` -> `core/domain/src/main/kotlin/com/ytone/longcare/domain/faceauth/FaceVerifier.kt`
+    - `core/domain/src/main/kotlin/com/ytone/longcare/domain/faceauth/model/FaceVerificationModels.kt` -> `core/model/src/main/kotlin/com/ytone/longcare/domain/faceauth/model/FaceVerificationModels.kt`
+  - 结果：
+    - `app/src/main/kotlin/com/ytone/longcare/domain/` 已迁空。
+- 本地验收（D61-第十一批）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
