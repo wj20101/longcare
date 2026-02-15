@@ -101,6 +101,18 @@
 - 远端验收（D47）：
   - `Android CI#22033023146`（commit `5263a60`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22033023146`。
+- 执行 `D48 | F15`：收敛 Face SDK workflow 触发范围，减少无关 PR 触发。
+  - 更新 `.github/workflows/face-sdk-migration-check.yml`：
+    - 将 `pull_request.paths` 从 `scripts/lint/**`、`scripts/quality/**` 宽匹配，改为脚本级精准清单；
+    - 增加共享 action 变更联动：`.github/actions/android-build-env/action.yml`；
+    - 增加 `constants.gradle.kts` 变更联动。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：
+    - 新增 face-sdk workflow 路径守卫（关键精准路径必须存在）；
+    - 新增反向守卫（禁止 `scripts/lint/**` 和 `scripts/quality/**` 宽匹配回归）。
+  - 更新 `docs/architecture/ci-cd-automation-optimization-plan.md`：
+    - 新增 `F15` 与 `D48`，补充执行记录。
+- 本地验收（D48）：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - Actions 监控（持续）：
   - 监控 run：`Android CI#22031459440`（commit `6b25e95`），最终 `completed/success`。
   - 验证点：`detect-affected` 中新增的 `Publish affected plan summary` 步骤执行成功。

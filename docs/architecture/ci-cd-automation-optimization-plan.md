@@ -34,6 +34,7 @@
 | F12 | 关键外部 Action 版本守卫 | P1 | 防止核心三方 action 版本漂移导致 CI 行为变化 |
 | F13 | Workflow 触发策略回归守卫 | P1 | 防止触发器回退导致重复流水线与资源浪费 |
 | F14 | CI 可观测性回归守卫 | P1 | 防止 affected plan summary 可观测信息被误删 |
+| F15 | Face SDK workflow 触发范围收敛 | P1 | 减少无关 PR 触发 face-sdk 校验造成的 CI 资源消耗 |
 
 ## 3. 逐日执行计划（D28~D44）
 
@@ -53,6 +54,7 @@
 | D45 | F12 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 关键 action 版本漂移可在 CI 守卫阶段阻断 | DONE |
 | D46 | F13 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | workflow 触发策略回归可在 CI 守卫阶段阻断 | DONE |
 | D47 | F14 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | affected plan summary 回归可在 CI 守卫阶段阻断 | DONE |
+| D48 | F15 | `.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | face-sdk 触发范围回归可在 CI 守卫阶段阻断 | DONE |
 
 ## 4. 本轮已执行改动明细
 
@@ -95,6 +97,10 @@
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 12. CI 可观测性回归守卫：固定 affected plan summary 可观测步骤  
+   - `scripts/quality/verify_ci_workflow_quality.sh`
+
+13. Face SDK workflow 触发范围收敛：将 PR 触发从宽匹配改为脚本级精准匹配  
+   - `.github/workflows/face-sdk-migration-check.yml`
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 ## 5. 验收记录（本轮）
@@ -312,5 +318,25 @@
     - 必须存在 `Publish affected plan summary` 步骤；
     - 必须将摘要写入 `GITHUB_STEP_SUMMARY`。
   - 目标：确保每次 CI 仍可快速看到受影响范围、任务清单与 instrumentation 决策，不因误删步骤导致排障效率下降。
+- 验证：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+
+## 18. Face SDK workflow 触发范围收敛执行记录（2026-02-15）
+
+- 任务：`D48 | F15`
+- 改动文件：
+  - `.github/workflows/face-sdk-migration-check.yml`
+  - `scripts/quality/verify_ci_workflow_quality.sh`
+  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `progress.md`
+- 具体改动：
+  - 将 `face-sdk-migration-check` 的 `pull_request.paths` 从目录级宽匹配收敛为精准文件列表：
+    - 保留 face-sdk 关键入口：`app/build.gradle.kts`、`settings.gradle.kts`、`gradle.properties`、`constants.gradle.kts`、`scripts/face-sdk/**`；
+    - 增加共享 action 变更联动：`.github/actions/android-build-env/action.yml`；
+    - 增加该工作流真实依赖的质量脚本白名单（lint allowlist 与具体 quality 脚本）；
+    - 移除宽匹配 `scripts/lint/**` 与 `scripts/quality/**`。
+  - 为避免触发范围反弹，CI 守卫新增：
+    - 必须包含关键精准路径；
+    - 明确禁止 `scripts/lint/**` 与 `scripts/quality/**` 宽匹配。
 - 验证：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
