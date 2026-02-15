@@ -39,8 +39,13 @@
 | F17 | Artifact 保留时长成本守卫 | P1 | 防止 retention-days 非策略值导致存储成本上升 |
 | F18 | Job 超时预算守卫 | P1 | 防止关键 job 的 timeout 被放大导致 CI 资源占用上升 |
 | F19 | Artifact 步骤完整性守卫 | P1 | 防止 upload-artifact 漏配 if-no-files-found/retention-days 导致诊断或成本风险 |
+| F20 | Lint 忽略策略守卫 | P1 | 防止新增 `severity="ignore"` 绕过 lint 治理 |
+| F21 | 第三方 lint 忽略项清理 | P2 | 在上游依赖修复后移除临时忽略并恢复默认 lint 校验 |
+| F22 | COS 凭证刷新阻塞优化 | P2 | 收敛 `runBlocking` 风险并提升并发场景稳定性 |
+| F23 | ServiceTime 通知兜底协程化 | P2 | 以协程延时替代 `Handler` 兜底，降低回调残留风险 |
+| F24 | CI 运行成本基线化 | P2 | 建立 workflow 时长/取消率观测基线并持续收敛 |
 
-## 3. 逐日执行计划（D28~D44）
+## 3. 逐日执行计划（D28~D57）
 
 | 日程 | 对应任务 | 具体文件改动清单 | 当日验收门禁 | 状态 |
 |---|---|---|---|---|
@@ -63,6 +68,11 @@
 | D50 | F17 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | artifact retention 回归可在 CI 守卫阶段阻断 | DONE |
 | D51 | F18 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | job timeout 预算回归可在 CI 守卫阶段阻断 | DONE |
 | D52 | F19 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | upload-artifact 步骤完整性回归可在 CI 守卫阶段阻断 | DONE |
+| D53 | F20 | `scripts/lint/verify_lint_ignore_policy.sh`、`.github/actions/android-build-env/action.yml`、`.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | lint ignore 策略回归可在 CI 守卫阶段阻断 | DONE |
+| D54 | F21 | `app/lint.xml`、`gradle/libs.versions.toml`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 临时 lint 忽略项减少并可稳定通过 lint | TODO |
+| D55 | F22 | `app/src/main/kotlin/com/ytone/longcare/data/cos/repository/CosRepositoryImpl.kt`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 凭证刷新路径不引入主线程阻塞风险 | TODO |
+| D56 | F23 | `app/src/main/kotlin/com/ytone/longcare/features/service/ServiceTimeNotificationManager.kt`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Handler 兜底链路协程化且取消语义稳定 | TODO |
+| D57 | F24 | `scripts/quality/collect_ci_run_metrics.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 输出可复用 CI 成本指标并形成阈值建议 | TODO |
 
 ## 4. 本轮已执行改动明细
 
@@ -121,6 +131,12 @@
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 17. Artifact 步骤完整性守卫：确保每个 upload-artifact 步骤都配置 if-no-files-found 与 retention-days  
+   - `scripts/quality/verify_ci_workflow_quality.sh`
+
+18. Lint 忽略策略守卫：禁止新增未审批的 `severity="ignore"` 项并接入共享 CI action  
+   - `scripts/lint/verify_lint_ignore_policy.sh`
+   - `.github/actions/android-build-env/action.yml`
+   - `.github/workflows/face-sdk-migration-check.yml`
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 ## 5. 验收记录（本轮）
@@ -426,3 +442,33 @@
   - 已接入 `android-ci`、`baseline-profile`、`android-release`、`face-sdk-migration-check` 四条关键 workflow。
 - 验证：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+
+## 23. Lint 忽略策略守卫执行记录（2026-02-15）
+
+- 任务：`D53 | F20`
+- 改动文件：
+  - `scripts/lint/verify_lint_ignore_policy.sh`（新增）
+  - `.github/actions/android-build-env/action.yml`
+  - `.github/workflows/face-sdk-migration-check.yml`
+  - `scripts/quality/verify_ci_workflow_quality.sh`
+  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `progress.md`
+- 具体改动：
+  - 新增 `verify_lint_ignore_policy.sh`，校验 `app/lint.xml` 中 `severity="ignore"` 仅允许审批列表内 issue；
+  - 共享 action `android-build-env` 默认执行 lint ignore 策略守卫；
+  - `face-sdk-migration-check` 的 `pull_request.paths` 补充该脚本路径，确保守卫脚本变更会触发校验；
+  - workflow 质量守卫脚本新增两条回归校验：
+    - 共享 action 必须执行 lint ignore 策略守卫；
+    - face-sdk workflow 必须包含该脚本的路径触发规则。
+- 验证：
+  - `bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml`：PASS
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+
+## 24. 剩余未完成优化项（2026-02-15）
+
+| ID | 事项 | 当前状态 | 说明 |
+|---|---|---|---|
+| F21 | 第三方 lint 忽略项清理 | TODO | 依赖升级后逐步移除 `Aligned16KB` / `GlobalOptionInConsumerRules` / `TrustAllX509TrustManager` 临时忽略 |
+| F22 | COS 凭证刷新阻塞优化 | TODO | 收敛 `runBlocking` 使用，避免凭证回调线程长时间阻塞 |
+| F23 | ServiceTime 通知兜底协程化 | TODO | 将 `Handler` 兜底替换为可取消协程任务，提升一致性与可测性 |
+| F24 | CI 运行成本基线化 | TODO | 对近 30 次 run 做时长/取消率统计，形成下一轮 timeout 与触发策略优化依据 |

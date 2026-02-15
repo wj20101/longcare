@@ -306,3 +306,16 @@
   - 更新 `scripts/quality/verify_ci_workflow_quality.sh` 支持共享 action 校验模式。
 - 本地验收：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- 执行 `D53 | F20`：新增 lint 忽略策略守卫并接入共享 CI action。
+  - 新增 `scripts/lint/verify_lint_ignore_policy.sh`：校验 `app/lint.xml` 的 `severity="ignore"` 仅允许审批列表。
+  - 更新 `.github/actions/android-build-env/action.yml`：新增 `run-lint-ignore-policy-check` 输入（默认 `true`）并执行该守卫。
+  - 更新 `.github/workflows/face-sdk-migration-check.yml`：`pull_request.paths` 增加 `scripts/lint/verify_lint_ignore_policy.sh` 联动。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：新增共享 action 与 face-sdk 路径触发的回归守卫。
+  - 更新 `docs/architecture/ci-cd-automation-optimization-plan.md`：新增 `F20`、`D53` 执行记录，并补齐剩余项 `F21~F24`。
+- 本地验收（D53）：
+  - `bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml`：PASS。
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+  - `bash scripts/quality/verify_jetpack_compat_apis.sh`：PASS。
+  - `./gradlew --no-daemon :app:lintDebug`：PASS。
+- 剩余未完成优化项基线（D53 后）：`F21`、`F22`、`F23`、`F24`（详见 `docs/architecture/ci-cd-automation-optimization-plan.md` 第 24 节）。
+- D53 兼容性修正：`verify_lint_ignore_policy.sh` 去除 Bash 4 特性（`declare -A`、`mapfile`），确保 macOS / runner 默认 Bash 3.2 可执行。
