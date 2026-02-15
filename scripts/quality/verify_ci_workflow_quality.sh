@@ -72,6 +72,7 @@ WORKFLOWS=(
   "${ROOT_DIR}/.github/workflows/android-ci.yml"
   "${ROOT_DIR}/.github/workflows/baseline-profile.yml"
   "${ROOT_DIR}/.github/workflows/android-release.yml"
+  "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml"
 )
 
 for workflow in "${WORKFLOWS[@]}"; do
@@ -83,6 +84,7 @@ for workflow in "${WORKFLOWS[@]}"; do
 
   require_pattern "${workflow}" "concurrency:" "has concurrency block"
   require_pattern "${workflow}" "cancel-in-progress:[[:space:]]*true" "cancel-in-progress enabled"
+  require_pattern "${workflow}" "permissions:" "has permissions block"
   require_pattern "${workflow}" "timeout-minutes:" "has job timeout"
   require_any_pattern "${workflow}" "uses:[[:space:]]*gradle/actions/setup-gradle@v5" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "uses setup-gradle action (direct or shared)"
   require_any_pattern "${workflow}" "bash scripts/quality/verify_gradle_stability\\.sh" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "runs Gradle stability gate (direct or shared)"
@@ -93,6 +95,7 @@ require_absent_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "^[[
 require_any_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "android-ci runs workflow quality gate"
 require_any_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "baseline-profile runs workflow quality gate"
 require_any_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "android-release runs workflow quality gate"
+require_any_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "face-sdk-migration-check runs workflow quality gate"
 
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "bash scripts/quality/free_runner_disk_space\\.sh" "android-ci uses disk cleanup script"
 require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "bash scripts/quality/free_runner_disk_space\\.sh" "baseline-profile uses disk cleanup script"
@@ -100,9 +103,11 @@ require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "bash script
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "android-ci uses shared android build env action"
 require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "baseline-profile uses shared android build env action"
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "android-release uses shared android build env action"
+require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "face-sdk-migration-check uses shared android build env action"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "name:[[:space:]]*Upload failure diagnostics" "android-ci uploads failure diagnostics"
 require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "name:[[:space:]]*Upload failure diagnostics" "baseline-profile uploads failure diagnostics"
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Upload failure diagnostics" "android-release uploads failure diagnostics"
+require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "name:[[:space:]]*Upload failure diagnostics" "face-sdk-migration-check uploads failure diagnostics"
 
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[ci-workflow-quality] verification failed."

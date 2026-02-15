@@ -36,6 +36,20 @@
   - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：新增三套 workflow 的 failure diagnostics 步骤守卫检查。
 - 本地验收：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- Actions 监控（持续）：
+  - 监控 run：`Android CI#22031459440`（commit `6b25e95`），最终 `completed/success`。
+  - 验证点：`detect-affected` 中新增的 `Publish affected plan summary` 步骤执行成功。
+- 执行 `D34 | F7`：统一 `face-sdk-migration-check` workflow 规范。
+  - 更新 `.github/workflows/face-sdk-migration-check.yml`：
+    - 新增 `concurrency` 与 `cancel-in-progress`；
+    - 新增 `permissions: contents: read`；
+    - 改为调用共享 action `.github/actions/android-build-env`；
+    - 新增 `Upload failure diagnostics`（`if: failure()`）。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：
+    - 将 `face-sdk-migration-check` 纳入 workflow 守卫校验；
+    - 新增权限块、共享 action 接入、workflow 质量守卫接入与失败诊断步骤校验。
+- 本地验收（D34）：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - CI 触发优化：减少每次提交重复流水线
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。
