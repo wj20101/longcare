@@ -35,6 +35,7 @@
 | F13 | Workflow 触发策略回归守卫 | P1 | 防止触发器回退导致重复流水线与资源浪费 |
 | F14 | CI 可观测性回归守卫 | P1 | 防止 affected plan summary 可观测信息被误删 |
 | F15 | Face SDK workflow 触发范围收敛 | P1 | 减少无关 PR 触发 face-sdk 校验造成的 CI 资源消耗 |
+| F16 | Baseline 定时策略稳定守卫 | P1 | 防止 baseline 定时任务被改为高频触发导致资源浪费 |
 
 ## 3. 逐日执行计划（D28~D44）
 
@@ -55,6 +56,7 @@
 | D46 | F13 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | workflow 触发策略回归可在 CI 守卫阶段阻断 | DONE |
 | D47 | F14 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | affected plan summary 回归可在 CI 守卫阶段阻断 | DONE |
 | D48 | F15 | `.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | face-sdk 触发范围回归可在 CI 守卫阶段阻断 | DONE |
+| D49 | F16 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | baseline 定时策略回归可在 CI 守卫阶段阻断 | DONE |
 
 ## 4. 本轮已执行改动明细
 
@@ -101,6 +103,9 @@
 
 13. Face SDK workflow 触发范围收敛：将 PR 触发从宽匹配改为脚本级精准匹配  
    - `.github/workflows/face-sdk-migration-check.yml`
+   - `scripts/quality/verify_ci_workflow_quality.sh`
+
+14. Baseline 定时策略稳定守卫：固定 baseline 的周级 cron 触发策略  
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 ## 5. 验收记录（本轮）
@@ -338,5 +343,20 @@
   - 为避免触发范围反弹，CI 守卫新增：
     - 必须包含关键精准路径；
     - 明确禁止 `scripts/lint/**` 与 `scripts/quality/**` 宽匹配。
+- 验证：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+
+## 19. Baseline 定时策略稳定守卫执行记录（2026-02-15）
+
+- 任务：`D49 | F16`
+- 改动文件：
+  - `scripts/quality/verify_ci_workflow_quality.sh`
+  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `progress.md`
+- 具体改动：
+  - 新增 `baseline-profile` 定时策略守卫：
+    - 要求保留 `schedule`；
+    - 要求 cron 固定为每周一 `02:00 UTC`（`0 2 * * 1`）。
+  - 目标：防止后续误改为高频定时任务，避免持续占用 CI runner 资源。
 - 验证：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS

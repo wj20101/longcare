@@ -116,6 +116,14 @@
 - 远端验收（D48）：
   - `Android CI#22033096611`（commit `991033c`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22033096611`。
+- 执行 `D49 | F16`：新增 baseline 定时策略稳定守卫。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：
+    - `baseline-profile` 必须保留 `schedule`；
+    - `baseline-profile` 的 cron 必须保持为 `0 2 * * 1`（每周一 02:00 UTC）。
+  - 更新 `docs/architecture/ci-cd-automation-optimization-plan.md`：
+    - 新增 `F16` 与 `D49`，补充执行记录。
+- 本地验收（D49）：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - Actions 监控（持续）：
   - 监控 run：`Android CI#22031459440`（commit `6b25e95`），最终 `completed/success`。
   - 验证点：`detect-affected` 中新增的 `Publish affected plan summary` 步骤执行成功。
