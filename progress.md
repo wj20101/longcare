@@ -72,6 +72,9 @@
     - 新增 `F12` 与 `D45`，补充执行记录。
 - 本地验收（D45）：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- 远端验收（D45）：
+  - `Android CI#22032833766`（commit `21ff30d`）`completed/success`。
+  - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22032833766`。
 - Actions 监控（持续）：
   - 监控 run：`Android CI#22031459440`（commit `6b25e95`），最终 `completed/success`。
   - 验证点：`detect-affected` 中新增的 `Publish affected plan summary` 步骤执行成功。
