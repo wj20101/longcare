@@ -74,6 +74,7 @@ WORKFLOWS=(
   "${ROOT_DIR}/.github/workflows/android-release.yml"
   "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml"
 )
+SHARED_ANDROID_BUILD_ENV_ACTION="${ROOT_DIR}/.github/actions/android-build-env/action.yml"
 
 for workflow in "${WORKFLOWS[@]}"; do
   if [[ ! -f "${workflow}" ]]; then
@@ -93,6 +94,13 @@ for workflow in "${WORKFLOWS[@]}"; do
   require_any_pattern "${workflow}" "uses:[[:space:]]*gradle/actions/setup-gradle@v5" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "uses setup-gradle action (direct or shared)"
   require_any_pattern "${workflow}" "bash scripts/quality/verify_gradle_stability\\.sh" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "runs Gradle stability gate (direct or shared)"
 done
+
+if [[ ! -f "${SHARED_ANDROID_BUILD_ENV_ACTION}" ]]; then
+  echo "[ci-workflow-quality][FAIL] missing shared action: ${SHARED_ANDROID_BUILD_ENV_ACTION}"
+  EXIT_CODE=1
+else
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/quality/verify_jetpack_compat_apis\\.sh" "shared android build env runs jetpack compat api guard"
+fi
 
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "paths-ignore:" "android-ci has paths-ignore optimization"
 require_absent_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "^[[:space:]]{2}push:" "baseline-profile disables push trigger"

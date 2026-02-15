@@ -36,6 +36,24 @@
   - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：新增三套 workflow 的 failure diagnostics 步骤守卫检查。
 - 本地验收：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- 执行 `D44 | F11`：新增 Jetpack 兼容 API 回归守卫并接入共享 CI action。
+  - 新增 `scripts/quality/verify_jetpack_compat_apis.sh`：
+    - 阻断直接使用 `PendingIntent.getActivity/getBroadcast/getService`；
+    - 阻断直接创建 `NotificationChannel(...)`；
+    - 阻断直接调用 `registerReceiver(...)`（要求 `ContextCompat.registerReceiver`）；
+    - 阻断直接调用 `startForeground(...)`（要求 `ServiceCompat.startForeground`）。
+  - 更新 `.github/actions/android-build-env/action.yml`：
+    - 新增 `run-jetpack-compat-check` 输入（默认 `true`）；
+    - 在共享 action 中执行 `verify_jetpack_compat_apis.sh`。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：
+    - 新增共享 action 校验，确保 Jetpack 守卫步骤未被移除。
+  - 更新 `docs/architecture/ci-cd-automation-optimization-plan.md`：
+    - 新增 `F11` 与 `D44`，补充执行记录。
+- 本地验收（D44）：
+  - `bash scripts/quality/verify_jetpack_compat_apis.sh`：PASS。
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
 - Actions 监控（持续）：
   - 监控 run：`Android CI#22031459440`（commit `6b25e95`），最终 `completed/success`。
   - 验证点：`detect-affected` 中新增的 `Publish affected plan summary` 步骤执行成功。

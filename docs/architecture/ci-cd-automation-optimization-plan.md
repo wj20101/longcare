@@ -30,8 +30,9 @@
 | F8 | workflow 最小权限守卫精确校验 | P1 | 防止 `permissions` 回退导致权限扩大 |
 | F9 | action 版本稳定性守卫 | P1 | 防止可变引用（`@main/@master`）引入不确定性 |
 | F10 | artifact action 版本固定守卫 | P1 | 防止上传产物 action 版本漂移导致兼容风险 |
+| F11 | Jetpack 兼容 API 回归守卫 | P1 | 防止直接平台 API 回归导致 targetSdk 35/36 兼容风险 |
 
-## 3. 逐日执行计划（D28~D40）
+## 3. 逐日执行计划（D28~D44）
 
 | 日程 | 对应任务 | 具体文件改动清单 | 当日验收门禁 | 状态 |
 |---|---|---|---|---|
@@ -45,6 +46,7 @@
 | D35 | F8 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 权限守卫可阻断 read/write 配置回退 | DONE |
 | D36 | F9 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Action 引用稳定性守卫可阻断可变版本 | DONE |
 | D40 | F10 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 上传产物 action 版本固定守卫可阻断旧版本回归 | DONE |
+| D44 | F11 | `scripts/quality/verify_jetpack_compat_apis.sh`、`.github/actions/android-build-env/action.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Jetpack 兼容 API 回归在 CI 中可自动阻断 | DONE |
 
 ## 4. 本轮已执行改动明细
 
@@ -73,6 +75,11 @@
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 8. workflow artifact action 稳定性守卫：固定 `upload-artifact@v6`  
+   - `scripts/quality/verify_ci_workflow_quality.sh`
+
+9. Jetpack 兼容 API 回归守卫：新增兼容 API 违规扫描并接入共享 CI action  
+   - `scripts/quality/verify_jetpack_compat_apis.sh`
+   - `.github/actions/android-build-env/action.yml`
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 ## 5. 验收记录（本轮）
@@ -218,4 +225,25 @@
   - 在 workflow 守卫中新增 `actions/upload-artifact@v6` 固定版本校验；
   - 增加反向守卫：阻断 `actions/upload-artifact` 旧版本（`v0-v5`）回归。
 - 验证：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+
+## 14. Jetpack 兼容 API 回归守卫执行记录（2026-02-15）
+
+- 任务：`D44 | F11`
+- 改动文件：
+  - `scripts/quality/verify_jetpack_compat_apis.sh`（新增）
+  - `.github/actions/android-build-env/action.yml`
+  - `scripts/quality/verify_ci_workflow_quality.sh`
+  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `progress.md`
+- 具体改动：
+  - 新增 Jetpack 兼容 API 守卫脚本，阻断以下回归：
+    - 直接使用 `PendingIntent.getActivity/getBroadcast/getService`；
+    - 直接创建 `NotificationChannel(...)`；
+    - 直接调用 `registerReceiver(...)`（要求 `ContextCompat.registerReceiver`）；
+    - 直接调用 `startForeground(...)`（要求 `ServiceCompat.startForeground`）。
+  - 共享 action `android-build-env` 新增 `run-jetpack-compat-check`（默认开启）并执行该守卫脚本。
+  - workflow 守卫脚本新增共享 action 校验，确保 Jetpack 守卫不会被误删。
+- 验证：
+  - `bash scripts/quality/verify_jetpack_compat_apis.sh`：PASS
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS

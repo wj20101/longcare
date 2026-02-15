@@ -19,6 +19,10 @@ inputs:
     description: Whether to run verify_ci_workflow_quality.sh.
     required: false
     default: "false"
+  run-jetpack-compat-check:
+    description: Whether to run verify_jetpack_compat_apis.sh.
+    required: false
+    default: "true"
 
 runs:
   using: composite
@@ -46,6 +50,11 @@ runs:
       if: ${{ inputs.run-gradle-stability-check == 'true' }}
       shell: bash
       run: bash scripts/quality/verify_gradle_stability.sh
+
+    - name: Verify Jetpack compat API guardrails
+      if: ${{ inputs.run-jetpack-compat-check == 'true' }}
+      shell: bash
+      run: bash scripts/quality/verify_jetpack_compat_apis.sh
 
     - name: Verify CI workflow quality guardrails
       if: ${{ inputs.run-workflow-quality-check == 'true' }}
