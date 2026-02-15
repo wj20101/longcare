@@ -532,7 +532,7 @@
 | G1 | 低耦合契约首批实迁（core/common + core/domain + feature/login） | P0 | DONE | E3 |
 | G2 | 登录特性 UI/VM 解耦下沉（依赖接口化） | P1 | DONE | G1 |
 | G3 | identification 领域用例迁移到 feature module | P1 | DONE | G1 |
-| G4 | Repository 接口与实现跨模块对齐（core/domain ↔ core/data） | P1 | TODO | G1 |
+| G4 | Repository 接口与实现跨模块对齐（core/domain ↔ core/data） | P1 | IN_PROGRESS | G1 |
 | G5 | App 壳层二次收敛与模块可见性加严 | P1 | TODO | G2,G3,G4 |
 
 ### 10.2 每项任务具体文件改动清单
@@ -567,6 +567,7 @@
 - `core/data/src/main/kotlin/com/ytone/longcare/data/**`（实现下沉）
 - `app/src/main/kotlin/com/ytone/longcare/domain/**`、`app/src/main/kotlin/com/ytone/longcare/data/**`（收口）
 - `app/src/main/kotlin/com/ytone/longcare/di/RepositoryModule.kt`
+- `core/domain/build.gradle.kts`（补齐 `core:common` 依赖，承接 `ApiResult`）
 
 #### G5 App 壳层收敛与门禁加严（待执行）
 - `app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt`
@@ -581,7 +582,7 @@
 | D58 | G1 | `ApiResult.kt`、`FaceVerificationModels.kt`、`LoginExt.kt`、`app/build.gradle.kts` | `:app:compileDebugKotlin` + `:app:lintDebug` 通过 | DONE |
 | D59 | G2 | `feature/login/**`、`app/features/login/**`、`AppNavigation.kt` | 登录链路 smoke 与 lint 通过 | DONE |
 | D60 | G3 | `feature/identification/domain/**`、`app/features/identification/domain/**` | identification 用例链路编译/单测通过 | DONE |
-| D61 | G4 | `core/domain/**`、`core/data/**`、`app/domain/**`、`app/data/**` | UI 不直接依赖 Impl，架构守卫通过 | TODO |
+| D61 | G4 | `core/domain/**`、`core/data/**`、`app/domain/**`、`app/data/**` | UI 不直接依赖 Impl，架构守卫通过 | IN_PROGRESS |
 | D62 | G5 | `AppNavigation.kt`、架构守卫脚本与 CI 门禁 | 模块边界回归在 CI 可阻断 | TODO |
 
 ### 10.4 执行日志（G 阶段）
@@ -593,3 +594,4 @@
 | 2026-02-15 | D60 | G3 | 已完成第一批 usecase 下沉（`VerifyServicePersonUseCase`） | b4e57f7 | `Android CI#22035189179` success；新增 `VerifyServicePersonDataGateway` 契约并在 `app` 侧落地适配实现 |
 | 2026-02-15 | D60 | G3 | 已完成第二批 usecase 下沉（`UploadElderPhotoUseCase`） | 98cbb3b | `Android CI#22035316587` success；新增 `UploadElderPhotoGateway` 契约并在 `app` 侧接入 `CosRepository/OrderRepository` |
 | 2026-02-15 | D60 | G3 | 已完成第三批 usecase 下沉（`SetupFaceUseCase`） | e79675b | `Android CI#22035472683` success；新增 `SetupFaceGateway` 契约并在 `app` 侧接入上传/服务端设置/本地缓存，`app/features/identification/domain` 已迁空 |
+| 2026-02-15 | D61 | G4 | 已完成首批契约下沉（`LocationRepository` -> `core/domain`） | - | `core/domain` 新增对 `core:common` 依赖，`:app:compileDebugKotlin` 与 `:app:lintDebug` 本地通过，等待 CI 远端验收 |

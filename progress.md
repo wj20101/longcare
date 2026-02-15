@@ -424,3 +424,13 @@
 - 远端验收（D60-第三批）：
   - `Android CI#22035472683`（commit `e79675b`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22035472683`。
+- 执行 `D61 | G4`（第一批）：迁移 `LocationRepository` 到 `core/domain`。
+  - 文件迁移：
+    - `app/src/main/kotlin/com/ytone/longcare/domain/location/LocationRepository.kt` -> `core/domain/src/main/kotlin/com/ytone/longcare/domain/location/LocationRepository.kt`
+  - 依赖调整：
+    - `core/domain/build.gradle.kts` 新增 `implementation(project(":core:common"))`，承接 `ApiResult`。
+  - 兼容性处置：
+    - `FaceVerifier` 契约仍依赖 `app/common/faceauth`，暂不纳入本批迁移，保留在 `app/domain/faceauth`。
+- 本地验收（D61-第一批）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
