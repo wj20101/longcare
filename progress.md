@@ -322,3 +322,12 @@
 - 远端验收（D53）：
   - `Android CI#22033904733`（commit `7515098`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22033904733`。
+- 执行 `D55 | F22`：COS 凭证刷新阻塞优化（Kotlin 协程收敛）。
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/data/cos/repository/CosRepositoryImpl.kt`：
+    - `DynamicCredentialProvider.getCredentials()` 在主线程且存在缓存凭证时跳过同步刷新，回退缓存凭证；
+    - `refreshConfigSync()` 改为返回 `Boolean`，并固定使用 `runBlocking(ioDispatcher)` 执行同步刷新；
+    - 刷新失败统一记录错误日志，`refresh()` 根据返回值输出成功/失败日志。
+- 本地验收（D55）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
+- 剩余未完成优化项基线（D55 后）：`F21`、`F23`、`F24`。

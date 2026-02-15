@@ -70,7 +70,7 @@
 | D52 | F19 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | upload-artifact 步骤完整性回归可在 CI 守卫阶段阻断 | DONE |
 | D53 | F20 | `scripts/lint/verify_lint_ignore_policy.sh`、`.github/actions/android-build-env/action.yml`、`.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | lint ignore 策略回归可在 CI 守卫阶段阻断 | DONE |
 | D54 | F21 | `app/lint.xml`、`gradle/libs.versions.toml`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 临时 lint 忽略项减少并可稳定通过 lint | TODO |
-| D55 | F22 | `app/src/main/kotlin/com/ytone/longcare/data/cos/repository/CosRepositoryImpl.kt`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 凭证刷新路径不引入主线程阻塞风险 | TODO |
+| D55 | F22 | `app/src/main/kotlin/com/ytone/longcare/data/cos/repository/CosRepositoryImpl.kt`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 凭证刷新路径不引入主线程阻塞风险 | DONE |
 | D56 | F23 | `app/src/main/kotlin/com/ytone/longcare/features/service/ServiceTimeNotificationManager.kt`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Handler 兜底链路协程化且取消语义稳定 | TODO |
 | D57 | F24 | `scripts/quality/collect_ci_run_metrics.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 输出可复用 CI 成本指标并形成阈值建议 | TODO |
 
@@ -138,6 +138,9 @@
    - `.github/actions/android-build-env/action.yml`
    - `.github/workflows/face-sdk-migration-check.yml`
    - `scripts/quality/verify_ci_workflow_quality.sh`
+
+19. COS 凭证刷新阻塞优化：主线程场景回退缓存凭证并将同步刷新固定到 IO 调度器  
+   - `app/src/main/kotlin/com/ytone/longcare/data/cos/repository/CosRepositoryImpl.kt`
 
 ## 5. 验收记录（本轮）
 
@@ -470,6 +473,22 @@
 | ID | 事项 | 当前状态 | 说明 |
 |---|---|---|---|
 | F21 | 第三方 lint 忽略项清理 | TODO | 依赖升级后逐步移除 `Aligned16KB` / `GlobalOptionInConsumerRules` / `TrustAllX509TrustManager` 临时忽略 |
-| F22 | COS 凭证刷新阻塞优化 | TODO | 收敛 `runBlocking` 使用，避免凭证回调线程长时间阻塞 |
 | F23 | ServiceTime 通知兜底协程化 | TODO | 将 `Handler` 兜底替换为可取消协程任务，提升一致性与可测性 |
 | F24 | CI 运行成本基线化 | TODO | 对近 30 次 run 做时长/取消率统计，形成下一轮 timeout 与触发策略优化依据 |
+
+## 25. COS 凭证刷新阻塞优化执行记录（2026-02-15）
+
+- 任务：`D55 | F22`
+- 改动文件：
+  - `app/src/main/kotlin/com/ytone/longcare/data/cos/repository/CosRepositoryImpl.kt`
+  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `progress.md`
+- 具体改动：
+  - `DynamicCredentialProvider.getCredentials()` 增加主线程保护：
+    - 检测配置过期时，若处于主线程且存在缓存凭证，跳过同步刷新并回退缓存；
+    - 若非主线程则执行同步刷新，刷新失败时回退缓存凭证并记录告警。
+  - `refreshConfigSync()` 从 `Unit` 改为 `Boolean` 返回值，并改为 `runBlocking(ioDispatcher)` 执行刷新；
+  - 刷新异常统一在同步刷新函数内记录，`refresh()` 依据返回值输出成功/失败日志。
+- 验证：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS

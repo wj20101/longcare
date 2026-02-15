@@ -1,6 +1,7 @@
 package com.ytone.longcare.data.cos.repository
 
 import android.content.Context
+import android.os.Looper
 import com.tencent.cos.xml.CosXmlService
 import com.tencent.cos.xml.CosXmlServiceConfig
 import com.tencent.cos.xml.exception.CosXmlServiceException
@@ -118,9 +119,18 @@ class CosRepositoryImpl @Inject constructor(
 
         override fun getCredentials(): QCloudLifecycleCredentials? {
             return try {
+                val cachedConfig = configCache.getConfig(defaultFolderType)
                 // 检查并刷新配置
                 if (!configCache.isValid(defaultFolderType)) {
-                    refreshConfigSync()
+                    val isMainThread = Looper.myLooper() == Looper.getMainLooper()
+                    if (isMainThread && cachedConfig != null) {
+                        logW("Skip sync credential refresh on main thread, fallback to cached token", tag = TAG)
+                    } else {
+                        val refreshed = refreshConfigSync()
+                        if (!refreshed && cachedConfig != null) {
+                            logW("Credential refresh failed, fallback to cached token", tag = TAG)
+                        }
+                    }
                 }
 
                 configCache.getConfig(defaultFolderType)?.let { config ->
@@ -139,21 +149,26 @@ class CosRepositoryImpl @Inject constructor(
         }
 
         override fun refresh() {
-            try {
-                refreshConfigSync()
+            val refreshed = refreshConfigSync()
+            if (refreshed) {
                 logD("Credentials refreshed successfully", tag = TAG)
-            } catch (e: Exception) {
-                logE("Failed to refresh credentials", tag = TAG, throwable = e)
+            } else {
+                logE("Failed to refresh credentials", tag = TAG)
             }
         }
 
         /**
          * 同步刷新配置（在密钥提供者回调中使用）
          */
-        private fun refreshConfigSync() {
-            runBlocking {
-                refreshCosConfig(defaultFolderType)
-            }
+        private fun refreshConfigSync(): Boolean {
+            return runCatching {
+                runBlocking(ioDispatcher) {
+                    // 回调是同步接口，这里固定在 IO 调度器执行刷新逻辑，避免在调用线程执行网络请求。
+                    refreshCosConfig(defaultFolderType)
+                }
+            }.onFailure { throwable ->
+                logE("Failed to refresh credentials synchronously", tag = TAG, throwable = throwable)
+            }.isSuccess
         }
     }
 
