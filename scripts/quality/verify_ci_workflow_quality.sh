@@ -145,6 +145,76 @@ check_job_timeout() {
   fi
 }
 
+check_upload_artifact_step_policies() {
+  local file_path="$1"
+  local message="$2"
+  local policy_issues=""
+
+  policy_issues="$(
+    awk '
+      function finalize_upload_step() {
+        if (!in_upload_step) {
+          return
+        }
+        missing = ""
+        if (!has_if_no_files_found) {
+          missing = missing "if-no-files-found "
+        }
+        if (!has_retention_days) {
+          missing = missing "retention-days "
+        }
+        if (missing != "") {
+          gsub(/[[:space:]]+$/, "", missing)
+          printf "%s [missing: %s]\n", current_step_name, missing
+          has_errors = 1
+        }
+      }
+      BEGIN {
+        in_upload_step = 0
+        has_if_no_files_found = 0
+        has_retention_days = 0
+        current_step_name = "unknown-step"
+        has_errors = 0
+      }
+      /^[[:space:]]*-[[:space:]]+name:[[:space:]]*/ {
+        finalize_upload_step()
+        current_step_name = $0
+        sub(/^[[:space:]]*-[[:space:]]+name:[[:space:]]*/, "", current_step_name)
+        in_upload_step = 0
+        has_if_no_files_found = 0
+        has_retention_days = 0
+      }
+      /uses:[[:space:]]*actions\/upload-artifact@v6/ {
+        in_upload_step = 1
+        has_if_no_files_found = 0
+        has_retention_days = 0
+      }
+      in_upload_step && /if-no-files-found:[[:space:]]*(warn|error)/ {
+        has_if_no_files_found = 1
+      }
+      in_upload_step && /retention-days:[[:space:]]*[0-9]+/ {
+        has_retention_days = 1
+      }
+      END {
+        finalize_upload_step()
+        if (has_errors) {
+          exit 1
+        }
+      }
+    ' "${file_path}" 2>/dev/null
+  )"
+
+  if [[ $? -eq 0 ]]; then
+    echo "[ci-workflow-quality][PASS] ${message}"
+  else
+    echo "[ci-workflow-quality][FAIL] ${message} (${file_path})"
+    if [[ -n "${policy_issues}" ]]; then
+      echo "${policy_issues}" | sed 's/^/  - /'
+    fi
+    EXIT_CODE=1
+  fi
+}
+
 WORKFLOWS=(
   "${ROOT_DIR}/.github/workflows/android-ci.yml"
   "${ROOT_DIR}/.github/workflows/baseline-profile.yml"
@@ -239,6 +309,10 @@ require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "name:[[:space:]]
 require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "name:[[:space:]]*Upload failure diagnostics" "baseline-profile uploads failure diagnostics"
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Upload failure diagnostics" "android-release uploads failure diagnostics"
 require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "name:[[:space:]]*Upload failure diagnostics" "face-sdk-migration-check uploads failure diagnostics"
+check_upload_artifact_step_policies "${ROOT_DIR}/.github/workflows/android-ci.yml" "android-ci upload-artifact steps keep if-no-files-found and retention-days"
+check_upload_artifact_step_policies "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "baseline-profile upload-artifact steps keep if-no-files-found and retention-days"
+check_upload_artifact_step_policies "${ROOT_DIR}/.github/workflows/android-release.yml" "android-release upload-artifact steps keep if-no-files-found and retention-days"
+check_upload_artifact_step_policies "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "face-sdk-migration-check upload-artifact steps keep if-no-files-found and retention-days"
 check_retention_values "${ROOT_DIR}/.github/workflows/android-ci.yml" "14" "android-ci keeps artifact retention-days at 14"
 check_retention_values "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "14" "baseline-profile keeps artifact retention-days at 14"
 check_retention_values "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "14" "face-sdk-migration-check keeps artifact retention-days at 14"

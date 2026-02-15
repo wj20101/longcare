@@ -38,6 +38,7 @@
 | F16 | Baseline 定时策略稳定守卫 | P1 | 防止 baseline 定时任务被改为高频触发导致资源浪费 |
 | F17 | Artifact 保留时长成本守卫 | P1 | 防止 retention-days 非策略值导致存储成本上升 |
 | F18 | Job 超时预算守卫 | P1 | 防止关键 job 的 timeout 被放大导致 CI 资源占用上升 |
+| F19 | Artifact 步骤完整性守卫 | P1 | 防止 upload-artifact 漏配 if-no-files-found/retention-days 导致诊断或成本风险 |
 
 ## 3. 逐日执行计划（D28~D44）
 
@@ -61,6 +62,7 @@
 | D49 | F16 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | baseline 定时策略回归可在 CI 守卫阶段阻断 | DONE |
 | D50 | F17 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | artifact retention 回归可在 CI 守卫阶段阻断 | DONE |
 | D51 | F18 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | job timeout 预算回归可在 CI 守卫阶段阻断 | DONE |
+| D52 | F19 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | upload-artifact 步骤完整性回归可在 CI 守卫阶段阻断 | DONE |
 
 ## 4. 本轮已执行改动明细
 
@@ -116,6 +118,9 @@
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 16. Job 超时预算守卫：固定关键 job 的 timeout-minutes 预算值  
+   - `scripts/quality/verify_ci_workflow_quality.sh`
+
+17. Artifact 步骤完整性守卫：确保每个 upload-artifact 步骤都配置 if-no-files-found 与 retention-days  
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 ## 5. 验收记录（本轮）
@@ -403,5 +408,21 @@
     - `android-release`: `release-build=120`
     - `face-sdk-migration-check`: `maven-switch-compile=45`
   - 目标：防止关键 job 超时预算被误调大，造成 runner 占用时长和成本持续上升。
+- 验证：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+
+## 22. Artifact 步骤完整性守卫执行记录（2026-02-15）
+
+- 任务：`D52 | F19`
+- 改动文件：
+  - `scripts/quality/verify_ci_workflow_quality.sh`
+  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `progress.md`
+- 具体改动：
+  - 新增 `check_upload_artifact_step_policies` 结构化校验函数，逐步扫描 workflow：
+    - 识别每个 `uses: actions/upload-artifact@v6` 步骤；
+    - 强制该步骤同时包含 `if-no-files-found` 与 `retention-days`；
+    - 缺失任一字段即在守卫阶段阻断并输出具体 step 名称。
+  - 已接入 `android-ci`、`baseline-profile`、`android-release`、`face-sdk-migration-check` 四条关键 workflow。
 - 验证：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
