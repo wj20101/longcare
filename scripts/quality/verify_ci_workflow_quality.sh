@@ -10,10 +10,10 @@ require_pattern() {
   local message="$3"
   local matched="false"
   if command -v rg >/dev/null 2>&1; then
-    if rg -q "${pattern}" "${file_path}"; then
+    if rg -q -- "${pattern}" "${file_path}"; then
       matched="true"
     fi
-  elif grep -Eq "${pattern}" "${file_path}"; then
+  elif grep -Eq -- "${pattern}" "${file_path}"; then
     matched="true"
   fi
 
@@ -32,10 +32,10 @@ require_any_pattern() {
   local message="$4"
   local matched="false"
   if command -v rg >/dev/null 2>&1; then
-    if rg -q "${pattern_primary}" "${file_path}" || rg -q "${pattern_alternative}" "${file_path}"; then
+    if rg -q -- "${pattern_primary}" "${file_path}" || rg -q -- "${pattern_alternative}" "${file_path}"; then
       matched="true"
     fi
-  elif grep -Eq "${pattern_primary}|${pattern_alternative}" "${file_path}"; then
+  elif grep -Eq -- "${pattern_primary}|${pattern_alternative}" "${file_path}"; then
     matched="true"
   fi
 
@@ -53,10 +53,10 @@ require_absent_pattern() {
   local message="$3"
   local matched="false"
   if command -v rg >/dev/null 2>&1; then
-    if rg -q "${pattern}" "${file_path}"; then
+    if rg -q -- "${pattern}" "${file_path}"; then
       matched="true"
     fi
-  elif grep -Eq "${pattern}" "${file_path}"; then
+  elif grep -Eq -- "${pattern}" "${file_path}"; then
     matched="true"
   fi
 
@@ -109,7 +109,25 @@ else
 fi
 
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "paths-ignore:" "android-ci has paths-ignore optimization"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "^[[:space:]]{2}push:" "android-ci keeps push trigger"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "^[[:space:]]{2}pull_request:" "android-ci keeps pull_request trigger"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "-[[:space:]]*\"docs/\\*\\*\"" "android-ci paths-ignore includes docs directory"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "-[[:space:]]*\"\\*\\*/\\*\\.md\"" "android-ci paths-ignore includes markdown files"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "-[[:space:]]*\"task_plan\\.md\"" "android-ci paths-ignore includes task_plan.md"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "-[[:space:]]*\"findings\\.md\"" "android-ci paths-ignore includes findings.md"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "-[[:space:]]*\"progress\\.md\"" "android-ci paths-ignore includes progress.md"
 require_absent_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "^[[:space:]]{2}push:" "baseline-profile disables push trigger"
+require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "^[[:space:]]{2}workflow_dispatch:" "baseline-profile keeps workflow_dispatch trigger"
+require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "^[[:space:]]{2}schedule:" "baseline-profile keeps schedule trigger"
+require_absent_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "^[[:space:]]{4}branches:" "android-release push trigger does not include branches"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "^[[:space:]]{2}push:" "android-release keeps push trigger"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "^[[:space:]]{4}tags:" "android-release push trigger uses tags filter"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "-[[:space:]]*'v\\*'" "android-release tags filter stays on v*"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "^[[:space:]]{2}workflow_dispatch:" "android-release keeps workflow_dispatch trigger"
+require_absent_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "^[[:space:]]{2}push:" "face-sdk-migration-check disables push trigger"
+require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "^[[:space:]]{2}pull_request:" "face-sdk-migration-check keeps pull_request trigger"
+require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "^[[:space:]]{4}paths:" "face-sdk-migration-check pull_request keeps paths filter"
+require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "-[[:space:]]*\"scripts/face-sdk/\\*\\*\"" "face-sdk-migration-check paths filter includes face-sdk scripts"
 require_any_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "android-ci runs workflow quality gate"
 require_any_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "baseline-profile runs workflow quality gate"
 require_any_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "android-release runs workflow quality gate"

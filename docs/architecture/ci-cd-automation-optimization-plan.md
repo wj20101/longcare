@@ -32,6 +32,7 @@
 | F10 | artifact action 版本固定守卫 | P1 | 防止上传产物 action 版本漂移导致兼容风险 |
 | F11 | Jetpack 兼容 API 回归守卫 | P1 | 防止直接平台 API 回归导致 targetSdk 35/36 兼容风险 |
 | F12 | 关键外部 Action 版本守卫 | P1 | 防止核心三方 action 版本漂移导致 CI 行为变化 |
+| F13 | Workflow 触发策略回归守卫 | P1 | 防止触发器回退导致重复流水线与资源浪费 |
 
 ## 3. 逐日执行计划（D28~D44）
 
@@ -49,6 +50,7 @@
 | D40 | F10 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 上传产物 action 版本固定守卫可阻断旧版本回归 | DONE |
 | D44 | F11 | `scripts/quality/verify_jetpack_compat_apis.sh`、`.github/actions/android-build-env/action.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Jetpack 兼容 API 回归在 CI 中可自动阻断 | DONE |
 | D45 | F12 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 关键 action 版本漂移可在 CI 守卫阶段阻断 | DONE |
+| D46 | F13 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | workflow 触发策略回归可在 CI 守卫阶段阻断 | DONE |
 
 ## 4. 本轮已执行改动明细
 
@@ -85,6 +87,9 @@
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 10. 关键外部 Action 版本守卫：固定并校验关键三方 action 版本  
+   - `scripts/quality/verify_ci_workflow_quality.sh`
+
+11. Workflow 触发策略回归守卫：固定关键 workflow 的触发策略约束  
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 ## 5. 验收记录（本轮）
@@ -271,5 +276,21 @@
     - `baseline-profile`: `peter-evans/create-pull-request@v8`
     - `android-release`: `softprops/action-gh-release@v2`
     - 并阻断上述 action 的非预期版本回归。
+- 验证：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+
+## 16. Workflow 触发策略回归守卫执行记录（2026-02-15）
+
+- 任务：`D46 | F13`
+- 改动文件：
+  - `scripts/quality/verify_ci_workflow_quality.sh`
+  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `progress.md`
+- 具体改动：
+  - 新增 `android-ci` 触发策略守卫：必须保留 `push + pull_request`，并且 `paths-ignore` 必含 `docs/**`、`**/*.md`、`task_plan.md`、`findings.md`、`progress.md`。
+  - 新增 `baseline-profile` 触发策略守卫：禁止 `push`，必须保留 `workflow_dispatch + schedule`。
+  - 新增 `android-release` 触发策略守卫：`push` 不允许分支触发，必须使用 `tags` 且包含 `v*`，并保留 `workflow_dispatch`。
+  - 新增 `face-sdk-migration-check` 触发策略守卫：禁止 `push`，`pull_request` 必须带 `paths` 且包含 `scripts/face-sdk/**`。
+  - 修复守卫脚本匹配边界：在 `rg/grep` 匹配中追加 `--`，避免以 `-` 开头的正则被误判为命令参数。
 - 验证：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS

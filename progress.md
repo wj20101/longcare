@@ -75,6 +75,17 @@
 - 远端验收（D45）：
   - `Android CI#22032833766`（commit `21ff30d`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22032833766`。
+- 执行 `D46 | F13`：新增 workflow 触发策略回归守卫。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：
+    - `android-ci` 必须保留 `push + pull_request`，并要求 `paths-ignore` 包含 `docs/**`、`**/*.md`、`task_plan.md`、`findings.md`、`progress.md`；
+    - `baseline-profile` 必须禁用 `push` 且保留 `workflow_dispatch + schedule`；
+    - `android-release` 的 `push` 不允许 `branches`，必须使用 `tags` 且包含 `v*`，并保留 `workflow_dispatch`；
+    - `face-sdk-migration-check` 必须禁用 `push`，并要求 `pull_request.paths` 包含 `scripts/face-sdk/**`；
+    - 修复脚本参数边界：`rg/grep` 匹配增加 `--`，避免 `-` 开头正则被误判为命令参数。
+  - 更新 `docs/architecture/ci-cd-automation-optimization-plan.md`：
+    - 新增 `F13` 与 `D46`，补充执行记录。
+- 本地验收（D46）：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - Actions 监控（持续）：
   - 监控 run：`Android CI#22031459440`（commit `6b25e95`），最终 `completed/success`。
   - 验证点：`detect-affected` 中新增的 `Publish affected plan summary` 步骤执行成功。
