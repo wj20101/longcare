@@ -622,4 +622,4 @@
 | 2026-02-15 | D61 | G4 | 已完成第五批契约/模型下沉（`UserListRepository` + 用户列表/记录模型） | d33ac97 | `Android CI#22036445733` success；`UserListRepository` 迁入 `core/domain`，`UserInfoModel/UserOrderModel` 迁入 `core:model` |
 | 2026-02-15 | D61 | G4 | 已完成第六批契约/模型下沉（`IdentificationRepository` + 人脸设置/查询模型） | ddbc69b | `Android CI#22036557622` success；`IdentificationRepository` 迁入 `core/domain`，`SetFaceParamModel/FaceResultModel` 迁入 `core:model` |
 | 2026-02-15 | D61 | G4 | 已完成第七批契约/模型下沉（`TencentFaceRepository` + 腾讯人脸 API 响应模型） | 851ff4e | `Android CI#22038070540` success；`TencentFaceRepository` 迁入 `core/domain`，`TencentFaceApiResponse` 迁入 `core:model` |
-| 2026-02-15 | D61 | G4 | 已完成第八批契约/模型下沉（`CosRepository` + COS 令牌与上传模型） | - | `CosRepository` 迁入 `core/domain`，`UploadTokenResultModel/CosModels` 迁入 `core:model`；修复跨模块 smart-cast 后本地编译/lint 通过 |
+| 2026-02-15 | D61 | G4 | 已完成第八批契约/模型下沉（`CosRepository` + COS 令牌与上传模型） | 308358c | `Android CI#22039685167` success；`CosRepository` 迁入 `core/domain`，`UploadTokenResultModel/CosModels` 迁入 `core:model`，并修复跨模块 smart-cast |
