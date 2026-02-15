@@ -106,6 +106,8 @@
   - 更新 `docs/architecture/ci-cd-automation-optimization-plan.md` 同步 F10/D40 任务与执行记录。
 - 本地验收（D40）：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- 远端验收（D40）：
+  - `Android CI#22032172402`（commit `7c65949`）`completed/success`。
 - CI 触发优化：减少每次提交重复流水线
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。
