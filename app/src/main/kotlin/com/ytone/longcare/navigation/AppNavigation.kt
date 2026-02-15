@@ -45,6 +45,7 @@ import com.ytone.longcare.features.nfctest.ui.NfcTestScreen
 import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.feature.home.FeatureEntry as HomeFeatureEntry
 import com.ytone.longcare.feature.identification.FeatureEntry as IdentificationFeatureEntry
+import com.ytone.longcare.feature.login.api.LoginFeatureActions
 import com.ytone.longcare.feature.login.FeatureEntry as LoginFeatureEntry
 import com.ytone.longcare.core.navigation.NavigationConstants
 import kotlin.reflect.typeOf
@@ -294,7 +295,24 @@ fun AppNavigation(startDestination: Any) {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = startDestination) {
         composable<LoginRoute> {
-            LoginScreen(navController = navController)
+            LoginScreen(
+                actions = LoginFeatureActions(
+                    onLoginSuccess = { navController.navigateToHomeFromLogin() },
+                    onOpenWebPage = { url, title -> navController.navigateToWebView(url, title) },
+                    onOpenNfcTest = { navController.navigateToNfcTest() },
+                    onOpenCameraTest = {
+                        val mockWatermarkData = WatermarkData(
+                            title = "服务前",
+                            insuredPerson = "张三",
+                            caregiver = "李四",
+                            address = "北京市朝阳区xx路xx号"
+                        )
+                        navController.navigateToCamera(mockWatermarkData)
+                    },
+                    onOpenFaceVerificationTest = { navController.navigateToFaceVerificationWithAutoSign() },
+                    onOpenManualFaceCapture = { navController.navigateToManualFaceCapture() }
+                )
+            )
         }
         composable<HomeRoute> {
             HomeScreen(navController = navController)

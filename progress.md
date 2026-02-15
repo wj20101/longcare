@@ -371,3 +371,14 @@
 - 远端验收（D58）：
   - `Android CI#22034778500`（commit `eb82237`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22034778500`。
+- 执行 `D59 | G2`：登录特性导航依赖接口化（为后续 UI/VM 下沉做解耦）。
+  - 新增 `feature/login/src/main/kotlin/com/ytone/longcare/feature/login/api/LoginFeatureActions.kt`。
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreen.kt`：
+    - 移除对 `NavController` 的直接依赖；
+    - 导航与测试入口改为回调动作（`LoginFeatureActions`）。
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt`：
+    - 在路由层组装 `LoginFeatureActions`，统一处理具体导航与测试入口行为。
+  - 更新 `docs/architecture/project-optimization-refactor-master-plan.md`：将 `G2/D59` 标记 DONE 并补充执行日志。
+- 本地验收（D59）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。

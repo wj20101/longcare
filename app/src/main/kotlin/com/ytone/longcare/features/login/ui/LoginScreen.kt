@@ -31,15 +31,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.showLongToast
+import com.ytone.longcare.feature.login.api.LoginFeatureActions
 import com.ytone.longcare.features.login.vm.LoginViewModel
 import com.ytone.longcare.features.login.vm.LoginUiState
 import com.ytone.longcare.features.login.vm.SendSmsCodeUiState
-import com.ytone.longcare.navigation.navigateToHomeFromLogin
-import com.ytone.longcare.navigation.navigateToWebView
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.InputFieldBackground
 import com.ytone.longcare.theme.InputFieldBorderColor
@@ -53,16 +51,11 @@ import androidx.compose.ui.focus.focusRequester
 import com.ytone.longcare.features.login.ext.maxPhoneLength
 import com.ytone.longcare.debug.NfcTestConfig
 import com.ytone.longcare.features.facecapture.FaceCaptureTestLauncher
-import com.ytone.longcare.features.photoupload.model.WatermarkData
-import com.ytone.longcare.navigation.navigateToCamera
-import com.ytone.longcare.navigation.navigateToFaceVerificationWithAutoSign
-import com.ytone.longcare.navigation.navigateToNfcTest
-import com.ytone.longcare.navigation.navigateToManualFaceCapture
-
 
 @Composable
 fun LoginScreen(
-    navController: NavController, viewModel: LoginViewModel = hiltViewModel()
+    actions: LoginFeatureActions,
+    viewModel: LoginViewModel = hiltViewModel()
 ) {
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -233,10 +226,7 @@ fun LoginScreen(
                         when (val state = startConfigState) {
                             is com.ytone.longcare.features.login.vm.StartConfigUiState.Success -> {
                                 if (state.data.userXieYiUrl.isNotEmpty()) {
-                                    navController.navigateToWebView(
-                                        url = state.data.userXieYiUrl,
-                                        title = ""
-                                    )
+                                    actions.onOpenWebPage(state.data.userXieYiUrl, "")
                                 } else {
                                     context.showLongToast(userAgreementToast)
                                 }
@@ -248,10 +238,7 @@ fun LoginScreen(
                         when (val state = startConfigState) {
                             is com.ytone.longcare.features.login.vm.StartConfigUiState.Success -> {
                                 if (state.data.yinSiXieYiUrl.isNotEmpty()) {
-                                    navController.navigateToWebView(
-                                        url = state.data.yinSiXieYiUrl,
-                                        title = ""
-                                    )
+                                    actions.onOpenWebPage(state.data.yinSiXieYiUrl, "")
                                 } else {
                                     context.showLongToast(privacyPolicyToast)
                                 }
@@ -279,7 +266,7 @@ fun LoginScreen(
                         val buttonShape = RoundedCornerShape(8.dp)
 
                         Button(
-                            onClick = { navController.navigateToNfcTest() },
+                            onClick = actions.onOpenNfcTest,
                             shape = buttonShape,
                             colors = buttonColors,
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
@@ -292,15 +279,7 @@ fun LoginScreen(
                         }
 
                         Button(
-                            onClick = {
-                                val mockWatermarkData = WatermarkData(
-                                    title = "服务前",
-                                    insuredPerson = "张三",
-                                    caregiver = "李四",
-                                    address = "北京市朝阳区xx路xx号"
-                                )
-                                navController.navigateToCamera(mockWatermarkData)
-                            },
+                            onClick = actions.onOpenCameraTest,
                             shape = buttonShape,
                             colors = buttonColors,
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
@@ -313,7 +292,7 @@ fun LoginScreen(
                         }
 
                         Button(
-                            onClick = { navController.navigateToFaceVerificationWithAutoSign() },
+                            onClick = actions.onOpenFaceVerificationTest,
                             shape = buttonShape,
                             colors = buttonColors,
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
@@ -343,7 +322,7 @@ fun LoginScreen(
                         }
 
                         Button(
-                            onClick = { navController.navigateToManualFaceCapture() },
+                            onClick = actions.onOpenManualFaceCapture,
                             shape = buttonShape,
                             colors = buttonColors,
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
@@ -362,7 +341,7 @@ fun LoginScreen(
 
     LaunchedEffect(loginState) {
         if (loginState is LoginUiState.Success) {
-            navController.navigateToHomeFromLogin()
+            actions.onLoginSuccess()
         }
     }
 

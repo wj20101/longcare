@@ -530,7 +530,7 @@
 | ID | 任务 | 优先级 | 状态 | 依赖 |
 |---|---|---|---|---|
 | G1 | 低耦合契约首批实迁（core/common + core/domain + feature/login） | P0 | DONE | E3 |
-| G2 | 登录特性 UI/VM 解耦下沉（依赖接口化） | P1 | TODO | G1 |
+| G2 | 登录特性 UI/VM 解耦下沉（依赖接口化） | P1 | DONE | G1 |
 | G3 | identification 领域用例迁移到 feature module | P1 | TODO | G1 |
 | G4 | Repository 接口与实现跨模块对齐（core/domain ↔ core/data） | P1 | TODO | G1 |
 | G5 | App 壳层二次收敛与模块可见性加严 | P1 | TODO | G2,G3,G4 |
@@ -543,11 +543,10 @@
 - `feature/login/src/main/kotlin/com/ytone/longcare/features/login/ext/LoginExt.kt`（从 `:app` 迁入）
 - `app/build.gradle.kts`（补充 `:core:common`、`:core:domain` 依赖）
 
-#### G2 登录特性 UI/VM 解耦下沉（待执行）
-- `feature/login/src/main/kotlin/com/ytone/longcare/feature/login/api/LoginFeatureApi.kt`（新增）
-- `feature/login/src/main/kotlin/com/ytone/longcare/feature/login/ui/`（新增并承接可迁移 UI 片段）
-- `app/src/main/kotlin/com/ytone/longcare/features/login/`（逐步缩减为适配层）
-- `app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt`
+#### G2 登录特性 UI/VM 解耦下沉（已完成）
+- `feature/login/src/main/kotlin/com/ytone/longcare/feature/login/api/LoginFeatureActions.kt`（新增）
+- `app/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreen.kt`（移除 `NavController` 直接依赖）
+- `app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt`（路由层装配 `LoginFeatureActions`）
 
 #### G3 identification 领域用例迁移（待执行）
 - `feature/identification/src/main/kotlin/com/ytone/longcare/feature/identification/domain/*`（承接 UseCase）
@@ -571,7 +570,7 @@
 | 日程 | 对应任务 | 当日具体文件改动清单 | 当日验收门禁 | 状态 |
 |---|---|---|---|---|
 | D58 | G1 | `ApiResult.kt`、`FaceVerificationModels.kt`、`LoginExt.kt`、`app/build.gradle.kts` | `:app:compileDebugKotlin` + `:app:lintDebug` 通过 | DONE |
-| D59 | G2 | `feature/login/**`、`app/features/login/**`、`AppNavigation.kt` | 登录链路 smoke 与 lint 通过 | TODO |
+| D59 | G2 | `feature/login/**`、`app/features/login/**`、`AppNavigation.kt` | 登录链路 smoke 与 lint 通过 | DONE |
 | D60 | G3 | `feature/identification/domain/**`、`app/features/identification/domain/**` | identification 用例链路编译/单测通过 | TODO |
 | D61 | G4 | `core/domain/**`、`core/data/**`、`app/domain/**`、`app/data/**` | UI 不直接依赖 Impl，架构守卫通过 | TODO |
 | D62 | G5 | `AppNavigation.kt`、架构守卫脚本与 CI 门禁 | 模块边界回归在 CI 可阻断 | TODO |
@@ -581,3 +580,4 @@
 | 日期 | 日程 | 任务ID | 结果 | 提交/PR | 备注 |
 |---|---|---|---|---|---|
 | 2026-02-15 | D58 | G1 | 已完成首批低耦合实迁并通过编译/lint | eb82237 | `Android CI#22034778500` success；Core/Feature 不再仅占位，进入 G2~G5 业务迁移阶段 |
+| 2026-02-15 | D59 | G2 | 已完成登录特性导航依赖接口化（`NavController` -> `LoginFeatureActions`） | - | 本地 `:app:compileDebugKotlin`、`:app:lintDebug` 通过，等待 CI 远端验收 |
