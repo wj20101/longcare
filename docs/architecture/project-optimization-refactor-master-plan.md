@@ -582,3 +582,4 @@
 | 2026-02-15 | D58 | G1 | 已完成首批低耦合实迁并通过编译/lint | eb82237 | `Android CI#22034778500` success；Core/Feature 不再仅占位，进入 G2~G5 业务迁移阶段 |
 | 2026-02-15 | D59 | G2 | 已完成登录特性导航依赖接口化（`NavController` -> `LoginFeatureActions`） | 500d8b9 | `Android CI#22034994873` success；新增 `LoginFeatureActions` 由路由层装配导航动作 |
 | 2026-02-15 | D60 | G3 | 已完成第一批 usecase 下沉（`VerifyServicePersonUseCase`） | b4e57f7 | `Android CI#22035189179` success；新增 `VerifyServicePersonDataGateway` 契约并在 `app` 侧落地适配实现 |
+| 2026-02-15 | D60 | G3 | 已完成第二批 usecase 下沉（`UploadElderPhotoUseCase`） | - | 新增 `UploadElderPhotoGateway` 契约并在 `app` 侧接入 `CosRepository/OrderRepository`，本地编译/lint 通过 |

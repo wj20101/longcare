@@ -399,3 +399,12 @@
 - 远端验收（D60-第一批）：
   - `Android CI#22035189179`（commit `b4e57f7`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22035189179`。
+- 执行 `D60 | G3`（第二批）：下沉 `UploadElderPhotoUseCase` 到 `feature:identification` 并接入 app 侧 gateway 适配。
+  - 新增 `feature/identification/src/main/kotlin/com/ytone/longcare/features/identification/domain/UploadElderPhotoGateway.kt`。
+  - 新增 `feature/identification/src/main/kotlin/com/ytone/longcare/features/identification/domain/UploadElderPhotoUseCase.kt`。
+  - 删除 `app/src/main/kotlin/com/ytone/longcare/features/identification/domain/UploadElderPhotoUseCase.kt`（迁移至 feature 模块）。
+  - 新增 `app/src/main/kotlin/com/ytone/longcare/features/identification/data/UploadElderPhotoGatewayImpl.kt`（桥接 `CosRepository` 与 `OrderRepository`）。
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/features/identification/di/IdentificationUseCaseGatewayModule.kt`：新增 `UploadElderPhotoGateway` 绑定。
+- 本地验收（D60-第二批）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
