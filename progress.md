@@ -132,6 +132,14 @@
   - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
 - 远端验收（D42）：
   - `Android CI#22032385110`（commit `7841ac2`）`completed/success`。
+- 执行 `D43 | LocationTrackingService Jetpack 兼容收敛`：
+  - 更新 `app/src/main/kotlin/com/ytone/longcare/features/location/service/LocationTrackingService.kt`：
+    - 将前台服务启动由 `startForeground(...)` 迁移到 `ServiceCompat.startForeground(...)`；
+    - 将通知渠道创建迁移到 `NotificationChannelCompat + NotificationManagerCompat`；
+    - 移除不再需要的 `NotificationManager` 注入依赖。
+- 本地验收（D43）：
+  - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug`：PASS。
+  - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
 - CI 触发优化：减少每次提交重复流水线
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。

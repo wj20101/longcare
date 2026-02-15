@@ -1,13 +1,13 @@
 package com.ytone.longcare.features.location.service
 
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
-import android.os.Build
 import android.os.IBinder
+import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.ServiceCompat
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
@@ -17,9 +17,6 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class LocationTrackingService : Service() {
-
-    @Inject
-    lateinit var notificationManager: NotificationManager
 
     @Inject
     lateinit var continuousAmapLocationManager: ContinuousAmapLocationManager
@@ -58,7 +55,7 @@ class LocationTrackingService : Service() {
             logI("启动定位前台保活 (owner=$owner)")
             createNotificationChannel()
             val notification = createNotification("后台定位服务运行中...")
-            startForeground(NOTIFICATION_ID, notification)
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, 0)
             continuousAmapLocationManager.enableBackgroundLocation(NOTIFICATION_ID, notification)
             isKeepAliveStarted = true
         } catch (e: Exception) {
@@ -95,14 +92,15 @@ class LocationTrackingService : Service() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
-                "后台定位服务",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            notificationManager.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannelCompat.Builder(
+            NOTIFICATION_CHANNEL_ID,
+            NotificationManagerCompat.IMPORTANCE_LOW
+        )
+            .setName("后台定位服务")
+            .setDescription("用于维持定位服务在后台稳定运行")
+            .setShowBadge(false)
+            .build()
+        NotificationManagerCompat.from(this).createNotificationChannel(channel)
     }
 
     /**
