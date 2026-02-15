@@ -89,6 +89,15 @@
 - 远端验收（D46）：
   - `Android CI#22032940553`（commit `ded5822`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22032940553`。
+- 执行 `D47 | F14`：新增 CI 可观测性回归守卫。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：
+    - 要求 `android-ci` 必须存在 `Publish affected plan summary` 步骤；
+    - 要求 `android-ci` 必须写入 `GITHUB_STEP_SUMMARY`；
+    - 防止可观测摘要被误删导致排障效率回退。
+  - 更新 `docs/architecture/ci-cd-automation-optimization-plan.md`：
+    - 新增 `F14` 与 `D47`，补充执行记录。
+- 本地验收（D47）：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - Actions 监控（持续）：
   - 监控 run：`Android CI#22031459440`（commit `6b25e95`），最终 `completed/success`。
   - 验证点：`detect-affected` 中新增的 `Publish affected plan summary` 步骤执行成功。
