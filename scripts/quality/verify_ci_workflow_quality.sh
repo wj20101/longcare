@@ -68,6 +68,45 @@ require_absent_pattern() {
   fi
 }
 
+check_retention_values() {
+  local file_path="$1"
+  local allowed_values_csv="$2"
+  local message="$3"
+  local values=""
+
+  if command -v rg >/dev/null 2>&1; then
+    values="$(rg -o --replace '$1' 'retention-days:[[:space:]]*([0-9]+)' "${file_path}" 2>/dev/null || true)"
+  else
+    values="$(grep -Eo -- 'retention-days:[[:space:]]*[0-9]+' "${file_path}" 2>/dev/null | grep -Eo -- '[0-9]+' || true)"
+  fi
+
+  if [[ -z "${values}" ]]; then
+    echo "[ci-workflow-quality][FAIL] ${message} (no retention-days found in ${file_path})"
+    EXIT_CODE=1
+    return
+  fi
+
+  local invalid_values=()
+  local value=""
+  while IFS= read -r value; do
+    [[ -z "${value}" ]] && continue
+    case ",${allowed_values_csv}," in
+      *,"${value}",*) ;;
+      *) invalid_values+=("${value}") ;;
+    esac
+  done <<< "${values}"
+
+  if [[ ${#invalid_values[@]} -eq 0 ]]; then
+    echo "[ci-workflow-quality][PASS] ${message}"
+  else
+    local invalid_joined
+    invalid_joined="$(printf "%s," "${invalid_values[@]}")"
+    invalid_joined="${invalid_joined%,}"
+    echo "[ci-workflow-quality][FAIL] ${message} (invalid retention-days: ${invalid_joined} in ${file_path})"
+    EXIT_CODE=1
+  fi
+}
+
 WORKFLOWS=(
   "${ROOT_DIR}/.github/workflows/android-ci.yml"
   "${ROOT_DIR}/.github/workflows/baseline-profile.yml"
@@ -156,6 +195,13 @@ require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "name:[[:space:]]
 require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "name:[[:space:]]*Upload failure diagnostics" "baseline-profile uploads failure diagnostics"
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Upload failure diagnostics" "android-release uploads failure diagnostics"
 require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "name:[[:space:]]*Upload failure diagnostics" "face-sdk-migration-check uploads failure diagnostics"
+check_retention_values "${ROOT_DIR}/.github/workflows/android-ci.yml" "14" "android-ci keeps artifact retention-days at 14"
+check_retention_values "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "14" "baseline-profile keeps artifact retention-days at 14"
+check_retention_values "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "14" "face-sdk-migration-check keeps artifact retention-days at 14"
+check_retention_values "${ROOT_DIR}/.github/workflows/android-release.yml" "14,30" "android-release keeps artifact retention-days within policy"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Upload release artifacts" "android-release keeps release artifact upload step"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "retention-days:[[:space:]]*30" "android-release keeps 30-day retention for release artifacts"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "retention-days:[[:space:]]*14" "android-release keeps 14-day retention for non-release diagnostics"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "name:[[:space:]]*Publish affected plan summary" "android-ci publishes affected plan summary step"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "GITHUB_STEP_SUMMARY" "android-ci writes affected plan into GITHUB_STEP_SUMMARY"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "uses:[[:space:]]*reactivecircus/android-emulator-runner@v2" "android-ci pins emulator runner action"

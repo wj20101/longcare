@@ -36,6 +36,7 @@
 | F14 | CI 可观测性回归守卫 | P1 | 防止 affected plan summary 可观测信息被误删 |
 | F15 | Face SDK workflow 触发范围收敛 | P1 | 减少无关 PR 触发 face-sdk 校验造成的 CI 资源消耗 |
 | F16 | Baseline 定时策略稳定守卫 | P1 | 防止 baseline 定时任务被改为高频触发导致资源浪费 |
+| F17 | Artifact 保留时长成本守卫 | P1 | 防止 retention-days 非策略值导致存储成本上升 |
 
 ## 3. 逐日执行计划（D28~D44）
 
@@ -57,6 +58,7 @@
 | D47 | F14 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | affected plan summary 回归可在 CI 守卫阶段阻断 | DONE |
 | D48 | F15 | `.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | face-sdk 触发范围回归可在 CI 守卫阶段阻断 | DONE |
 | D49 | F16 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | baseline 定时策略回归可在 CI 守卫阶段阻断 | DONE |
+| D50 | F17 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | artifact retention 回归可在 CI 守卫阶段阻断 | DONE |
 
 ## 4. 本轮已执行改动明细
 
@@ -106,6 +108,9 @@
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 14. Baseline 定时策略稳定守卫：固定 baseline 的周级 cron 触发策略  
+   - `scripts/quality/verify_ci_workflow_quality.sh`
+
+15. Artifact 保留时长成本守卫：固定各 workflow 的 retention-days 策略值  
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 ## 5. 验收记录（本轮）
@@ -358,5 +363,23 @@
     - 要求保留 `schedule`；
     - 要求 cron 固定为每周一 `02:00 UTC`（`0 2 * * 1`）。
   - 目标：防止后续误改为高频定时任务，避免持续占用 CI runner 资源。
+- 验证：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+
+## 20. Artifact 保留时长成本守卫执行记录（2026-02-15）
+
+- 任务：`D50 | F17`
+- 改动文件：
+  - `scripts/quality/verify_ci_workflow_quality.sh`
+  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `progress.md`
+- 具体改动：
+  - 新增 `retention-days` 策略守卫：
+    - `android-ci` / `baseline-profile` / `face-sdk-migration-check` 仅允许 `14`；
+    - `android-release` 仅允许 `14` 与 `30`。
+  - 新增关键值校验：
+    - `android-release` 必须存在 `30` 天保留（发布产物）；
+    - `android-release` 必须存在 `14` 天保留（诊断与辅助产物）。
+  - 目标：防止 artifact 留存天数被误调大导致持续存储成本上升。
 - 验证：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS

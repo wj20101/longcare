@@ -127,6 +127,16 @@
 - 远端验收（D49）：
   - `Android CI#22033210807`（commit `c39cf4b`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22033210807`。
+- 执行 `D50 | F17`：新增 artifact 保留时长成本守卫。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：
+    - `android-ci`、`baseline-profile`、`face-sdk-migration-check` 的 artifact 保留时长必须为 `14` 天；
+    - `android-release` 的常规构建产物保留时长必须为 `30` 天；
+    - `android-release` 的失败诊断产物保留时长必须为 `14` 天；
+    - 新增反向守卫：阻断 `retention-days` 高于策略上限。
+  - 更新 `docs/architecture/ci-cd-automation-optimization-plan.md`：
+    - 新增 `F17` 与 `D50`，补充执行记录。
+- 本地验收（D50）：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - Actions 监控（持续）：
   - 监控 run：`Android CI#22031459440`（commit `6b25e95`），最终 `completed/success`。
   - 验证点：`detect-affected` 中新增的 `Publish affected plan summary` 步骤执行成功。
