@@ -124,6 +124,8 @@
   - 守卫脚本新增校验：三套 workflow 必须包含 `Upload failure diagnostics`。
 - 验证：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+  - `Android CI#22031556210`（commit `2794d97`）：`completed/success`
+  - `Face SDK Migration Check#22031592571`（workflow_dispatch）：`completed/success`
 
 ## 9. Reusable workflow 抽象执行记录（2026-02-15）
 

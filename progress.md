@@ -50,6 +50,9 @@
     - 新增权限块、共享 action 接入、workflow 质量守卫接入与失败诊断步骤校验。
 - 本地验收（D34）：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- 远端验收（D34）：
+  - `Android CI#22031556210`（commit `2794d97`）`completed/success`。
+  - `Face SDK Migration Check#22031592571`（`workflow_dispatch`）`completed/success`。
 - CI 触发优化：减少每次提交重复流水线
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。
