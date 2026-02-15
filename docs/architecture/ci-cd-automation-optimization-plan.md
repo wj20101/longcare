@@ -27,8 +27,9 @@
 | F5 | 失败诊断产物结构优化（按 job 分组） | P1 | 提升故障定位效率 |
 | F6 | release/baseline 可复用 workflow 抽象 | P2 | 进一步减少重复配置与维护成本 |
 | F7 | face-sdk migration workflow 规范统一 | P1 | 收敛环境初始化、并发控制与失败诊断标准 |
+| F8 | workflow 最小权限守卫精确校验 | P1 | 防止 `permissions` 回退导致权限扩大 |
 
-## 3. 逐日执行计划（D28~D34）
+## 3. 逐日执行计划（D28~D35）
 
 | 日程 | 对应任务 | 具体文件改动清单 | 当日验收门禁 | 状态 |
 |---|---|---|---|---|
@@ -39,6 +40,7 @@
 | D32 | F5 | `.github/workflows/android-ci.yml`、`.github/workflows/android-release.yml`、`.github/workflows/baseline-profile.yml`、`scripts/quality/verify_ci_workflow_quality.sh` | 失败诊断产物按 job 结构化上传 | DONE |
 | D33 | F6 | `.github/actions/android-build-env/action.yml`、`.github/workflows/android-ci.yml`、`.github/workflows/android-release.yml`、`.github/workflows/baseline-profile.yml`、`scripts/quality/verify_ci_workflow_quality.sh` | 重复步骤收敛且功能一致 | DONE |
 | D34 | F7 | `.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh` | face-sdk workflow 与主流水线守卫标准一致 | DONE |
+| D35 | F8 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 权限守卫可阻断 read/write 配置回退 | DONE |
 
 ## 4. 本轮已执行改动明细
 
@@ -58,6 +60,9 @@
 
 5. workflow 规范统一：`face-sdk-migration-check` 接入共享环境 action、并发控制、失败诊断归档  
    - `.github/workflows/face-sdk-migration-check.yml`
+   - `scripts/quality/verify_ci_workflow_quality.sh`
+
+6. workflow 安全守卫升级：最小权限（`permissions`）精确校验  
    - `scripts/quality/verify_ci_workflow_quality.sh`
 
 ## 5. 验收记录（本轮）
@@ -124,8 +129,6 @@
   - 守卫脚本新增校验：三套 workflow 必须包含 `Upload failure diagnostics`。
 - 验证：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
-  - `Android CI#22031556210`（commit `2794d97`）：`completed/success`
-  - `Face SDK Migration Check#22031592571`（workflow_dispatch）：`completed/success`
 
 ## 9. Reusable workflow 抽象执行记录（2026-02-15）
 
@@ -155,5 +158,23 @@
   - 启用 workflow 守卫执行（`run-workflow-quality-check: 'true'`）；
   - 新增 `Upload failure diagnostics` 步骤，失败时统一上传构建/测试/问题报告；
   - workflow 守卫脚本新增对 `face-sdk-migration-check` 的并发、权限、共享 action、守卫接入和失败诊断校验。
+- 验证：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+  - `Android CI#22031556210`（commit `2794d97`）：`completed/success`
+  - `Face SDK Migration Check#22031592571`（workflow_dispatch）：`completed/success`
+
+## 11. Workflow 最小权限守卫升级执行记录（2026-02-15）
+
+- 任务：`D35 | F8`
+- 改动文件：
+  - `scripts/quality/verify_ci_workflow_quality.sh`
+  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `progress.md`
+- 具体改动：
+  - 将权限守卫从“仅检测存在 `permissions` 块”升级为“检测最小权限值是否符合预期”；
+  - 新增精确校验：
+    - `android-ci` 与 `face-sdk-migration-check` 必须 `contents: read`；
+    - `android-release` 必须 `contents: write`；
+    - `baseline-profile` 必须同时具备 `contents: write` 与 `pull-requests: write`。
 - 验证：
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS

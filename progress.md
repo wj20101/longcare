@@ -53,6 +53,13 @@
 - 远端验收（D34）：
   - `Android CI#22031556210`（commit `2794d97`）`completed/success`。
   - `Face SDK Migration Check#22031592571`（`workflow_dispatch`）`completed/success`。
+- 执行 `D35 | F8`：升级 workflow 最小权限守卫。
+  - 更新 `scripts/quality/verify_ci_workflow_quality.sh`：
+    - 新增权限值精确校验，要求 `android-ci` 和 `face-sdk-migration-check` 固定 `contents: read`；
+    - 要求 `android-release` 固定 `contents: write`；
+    - 要求 `baseline-profile` 同时具备 `contents: write` 与 `pull-requests: write`。
+- 本地验收（D35）：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - CI 触发优化：减少每次提交重复流水线
   - 发现问题：每次 `push master/main` 同时触发 `Android CI` 与 `Baseline Profile`，造成重复资源消耗。
   - 已调整：`.github/workflows/baseline-profile.yml` 移除 `push` 触发，仅保留 `schedule + workflow_dispatch`。
