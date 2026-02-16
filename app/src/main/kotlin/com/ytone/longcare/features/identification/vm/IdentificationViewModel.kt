@@ -11,7 +11,6 @@ import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
 import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
-import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.features.identification.domain.ServicePersonProfile
 import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
@@ -478,7 +477,12 @@ class IdentificationViewModel @Inject constructor(
                 startFaceVerificationWithResolvedConfig(
                     context = context,
                     request = ready.request,
-                    callback = createFaceSetupVerificationCallback(
+                    callback = createFaceSetupFlowVerifyCallback(
+                        imageFile = ready.imageFile,
+                        base64Image = ready.base64Image,
+                        scope = viewModelScope,
+                        setupFaceUseCase = setupFaceUseCase,
+                        resolveCurrentUserId = { getCurrentUser()?.userId },
                         onInitSuccess = {
                             toastHelper.showShort("人脸验证初始化成功")
                             _faceSetupState.value = FaceSetupState.Initial
@@ -486,23 +490,16 @@ class IdentificationViewModel @Inject constructor(
                         onInitFailed = { error ->
                             setFaceSetupError(buildFaceVerifyErrorMessage("人脸验证初始化失败", error))
                         },
-                        onVerifySuccess = { _: FaceVerifyResult ->
+                        onBeforeUpload = {
                             toastHelper.showShort("人脸验证成功，开始上传设置...")
-                            launchFaceSetupUpload(
-                                scope = viewModelScope,
-                                setupFaceUseCase = setupFaceUseCase,
-                                resolveCurrentUserId = { getCurrentUser()?.userId },
-                                imageFile = ready.imageFile,
-                                base64Image = ready.base64Image,
-                                onUploading = { _faceSetupState.value = FaceSetupState.UploadingImage },
-                                onSuccess = {
-                                    _faceSetupState.value = FaceSetupState.Success
-                                    toastHelper.showShort("人脸信息设置成功")
-                                    setServicePersonVerified()
-                                },
-                                onError = { message -> setFaceSetupError(message) }
-                            )
                         },
+                        onUploading = { _faceSetupState.value = FaceSetupState.UploadingImage },
+                        onUploadSuccess = {
+                            _faceSetupState.value = FaceSetupState.Success
+                            toastHelper.showShort("人脸信息设置成功")
+                            setServicePersonVerified()
+                        },
+                        onUploadError = { message -> setFaceSetupError(message) },
                         onVerifyFailed = { error ->
                             setFaceSetupError(buildFaceVerifyErrorMessage("人脸验证失败", error))
                         },
