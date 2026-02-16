@@ -11,7 +11,6 @@ import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.repository.OrderDetailRepository
-import com.ytone.longcare.features.identification.domain.ServicePersonProfile
 import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
 import com.ytone.longcare.features.identification.domain.UploadElderPhotoUseCase
 import com.ytone.longcare.features.identification.domain.VerifyServicePersonUseCase
@@ -94,44 +93,19 @@ class IdentificationViewModel @Inject constructor(
      * 3. 本地和接口都没有 → 跳转到人脸捕获
      */
     fun verifyServicePerson(context: Context) {
-        viewModelScope.launch {
-            val decision = verifyServicePersonUseCase.execute(getCurrentUser()?.toServicePersonProfile())
-            handleServicePersonVerificationDecision(
-                decision = decision,
-                onUseCachedFace = { cached ->
-                    startSelfProvidedFaceVerificationWithBase64(
-                        context = context,
-                        name = cached.user.userName,
-                        idNo = cached.user.identityCardNumber,
-                        orderNo = createServiceOrderNo(),
-                        userId = cached.user.userId.toString(),
-                        sourcePhotoBase64 = cached.sourcePhotoBase64,
-                    )
-                },
-                onDownloadAndCache = { download ->
-                    startSelfProvidedFaceVerificationAndCache(
-                        context = context,
-                        name = download.user.userName,
-                        idNo = download.user.identityCardNumber,
-                        orderNo = createServiceOrderNo(),
-                        userId = download.user.userId.toString(),
-                        sourcePhotoUrl = download.sourcePhotoUrl,
-                    )
-                },
-                onRequireFaceSetup = ::navigateToFaceCaptureForSetup,
-                onError = { message ->
-                    logE(message, tag = "IdentificationVM")
-                    setFaceVerificationError(message)
-                }
-            )
-        }
-    }
-
-    private fun User.toServicePersonProfile(): ServicePersonProfile {
-        return ServicePersonProfile(
-            userId = userId,
-            userName = userName,
-            identityCardNumber = identityCardNumber,
+        launchServicePersonVerification(
+            scope = viewModelScope,
+            context = context,
+            resolveCurrentUser = ::getCurrentUser,
+            verifyServicePersonUseCase = verifyServicePersonUseCase,
+            createOrderNo = ::createServiceOrderNo,
+            startVerificationWithBase64 = ::startSelfProvidedFaceVerificationWithBase64,
+            startVerificationAndCache = ::startSelfProvidedFaceVerificationAndCache,
+            onRequireFaceSetup = ::navigateToFaceCaptureForSetup,
+            onError = { message ->
+                logE(message, tag = "IdentificationVM")
+                setFaceVerificationError(message)
+            },
         )
     }
 
