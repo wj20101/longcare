@@ -99,11 +99,16 @@ class IdentificationViewModel @Inject constructor(
             resolveCurrentUser = ::getCurrentUser,
             verifyServicePersonUseCase = verifyServicePersonUseCase,
             createOrderNo = ::createServiceOrderNo,
-            startVerificationWithBase64 = ::startSelfProvidedFaceVerificationWithBase64,
-            startVerificationAndCache = ::startSelfProvidedFaceVerificationAndCache,
+            faceDataSource = faceDataSource,
+            beginVerification = ::beginVerification,
+            startVerificationWithRequest = ::startFaceVerificationWithDefaultCallback,
             onRequireFaceSetup = ::navigateToFaceCaptureForSetup,
-            onError = { message ->
-                logE(message, tag = "IdentificationVM")
+            onVerificationFailure = { message, throwable ->
+                if (throwable == null) {
+                    logE(message, tag = "IdentificationVM")
+                } else {
+                    logE(message, tag = "IdentificationVM", throwable = throwable)
+                }
                 setFaceVerificationError(message)
             },
         )
@@ -128,65 +133,6 @@ class IdentificationViewModel @Inject constructor(
         )
     }
     
-    /**
-     * 开始自带源比对人脸验证（从URL下载并缓存到本地）
-     * 
-     * 用于场景：用户卸载重装后，本地无缓存，从服务器下载
-     */
-    private fun startSelfProvidedFaceVerificationAndCache(
-        context: Context,
-        name: String,
-        idNo: String,
-        orderNo: String,
-        userId: String,
-        sourcePhotoUrl: String
-    ) {
-        launchSelfProvidedFaceVerificationAndCache(
-            scope = viewModelScope,
-            context = context,
-            name = name,
-            idNo = idNo,
-            orderNo = orderNo,
-            userId = userId,
-            sourcePhotoUrl = sourcePhotoUrl,
-            faceDataSource = faceDataSource,
-            resolveCurrentUser = ::getCurrentUser,
-            beginVerification = ::beginVerification,
-            startVerificationWithRequest = ::startFaceVerificationWithDefaultCallback,
-            onFailure = ::setFaceVerificationError,
-        )
-    }
-
-    /**
-     * 开始自带源比对人脸验证（直接使用Base64）
-     * 
-     * 用于场景：使用本地缓存进行验证
-     */
-    private fun startSelfProvidedFaceVerificationWithBase64(
-        context: Context,
-        name: String,
-        idNo: String,
-        orderNo: String,
-        userId: String,
-        sourcePhotoBase64: String
-    ) {
-        launchSelfProvidedFaceVerificationWithBase64(
-            scope = viewModelScope,
-            context = context,
-            name = name,
-            idNo = idNo,
-            orderNo = orderNo,
-            userId = userId,
-            sourcePhotoBase64 = sourcePhotoBase64,
-            beginVerification = ::beginVerification,
-            startVerificationWithRequest = ::startFaceVerificationWithDefaultCallback,
-            onFailure = { message, throwable ->
-                logE("人脸验证失败", tag = "IdentificationVM", throwable = throwable)
-                setFaceVerificationError(message)
-            },
-        )
-    }
-
     /**
      * 开始人脸验证
      */

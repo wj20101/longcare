@@ -1,6 +1,8 @@
 package com.ytone.longcare.features.identification.vm
 
 import android.content.Context
+import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
+import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.features.identification.domain.ServicePersonProfile
 import com.ytone.longcare.features.identification.domain.VerifyServicePersonUseCase
 import com.ytone.longcare.models.protos.User
@@ -14,10 +16,11 @@ internal fun launchServicePersonVerification(
     resolveCurrentUser: suspend () -> User?,
     verifyServicePersonUseCase: VerifyServicePersonUseCase,
     createOrderNo: () -> String,
-    startVerificationWithBase64: (Context, String, String, String, String, String) -> Unit,
-    startVerificationAndCache: (Context, String, String, String, String, String) -> Unit,
+    faceDataSource: IdentificationFaceDataSource,
+    beginVerification: (VerificationType) -> Unit,
+    startVerificationWithRequest: suspend (Context, FaceVerificationRequest) -> Unit,
     onRequireFaceSetup: () -> Unit,
-    onError: (String) -> Unit,
+    onVerificationFailure: (String, Throwable?) -> Unit,
 ) {
     scope.launch {
         try {
@@ -25,32 +28,42 @@ internal fun launchServicePersonVerification(
             handleServicePersonVerificationDecision(
                 decision = decision,
                 onUseCachedFace = { cached ->
-                    startVerificationWithBase64(
-                        context,
-                        cached.user.userName,
-                        cached.user.identityCardNumber,
-                        createOrderNo(),
-                        cached.user.userId.toString(),
-                        cached.sourcePhotoBase64,
+                    launchSelfProvidedFaceVerificationWithBase64(
+                        scope = scope,
+                        context = context,
+                        name = cached.user.userName,
+                        idNo = cached.user.identityCardNumber,
+                        orderNo = createOrderNo(),
+                        userId = cached.user.userId.toString(),
+                        sourcePhotoBase64 = cached.sourcePhotoBase64,
+                        beginVerification = beginVerification,
+                        startVerificationWithRequest = startVerificationWithRequest,
+                        onFailure = onVerificationFailure,
                     )
                 },
                 onDownloadAndCache = { download ->
-                    startVerificationAndCache(
-                        context,
-                        download.user.userName,
-                        download.user.identityCardNumber,
-                        createOrderNo(),
-                        download.user.userId.toString(),
-                        download.sourcePhotoUrl,
+                    launchSelfProvidedFaceVerificationAndCache(
+                        scope = scope,
+                        context = context,
+                        name = download.user.userName,
+                        idNo = download.user.identityCardNumber,
+                        orderNo = createOrderNo(),
+                        userId = download.user.userId.toString(),
+                        sourcePhotoUrl = download.sourcePhotoUrl,
+                        faceDataSource = faceDataSource,
+                        resolveCurrentUser = resolveCurrentUser,
+                        beginVerification = beginVerification,
+                        startVerificationWithRequest = startVerificationWithRequest,
+                        onFailure = { message -> onVerificationFailure(message, null) },
                     )
                 },
                 onRequireFaceSetup = onRequireFaceSetup,
-                onError = onError
+                onError = { message -> onVerificationFailure(message, null) }
             )
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            onError(e.message ?: "服务人员验证失败")
+            onVerificationFailure(e.message ?: "服务人员验证失败", e)
         }
     }
 }
