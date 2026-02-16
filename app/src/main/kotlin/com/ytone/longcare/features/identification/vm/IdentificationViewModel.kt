@@ -30,7 +30,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.ytone.longcare.common.utils.logE
-
 @HiltViewModel
 class IdentificationViewModel @Inject constructor(
     private val faceVerifier: FaceVerifier,
