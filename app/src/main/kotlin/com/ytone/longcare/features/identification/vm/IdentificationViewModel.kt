@@ -65,15 +65,11 @@ class IdentificationViewModel @Inject constructor(
     private fun emitEvent(event: IdentificationEvent) = _events.tryEmit(event)
 
     private fun setFaceVerificationError(message: String, error: FaceVerifyError? = null) {
-        _faceVerificationState.value = FaceVerificationState.Error(error = error, message = message)
-        emitEvent(IdentificationEvent.ShowToast(message))
+        _faceVerificationState.value = FaceVerificationState.Error(error = error, message = message); emitEvent(IdentificationEvent.ShowToast(message))
     }
 
-    private fun setFaceSetupError(message: String) {
-        _faceSetupState.value = FaceSetupState.Error(message)
-        emitEvent(IdentificationEvent.ShowToast(message))
-    }
-    
+    private fun setFaceSetupError(message: String) { _faceSetupState.value = FaceSetupState.Error(message); emitEvent(IdentificationEvent.ShowToast(message)) }
+
     fun verifyServicePerson(context: Context) {
         launchServicePersonVerification(
             scope = viewModelScope,
@@ -96,7 +92,7 @@ class IdentificationViewModel @Inject constructor(
     private fun navigateToFaceCaptureForSetup() {
         emitEvent(IdentificationEvent.ShowToast("请先设置人脸信息")); emitEvent(IdentificationEvent.NavigateToFaceCapture)
     }
-    
+
     fun verifyElder(context: Context, request: OrderInfoRequestModel) {
         launchElderVerification(
             scope = viewModelScope,
@@ -107,7 +103,7 @@ class IdentificationViewModel @Inject constructor(
             startVerification = ::startFaceVerification,
         )
     }
-    
+
     private fun startFaceVerification(
         context: Context,
         name: String,
@@ -129,15 +125,9 @@ class IdentificationViewModel @Inject constructor(
         )
     }
 
-    private fun beginVerification(verificationType: VerificationType) {
-        _currentVerificationType.value = verificationType
-        _faceVerificationState.value = FaceVerificationState.Initializing
-    }
+    private fun beginVerification(verificationType: VerificationType) { _currentVerificationType.value = verificationType; _faceVerificationState.value = FaceVerificationState.Initializing }
 
-    private suspend fun startFaceVerificationWithDefaultCallback(
-        context: Context,
-        request: FaceVerificationRequest,
-    ) {
+    private suspend fun startFaceVerificationWithDefaultCallback(context: Context, request: FaceVerificationRequest) {
         startFaceVerificationWithIdentificationBindings(
             context = context,
             request = request,
@@ -151,7 +141,7 @@ class IdentificationViewModel @Inject constructor(
             faceVerifier = faceVerifier,
         )
     }
-    
+
     private suspend fun getCurrentUser(): User? =
         (userSessionRepository.sessionState.value as? SessionState.LoggedIn)?.user
 
@@ -164,7 +154,7 @@ class IdentificationViewModel @Inject constructor(
     fun updateFaceVerificationStatus(request: OrderInfoRequestModel, verified: Boolean) {
         viewModelScope.launch { unifiedOrderRepository.updateFaceVerification(request.toOrderKey(), verified) }
     }
-    
+
     fun processElderPhoto(photoUri: Uri, request: OrderInfoRequestModel, onSuccess: () -> Unit = {}) {
         launchElderPhotoUploadWithBindings(
             scope = viewModelScope,
@@ -189,7 +179,7 @@ class IdentificationViewModel @Inject constructor(
     fun showToast(message: String) = toastHelper.showShort(message)
 
     fun resetPhotoUploadState() { _photoUploadState.value = PhotoUploadState.Initial }
-    
+
     fun handleFaceCaptureResult(context: Context, imagePath: String) {
         launchFaceCaptureResultHandlingWithBindings(
             scope = viewModelScope,
