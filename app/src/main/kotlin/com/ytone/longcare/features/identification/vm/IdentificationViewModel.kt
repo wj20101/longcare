@@ -326,47 +326,44 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 创建人脸验证回调 - 用于正常的身份验证流程
      */
-    private fun createFaceVerifyCallback() = object : FaceVerifyCallback {
-        override fun onInitSuccess() {
+    private fun createFaceVerifyCallback() =
+        com.ytone.longcare.features.identification.vm.createFaceVerifyCallback(
+            onInitSuccess = {
             toastHelper.showShort("人脸验证初始化成功")
             _faceVerificationState.value = FaceVerificationState.Verifying
-        }
-        
-        override fun onInitFailed(error: FaceVerifyError?) {
-            val errorMsg = "人脸识别初始化失败: ${error?.description ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
-            setFaceVerificationError(errorMsg, error)
-        }
-        
-        override fun onVerifySuccess(result: FaceVerifyResult) {
+            },
+            onInitFailed = { error ->
+                setFaceVerificationError(buildFaceVerifyErrorMessage("人脸识别初始化失败", error), error)
+            },
+            onVerifySuccess = { result ->
             toastHelper.showShort("人脸验证成功")
             _faceVerificationState.value = FaceVerificationState.Success(result)
-            
-            // 根据当前验证类型设置相应的身份验证状态
-            when (_currentVerificationType.value) {
-                VerificationType.SERVICE_PERSON -> {
-                    setServicePersonVerified()
-                    toastHelper.showShort("服务人员身份验证成功")
+
+                // 根据当前验证类型设置相应的身份验证状态
+                when (_currentVerificationType.value) {
+                    VerificationType.SERVICE_PERSON -> {
+                        setServicePersonVerified()
+                        toastHelper.showShort("服务人员身份验证成功")
+                    }
+
+                    VerificationType.ELDER -> {
+                        setElderVerified()
+                        toastHelper.showShort("老人身份验证成功")
+                    }
+
+                    null -> {
+                        toastHelper.showShort("验证类型未知，请重新操作")
+                    }
                 }
-                VerificationType.ELDER -> {
-                    setElderVerified()
-                    toastHelper.showShort("老人身份验证成功")
-                }
-                null -> {
-                    toastHelper.showShort("验证类型未知，请重新操作")
-                }
+            },
+            onVerifyFailed = { error ->
+                setFaceVerificationError(buildFaceVerifyErrorMessage("人脸验证失败", error), error)
+            },
+            onVerifyCancel = {
+                toastHelper.showShort("人脸验证已取消")
+                _faceVerificationState.value = FaceVerificationState.Cancelled
             }
-        }
-        
-        override fun onVerifyFailed(error: FaceVerifyError?) {
-            val errorMsg = "人脸验证失败: ${error?.description ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
-            setFaceVerificationError(errorMsg, error)
-        }
-        
-        override fun onVerifyCancel() {
-            toastHelper.showShort("人脸验证已取消")
-            _faceVerificationState.value = FaceVerificationState.Cancelled
-        }
-    }
+        )
     
     /**
      * 获取当前登录用户
@@ -558,33 +555,27 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 创建人脸设置验证回调 - 专门用于首次设置人脸信息
      */
-    private fun createFaceSetupVerifyCallback(imageFile: File, base64Image: String) = 
-        object : FaceVerifyCallback {
-            override fun onInitSuccess() {
+    private fun createFaceSetupVerifyCallback(imageFile: File, base64Image: String) =
+        com.ytone.longcare.features.identification.vm.createFaceVerifyCallback(
+            onInitSuccess = {
                 toastHelper.showShort("人脸验证初始化成功")
                 _faceSetupState.value = FaceSetupState.Initial
-            }
-            
-            override fun onInitFailed(error: FaceVerifyError?) {
-                val errorMsg = "人脸验证初始化失败: ${error?.description ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
-                setFaceSetupError(errorMsg)
-            }
-            
-            override fun onVerifySuccess(result: FaceVerifyResult) {
+            },
+            onInitFailed = { error ->
+                setFaceSetupError(buildFaceVerifyErrorMessage("人脸验证初始化失败", error))
+            },
+            onVerifySuccess = { _: FaceVerifyResult ->
                 toastHelper.showShort("人脸验证成功，开始上传设置...")
                 // 验证成功后，上传并设置人脸信息
                 uploadAndSetFaceInfo(imageFile, base64Image)
-            }
-            
-            override fun onVerifyFailed(error: FaceVerifyError?) {
-                val errorMsg = "人脸验证失败: ${error?.description ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
-                setFaceSetupError(errorMsg)
-            }
-            
-            override fun onVerifyCancel() {
+            },
+            onVerifyFailed = { error ->
+                setFaceSetupError(buildFaceVerifyErrorMessage("人脸验证失败", error))
+            },
+            onVerifyCancel = {
                 setFaceSetupError("用户取消了人脸验证")
             }
-        }
+        )
     
     /**
      * 上传图片并设置人脸信息（仅在验证通过后调用）
