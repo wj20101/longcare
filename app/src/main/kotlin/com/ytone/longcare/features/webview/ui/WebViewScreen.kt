@@ -15,14 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
-import androidx.navigation.NavController
 import com.ytone.longcare.R
+import com.ytone.longcare.features.webview.api.WebViewActions
 
 /**
  * WebView页面
  * 用于显示用户协议、隐私政策等网页内容
  *
- * @param navController 导航控制器
+ * @param actions 页面动作集合
  * @param url 要加载的网页URL
  * @param title 页面标题
  */
@@ -30,7 +30,7 @@ import com.ytone.longcare.R
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun WebViewScreen(
-    navController: NavController,
+    actions: WebViewActions,
     url: String,
     title: String
 ) {
@@ -55,7 +55,7 @@ fun WebViewScreen(
             TopAppBar(
                 title = { Text(text = title) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = actions.onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.back_button_description)

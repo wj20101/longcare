@@ -533,7 +533,7 @@
 | G2 | 登录特性 UI/VM 解耦下沉（依赖接口化） | P1 | DONE | G1 |
 | G3 | identification 领域用例迁移到 feature module | P1 | DONE | G1 |
 | G4 | Repository 接口与实现跨模块对齐（core/domain ↔ core/data） | P1 | DONE | G1 |
-| G5 | App 壳层二次收敛与模块可见性加严 | P1 | IN_PROGRESS | G2,G3,G4 |
+| G5 | App 壳层二次收敛与模块可见性加严 | P1 | DONE | G2,G3,G4 |
 
 ### 10.2 每项任务具体文件改动清单
 
@@ -606,14 +606,15 @@
 - `app/build.gradle.kts`（补齐 `core:model` 直接依赖）
 - `app/src/main/kotlin/com/ytone/longcare/model/OrderKeyNavExt.kt`（保留导航侧扩展，避免 core 依赖 app navigation）
 
-#### G5 App 壳层收敛与门禁加严（执行中：第一批已完成）
+#### G5 App 壳层收敛与门禁加严（已完成）
 - `app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt`
 - `scripts/quality/verify_architecture_boundaries.sh`（已完成第一批：新增 rule-6，阻断 `app/domain` 回流）
 - `scripts/quality/verify_module_api_visibility.sh`（已完成第二批：新增 rule-3/repo 契约归属与 rule-4/app domain 契约禁入）
+- `scripts/quality/verify_architecture_boundaries.sh`（已完成第四批：新增 rule-7，阻断 feature UI 层直接 `import NavController`）
 - `.github/workflows/android-ci.yml`
 - `.github/workflows/android-release.yml`（已完成第三批：补齐 architecture/module-API 双门禁）
 
-### 10.3 逐日执行计划（D58~D62）
+### 10.3 逐日执行计划（D58~D64）
 
 | 日程 | 对应任务 | 当日具体文件改动清单 | 当日验收门禁 | 状态 |
 |---|---|---|---|---|
@@ -621,7 +622,9 @@
 | D59 | G2 | `feature/login/**`、`app/features/login/**`、`AppNavigation.kt` | 登录链路 smoke 与 lint 通过 | DONE |
 | D60 | G3 | `feature/identification/domain/**`、`app/features/identification/domain/**` | identification 用例链路编译/单测通过 | DONE |
 | D61 | G4 | `core/domain/**`、`core/data/**`、`app/domain/**`、`app/data/**` | UI 不直接依赖 Impl，架构守卫通过 | DONE |
-| D62 | G5 | `AppNavigation.kt`、架构守卫脚本与 CI 门禁 | 模块边界回归在 CI 可阻断 | IN_PROGRESS |
+| D62 | G5 | `AppNavigation.kt`、架构守卫脚本与 CI 门禁 | 模块边界回归在 CI 可阻断 | DONE |
+| D63 | G5-B4 | `AppNavigation.kt`、`feature/*/api/*Actions`、相关业务 Screen | 业务页面不再直连 `NavController` | DONE |
+| D64 | G5-B5 | `scripts/quality/verify_architecture_boundaries.sh`、`docs/architecture/project-optimization-refactor-master-plan.md`、`progress.md` | Feature UI `NavController` 直连回归可自动阻断 | DONE |
 
 ### 10.4 执行日志（G 阶段）
 
@@ -646,10 +649,9 @@
 | 2026-02-16 | D62 | G5 | 已完成第一批门禁加严（rule-6：`app/domain` 迁空守卫） | 1c699a0 | `Android CI#22046138043` success；`verify_architecture_boundaries.sh` 新增 rule-6，阻断 `app/domain` 回流 |
 | 2026-02-16 | D62 | G5 | 已完成第二批门禁加严（rule-3/rule-4：契约归属与 app domain 禁入） | cf573a4 | `Android CI#22046330461` success；`verify_module_api_visibility.sh` 新增 repository 契约归属校验，仅允许 `core/domain` 定义，并对 `app/domain` 增加二次阻断 |
 | 2026-02-16 | D62 | G5 | 已完成第三批发布链路门禁对齐（release workflow 接入架构/模块可见性校验） | 26c70fe | `Android CI#22046396554` success；`android-release.yml` 与 `android-ci.yml` 保持同级边界门禁，降低“CI 过而发布失败/回归”风险 |
+| 2026-02-16 | D63 | G5-B4 | 已完成 App 壳层导航收敛（业务页面移除 `NavController` 直连，统一通过 `feature/*/api/*Actions` 交互） | - | 本地门禁通过：`:app:compileDebugKotlin`、`:app:lintDebug`、`verify_architecture_boundaries.sh`、`verify_module_api_visibility.sh` |
+| 2026-02-16 | D64 | G5-B5 | 已完成导航依赖回归守卫（feature UI 层禁止直接 `import NavController`） | - | 本地门禁通过：`verify_architecture_boundaries.sh`、`verify_module_api_visibility.sh` |
 
 ### 10.5 当前剩余优化项（2026-02-16）
 
-| ID | 事项 | 当前状态 | 下一批具体文件改动清单 | 验收门禁 |
-|---|---|---|---|---|
-| G5-B4 | App 壳层导航收敛（减少 `AppNavigation.kt` 对业务页面的直接耦合） | TODO | `app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt`、`feature/*/api/*Actions.kt`、`app/src/main/kotlin/com/ytone/longcare/features/**/ui/*.kt` | `:app:compileDebugKotlin`、`:app:lintDebug`、`verify_architecture_boundaries.sh`、`verify_module_api_visibility.sh` |
-| F21 | 第三方 lint 忽略项清理（跨阶段遗留） | TODO | `app/lint.xml`、`gradle/libs.versions.toml`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | `:app:lintDebug`、`verify_lint_warning_allowlist.sh`、`Android CI` |
+当前无剩余未完成优化项（本阶段任务全部已收口）。

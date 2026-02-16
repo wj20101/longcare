@@ -31,18 +31,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.NurseServiceTimeModel
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
+import com.ytone.longcare.features.profile.api.ProfileActions
 import com.ytone.longcare.features.profile.vm.ProfileViewModel
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
-import com.ytone.longcare.navigation.HomeRoute
-import com.ytone.longcare.navigation.navigateToHaveServiceUserList
-import com.ytone.longcare.navigation.navigateToNoServiceUserList
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.ui.components.UserAvatar
 
@@ -50,12 +46,10 @@ import com.ytone.longcare.ui.components.UserAvatar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    navController: NavController, viewModel: ProfileViewModel = hiltViewModel()
+    actions: ProfileActions,
+    homeSharedViewModel: HomeSharedViewModel,
+    viewModel: ProfileViewModel = hiltViewModel()
 ) {
-    val parentEntry = remember(navController.currentBackStackEntry) {
-        navController.getBackStackEntry(HomeRoute)
-    }
-    val homeSharedViewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
     val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
 
     val statsState by viewModel.statsState.collectAsStateWithLifecycle()
@@ -120,7 +114,7 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 UserInfoSection(user = loggedInUser)
                 Spacer(modifier = Modifier.height(24.dp))
-                StatsCard(navController = navController, stats = statsState)
+                StatsCard(actions = actions, stats = statsState)
                 Spacer(modifier = Modifier.height(24.dp))
                 OptionsCard()
                 Spacer(modifier = Modifier.height(24.dp))
@@ -164,7 +158,7 @@ fun UserInfoSection(user: User) {
 }
 
 @Composable
-fun StatsCard(navController: NavController, stats: NurseServiceTimeModel) {
+fun StatsCard(actions: ProfileActions, stats: NurseServiceTimeModel) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -181,7 +175,7 @@ fun StatsCard(navController: NavController, stats: NurseServiceTimeModel) {
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 value = stats.haveServiceTime.toString(),
                 label = "已服务工时",
-                onClick = { navController.navigateToHaveServiceUserList() }
+                onClick = actions.onNavigateToHaveServiceUserList
             )
             VerticalDivider(
                 modifier = Modifier.fillMaxHeight().padding(vertical = 16.dp), 
@@ -202,7 +196,7 @@ fun StatsCard(navController: NavController, stats: NurseServiceTimeModel) {
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 value = stats.noServiceTime.toString(),
                 label = "未服务工时",
-                onClick = { navController.navigateToNoServiceUserList() }
+                onClick = actions.onNavigateToNoServiceUserList
             )
         }
     }
@@ -335,7 +329,13 @@ fun StatsCardPreview() {
     )
     LongCareTheme {
         Surface {
-            StatsCard(navController = rememberNavController(), stats = stats)
+            StatsCard(
+                actions = ProfileActions(
+                    onNavigateToHaveServiceUserList = {},
+                    onNavigateToNoServiceUserList = {}
+                ),
+                stats = stats
+            )
         }
     }
 }

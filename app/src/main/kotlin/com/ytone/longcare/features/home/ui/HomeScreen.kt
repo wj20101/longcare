@@ -17,15 +17,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.common.utils.DeviceCompatibilityHelper
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.PermissionGuideType
-import com.ytone.longcare.features.home.vm.HomeViewModel
+import com.ytone.longcare.features.home.api.HomeActions
+import com.ytone.longcare.features.home.vm.HomeSharedViewModel
+import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
 import com.ytone.longcare.features.maindashboard.ui.MainDashboardScreen
+import com.ytone.longcare.features.nursing.api.NursingActions
 import com.ytone.longcare.features.nursing.ui.NursingScreen
+import com.ytone.longcare.features.profile.api.ProfileActions
 import com.ytone.longcare.features.profile.ui.ProfileScreen
+import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.bgGradientBrush
 import kotlinx.coroutines.launch
@@ -33,8 +36,9 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
-    navController: NavController,
-    homeViewModel: HomeViewModel = hiltViewModel()
+    actions: HomeActions,
+    homeSharedViewModel: HomeSharedViewModel = hiltViewModel(),
+    todayOrderViewModel: TodayOrderViewModel = hiltViewModel()
 ) {
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -277,9 +281,30 @@ fun HomeScreen(
                 userScrollEnabled = false
             ) { page ->
                 when (page) {
-                    0 -> MainDashboardScreen(navController = navController)
-                    1 -> NursingScreen(navController = navController)
-                    2 -> ProfileScreen(navController = navController)
+                    0 -> MainDashboardScreen(
+                        actions = MainDashboardActions(
+                            onNavigateToCarePlansList = actions.onNavigateToCarePlansList,
+                            onNavigateToServiceRecordsList = actions.onNavigateToServiceRecordsList,
+                            onNavigateToNursingExecution = actions.onNavigateToNursingExecution,
+                            onNavigateToService = actions.onNavigateToService,
+                            onNavigateToServiceCountdown = actions.onNavigateToServiceCountdown
+                        ),
+                        homeSharedViewModel = homeSharedViewModel,
+                        todayOrderViewModel = todayOrderViewModel
+                    )
+                    1 -> NursingScreen(
+                        actions = NursingActions(
+                            onNavigateToNursingExecution = actions.onNavigateToNursingExecution,
+                            onNavigateToService = actions.onNavigateToService
+                        )
+                    )
+                    2 -> ProfileScreen(
+                        actions = ProfileActions(
+                            onNavigateToHaveServiceUserList = actions.onNavigateToHaveServiceUserList,
+                            onNavigateToNoServiceUserList = actions.onNavigateToNoServiceUserList
+                        ),
+                        homeSharedViewModel = homeSharedViewModel
+                    )
                 }
             }
         }
@@ -290,6 +315,16 @@ fun HomeScreen(
 @Composable
 fun HomeScreenPreview() {
     LongCareTheme {
-        HomeScreen(navController = rememberNavController())
+        HomeScreen(
+            actions = HomeActions(
+                onNavigateToCarePlansList = {},
+                onNavigateToServiceRecordsList = {},
+                onNavigateToNursingExecution = { _ -> },
+                onNavigateToService = { _ -> },
+                onNavigateToServiceCountdown = { _, _ -> },
+                onNavigateToHaveServiceUserList = {},
+                onNavigateToNoServiceUserList = {}
+            )
+        )
     }
 }

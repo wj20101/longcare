@@ -36,18 +36,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.common.utils.DisplayDate
 import com.ytone.longcare.common.utils.TimeUtils
+import com.ytone.longcare.features.nursing.api.NursingActions
 import com.ytone.longcare.features.nursing.vm.NursingViewModel
 import com.ytone.longcare.model.handleOrderNavigation
 import com.ytone.longcare.model.isServiceRecordState
 import com.ytone.longcare.model.toStateDisplayText
-import com.ytone.longcare.navigation.navigateToNursingExecution
-import com.ytone.longcare.navigation.navigateToService
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.theme.LongCareTheme
 import kotlinx.coroutines.launch
@@ -69,7 +67,8 @@ private val currentMonthDateList by lazy {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NursingScreen(
-    navController: NavController, viewModel: NursingViewModel = hiltViewModel()
+    actions: NursingActions,
+    viewModel: NursingViewModel = hiltViewModel()
 ) {
     val dateList = remember { currentMonthDateList }
     val initialPage = remember { dateList.indexOfFirst { it.displayInfo.isToday }.coerceAtLeast(0) }
@@ -197,10 +196,10 @@ fun NursingScreen(
                          orderId = order.orderId,
                          planId = order.planId,
                          onNavigateToNursingExecution = { orderId, planId ->
-                             navController.navigateToNursingExecution(OrderNavParams(orderId, planId))
+                             actions.onNavigateToNursingExecution(OrderNavParams(orderId, planId))
                          },
                          onNavigateToService = { orderId, planId ->
-                             navController.navigateToService(OrderNavParams(orderId, planId))
+                             actions.onNavigateToService(OrderNavParams(orderId, planId))
                          },
                          onNotStartedState = {
                              // 未开单状态，不允许跳转

@@ -24,38 +24,29 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import androidx.compose.runtime.CompositionLocalProvider
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.singleClick
+import com.ytone.longcare.features.facerecognition.api.FaceRecognitionGuideActions
 import com.ytone.longcare.features.facerecognition.vm.FaceRecognitionViewModel
-import com.ytone.longcare.navigation.navigateToSelectService
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.theme.bgGradientBrush
-import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.toRequestModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FaceRecognitionGuideScreen(
-    navController: NavController,
+    actions: FaceRecognitionGuideActions,
     orderParams: OrderNavParams,
     viewModel: FaceRecognitionViewModel = hiltViewModel()
 ) {
-    // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
-
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
     // ==========================================================
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
-    
+
     // 统一处理系统返回键，与导航按钮行为一致
-    UnifiedBackHandler(navController = navController)
+    CustomBackHandler(customAction = actions.onNavigateBack)
 
     Box(
         modifier = Modifier
@@ -72,7 +63,7 @@ fun FaceRecognitionGuideScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = singleClick { navController.popBackStack() }) {
+                        IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "返回",
@@ -104,7 +95,7 @@ fun FaceRecognitionGuideScreen(
                         Button(
                             onClick = singleClick {
                                 viewModel.startFaceRecognition()
-                                navController.navigateToSelectService(orderParams)
+                                actions.onNavigateToSelectService(orderParams)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()

@@ -18,21 +18,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.ytone.longcare.R
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.isPendingCare
 import com.ytone.longcare.api.response.isServiceRecord
 import com.ytone.longcare.model.handleOrderNavigation
-import com.ytone.longcare.common.utils.UnifiedBackHandler
+import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.common.utils.singleClick
-import com.ytone.longcare.navigation.HomeRoute
-import com.ytone.longcare.navigation.navigateToNursingExecution
-import com.ytone.longcare.navigation.navigateToService
+import com.ytone.longcare.features.serviceorders.api.ServiceOrdersListActions
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.theme.bgGradientBrush
 
@@ -44,16 +39,14 @@ enum class ServiceOrderType {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceOrdersListScreen(
-    navController: NavController, orderType: ServiceOrderType
+    actions: ServiceOrdersListActions,
+    orderType: ServiceOrderType,
+    todayOrderViewModel: TodayOrderViewModel
 ) {
-    val parentEntry = remember(navController.currentBackStackEntry) {
-        navController.getBackStackEntry(HomeRoute)
-    }
-    val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
     val todayOrderList by todayOrderViewModel.todayOrderListState.collectAsStateWithLifecycle()
 
     // 统一处理系统返回键
-    UnifiedBackHandler(navController = navController)
+    CustomBackHandler(customAction = actions.onNavigateBack)
 
     // 根据类型过滤订单
     val filteredOrders = when (orderType) {
@@ -85,7 +78,7 @@ fun ServiceOrdersListScreen(
                         text = title, fontWeight = FontWeight.Bold
                     )
                 }, navigationIcon = {
-                    IconButton(onClick = singleClick { navController.popBackStack() }) {
+                    IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回",
@@ -140,10 +133,10 @@ fun ServiceOrdersListScreen(
                          orderId = order.orderId,
                          planId = 0,
                          onNavigateToNursingExecution = { orderId, planId ->
-                             navController.navigateToNursingExecution(OrderNavParams(orderId, planId))
+                             actions.onNavigateToNursingExecution(OrderNavParams(orderId, planId))
                          },
                          onNavigateToService = { orderId, planId ->
-                             navController.navigateToService(OrderNavParams(orderId, planId))
+                             actions.onNavigateToService(OrderNavParams(orderId, planId))
                          },
                          onNotStartedState = {
                              // 未开单状态，不允许跳转

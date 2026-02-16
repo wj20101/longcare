@@ -32,14 +32,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.UserInfoModel
+import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.LockScreenOrientation
-import com.ytone.longcare.common.utils.UnifiedBackHandler
+import com.ytone.longcare.features.userlist.api.UserListActions
 import com.ytone.longcare.features.userlist.vm.UserListViewModel
 import com.ytone.longcare.common.utils.singleClick
-import com.ytone.longcare.navigation.navigateToUserServiceRecord
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.bgGradientBrush
 
@@ -54,7 +53,7 @@ enum class UserListType {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserListScreen(
-    navController: NavController,
+    actions: UserListActions,
     userListType: UserListType,
     viewModel: UserListViewModel = hiltViewModel()
 ) {
@@ -74,7 +73,7 @@ fun UserListScreen(
     }
 
     // 统一处理系统返回键
-    UnifiedBackHandler(navController = navController)
+    CustomBackHandler(customAction = actions.onNavigateBack)
 
     // 初始化时加载数据
     LaunchedEffect(userListType) {
@@ -93,7 +92,7 @@ fun UserListScreen(
                 CenterAlignedTopAppBar(
                     title = { Text(title) },
                     navigationIcon = {
-                        IconButton(onClick = singleClick { navController.popBackStack() }) {
+                        IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "返回",
@@ -118,7 +117,7 @@ fun UserListScreen(
                 // 点击用户项的处理逻辑
                 if (userListType == UserListType.HAVE_SERVICE) {
                     // 已服务工时页面，跳转到用户服务记录页面
-                    navController.navigateToUserServiceRecord(
+                    actions.onNavigateToUserServiceRecord(
                         user.userId.toLong(),
                         user.name,
                         user.address

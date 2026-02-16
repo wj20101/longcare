@@ -21,16 +21,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavController
-import com.ytone.longcare.navigation.navigateToHomeAndClearStack
 import com.ytone.longcare.R
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
-import com.ytone.longcare.common.utils.HomeBackHandler
+import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
+import com.ytone.longcare.features.servicecomplete.api.ServiceCompleteActions
 import com.ytone.longcare.navigation.ServiceCompleteData
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.navigation.toRequestModel
@@ -49,7 +48,7 @@ data class ServiceSummary(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceCompleteScreen(
-    navController: NavController,
+    actions: ServiceCompleteActions,
     orderParams: OrderNavParams,
     serviceCompleteData: ServiceCompleteData,
     viewModel: OrderDetailViewModel = hiltViewModel()
@@ -58,7 +57,7 @@ fun ServiceCompleteScreen(
     val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
     
     // 统一处理系统返回键，与导航按钮行为一致（返回首页并清空堆栈）
-    HomeBackHandler(navController = navController)
+    CustomBackHandler(customAction = actions.onNavigateHomeAndClearStack)
     
     // 进入服务完成页面时，停止定位会话 (Session Stop)
     LaunchedEffect(Unit) {
@@ -87,7 +86,7 @@ fun ServiceCompleteScreen(
                     IconButton(onClick = {
                         // 清除选中项目数据后再返回
                         viewModel.clearSelectedProjects(orderInfoRequest.orderId)
-                        navController.navigateToHomeAndClearStack()
+                        actions.onNavigateHomeAndClearStack()
                     }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
@@ -111,7 +110,7 @@ fun ServiceCompleteScreen(
                     ActionButton(text = "完成", onClick = {
                         // 清除选中项目数据后再返回首页
                         viewModel.clearSelectedProjects(orderInfoRequest.orderId)
-                        navController.navigateToHomeAndClearStack()
+                        actions.onNavigateHomeAndClearStack()
                     })
                 }
             }

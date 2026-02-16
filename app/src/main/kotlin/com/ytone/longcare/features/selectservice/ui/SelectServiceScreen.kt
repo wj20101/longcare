@@ -23,19 +23,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
-import com.ytone.longcare.common.utils.UnifiedBackHandler
+import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.StarOrderUiState
 import com.ytone.longcare.theme.bgGradientBrush
+import com.ytone.longcare.features.selectservice.api.SelectServiceActions
 import com.ytone.longcare.features.selectservice.vm.SelectServiceViewModel
 import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.navigateToServiceCountdown
 import com.ytone.longcare.navigation.toRequestModel
 
 // --- 数据模型 ---
@@ -48,7 +47,7 @@ data class ServiceItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectServiceScreen(
-    navController: NavController,
+    actions: SelectServiceActions,
     orderParams: OrderNavParams,
     selectServiceViewModel: SelectServiceViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
@@ -63,7 +62,7 @@ fun SelectServiceScreen(
     val starOrderState by sharedViewModel.starOrderState.collectAsStateWithLifecycle()
 
     // 统一处理系统返回键
-    UnifiedBackHandler(navController = navController)
+    CustomBackHandler(customAction = actions.onNavigateBack)
 
     // 在组件初始化时加载订单信息（如果缓存中没有）
     LaunchedEffect(orderInfoRequest) {
@@ -128,7 +127,7 @@ fun SelectServiceScreen(
                         "请选择服务项目", fontWeight = FontWeight.Bold
                     )
                 }, navigationIcon = {
-                    IconButton(onClick = singleClick { navController.popBackStack() }) {
+                    IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
@@ -277,10 +276,7 @@ fun SelectServiceScreen(
                                             orderInfoRequest = orderInfoRequest,
                                             selectedProjectIds = selectedProjectIds
                                         )
-                                        navController.navigateToServiceCountdown(
-                                            orderParams = orderParams,
-                                            projectIdList = selectedProjectIds
-                                        )
+                                        actions.onNavigateToServiceCountdown(orderParams, selectedProjectIds)
                                     }
                                 }
                             },

@@ -11,6 +11,7 @@ on:
       - "gradle.properties"
       - "scripts/face-sdk/**"
       - "scripts/lint/verify_lint_warning_allowlist.sh"
+      - "scripts/lint/lint_warning_waivers.json"
       - "scripts/lint/verify_lint_ignore_policy.sh"
       - "scripts/quality/verify_gradle_stability.sh"
       - "scripts/quality/verify_ci_workflow_quality.sh"

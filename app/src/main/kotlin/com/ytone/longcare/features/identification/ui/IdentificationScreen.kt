@@ -28,13 +28,11 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.R
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.LockScreenOrientation
-import com.ytone.longcare.common.utils.UnifiedBackHandler
-import com.ytone.longcare.core.navigation.NavigationConstants
+import com.ytone.longcare.features.identification.api.IdentificationActions
 import com.ytone.longcare.features.identification.vm.FaceSetupState
 import com.ytone.longcare.features.identification.vm.FaceVerificationState
 import com.ytone.longcare.features.identification.vm.IdentificationEvent
@@ -42,9 +40,6 @@ import com.ytone.longcare.features.identification.vm.IdentificationState
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.features.identification.vm.PhotoUploadState
 import com.ytone.longcare.features.identification.vm.VerificationType
-import com.ytone.longcare.navigation.navigateToCamera
-import com.ytone.longcare.navigation.navigateToSelectService
-import com.ytone.longcare.navigation.navigateToManualFaceCapture
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import kotlinx.coroutines.launch
@@ -63,7 +58,7 @@ private object IdentificationConstants {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IdentificationScreen(
-    navController: NavController,
+    actions: IdentificationActions,
     orderParams: OrderNavParams,
     sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     identificationViewModel: IdentificationViewModel = hiltViewModel()
@@ -77,14 +72,16 @@ fun IdentificationScreen(
     // 在这里调用函数，将此页面强制设置为竖屏
     // ==========================================================
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
-    
+
     // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
-    UnifiedBackHandler(navController = navController)
+    CustomBackHandler(customAction = actions.onNavigateBack)
     // 观察状态
     val identificationState by identificationViewModel.identificationState.collectAsStateWithLifecycle()
     val faceVerificationState by identificationViewModel.faceVerificationState.collectAsStateWithLifecycle()
     val photoUploadState by identificationViewModel.photoUploadState.collectAsStateWithLifecycle()
     val faceSetupState by identificationViewModel.faceSetupState.collectAsStateWithLifecycle()
+    val capturedImageUri by actions.capturedImageUriFlow.collectAsStateWithLifecycle()
+    val faceImagePath by actions.faceImagePathFlow.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -96,7 +93,7 @@ fun IdentificationScreen(
                         address = sharedOrderDetailViewModel.getUserAddress(orderInfoRequest),
                         request = orderInfoRequest
                     )
-                    navController.navigateToCamera(watermarkData)
+                    actions.onNavigateToCamera(watermarkData)
                 }
             } else {
                 identificationViewModel.showToast("需要相机权限才能拍照")
@@ -105,12 +102,12 @@ fun IdentificationScreen(
     )
 
     // 从CameraScreen获取返回的URI
-    LaunchedEffect(navController.currentBackStackEntry?.savedStateHandle) {
-        navController.currentBackStackEntry?.savedStateHandle?.get<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)?.let { uriString ->
+    LaunchedEffect(capturedImageUri) {
+        capturedImageUri?.let { uriString ->
             val uri = uriString.toUri()
             identificationViewModel.processElderPhoto(uri, orderInfoRequest)
             // 清除数据，避免重复处理
-            navController.currentBackStackEntry?.savedStateHandle?.remove<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)
+            actions.clearCapturedImageUri()
         }
     }
 
@@ -157,22 +154,19 @@ fun IdentificationScreen(
     LaunchedEffect(Unit) {
         identificationViewModel.events.collect { event ->
             when (event) {
-                IdentificationEvent.NavigateToFaceCapture -> navController.navigateToManualFaceCapture()
+                IdentificationEvent.NavigateToFaceCapture -> actions.onNavigateToManualFaceCapture()
                 is IdentificationEvent.ShowToast -> identificationViewModel.showToast(event.message)
             }
         }
     }
 
     // 监听从人脸采集页面返回的结果
-    LaunchedEffect(navController.currentBackStackEntry) {
-        navController.currentBackStackEntry?.savedStateHandle?.let { savedStateHandle ->
-            val imagePath = savedStateHandle.get<String>(NavigationConstants.FACE_IMAGE_PATH_KEY)
-            if (imagePath != null) {
-                // 处理捕获的人脸图片
-                identificationViewModel.handleFaceCaptureResult(context, imagePath)
-                // 清除保存的状态
-                savedStateHandle.remove<String>(NavigationConstants.FACE_IMAGE_PATH_KEY)
-            }
+    LaunchedEffect(faceImagePath) {
+        faceImagePath?.let { imagePath ->
+            // 处理捕获的人脸图片
+            identificationViewModel.handleFaceCaptureResult(context, imagePath)
+            // 清除保存的状态
+            actions.clearFaceImagePath()
         }
     }
     
@@ -181,7 +175,7 @@ fun IdentificationScreen(
         when (photoUploadState) {
             is PhotoUploadState.Success -> {
                 // 上传成功，自动跳转到下一步
-                navController.navigateToSelectService(orderParams)
+                actions.onNavigateToSelectService(orderParams)
                 // 重置状态
                 identificationViewModel.resetPhotoUploadState()
             }
@@ -203,7 +197,7 @@ fun IdentificationScreen(
                 CenterAlignedTopAppBar(
                     title = { Text("身份认证", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = singleClick { navController.popBackStack() }) {
+                        IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "返回",
@@ -229,7 +223,7 @@ fun IdentificationScreen(
                     ) {
                         // 下一步按钮
                         Button(
-                            onClick = singleClick { navController.navigateToSelectService(orderParams) },
+                            onClick = singleClick { actions.onNavigateToSelectService(orderParams) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 48.dp),

@@ -21,13 +21,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
+import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.LockScreenOrientation
-import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.common.utils.singleClick
+import com.ytone.longcare.features.servicehours.api.ServiceHoursActions
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
@@ -39,8 +39,8 @@ import com.ytone.longcare.navigation.toRequestModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceHoursScreen(
-    navController: NavController, 
-    orderParams: OrderNavParams, 
+    actions: ServiceHoursActions,
+    orderParams: OrderNavParams,
     viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
     // 从orderParams构建请求模型
@@ -58,7 +58,7 @@ fun ServiceHoursScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     // 统一处理系统返回键
-    UnifiedBackHandler(navController = navController)
+    CustomBackHandler(customAction = actions.onNavigateBack)
 
     // 页面初始化时获取订单详情
     LaunchedEffect(orderInfoRequest) {
@@ -111,7 +111,7 @@ fun ServiceHoursScreen(
                                     }
                                 }
                             }, navigationIcon = {
-                                IconButton(onClick = singleClick { navController.popBackStack() }) {
+                                IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                                     Icon(
                                         Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = stringResource(R.string.common_back)

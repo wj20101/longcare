@@ -607,3 +607,99 @@
   - 已更新 CI/CD 优化台账：`docs/architecture/ci-cd-automation-optimization-plan.md`
     - 将“剩余未完成优化项”日期更新为 `2026-02-16`；
     - 新增“28. CI 门禁增量收敛补充记录（2026-02-16）”，补录三批门禁加严与 Actions 验证结果。
+- 执行 `D63 | G5-B4`：完成 App 壳层导航收敛（业务页面通过 `feature/*/api/*Actions` 与导航层交互）。
+  - 新增 Actions 契约：
+    - `app/src/main/kotlin/com/ytone/longcare/features/nursingexecution/api/NursingExecutionActions.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/features/serviceorders/api/ServiceOrdersListActions.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/features/servicecomplete/api/ServiceCompleteActions.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/features/facerecognition/api/FaceRecognitionGuideActions.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/features/identification/api/IdentificationActions.kt`
+    - `app/src/main/kotlin/com/ytone/longcare/features/userlist/api/UserListActions.kt`
+  - 页面解耦：
+    - `NursingExecutionScreen`、`ServiceOrdersListScreen`、`ServiceCompleteScreen`、`FaceRecognitionGuideScreen`、`IdentificationScreen`、`UserListScreen` 移除 `NavController` 参数并改为 `actions`。
+    - `AppNavigation.kt` 统一注入 actions，并将 `savedStateHandle` 回传能力（拍照 URI / 人脸图片路径）通过 `IdentificationActions` 下发。
+- 本地验收（D63）：
+  - `./gradlew --no-daemon --console=plain :app:compileDebugKotlin --stacktrace`：PASS。
+  - `./gradlew --no-daemon --console=plain :app:lintDebug --stacktrace`：PASS。
+  - `./scripts/quality/verify_architecture_boundaries.sh`：PASS。
+  - `./scripts/quality/verify_module_api_visibility.sh`：PASS。
+  - `bash ./scripts/lint/verify_lint_warning_allowlist.sh`：PASS。
+- 执行 `D54 | F21`（进行中）：第三方 lint 忽略项清理。
+  - 文件改动：
+    - `app/lint.xml`：删除 `Aligned16KB` / `GlobalOptionInConsumerRules` / `TrustAllX509TrustManager` 的临时 `severity="ignore"`。
+    - `docs/architecture/ci-cd-automation-optimization-plan.md`：更新 F21 状态为 `IN_PROGRESS` 并补充执行记录。
+  - 本地验证：
+    - `./gradlew --no-daemon --console=plain :app:lintDebug --stacktrace`：PASS。
+    - `bash ./scripts/lint/verify_lint_warning_allowlist.sh`：PASS（当前仍观测到上述 warning ID，处于 allowlist 管控）。
+- 执行 `D64 | G5-B5`：新增导航依赖回归守卫，阻断 feature UI 层直接依赖 `NavController`。
+  - 文件改动：
+    - `scripts/quality/verify_architecture_boundaries.sh`：新增 `rule-7`，在 `app/features` 与 `feature` 目录下禁止 `import androidx.navigation.NavController`。
+    - `docs/architecture/project-optimization-refactor-master-plan.md`：将 `G5`/`D62` 状态更新为 `DONE`，并补录 `D64 | G5-B5` 执行记录。
+- 本地验收（D64）：
+  - `./scripts/quality/verify_architecture_boundaries.sh`：PASS。
+  - `./scripts/quality/verify_module_api_visibility.sh`：PASS。
+- 剩余未完成优化项基线（D64 后）：`F21`。
+- 执行 `D54 | F21`（复核补充）：确认第三方告警短期收敛受上游依赖约束。
+  - 复核结果：
+    - `com.tencent.bugly:crashreport` Maven 最新版本为 `4.1.9.3`（项目已使用），`Aligned16KB` 仍存在；
+    - `com.qcloud.cos:cos-android` Maven 最新版本为 `5.9.48`（项目已使用），传递依赖 `qcloud-foundation-1.5.78` 仍触发 `TrustAllX509TrustManager`；
+    - `WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc.aar` 为本地 AAR，仍触发 `Aligned16KB` 与 `GlobalOptionInConsumerRules`。
+  - 文档同步：
+    - `docs/architecture/ci-cd-automation-optimization-plan.md`：新增“30. 第三方 lint 收敛可行性复核（2026-02-16）”。
+- 执行 `D54 | F21`（继续推进）：收紧第三方 lint allowlist，提升回归阻断精度。
+  - 文件改动：
+    - `scripts/lint/verify_lint_warning_allowlist.sh`：
+      - 移除 `GradleDependency` allowlist；
+      - `Aligned16KB` / `GlobalOptionInConsumerRules` / `TrustAllX509TrustManager` 来源改为版本约束匹配：
+        - `crashreport:4.1.9.3`
+        - `qcloud-foundation:1.5.78`
+        - `WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc`
+    - `docs/architecture/ci-cd-automation-optimization-plan.md`：补充 F21 收紧记录。
+- 本地验收（D54-续）：
+  - `./gradlew --no-daemon --console=plain :app:lintDebug --stacktrace`：PASS。
+  - `bash ./scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
+- 执行 `D54 | F21`（持续收敛）：将第三方 lint allowlist 清单化并增加到期阻断。
+  - 文件改动：
+    - `scripts/lint/lint_warning_waivers.json`（新增）：维护 `id/owner/reason/review_by/allowed_sources`。
+    - `scripts/lint/verify_lint_warning_allowlist.sh`：改为读取 waiver JSON，新增 `review_by` 到期校验；移除脚本内硬编码列表。
+    - `.github/workflows/face-sdk-migration-check.yml`：`pull_request.paths` 新增 `scripts/lint/lint_warning_waivers.json`。
+    - `scripts/quality/verify_ci_workflow_quality.sh`：新增 face-sdk workflow 对 waiver 清单路径的守卫校验。
+  - 本地验收：
+    - `bash ./scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
+    - `bash ./scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- 执行 `D54 | F21`（持续收敛-补强）：增加 waiver 结构有效性与陈旧项自动清理阻断。
+  - 文件改动：
+    - `scripts/lint/verify_lint_warning_allowlist.sh`：
+      - 新增 waiver 结构校验（必填字段、`review_by` 日期格式、`allowed_sources` 非空）；
+      - 新增陈旧 waiver 阻断（warning 已消失或 lint 零告警时，要求清理 waiver）；
+      - 保持现有来源约束与过期日期阻断。
+    - `docs/architecture/ci-cd-automation-optimization-plan.md`：补充 section 31 的补强记录与验证结果。
+  - 本地验收：
+    - `bash -n scripts/lint/verify_lint_warning_allowlist.sh`：PASS。
+    - `bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt`：PASS。
+    - 空报告模拟验证：脚本按预期失败并提示清理陈旧 waiver：PASS。
+    - `./gradlew --no-daemon --console=plain :app:lintDebug --stacktrace`：PASS。
+    - `bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml`：PASS。
+    - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+    - `bash scripts/quality/verify_architecture_boundaries.sh .`：PASS。
+    - `bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare .`：PASS。
+- 执行 `D54 | F21`（状态收口同步）：
+  - 文档同步：
+    - `docs/architecture/project-optimization-refactor-master-plan.md`：将 `10.5/F21` 更新为“本地治理已收口，待远端 Android CI 复核”。
+    - `docs/architecture/ci-cd-automation-optimization-plan.md`：更新 `D54` 文件清单与 section 24 状态说明，补充本轮 lint/ignore/workflow 复验结果。
+  - 远端复核阻塞：
+    - 本机缺少 `gh` 命令（`gh auth status -> command not found`），暂无法直接触发 `Android CI` 远端运行。
+- 执行 `D54 | F21`（远端复核完成）：
+  - GitHub CLI 鉴权处理：
+    - `gh auth login` 因 PAT 缺少 `read:org` scope 无法写入本机凭证；
+    - 改为会话级 `GH_TOKEN=$GITHUB_PAT_TOKEN` 调用 `gh` API/Actions，完成 workflow 触发与监控。
+  - 远端验收：
+    - `Android CI#22053335501`（workflow_dispatch，master）`completed/success`；
+    - 关键门禁步骤通过：`Enforce lint warning allowlist`、`verify_architecture_boundaries`、`verify_module_api_visibility`。
+  - 文档收口：
+    - `docs/architecture/ci-cd-automation-optimization-plan.md`：`D54/F21` 状态更新为 `DONE`，补录 run 链接。
+    - `docs/architecture/project-optimization-refactor-master-plan.md`：`10.5/F21` 状态更新为 `DONE`。
+- 执行 `D54 | F21`（台账终态清理）：
+  - 文档同步：
+    - `docs/architecture/ci-cd-automation-optimization-plan.md`：`24. 剩余未完成优化项` 更新为“当前无未完成项”。
+    - `docs/architecture/project-optimization-refactor-master-plan.md`：`10.5 当前剩余优化项` 更新为“当前无剩余未完成优化项”。

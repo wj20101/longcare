@@ -1,7 +1,6 @@
 package com.ytone.longcare.features.endservice.ui
 
 
-import com.ytone.longcare.common.utils.logI
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,13 +23,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.ytone.longcare.R
+import com.ytone.longcare.features.endservice.api.EndServiceSelectionActions
 import com.ytone.longcare.features.endservice.vm.EndServiceSelectionUiState
 import com.ytone.longcare.features.endservice.vm.EndServiceSelectionViewModel
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.navigation.EndOderInfo
-import com.ytone.longcare.navigation.navigateToNfcSignInForEndOrder
 import com.ytone.longcare.theme.bgGradientBrush
 import androidx.compose.ui.platform.LocalContext
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
@@ -43,7 +41,7 @@ import com.ytone.longcare.common.utils.singleClick
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EndServiceSelectionScreen(
-    navController: NavController,
+    actions: EndServiceSelectionActions,
     orderParams: OrderNavParams,
     initialProjectIdList: List<Int>,
     endType: Int,
@@ -71,7 +69,7 @@ fun EndServiceSelectionScreen(
             CenterAlignedTopAppBar(
                 title = { Text("确认服务项目", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = singleClick { navController.popBackStack() }) {
+                    IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
@@ -205,9 +203,9 @@ fun EndServiceSelectionScreen(
                                         
                                         com.ytone.longcare.common.utils.KLogger.i("EndServiceSelection", "Navigating to NFC. Images - Begin: ${beginImgList.size}, Center: ${centerImgList.size}, End: ${endImgList.size}")
 
-                                        navController.navigateToNfcSignInForEndOrder(
-                                            orderParams = orderParams,
-                                            params = EndOderInfo(
+                                        actions.onNavigateToNfcSignInForEndOrder(
+                                            orderParams,
+                                            EndOderInfo(
                                                 projectIdList = viewModel.getConfirmedProjectIds(),
                                                 beginImgList = beginImgList,
                                                 centerImgList = centerImgList,

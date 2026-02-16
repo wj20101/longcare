@@ -68,9 +68,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.navigation.NavController
 import com.ytone.longcare.common.utils.LockScreenOrientation
-import com.ytone.longcare.core.navigation.NavigationConstants
+import com.ytone.longcare.features.photoupload.api.CameraActions
 import com.ytone.longcare.databinding.WatermarkViewBinding
 import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.features.photoupload.vm.CameraViewModel
@@ -98,7 +97,7 @@ import android.os.Environment
 
 @Composable
 fun CameraScreen(
-    navController: NavController,
+    actions: CameraActions,
     watermarkData: WatermarkData,
     viewModel: CameraViewModel = hiltViewModel()
 ) {
@@ -127,11 +126,7 @@ fun CameraScreen(
             viewModel = viewModel,
             onImageCaptured = { file ->
                 val savedUri = Uri.fromFile(file)
-                navController.previousBackStackEntry?.savedStateHandle?.set(
-                    NavigationConstants.CAPTURED_IMAGE_URI_KEY,
-                    savedUri.toString()
-                )
-                navController.popBackStack()
+                actions.onImageCaptured(savedUri.toString())
             },
         )
     } else {

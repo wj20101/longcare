@@ -33,11 +33,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
-import androidx.navigation.NavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.api.response.isPendingCare
+import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
 import com.ytone.longcare.model.handleOrderNavigation
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
@@ -46,12 +46,6 @@ import com.ytone.longcare.theme.IndicatorGradientEnd
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderItem
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.models.protos.User
-import com.ytone.longcare.navigation.HomeRoute
-import com.ytone.longcare.navigation.navigateToCarePlansList
-import com.ytone.longcare.navigation.navigateToNursingExecution
-import com.ytone.longcare.navigation.navigateToService
-import com.ytone.longcare.navigation.navigateToServiceCountdown
-import com.ytone.longcare.navigation.navigateToServiceRecordsList
 import com.ytone.longcare.ui.components.UserAvatar
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.features.shared.ui.EmptyView
@@ -61,14 +55,11 @@ import com.ytone.longcare.navigation.OrderNavParams
 
 @Composable
 fun MainDashboardScreen(
-    navController: NavController
+    actions: MainDashboardActions,
+    homeSharedViewModel: HomeSharedViewModel,
+    todayOrderViewModel: TodayOrderViewModel,
+    mainDashboardViewModel: MainDashboardViewModel = hiltViewModel()
 ) {
-    val parentEntry = remember(navController.currentBackStackEntry) {
-        navController.getBackStackEntry(HomeRoute)
-    }
-    val mainDashboardViewModel: MainDashboardViewModel = hiltViewModel()
-    val homeSharedViewModel: HomeSharedViewModel = hiltViewModel(parentEntry)
-    val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
     val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
     val companyName by mainDashboardViewModel.companyName.collectAsStateWithLifecycle()
 
@@ -99,7 +90,7 @@ fun MainDashboardScreen(
                 user = loggedInUser,
                 todayOrderList = todayOrderList,
                 inOrderList = inOrderList,
-                navController = navController,
+                actions = actions,
                 homeSharedViewModel = homeSharedViewModel,
                 modifier = Modifier.padding(
                     start = 16.dp,
@@ -127,7 +118,7 @@ private fun MainDashboardContent(
     user: User,
     todayOrderList: List<TodayServiceOrderModel>,
     inOrderList: List<ServiceOrderModel>,
-    navController: NavController,
+    actions: MainDashboardActions,
     homeSharedViewModel: HomeSharedViewModel,
     modifier: Modifier = Modifier,
     companyName: String,
@@ -148,7 +139,7 @@ private fun MainDashboardContent(
         item {
             DashboardGridWithImages(
                 pendingCarePlanCount = todayOrderList.count { it.isPendingCare() },
-                navController = navController
+                actions = actions
             )
         }
         // Tab布局显示订单
@@ -156,7 +147,7 @@ private fun MainDashboardContent(
             OrderTabLayout(
                 todayOrderList = todayOrderList,
                 inOrderList = inOrderList,
-                navController = navController,
+                actions = actions,
                 homeSharedViewModel = homeSharedViewModel,
                 mainDashboardViewModel = mainDashboardViewModel
             )
@@ -226,7 +217,7 @@ fun HomeBannerCard() {
 @Composable
 fun DashboardGridWithImages(
     pendingCarePlanCount: Int,
-    navController: NavController
+    actions: MainDashboardActions
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp) // 行之间的间距
@@ -239,14 +230,14 @@ fun DashboardGridWithImages(
                 title = "待护理计划",
                 subtitle = if (pendingCarePlanCount > 0) "你有${pendingCarePlanCount}个护理待执行" else "",
                 badgeCount = pendingCarePlanCount,
-                onClick = { navController.navigateToCarePlansList() }
+                onClick = actions.onNavigateToCarePlansList
             )
             InfoCard(
                 modifier = Modifier.weight(1f),
                 iconRes = R.drawable.main_ic_records,
                 title = "已服务记录",
                 subtitle = "查看过往服务记录",
-                onClick = { navController.navigateToServiceRecordsList() }
+                onClick = actions.onNavigateToServiceRecordsList
             )
         }
 //        // 第二行
@@ -449,7 +440,7 @@ fun InOrderServiceItem(
 fun OrderTabLayout(
     todayOrderList: List<TodayServiceOrderModel>,
     inOrderList: List<ServiceOrderModel>,
-    navController: NavController,
+    actions: MainDashboardActions,
     homeSharedViewModel: HomeSharedViewModel,
     mainDashboardViewModel: MainDashboardViewModel
 ) {
@@ -492,10 +483,10 @@ fun OrderTabLayout(
                                  orderId = order.orderId,
                                  planId = 0,
                                  onNavigateToNursingExecution = { orderId, planId ->
-                                     navController.navigateToNursingExecution(OrderNavParams(orderId, planId))
+                                     actions.onNavigateToNursingExecution(OrderNavParams(orderId, planId))
                                  },
                                  onNavigateToService = { orderId, planId ->
-                                     navController.navigateToService(OrderNavParams(orderId, planId))
+                                     actions.onNavigateToService(OrderNavParams(orderId, planId))
                                  },
                                  onNotStartedState = {
                                      // 未开单状态，不允许跳转
@@ -524,9 +515,9 @@ fun OrderTabLayout(
                                         return@launch
                                     }
 
-                                    navController.navigateToServiceCountdown(
-                                        orderParams = navigationData.orderParams,
-                                        projectIdList = navigationData.projectIdList
+                                    actions.onNavigateToServiceCountdown(
+                                        navigationData.orderParams,
+                                        navigationData.projectIdList
                                     )
                                 } catch (e: Exception) {
                                     logE("跳转到服务倒计时页面失败: orderId=${order.orderId}", throwable = e)

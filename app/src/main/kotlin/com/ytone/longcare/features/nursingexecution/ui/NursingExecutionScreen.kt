@@ -22,22 +22,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.api.response.ServiceProjectM
 import com.ytone.longcare.api.response.UserInfoM
 import com.ytone.longcare.common.utils.singleClick
+import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.LockScreenOrientation
-import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.model.isExecutingState
 import com.ytone.longcare.model.isPendingExecutionState
-import com.ytone.longcare.navigation.navigateToSelectDevice
-import com.ytone.longcare.navigation.navigateToServiceCountdown
+import com.ytone.longcare.features.nursingexecution.api.NursingExecutionActions
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.navigation.OrderNavParams
@@ -47,7 +44,7 @@ import com.ytone.longcare.navigation.toRequestModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NursingExecutionScreen(
-    navController: NavController,
+    actions: NursingExecutionActions,
     orderParams: OrderNavParams,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
@@ -66,9 +63,9 @@ fun NursingExecutionScreen(
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     val uiState by sharedViewModel.uiState.collectAsStateWithLifecycle()
-    
+
     // 统一处理系统返回键
-    UnifiedBackHandler(navController = navController)
+    CustomBackHandler(customAction = actions.onNavigateBack)
     
     // 在组件初始化时加载订单信息
     LaunchedEffect(orderInfoRequest) {
@@ -81,7 +78,7 @@ fun NursingExecutionScreen(
         
         is OrderDetailUiState.Success -> {
             NursingExecutionContent(
-                navController = navController,
+                actions = actions,
                 orderInfo = state.orderInfo,
                 orderParams = orderParams,
                 onNavigateToCountdown = { projectList ->
@@ -89,10 +86,7 @@ fun NursingExecutionScreen(
                         request = orderInfoRequest,
                         projectList = projectList
                     )
-                    navController.navigateToServiceCountdown(
-                        orderParams = orderParams,
-                        projectIdList = selectedProjectIds
-                    )
+                    actions.onNavigateToServiceCountdown(orderParams, selectedProjectIds)
                 }
             )
         }
@@ -159,7 +153,7 @@ fun ErrorScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NursingExecutionContent(
-    navController: NavController,
+    actions: NursingExecutionActions,
     orderInfo: ServiceOrderInfoModel,
     orderParams: OrderNavParams,
     onNavigateToCountdown: suspend (List<ServiceProjectM>) -> Unit
@@ -175,7 +169,7 @@ fun NursingExecutionContent(
                 CenterAlignedTopAppBar(
                     title = { Text(stringResource(R.string.nursing_execution_title), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = singleClick { navController.popBackStack() }) {
+                        IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                         }
                     },
@@ -251,8 +245,8 @@ fun NursingExecutionContent(
                                         onNavigateToCountdown(orderInfo.projectList ?: emptyList())
                                     }
                                 }
-                                orderInfo.state.isPendingExecutionState() -> navController.navigateToSelectDevice(orderParams)
-                                else -> navController.popBackStack()
+                                orderInfo.state.isPendingExecutionState() -> actions.onNavigateToSelectDevice(orderParams)
+                                else -> actions.onNavigateBack()
                             }
                         }
                     )
@@ -349,7 +343,6 @@ fun ErrorScreenPreview() {
 @Preview
 @Composable
 fun NursingExecutionContentPreview() {
-    val navController = rememberNavController()
     val orderInfo = ServiceOrderInfoModel(
         orderId = 1L,
         state = 0,

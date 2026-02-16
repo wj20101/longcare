@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.photoupload.ui
 
 import com.ytone.longcare.common.utils.singleClick
-import com.ytone.longcare.common.utils.safePopBackStack
+import com.ytone.longcare.common.utils.CustomBackHandler
 import android.Manifest
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -34,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -50,21 +49,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import coil3.compose.rememberAsyncImagePainter
 import com.ytone.longcare.R
-import com.ytone.longcare.core.navigation.NavigationConstants
+import com.ytone.longcare.features.photoupload.api.PhotoUploadActions
 import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
-import com.ytone.longcare.navigation.navigateToCamera
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import androidx.core.net.toUri
 import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
-import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.navigation.OrderNavParams
@@ -81,7 +77,7 @@ enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhotoUploadScreen(
-    navController: NavController,
+    actions: PhotoUploadActions,
     orderParams: OrderNavParams,
     viewModel: PhotoProcessingViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
@@ -90,7 +86,7 @@ fun PhotoUploadScreen(
     val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
     
     // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
-    UnifiedBackHandler(navController = navController)
+    CustomBackHandler(customAction = actions.onNavigateBack)
 
      DisposableEffect(Unit) {
         com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: 🟢 Enter Composition")
@@ -98,9 +94,6 @@ fun PhotoUploadScreen(
             com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: 🔴 Leave Composition (onDispose)")
         }
     }
-
-    // 防止重复导航标记
-    var isNavigating by remember { mutableStateOf(false) }
 
     // 在组件初始化时加载订单信息（如果缓存中没有）
     LaunchedEffect(orderInfoRequest) {
@@ -123,18 +116,11 @@ fun PhotoUploadScreen(
     val currentCategory by viewModel.currentCategory.collectAsStateWithLifecycle()
 
     // 监听已有图片数据
-    LaunchedEffect(navController.previousBackStackEntry?.savedStateHandle) {
-        navController.previousBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<ImageTask>>?>(
-            NavigationConstants.EXISTING_IMAGES_KEY, null
-        )?.collect { existingImages ->
+    LaunchedEffect(actions.existingImagesFlow) {
+        actions.existingImagesFlow.collect { existingImages ->
             existingImages?.let {
-                // 将已有图片数据同步到ViewModel
                 viewModel.loadExistingImageTasks(it)
-
-                // 清除数据，避免重复处理
-                navController.previousBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<ImageTask>>>(
-                    NavigationConstants.EXISTING_IMAGES_KEY
-                )
+                actions.clearExistingImages()
             }
         }
     }
@@ -155,8 +141,7 @@ fun PhotoUploadScreen(
                             address = sharedViewModel.getUserAddress(orderInfoRequest),
                             orderId = orderInfoRequest.orderId
                         )
-                        // Now navigate
-                        navController.navigateToCamera(watermarkData)
+                        actions.onNavigateToCamera(watermarkData)
                     }
                 }
             } else {
@@ -166,24 +151,25 @@ fun PhotoUploadScreen(
     )
 
     // 从CameraScreen获取返回的URI
-    LaunchedEffect(navController.currentBackStackEntry?.savedStateHandle) {
-        navController.currentBackStackEntry?.savedStateHandle?.get<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)?.let { uriString ->
-            val uri = uriString.toUri()
-            currentCategory?.let { category ->
-                val taskType = when (category) {
-                    PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
-                    PhotoCategory.CENTER_CARE -> ImageTaskType.CENTER_CARE
-                    PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
+    LaunchedEffect(actions.capturedImageUriFlow) {
+        actions.capturedImageUriFlow.collect { uriString ->
+            uriString?.let {
+                val uri = it.toUri()
+                currentCategory?.let { category ->
+                    val taskType = when (category) {
+                        PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
+                        PhotoCategory.CENTER_CARE -> ImageTaskType.CENTER_CARE
+                        PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
+                    }
+                    viewModel.addImagesToProcess(
+                        uris = listOf(uri),
+                        taskType = taskType,
+                        address = sharedViewModel.getUserAddress(orderInfoRequest),
+                        orderKey = orderInfoRequest.toOrderKey()
+                    )
                 }
-                viewModel.addImagesToProcess(
-                    uris = listOf(uri),
-                    taskType = taskType,
-                    address = sharedViewModel.getUserAddress(orderInfoRequest),
-                    orderKey = orderInfoRequest.toOrderKey()
-                )
+                actions.clearCapturedImageUri()
             }
-            // 清除数据，避免重复处理
-            navController.currentBackStackEntry?.savedStateHandle?.remove<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)
         }
     }
 
@@ -211,8 +197,8 @@ fun PhotoUploadScreen(
                     )
                 }, navigationIcon = {
                     IconButton(onClick = singleClick {
-                        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Back Button Clicked -> safePopBackStack")
-                        navController.safePopBackStack()
+                        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Back Button Clicked -> navigateBack")
+                        actions.onNavigateBack()
                     }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
@@ -243,12 +229,9 @@ fun PhotoUploadScreen(
                                     val imageTasksMap = currentTasks
                                         .filter { it.status == ImageTaskStatus.SUCCESS }
                                         .groupBy { it.taskType }
-                                    
-                                    navController.previousBackStackEntry?.savedStateHandle?.set(
-                                        NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, imageTasksMap
-                                    )
-                                    com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Mock Success -> safePopBackStack")
-                                    navController.safePopBackStack()
+
+                                    actions.onPublishPhotoUploadResultAndNavigateBack(imageTasksMap)
+                                    com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Mock Success -> navigateBack")
                                     return@launch
                                 }
                                 
@@ -269,12 +252,8 @@ fun PhotoUploadScreen(
                                             }
                                         }
 
-                                        // 将转换后的结果回传给上一个页面
-                                        navController.previousBackStackEntry?.savedStateHandle?.set(
-                                            NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, imageTasksMap
-                                        )
-                                        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Upload Success -> safePopBackStack")
-                                        navController.safePopBackStack()
+                                        actions.onPublishPhotoUploadResultAndNavigateBack(imageTasksMap)
+                                        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Upload Success -> navigateBack")
                                     }, onFailure = { error ->
                                         // 显示上传失败的错误信息
                                         viewModel.showToast("图片上传失败: ${error.message}")

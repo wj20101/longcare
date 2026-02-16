@@ -23,16 +23,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.theme.bgGradientBrush
-import com.ytone.longcare.navigation.navigateToNfcSignInForStartOrder
 import com.ytone.longcare.theme.bgButtonGradientBrush
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.features.selectdevice.api.SelectDeviceActions
 import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.toRequestModel
 
 // --- 数据模型 ---
 data class Device(
@@ -44,12 +40,9 @@ data class Device(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectDeviceScreen(
-    navController: NavController = rememberNavController(),
+    actions: SelectDeviceActions,
     orderParams: OrderNavParams
 ) {
-    // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
-    
     // 模拟设备数据
     val devices = remember {
         List(6) { index -> Device(id = "id_$index", name = "设备名称") }
@@ -66,7 +59,7 @@ fun SelectDeviceScreen(
                 CenterAlignedTopAppBar(
                     title = { Text(stringResource(R.string.select_device_title), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = singleClick { navController.popBackStack() }) {
+                        IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.common_back),
@@ -95,7 +88,7 @@ fun SelectDeviceScreen(
                             text = stringResource(R.string.common_next_step),
                             enabled = true,
                             onClick = singleClick { 
-                                navController.navigateToNfcSignInForStartOrder(orderParams)
+                                actions.onStartOrderNfcSignIn(orderParams)
                             }
                         )
                     }

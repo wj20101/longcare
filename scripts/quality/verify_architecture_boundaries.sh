@@ -80,6 +80,13 @@ if [[ -d "${APP_ROOT}/domain" ]]; then
   fi
 fi
 
+echo "[architecture] rule-7: feature UI layers must not import NavController directly"
+run_rule \
+  "feature UI imports NavController directly" \
+  '^\s*import\s+androidx\.navigation\.NavController\b' \
+  "${APP_ROOT}/features" \
+  "${FEATURE_ROOT}"
+
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[architecture] boundary verification failed."
   exit "${EXIT_CODE}"

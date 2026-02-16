@@ -31,17 +31,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.NfcUtils
+import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.navigation.EndOderInfo
+import com.ytone.longcare.features.nfc.api.NfcWorkflowActions
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
 import com.ytone.longcare.features.nfc.vm.EndOrderSuccessData
-import com.ytone.longcare.navigation.navigateToServiceComplete
 import com.ytone.longcare.navigation.ServiceCompleteData
-import com.ytone.longcare.navigation.navigateToIdentification
 import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.theme.bgGradientBrush
@@ -49,12 +48,9 @@ import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSettings
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
-import com.ytone.longcare.common.utils.UnifiedBackHandler
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.navigation.toRequestModel
-import com.ytone.longcare.common.utils.BackHandlerUtils
-import com.ytone.longcare.navigation.navigateToHomeAndClearStack
 import kotlinx.coroutines.CancellationException
 
 
@@ -69,7 +65,7 @@ enum class SignInState {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NfcWorkflowScreen(
-    navController: NavController,
+    actions: NfcWorkflowActions,
     orderParams: OrderNavParams,
     signInMode: SignInMode,
     endOderInfo: EndOderInfo? = null,
@@ -96,18 +92,14 @@ fun NfcWorkflowScreen(
     // 定义统一的返回逻辑
     val onBack: () -> Unit = {
         if (signInMode == SignInMode.END_ORDER && signInState == SignInState.SUCCESS) {
-            navController.navigateToHomeAndClearStack()
+            actions.onNavigateHomeAndClearStack()
         } else {
-            navController.popBackStack()
+            actions.onNavigateBack()
         }
     }
 
     // 统一处理系统返回键，与导航按钮行为一致
-    UnifiedBackHandler(
-        navController = navController,
-        behavior = BackHandlerUtils.BackBehavior.CUSTOM,
-        customAction = onBack
-    )
+    CustomBackHandler(customAction = onBack)
 
     // 权限请求启动器（用于开启定位追踪）
     val trackingPermissionLauncher = rememberLocationPermissionLauncher(
@@ -261,7 +253,7 @@ fun NfcWorkflowScreen(
                                                 // 签到成功时开启定位上报任务
                                                 checkLocationPermissionAndStartTracking()
                                                 // 签到成功后跳转到身份认证页面
-                                                navController.navigateToIdentification(orderParams)
+                                                actions.onNavigateToIdentification(orderParams)
                                             }
 
                                             SignInMode.END_ORDER -> {
@@ -276,9 +268,9 @@ fun NfcWorkflowScreen(
                                                         endOderInfo = endOderInfo,
                                                         trueServiceTime = trueServiceTime
                                                     )
-                                                navController.navigateToServiceComplete(
-                                                    orderParams = orderParams,
-                                                    serviceCompleteData = serviceCompleteData
+                                                actions.onNavigateToServiceComplete(
+                                                    orderParams,
+                                                    serviceCompleteData
                                                 )
                                             }
                                         }

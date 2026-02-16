@@ -33,10 +33,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.NavController
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
-import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
@@ -45,20 +43,16 @@ import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.model.toOrderKey
-import com.ytone.longcare.navigation.navigateToEndServiceSelection
-import com.ytone.longcare.navigation.navigateToPhotoUpload
-import com.ytone.longcare.navigation.navigateToHomeAndClearStack
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
-import com.ytone.longcare.features.photoupload.model.ImageTask
-import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import androidx.core.net.toUri
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.api.response.ServiceOrderStateModel
-import com.ytone.longcare.common.utils.HomeBackHandler
+import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
+import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.navigation.toRequestModel
 import com.ytone.longcare.common.utils.singleClick
@@ -105,7 +99,7 @@ private data class ServiceInfo(
  * - 生命周期恢复时仅刷新显示，不重新初始化
  * - 完善的资源清理机制
  * 
- * @param navController 导航控制器
+ * @param actions 页面导航与回传行为
  * @param orderParams 订单信息请求模型
  * @param projectIdList 选中的项目ID列表
  * @param sharedViewModel 共享的订单详情ViewModel
@@ -115,7 +109,7 @@ private data class ServiceInfo(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceCountdownScreen(
-    navController: NavController,
+    actions: ServiceCountdownActions,
     orderParams: OrderNavParams,
     projectIdList: List<Int>,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
@@ -129,7 +123,7 @@ fun ServiceCountdownScreen(
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     // 统一处理系统返回键，确保与导航按钮行为一致
-    HomeBackHandler(navController = navController)
+    CustomBackHandler(customAction = actions.onNavigateHomeAndClearStack)
 
     // 从ViewModel获取状态
     val countdownState by countdownViewModel.countdownState.collectAsStateWithLifecycle()
@@ -294,11 +288,7 @@ fun ServiceCountdownScreen(
         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 5. 已结束服务（保留图片数据）")
 
         // 6. 导航到结束服务选择页面
-        navController.navigateToEndServiceSelection(
-            orderParams = orderParams,
-            endType = endType,
-            projectIdList = projectIdList
-        )
+        actions.onNavigateToEndServiceSelection(orderParams, endType, projectIdList)
     }
 
     // 监听订单状态异常事件
@@ -330,17 +320,10 @@ fun ServiceCountdownScreen(
         countdownViewModel.startOrderStatePolling(orderInfoRequest.toOrderKey())
 
         // 监听图片上传结果
-        navController.currentBackStackEntry?.savedStateHandle?.getStateFlow<Map<ImageTaskType, List<ImageTask>>?>(
-            NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, null
-        )?.collect { result ->
+        actions.photoUploadResultFlow.collect { result ->
             result?.let {
-                // 调用ViewModel处理图片上传结果
                 countdownViewModel.handlePhotoUploadResult(it)
-
-                // 清除结果，避免重复处理
-                navController.currentBackStackEntry?.savedStateHandle?.remove<Map<ImageTaskType, List<ImageTask>>>(
-                    NavigationConstants.PHOTO_UPLOAD_RESULT_KEY
-                )
+                actions.clearPhotoUploadResult()
             }
         }
     }
@@ -447,7 +430,7 @@ fun ServiceCountdownScreen(
             CenterAlignedTopAppBar(
                 title = { Text("服务时间倒计时", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = singleClick { navController.navigateToHomeAndClearStack() }) {
+                    IconButton(onClick = singleClick(onClick = actions.onNavigateHomeAndClearStack)) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
@@ -486,11 +469,12 @@ fun ServiceCountdownScreen(
 
                 // Countdown Timer Card
                 CountdownTimerCard(
-                    navController = navController,
                     countdownState = countdownState,
                     formattedTime = formattedTime,
-                    countdownViewModel = countdownViewModel,
-                    orderParams = orderParams
+                    onOpenPhotoUpload = {
+                        val existingImages = countdownViewModel.getCurrentUploadedImages()
+                        actions.onNavigateToPhotoUpload(orderParams, existingImages)
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -688,7 +672,7 @@ fun ServiceCountdownScreen(
                         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
                         
                         // 8. 返回首页
-                        navController.navigateToHomeAndClearStack()
+                        actions.onNavigateHomeAndClearStack()
                     }) {
                     Text("确定")
                 }
@@ -698,11 +682,9 @@ fun ServiceCountdownScreen(
 
 @Composable
 fun CountdownTimerCard(
-    navController: NavController,
     countdownState: ServiceCountdownState,
     formattedTime: String = "12:00:00",
-    countdownViewModel: ServiceCountdownViewModel,
-    orderParams: OrderNavParams
+    onOpenPhotoUpload: () -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -740,12 +722,7 @@ fun CountdownTimerCard(
             }
             Button(
                 onClick = singleClick {
-                    val existingImages = countdownViewModel.getCurrentUploadedImages()
-                    // 通过savedStateHandle传递已有的图片数据
-                    navController.currentBackStackEntry?.savedStateHandle?.set(
-                        NavigationConstants.EXISTING_IMAGES_KEY, existingImages
-                    )
-                    navController.navigateToPhotoUpload(orderParams = orderParams)
+                    onOpenPhotoUpload()
                 }, shape = RoundedCornerShape(50), colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFF5A623) // 橙色
                 )

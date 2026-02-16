@@ -18,14 +18,14 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.NavController
 import com.ytone.longcare.debug.NfcTestConfig
+import com.ytone.longcare.features.nfctest.api.NfcTestActions
 import com.ytone.longcare.features.nfctest.vm.NfcTestViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NfcTestScreen(
-    navController: NavController
+    actions: NfcTestActions
 ) {
     val nfcTestViewModel: NfcTestViewModel = hiltViewModel()
     val context = LocalContext.current
@@ -78,7 +78,7 @@ fun NfcTestScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = actions.onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回",
