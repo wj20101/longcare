@@ -570,3 +570,11 @@
 - 远端验收（D61-第十一批）：
   - `Android CI#22044964986`（commit `faa7b22`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22044964986`。
+- 执行 `D62 | G5`（第一批）：加严架构守卫，阻断 `app/domain` 回流。
+  - 文件改动：
+    - `scripts/quality/verify_architecture_boundaries.sh`：新增 `rule-6`，要求 `app/src/main/kotlin/com/ytone/longcare/domain` 必须保持为空（若出现 `.kt` 文件则直接失败）。
+- 本地验收（D62-第一批）：
+  - `bash scripts/quality/verify_architecture_boundaries.sh .`：PASS。
+- 远端验收（D62-第一批）：
+  - `Android CI#22046138043`（commit `1c699a0`）`completed/success`。
+  - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22046138043`。
