@@ -198,15 +198,14 @@ class IdentificationViewModel @Inject constructor(
                     logD("已保存到本地缓存", tag = "IdentificationVM")
                 }
                 
-                val request = createFaceVerificationRequest(
+                startSelfProvidedFaceVerification(
+                    context = context,
                     name = name,
                     idNo = idNo,
                     orderNo = orderNo,
                     userId = userId,
                     sourcePhotoBase64 = sourcePhotoBase64
                 )
-
-                startFaceVerificationWithDefaultCallback(context, request)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -235,15 +234,14 @@ class IdentificationViewModel @Inject constructor(
             beginVerification(VerificationType.SERVICE_PERSON)
 
             try {
-                val request = createFaceVerificationRequest(
+                startSelfProvidedFaceVerification(
+                    context = context,
                     name = name,
                     idNo = idNo,
                     orderNo = orderNo,
                     userId = userId,
                     sourcePhotoBase64 = sourcePhotoBase64
                 )
-
-                startFaceVerificationWithDefaultCallback(context, request)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -251,6 +249,24 @@ class IdentificationViewModel @Inject constructor(
                 setFaceVerificationError("人脸验证失败: ${e.message}")
             }
         }
+    }
+
+    private suspend fun startSelfProvidedFaceVerification(
+        context: Context,
+        name: String,
+        idNo: String,
+        orderNo: String,
+        userId: String,
+        sourcePhotoBase64: String,
+    ) {
+        val request = createFaceVerificationRequest(
+            name = name,
+            idNo = idNo,
+            orderNo = orderNo,
+            userId = userId,
+            sourcePhotoBase64 = sourcePhotoBase64
+        )
+        startFaceVerificationWithDefaultCallback(context, request)
     }
 
 
