@@ -3,6 +3,7 @@ package com.ytone.longcare.features.identification.vm
 import android.content.Context
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.models.protos.User
 import kotlinx.coroutines.CancellationException
@@ -20,7 +21,7 @@ internal fun launchSelfProvidedFaceVerificationAndCache(
     faceDataSource: IdentificationFaceDataSource,
     resolveCurrentUser: suspend () -> User?,
     beginVerification: (VerificationType) -> Unit,
-    startVerification: suspend (Context, String, String, String, String, String) -> Unit,
+    startVerificationWithRequest: suspend (Context, FaceVerificationRequest) -> Unit,
     onFailure: (String) -> Unit,
 ) {
     scope.launch {
@@ -37,7 +38,15 @@ internal fun launchSelfProvidedFaceVerificationAndCache(
                 logD("已保存到本地缓存", tag = "IdentificationVM")
             }
 
-            startVerification(context, name, idNo, orderNo, userId, sourcePhotoBase64)
+            executeSelfProvidedVerification(
+                context = context,
+                name = name,
+                idNo = idNo,
+                orderNo = orderNo,
+                userId = userId,
+                sourcePhotoBase64 = sourcePhotoBase64,
+                startVerificationWithRequest = startVerificationWithRequest,
+            )
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -56,18 +65,45 @@ internal fun launchSelfProvidedFaceVerificationWithBase64(
     userId: String,
     sourcePhotoBase64: String,
     beginVerification: (VerificationType) -> Unit,
-    startVerification: suspend (Context, String, String, String, String, String) -> Unit,
+    startVerificationWithRequest: suspend (Context, FaceVerificationRequest) -> Unit,
     onFailure: (String, Throwable?) -> Unit,
 ) {
     scope.launch {
         beginVerification(VerificationType.SERVICE_PERSON)
 
         try {
-            startVerification(context, name, idNo, orderNo, userId, sourcePhotoBase64)
+            executeSelfProvidedVerification(
+                context = context,
+                name = name,
+                idNo = idNo,
+                orderNo = orderNo,
+                userId = userId,
+                sourcePhotoBase64 = sourcePhotoBase64,
+                startVerificationWithRequest = startVerificationWithRequest,
+            )
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             onFailure("人脸验证失败: ${e.message}", e)
         }
     }
+}
+
+private suspend fun executeSelfProvidedVerification(
+    context: Context,
+    name: String,
+    idNo: String,
+    orderNo: String,
+    userId: String,
+    sourcePhotoBase64: String,
+    startVerificationWithRequest: suspend (Context, FaceVerificationRequest) -> Unit,
+) {
+    val request = createFaceVerificationRequest(
+        name = name,
+        idNo = idNo,
+        orderNo = orderNo,
+        userId = userId,
+        sourcePhotoBase64 = sourcePhotoBase64
+    )
+    startVerificationWithRequest(context, request)
 }

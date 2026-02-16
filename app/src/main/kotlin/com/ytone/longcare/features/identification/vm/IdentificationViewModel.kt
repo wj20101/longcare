@@ -152,7 +152,7 @@ class IdentificationViewModel @Inject constructor(
             faceDataSource = faceDataSource,
             resolveCurrentUser = ::getCurrentUser,
             beginVerification = ::beginVerification,
-            startVerification = ::startSelfProvidedFaceVerification,
+            startVerificationWithRequest = ::startFaceVerificationWithDefaultCallback,
             onFailure = ::setFaceVerificationError,
         )
     }
@@ -179,32 +179,13 @@ class IdentificationViewModel @Inject constructor(
             userId = userId,
             sourcePhotoBase64 = sourcePhotoBase64,
             beginVerification = ::beginVerification,
-            startVerification = ::startSelfProvidedFaceVerification,
+            startVerificationWithRequest = ::startFaceVerificationWithDefaultCallback,
             onFailure = { message, throwable ->
                 logE("人脸验证失败", tag = "IdentificationVM", throwable = throwable)
                 setFaceVerificationError(message)
             },
         )
     }
-
-    private suspend fun startSelfProvidedFaceVerification(
-        context: Context,
-        name: String,
-        idNo: String,
-        orderNo: String,
-        userId: String,
-        sourcePhotoBase64: String,
-    ) {
-        val request = createFaceVerificationRequest(
-            name = name,
-            idNo = idNo,
-            orderNo = orderNo,
-            userId = userId,
-            sourcePhotoBase64 = sourcePhotoBase64
-        )
-        startFaceVerificationWithDefaultCallback(context, request)
-    }
-
 
     /**
      * 开始人脸验证
