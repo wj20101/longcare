@@ -101,15 +101,13 @@ class IdentificationViewModel @Inject constructor(
             beginVerification = ::beginVerification,
             startVerificationWithRequest = ::startFaceVerificationWithDefaultCallback,
             onRequireFaceSetup = ::navigateToFaceCaptureForSetup,
-            onVerificationFailure = { message, throwable ->
-                if (throwable == null) {
-                    logE(message, tag = "IdentificationVM")
-                } else {
-                    logE(message, tag = "IdentificationVM", throwable = throwable)
-                }
-                setFaceVerificationError(message)
-            },
+            onVerificationFailure = ::handleServicePersonVerificationFailure,
         )
+    }
+
+    private fun handleServicePersonVerificationFailure(message: String, throwable: Throwable?) {
+        logE(message, tag = "IdentificationVM", throwable = throwable)
+        setFaceVerificationError(message)
     }
 
     private fun navigateToFaceCaptureForSetup() {
