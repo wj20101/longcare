@@ -591,3 +591,13 @@
 - 远端验收（D62-第二批）：
   - `Android CI#22046330461`（commit `cf573a4`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22046330461`。
+- 执行 `D62 | G5`（第三批）：对齐 release 链路与 CI 架构门禁，避免发布阶段漏检模块边界问题。
+  - 文件改动：
+    - `.github/workflows/android-release.yml`：
+      - 新增 `Enforce architecture boundaries`（`verify_architecture_boundaries.sh .`）；
+      - 新增 `Enforce module API visibility`（`verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare .`）。
+- 本地验收（D62-第三批）：
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- 远端验收（D62-第三批）：
+  - `Android CI#22046396554`（commit `26c70fe`）`completed/success`。
+  - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22046396554`。

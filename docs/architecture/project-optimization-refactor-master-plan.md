@@ -611,6 +611,7 @@
 - `scripts/quality/verify_architecture_boundaries.sh`（已完成第一批：新增 rule-6，阻断 `app/domain` 回流）
 - `scripts/quality/verify_module_api_visibility.sh`（已完成第二批：新增 rule-3/repo 契约归属与 rule-4/app domain 契约禁入）
 - `.github/workflows/android-ci.yml`
+- `.github/workflows/android-release.yml`（已完成第三批：补齐 architecture/module-API 双门禁）
 
 ### 10.3 逐日执行计划（D58~D62）
 
@@ -644,3 +645,4 @@
 | 2026-02-15 | D61 | G4 | 已完成第十一批契约/模型收口（`FaceVerifier` 链路） | faa7b22 | `Android CI#22044964986` success；`FaceVerifier` 公共契约迁入 `core:common`，domain alias 迁入 `core:domain`，`FaceVerificationModels` 收口到 `core:model`，`app/domain` 已迁空 |
 | 2026-02-16 | D62 | G5 | 已完成第一批门禁加严（rule-6：`app/domain` 迁空守卫） | 1c699a0 | `Android CI#22046138043` success；`verify_architecture_boundaries.sh` 新增 rule-6，阻断 `app/domain` 回流 |
 | 2026-02-16 | D62 | G5 | 已完成第二批门禁加严（rule-3/rule-4：契约归属与 app domain 禁入） | cf573a4 | `Android CI#22046330461` success；`verify_module_api_visibility.sh` 新增 repository 契约归属校验，仅允许 `core/domain` 定义，并对 `app/domain` 增加二次阻断 |
+| 2026-02-16 | D62 | G5 | 已完成第三批发布链路门禁对齐（release workflow 接入架构/模块可见性校验） | 26c70fe | `Android CI#22046396554` success；`android-release.yml` 与 `android-ci.yml` 保持同级边界门禁，降低“CI 过而发布失败/回归”风险 |
