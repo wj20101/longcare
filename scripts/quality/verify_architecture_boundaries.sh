@@ -10,6 +10,7 @@ CORE_DOMAIN_ROOT="${PROJECT_ROOT}/core/domain/src/main/kotlin"
 FEATURE_ROOT="${PROJECT_ROOT}/feature"
 LEGACY_APP_FEATURE_ROOT="${APP_ROOT}/features"
 LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST="${PROJECT_ROOT}/scripts/quality/architecture_legacy_imports_allowlist.txt"
+LEGACY_APP_FEATURE_FILE_ALLOWLIST="${PROJECT_ROOT}/scripts/quality/legacy_feature_files_allowlist.txt"
 
 echo "[architecture] checking layer boundaries under: ${PROJECT_ROOT}"
 
@@ -117,6 +118,47 @@ check_file_line_threshold() {
   fi
 }
 
+check_kotlin_file_allowlist() {
+  local rule_label="$1"
+  local scan_dir="$2"
+  local allowlist_file="$3"
+
+  if [[ ! -d "${scan_dir}" ]]; then
+    echo "[architecture] ${rule_label} skipped (directory missing: ${scan_dir})"
+    return 0
+  fi
+
+  if [[ ! -f "${allowlist_file}" ]]; then
+    echo "[architecture][FAIL] ${rule_label} allowlist missing: ${allowlist_file}"
+    EXIT_CODE=1
+    return 0
+  fi
+
+  local current_files
+  current_files="$(find "${scan_dir}" -type f -name '*.kt' | awk -v root="${PROJECT_ROOT%/}/" '
+      {
+        line = $0
+        gsub("^" root, "", line)
+        sub(/^.\//, "", line)
+        print line
+      }
+    ' | sort -u)"
+
+  local unexpected_files=()
+  while IFS= read -r file_path; do
+    [[ -z "${file_path}" ]] && continue
+    if ! grep -Fqx -- "${file_path}" "${allowlist_file}"; then
+      unexpected_files+=("${file_path}")
+    fi
+  done <<<"${current_files}"
+
+  if [[ "${#unexpected_files[@]}" -gt 0 ]]; then
+    echo "[architecture][FAIL] ${rule_label} found new files outside allowlist"
+    printf "%s\n" "${unexpected_files[@]}"
+    EXIT_CODE=1
+  fi
+}
+
 echo "[architecture] rule-1: domain must not depend on android.*"
 run_rule \
   "domain layer imports android.*" \
@@ -185,6 +227,12 @@ echo "[architecture] rule-9: split nav graph files must stay within threshold"
 check_file_line_threshold "${APP_ROOT}/navigation/AppNavGraphsEntry.kt" 200 "AppNavGraphsEntry.kt"
 check_file_line_threshold "${APP_ROOT}/navigation/AppNavGraphsServiceFlow.kt" 300 "AppNavGraphsServiceFlow.kt"
 check_file_line_threshold "${APP_ROOT}/navigation/AppNavGraphsSupport.kt" 250 "AppNavGraphsSupport.kt"
+
+echo "[architecture] rule-10: legacy app/features kotlin files are frozen by allowlist"
+check_kotlin_file_allowlist \
+  "legacy app/features kotlin files" \
+  "${LEGACY_APP_FEATURE_ROOT}" \
+  "${LEGACY_APP_FEATURE_FILE_ALLOWLIST}"
 
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[architecture] boundary verification failed."
