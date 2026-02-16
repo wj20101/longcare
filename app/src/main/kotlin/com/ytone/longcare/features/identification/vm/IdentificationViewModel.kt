@@ -3,8 +3,7 @@ import com.ytone.longcare.common.utils.*
 import com.ytone.longcare.domain.repository.*
 import com.ytone.longcare.features.identification.domain.*
 import com.ytone.longcare.model.toOrderKey
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.*; import kotlinx.coroutines.launch
 @dagger.hilt.android.lifecycle.HiltViewModel class IdentificationViewModel @javax.inject.Inject constructor(
     private val faceVerifier: com.ytone.longcare.domain.faceauth.FaceVerifier, private val systemConfigManager: SystemConfigManager, private val userSessionRepository: UserSessionRepository, private val unifiedOrderRepository: OrderDetailRepository, private val faceDataSource: com.ytone.longcare.features.identification.data.IdentificationFaceDataSource, private val verifyServicePersonUseCase: VerifyServicePersonUseCase, private val uploadElderPhotoUseCase: UploadElderPhotoUseCase, private val setupFaceUseCase: SetupFaceUseCase, private val toastHelper: ToastHelper) : androidx.lifecycle.ViewModel() {
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL); val identificationState: StateFlow<IdentificationState> = _identificationState.asStateFlow(); private val _faceVerificationState = MutableStateFlow<FaceVerificationState>(FaceVerificationState.Idle); val faceVerificationState: StateFlow<FaceVerificationState> = _faceVerificationState.asStateFlow()
