@@ -44,9 +44,7 @@ class IdentificationViewModel @Inject constructor(
     private val setupFaceUseCase: SetupFaceUseCase,
     private val toastHelper: ToastHelper,
 ) : ViewModel() {
-    
-    // 移除重复的常量定义，使用统一的 CosConstants
-    
+
     // 身份认证状态
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL)
     val identificationState: StateFlow<IdentificationState> = _identificationState.asStateFlow()
@@ -111,8 +109,7 @@ class IdentificationViewModel @Inject constructor(
     }
 
     private fun navigateToFaceCaptureForSetup() {
-        emitEvent(IdentificationEvent.ShowToast("请先设置人脸信息"))
-        emitEvent(IdentificationEvent.NavigateToFaceCapture)
+        emitEvent(IdentificationEvent.ShowToast("请先设置人脸信息")); emitEvent(IdentificationEvent.NavigateToFaceCapture)
     }
     
     /**
@@ -182,19 +179,10 @@ class IdentificationViewModel @Inject constructor(
     private suspend fun getCurrentUser(): User? =
         (userSessionRepository.sessionState.value as? SessionState.LoggedIn)?.user
 
-    /**
-     * 重置人脸验证状态
-     */
     fun resetFaceVerificationState() { _faceVerificationState.value = FaceVerificationState.Idle; _currentVerificationType.value = null }
-    
-    /**
-     * 更新身份认证状态为服务人员已验证
-     */
+
     fun setServicePersonVerified() { _identificationState.value = IdentificationState.SERVICE_VERIFIED }
-    
-    /**
-     * 更新身份认证状态为老人已验证
-     */
+
     fun setElderVerified() { _identificationState.value = IdentificationState.ELDER_VERIFIED }
 
     fun updateFaceVerificationStatus(request: OrderInfoRequestModel, verified: Boolean) {
@@ -234,14 +222,8 @@ class IdentificationViewModel @Inject constructor(
             resolveCurrentUser = ::getCurrentUser,
         )
 
-    /**
-     * 显示一个Toast消息
-     */
     fun showToast(message: String) = toastHelper.showShort(message)
-    
-    /**
-     * 重置拍照上传状态
-     */
+
     fun resetPhotoUploadState() { _photoUploadState.value = PhotoUploadState.Initial }
     
     /**
@@ -267,19 +249,10 @@ class IdentificationViewModel @Inject constructor(
         )
     }
 
-    /**
-     * 模拟服务人员验证通过 (Mock模式)
-     */
     fun mockVerifyServicePerson() { setServicePersonVerified(); toastHelper.showShort("Mock: 服务人员验证通过") }
 
-    /**
-     * 模拟老人验证通过 (Mock模式)
-     */
     fun mockVerifyElder() { setElderVerified(); toastHelper.showShort("Mock: 老人验证通过") }
-    
-    /**
-     * 重置人脸设置状态
-     */
+
     fun resetFaceSetupState() { _faceSetupState.value = FaceSetupState.Initial }
 
     override fun onCleared() { super.onCleared(); faceVerifier.release() }
