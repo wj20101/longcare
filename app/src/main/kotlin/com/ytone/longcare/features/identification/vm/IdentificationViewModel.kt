@@ -32,8 +32,7 @@ import javax.inject.Inject
 import com.ytone.longcare.common.utils.logE
 @HiltViewModel
 class IdentificationViewModel @Inject constructor(
-    private val faceVerifier: FaceVerifier, private val systemConfigManager: SystemConfigManager, private val userSessionRepository: UserSessionRepository,
-    private val unifiedOrderRepository: OrderDetailRepository, private val faceDataSource: IdentificationFaceDataSource,
+    private val faceVerifier: FaceVerifier, private val systemConfigManager: SystemConfigManager, private val userSessionRepository: UserSessionRepository, private val unifiedOrderRepository: OrderDetailRepository, private val faceDataSource: IdentificationFaceDataSource,
     private val verifyServicePersonUseCase: VerifyServicePersonUseCase, private val uploadElderPhotoUseCase: UploadElderPhotoUseCase, private val setupFaceUseCase: SetupFaceUseCase, private val toastHelper: ToastHelper,
 ) : ViewModel() {
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL)
@@ -60,16 +59,12 @@ class IdentificationViewModel @Inject constructor(
     private suspend fun startFaceVerificationWithDefaultCallback(context: Context, request: FaceVerificationRequest) = startFaceVerificationWithIdentificationBindings(context = context, request = request, currentVerificationType = { _currentVerificationType.value }, setVerificationState = { state -> _faceVerificationState.value = state }, onSetFaceVerificationError = ::setFaceVerificationError, onServicePersonVerified = ::setServicePersonVerified, onElderVerified = ::setElderVerified, showToast = toastHelper::showShort, systemConfigManager = systemConfigManager, faceVerifier = faceVerifier)
     private suspend fun getCurrentUser(): User? = (userSessionRepository.sessionState.value as? SessionState.LoggedIn)?.user
     fun resetFaceVerificationState() { _faceVerificationState.value = FaceVerificationState.Idle; _currentVerificationType.value = null }
-    fun setServicePersonVerified() { _identificationState.value = IdentificationState.SERVICE_VERIFIED }
-    fun setElderVerified() { _identificationState.value = IdentificationState.ELDER_VERIFIED }
+    fun setServicePersonVerified() { _identificationState.value = IdentificationState.SERVICE_VERIFIED }; fun setElderVerified() { _identificationState.value = IdentificationState.ELDER_VERIFIED }
     fun updateFaceVerificationStatus(request: OrderInfoRequestModel, verified: Boolean) = viewModelScope.launch { unifiedOrderRepository.updateFaceVerification(request.toOrderKey(), verified) }
     fun processElderPhoto(photoUri: Uri, request: OrderInfoRequestModel, onSuccess: () -> Unit = {}) = launchElderPhotoUploadWithBindings(scope = viewModelScope, uploadElderPhotoUseCase = uploadElderPhotoUseCase, photoUri = photoUri, orderId = request.orderId, photoUploadState = _photoUploadState, showToast = toastHelper::showShort, onElderVerified = ::setElderVerified, onSuccess = onSuccess)
     suspend fun generateWatermarkData(address: String, request: OrderInfoRequestModel): WatermarkData = generateIdentificationWatermarkData(address = address, orderKey = request.toOrderKey(), orderDetailRepository = unifiedOrderRepository, resolveCurrentUser = ::getCurrentUser)
-    fun showToast(message: String) = toastHelper.showShort(message)
-    fun resetPhotoUploadState() { _photoUploadState.value = PhotoUploadState.Initial }
+    fun showToast(message: String) = toastHelper.showShort(message); fun resetPhotoUploadState() { _photoUploadState.value = PhotoUploadState.Initial }
     fun handleFaceCaptureResult(context: Context, imagePath: String) = launchFaceCaptureResultHandlingWithBindings(scope = viewModelScope, context = context, imagePath = imagePath, faceDataSource = faceDataSource, resolveCurrentUser = ::getCurrentUser, setupFaceUseCase = setupFaceUseCase, systemConfigManager = systemConfigManager, faceVerifier = faceVerifier, faceSetupState = _faceSetupState, faceVerificationState = _faceVerificationState, setFaceSetupError = ::setFaceSetupError, showToast = toastHelper::showShort, onServicePersonVerified = ::setServicePersonVerified)
-    fun mockVerifyServicePerson() { setServicePersonVerified(); toastHelper.showShort("Mock: 服务人员验证通过") }
-    fun mockVerifyElder() { setElderVerified(); toastHelper.showShort("Mock: 老人验证通过") }
-    fun resetFaceSetupState() { _faceSetupState.value = FaceSetupState.Initial }
+    fun mockVerifyServicePerson() { setServicePersonVerified(); toastHelper.showShort("Mock: 服务人员验证通过") }; fun mockVerifyElder() { setElderVerified(); toastHelper.showShort("Mock: 老人验证通过") }; fun resetFaceSetupState() { _faceSetupState.value = FaceSetupState.Initial }
     override fun onCleared() { super.onCleared(); faceVerifier.release() }
 }
