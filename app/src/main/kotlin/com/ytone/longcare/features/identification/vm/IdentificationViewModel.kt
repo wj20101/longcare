@@ -166,22 +166,17 @@ class IdentificationViewModel @Inject constructor(
         context: Context,
         request: FaceVerificationRequest,
     ) {
-        startFaceVerificationWithResolvedConfigOrNotify(
+        startFaceVerificationWithIdentificationBindings(
             context = context,
             request = request,
-            callback = createIdentificationFlowVerifyCallback(
-                currentVerificationType = { _currentVerificationType.value },
-                setVerificationState = { state -> _faceVerificationState.value = state },
-                onSetFaceVerificationError = { message, error ->
-                    setFaceVerificationError(message, error)
-                },
-                onServicePersonVerified = ::setServicePersonVerified,
-                onElderVerified = ::setElderVerified,
-                showToast = { message -> toastHelper.showShort(message) }
-            ),
+            currentVerificationType = { _currentVerificationType.value },
+            setVerificationState = { state -> _faceVerificationState.value = state },
+            onSetFaceVerificationError = ::setFaceVerificationError,
+            onServicePersonVerified = ::setServicePersonVerified,
+            onElderVerified = ::setElderVerified,
+            showToast = toastHelper::showShort,
             systemConfigManager = systemConfigManager,
             faceVerifier = faceVerifier,
-            onConfigMissing = { setFaceVerificationError("人脸配置不可用") }
         )
     }
     
