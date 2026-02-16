@@ -241,27 +241,15 @@ class IdentificationViewModel @Inject constructor(
      * @param onSuccess 成功回调
      */
     fun processElderPhoto(photoUri: Uri, request: OrderInfoRequestModel, onSuccess: () -> Unit = {}) {
-        launchElderPhotoUpload(
+        launchElderPhotoUploadWithBindings(
             scope = viewModelScope,
             uploadElderPhotoUseCase = uploadElderPhotoUseCase,
             photoUri = photoUri,
             orderId = request.orderId,
-            onProcessing = { _photoUploadState.value = PhotoUploadState.Processing },
-            onUploading = { _photoUploadState.value = PhotoUploadState.Uploading },
-            onUploadSuccess = {
-                _photoUploadState.value = PhotoUploadState.Success
-                toastHelper.showShort("老人照片上传成功")
-                setElderVerified()
-                onSuccess()
-            },
-            onUploadError = { message ->
-                _photoUploadState.value = PhotoUploadState.Error(message)
-                toastHelper.showShort(message)
-            },
-            onUnexpectedError = { message ->
-                _photoUploadState.value = PhotoUploadState.Error(message ?: "未知错误")
-                toastHelper.showShort("处理失败: $message")
-            }
+            photoUploadState = _photoUploadState,
+            showToast = toastHelper::showShort,
+            onElderVerified = ::setElderVerified,
+            onSuccess = onSuccess,
         )
     }
 
@@ -300,7 +288,7 @@ class IdentificationViewModel @Inject constructor(
      * @param imagePath 捕获的人脸图片路径
      */
     fun handleFaceCaptureResult(context: Context, imagePath: String) {
-        launchFaceCaptureResultHandling(
+        launchFaceCaptureResultHandlingWithBindings(
             scope = viewModelScope,
             context = context,
             imagePath = imagePath,
@@ -309,10 +297,10 @@ class IdentificationViewModel @Inject constructor(
             setupFaceUseCase = setupFaceUseCase,
             systemConfigManager = systemConfigManager,
             faceVerifier = faceVerifier,
-            setFaceSetupState = { state -> _faceSetupState.value = state },
-            setFaceVerificationState = { state -> _faceVerificationState.value = state },
+            faceSetupState = _faceSetupState,
+            faceVerificationState = _faceVerificationState,
             setFaceSetupError = ::setFaceSetupError,
-            showToast = { message -> toastHelper.showShort(message) },
+            showToast = toastHelper::showShort,
             onServicePersonVerified = ::setServicePersonVerified,
         )
     }

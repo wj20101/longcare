@@ -8,6 +8,7 @@ import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
 import com.ytone.longcare.models.protos.User
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 internal fun launchFaceCaptureResultHandling(
@@ -66,4 +67,36 @@ internal fun launchFaceCaptureResultHandling(
             setFaceSetupError("处理人脸图片时发生错误: ${e.message}")
         }
     }
+}
+
+internal fun launchFaceCaptureResultHandlingWithBindings(
+    scope: CoroutineScope,
+    context: Context,
+    imagePath: String,
+    faceDataSource: IdentificationFaceDataSource,
+    resolveCurrentUser: suspend () -> User?,
+    setupFaceUseCase: SetupFaceUseCase,
+    systemConfigManager: SystemConfigManager,
+    faceVerifier: FaceVerifier,
+    faceSetupState: MutableStateFlow<FaceSetupState>,
+    faceVerificationState: MutableStateFlow<FaceVerificationState>,
+    setFaceSetupError: (String) -> Unit,
+    showToast: (String) -> Unit,
+    onServicePersonVerified: () -> Unit,
+) {
+    launchFaceCaptureResultHandling(
+        scope = scope,
+        context = context,
+        imagePath = imagePath,
+        faceDataSource = faceDataSource,
+        resolveCurrentUser = resolveCurrentUser,
+        setupFaceUseCase = setupFaceUseCase,
+        systemConfigManager = systemConfigManager,
+        faceVerifier = faceVerifier,
+        setFaceSetupState = { state -> faceSetupState.value = state },
+        setFaceVerificationState = { state -> faceVerificationState.value = state },
+        setFaceSetupError = setFaceSetupError,
+        showToast = showToast,
+        onServicePersonVerified = onServicePersonVerified,
+    )
 }
