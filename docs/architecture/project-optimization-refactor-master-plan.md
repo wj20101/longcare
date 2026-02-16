@@ -646,3 +646,10 @@
 | 2026-02-16 | D62 | G5 | 已完成第一批门禁加严（rule-6：`app/domain` 迁空守卫） | 1c699a0 | `Android CI#22046138043` success；`verify_architecture_boundaries.sh` 新增 rule-6，阻断 `app/domain` 回流 |
 | 2026-02-16 | D62 | G5 | 已完成第二批门禁加严（rule-3/rule-4：契约归属与 app domain 禁入） | cf573a4 | `Android CI#22046330461` success；`verify_module_api_visibility.sh` 新增 repository 契约归属校验，仅允许 `core/domain` 定义，并对 `app/domain` 增加二次阻断 |
 | 2026-02-16 | D62 | G5 | 已完成第三批发布链路门禁对齐（release workflow 接入架构/模块可见性校验） | 26c70fe | `Android CI#22046396554` success；`android-release.yml` 与 `android-ci.yml` 保持同级边界门禁，降低“CI 过而发布失败/回归”风险 |
+
+### 10.5 当前剩余优化项（2026-02-16）
+
+| ID | 事项 | 当前状态 | 下一批具体文件改动清单 | 验收门禁 |
+|---|---|---|---|---|
+| G5-B4 | App 壳层导航收敛（减少 `AppNavigation.kt` 对业务页面的直接耦合） | TODO | `app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt`、`feature/*/api/*Actions.kt`、`app/src/main/kotlin/com/ytone/longcare/features/**/ui/*.kt` | `:app:compileDebugKotlin`、`:app:lintDebug`、`verify_architecture_boundaries.sh`、`verify_module_api_visibility.sh` |
+| F21 | 第三方 lint 忽略项清理（跨阶段遗留） | TODO | `app/lint.xml`、`gradle/libs.versions.toml`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | `:app:lintDebug`、`verify_lint_warning_allowlist.sh`、`Android CI` |

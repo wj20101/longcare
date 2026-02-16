@@ -601,3 +601,9 @@
 - 远端验收（D62-第三批）：
   - `Android CI#22046396554`（commit `26c70fe`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22046396554`。
+- 文档同步（2026-02-16）：
+  - 已更新优化主计划：`docs/architecture/project-optimization-refactor-master-plan.md`
+    - 新增“10.5 当前剩余优化项（2026-02-16）”，明确剩余 `G5-B4`（AppNavigation 壳层收敛）与跨阶段遗留 `F21`。
+  - 已更新 CI/CD 优化台账：`docs/architecture/ci-cd-automation-optimization-plan.md`
+    - 将“剩余未完成优化项”日期更新为 `2026-02-16`；
+    - 新增“28. CI 门禁增量收敛补充记录（2026-02-16）”，补录三批门禁加严与 Actions 验证结果。

@@ -474,7 +474,7 @@
   - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
   - `Android CI#22033904733`（commit `7515098`）：`completed/success`
 
-## 24. 剩余未完成优化项（2026-02-15）
+## 24. 剩余未完成优化项（2026-02-16）
 
 | ID | 事项 | 当前状态 | 说明 |
 |---|---|---|---|
@@ -533,3 +533,22 @@
 - 验证：
   - `bash scripts/quality/collect_ci_run_metrics.sh yyg20101/longcare 30`：PASS
   - `Android CI#22034622130`（commit `59ddc11`）：`completed/success`
+
+## 28. CI 门禁增量收敛补充记录（2026-02-16）
+
+- 背景：
+  - 在 G 阶段（架构实迁）后，补齐了“架构边界 + 模块可见性”在多 workflow 的一致性，避免 CI 与 Release 门禁不一致。
+- 改动文件：
+  - `scripts/quality/verify_architecture_boundaries.sh`
+  - `scripts/quality/verify_module_api_visibility.sh`
+  - `.github/workflows/android-ci.yml`
+  - `.github/workflows/baseline-profile.yml`
+  - `.github/workflows/android-release.yml`
+- 关键改动：
+  - 新增 `app/domain` 空目录守卫（迁空后禁止回流）；
+  - 新增 `Repository` 契约归属守卫（仅允许 `core/domain` 定义）；
+  - `android-ci`/`baseline-profile`/`android-release` 对齐调用同一组架构门禁脚本。
+- 验证：
+  - `Android CI#22046138043`（commit `1c699a0`）：`completed/success`
+  - `Android CI#22046330461`（commit `cf573a4`）：`completed/success`
+  - `Android CI#22046396554`（commit `26c70fe`）：`completed/success`
