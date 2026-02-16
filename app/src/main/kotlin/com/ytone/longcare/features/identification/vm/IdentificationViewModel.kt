@@ -187,9 +187,8 @@ class IdentificationViewModel @Inject constructor(
         sourcePhotoUrl: String
     ) {
         viewModelScope.launch {
-            _currentVerificationType.value = VerificationType.SERVICE_PERSON
-            _faceVerificationState.value = FaceVerificationState.Initializing
-            
+            beginVerification(VerificationType.SERVICE_PERSON)
+
             try {
                 logD("从服务器下载人脸图片: $sourcePhotoUrl", tag = "IdentificationVM")
                 // 下载源照片并转换为 Base64
@@ -211,13 +210,7 @@ class IdentificationViewModel @Inject constructor(
                     sourcePhotoBase64 = sourcePhotoBase64
                 )
 
-                startFaceVerificationWithResolvedConfig(
-                    context = context,
-                    request = request,
-                    // 使用普通回调即可，因为已经保存到本地了
-                    callback = createFaceVerifyCallback(),
-                    onConfigMissing = { setFaceVerificationError("人脸配置不可用") }
-                )
+                startFaceVerificationWithDefaultCallback(context, request)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -243,8 +236,7 @@ class IdentificationViewModel @Inject constructor(
         sourcePhotoBase64: String
     ) {
         viewModelScope.launch {
-            _currentVerificationType.value = VerificationType.SERVICE_PERSON
-            _faceVerificationState.value = FaceVerificationState.Initializing
+            beginVerification(VerificationType.SERVICE_PERSON)
 
             try {
                 val request = createFaceVerificationRequest(
@@ -255,13 +247,7 @@ class IdentificationViewModel @Inject constructor(
                     sourcePhotoBase64 = sourcePhotoBase64
                 )
 
-                startFaceVerificationWithResolvedConfig(
-                    context = context,
-                    request = request,
-                    // 使用普通回调即可，因为已经是从本地缓存读取的
-                    callback = createFaceVerifyCallback(),
-                    onConfigMissing = { setFaceVerificationError("人脸配置不可用") }
-                )
+                startFaceVerificationWithDefaultCallback(context, request)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -284,9 +270,8 @@ class IdentificationViewModel @Inject constructor(
         verificationType: VerificationType
     ) {
         viewModelScope.launch {
-            _currentVerificationType.value = verificationType
-            _faceVerificationState.value = FaceVerificationState.Initializing
-            
+            beginVerification(verificationType)
+
             val request = createFaceVerificationRequest(
                 name = name,
                 idNo = idNo,
@@ -294,13 +279,25 @@ class IdentificationViewModel @Inject constructor(
                 userId = userId
             )
 
-            startFaceVerificationWithResolvedConfig(
-                context = context,
-                request = request,
-                callback = createFaceVerifyCallback(),
-                onConfigMissing = { setFaceVerificationError("人脸配置不可用") }
-            )
+            startFaceVerificationWithDefaultCallback(context, request)
         }
+    }
+
+    private fun beginVerification(verificationType: VerificationType) {
+        _currentVerificationType.value = verificationType
+        _faceVerificationState.value = FaceVerificationState.Initializing
+    }
+
+    private suspend fun startFaceVerificationWithDefaultCallback(
+        context: Context,
+        request: FaceVerificationRequest,
+    ) {
+        startFaceVerificationWithResolvedConfig(
+            context = context,
+            request = request,
+            callback = createFaceVerifyCallback(),
+            onConfigMissing = { setFaceVerificationError("人脸配置不可用") }
+        )
     }
 
     private suspend fun startFaceVerificationWithResolvedConfig(
