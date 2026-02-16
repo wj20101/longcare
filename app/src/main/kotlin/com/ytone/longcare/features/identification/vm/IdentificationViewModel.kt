@@ -227,14 +227,6 @@ class IdentificationViewModel @Inject constructor(
     }
     
     /**
-     * 重置身份认证状态
-     */
-    fun resetState() {
-        _identificationState.value = IdentificationState.INITIAL
-        _faceVerificationState.value = FaceVerificationState.Idle
-    }
-    
-    /**
      * 处理拍照并上传老人照片
      * @param photoUri 拍照的图片URI
      * @param request 订单请求模型
@@ -319,13 +311,6 @@ class IdentificationViewModel @Inject constructor(
     fun mockVerifyElder() {
         setElderVerified()
         toastHelper.showShort("Mock: 老人验证通过")
-    }
-    
-    /**
-     * 重置导航状态
-     */
-    fun resetNavigationState() {
-        // no-op: navigation now uses SharedFlow one-off events.
     }
     
     /**
