@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.identification.vm; import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.common.utils.*
-import com.ytone.longcare.domain.repository.*
+import com.ytone.longcare.common.utils.*; import com.ytone.longcare.domain.repository.*
 import com.ytone.longcare.features.identification.domain.*
 import com.ytone.longcare.model.toOrderKey
 import kotlinx.coroutines.flow.*; import kotlinx.coroutines.launch
