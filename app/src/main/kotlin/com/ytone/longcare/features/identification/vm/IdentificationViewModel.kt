@@ -15,7 +15,6 @@ import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.features.identification.domain.ServicePersonProfile
 import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
 import com.ytone.longcare.features.identification.domain.UploadElderPhotoUseCase
-import com.ytone.longcare.features.identification.domain.VerifyServicePersonDecision
 import com.ytone.longcare.features.identification.domain.VerifyServicePersonUseCase
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.model.OrderKey
@@ -99,38 +98,35 @@ class IdentificationViewModel @Inject constructor(
      */
     fun verifyServicePerson(context: Context) {
         viewModelScope.launch {
-            when (val decision = verifyServicePersonUseCase.execute(getCurrentUser()?.toServicePersonProfile())) {
-                is VerifyServicePersonDecision.UseCachedFace -> {
+            val decision = verifyServicePersonUseCase.execute(getCurrentUser()?.toServicePersonProfile())
+            handleServicePersonVerificationDecision(
+                decision = decision,
+                onUseCachedFace = { cached ->
                     startSelfProvidedFaceVerificationWithBase64(
                         context = context,
-                        name = decision.user.userName,
-                        idNo = decision.user.identityCardNumber,
+                        name = cached.user.userName,
+                        idNo = cached.user.identityCardNumber,
                         orderNo = createServiceOrderNo(),
-                        userId = decision.user.userId.toString(),
-                        sourcePhotoBase64 = decision.sourcePhotoBase64,
+                        userId = cached.user.userId.toString(),
+                        sourcePhotoBase64 = cached.sourcePhotoBase64,
                     )
-                }
-
-                is VerifyServicePersonDecision.DownloadAndCache -> {
+                },
+                onDownloadAndCache = { download ->
                     startSelfProvidedFaceVerificationAndCache(
                         context = context,
-                        name = decision.user.userName,
-                        idNo = decision.user.identityCardNumber,
+                        name = download.user.userName,
+                        idNo = download.user.identityCardNumber,
                         orderNo = createServiceOrderNo(),
-                        userId = decision.user.userId.toString(),
-                        sourcePhotoUrl = decision.sourcePhotoUrl,
+                        userId = download.user.userId.toString(),
+                        sourcePhotoUrl = download.sourcePhotoUrl,
                     )
+                },
+                onRequireFaceSetup = ::navigateToFaceCaptureForSetup,
+                onError = { message ->
+                    logE(message, tag = "IdentificationVM")
+                    setFaceVerificationError(message)
                 }
-
-                VerifyServicePersonDecision.RequireFaceSetup -> {
-                    navigateToFaceCaptureForSetup()
-                }
-
-                is VerifyServicePersonDecision.Error -> {
-                    logE(decision.message, tag = "IdentificationVM")
-                    setFaceVerificationError(decision.message)
-                }
-            }
+            )
         }
     }
 
