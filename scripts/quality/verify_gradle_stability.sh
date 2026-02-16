@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GRADLE_PROPERTIES_FILE="${1:-${ROOT_DIR}/gradle.properties}"
 DAEMON_JVM_FILE="${2:-${ROOT_DIR}/gradle/gradle-daemon-jvm.properties}"
 CONSTANTS_FILE="${3:-${ROOT_DIR}/constants.gradle.kts}"
+JAVA_VERSION_FILE="${4:-${ROOT_DIR}/.java-version}"
 EXIT_CODE=0
 
 read_property() {
@@ -67,6 +68,21 @@ elif [[ "${expected_jdk}" != "${daemon_jdk}" ]]; then
   EXIT_CODE=1
 else
   echo "[gradle-stability][PASS] appJdkVersion matches daemon toolchainVersion (${expected_jdk})"
+fi
+
+if [[ -f "${JAVA_VERSION_FILE}" ]]; then
+  java_version_file_value="$(tr -d '[:space:]' < "${JAVA_VERSION_FILE}" | head -n1)"
+  if [[ -z "${java_version_file_value}" ]]; then
+    echo "[gradle-stability][FAIL] .java-version is empty (${JAVA_VERSION_FILE})"
+    EXIT_CODE=1
+  elif [[ "${java_version_file_value}" != "${expected_jdk}" ]]; then
+    echo "[gradle-stability][FAIL] .java-version (${java_version_file_value}) != appJdkVersion (${expected_jdk})"
+    EXIT_CODE=1
+  else
+    echo "[gradle-stability][PASS] .java-version matches appJdkVersion (${expected_jdk})"
+  fi
+else
+  echo "[gradle-stability][WARN] .java-version not found (${JAVA_VERSION_FILE}); skipping local Java version consistency check."
 fi
 
 if [[ "${EXIT_CODE}" -ne 0 ]]; then

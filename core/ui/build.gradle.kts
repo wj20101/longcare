@@ -6,6 +6,7 @@ plugins {
 
 val appCompileSdkVersion: Int by rootProject.extra
 val appMinSdkVersion: Int by rootProject.extra
+val appJdkVersion: Int by rootProject.extra
 
 android {
     namespace = "com.ytone.longcare.core.ui"
@@ -18,6 +19,15 @@ android {
     buildFeatures {
         compose = true
     }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.toVersion(appJdkVersion)
+        targetCompatibility = JavaVersion.toVersion(appJdkVersion)
+    }
+}
+
+kotlin {
+    jvmToolchain(appJdkVersion)
 }
 
 dependencies {

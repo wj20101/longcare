@@ -25,6 +25,11 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    compileOptions {
+        sourceCompatibility = JavaVersion.toVersion(appJdkVersion)
+        targetCompatibility = JavaVersion.toVersion(appJdkVersion)
+    }
+
     packaging {
         jniLibs {
             keepDebugSymbols +=

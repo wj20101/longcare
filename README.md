@@ -55,6 +55,7 @@ bash scripts/quality/free_runner_disk_space.sh --dry-run --min-free-mb 1024
 
 - `compileSdk/targetSdk = 36`
 - `AGP = 9.0.0`
+- `JDK toolchain = 21`
 - 已启用 AGP 9 默认链路（Built-in Kotlin + New DSL），不再依赖 `android.builtInKotlin` / `android.newDsl` 兼容参数。
 - 已移除 Wire Gradle 插件，`User` 会话模型改为本地 JSON 编解码实现。
 

@@ -173,6 +173,11 @@ android {
         }
     }
 
+    compileOptions {
+        sourceCompatibility = JavaVersion.toVersion(appJdkVersion)
+        targetCompatibility = JavaVersion.toVersion(appJdkVersion)
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
