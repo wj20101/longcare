@@ -92,3 +92,45 @@ internal fun createFaceSetupFlowVerifyCallback(
         onVerifyCancel = onVerifyCancel
     )
 }
+
+internal fun createStandardFaceSetupFlowVerifyCallback(
+    ready: FaceSetupPreparation.Ready,
+    scope: CoroutineScope,
+    setupFaceUseCase: SetupFaceUseCase,
+    resolveCurrentUserId: suspend () -> Int?,
+    setFaceSetupState: (FaceSetupState) -> Unit,
+    setFaceSetupError: (String) -> Unit,
+    showToast: (String) -> Unit,
+    onServicePersonVerified: () -> Unit,
+): FaceVerifyCallback {
+    return createFaceSetupFlowVerifyCallback(
+        imageFile = ready.imageFile,
+        base64Image = ready.base64Image,
+        scope = scope,
+        setupFaceUseCase = setupFaceUseCase,
+        resolveCurrentUserId = resolveCurrentUserId,
+        onInitSuccess = {
+            showToast("人脸验证初始化成功")
+            setFaceSetupState(FaceSetupState.Initial)
+        },
+        onInitFailed = { error ->
+            setFaceSetupError(buildFaceVerifyErrorMessage("人脸验证初始化失败", error))
+        },
+        onBeforeUpload = {
+            showToast("人脸验证成功，开始上传设置...")
+        },
+        onUploading = { setFaceSetupState(FaceSetupState.UploadingImage) },
+        onUploadSuccess = {
+            setFaceSetupState(FaceSetupState.Success)
+            showToast("人脸信息设置成功")
+            onServicePersonVerified()
+        },
+        onUploadError = setFaceSetupError,
+        onVerifyFailed = { error ->
+            setFaceSetupError(buildFaceVerifyErrorMessage("人脸验证失败", error))
+        },
+        onVerifyCancel = {
+            setFaceSetupError("用户取消了人脸验证")
+        }
+    )
+}

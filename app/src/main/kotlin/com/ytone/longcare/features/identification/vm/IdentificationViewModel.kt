@@ -148,20 +148,19 @@ class IdentificationViewModel @Inject constructor(
      */
     fun verifyElder(context: Context, request: OrderInfoRequestModel) {
         viewModelScope.launch {
-            val orderInfo = unifiedOrderRepository.getCachedOrderInfo(request.toOrderKey())
-            if (orderInfo != null) {
-                val userInfo = orderInfo.userInfo
-                if (userInfo != null) {
-                    startFaceVerification(
-                        context = context,
-                        name = userInfo.name,
-                        idNo = userInfo.identityCardNumber,
-                        orderNo = createElderOrderNo(orderId = request.orderId),
-                        userId = userInfo.userId.toString(),
-                        verificationType = VerificationType.ELDER
-                    )
-                }
-            }
+            val payload = resolveElderVerificationPayload(
+                orderKey = request.toOrderKey(),
+                orderDetailRepository = unifiedOrderRepository,
+            ) ?: return@launch
+
+            startFaceVerification(
+                context = context,
+                name = payload.name,
+                idNo = payload.idNo,
+                orderNo = createElderOrderNo(orderId = request.orderId),
+                userId = payload.userId,
+                verificationType = VerificationType.ELDER
+            )
         }
     }
     
@@ -485,35 +484,15 @@ class IdentificationViewModel @Inject constructor(
                 startFaceVerificationWithResolvedConfig(
                     context = context,
                     request = ready.request,
-                    callback = createFaceSetupFlowVerifyCallback(
-                        imageFile = ready.imageFile,
-                        base64Image = ready.base64Image,
+                    callback = createStandardFaceSetupFlowVerifyCallback(
+                        ready = ready,
                         scope = viewModelScope,
                         setupFaceUseCase = setupFaceUseCase,
                         resolveCurrentUserId = { getCurrentUser()?.userId },
-                        onInitSuccess = {
-                            toastHelper.showShort("人脸验证初始化成功")
-                            _faceSetupState.value = FaceSetupState.Initial
-                        },
-                        onInitFailed = { error ->
-                            setFaceSetupError(buildFaceVerifyErrorMessage("人脸验证初始化失败", error))
-                        },
-                        onBeforeUpload = {
-                            toastHelper.showShort("人脸验证成功，开始上传设置...")
-                        },
-                        onUploading = { _faceSetupState.value = FaceSetupState.UploadingImage },
-                        onUploadSuccess = {
-                            _faceSetupState.value = FaceSetupState.Success
-                            toastHelper.showShort("人脸信息设置成功")
-                            setServicePersonVerified()
-                        },
-                        onUploadError = { message -> setFaceSetupError(message) },
-                        onVerifyFailed = { error ->
-                            setFaceSetupError(buildFaceVerifyErrorMessage("人脸验证失败", error))
-                        },
-                        onVerifyCancel = {
-                            setFaceSetupError("用户取消了人脸验证")
-                        }
+                        setFaceSetupState = { state -> _faceSetupState.value = state },
+                        setFaceSetupError = ::setFaceSetupError,
+                        showToast = { message -> toastHelper.showShort(message) },
+                        onServicePersonVerified = ::setServicePersonVerified,
                     ),
                     onConfigMissing = { setFaceSetupError("人脸配置不可用") }
                 )
