@@ -27,3 +27,49 @@ internal fun createFaceVerifyCallback(
 internal fun buildFaceVerifyErrorMessage(prefix: String, error: FaceVerifyError?): String {
     return "$prefix: ${error?.description ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
 }
+
+internal fun createIdentificationFlowVerifyCallback(
+    currentVerificationType: () -> VerificationType?,
+    setVerificationState: (FaceVerificationState) -> Unit,
+    onSetFaceVerificationError: (String, FaceVerifyError?) -> Unit,
+    onServicePersonVerified: () -> Unit,
+    onElderVerified: () -> Unit,
+    showToast: (String) -> Unit,
+): FaceVerifyCallback {
+    return createFaceVerifyCallback(
+        onInitSuccess = {
+            showToast("人脸验证初始化成功")
+            setVerificationState(FaceVerificationState.Verifying)
+        },
+        onInitFailed = { error ->
+            onSetFaceVerificationError(buildFaceVerifyErrorMessage("人脸识别初始化失败", error), error)
+        },
+        onVerifySuccess = { result ->
+            showToast("人脸验证成功")
+            setVerificationState(FaceVerificationState.Success(result))
+
+            when (currentVerificationType()) {
+                VerificationType.SERVICE_PERSON -> {
+                    onServicePersonVerified()
+                    showToast("服务人员身份验证成功")
+                }
+
+                VerificationType.ELDER -> {
+                    onElderVerified()
+                    showToast("老人身份验证成功")
+                }
+
+                null -> {
+                    showToast("验证类型未知，请重新操作")
+                }
+            }
+        },
+        onVerifyFailed = { error ->
+            onSetFaceVerificationError(buildFaceVerifyErrorMessage("人脸验证失败", error), error)
+        },
+        onVerifyCancel = {
+            showToast("人脸验证已取消")
+            setVerificationState(FaceVerificationState.Cancelled)
+        }
+    )
+}

@@ -293,7 +293,16 @@ class IdentificationViewModel @Inject constructor(
         startFaceVerificationWithResolvedConfig(
             context = context,
             request = request,
-            callback = createFaceVerifyCallback(),
+            callback = createIdentificationFlowVerifyCallback(
+                currentVerificationType = { _currentVerificationType.value },
+                setVerificationState = { state -> _faceVerificationState.value = state },
+                onSetFaceVerificationError = { message, error ->
+                    setFaceVerificationError(message, error)
+                },
+                onServicePersonVerified = ::setServicePersonVerified,
+                onElderVerified = ::setElderVerified,
+                showToast = { message -> toastHelper.showShort(message) }
+            ),
             onConfigMissing = { setFaceVerificationError("人脸配置不可用") }
         )
     }
@@ -317,48 +326,6 @@ class IdentificationViewModel @Inject constructor(
             callback = callback
         )
     }
-    
-    /**
-     * 创建人脸验证回调 - 用于正常的身份验证流程
-     */
-    private fun createFaceVerifyCallback() =
-        com.ytone.longcare.features.identification.vm.createFaceVerifyCallback(
-            onInitSuccess = {
-            toastHelper.showShort("人脸验证初始化成功")
-            _faceVerificationState.value = FaceVerificationState.Verifying
-            },
-            onInitFailed = { error ->
-                setFaceVerificationError(buildFaceVerifyErrorMessage("人脸识别初始化失败", error), error)
-            },
-            onVerifySuccess = { result ->
-            toastHelper.showShort("人脸验证成功")
-            _faceVerificationState.value = FaceVerificationState.Success(result)
-
-                // 根据当前验证类型设置相应的身份验证状态
-                when (_currentVerificationType.value) {
-                    VerificationType.SERVICE_PERSON -> {
-                        setServicePersonVerified()
-                        toastHelper.showShort("服务人员身份验证成功")
-                    }
-
-                    VerificationType.ELDER -> {
-                        setElderVerified()
-                        toastHelper.showShort("老人身份验证成功")
-                    }
-
-                    null -> {
-                        toastHelper.showShort("验证类型未知，请重新操作")
-                    }
-                }
-            },
-            onVerifyFailed = { error ->
-                setFaceVerificationError(buildFaceVerifyErrorMessage("人脸验证失败", error), error)
-            },
-            onVerifyCancel = {
-                toastHelper.showShort("人脸验证已取消")
-                _faceVerificationState.value = FaceVerificationState.Cancelled
-            }
-        )
     
     /**
      * 获取当前登录用户
