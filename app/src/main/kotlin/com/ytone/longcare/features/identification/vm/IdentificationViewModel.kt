@@ -109,7 +109,7 @@ class IdentificationViewModel @Inject constructor(
                         context = context,
                         name = decision.user.userName,
                         idNo = decision.user.identityCardNumber,
-                        orderNo = "service_${System.currentTimeMillis()}",
+                        orderNo = createServiceOrderNo(),
                         userId = decision.user.userId.toString(),
                         sourcePhotoBase64 = decision.sourcePhotoBase64,
                     )
@@ -120,7 +120,7 @@ class IdentificationViewModel @Inject constructor(
                         context = context,
                         name = decision.user.userName,
                         idNo = decision.user.identityCardNumber,
-                        orderNo = "service_${System.currentTimeMillis()}",
+                        orderNo = createServiceOrderNo(),
                         userId = decision.user.userId.toString(),
                         sourcePhotoUrl = decision.sourcePhotoUrl,
                     )
@@ -164,7 +164,7 @@ class IdentificationViewModel @Inject constructor(
                         context = context,
                         name = userInfo.name,
                         idNo = userInfo.identityCardNumber,
-                        orderNo = "elder_${request.orderId}_${System.currentTimeMillis()}",
+                        orderNo = createElderOrderNo(orderId = request.orderId),
                         userId = userInfo.userId.toString(),
                         verificationType = VerificationType.ELDER
                     )
@@ -203,12 +203,12 @@ class IdentificationViewModel @Inject constructor(
                     logD("已保存到本地缓存", tag = "IdentificationVM")
                 }
                 
-                val request = FaceVerificationRequest(
+                val request = createFaceVerificationRequest(
                     name = name,
                     idNo = idNo,
                     orderNo = orderNo,
                     userId = userId,
-                    sourcePhotoStr = sourcePhotoBase64
+                    sourcePhotoBase64 = sourcePhotoBase64
                 )
 
                 startFaceVerificationWithResolvedConfig(
@@ -247,12 +247,12 @@ class IdentificationViewModel @Inject constructor(
             _faceVerificationState.value = FaceVerificationState.Initializing
 
             try {
-                val request = FaceVerificationRequest(
+                val request = createFaceVerificationRequest(
                     name = name,
                     idNo = idNo,
                     orderNo = orderNo,
                     userId = userId,
-                    sourcePhotoStr = sourcePhotoBase64
+                    sourcePhotoBase64 = sourcePhotoBase64
                 )
 
                 startFaceVerificationWithResolvedConfig(
@@ -287,7 +287,7 @@ class IdentificationViewModel @Inject constructor(
             _currentVerificationType.value = verificationType
             _faceVerificationState.value = FaceVerificationState.Initializing
             
-            val request = FaceVerificationRequest(
+            val request = createFaceVerificationRequest(
                 name = name,
                 idNo = idNo,
                 orderNo = orderNo,
@@ -528,12 +528,12 @@ class IdentificationViewModel @Inject constructor(
                 toastHelper.showShort("开始人脸验证和设置...")
                 
                 // 创建人脸验证请求
-                val request = FaceVerificationRequest(
+                val request = createFaceVerificationRequest(
                     name = currentUser.userName,
                     idNo = currentUser.identityCardNumber,
-                    orderNo = "face_setup_${System.currentTimeMillis()}",
+                    orderNo = createFaceSetupOrderNo(),
                     userId = currentUser.userId.toString(),
-                    sourcePhotoStr = base64Image
+                    sourcePhotoBase64 = base64Image
                 )
 
                 // 启动人脸验证（用于设置人脸信息）
