@@ -19,7 +19,31 @@ if ! [[ "${LIMIT}" =~ ^[0-9]+$ ]] || [[ "${LIMIT}" -le 0 ]]; then
   exit 1
 fi
 
-RUNS_JSON="$(gh run list -R "${REPO}" --limit "${LIMIT}" --json workflowName,status,conclusion,createdAt,updatedAt)"
+# Prefer project PAT when available while keeping compatibility with GH CLI token env.
+if [[ -n "${GITHUB_PAT_TOKEN:-}" && -z "${GH_TOKEN:-}" ]]; then
+  export GH_TOKEN="${GITHUB_PAT_TOKEN}"
+fi
+
+if ! gh auth status -h github.com >/dev/null 2>&1; then
+  if [[ -z "${GH_TOKEN:-}" ]]; then
+    echo "[ci-metrics][FAIL] GitHub authentication missing."
+    echo "[ci-metrics][FAIL] run gh auth login or set GH_TOKEN/GITHUB_PAT_TOKEN."
+    exit 1
+  fi
+  echo "[ci-metrics][INFO] gh auth session not detected; using GH_TOKEN from environment."
+fi
+
+set +e
+RUNS_JSON="$(gh run list -R "${REPO}" --limit "${LIMIT}" --json workflowName,status,conclusion,createdAt,updatedAt 2>&1)"
+GH_EXIT=$?
+set -e
+
+if [[ "${GH_EXIT}" -ne 0 ]]; then
+  echo "[ci-metrics][FAIL] failed to fetch runs for ${REPO}."
+  echo "[ci-metrics][FAIL] ensure token has Actions read permissions."
+  echo "[ci-metrics][DETAIL] ${RUNS_JSON}"
+  exit 1
+fi
 
 if [[ -z "${RUNS_JSON}" || "${RUNS_JSON}" == "[]" ]]; then
   echo "[ci-metrics][WARN] no runs found for ${REPO}."
