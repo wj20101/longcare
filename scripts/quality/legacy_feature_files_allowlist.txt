@@ -42,6 +42,7 @@ app/src/main/kotlin/com/ytone/longcare/features/identification/ui/Identification
 app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationEvent.kt
 app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationFaceVerifyCallbacks.kt
 app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationFaceVerificationRequestFactory.kt
+app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationFaceSetupPreparation.kt
 app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationUiState.kt
 app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationViewModel.kt
 app/src/main/kotlin/com/ytone/longcare/features/location/core/DefaultLocationFacade.kt

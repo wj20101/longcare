@@ -496,51 +496,27 @@ class IdentificationViewModel @Inject constructor(
                 // 重置状态
                 _faceSetupState.value = FaceSetupState.Initial
                 _faceVerificationState.value = FaceVerificationState.Idle
-                
+
                 toastHelper.showShort("开始处理人脸图片...")
-                
-                // 检查图片文件是否存在
-                val imageFile = File(imagePath)
-                if (!imageFile.exists()) {
-                    val errorMsg = "图片文件不存在: $imagePath"
-                    setFaceSetupError(errorMsg)
-                    return@launch
-                }
-                
-                // 转换图片为 Base64
-                val base64Image = faceDataSource.imageFileToBase64(imageFile)
-                
-                // 获取当前用户信息
-                val currentUser = getCurrentUser()
-                if (currentUser == null) {
-                    val errorMsg = "无法获取用户信息"
-                    setFaceSetupError(errorMsg)
-                    return@launch
-                }
-                
-                // 检查用户信息完整性
-                if (currentUser.userName.isBlank() || currentUser.identityCardNumber.isBlank()) {
-                    val errorMsg = "用户信息不完整，无法进行人脸验证"
-                    setFaceSetupError(errorMsg)
-                    return@launch
-                }
-                
-                toastHelper.showShort("开始人脸验证和设置...")
-                
-                // 创建人脸验证请求
-                val request = createFaceVerificationRequest(
-                    name = currentUser.userName,
-                    idNo = currentUser.identityCardNumber,
-                    orderNo = createFaceSetupOrderNo(),
-                    userId = currentUser.userId.toString(),
-                    sourcePhotoBase64 = base64Image
+
+                val preparation = prepareFaceSetupVerificationInput(
+                    imagePath = imagePath,
+                    faceDataSource = faceDataSource,
+                    currentUser = getCurrentUser()
                 )
+                if (preparation is FaceSetupPreparation.Error) {
+                    setFaceSetupError(preparation.message)
+                    return@launch
+                }
+                val ready = preparation as FaceSetupPreparation.Ready
+
+                toastHelper.showShort("开始人脸验证和设置...")
 
                 // 启动人脸验证（用于设置人脸信息）
                 startFaceVerificationWithResolvedConfig(
                     context = context,
-                    request = request,
-                    callback = createFaceSetupVerifyCallback(imageFile, base64Image),
+                    request = ready.request,
+                    callback = createFaceSetupVerifyCallback(ready.imageFile, ready.base64Image),
                     onConfigMissing = { setFaceSetupError("人脸配置不可用") }
                 )
             } catch (e: CancellationException) {
