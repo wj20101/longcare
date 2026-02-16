@@ -35,18 +35,12 @@ class IdentificationViewModel @Inject constructor(
     private val faceVerifier: FaceVerifier, private val systemConfigManager: SystemConfigManager, private val userSessionRepository: UserSessionRepository, private val unifiedOrderRepository: OrderDetailRepository, private val faceDataSource: IdentificationFaceDataSource,
     private val verifyServicePersonUseCase: VerifyServicePersonUseCase, private val uploadElderPhotoUseCase: UploadElderPhotoUseCase, private val setupFaceUseCase: SetupFaceUseCase, private val toastHelper: ToastHelper,
 ) : ViewModel() {
-    private val _identificationState = MutableStateFlow(IdentificationState.INITIAL)
-    val identificationState: StateFlow<IdentificationState> = _identificationState.asStateFlow()
-    private val _faceVerificationState = MutableStateFlow<FaceVerificationState>(FaceVerificationState.Idle)
-    val faceVerificationState: StateFlow<FaceVerificationState> = _faceVerificationState.asStateFlow()
-    private val _currentVerificationType = MutableStateFlow<VerificationType?>(null)
-    val currentVerificationType: StateFlow<VerificationType?> = _currentVerificationType.asStateFlow()
-    private val _photoUploadState = MutableStateFlow<PhotoUploadState>(PhotoUploadState.Initial)
-    val photoUploadState: StateFlow<PhotoUploadState> = _photoUploadState.asStateFlow()
-    private val _faceSetupState = MutableStateFlow<FaceSetupState>(FaceSetupState.Initial)
-    val faceSetupState: StateFlow<FaceSetupState> = _faceSetupState.asStateFlow()
-    private val _events = MutableSharedFlow<IdentificationEvent>(replay = 0, extraBufferCapacity = 1)
-    val events: SharedFlow<IdentificationEvent> = _events.asSharedFlow()
+    private val _identificationState = MutableStateFlow(IdentificationState.INITIAL); val identificationState: StateFlow<IdentificationState> = _identificationState.asStateFlow()
+    private val _faceVerificationState = MutableStateFlow<FaceVerificationState>(FaceVerificationState.Idle); val faceVerificationState: StateFlow<FaceVerificationState> = _faceVerificationState.asStateFlow()
+    private val _currentVerificationType = MutableStateFlow<VerificationType?>(null); val currentVerificationType: StateFlow<VerificationType?> = _currentVerificationType.asStateFlow()
+    private val _photoUploadState = MutableStateFlow<PhotoUploadState>(PhotoUploadState.Initial); val photoUploadState: StateFlow<PhotoUploadState> = _photoUploadState.asStateFlow()
+    private val _faceSetupState = MutableStateFlow<FaceSetupState>(FaceSetupState.Initial); val faceSetupState: StateFlow<FaceSetupState> = _faceSetupState.asStateFlow()
+    private val _events = MutableSharedFlow<IdentificationEvent>(replay = 0, extraBufferCapacity = 1); val events: SharedFlow<IdentificationEvent> = _events.asSharedFlow()
     private fun emitEvent(event: IdentificationEvent) = _events.tryEmit(event)
     private fun setFaceVerificationError(message: String, error: FaceVerifyError? = null) = run { _faceVerificationState.value = FaceVerificationState.Error(error = error, message = message); emitEvent(IdentificationEvent.ShowToast(message)) }
     private fun setFaceSetupError(message: String) { _faceSetupState.value = FaceSetupState.Error(message); emitEvent(IdentificationEvent.ShowToast(message)) }
