@@ -1,8 +1,8 @@
 package com.ytone.longcare.features.identification.vm
 
 import android.content.Context
-import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
-import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
+import com.ytone.longcare.common.utils.SystemConfigManager
+import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
 import com.ytone.longcare.models.protos.User
@@ -17,17 +17,13 @@ internal fun launchFaceCaptureResultHandling(
     faceDataSource: IdentificationFaceDataSource,
     resolveCurrentUser: suspend () -> User?,
     setupFaceUseCase: SetupFaceUseCase,
+    systemConfigManager: SystemConfigManager,
+    faceVerifier: FaceVerifier,
     setFaceSetupState: (FaceSetupState) -> Unit,
     setFaceVerificationState: (FaceVerificationState) -> Unit,
     setFaceSetupError: (String) -> Unit,
     showToast: (String) -> Unit,
     onServicePersonVerified: () -> Unit,
-    startFaceVerificationWithResolvedConfig: suspend (
-        Context,
-        FaceVerificationRequest,
-        FaceVerifyCallback,
-        () -> Unit,
-    ) -> Unit,
 ) {
     scope.launch {
         try {
@@ -47,10 +43,10 @@ internal fun launchFaceCaptureResultHandling(
             val ready = preparation as FaceSetupPreparation.Ready
 
             showToast("开始人脸验证和设置...")
-            startFaceVerificationWithResolvedConfig(
-                context,
-                ready.request,
-                createStandardFaceSetupFlowVerifyCallback(
+            startFaceVerificationWithResolvedConfigOrNotify(
+                context = context,
+                request = ready.request,
+                callback = createStandardFaceSetupFlowVerifyCallback(
                     ready = ready,
                     scope = scope,
                     setupFaceUseCase = setupFaceUseCase,
@@ -60,7 +56,9 @@ internal fun launchFaceCaptureResultHandling(
                     showToast = showToast,
                     onServicePersonVerified = onServicePersonVerified,
                 ),
-                { setFaceSetupError("人脸配置不可用") }
+                systemConfigManager = systemConfigManager,
+                faceVerifier = faceVerifier,
+                onConfigMissing = { setFaceSetupError("人脸配置不可用") }
             )
         } catch (e: CancellationException) {
             throw e

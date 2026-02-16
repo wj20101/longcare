@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.request.OrderInfoRequestModel
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
-import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
 import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
@@ -274,7 +273,7 @@ class IdentificationViewModel @Inject constructor(
         context: Context,
         request: FaceVerificationRequest,
     ) {
-        startFaceVerificationWithResolvedConfig(
+        startFaceVerificationWithResolvedConfigOrNotify(
             context = context,
             request = request,
             callback = createIdentificationFlowVerifyCallback(
@@ -287,27 +286,9 @@ class IdentificationViewModel @Inject constructor(
                 onElderVerified = ::setElderVerified,
                 showToast = { message -> toastHelper.showShort(message) }
             ),
+            systemConfigManager = systemConfigManager,
+            faceVerifier = faceVerifier,
             onConfigMissing = { setFaceVerificationError("人脸配置不可用") }
-        )
-    }
-
-    private suspend fun startFaceVerificationWithResolvedConfig(
-        context: Context,
-        request: FaceVerificationRequest,
-        callback: FaceVerifyCallback,
-        onConfigMissing: () -> Unit
-    ) {
-        val config = systemConfigManager.getFaceVerificationConfig()
-        if (config == null) {
-            onConfigMissing()
-            return
-        }
-
-        faceVerifier.startFaceVerification(
-            context = context,
-            config = config,
-            request = request,
-            callback = callback
         )
     }
     
@@ -441,12 +422,13 @@ class IdentificationViewModel @Inject constructor(
             faceDataSource = faceDataSource,
             resolveCurrentUser = ::getCurrentUser,
             setupFaceUseCase = setupFaceUseCase,
+            systemConfigManager = systemConfigManager,
+            faceVerifier = faceVerifier,
             setFaceSetupState = { state -> _faceSetupState.value = state },
             setFaceVerificationState = { state -> _faceVerificationState.value = state },
             setFaceSetupError = ::setFaceSetupError,
             showToast = { message -> toastHelper.showShort(message) },
             onServicePersonVerified = ::setServicePersonVerified,
-            startFaceVerificationWithResolvedConfig = ::startFaceVerificationWithResolvedConfig,
         )
     }
 
