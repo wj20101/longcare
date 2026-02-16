@@ -43,30 +43,21 @@ class IdentificationViewModel @Inject constructor(
     private val setupFaceUseCase: SetupFaceUseCase,
     private val toastHelper: ToastHelper,
 ) : ViewModel() {
-
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL)
     val identificationState: StateFlow<IdentificationState> = _identificationState.asStateFlow()
-
     private val _faceVerificationState = MutableStateFlow<FaceVerificationState>(FaceVerificationState.Idle)
     val faceVerificationState: StateFlow<FaceVerificationState> = _faceVerificationState.asStateFlow()
-
     private val _currentVerificationType = MutableStateFlow<VerificationType?>(null)
     val currentVerificationType: StateFlow<VerificationType?> = _currentVerificationType.asStateFlow()
-
     private val _photoUploadState = MutableStateFlow<PhotoUploadState>(PhotoUploadState.Initial)
     val photoUploadState: StateFlow<PhotoUploadState> = _photoUploadState.asStateFlow()
-
     private val _faceSetupState = MutableStateFlow<FaceSetupState>(FaceSetupState.Initial)
     val faceSetupState: StateFlow<FaceSetupState> = _faceSetupState.asStateFlow()
-
     private val _events = MutableSharedFlow<IdentificationEvent>(replay = 0, extraBufferCapacity = 1)
     val events: SharedFlow<IdentificationEvent> = _events.asSharedFlow()
-
     private fun emitEvent(event: IdentificationEvent) = _events.tryEmit(event)
-
     private fun setFaceVerificationError(message: String, error: FaceVerifyError? = null) = run { _faceVerificationState.value = FaceVerificationState.Error(error = error, message = message); emitEvent(IdentificationEvent.ShowToast(message)) }
     private fun setFaceSetupError(message: String) { _faceSetupState.value = FaceSetupState.Error(message); emitEvent(IdentificationEvent.ShowToast(message)) }
-
     fun verifyServicePerson(context: Context) = launchServicePersonVerification(
         scope = viewModelScope,
         context = context,
@@ -79,11 +70,8 @@ class IdentificationViewModel @Inject constructor(
         onRequireFaceSetup = ::navigateToFaceCaptureForSetup,
         onVerificationFailure = ::handleServicePersonVerificationFailure,
     )
-
     private fun handleServicePersonVerificationFailure(message: String, throwable: Throwable?) { logE(message, tag = "IdentificationVM", throwable = throwable); setFaceVerificationError(message) }
-
     private fun navigateToFaceCaptureForSetup() { emitEvent(IdentificationEvent.ShowToast("请先设置人脸信息")); emitEvent(IdentificationEvent.NavigateToFaceCapture) }
-
     fun verifyElder(context: Context, request: OrderInfoRequestModel) = launchElderVerification(
         scope = viewModelScope,
         context = context,
@@ -92,7 +80,6 @@ class IdentificationViewModel @Inject constructor(
         orderDetailRepository = unifiedOrderRepository,
         startVerification = ::startFaceVerification,
     )
-
     private fun startFaceVerification(
         context: Context,
         name: String,
@@ -111,9 +98,7 @@ class IdentificationViewModel @Inject constructor(
         beginVerification = ::beginVerification,
         startVerificationWithRequest = ::startFaceVerificationWithDefaultCallback,
     )
-
     private fun beginVerification(verificationType: VerificationType) { _currentVerificationType.value = verificationType; _faceVerificationState.value = FaceVerificationState.Initializing }
-
     private suspend fun startFaceVerificationWithDefaultCallback(context: Context, request: FaceVerificationRequest) = startFaceVerificationWithIdentificationBindings(
         context = context,
         request = request,
@@ -126,8 +111,7 @@ class IdentificationViewModel @Inject constructor(
         systemConfigManager = systemConfigManager,
         faceVerifier = faceVerifier,
     )
-    private suspend fun getCurrentUser(): User? =
-        (userSessionRepository.sessionState.value as? SessionState.LoggedIn)?.user
+    private suspend fun getCurrentUser(): User? = (userSessionRepository.sessionState.value as? SessionState.LoggedIn)?.user
     fun resetFaceVerificationState() { _faceVerificationState.value = FaceVerificationState.Idle; _currentVerificationType.value = null }
     fun setServicePersonVerified() { _identificationState.value = IdentificationState.SERVICE_VERIFIED }
     fun setElderVerified() { _identificationState.value = IdentificationState.ELDER_VERIFIED }
@@ -142,7 +126,6 @@ class IdentificationViewModel @Inject constructor(
         onElderVerified = ::setElderVerified,
         onSuccess = onSuccess,
     )
-
     suspend fun generateWatermarkData(address: String, request: OrderInfoRequestModel): WatermarkData =
         generateIdentificationWatermarkData(
             address = address,
