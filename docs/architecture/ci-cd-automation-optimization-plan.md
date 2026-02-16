@@ -622,8 +622,29 @@
 | ID | 主题 | 触发条件 | 跟踪文件 | 当前状态 |
 |---|---|---|---|---|
 | LT1 | 第三方 lint waiver 收敛（`F21` 延展） | `crashreport`、`cos-android`、`WbCloudFaceLiveSdk` 发布可替换版本或兼容补丁 | `scripts/lint/lint_warning_waivers.json`、`scripts/lint/verify_lint_warning_allowlist.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md` | MONITORING |
+| LT2 | CI 健康阈值巡检自动化 | 每日定时或手动触发 `ci-health-monitor` | `.github/workflows/ci-health-monitor.yml`、`scripts/quality/monitor_ci_health.sh`、`scripts/quality/ci_health_thresholds.json` | ACTIVE |
 
 - 跟踪规则：
   - 触发条件出现后，先执行 `./gradlew --no-daemon --console=plain :app:lintDebug --stacktrace` 复核第三方 warning 是否消失；
   - 若 warning 消失，删除对应 waiver 并通过 `verify_lint_warning_allowlist.sh` 与 `verify_ci_workflow_quality.sh`；
   - 若 warning 仍存在，更新 waiver `review_by` 与原因说明，维持仅第三方来源白名单约束。
+  - `LT2` 由 `ci-health-monitor` 每日执行阈值检查并上传报告；阈值越界时自动创建或追加 `CI health threshold breach` issue。
+
+## 33. CI 健康巡检自动化（2026-02-16）
+
+- 任务性质：持续治理（长期项 `LT2`，不计入本阶段未完成项）。
+- 新增文件：
+  - `.github/workflows/ci-health-monitor.yml`
+  - `scripts/quality/monitor_ci_health.sh`
+  - `scripts/quality/ci_health_thresholds.json`
+- 自动化策略：
+  - 每日 `03:17 UTC` 定时巡检，支持 `workflow_dispatch` 手动触发并自定义 `sample_size`；
+  - 汇总最近 N 次 run 的工作流级成功率、失败率、取消率、平均耗时；
+  - 按阈值规则自动判定 PASS/FAIL，输出：
+    - `build/ci-health/ci_health_report.md`
+    - `build/ci-health/ci_health_metrics.json`
+    - `build/ci-health/ci_health_violations.txt`
+  - 阈值越界时自动创建或追加同一 open issue：`CI health threshold breach`。
+- 本地验证：
+  - `bash -n scripts/quality/monitor_ci_health.sh`：PASS
+  - `bash scripts/quality/monitor_ci_health.sh yyg20101/longcare 20 scripts/quality/ci_health_thresholds.json build/ci-health`：依赖 `GH_TOKEN`/`gh auth`（可在 CI 环境完成完整验证）

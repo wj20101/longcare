@@ -713,3 +713,17 @@
       - 新增 section 32《长期跟踪项（不计入本阶段未完成项）》并落地 `LT1`（第三方 lint waiver 收敛）。
     - `docs/architecture/project-optimization-refactor-master-plan.md`：
       - 在 `10.5 当前剩余优化项` 后新增 `10.6 长期跟踪项`，与 CI/CD 计划文档保持一致（`LT1`）。
+- 执行“CI 健康巡检自动化落地”（2026-02-16）：
+  - 目标：
+    - 将“持续关注 CI/CD”从人工检查升级为定时自动巡检 + 阈值守卫 + 异常 issue 流。
+  - 文件改动：
+    - 新增 `scripts/quality/ci_health_thresholds.json`（工作流阈值策略配置）；
+    - 新增 `scripts/quality/monitor_ci_health.sh`（聚合 run 指标、阈值判定、报告输出）；
+    - 新增 `.github/workflows/ci-health-monitor.yml`（每日定时 + 手动触发 + issue 自动更新）；
+    - 更新 `docs/architecture/ci-cd-automation-optimization-plan.md`（新增 `LT2` 与 section 33）；
+    - 更新 `docs/architecture/project-optimization-refactor-master-plan.md`（`10.6` 新增 `LT2`）。
+  - 验证：
+    - `bash -n scripts/quality/monitor_ci_health.sh`：PASS；
+    - 使用 `/tmp/ci_runs_sample.json` 离线回放：
+      - `bash scripts/quality/monitor_ci_health.sh ... /tmp/ci_runs_sample.json`：按预期输出报告并在阈值越界时 `exit 2`；
+    - `ci-health-monitor.yml` 关键字段检查：`schedule/workflow_dispatch/issues:write` 存在。

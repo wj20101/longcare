@@ -1,0 +1,92 @@
+name: CI Health Monitor
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      sample_size:
+        description: "Number of recent workflow runs to evaluate"
+        required: false
+        default: "50"
+
+concurrency:
+  group: ci-health-monitor-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run CI health monitor
+        id: health_check
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SAMPLE_SIZE="${{ github.event.inputs.sample_size }}"
+          if [[ -z "${SAMPLE_SIZE}" ]]; then
+            SAMPLE_SIZE="50"
+          fi
+          bash scripts/quality/monitor_ci_health.sh \
+            "${{ github.repository }}" \
+            "${SAMPLE_SIZE}" \
+            "scripts/quality/ci_health_thresholds.json" \
+            "build/ci-health"
+
+      - name: Publish CI health summary
+        if: always()
+        run: |
+          if [[ -f build/ci-health/ci_health_report.md ]]; then
+            cat build/ci-health/ci_health_report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "CI health report not generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload CI health artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-health-monitor-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            build/ci-health/ci_health_report.md
+            build/ci-health/ci_health_metrics.json
+            build/ci-health/ci_health_violations.txt
+          if-no-files-found: warn
+          retention-days: 21
+
+      - name: Create or update CI health issue on threshold breach
+        if: steps.health_check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          ISSUE_TITLE="CI health threshold breach"
+          ISSUE_NUMBER="$(gh issue list -R "${REPO}" --state open --search "${ISSUE_TITLE} in:title" --limit 1 --json number --jq '.[0].number // empty')"
+
+          if [[ -n "${ISSUE_NUMBER}" ]]; then
+            gh issue comment "${ISSUE_NUMBER}" -R "${REPO}" --body-file build/ci-health/ci_health_report.md
+            echo "Updated existing issue #${ISSUE_NUMBER}"
+          else
+            gh issue create \
+              -R "${REPO}" \
+              --title "${ISSUE_TITLE}" \
+              --body-file build/ci-health/ci_health_report.md
+            echo "Created new CI health issue."
+          fi
+
+      - name: Fail workflow on threshold breach
+        if: steps.health_check.outcome == 'failure'
+        run: |
+          echo "CI health threshold breach detected."
+          exit 1

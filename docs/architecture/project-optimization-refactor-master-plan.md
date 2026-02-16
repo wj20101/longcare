@@ -661,6 +661,7 @@
 | ID | 来源任务 | 主题 | 触发条件 | 当前状态 |
 |---|---|---|---|---|
 | LT1 | `F21` | 第三方 lint waiver 收敛 | 上游依赖（`crashreport`、`cos-android`、`WbCloudFaceLiveSdk`）发布可替换版本或兼容补丁 | MONITORING |
+| LT2 | CI 持续巡检 | 每日定时或手动触发 `ci-health-monitor` 进行阈值评估 | ACTIVE |
 
 - 说明：
   - 该项属于外部依赖驱动的持续治理，不计入 A~G/F 阶段“未完成优化项”统计；
