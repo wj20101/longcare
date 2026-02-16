@@ -217,18 +217,17 @@ class IdentificationViewModel @Inject constructor(
         userId: String,
         verificationType: VerificationType
     ) {
-        viewModelScope.launch {
-            beginVerification(verificationType)
-
-            val request = createFaceVerificationRequest(
-                name = name,
-                idNo = idNo,
-                orderNo = orderNo,
-                userId = userId
-            )
-
-            startFaceVerificationWithDefaultCallback(context, request)
-        }
+        launchStandardFaceVerification(
+            scope = viewModelScope,
+            context = context,
+            name = name,
+            idNo = idNo,
+            orderNo = orderNo,
+            userId = userId,
+            verificationType = verificationType,
+            beginVerification = ::beginVerification,
+            startVerificationWithRequest = ::startFaceVerificationWithDefaultCallback,
+        )
     }
 
     private fun beginVerification(verificationType: VerificationType) {
@@ -346,19 +345,11 @@ class IdentificationViewModel @Inject constructor(
      * @return WatermarkData
      */
     suspend fun generateWatermarkData(address: String, request: OrderInfoRequestModel): WatermarkData {
-        // 获取订单信息
-        val orderInfo = unifiedOrderRepository.getCachedOrderInfo(request.toOrderKey())
-        val elderName = orderInfo?.userInfo?.name ?: "未知老人"
-
-        // 获取当前登录用户（护工）信息
-        val currentUser = getCurrentUser()
-        val caregiverName = currentUser?.userName ?: "未知护工"
-
-        return WatermarkData(
-            title = "老人照片",
-            insuredPerson = elderName,
-            caregiver = caregiverName,
-            address = address
+        return generateIdentificationWatermarkData(
+            address = address,
+            orderKey = request.toOrderKey(),
+            orderDetailRepository = unifiedOrderRepository,
+            resolveCurrentUser = ::getCurrentUser,
         )
     }
 
