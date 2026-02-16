@@ -23,7 +23,6 @@ import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.models.protos.User
-import kotlinx.coroutines.CancellationException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -435,50 +434,20 @@ class IdentificationViewModel @Inject constructor(
      * @param imagePath 捕获的人脸图片路径
      */
     fun handleFaceCaptureResult(context: Context, imagePath: String) {
-        viewModelScope.launch {
-            try {
-                // 重置状态
-                _faceSetupState.value = FaceSetupState.Initial
-                _faceVerificationState.value = FaceVerificationState.Idle
-
-                toastHelper.showShort("开始处理人脸图片...")
-
-                val preparation = prepareFaceSetupVerificationInput(
-                    imagePath = imagePath,
-                    faceDataSource = faceDataSource,
-                    currentUser = getCurrentUser()
-                )
-                if (preparation is FaceSetupPreparation.Error) {
-                    setFaceSetupError(preparation.message)
-                    return@launch
-                }
-                val ready = preparation as FaceSetupPreparation.Ready
-
-                toastHelper.showShort("开始人脸验证和设置...")
-
-                // 启动人脸验证（用于设置人脸信息）
-                startFaceVerificationWithResolvedConfig(
-                    context = context,
-                    request = ready.request,
-                    callback = createStandardFaceSetupFlowVerifyCallback(
-                        ready = ready,
-                        scope = viewModelScope,
-                        setupFaceUseCase = setupFaceUseCase,
-                        resolveCurrentUserId = { getCurrentUser()?.userId },
-                        setFaceSetupState = { state -> _faceSetupState.value = state },
-                        setFaceSetupError = ::setFaceSetupError,
-                        showToast = { message -> toastHelper.showShort(message) },
-                        onServicePersonVerified = ::setServicePersonVerified,
-                    ),
-                    onConfigMissing = { setFaceSetupError("人脸配置不可用") }
-                )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                val errorMsg = "处理人脸图片时发生错误: ${e.message}"
-                setFaceSetupError(errorMsg)
-            }
-        }
+        launchFaceCaptureResultHandling(
+            scope = viewModelScope,
+            context = context,
+            imagePath = imagePath,
+            faceDataSource = faceDataSource,
+            resolveCurrentUser = ::getCurrentUser,
+            setupFaceUseCase = setupFaceUseCase,
+            setFaceSetupState = { state -> _faceSetupState.value = state },
+            setFaceVerificationState = { state -> _faceVerificationState.value = state },
+            setFaceSetupError = ::setFaceSetupError,
+            showToast = { message -> toastHelper.showShort(message) },
+            onServicePersonVerified = ::setServicePersonVerified,
+            startFaceVerificationWithResolvedConfig = ::startFaceVerificationWithResolvedConfig,
+        )
     }
 
     /**
