@@ -254,6 +254,10 @@ check_file_line_threshold \
   120 \
   "IdentificationFaceVerifyCallbacks.kt"
 check_file_line_threshold \
+  "${APP_ROOT}/features/identification/vm/IdentificationFaceSetupFlow.kt" \
+  140 \
+  "IdentificationFaceSetupFlow.kt"
+check_file_line_threshold \
   "${APP_ROOT}/features/identification/vm/IdentificationFaceVerificationRequestFactory.kt" \
   120 \
   "IdentificationFaceVerificationRequestFactory.kt"
