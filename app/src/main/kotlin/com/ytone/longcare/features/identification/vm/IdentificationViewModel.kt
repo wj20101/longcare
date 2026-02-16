@@ -33,7 +33,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
 
 @HiltViewModel
@@ -177,39 +176,20 @@ class IdentificationViewModel @Inject constructor(
         userId: String,
         sourcePhotoUrl: String
     ) {
-        viewModelScope.launch {
-            beginVerification(VerificationType.SERVICE_PERSON)
-
-            try {
-                logD("从服务器下载人脸图片: $sourcePhotoUrl", tag = "IdentificationVM")
-                // 下载源照片并转换为 Base64
-                val sourcePhotoBase64 = faceDataSource.downloadAndConvertToBase64(sourcePhotoUrl)
-                logD("下载成功，Base64长度: ${sourcePhotoBase64.length}", tag = "IdentificationVM")
-                
-                // 立即保存到本地缓存（在验证之前）
-                val currentUser = getCurrentUser()
-                if (currentUser != null) {
-                    faceDataSource.writeUserFaceBase64(currentUser.userId, sourcePhotoBase64)
-                    logD("已保存到本地缓存", tag = "IdentificationVM")
-                }
-                
-                startSelfProvidedFaceVerification(
-                    context = context,
-                    name = name,
-                    idNo = idNo,
-                    orderNo = orderNo,
-                    userId = userId,
-                    sourcePhotoBase64 = sourcePhotoBase64
-                )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logE("下载人脸图片失败", tag = "IdentificationVM", throwable = e)
-                val errorMsg = "获取人脸照片失败: ${e.message}"
-                setFaceVerificationError(errorMsg)
-                // 下载失败，提示用户重试
-            }
-        }
+        launchSelfProvidedFaceVerificationAndCache(
+            scope = viewModelScope,
+            context = context,
+            name = name,
+            idNo = idNo,
+            orderNo = orderNo,
+            userId = userId,
+            sourcePhotoUrl = sourcePhotoUrl,
+            faceDataSource = faceDataSource,
+            resolveCurrentUser = ::getCurrentUser,
+            beginVerification = ::beginVerification,
+            startVerification = ::startSelfProvidedFaceVerification,
+            onFailure = ::setFaceVerificationError,
+        )
     }
 
     /**
@@ -225,25 +205,21 @@ class IdentificationViewModel @Inject constructor(
         userId: String,
         sourcePhotoBase64: String
     ) {
-        viewModelScope.launch {
-            beginVerification(VerificationType.SERVICE_PERSON)
-
-            try {
-                startSelfProvidedFaceVerification(
-                    context = context,
-                    name = name,
-                    idNo = idNo,
-                    orderNo = orderNo,
-                    userId = userId,
-                    sourcePhotoBase64 = sourcePhotoBase64
-                )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logE("人脸验证失败", tag = "IdentificationVM", throwable = e)
-                setFaceVerificationError("人脸验证失败: ${e.message}")
-            }
-        }
+        launchSelfProvidedFaceVerificationWithBase64(
+            scope = viewModelScope,
+            context = context,
+            name = name,
+            idNo = idNo,
+            orderNo = orderNo,
+            userId = userId,
+            sourcePhotoBase64 = sourcePhotoBase64,
+            beginVerification = ::beginVerification,
+            startVerification = ::startSelfProvidedFaceVerification,
+            onFailure = { message, throwable ->
+                logE("人脸验证失败", tag = "IdentificationVM", throwable = throwable)
+                setFaceVerificationError(message)
+            },
+        )
     }
 
     private suspend fun startSelfProvidedFaceVerification(
