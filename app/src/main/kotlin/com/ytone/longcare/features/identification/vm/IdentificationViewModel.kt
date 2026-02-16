@@ -15,7 +15,6 @@ import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
 import com.ytone.longcare.features.identification.domain.UploadElderPhotoUseCase
 import com.ytone.longcare.features.identification.domain.VerifyServicePersonUseCase
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
-import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
@@ -45,23 +44,18 @@ class IdentificationViewModel @Inject constructor(
     private val toastHelper: ToastHelper,
 ) : ViewModel() {
 
-    // 身份认证状态
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL)
     val identificationState: StateFlow<IdentificationState> = _identificationState.asStateFlow()
-    
-    // 人脸验证状态
+
     private val _faceVerificationState = MutableStateFlow<FaceVerificationState>(FaceVerificationState.Idle)
     val faceVerificationState: StateFlow<FaceVerificationState> = _faceVerificationState.asStateFlow()
-    
-    // 当前验证类型
+
     private val _currentVerificationType = MutableStateFlow<VerificationType?>(null)
     val currentVerificationType: StateFlow<VerificationType?> = _currentVerificationType.asStateFlow()
 
-    // 拍照上传状态
     private val _photoUploadState = MutableStateFlow<PhotoUploadState>(PhotoUploadState.Initial)
     val photoUploadState: StateFlow<PhotoUploadState> = _photoUploadState.asStateFlow()
-    
-    // 人脸设置状态
+
     private val _faceSetupState = MutableStateFlow<FaceSetupState>(FaceSetupState.Initial)
     val faceSetupState: StateFlow<FaceSetupState> = _faceSetupState.asStateFlow()
 
@@ -80,14 +74,6 @@ class IdentificationViewModel @Inject constructor(
         emitEvent(IdentificationEvent.ShowToast(message))
     }
     
-    /**
-     * 验证服务人员
-     * 
-     * 业务流程：
-     * 1. 检查本地缓存 → 有则使用
-     * 2. 调用接口获取 → 有则下载并保存到本地
-     * 3. 本地和接口都没有 → 跳转到人脸捕获
-     */
     fun verifyServicePerson(context: Context) {
         launchServicePersonVerification(
             scope = viewModelScope,
@@ -104,17 +90,13 @@ class IdentificationViewModel @Inject constructor(
     }
 
     private fun handleServicePersonVerificationFailure(message: String, throwable: Throwable?) {
-        logE(message, tag = "IdentificationVM", throwable = throwable)
-        setFaceVerificationError(message)
+        logE(message, tag = "IdentificationVM", throwable = throwable); setFaceVerificationError(message)
     }
 
     private fun navigateToFaceCaptureForSetup() {
         emitEvent(IdentificationEvent.ShowToast("请先设置人脸信息")); emitEvent(IdentificationEvent.NavigateToFaceCapture)
     }
     
-    /**
-     * 验证老人
-     */
     fun verifyElder(context: Context, request: OrderInfoRequestModel) {
         launchElderVerification(
             scope = viewModelScope,
@@ -126,9 +108,6 @@ class IdentificationViewModel @Inject constructor(
         )
     }
     
-    /**
-     * 开始人脸验证
-     */
     private fun startFaceVerification(
         context: Context,
         name: String,
@@ -173,9 +152,6 @@ class IdentificationViewModel @Inject constructor(
         )
     }
     
-    /**
-     * 获取当前登录用户
-     */
     private suspend fun getCurrentUser(): User? =
         (userSessionRepository.sessionState.value as? SessionState.LoggedIn)?.user
 
@@ -189,12 +165,6 @@ class IdentificationViewModel @Inject constructor(
         viewModelScope.launch { unifiedOrderRepository.updateFaceVerification(request.toOrderKey(), verified) }
     }
     
-    /**
-     * 处理拍照并上传老人照片
-     * @param photoUri 拍照的图片URI
-     * @param request 订单请求模型
-     * @param onSuccess 成功回调
-     */
     fun processElderPhoto(photoUri: Uri, request: OrderInfoRequestModel, onSuccess: () -> Unit = {}) {
         launchElderPhotoUploadWithBindings(
             scope = viewModelScope,
@@ -208,12 +178,6 @@ class IdentificationViewModel @Inject constructor(
         )
     }
 
-    /**
-     * 生成用于相机屏幕的水印数据
-     * @param address 拍摄地址
-     * @param request 订单请求模型
-     * @return WatermarkData
-     */
     suspend fun generateWatermarkData(address: String, request: OrderInfoRequestModel): WatermarkData =
         generateIdentificationWatermarkData(
             address = address,
@@ -226,11 +190,6 @@ class IdentificationViewModel @Inject constructor(
 
     fun resetPhotoUploadState() { _photoUploadState.value = PhotoUploadState.Initial }
     
-    /**
-     * 处理人脸捕获结果 - 用于首次设置人脸信息
-     * @param context Activity Context，用于启动人脸验证
-     * @param imagePath 捕获的人脸图片路径
-     */
     fun handleFaceCaptureResult(context: Context, imagePath: String) {
         launchFaceCaptureResultHandlingWithBindings(
             scope = viewModelScope,
