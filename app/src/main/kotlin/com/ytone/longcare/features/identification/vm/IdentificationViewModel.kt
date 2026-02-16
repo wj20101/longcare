@@ -185,10 +185,7 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 重置人脸验证状态
      */
-    fun resetFaceVerificationState() {
-        _faceVerificationState.value = FaceVerificationState.Idle
-        _currentVerificationType.value = null
-    }
+    fun resetFaceVerificationState() { _faceVerificationState.value = FaceVerificationState.Idle; _currentVerificationType.value = null }
     
     /**
      * 更新身份认证状态为服务人员已验证
@@ -200,13 +197,8 @@ class IdentificationViewModel @Inject constructor(
      */
     fun setElderVerified() { _identificationState.value = IdentificationState.ELDER_VERIFIED }
 
-    fun updateFaceVerificationStatus(
-        request: OrderInfoRequestModel,
-        verified: Boolean
-    ) {
-        viewModelScope.launch {
-            unifiedOrderRepository.updateFaceVerification(request.toOrderKey(), verified)
-        }
+    fun updateFaceVerificationStatus(request: OrderInfoRequestModel, verified: Boolean) {
+        viewModelScope.launch { unifiedOrderRepository.updateFaceVerification(request.toOrderKey(), verified) }
     }
     
     /**
@@ -234,14 +226,13 @@ class IdentificationViewModel @Inject constructor(
      * @param request 订单请求模型
      * @return WatermarkData
      */
-    suspend fun generateWatermarkData(address: String, request: OrderInfoRequestModel): WatermarkData {
-        return generateIdentificationWatermarkData(
+    suspend fun generateWatermarkData(address: String, request: OrderInfoRequestModel): WatermarkData =
+        generateIdentificationWatermarkData(
             address = address,
             orderKey = request.toOrderKey(),
             orderDetailRepository = unifiedOrderRepository,
             resolveCurrentUser = ::getCurrentUser,
         )
-    }
 
     /**
      * 显示一个Toast消息
@@ -279,27 +270,17 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 模拟服务人员验证通过 (Mock模式)
      */
-    fun mockVerifyServicePerson() {
-        setServicePersonVerified()
-        toastHelper.showShort("Mock: 服务人员验证通过")
-    }
+    fun mockVerifyServicePerson() { setServicePersonVerified(); toastHelper.showShort("Mock: 服务人员验证通过") }
 
     /**
      * 模拟老人验证通过 (Mock模式)
      */
-    fun mockVerifyElder() {
-        setElderVerified()
-        toastHelper.showShort("Mock: 老人验证通过")
-    }
+    fun mockVerifyElder() { setElderVerified(); toastHelper.showShort("Mock: 老人验证通过") }
     
     /**
      * 重置人脸设置状态
      */
     fun resetFaceSetupState() { _faceSetupState.value = FaceSetupState.Initial }
 
-    override fun onCleared() {
-        super.onCleared()
-        // 释放人脸识别SDK资源
-        faceVerifier.release()
-    }
+    override fun onCleared() { super.onCleared(); faceVerifier.release() }
 }
