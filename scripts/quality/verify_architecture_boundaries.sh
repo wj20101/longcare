@@ -8,6 +8,8 @@ APP_ROOT="${PROJECT_ROOT}/app/src/main/kotlin/com/ytone/longcare"
 CORE_ROOT="${PROJECT_ROOT}/core"
 CORE_DOMAIN_ROOT="${PROJECT_ROOT}/core/domain/src/main/kotlin"
 FEATURE_ROOT="${PROJECT_ROOT}/feature"
+LEGACY_APP_FEATURE_ROOT="${APP_ROOT}/features"
+LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST="${PROJECT_ROOT}/scripts/quality/architecture_legacy_imports_allowlist.txt"
 
 echo "[architecture] checking layer boundaries under: ${PROJECT_ROOT}"
 
@@ -31,6 +33,68 @@ run_rule() {
 
   if rg -n "${pattern}" "${scan_dirs[@]}" --glob '*.kt'; then
     echo "[architecture][FAIL] ${rule_name}"
+    EXIT_CODE=1
+  fi
+}
+
+run_allowlisted_rule() {
+  local rule_name="$1"
+  local pattern="$2"
+  local allowlist_file="$3"
+  shift 3
+
+  local scan_dirs=()
+  local scan_dir
+  for scan_dir in "$@"; do
+    if [[ -d "${scan_dir}" ]]; then
+      scan_dirs+=("${scan_dir}")
+    fi
+  done
+
+  if [[ "${#scan_dirs[@]}" -eq 0 ]]; then
+    echo "[architecture] ${rule_name} skipped (no matching directories)"
+    return 0
+  fi
+
+  local raw_matches
+  raw_matches="$(rg -n "${pattern}" "${scan_dirs[@]}" --glob '*.kt' || true)"
+  if [[ -z "${raw_matches}" ]]; then
+    return 0
+  fi
+
+  local normalized_matches
+  normalized_matches="$(
+    printf "%s\n" "${raw_matches}" |
+      awk -v root="${PROJECT_ROOT%/}/" '
+        {
+          line = $0
+          gsub("^" root, "", line)
+          sub(/^.\//, "", line)
+          sub(/:[0-9]+:/, ":", line)
+          print line
+        }
+      ' |
+      sort -u
+  )"
+
+  if [[ ! -f "${allowlist_file}" ]]; then
+    echo "[architecture][FAIL] ${rule_name} (allowlist missing: ${allowlist_file})"
+    printf "%s\n" "${normalized_matches}"
+    EXIT_CODE=1
+    return 0
+  fi
+
+  local unexpected_matches=()
+  while IFS= read -r line; do
+    [[ -z "${line}" ]] && continue
+    if ! grep -Fqx -- "${line}" "${allowlist_file}"; then
+      unexpected_matches+=("${line}")
+    fi
+  done <<<"${normalized_matches}"
+
+  if [[ "${#unexpected_matches[@]}" -gt 0 ]]; then
+    echo "[architecture][FAIL] ${rule_name} (new violations detected)"
+    printf "%s\n" "${unexpected_matches[@]}"
     EXIT_CODE=1
   fi
 }
@@ -64,6 +128,13 @@ run_rule \
   "feature modules import app internals (data/di/db/api)" \
   '^\s*import\s+com\.ytone\.longcare\.(data|di|db|api)\.' \
   "${FEATURE_ROOT}"
+
+echo "[architecture] rule-4b: legacy app/features imports app internals are frozen by allowlist"
+run_allowlisted_rule \
+  "legacy app/features import app internals (data/di/db/api)" \
+  '^\s*import\s+com\.ytone\.longcare\.(data|di|db|api)\.' \
+  "${LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST}" \
+  "${LEGACY_APP_FEATURE_ROOT}"
 
 echo "[architecture] rule-5: core modules must not import feature packages"
 run_rule \
