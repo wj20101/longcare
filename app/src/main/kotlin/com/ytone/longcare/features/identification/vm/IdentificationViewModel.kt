@@ -118,21 +118,14 @@ class IdentificationViewModel @Inject constructor(
      * 验证老人
      */
     fun verifyElder(context: Context, request: OrderInfoRequestModel) {
-        viewModelScope.launch {
-            val payload = resolveElderVerificationPayload(
-                orderKey = request.toOrderKey(),
-                orderDetailRepository = unifiedOrderRepository,
-            ) ?: return@launch
-
-            startFaceVerification(
-                context = context,
-                name = payload.name,
-                idNo = payload.idNo,
-                orderNo = createElderOrderNo(orderId = request.orderId),
-                userId = payload.userId,
-                verificationType = VerificationType.ELDER
-            )
-        }
+        launchElderVerification(
+            scope = viewModelScope,
+            context = context,
+            orderId = request.orderId,
+            orderKey = request.toOrderKey(),
+            orderDetailRepository = unifiedOrderRepository,
+            startVerification = ::startFaceVerification,
+        )
     }
     
     /**
