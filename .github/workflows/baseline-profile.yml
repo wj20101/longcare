@@ -45,7 +45,7 @@ jobs:
         run: bash scripts/quality/verify_architecture_boundaries.sh .
 
       - name: Enforce module API visibility
-        run: bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare
+        run: bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare .
 
       - name: Setup managed device
         run: |
