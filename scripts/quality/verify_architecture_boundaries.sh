@@ -158,6 +158,20 @@ run_rule \
   "${APP_ROOT}/features" \
   "${FEATURE_ROOT}"
 
+echo "[architecture] rule-8: AppNavigation.kt line count must stay within threshold"
+APP_NAVIGATION_FILE="${APP_ROOT}/navigation/AppNavigation.kt"
+APP_NAVIGATION_MAX_LINES=300
+if [[ ! -f "${APP_NAVIGATION_FILE}" ]]; then
+  echo "[architecture][FAIL] missing navigation entry file: ${APP_NAVIGATION_FILE}"
+  EXIT_CODE=1
+else
+  app_navigation_line_count="$(wc -l < "${APP_NAVIGATION_FILE}" | tr -d ' ')"
+  if [[ "${app_navigation_line_count}" -gt "${APP_NAVIGATION_MAX_LINES}" ]]; then
+    echo "[architecture][FAIL] AppNavigation.kt has ${app_navigation_line_count} lines (max ${APP_NAVIGATION_MAX_LINES})"
+    EXIT_CODE=1
+  fi
+fi
+
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[architecture] boundary verification failed."
   exit "${EXIT_CODE}"
