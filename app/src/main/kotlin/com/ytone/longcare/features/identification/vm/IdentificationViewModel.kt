@@ -4,11 +4,9 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.common.utils.SystemConfigManager
-import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.common.utils.*
 import com.ytone.longcare.domain.faceauth.FaceVerifier
-import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
-import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
+import com.ytone.longcare.domain.faceauth.model.*
 import com.ytone.longcare.domain.repository.*
 import com.ytone.longcare.features.identification.domain.*
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
@@ -19,7 +17,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.ytone.longcare.common.utils.logE
 @HiltViewModel class IdentificationViewModel @Inject constructor(
     private val faceVerifier: FaceVerifier, private val systemConfigManager: SystemConfigManager, private val userSessionRepository: UserSessionRepository, private val unifiedOrderRepository: OrderDetailRepository, private val faceDataSource: IdentificationFaceDataSource, private val verifyServicePersonUseCase: VerifyServicePersonUseCase, private val uploadElderPhotoUseCase: UploadElderPhotoUseCase, private val setupFaceUseCase: SetupFaceUseCase, private val toastHelper: ToastHelper,
 ) : ViewModel() {
