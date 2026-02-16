@@ -71,6 +71,15 @@ run_rule \
   '^\s*import\s+com\.ytone\.longcare\.feature\.' \
   "${CORE_ROOT}"
 
+echo "[architecture] rule-6: app/domain must remain empty after G4 migration"
+if [[ -d "${APP_ROOT}/domain" ]]; then
+  if find "${APP_ROOT}/domain" -type f -name '*.kt' -print | grep -q .; then
+    find "${APP_ROOT}/domain" -type f -name '*.kt' -print
+    echo "[architecture][FAIL] app/domain contains Kotlin files"
+    EXIT_CODE=1
+  fi
+fi
+
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[architecture] boundary verification failed."
   exit "${EXIT_CODE}"
