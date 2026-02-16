@@ -253,6 +253,10 @@ check_file_line_threshold \
   "${APP_ROOT}/features/identification/vm/IdentificationFaceVerifyCallbacks.kt" \
   120 \
   "IdentificationFaceVerifyCallbacks.kt"
+check_file_line_threshold \
+  "${APP_ROOT}/features/identification/vm/IdentificationFaceVerificationRequestFactory.kt" \
+  120 \
+  "IdentificationFaceVerificationRequestFactory.kt"
 
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[architecture] boundary verification failed."
