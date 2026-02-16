@@ -247,7 +247,7 @@ check_file_line_threshold \
 echo "[architecture] rule-12: identification ViewModel must stay within threshold"
 check_file_line_threshold \
   "${APP_ROOT}/features/identification/vm/IdentificationViewModel.kt" \
-  680 \
+  650 \
   "IdentificationViewModel.kt"
 check_file_line_threshold \
   "${APP_ROOT}/features/identification/vm/IdentificationFaceVerifyCallbacks.kt" \
@@ -257,6 +257,10 @@ check_file_line_threshold \
   "${APP_ROOT}/features/identification/vm/IdentificationFaceVerificationRequestFactory.kt" \
   120 \
   "IdentificationFaceVerificationRequestFactory.kt"
+check_file_line_threshold \
+  "${APP_ROOT}/features/identification/vm/IdentificationFaceSetupPreparation.kt" \
+  120 \
+  "IdentificationFaceSetupPreparation.kt"
 
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[architecture] boundary verification failed."
