@@ -30,8 +30,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.ytone.longcare.common.utils.logE
 @HiltViewModel class IdentificationViewModel @Inject constructor(
-    private val faceVerifier: FaceVerifier, private val systemConfigManager: SystemConfigManager, private val userSessionRepository: UserSessionRepository, private val unifiedOrderRepository: OrderDetailRepository, private val faceDataSource: IdentificationFaceDataSource,
-    private val verifyServicePersonUseCase: VerifyServicePersonUseCase, private val uploadElderPhotoUseCase: UploadElderPhotoUseCase, private val setupFaceUseCase: SetupFaceUseCase, private val toastHelper: ToastHelper,
+    private val faceVerifier: FaceVerifier, private val systemConfigManager: SystemConfigManager, private val userSessionRepository: UserSessionRepository, private val unifiedOrderRepository: OrderDetailRepository, private val faceDataSource: IdentificationFaceDataSource, private val verifyServicePersonUseCase: VerifyServicePersonUseCase, private val uploadElderPhotoUseCase: UploadElderPhotoUseCase, private val setupFaceUseCase: SetupFaceUseCase, private val toastHelper: ToastHelper,
 ) : ViewModel() {
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL); val identificationState: StateFlow<IdentificationState> = _identificationState.asStateFlow()
     private val _faceVerificationState = MutableStateFlow<FaceVerificationState>(FaceVerificationState.Idle); val faceVerificationState: StateFlow<FaceVerificationState> = _faceVerificationState.asStateFlow()
