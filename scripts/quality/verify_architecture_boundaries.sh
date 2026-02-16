@@ -244,6 +244,12 @@ check_file_line_threshold \
   400 \
   "IdentificationCard.kt"
 
+echo "[architecture] rule-12: identification ViewModel must stay within threshold"
+check_file_line_threshold \
+  "${APP_ROOT}/features/identification/vm/IdentificationViewModel.kt" \
+  700 \
+  "IdentificationViewModel.kt"
+
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[architecture] boundary verification failed."
   exit "${EXIT_CODE}"
