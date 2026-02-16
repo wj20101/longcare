@@ -13,7 +13,6 @@ import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.domain.repository.OrderDetailRepository
-import com.ytone.longcare.features.identification.domain.SetupFaceResult
 import com.ytone.longcare.features.identification.domain.ServicePersonProfile
 import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
 import com.ytone.longcare.features.identification.domain.UploadElderPhotoResult
@@ -27,7 +26,6 @@ import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.models.protos.User
-import java.io.File
 import kotlinx.coroutines.CancellationException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -513,72 +511,44 @@ class IdentificationViewModel @Inject constructor(
                 startFaceVerificationWithResolvedConfig(
                     context = context,
                     request = ready.request,
-                    callback = createFaceSetupVerifyCallback(ready.imageFile, ready.base64Image),
+                    callback = createFaceSetupVerificationCallback(
+                        onInitSuccess = {
+                            toastHelper.showShort("人脸验证初始化成功")
+                            _faceSetupState.value = FaceSetupState.Initial
+                        },
+                        onInitFailed = { error ->
+                            setFaceSetupError(buildFaceVerifyErrorMessage("人脸验证初始化失败", error))
+                        },
+                        onVerifySuccess = { _: FaceVerifyResult ->
+                            toastHelper.showShort("人脸验证成功，开始上传设置...")
+                            launchFaceSetupUpload(
+                                scope = viewModelScope,
+                                setupFaceUseCase = setupFaceUseCase,
+                                resolveCurrentUserId = { getCurrentUser()?.userId },
+                                imageFile = ready.imageFile,
+                                base64Image = ready.base64Image,
+                                onUploading = { _faceSetupState.value = FaceSetupState.UploadingImage },
+                                onSuccess = {
+                                    _faceSetupState.value = FaceSetupState.Success
+                                    toastHelper.showShort("人脸信息设置成功")
+                                    setServicePersonVerified()
+                                },
+                                onError = { message -> setFaceSetupError(message) }
+                            )
+                        },
+                        onVerifyFailed = { error ->
+                            setFaceSetupError(buildFaceVerifyErrorMessage("人脸验证失败", error))
+                        },
+                        onVerifyCancel = {
+                            setFaceSetupError("用户取消了人脸验证")
+                        }
+                    ),
                     onConfigMissing = { setFaceSetupError("人脸配置不可用") }
                 )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 val errorMsg = "处理人脸图片时发生错误: ${e.message}"
-                setFaceSetupError(errorMsg)
-            }
-        }
-    }
-    
-    /**
-     * 创建人脸设置验证回调 - 专门用于首次设置人脸信息
-     */
-    private fun createFaceSetupVerifyCallback(imageFile: File, base64Image: String) =
-        com.ytone.longcare.features.identification.vm.createFaceVerifyCallback(
-            onInitSuccess = {
-                toastHelper.showShort("人脸验证初始化成功")
-                _faceSetupState.value = FaceSetupState.Initial
-            },
-            onInitFailed = { error ->
-                setFaceSetupError(buildFaceVerifyErrorMessage("人脸验证初始化失败", error))
-            },
-            onVerifySuccess = { _: FaceVerifyResult ->
-                toastHelper.showShort("人脸验证成功，开始上传设置...")
-                // 验证成功后，上传并设置人脸信息
-                uploadAndSetFaceInfo(imageFile, base64Image)
-            },
-            onVerifyFailed = { error ->
-                setFaceSetupError(buildFaceVerifyErrorMessage("人脸验证失败", error))
-            },
-            onVerifyCancel = {
-                setFaceSetupError("用户取消了人脸验证")
-            }
-        )
-    
-    /**
-     * 上传图片并设置人脸信息（仅在验证通过后调用）
-     */
-    private fun uploadAndSetFaceInfo(imageFile: File, base64Image: String) {
-        viewModelScope.launch {
-            try {
-                _faceSetupState.value = FaceSetupState.UploadingImage
-
-                when (
-                    val result = setupFaceUseCase.execute(
-                        imageFile = imageFile,
-                        base64Image = base64Image,
-                        currentUserId = getCurrentUser()?.userId,
-                    )
-                ) {
-                    SetupFaceResult.Success -> {
-                        _faceSetupState.value = FaceSetupState.Success
-                        toastHelper.showShort("人脸信息设置成功")
-                        setServicePersonVerified()
-                    }
-
-                    is SetupFaceResult.Error -> {
-                        setFaceSetupError(result.message)
-                    }
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                val errorMsg = "上传失败: ${e.message}"
                 setFaceSetupError(errorMsg)
             }
         }
