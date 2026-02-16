@@ -609,7 +609,7 @@
 #### G5 App 壳层收敛与门禁加严（执行中：第一批已完成）
 - `app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt`
 - `scripts/quality/verify_architecture_boundaries.sh`（已完成第一批：新增 rule-6，阻断 `app/domain` 回流）
-- `scripts/quality/verify_module_api_visibility.sh`
+- `scripts/quality/verify_module_api_visibility.sh`（已完成第二批：新增 rule-3/repo 契约归属与 rule-4/app domain 契约禁入）
 - `.github/workflows/android-ci.yml`
 
 ### 10.3 逐日执行计划（D58~D62）
@@ -643,3 +643,4 @@
 | 2026-02-15 | D61 | G4 | 已完成第十批契约/模型下沉（`OrderDetailRepository`、`OrderImageRepository` + 订单本地实体） | 23d74e6 | `Android CI#22043400798` success；`OrderDetailRepository/OrderImageRepository` 迁入 `core/domain`，`OrderKey` 与订单本地实体迁入 `core:model`，新增 `OrderKeyNavExt` 并补齐 `room-runtime` |
 | 2026-02-15 | D61 | G4 | 已完成第十一批契约/模型收口（`FaceVerifier` 链路） | faa7b22 | `Android CI#22044964986` success；`FaceVerifier` 公共契约迁入 `core:common`，domain alias 迁入 `core:domain`，`FaceVerificationModels` 收口到 `core:model`，`app/domain` 已迁空 |
 | 2026-02-16 | D62 | G5 | 已完成第一批门禁加严（rule-6：`app/domain` 迁空守卫） | 1c699a0 | `Android CI#22046138043` success；`verify_architecture_boundaries.sh` 新增 rule-6，阻断 `app/domain` 回流 |
+| 2026-02-16 | D62 | G5 | 已完成第二批门禁加严（rule-3/rule-4：契约归属与 app domain 禁入） | cf573a4 | `Android CI#22046330461` success；`verify_module_api_visibility.sh` 新增 repository 契约归属校验，仅允许 `core/domain` 定义，并对 `app/domain` 增加二次阻断 |

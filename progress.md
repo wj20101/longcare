@@ -578,3 +578,16 @@
 - 远端验收（D62-第一批）：
   - `Android CI#22046138043`（commit `1c699a0`）`completed/success`。
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22046138043`。
+- 执行 `D62 | G5`（第二批）：加严模块 API 可见性门禁，收敛契约定义归属。
+  - 文件改动：
+    - `scripts/quality/verify_module_api_visibility.sh`：新增
+      - `rule-3`：`*Repository` 契约接口仅允许定义在 `core/domain/src/main/kotlin/**`；
+      - `rule-4`：`app/src/main/kotlin/com/ytone/longcare/domain` 禁止出现 `.kt` 契约文件。
+    - `.github/workflows/android-ci.yml`：显式传入项目根参数 `.` 到 `verify_module_api_visibility.sh`。
+    - `.github/workflows/baseline-profile.yml`：显式传入项目根参数 `.` 到 `verify_module_api_visibility.sh`。
+- 本地验收（D62-第二批）：
+  - `bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare .`：PASS。
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- 远端验收（D62-第二批）：
+  - `Android CI#22046330461`（commit `cf573a4`）`completed/success`。
+  - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22046330461`。
