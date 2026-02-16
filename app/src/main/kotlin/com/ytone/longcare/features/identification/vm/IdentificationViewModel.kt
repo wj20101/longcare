@@ -70,9 +70,7 @@ class IdentificationViewModel @Inject constructor(
     private val _events = MutableSharedFlow<IdentificationEvent>(replay = 0, extraBufferCapacity = 1)
     val events: SharedFlow<IdentificationEvent> = _events.asSharedFlow()
 
-    private fun emitEvent(event: IdentificationEvent) {
-        _events.tryEmit(event)
-    }
+    private fun emitEvent(event: IdentificationEvent) = _events.tryEmit(event)
 
     private fun setFaceVerificationError(message: String, error: FaceVerifyError? = null) {
         _faceVerificationState.value = FaceVerificationState.Error(error = error, message = message)
@@ -183,12 +181,8 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 获取当前登录用户
      */
-    private suspend fun getCurrentUser(): User? {
-        return when (val sessionState = userSessionRepository.sessionState.value) {
-            is SessionState.LoggedIn -> sessionState.user
-            else -> null
-        }
-    }
+    private suspend fun getCurrentUser(): User? =
+        (userSessionRepository.sessionState.value as? SessionState.LoggedIn)?.user
 
     /**
      * 重置人脸验证状态
@@ -201,16 +195,12 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 更新身份认证状态为服务人员已验证
      */
-    fun setServicePersonVerified() {
-        _identificationState.value = IdentificationState.SERVICE_VERIFIED
-    }
+    fun setServicePersonVerified() { _identificationState.value = IdentificationState.SERVICE_VERIFIED }
     
     /**
      * 更新身份认证状态为老人已验证
      */
-    fun setElderVerified() {
-        _identificationState.value = IdentificationState.ELDER_VERIFIED
-    }
+    fun setElderVerified() { _identificationState.value = IdentificationState.ELDER_VERIFIED }
 
     fun updateFaceVerificationStatus(
         request: OrderInfoRequestModel,
@@ -258,16 +248,12 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 显示一个Toast消息
      */
-    fun showToast(message: String) {
-        toastHelper.showShort(message)
-    }
+    fun showToast(message: String) = toastHelper.showShort(message)
     
     /**
      * 重置拍照上传状态
      */
-    fun resetPhotoUploadState() {
-        _photoUploadState.value = PhotoUploadState.Initial
-    }
+    fun resetPhotoUploadState() { _photoUploadState.value = PhotoUploadState.Initial }
     
     /**
      * 处理人脸捕获结果 - 用于首次设置人脸信息
@@ -311,9 +297,7 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 重置人脸设置状态
      */
-    fun resetFaceSetupState() {
-        _faceSetupState.value = FaceSetupState.Initial
-    }
+    fun resetFaceSetupState() { _faceSetupState.value = FaceSetupState.Initial }
 
     override fun onCleared() {
         super.onCleared()
