@@ -38,6 +38,7 @@ app/src/main/kotlin/com/ytone/longcare/features/identification/data/VerifyServic
 app/src/main/kotlin/com/ytone/longcare/features/identification/di/IdentificationUseCaseGatewayModule.kt
 app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationCard.kt
 app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationScreen.kt
+app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationScreenEffects.kt
 app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationEvent.kt
 app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationUiState.kt
 app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationViewModel.kt

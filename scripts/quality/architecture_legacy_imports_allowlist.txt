@@ -16,6 +16,7 @@ app/src/main/kotlin/com/ytone/longcare/features/identification/data/Identificati
 app/src/main/kotlin/com/ytone/longcare/features/identification/data/IdentificationFaceDataSource.kt:import com.ytone.longcare.data.storage.UserSpecificDataStoreManager
 app/src/main/kotlin/com/ytone/longcare/features/identification/data/IdentificationFaceDataSource.kt:import com.ytone.longcare.di.IoDispatcher
 app/src/main/kotlin/com/ytone/longcare/features/identification/data/SetupFaceGatewayImpl.kt:import com.ytone.longcare.api.request.SetFaceParamModel
+app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationScreenEffects.kt:import com.ytone.longcare.api.request.OrderInfoRequestModel
 app/src/main/kotlin/com/ytone/longcare/features/identification/vm/IdentificationViewModel.kt:import com.ytone.longcare.api.request.OrderInfoRequestModel
 app/src/main/kotlin/com/ytone/longcare/features/location/core/LocationKeepAliveManager.kt:import com.ytone.longcare.di.ApplicationScope
 app/src/main/kotlin/com/ytone/longcare/features/location/manager/ContinuousAmapLocationManager.kt:import com.ytone.longcare.di.ApplicationScope

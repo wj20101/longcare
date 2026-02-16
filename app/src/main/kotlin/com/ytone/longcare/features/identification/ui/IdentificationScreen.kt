@@ -20,21 +20,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.BuildConfig
-import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.identification.api.IdentificationActions
 import com.ytone.longcare.features.identification.vm.FaceSetupState
 import com.ytone.longcare.features.identification.vm.FaceVerificationState
-import com.ytone.longcare.features.identification.vm.IdentificationEvent
 import com.ytone.longcare.features.identification.vm.IdentificationState
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.features.identification.vm.PhotoUploadState
-import com.ytone.longcare.features.identification.vm.VerificationType
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import kotlinx.coroutines.launch
@@ -88,91 +84,20 @@ fun IdentificationScreen(
         }
     )
 
-    // 从CameraScreen获取返回的URI
-    LaunchedEffect(capturedImageUri) {
-        capturedImageUri?.let { uriString ->
-            val uri = uriString.toUri()
-            identificationViewModel.processElderPhoto(uri, orderInfoRequest)
-            // 清除数据，避免重复处理
-            actions.clearCapturedImageUri()
-        }
-    }
-
     val currentVerificationType by identificationViewModel.currentVerificationType.collectAsStateWithLifecycle()
-    
-    // 预加载订单详情
-    LaunchedEffect(orderInfoRequest.orderId) {
-        sharedOrderDetailViewModel.getOrderInfo(orderInfoRequest)
-    }
-    
-    // 处理人脸验证结果
-    LaunchedEffect(faceVerificationState, currentVerificationType) {
-        when (faceVerificationState) {
-            is FaceVerificationState.Success -> {
-                // 验证成功，根据验证类型更新身份认证状态
-                when (currentVerificationType) {
-                    VerificationType.SERVICE_PERSON -> {
-                        identificationViewModel.setServicePersonVerified()
-                    }
-                    VerificationType.ELDER -> {
-                        identificationViewModel.setElderVerified()
-                        // 老人验证成功后，保存人脸验证完成状态到Room
-                        if (orderInfoRequest.orderId > 0) {
-                            identificationViewModel.updateFaceVerificationStatus(
-                                request = orderInfoRequest,
-                                verified = true
-                            )
-                        }
-                    }
-                    null -> { /* 无验证类型，不处理 */ }
-                }
-            }
-            is FaceVerificationState.Error -> {
-                // 验证失败，可以显示错误提示
-            }
-            is FaceVerificationState.Cancelled -> {
-                // 用户取消验证
-            }
-            else -> { /* 其他状态不需要处理 */ }
-        }
-    }
-
-    // 监听导航到人脸采集页面的状态
-    LaunchedEffect(Unit) {
-        identificationViewModel.events.collect { event ->
-            when (event) {
-                IdentificationEvent.NavigateToFaceCapture -> actions.onNavigateToManualFaceCapture()
-                is IdentificationEvent.ShowToast -> identificationViewModel.showToast(event.message)
-            }
-        }
-    }
-
-    // 监听从人脸采集页面返回的结果
-    LaunchedEffect(faceImagePath) {
-        faceImagePath?.let { imagePath ->
-            // 处理捕获的人脸图片
-            identificationViewModel.handleFaceCaptureResult(context, imagePath)
-            // 清除保存的状态
-            actions.clearFaceImagePath()
-        }
-    }
-    
-    // 监听拍照上传状态变化
-    LaunchedEffect(photoUploadState) {
-        when (photoUploadState) {
-            is PhotoUploadState.Success -> {
-                // 上传成功，自动跳转到下一步
-                actions.onNavigateToSelectService(orderParams)
-                // 重置状态
-                identificationViewModel.resetPhotoUploadState()
-            }
-            is PhotoUploadState.Error -> {
-                // 上传失败，重置状态
-                identificationViewModel.resetPhotoUploadState()
-            }
-            else -> {}
-        }
-    }
+    IdentificationScreenEffects(
+        actions = actions,
+        orderParams = orderParams,
+        orderInfoRequest = orderInfoRequest,
+        sharedOrderDetailViewModel = sharedOrderDetailViewModel,
+        identificationViewModel = identificationViewModel,
+        capturedImageUri = capturedImageUri,
+        faceImagePath = faceImagePath,
+        faceVerificationState = faceVerificationState,
+        currentVerificationType = currentVerificationType,
+        photoUploadState = photoUploadState,
+        context = context
+    )
     
     Box(
         modifier = Modifier
