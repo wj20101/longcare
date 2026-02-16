@@ -99,6 +99,24 @@ run_allowlisted_rule() {
   fi
 }
 
+check_file_line_threshold() {
+  local file_path="$1"
+  local max_lines="$2"
+  local rule_label="$3"
+  if [[ ! -f "${file_path}" ]]; then
+    echo "[architecture][FAIL] missing file for ${rule_label}: ${file_path}"
+    EXIT_CODE=1
+    return 0
+  fi
+
+  local line_count
+  line_count="$(wc -l < "${file_path}" | tr -d ' ')"
+  if [[ "${line_count}" -gt "${max_lines}" ]]; then
+    echo "[architecture][FAIL] ${rule_label} has ${line_count} lines (max ${max_lines})"
+    EXIT_CODE=1
+  fi
+}
+
 echo "[architecture] rule-1: domain must not depend on android.*"
 run_rule \
   "domain layer imports android.*" \
@@ -161,16 +179,12 @@ run_rule \
 echo "[architecture] rule-8: AppNavigation.kt line count must stay within threshold"
 APP_NAVIGATION_FILE="${APP_ROOT}/navigation/AppNavigation.kt"
 APP_NAVIGATION_MAX_LINES=300
-if [[ ! -f "${APP_NAVIGATION_FILE}" ]]; then
-  echo "[architecture][FAIL] missing navigation entry file: ${APP_NAVIGATION_FILE}"
-  EXIT_CODE=1
-else
-  app_navigation_line_count="$(wc -l < "${APP_NAVIGATION_FILE}" | tr -d ' ')"
-  if [[ "${app_navigation_line_count}" -gt "${APP_NAVIGATION_MAX_LINES}" ]]; then
-    echo "[architecture][FAIL] AppNavigation.kt has ${app_navigation_line_count} lines (max ${APP_NAVIGATION_MAX_LINES})"
-    EXIT_CODE=1
-  fi
-fi
+check_file_line_threshold "${APP_NAVIGATION_FILE}" "${APP_NAVIGATION_MAX_LINES}" "AppNavigation.kt"
+
+echo "[architecture] rule-9: split nav graph files must stay within threshold"
+check_file_line_threshold "${APP_ROOT}/navigation/AppNavGraphsEntry.kt" 200 "AppNavGraphsEntry.kt"
+check_file_line_threshold "${APP_ROOT}/navigation/AppNavGraphsServiceFlow.kt" 300 "AppNavGraphsServiceFlow.kt"
+check_file_line_threshold "${APP_ROOT}/navigation/AppNavGraphsSupport.kt" 250 "AppNavGraphsSupport.kt"
 
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[architecture] boundary verification failed."
