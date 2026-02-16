@@ -234,6 +234,16 @@ check_kotlin_file_allowlist \
   "${LEGACY_APP_FEATURE_ROOT}" \
   "${LEGACY_APP_FEATURE_FILE_ALLOWLIST}"
 
+echo "[architecture] rule-11: identification UI split files must stay within threshold"
+check_file_line_threshold \
+  "${APP_ROOT}/features/identification/ui/IdentificationScreen.kt" \
+  320 \
+  "IdentificationScreen.kt"
+check_file_line_threshold \
+  "${APP_ROOT}/features/identification/ui/IdentificationCard.kt" \
+  400 \
+  "IdentificationCard.kt"
+
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[architecture] boundary verification failed."
   exit "${EXIT_CODE}"
