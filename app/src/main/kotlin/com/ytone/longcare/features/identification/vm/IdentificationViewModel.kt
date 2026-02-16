@@ -32,15 +32,9 @@ import javax.inject.Inject
 import com.ytone.longcare.common.utils.logE
 @HiltViewModel
 class IdentificationViewModel @Inject constructor(
-    private val faceVerifier: FaceVerifier,
-    private val systemConfigManager: SystemConfigManager,
-    private val userSessionRepository: UserSessionRepository,
-    private val unifiedOrderRepository: OrderDetailRepository,
-    private val faceDataSource: IdentificationFaceDataSource,
-    private val verifyServicePersonUseCase: VerifyServicePersonUseCase,
-    private val uploadElderPhotoUseCase: UploadElderPhotoUseCase,
-    private val setupFaceUseCase: SetupFaceUseCase,
-    private val toastHelper: ToastHelper,
+    private val faceVerifier: FaceVerifier, private val systemConfigManager: SystemConfigManager, private val userSessionRepository: UserSessionRepository,
+    private val unifiedOrderRepository: OrderDetailRepository, private val faceDataSource: IdentificationFaceDataSource,
+    private val verifyServicePersonUseCase: VerifyServicePersonUseCase, private val uploadElderPhotoUseCase: UploadElderPhotoUseCase, private val setupFaceUseCase: SetupFaceUseCase, private val toastHelper: ToastHelper,
 ) : ViewModel() {
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL)
     val identificationState: StateFlow<IdentificationState> = _identificationState.asStateFlow()
@@ -88,13 +82,7 @@ class IdentificationViewModel @Inject constructor(
         scope = viewModelScope, uploadElderPhotoUseCase = uploadElderPhotoUseCase, photoUri = photoUri, orderId = request.orderId,
         photoUploadState = _photoUploadState, showToast = toastHelper::showShort, onElderVerified = ::setElderVerified, onSuccess = onSuccess,
     )
-    suspend fun generateWatermarkData(address: String, request: OrderInfoRequestModel): WatermarkData =
-        generateIdentificationWatermarkData(
-            address = address,
-            orderKey = request.toOrderKey(),
-            orderDetailRepository = unifiedOrderRepository,
-            resolveCurrentUser = ::getCurrentUser,
-        )
+    suspend fun generateWatermarkData(address: String, request: OrderInfoRequestModel): WatermarkData = generateIdentificationWatermarkData(address = address, orderKey = request.toOrderKey(), orderDetailRepository = unifiedOrderRepository, resolveCurrentUser = ::getCurrentUser)
     fun showToast(message: String) = toastHelper.showShort(message)
     fun resetPhotoUploadState() { _photoUploadState.value = PhotoUploadState.Initial }
     fun handleFaceCaptureResult(context: Context, imagePath: String) = launchFaceCaptureResultHandlingWithBindings(
