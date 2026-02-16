@@ -703,3 +703,13 @@
   - 文档同步：
     - `docs/architecture/ci-cd-automation-optimization-plan.md`：`24. 剩余未完成优化项` 更新为“当前无未完成项”。
     - `docs/architecture/project-optimization-refactor-master-plan.md`：`10.5 当前剩余优化项` 更新为“当前无剩余未完成优化项”。
+- 执行“文档一致性清理 + 长期跟踪落项”（2026-02-16）：
+  - 目的：
+    - 消除 `F21` 历史段落中的“进行中”措辞与“已完成”结论冲突；
+    - 新增不计入本阶段未完成项的长期跟踪机制。
+  - 文档改动：
+    - `docs/architecture/ci-cd-automation-optimization-plan.md`：
+      - section 29 标题改为“历史阶段”，任务状态改为“阶段完成”；
+      - 新增 section 32《长期跟踪项（不计入本阶段未完成项）》并落地 `LT1`（第三方 lint waiver 收敛）。
+    - `docs/architecture/project-optimization-refactor-master-plan.md`：
+      - 在 `10.5 当前剩余优化项` 后新增 `10.6 长期跟踪项`，与 CI/CD 计划文档保持一致（`LT1`）。

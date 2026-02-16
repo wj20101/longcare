@@ -655,3 +655,13 @@
 ### 10.5 当前剩余优化项（2026-02-16）
 
 当前无剩余未完成优化项（本阶段任务全部已收口）。
+
+### 10.6 长期跟踪项（不计入本阶段未完成项，2026-02-16）
+
+| ID | 来源任务 | 主题 | 触发条件 | 当前状态 |
+|---|---|---|---|---|
+| LT1 | `F21` | 第三方 lint waiver 收敛 | 上游依赖（`crashreport`、`cos-android`、`WbCloudFaceLiveSdk`）发布可替换版本或兼容补丁 | MONITORING |
+
+- 说明：
+  - 该项属于外部依赖驱动的持续治理，不计入 A~G/F 阶段“未完成优化项”统计；
+  - 具体执行细则与验证步骤见：`docs/architecture/ci-cd-automation-optimization-plan.md` 第 32 节。

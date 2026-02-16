@@ -551,9 +551,9 @@
   - `Android CI#22046330461`（commit `cf573a4`）：`completed/success`
   - `Android CI#22046396554`（commit `26c70fe`）：`completed/success`
 
-## 29. 第三方 lint 忽略项清理进展（2026-02-16）
+## 29. 第三方 lint 忽略项清理执行记录（2026-02-16，历史阶段）
 
-- 任务：`D54 | F21`（进行中）
+- 任务：`D54 | F21`（阶段完成）
 - 改动文件：
   - `app/lint.xml`
   - `docs/architecture/ci-cd-automation-optimization-plan.md`
@@ -570,8 +570,8 @@
 - 本地验证：
   - `./gradlew --no-daemon --console=plain :app:lintDebug --stacktrace`：PASS（仍可稳定产出报告）
   - `bash ./scripts/lint/verify_lint_warning_allowlist.sh`：PASS（当前观测到的第三方告警仍在 allowlist 内）
-- 后续动作：
-  - 继续在依赖升级窗口评估并清理 allowlist 中上述 3 个 warning ID，推动 `F21` 完成态。
+- 阶段结论：
+  - `F21` 阶段目标已达成，当前进入“上游依赖待修复”长期跟踪阶段（见第 32 节）。
 
 ## 30. 第三方 lint 收敛可行性复核（2026-02-16）
 
@@ -616,3 +616,14 @@
 - 远端验证：
   - `Android CI#22053335501`（workflow_dispatch，master）：`completed/success`
   - run 链接：`https://github.com/yyg20101/longcare/actions/runs/22053335501`
+
+## 32. 长期跟踪项（不计入本阶段未完成项，2026-02-16）
+
+| ID | 主题 | 触发条件 | 跟踪文件 | 当前状态 |
+|---|---|---|---|---|
+| LT1 | 第三方 lint waiver 收敛（`F21` 延展） | `crashreport`、`cos-android`、`WbCloudFaceLiveSdk` 发布可替换版本或兼容补丁 | `scripts/lint/lint_warning_waivers.json`、`scripts/lint/verify_lint_warning_allowlist.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md` | MONITORING |
+
+- 跟踪规则：
+  - 触发条件出现后，先执行 `./gradlew --no-daemon --console=plain :app:lintDebug --stacktrace` 复核第三方 warning 是否消失；
+  - 若 warning 消失，删除对应 waiver 并通过 `verify_lint_warning_allowlist.sh` 与 `verify_ci_workflow_quality.sh`；
+  - 若 warning 仍存在，更新 waiver `review_by` 与原因说明，维持仅第三方来源白名单约束。
