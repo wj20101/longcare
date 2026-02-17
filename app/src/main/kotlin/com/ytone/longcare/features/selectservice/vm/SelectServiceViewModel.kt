@@ -1,10 +1,9 @@
 package com.ytone.longcare.features.selectservice.vm
 
 import androidx.lifecycle.ViewModel
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.repository.OrderDetailRepository
-import com.ytone.longcare.model.toOrderKey
+import com.ytone.longcare.model.OrderKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
@@ -19,10 +18,9 @@ class SelectServiceViewModel @Inject constructor(
     }
 
     suspend fun updateSelectedProjects(
-        orderInfoRequest: OrderInfoRequestModel,
+        orderKey: OrderKey,
         selectedProjectIds: List<Int>
     ) {
-        val orderKey = orderInfoRequest.toOrderKey()
         unifiedOrderRepository.updateSelectedProjects(orderKey, selectedProjectIds)
     }
 }

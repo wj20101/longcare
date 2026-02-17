@@ -273,7 +273,7 @@ fun SelectServiceScreen(
                                     // 成功后保存选中的项目ID到Room
                                     coroutineScope.launch {
                                         selectServiceViewModel.updateSelectedProjects(
-                                            orderInfoRequest = orderInfoRequest,
+                                            orderKey = orderKey,
                                             selectedProjectIds = selectedProjectIds
                                         )
                                         actions.onNavigateToServiceCountdown(
