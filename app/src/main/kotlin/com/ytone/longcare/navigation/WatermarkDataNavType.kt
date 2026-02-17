@@ -4,7 +4,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.navigation.NavType
 import com.ytone.longcare.common.utils.logE
-import com.ytone.longcare.features.photoupload.model.WatermarkData
+import com.ytone.longcare.model.WatermarkData
 import kotlinx.serialization.json.Json
 
 /**

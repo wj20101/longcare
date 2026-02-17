@@ -3,8 +3,8 @@ package com.ytone.longcare.di
 import android.net.Uri
 import com.squareup.moshi.Moshi
 import com.ytone.longcare.common.utils.DefaultMoshi
-import com.ytone.longcare.features.photoupload.model.ImageTask
-import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.model.ImageTask
+import com.ytone.longcare.model.ImageTaskType
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic

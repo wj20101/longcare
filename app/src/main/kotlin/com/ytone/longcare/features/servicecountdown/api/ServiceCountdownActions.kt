@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.servicecountdown.api
 
-import com.ytone.longcare.features.photoupload.model.ImageTask
-import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.model.ImageTask
+import com.ytone.longcare.model.ImageTaskType
 import com.ytone.longcare.model.OrderKey
 import kotlinx.coroutines.flow.StateFlow
 

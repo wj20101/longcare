@@ -31,7 +31,7 @@ import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.theme.bgGradientBrush
 import androidx.compose.ui.platform.LocalContext
-import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.model.ImageTaskType
 import android.widget.Toast
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.common.utils.singleClick

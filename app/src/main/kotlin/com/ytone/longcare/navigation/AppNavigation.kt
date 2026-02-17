@@ -18,7 +18,7 @@ import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.feature.home.FeatureEntry as HomeFeatureEntry
 import com.ytone.longcare.feature.identification.FeatureEntry as IdentificationFeatureEntry
 import com.ytone.longcare.feature.login.FeatureEntry as LoginFeatureEntry
-import com.ytone.longcare.features.photoupload.model.WatermarkData
+import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.features.update.ui.AppUpdateDialog
 import com.ytone.longcare.features.update.viewmodel.AppUpdateViewModel
 import com.ytone.longcare.features.userlist.ui.UserListType

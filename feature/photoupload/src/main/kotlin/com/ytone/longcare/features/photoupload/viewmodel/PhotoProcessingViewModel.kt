@@ -17,11 +17,10 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
-import com.ytone.longcare.features.photoupload.model.ImageTask
-import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
-import com.ytone.longcare.features.photoupload.model.ImageTaskType
-import com.ytone.longcare.features.photoupload.model.WatermarkData
-import com.ytone.longcare.features.photoupload.ui.PhotoCategory
+import com.ytone.longcare.model.ImageTask
+import com.ytone.longcare.model.ImageTaskStatus
+import com.ytone.longcare.model.ImageTaskType
+import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -78,11 +77,11 @@ class PhotoProcessingViewModel @Inject constructor(
         toastHelper.showShort(string)
     }
 
-    private val _currentCategory = MutableStateFlow<PhotoCategory?>(null)
-    val currentCategory: StateFlow<PhotoCategory?> = _currentCategory.asStateFlow()
+    private val _currentTaskType = MutableStateFlow<ImageTaskType?>(null)
+    val currentTaskType: StateFlow<ImageTaskType?> = _currentTaskType.asStateFlow()
 
-    fun setCurrentCategory(category: PhotoCategory) {
-        _currentCategory.value = category
+    fun setCurrentTaskType(taskType: ImageTaskType) {
+        _currentTaskType.value = taskType
     }
 
     /**

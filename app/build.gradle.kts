@@ -272,6 +272,7 @@ dependencies {
     implementation(project(":feature:home"))
     implementation(project(":feature:identification"))
     implementation(project(":feature:location"))
+    implementation(project(":feature:photoupload"))
 
     // Core & Lifecycle
     implementation(libs.androidx.core.ktx)

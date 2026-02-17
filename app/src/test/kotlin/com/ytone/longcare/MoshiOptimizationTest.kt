@@ -3,8 +3,8 @@ package com.ytone.longcare
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.ytone.longcare.common.utils.DefaultMoshi
-import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
-import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.model.ImageTaskStatus
+import com.ytone.longcare.model.ImageTaskType
 import org.junit.Assert.*
 import org.junit.Test
 

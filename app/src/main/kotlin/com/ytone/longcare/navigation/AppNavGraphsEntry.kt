@@ -7,7 +7,7 @@ import com.ytone.longcare.feature.login.api.LoginFeatureActions
 import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
-import com.ytone.longcare.features.photoupload.model.WatermarkData
+import com.ytone.longcare.model.WatermarkData
 
 internal fun NavGraphBuilder.registerEntryNavGraphs(navController: NavController) {
     composable<LoginRoute> {

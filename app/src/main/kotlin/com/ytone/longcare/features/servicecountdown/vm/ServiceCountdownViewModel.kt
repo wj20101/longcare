@@ -12,8 +12,8 @@ import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.domain.order.OrderRepository
-import com.ytone.longcare.features.photoupload.model.ImageTask
-import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.model.ImageTask
+import com.ytone.longcare.model.ImageTaskType
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager

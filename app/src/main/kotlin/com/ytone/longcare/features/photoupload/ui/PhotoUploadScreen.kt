@@ -52,9 +52,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.rememberAsyncImagePainter
 import com.ytone.longcare.R
 import com.ytone.longcare.features.photoupload.api.PhotoUploadActions
-import com.ytone.longcare.features.photoupload.model.ImageTask
-import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
-import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.model.ImageTask
+import com.ytone.longcare.model.ImageTaskStatus
+import com.ytone.longcare.model.ImageTaskType
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
@@ -108,7 +108,7 @@ fun PhotoUploadScreen(
     val imageTasks by viewModel.imageTasks.collectAsStateWithLifecycle()
     val isUploading by viewModel.isUploading.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    val currentCategory by viewModel.currentCategory.collectAsStateWithLifecycle()
+    val currentTaskType by viewModel.currentTaskType.collectAsStateWithLifecycle()
 
     // 监听已有图片数据
     LaunchedEffect(actions.existingImagesFlow) {
@@ -125,12 +125,7 @@ fun PhotoUploadScreen(
         onResult = { isGranted ->
             if (isGranted) {
                 scope.launch {
-                    currentCategory?.let { category ->
-                        val taskType = when (category) {
-                            PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
-                            PhotoCategory.CENTER_CARE -> ImageTaskType.CENTER_CARE
-                            PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
-                        }
+                    currentTaskType?.let { taskType ->
                         val watermarkData = viewModel.generateWatermarkData(
                             taskType = taskType,
                             address = sharedViewModel.getUserAddress(orderKey),
@@ -150,12 +145,7 @@ fun PhotoUploadScreen(
         actions.capturedImageUriFlow.collect { uriString ->
             uriString?.let {
                 val uri = it.toUri()
-                currentCategory?.let { category ->
-                    val taskType = when (category) {
-                        PhotoCategory.BEFORE_CARE -> ImageTaskType.BEFORE_CARE
-                        PhotoCategory.CENTER_CARE -> ImageTaskType.CENTER_CARE
-                        PhotoCategory.AFTER_CARE -> ImageTaskType.AFTER_CARE
-                    }
+                currentTaskType?.let { taskType ->
                     viewModel.addImagesToProcess(
                         uris = listOf(uri),
                         taskType = taskType,
@@ -292,7 +282,7 @@ fun PhotoUploadScreen(
                         tasks = beforeCareTasks,
                         isUploading = isUploading,
                         onAddPhoto = {
-                            viewModel.setCurrentCategory(PhotoCategory.BEFORE_CARE)
+                            viewModel.setCurrentTaskType(ImageTaskType.BEFORE_CARE)
                             cameraResultLauncher.launch(Manifest.permission.CAMERA)
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
@@ -306,7 +296,7 @@ fun PhotoUploadScreen(
                         tasks = centerCareTasks,
                         isUploading = isUploading,
                         onAddPhoto = {
-                            viewModel.setCurrentCategory(PhotoCategory.CENTER_CARE)
+                            viewModel.setCurrentTaskType(ImageTaskType.CENTER_CARE)
                             cameraResultLauncher.launch(Manifest.permission.CAMERA)
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },
@@ -320,7 +310,7 @@ fun PhotoUploadScreen(
                         tasks = afterCareTasks,
                         isUploading = isUploading,
                         onAddPhoto = {
-                            viewModel.setCurrentCategory(PhotoCategory.AFTER_CARE)
+                            viewModel.setCurrentTaskType(ImageTaskType.AFTER_CARE)
                             cameraResultLauncher.launch(Manifest.permission.CAMERA)
                         },
                         onRetryTask = { taskId -> viewModel.retryTask(taskId) },

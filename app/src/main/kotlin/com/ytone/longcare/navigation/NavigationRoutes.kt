@@ -1,7 +1,7 @@
 package com.ytone.longcare.navigation
 
 import androidx.annotation.Keep
-import com.ytone.longcare.features.photoupload.model.WatermarkData
+import com.ytone.longcare.model.WatermarkData
 import kotlinx.serialization.Serializable
 
 /**

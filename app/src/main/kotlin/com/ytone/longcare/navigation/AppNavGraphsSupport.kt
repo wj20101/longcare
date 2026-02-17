@@ -14,7 +14,7 @@ import com.ytone.longcare.features.location.ui.LocationTrackingScreen
 import com.ytone.longcare.features.nfctest.api.NfcTestActions
 import com.ytone.longcare.features.nfctest.ui.NfcTestScreen
 import com.ytone.longcare.features.photoupload.api.CameraActions
-import com.ytone.longcare.features.photoupload.model.WatermarkData
+import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.features.photoupload.ui.CameraScreen
 import com.ytone.longcare.features.selectdevice.api.SelectDeviceActions
 import com.ytone.longcare.features.selectdevice.ui.SelectDeviceScreen

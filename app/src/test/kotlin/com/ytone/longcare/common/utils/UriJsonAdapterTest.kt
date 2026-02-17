@@ -3,9 +3,9 @@ package com.ytone.longcare.common.utils
 import android.net.Uri
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
-import com.ytone.longcare.features.photoupload.model.ImageTask
-import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
-import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.model.ImageTask
+import com.ytone.longcare.model.ImageTaskStatus
+import com.ytone.longcare.model.ImageTaskType
 import com.ytone.longcare.common.utils.DefaultMoshi
 import io.mockk.every
 import io.mockk.mockk

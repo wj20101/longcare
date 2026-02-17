@@ -97,8 +97,8 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.ytone.longcare.common.utils.DefaultMoshi
 import com.ytone.longcare.common.utils.toJsonString
 import com.ytone.longcare.common.utils.toObject
-import com.ytone.longcare.features.photoupload.model.ImageTaskType
-import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
+import com.ytone.longcare.model.ImageTaskType
+import com.ytone.longcare.model.ImageTaskStatus
 import org.junit.Test
 import org.junit.Assert.*
 

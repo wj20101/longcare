@@ -14,8 +14,8 @@ import com.ytone.longcare.features.nfc.ui.NfcWorkflowScreen
 import com.ytone.longcare.features.nursingexecution.api.NursingExecutionActions
 import com.ytone.longcare.features.nursingexecution.ui.NursingExecutionScreen
 import com.ytone.longcare.features.photoupload.api.PhotoUploadActions
-import com.ytone.longcare.features.photoupload.model.ImageTask
-import com.ytone.longcare.features.photoupload.model.ImageTaskType
+import com.ytone.longcare.model.ImageTask
+import com.ytone.longcare.model.ImageTaskType
 import com.ytone.longcare.features.photoupload.ui.PhotoUploadScreen
 import com.ytone.longcare.features.selectservice.api.SelectServiceActions
 import com.ytone.longcare.features.selectservice.ui.SelectServiceScreen

@@ -1,8 +1,8 @@
 package com.ytone.longcare.features.photoupload.api
 
-import com.ytone.longcare.features.photoupload.model.ImageTask
-import com.ytone.longcare.features.photoupload.model.ImageTaskType
-import com.ytone.longcare.features.photoupload.model.WatermarkData
+import com.ytone.longcare.model.ImageTask
+import com.ytone.longcare.model.ImageTaskType
+import com.ytone.longcare.model.WatermarkData
 import kotlinx.coroutines.flow.StateFlow
 
 data class PhotoUploadActions(

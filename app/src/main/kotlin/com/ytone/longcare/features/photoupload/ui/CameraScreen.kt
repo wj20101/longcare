@@ -71,7 +71,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.photoupload.api.CameraActions
 import com.ytone.longcare.databinding.WatermarkViewBinding
-import com.ytone.longcare.features.photoupload.model.WatermarkData
+import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.features.photoupload.vm.CameraViewModel
 import java.io.File
 import java.io.FileOutputStream

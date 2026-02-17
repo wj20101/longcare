@@ -17,7 +17,7 @@ import com.ytone.longcare.features.identification.data.IdentificationFaceDataSou
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
-import com.ytone.longcare.features.photoupload.model.WatermarkData
+import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
