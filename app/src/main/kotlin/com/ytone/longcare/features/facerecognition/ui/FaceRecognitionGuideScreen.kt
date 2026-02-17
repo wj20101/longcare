@@ -31,14 +31,13 @@ import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.facerecognition.api.FaceRecognitionGuideActions
 import com.ytone.longcare.features.facerecognition.vm.FaceRecognitionViewModel
 import com.ytone.longcare.theme.bgGradientBrush
-import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.toOrderKeyModel
+import com.ytone.longcare.model.OrderKey
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FaceRecognitionGuideScreen(
     actions: FaceRecognitionGuideActions,
-    orderParams: OrderNavParams,
+    orderParams: OrderKey,
     viewModel: FaceRecognitionViewModel = hiltViewModel()
 ) {
     // ==========================================================
@@ -96,7 +95,7 @@ fun FaceRecognitionGuideScreen(
                         Button(
                             onClick = singleClick {
                                 viewModel.startFaceRecognition()
-                                actions.onNavigateToSelectService(orderParams.toOrderKeyModel())
+                                actions.onNavigateToSelectService(orderParams)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -183,7 +182,7 @@ fun FaceRecognitionGuideScreen(
 @Preview(showBackground = true)
 @Composable
 fun FaceRecognitionGuideScreenPreview() {
-    // 预览不可用，因为需要OrderNavParams
+    // 预览不可用，因为需要OrderKey
     // 如果需要预览，请参考实际应用中的使用方式
 }
 

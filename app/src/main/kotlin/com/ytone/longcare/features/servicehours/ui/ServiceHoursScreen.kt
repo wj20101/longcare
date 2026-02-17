@@ -33,14 +33,14 @@ import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.model.OrderInfoRequestModel
-import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.toRequestModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceHoursScreen(
     actions: ServiceHoursActions,
-    orderParams: OrderNavParams,
+    orderParams: OrderKey,
     viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
     // 从orderParams构建请求模型

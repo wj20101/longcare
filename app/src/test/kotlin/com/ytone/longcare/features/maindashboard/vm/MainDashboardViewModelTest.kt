@@ -66,7 +66,7 @@ class MainDashboardViewModelTest {
         val result = viewModel.buildServiceCountdownNavigationData(orderId = orderId)
 
         assertNotNull(result)
-        assertEquals(orderId, result!!.orderParams.orderId)
+        assertEquals(orderId, result!!.orderKey.orderId)
         assertEquals(listOf(11, 22, 33), result.projectIdList)
         coVerify(exactly = 0) { unifiedOrderRepository.getOrderInfo(any()) }
     }

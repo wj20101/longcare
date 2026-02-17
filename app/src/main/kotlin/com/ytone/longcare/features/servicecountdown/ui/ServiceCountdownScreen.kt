@@ -53,9 +53,8 @@ import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
-import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.toOrderKeyModel
-import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.toRequestModel
 import com.ytone.longcare.common.utils.singleClick
 
 
@@ -111,7 +110,7 @@ private data class ServiceInfo(
 @Composable
 fun ServiceCountdownScreen(
     actions: ServiceCountdownActions,
-    orderParams: OrderNavParams,
+    orderParams: OrderKey,
     projectIdList: List<Int>,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     countdownViewModel: ServiceCountdownViewModel = hiltViewModel(),
@@ -289,7 +288,7 @@ fun ServiceCountdownScreen(
         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 5. 已结束服务（保留图片数据）")
 
         // 6. 导航到结束服务选择页面
-        actions.onNavigateToEndServiceSelection(orderParams.toOrderKeyModel(), endType, projectIdList)
+        actions.onNavigateToEndServiceSelection(orderParams, endType, projectIdList)
     }
 
     // 监听订单状态异常事件
@@ -474,7 +473,7 @@ fun ServiceCountdownScreen(
                     formattedTime = formattedTime,
                     onOpenPhotoUpload = {
                         val existingImages = countdownViewModel.getCurrentUploadedImages()
-                        actions.onNavigateToPhotoUpload(orderParams.toOrderKeyModel(), existingImages)
+                        actions.onNavigateToPhotoUpload(orderParams, existingImages)
                     }
                 )
 

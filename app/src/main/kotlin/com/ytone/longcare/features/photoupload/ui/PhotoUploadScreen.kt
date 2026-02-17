@@ -63,8 +63,8 @@ import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewMode
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.model.toOrderKey
-import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.toRequestModel
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
@@ -78,7 +78,7 @@ enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
 @Composable
 fun PhotoUploadScreen(
     actions: PhotoUploadActions,
-    orderParams: OrderNavParams,
+    orderParams: OrderKey,
     viewModel: PhotoProcessingViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {

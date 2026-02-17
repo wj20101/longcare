@@ -52,7 +52,6 @@ import com.ytone.longcare.ui.components.UserAvatar
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.features.shared.ui.EmptyView
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
-import com.ytone.longcare.navigation.toOrderKeyModel
 
 @Composable
 fun MainDashboardScreen(
@@ -517,7 +516,7 @@ fun OrderTabLayout(
                                     }
 
                                     actions.onNavigateToServiceCountdown(
-                                        navigationData.orderParams.toOrderKeyModel(),
+                                        navigationData.orderKey,
                                         navigationData.projectIdList
                                     )
                                 } catch (e: Exception) {

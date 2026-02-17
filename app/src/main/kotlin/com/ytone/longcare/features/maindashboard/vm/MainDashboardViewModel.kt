@@ -8,8 +8,8 @@ import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.domain.repository.OrderDetailRepository
+import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.toOrderKey
-import com.ytone.longcare.navigation.OrderNavParams
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ServiceCountdownNavigationData(
-    val orderParams: OrderNavParams,
+    val orderKey: OrderKey,
     val projectIdList: List<Int>
 )
 
@@ -71,7 +71,7 @@ class MainDashboardViewModel @Inject constructor(
         }
 
         return ServiceCountdownNavigationData(
-            orderParams = OrderNavParams(orderId = orderId, planId = planId),
+            orderKey = OrderKey(orderId = orderId, planId = planId),
             projectIdList = selectedProjectIds
         )
     }

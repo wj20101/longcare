@@ -28,8 +28,7 @@ import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.theme.bgButtonGradientBrush
 import com.ytone.longcare.features.selectdevice.api.SelectDeviceActions
-import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.toOrderKeyModel
+import com.ytone.longcare.model.OrderKey
 
 // --- 数据模型 ---
 data class Device(
@@ -42,7 +41,7 @@ data class Device(
 @Composable
 fun SelectDeviceScreen(
     actions: SelectDeviceActions,
-    orderParams: OrderNavParams
+    orderParams: OrderKey
 ) {
     // 模拟设备数据
     val devices = remember {
@@ -89,7 +88,7 @@ fun SelectDeviceScreen(
                             text = stringResource(R.string.common_next_step),
                             enabled = true,
                             onClick = singleClick { 
-                                actions.onStartOrderNfcSignIn(orderParams.toOrderKeyModel())
+                                actions.onStartOrderNfcSignIn(orderParams)
                             }
                         )
                     }
@@ -132,7 +131,7 @@ fun SelectDeviceScreen(
 @Preview
 @Composable
 fun SelectDeviceScreenPreview() {
-    // 预览不可用，因为需要OrderNavParams
+    // 预览不可用，因为需要OrderKey
 }
 
 @Composable
@@ -240,5 +239,5 @@ fun NextStepButtonPreview() {
 @Preview
 @Composable
 fun SelectDeviceScreenWithNavControllerPreview() {
-    // 预览不可用，因为需要OrderNavParams
+    // 预览不可用，因为需要OrderKey
 }

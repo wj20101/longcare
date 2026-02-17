@@ -31,8 +31,8 @@ import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicecomplete.api.ServiceCompleteActions
 import com.ytone.longcare.navigation.ServiceCompleteData
-import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.toRequestModel
 
 // --- 数据模型 ---
 data class ServiceSummary(
@@ -49,7 +49,7 @@ data class ServiceSummary(
 @Composable
 fun ServiceCompleteScreen(
     actions: ServiceCompleteActions,
-    orderParams: OrderNavParams,
+    orderParams: OrderKey,
     serviceCompleteData: ServiceCompleteData,
     viewModel: OrderDetailViewModel = hiltViewModel()
 ) {

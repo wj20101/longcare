@@ -49,9 +49,8 @@ import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSettings
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.model.OrderInfoRequestModel
-import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.toOrderKeyModel
-import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.toRequestModel
 import kotlinx.coroutines.CancellationException
 
 
@@ -67,7 +66,7 @@ enum class SignInState {
 @Composable
 fun NfcWorkflowScreen(
     actions: NfcWorkflowActions,
-    orderParams: OrderNavParams,
+    orderParams: OrderKey,
     signInMode: SignInMode,
     endOderInfo: EndOderInfo? = null,
     nfcViewModel: NfcWorkflowViewModel = hiltViewModel(),
@@ -254,7 +253,7 @@ fun NfcWorkflowScreen(
                                                 // 签到成功时开启定位上报任务
                                                 checkLocationPermissionAndStartTracking()
                                                 // 签到成功后跳转到身份认证页面
-                                                actions.onNavigateToIdentification(orderParams.toOrderKeyModel())
+                                                actions.onNavigateToIdentification(orderParams)
                                             }
 
                                             SignInMode.END_ORDER -> {
@@ -270,7 +269,7 @@ fun NfcWorkflowScreen(
                                                         trueServiceTime = trueServiceTime
                                                     )
                                                 actions.onNavigateToServiceComplete(
-                                                    orderParams.toOrderKeyModel(),
+                                                    orderParams,
                                                     serviceCompleteData
                                                 )
                                             }

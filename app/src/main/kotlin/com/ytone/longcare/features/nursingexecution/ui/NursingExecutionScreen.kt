@@ -37,16 +37,15 @@ import com.ytone.longcare.model.isPendingExecutionState
 import com.ytone.longcare.features.nursingexecution.api.NursingExecutionActions
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
-import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.toOrderKeyModel
-import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.toRequestModel
 
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NursingExecutionScreen(
     actions: NursingExecutionActions,
-    orderParams: OrderNavParams,
+    orderParams: OrderKey,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
@@ -87,7 +86,7 @@ fun NursingExecutionScreen(
                         request = orderInfoRequest,
                         projectList = projectList
                     )
-                    actions.onNavigateToServiceCountdown(orderParams.toOrderKeyModel(), selectedProjectIds)
+                    actions.onNavigateToServiceCountdown(orderParams, selectedProjectIds)
                 }
             )
         }
@@ -156,7 +155,7 @@ fun ErrorScreen(
 fun NursingExecutionContent(
     actions: NursingExecutionActions,
     orderInfo: ServiceOrderInfoModel,
-    orderParams: OrderNavParams,
+    orderParams: OrderKey,
     onNavigateToCountdown: suspend (List<ServiceProjectM>) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -246,7 +245,7 @@ fun NursingExecutionContent(
                                         onNavigateToCountdown(orderInfo.projectList ?: emptyList())
                                     }
                                 }
-                                orderInfo.state.isPendingExecutionState() -> actions.onNavigateToSelectDevice(orderParams.toOrderKeyModel())
+                                orderInfo.state.isPendingExecutionState() -> actions.onNavigateToSelectDevice(orderParams)
                                 else -> actions.onNavigateBack()
                             }
                         }

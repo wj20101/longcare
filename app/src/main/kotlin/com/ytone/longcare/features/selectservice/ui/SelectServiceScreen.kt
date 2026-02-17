@@ -34,9 +34,8 @@ import com.ytone.longcare.shared.vm.StarOrderUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.features.selectservice.api.SelectServiceActions
 import com.ytone.longcare.features.selectservice.vm.SelectServiceViewModel
-import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.toOrderKeyModel
-import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.toRequestModel
 
 // --- 数据模型 ---
 data class ServiceItem(
@@ -49,7 +48,7 @@ data class ServiceItem(
 @Composable
 fun SelectServiceScreen(
     actions: SelectServiceActions,
-    orderParams: OrderNavParams,
+    orderParams: OrderKey,
     selectServiceViewModel: SelectServiceViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
@@ -278,7 +277,7 @@ fun SelectServiceScreen(
                                             selectedProjectIds = selectedProjectIds
                                         )
                                         actions.onNavigateToServiceCountdown(
-                                            orderParams.toOrderKeyModel(),
+                                            orderParams,
                                             selectedProjectIds
                                         )
                                     }

@@ -33,9 +33,8 @@ import com.ytone.longcare.theme.bgGradientBrush
 import androidx.compose.ui.platform.LocalContext
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import android.widget.Toast
-import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.toOrderKeyModel
-import com.ytone.longcare.navigation.toRequestModel
+import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.toRequestModel
 import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.common.utils.singleClick
 
@@ -43,7 +42,7 @@ import com.ytone.longcare.common.utils.singleClick
 @Composable
 fun EndServiceSelectionScreen(
     actions: EndServiceSelectionActions,
-    orderParams: OrderNavParams,
+    orderParams: OrderKey,
     initialProjectIdList: List<Int>,
     endType: Int,
     viewModel: EndServiceSelectionViewModel = hiltViewModel(),
@@ -205,7 +204,7 @@ fun EndServiceSelectionScreen(
                                         com.ytone.longcare.common.utils.KLogger.i("EndServiceSelection", "Navigating to NFC. Images - Begin: ${beginImgList.size}, Center: ${centerImgList.size}, End: ${endImgList.size}")
 
                                         actions.onNavigateToNfcSignInForEndOrder(
-                                            orderParams.toOrderKeyModel(),
+                                            orderParams,
                                             EndOderInfo(
                                                 projectIdList = viewModel.getConfirmedProjectIds(),
                                                 beginImgList = beginImgList,
