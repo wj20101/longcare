@@ -43,6 +43,17 @@
 - 本地验收（R2-弹窗拆分）：
   - `./gradlew :app:compileDebugKotlin`：PASS
   - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS
+- 执行 R2（`servicecountdown` 初始化流程下沉）：
+  - 在 `ServiceCountdownViewModel` 新增 `initializeCountdownSession(...)`，下沉以下编排逻辑：
+    - 服务信息计算（名称、总时长）；
+    - 倒计时状态计算与应用；
+    - 前台服务启动；
+    - 闹钟调度。
+  - `ServiceCountdownScreen` 删除本地 `ServiceInfo` 与初始化编排代码，改为调用 ViewModel 单一入口。
+  - `ServiceCountdownScreen.kt` 从 527 行降至 488 行。
+- 本地验收（R2-初始化下沉）：
+  - `./gradlew :app:compileDebugKotlin`：PASS
+  - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS
 
 ## 2026-02-13
 - 初始化 CI/CD 优化任务计划文件：`task_plan.md`、`findings.md`、`progress.md`。

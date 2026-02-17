@@ -36,7 +36,6 @@ import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
-import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.theme.bgGradientBrush
@@ -60,15 +59,6 @@ private data class CountdownInitState(
     val isInitialized: Boolean = false,
     val lastProjectIdList: List<Int> = emptyList(),
     val permissionsChecked: Boolean = false
-)
-
-/**
- * 服务信息
- * 用于缓存计算结果，避免重复计算
- */
-private data class ServiceInfo(
-    val serviceName: String,
-    val totalMinutes: Int
 )
 
 /**
@@ -241,29 +231,16 @@ fun ServiceCountdownScreen(
     // 初始化状态（使用data class统一管理）
     val initState = remember { mutableStateOf(CountdownInitState()) }
     
-    // 计算服务信息的辅助函数
-    fun calculateServiceInfo(orderInfo: ServiceOrderInfoModel): ServiceInfo {
-        val selectedProjects = (orderInfo.projectList ?: emptyList())
-            .filter { it.projectId in projectIdList }
-        
-        val serviceName = selectedProjects.joinToString(", ") { it.projectName }
-        val totalMinutes = selectedProjects.sumOf { it.serviceTime }
-        
-        return ServiceInfo(serviceName, totalMinutes)
-    }
-
     // 设置倒计时时间的通用函数
-    fun setupCountdownTime() {
+    suspend fun setupCountdownTime() {
         val orderInfo = sharedViewModel.getCachedOrderInfo(orderKey) ?: return
-        
-        val serviceInfo = calculateServiceInfo(orderInfo)
-        
+
         // 检查是否需要重新初始化
         val needsReinit = initState.value.lastProjectIdList != projectIdList ||
                          countdownState == ServiceCountdownState.ENDED ||
                          !initState.value.isInitialized
 
-        if (!needsReinit || serviceInfo.totalMinutes <= 0) {
+        if (!needsReinit) {
             return
         }
 
@@ -273,30 +250,14 @@ fun ServiceCountdownScreen(
             initState.value = initState.value.copy(permissionsChecked = true)
         }
 
-        // 设置ViewModel的倒计时（统一的时间计算逻辑）
-        countdownViewModel.setCountdownTimeFromProjects(
+        val initialized = countdownViewModel.initializeCountdownSession(
+            context = context,
             orderKey = orderKey,
             projectList = orderInfo.projectList ?: emptyList(),
             selectedProjectIds = projectIdList
         )
-
-        // 启动前台服务显示倒计时通知
-        countdownViewModel.startForegroundService(
-            context = context,
-            orderKey = orderKey,
-            serviceName = serviceInfo.serviceName,
-            totalSeconds = serviceInfo.totalMinutes * 60L
-        )
-
-        // 设置系统级倒计时闹钟（使用ViewModel计算的完成时间）
-        val (state, remainingMillis, _) = countdownViewModel.getCurrentCountdownState()
-        if (state == ServiceCountdownState.RUNNING && remainingMillis > 0) {
-            val completionTime = System.currentTimeMillis() + remainingMillis
-            countdownViewModel.scheduleCountdownAlarm(
-                orderKey = orderKey,
-                serviceName = serviceInfo.serviceName,
-                triggerTimeMillis = completionTime
-            )
+        if (!initialized) {
+            return
         }
 
         // 如果没有通知权限，显示提示

@@ -39,6 +39,11 @@ class ServiceCountdownViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val systemGateway: ServiceCountdownSystemGateway,
 ) : ViewModel() {
+    private data class CountdownServiceInfo(
+        val serviceName: String,
+        val totalMinutes: Int
+    )
+
     private val stateHolder = ServiceCountdownStateHolder()
 
     val countdownState: StateFlow<ServiceCountdownState> = stateHolder.countdownState.asStateFlow()
@@ -60,35 +65,92 @@ class ServiceCountdownViewModel @Inject constructor(
         projectList: List<ServiceProjectM>,
         selectedProjectIds: List<Int>
     ) {
+        viewModelScope.launch {
+            applyCountdownState(
+                orderKey = orderKey,
+                projectList = projectList,
+                selectedProjectIds = selectedProjectIds,
+                startTicker = true
+            )
+        }
+    }
+
+    suspend fun initializeCountdownSession(
+        context: Context,
+        orderKey: OrderKey,
+        projectList: List<ServiceProjectM>,
+        selectedProjectIds: List<Int>
+    ): Boolean {
+        val serviceInfo = calculateServiceInfo(projectList, selectedProjectIds)
+        if (serviceInfo.totalMinutes <= 0) {
+            return false
+        }
+        val (state, remainingMillis, _) = applyCountdownState(
+            orderKey = orderKey,
+            projectList = projectList,
+            selectedProjectIds = selectedProjectIds,
+            startTicker = true
+        )
+
+        startForegroundService(
+            context = context,
+            orderKey = orderKey,
+            serviceName = serviceInfo.serviceName,
+            totalSeconds = serviceInfo.totalMinutes * 60L
+        )
+
+        if (state == ServiceCountdownState.RUNNING && remainingMillis > 0) {
+            val completionTime = System.currentTimeMillis() + remainingMillis
+            scheduleCountdownAlarm(
+                orderKey = orderKey,
+                serviceName = serviceInfo.serviceName,
+                triggerTimeMillis = completionTime
+            )
+        }
+        return true
+    }
+
+    private fun calculateServiceInfo(
+        projectList: List<ServiceProjectM>,
+        selectedProjectIds: List<Int>
+    ): CountdownServiceInfo {
+        val selectedProjects = projectList.filter { it.projectId in selectedProjectIds }
+        return CountdownServiceInfo(
+            serviceName = selectedProjects.joinToString(", ") { it.projectName },
+            totalMinutes = selectedProjects.sumOf { it.serviceTime }
+        )
+    }
+
+    private suspend fun applyCountdownState(
+        orderKey: OrderKey,
+        projectList: List<ServiceProjectM>,
+        selectedProjectIds: List<Int>,
+        startTicker: Boolean
+    ): Triple<ServiceCountdownState, Long, Long> {
         // 保存当前订单ID和项目信息，用于后续重新计算
         stateHolder.currentOrderKey = orderKey
         stateHolder.currentProjectList = projectList
         stateHolder.currentSelectedProjectIds = selectedProjectIds
-        
-        // 在协程中计算并更新倒计时状态
-        viewModelScope.launch {
-            val (state, remainingTime, overtimeTime) = calculateCountdownState(
-                orderKey,
-                projectList,
-                selectedProjectIds
-            )
-            
-            // 更新状态
-            stateHolder.countdownState.value = state
-            stateHolder.remainingTimeMillis.value = remainingTime
-            stateHolder.overtimeMillis.value = overtimeTime
-            updateFormattedTime()
-            
-            // 根据状态启动相应的倒计时
+
+        val (state, remainingTime, overtimeTime) = calculateCountdownState(
+            orderKey,
+            projectList,
+            selectedProjectIds
+        )
+
+        stateHolder.countdownState.value = state
+        stateHolder.remainingTimeMillis.value = remainingTime
+        stateHolder.overtimeMillis.value = overtimeTime
+        updateFormattedTime()
+
+        if (startTicker) {
             when (state) {
                 ServiceCountdownState.RUNNING -> startCountdown()
                 ServiceCountdownState.OVERTIME -> startOvertimeCountdown()
-                else -> {
-                    // COMPLETED 或 ENDED 状态不需要启动倒计时
-                    stateHolder.countdownJob?.cancel()
-                }
+                else -> stateHolder.countdownJob?.cancel()
             }
         }
+        return Triple(state, remainingTime, overtimeTime)
     }
     
     /**
