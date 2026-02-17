@@ -53,10 +53,10 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
             actions = NursingExecutionActions(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToServiceCountdown = { orderKey, projectIdList ->
-                    navController.navigateToServiceCountdown(orderKey.toOrderNavParams(), projectIdList)
+                    navController.navigateToServiceCountdown(orderKey, projectIdList)
                 },
                 onNavigateToSelectDevice = { orderKey ->
-                    navController.navigateToSelectDevice(orderKey.toOrderNavParams())
+                    navController.navigateToSelectDevice(orderKey)
                 }
             ),
             orderParams = route.orderParams.toOrderKeyModel()
@@ -72,10 +72,10 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
             actions = ServiceOrdersListActions(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToNursingExecution = { orderKey ->
-                    navController.navigateToNursingExecution(orderKey.toOrderNavParams())
+                    navController.navigateToNursingExecution(orderKey)
                 },
                 onNavigateToService = { orderKey ->
-                    navController.navigateToService(orderKey.toOrderNavParams())
+                    navController.navigateToService(orderKey)
                 }
             ),
             orderType = ServiceOrderType.PENDING_CARE_PLANS,
@@ -92,10 +92,10 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
             actions = ServiceOrdersListActions(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToNursingExecution = { orderKey ->
-                    navController.navigateToNursingExecution(orderKey.toOrderNavParams())
+                    navController.navigateToNursingExecution(orderKey)
                 },
                 onNavigateToService = { orderKey ->
-                    navController.navigateToService(orderKey.toOrderNavParams())
+                    navController.navigateToService(orderKey)
                 }
             ),
             orderType = ServiceOrderType.SERVICE_RECORDS,
@@ -115,11 +115,11 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateHomeAndClearStack = { navController.navigateToHomeAndClearStack() },
                 onNavigateToIdentification = { orderKey ->
-                    navController.navigateToIdentification(orderKey.toOrderNavParams())
+                    navController.navigateToIdentification(orderKey)
                 },
                 onNavigateToServiceComplete = { orderKey, serviceCompleteData ->
                     navController.navigateToServiceComplete(
-                        orderParams = orderKey.toOrderNavParams(),
+                        orderKey = orderKey,
                         serviceCompleteData = serviceCompleteData
                     )
                 }
@@ -139,7 +139,7 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToServiceCountdown = { orderKey, projectIdList ->
                     navController.navigateToServiceCountdown(
-                        orderParams = orderKey.toOrderNavParams(),
+                        orderKey = orderKey,
                         projectIdList = projectIdList
                     )
                 }
@@ -196,14 +196,14 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
             actions = ServiceCountdownActions(
                 onNavigateHomeAndClearStack = { navController.navigateToHomeAndClearStack() },
                 onNavigateToEndServiceSelection = { orderKey, endType, projectIdList ->
-                    navController.navigateToEndServiceSelection(orderKey.toOrderNavParams(), endType, projectIdList)
+                    navController.navigateToEndServiceSelection(orderKey, endType, projectIdList)
                 },
                 onNavigateToPhotoUpload = { orderKey, existingImages ->
                     backStackEntry.savedStateHandle.set(
                         NavigationConstants.EXISTING_IMAGES_KEY,
                         existingImages
                     )
-                    navController.navigateToPhotoUpload(orderKey.toOrderNavParams())
+                    navController.navigateToPhotoUpload(orderKey)
                 },
                 photoUploadResultFlow = backStackEntry.savedStateHandle.getStateFlow(
                     NavigationConstants.PHOTO_UPLOAD_RESULT_KEY,
@@ -244,7 +244,7 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
             actions = EndServiceSelectionActions(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToNfcSignInForEndOrder = { orderKey, params ->
-                    navController.navigateToNfcSignInForEndOrder(orderKey.toOrderNavParams(), params)
+                    navController.navigateToNfcSignInForEndOrder(orderKey, params)
                 }
             ),
             orderParams = route.orderParams.toOrderKeyModel(),

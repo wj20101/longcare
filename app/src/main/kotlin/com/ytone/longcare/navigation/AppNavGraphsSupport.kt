@@ -83,7 +83,7 @@ internal fun NavGraphBuilder.registerSupportNavGraphs(navController: NavControll
             actions = FaceRecognitionGuideActions(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToSelectService = { orderKey ->
-                    navController.navigateToSelectService(orderKey.toOrderNavParams())
+                    navController.navigateToSelectService(orderKey)
                 }
             ),
             orderParams = route.orderParams.toOrderKeyModel()
@@ -98,7 +98,7 @@ internal fun NavGraphBuilder.registerSupportNavGraphs(navController: NavControll
             actions = SelectDeviceActions(
                 onNavigateBack = { navController.popBackStack() },
                 onStartOrderNfcSignIn = { orderKey ->
-                    navController.navigateToNfcSignInForStartOrder(orderKey.toOrderNavParams())
+                    navController.navigateToNfcSignInForStartOrder(orderKey)
                 }
             ),
             orderParams = route.orderParams.toOrderKeyModel()
@@ -117,7 +117,7 @@ internal fun NavGraphBuilder.registerSupportNavGraphs(navController: NavControll
                 },
                 onNavigateToManualFaceCapture = { navController.navigateToManualFaceCapture() },
                 onNavigateToSelectService = { orderKey ->
-                    navController.navigateToSelectService(orderKey.toOrderNavParams())
+                    navController.navigateToSelectService(orderKey)
                 },
                 capturedImageUriFlow = backStackEntry.savedStateHandle.getStateFlow(
                     NavigationConstants.CAPTURED_IMAGE_URI_KEY,
