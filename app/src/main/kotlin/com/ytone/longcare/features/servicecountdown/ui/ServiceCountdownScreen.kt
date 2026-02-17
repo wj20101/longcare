@@ -100,7 +100,7 @@ private data class ServiceInfo(
  * - 完善的资源清理机制
  * 
  * @param actions 页面导航与回传行为
- * @param orderParams 订单信息请求模型
+ * @param orderKey 订单信息请求模型
  * @param projectIdList 选中的项目ID列表
  * @param sharedViewModel 共享的订单详情ViewModel
  * @param countdownViewModel 倒计时ViewModel
@@ -110,14 +110,14 @@ private data class ServiceInfo(
 @Composable
 fun ServiceCountdownScreen(
     actions: ServiceCountdownActions,
-    orderParams: OrderKey,
+    orderKey: OrderKey,
     projectIdList: List<Int>,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     countdownViewModel: ServiceCountdownViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
     
     // 强制设置为竖屏
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
@@ -288,7 +288,7 @@ fun ServiceCountdownScreen(
         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 5. 已结束服务（保留图片数据）")
 
         // 6. 导航到结束服务选择页面
-        actions.onNavigateToEndServiceSelection(orderParams, endType, projectIdList)
+        actions.onNavigateToEndServiceSelection(orderKey, endType, projectIdList)
     }
 
     // 监听订单状态异常事件
@@ -473,7 +473,7 @@ fun ServiceCountdownScreen(
                     formattedTime = formattedTime,
                     onOpenPhotoUpload = {
                         val existingImages = countdownViewModel.getCurrentUploadedImages()
-                        actions.onNavigateToPhotoUpload(orderParams, existingImages)
+                        actions.onNavigateToPhotoUpload(orderKey, existingImages)
                     }
                 )
 

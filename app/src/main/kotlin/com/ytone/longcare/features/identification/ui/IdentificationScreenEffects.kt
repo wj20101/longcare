@@ -17,7 +17,7 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 @Composable
 internal fun IdentificationScreenEffects(
     actions: IdentificationActions,
-    orderParams: OrderKey,
+    orderKey: OrderKey,
     orderInfoRequest: OrderInfoRequestModel,
     sharedOrderDetailViewModel: SharedOrderDetailViewModel,
     identificationViewModel: IdentificationViewModel,
@@ -86,7 +86,7 @@ internal fun IdentificationScreenEffects(
     LaunchedEffect(photoUploadState) {
         when (photoUploadState) {
             is PhotoUploadState.Success -> {
-                actions.onNavigateToSelectService(orderParams)
+                actions.onNavigateToSelectService(orderKey)
                 identificationViewModel.resetPhotoUploadState()
             }
 

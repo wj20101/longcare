@@ -42,12 +42,12 @@ import com.ytone.longcare.common.utils.singleClick
 @Composable
 fun IdentificationScreen(
     actions: IdentificationActions,
-    orderParams: OrderKey,
+    orderKey: OrderKey,
     sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     identificationViewModel: IdentificationViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
 
     val context = LocalContext.current
 
@@ -87,7 +87,7 @@ fun IdentificationScreen(
     val currentVerificationType by identificationViewModel.currentVerificationType.collectAsStateWithLifecycle()
     IdentificationScreenEffects(
         actions = actions,
-        orderParams = orderParams,
+        orderKey = orderKey,
         orderInfoRequest = orderInfoRequest,
         sharedOrderDetailViewModel = sharedOrderDetailViewModel,
         identificationViewModel = identificationViewModel,
@@ -135,7 +135,7 @@ fun IdentificationScreen(
                     ) {
                         // 下一步按钮
                         Button(
-                            onClick = singleClick { actions.onNavigateToSelectService(orderParams) },
+                            onClick = singleClick { actions.onNavigateToSelectService(orderKey) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 48.dp),

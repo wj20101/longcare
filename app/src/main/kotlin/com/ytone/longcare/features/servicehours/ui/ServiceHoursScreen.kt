@@ -40,11 +40,11 @@ import com.ytone.longcare.model.toRequestModel
 @Composable
 fun ServiceHoursScreen(
     actions: ServiceHoursActions,
-    orderParams: OrderKey,
+    orderKey: OrderKey,
     viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
-    // 从orderParams构建请求模型
-    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    // 从orderKey构建请求模型
+    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
     
     // 获取选中的项目ID
     val selectedProjectIds by viewModel.selectedProjectIds.collectAsStateWithLifecycle()

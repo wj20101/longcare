@@ -37,7 +37,7 @@ import com.ytone.longcare.model.OrderKey
 @Composable
 fun FaceRecognitionGuideScreen(
     actions: FaceRecognitionGuideActions,
-    orderParams: OrderKey,
+    orderKey: OrderKey,
     viewModel: FaceRecognitionViewModel = hiltViewModel()
 ) {
     // ==========================================================
@@ -95,7 +95,7 @@ fun FaceRecognitionGuideScreen(
                         Button(
                             onClick = singleClick {
                                 viewModel.startFaceRecognition()
-                                actions.onNavigateToSelectService(orderParams)
+                                actions.onNavigateToSelectService(orderKey)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()

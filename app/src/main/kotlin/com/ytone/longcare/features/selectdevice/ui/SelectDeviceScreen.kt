@@ -41,7 +41,7 @@ data class Device(
 @Composable
 fun SelectDeviceScreen(
     actions: SelectDeviceActions,
-    orderParams: OrderKey
+    orderKey: OrderKey
 ) {
     // 模拟设备数据
     val devices = remember {
@@ -88,7 +88,7 @@ fun SelectDeviceScreen(
                             text = stringResource(R.string.common_next_step),
                             enabled = true,
                             onClick = singleClick { 
-                                actions.onStartOrderNfcSignIn(orderParams)
+                                actions.onStartOrderNfcSignIn(orderKey)
                             }
                         )
                     }

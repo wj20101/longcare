@@ -45,16 +45,16 @@ import com.ytone.longcare.model.toRequestModel
 @Composable
 fun NursingExecutionScreen(
     actions: NursingExecutionActions,
-    orderParams: OrderKey,
+    orderKey: OrderKey,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
 
     // 开启定位会话 (Session Start)
-    LaunchedEffect(orderParams.orderId) {
-        locationTrackingViewModel.ensureLocationSessionForOrder(orderParams.orderId)
+    LaunchedEffect(orderKey.orderId) {
+        locationTrackingViewModel.ensureLocationSessionForOrder(orderKey.orderId)
     }
 
     // ==========================================================
@@ -80,13 +80,13 @@ fun NursingExecutionScreen(
             NursingExecutionContent(
                 actions = actions,
                 orderInfo = state.orderInfo,
-                orderParams = orderParams,
+                orderKey = orderKey,
                 onNavigateToCountdown = { projectList ->
                     val selectedProjectIds = sharedViewModel.getSelectedProjectIdsOrDefault(
                         request = orderInfoRequest,
                         projectList = projectList
                     )
-                    actions.onNavigateToServiceCountdown(orderParams, selectedProjectIds)
+                    actions.onNavigateToServiceCountdown(orderKey, selectedProjectIds)
                 }
             )
         }
@@ -155,7 +155,7 @@ fun ErrorScreen(
 fun NursingExecutionContent(
     actions: NursingExecutionActions,
     orderInfo: ServiceOrderInfoModel,
-    orderParams: OrderKey,
+    orderKey: OrderKey,
     onNavigateToCountdown: suspend (List<ServiceProjectM>) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -245,7 +245,7 @@ fun NursingExecutionContent(
                                         onNavigateToCountdown(orderInfo.projectList ?: emptyList())
                                     }
                                 }
-                                orderInfo.state.isPendingExecutionState() -> actions.onNavigateToSelectDevice(orderParams)
+                                orderInfo.state.isPendingExecutionState() -> actions.onNavigateToSelectDevice(orderKey)
                                 else -> actions.onNavigateBack()
                             }
                         }

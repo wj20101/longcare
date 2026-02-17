@@ -48,12 +48,12 @@ data class ServiceItem(
 @Composable
 fun SelectServiceScreen(
     actions: SelectServiceActions,
-    orderParams: OrderKey,
+    orderKey: OrderKey,
     selectServiceViewModel: SelectServiceViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
 
     val coroutineScope = rememberCoroutineScope()
     
@@ -277,7 +277,7 @@ fun SelectServiceScreen(
                                             selectedProjectIds = selectedProjectIds
                                         )
                                         actions.onNavigateToServiceCountdown(
-                                            orderParams,
+                                            orderKey,
                                             selectedProjectIds
                                         )
                                     }

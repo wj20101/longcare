@@ -66,14 +66,14 @@ enum class SignInState {
 @Composable
 fun NfcWorkflowScreen(
     actions: NfcWorkflowActions,
-    orderParams: OrderKey,
+    orderKey: OrderKey,
     signInMode: SignInMode,
     endOderInfo: EndOderInfo? = null,
     nfcViewModel: NfcWorkflowViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
     
     val uiState by nfcViewModel.uiState.collectAsStateWithLifecycle()
     val pendingNfcData by nfcViewModel.pendingNfcData.collectAsStateWithLifecycle()
@@ -253,7 +253,7 @@ fun NfcWorkflowScreen(
                                                 // 签到成功时开启定位上报任务
                                                 checkLocationPermissionAndStartTracking()
                                                 // 签到成功后跳转到身份认证页面
-                                                actions.onNavigateToIdentification(orderParams)
+                                                actions.onNavigateToIdentification(orderKey)
                                             }
 
                                             SignInMode.END_ORDER -> {
@@ -269,7 +269,7 @@ fun NfcWorkflowScreen(
                                                         trueServiceTime = trueServiceTime
                                                     )
                                                 actions.onNavigateToServiceComplete(
-                                                    orderParams,
+                                                    orderKey,
                                                     serviceCompleteData
                                                 )
                                             }

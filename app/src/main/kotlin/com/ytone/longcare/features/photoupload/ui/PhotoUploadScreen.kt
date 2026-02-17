@@ -78,12 +78,12 @@ enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
 @Composable
 fun PhotoUploadScreen(
     actions: PhotoUploadActions,
-    orderParams: OrderKey,
+    orderKey: OrderKey,
     viewModel: PhotoProcessingViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
     
     // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
     CustomBackHandler(customAction = actions.onNavigateBack)

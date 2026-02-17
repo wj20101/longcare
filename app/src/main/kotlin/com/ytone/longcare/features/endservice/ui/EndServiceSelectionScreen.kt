@@ -42,14 +42,14 @@ import com.ytone.longcare.common.utils.singleClick
 @Composable
 fun EndServiceSelectionScreen(
     actions: EndServiceSelectionActions,
-    orderParams: OrderKey,
+    orderKey: OrderKey,
     initialProjectIdList: List<Int>,
     endType: Int,
     viewModel: EndServiceSelectionViewModel = hiltViewModel(),
     countdownViewModel: ServiceCountdownViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
     
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val projectList by viewModel.projectList.collectAsStateWithLifecycle()
@@ -204,7 +204,7 @@ fun EndServiceSelectionScreen(
                                         com.ytone.longcare.common.utils.KLogger.i("EndServiceSelection", "Navigating to NFC. Images - Begin: ${beginImgList.size}, Center: ${centerImgList.size}, End: ${endImgList.size}")
 
                                         actions.onNavigateToNfcSignInForEndOrder(
-                                            orderParams,
+                                            orderKey,
                                             EndOderInfo(
                                                 projectIdList = viewModel.getConfirmedProjectIds(),
                                                 beginImgList = beginImgList,

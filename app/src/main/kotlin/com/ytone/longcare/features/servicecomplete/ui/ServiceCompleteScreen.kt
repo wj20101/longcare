@@ -49,12 +49,12 @@ data class ServiceSummary(
 @Composable
 fun ServiceCompleteScreen(
     actions: ServiceCompleteActions,
-    orderParams: OrderKey,
+    orderKey: OrderKey,
     serviceCompleteData: ServiceCompleteData,
     viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
     // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderParams) { orderParams.toRequestModel() }
+    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
     
     // 统一处理系统返回键，与导航按钮行为一致（返回首页并清空堆栈）
     CustomBackHandler(customAction = actions.onNavigateHomeAndClearStack)
