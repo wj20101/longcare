@@ -24,7 +24,7 @@
 
 | ID | 优化项 | 对应目标 | 状态 |
 |---|---|---|---|
-| R1 | 继续将主体业务从 `app/features/*` 迁移到 `feature/*` 模块（优先：`photoupload`、`identification`、`servicecountdown`） | 现代化模块架构、边界收敛 | IN_PROGRESS（photoupload + identification + servicecountdown API/State 首批切片已落地） |
+| R1 | 继续将主体业务从 `app/features/*` 迁移到 `feature/*` 模块（优先：`photoupload`、`identification`、`servicecountdown`） | 现代化模块架构、边界收敛 | IN_PROGRESS（photoupload 核心层 + identification vm 全量 + servicecountdown vm 已下沉，UI/平台适配层留在 app） |
 | R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | TODO |
 | R3 | CI 健康监控告警项治理：将 Android CI 取消率从 50% 降到阈值内（触发策略与提交流水优化） | CI/CD 资源效率、稳定性 | TODO |
 | R4 | 在“无缓存 + rerun”基线口径下继续压降 `:app:assembleDebug` 冷构建耗时（当前 79s） | 构建性能目标收敛 | TODO |
@@ -57,8 +57,11 @@
     - `alias(libs.plugins.ksp)`
     - `ksp(libs.dagger.hilt.compiler)`
     - `ksp(libs.hilt.compiler)`
-  - 迁移评估结论：
-    - `vm/*` 暂不下沉；其当前依赖 `SystemConfigManager`（位于 `app` 且绑定 `LongCareApiService/AppEventBus`），若继续下沉会引入跨层大链路改造，下一轮按公共能力抽象后再推进。
+  - 后续抽象与迁移（本轮新增）：
+    - 新增 `core:domain` 接口：`FaceVerificationConfigProvider`。
+    - `SystemConfigManager` 改为实现 `FaceVerificationConfigProvider`，并通过 `app/di/FaceVerificationConfigModule.kt` 绑定。
+    - `IdentificationViewModel` 及相关 flow 改为依赖 `FaceVerificationConfigProvider`，移除对 `SystemConfigManager` 直接依赖。
+    - `app/features/identification/vm/*` 全量迁移至 `feature:identification/vm/*`。
 - `R1` 增量切片（`servicecountdown`）：
   - 新增 `feature:servicecountdown` 模块并接入：
     - `settings.gradle.kts` 新增 `include(":feature:servicecountdown")`
@@ -71,6 +74,13 @@
     - `ServiceCountdownScreen` 与 `ServiceCountdownViewModel` 改为依赖 `feature` 模块中的状态定义
   - 模块依赖补齐：
     - `feature/servicecountdown/build.gradle.kts` 新增 `kotlinx-coroutines-core`（`StateFlow` 依赖）
+  - 后续抽象与迁移（本轮新增）：
+    - 新增 `feature:servicecountdown` 领域网关：`ServiceCountdownSystemGateway`。
+    - `ServiceCountdownViewModel` 改为依赖该网关，隔离 `CountdownForegroundService/AlarmRingtoneService/CountdownNotificationManager` 平台实现。
+    - 新增 `app` 侧实现与绑定：
+      - `service/ServiceCountdownSystemGatewayImpl.kt`
+      - `di/ServiceCountdownGatewayModule.kt`
+    - `ServiceCountdownViewModel` 从 `app` 迁移到 `feature:servicecountdown/vm`。
 - 验证：
   - `./gradlew :app:compileDebugKotlin`：PASS
   - `./gradlew :app:testDebugUnitTest --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest"`：PASS

@@ -13,6 +13,7 @@ import javax.inject.Singleton
 import androidx.core.content.edit
 import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.core.common.di.IoDispatcher
+import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.model.SystemConfigModel
 import com.ytone.longcare.model.ThirdKeyReturnModel
@@ -35,7 +36,7 @@ class SystemConfigManager @Inject constructor(
     private val apiService: LongCareApiService,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val eventBus: AppEventBus
-) {
+) : FaceVerificationConfigProvider {
     companion object {
         private const val PREFS_NAME = "system_config_prefs"
         private const val KEY_SYSTEM_CONFIG = "system_config"
@@ -236,7 +237,7 @@ class SystemConfigManager @Inject constructor(
         }
     }
 
-    suspend fun getFaceVerificationConfig(): FaceVerificationConfig? {
+    override suspend fun getFaceVerificationConfig(): FaceVerificationConfig? {
         val third = getThirdKey() ?: return null
         if (third.txFaceAppId.isBlank() || third.txFaceAppSecret.isBlank() || third.txFaceAppLicence.isBlank()) {
             return null

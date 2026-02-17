@@ -1,5 +1,22 @@
 # 执行日志
 
+## 2026-02-17
+- 执行 R1（`servicecountdown`）增量迁移：
+  - 新增 `ServiceCountdownSystemGateway`（`feature:servicecountdown`）抽象倒计时平台能力。
+  - 新增 `app` 侧实现与 Hilt 绑定：
+    - `features/servicecountdown/service/ServiceCountdownSystemGatewayImpl.kt`
+    - `features/servicecountdown/di/ServiceCountdownGatewayModule.kt`
+  - `ServiceCountdownViewModel` 改为依赖网关抽象，并迁移至 `feature:servicecountdown/vm`。
+  - 同步修复 `ServiceCountdownViewModelTest` 构造参数以匹配网关注入。
+- 执行 R1（`identification`）增量迁移：
+  - 新增 `FaceVerificationConfigProvider`（`core:domain`）。
+  - `SystemConfigManager` 实现 `FaceVerificationConfigProvider` 并通过 `FaceVerificationConfigModule` 绑定。
+  - `IdentificationViewModel` 与人脸验证 flow 改为依赖 `FaceVerificationConfigProvider`。
+  - `app/features/identification/vm/*` 全量迁移至 `feature:identification/vm/*`。
+- 本地验收：
+  - `./gradlew :app:compileDebugKotlin`：PASS
+  - `./gradlew :app:compileDebugKotlin :app:testDebugUnitTest --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*ServiceCountdownViewModelTest"`：PASS
+
 ## 2026-02-13
 - 初始化 CI/CD 优化任务计划文件：`task_plan.md`、`findings.md`、`progress.md`。
 - 进入 P1：开始审计 `.github/workflows` 与 `scripts/quality`。

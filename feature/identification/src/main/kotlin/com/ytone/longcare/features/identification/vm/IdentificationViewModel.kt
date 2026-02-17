@@ -4,8 +4,8 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
@@ -33,7 +33,7 @@ import com.ytone.longcare.common.utils.logE
 @HiltViewModel
 class IdentificationViewModel @Inject constructor(
     private val faceVerifier: FaceVerifier,
-    private val systemConfigManager: SystemConfigManager,
+    private val faceVerificationConfigProvider: FaceVerificationConfigProvider,
     private val userSessionRepository: UserSessionRepository,
     private val unifiedOrderRepository: OrderDetailRepository,
     private val faceDataSource: IdentificationFaceDataSource,
@@ -166,7 +166,7 @@ class IdentificationViewModel @Inject constructor(
             onServicePersonVerified = ::setServicePersonVerified,
             onElderVerified = ::setElderVerified,
             showToast = toastHelper::showShort,
-            systemConfigManager = systemConfigManager,
+            configProvider = faceVerificationConfigProvider,
             faceVerifier = faceVerifier,
         )
     }
@@ -240,7 +240,7 @@ class IdentificationViewModel @Inject constructor(
             faceDataSource = faceDataSource,
             resolveCurrentUser = ::getCurrentUser,
             setupFaceUseCase = setupFaceUseCase,
-            systemConfigManager = systemConfigManager,
+            configProvider = faceVerificationConfigProvider,
             faceVerifier = faceVerifier,
             faceSetupState = _faceSetupState,
             faceVerificationState = _faceVerificationState,

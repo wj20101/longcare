@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.identification.vm
 
 import android.content.Context
-import com.ytone.longcare.common.utils.SystemConfigManager
+import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
 import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
@@ -11,11 +11,11 @@ internal suspend fun startFaceVerificationWithResolvedConfigOrNotify(
     context: Context,
     request: FaceVerificationRequest,
     callback: FaceVerifyCallback,
-    systemConfigManager: SystemConfigManager,
+    configProvider: FaceVerificationConfigProvider,
     faceVerifier: FaceVerifier,
     onConfigMissing: () -> Unit,
 ) {
-    val config = systemConfigManager.getFaceVerificationConfig()
+    val config = configProvider.getFaceVerificationConfig()
     if (config == null) {
         onConfigMissing()
         return
@@ -38,7 +38,7 @@ internal suspend fun startFaceVerificationWithIdentificationBindings(
     onServicePersonVerified: () -> Unit,
     onElderVerified: () -> Unit,
     showToast: (String) -> Unit,
-    systemConfigManager: SystemConfigManager,
+    configProvider: FaceVerificationConfigProvider,
     faceVerifier: FaceVerifier,
 ) {
     startFaceVerificationWithResolvedConfigOrNotify(
@@ -52,7 +52,7 @@ internal suspend fun startFaceVerificationWithIdentificationBindings(
             onElderVerified = onElderVerified,
             showToast = showToast,
         ),
-        systemConfigManager = systemConfigManager,
+        configProvider = configProvider,
         faceVerifier = faceVerifier,
         onConfigMissing = { onSetFaceVerificationError("人脸配置不可用", null) }
     )

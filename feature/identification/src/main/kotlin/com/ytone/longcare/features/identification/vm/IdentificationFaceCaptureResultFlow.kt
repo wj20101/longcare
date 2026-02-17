@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.identification.vm
 
 import android.content.Context
-import com.ytone.longcare.common.utils.SystemConfigManager
+import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
@@ -18,7 +18,7 @@ internal fun launchFaceCaptureResultHandling(
     faceDataSource: IdentificationFaceDataSource,
     resolveCurrentUser: suspend () -> User?,
     setupFaceUseCase: SetupFaceUseCase,
-    systemConfigManager: SystemConfigManager,
+    configProvider: FaceVerificationConfigProvider,
     faceVerifier: FaceVerifier,
     setFaceSetupState: (FaceSetupState) -> Unit,
     setFaceVerificationState: (FaceVerificationState) -> Unit,
@@ -57,7 +57,7 @@ internal fun launchFaceCaptureResultHandling(
                     showToast = showToast,
                     onServicePersonVerified = onServicePersonVerified,
                 ),
-                systemConfigManager = systemConfigManager,
+                configProvider = configProvider,
                 faceVerifier = faceVerifier,
                 onConfigMissing = { setFaceSetupError("人脸配置不可用") }
             )
@@ -76,7 +76,7 @@ internal fun launchFaceCaptureResultHandlingWithBindings(
     faceDataSource: IdentificationFaceDataSource,
     resolveCurrentUser: suspend () -> User?,
     setupFaceUseCase: SetupFaceUseCase,
-    systemConfigManager: SystemConfigManager,
+    configProvider: FaceVerificationConfigProvider,
     faceVerifier: FaceVerifier,
     faceSetupState: MutableStateFlow<FaceSetupState>,
     faceVerificationState: MutableStateFlow<FaceVerificationState>,
@@ -91,7 +91,7 @@ internal fun launchFaceCaptureResultHandlingWithBindings(
         faceDataSource = faceDataSource,
         resolveCurrentUser = resolveCurrentUser,
         setupFaceUseCase = setupFaceUseCase,
-        systemConfigManager = systemConfigManager,
+        configProvider = configProvider,
         faceVerifier = faceVerifier,
         setFaceSetupState = { state -> faceSetupState.value = state },
         setFaceVerificationState = { state -> faceVerificationState.value = state },
