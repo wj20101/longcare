@@ -958,3 +958,33 @@
   - 验证：
     - `./gradlew :app:compileDebugKotlin`：PASS。
     - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS。
+- 执行“持续现代化优化（R2 增量切片：facecapture 屏幕拆分）”（2026-02-17）：
+  - 弹窗拆分：
+    - 新增 `app/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureDialogs.kt`，承接权限拒绝页与图片预览弹窗。
+  - 通用 UI 组件拆分：
+    - 新增 `app/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureUiComponents.kt`，承接人脸检测指示框与人脸缩略图组件。
+  - 页面瘦身：
+    - `app/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureScreen.kt` 删除内联弹窗/组件实现，仅保留相机编排和状态渲染。
+    - 行数从 `495` 降至 `396`。
+  - 验证：
+    - `./gradlew :app:compileDebugKotlin`：PASS。
+    - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS。
+- 执行“持续现代化优化（R3 增量治理：Android CI 取消率）”（2026-02-17）：
+  - 基线复测：
+    - `bash scripts/quality/monitor_ci_health.sh yyg20101/longcare 50 scripts/quality/ci_health_thresholds.json build/ci-health-r3`。
+    - 结果：最近 `50` 次 `Android CI` 样本中取消率 `60%`，高于阈值 `20%`（触发治理必要性）。
+  - 并发分组优化：
+    - 更新 `.github/workflows/android-ci.yml`：
+      - `concurrency.group` 改为 `android-ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event.pull_request.head.sha || 'stable' }}`；
+      - 使 `pull_request` 按提交维度分组，降低同 PR 连续提交导致的 run 互相取消。
+  - 守卫验证：
+    - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- 执行“持续现代化优化（R4 基线复测）”（2026-02-17）：
+  - 执行：
+    - `BASELINE_CLEAN_BEFORE_RUN=true bash scripts/quality/collect_build_baseline.sh`。
+  - 结果（已写入 `docs/refactor/baseline-metrics.md` 最新 run）：
+    - `:app:compileDebugKotlin`：`49s`
+    - `:app:testDebugUnitTest`：`74s`
+    - `:app:assembleDebug`：`106s`
+  - 结论：
+    - 无缓存 + rerun 口径下，`assembleDebug` 尚未回落到目标区间，R4 保持待继续治理。

@@ -25,9 +25,9 @@
 | ID | 优化项 | 对应目标 | 状态 |
 |---|---|---|---|
 | R1 | 继续将主体业务从 `app/features/*` 迁移到 `feature/*` 模块（优先：`photoupload`、`identification`、`servicecountdown`） | 现代化模块架构、边界收敛 | IN_PROGRESS（photoupload 核心层 + identification vm 全量 + servicecountdown vm 已下沉，UI/平台适配层留在 app） |
-| R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | IN_PROGRESS（`ServiceCountdownScreen` 副作用/底栏已拆分；`PhotoUploadScreen` 副作用/底栏/Mock调试卡片已拆分；`CameraScreen` 拍照处理与权限门禁已拆分；`ManualFaceCaptureScreen` 副作用/拍照处理/反馈遮罩已拆分；`NfcWorkflowScreen` 副作用/底栏/弹窗编排已拆分） |
-| R3 | CI 健康监控告警项治理：将 Android CI 取消率从 50% 降到阈值内（触发策略与提交流水优化） | CI/CD 资源效率、稳定性 | TODO |
-| R4 | 在“无缓存 + rerun”基线口径下继续压降 `:app:assembleDebug` 冷构建耗时（当前 79s） | 构建性能目标收敛 | TODO |
+| R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | IN_PROGRESS（`ServiceCountdownScreen` 副作用/底栏已拆分；`PhotoUploadScreen` 副作用/底栏/Mock调试卡片已拆分；`CameraScreen` 拍照处理与权限门禁已拆分；`ManualFaceCaptureScreen` 副作用/拍照处理/反馈遮罩已拆分；`NfcWorkflowScreen` 副作用/底栏/弹窗编排已拆分；`FaceCaptureScreen` 弹窗/组件已拆分） |
+| R3 | CI 健康监控告警项治理：将 Android CI 取消率从 50% 降到阈值内（触发策略与提交流水优化） | CI/CD 资源效率、稳定性 | IN_PROGRESS（已完成 Android CI 并发分组治理，待远端样本窗口验证取消率回落） |
+| R4 | 在“无缓存 + rerun”基线口径下继续压降 `:app:assembleDebug` 冷构建耗时（当前 106s） | 构建性能目标收敛 | TODO（已重采样，耗时较前一轮上升，需继续定位） |
 
 ## 增量执行记录（2026-02-17）
 
@@ -132,9 +132,36 @@
     - 新增 `NfcWorkflowDialogs.kt`，统一承接定位激活弹窗与结束工单确认弹窗的显示与回调。
   - 收敛结果：
     - `NfcWorkflowScreen.kt` 行数从 `684` 降至 `596`。
+- `R2` 增量切片（`facecapture`）：
+  - 弹窗组件拆分：
+    - 新增 `FaceCaptureDialogs.kt`，承接权限拒绝页与图片全屏预览交互（双击缩放/拖拽/点击关闭）。
+  - 通用 UI 组件拆分：
+    - 新增 `FaceCaptureUiComponents.kt`，承接人脸检测指示框与人脸缩略图组件。
+  - 页面职责收敛：
+    - `FaceCaptureScreen.kt` 删除内联弹窗与组件实现，仅保留相机编排与页面状态渲染。
+  - 收敛结果：
+    - `FaceCaptureScreen.kt` 行数从 `495` 降至 `396`。
+- `R3` 增量治理（`android-ci` 取消率）：
+  - 健康监控基线复测：
+    - `monitor_ci_health` 最近 `50` 次样本显示 `Android CI` 取消率 `60%`，高于阈值 `20%`。
+  - 并发分组优化：
+    - 更新 `.github/workflows/android-ci.yml` 的 `concurrency.group`：
+      - `pull_request` 维度加入 `head.sha`，降低同 PR 连续提交造成的互相取消。
+      - `push` 维度保持分支级分组，继续保留串行保护。
+  - 守卫验证：
+    - `scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+- `R4` 基线复测（`assembleDebug`）：
+  - 重新执行“无缓存 + rerun + clean”基线采集，结果已追加到 `docs/refactor/baseline-metrics.md`。
+  - 最新样本（2026-02-17 21:03:11）：
+    - `:app:compileDebugKotlin`：`49s`
+    - `:app:testDebugUnitTest`：`74s`
+    - `:app:assembleDebug`：`106s`（较上一轮 `79s` 上升，未达目标）
 - 验证：
   - `./gradlew :app:compileDebugKotlin`：PASS
   - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS
+  - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS
+  - `bash scripts/quality/monitor_ci_health.sh yyg20101/longcare 50 scripts/quality/ci_health_thresholds.json build/ci-health-r3`：FAIL（按预期暴露治理前基线）
+  - `BASELINE_CLEAN_BEFORE_RUN=true bash scripts/quality/collect_build_baseline.sh`：PASS
 
 ## 本轮已落地文件
 
@@ -152,6 +179,11 @@
 - `scripts/quality/collect_build_baseline.sh`
 - `scripts/quality/monitor_ci_health.sh`
 - `app/src/test/kotlin/com/ytone/longcare/data/cos/repository/CosRepositoryImplTest.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureScreen.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureDialogs.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureUiComponents.kt`
+- `.github/workflows/android-ci.yml`
+- `docs/refactor/baseline-metrics.md`
 
 ## 本轮验收命令
 

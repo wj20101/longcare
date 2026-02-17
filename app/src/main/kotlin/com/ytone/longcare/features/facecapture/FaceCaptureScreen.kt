@@ -15,9 +15,6 @@ import androidx.camera.view.LifecycleCameraController
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -33,12 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -51,8 +44,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import java.util.concurrent.Executors
-import com.ytone.longcare.common.utils.logE
-import com.ytone.longcare.common.utils.logW
 
 /**
  * 人脸捕获主界面
@@ -367,250 +358,6 @@ fun FaceCaptureScreen(
             onRequestPermission = { launcher.launch(Manifest.permission.CAMERA) },
             onNavigateBack = onNavigateBack
         )
-    }
-}
-
-/**
- * 人脸检测指示器
- * 显示人脸检测状态和质量
- */
-@Composable
-private fun FaceDetectionIndicator(
-    detected: Boolean,
-    quality: Float,
-    modifier: Modifier = Modifier
-) {
-    AnimatedVisibility(
-        visible = detected,
-        enter = scaleIn() + fadeIn(),
-        exit = scaleOut() + fadeOut(),
-        modifier = modifier
-    ) {
-        Box(
-            modifier = Modifier
-                .size(200.dp)
-                .border(
-                    width = 3.dp,
-                    color = when {
-                        quality > 0.8f -> Color.Green
-                        quality > 0.6f -> Color.Yellow
-                        else -> Color.Red
-                    },
-                    shape = RoundedCornerShape(16.dp)
-                )
-        )
-    }
-}
-
-/**
- * 人脸缩略图组件
- */
-@Composable
-private fun FaceThumbnail(
-    bitmap: Bitmap,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.size(64.dp) // 调整大小以适应较小的删除按钮
-    ) {
-        Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = "人脸照片",
-            modifier = Modifier
-                .size(60.dp)
-                .clip(CircleShape)
-                .border(
-                    width = if (isSelected) 3.dp else 1.dp,
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
-                    shape = CircleShape
-                )
-                .clickable(onClick = onClick)
-        )
-
-        if (isSelected) {
-            Icon(
-                Icons.Default.CheckCircle,
-                contentDescription = "已选择",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 4.dp, bottom = 4.dp)
-                    .size(20.dp)
-                    .background(Color.White, CircleShape)
-            )
-        }
-
-        // 删除按钮
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .size(18.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.5f))
-                .clickable { onDelete() }
-        ) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = "删除照片",
-                tint = Color.White,
-                modifier = Modifier.size(10.dp)
-            )
-        }
-    }
-}
-
-/**
- * 权限被拒绝时的界面
- */
-@Composable
-private fun PermissionDeniedScreen(
-    onRequestPermission: () -> Unit,
-    onNavigateBack: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            Icons.Default.CameraAlt,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "需要相机权限",
-            style = MaterialTheme.typography.headlineSmall,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Text(
-            text = "为了使用人脸捕获功能，需要访问您的相机",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        Button(
-            onClick = onRequestPermission,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("授予权限")
-        }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        TextButton(onClick = onNavigateBack) {
-            Text("返回")
-        }
-    }
-}
-
-/**
- * 图片预览Dialog组件
- * 支持手势缩放和拖拽
- */
-@Composable
-private fun ImagePreviewDialog(
-    bitmap: Bitmap,
-    onDismiss: () -> Unit
-) {
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    var offsetY by remember { mutableFloatStateOf(0f) }
-    
-    val transformableState = rememberTransformableState { zoomChange, offsetChange, _ ->
-        scale = (scale * zoomChange).coerceIn(0.5f, 5f)
-        offsetX += offsetChange.x
-        offsetY += offsetChange.y
-    }
-    
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.9f))
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onDoubleTap = {
-                            // 双击重置缩放
-                            scale = if (scale > 1f) 1f else 2f
-                            offsetX = 0f
-                            offsetY = 0f
-                        },
-                        onTap = { onDismiss() }
-                    )
-                }
-        ) {
-            // 关闭按钮
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-                    .background(
-                        Color.Black.copy(alpha = 0.5f),
-                        CircleShape
-                    )
-            ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "关闭",
-                    tint = Color.White
-                )
-            }
-            
-            // 图片
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = "预览图片",
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxSize()
-                    .graphicsLayer(
-                        scaleX = scale,
-                        scaleY = scale,
-                        translationX = offsetX,
-                        translationY = offsetY
-                    )
-                    .transformable(state = transformableState)
-            )
-            
-            // 操作提示
-            Text(
-                text = "双击缩放 • 拖拽移动 • 点击关闭",
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 12.sp,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(16.dp)
-                    .background(
-                        Color.Black.copy(alpha = 0.5f),
-                        RoundedCornerShape(8.dp)
-                    )
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            )
-        }
     }
 }
 
