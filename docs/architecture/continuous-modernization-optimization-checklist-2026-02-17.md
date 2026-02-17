@@ -90,9 +90,14 @@
       - 页面不再直接拼装“服务信息/前台服务/闹钟调度”；
       - 页面仅保留重入判断与权限触发，降低 UI 层编排复杂度。
   - `ServiceCountdownScreen` 改为调用上述处理器函数，页面逻辑进一步收敛为状态渲染与交互编排。
+  - 本轮继续收敛（副作用与底栏）：
+    - 新增 `ServiceCountdownLifecycleEffects.kt`，承接订单状态监听、初始化触发、生命周期刷新与页面销毁清理；
+    - 新增 `ServiceCountdownBottomActionBar.kt`，抽离底部结束服务按钮区域与状态文案/颜色映射；
+    - `ServiceCountdownScreen` 行数从 `390` 降至 `280`；
+    - 页面销毁清理使用 `rememberUpdatedState(countdownState)`，避免 `DisposableEffect` 读取过期状态风险。
 - 验证：
   - `./gradlew :app:compileDebugKotlin`：PASS
-  - `./gradlew :app:testDebugUnitTest --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest"`：PASS
+  - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS
 
 ## 本轮已落地文件
 

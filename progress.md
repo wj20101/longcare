@@ -1,6 +1,19 @@
 # 执行日志
 
 ## 2026-02-17
+- 执行 R2（`servicecountdown` 页面二次瘦身：副作用与底栏组件拆分）：
+  - 新增 `ServiceCountdownLifecycleEffects.kt`，统一承接页面副作用：
+    - 订单状态异常监听
+    - 初始加载/轮询/图片回传监听
+    - 初始化会话触发
+    - 生命周期恢复刷新
+    - 页面销毁清理
+  - 新增 `ServiceCountdownBottomActionBar.kt`，抽离底部结束服务按钮区域与文案/颜色映射。
+  - `ServiceCountdownScreen.kt` 从 390 行降至 280 行，职责进一步收敛为状态渲染与交互编排。
+  - 生命周期清理逻辑使用 `rememberUpdatedState(countdownState)`，避免 `DisposableEffect` 读取过期状态值风险。
+- 本地验收（R2-副作用与底栏拆分）：
+  - `./gradlew :app:compileDebugKotlin`：PASS
+  - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS
 - 执行 R2（`servicecountdown` 初始化编排继续瘦身）：
   - 新增 `ServiceCountdownInitializationHandler.kt`，下沉页面内初始化编排（权限检查 + session 初始化 + 首次提示）；
   - `ServiceCountdownPermissionHandler.kt` 新增 `checkAndRequestCountdownPermissions(...)`，统一权限检查编排入口；

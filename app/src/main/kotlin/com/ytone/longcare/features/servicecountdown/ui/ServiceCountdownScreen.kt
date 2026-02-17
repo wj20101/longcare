@@ -23,10 +23,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.repeatOnLifecycle
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
@@ -38,7 +36,6 @@ import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.common.utils.CustomBackHandler
-import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 import com.ytone.longcare.model.OrderKey
@@ -84,7 +81,6 @@ fun ServiceCountdownScreen(
     // 从ViewModel获取状态
     val countdownState by countdownViewModel.countdownState.collectAsStateWithLifecycle()
     val formattedTime by countdownViewModel.formattedTime.collectAsStateWithLifecycle()
-    val orderStateError by countdownViewModel.orderStateError.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -129,74 +125,28 @@ fun ServiceCountdownScreen(
         onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderKey) }
     )
 
-    // 监听订单状态异常事件
-    LaunchedEffect(orderStateError) {
-        orderStateError?.let { stateModel ->
-            orderStateErrorMessage = buildOrderStateErrorMessage(stateModel)
+    ServiceCountdownLifecycleEffects(
+        actions = actions,
+        orderKey = orderKey,
+        projectIdList = projectIdList,
+        sharedViewModel = sharedViewModel,
+        countdownViewModel = countdownViewModel,
+        locationTrackingViewModel = locationTrackingViewModel,
+        context = context,
+        lifecycleOwner = lifecycleOwner,
+        countdownState = countdownState,
+        notificationPermissionLauncher = notificationPermissionLauncher,
+        exactAlarmPermissionLauncher = exactAlarmPermissionLauncher,
+        permissionLauncher = permissionLauncher,
+        onPermissionDialogRequired = { message ->
+            permissionDialogMessage = message
+            showPermissionDialog = true
+        },
+        onOrderStateError = { message ->
+            orderStateErrorMessage = message
             showOrderStateErrorDialog = true
         }
-    }
-    
-    LaunchedEffect(orderKey) {
-        sharedViewModel.getCachedOrderInfo(orderKey)
-        sharedViewModel.getOrderInfo(orderKey)
-
-        // 检查并启动定位服务
-        checkLocationPermissionAndStart(
-            context = context,
-            permissionLauncher = permissionLauncher,
-            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderKey) }
-        )
-
-        // 恢复本地保存的图片数据
-        countdownViewModel.loadUploadedImagesFromRepository(orderKey)
-        
-        // 启动订单状态轮询（每5秒查询一次）
-        countdownViewModel.startOrderStatePolling(orderKey)
-
-        // 监听图片上传结果
-        actions.photoUploadResultFlow.collect { result ->
-            result?.let {
-                countdownViewModel.handlePhotoUploadResult(it)
-                actions.clearPhotoUploadResult()
-            }
-        }
-    }
-
-    // 初始设置倒计时时间
-    LaunchedEffect(orderKey, projectIdList) {
-        setupCountdownSessionIfNeeded(
-            context = context,
-            orderKey = orderKey,
-            projectIdList = projectIdList,
-            sharedViewModel = sharedViewModel,
-            countdownViewModel = countdownViewModel,
-            notificationPermissionLauncher = notificationPermissionLauncher,
-            exactAlarmPermissionLauncher = exactAlarmPermissionLauncher,
-            onPermissionDialogRequired = { message ->
-                permissionDialogMessage = message
-                showPermissionDialog = true
-            }
-        )
-    }
-
-    // 监听生命周期变化，在RESUMED状态下仅更新时间显示，不重新初始化
-    LaunchedEffect(lifecycleOwner) {
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            // 只在已初始化且未结束的情况下更新显示
-            if (countdownViewModel.isInitialized() && countdownState != ServiceCountdownState.ENDED) {
-                val orderInfo = sharedViewModel.getCachedOrderInfo(orderKey)
-                orderInfo?.let {
-                    // 仅刷新显示，不重新启动倒计时
-                    countdownViewModel.refreshCountdownDisplay(
-                        orderKey = orderKey,
-                        projectList = it.projectList ?: emptyList(),
-                        selectedProjectIds = projectIdList
-                    )
-                }
-            }
-        }
-    }
+    )
 
     Scaffold(
         topBar = {
@@ -260,89 +210,29 @@ fun ServiceCountdownScreen(
 
             }
 
-            // 固定在底部的按钮
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color(0xFFF6F9FF).copy(alpha = 0.9f),
-                                Color(0xFFF6F9FF)
-                            ), startY = 0f, endY = 100f
+            ServiceCountdownBottomActionBar(
+                countdownState = countdownState,
+                onActionClick = {
+                    if (!BuildConfig.USE_MOCK_DATA && !countdownViewModel.validatePhotosUploaded()) {
+                        countdownViewModel.showToast("请上传照片")
+                        return@ServiceCountdownBottomActionBar
+                    }
+
+                    if (countdownState == ServiceCountdownState.RUNNING) {
+                        showConfirmDialog = true
+                    } else {
+                        handleEndService(
+                            context = context,
+                            orderKey = orderKey,
+                            projectIdList = projectIdList,
+                            countdownViewModel = countdownViewModel,
+                            locationTrackingViewModel = locationTrackingViewModel,
+                            actions = actions,
+                            endType = 1
                         )
-                    )
-                    .padding(horizontal = 16.dp, vertical = 32.dp)
-            ) {
-                Button(
-                    onClick = singleClick {
-                        // 验证照片是否已上传 (Mock模式下跳过验证)
-                        if (!BuildConfig.USE_MOCK_DATA && !countdownViewModel.validatePhotosUploaded()) {
-                            countdownViewModel.showToast("请上传照片")
-                            return@singleClick
-                        }
-
-                        // 如果倒计时还在进行中，显示确认弹窗
-                        if (countdownState == ServiceCountdownState.RUNNING) {
-                            showConfirmDialog = true
-                        } else {
-                            handleEndService(
-                                context = context,
-                                orderKey = orderKey,
-                                projectIdList = projectIdList,
-                                countdownViewModel = countdownViewModel,
-                                locationTrackingViewModel = locationTrackingViewModel,
-                                actions = actions,
-                                endType = 1
-                            )
-                        }
-                    },
-                    enabled = countdownState != ServiceCountdownState.ENDED,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = when (countdownState) {
-                            ServiceCountdownState.RUNNING -> Color(0xFFFF9500) // 橙色（提前结束）
-                            ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> Color(
-                                0xFF4A90E2
-                            ) // 蓝色（正常结束）
-                            ServiceCountdownState.ENDED -> Color.Gray // 灰色（已结束）
-                        }
-                    )
-                ) {
-                    Text(
-                        text = when (countdownState) {
-                            ServiceCountdownState.RUNNING -> "提前结束服务"
-                            ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> "结束服务"
-                            ServiceCountdownState.ENDED -> "服务已结束"
-                        }, fontSize = 18.sp, color = Color.White
-                    )
+                    }
                 }
-            }
-        }
-    }
-
-    // 页面销毁时清理资源
-    DisposableEffect(Unit) {
-        onDispose {
-            // 停止订单状态轮询
-            countdownViewModel.stopOrderStatePolling()
-            
-            // 如果服务未正常结束，清理相关资源
-            if (countdownState != ServiceCountdownState.ENDED) {
-                // 1. 取消倒计时闹钟
-                countdownViewModel.cancelCountdownAlarm()
-                
-                // 2. 停止响铃服务（如果正在响铃）
-                AlarmRingtoneService.stopRingtone(context)
-                
-                // 注意：不停止前台服务和定位服务，因为用户可能只是退出页面
-                // 服务应该继续在后台运行，直到用户主动结束服务
-            }
+            )
         }
     }
 
