@@ -28,8 +28,6 @@ app/src/main/kotlin/com/ytone/longcare/features/facerecognition/vm/FaceRecogniti
 app/src/main/kotlin/com/ytone/longcare/features/home/api/HomeActions.kt
 app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreen.kt
 app/src/main/kotlin/com/ytone/longcare/features/home/ui/NavigationScreen.kt
-app/src/main/kotlin/com/ytone/longcare/features/home/vm/HomeSharedViewModel.kt
-app/src/main/kotlin/com/ytone/longcare/features/home/vm/HomeViewModel.kt
 app/src/main/kotlin/com/ytone/longcare/features/identification/api/IdentificationActions.kt
 app/src/main/kotlin/com/ytone/longcare/features/identification/data/IdentificationFaceDataSource.kt
 app/src/main/kotlin/com/ytone/longcare/features/identification/data/SetupFaceGatewayImpl.kt
