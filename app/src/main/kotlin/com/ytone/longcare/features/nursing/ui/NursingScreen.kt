@@ -38,7 +38,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
 import com.ytone.longcare.model.OrderInfoRequestModel
-import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderModel
 import com.ytone.longcare.common.utils.DisplayDate
 import com.ytone.longcare.common.utils.TimeUtils
@@ -192,19 +191,15 @@ fun NursingScreen(
             ) { page ->
                 PlanList(plans = orderList, isLoading = isLoading) { order ->
                     handleOrderNavigation(
-                         state = order.state,
-                         orderId = order.orderId,
-                         planId = order.planId,
-                         onNavigateToNursingExecution = { orderId, planId ->
-                             actions.onNavigateToNursingExecution(OrderKey(orderId, planId))
-                         },
-                         onNavigateToService = { orderId, planId ->
-                             actions.onNavigateToService(OrderKey(orderId, planId))
-                         },
-                         onNotStartedState = {
-                             // 未开单状态，不允许跳转
-                         }
-                     )
+                        state = order.state,
+                        orderId = order.orderId,
+                        planId = order.planId,
+                        onNavigateToNursingExecution = actions.onNavigateToNursingExecution,
+                        onNavigateToService = actions.onNavigateToService,
+                        onNotStartedState = {
+                            // 未开单状态，不允许跳转
+                        }
+                    )
                 }
             }
         }

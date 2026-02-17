@@ -36,7 +36,6 @@ import kotlinx.coroutines.launch
 import com.ytone.longcare.R
 import com.ytone.longcare.model.TodayServiceOrderModel
 import com.ytone.longcare.model.ServiceOrderModel
-import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
 import com.ytone.longcare.model.handleOrderNavigation
 import com.ytone.longcare.model.isPendingCareState
@@ -479,19 +478,15 @@ fun OrderTabLayout(
                     pendingOrders.forEach { order ->
                         ServiceOrderItem(order = order) {
                             handleOrderNavigation(
-                                 state = order.state,
-                                 orderId = order.orderId,
-                                 planId = 0,
-                                 onNavigateToNursingExecution = { orderId, planId ->
-                                     actions.onNavigateToNursingExecution(OrderKey(orderId, planId))
-                                 },
-                                 onNavigateToService = { orderId, planId ->
-                                     actions.onNavigateToService(OrderKey(orderId, planId))
-                                 },
-                                 onNotStartedState = {
-                                     // 未开单状态，不允许跳转
-                                 }
-                             )
+                                state = order.state,
+                                orderId = order.orderId,
+                                planId = 0,
+                                onNavigateToNursingExecution = actions.onNavigateToNursingExecution,
+                                onNavigateToService = actions.onNavigateToService,
+                                onNotStartedState = {
+                                    // 未开单状态，不允许跳转
+                                }
+                            )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     }

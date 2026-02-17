@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
-import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.TodayServiceOrderModel
 import com.ytone.longcare.model.handleOrderNavigation
 import com.ytone.longcare.model.isPendingCareState
@@ -128,21 +127,17 @@ fun ServiceOrdersListScreen(
                 } else {
                     items(filteredOrders) { order ->
                         ServiceOrderItem(order = order, onClick = singleClick {
-                    handleOrderNavigation(
-                         state = order.state,
-                         orderId = order.orderId,
-                         planId = 0,
-                         onNavigateToNursingExecution = { orderId, planId ->
-                             actions.onNavigateToNursingExecution(OrderKey(orderId, planId))
-                         },
-                         onNavigateToService = { orderId, planId ->
-                             actions.onNavigateToService(OrderKey(orderId, planId))
-                         },
-                         onNotStartedState = {
-                             // 未开单状态，不允许跳转
-                         }
-                     )
-                })
+                            handleOrderNavigation(
+                                state = order.state,
+                                orderId = order.orderId,
+                                planId = 0,
+                                onNavigateToNursingExecution = actions.onNavigateToNursingExecution,
+                                onNavigateToService = actions.onNavigateToService,
+                                onNotStartedState = {
+                                    // 未开单状态，不允许跳转
+                                }
+                            )
+                        })
                     }
                 }
             }

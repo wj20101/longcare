@@ -75,6 +75,33 @@ fun handleOrderNavigation(
     state: Int,
     orderId: Long,
     planId: Int = 0,
+    onNavigateToNursingExecution: (OrderKey) -> Unit,
+    onNavigateToService: (OrderKey) -> Unit,
+    onNotStartedState: (() -> Unit)? = null
+) {
+    handleOrderNavigation(
+        state = state,
+        orderId = orderId,
+        planId = planId,
+        onNavigateToNursingExecution = { id, pid -> onNavigateToNursingExecution(OrderKey(id, pid)) },
+        onNavigateToService = { id, pid -> onNavigateToService(OrderKey(id, pid)) },
+        onNotStartedState = onNotStartedState
+    )
+}
+
+/**
+ * 统一的订单跳转处理函数
+ * @param state 订单状态
+ * @param orderId 订单ID
+ * @param planId 计划ID
+ * @param onNavigateToNursingExecution 跳转到护理执行页面的回调
+ * @param onNavigateToService 跳转到服务页面的回调
+ * @param onNotStartedState 未开单状态的回调（可选）
+ */
+fun handleOrderNavigation(
+    state: Int,
+    orderId: Long,
+    planId: Int = 0,
     onNavigateToNursingExecution: (Long, Int) -> Unit,
     onNavigateToService: (Long, Int) -> Unit,
     onNotStartedState: (() -> Unit)? = null

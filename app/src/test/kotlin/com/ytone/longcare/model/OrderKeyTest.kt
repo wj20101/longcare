@@ -1,10 +1,10 @@
 package com.ytone.longcare.model
 
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.navigation.OrderNavParams
 import com.ytone.longcare.navigation.toOrderKey
 import com.ytone.longcare.navigation.toOrderNavParams
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class OrderKeyTest {
@@ -61,5 +61,41 @@ class OrderKeyTest {
         
         assertEquals(444L, requestModel.orderId)
         assertEquals(5, requestModel.planId)
+    }
+
+    @Test
+    fun `test handleOrderNavigation with OrderKey callback routes pending care to nursing`() {
+        val orderKey = OrderKey(orderId = 555L, planId = 6)
+        var nursingTarget: OrderKey? = null
+        var serviceTarget: OrderKey? = null
+
+        handleOrderNavigation(
+            state = 0,
+            orderId = orderKey.orderId,
+            planId = orderKey.planId,
+            onNavigateToNursingExecution = { nursingTarget = it },
+            onNavigateToService = { serviceTarget = it }
+        )
+
+        assertEquals(orderKey, nursingTarget)
+        assertNull(serviceTarget)
+    }
+
+    @Test
+    fun `test handleOrderNavigation with OrderKey callback routes completed to service`() {
+        val orderKey = OrderKey(orderId = 666L, planId = 7)
+        var nursingTarget: OrderKey? = null
+        var serviceTarget: OrderKey? = null
+
+        handleOrderNavigation(
+            state = 2,
+            orderId = orderKey.orderId,
+            planId = orderKey.planId,
+            onNavigateToNursingExecution = { nursingTarget = it },
+            onNavigateToService = { serviceTarget = it }
+        )
+
+        assertNull(nursingTarget)
+        assertEquals(orderKey, serviceTarget)
     }
 }
