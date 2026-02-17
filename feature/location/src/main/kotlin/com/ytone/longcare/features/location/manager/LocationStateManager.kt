@@ -31,7 +31,7 @@ class LocationStateManager @Inject constructor() {
     /**
      * 更新追踪状态
      */
-    internal fun updateTrackingState(isTracking: Boolean) {
+    fun updateTrackingState(isTracking: Boolean) {
         _state.update { it.copy(isTracking = isTracking) }
     }
     

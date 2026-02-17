@@ -1,7 +1,6 @@
 package com.ytone.longcare.common.utils
 
 import android.util.Log
-import com.ytone.longcare.BuildConfig
 import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -22,7 +21,7 @@ enum class LogLevel(val priority: Int) {
  * 日志配置类
  */
 data class LogConfig(
-    var enabled: Boolean = BuildConfig.DEBUG, // 总开关，是否启用日志
+    var enabled: Boolean = true, // 总开关，是否启用日志
     var globalTag: String = "AppLog", // 全局默认Tag
     var currentLevel: LogLevel = LogLevel.VERBOSE, // 当前允许打印的最低日志级别
     var showThreadInfo: Boolean = false, // 是否显示线程信息

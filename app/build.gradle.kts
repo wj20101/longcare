@@ -271,6 +271,7 @@ dependencies {
     implementation(project(":feature:login"))
     implementation(project(":feature:home"))
     implementation(project(":feature:identification"))
+    implementation(project(":feature:location"))
 
     // Core & Lifecycle
     implementation(libs.androidx.core.ktx)

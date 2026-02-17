@@ -7,8 +7,6 @@ import android.os.IBinder
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.app.ServiceCompat
-import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
@@ -55,7 +53,7 @@ class LocationTrackingService : Service() {
             logI("启动定位前台保活 (owner=$owner)")
             createNotificationChannel()
             val notification = createNotification("后台定位服务运行中...")
-            ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, 0)
+            startForeground(NOTIFICATION_ID, notification)
             continuousAmapLocationManager.enableBackgroundLocation(NOTIFICATION_ID, notification)
             isKeepAliveStarted = true
         } catch (e: Exception) {
@@ -86,7 +84,7 @@ class LocationTrackingService : Service() {
     private fun createNotification(contentText: String): Notification {
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("后台定位服务").setContentText(contentText)
-            .setSmallIcon(R.mipmap.app_logo_round)
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
             .build()
     }

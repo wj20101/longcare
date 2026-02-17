@@ -5,10 +5,10 @@ import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClient
 import com.amap.api.location.AMapLocationClientOption
 import com.amap.api.location.AMapLocationListener
-import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.core.common.di.ApplicationScope
+import com.ytone.longcare.domain.location.AmapApiKeyProvider
 import com.ytone.longcare.model.LocationResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -36,7 +36,7 @@ import javax.inject.Singleton
 class ContinuousAmapLocationManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     @param:ApplicationScope private val applicationScope: CoroutineScope,
-    private val systemConfigManager: SystemConfigManager
+    private val amapApiKeyProvider: AmapApiKeyProvider
 ) {
     private var locationClient: AMapLocationClient? = null
     private var isInitialized = false
@@ -124,8 +124,7 @@ class ContinuousAmapLocationManager @Inject constructor(
      * 使用 shareIn 实现多播，当订阅者 > 0 时自动启动定位，无订阅者后延时 5秒 停止定位
      */
     private val _locationFlow = callbackFlow {
-        val third = systemConfigManager.getThirdKey()
-        val apiKey = third?.gaoDeMapApiKey?.takeIf { it.isNotBlank() } ?: ""
+        val apiKey = amapApiKeyProvider.getAmapApiKey()?.takeIf { it.isNotBlank() } ?: ""
         
         if (apiKey.isBlank()) {
             logE("高德定位API Key不可用")
