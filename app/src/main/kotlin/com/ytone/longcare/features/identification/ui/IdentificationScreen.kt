@@ -35,6 +35,7 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import kotlinx.coroutines.launch
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toOrderKeyModel
 import com.ytone.longcare.navigation.toRequestModel
 import com.ytone.longcare.common.utils.singleClick
 
@@ -135,7 +136,7 @@ fun IdentificationScreen(
                     ) {
                         // 下一步按钮
                         Button(
-                            onClick = singleClick { actions.onNavigateToSelectService(orderParams) },
+                            onClick = singleClick { actions.onNavigateToSelectService(orderParams.toOrderKeyModel()) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 48.dp),

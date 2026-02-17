@@ -38,6 +38,7 @@ import com.ytone.longcare.features.nursingexecution.api.NursingExecutionActions
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toOrderKeyModel
 import com.ytone.longcare.navigation.toRequestModel
 
 // --- 主屏幕入口 ---
@@ -86,7 +87,7 @@ fun NursingExecutionScreen(
                         request = orderInfoRequest,
                         projectList = projectList
                     )
-                    actions.onNavigateToServiceCountdown(orderParams, selectedProjectIds)
+                    actions.onNavigateToServiceCountdown(orderParams.toOrderKeyModel(), selectedProjectIds)
                 }
             )
         }
@@ -245,7 +246,7 @@ fun NursingExecutionContent(
                                         onNavigateToCountdown(orderInfo.projectList ?: emptyList())
                                     }
                                 }
-                                orderInfo.state.isPendingExecutionState() -> actions.onNavigateToSelectDevice(orderParams)
+                                orderInfo.state.isPendingExecutionState() -> actions.onNavigateToSelectDevice(orderParams.toOrderKeyModel())
                                 else -> actions.onNavigateBack()
                             }
                         }

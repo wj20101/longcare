@@ -52,11 +52,11 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
         NursingExecutionScreen(
             actions = NursingExecutionActions(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToServiceCountdown = { orderParams, projectIdList ->
-                    navController.navigateToServiceCountdown(orderParams, projectIdList)
+                onNavigateToServiceCountdown = { orderKey, projectIdList ->
+                    navController.navigateToServiceCountdown(orderKey.toOrderNavParams(), projectIdList)
                 },
-                onNavigateToSelectDevice = { orderParams ->
-                    navController.navigateToSelectDevice(orderParams)
+                onNavigateToSelectDevice = { orderKey ->
+                    navController.navigateToSelectDevice(orderKey.toOrderNavParams())
                 }
             ),
             orderParams = route.orderParams
@@ -114,12 +114,12 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
             actions = NfcWorkflowActions(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateHomeAndClearStack = { navController.navigateToHomeAndClearStack() },
-                onNavigateToIdentification = { orderParams ->
-                    navController.navigateToIdentification(orderParams)
+                onNavigateToIdentification = { orderKey ->
+                    navController.navigateToIdentification(orderKey.toOrderNavParams())
                 },
-                onNavigateToServiceComplete = { orderParams, serviceCompleteData ->
+                onNavigateToServiceComplete = { orderKey, serviceCompleteData ->
                     navController.navigateToServiceComplete(
-                        orderParams = orderParams,
+                        orderParams = orderKey.toOrderNavParams(),
                         serviceCompleteData = serviceCompleteData
                     )
                 }
@@ -195,15 +195,15 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
         ServiceCountdownScreen(
             actions = ServiceCountdownActions(
                 onNavigateHomeAndClearStack = { navController.navigateToHomeAndClearStack() },
-                onNavigateToEndServiceSelection = { orderParams, endType, projectIdList ->
-                    navController.navigateToEndServiceSelection(orderParams, endType, projectIdList)
+                onNavigateToEndServiceSelection = { orderKey, endType, projectIdList ->
+                    navController.navigateToEndServiceSelection(orderKey.toOrderNavParams(), endType, projectIdList)
                 },
-                onNavigateToPhotoUpload = { orderParams, existingImages ->
+                onNavigateToPhotoUpload = { orderKey, existingImages ->
                     backStackEntry.savedStateHandle.set(
                         NavigationConstants.EXISTING_IMAGES_KEY,
                         existingImages
                     )
-                    navController.navigateToPhotoUpload(orderParams)
+                    navController.navigateToPhotoUpload(orderKey.toOrderNavParams())
                 },
                 photoUploadResultFlow = backStackEntry.savedStateHandle.getStateFlow(
                     NavigationConstants.PHOTO_UPLOAD_RESULT_KEY,
@@ -243,8 +243,8 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
         EndServiceSelectionScreen(
             actions = EndServiceSelectionActions(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToNfcSignInForEndOrder = { orderParams, params ->
-                    navController.navigateToNfcSignInForEndOrder(orderParams, params)
+                onNavigateToNfcSignInForEndOrder = { orderKey, params ->
+                    navController.navigateToNfcSignInForEndOrder(orderKey.toOrderNavParams(), params)
                 }
             ),
             orderParams = route.orderParams,

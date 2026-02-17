@@ -50,6 +50,7 @@ import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSetti
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toOrderKeyModel
 import com.ytone.longcare.navigation.toRequestModel
 import kotlinx.coroutines.CancellationException
 
@@ -253,7 +254,7 @@ fun NfcWorkflowScreen(
                                                 // 签到成功时开启定位上报任务
                                                 checkLocationPermissionAndStartTracking()
                                                 // 签到成功后跳转到身份认证页面
-                                                actions.onNavigateToIdentification(orderParams)
+                                                actions.onNavigateToIdentification(orderParams.toOrderKeyModel())
                                             }
 
                                             SignInMode.END_ORDER -> {
@@ -269,7 +270,7 @@ fun NfcWorkflowScreen(
                                                         trueServiceTime = trueServiceTime
                                                     )
                                                 actions.onNavigateToServiceComplete(
-                                                    orderParams,
+                                                    orderParams.toOrderKeyModel(),
                                                     serviceCompleteData
                                                 )
                                             }

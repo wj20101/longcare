@@ -12,6 +12,7 @@ import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.features.identification.vm.PhotoUploadState
 import com.ytone.longcare.features.identification.vm.VerificationType
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toOrderKeyModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 
 @Composable
@@ -86,7 +87,7 @@ internal fun IdentificationScreenEffects(
     LaunchedEffect(photoUploadState) {
         when (photoUploadState) {
             is PhotoUploadState.Success -> {
-                actions.onNavigateToSelectService(orderParams)
+                actions.onNavigateToSelectService(orderParams.toOrderKeyModel())
                 identificationViewModel.resetPhotoUploadState()
             }
 

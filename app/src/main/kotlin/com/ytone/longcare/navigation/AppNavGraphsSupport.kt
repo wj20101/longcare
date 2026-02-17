@@ -116,8 +116,8 @@ internal fun NavGraphBuilder.registerSupportNavGraphs(navController: NavControll
                     navController.navigateToCamera(watermarkData)
                 },
                 onNavigateToManualFaceCapture = { navController.navigateToManualFaceCapture() },
-                onNavigateToSelectService = { orderParams ->
-                    navController.navigateToSelectService(orderParams)
+                onNavigateToSelectService = { orderKey ->
+                    navController.navigateToSelectService(orderKey.toOrderNavParams())
                 },
                 capturedImageUriFlow = backStackEntry.savedStateHandle.getStateFlow(
                     NavigationConstants.CAPTURED_IMAGE_URI_KEY,
