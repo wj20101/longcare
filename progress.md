@@ -774,3 +774,15 @@
   - 验证：
     - `./gradlew :app:compileDebugKotlin`：PASS（迁移后）。
     - `./gradlew :app:testDebugUnitTest --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest"`：PASS。
+- 执行“持续现代化优化（R1 增量切片：servicecountdown API 下沉）”（2026-02-17）：
+  - 新增模块：
+    - 新建 `feature:servicecountdown`（`build.gradle.kts`、`src/main/AndroidManifest.xml`）。
+    - `settings.gradle.kts` 增加 `include(":feature:servicecountdown")`。
+    - `app/build.gradle.kts` 增加 `implementation(project(":feature:servicecountdown"))`。
+  - 首批迁移：
+    - `app/features/servicecountdown/api/ServiceCountdownActions.kt` 迁移至 `feature:servicecountdown`。
+  - 依赖修复：
+    - 新模块补齐 `kotlinx-coroutines-core` 以支持 `StateFlow`。
+  - 验证：
+    - `./gradlew :app:compileDebugKotlin`：PASS。
+    - `./gradlew :app:testDebugUnitTest --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest"`：PASS。

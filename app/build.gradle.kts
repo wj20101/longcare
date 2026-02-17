@@ -273,6 +273,7 @@ dependencies {
     implementation(project(":feature:identification"))
     implementation(project(":feature:location"))
     implementation(project(":feature:photoupload"))
+    implementation(project(":feature:servicecountdown"))
 
     // Core & Lifecycle
     implementation(libs.androidx.core.ktx)
