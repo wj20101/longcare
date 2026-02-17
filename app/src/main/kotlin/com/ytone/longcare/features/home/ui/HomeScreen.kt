@@ -28,6 +28,7 @@ import com.ytone.longcare.features.nursing.api.NursingActions
 import com.ytone.longcare.features.nursing.ui.NursingScreen
 import com.ytone.longcare.features.profile.api.ProfileActions
 import com.ytone.longcare.features.profile.ui.ProfileScreen
+import com.ytone.longcare.navigation.toOrderKeyModel
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.theme.bgGradientBrush
@@ -285,17 +286,27 @@ fun HomeScreen(
                         actions = MainDashboardActions(
                             onNavigateToCarePlansList = actions.onNavigateToCarePlansList,
                             onNavigateToServiceRecordsList = actions.onNavigateToServiceRecordsList,
-                            onNavigateToNursingExecution = actions.onNavigateToNursingExecution,
-                            onNavigateToService = actions.onNavigateToService,
-                            onNavigateToServiceCountdown = actions.onNavigateToServiceCountdown
+                            onNavigateToNursingExecution = { orderParams ->
+                                actions.onNavigateToNursingExecution(orderParams.toOrderKeyModel())
+                            },
+                            onNavigateToService = { orderParams ->
+                                actions.onNavigateToService(orderParams.toOrderKeyModel())
+                            },
+                            onNavigateToServiceCountdown = { orderParams, projectIdList ->
+                                actions.onNavigateToServiceCountdown(orderParams.toOrderKeyModel(), projectIdList)
+                            }
                         ),
                         homeSharedViewModel = homeSharedViewModel,
                         todayOrderViewModel = todayOrderViewModel
                     )
                     1 -> NursingScreen(
                         actions = NursingActions(
-                            onNavigateToNursingExecution = actions.onNavigateToNursingExecution,
-                            onNavigateToService = actions.onNavigateToService
+                            onNavigateToNursingExecution = { orderParams ->
+                                actions.onNavigateToNursingExecution(orderParams.toOrderKeyModel())
+                            },
+                            onNavigateToService = { orderParams ->
+                                actions.onNavigateToService(orderParams.toOrderKeyModel())
+                            }
                         )
                     )
                     2 -> ProfileScreen(

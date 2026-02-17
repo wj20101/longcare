@@ -25,7 +25,6 @@ app/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureViewModel
 app/src/main/kotlin/com/ytone/longcare/features/facerecognition/api/FaceRecognitionGuideActions.kt
 app/src/main/kotlin/com/ytone/longcare/features/facerecognition/ui/FaceRecognitionGuideScreen.kt
 app/src/main/kotlin/com/ytone/longcare/features/facerecognition/vm/FaceRecognitionViewModel.kt
-app/src/main/kotlin/com/ytone/longcare/features/home/api/HomeActions.kt
 app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreen.kt
 app/src/main/kotlin/com/ytone/longcare/features/home/ui/NavigationScreen.kt
 app/src/main/kotlin/com/ytone/longcare/features/identification/api/IdentificationActions.kt

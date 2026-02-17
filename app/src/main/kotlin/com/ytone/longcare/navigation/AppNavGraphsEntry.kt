@@ -36,14 +36,14 @@ internal fun NavGraphBuilder.registerEntryNavGraphs(navController: NavController
             actions = HomeActions(
                 onNavigateToCarePlansList = { navController.navigateToCarePlansList() },
                 onNavigateToServiceRecordsList = { navController.navigateToServiceRecordsList() },
-                onNavigateToNursingExecution = { orderParams ->
-                    navController.navigateToNursingExecution(orderParams)
+                onNavigateToNursingExecution = { orderKey ->
+                    navController.navigateToNursingExecution(orderKey.toOrderNavParams())
                 },
-                onNavigateToService = { orderParams ->
-                    navController.navigateToService(orderParams)
+                onNavigateToService = { orderKey ->
+                    navController.navigateToService(orderKey.toOrderNavParams())
                 },
-                onNavigateToServiceCountdown = { orderParams, projectIdList ->
-                    navController.navigateToServiceCountdown(orderParams, projectIdList)
+                onNavigateToServiceCountdown = { orderKey, projectIdList ->
+                    navController.navigateToServiceCountdown(orderKey.toOrderNavParams(), projectIdList)
                 },
                 onNavigateToHaveServiceUserList = { navController.navigateToHaveServiceUserList() },
                 onNavigateToNoServiceUserList = { navController.navigateToNoServiceUserList() }
