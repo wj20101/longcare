@@ -25,7 +25,7 @@
 | ID | 优化项 | 对应目标 | 状态 |
 |---|---|---|---|
 | R1 | 继续将主体业务从 `app/features/*` 迁移到 `feature/*` 模块（优先：`photoupload`、`identification`、`servicecountdown`） | 现代化模块架构、边界收敛 | IN_PROGRESS（photoupload 核心层 + identification vm 全量 + servicecountdown vm 已下沉，UI/平台适配层留在 app） |
-| R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | IN_PROGRESS（`ServiceCountdownScreen`、`PhotoUploadScreen`、`CameraScreen`、`ManualFaceCaptureScreen`、`NfcWorkflowScreen`、`NfcWorkflowViewModel`（契约层）、`FaceCaptureScreen`、`MainDashboardScreen` 已完成阶段性拆分） |
+| R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | IN_PROGRESS（`ServiceCountdownScreen`、`PhotoUploadScreen`、`CameraScreen`、`ManualFaceCaptureScreen`、`NfcWorkflowScreen`、`NfcWorkflowViewModel`（契约层）、`FaceCaptureScreen`、`MainDashboardScreen`、`SelectServiceScreen` 已完成阶段性拆分） |
 | R3 | CI 健康监控告警项治理：将 Android CI 取消率从 50% 降到阈值内（触发策略与提交流水优化） | CI/CD 资源效率、稳定性 | IN_PROGRESS（已完成并发分组与取消策略治理，待远端新样本窗口验证取消率回落） |
 | R4 | 在“无缓存 + rerun”基线口径下继续压降 `:app:assembleDebug` 冷构建耗时（当前 73s） | 构建性能目标收敛 | IN_PROGRESS（依赖精简后 `assembleDebug` 回落，但 `compileDebugKotlin` 波动仍需持续观测） |
 
@@ -177,6 +177,15 @@
   - 补充问题修复（单测稳定性）：
     - 修复 `MainDashboardViewModelTest` 在 JVM 环境触发 `android.util.Log not mocked` 的失败；
     - 在失败路径用例中对 `Any.logE(...)` 扩展日志函数进行静态 mock，避免单测依赖 Android Log 实现。
+- `R2` 增量切片（`selectservice`）：
+  - 页面组件拆分：
+    - 新增 `SelectServiceComponents.kt`，下沉 `TotalDurationDisplay`、`ServiceSelectionList`、`ServiceSelectionItem`、`SelectAllButton`、`NextStepButton`。
+  - 预览拆分：
+    - 新增 `SelectServicePreviews.kt`，统一承接页面组件预览。
+  - 页面职责收敛：
+    - `SelectServiceScreen.kt` 移除内联组件与预览，仅保留页面状态编排、订单加载与路由交互。
+  - 收敛结果：
+    - `SelectServiceScreen.kt` 行数从 `471` 降至 `283`。
 - `R3` 增量治理（`android-ci` 取消率）：
   - 健康监控基线复测：
     - `monitor_ci_health` 最近 `50` 次样本显示 `Android CI` 取消率 `60%`，高于阈值 `20%`。
@@ -244,6 +253,9 @@
 - `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraBitmapProcessingUtils.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadGridComponents.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadScreenPreviews.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/selectservice/ui/SelectServiceScreen.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/selectservice/ui/SelectServiceComponents.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/selectservice/ui/SelectServicePreviews.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardScreen.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardHeaderCards.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardOrdersSection.kt`

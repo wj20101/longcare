@@ -1,16 +1,11 @@
 package com.ytone.longcare.features.selectservice.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
@@ -20,7 +15,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -286,186 +280,4 @@ fun SelectServiceScreen(
             }
         }
     }
-}
-
-@Composable
-fun TotalDurationDisplay(totalDuration: Int) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = "${totalDuration}分钟",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "本次服务总工时", fontSize = 14.sp, color = Color.White.copy(alpha = 0.85f)
-        )
-    }
-}
-
-@Composable
-fun ServiceSelectionList(
-    serviceItems: List<ServiceItem>, onItemClick: (Int) -> Unit, modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp) // 列表项之间的间距
-    ) {
-        serviceItems.forEachIndexed { index, item ->
-            ServiceSelectionItem(
-                item = item, onClick = { onItemClick(index) })
-        }
-    }
-}
-
-@Composable
-fun ServiceSelectionItem(item: ServiceItem, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 18.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // name文本，最多2行显示，使用weight确保不会挤掉右侧内容
-            Text(
-                text = item.name,
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurface,
-                lineHeight = 22.sp,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            // duration文本
-            Text(
-                text = "${item.duration}分钟",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            // 自定义勾选图标
-            Icon(
-                imageVector = if (item.isSelected) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
-                contentDescription = if (item.isSelected) stringResource(R.string.common_selected) else stringResource(
-                    R.string.common_unselected
-                ),
-                tint = if (item.isSelected) Color(0xFF34C759) else Color.LightGray,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun NextStepButton(
-    text: String, enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier
-) {
-    val buttonGradient = Brush.horizontalGradient(
-        colors = listOf(Color(0xFF5CA0FF), Color(0xFF2A8CFF)) // 根据设计图调整渐变色
-    )
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier
-            .height(50.dp)
-            .background(brush = buttonGradient, shape = CircleShape),
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent,
-            contentColor = Color.White,
-            disabledContainerColor = Color.Gray, // 确保禁用时渐变也可见 (或设置特定禁用渐变)
-            disabledContentColor = Color.White.copy(alpha = 0.7f)
-        )
-    ) {
-        Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Preview
-@Composable
-fun TotalDurationDisplayPreview() {
-    TotalDurationDisplay(totalDuration = 120)
-}
-
-@Preview
-@Composable
-fun ServiceSelectionListPreview() {
-    val serviceItems = listOf(
-        ServiceItem(id = 1, name = "基础护理", duration = 60, isSelected = true),
-        ServiceItem(id = 2, name = "康复训练", duration = 45),
-        ServiceItem(id = 3, name = "心理疏导", duration = 30, isSelected = false)
-    )
-    ServiceSelectionList(serviceItems = serviceItems, onItemClick = {})
-}
-
-@Preview
-@Composable
-fun ServiceSelectionItemSelectedPreview() {
-    ServiceSelectionItem(
-        item = ServiceItem(
-            id = 1, name = "基础护理", duration = 60, isSelected = true
-        ), onClick = {})
-}
-
-@Preview
-@Composable
-fun ServiceSelectionItemUnselectedPreview() {
-    ServiceSelectionItem(
-        item = ServiceItem(
-            id = 2, name = "康复训练", duration = 45, isSelected = false
-        ), onClick = {})
-}
-
-@Preview
-@Composable
-fun NextStepButtonEnabledPreview() {
-    NextStepButton(text = "开始服务", enabled = true, onClick = {})
-}
-
-@Preview
-@Composable
-fun NextStepButtonDisabledPreview() {
-    NextStepButton(text = "开始服务", enabled = false, onClick = {})
-}
-
-@Composable
-fun SelectAllButton(
-    isAllSelected: Boolean, enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier
-) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier.height(50.dp),
-        enabled = enabled,
-        shape = CircleShape,
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = MaterialTheme.colorScheme.primary, containerColor = Color.White
-        ),
-        border = BorderStroke(1.dp, Color(0xFF2C85FE))
-    ) {
-        if (isAllSelected) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = "All selected",
-                tint = Color(0xFF34C759),
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-        }
-        Text(
-            text = "全选", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C85FE)
-        )
-    }
-}
-
-@Preview
-@Composable
-fun SelectAllButtonPreview() {
-    SelectAllButton(isAllSelected = true, enabled = true, onClick = {})
 }

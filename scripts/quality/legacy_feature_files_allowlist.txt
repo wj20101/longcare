@@ -112,6 +112,8 @@ app/src/main/kotlin/com/ytone/longcare/features/selectdevice/api/SelectDeviceAct
 app/src/main/kotlin/com/ytone/longcare/features/selectdevice/ui/SelectDeviceScreen.kt
 app/src/main/kotlin/com/ytone/longcare/features/selectservice/api/SelectServiceActions.kt
 app/src/main/kotlin/com/ytone/longcare/features/selectservice/ui/SelectServiceScreen.kt
+app/src/main/kotlin/com/ytone/longcare/features/selectservice/ui/SelectServiceComponents.kt
+app/src/main/kotlin/com/ytone/longcare/features/selectservice/ui/SelectServicePreviews.kt
 app/src/main/kotlin/com/ytone/longcare/features/selectservice/vm/SelectServiceViewModel.kt
 app/src/main/kotlin/com/ytone/longcare/features/service/ServiceTimeEndWorker.kt
 app/src/main/kotlin/com/ytone/longcare/features/service/ServiceTimeNotificationManager.kt
