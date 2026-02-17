@@ -483,84 +483,45 @@ fun ServiceCountdownScreen(
         }
     }
 
-    // 权限提示对话框
-    if (showPermissionDialog) {
-        AlertDialog(
-            onDismissRequest = { showPermissionDialog = false },
-            title = { Text("权限提示") },
-            text = { Text(permissionDialogMessage) },
-            confirmButton = {
-                TextButton(
-                    onClick = singleClick {
-                        showPermissionDialog = false
-                        // 根据权限类型跳转到对应设置页面
-                        context.startActivity(
-                            buildPermissionSettingsIntent(context, permissionDialogMessage)
-                        )
-                    }) {
-                    Text("去设置")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = singleClick { showPermissionDialog = false }) {
-                    Text("稍后")
-                }
-            })
-    }
+    PermissionAlertDialog(
+        visible = showPermissionDialog,
+        message = permissionDialogMessage,
+        onDismiss = { showPermissionDialog = false },
+        onNavigateSettings = {
+            context.startActivity(
+                buildPermissionSettingsIntent(context, permissionDialogMessage)
+            )
+        }
+    )
 
-    // 二次确认弹窗
-    if (showConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showConfirmDialog = false },
-            title = { Text("确认提前结束服务") },
-            text = { Text("服务时间尚未结束，确定要提前结束服务吗？") },
-            confirmButton = {
-                TextButton(
-                    onClick = singleClick {
-                        showConfirmDialog = false
-                        handleEndService(
-                            context = context,
-                            orderKey = orderKey,
-                            projectIdList = projectIdList,
-                            countdownViewModel = countdownViewModel,
-                            locationTrackingViewModel = locationTrackingViewModel,
-                            actions = actions,
-                            endType = 2
-                        )  // 提前结束
-                    }) {
-                    Text("确定")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = singleClick { showConfirmDialog = false }) {
-                    Text("取消")
-                }
-            })
-    }
-    
-    // 订单状态异常弹窗
-    if (showOrderStateErrorDialog) {
-        AlertDialog(
-            onDismissRequest = { /* 不允许点击外部关闭 */ },
-            title = { Text("订单状态异常") },
-            text = { Text(orderStateErrorMessage) },
-            confirmButton = {
-                TextButton(
-                    onClick = singleClick {
-                        showOrderStateErrorDialog = false
-                        
-                        handleOrderStateErrorAndExit(
-                            context = context,
-                            orderKey = orderKey,
-                            countdownViewModel = countdownViewModel,
-                            locationTrackingViewModel = locationTrackingViewModel,
-                            actions = actions
-                        )
-                    }) {
-                    Text("确定")
-                }
-            })
-    }
+    ConfirmEarlyEndServiceDialog(
+        visible = showConfirmDialog,
+        onDismiss = { showConfirmDialog = false },
+        onConfirm = {
+            handleEndService(
+                context = context,
+                orderKey = orderKey,
+                projectIdList = projectIdList,
+                countdownViewModel = countdownViewModel,
+                locationTrackingViewModel = locationTrackingViewModel,
+                actions = actions,
+                endType = 2
+            )
+        }
+    )
+
+    OrderStateErrorDialog(
+        visible = showOrderStateErrorDialog,
+        message = orderStateErrorMessage,
+        onConfirm = {
+            showOrderStateErrorDialog = false
+            handleOrderStateErrorAndExit(
+                context = context,
+                orderKey = orderKey,
+                countdownViewModel = countdownViewModel,
+                locationTrackingViewModel = locationTrackingViewModel,
+                actions = actions
+            )
+        }
+    )
 }

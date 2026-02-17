@@ -34,6 +34,15 @@
 - 本地验收（R2-继续拆分）：
   - `./gradlew :app:compileDebugKotlin`：PASS
   - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS
+- 执行 R2（`servicecountdown` 弹窗组件继续拆分）：
+  - 新增 `ServiceCountdownDialogs.kt`，抽离：
+    - 权限提示弹窗 `PermissionAlertDialog`
+    - 提前结束确认弹窗 `ConfirmEarlyEndServiceDialog`
+    - 订单状态异常弹窗 `OrderStateErrorDialog`
+  - `ServiceCountdownScreen.kt` 删除内联弹窗实现并替换为组件调用，文件行数从 566 行降至 527 行。
+- 本地验收（R2-弹窗拆分）：
+  - `./gradlew :app:compileDebugKotlin`：PASS
+  - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS
 
 ## 2026-02-13
 - 初始化 CI/CD 优化任务计划文件：`task_plan.md`、`findings.md`、`progress.md`。
