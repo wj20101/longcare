@@ -116,11 +116,12 @@ class IdentificationViewModel @Inject constructor(
      * 验证老人
      */
     fun verifyElder(context: Context, request: OrderInfoRequestModel) {
+        val orderKey = request.toOrderKey()
         launchElderVerification(
             scope = viewModelScope,
             context = context,
             orderId = request.orderId,
-            orderKey = request.toOrderKey(),
+            orderKey = orderKey,
             orderDetailRepository = unifiedOrderRepository,
             startVerification = ::startFaceVerification,
         )
@@ -186,7 +187,10 @@ class IdentificationViewModel @Inject constructor(
     fun setElderVerified() { _identificationState.value = IdentificationState.ELDER_VERIFIED }
 
     fun updateFaceVerificationStatus(request: OrderInfoRequestModel, verified: Boolean) {
-        viewModelScope.launch { unifiedOrderRepository.updateFaceVerification(request.toOrderKey(), verified) }
+        viewModelScope.launch {
+            val orderKey = request.toOrderKey()
+            unifiedOrderRepository.updateFaceVerification(orderKey, verified)
+        }
     }
     
     /**
@@ -214,13 +218,15 @@ class IdentificationViewModel @Inject constructor(
      * @param request 订单请求模型
      * @return WatermarkData
      */
-    suspend fun generateWatermarkData(address: String, request: OrderInfoRequestModel): WatermarkData =
-        generateIdentificationWatermarkData(
+    suspend fun generateWatermarkData(address: String, request: OrderInfoRequestModel): WatermarkData {
+        val orderKey = request.toOrderKey()
+        return generateIdentificationWatermarkData(
             address = address,
-            orderKey = request.toOrderKey(),
+            orderKey = orderKey,
             orderDetailRepository = unifiedOrderRepository,
             resolveCurrentUser = ::getCurrentUser,
         )
+    }
 
     fun showToast(message: String) = toastHelper.showShort(message)
 

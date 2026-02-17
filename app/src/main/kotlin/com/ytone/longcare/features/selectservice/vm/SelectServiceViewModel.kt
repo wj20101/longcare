@@ -22,6 +22,7 @@ class SelectServiceViewModel @Inject constructor(
         orderInfoRequest: OrderInfoRequestModel,
         selectedProjectIds: List<Int>
     ) {
-        unifiedOrderRepository.updateSelectedProjects(orderInfoRequest.toOrderKey(), selectedProjectIds)
+        val orderKey = orderInfoRequest.toOrderKey()
+        unifiedOrderRepository.updateSelectedProjects(orderKey, selectedProjectIds)
     }
 }
