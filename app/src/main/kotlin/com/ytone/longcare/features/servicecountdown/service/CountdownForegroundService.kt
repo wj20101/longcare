@@ -40,7 +40,6 @@ class CountdownForegroundService : Service() {
         // Actions
         const val ACTION_START_COUNTDOWN = "action_start_countdown"
         const val ACTION_STOP_COUNTDOWN = "action_stop_countdown"
-        const val ACTION_UPDATE_TIME = "action_update_time"
 
         /**
          * 启动倒计时前台服务
@@ -69,18 +68,11 @@ class CountdownForegroundService : Service() {
         }
     }
 
-    private val binder = CountdownBinder()
+    private val binder = Binder()
 
     // 倒计时状态
     private var orderId: Long = 0
     private var serviceName: String = ""
-    private var totalSeconds: Long = 0
-    private var remainingSeconds: Long = 0
-    private var isRunning: Boolean = false
-
-    inner class CountdownBinder : Binder() {
-        fun getService(): CountdownForegroundService = this@CountdownForegroundService
-    }
 
     override fun onCreate() {
         super.onCreate()
@@ -93,8 +85,7 @@ class CountdownForegroundService : Service() {
             ACTION_START_COUNTDOWN -> {
                 orderId = intent.getLongExtra(EXTRA_ORDER_ID, 0)
                 serviceName = intent.getStringExtra(EXTRA_SERVICE_NAME) ?: ""
-                totalSeconds = intent.getLongExtra(EXTRA_TOTAL_SECONDS, 0)
-                remainingSeconds = totalSeconds
+                val totalSeconds = intent.getLongExtra(EXTRA_TOTAL_SECONDS, 0)
                 
                 // 立即启动前台服务，避免超时异常
                 val notification = createCountdownNotification()
@@ -109,17 +100,11 @@ class CountdownForegroundService : Service() {
                     notification,
                     type
                 )
-                // 然后进行其他初始化
-                startCountdownTimer()
+                logI("倒计时前台服务已启动: orderId=$orderId, serviceName=$serviceName, totalSeconds=$totalSeconds")
             }
 
             ACTION_STOP_COUNTDOWN -> {
                 stopCountdownNotification()
-            }
-
-            ACTION_UPDATE_TIME -> {
-                // 不再需要更新通知，保持静态显示
-                logI("收到更新时间请求，但通知已改为静态显示")
             }
         }
         return START_NOT_STICKY
@@ -142,27 +127,14 @@ class CountdownForegroundService : Service() {
     }
 
     /**
-     * 开始倒计时定时器
-     */
-    private fun startCountdownTimer() {
-        isRunning = true
-        logI("倒计时定时器已启动: orderId=$orderId, serviceName=$serviceName, totalSeconds=$totalSeconds")
-    }
-
-    /**
      * 停止倒计时通知
      */
     private fun stopCountdownNotification() {
-        isRunning = false
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
 
         logI("倒计时前台服务已停止")
     }
-
-
-
-
 
     /**
      * 创建倒计时通知

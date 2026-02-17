@@ -1,6 +1,14 @@
 # 执行日志
 
 ## 2026-02-17
+- 执行 R2（`servicecountdown` 前台服务瘦身）：
+  - 精简 `CountdownForegroundService.kt`：
+    - 移除未使用的 `ACTION_UPDATE_TIME` 分支；
+    - 移除无效倒计时状态字段（`remainingSeconds`、`isRunning`）和空转“定时器启动”流程；
+    - 将启动日志直接在 `ACTION_START_COUNTDOWN` 路径输出，减少冗余方法与状态。
+- 本地验收（R2-前台服务瘦身）：
+  - `./gradlew :app:compileDebugKotlin`：PASS
+  - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS
 - 执行 R2（`servicecountdown` 页面二次瘦身：副作用与底栏组件拆分）：
   - 新增 `ServiceCountdownLifecycleEffects.kt`，统一承接页面副作用：
     - 订单状态异常监听
