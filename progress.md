@@ -1,6 +1,13 @@
 # 执行日志
 
 ## 2026-02-17
+- 执行 R2（`servicecountdown` 初始化编排继续瘦身）：
+  - 新增 `ServiceCountdownInitializationHandler.kt`，下沉页面内初始化编排（权限检查 + session 初始化 + 首次提示）；
+  - `ServiceCountdownPermissionHandler.kt` 新增 `checkAndRequestCountdownPermissions(...)`，统一权限检查编排入口；
+  - `ServiceCountdownServiceFlowHandler.kt` 新增 `buildOrderStateErrorMessage(...)`，抽离订单状态异常文案映射；
+  - `ServiceCountdownScreen.kt` 删除本地 `checkAndRequestPermissions` / `setupCountdownTime`，改为调用 handler。
+- 本地验收（R2-初始化编排瘦身）：
+  - `./gradlew :app:compileDebugKotlin :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS
 - 执行 R2（`servicecountdown` 初始化状态与权限请求逻辑继续下沉）：
   - `ServiceCountdownViewModel` 新增初始化状态管理：
     - `shouldReinitialize(...)`

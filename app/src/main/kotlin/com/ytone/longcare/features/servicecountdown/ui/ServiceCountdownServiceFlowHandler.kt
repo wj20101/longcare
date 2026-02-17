@@ -8,6 +8,17 @@ import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundS
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.ServiceOrderStateModel
+
+internal fun buildOrderStateErrorMessage(stateModel: ServiceOrderStateModel): String {
+    return when (stateModel.state) {
+        ServiceOrderStateModel.STATE_NOT_CREATED -> "订单未开单，无法继续服务"
+        ServiceOrderStateModel.STATE_PENDING -> "订单状态异常：待执行"
+        ServiceOrderStateModel.STATE_COMPLETED -> "订单已完成，无法继续服务"
+        ServiceOrderStateModel.STATE_CANCELLED -> "订单已作废，无法继续服务"
+        else -> stateModel.stateDesc ?: "订单状态异常，无法继续服务"
+    }
+}
 
 internal fun handleEndService(
     context: Context,

@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.servicecountdown.ui
 
-import android.Manifest
 import android.content.pm.ActivityInfo
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -38,7 +37,6 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import com.ytone.longcare.BuildConfig
-import com.ytone.longcare.model.ServiceOrderStateModel
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
@@ -131,43 +129,10 @@ fun ServiceCountdownScreen(
         onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderKey) }
     )
 
-    // 检查所有必需权限
-    fun checkAndRequestPermissions() {
-        checkAndRequestRequiredPermissions(
-            context = context,
-            canScheduleExactAlarms = countdownViewModel.canScheduleExactAlarms(),
-            canUseFullScreenIntent = countdownViewModel.canUseFullScreenIntent(),
-            requestNotificationPermission = {
-                requestNotificationPermission(
-                    context = context,
-                    notificationPermissionLauncher = notificationPermissionLauncher
-                )
-            },
-            requestExactAlarmPermission = {
-                requestExactAlarmPermission(
-                    context = context,
-                    canScheduleExactAlarms = countdownViewModel.canScheduleExactAlarms(),
-                    exactAlarmPermissionLauncher = exactAlarmPermissionLauncher
-                )
-            },
-            onPermissionDialogRequired = { message ->
-                permissionDialogMessage = message
-                showPermissionDialog = true
-            }
-        )
-    }
-
     // 监听订单状态异常事件
     LaunchedEffect(orderStateError) {
         orderStateError?.let { stateModel ->
-            // 构建错误提示信息
-            orderStateErrorMessage = when (stateModel.state) {
-                ServiceOrderStateModel.STATE_NOT_CREATED -> "订单未开单，无法继续服务"
-                ServiceOrderStateModel.STATE_PENDING -> "订单状态异常：待执行"
-                ServiceOrderStateModel.STATE_COMPLETED -> "订单已完成，无法继续服务"
-                ServiceOrderStateModel.STATE_CANCELLED -> "订单已作废，无法继续服务"
-                else -> stateModel.stateDesc ?: "订单状态异常，无法继续服务"
-            }
+            orderStateErrorMessage = buildOrderStateErrorMessage(stateModel)
             showOrderStateErrorDialog = true
         }
     }
@@ -198,42 +163,21 @@ fun ServiceCountdownScreen(
         }
     }
 
-    // 设置倒计时时间的通用函数
-    suspend fun setupCountdownTime() {
-        val orderInfo = sharedViewModel.getCachedOrderInfo(orderKey) ?: return
-
-        if (!countdownViewModel.shouldReinitialize(projectIdList)) {
-            return
-        }
-
-        // 首次初始化时检查权限（在设置倒计时之前）
-        if (countdownViewModel.shouldCheckPermissions()) {
-            checkAndRequestPermissions()
-            countdownViewModel.markPermissionsChecked()
-        }
-
-        val initialized = countdownViewModel.initializeCountdownSession(
-            context = context,
-            orderKey = orderKey,
-            projectList = orderInfo.projectList ?: emptyList(),
-            selectedProjectIds = projectIdList
-        )
-        if (!initialized) {
-            return
-        }
-
-        // 如果没有通知权限，显示提示
-        if (!hasNotificationPermission(context)) {
-            permissionDialogMessage = "通知权限被拒绝，可能无法收到倒计时完成提醒。请到设置中手动开启通知权限。"
-            showPermissionDialog = true
-        }
-
-        countdownViewModel.markInitialized(projectIdList)
-    }
-
     // 初始设置倒计时时间
     LaunchedEffect(orderKey, projectIdList) {
-        setupCountdownTime()
+        setupCountdownSessionIfNeeded(
+            context = context,
+            orderKey = orderKey,
+            projectIdList = projectIdList,
+            sharedViewModel = sharedViewModel,
+            countdownViewModel = countdownViewModel,
+            notificationPermissionLauncher = notificationPermissionLauncher,
+            exactAlarmPermissionLauncher = exactAlarmPermissionLauncher,
+            onPermissionDialogRequired = { message ->
+                permissionDialogMessage = message
+                showPermissionDialog = true
+            }
+        )
     }
 
     // 监听生命周期变化，在RESUMED状态下仅更新时间显示，不重新初始化

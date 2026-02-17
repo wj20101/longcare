@@ -50,6 +50,35 @@ internal fun checkAndRequestRequiredPermissions(
     }
 }
 
+internal fun checkAndRequestCountdownPermissions(
+    context: Context,
+    canScheduleExactAlarms: Boolean,
+    canUseFullScreenIntent: Boolean,
+    notificationPermissionLauncher: ActivityResultLauncher<String>,
+    exactAlarmPermissionLauncher: ActivityResultLauncher<Intent>,
+    onPermissionDialogRequired: (String) -> Unit
+) {
+    checkAndRequestRequiredPermissions(
+        context = context,
+        canScheduleExactAlarms = canScheduleExactAlarms,
+        canUseFullScreenIntent = canUseFullScreenIntent,
+        requestNotificationPermission = {
+            requestNotificationPermission(
+                context = context,
+                notificationPermissionLauncher = notificationPermissionLauncher
+            )
+        },
+        requestExactAlarmPermission = {
+            requestExactAlarmPermission(
+                context = context,
+                canScheduleExactAlarms = canScheduleExactAlarms,
+                exactAlarmPermissionLauncher = exactAlarmPermissionLauncher
+            )
+        },
+        onPermissionDialogRequired = onPermissionDialogRequired
+    )
+}
+
 internal fun requestNotificationPermission(
     context: Context,
     notificationPermissionLauncher: ActivityResultLauncher<String>
