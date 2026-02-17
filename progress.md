@@ -727,3 +727,28 @@
     - 使用 `/tmp/ci_runs_sample.json` 离线回放：
       - `bash scripts/quality/monitor_ci_health.sh ... /tmp/ci_runs_sample.json`：按预期输出报告并在阈值越界时 `exit 2`；
     - `ci-health-monitor.yml` 关键字段检查：`schedule/workflow_dispatch/issues:write` 存在。
+- 执行“持续现代化优化（R1 首批切片：photoupload）”（2026-02-17）：
+  - 模块化与边界收敛：
+    - 新增 `feature:photoupload` 模块并接入：
+      - `settings.gradle.kts` 新增 `include(":feature:photoupload")`；
+      - `app/build.gradle.kts` 新增 `implementation(project(":feature:photoupload"))`。
+    - 将 `photoupload` 非 UI 核心类迁移至 `feature:photoupload`：
+      - `api/CameraActions.kt`
+      - `api/PhotoUploadActions.kt`
+      - `tracker/CameraEventTracker.kt`
+      - `utils/ImageCacheManager.kt`
+      - `viewmodel/PhotoProcessingViewModel.kt`
+  - 跨模块公共契约下沉：
+    - 新增 `core/model/src/main/kotlin/com/ytone/longcare/model/PhotoUploadModels.kt`；
+    - `app/features/photoupload/model/ImageTask.kt`、`WatermarkData.kt` 改为兼容 `typealias`。
+  - 公共工具下沉到 `core:common`：
+    - `CosConstants.kt`、`CosUtils.kt`、`StorageSpaceUtils.kt`、`UriExtensions.kt` 从 `app` 迁移至 `core/common`。
+  - 代码质量去耦：
+    - `PhotoProcessingViewModel` 将 `currentCategory` 改为 `currentTaskType`，解除对 UI 层 `PhotoCategory` 的反向依赖。
+  - 验证：
+    - `./gradlew :app:compileDebugKotlin`：PASS。
+    - `./gradlew :app:testDebugUnitTest --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest"`：PASS。
+  - 提交与远端：
+    - 提交：`3e514f1`（`refactor: extract photoupload contracts and modularize non-ui flow`）。
+    - 推送：`master -> origin/master`。
+    - 远端 CI：`Android CI#22096401655`（`in_progress`，head=`3e514f1`）。
