@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,42 +82,19 @@ fun PhotoUploadScreen(
     // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
     CustomBackHandler(customAction = actions.onNavigateBack)
 
-     DisposableEffect(Unit) {
-        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: 🟢 Enter Composition")
-        onDispose {
-            com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: 🔴 Leave Composition (onDispose)")
-        }
-    }
-
-    // 在组件初始化时加载订单信息（如果缓存中没有）
-    LaunchedEffect(orderKey) {
-        // 设置ViewModel的OrderKey以加载图片数据
-        viewModel.setOrderKey(orderKey)
-        
-        // 先检查缓存，如果没有缓存数据才请求
-        if (sharedViewModel.getCachedOrderInfo(orderKey) == null) {
-            sharedViewModel.getOrderInfo(orderKey)
-        } else {
-            // 如果有缓存数据，直接设置为成功状态
-            sharedViewModel.getOrderInfo(orderKey, forceRefresh = false)
-        }
-    }
-
     // 收集ViewModel状态
     val imageTasks by viewModel.imageTasks.collectAsStateWithLifecycle()
     val isUploading by viewModel.isUploading.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val currentTaskType by viewModel.currentTaskType.collectAsStateWithLifecycle()
 
-    // 监听已有图片数据
-    LaunchedEffect(actions.existingImagesFlow) {
-        actions.existingImagesFlow.collect { existingImages ->
-            existingImages?.let {
-                viewModel.loadExistingImageTasks(it)
-                actions.clearExistingImages()
-            }
-        }
-    }
+    PhotoUploadScreenEffects(
+        actions = actions,
+        orderKey = orderKey,
+        viewModel = viewModel,
+        sharedViewModel = sharedViewModel,
+        currentTaskType = currentTaskType
+    )
     
     val cameraResultLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -139,24 +115,6 @@ fun PhotoUploadScreen(
             }
         }
     )
-
-    // 从CameraScreen获取返回的URI
-    LaunchedEffect(actions.capturedImageUriFlow) {
-        actions.capturedImageUriFlow.collect { uriString ->
-            uriString?.let {
-                val uri = it.toUri()
-                currentTaskType?.let { taskType ->
-                    viewModel.addImagesToProcess(
-                        uris = listOf(uri),
-                        taskType = taskType,
-                        address = sharedViewModel.getUserAddress(orderKey),
-                        orderKey = orderKey
-                    )
-                }
-                actions.clearCapturedImageUri()
-            }
-        }
-    }
 
     // 根据任务类型获取不同分类的任务
     val beforeCareTasks = imageTasks.filter { it.taskType == ImageTaskType.BEFORE_CARE }
@@ -197,62 +155,15 @@ fun PhotoUploadScreen(
                     navigationIconContentColor = Color.White
                 )
             )
-        }, containerColor = Color.Transparent, bottomBar = { // 将按钮放在 bottomBar 中使其固定在底部
-            Surface(modifier = Modifier.fillMaxWidth()) {
-                Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
-                    ConfirmAndNextButton(
-                        text = if (isUploading) "上传中..." else stringResource(R.string.photo_upload_confirm_and_next),
-                        enabled = hasCategoriesHaveImages && !isUploading,
-                        isLoading = isUploading,
-                        onClick = singleClick {
-                            com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Confirm Button Clicked")
-                            scope.launch {
-                                // Mock 模式下跳过实际上传，直接返回 Mock 数据
-                                if (BuildConfig.USE_MOCK_DATA) {
-                                    // 获取当前所有成功的任务，直接作为结果返回
-                                    val currentTasks = viewModel.imageTasks.value
-                                    val imageTasksMap = currentTasks
-                                        .filter { it.status == ImageTaskStatus.SUCCESS }
-                                        .groupBy { it.taskType }
-
-                                    actions.onPublishPhotoUploadResultAndNavigateBack(imageTasksMap)
-                                    com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Mock Success -> navigateBack")
-                                    return@launch
-                                }
-                                
-                                // 正常模式：上传图片到云端后再导航
-                                try {
-                                    val uploadResult = viewModel.uploadSuccessfulImagesToCloud()
-                                    uploadResult.fold(onSuccess = { cloudUrlsMap ->
-                                        // 将 Map<ImageTaskType, List<String>> 转换为 Map<ImageTaskType, List<ImageTask>>
-                                        val currentTasks = viewModel.imageTasks.value
-                                        val imageTasksMap = cloudUrlsMap.mapValues { (taskType, keys) ->
-                                            // 根据 key 找到对应的 ImageTask
-                                            keys.mapNotNull { key ->
-                                                currentTasks.find { task ->
-                                                    task.taskType == taskType &&
-                                                            task.key == key &&
-                                                            task.status == ImageTaskStatus.SUCCESS
-                                                }
-                                            }
-                                        }
-
-                                        actions.onPublishPhotoUploadResultAndNavigateBack(imageTasksMap)
-                                        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Upload Success -> navigateBack")
-                                    }, onFailure = { error ->
-                                        // 显示上传失败的错误信息
-                                        viewModel.showToast("图片上传失败: ${error.message}")
-                                    })
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (e: Exception) {
-                                    // 处理异常情况
-                                    viewModel.showToast("上传过程中发生错误: ${e.message}")
-                                }
-                            }
-                        })
-                }
-            }
+        }, containerColor = Color.Transparent, bottomBar = {
+            PhotoUploadBottomActionBar(
+                buttonText = if (isUploading) "上传中..." else stringResource(R.string.photo_upload_confirm_and_next),
+                isUploading = isUploading,
+                enabled = hasCategoriesHaveImages && !isUploading,
+                viewModel = viewModel,
+                actions = actions,
+                scope = scope
+            )
         }) { paddingValues ->
             LazyColumn(
                 modifier = Modifier
@@ -321,58 +232,7 @@ fun PhotoUploadScreen(
                 if (BuildConfig.USE_MOCK_DATA) {
                     item {
                         Spacer(modifier = Modifier.height(24.dp))
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFE4F3))
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = "🧪 Mock 调试工具",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    color = Color(0xFFD81B60)
-                                )
-                                
-                                Button(
-                                    onClick = { viewModel.mockAddAllPhotos() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Magenta),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text("一键添加所有照片")
-                                }
-                                
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Button(
-                                        onClick = { viewModel.mockAddBeforeCarePhoto() },
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C27B0)),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text("护理前", fontSize = 12.sp)
-                                    }
-                                    Button(
-                                        onClick = { viewModel.mockAddCenterCarePhoto() },
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text("护理中", fontSize = 12.sp)
-                                    }
-                                    Button(
-                                        onClick = { viewModel.mockAddAfterCarePhoto() },
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text("护理后", fontSize = 12.sp)
-                                    }
-                                }
-                            }
-                        }
+                        PhotoUploadMockDebugToolsCard(viewModel = viewModel)
                     }
                 }
             }

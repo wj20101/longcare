@@ -25,7 +25,7 @@
 | ID | 优化项 | 对应目标 | 状态 |
 |---|---|---|---|
 | R1 | 继续将主体业务从 `app/features/*` 迁移到 `feature/*` 模块（优先：`photoupload`、`identification`、`servicecountdown`） | 现代化模块架构、边界收敛 | IN_PROGRESS（photoupload 核心层 + identification vm 全量 + servicecountdown vm 已下沉，UI/平台适配层留在 app） |
-| R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | IN_PROGRESS（`ServiceCountdownScreen` UI 卡片 + 权限检查 + 结束服务流程 + 弹窗组件已拆分，初始化流程已下沉 ViewModel） |
+| R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | IN_PROGRESS（`ServiceCountdownScreen` 副作用/底栏已拆分；`PhotoUploadScreen` 副作用/底栏/Mock调试卡片已拆分） |
 | R3 | CI 健康监控告警项治理：将 Android CI 取消率从 50% 降到阈值内（触发策略与提交流水优化） | CI/CD 资源效率、稳定性 | TODO |
 | R4 | 在“无缓存 + rerun”基线口径下继续压降 `:app:assembleDebug` 冷构建耗时（当前 79s） | 构建性能目标收敛 | TODO |
 
@@ -95,6 +95,15 @@
     - 新增 `ServiceCountdownBottomActionBar.kt`，抽离底部结束服务按钮区域与状态文案/颜色映射；
     - `ServiceCountdownScreen` 行数从 `390` 降至 `280`；
     - 页面销毁清理使用 `rememberUpdatedState(countdownState)`，避免 `DisposableEffect` 读取过期状态风险。
+- `R2` 增量切片（`photoupload`）：
+  - `PhotoUploadScreen` 页面副作用拆分：
+    - 新增 `PhotoUploadScreenEffects.kt`，集中处理页面生命周期日志、订单初始化、既有图片回填与拍照回传 URI 监听。
+  - 底部操作栏拆分：
+    - 新增 `PhotoUploadBottomActionBar.kt`，抽离确认上传按钮与上传流程编排（Mock 返回、云端上传映射、异常提示）。
+  - Mock 调试工具拆分：
+    - 新增 `PhotoUploadMockDebugToolsCard.kt`，将 Debug 模式卡片组件从主屏抽离。
+  - 收敛结果：
+    - `PhotoUploadScreen.kt` 行数从 `709` 降至 `569`。
 - 验证：
   - `./gradlew :app:compileDebugKotlin`：PASS
   - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS

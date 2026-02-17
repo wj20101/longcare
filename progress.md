@@ -893,3 +893,18 @@
   - 验证：
     - `./gradlew :app:compileDebugKotlin`：PASS。
     - `./gradlew :app:testDebugUnitTest --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest"`：PASS。
+- 执行“持续现代化优化（R2 增量切片：photoupload 屏幕拆分）”（2026-02-17）：
+  - `PhotoUploadScreen` 副作用拆分：
+    - 新增 `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadScreenEffects.kt`。
+    - 抽离页面生命周期日志、订单初始化加载、`existingImagesFlow`/`capturedImageUriFlow` 监听与回填逻辑。
+  - 底部操作栏拆分：
+    - 新增 `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadBottomActionBar.kt`。
+    - 抽离确认上传点击编排（Mock 直返、云端上传结果映射、异常提示）与按钮区域 UI。
+  - Mock 调试卡片拆分：
+    - 新增 `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadMockDebugToolsCard.kt`。
+    - `PhotoUploadScreen` 内联 Debug 按钮区改为独立组件调用。
+  - 结果：
+    - `PhotoUploadScreen.kt` 从 `709` 行降至 `569` 行。
+  - 验证：
+    - `./gradlew :app:compileDebugKotlin`：PASS。
+    - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS。
