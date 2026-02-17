@@ -1,14 +1,14 @@
 package com.ytone.longcare.features.location.reporting
 
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
-import com.ytone.longcare.data.database.dao.OrderLocationDao
-import com.ytone.longcare.data.database.entity.LocationUploadStatus
-import com.ytone.longcare.data.database.entity.OrderLocationEntity
-import com.ytone.longcare.di.IoDispatcher
+import com.ytone.longcare.model.LocationUploadStatus
+import com.ytone.longcare.model.OrderLocationEntity
+import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.domain.location.LocationRepository
+import com.ytone.longcare.domain.location.LocationUploadQueueRepository
 import com.ytone.longcare.features.location.core.LocationFacade
 import com.ytone.longcare.features.location.manager.LocationStateManager
 import com.ytone.longcare.features.location.provider.LocationResult
@@ -35,7 +35,7 @@ class LocationReportingManager @Inject constructor(
     private val locationFacade: LocationFacade,
     private val locationStateManager: LocationStateManager,
     private val locationRepository: LocationRepository,
-    private val orderLocationDao: OrderLocationDao,
+    private val locationUploadQueueRepository: LocationUploadQueueRepository,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     private val _isTracking = MutableStateFlow(false)
@@ -107,7 +107,7 @@ class LocationReportingManager @Inject constructor(
 
     private suspend fun enqueueLocation(orderId: Long, location: LocationResult) {
         try {
-            orderLocationDao.insert(
+            locationUploadQueueRepository.insert(
                 OrderLocationEntity(
                     orderId = orderId,
                     latitude = location.latitude,
@@ -127,7 +127,7 @@ class LocationReportingManager @Inject constructor(
 
     private suspend fun flushUploadQueue() {
         uploadMutex.withLock {
-            val queue = orderLocationDao.getUploadQueue(
+            val queue = locationUploadQueueRepository.getUploadQueue(
                 statuses = listOf(
                     LocationUploadStatus.PENDING.value,
                     LocationUploadStatus.FAILED.value
@@ -151,15 +151,15 @@ class LocationReportingManager @Inject constructor(
                 longitude = pending.longitude
             )) {
                 is ApiResult.Success -> {
-                    orderLocationDao.updateStatus(pending.id, LocationUploadStatus.SUCCESS.value)
+                    locationUploadQueueRepository.updateStatus(pending.id, LocationUploadStatus.SUCCESS.value)
                     logI("位置上报成功 (orderId=${pending.orderId}, id=${pending.id})")
                 }
                 is ApiResult.Failure -> {
-                    orderLocationDao.updateStatus(pending.id, LocationUploadStatus.FAILED.value)
+                    locationUploadQueueRepository.updateStatus(pending.id, LocationUploadStatus.FAILED.value)
                     logE("位置上报业务失败 (id=${pending.id}): ${apiResult.message}")
                 }
                 is ApiResult.Exception -> {
-                    orderLocationDao.updateStatus(pending.id, LocationUploadStatus.FAILED.value)
+                    locationUploadQueueRepository.updateStatus(pending.id, LocationUploadStatus.FAILED.value)
                     logE("位置上报异常 (id=${pending.id}): ${apiResult.exception.message}")
                 }
             }
@@ -168,7 +168,7 @@ class LocationReportingManager @Inject constructor(
         } catch (e: Exception) {
             logE("上传位置过程发生严重错误: ${e.message}")
             try {
-                orderLocationDao.updateStatus(pending.id, LocationUploadStatus.FAILED.value)
+                locationUploadQueueRepository.updateStatus(pending.id, LocationUploadStatus.FAILED.value)
             } catch (_: Exception) {
             }
         }
@@ -176,7 +176,7 @@ class LocationReportingManager @Inject constructor(
 
     private suspend fun cleanupOldSuccess() {
         try {
-            val deleted = orderLocationDao.deleteByStatusBefore(
+            val deleted = locationUploadQueueRepository.deleteByStatusBefore(
                 status = LocationUploadStatus.SUCCESS.value,
                 beforeTime = System.currentTimeMillis() - SUCCESS_RETENTION_MS
             )

@@ -1,13 +1,16 @@
 package com.ytone.longcare.features.identification.data
 
+import android.content.Context
 import android.util.Base64
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
-import com.ytone.longcare.data.storage.DataStoreKeys
-import com.ytone.longcare.data.storage.UserSpecificDataStoreManager
-import com.ytone.longcare.di.IoDispatcher
+import com.ytone.longcare.core.common.di.IoDispatcher
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -15,19 +18,29 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
 
 class IdentificationFaceDataSource @Inject constructor(
-    private val userSpecificDataStoreManager: UserSpecificDataStoreManager,
+    @param:ApplicationContext private val context: Context,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     companion object {
         private const val TAG = "IdentificationFaceDataSource"
+        private const val FACE_BASE64_KEY_PREFIX = "face_base64_user_"
+    }
+
+    private val userDataStoreCache = ConcurrentHashMap<Int, DataStore<Preferences>>()
+
+    private fun getDataStoreForUser(userId: Int): DataStore<Preferences> {
+        return userDataStoreCache.getOrPut(userId) {
+            preferencesDataStore(name = "user_${userId}_prefs").getValue(context, this::javaClass)
+        }
     }
 
     suspend fun readUserFaceBase64(userId: Int): String? {
         return try {
-            val dataStore = userSpecificDataStoreManager.getDataStoreForUser(userId)
-            val key = stringPreferencesKey(DataStoreKeys.FACE_BASE64_KEY_PREFIX + userId)
+            val dataStore = getDataStoreForUser(userId)
+            val key = stringPreferencesKey(FACE_BASE64_KEY_PREFIX + userId)
             val result = dataStore.data.first()[key]
             if (result != null) {
                 logD("成功读取人脸缓存 (userId=$userId, 长度=${result.length})", tag = TAG)
@@ -45,8 +58,8 @@ class IdentificationFaceDataSource @Inject constructor(
 
     suspend fun writeUserFaceBase64(userId: Int, base64: String) {
         try {
-            val dataStore = userSpecificDataStoreManager.getDataStoreForUser(userId)
-            val key = stringPreferencesKey(DataStoreKeys.FACE_BASE64_KEY_PREFIX + userId)
+            val dataStore = getDataStoreForUser(userId)
+            val key = stringPreferencesKey(FACE_BASE64_KEY_PREFIX + userId)
             dataStore.edit { prefs ->
                 prefs[key] = base64
             }

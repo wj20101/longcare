@@ -2,15 +2,15 @@ package com.ytone.longcare.data.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.byteArrayPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import com.ytone.longcare.common.utils.logE
-import com.ytone.longcare.data.storage.DataStoreKeys
 import com.ytone.longcare.di.AppDataStore
-import com.ytone.longcare.di.ApplicationScope
+import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
-import com.ytone.longcare.models.protos.User
+import com.ytone.longcare.model.User
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +21,8 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private val APP_USER_KEY = byteArrayPreferencesKey("app_user")
 
 /**
  * UserSessionRepository 的默认实现
@@ -41,7 +43,7 @@ class DefaultUserSessionRepository @Inject constructor(
             }
         }
         .map { preferences ->
-            val userBytes = preferences[DataStoreKeys.APP_USER]
+            val userBytes = preferences[APP_USER_KEY]
             if (userBytes != null) {
                 try {
                     // 解码成功，返回登录状态
@@ -73,7 +75,7 @@ class DefaultUserSessionRepository @Inject constructor(
     private fun updateUserInternal(user: User) {
         coroutineScope.launch {
             appDataStore.edit { preferences ->
-                preferences[DataStoreKeys.APP_USER] = user.encode()
+                preferences[APP_USER_KEY] = user.encode()
             }
         }
     }
@@ -81,7 +83,7 @@ class DefaultUserSessionRepository @Inject constructor(
     override fun logout() {
         coroutineScope.launch {
             appDataStore.edit { preferences ->
-                preferences.remove(DataStoreKeys.APP_USER)
+                preferences.remove(APP_USER_KEY)
             }
         }
     }

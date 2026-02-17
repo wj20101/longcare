@@ -6,7 +6,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.ytone.longcare.R
-import com.ytone.longcare.api.response.AppVersionModel
+import com.ytone.longcare.model.AppVersionModel
 
 @Composable
 fun UpdateDialog(

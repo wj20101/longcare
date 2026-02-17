@@ -19,7 +19,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 
 /**
  * 服务倒计时前台服务

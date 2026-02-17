@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
-import com.ytone.longcare.di.ApplicationScope
+import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.features.service.ServiceTimeNotificationManager
 import com.ytone.longcare.features.service.storage.PendingOrdersStorage
 import dagger.hilt.android.AndroidEntryPoint

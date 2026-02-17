@@ -1,9 +1,9 @@
 package com.ytone.longcare.domain.cos.repository
 
-import com.ytone.longcare.data.cos.model.CosUploadResult
-import com.ytone.longcare.data.cos.model.UploadParams
-import com.ytone.longcare.data.cos.model.UploadProgress
 import kotlinx.coroutines.flow.Flow
+import com.ytone.longcare.model.CosUploadResult
+import com.ytone.longcare.model.UploadParams
+import com.ytone.longcare.model.UploadProgress
 
 /**
  * COS存储服务接口

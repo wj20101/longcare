@@ -5,7 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.ytone.longcare.data.database.entity.OrderImageEntity
+import com.ytone.longcare.model.OrderImageEntity
 import kotlinx.coroutines.flow.Flow
 
 /**

@@ -20,10 +20,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
-import com.ytone.longcare.api.response.TodayServiceOrderModel
-import com.ytone.longcare.api.response.isPendingCare
-import com.ytone.longcare.api.response.isServiceRecord
+import com.ytone.longcare.model.TodayServiceOrderModel
 import com.ytone.longcare.model.handleOrderNavigation
+import com.ytone.longcare.model.isPendingCareState
+import com.ytone.longcare.model.isServiceRecordState
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.common.utils.singleClick
@@ -50,8 +50,8 @@ fun ServiceOrdersListScreen(
 
     // 根据类型过滤订单
     val filteredOrders = when (orderType) {
-        ServiceOrderType.PENDING_CARE_PLANS -> todayOrderList.filter { it.isPendingCare() }
-        ServiceOrderType.SERVICE_RECORDS -> todayOrderList.filter { it.isServiceRecord() }
+        ServiceOrderType.PENDING_CARE_PLANS -> todayOrderList.filter { it.state.isPendingCareState() }
+        ServiceOrderType.SERVICE_RECORDS -> todayOrderList.filter { it.state.isServiceRecordState() }
     }
 
     // 页面标题和空状态文案

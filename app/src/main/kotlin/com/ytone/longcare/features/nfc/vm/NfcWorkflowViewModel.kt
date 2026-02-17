@@ -7,7 +7,7 @@ import android.app.Activity
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
@@ -17,7 +17,7 @@ import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
-import com.ytone.longcare.api.response.ServiceOrderInfoModel
+import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager

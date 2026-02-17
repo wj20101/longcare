@@ -2,7 +2,7 @@ package com.ytone.longcare.features.identification.vm
 
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
-import com.ytone.longcare.models.protos.User
+import com.ytone.longcare.model.User
 import java.io.File
 
 internal sealed interface FaceSetupPreparation {

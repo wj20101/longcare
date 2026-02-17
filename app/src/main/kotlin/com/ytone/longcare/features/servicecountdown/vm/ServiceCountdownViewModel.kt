@@ -3,12 +3,12 @@ package com.ytone.longcare.features.servicecountdown.vm
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.api.response.ServiceOrderStateModel
-import com.ytone.longcare.api.response.ServiceProjectM
+import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.ServiceOrderStateModel
+import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
-import com.ytone.longcare.data.database.entity.ImageType
+import com.ytone.longcare.model.ImageType
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey

@@ -22,7 +22,7 @@ import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 
 /**
  * 倒计时通知管理器

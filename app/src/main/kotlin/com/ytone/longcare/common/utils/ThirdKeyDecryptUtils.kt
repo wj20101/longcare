@@ -1,9 +1,9 @@
 package com.ytone.longcare.common.utils
 
 import com.squareup.moshi.Moshi
-import com.ytone.longcare.api.response.ThirdKeyReturnModel
 import com.ytone.longcare.common.security.AESMode
 import com.ytone.longcare.common.security.CryptoUtils
+import com.ytone.longcare.model.ThirdKeyReturnModel
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec

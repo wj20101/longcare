@@ -1,6 +1,6 @@
 package com.ytone.longcare.features.location.manager
 
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.location.core.LocationFacade
 import com.ytone.longcare.features.location.reporting.LocationReportingManager

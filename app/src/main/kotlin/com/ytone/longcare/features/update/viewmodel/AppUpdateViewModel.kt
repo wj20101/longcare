@@ -7,7 +7,7 @@ import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.ytone.longcare.api.response.AppVersionModel
+import com.ytone.longcare.model.AppVersionModel
 import com.ytone.longcare.worker.DownloadWorker
 import com.ytone.longcare.common.utils.ApkInstallUtils
 import dagger.hilt.android.lifecycle.HiltViewModel

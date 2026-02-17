@@ -1,9 +1,9 @@
 package com.ytone.longcare.domain.faceauth
 
-import com.ytone.longcare.api.response.TencentAccessTokenResponse
-import com.ytone.longcare.api.response.TencentApiTicketResponse
-import com.ytone.longcare.api.response.TencentFaceIdResponse
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.TencentAccessTokenResponse
+import com.ytone.longcare.model.TencentApiTicketResponse
+import com.ytone.longcare.model.TencentFaceIdResponse
 
 /**
  * 腾讯人脸识别Repository接口

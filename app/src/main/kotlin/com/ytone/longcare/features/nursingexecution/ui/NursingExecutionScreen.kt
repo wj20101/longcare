@@ -23,9 +23,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
-import com.ytone.longcare.api.response.ServiceOrderInfoModel
-import com.ytone.longcare.api.response.ServiceProjectM
-import com.ytone.longcare.api.response.UserInfoM
+import com.ytone.longcare.model.ServiceOrderInfoModel
+import com.ytone.longcare.model.ServiceProjectM
+import com.ytone.longcare.model.UserInfoM
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.LockScreenOrientation

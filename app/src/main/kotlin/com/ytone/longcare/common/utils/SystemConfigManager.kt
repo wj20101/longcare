@@ -4,8 +4,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.squareup.moshi.Moshi
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.api.response.SystemConfigModel
-import com.ytone.longcare.api.response.ThirdKeyReturnModel
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.network.safeApiCall
@@ -13,9 +11,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import androidx.core.content.edit
-import com.ytone.longcare.di.ApplicationScope
-import com.ytone.longcare.di.IoDispatcher
+import com.ytone.longcare.core.common.di.ApplicationScope
+import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
+import com.ytone.longcare.model.SystemConfigModel
+import com.ytone.longcare.model.ThirdKeyReturnModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineDispatcher

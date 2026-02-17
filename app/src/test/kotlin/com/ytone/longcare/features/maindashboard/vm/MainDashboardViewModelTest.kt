@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.maindashboard.vm
 
-import com.ytone.longcare.api.response.ServiceOrderInfoModel
-import com.ytone.longcare.api.response.ServiceProjectM
+import com.ytone.longcare.model.ServiceOrderInfoModel
+import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper

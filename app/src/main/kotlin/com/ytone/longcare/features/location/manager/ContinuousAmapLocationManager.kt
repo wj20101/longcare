@@ -9,7 +9,7 @@ import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.location.provider.LocationResult
-import com.ytone.longcare.di.ApplicationScope
+import com.ytone.longcare.core.common.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope

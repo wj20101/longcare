@@ -1,7 +1,7 @@
 package com.ytone.longcare.common.event
 
 import android.content.Intent
-import com.ytone.longcare.api.response.AppVersionModel
+import com.ytone.longcare.model.AppVersionModel
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow

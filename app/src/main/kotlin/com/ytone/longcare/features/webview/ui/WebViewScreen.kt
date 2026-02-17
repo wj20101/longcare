@@ -82,7 +82,7 @@ fun WebViewScreen(
                                 return !isSafeHttpUrl(request?.url?.toString())
                             }
 
-                            @Deprecated("Deprecated in Java")
+                            @Suppress("OVERRIDE_DEPRECATION")
                             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                                 return !isSafeHttpUrl(url)
                             }

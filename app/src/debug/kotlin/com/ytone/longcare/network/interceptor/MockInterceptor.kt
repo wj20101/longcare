@@ -2,7 +2,7 @@ package com.ytone.longcare.network.interceptor
 
 import android.content.Context
 import com.ytone.longcare.BuildConfig
-import com.ytone.longcare.api.response.ServiceOrderStateModel
+import com.ytone.longcare.model.ServiceOrderStateModel
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Protocol

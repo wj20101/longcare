@@ -2,12 +2,12 @@ package com.ytone.longcare.shared.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.api.response.TodayServiceOrderModel
-import com.ytone.longcare.api.response.ServiceOrderModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.domain.order.OrderRepository
+import com.ytone.longcare.model.ServiceOrderModel
+import com.ytone.longcare.model.TodayServiceOrderModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

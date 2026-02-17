@@ -29,21 +29,5 @@ annotation class AppDataStore
 annotation class OrderStorage
 
 @Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class ApplicationScope
-
-@Retention(AnnotationRetention.BINARY)
-@Qualifier
-annotation class IoDispatcher
-
-@Retention(AnnotationRetention.BINARY)
-@Qualifier
-annotation class MainDispatcher
-
-@Retention(AnnotationRetention.BINARY)
-@Qualifier
-annotation class DefaultDispatcher
-
-@Qualifier
 @Retention(AnnotationRetention.RUNTIME)
 annotation class DefaultOkHttpClient

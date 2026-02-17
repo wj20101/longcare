@@ -1,12 +1,12 @@
 package com.ytone.longcare.features.servicecountdown.vm
 
-import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.api.response.ServiceOrderInfoModel
+import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.KLogger
-import com.ytone.longcare.data.database.entity.OrderEntity
-import com.ytone.longcare.data.database.entity.OrderLocalStateEntity
-import com.ytone.longcare.data.database.entity.OrderProjectEntity
+import com.ytone.longcare.model.OrderEntity
+import com.ytone.longcare.model.OrderLocalStateEntity
+import com.ytone.longcare.model.OrderProjectEntity
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.data.repository.ImageRepository
 import com.ytone.longcare.data.repository.UnifiedOrderRepository

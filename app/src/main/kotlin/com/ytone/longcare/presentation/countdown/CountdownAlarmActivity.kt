@@ -29,6 +29,7 @@ import androidx.lifecycle.lifecycleScope
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.receiver.DismissAlarmReceiver
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
+import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.theme.LongCareTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -53,7 +54,7 @@ class CountdownAlarmActivity : AppCompatActivity() {
         private const val EXTRA_AUTO_CLOSE_ENABLED = "auto_close_enabled"
         private const val AUTO_CLOSE_DELAY_MS = 30000L // 30秒
         
-        fun createIntent(context: Context, request: com.ytone.longcare.api.request.OrderInfoRequestModel, serviceName: String, autoCloseEnabled: Boolean = true): Intent {
+        fun createIntent(context: Context, request: OrderInfoRequestModel, serviceName: String, autoCloseEnabled: Boolean = true): Intent {
             return Intent(context, CountdownAlarmActivity::class.java).apply {
                 putExtra(EXTRA_REQUEST, request)
                 putExtra(EXTRA_SERVICE_NAME, serviceName)
@@ -106,8 +107,8 @@ class CountdownAlarmActivity : AppCompatActivity() {
             IntentCompat.getParcelableExtra(
                 intent,
                 EXTRA_REQUEST,
-                com.ytone.longcare.api.request.OrderInfoRequestModel::class.java
-            ) ?: com.ytone.longcare.api.request.OrderInfoRequestModel(orderId = -1L, planId = 0)
+                OrderInfoRequestModel::class.java
+            ) ?: OrderInfoRequestModel(orderId = -1L, planId = 0)
         
         val orderId = request.orderId.toString()
         val serviceName = intent.getStringExtra(EXTRA_SERVICE_NAME) ?: "护理服务"

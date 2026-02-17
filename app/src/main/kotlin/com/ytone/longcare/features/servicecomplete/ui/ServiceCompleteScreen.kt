@@ -23,8 +23,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.ytone.longcare.R
 import com.ytone.longcare.theme.bgGradientBrush
-import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.api.response.ServiceProjectM
+import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import com.ytone.longcare.common.utils.CustomBackHandler

@@ -1,7 +1,7 @@
 package com.ytone.longcare.navigation
 
 import androidx.annotation.Keep
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 import kotlinx.serialization.Serializable
 
 /**

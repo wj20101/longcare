@@ -6,7 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import com.ytone.longcare.data.database.entity.OrderEntity
+import com.ytone.longcare.model.OrderEntity
 import kotlinx.coroutines.flow.Flow
 
 /**

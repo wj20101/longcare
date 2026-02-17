@@ -1,12 +1,12 @@
 package com.ytone.longcare.features.location.reporting
 
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.KLogger
-import com.ytone.longcare.data.database.dao.OrderLocationDao
-import com.ytone.longcare.data.database.entity.LocationUploadStatus
-import com.ytone.longcare.data.database.entity.OrderLocationEntity
+import com.ytone.longcare.model.LocationUploadStatus
+import com.ytone.longcare.model.OrderLocationEntity
 import com.ytone.longcare.domain.location.LocationRepository
+import com.ytone.longcare.domain.location.LocationUploadQueueRepository
 import com.ytone.longcare.features.location.core.LocationFacade
 import com.ytone.longcare.features.location.manager.LocationStateManager
 import com.ytone.longcare.features.location.provider.LocationResult
@@ -40,7 +40,7 @@ class LocationReportingManagerTest {
         val locationFacade = mockk<LocationFacade>()
         val locationStateManager = mockk<LocationStateManager>(relaxed = true)
         val locationRepository = mockk<LocationRepository>()
-        val orderLocationDao = mockk<OrderLocationDao>()
+        val queueRepository = mockk<LocationUploadQueueRepository>()
         val flow = MutableSharedFlow<LocationResult>()
         val dispatcher = StandardTestDispatcher(testScheduler)
 
@@ -60,20 +60,20 @@ class LocationReportingManagerTest {
         every { locationFacade.observeLocations(any()) } returns flow
         every { locationFacade.acquireKeepAlive(any()) } returns Unit
         every { locationFacade.releaseKeepAlive(any()) } returns Unit
-        coEvery { orderLocationDao.insert(any()) } returns 1L
-        coEvery { orderLocationDao.getUploadQueue(any(), any()) } returnsMany listOf(
+        coEvery { queueRepository.insert(any()) } returns 1L
+        coEvery { queueRepository.getUploadQueue(any(), any()) } returnsMany listOf(
             emptyList(),
             listOf(pending)
         )
-        coEvery { orderLocationDao.updateStatus(any(), any()) } returns Unit
-        coEvery { orderLocationDao.deleteByStatusBefore(any(), any()) } returns 0
+        coEvery { queueRepository.updateStatus(any(), any()) } returns Unit
+        coEvery { queueRepository.deleteByStatusBefore(any(), any()) } returns 0
         coEvery { locationRepository.addPosition(any(), any(), any()) } returns ApiResult.Success(Unit)
 
         val manager = LocationReportingManager(
             locationFacade = locationFacade,
             locationStateManager = locationStateManager,
             locationRepository = locationRepository,
-            orderLocationDao = orderLocationDao,
+            locationUploadQueueRepository = queueRepository,
             ioDispatcher = dispatcher
         )
 
@@ -89,10 +89,10 @@ class LocationReportingManagerTest {
         runCurrent()
 
         coVerify(exactly = 1) {
-            orderLocationDao.insert(match { it.orderId == 100L && it.latitude == 31.2 && it.longitude == 121.5 })
+            queueRepository.insert(match { it.orderId == 100L && it.latitude == 31.2 && it.longitude == 121.5 })
         }
         coVerify(exactly = 1) { locationRepository.addPosition(100L, 31.2, 121.5) }
-        coVerify(exactly = 1) { orderLocationDao.updateStatus(1L, LocationUploadStatus.SUCCESS.value) }
+        coVerify(exactly = 1) { queueRepository.updateStatus(1L, LocationUploadStatus.SUCCESS.value) }
 
         manager.stopReporting()
         runCurrent()
@@ -108,7 +108,7 @@ class LocationReportingManagerTest {
         val locationFacade = mockk<LocationFacade>()
         val locationStateManager = mockk<LocationStateManager>(relaxed = true)
         val locationRepository = mockk<LocationRepository>()
-        val orderLocationDao = mockk<OrderLocationDao>()
+        val queueRepository = mockk<LocationUploadQueueRepository>()
         val flow = MutableSharedFlow<LocationResult>()
         val dispatcher = StandardTestDispatcher(testScheduler)
 
@@ -128,14 +128,14 @@ class LocationReportingManagerTest {
         every { locationFacade.observeLocations(any()) } returns flow
         every { locationFacade.acquireKeepAlive(any()) } returns Unit
         every { locationFacade.releaseKeepAlive(any()) } returns Unit
-        coEvery { orderLocationDao.insert(any()) } returns 2L
-        coEvery { orderLocationDao.getUploadQueue(any(), any()) } returnsMany listOf(
+        coEvery { queueRepository.insert(any()) } returns 2L
+        coEvery { queueRepository.getUploadQueue(any(), any()) } returnsMany listOf(
             emptyList(),
             listOf(pending),
             listOf(pending)
         )
-        coEvery { orderLocationDao.updateStatus(any(), any()) } returns Unit
-        coEvery { orderLocationDao.deleteByStatusBefore(any(), any()) } returns 0
+        coEvery { queueRepository.updateStatus(any(), any()) } returns Unit
+        coEvery { queueRepository.deleteByStatusBefore(any(), any()) } returns 0
         coEvery { locationRepository.addPosition(any(), any(), any()) } returnsMany listOf(
             ApiResult.Failure(500, "server busy"),
             ApiResult.Success(Unit)
@@ -145,7 +145,7 @@ class LocationReportingManagerTest {
             locationFacade = locationFacade,
             locationStateManager = locationStateManager,
             locationRepository = locationRepository,
-            orderLocationDao = orderLocationDao,
+            locationUploadQueueRepository = queueRepository,
             ioDispatcher = dispatcher
         )
 
@@ -158,8 +158,8 @@ class LocationReportingManagerTest {
         flow.emit(sample)
         runCurrent()
 
-        coVerify(exactly = 1) { orderLocationDao.updateStatus(2L, LocationUploadStatus.FAILED.value) }
-        coVerify(exactly = 1) { orderLocationDao.updateStatus(2L, LocationUploadStatus.SUCCESS.value) }
+        coVerify(exactly = 1) { queueRepository.updateStatus(2L, LocationUploadStatus.FAILED.value) }
+        coVerify(exactly = 1) { queueRepository.updateStatus(2L, LocationUploadStatus.SUCCESS.value) }
         coVerify(exactly = 2) { locationRepository.addPosition(200L, 30.0, 120.0) }
 
         manager.stopReporting()
@@ -171,7 +171,7 @@ class LocationReportingManagerTest {
         val locationFacade = mockk<LocationFacade>()
         val locationStateManager = mockk<LocationStateManager>(relaxed = true)
         val locationRepository = mockk<LocationRepository>()
-        val orderLocationDao = mockk<OrderLocationDao>()
+        val queueRepository = mockk<LocationUploadQueueRepository>()
         val flow = MutableSharedFlow<LocationResult>()
         val dispatcher = StandardTestDispatcher(testScheduler)
 
@@ -180,14 +180,14 @@ class LocationReportingManagerTest {
         every { locationFacade.observeLocations(any()) } returns flow
         every { locationFacade.acquireKeepAlive(any()) } returns Unit
         every { locationFacade.releaseKeepAlive(any()) } returns Unit
-        coEvery { orderLocationDao.getUploadQueue(any(), any()) } returns emptyList()
-        coEvery { orderLocationDao.deleteByStatusBefore(any(), any()) } returns 0
+        coEvery { queueRepository.getUploadQueue(any(), any()) } returns emptyList()
+        coEvery { queueRepository.deleteByStatusBefore(any(), any()) } returns 0
 
         val manager = LocationReportingManager(
             locationFacade = locationFacade,
             locationStateManager = locationStateManager,
             locationRepository = locationRepository,
-            orderLocationDao = orderLocationDao,
+            locationUploadQueueRepository = queueRepository,
             ioDispatcher = dispatcher
         )
 
@@ -208,7 +208,7 @@ class LocationReportingManagerTest {
         val locationFacade = mockk<LocationFacade>()
         val locationStateManager = mockk<LocationStateManager>(relaxed = true)
         val locationRepository = mockk<LocationRepository>()
-        val orderLocationDao = mockk<OrderLocationDao>()
+        val queueRepository = mockk<LocationUploadQueueRepository>()
         val flow = MutableSharedFlow<LocationResult>()
         val dispatcher = StandardTestDispatcher(testScheduler)
 
@@ -228,20 +228,20 @@ class LocationReportingManagerTest {
         every { locationFacade.observeLocations(any()) } returns flow
         every { locationFacade.acquireKeepAlive(any()) } returns Unit
         every { locationFacade.releaseKeepAlive(any()) } returns Unit
-        coEvery { orderLocationDao.insert(any()) } returns 4L
-        coEvery { orderLocationDao.getUploadQueue(any(), any()) } returnsMany listOf(
+        coEvery { queueRepository.insert(any()) } returns 4L
+        coEvery { queueRepository.getUploadQueue(any(), any()) } returnsMany listOf(
             emptyList(),
             listOf(pending)
         )
-        coEvery { orderLocationDao.deleteByStatusBefore(any(), any()) } returns 0
-        coEvery { orderLocationDao.updateStatus(any(), any()) } returns Unit
+        coEvery { queueRepository.deleteByStatusBefore(any(), any()) } returns 0
+        coEvery { queueRepository.updateStatus(any(), any()) } returns Unit
         coEvery { locationRepository.addPosition(any(), any(), any()) } throws CancellationException("cancel")
 
         val manager = LocationReportingManager(
             locationFacade = locationFacade,
             locationStateManager = locationStateManager,
             locationRepository = locationRepository,
-            orderLocationDao = orderLocationDao,
+            locationUploadQueueRepository = queueRepository,
             ioDispatcher = dispatcher
         )
 
@@ -251,8 +251,8 @@ class LocationReportingManagerTest {
         flow.emit(sample)
         runCurrent()
 
-        coVerify(exactly = 0) { orderLocationDao.updateStatus(4L, LocationUploadStatus.FAILED.value) }
-        coVerify(exactly = 0) { orderLocationDao.updateStatus(4L, LocationUploadStatus.SUCCESS.value) }
+        coVerify(exactly = 0) { queueRepository.updateStatus(4L, LocationUploadStatus.FAILED.value) }
+        coVerify(exactly = 0) { queueRepository.updateStatus(4L, LocationUploadStatus.SUCCESS.value) }
 
         manager.stopReporting()
         runCurrent()

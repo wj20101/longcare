@@ -2,7 +2,7 @@ package com.ytone.longcare.features.maindashboard.vm
 
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.ViewModel
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper

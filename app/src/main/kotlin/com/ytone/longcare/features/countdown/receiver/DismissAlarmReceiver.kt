@@ -9,7 +9,7 @@ import com.ytone.longcare.features.countdown.manager.CountdownNotificationManage
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 
 /**
  * 关闭响铃广播接收器

@@ -1,9 +1,9 @@
 package com.ytone.longcare
 
 import androidx.lifecycle.ViewModel
-import com.ytone.longcare.api.response.AppVersionModel
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.model.AppVersionModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

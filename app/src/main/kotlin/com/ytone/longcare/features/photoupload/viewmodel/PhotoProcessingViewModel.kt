@@ -5,13 +5,13 @@ import android.net.Uri
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.common.utils.ToastHelper
-import com.ytone.longcare.data.database.entity.ImageType
-import com.ytone.longcare.data.database.entity.ImageUploadStatus
-import com.ytone.longcare.data.database.entity.OrderImageEntity
+import com.ytone.longcare.model.ImageType
+import com.ytone.longcare.model.ImageUploadStatus
+import com.ytone.longcare.model.OrderImageEntity
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
@@ -23,7 +23,7 @@ import com.ytone.longcare.features.photoupload.model.ImageTaskStatus
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.features.photoupload.ui.PhotoCategory
-import com.ytone.longcare.models.protos.User
+import com.ytone.longcare.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -1,13 +1,13 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.api.request.UserOrderParamModel
-import com.ytone.longcare.api.response.UserInfoModel
-import com.ytone.longcare.api.response.UserOrderModel
+import com.ytone.longcare.model.UserOrderParamModel
+import com.ytone.longcare.model.UserInfoModel
+import com.ytone.longcare.model.UserOrderModel
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.network.safeApiCall
-import com.ytone.longcare.di.IoDispatcher
+import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.domain.userlist.UserListRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Inject

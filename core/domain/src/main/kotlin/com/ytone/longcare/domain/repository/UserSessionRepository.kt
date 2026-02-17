@@ -1,6 +1,6 @@
 package com.ytone.longcare.domain.repository
 
-import com.ytone.longcare.models.protos.User
+import com.ytone.longcare.model.User
 import kotlinx.coroutines.flow.StateFlow
 
 /**

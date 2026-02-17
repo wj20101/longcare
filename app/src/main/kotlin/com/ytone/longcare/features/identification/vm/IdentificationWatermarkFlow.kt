@@ -3,7 +3,7 @@ package com.ytone.longcare.features.identification.vm
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.features.photoupload.model.WatermarkData
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.models.protos.User
+import com.ytone.longcare.model.User
 
 internal suspend fun generateIdentificationWatermarkData(
     address: String,

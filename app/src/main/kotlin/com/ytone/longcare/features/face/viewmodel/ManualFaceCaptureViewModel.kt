@@ -4,8 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.di.DefaultDispatcher
-import com.ytone.longcare.di.IoDispatcher
+import com.ytone.longcare.core.common.di.DefaultDispatcher
+import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.features.face.detector.StaticImageFaceDetector
 import com.ytone.longcare.features.face.ui.DetectedFace
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureState

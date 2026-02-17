@@ -38,8 +38,8 @@ import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
-import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.api.response.ServiceOrderInfoModel
+import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.model.toOrderKey
@@ -48,7 +48,7 @@ import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import androidx.core.net.toUri
 import com.ytone.longcare.BuildConfig
-import com.ytone.longcare.api.response.ServiceOrderStateModel
+import com.ytone.longcare.model.ServiceOrderStateModel
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService

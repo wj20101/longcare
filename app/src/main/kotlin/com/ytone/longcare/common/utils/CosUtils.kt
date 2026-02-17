@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
-import com.ytone.longcare.data.cos.model.UploadParams
+import com.ytone.longcare.model.UploadParams
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date

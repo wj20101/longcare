@@ -1,9 +1,9 @@
 package com.ytone.longcare.domain.repository
 
-import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.data.database.entity.OrderLocalStateEntity
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.OrderLocalStateEntity
+import com.ytone.longcare.model.ServiceOrderInfoModel
 
 interface OrderDetailRepository {
     suspend fun getOrderInfo(orderKey: OrderKey, forceRefresh: Boolean = false): ApiResult<ServiceOrderInfoModel>

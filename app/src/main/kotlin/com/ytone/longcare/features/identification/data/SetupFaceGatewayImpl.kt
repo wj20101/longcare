@@ -2,7 +2,7 @@ package com.ytone.longcare.features.identification.data
 
 import android.content.Context
 import androidx.core.net.toUri
-import com.ytone.longcare.api.request.SetFaceParamModel
+import com.ytone.longcare.model.SetFaceParamModel
 import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.CosUtils

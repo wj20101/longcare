@@ -2,6 +2,11 @@ package com.ytone.longcare.common.utils
 
 import android.util.Log
 import com.ytone.longcare.BuildConfig
+import java.io.File
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * 定义日志级别
@@ -23,13 +28,15 @@ data class LogConfig(
     var showThreadInfo: Boolean = false, // 是否显示线程信息
     var stackTraceDepth: Int = 1, // 堆栈跟踪深度, 用于获取调用位置，0表示不获取，1表示当前方法，2表示上一层
     var logToFileEnabled: Boolean = false, // (高级功能占位) 是否将日志写入文件
-    var logFileConfig: LogFileConfig? = null // (高级功能占位) 文件日志配置
+    var logFileConfig: LogFileConfig? = null, // (高级功能占位) 文件日志配置
+    var maskSensitiveInfo: Boolean = true // 是否对日志进行脱敏（建议生产环境保持开启）
 )
 
 /**
  * (高级功能占位) 文件日志配置
  */
 data class LogFileConfig(
+    // 建议使用应用私有目录（如 Context.filesDir/cacheDir 的子目录），不要指向外部共享存储
     val directoryPath: String,
     val fileNamePrefix: String = "app_log",
     val maxFileSizeMb: Int = 5,
@@ -40,6 +47,8 @@ data class LogFileConfig(
 object KLogger {
 
     private var config: LogConfig = LogConfig() // 默认配置
+    @Volatile
+    private var fileLogWriter: FileLogWriter? = null
 
     /**
      * 初始化日志配置
@@ -47,11 +56,7 @@ object KLogger {
      */
     fun init(config: LogConfig = LogConfig()) {
         KLogger.config = config
-        // 如果需要，可以在这里初始化文件日志记录器等
-        if (config.logToFileEnabled && config.logFileConfig != null) {
-            // TODO: Initialize file logger (e.g., using a library or custom implementation)
-            println("File logging would be initialized here with: ${config.logFileConfig}")
-        }
+        refreshFileLogger()
     }
 
     /**
@@ -59,6 +64,7 @@ object KLogger {
      */
     fun updateConfig(block: LogConfig.() -> Unit) {
         config.apply(block)
+        refreshFileLogger()
     }
 
     fun getConfig(): LogConfig = config
@@ -96,19 +102,67 @@ object KLogger {
         }
 
         val finalTag = customTag ?: config.globalTag
-        val logMessage = buildLogMessage(message)
+        val safeMessage = sanitizeIfNeeded(message)
+        val logMessage = buildLogMessage(safeMessage)
+        val throwableText = throwable?.let { sanitizeIfNeeded(Log.getStackTraceString(it)) }
 
         // 实际打印到 Logcat
-        val bytesWritten = if (throwable == null) {
+        val bytesWritten = if (throwableText == null) {
             Log.println(level.priority, finalTag, logMessage)
         } else {
-            Log.println(level.priority, finalTag, "$logMessage\n${Log.getStackTraceString(throwable)}")
+            Log.println(level.priority, finalTag, "$logMessage\n$throwableText")
         }
 
         // (高级功能占位) 如果启用了文件日志，则写入文件
         if (config.logToFileEnabled && bytesWritten > 0) {
-            // TODO: Write to file: formatLogForFile(level, finalTag, logMessage, throwable)
+            fileLogWriter?.append(level, finalTag, logMessage, throwableText)
         }
+    }
+
+    private fun sanitizeIfNeeded(raw: String): String {
+        if (!config.maskSensitiveInfo) return raw
+        return sanitizeSensitiveContent(raw)
+    }
+
+    private fun sanitizeSensitiveContent(raw: String): String {
+        var sanitized = raw
+        val sensitiveKeyValueRegex = Regex(
+            pattern = """(?i)(["']?(?:password|pwd|token|access_token|refresh_token|secret|api[_-]?key|authorization)["']?\s*[:=]\s*["']?)([^"',\s}]+)(["']?)"""
+        )
+        sanitized = sensitiveKeyValueRegex.replace(sanitized) { match ->
+            "${match.groupValues[1]}***${match.groupValues[3]}"
+        }
+
+        val bearerTokenRegex = Regex("""(?i)(bearer\s+)([A-Za-z0-9\-._~+/]+=*)""")
+        sanitized = bearerTokenRegex.replace(sanitized) { match ->
+            "${match.groupValues[1]}***"
+        }
+
+        val phoneRegex = Regex("""(?<!\d)1\d{10}(?!\d)""")
+        sanitized = phoneRegex.replace(sanitized) { match ->
+            val phone = match.value
+            "${phone.substring(0, 3)}****${phone.substring(7)}"
+        }
+
+        val emailRegex = Regex("""(?i)\b([A-Z0-9._%+-]{1,64})@([A-Z0-9.-]+\.[A-Z]{2,})\b""")
+        sanitized = emailRegex.replace(sanitized) { match ->
+            val localPart = match.groupValues[1]
+            val domain = match.groupValues[2]
+            val maskedLocal = when {
+                localPart.length <= 1 -> "*"
+                localPart.length == 2 -> "${localPart[0]}*"
+                else -> "${localPart.take(1)}***${localPart.takeLast(1)}"
+            }
+            "$maskedLocal@$domain"
+        }
+
+        val idCardRegex = Regex("""(?i)(?<![0-9A-Z])[1-9]\d{16}[0-9X](?![0-9A-Z])""")
+        sanitized = idCardRegex.replace(sanitized) { match ->
+            val id = match.value
+            "${id.take(6)}********${id.takeLast(4)}"
+        }
+
+        return sanitized
     }
 
     private fun buildLogMessage(message: String): String {
@@ -160,6 +214,125 @@ object KLogger {
             stackTrace[targetDepth]
         } else {
             null
+        }
+    }
+
+    private fun refreshFileLogger() {
+        val fileConfig = config.logFileConfig
+        if (!config.logToFileEnabled || fileConfig == null) {
+            fileLogWriter = null
+            return
+        }
+
+        fileLogWriter = try {
+            FileLogWriter(fileConfig)
+        } catch (e: Exception) {
+            Log.e("KLogger", "Failed to initialize file logger: ${e.message}", e)
+            null
+        }
+    }
+
+    private class FileLogWriter(
+        private val fileConfig: LogFileConfig
+    ) {
+        private val lock = Any()
+        private val directory = File(fileConfig.directoryPath)
+        private val maxFileSizeBytes = fileConfig.maxFileSizeMb.coerceAtLeast(1) * 1024L * 1024L
+        private val maxHistoryMillis = fileConfig.maxHistoryDays.coerceAtLeast(1) * 24L * 60L * 60L * 1000L
+        private val dayFormatter = SimpleDateFormat("yyyyMMdd", Locale.US)
+        private val timeFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+
+        private var activeDate: String? = null
+        private var activeIndex: Int = 0
+        private var activeFile: File? = null
+
+        init {
+            ensureLogDirectory()
+            cleanupExpiredFiles(System.currentTimeMillis())
+        }
+
+        fun append(level: LogLevel, tag: String, message: String, throwableText: String?) {
+            synchronized(lock) {
+                val now = Date()
+                val formatted = formatLine(now, level, tag, message, throwableText)
+                val bytesNeeded = formatted.toByteArray(Charsets.UTF_8).size + 1
+                val targetFile = ensureActiveFile(now, bytesNeeded)
+
+                try {
+                    targetFile.appendText(formatted, Charsets.UTF_8)
+                    targetFile.appendText("\n", Charsets.UTF_8)
+                } catch (e: IOException) {
+                    Log.e("KLogger", "Failed to write file log: ${e.message}", e)
+                }
+            }
+        }
+
+        private fun ensureLogDirectory() {
+            if (directory.exists()) {
+                if (!directory.isDirectory) {
+                    throw IllegalStateException("Log directory path is not a directory: ${directory.absolutePath}")
+                }
+                return
+            }
+            if (!directory.mkdirs()) {
+                throw IllegalStateException("Unable to create log directory: ${directory.absolutePath}")
+            }
+        }
+
+        private fun cleanupExpiredFiles(nowMillis: Long) {
+            val expiry = nowMillis - maxHistoryMillis
+            directory.listFiles()?.forEach { file ->
+                if (!file.isFile) return@forEach
+                if (!file.name.startsWith(fileConfig.fileNamePrefix)) return@forEach
+                if (file.lastModified() < expiry) {
+                    file.delete()
+                }
+            }
+        }
+
+        private fun ensureActiveFile(now: Date, bytesNeeded: Int): File {
+            val currentDate = dayFormatter.format(now)
+            val shouldSwitchByDate = activeDate != currentDate
+            if (shouldSwitchByDate) {
+                activeDate = currentDate
+                activeIndex = 0
+                cleanupExpiredFiles(now.time)
+            }
+
+            var candidate = if (activeFile == null || shouldSwitchByDate) {
+                buildLogFile(currentDate, activeIndex)
+            } else {
+                activeFile!!
+            }
+
+            while (candidate.exists() && candidate.length() + bytesNeeded > maxFileSizeBytes) {
+                activeIndex += 1
+                candidate = buildLogFile(currentDate, activeIndex)
+            }
+
+            activeFile = candidate
+            return candidate
+        }
+
+        private fun buildLogFile(dateToken: String, index: Int): File {
+            val suffix = if (index == 0) "" else "_$index"
+            return File(directory, "${fileConfig.fileNamePrefix}_${dateToken}$suffix.log")
+        }
+
+        private fun formatLine(
+            now: Date,
+            level: LogLevel,
+            tag: String,
+            message: String,
+            throwableText: String?
+        ): String {
+            val timestamp = timeFormatter.format(now)
+            val base = "$timestamp [${level.name}] [$tag] $message"
+            return if (throwableText == null) {
+                base
+            } else {
+                "$base\n$throwableText"
+            }
         }
     }
 }

@@ -3,14 +3,14 @@ package com.ytone.longcare.shared.vm
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.api.response.ServiceProjectM
-import com.ytone.longcare.api.response.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.order.OrderRepository
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.ServiceOrderInfoModel
+import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.features.location.core.LocationFacade
 import dagger.hilt.android.lifecycle.HiltViewModel

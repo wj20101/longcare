@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.selectservice.vm
 
 import androidx.lifecycle.ViewModel
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.toOrderKey

@@ -1,9 +1,9 @@
 package com.ytone.longcare.api
 
-import com.ytone.longcare.api.request.GetFaceIdRequest
-import com.ytone.longcare.api.response.TencentAccessTokenResponse
-import com.ytone.longcare.api.response.TencentApiTicketResponse
-import com.ytone.longcare.api.response.TencentFaceIdResponse
+import com.ytone.longcare.model.GetFaceIdRequest
+import com.ytone.longcare.model.TencentAccessTokenResponse
+import com.ytone.longcare.model.TencentApiTicketResponse
+import com.ytone.longcare.model.TencentFaceIdResponse
 import com.ytone.longcare.domain.faceauth.model.FACE_AUTH_API_VERSION
 import retrofit2.http.Body
 import retrofit2.http.GET

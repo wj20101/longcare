@@ -11,6 +11,10 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import com.ytone.longcare.core.common.di.ApplicationScope as CoreApplicationScope
+import com.ytone.longcare.core.common.di.DefaultDispatcher as CoreDefaultDispatcher
+import com.ytone.longcare.core.common.di.IoDispatcher as CoreIoDispatcher
+import com.ytone.longcare.core.common.di.MainDispatcher as CoreMainDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,24 +41,24 @@ object AppModule {
     // 提供协程 Dispatchers
     @Provides
     @Singleton
-    @IoDispatcher
+    @CoreIoDispatcher
     fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
 
     @Provides
     @Singleton
-    @MainDispatcher
+    @CoreMainDispatcher
     fun provideMainDispatcher(): CoroutineDispatcher = Dispatchers.Main
 
     @Provides
     @Singleton
-    @DefaultDispatcher
+    @CoreDefaultDispatcher
     fun provideDefaultDispatcher(): CoroutineDispatcher = Dispatchers.Default
 
     @Provides
     @Singleton
-    @ApplicationScope
+    @CoreApplicationScope
     fun provideApplicationScope(
-        @DefaultDispatcher defaultDispatcher: CoroutineDispatcher
+        @CoreDefaultDispatcher defaultDispatcher: CoroutineDispatcher
     ): CoroutineScope {
         // 使用 SupervisorJob() 以确保一个子协程的失败不会影响其他子协程
         return CoroutineScope(SupervisorJob() + defaultDispatcher)

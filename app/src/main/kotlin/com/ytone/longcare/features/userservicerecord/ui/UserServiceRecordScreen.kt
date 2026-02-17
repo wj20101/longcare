@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ytone.longcare.api.response.UserOrderModel
+import com.ytone.longcare.model.UserOrderModel
 import com.ytone.longcare.features.userservicerecord.vm.UserServiceRecordViewModel
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory

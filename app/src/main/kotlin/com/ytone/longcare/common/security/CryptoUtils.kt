@@ -121,26 +121,6 @@ object CryptoUtils {
     }
 
     /**
-     * 生成指定长度的 AES 密钥（兼容旧版本）。
-     *
-     * @param keyLength 密钥长度（位），支持 128、192、256。
-     * @return Base64 编码的 AES 密钥字符串；如果生成失败，则返回 null。
-     */
-    @Deprecated(
-        "Use generateAESKey(KeySize) instead",
-        ReplaceWith("generateAESKey(KeySize.AES_256)")
-    )
-    fun generateAESKey(keyLength: Int): String? {
-        val keySize = when (keyLength) {
-            128 -> KeySize.AES_128
-            192 -> KeySize.AES_192
-            256 -> KeySize.AES_256
-            else -> throw IllegalArgumentException("Invalid AES key length: $keyLength. Supported lengths are 128, 192, 256.")
-        }
-        return generateAESKey(keySize)
-    }
-
-    /**
      * 核心AES加密函数，减少代码重复
      */
     private fun aesEncryptCore(
@@ -514,27 +494,6 @@ object CryptoUtils {
             logE("Crypto operation failed: ${e.message}", tag = "CryptoUtils", throwable = e)
             null
         }
-    }
-
-    /**
-     * 生成指定长度的 RSA 密钥对（兼容旧版本）。
-     *
-     * @param keyLength 密钥长度（位），支持 1024、2048、3072、4096。
-     * @return 包含 Base64 编码的公钥和私钥的 Pair；如果生成失败，则返回 null。
-     */
-    @Deprecated(
-        "Use generateRSAKeyPair(KeySize) instead",
-        ReplaceWith("generateRSAKeyPair(KeySize.RSA_2048)")
-    )
-    fun generateRSAKeyPair(keyLength: Int): Pair<String, String>? {
-        val keySize = when (keyLength) {
-            1024 -> KeySize.RSA_1024
-            2048 -> KeySize.RSA_2048
-            3072 -> KeySize.RSA_3072
-            4096 -> KeySize.RSA_4096
-            else -> throw IllegalArgumentException("Invalid RSA key length: $keyLength. Supported lengths are 1024, 2048, 3072, 4096.")
-        }
-        return generateRSAKeyPair(keySize)
     }
 
     /**

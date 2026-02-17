@@ -48,7 +48,7 @@ import com.ytone.longcare.theme.TextColorPrimary
 import com.ytone.longcare.theme.TextColorSecondary
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import com.ytone.longcare.features.login.ext.maxPhoneLength
+import com.ytone.longcare.feature.login.ext.maxPhoneLength
 import com.ytone.longcare.debug.NfcTestConfig
 import com.ytone.longcare.features.facecapture.FaceCaptureTestLauncher
 

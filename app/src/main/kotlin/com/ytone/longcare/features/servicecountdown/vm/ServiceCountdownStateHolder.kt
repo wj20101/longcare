@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.servicecountdown.vm
 
-import com.ytone.longcare.api.response.ServiceOrderStateModel
-import com.ytone.longcare.api.response.ServiceProjectM
+import com.ytone.longcare.model.ServiceOrderStateModel
+import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState

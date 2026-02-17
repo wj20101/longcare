@@ -1,9 +1,9 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.data.database.dao.OrderImageDao
-import com.ytone.longcare.data.database.entity.ImageType
-import com.ytone.longcare.data.database.entity.ImageUploadStatus
-import com.ytone.longcare.data.database.entity.OrderImageEntity
+import com.ytone.longcare.model.ImageType
+import com.ytone.longcare.model.ImageUploadStatus
+import com.ytone.longcare.model.OrderImageEntity
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.model.OrderKey
 import kotlinx.coroutines.flow.Flow

@@ -1,6 +1,5 @@
 package com.ytone.longcare.model
 
-import com.ytone.longcare.api.request.OrderInfoRequestModel
 import kotlinx.serialization.Serializable
 
 /**

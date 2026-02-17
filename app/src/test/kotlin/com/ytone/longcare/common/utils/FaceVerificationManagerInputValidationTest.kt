@@ -1,7 +1,7 @@
 package com.ytone.longcare.common.utils
 
 import android.content.Context
-import com.ytone.longcare.api.response.TencentAccessTokenResponse
+import com.ytone.longcare.model.TencentAccessTokenResponse
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository

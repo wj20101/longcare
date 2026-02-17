@@ -5,7 +5,7 @@ import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
-import com.ytone.longcare.models.protos.User
+import com.ytone.longcare.model.User
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -1,6 +1,6 @@
 package com.ytone.longcare.common.network
 
-import com.ytone.longcare.api.response.TencentApiResponse
+import com.ytone.longcare.model.TencentApiResponse
 import com.ytone.longcare.common.event.AppEventBus
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException

@@ -1,8 +1,8 @@
 package com.ytone.longcare.domain.userlist
 
-import com.ytone.longcare.api.response.UserInfoModel
-import com.ytone.longcare.api.response.UserOrderModel
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.UserInfoModel
+import com.ytone.longcare.model.UserOrderModel
 
 /**
  * 用户列表数据仓库接口

@@ -26,7 +26,7 @@ import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
 import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 

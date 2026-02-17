@@ -2,8 +2,8 @@ package com.ytone.longcare.network.processor
 
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
-import com.ytone.longcare.api.response.SystemConfigModel
-import com.ytone.longcare.api.response.ThirdKeyReturnModel
+import com.ytone.longcare.model.SystemConfigModel
+import com.ytone.longcare.model.ThirdKeyReturnModel
 import com.ytone.longcare.common.utils.ThirdKeyDecryptUtils
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE

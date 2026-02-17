@@ -1,12 +1,12 @@
 package com.ytone.longcare.domain.order
 
-import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.api.response.EndOrderResultModel
-import com.ytone.longcare.api.response.ServiceOrderInfoModel
-import com.ytone.longcare.api.response.ServiceOrderModel
-import com.ytone.longcare.api.response.ServiceOrderStateModel
-import com.ytone.longcare.api.response.TodayServiceOrderModel
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.EndOrderResultModel
+import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.ServiceOrderInfoModel
+import com.ytone.longcare.model.ServiceOrderModel
+import com.ytone.longcare.model.ServiceOrderStateModel
+import com.ytone.longcare.model.TodayServiceOrderModel
 
 /**
  * 订单相关的数据仓库接口

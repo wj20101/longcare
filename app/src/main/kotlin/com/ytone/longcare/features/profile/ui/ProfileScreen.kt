@@ -33,12 +33,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.R
-import com.ytone.longcare.api.response.NurseServiceTimeModel
+import com.ytone.longcare.model.NurseServiceTimeModel
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.profile.api.ProfileActions
 import com.ytone.longcare.features.profile.vm.ProfileViewModel
 import com.ytone.longcare.model.userIdentityShow
-import com.ytone.longcare.models.protos.User
+import com.ytone.longcare.model.User
 import com.ytone.longcare.theme.LongCareTheme
 import com.ytone.longcare.ui.components.UserAvatar
 

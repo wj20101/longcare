@@ -2,8 +2,8 @@ package com.ytone.longcare.features.endservice.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.api.response.ServiceProjectM
+import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.toOrderKey

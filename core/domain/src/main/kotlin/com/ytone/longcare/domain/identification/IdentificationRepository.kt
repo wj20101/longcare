@@ -1,8 +1,8 @@
 package com.ytone.longcare.domain.identification
 
-import com.ytone.longcare.api.request.SetFaceParamModel
-import com.ytone.longcare.api.response.FaceResultModel
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.FaceResultModel
+import com.ytone.longcare.model.SetFaceParamModel
 
 interface IdentificationRepository {
 

@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.location.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import com.ytone.longcare.common.utils.logI
 import dagger.hilt.android.lifecycle.HiltViewModel

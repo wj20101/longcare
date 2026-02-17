@@ -8,7 +8,7 @@ import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import java.util.concurrent.TimeUnit
 import androidx.core.content.edit
-import com.ytone.longcare.api.request.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 
 /**
  * 倒计时备份 Worker

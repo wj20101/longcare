@@ -5,7 +5,7 @@ import coil3.ImageLoader
 import com.ytone.longcare.common.utils.StorageSpaceUtils
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
-import com.ytone.longcare.di.IoDispatcher
+import com.ytone.longcare.core.common.di.IoDispatcher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job

@@ -3,8 +3,8 @@ package com.ytone.longcare.common.utils
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.api.response.SystemConfigModel
-import com.ytone.longcare.api.response.ThirdKeyReturnModel
+import com.ytone.longcare.model.SystemConfigModel
+import com.ytone.longcare.model.ThirdKeyReturnModel
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.model.Response
 import com.ytone.longcare.util.MainDispatcherRule

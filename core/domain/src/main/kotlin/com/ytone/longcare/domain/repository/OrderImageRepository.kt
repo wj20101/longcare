@@ -1,8 +1,8 @@
 package com.ytone.longcare.domain.repository
 
-import com.ytone.longcare.data.database.entity.ImageType
-import com.ytone.longcare.data.database.entity.OrderImageEntity
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.ImageType
+import com.ytone.longcare.model.OrderImageEntity
 
 interface OrderImageRepository {
     suspend fun getImagesByOrderId(orderKey: OrderKey): List<OrderImageEntity>

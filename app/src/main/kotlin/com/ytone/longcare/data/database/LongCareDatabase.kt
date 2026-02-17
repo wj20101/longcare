@@ -8,12 +8,12 @@ import com.ytone.longcare.data.database.dao.OrderImageDao
 import com.ytone.longcare.data.database.dao.OrderLocalStateDao
 import com.ytone.longcare.data.database.dao.OrderLocationDao
 import com.ytone.longcare.data.database.dao.OrderProjectDao
-import com.ytone.longcare.data.database.entity.OrderElderInfoEntity
-import com.ytone.longcare.data.database.entity.OrderEntity
-import com.ytone.longcare.data.database.entity.OrderImageEntity
-import com.ytone.longcare.data.database.entity.OrderLocalStateEntity
-import com.ytone.longcare.data.database.entity.OrderLocationEntity
-import com.ytone.longcare.data.database.entity.OrderProjectEntity
+import com.ytone.longcare.model.OrderElderInfoEntity
+import com.ytone.longcare.model.OrderEntity
+import com.ytone.longcare.model.OrderImageEntity
+import com.ytone.longcare.model.OrderLocalStateEntity
+import com.ytone.longcare.model.OrderLocationEntity
+import com.ytone.longcare.model.OrderProjectEntity
 
 /**
  * LongCare应用数据库

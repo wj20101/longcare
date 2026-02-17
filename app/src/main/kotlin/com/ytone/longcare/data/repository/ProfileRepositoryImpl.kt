@@ -1,11 +1,11 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.api.response.NurseServiceTimeModel
+import com.ytone.longcare.model.NurseServiceTimeModel
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.network.safeApiCall
-import com.ytone.longcare.di.IoDispatcher
+import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.domain.profile.ProfileRepository
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import kotlinx.coroutines.CoroutineDispatcher

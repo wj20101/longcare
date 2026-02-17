@@ -1,9 +1,9 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.api.request.OrderInfoParamModel
-import com.ytone.longcare.api.response.ServiceOrderInfoModel
-import com.ytone.longcare.api.response.UserInfoM
+import com.ytone.longcare.model.OrderInfoParamModel
+import com.ytone.longcare.model.ServiceOrderInfoModel
+import com.ytone.longcare.model.UserInfoM
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.data.database.dao.OrderDao
@@ -11,7 +11,7 @@ import com.ytone.longcare.data.database.dao.OrderImageDao
 import com.ytone.longcare.data.database.dao.OrderProjectDao
 import com.ytone.longcare.data.database.dao.OrderElderInfoDao
 import com.ytone.longcare.data.database.dao.OrderLocalStateDao
-import com.ytone.longcare.data.database.entity.OrderEntity
+import com.ytone.longcare.model.OrderEntity
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.Response
 import io.mockk.*

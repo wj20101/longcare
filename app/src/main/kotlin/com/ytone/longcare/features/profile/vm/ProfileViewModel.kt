@@ -2,7 +2,7 @@ package com.ytone.longcare.features.profile.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.api.response.NurseServiceTimeModel
+import com.ytone.longcare.model.NurseServiceTimeModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.network.isSuccess
 import com.ytone.longcare.common.utils.ToastHelper

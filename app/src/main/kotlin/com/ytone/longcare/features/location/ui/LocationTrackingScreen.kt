@@ -23,6 +23,7 @@ import androidx.core.location.LocationManagerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
+import com.ytone.longcare.model.OrderInfoRequestModel
 
 @Composable
 fun LocationTrackingScreen(
@@ -38,7 +39,7 @@ fun LocationTrackingScreen(
             if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
                 // 测试用的 OrderInfoRequestModel
                 viewModel.onStartClicked(
-                    com.ytone.longcare.api.request.OrderInfoRequestModel(
+                    OrderInfoRequestModel(
                         orderId = 123456L,
                         planId = 0
                     )

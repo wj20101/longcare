@@ -2,7 +2,7 @@ package com.ytone.longcare.features.userservicerecord.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.api.response.UserOrderModel
+import com.ytone.longcare.model.UserOrderModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.domain.userlist.UserListRepository

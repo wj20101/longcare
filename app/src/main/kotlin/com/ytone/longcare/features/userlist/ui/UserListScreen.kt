@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
-import com.ytone.longcare.api.response.UserInfoModel
+import com.ytone.longcare.model.UserInfoModel
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.userlist.api.UserListActions

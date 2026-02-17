@@ -4,7 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.ytone.longcare.data.database.entity.OrderLocationEntity
+import com.ytone.longcare.model.OrderLocationEntity
 import kotlinx.coroutines.flow.Flow
 
 /**

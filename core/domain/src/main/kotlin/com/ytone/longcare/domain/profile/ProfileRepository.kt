@@ -1,7 +1,7 @@
 package com.ytone.longcare.domain.profile
 
-import com.ytone.longcare.api.response.NurseServiceTimeModel
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.NurseServiceTimeModel
 
 interface ProfileRepository {
 

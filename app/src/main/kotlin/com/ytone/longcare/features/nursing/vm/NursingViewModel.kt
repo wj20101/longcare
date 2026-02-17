@@ -2,7 +2,7 @@ package com.ytone.longcare.features.nursing.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.api.response.ServiceOrderModel
+import com.ytone.longcare.model.ServiceOrderModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.OrderRepository

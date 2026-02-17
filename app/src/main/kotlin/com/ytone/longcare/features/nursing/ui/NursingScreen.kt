@@ -37,8 +37,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
-import com.ytone.longcare.api.request.OrderInfoRequestModel
-import com.ytone.longcare.api.response.ServiceOrderModel
+import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.ServiceOrderModel
 import com.ytone.longcare.common.utils.DisplayDate
 import com.ytone.longcare.common.utils.TimeUtils
 import com.ytone.longcare.features.nursing.api.NursingActions

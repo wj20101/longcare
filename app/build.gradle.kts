@@ -372,10 +372,6 @@ dependencies {
         }
     }
     
-    // Support Library compatibility for Tencent SDK
-    implementation(libs.androidx.legacy.support.v4)
-    implementation(libs.androidx.legacy.support.core.utils)
-
     // 腾讯云COS
     implementation(libs.tencent.cos.android)
 

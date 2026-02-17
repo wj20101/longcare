@@ -34,22 +34,22 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import com.ytone.longcare.R
-import com.ytone.longcare.api.response.TodayServiceOrderModel
-import com.ytone.longcare.api.response.ServiceOrderModel
-import com.ytone.longcare.api.response.isPendingCare
+import com.ytone.longcare.model.TodayServiceOrderModel
+import com.ytone.longcare.model.ServiceOrderModel
 import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
 import com.ytone.longcare.model.handleOrderNavigation
+import com.ytone.longcare.model.isPendingCareState
+import com.ytone.longcare.model.isPendingExecutionState
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.theme.IndicatorGradientStart
 import com.ytone.longcare.theme.IndicatorGradientEnd
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderItem
 import com.ytone.longcare.model.userIdentityShow
-import com.ytone.longcare.models.protos.User
+import com.ytone.longcare.model.User
 import com.ytone.longcare.ui.components.UserAvatar
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.features.shared.ui.EmptyView
-import com.ytone.longcare.api.response.isPendingExecution
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
 import com.ytone.longcare.navigation.OrderNavParams
 
@@ -138,7 +138,7 @@ private fun MainDashboardContent(
         }
         item {
             DashboardGridWithImages(
-                pendingCarePlanCount = todayOrderList.count { it.isPendingCare() },
+                pendingCarePlanCount = todayOrderList.count { it.state.isPendingCareState() },
                 actions = actions
             )
         }
@@ -474,7 +474,7 @@ fun OrderTabLayout(
 
         when (selectedTabIndex) {
             0 -> {
-                val pendingOrders = todayOrderList.filter { it.isPendingExecution() }
+                val pendingOrders = todayOrderList.filter { it.state.isPendingExecutionState() }
                 if (pendingOrders.isNotEmpty()) {
                     pendingOrders.forEach { order ->
                         ServiceOrderItem(order = order) {

@@ -1,8 +1,8 @@
 package com.ytone.longcare.domain.login
 
-import com.ytone.longcare.api.response.LoginResultModel
-import com.ytone.longcare.api.response.StartConfigResultModel
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.LoginResultModel
+import com.ytone.longcare.model.StartConfigResultModel
 
 interface LoginRepository {
     suspend fun login(mobile: String, code: String): ApiResult<LoginResultModel>
