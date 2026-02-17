@@ -49,6 +49,7 @@ class SharedOrderDetailViewModel @Inject constructor(
      */
     fun getOrderInfo(request: OrderInfoRequestModel, forceRefresh: Boolean = false) {
         viewModelScope.launch {
+            val orderKey = request.toOrderKey()
             // 如果是同一个订单且不强制刷新，且当前状态是成功状态，则不重复请求
             if (!forceRefresh && 
                 _currentOrderId.value == request && 
@@ -59,7 +60,7 @@ class SharedOrderDetailViewModel @Inject constructor(
             _currentOrderId.value = request
             _uiState.value = OrderDetailUiState.Loading
 
-            when (val result = unifiedOrderRepository.getOrderInfo(request.toOrderKey(), forceRefresh)) {
+            when (val result = unifiedOrderRepository.getOrderInfo(orderKey, forceRefresh)) {
                 is ApiResult.Success -> {
                     _uiState.value = OrderDetailUiState.Success(result.data)
                 }
@@ -82,7 +83,8 @@ class SharedOrderDetailViewModel @Inject constructor(
      * @return 缓存的订单详情，如果不存在则返回null
      */
     fun getCachedOrderInfo(request: OrderInfoRequestModel): ServiceOrderInfoModel? {
-        return unifiedOrderRepository.getCachedOrderInfo(request.toOrderKey())
+        val orderKey = request.toOrderKey()
+        return unifiedOrderRepository.getCachedOrderInfo(orderKey)
     }
 
     /**
@@ -90,8 +92,9 @@ class SharedOrderDetailViewModel @Inject constructor(
      * @param request 订单信息请求模型
      */
     fun preloadOrderInfo(request: OrderInfoRequestModel) {
+        val orderKey = request.toOrderKey()
         viewModelScope.launch {
-            unifiedOrderRepository.preloadOrderInfo(request.toOrderKey())
+            unifiedOrderRepository.preloadOrderInfo(orderKey)
         }
     }
 
@@ -117,7 +120,8 @@ class SharedOrderDetailViewModel @Inject constructor(
         request: OrderInfoRequestModel,
         projectList: List<ServiceProjectM>
     ): List<Int> {
-        val savedProjectIds = unifiedOrderRepository.getSelectedProjectIds(request.toOrderKey())
+        val orderKey = request.toOrderKey()
+        val savedProjectIds = unifiedOrderRepository.getSelectedProjectIds(orderKey)
         return if (savedProjectIds.isEmpty()) {
             projectList.map { it.projectId }
         } else {
@@ -130,7 +134,8 @@ class SharedOrderDetailViewModel @Inject constructor(
      * @param request 订单信息请求模型
      */
     fun clearOrderCache(request: OrderInfoRequestModel) {
-        unifiedOrderRepository.clearOrderInfoCache(request.toOrderKey())
+        val orderKey = request.toOrderKey()
+        unifiedOrderRepository.clearOrderInfoCache(orderKey)
         if (_currentOrderId.value == request) {
             _uiState.value = OrderDetailUiState.Initial
             _currentOrderId.value = null

@@ -41,8 +41,9 @@ class EndServiceSelectionViewModel @Inject constructor(
      */
     fun initData(orderInfoRequest: OrderInfoRequestModel, initialSelectedIds: List<Int>) {
         viewModelScope.launch {
+            val orderKey = orderInfoRequest.toOrderKey()
             // 尝试获取缓存的订单详情
-            val cachedOrderInfo = unifiedOrderRepository.getCachedOrderInfo(orderInfoRequest.toOrderKey())
+            val cachedOrderInfo = unifiedOrderRepository.getCachedOrderInfo(orderKey)
             if (cachedOrderInfo != null) {
                 // 只显示开始服务时选择的项目（过滤后的列表）
                 val selectedProjects = (cachedOrderInfo.projectList ?: emptyList())
@@ -53,7 +54,7 @@ class EndServiceSelectionViewModel @Inject constructor(
                 _uiState.value = EndServiceSelectionUiState.Success
             } else {
                 // 如果没有缓存，尝试从网络加载
-                when (val result = unifiedOrderRepository.getOrderInfo(orderInfoRequest.toOrderKey())) {
+                when (val result = unifiedOrderRepository.getOrderInfo(orderKey)) {
                     is ApiResult.Success -> {
                         // 只显示开始服务时选择的项目（过滤后的列表）
                         val selectedProjects = (result.data.projectList ?: emptyList())
