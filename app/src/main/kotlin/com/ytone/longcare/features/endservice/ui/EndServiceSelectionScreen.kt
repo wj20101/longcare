@@ -35,7 +35,6 @@ import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import android.widget.Toast
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.ui.rememberOrderInfoRequest
-import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.common.utils.singleClick
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -195,7 +194,7 @@ fun EndServiceSelectionScreen(
 
                                     scope.launch {
                                         // --- 先加载已上传的图片数据 ---
-                                        val uploadedImages = countdownViewModel.getUploadedImagesSuspend(orderInfoRequest.toOrderKey())
+                                        val uploadedImages = countdownViewModel.getUploadedImagesSuspend(orderKey)
 
                                         val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE]?.mapNotNull { it.key } ?: emptyList()
                                         val centerImgList = uploadedImages[ImageTaskType.CENTER_CARE]?.mapNotNull { it.key } ?: emptyList()

@@ -62,7 +62,6 @@ import androidx.core.net.toUri
 import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.BuildConfig
-import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.ui.rememberOrderInfoRequest
 
@@ -98,7 +97,7 @@ fun PhotoUploadScreen(
     // 在组件初始化时加载订单信息（如果缓存中没有）
     LaunchedEffect(orderInfoRequest) {
         // 设置ViewModel的OrderKey以加载图片数据
-        viewModel.setOrderKey(orderInfoRequest.toOrderKey())
+        viewModel.setOrderKey(orderKey)
         
         // 先检查缓存，如果没有缓存数据才请求
         if (sharedViewModel.getCachedOrderInfo(orderInfoRequest) == null) {
@@ -165,7 +164,7 @@ fun PhotoUploadScreen(
                         uris = listOf(uri),
                         taskType = taskType,
                         address = sharedViewModel.getUserAddress(orderInfoRequest),
-                        orderKey = orderInfoRequest.toOrderKey()
+                        orderKey = orderKey
                     )
                 }
                 actions.clearCapturedImageUri()

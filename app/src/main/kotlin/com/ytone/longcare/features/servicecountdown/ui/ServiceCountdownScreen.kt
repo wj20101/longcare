@@ -42,7 +42,6 @@ import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
-import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
@@ -314,10 +313,10 @@ fun ServiceCountdownScreen(
         checkLocationPermissionAndStart()
 
         // 恢复本地保存的图片数据
-        countdownViewModel.loadUploadedImagesFromRepository(orderInfoRequest.toOrderKey())
+        countdownViewModel.loadUploadedImagesFromRepository(orderKey)
         
         // 启动订单状态轮询（每5秒查询一次）
-        countdownViewModel.startOrderStatePolling(orderInfoRequest.toOrderKey())
+        countdownViewModel.startOrderStatePolling(orderKey)
 
         // 监听图片上传结果
         actions.photoUploadResultFlow.collect { result ->
