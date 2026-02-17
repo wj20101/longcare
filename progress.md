@@ -908,3 +908,15 @@
   - 验证：
     - `./gradlew :app:compileDebugKotlin`：PASS。
     - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS。
+- 执行“持续现代化优化（R2 增量切片：camera 屏幕拆分）”（2026-02-17）：
+  - 拍照处理流程抽离：
+    - 新增 `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraCaptureProcessor.kt`。
+    - 将 `takePhoto` 及 bitmap 处理、EXIF 旋转、水印绘制、超时策略等从 `CameraScreen.kt` 下沉到独立文件。
+  - 权限门禁抽离：
+    - 新增 `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraPermissionGate.kt`。
+    - 将相机权限申请/重试 UI 与主屏逻辑解耦。
+  - 收敛结果：
+    - `CameraScreen.kt` 行数从 `928` 降至 `511`。
+  - 验证：
+    - `./gradlew :app:compileDebugKotlin`：PASS。
+    - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS。
