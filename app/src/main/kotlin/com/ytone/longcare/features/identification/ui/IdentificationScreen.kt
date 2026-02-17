@@ -73,7 +73,7 @@ fun IdentificationScreen(
             if (isGranted) {
                 scope.launch {
                     val watermarkData = identificationViewModel.generateWatermarkData(
-                        address = sharedOrderDetailViewModel.getUserAddress(orderInfoRequest),
+                        address = sharedOrderDetailViewModel.getUserAddress(orderKey),
                         request = orderInfoRequest
                     )
                     actions.onNavigateToCamera(watermarkData)

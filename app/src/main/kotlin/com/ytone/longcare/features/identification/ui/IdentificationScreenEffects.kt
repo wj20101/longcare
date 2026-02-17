@@ -35,8 +35,8 @@ internal fun IdentificationScreenEffects(
         }
     }
 
-    LaunchedEffect(orderInfoRequest.orderId) {
-        sharedOrderDetailViewModel.getOrderInfo(orderInfoRequest)
+    LaunchedEffect(orderKey) {
+        sharedOrderDetailViewModel.getOrderInfo(orderKey)
     }
 
     LaunchedEffect(faceVerificationState, currentVerificationType) {
