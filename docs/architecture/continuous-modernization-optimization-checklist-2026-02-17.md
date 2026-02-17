@@ -104,6 +104,12 @@
     - 新增 `PhotoUploadMockDebugToolsCard.kt`，将 Debug 模式卡片组件从主屏抽离。
   - 收敛结果：
     - `PhotoUploadScreen.kt` 行数从 `709` 降至 `569`。
+  - 继续收敛（本轮新增）：
+    - 新增 `PhotoUploadGridComponents.kt`，下沉 `PhotoUploadSection`、`AddPhotoButton`、`ImageTaskItem`、`ImagePreviewDialog`。
+    - 新增 `PhotoUploadScreenPreviews.kt`，集中承接 `PhotoUploadSectionPreview`、`AddPhotoButtonPreview`、`ImageTaskItemPreview`、`ConfirmAndNextButtonPreview`。
+    - `PhotoUploadScreen.kt` 移除内联网格/预览实现，仅保留页面编排和状态联动。
+  - 收敛结果（更新）：
+    - `PhotoUploadScreen.kt` 行数从 `569` 进一步降至 `241`。
 - `R2` 增量切片（`photoupload/camera`）：
   - 拍照处理流程拆分：
     - 新增 `CameraCaptureProcessor.kt`，承接 `takePhoto` 与水印渲染、EXIF 旋转、超时与资源回收逻辑。
@@ -221,6 +227,8 @@
 - `app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowDialogs.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/nfc/vm/NfcWorkflowViewModel.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/nfc/vm/NfcWorkflowContracts.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadGridComponents.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadScreenPreviews.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardScreen.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardHeaderCards.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardOrdersSection.kt`
