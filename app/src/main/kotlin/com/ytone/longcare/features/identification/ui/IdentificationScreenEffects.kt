@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.core.net.toUri
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.features.identification.api.IdentificationActions
 import com.ytone.longcare.features.identification.vm.FaceVerificationState
 import com.ytone.longcare.features.identification.vm.IdentificationEvent
@@ -18,7 +17,6 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 internal fun IdentificationScreenEffects(
     actions: IdentificationActions,
     orderKey: OrderKey,
-    orderInfoRequest: OrderInfoRequestModel,
     sharedOrderDetailViewModel: SharedOrderDetailViewModel,
     identificationViewModel: IdentificationViewModel,
     capturedImageUri: String?,
@@ -30,7 +28,7 @@ internal fun IdentificationScreenEffects(
 ) {
     LaunchedEffect(capturedImageUri) {
         capturedImageUri?.let { uriString ->
-            identificationViewModel.processElderPhoto(uriString.toUri(), orderInfoRequest)
+            identificationViewModel.processElderPhoto(uriString.toUri(), orderKey)
             actions.clearCapturedImageUri()
         }
     }
@@ -49,9 +47,9 @@ internal fun IdentificationScreenEffects(
 
                     VerificationType.ELDER -> {
                         identificationViewModel.setElderVerified()
-                        if (orderInfoRequest.orderId > 0) {
+                        if (orderKey.orderId > 0) {
                             identificationViewModel.updateFaceVerificationStatus(
-                                request = orderInfoRequest,
+                                orderKey = orderKey,
                                 verified = true
                             )
                         }

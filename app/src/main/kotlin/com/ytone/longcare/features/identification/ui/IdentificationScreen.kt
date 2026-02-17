@@ -35,7 +35,6 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import kotlinx.coroutines.launch
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.ui.rememberOrderInfoRequest
 import com.ytone.longcare.common.utils.singleClick
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,9 +45,6 @@ fun IdentificationScreen(
     sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     identificationViewModel: IdentificationViewModel = hiltViewModel()
 ) {
-    // 从订单键构建请求模型
-    val orderInfoRequest = rememberOrderInfoRequest(orderKey)
-
     val context = LocalContext.current
 
     // ==========================================================
@@ -74,7 +70,7 @@ fun IdentificationScreen(
                 scope.launch {
                     val watermarkData = identificationViewModel.generateWatermarkData(
                         address = sharedOrderDetailViewModel.getUserAddress(orderKey),
-                        request = orderInfoRequest
+                        orderKey = orderKey
                     )
                     actions.onNavigateToCamera(watermarkData)
                 }
@@ -88,7 +84,6 @@ fun IdentificationScreen(
     IdentificationScreenEffects(
         actions = actions,
         orderKey = orderKey,
-        orderInfoRequest = orderInfoRequest,
         sharedOrderDetailViewModel = sharedOrderDetailViewModel,
         identificationViewModel = identificationViewModel,
         capturedImageUri = capturedImageUri,

@@ -126,7 +126,7 @@ class IdentificationViewModel @Inject constructor(
             startVerification = ::startFaceVerification,
         )
     }
-    
+
     /**
      * 开始人脸验证
      */
@@ -192,6 +192,12 @@ class IdentificationViewModel @Inject constructor(
             unifiedOrderRepository.updateFaceVerification(orderKey, verified)
         }
     }
+
+    fun updateFaceVerificationStatus(orderKey: OrderKey, verified: Boolean) {
+        viewModelScope.launch {
+            unifiedOrderRepository.updateFaceVerification(orderKey, verified)
+        }
+    }
     
     /**
      * 处理拍照并上传老人照片
@@ -212,6 +218,19 @@ class IdentificationViewModel @Inject constructor(
         )
     }
 
+    fun processElderPhoto(photoUri: Uri, orderKey: OrderKey, onSuccess: () -> Unit = {}) {
+        launchElderPhotoUploadWithBindings(
+            scope = viewModelScope,
+            uploadElderPhotoUseCase = uploadElderPhotoUseCase,
+            photoUri = photoUri,
+            orderId = orderKey.orderId,
+            photoUploadState = _photoUploadState,
+            showToast = toastHelper::showShort,
+            onElderVerified = ::setElderVerified,
+            onSuccess = onSuccess,
+        )
+    }
+
     /**
      * 生成用于相机屏幕的水印数据
      * @param address 拍摄地址
@@ -220,6 +239,10 @@ class IdentificationViewModel @Inject constructor(
      */
     suspend fun generateWatermarkData(address: String, request: OrderInfoRequestModel): WatermarkData {
         val orderKey = request.toOrderKey()
+        return generateWatermarkData(address, orderKey)
+    }
+
+    suspend fun generateWatermarkData(address: String, orderKey: OrderKey): WatermarkData {
         return generateIdentificationWatermarkData(
             address = address,
             orderKey = orderKey,
