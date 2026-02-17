@@ -305,9 +305,9 @@ fun ServiceCountdownScreen(
         }
     }
     
-    LaunchedEffect(orderInfoRequest) {
-        sharedViewModel.getCachedOrderInfo(orderInfoRequest)
-        sharedViewModel.getOrderInfo(orderInfoRequest)
+    LaunchedEffect(orderKey) {
+        sharedViewModel.getCachedOrderInfo(orderKey)
+        sharedViewModel.getOrderInfo(orderKey)
 
         // 检查并启动定位服务
         checkLocationPermissionAndStart()
@@ -343,7 +343,7 @@ fun ServiceCountdownScreen(
 
     // 设置倒计时时间的通用函数
     fun setupCountdownTime() {
-        val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest) ?: return
+        val orderInfo = sharedViewModel.getCachedOrderInfo(orderKey) ?: return
         
         val serviceInfo = calculateServiceInfo(orderInfo)
         
@@ -402,7 +402,7 @@ fun ServiceCountdownScreen(
     }
 
     // 初始设置倒计时时间
-    LaunchedEffect(orderInfoRequest, projectIdList) {
+    LaunchedEffect(orderKey, projectIdList) {
         setupCountdownTime()
     }
 
@@ -411,7 +411,7 @@ fun ServiceCountdownScreen(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             // 只在已初始化且未结束的情况下更新显示
             if (initState.value.isInitialized && countdownState != ServiceCountdownState.ENDED) {
-                val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
+                val orderInfo = sharedViewModel.getCachedOrderInfo(orderKey)
                 orderInfo?.let {
                     // 仅刷新显示，不重新启动倒计时
                     countdownViewModel.refreshCountdownDisplay(
@@ -479,7 +479,7 @@ fun ServiceCountdownScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 SelectedServicesCard(
-                    orderInfoRequest = orderInfoRequest,
+                    orderKey = orderKey,
                     projectIdList = projectIdList,
                     sharedViewModel = sharedViewModel
                 )
@@ -734,14 +734,14 @@ fun CountdownTimerCard(
 
 @Composable
 fun SelectedServicesCard(
-    orderInfoRequest: OrderInfoRequestModel,
+    orderKey: OrderKey,
     projectIdList: List<Int>,
     sharedViewModel: SharedOrderDetailViewModel
 ) {
     val tagHeightEstimate = 32.dp
     val tagOverlap = 12.dp
 
-    val orderInfo = sharedViewModel.getCachedOrderInfo(orderInfoRequest)
+    val orderInfo = sharedViewModel.getCachedOrderInfo(orderKey)
     val allProjects = orderInfo?.projectList ?: emptyList()
     val isAllSelected =
         projectIdList.isEmpty() || (allProjects.isNotEmpty() && projectIdList.containsAll(
@@ -787,7 +787,7 @@ fun SelectedServicesCard(
 @Composable
 fun SelectedServicesCardPreview() {
     SelectedServicesCard(
-        orderInfoRequest = OrderInfoRequestModel(orderId = 12345L, planId = 0),
+        orderKey = OrderKey(orderId = 12345L, planId = 0),
         projectIdList = listOf(1, 2),
         sharedViewModel = hiltViewModel()
     )
