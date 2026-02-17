@@ -1,10 +1,7 @@
 package com.ytone.longcare.features.servicecountdown.ui
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.ActivityInfo
-import android.os.Build
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -36,12 +33,10 @@ import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
-import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
-import androidx.core.net.toUri
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.model.ServiceOrderStateModel
 import com.ytone.longcare.common.utils.CustomBackHandler
@@ -50,16 +45,6 @@ import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.common.utils.singleClick
-
-/**
- * 倒计时初始化状态
- * 用于统一管理初始化相关的状态变量
- */
-private data class CountdownInitState(
-    val isInitialized: Boolean = false,
-    val lastProjectIdList: List<Int> = emptyList(),
-    val permissionsChecked: Boolean = false
-)
 
 /**
  * 服务倒计时页面
@@ -146,44 +131,25 @@ fun ServiceCountdownScreen(
         onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderKey) }
     )
 
-    // 检查定位权限和服务的函数
-    fun checkLocationPermissionAndStart() {
-        UnifiedPermissionHelper.checkLocationPermissionAndStart(
-            context = context,
-            permissionLauncher = permissionLauncher,
-            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderKey) }
-        )
-    }
-
-    // 请求通知权限
-    fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (!hasNotificationPermission(context)) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
-    }
-
-    // 请求精确闹钟权限
-    fun requestExactAlarmPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (!countdownViewModel.canScheduleExactAlarms()) {
-                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                    data = "package:${context.packageName}".toUri()
-                }
-                exactAlarmPermissionLauncher.launch(intent)
-            }
-        }
-    }
-    
     // 检查所有必需权限
     fun checkAndRequestPermissions() {
         checkAndRequestRequiredPermissions(
             context = context,
             canScheduleExactAlarms = countdownViewModel.canScheduleExactAlarms(),
             canUseFullScreenIntent = countdownViewModel.canUseFullScreenIntent(),
-            requestNotificationPermission = ::requestNotificationPermission,
-            requestExactAlarmPermission = ::requestExactAlarmPermission,
+            requestNotificationPermission = {
+                requestNotificationPermission(
+                    context = context,
+                    notificationPermissionLauncher = notificationPermissionLauncher
+                )
+            },
+            requestExactAlarmPermission = {
+                requestExactAlarmPermission(
+                    context = context,
+                    canScheduleExactAlarms = countdownViewModel.canScheduleExactAlarms(),
+                    exactAlarmPermissionLauncher = exactAlarmPermissionLauncher
+                )
+            },
             onPermissionDialogRequired = { message ->
                 permissionDialogMessage = message
                 showPermissionDialog = true
@@ -211,7 +177,11 @@ fun ServiceCountdownScreen(
         sharedViewModel.getOrderInfo(orderKey)
 
         // 检查并启动定位服务
-        checkLocationPermissionAndStart()
+        checkLocationPermissionAndStart(
+            context = context,
+            permissionLauncher = permissionLauncher,
+            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderKey) }
+        )
 
         // 恢复本地保存的图片数据
         countdownViewModel.loadUploadedImagesFromRepository(orderKey)
@@ -228,26 +198,18 @@ fun ServiceCountdownScreen(
         }
     }
 
-    // 初始化状态（使用data class统一管理）
-    val initState = remember { mutableStateOf(CountdownInitState()) }
-    
     // 设置倒计时时间的通用函数
     suspend fun setupCountdownTime() {
         val orderInfo = sharedViewModel.getCachedOrderInfo(orderKey) ?: return
 
-        // 检查是否需要重新初始化
-        val needsReinit = initState.value.lastProjectIdList != projectIdList ||
-                         countdownState == ServiceCountdownState.ENDED ||
-                         !initState.value.isInitialized
-
-        if (!needsReinit) {
+        if (!countdownViewModel.shouldReinitialize(projectIdList)) {
             return
         }
 
         // 首次初始化时检查权限（在设置倒计时之前）
-        if (!initState.value.permissionsChecked) {
+        if (countdownViewModel.shouldCheckPermissions()) {
             checkAndRequestPermissions()
-            initState.value = initState.value.copy(permissionsChecked = true)
+            countdownViewModel.markPermissionsChecked()
         }
 
         val initialized = countdownViewModel.initializeCountdownSession(
@@ -266,11 +228,7 @@ fun ServiceCountdownScreen(
             showPermissionDialog = true
         }
 
-        // 更新初始化状态
-        initState.value = initState.value.copy(
-            isInitialized = true,
-            lastProjectIdList = projectIdList
-        )
+        countdownViewModel.markInitialized(projectIdList)
     }
 
     // 初始设置倒计时时间
@@ -282,7 +240,7 @@ fun ServiceCountdownScreen(
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             // 只在已初始化且未结束的情况下更新显示
-            if (initState.value.isInitialized && countdownState != ServiceCountdownState.ENDED) {
+            if (countdownViewModel.isInitialized() && countdownState != ServiceCountdownState.ENDED) {
                 val orderInfo = sharedViewModel.getCachedOrderInfo(orderKey)
                 orderInfo?.let {
                     // 仅刷新显示，不重新启动倒计时

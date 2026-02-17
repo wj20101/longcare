@@ -6,6 +6,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.ManagedActivityResultLauncher
+import androidx.activity.result.ActivityResultLauncher
+import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 
@@ -45,6 +48,40 @@ internal fun checkAndRequestRequiredPermissions(
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !canUseFullScreenIntent) {
         onPermissionDialogRequired(FULL_SCREEN_PERMISSION_HINT.trimIndent())
     }
+}
+
+internal fun requestNotificationPermission(
+    context: Context,
+    notificationPermissionLauncher: ActivityResultLauncher<String>
+) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission(context)) {
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+}
+
+internal fun requestExactAlarmPermission(
+    context: Context,
+    canScheduleExactAlarms: Boolean,
+    exactAlarmPermissionLauncher: ActivityResultLauncher<Intent>
+) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !canScheduleExactAlarms) {
+        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+            data = "package:${context.packageName}".toUri()
+        }
+        exactAlarmPermissionLauncher.launch(intent)
+    }
+}
+
+internal fun checkLocationPermissionAndStart(
+    context: Context,
+    permissionLauncher: ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>,
+    onPermissionGranted: () -> Unit
+) {
+    UnifiedPermissionHelper.checkLocationPermissionAndStart(
+        context = context,
+        permissionLauncher = permissionLauncher,
+        onPermissionGranted = onPermissionGranted
+    )
 }
 
 internal fun buildPermissionSettingsIntent(

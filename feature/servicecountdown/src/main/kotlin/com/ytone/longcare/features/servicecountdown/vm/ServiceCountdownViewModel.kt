@@ -18,6 +18,7 @@ import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,11 +40,18 @@ class ServiceCountdownViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val systemGateway: ServiceCountdownSystemGateway,
 ) : ViewModel() {
+    private data class CountdownInitializationState(
+        val isInitialized: Boolean = false,
+        val lastProjectIdList: List<Int> = emptyList(),
+        val permissionsChecked: Boolean = false
+    )
+
     private data class CountdownServiceInfo(
         val serviceName: String,
         val totalMinutes: Int
     )
 
+    private val initializationState = MutableStateFlow(CountdownInitializationState())
     private val stateHolder = ServiceCountdownStateHolder()
 
     val countdownState: StateFlow<ServiceCountdownState> = stateHolder.countdownState.asStateFlow()
@@ -73,6 +81,32 @@ class ServiceCountdownViewModel @Inject constructor(
                 startTicker = true
             )
         }
+    }
+
+    fun shouldReinitialize(selectedProjectIds: List<Int>): Boolean {
+        val init = initializationState.value
+        return !init.isInitialized ||
+            init.lastProjectIdList != selectedProjectIds ||
+            stateHolder.countdownState.value == ServiceCountdownState.ENDED
+    }
+
+    fun shouldCheckPermissions(): Boolean {
+        return !initializationState.value.permissionsChecked
+    }
+
+    fun markPermissionsChecked() {
+        initializationState.value = initializationState.value.copy(permissionsChecked = true)
+    }
+
+    fun markInitialized(selectedProjectIds: List<Int>) {
+        initializationState.value = initializationState.value.copy(
+            isInitialized = true,
+            lastProjectIdList = selectedProjectIds
+        )
+    }
+
+    fun isInitialized(): Boolean {
+        return initializationState.value.isInitialized
     }
 
     suspend fun initializeCountdownSession(

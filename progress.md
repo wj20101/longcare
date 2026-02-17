@@ -1,6 +1,20 @@
 # 执行日志
 
 ## 2026-02-17
+- 执行 R2（`servicecountdown` 初始化状态与权限请求逻辑继续下沉）：
+  - `ServiceCountdownViewModel` 新增初始化状态管理：
+    - `shouldReinitialize(...)`
+    - `shouldCheckPermissions()`
+    - `markPermissionsChecked()`
+    - `markInitialized(...)`
+    - `isInitialized()`
+  - `ServiceCountdownPermissionHandler` 新增权限请求与定位启动封装：
+    - `requestNotificationPermission(...)`
+    - `requestExactAlarmPermission(...)`
+    - `checkLocationPermissionAndStart(...)`
+  - `ServiceCountdownScreen` 删除本地 `CountdownInitState` 和本地权限请求函数，改为调用 ViewModel + PermissionHandler 统一入口。
+- 本地验收（R2-继续下沉）：
+  - `./gradlew :app:compileDebugKotlin :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS
 - 执行 R1（`servicecountdown`）增量迁移：
   - 新增 `ServiceCountdownSystemGateway`（`feature:servicecountdown`）抽象倒计时平台能力。
   - 新增 `app` 侧实现与 Hilt 绑定：
