@@ -2,6 +2,8 @@ package com.ytone.longcare.features.location.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.toRequestModel
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import com.ytone.longcare.common.utils.logI
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,6 +31,10 @@ class LocationTrackingViewModel @Inject constructor(
      */
     fun onStartClicked(request: OrderInfoRequestModel) {
         trackingManager.startTracking(request)
+    }
+
+    fun onStartClicked(orderKey: OrderKey) {
+        onStartClicked(orderKey.toRequestModel())
     }
 
     /**

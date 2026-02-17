@@ -23,7 +23,9 @@ import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
+import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.toOrderKey
+import com.ytone.longcare.model.toRequestModel
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.navigation.ServiceCompleteData
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -288,6 +290,14 @@ class NfcWorkflowViewModel @Inject constructor(
         trueServiceTime: Int
     ): ServiceCompleteData {
         val orderKey = orderInfoRequest.toOrderKey()
+        return buildServiceCompleteDataFromCache(orderKey, endOderInfo, trueServiceTime)
+    }
+
+    fun buildServiceCompleteDataFromCache(
+        orderKey: OrderKey,
+        endOderInfo: EndOderInfo?,
+        trueServiceTime: Int
+    ): ServiceCompleteData {
         val cachedOrderInfo = unifiedOrderRepository.getCachedOrderInfo(orderKey)
         val userInfo = cachedOrderInfo?.userInfo
         val projectList = cachedOrderInfo?.projectList ?: emptyList()
@@ -399,6 +409,15 @@ class NfcWorkflowViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun observeNfcEvents(
+        orderKey: OrderKey,
+        signInMode: SignInMode,
+        endOderInfo: EndOderInfo?,
+        onLocationRequest: suspend () -> Pair<String, String>
+    ) {
+        observeNfcEvents(orderKey.toRequestModel(), signInMode, endOderInfo, onLocationRequest)
     }
 
     /**
@@ -549,6 +568,14 @@ class NfcWorkflowViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun mockNfcScan(
+        orderKey: OrderKey,
+        signInMode: SignInMode,
+        endOderInfo: EndOderInfo?
+    ) {
+        mockNfcScan(orderKey.toRequestModel(), signInMode, endOderInfo)
     }
 
     /**

@@ -48,9 +48,7 @@ import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSettings
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.ui.rememberOrderInfoRequest
 import kotlinx.coroutines.CancellationException
 
 
@@ -72,9 +70,6 @@ fun NfcWorkflowScreen(
     nfcViewModel: NfcWorkflowViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
-    // 从订单键构建请求模型
-    val orderInfoRequest = rememberOrderInfoRequest(orderKey)
-    
     val uiState by nfcViewModel.uiState.collectAsStateWithLifecycle()
     val pendingNfcData by nfcViewModel.pendingNfcData.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -103,7 +98,7 @@ fun NfcWorkflowScreen(
 
     // 权限请求启动器（用于开启定位追踪）
     val trackingPermissionLauncher = rememberLocationPermissionLauncher(
-        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest) }
+        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderKey) }
     )
 
     // 权限请求启动器（仅用于获取当前位置，不触发追踪）
@@ -116,7 +111,7 @@ fun NfcWorkflowScreen(
         UnifiedPermissionHelper.checkLocationPermissionAndStart(
             context = context,
             permissionLauncher = trackingPermissionLauncher,
-            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest) }
+            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderKey) }
         )
     }
 
@@ -171,9 +166,9 @@ fun NfcWorkflowScreen(
     }
 
     // 监听NFC事件
-    LaunchedEffect(orderInfoRequest, signInMode) {
+    LaunchedEffect(orderKey, signInMode) {
         nfcViewModel.observeNfcEvents(
-            orderInfoRequest = orderInfoRequest,
+            orderKey = orderKey,
             signInMode = signInMode,
             endOderInfo = endOderInfo,
             onLocationRequest = { getCurrentLocationCoordinates() }
@@ -264,7 +259,7 @@ fun NfcWorkflowScreen(
                                                 val trueServiceTime = successState?.endOrderSuccessData?.trueServiceTime ?: 0
                                                 val serviceCompleteData =
                                                     nfcViewModel.buildServiceCompleteDataFromCache(
-                                                        orderInfoRequest = orderInfoRequest,
+                                                        orderKey = orderKey,
                                                         endOderInfo = endOderInfo,
                                                         trueServiceTime = trueServiceTime
                                                     )
@@ -337,7 +332,7 @@ fun NfcWorkflowScreen(
                     Button(
                         onClick = {
                             nfcViewModel.mockNfcScan(
-                                orderInfoRequest = orderInfoRequest,
+                                orderKey = orderKey,
                                 signInMode = signInMode,
                                 endOderInfo = endOderInfo
                             )
