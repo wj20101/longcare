@@ -38,7 +38,6 @@ import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
@@ -53,7 +52,6 @@ import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.ui.rememberOrderInfoRequest
 import com.ytone.longcare.common.utils.singleClick
 
 
@@ -115,9 +113,6 @@ fun ServiceCountdownScreen(
     countdownViewModel: ServiceCountdownViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
-    // 从订单键构建请求模型
-    val orderInfoRequest = rememberOrderInfoRequest(orderKey)
-    
     // 强制设置为竖屏
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
@@ -169,7 +164,7 @@ fun ServiceCountdownScreen(
 
     // 权限请求启动器
     val permissionLauncher = rememberLocationPermissionLauncher(
-        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest) }
+        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderKey) }
     )
 
     // 检查定位权限和服务的函数
@@ -177,7 +172,7 @@ fun ServiceCountdownScreen(
         UnifiedPermissionHelper.checkLocationPermissionAndStart(
             context = context,
             permissionLauncher = permissionLauncher,
-            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderInfoRequest) }
+            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderKey) }
         )
     }
 
@@ -275,15 +270,15 @@ fun ServiceCountdownScreen(
         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 2. 已停止定位跟踪服务")
 
         // 3. 取消倒计时闹钟（使用订单ID精确取消）
-        countdownViewModel.cancelCountdownAlarmForOrder(orderInfoRequest)
-        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 3. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
+        countdownViewModel.cancelCountdownAlarmForOrder(orderKey)
+        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 3. 已取消倒计时闹钟 (orderId=${orderKey.orderId})")
 
         // 4. 停止响铃服务（如果正在响铃）
         AlarmRingtoneService.stopRingtone(context)
         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 4. 已停止响铃服务")
 
         // 5. 调用ViewModel结束服务（但不清除图片数据，保留给EndServiceSelectionScreen使用）
-        countdownViewModel.endServiceWithoutClearingImages(orderInfoRequest, context)
+        countdownViewModel.endServiceWithoutClearingImages(orderKey, context)
         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 5. 已结束服务（保留图片数据）")
 
         // 6. 导航到结束服务选择页面
@@ -364,7 +359,7 @@ fun ServiceCountdownScreen(
 
         // 设置ViewModel的倒计时（统一的时间计算逻辑）
         countdownViewModel.setCountdownTimeFromProjects(
-            orderRequest = orderInfoRequest,
+            orderKey = orderKey,
             projectList = orderInfo.projectList ?: emptyList(),
             selectedProjectIds = projectIdList
         )
@@ -372,7 +367,7 @@ fun ServiceCountdownScreen(
         // 启动前台服务显示倒计时通知
         countdownViewModel.startForegroundService(
             context = context,
-            request = orderInfoRequest,
+            orderKey = orderKey,
             serviceName = serviceInfo.serviceName,
             totalSeconds = serviceInfo.totalMinutes * 60L
         )
@@ -382,7 +377,7 @@ fun ServiceCountdownScreen(
         if (state == ServiceCountdownState.RUNNING && remainingMillis > 0) {
             val completionTime = System.currentTimeMillis() + remainingMillis
             countdownViewModel.scheduleCountdownAlarm(
-                request = orderInfoRequest,
+                orderKey = orderKey,
                 serviceName = serviceInfo.serviceName,
                 triggerTimeMillis = completionTime
             )
@@ -415,7 +410,7 @@ fun ServiceCountdownScreen(
                 orderInfo?.let {
                     // 仅刷新显示，不重新启动倒计时
                     countdownViewModel.refreshCountdownDisplay(
-                        orderRequest = orderInfoRequest,
+                        orderKey = orderKey,
                         projectList = it.projectList ?: emptyList(),
                         selectedProjectIds = projectIdList
                     )
@@ -655,15 +650,15 @@ fun ServiceCountdownScreen(
                         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 4. 已强制停止定位跟踪服务")
                         
                         // 5. 取消倒计时闹钟（使用订单ID精确取消）
-                        countdownViewModel.cancelCountdownAlarmForOrder(orderInfoRequest)
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 5. 已取消倒计时闹钟 (orderId=${orderInfoRequest.orderId})")
+                        countdownViewModel.cancelCountdownAlarmForOrder(orderKey)
+                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 5. 已取消倒计时闹钟 (orderId=${orderKey.orderId})")
                         
                         // 6. 停止响铃服务（如果正在响铃）
                         AlarmRingtoneService.stopRingtone(context)
                         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 6. 已停止响铃服务")
                         
                         // 7. 清理ViewModel状态和本地数据（不清除图片数据，因为订单可能需要重新开始）
-                        countdownViewModel.endServiceWithoutClearingImages(orderInfoRequest, context)
+                        countdownViewModel.endServiceWithoutClearingImages(orderKey, context)
                         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 7. 已清理ViewModel状态")
                         
                         com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")

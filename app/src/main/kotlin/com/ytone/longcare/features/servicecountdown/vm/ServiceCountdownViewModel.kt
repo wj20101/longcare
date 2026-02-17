@@ -13,6 +13,7 @@ import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.toOrderKey
+import com.ytone.longcare.model.toRequestModel
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.features.photoupload.model.ImageTask
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
@@ -67,10 +68,21 @@ class ServiceCountdownViewModel @Inject constructor(
      */
     fun setCountdownTimeFromProjects(
         orderRequest: OrderInfoRequestModel,
-        projectList: List<ServiceProjectM>, 
+        projectList: List<ServiceProjectM>,
         selectedProjectIds: List<Int>
     ) {
-        val orderKey = orderRequest.toOrderKey()
+        setCountdownTimeFromProjects(
+            orderKey = orderRequest.toOrderKey(),
+            projectList = projectList,
+            selectedProjectIds = selectedProjectIds
+        )
+    }
+
+    fun setCountdownTimeFromProjects(
+        orderKey: OrderKey,
+        projectList: List<ServiceProjectM>,
+        selectedProjectIds: List<Int>
+    ) {
         // 保存当前订单ID和项目信息，用于后续重新计算
         stateHolder.currentOrderKey = orderKey
         stateHolder.currentProjectList = projectList
@@ -180,7 +192,18 @@ class ServiceCountdownViewModel @Inject constructor(
         projectList: List<ServiceProjectM>,
         selectedProjectIds: List<Int>
     ) {
-        val orderKey = orderRequest.toOrderKey()
+        refreshCountdownDisplay(
+            orderKey = orderRequest.toOrderKey(),
+            projectList = projectList,
+            selectedProjectIds = selectedProjectIds
+        )
+    }
+
+    fun refreshCountdownDisplay(
+        orderKey: OrderKey,
+        projectList: List<ServiceProjectM>,
+        selectedProjectIds: List<Int>
+    ) {
         // 保存当前订单ID和项目信息
         stateHolder.currentOrderKey = orderKey
         stateHolder.currentProjectList = projectList
@@ -309,7 +332,26 @@ class ServiceCountdownViewModel @Inject constructor(
         serviceName: String,
         totalSeconds: Long
     ) {
-        CountdownForegroundService.startCountdown(context, request, serviceName, totalSeconds)
+        startForegroundService(
+            context = context,
+            orderKey = request.toOrderKey(),
+            serviceName = serviceName,
+            totalSeconds = totalSeconds
+        )
+    }
+
+    fun startForegroundService(
+        context: Context,
+        orderKey: OrderKey,
+        serviceName: String,
+        totalSeconds: Long
+    ) {
+        CountdownForegroundService.startCountdown(
+            context = context,
+            request = orderKey.toRequestModel(),
+            serviceName = serviceName,
+            totalSeconds = totalSeconds
+        )
     }
     
     /**
@@ -383,7 +425,10 @@ class ServiceCountdownViewModel @Inject constructor(
      * @param context 上下文，用于停止前台服务
      */
     fun endServiceWithoutClearingImages(orderInfoRequest: OrderInfoRequestModel, context: Context? = null) {
-        val orderKey = orderInfoRequest.toOrderKey()
+        endServiceWithoutClearingImages(orderInfoRequest.toOrderKey(), context)
+    }
+
+    fun endServiceWithoutClearingImages(orderKey: OrderKey, context: Context? = null) {
         stateHolder.countdownJob?.cancel()
         stateHolder.orderStatePollingJob?.cancel()
         stateHolder.countdownState.value = ServiceCountdownState.ENDED
@@ -598,8 +643,20 @@ class ServiceCountdownViewModel @Inject constructor(
         serviceName: String,
         triggerTimeMillis: Long
     ) {
+        scheduleCountdownAlarm(
+            orderKey = request.toOrderKey(),
+            serviceName = serviceName,
+            triggerTimeMillis = triggerTimeMillis
+        )
+    }
+
+    fun scheduleCountdownAlarm(
+        orderKey: OrderKey,
+        serviceName: String,
+        triggerTimeMillis: Long
+    ) {
         countdownNotificationManager.scheduleCountdownAlarm(
-            request = request,
+            request = orderKey.toRequestModel(),
             serviceName = serviceName,
             triggerTimeMillis = triggerTimeMillis
         )
@@ -610,7 +667,11 @@ class ServiceCountdownViewModel @Inject constructor(
     }
 
     fun cancelCountdownAlarmForOrder(request: OrderInfoRequestModel) {
-        countdownNotificationManager.cancelCountdownAlarmForOrder(request)
+        cancelCountdownAlarmForOrder(request.toOrderKey())
+    }
+
+    fun cancelCountdownAlarmForOrder(orderKey: OrderKey) {
+        countdownNotificationManager.cancelCountdownAlarmForOrder(orderKey.toRequestModel())
     }
 
     /**
