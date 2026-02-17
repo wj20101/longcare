@@ -1,12 +1,15 @@
 package com.ytone.longcare.features.location.provider
 
 import android.annotation.SuppressLint
+import android.location.Location
 import android.location.LocationManager
 import android.os.CancellationSignal
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.domain.location.LocationProvider
+import com.ytone.longcare.model.LocationResult
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.concurrent.Executor
@@ -44,7 +47,7 @@ class SystemLocationProvider @Inject constructor(
                 }
                 if (location != null) {
                     logI("系统GPS获取位置成功")
-                    continuation.resume(LocationResult.fromSystemLocation(location))
+                    continuation.resume(mapToLocationResult(location))
                 } else {
                     // GPS失败，尝试网络定位
                     logI("系统GPS获取位置失败，尝试网络定位...")
@@ -75,7 +78,7 @@ class SystemLocationProvider @Inject constructor(
                 }
                 if (location != null) {
                     logI("系统网络定位获取位置成功")
-                    continuation.resume(LocationResult.fromSystemLocation(location))
+                    continuation.resume(mapToLocationResult(location))
                 } else {
                     logE("系统网络定位也获取位置失败")
                     continuation.resume(null)
@@ -92,5 +95,14 @@ class SystemLocationProvider @Inject constructor(
     override fun destroy() {
         // 系统定位不需要特殊的销毁操作
         logI("系统定位提供者已销毁")
+    }
+
+    private fun mapToLocationResult(location: Location): LocationResult {
+        return LocationResult(
+            latitude = location.latitude,
+            longitude = location.longitude,
+            provider = "system_${location.provider}",
+            accuracy = location.accuracy
+        )
     }
 }

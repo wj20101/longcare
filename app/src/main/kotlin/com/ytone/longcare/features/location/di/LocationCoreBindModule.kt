@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.location.di
 
+import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.features.location.core.DefaultLocationFacade
-import com.ytone.longcare.features.location.core.LocationFacade
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

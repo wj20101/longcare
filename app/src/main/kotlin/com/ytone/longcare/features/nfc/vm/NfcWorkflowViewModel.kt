@@ -24,7 +24,7 @@ import com.ytone.longcare.features.countdown.manager.CountdownNotificationManage
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.model.toOrderKey
-import com.ytone.longcare.features.location.core.LocationFacade
+import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.navigation.ServiceCompleteData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext

@@ -5,13 +5,13 @@ import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.model.LocationUploadStatus
+import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.OrderLocationEntity
 import com.ytone.longcare.core.common.di.IoDispatcher
+import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.location.LocationRepository
 import com.ytone.longcare.domain.location.LocationUploadQueueRepository
-import com.ytone.longcare.features.location.core.LocationFacade
 import com.ytone.longcare.features.location.manager.LocationStateManager
-import com.ytone.longcare.features.location.provider.LocationResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope

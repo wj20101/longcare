@@ -1,6 +1,6 @@
 package com.ytone.longcare.features.location.manager
 
-import com.ytone.longcare.features.location.provider.LocationResult
+import com.ytone.longcare.model.LocationResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

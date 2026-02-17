@@ -1,10 +1,11 @@
 package com.ytone.longcare.features.location.core
 
 import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
 import com.ytone.longcare.features.location.manager.LocationStateManager
-import com.ytone.longcare.features.location.provider.LocationResult
 import com.ytone.longcare.features.location.provider.SystemLocationProvider
+import com.ytone.longcare.model.LocationResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject

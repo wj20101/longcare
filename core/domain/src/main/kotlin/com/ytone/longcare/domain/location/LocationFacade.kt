@@ -1,14 +1,14 @@
-package com.ytone.longcare.features.location.core
+package com.ytone.longcare.domain.location
 
-import com.ytone.longcare.features.location.provider.LocationResult
+import com.ytone.longcare.model.LocationResult
 import kotlinx.coroutines.flow.Flow
 
 /**
- * 统一对外暴露定位能力：
- * 1. 获取实时位置流
- * 2. 单次定位
- * 3. 获取缓存位置
- * 4. 管理定位保活生命周期
+ * Unified contract for location capabilities:
+ * 1. observe location stream
+ * 2. fetch single location
+ * 3. read cached location
+ * 4. manage keep-alive lifecycle
  */
 interface LocationFacade {
     fun observeLocations(intervalMs: Long = 30_000L): Flow<LocationResult>

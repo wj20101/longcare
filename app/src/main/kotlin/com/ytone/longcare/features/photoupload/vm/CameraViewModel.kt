@@ -3,7 +3,7 @@ package com.ytone.longcare.features.photoupload.vm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.utils.SystemConfigManager
-import com.ytone.longcare.features.location.core.LocationFacade
+import com.ytone.longcare.domain.location.LocationFacade
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow

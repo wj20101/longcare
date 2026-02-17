@@ -7,12 +7,12 @@ import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.domain.repository.OrderDetailRepository
+import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.model.toOrderKey
-import com.ytone.longcare.features.location.core.LocationFacade
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException

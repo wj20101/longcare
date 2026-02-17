@@ -4,12 +4,12 @@ import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.model.LocationUploadStatus
+import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.OrderLocationEntity
+import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.location.LocationRepository
 import com.ytone.longcare.domain.location.LocationUploadQueueRepository
-import com.ytone.longcare.features.location.core.LocationFacade
 import com.ytone.longcare.features.location.manager.LocationStateManager
-import com.ytone.longcare.features.location.provider.LocationResult
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
