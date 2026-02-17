@@ -2,11 +2,10 @@ package com.ytone.longcare.features.endservice.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.domain.repository.OrderDetailRepository
-import com.ytone.longcare.model.toOrderKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,12 +35,11 @@ class EndServiceSelectionViewModel @Inject constructor(
 
     /**
      * 初始化数据
-     * @param orderInfoRequest 订单信息请求
+     * @param orderKey 订单键
      * @param initialSelectedIds 初始选中的项目ID列表（开始服务时选择的项目）
      */
-    fun initData(orderInfoRequest: OrderInfoRequestModel, initialSelectedIds: List<Int>) {
+    fun initData(orderKey: OrderKey, initialSelectedIds: List<Int>) {
         viewModelScope.launch {
-            val orderKey = orderInfoRequest.toOrderKey()
             // 尝试获取缓存的订单详情
             val cachedOrderInfo = unifiedOrderRepository.getCachedOrderInfo(orderKey)
             if (cachedOrderInfo != null) {
