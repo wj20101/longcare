@@ -50,7 +50,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import com.ytone.longcare.feature.login.ext.maxPhoneLength
 import com.ytone.longcare.debug.NfcTestConfig
-import com.ytone.longcare.features.facecapture.FaceCaptureTestLauncher
 
 @Composable
 fun LoginScreen(
@@ -305,11 +304,7 @@ fun LoginScreen(
                         }
 
                         Button(
-                            onClick = {
-                                if (!FaceCaptureTestLauncher.launch(context)) {
-                                    context.showLongToast("当前构建暂不可用人脸采集测试入口")
-                                }
-                            },
+                            onClick = actions.onOpenManualFaceCapture,
                             shape = buttonShape,
                             colors = buttonColors,
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
