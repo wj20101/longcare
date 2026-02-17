@@ -29,6 +29,7 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.theme.bgButtonGradientBrush
 import com.ytone.longcare.features.selectdevice.api.SelectDeviceActions
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toOrderKeyModel
 
 // --- 数据模型 ---
 data class Device(
@@ -88,7 +89,7 @@ fun SelectDeviceScreen(
                             text = stringResource(R.string.common_next_step),
                             enabled = true,
                             onClick = singleClick { 
-                                actions.onStartOrderNfcSignIn(orderParams)
+                                actions.onStartOrderNfcSignIn(orderParams.toOrderKeyModel())
                             }
                         )
                     }

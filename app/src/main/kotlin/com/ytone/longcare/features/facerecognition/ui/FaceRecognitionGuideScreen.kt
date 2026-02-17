@@ -32,6 +32,7 @@ import com.ytone.longcare.features.facerecognition.api.FaceRecognitionGuideActio
 import com.ytone.longcare.features.facerecognition.vm.FaceRecognitionViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toOrderKeyModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,7 +96,7 @@ fun FaceRecognitionGuideScreen(
                         Button(
                             onClick = singleClick {
                                 viewModel.startFaceRecognition()
-                                actions.onNavigateToSelectService(orderParams)
+                                actions.onNavigateToSelectService(orderParams.toOrderKeyModel())
                             },
                             modifier = Modifier
                                 .fillMaxWidth()

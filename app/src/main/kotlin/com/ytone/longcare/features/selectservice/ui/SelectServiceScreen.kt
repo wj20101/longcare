@@ -35,6 +35,7 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.features.selectservice.api.SelectServiceActions
 import com.ytone.longcare.features.selectservice.vm.SelectServiceViewModel
 import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toOrderKeyModel
 import com.ytone.longcare.navigation.toRequestModel
 
 // --- 数据模型 ---
@@ -276,7 +277,10 @@ fun SelectServiceScreen(
                                             orderInfoRequest = orderInfoRequest,
                                             selectedProjectIds = selectedProjectIds
                                         )
-                                        actions.onNavigateToServiceCountdown(orderParams, selectedProjectIds)
+                                        actions.onNavigateToServiceCountdown(
+                                            orderParams.toOrderKeyModel(),
+                                            selectedProjectIds
+                                        )
                                     }
                                 }
                             },

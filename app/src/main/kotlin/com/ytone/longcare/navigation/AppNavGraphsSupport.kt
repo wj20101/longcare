@@ -82,8 +82,8 @@ internal fun NavGraphBuilder.registerSupportNavGraphs(navController: NavControll
         FaceRecognitionGuideScreen(
             actions = FaceRecognitionGuideActions(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToSelectService = { orderParams ->
-                    navController.navigateToSelectService(orderParams)
+                onNavigateToSelectService = { orderKey ->
+                    navController.navigateToSelectService(orderKey.toOrderNavParams())
                 }
             ),
             orderParams = route.orderParams
@@ -97,8 +97,8 @@ internal fun NavGraphBuilder.registerSupportNavGraphs(navController: NavControll
         SelectDeviceScreen(
             actions = SelectDeviceActions(
                 onNavigateBack = { navController.popBackStack() },
-                onStartOrderNfcSignIn = { orderParams ->
-                    navController.navigateToNfcSignInForStartOrder(orderParams)
+                onStartOrderNfcSignIn = { orderKey ->
+                    navController.navigateToNfcSignInForStartOrder(orderKey.toOrderNavParams())
                 }
             ),
             orderParams = route.orderParams

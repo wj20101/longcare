@@ -137,9 +137,9 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
         SelectServiceScreen(
             actions = SelectServiceActions(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToServiceCountdown = { orderParams, projectIdList ->
+                onNavigateToServiceCountdown = { orderKey, projectIdList ->
                     navController.navigateToServiceCountdown(
-                        orderParams = orderParams,
+                        orderParams = orderKey.toOrderNavParams(),
                         projectIdList = projectIdList
                     )
                 }
