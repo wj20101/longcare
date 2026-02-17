@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.ytone.longcare.R
 import com.ytone.longcare.theme.bgGradientBrush
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
@@ -32,7 +31,6 @@ import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicecomplete.api.ServiceCompleteActions
 import com.ytone.longcare.navigation.ServiceCompleteData
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.ui.rememberOrderInfoRequest
 
 // --- 数据模型 ---
 data class ServiceSummary(
@@ -53,9 +51,6 @@ fun ServiceCompleteScreen(
     serviceCompleteData: ServiceCompleteData,
     viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
-    // 从订单键构建请求模型
-    val orderInfoRequest = rememberOrderInfoRequest(orderKey)
-    
     // 统一处理系统返回键，与导航按钮行为一致（返回首页并清空堆栈）
     CustomBackHandler(customAction = actions.onNavigateHomeAndClearStack)
     
@@ -85,7 +80,7 @@ fun ServiceCompleteScreen(
                 navigationIcon = {
                     IconButton(onClick = {
                         // 清除选中项目数据后再返回
-                        viewModel.clearSelectedProjects(orderInfoRequest.orderId)
+                        viewModel.clearSelectedProjects(orderKey.orderId)
                         actions.onNavigateHomeAndClearStack()
                     }) {
                         Icon(
@@ -109,7 +104,7 @@ fun ServiceCompleteScreen(
                 ) {
                     ActionButton(text = "完成", onClick = {
                         // 清除选中项目数据后再返回首页
-                        viewModel.clearSelectedProjects(orderInfoRequest.orderId)
+                        viewModel.clearSelectedProjects(orderKey.orderId)
                         actions.onNavigateHomeAndClearStack()
                     })
                 }
