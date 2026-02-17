@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 import com.ytone.longcare.R
 import com.ytone.longcare.model.TodayServiceOrderModel
 import com.ytone.longcare.model.ServiceOrderModel
+import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
 import com.ytone.longcare.model.handleOrderNavigation
 import com.ytone.longcare.model.isPendingCareState
@@ -51,7 +52,7 @@ import com.ytone.longcare.ui.components.UserAvatar
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.features.shared.ui.EmptyView
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
-import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.toOrderKeyModel
 
 @Composable
 fun MainDashboardScreen(
@@ -483,10 +484,10 @@ fun OrderTabLayout(
                                  orderId = order.orderId,
                                  planId = 0,
                                  onNavigateToNursingExecution = { orderId, planId ->
-                                     actions.onNavigateToNursingExecution(OrderNavParams(orderId, planId))
+                                     actions.onNavigateToNursingExecution(OrderKey(orderId, planId))
                                  },
                                  onNavigateToService = { orderId, planId ->
-                                     actions.onNavigateToService(OrderNavParams(orderId, planId))
+                                     actions.onNavigateToService(OrderKey(orderId, planId))
                                  },
                                  onNotStartedState = {
                                      // 未开单状态，不允许跳转
@@ -516,7 +517,7 @@ fun OrderTabLayout(
                                     }
 
                                     actions.onNavigateToServiceCountdown(
-                                        navigationData.orderParams,
+                                        navigationData.orderParams.toOrderKeyModel(),
                                         navigationData.projectIdList
                                     )
                                 } catch (e: Exception) {

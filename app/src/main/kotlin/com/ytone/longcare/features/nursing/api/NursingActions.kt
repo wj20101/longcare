@@ -1,8 +1,8 @@
 package com.ytone.longcare.features.nursing.api
 
-import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.model.OrderKey
 
 data class NursingActions(
-    val onNavigateToNursingExecution: (OrderNavParams) -> Unit,
-    val onNavigateToService: (OrderNavParams) -> Unit
+    val onNavigateToNursingExecution: (OrderKey) -> Unit,
+    val onNavigateToService: (OrderKey) -> Unit
 )

@@ -71,11 +71,11 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
         ServiceOrdersListScreen(
             actions = ServiceOrdersListActions(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToNursingExecution = { orderParams ->
-                    navController.navigateToNursingExecution(orderParams)
+                onNavigateToNursingExecution = { orderKey ->
+                    navController.navigateToNursingExecution(orderKey.toOrderNavParams())
                 },
-                onNavigateToService = { orderParams ->
-                    navController.navigateToService(orderParams)
+                onNavigateToService = { orderKey ->
+                    navController.navigateToService(orderKey.toOrderNavParams())
                 }
             ),
             orderType = ServiceOrderType.PENDING_CARE_PLANS,
@@ -91,11 +91,11 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
         ServiceOrdersListScreen(
             actions = ServiceOrdersListActions(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToNursingExecution = { orderParams ->
-                    navController.navigateToNursingExecution(orderParams)
+                onNavigateToNursingExecution = { orderKey ->
+                    navController.navigateToNursingExecution(orderKey.toOrderNavParams())
                 },
-                onNavigateToService = { orderParams ->
-                    navController.navigateToService(orderParams)
+                onNavigateToService = { orderKey ->
+                    navController.navigateToService(orderKey.toOrderNavParams())
                 }
             ),
             orderType = ServiceOrderType.SERVICE_RECORDS,
