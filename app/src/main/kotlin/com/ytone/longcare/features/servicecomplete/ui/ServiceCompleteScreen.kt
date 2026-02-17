@@ -32,7 +32,7 @@ import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicecomplete.api.ServiceCompleteActions
 import com.ytone.longcare.navigation.ServiceCompleteData
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.features.shared.ui.rememberOrderInfoRequest
+import com.ytone.longcare.ui.rememberOrderInfoRequest
 
 // --- 数据模型 ---
 data class ServiceSummary(

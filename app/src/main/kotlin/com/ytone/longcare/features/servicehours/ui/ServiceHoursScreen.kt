@@ -34,7 +34,7 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.features.shared.ui.rememberOrderInfoRequest
+import com.ytone.longcare.ui.rememberOrderInfoRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

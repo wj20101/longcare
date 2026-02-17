@@ -34,7 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import android.widget.Toast
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.features.shared.ui.rememberOrderInfoRequest
+import com.ytone.longcare.ui.rememberOrderInfoRequest
 import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.common.utils.singleClick
 

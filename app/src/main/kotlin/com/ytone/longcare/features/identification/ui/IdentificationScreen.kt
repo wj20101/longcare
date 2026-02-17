@@ -35,7 +35,7 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import kotlinx.coroutines.launch
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.features.shared.ui.rememberOrderInfoRequest
+import com.ytone.longcare.ui.rememberOrderInfoRequest
 import com.ytone.longcare.common.utils.singleClick
 
 @OptIn(ExperimentalMaterial3Api::class)

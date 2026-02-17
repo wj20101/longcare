@@ -64,7 +64,7 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.features.shared.ui.rememberOrderInfoRequest
+import com.ytone.longcare.ui.rememberOrderInfoRequest
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {

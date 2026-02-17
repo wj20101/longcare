@@ -50,7 +50,7 @@ import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSetti
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.features.shared.ui.rememberOrderInfoRequest
+import com.ytone.longcare.ui.rememberOrderInfoRequest
 import kotlinx.coroutines.CancellationException
 
 

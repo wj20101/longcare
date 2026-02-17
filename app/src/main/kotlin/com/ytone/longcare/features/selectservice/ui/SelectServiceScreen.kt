@@ -35,7 +35,7 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.features.selectservice.api.SelectServiceActions
 import com.ytone.longcare.features.selectservice.vm.SelectServiceViewModel
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.features.shared.ui.rememberOrderInfoRequest
+import com.ytone.longcare.ui.rememberOrderInfoRequest
 
 // --- 数据模型 ---
 data class ServiceItem(
