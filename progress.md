@@ -23,6 +23,17 @@
   - `ServiceCountdownScreen.kt` 从 781 行降至 667 行，行为保持不变。
 - 本地验收（R2）：
   - `./gradlew :app:compileDebugKotlin :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest"`：PASS
+- 执行 R2（`servicecountdown` 继续拆分页面流程）：
+  - 新增 `ServiceCountdownPermissionHandler.kt`：
+    - 抽离通知权限/精确闹钟/全屏通知权限检查流程；
+    - 统一权限提示“去设置”跳转 intent 构建。
+  - 新增 `ServiceCountdownServiceFlowHandler.kt`：
+    - 抽离 `handleEndService`；
+    - 抽离订单状态异常场景下的统一清理并返回首页流程。
+  - `ServiceCountdownScreen.kt` 删除内联流程函数，改为调用独立处理器，页面职责聚焦 UI 状态编排。
+- 本地验收（R2-继续拆分）：
+  - `./gradlew :app:compileDebugKotlin`：PASS
+  - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS
 
 ## 2026-02-13
 - 初始化 CI/CD 优化任务计划文件：`task_plan.md`、`findings.md`、`progress.md`。

@@ -3,7 +3,6 @@ package com.ytone.longcare.features.servicecountdown.ui
 import android.Manifest
 import android.content.Intent
 import android.content.pm.ActivityInfo
-import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -27,7 +26,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -49,7 +47,6 @@ import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.model.ServiceOrderStateModel
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
-import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 import com.ytone.longcare.model.OrderKey
@@ -168,21 +165,10 @@ fun ServiceCountdownScreen(
         )
     }
 
-    // 检查通知权限
-    fun checkNotificationPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(
-                context, Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        } else {
-            true // Android 13以下不需要运行时权限
-        }
-    }
-
     // 请求通知权限
     fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (!checkNotificationPermission()) {
+            if (!hasNotificationPermission(context)) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
@@ -200,81 +186,19 @@ fun ServiceCountdownScreen(
         }
     }
     
-    // 检查全屏Intent权限（Android 14+）
-    fun checkFullScreenIntentPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            countdownViewModel.canUseFullScreenIntent()
-        } else {
-            true
-        }
-    }
-    
-    // 请求全屏Intent权限
-    fun requestFullScreenIntentPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (!checkFullScreenIntentPermission()) {
-                val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
-                    data = "package:${context.packageName}".toUri()
-                }
-                exactAlarmPermissionLauncher.launch(intent)
-            }
-        }
-    }
-
     // 检查所有必需权限
     fun checkAndRequestPermissions() {
-        // 检查通知权限
-        if (!checkNotificationPermission()) {
-            requestNotificationPermission()
-            return
-        }
-
-        // 检查精确闹钟权限
-        if (!countdownViewModel.canScheduleExactAlarms()) {
-            requestExactAlarmPermission()
-            return
-        }
-        
-        // 检查全屏Intent权限（Android 14+）
-        if (!checkFullScreenIntentPermission()) {
-            permissionDialogMessage = """
-                为了在服务时间结束时能准时提醒您，需要开启「全屏通知」权限。
-                
-                请在设置中找到「全屏通知」或「显示在其他应用上层」选项并开启。
-            """.trimIndent()
-            showPermissionDialog = true
-        }
-    }
-
-    // 处理结束服务的公共逻辑
-    fun handleEndService(endType: Int) {
-        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "ServiceCountdownScreen: handleEndService called with endType=$endType")
-        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
-        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "🛑 开始处理结束服务 (endType=$endType)...")
-        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
-        
-        // 1. 停止倒计时前台服务
-        CountdownForegroundService.stopCountdown(context)
-        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 1. 已停止倒计时前台服务")
-
-        // 2. 停止定位跟踪服务
-        locationTrackingViewModel.onStopClicked()
-        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 2. 已停止定位跟踪服务")
-
-        // 3. 取消倒计时闹钟（使用订单ID精确取消）
-        countdownViewModel.cancelCountdownAlarmForOrder(orderKey)
-        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 3. 已取消倒计时闹钟 (orderId=${orderKey.orderId})")
-
-        // 4. 停止响铃服务（如果正在响铃）
-        AlarmRingtoneService.stopRingtone(context)
-        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 4. 已停止响铃服务")
-
-        // 5. 调用ViewModel结束服务（但不清除图片数据，保留给EndServiceSelectionScreen使用）
-        countdownViewModel.endServiceWithoutClearingImages(orderKey, context)
-        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 5. 已结束服务（保留图片数据）")
-
-        // 6. 导航到结束服务选择页面
-        actions.onNavigateToEndServiceSelection(orderKey, endType, projectIdList)
+        checkAndRequestRequiredPermissions(
+            context = context,
+            canScheduleExactAlarms = countdownViewModel.canScheduleExactAlarms(),
+            canUseFullScreenIntent = countdownViewModel.canUseFullScreenIntent(),
+            requestNotificationPermission = ::requestNotificationPermission,
+            requestExactAlarmPermission = ::requestExactAlarmPermission,
+            onPermissionDialogRequired = { message ->
+                permissionDialogMessage = message
+                showPermissionDialog = true
+            }
+        )
     }
 
     // 监听订单状态异常事件
@@ -376,7 +300,7 @@ fun ServiceCountdownScreen(
         }
 
         // 如果没有通知权限，显示提示
-        if (!checkNotificationPermission()) {
+        if (!hasNotificationPermission(context)) {
             permissionDialogMessage = "通知权限被拒绝，可能无法收到倒计时完成提醒。请到设置中手动开启通知权限。"
             showPermissionDialog = true
         }
@@ -501,7 +425,15 @@ fun ServiceCountdownScreen(
                         if (countdownState == ServiceCountdownState.RUNNING) {
                             showConfirmDialog = true
                         } else {
-                            handleEndService(1)
+                            handleEndService(
+                                context = context,
+                                orderKey = orderKey,
+                                projectIdList = projectIdList,
+                                countdownViewModel = countdownViewModel,
+                                locationTrackingViewModel = locationTrackingViewModel,
+                                actions = actions,
+                                endType = 1
+                            )
                         }
                     },
                     enabled = countdownState != ServiceCountdownState.ENDED,
@@ -562,19 +494,9 @@ fun ServiceCountdownScreen(
                     onClick = singleClick {
                         showPermissionDialog = false
                         // 根据权限类型跳转到对应设置页面
-                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && 
-                            permissionDialogMessage.contains("全屏通知")) {
-                            // Android 14+ 全屏Intent权限设置
-                            Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
-                                data = "package:${context.packageName}".toUri()
-                            }
-                        } else {
-                            // 通用应用设置页面
-                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = "package:${context.packageName}".toUri()
-                            }
-                        }
-                        context.startActivity(intent)
+                        context.startActivity(
+                            buildPermissionSettingsIntent(context, permissionDialogMessage)
+                        )
                     }) {
                     Text("去设置")
                 }
@@ -597,7 +519,15 @@ fun ServiceCountdownScreen(
                 TextButton(
                     onClick = singleClick {
                         showConfirmDialog = false
-                        handleEndService(2)  // 提前结束
+                        handleEndService(
+                            context = context,
+                            orderKey = orderKey,
+                            projectIdList = projectIdList,
+                            countdownViewModel = countdownViewModel,
+                            locationTrackingViewModel = locationTrackingViewModel,
+                            actions = actions,
+                            endType = 2
+                        )  // 提前结束
                     }) {
                     Text("确定")
                 }
@@ -621,44 +551,13 @@ fun ServiceCountdownScreen(
                     onClick = singleClick {
                         showOrderStateErrorDialog = false
                         
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "🛑 开始处理订单状态异常，停止所有服务...")
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
-                        
-                        // 1. 清除错误状态
-                        countdownViewModel.clearOrderStateError()
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 1. 已清除错误状态")
-                        
-                        // 2. 停止订单状态轮询
-                        countdownViewModel.stopOrderStatePolling()
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 2. 已停止订单状态轮询")
-                        
-                        // 3. 停止倒计时前台服务
-                        CountdownForegroundService.stopCountdown(context)
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 3. 已停止倒计时前台服务")
-                        
-                        // 4. 强制停止定位跟踪服务（使用forceStop确保停止）
-                        locationTrackingViewModel.forceStop()
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 4. 已强制停止定位跟踪服务")
-                        
-                        // 5. 取消倒计时闹钟（使用订单ID精确取消）
-                        countdownViewModel.cancelCountdownAlarmForOrder(orderKey)
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 5. 已取消倒计时闹钟 (orderId=${orderKey.orderId})")
-                        
-                        // 6. 停止响铃服务（如果正在响铃）
-                        AlarmRingtoneService.stopRingtone(context)
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 6. 已停止响铃服务")
-                        
-                        // 7. 清理ViewModel状态和本地数据（不清除图片数据，因为订单可能需要重新开始）
-                        countdownViewModel.endServiceWithoutClearingImages(orderKey, context)
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 7. 已清理ViewModel状态")
-                        
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "✅ 所有服务已停止，准备返回首页")
-                        com.ytone.longcare.common.utils.KLogger.i("ServiceCountdownScreen", "========================================")
-                        
-                        // 8. 返回首页
-                        actions.onNavigateHomeAndClearStack()
+                        handleOrderStateErrorAndExit(
+                            context = context,
+                            orderKey = orderKey,
+                            countdownViewModel = countdownViewModel,
+                            locationTrackingViewModel = locationTrackingViewModel,
+                            actions = actions
+                        )
                     }) {
                     Text("确定")
                 }
