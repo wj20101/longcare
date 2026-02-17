@@ -6,6 +6,7 @@ OUTPUT_DIR="build/quality-snapshot"
 LINT_REPORT="app/build/reports/lint-results-debug.txt"
 SOURCE_ROOT="app/src/main/kotlin"
 WORKFLOW_FILE=".github/workflows/android-ci.yml"
+ENSURE_LINT_REPORT="true"
 
 usage() {
   cat <<USAGE
@@ -17,6 +18,7 @@ Options:
   --lint-report <path>    Lint report path for lint allowlist check (default: app/build/reports/lint-results-debug.txt)
   --source-root <path>    Kotlin source root for source checks (default: app/src/main/kotlin)
   --workflow-file <path>  Workflow file for target sdk gate (default: .github/workflows/android-ci.yml)
+  --skip-lint-bootstrap   Do not auto-run lint when lint report file is missing
   -h, --help              Show this help message
 USAGE
 }
@@ -42,6 +44,10 @@ while [[ $# -gt 0 ]]; do
     --workflow-file)
       WORKFLOW_FILE="$2"
       shift 2
+      ;;
+    --skip-lint-bootstrap)
+      ENSURE_LINT_REPORT="false"
+      shift 1
       ;;
     -h|--help)
       usage
@@ -79,26 +85,47 @@ LINT_REPORT_PATH="${PROJECT_ROOT}/${LINT_REPORT}"
 SOURCE_ROOT_PATH="${PROJECT_ROOT}/${SOURCE_ROOT}"
 WORKFLOW_FILE_PATH="${PROJECT_ROOT}/${WORKFLOW_FILE}"
 
+if [[ "${ENSURE_LINT_REPORT}" == "true" ]] && [[ ! -f "${LINT_REPORT_PATH}" ]]; then
+  LINT_BOOTSTRAP_LOG="${LOG_DIR}/0_lint_bootstrap.log"
+  echo "[quality-snapshot] lint report missing, running :app:lintDebug to bootstrap..."
+  (
+    cd "${PROJECT_ROOT}"
+    ./gradlew --no-daemon :app:lintDebug
+  ) >"${LINT_BOOTSTRAP_LOG}" 2>&1
+  if [[ $? -ne 0 ]]; then
+    echo "[quality-snapshot][FAIL] lint bootstrap failed. see: ${LINT_BOOTSTRAP_LOG}" >&2
+    exit 1
+  fi
+fi
+
 CHECK_NAMES=(
   "Release Exported Component Allowlist"
   "Lint Warning Allowlist"
+  "Lint Ignore Policy Guard"
+  "Jetpack Compat API Guard"
+  "Baseline Profile Journey Guard"
   "Coroutine Cancellation Guards"
   "No Empty Catch Blocks"
   "Target SDK Upgrade Gate"
   "Exact Alarm Permission Config"
   "Architecture Boundaries"
   "Module API Visibility"
+  "CI Workflow Quality Guard"
 )
 
 CHECK_CMDS=(
   "bash scripts/quality/verify_release_exported_components.sh"
   "bash scripts/lint/verify_lint_warning_allowlist.sh \"${LINT_REPORT_PATH}\""
+  "bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml"
+  "bash scripts/quality/verify_jetpack_compat_apis.sh"
+  "bash scripts/quality/verify_baselineprofile_journeys.sh"
   "bash scripts/quality/verify_cancellation_guards.sh \"${SOURCE_ROOT_PATH}\""
   "bash scripts/quality/verify_no_empty_catch_blocks.sh \"${SOURCE_ROOT_PATH}\""
   "bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts \"${WORKFLOW_FILE_PATH}\""
   "bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml"
   "bash scripts/quality/verify_architecture_boundaries.sh ."
   "bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare ."
+  "bash scripts/quality/verify_ci_workflow_quality.sh"
 )
 
 sanitize_name() {

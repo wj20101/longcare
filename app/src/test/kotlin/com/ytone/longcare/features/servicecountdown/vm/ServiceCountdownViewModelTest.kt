@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.servicecountdown.vm
 
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.KLogger
@@ -13,7 +12,6 @@ import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -66,10 +64,10 @@ class ServiceCountdownViewModelTest {
     @Test
     fun `startOrderStatePolling should call repository`() = runTest {
         // Given
-        val request = OrderInfoRequestModel(orderId = 12345L, planId = 1)
+        val orderKey = OrderKey(orderId = 12345L, planId = 1)
         
         // When
-        viewModel.startOrderStatePolling(request.toOrderKey())
+        viewModel.startOrderStatePolling(orderKey)
         
         // Polling starts with a delay (5s). Advance time to trigger loop body.
         advanceTimeBy(5100L)

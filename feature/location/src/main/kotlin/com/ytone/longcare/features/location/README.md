@@ -42,7 +42,7 @@ val location = locationFacade.getCurrentLocation()
 通过 `LocationTrackingManager`（兼容入口）或直接通过 `LocationReportingManager`：
 
 ```kotlin
-trackingManager.startTracking(request)
+trackingManager.startTracking(orderKey)
 trackingManager.stopTracking()
 ```
 

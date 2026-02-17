@@ -18,7 +18,6 @@ import android.os.Vibrator
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.PendingIntentCompat
 import androidx.core.app.ServiceCompat
-import androidx.core.content.IntentCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.ytone.longcare.common.utils.logE
@@ -26,7 +25,7 @@ import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
 import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
-import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderKey
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -47,19 +46,16 @@ class AlarmRingtoneService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     
     companion object {
-        private const val EXTRA_REQUEST = "extra_request"
-        private const val EXTRA_SERVICE_NAME = "extra_service_name"
-
         // 通知ID，与CountdownNotificationManager中保持一致
         private const val NOTIFICATION_ID = 2001
         
         /**
          * 启动响铃服务
          */
-        fun startRingtone(context: Context, request: OrderInfoRequestModel, serviceName: String) {
+        fun startRingtone(context: Context, orderKey: OrderKey, serviceName: String) {
             val intent = Intent(context, AlarmRingtoneService::class.java).apply {
-                putExtra(EXTRA_REQUEST, request)
-                putExtra(EXTRA_SERVICE_NAME, serviceName)
+                putExtra(CountdownNotificationManager.EXTRA_ORDER_KEY, orderKey)
+                putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, serviceName)
             }
             // 使用Compat库确保兼容性，自动处理Android 8.0+的前台服务启动
             ContextCompat.startForegroundService(context, intent)
@@ -94,26 +90,19 @@ class AlarmRingtoneService : Service() {
         wakeLock?.acquire(10 * 60 * 1000L /* 10 minutes */)
         
         
-        val request =
-            intent?.let {
-                IntentCompat.getParcelableExtra(
-                    it,
-                    EXTRA_REQUEST,
-                    OrderInfoRequestModel::class.java
-                )
-            } ?: OrderInfoRequestModel(orderId = -1L, planId = 0)
+        val orderKey = CountdownNotificationManager.extractOrderKey(intent)
         
-        val serviceName = intent?.getStringExtra(EXTRA_SERVICE_NAME) ?: "未知服务"
+        val serviceName = CountdownNotificationManager.extractServiceName(intent, "未知服务")
         
         // 追踪响铃服务启动事件
         CountdownEventTracker.trackEvent(
             eventType = CountdownEventTracker.EventType.RINGTONE_SERVICE_START,
-            orderId = request.orderId,
+            orderId = orderKey.orderId,
             extras = mapOf("serviceName" to serviceName)
         )
 
         // 立即升级为前台服务，显示高优先级通知
-        startForegroundWithNotification(request, serviceName)
+        startForegroundWithNotification(orderKey, serviceName)
         
         // 启动响铃和震动
         if (!isPlaying) {
@@ -124,7 +113,7 @@ class AlarmRingtoneService : Service() {
         // 注意：Android 10+ (API 29) 限制了后台启动Activity，必须申请 SYSTEM_ALERT_WINDOW 权限或满足特定条件
         // 前台服务属于"可见应用"，通常允许启动Activity，但在某些ROM上可能仍受限
         // 我们在startForegroundWithNotification中已经设置了fullScreenIntent，这是官方推荐的做法
-        tryStartActivity(request, serviceName)
+        tryStartActivity(orderKey, serviceName)
         
         return START_STICKY
     }
@@ -132,10 +121,10 @@ class AlarmRingtoneService : Service() {
     /**
      * 启动前台服务通知
      */
-    private fun startForegroundWithNotification(request: OrderInfoRequestModel, serviceName: String) {
+    private fun startForegroundWithNotification(orderKey: OrderKey, serviceName: String) {
         try {
             val notification = countdownNotificationManager.buildCountdownCompletionNotification(
-                request,
+                orderKey,
                 serviceName
             )
             
@@ -194,7 +183,7 @@ class AlarmRingtoneService : Service() {
             // 追踪响铃服务错误事件
             CountdownEventTracker.trackError(
                 eventType = CountdownEventTracker.EventType.RINGTONE_SERVICE_ERROR,
-                orderId = request.orderId,
+                orderId = orderKey.orderId,
                 throwable = e,
                 extras = mapOf("serviceName" to serviceName, "stage" to "startForeground")
             )
@@ -211,7 +200,7 @@ class AlarmRingtoneService : Service() {
      * 
      * 我们主要依赖 fullScreenIntent，这里的直接启动作为补充尝试
      */
-    private fun tryStartActivity(request: OrderInfoRequestModel, serviceName: String) {
+    private fun tryStartActivity(orderKey: OrderKey, serviceName: String) {
         try {
             logI("AlarmRingtoneService: 尝试启动全屏 Activity (SDK=${Build.VERSION.SDK_INT})")
             
@@ -225,8 +214,8 @@ class AlarmRingtoneService : Service() {
 
 
             val alarmIntent = CountdownAlarmActivity.createIntent(
-                this, 
-                request, 
+                this,
+                orderKey,
                 serviceName,
                 autoCloseEnabled = false
             ).apply {

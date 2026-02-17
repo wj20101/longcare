@@ -134,7 +134,9 @@ echo "${RUNS_JSON}" | jq -c --arg repo "${REPO}" --argjson limit "${LIMIT}" '
                 success: $success,
                 failure: $failure,
                 cancelled: $cancelled,
+                non_cancelled_runs: ($success + $failure),
                 success_rate: pct($success; $total),
+                non_cancelled_success_rate: pct($success; ($success + $failure)),
                 failure_rate: pct($failure; $total),
                 cancelled_rate: pct($cancelled; $total),
                 duration_runs: $duration_runs,
@@ -162,7 +164,9 @@ echo "${RUNS_JSON}" | jq -c --arg repo "${REPO}" --argjson limit "${LIMIT}" '
           success: $success,
           failure: $failure,
           cancelled: $cancelled,
+          non_cancelled_runs: ($success + $failure),
           success_rate: pct($success; $runs),
+          non_cancelled_success_rate: pct($success; ($success + $failure)),
           failure_rate: pct($failure; $runs),
           cancelled_rate: pct($cancelled; $runs),
           duration_runs: $duration_runs,
@@ -180,18 +184,23 @@ echo "${RUNS_JSON}" | jq -c --arg repo "${REPO}" --argjson limit "${LIMIT}" '
 declare -a WARNINGS=()
 declare -a VIOLATIONS=()
 
-OVERALL_SUCCESS_RATE="$(jq -r '.overall.success_rate // 0' "${METRICS_FILE}")"
+OVERALL_NON_CANCELLED_SUCCESS_RATE="$(jq -r '.overall.non_cancelled_success_rate // 0' "${METRICS_FILE}")"
 OVERALL_CANCELLED_RATE="$(jq -r '.overall.cancelled_rate // 0' "${METRICS_FILE}")"
 
 OVERALL_MIN_SUCCESS_RATE="$(jq -r '.overall.min_success_rate // empty' "${THRESHOLD_FILE}")"
 OVERALL_MAX_CANCELLED_RATE="$(jq -r '.overall.max_cancelled_rate // empty' "${THRESHOLD_FILE}")"
+OVERALL_ENFORCE_CANCELLED_RATE="$(jq -r '.overall.enforce_cancelled_rate // false' "${THRESHOLD_FILE}")"
 
-if [[ -n "${OVERALL_MIN_SUCCESS_RATE}" ]] && is_less_than "${OVERALL_SUCCESS_RATE}" "${OVERALL_MIN_SUCCESS_RATE}"; then
-  VIOLATIONS+=("overall success_rate ${OVERALL_SUCCESS_RATE}% < min_success_rate ${OVERALL_MIN_SUCCESS_RATE}%")
+if [[ -n "${OVERALL_MIN_SUCCESS_RATE}" ]] && is_less_than "${OVERALL_NON_CANCELLED_SUCCESS_RATE}" "${OVERALL_MIN_SUCCESS_RATE}"; then
+  VIOLATIONS+=("overall non_cancelled_success_rate ${OVERALL_NON_CANCELLED_SUCCESS_RATE}% < min_success_rate ${OVERALL_MIN_SUCCESS_RATE}%")
 fi
 
 if [[ -n "${OVERALL_MAX_CANCELLED_RATE}" ]] && is_greater_than "${OVERALL_CANCELLED_RATE}" "${OVERALL_MAX_CANCELLED_RATE}"; then
-  VIOLATIONS+=("overall cancelled_rate ${OVERALL_CANCELLED_RATE}% > max_cancelled_rate ${OVERALL_MAX_CANCELLED_RATE}%")
+  if [[ "${OVERALL_ENFORCE_CANCELLED_RATE}" == "true" ]]; then
+    VIOLATIONS+=("overall cancelled_rate ${OVERALL_CANCELLED_RATE}% > max_cancelled_rate ${OVERALL_MAX_CANCELLED_RATE}%")
+  else
+    WARNINGS+=("overall cancelled_rate ${OVERALL_CANCELLED_RATE}% > max_cancelled_rate ${OVERALL_MAX_CANCELLED_RATE}%")
+  fi
 fi
 
 while IFS= read -r WORKFLOW_NAME; do
@@ -205,6 +214,7 @@ while IFS= read -r WORKFLOW_NAME; do
 
   WF_RUNS="$(jq -r --arg wf "${WORKFLOW_NAME}" '.workflows[] | select(.workflow == $wf) | .runs' "${METRICS_FILE}")"
   WF_SUCCESS_RATE="$(jq -r --arg wf "${WORKFLOW_NAME}" '.workflows[] | select(.workflow == $wf) | .success_rate' "${METRICS_FILE}")"
+  WF_NON_CANCELLED_SUCCESS_RATE="$(jq -r --arg wf "${WORKFLOW_NAME}" '.workflows[] | select(.workflow == $wf) | .non_cancelled_success_rate' "${METRICS_FILE}")"
   WF_FAILURE_RATE="$(jq -r --arg wf "${WORKFLOW_NAME}" '.workflows[] | select(.workflow == $wf) | .failure_rate' "${METRICS_FILE}")"
   WF_CANCELLED_RATE="$(jq -r --arg wf "${WORKFLOW_NAME}" '.workflows[] | select(.workflow == $wf) | .cancelled_rate' "${METRICS_FILE}")"
   WF_AVG_DURATION="$(jq -r --arg wf "${WORKFLOW_NAME}" '.workflows[] | select(.workflow == $wf) | .avg_duration_seconds' "${METRICS_FILE}")"
@@ -213,14 +223,15 @@ while IFS= read -r WORKFLOW_NAME; do
   WF_MIN_SUCCESS_RATE="$(jq -r --arg wf "${WORKFLOW_NAME}" '.workflows[$wf].min_success_rate // empty' "${THRESHOLD_FILE}")"
   WF_MAX_FAILURE_RATE="$(jq -r --arg wf "${WORKFLOW_NAME}" '.workflows[$wf].max_failure_rate // empty' "${THRESHOLD_FILE}")"
   WF_MAX_CANCELLED_RATE="$(jq -r --arg wf "${WORKFLOW_NAME}" '.workflows[$wf].max_cancelled_rate // empty' "${THRESHOLD_FILE}")"
+  WF_ENFORCE_CANCELLED_RATE="$(jq -r --arg wf "${WORKFLOW_NAME}" '.workflows[$wf].enforce_cancelled_rate // false' "${THRESHOLD_FILE}")"
   WF_MAX_AVG_DURATION="$(jq -r --arg wf "${WORKFLOW_NAME}" '.workflows[$wf].max_avg_duration_seconds // empty' "${THRESHOLD_FILE}")"
 
   if [[ -n "${WF_MIN_RUNS}" ]] && is_less_than "${WF_RUNS}" "${WF_MIN_RUNS}"; then
     WARNINGS+=("${WORKFLOW_NAME} runs ${WF_RUNS} < min_runs ${WF_MIN_RUNS} (sample too small)")
   fi
 
-  if [[ -n "${WF_MIN_SUCCESS_RATE}" ]] && is_less_than "${WF_SUCCESS_RATE}" "${WF_MIN_SUCCESS_RATE}"; then
-    VIOLATIONS+=("${WORKFLOW_NAME} success_rate ${WF_SUCCESS_RATE}% < min_success_rate ${WF_MIN_SUCCESS_RATE}%")
+  if [[ -n "${WF_MIN_SUCCESS_RATE}" ]] && is_less_than "${WF_NON_CANCELLED_SUCCESS_RATE}" "${WF_MIN_SUCCESS_RATE}"; then
+    VIOLATIONS+=("${WORKFLOW_NAME} non_cancelled_success_rate ${WF_NON_CANCELLED_SUCCESS_RATE}% < min_success_rate ${WF_MIN_SUCCESS_RATE}%")
   fi
 
   if [[ -n "${WF_MAX_FAILURE_RATE}" ]] && is_greater_than "${WF_FAILURE_RATE}" "${WF_MAX_FAILURE_RATE}"; then
@@ -228,7 +239,11 @@ while IFS= read -r WORKFLOW_NAME; do
   fi
 
   if [[ -n "${WF_MAX_CANCELLED_RATE}" ]] && is_greater_than "${WF_CANCELLED_RATE}" "${WF_MAX_CANCELLED_RATE}"; then
-    VIOLATIONS+=("${WORKFLOW_NAME} cancelled_rate ${WF_CANCELLED_RATE}% > max_cancelled_rate ${WF_MAX_CANCELLED_RATE}%")
+    if [[ "${WF_ENFORCE_CANCELLED_RATE}" == "true" ]]; then
+      VIOLATIONS+=("${WORKFLOW_NAME} cancelled_rate ${WF_CANCELLED_RATE}% > max_cancelled_rate ${WF_MAX_CANCELLED_RATE}%")
+    else
+      WARNINGS+=("${WORKFLOW_NAME} cancelled_rate ${WF_CANCELLED_RATE}% > max_cancelled_rate ${WF_MAX_CANCELLED_RATE}%")
+    fi
   fi
 
   if [[ -n "${WF_MAX_AVG_DURATION}" ]] && is_greater_than "${WF_AVG_DURATION}" "${WF_MAX_AVG_DURATION}"; then
@@ -245,15 +260,15 @@ done < <(jq -r '.workflows | keys[]' "${THRESHOLD_FILE}")
   echo ""
   echo "## Overall"
   echo ""
-  echo "| Runs | Success % | Failure % | Cancelled % | Avg Duration (s) |"
-  echo "|---:|---:|---:|---:|---:|"
-  jq -r '"| \(.overall.runs) | \(.overall.success_rate) | \(.overall.failure_rate) | \(.overall.cancelled_rate) | \(.overall.avg_duration_seconds) |"' "${METRICS_FILE}"
+  echo "| Runs | Success % | Non-cancelled Success % | Failure % | Cancelled % | Avg Duration (s) |"
+  echo "|---:|---:|---:|---:|---:|---:|"
+  jq -r '"| \(.overall.runs) | \(.overall.success_rate) | \(.overall.non_cancelled_success_rate) | \(.overall.failure_rate) | \(.overall.cancelled_rate) | \(.overall.avg_duration_seconds) |"' "${METRICS_FILE}"
   echo ""
   echo "## Workflow metrics"
   echo ""
-  echo "| Workflow | Runs | Success % | Failure % | Cancelled % | Avg Duration (s) |"
-  echo "|---|---:|---:|---:|---:|---:|"
-  jq -r '.workflows[] | "| \(.workflow) | \(.runs) | \(.success_rate) | \(.failure_rate) | \(.cancelled_rate) | \(.avg_duration_seconds) |"' "${METRICS_FILE}"
+  echo "| Workflow | Runs | Success % | Non-cancelled Success % | Failure % | Cancelled % | Avg Duration (s) |"
+  echo "|---|---:|---:|---:|---:|---:|---:|"
+  jq -r '.workflows[] | "| \(.workflow) | \(.runs) | \(.success_rate) | \(.non_cancelled_success_rate) | \(.failure_rate) | \(.cancelled_rate) | \(.avg_duration_seconds) |"' "${METRICS_FILE}"
   echo ""
   echo "## Threshold evaluation"
   echo ""

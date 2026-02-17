@@ -31,10 +31,12 @@ import com.ytone.longcare.domain.cos.repository.CosRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
@@ -42,6 +44,41 @@ import javax.inject.Singleton
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logW
+
+internal enum class SyncCredentialRefreshResult {
+    SUCCESS,
+    TIMED_OUT,
+    FAILED
+}
+
+internal enum class CredentialRefreshStrategy {
+    SKIP_USE_CACHE,
+    SKIP_NO_CACHE,
+    REFRESH_SYNC
+}
+
+internal fun resolveCredentialRefreshStrategy(
+    isMainThread: Boolean,
+    hasCachedConfig: Boolean
+): CredentialRefreshStrategy = when {
+    isMainThread && hasCachedConfig -> CredentialRefreshStrategy.SKIP_USE_CACHE
+    isMainThread -> CredentialRefreshStrategy.SKIP_NO_CACHE
+    else -> CredentialRefreshStrategy.REFRESH_SYNC
+}
+
+internal suspend fun runSyncCredentialRefresh(
+    timeoutMs: Long,
+    refreshAction: suspend () -> Unit
+): SyncCredentialRefreshResult = try {
+    withTimeout(timeoutMs) {
+        refreshAction()
+    }
+    SyncCredentialRefreshResult.SUCCESS
+} catch (_: TimeoutCancellationException) {
+    SyncCredentialRefreshResult.TIMED_OUT
+} catch (_: Exception) {
+    SyncCredentialRefreshResult.FAILED
+}
 
 /**
  * 腾讯云COS存储服务实现类
@@ -67,6 +104,7 @@ class CosRepositoryImpl @Inject constructor(
     companion object {
         private const val TAG = "CosRepositoryImpl"
         private const val TOKEN_REFRESH_THRESHOLD_SECONDS = 300L // 5分钟提前刷新
+        private const val SYNC_REFRESH_TIMEOUT_MS = 10_000L
     }
 
     // 线程安全的状态管理 - 分离锁职责避免死锁
@@ -122,13 +160,26 @@ class CosRepositoryImpl @Inject constructor(
                 val cachedConfig = configCache.getConfig(defaultFolderType)
                 // 检查并刷新配置
                 if (!configCache.isValid(defaultFolderType)) {
-                    val isMainThread = Looper.myLooper() == Looper.getMainLooper()
-                    if (isMainThread && cachedConfig != null) {
-                        logW("Skip sync credential refresh on main thread, fallback to cached token", tag = TAG)
-                    } else {
-                        val refreshed = refreshConfigSync()
-                        if (!refreshed && cachedConfig != null) {
-                            logW("Credential refresh failed, fallback to cached token", tag = TAG)
+                    when (
+                        resolveCredentialRefreshStrategy(
+                            isMainThread = Looper.myLooper() == Looper.getMainLooper(),
+                            hasCachedConfig = cachedConfig != null
+                        )
+                    ) {
+                        CredentialRefreshStrategy.SKIP_USE_CACHE -> {
+                            logW("Skip sync credential refresh on main thread, fallback to cached token", tag = TAG)
+                        }
+                        CredentialRefreshStrategy.SKIP_NO_CACHE -> {
+                            logE(
+                                "No cached credential available on main thread; skip blocking refresh to avoid ANR",
+                                tag = TAG
+                            )
+                        }
+                        CredentialRefreshStrategy.REFRESH_SYNC -> {
+                            val refreshed = refreshConfigSync()
+                            if (!refreshed && cachedConfig != null) {
+                                logW("Credential refresh failed, fallback to cached token", tag = TAG)
+                            }
                         }
                     }
                 }
@@ -161,14 +212,23 @@ class CosRepositoryImpl @Inject constructor(
          * 同步刷新配置（在密钥提供者回调中使用）
          */
         private fun refreshConfigSync(): Boolean {
-            return runCatching {
-                runBlocking(ioDispatcher) {
-                    // 回调是同步接口，这里固定在 IO 调度器执行刷新逻辑，避免在调用线程执行网络请求。
+            val result = runBlocking(ioDispatcher) {
+                // 回调是同步接口，这里固定在 IO 调度器执行刷新逻辑，避免在调用线程执行网络请求。
+                runSyncCredentialRefresh(SYNC_REFRESH_TIMEOUT_MS) {
                     refreshCosConfig(defaultFolderType)
                 }
-            }.onFailure { throwable ->
-                logE("Failed to refresh credentials synchronously", tag = TAG, throwable = throwable)
-            }.isSuccess
+            }
+            return when (result) {
+                SyncCredentialRefreshResult.SUCCESS -> true
+                SyncCredentialRefreshResult.TIMED_OUT -> {
+                    logE("Synchronous credential refresh timed out after ${SYNC_REFRESH_TIMEOUT_MS}ms", tag = TAG)
+                    false
+                }
+                SyncCredentialRefreshResult.FAILED -> {
+                    logE("Failed to refresh credentials synchronously", tag = TAG)
+                    false
+                }
+            }
         }
     }
 

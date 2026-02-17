@@ -2,14 +2,12 @@ package com.ytone.longcare.features.maindashboard.vm
 
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.ViewModel
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.toOrderKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,8 +40,7 @@ class MainDashboardViewModel @Inject constructor(
         orderId: Long,
         planId: Int = 0
     ): ServiceCountdownNavigationData? {
-        val request = OrderInfoRequestModel(orderId = orderId, planId = planId)
-        val orderKey = request.toOrderKey()
+        val orderKey = OrderKey(orderId = orderId, planId = planId)
 
         val orderInfo = unifiedOrderRepository.getCachedOrderInfo(orderKey) ?: when (
             val result = unifiedOrderRepository.getOrderInfo(orderKey)

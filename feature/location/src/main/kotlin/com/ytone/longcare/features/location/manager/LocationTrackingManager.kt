@@ -1,6 +1,6 @@
 package com.ytone.longcare.features.location.manager
 
-import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.features.location.reporting.LocationReportingManager
@@ -20,7 +20,7 @@ class LocationTrackingManager @Inject constructor(
 ) {
     val isTracking = locationReportingManager.isTracking
 
-    val currentTrackingRequest = locationReportingManager.currentTrackingRequest
+    val currentTrackingOrderKey = locationReportingManager.currentTrackingOrderKey
 
     private var isUiActive = false
 
@@ -49,8 +49,8 @@ class LocationTrackingManager @Inject constructor(
     /**
      * 启动位置上报业务。
      */
-    fun startTracking(request: OrderInfoRequestModel) {
-        locationReportingManager.startReporting(request)
+    fun startTracking(orderKey: OrderKey) {
+        locationReportingManager.startReporting(orderKey)
     }
 
     /**

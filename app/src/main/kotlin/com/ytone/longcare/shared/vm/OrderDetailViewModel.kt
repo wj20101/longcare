@@ -7,9 +7,7 @@ import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.model.ServiceOrderInfoModel
-import com.ytone.longcare.model.toRequestModel
 import com.ytone.longcare.domain.order.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,23 +36,14 @@ class OrderDetailViewModel @Inject constructor(
      * @param orderKey 订单标识符
      */
     fun getOrderInfo(orderKey: OrderKey) {
-        val request = orderKey.toRequestModel()
-        getOrderInfo(request)
-    }
-    
-    /**
-     * 获取订单详情
-     * @param request 订单详情请求参数
-     */
-    fun getOrderInfo(request: OrderInfoRequestModel) {
         viewModelScope.launch {
             _uiState.value = OrderDetailUiState.Loading
 
-            when (val result = orderRepository.getOrderInfo(request)) {
+            when (val result = orderRepository.getOrderInfo(orderKey)) {
                 is ApiResult.Success -> {
                     _uiState.value = OrderDetailUiState.Success(result.data)
                     // 同时加载选中的项目ID
-                    loadSelectedProjectIds(request.orderId)
+                    loadSelectedProjectIds(orderKey.orderId)
                 }
 
                 is ApiResult.Exception -> {

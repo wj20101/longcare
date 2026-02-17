@@ -9,12 +9,9 @@ import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.order.OrderRepository
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.ServiceProjectM
-import com.ytone.longcare.model.toOrderKey
-import com.ytone.longcare.model.toRequestModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -41,25 +38,19 @@ class SharedOrderDetailViewModel @Inject constructor(
     val uiState: StateFlow<OrderDetailUiState> = _uiState.asStateFlow()
 
     // 当前订单信息请求
-    private val _currentOrderId = MutableStateFlow<OrderInfoRequestModel?>(null)
-    val currentOrderId: StateFlow<OrderInfoRequestModel?> = _currentOrderId.asStateFlow()
+    private val _currentOrderId = MutableStateFlow<OrderKey?>(null)
+    val currentOrderId: StateFlow<OrderKey?> = _currentOrderId.asStateFlow()
 
-    /**
-     * 获取订单详情
-     * @param request 订单信息请求模型
-     * @param forceRefresh 是否强制刷新
-     */
-    fun getOrderInfo(request: OrderInfoRequestModel, forceRefresh: Boolean = false) {
+    fun getOrderInfo(orderKey: OrderKey, forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            val orderKey = request.toOrderKey()
             // 如果是同一个订单且不强制刷新，且当前状态是成功状态，则不重复请求
             if (!forceRefresh && 
-                _currentOrderId.value == request && 
+                _currentOrderId.value == orderKey && 
                 _uiState.value is OrderDetailUiState.Success) {
                 return@launch
             }
 
-            _currentOrderId.value = request
+            _currentOrderId.value = orderKey
             _uiState.value = OrderDetailUiState.Loading
 
             when (val result = unifiedOrderRepository.getOrderInfo(orderKey, forceRefresh)) {
@@ -79,68 +70,22 @@ class SharedOrderDetailViewModel @Inject constructor(
         }
     }
 
-    fun getOrderInfo(orderKey: OrderKey, forceRefresh: Boolean = false) {
-        getOrderInfo(orderKey.toRequestModel(), forceRefresh)
-    }
-
-    /**
-     * 获取缓存的订单详情
-     * @param request 订单信息请求模型
-     * @return 缓存的订单详情，如果不存在则返回null
-     */
-    fun getCachedOrderInfo(request: OrderInfoRequestModel): ServiceOrderInfoModel? {
-        val orderKey = request.toOrderKey()
-        return unifiedOrderRepository.getCachedOrderInfo(orderKey)
-    }
-
     fun getCachedOrderInfo(orderKey: OrderKey): ServiceOrderInfoModel? {
         return unifiedOrderRepository.getCachedOrderInfo(orderKey)
     }
 
-    /**
-     * 预加载订单详情
-     * @param request 订单信息请求模型
-     */
-    fun preloadOrderInfo(request: OrderInfoRequestModel) {
-        val orderKey = request.toOrderKey()
+    fun preloadOrderInfo(orderKey: OrderKey) {
         viewModelScope.launch {
             unifiedOrderRepository.preloadOrderInfo(orderKey)
         }
-    }
-
-    /**
-     * 获取用户地址
-     * @param request 订单信息请求模型
-     * @return 用户地址，如果获取失败则返回空字符串
-     */
-    fun getUserAddress(request: OrderInfoRequestModel): String {
-        return getCachedOrderInfo(request)?.userInfo?.address ?: ""
     }
 
     fun getUserAddress(orderKey: OrderKey): String {
         return getCachedOrderInfo(orderKey)?.userInfo?.address ?: ""
     }
 
-    /**
-     * 获取项目ID列表
-     * @param request 订单信息请求模型
-     * @return 项目ID列表
-     */
-    fun getProjectIdList(request: OrderInfoRequestModel): List<Int> {
-        return getCachedOrderInfo(request)?.projectList?.map { it.projectId } ?: emptyList()
-    }
-
-    suspend fun getSelectedProjectIdsOrDefault(
-        request: OrderInfoRequestModel,
-        projectList: List<ServiceProjectM>
-    ): List<Int> {
-        val orderKey = request.toOrderKey()
-        val savedProjectIds = unifiedOrderRepository.getSelectedProjectIds(orderKey)
-        return if (savedProjectIds.isEmpty()) {
-            projectList.map { it.projectId }
-        } else {
-            savedProjectIds
-        }
+    fun getProjectIdList(orderKey: OrderKey): List<Int> {
+        return getCachedOrderInfo(orderKey)?.projectList?.map { it.projectId } ?: emptyList()
     }
 
     suspend fun getSelectedProjectIdsOrDefault(
@@ -155,14 +100,9 @@ class SharedOrderDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 清除指定订单的缓存
-     * @param request 订单信息请求模型
-     */
-    fun clearOrderCache(request: OrderInfoRequestModel) {
-        val orderKey = request.toOrderKey()
+    fun clearOrderCache(orderKey: OrderKey) {
         unifiedOrderRepository.clearOrderInfoCache(orderKey)
-        if (_currentOrderId.value == request) {
+        if (_currentOrderId.value == orderKey) {
             _uiState.value = OrderDetailUiState.Initial
             _currentOrderId.value = null
         }
@@ -172,8 +112,8 @@ class SharedOrderDetailViewModel @Inject constructor(
      * 刷新当前订单详情
      */
     fun refreshCurrentOrder() {
-        _currentOrderId.value?.let { request ->
-            getOrderInfo(request, forceRefresh = true)
+        _currentOrderId.value?.let { orderKey ->
+            getOrderInfo(orderKey, forceRefresh = true)
         }
     }
 
@@ -196,7 +136,7 @@ class SharedOrderDetailViewModel @Inject constructor(
      * @param onSuccess 成功回调
      */
     fun starOrder(orderId: Long, selectedProjectIds: List<Long> = emptyList(), onSuccess: () -> Unit = {}) {
-        starOrder(OrderInfoRequestModel(orderId = orderId, planId = 0), selectedProjectIds, onSuccess)
+        starOrder(OrderKey(orderId = orderId, planId = 0), selectedProjectIds, onSuccess)
     }
 
     /**
@@ -231,20 +171,14 @@ class SharedOrderDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 工单开始(正式计时)
-     * @param request 订单信息请求模型
-     * @param selectedProjectIds 选中的项目ID列表
-     * @param onSuccess 成功回调
-     */
-    fun starOrder(request: OrderInfoRequestModel, selectedProjectIds: List<Long> = emptyList(), onSuccess: () -> Unit = {}) {
+    fun starOrder(orderKey: OrderKey, selectedProjectIds: List<Long> = emptyList(), onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             _starOrderState.value = StarOrderUiState.Loading
 
             // 获取当前位置坐标
             val (longitude, latitude) = getCurrentLocationCoordinates()
 
-            when (val result = orderRepository.starOrder(request.orderId, selectedProjectIds, longitude, latitude)) {
+            when (val result = orderRepository.starOrder(orderKey.orderId, selectedProjectIds, longitude, latitude)) {
                 is ApiResult.Success -> {
                     _starOrderState.value = StarOrderUiState.Success
                     toastHelper.showShort("工单开始成功")

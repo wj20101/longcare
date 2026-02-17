@@ -4,6 +4,9 @@ import androidx.benchmark.macro.junit4.BaselineProfileRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.Until
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,6 +37,11 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 @LargeTest
 class BaselineProfileGenerator {
+    companion object {
+        private const val APP_READY_TIMEOUT_MS = 5_000L
+        private const val SCROLL_STEPS = 10
+        private const val SCROLL_REPEAT = 2
+    }
 
     @get:Rule
     val rule = BaselineProfileRule()
@@ -41,9 +49,11 @@ class BaselineProfileGenerator {
     @Test
     fun generate() {
         // The application id for the running build variant is read from the instrumentation arguments.
+        val targetAppId = InstrumentationRegistry.getArguments().getString("targetAppId")
+            ?: throw Exception("targetAppId not passed as instrumentation runner arg")
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         rule.collect(
-            packageName = InstrumentationRegistry.getArguments().getString("targetAppId")
-                ?: throw Exception("targetAppId not passed as instrumentation runner arg"),
+            packageName = targetAppId,
 
             // See: https://d.android.com/topic/performance/baselineprofiles/dex-layout-optimizations
             includeInStartupProfile = true
@@ -54,15 +64,19 @@ class BaselineProfileGenerator {
             // Start default activity for your app
             pressHome()
             startActivityAndWait()
+            device.wait(Until.hasObject(By.pkg(targetAppId).depth(0)), APP_READY_TIMEOUT_MS)
+            device.waitForIdle()
 
-            // TODO Write more interactions to optimize advanced journeys of your app.
-            // For example:
-            // 1. Wait until the content is asynchronously loaded
-            // 2. Scroll the feed content
-            // 3. Navigate to detail screen
+            val centerX = device.displayWidth / 2
+            val startY = (device.displayHeight * 0.8f).toInt()
+            val endY = (device.displayHeight * 0.25f).toInt()
+            repeat(SCROLL_REPEAT) {
+                device.swipe(centerX, startY, centerX, endY, SCROLL_STEPS)
+                device.waitForIdle()
+            }
 
-            // Check UiAutomator documentation for more information how to interact with the app.
-            // https://d.android.com/training/testing/other-components/ui-automator
+            device.pressBack()
+            device.waitForIdle()
         }
     }
 }

@@ -5,6 +5,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUTPUT_FILE="${1:-$ROOT_DIR/docs/refactor/baseline-metrics.md}"
 LOG_DIR="${2:-/tmp/longcare_baseline_logs}"
 CLEAN_BEFORE_RUN="${BASELINE_CLEAN_BEFORE_RUN:-false}"
+DISABLE_BUILD_CACHE="${BASELINE_DISABLE_BUILD_CACHE:-true}"
+DISABLE_CONFIGURATION_CACHE="${BASELINE_DISABLE_CONFIGURATION_CACHE:-true}"
+FORCE_RERUN_TASKS="${BASELINE_RERUN_TASKS:-true}"
 
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 mkdir -p "$LOG_DIR"
@@ -26,7 +29,19 @@ run_task() {
   log_file="$LOG_DIR/${safe_name}.log"
   start_ts="$(date +%s)"
 
-  if (cd "$ROOT_DIR" && ./gradlew "$task" --no-daemon >"$log_file" 2>&1); then
+  local -a gradle_cmd=("./gradlew" "$task" "--no-daemon")
+
+  if [ "${DISABLE_BUILD_CACHE}" = "true" ]; then
+    gradle_cmd+=("--no-build-cache")
+  fi
+  if [ "${DISABLE_CONFIGURATION_CACHE}" = "true" ]; then
+    gradle_cmd+=("--no-configuration-cache")
+  fi
+  if [ "${FORCE_RERUN_TASKS}" = "true" ]; then
+    gradle_cmd+=("--rerun-tasks")
+  fi
+
+  if (cd "$ROOT_DIR" && "${gradle_cmd[@]}" >"$log_file" 2>&1); then
     status="PASS"
   else
     status="FAIL"
@@ -48,7 +63,14 @@ task_rows=()
 
 if [ "${CLEAN_BEFORE_RUN}" = "true" ]; then
   clean_log_file="$LOG_DIR/clean.log"
-  if ! (cd "$ROOT_DIR" && ./gradlew clean --no-daemon >"$clean_log_file" 2>&1); then
+  clean_cmd=("./gradlew" "clean" "--no-daemon")
+  if [ "${DISABLE_BUILD_CACHE}" = "true" ]; then
+    clean_cmd+=("--no-build-cache")
+  fi
+  if [ "${DISABLE_CONFIGURATION_CACHE}" = "true" ]; then
+    clean_cmd+=("--no-configuration-cache")
+  fi
+  if ! (cd "$ROOT_DIR" && "${clean_cmd[@]}" >"$clean_log_file" 2>&1); then
     echo "Baseline preparation failed while running clean. See: $clean_log_file"
     exit 1
   fi
@@ -99,12 +121,12 @@ fi
   echo "### Commands"
   echo ""
   if [ "${CLEAN_BEFORE_RUN}" = "true" ]; then
-    echo "- \`BASELINE_CLEAN_BEFORE_RUN=true ./scripts/quality/collect_build_baseline.sh\`"
-    echo "- \`./gradlew clean --no-daemon\`"
+    echo "- \`BASELINE_CLEAN_BEFORE_RUN=true BASELINE_DISABLE_BUILD_CACHE=${DISABLE_BUILD_CACHE} BASELINE_DISABLE_CONFIGURATION_CACHE=${DISABLE_CONFIGURATION_CACHE} BASELINE_RERUN_TASKS=${FORCE_RERUN_TASKS} ./scripts/quality/collect_build_baseline.sh\`"
+    echo "- \`./gradlew clean --no-daemon$( [ "${DISABLE_BUILD_CACHE}" = "true" ] && printf ' --no-build-cache' )$( [ "${DISABLE_CONFIGURATION_CACHE}" = "true" ] && printf ' --no-configuration-cache' )\`"
   fi
-  echo "- \`./gradlew :app:compileDebugKotlin --no-daemon\`"
-  echo "- \`./gradlew :app:testDebugUnitTest --no-daemon\`"
-  echo "- \`./gradlew :app:assembleDebug --no-daemon\`"
+  echo "- \`./gradlew :app:compileDebugKotlin --no-daemon$( [ "${DISABLE_BUILD_CACHE}" = "true" ] && printf ' --no-build-cache' )$( [ "${DISABLE_CONFIGURATION_CACHE}" = "true" ] && printf ' --no-configuration-cache' )$( [ "${FORCE_RERUN_TASKS}" = "true" ] && printf ' --rerun-tasks' )\`"
+  echo "- \`./gradlew :app:testDebugUnitTest --no-daemon$( [ "${DISABLE_BUILD_CACHE}" = "true" ] && printf ' --no-build-cache' )$( [ "${DISABLE_CONFIGURATION_CACHE}" = "true" ] && printf ' --no-configuration-cache' )$( [ "${FORCE_RERUN_TASKS}" = "true" ] && printf ' --rerun-tasks' )\`"
+  echo "- \`./gradlew :app:assembleDebug --no-daemon$( [ "${DISABLE_BUILD_CACHE}" = "true" ] && printf ' --no-build-cache' )$( [ "${DISABLE_CONFIGURATION_CACHE}" = "true" ] && printf ' --no-configuration-cache' )$( [ "${FORCE_RERUN_TASKS}" = "true" ] && printf ' --rerun-tasks' )\`"
 } >> "$OUTPUT_FILE"
 
 echo "Baseline collected: $OUTPUT_FILE"

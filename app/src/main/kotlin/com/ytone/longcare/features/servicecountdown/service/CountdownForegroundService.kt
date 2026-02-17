@@ -19,7 +19,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
-import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderKey
 
 /**
  * 服务倒计时前台服务
@@ -47,13 +47,13 @@ class CountdownForegroundService : Service() {
          */
         fun startCountdown(
             context: Context,
-            request: OrderInfoRequestModel,
+            orderKey: OrderKey,
             serviceName: String,
             totalSeconds: Long
         ) {
             val intent = Intent(context, CountdownForegroundService::class.java).apply {
                 action = ACTION_START_COUNTDOWN
-                putExtra(EXTRA_ORDER_ID, request.orderId)
+                putExtra(EXTRA_ORDER_ID, orderKey.orderId)
                 putExtra(EXTRA_SERVICE_NAME, serviceName)
                 putExtra(EXTRA_TOTAL_SECONDS, totalSeconds)
             }

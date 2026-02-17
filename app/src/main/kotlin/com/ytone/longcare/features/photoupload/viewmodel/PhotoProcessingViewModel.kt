@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.common.utils.ToastHelper

@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.faceauth.FaceVerifier
@@ -16,7 +15,6 @@ import com.ytone.longcare.features.identification.domain.UploadElderPhotoUseCase
 import com.ytone.longcare.features.identification.domain.VerifyServicePersonUseCase
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.photoupload.model.WatermarkData
@@ -115,12 +113,11 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 验证老人
      */
-    fun verifyElder(context: Context, request: OrderInfoRequestModel) {
-        val orderKey = request.toOrderKey()
+    fun verifyElder(context: Context, orderKey: OrderKey) {
         launchElderVerification(
             scope = viewModelScope,
             context = context,
-            orderId = request.orderId,
+            orderId = orderKey.orderId,
             orderKey = orderKey,
             orderDetailRepository = unifiedOrderRepository,
             startVerification = ::startFaceVerification,
@@ -186,13 +183,6 @@ class IdentificationViewModel @Inject constructor(
 
     fun setElderVerified() { _identificationState.value = IdentificationState.ELDER_VERIFIED }
 
-    fun updateFaceVerificationStatus(request: OrderInfoRequestModel, verified: Boolean) {
-        viewModelScope.launch {
-            val orderKey = request.toOrderKey()
-            unifiedOrderRepository.updateFaceVerification(orderKey, verified)
-        }
-    }
-
     fun updateFaceVerificationStatus(orderKey: OrderKey, verified: Boolean) {
         viewModelScope.launch {
             unifiedOrderRepository.updateFaceVerification(orderKey, verified)
@@ -202,22 +192,9 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 处理拍照并上传老人照片
      * @param photoUri 拍照的图片URI
-     * @param request 订单请求模型
+     * @param orderKey 订单标识
      * @param onSuccess 成功回调
      */
-    fun processElderPhoto(photoUri: Uri, request: OrderInfoRequestModel, onSuccess: () -> Unit = {}) {
-        launchElderPhotoUploadWithBindings(
-            scope = viewModelScope,
-            uploadElderPhotoUseCase = uploadElderPhotoUseCase,
-            photoUri = photoUri,
-            orderId = request.orderId,
-            photoUploadState = _photoUploadState,
-            showToast = toastHelper::showShort,
-            onElderVerified = ::setElderVerified,
-            onSuccess = onSuccess,
-        )
-    }
-
     fun processElderPhoto(photoUri: Uri, orderKey: OrderKey, onSuccess: () -> Unit = {}) {
         launchElderPhotoUploadWithBindings(
             scope = viewModelScope,
@@ -234,14 +211,9 @@ class IdentificationViewModel @Inject constructor(
     /**
      * 生成用于相机屏幕的水印数据
      * @param address 拍摄地址
-     * @param request 订单请求模型
+     * @param orderKey 订单标识
      * @return WatermarkData
      */
-    suspend fun generateWatermarkData(address: String, request: OrderInfoRequestModel): WatermarkData {
-        val orderKey = request.toOrderKey()
-        return generateWatermarkData(address, orderKey)
-    }
-
     suspend fun generateWatermarkData(address: String, orderKey: OrderKey): WatermarkData {
         return generateIdentificationWatermarkData(
             address = address,

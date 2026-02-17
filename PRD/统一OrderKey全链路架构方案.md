@@ -11,6 +11,12 @@
 > [!IMPORTANT]
 > **核心原则**：从Screen入口到Repository出口，全程使用`OrderKey`作为唯一订单标识符
 
+> [!NOTE]
+> 2026-02 更新：`OrderInfoRequestModel` 已从代码中移除，不再作为网络层中间模型保留。
+
+> [!NOTE]
+> 2026-02 补充：倒计时链路 `Intent` Extra 已统一为 `extra_order_key`，并保留对历史键 `extra_request` 的兼容读取。
+
 ---
 
 ## 方案：统一使用OrderKey
@@ -50,7 +56,7 @@ viewModel.initWithOrderKey(orderKey)
 | 模型 | 用途 | 状态 |
 |------|------|------|
 | `OrderNavParams` | **导航层**：Compose Navigation参数传递 | 保留 |
-| `OrderInfoRequestModel` | **网络层**：API请求参数 | 保留 |
+| `OrderInfoRequestModel` | **历史模型** | 已删除 |
 | `OrderKey` | **业务层**：Repository/ViewModel/缓存 | 核心统一 |
 
 ---

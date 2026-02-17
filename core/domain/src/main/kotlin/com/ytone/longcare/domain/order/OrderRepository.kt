@@ -2,7 +2,7 @@ package com.ytone.longcare.domain.order
 
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.model.EndOrderResultModel
-import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.ServiceOrderModel
 import com.ytone.longcare.model.ServiceOrderStateModel
@@ -30,9 +30,9 @@ interface OrderRepository {
 
     /**
      * 获取服务订单详情
-     * @param request 订单详情请求参数
+     * @param orderKey 订单标识符
      */
-    suspend fun getOrderInfo(request: OrderInfoRequestModel): ApiResult<ServiceOrderInfoModel>
+    suspend fun getOrderInfo(orderKey: OrderKey): ApiResult<ServiceOrderInfoModel>
 
     /**
      * 检查订单（NFC签到）

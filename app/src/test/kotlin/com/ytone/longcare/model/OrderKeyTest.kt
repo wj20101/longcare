@@ -46,24 +46,6 @@ class OrderKeyTest {
     }
 
     @Test
-    fun `test OrderInfoRequestModel toOrderKey extension`() {
-        val requestModel = OrderInfoRequestModel(orderId = 333L, planId = 4)
-        val orderKey = requestModel.toOrderKey()
-        
-        assertEquals(333L, orderKey.orderId)
-        assertEquals(4, orderKey.planId)
-    }
-
-    @Test
-    fun `test OrderKey toRequestModel extension`() {
-        val orderKey = OrderKey(orderId = 444L, planId = 5)
-        val requestModel = orderKey.toRequestModel()
-        
-        assertEquals(444L, requestModel.orderId)
-        assertEquals(5, requestModel.planId)
-    }
-
-    @Test
     fun `test handleOrderNavigation with OrderKey callback routes pending care to nursing`() {
         val orderKey = OrderKey(orderId = 555L, planId = 6)
         var nursingTarget: OrderKey? = null

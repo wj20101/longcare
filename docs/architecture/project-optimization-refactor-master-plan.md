@@ -580,7 +580,7 @@
 - `core/model/src/main/kotlin/com/ytone/longcare/api/response/TencentFaceApiResponse.kt`（模型下沉）
 - `core/model/src/main/kotlin/com/ytone/longcare/api/response/UploadTokenResultModel.kt`（模型下沉）
 - `core/model/src/main/kotlin/com/ytone/longcare/data/cos/model/CosModels.kt`（模型下沉）
-- `core/model/src/main/kotlin/com/ytone/longcare/api/request/OrderInfoRequestModel.kt`（模型下沉）
+- `core/model/src/main/kotlin/com/ytone/longcare/model/OrderInfoRequestModel.kt`（历史：已在后续阶段删除，统一使用 `OrderKey`）
 - `core/model/src/main/kotlin/com/ytone/longcare/api/response/EndOrderResultModel.kt`（模型下沉）
 - `core/model/src/main/kotlin/com/ytone/longcare/api/response/ServiceOrderInfoModel.kt`（模型下沉）
 - `core/model/src/main/kotlin/com/ytone/longcare/api/response/ServiceOrderModel.kt`（模型下沉）

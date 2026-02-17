@@ -23,7 +23,7 @@ import androidx.core.location.LocationManagerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
-import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderKey
 
 @Composable
 fun LocationTrackingScreen(
@@ -37,9 +37,9 @@ fun LocationTrackingScreen(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
         onResult = { permissions ->
             if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
-                // 测试用的 OrderInfoRequestModel
+                // 测试用的 OrderKey
                 viewModel.onStartClicked(
-                    OrderInfoRequestModel(
+                    OrderKey(
                         orderId = 123456L,
                         planId = 0
                     )

@@ -1,6 +1,6 @@
 package com.ytone.longcare.features.location.reporting
 
-import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
@@ -41,8 +41,8 @@ class LocationReportingManager @Inject constructor(
     private val _isTracking = MutableStateFlow(false)
     val isTracking: StateFlow<Boolean> = _isTracking.asStateFlow()
 
-    private val _currentTrackingRequest = MutableStateFlow<OrderInfoRequestModel?>(null)
-    val currentTrackingRequest: StateFlow<OrderInfoRequestModel?> = _currentTrackingRequest.asStateFlow()
+    private val _currentTrackingOrderKey = MutableStateFlow<OrderKey?>(null)
+    val currentTrackingOrderKey: StateFlow<OrderKey?> = _currentTrackingOrderKey.asStateFlow()
 
     private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
     private var reportingJob: Job? = null
@@ -54,19 +54,19 @@ class LocationReportingManager @Inject constructor(
         private const val SUCCESS_RETENTION_MS = 24 * 60 * 60 * 1000L
     }
 
-    fun startReporting(request: OrderInfoRequestModel) {
+    fun startReporting(orderKey: OrderKey) {
         val sameTaskRunning = _isTracking.value &&
-            _currentTrackingRequest.value?.orderId == request.orderId &&
+            _currentTrackingOrderKey.value?.orderId == orderKey.orderId &&
             reportingJob?.isActive == true
         if (sameTaskRunning) return
 
         stopReporting()
 
-        _currentTrackingRequest.value = request
+        _currentTrackingOrderKey.value = orderKey
         _isTracking.value = true
         locationStateManager.updateTrackingState(true)
 
-        val owner = buildOwner(request)
+        val owner = buildOwner(orderKey)
         currentOwner = owner
         locationFacade.acquireKeepAlive(owner)
 
@@ -74,7 +74,7 @@ class LocationReportingManager @Inject constructor(
             try {
                 flushUploadQueue()
                 locationFacade.observeLocations().collect { location ->
-                    enqueueLocation(request.orderId, location)
+                    enqueueLocation(orderKey.orderId, location)
                     flushUploadQueue()
                 }
             } catch (_: CancellationException) {
@@ -97,7 +97,7 @@ class LocationReportingManager @Inject constructor(
         currentOwner = null
 
         _isTracking.value = false
-        _currentTrackingRequest.value = null
+        _currentTrackingOrderKey.value = null
         locationStateManager.updateTrackingState(false)
     }
 
@@ -190,7 +190,7 @@ class LocationReportingManager @Inject constructor(
         }
     }
 
-    private fun buildOwner(request: OrderInfoRequestModel): String {
-        return "location_report_${request.orderId}"
+    private fun buildOwner(orderKey: OrderKey): String {
+        return "location_report_${orderKey.orderId}"
     }
 }

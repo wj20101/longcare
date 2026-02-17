@@ -1,6 +1,6 @@
 package com.ytone.longcare.features.location.reporting
 
-import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.model.LocationUploadStatus
@@ -44,7 +44,7 @@ class LocationReportingManagerTest {
         val flow = MutableSharedFlow<LocationResult>()
         val dispatcher = StandardTestDispatcher(testScheduler)
 
-        val request = OrderInfoRequestModel(orderId = 100L, planId = 0)
+        val orderKey = OrderKey(orderId = 100L, planId = 0)
         val sample = LocationResult(31.2, 121.5, "amap_continuous", 5f)
         val pending = OrderLocationEntity(
             id = 1L,
@@ -77,11 +77,11 @@ class LocationReportingManagerTest {
             ioDispatcher = dispatcher
         )
 
-        manager.startReporting(request)
+        manager.startReporting(orderKey)
         runCurrent()
 
         assertTrue(manager.isTracking.value)
-        assertEquals(request, manager.currentTrackingRequest.value)
+        assertEquals(orderKey, manager.currentTrackingOrderKey.value)
         verify { locationStateManager.updateTrackingState(true) }
         verify { locationFacade.acquireKeepAlive("location_report_100") }
 
@@ -98,7 +98,7 @@ class LocationReportingManagerTest {
         runCurrent()
 
         assertFalse(manager.isTracking.value)
-        assertEquals(null, manager.currentTrackingRequest.value)
+        assertEquals(null, manager.currentTrackingOrderKey.value)
         verify { locationFacade.releaseKeepAlive("location_report_100") }
         verify { locationStateManager.updateTrackingState(false) }
     }
@@ -112,7 +112,7 @@ class LocationReportingManagerTest {
         val flow = MutableSharedFlow<LocationResult>()
         val dispatcher = StandardTestDispatcher(testScheduler)
 
-        val request = OrderInfoRequestModel(orderId = 200L, planId = 0)
+        val orderKey = OrderKey(orderId = 200L, planId = 0)
         val sample = LocationResult(30.0, 120.0, "amap_continuous", 10f)
         val pending = OrderLocationEntity(
             id = 2L,
@@ -149,7 +149,7 @@ class LocationReportingManagerTest {
             ioDispatcher = dispatcher
         )
 
-        manager.startReporting(request)
+        manager.startReporting(orderKey)
         runCurrent()
 
         flow.emit(sample)
@@ -175,7 +175,7 @@ class LocationReportingManagerTest {
         val flow = MutableSharedFlow<LocationResult>()
         val dispatcher = StandardTestDispatcher(testScheduler)
 
-        val request = OrderInfoRequestModel(orderId = 300L, planId = 0)
+        val orderKey = OrderKey(orderId = 300L, planId = 0)
 
         every { locationFacade.observeLocations(any()) } returns flow
         every { locationFacade.acquireKeepAlive(any()) } returns Unit
@@ -191,13 +191,13 @@ class LocationReportingManagerTest {
             ioDispatcher = dispatcher
         )
 
-        manager.startReporting(request)
+        manager.startReporting(orderKey)
         runCurrent()
         manager.stopReporting()
         runCurrent()
 
         assertFalse(manager.isTracking.value)
-        assertEquals(null, manager.currentTrackingRequest.value)
+        assertEquals(null, manager.currentTrackingOrderKey.value)
         verify { locationFacade.acquireKeepAlive("location_report_300") }
         verify { locationFacade.releaseKeepAlive("location_report_300") }
         verify { locationStateManager.updateTrackingState(false) }
@@ -212,7 +212,7 @@ class LocationReportingManagerTest {
         val flow = MutableSharedFlow<LocationResult>()
         val dispatcher = StandardTestDispatcher(testScheduler)
 
-        val request = OrderInfoRequestModel(orderId = 400L, planId = 0)
+        val orderKey = OrderKey(orderId = 400L, planId = 0)
         val sample = LocationResult(30.1, 120.1, "amap_continuous", 8f)
         val pending = OrderLocationEntity(
             id = 4L,
@@ -245,7 +245,7 @@ class LocationReportingManagerTest {
             ioDispatcher = dispatcher
         )
 
-        manager.startReporting(request)
+        manager.startReporting(orderKey)
         runCurrent()
 
         flow.emit(sample)

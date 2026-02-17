@@ -27,6 +27,10 @@ inputs:
     description: Whether to run verify_lint_ignore_policy.sh.
     required: false
     default: "true"
+  run-baselineprofile-journey-check:
+    description: Whether to run verify_baselineprofile_journeys.sh.
+    required: false
+    default: "true"
 
 runs:
   using: composite
@@ -64,6 +68,11 @@ runs:
       if: ${{ inputs.run-lint-ignore-policy-check == 'true' }}
       shell: bash
       run: bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
+
+    - name: Verify baseline profile journey guardrails
+      if: ${{ inputs.run-baselineprofile-journey-check == 'true' }}
+      shell: bash
+      run: bash scripts/quality/verify_baselineprofile_journeys.sh
 
     - name: Verify CI workflow quality guardrails
       if: ${{ inputs.run-workflow-quality-check == 'true' }}

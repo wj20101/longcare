@@ -5,7 +5,7 @@ import com.ytone.longcare.model.CheckOrderParamModel
 import com.ytone.longcare.model.EndOrderParamModel
 import com.ytone.longcare.model.OrderListParamModel
 import com.ytone.longcare.model.OrderInfoParamModel
-import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.StarOrderParamModel
 import com.ytone.longcare.model.UpUserStartImgParamModel
 import com.ytone.longcare.model.BindLocationParamModel
@@ -46,9 +46,14 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getOrderInfo(request: OrderInfoRequestModel): ApiResult<ServiceOrderInfoModel> {
+    override suspend fun getOrderInfo(orderKey: OrderKey): ApiResult<ServiceOrderInfoModel> {
         return safeApiCall(ioDispatcher, eventBus) {
-            apiService.getOrderInfo(OrderInfoParamModel(orderId = request.orderId, planId = request.planId))
+            apiService.getOrderInfo(
+                OrderInfoParamModel(
+                    orderId = orderKey.orderId,
+                    planId = orderKey.planId
+                )
+            )
         }
     }
 

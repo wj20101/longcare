@@ -22,14 +22,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.IntentCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.receiver.DismissAlarmReceiver
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
-import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.theme.LongCareTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -49,15 +48,13 @@ class CountdownAlarmActivity : AppCompatActivity() {
     
     companion object {
         private const val TAG = "CountdownAlarmActivity"
-        private const val EXTRA_REQUEST = "extra_request"
-        private const val EXTRA_SERVICE_NAME = "service_name"
         private const val EXTRA_AUTO_CLOSE_ENABLED = "auto_close_enabled"
         private const val AUTO_CLOSE_DELAY_MS = 30000L // 30秒
         
-        fun createIntent(context: Context, request: OrderInfoRequestModel, serviceName: String, autoCloseEnabled: Boolean = true): Intent {
+        fun createIntent(context: Context, orderKey: OrderKey, serviceName: String, autoCloseEnabled: Boolean = true): Intent {
             return Intent(context, CountdownAlarmActivity::class.java).apply {
-                putExtra(EXTRA_REQUEST, request)
-                putExtra(EXTRA_SERVICE_NAME, serviceName)
+                putExtra(CountdownNotificationManager.EXTRA_ORDER_KEY, orderKey)
+                putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, serviceName)
                 putExtra(EXTRA_AUTO_CLOSE_ENABLED, autoCloseEnabled)
                 // 确保Activity可以从后台启动
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
@@ -103,15 +100,10 @@ class CountdownAlarmActivity : AppCompatActivity() {
         
         logI("Window flags 已设置")
         
-        val request =
-            IntentCompat.getParcelableExtra(
-                intent,
-                EXTRA_REQUEST,
-                OrderInfoRequestModel::class.java
-            ) ?: OrderInfoRequestModel(orderId = -1L, planId = 0)
+        val orderKey = CountdownNotificationManager.extractOrderKey(intent)
         
-        val orderId = request.orderId.toString()
-        val serviceName = intent.getStringExtra(EXTRA_SERVICE_NAME) ?: "护理服务"
+        val orderId = orderKey.orderId.toString()
+        val serviceName = CountdownNotificationManager.extractServiceName(intent, "护理服务")
         val autoCloseEnabled = intent.getBooleanExtra(EXTRA_AUTO_CLOSE_ENABLED, true)
         
         // 注册停止响铃广播接收器

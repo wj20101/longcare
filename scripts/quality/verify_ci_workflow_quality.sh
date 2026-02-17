@@ -248,6 +248,7 @@ if [[ ! -f "${SHARED_ANDROID_BUILD_ENV_ACTION}" ]]; then
 else
   require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/quality/verify_jetpack_compat_apis\\.sh" "shared android build env runs jetpack compat api guard"
   require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/lint/verify_lint_ignore_policy\\.sh" "shared android build env runs lint ignore policy guard"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/quality/verify_baselineprofile_journeys\\.sh" "shared android build env runs baseline profile journey guard"
   require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "uses:[[:space:]]*actions/setup-java@v5" "shared android build env pins setup-java@v5"
   require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "uses:[[:space:]]*gradle/actions/setup-gradle@v5" "shared android build env pins setup-gradle@v5"
   require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "uses:[[:space:]]*android-actions/setup-android@v3" "shared android build env pins setup-android@v3"
@@ -289,6 +290,7 @@ require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "-[
 require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "-[[:space:]]*\"scripts/lint/verify_lint_ignore_policy\\.sh\"" "face-sdk-migration-check paths filter includes lint ignore policy script"
 require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "-[[:space:]]*\"scripts/quality/verify_ci_workflow_quality\\.sh\"" "face-sdk-migration-check paths filter includes ci quality guard script"
 require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "-[[:space:]]*\"scripts/quality/verify_jetpack_compat_apis\\.sh\"" "face-sdk-migration-check paths filter includes jetpack compat guard script"
+require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "-[[:space:]]*\"scripts/quality/verify_baselineprofile_journeys\\.sh\"" "face-sdk-migration-check paths filter includes baselineprofile journey guard script"
 require_absent_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "-[[:space:]]*\"scripts/lint/\\*\\*\"" "face-sdk-migration-check does not use broad lint path filter"
 require_absent_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "-[[:space:]]*\"scripts/quality/\\*\\*\"" "face-sdk-migration-check does not use broad quality path filter"
 require_any_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "android-ci runs workflow quality gate"

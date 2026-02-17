@@ -7,7 +7,6 @@ import android.app.Activity
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
@@ -24,8 +23,6 @@ import com.ytone.longcare.features.countdown.manager.CountdownNotificationManage
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.toOrderKey
-import com.ytone.longcare.model.toRequestModel
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.navigation.ServiceCompleteData
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -63,7 +60,7 @@ class NfcWorkflowViewModel @Inject constructor(
     val pendingNfcData: StateFlow<PendingNfcData?> = _pendingNfcData.asStateFlow()
 
     data class PendingNfcData(
-        val orderInfoRequest: OrderInfoRequestModel,
+        val orderKey: OrderKey,
         val signInMode: SignInMode,
         val endOderInfo: EndOderInfo?,
         val tagId: String,
@@ -71,15 +68,8 @@ class NfcWorkflowViewModel @Inject constructor(
         val latitude: String
     )
 
-    /**
-     * 开始服务工单
-     * @param orderInfoRequest 订单信息
-     * @param nfcDeviceId NFC设备号
-     * @param longitude 经度
-     * @param latitude 纬度
-     */
     fun startOrder(
-        orderInfoRequest: OrderInfoRequestModel,
+        orderKey: OrderKey,
         nfcDeviceId: String,
         longitude: String = "",
         latitude: String = ""
@@ -88,7 +78,7 @@ class NfcWorkflowViewModel @Inject constructor(
             _uiState.value = NfcSignInUiState.Loading
 
             when (val result = orderRepository.checkOrder(
-                orderInfoRequest.orderId,
+                orderKey.orderId,
                 nfcDeviceId,
                 longitude,
                 latitude
@@ -111,20 +101,8 @@ class NfcWorkflowViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 结束服务工单
-     * @param orderInfoRequest 订单信息
-     * @param nfcDeviceId NFC设备号
-     * @param projectIdList 完成的服务项目ID集合
-     * @param beginImgList 开始图片集合
-     * @param endImageList 结束图片集合
-     * @param centerImgList 服务中图片集合
-     * @param longitude 经度
-     * @param latitude 纬度
-     * @param endType 结束类型：1=正常结束，2=提前结束
-     */
     fun endOrder(
-        orderInfoRequest: OrderInfoRequestModel,
+        orderKey: OrderKey,
         nfcDeviceId: String,
         projectIdList: List<Int>,
         beginImgList: List<String>,
@@ -139,13 +117,13 @@ class NfcWorkflowViewModel @Inject constructor(
 
             // 先调用 checkEndOrder
             when (val checkResult = orderRepository.checkEndOrder(
-                orderId = orderInfoRequest.orderId,
+                orderId = orderKey.orderId,
                 projectIdList = projectIdList
             )) {
                 is ApiResult.Success -> {
                     // checkEndOrder 成功，直接调用 endOrder
                     executeEndOrder(
-                        orderInfoRequest = orderInfoRequest,
+                        orderKey = orderKey,
                         nfcDeviceId = nfcDeviceId,
                         projectIdList = projectIdList,
                         beginImgList = beginImgList,
@@ -170,7 +148,7 @@ class NfcWorkflowViewModel @Inject constructor(
                         _uiState.value = NfcSignInUiState.ShowConfirmDialog(
                             message = checkResult.message,
                             endOrderParams = EndOrderParams(
-                                orderInfoRequest = orderInfoRequest,
+                                orderKey = orderKey,
                                 nfcDeviceId = nfcDeviceId,
                                 porjectIdList = projectIdList,
                                 beginImgList = beginImgList,
@@ -194,7 +172,7 @@ class NfcWorkflowViewModel @Inject constructor(
      * 执行结束订单操作
      */
     private suspend fun executeEndOrder(
-        orderInfoRequest: OrderInfoRequestModel,
+        orderKey: OrderKey,
         nfcDeviceId: String,
         projectIdList: List<Int>,
         beginImgList: List<String>,
@@ -207,7 +185,7 @@ class NfcWorkflowViewModel @Inject constructor(
         logI("executeEndOrder: Begin: ${beginImgList.size}, Center: ${centerImgList.size}, End: ${endImageList.size}", tag = "NfcWorkflowViewModel")
         
         when (val result = orderRepository.endOrder(
-            orderId = orderInfoRequest.orderId,
+            orderId = orderKey.orderId,
             nfcDeviceId = nfcDeviceId,
             projectIdList = projectIdList,
             beginImgList = beginImgList,
@@ -219,7 +197,7 @@ class NfcWorkflowViewModel @Inject constructor(
         )) {
             is ApiResult.Success -> {
                 // 执行资源清理逻辑
-                cleanupResources(orderInfoRequest)
+                cleanupResources(orderKey)
 
                 _uiState.value = NfcSignInUiState.Success(
                     endOrderSuccessData = EndOrderSuccessData(
@@ -248,7 +226,7 @@ class NfcWorkflowViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = NfcSignInUiState.Loading
             executeEndOrder(
-                orderInfoRequest = params.orderInfoRequest,
+                orderKey = params.orderKey,
                 nfcDeviceId = params.nfcDeviceId,
                 projectIdList = params.porjectIdList,
                 beginImgList = params.beginImgList,
@@ -282,15 +260,6 @@ class NfcWorkflowViewModel @Inject constructor(
     fun showError(message: String) {
         toastHelper.showShort(message)
         _uiState.value = NfcSignInUiState.Error(message)
-    }
-
-    fun buildServiceCompleteDataFromCache(
-        orderInfoRequest: OrderInfoRequestModel,
-        endOderInfo: EndOderInfo?,
-        trueServiceTime: Int
-    ): ServiceCompleteData {
-        val orderKey = orderInfoRequest.toOrderKey()
-        return buildServiceCompleteDataFromCache(orderKey, endOderInfo, trueServiceTime)
     }
 
     fun buildServiceCompleteDataFromCache(
@@ -348,7 +317,7 @@ class NfcWorkflowViewModel @Inject constructor(
     }
 
     fun observeNfcEvents(
-        orderInfoRequest: OrderInfoRequestModel,
+        orderKey: OrderKey,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
         onLocationRequest: suspend () -> Pair<String, String>
@@ -379,7 +348,7 @@ class NfcWorkflowViewModel @Inject constructor(
                                 SignInMode.START_ORDER -> {
                                     // 检查用户位置信息
                                     checkUserLocationAndProceed(
-                                        orderInfoRequest = orderInfoRequest,
+                                        orderKey = orderKey,
                                         signInMode = signInMode,
                                         endOderInfo = endOderInfo,
                                         tagId = tagId,
@@ -391,7 +360,7 @@ class NfcWorkflowViewModel @Inject constructor(
                                 SignInMode.END_ORDER -> {
                                     endOderInfo?.let {
                                         endOrder(
-                                            orderInfoRequest = orderInfoRequest,
+                                            orderKey = orderKey,
                                             nfcDeviceId = tagId,
                                             projectIdList = it.projectIdList,
                                             beginImgList = it.beginImgList,
@@ -411,27 +380,17 @@ class NfcWorkflowViewModel @Inject constructor(
         }
     }
 
-    fun observeNfcEvents(
-        orderKey: OrderKey,
-        signInMode: SignInMode,
-        endOderInfo: EndOderInfo?,
-        onLocationRequest: suspend () -> Pair<String, String>
-    ) {
-        observeNfcEvents(orderKey.toRequestModel(), signInMode, endOderInfo, onLocationRequest)
-    }
-
     /**
      * 检查用户位置信息并决定是否需要弹出定位激活弹窗
      */
     private suspend fun checkUserLocationAndProceed(
-        orderInfoRequest: OrderInfoRequestModel,
+        orderKey: OrderKey,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
         tagId: String,
         longitude: String,
         latitude: String
     ) {
-        val orderKey = orderInfoRequest.toOrderKey()
         // 获取订单详情
         val orderInfo = unifiedOrderRepository.getCachedOrderInfo(orderKey)
             ?: when (val result = unifiedOrderRepository.getOrderInfo(orderKey)) {
@@ -448,7 +407,7 @@ class NfcWorkflowViewModel @Inject constructor(
 
         checkLocationAndShowDialog(
             orderInfo = orderInfo,
-            orderInfoRequest = orderInfoRequest,
+            orderKey = orderKey,
             signInMode = signInMode,
             endOderInfo = endOderInfo,
             tagId = tagId,
@@ -462,7 +421,7 @@ class NfcWorkflowViewModel @Inject constructor(
      */
     private fun checkLocationAndShowDialog(
         orderInfo: ServiceOrderInfoModel,
-        orderInfoRequest: OrderInfoRequestModel,
+        orderKey: OrderKey,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
         tagId: String,
@@ -475,7 +434,7 @@ class NfcWorkflowViewModel @Inject constructor(
         if (userLng.isEmpty() || userLat.isEmpty()) {
             // 用户位置信息为空，更新待处理数据以显示弹窗
             _pendingNfcData.value = PendingNfcData(
-                orderInfoRequest = orderInfoRequest,
+                orderKey = orderKey,
                 signInMode = signInMode,
                 endOderInfo = endOderInfo,
                 tagId = tagId,
@@ -484,7 +443,7 @@ class NfcWorkflowViewModel @Inject constructor(
             )
         } else {
             // 用户位置信息不为空，直接执行签到
-            startOrder(orderInfoRequest, tagId, longitude, latitude)
+            startOrder(orderKey, tagId, longitude, latitude)
         }
     }
 
@@ -495,14 +454,14 @@ class NfcWorkflowViewModel @Inject constructor(
         viewModelScope.launch {
             // 调用绑定定位接口
             when (val result = orderRepository.bindLocation(
-                orderId = data.orderInfoRequest.orderId,
+                orderId = data.orderKey.orderId,
                 nfc = data.tagId,
                 longitude = data.longitude,
                 latitude = data.latitude
             )) {
                 is ApiResult.Success -> {
                     // 绑定成功后执行签到
-                    startOrder(data.orderInfoRequest, data.tagId, data.longitude, data.latitude)
+                    startOrder(data.orderKey, data.tagId, data.longitude, data.latitude)
                 }
 
                 is ApiResult.Exception -> {
@@ -526,11 +485,8 @@ class NfcWorkflowViewModel @Inject constructor(
         _pendingNfcData.value = null
     }
 
-    /**
-     * 模拟NFC扫描 (Mock模式)
-     */
     fun mockNfcScan(
-        orderInfoRequest: OrderInfoRequestModel,
+        orderKey: OrderKey,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?
     ) {
@@ -542,7 +498,7 @@ class NfcWorkflowViewModel @Inject constructor(
             when (signInMode) {
                 SignInMode.START_ORDER -> {
                     checkUserLocationAndProceed(
-                        orderInfoRequest = orderInfoRequest,
+                        orderKey = orderKey,
                         signInMode = signInMode,
                         endOderInfo = endOderInfo,
                         tagId = mockTagId,
@@ -554,7 +510,7 @@ class NfcWorkflowViewModel @Inject constructor(
                 SignInMode.END_ORDER -> {
                     endOderInfo?.let {
                         endOrder(
-                            orderInfoRequest = orderInfoRequest,
+                            orderKey = orderKey,
                             nfcDeviceId = mockTagId,
                             projectIdList = it.projectIdList,
                             beginImgList = it.beginImgList,
@@ -570,26 +526,17 @@ class NfcWorkflowViewModel @Inject constructor(
         }
     }
 
-    fun mockNfcScan(
-        orderKey: OrderKey,
-        signInMode: SignInMode,
-        endOderInfo: EndOderInfo?
-    ) {
-        mockNfcScan(orderKey.toRequestModel(), signInMode, endOderInfo)
-    }
-
     /**
      * 清理服务相关资源
      */
-    private fun cleanupResources(orderInfoRequest: OrderInfoRequestModel) {
-        val orderKey = orderInfoRequest.toOrderKey()
+    private fun cleanupResources(orderKey: OrderKey) {
         try {
             // 停止前台服务
             CountdownForegroundService.stopCountdown(context)
             // 停止响铃
             AlarmRingtoneService.stopRingtone(context)
             // 取消倒计时闹钟
-            countdownNotificationManager.cancelCountdownAlarmForOrder(orderInfoRequest)
+            countdownNotificationManager.cancelCountdownAlarmForOrder(orderKey)
 
             // 清除本地状态和图片数据
             viewModelScope.launch {
@@ -632,7 +579,7 @@ data class EndOrderSuccessData(
 )
 
 data class EndOrderParams(
-    val orderInfoRequest: OrderInfoRequestModel,
+    val orderKey: OrderKey,
     val nfcDeviceId: String,
     val porjectIdList: List<Int>,
     val beginImgList: List<String>,

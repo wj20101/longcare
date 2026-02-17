@@ -1,6 +1,8 @@
 package com.ytone.longcare.model
 
+import android.os.Parcelable
 import kotlinx.serialization.Serializable
+import kotlinx.parcelize.Parcelize
 
 /**
  * 统一订单标识符
@@ -14,10 +16,11 @@ import kotlinx.serialization.Serializable
  * @param planId 计划ID，默认值为0，未来版本可能有意义
  */
 @Serializable
+@Parcelize
 data class OrderKey(
     val orderId: Long,
     val planId: Int = 0
-) {
+) : Parcelable {
     /**
      * 用于缓存的唯一字符串Key
      * 格式：orderId_planId
@@ -40,15 +43,3 @@ data class OrderKey(
         }
     }
 }
-
-// ========== 转换扩展函数 ==========
-
-/**
- * OrderInfoRequestModel → OrderKey
- */
-fun OrderInfoRequestModel.toOrderKey() = OrderKey(orderId, planId)
-
-/**
- * OrderKey → OrderInfoRequestModel
- */
-fun OrderKey.toRequestModel() = OrderInfoRequestModel(orderId, planId)

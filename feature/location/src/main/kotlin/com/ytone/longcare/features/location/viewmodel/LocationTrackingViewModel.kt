@@ -1,9 +1,7 @@
 package com.ytone.longcare.features.location.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.toRequestModel
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import com.ytone.longcare.common.utils.logI
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,22 +17,18 @@ class LocationTrackingViewModel @Inject constructor(
      * 直接将 Manager 的追踪状态暴露给UI层。
      */
     val isTracking: StateFlow<Boolean> = trackingManager.isTracking
-    
+
     /**
-     * 当前正在追踪的订单请求模型。
+     * 当前正在追踪的订单标识。
      */
-    val currentTrackingRequest: StateFlow<OrderInfoRequestModel?> = trackingManager.currentTrackingRequest
+    val currentTrackingOrderKey: StateFlow<OrderKey?> = trackingManager.currentTrackingOrderKey
 
     /**
      * 当UI层的"开启"按钮被点击时调用。
      * 将操作委托给 Manager。
      */
-    fun onStartClicked(request: OrderInfoRequestModel) {
-        trackingManager.startTracking(request)
-    }
-
     fun onStartClicked(orderKey: OrderKey) {
-        onStartClicked(orderKey.toRequestModel())
+        trackingManager.startTracking(orderKey)
     }
 
     /**
@@ -43,10 +37,10 @@ class LocationTrackingViewModel @Inject constructor(
      */
     fun ensureLocationSessionForOrder(orderId: Long) {
         val isTrackingNow = trackingManager.isTracking.value
-        val currentRequest = trackingManager.currentTrackingRequest.value
+        val currentOrderKey = trackingManager.currentTrackingOrderKey.value
 
-        if (isTrackingNow && currentRequest != null && currentRequest.orderId != orderId) {
-            logI("检测到定位上报正在服务其他订单(orderId=${currentRequest.orderId})，先停止旧上报")
+        if (isTrackingNow && currentOrderKey != null && currentOrderKey.orderId != orderId) {
+            logI("检测到定位上报正在服务其他订单(orderId=${currentOrderKey.orderId})，先停止旧上报")
             trackingManager.stopTracking()
         }
 

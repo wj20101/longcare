@@ -16,6 +16,7 @@ on:
       - "scripts/quality/verify_gradle_stability.sh"
       - "scripts/quality/verify_ci_workflow_quality.sh"
       - "scripts/quality/verify_jetpack_compat_apis.sh"
+      - "scripts/quality/verify_baselineprofile_journeys.sh"
       - "scripts/quality/verify_cancellation_guards.sh"
       - "scripts/quality/verify_no_empty_catch_blocks.sh"
       - "scripts/quality/verify_target_sdk_upgrade.sh"

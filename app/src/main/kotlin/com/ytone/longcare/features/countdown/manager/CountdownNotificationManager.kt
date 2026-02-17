@@ -11,6 +11,7 @@ import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.PendingIntentCompat
+import androidx.core.content.IntentCompat
 import androidx.core.content.edit
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
@@ -22,7 +23,7 @@ import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderKey
 
 /**
  * 倒计时通知管理器
@@ -43,13 +44,36 @@ class CountdownNotificationManager @Inject constructor(
         private const val COUNTDOWN_ALARM_ACTIVITY_REQUEST_CODE = 3003
         
         // Intent extras
-        const val EXTRA_REQUEST = "extra_request"
+        const val EXTRA_ORDER_KEY = "extra_order_key"
+        private const val EXTRA_ORDER_KEY_LEGACY = "extra_request"
         const val EXTRA_SERVICE_NAME = "extra_service_name"
+        private const val EXTRA_SERVICE_NAME_LEGACY = "service_name"
 
         private const val PREFS_NAME = "countdown_notification_prefs"
         private const val KEY_LAST_SCHEDULED_ORDER_ID = "key_last_scheduled_order_id"
         private const val NO_ORDER_ID = -1L
         private const val ACTION_COUNTDOWN_ALARM_PREFIX = "COUNTDOWN_ALARM_"
+
+        fun extractOrderKey(
+            intent: Intent?,
+            defaultValue: OrderKey = OrderKey(orderId = -1L, planId = 0)
+        ): OrderKey {
+            if (intent == null) {
+                return defaultValue
+            }
+            return IntentCompat.getParcelableExtra(intent, EXTRA_ORDER_KEY, OrderKey::class.java)
+                ?: IntentCompat.getParcelableExtra(intent, EXTRA_ORDER_KEY_LEGACY, OrderKey::class.java)
+                ?: defaultValue
+        }
+
+        fun extractServiceName(intent: Intent?, defaultValue: String): String {
+            if (intent == null) {
+                return defaultValue
+            }
+            return intent.getStringExtra(EXTRA_SERVICE_NAME)
+                ?: intent.getStringExtra(EXTRA_SERVICE_NAME_LEGACY)
+                ?: defaultValue
+        }
     }
 
     init {
@@ -62,26 +86,26 @@ class CountdownNotificationManager @Inject constructor(
 
     /**
      * 设置倒计时完成闹钟
-     * @param request 订单ID
+     * @param orderKey 订单标识
      * @param serviceName 服务名称
      * @param triggerTimeMillis 触发时间（毫秒时间戳）
      */
     fun scheduleCountdownAlarm(
-        request: OrderInfoRequestModel,
+        orderKey: OrderKey,
         serviceName: String,
         triggerTimeMillis: Long
     ) {
         try {
-            logI("开始设置倒计时闹钟: orderId=${request.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+            logI("开始设置倒计时闹钟: orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
             
             // 先取消已存在的闹钟，避免重复
             cancelCountdownAlarm()
             
             val intent = Intent(context, CountdownAlarmReceiver::class.java).apply {
-                putExtra(EXTRA_REQUEST, request)
+                putExtra(EXTRA_ORDER_KEY, orderKey)
                 putExtra(EXTRA_SERVICE_NAME, serviceName)
                 // 添加唯一标识，确保Intent不会被复用
-                action = "$ACTION_COUNTDOWN_ALARM_PREFIX${request.orderId}"
+                action = "$ACTION_COUNTDOWN_ALARM_PREFIX${orderKey.orderId}"
             }
 
             val pendingIntent = PendingIntentCompat.getBroadcast(
@@ -98,7 +122,7 @@ class CountdownNotificationManager @Inject constructor(
             // Activity PendingIntent 用于 AlarmClock 的显示入口和全屏
             val alarmActivityIntent = CountdownAlarmActivity.createIntent(
                 context,
-                request,
+                orderKey,
                 serviceName,
                 autoCloseEnabled = false // 禁用自动关闭，确保用户看到提醒
             )
@@ -123,7 +147,7 @@ class CountdownNotificationManager @Inject constructor(
                 )
                 // AlarmManagerCompat 目前没有 setAlarmClock 方法，直接使用 alarmManager
                 alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
-                logI("✅ 通过AlarmClock设置倒计时闹钟(确保锁屏提醒): orderId=${request.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+                logI("✅ 通过AlarmClock设置倒计时闹钟(确保锁屏提醒): orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (shouldUseAlarmClock && alarmActivityPendingIntent == null) {
                     logE("⚠️ AlarmClock 所需 Activity PendingIntent 为空，降级为 setAndAllowWhileIdle")
@@ -133,7 +157,7 @@ class CountdownNotificationManager @Inject constructor(
                     triggerTimeMillis,
                     pendingIntent
                 )
-                logI("✅ 无精确闹钟能力，降级为 setAndAllowWhileIdle: orderId=${request.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+                logI("✅ 无精确闹钟能力，降级为 setAndAllowWhileIdle: orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
             } else {
                 // Android 12以下使用精确闹钟
                 AlarmManagerCompat.setExactAndAllowWhileIdle(
@@ -142,10 +166,10 @@ class CountdownNotificationManager @Inject constructor(
                     triggerTimeMillis,
                     pendingIntent
                 )
-                logI("✅ 通过ExactAndAllowWhileIdle设置倒计时闹钟: orderId=${request.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+                logI("✅ 通过ExactAndAllowWhileIdle设置倒计时闹钟: orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
             }
 
-            saveLastScheduledOrderId(request.orderId)
+            saveLastScheduledOrderId(orderKey.orderId)
 
             // 验证闹钟是否设置成功
             val nextAlarmClock = alarmManager.nextAlarmClock
@@ -154,7 +178,7 @@ class CountdownNotificationManager @Inject constructor(
             // 追踪闹钟设置成功事件
             CountdownEventTracker.trackEvent(
                 eventType = CountdownEventTracker.EventType.ALARM_SCHEDULE_SUCCESS,
-                orderId = request.orderId,
+                orderId = orderKey.orderId,
                 extras = mapOf(
                     "serviceName" to serviceName,
                     "triggerTime" to triggerTimeMillis,
@@ -169,7 +193,7 @@ class CountdownNotificationManager @Inject constructor(
             // 追踪闹钟设置失败事件
             CountdownEventTracker.trackError(
                 eventType = CountdownEventTracker.EventType.ALARM_SCHEDULE_FAILED,
-                orderId = request.orderId,
+                orderId = orderKey.orderId,
                 throwable = e,
                 extras = mapOf(
                     "serviceName" to serviceName,
@@ -237,15 +261,15 @@ class CountdownNotificationManager @Inject constructor(
      * 
      * @param orderId 订单ID，用于匹配设置闹钟时使用的action
      */
-    fun cancelCountdownAlarmForOrder(request: OrderInfoRequestModel) {
+    fun cancelCountdownAlarmForOrder(orderKey: OrderKey) {
         try {
-            logI("开始取消订单 ${request.orderId} 的倒计时闹钟...")
-            cancelCountdownAlarmInternal(request.orderId)
-            if (getLastScheduledOrderId() == request.orderId) {
+            logI("开始取消订单 ${orderKey.orderId} 的倒计时闹钟...")
+            cancelCountdownAlarmInternal(orderKey.orderId)
+            if (getLastScheduledOrderId() == orderKey.orderId) {
                 clearLastScheduledOrderId()
             }
         } catch (e: Exception) {
-            logE("❌ 取消订单 ${request.orderId} 的倒计时闹钟失败: ${e.message}", throwable = e)
+            logE("❌ 取消订单 ${orderKey.orderId} 的倒计时闹钟失败: ${e.message}", throwable = e)
             // 失败时尝试通用取消
             cancelCountdownAlarm()
         }
@@ -258,14 +282,14 @@ class CountdownNotificationManager @Inject constructor(
      * @return Notification对象
      */
     fun buildCountdownCompletionNotification(
-        request: OrderInfoRequestModel,
+        orderKey: OrderKey,
         serviceName: String
     ): android.app.Notification {
-        logI("构建倒计时完成通知: orderId=${request.orderId}, serviceName=$serviceName")
+        logI("构建倒计时完成通知: orderId=${orderKey.orderId}, serviceName=$serviceName")
         
         // 创建关闭响铃的PendingIntent
         val dismissIntent = Intent(context, DismissAlarmReceiver::class.java).apply {
-            putExtra(EXTRA_REQUEST, request)
+            putExtra(EXTRA_ORDER_KEY, orderKey)
             putExtra(EXTRA_SERVICE_NAME, serviceName)
         }
         val dismissPendingIntent = PendingIntentCompat.getBroadcast(
@@ -280,7 +304,7 @@ class CountdownNotificationManager @Inject constructor(
         // 注意：fullScreenIntent需要使用FLAG_ACTIVITY_NEW_TASK
         val alarmActivityIntent = CountdownAlarmActivity.createIntent(
             context,
-            request,
+            orderKey,
             serviceName,
             autoCloseEnabled = true
         ).apply {

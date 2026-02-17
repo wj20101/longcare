@@ -132,3 +132,37 @@
 - `./gradlew :app:compileDebugKotlin --no-daemon`
 - `./gradlew :app:testDebugUnitTest --no-daemon`
 - `./gradlew :app:assembleDebug --no-daemon`
+
+## Baseline Run - 2026-02-17 18:43:08 +0800
+
+### Environment
+
+- Host: `Darwin yuyinguideMacBook-Pro.local 25.3.0 Darwin Kernel Version 25.3.0: Wed Jan 28 20:53:15 PST 2026; root:xnu-12377.81.4~5/RELEASE_ARM64_T6000 arm64`
+- Java: `openjdk version "21.0.9" 2025-10-21`
+- Gradle: `9.3.1`
+- Module Count (settings include): `11`
+
+### Build Task Metrics
+
+| Task | Status | Duration | Log |
+|---|---|---:|---|
+| `:app:compileDebugKotlin` | PASS | 40s | `/tmp/longcare_baseline_logs/_app_compileDebugKotlin.log` |
+| `:app:testDebugUnitTest` | PASS | 49s | `/tmp/longcare_baseline_logs/_app_testDebugUnitTest.log` |
+| `:app:assembleDebug` | PASS | 79s | `/tmp/longcare_baseline_logs/_app_assembleDebug.log` |
+
+### Artifact Metrics
+
+| Metric | Value |
+|---|---|
+| APK Path | `/Users/yuyingui/StudioProjects/longcare/app/build/outputs/apk/debug/app-debug.apk` |
+| APK Size | 46M (48015937 bytes) |
+| Dex File Count | 35 |
+| Method Count | N/A（需要 apkanalyzer 或 dexcount，当前基线先不统计） |
+
+### Commands
+
+- `BASELINE_CLEAN_BEFORE_RUN=true BASELINE_DISABLE_BUILD_CACHE=true BASELINE_DISABLE_CONFIGURATION_CACHE=true BASELINE_RERUN_TASKS=true ./scripts/quality/collect_build_baseline.sh`
+- `./gradlew clean --no-daemon --no-build-cache --no-configuration-cache`
+- `./gradlew :app:compileDebugKotlin --no-daemon --no-build-cache --no-configuration-cache --rerun-tasks`
+- `./gradlew :app:testDebugUnitTest --no-daemon --no-build-cache --no-configuration-cache --rerun-tasks`
+- `./gradlew :app:assembleDebug --no-daemon --no-build-cache --no-configuration-cache --rerun-tasks`
