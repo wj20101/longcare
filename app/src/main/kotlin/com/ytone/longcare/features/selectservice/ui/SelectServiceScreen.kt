@@ -35,7 +35,6 @@ import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.features.selectservice.api.SelectServiceActions
 import com.ytone.longcare.features.selectservice.vm.SelectServiceViewModel
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.ui.rememberOrderInfoRequest
 
 // --- 数据模型 ---
 data class ServiceItem(
@@ -52,9 +51,6 @@ fun SelectServiceScreen(
     selectServiceViewModel: SelectServiceViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
-    // 从订单键构建请求模型
-    val orderInfoRequest = rememberOrderInfoRequest(orderKey)
-
     val coroutineScope = rememberCoroutineScope()
     
     // 使用SharedViewModel获取订单详情
@@ -65,13 +61,13 @@ fun SelectServiceScreen(
     CustomBackHandler(customAction = actions.onNavigateBack)
 
     // 在组件初始化时加载订单信息（如果缓存中没有）
-    LaunchedEffect(orderInfoRequest) {
+    LaunchedEffect(orderKey) {
         // 先检查缓存，如果没有缓存数据才请求
-        if (sharedViewModel.getCachedOrderInfo(orderInfoRequest) == null) {
-            sharedViewModel.getOrderInfo(orderInfoRequest)
+        if (sharedViewModel.getCachedOrderInfo(orderKey) == null) {
+            sharedViewModel.getOrderInfo(orderKey)
         } else {
             // 如果有缓存数据，直接设置为成功状态
-            sharedViewModel.getOrderInfo(orderInfoRequest, forceRefresh = false)
+            sharedViewModel.getOrderInfo(orderKey, forceRefresh = false)
         }
     }
 
@@ -268,7 +264,7 @@ fun SelectServiceScreen(
                                     serviceItems.filter { it.isSelected }.map { it.id }
                                 // 先调用starOrder接口
                                 sharedViewModel.starOrder(
-                                    orderInfoRequest.orderId,
+                                    orderKey.orderId,
                                     selectedProjectIds.map { it.toLong() }) {
                                     // 成功后保存选中的项目ID到Room
                                     coroutineScope.launch {

@@ -10,9 +10,11 @@ import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.model.OrderInfoRequestModel
+import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.model.toOrderKey
+import com.ytone.longcare.model.toRequestModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -77,6 +79,10 @@ class SharedOrderDetailViewModel @Inject constructor(
         }
     }
 
+    fun getOrderInfo(orderKey: OrderKey, forceRefresh: Boolean = false) {
+        getOrderInfo(orderKey.toRequestModel(), forceRefresh)
+    }
+
     /**
      * 获取缓存的订单详情
      * @param request 订单信息请求模型
@@ -84,6 +90,10 @@ class SharedOrderDetailViewModel @Inject constructor(
      */
     fun getCachedOrderInfo(request: OrderInfoRequestModel): ServiceOrderInfoModel? {
         val orderKey = request.toOrderKey()
+        return unifiedOrderRepository.getCachedOrderInfo(orderKey)
+    }
+
+    fun getCachedOrderInfo(orderKey: OrderKey): ServiceOrderInfoModel? {
         return unifiedOrderRepository.getCachedOrderInfo(orderKey)
     }
 
@@ -107,6 +117,10 @@ class SharedOrderDetailViewModel @Inject constructor(
         return getCachedOrderInfo(request)?.userInfo?.address ?: ""
     }
 
+    fun getUserAddress(orderKey: OrderKey): String {
+        return getCachedOrderInfo(orderKey)?.userInfo?.address ?: ""
+    }
+
     /**
      * 获取项目ID列表
      * @param request 订单信息请求模型
@@ -121,6 +135,18 @@ class SharedOrderDetailViewModel @Inject constructor(
         projectList: List<ServiceProjectM>
     ): List<Int> {
         val orderKey = request.toOrderKey()
+        val savedProjectIds = unifiedOrderRepository.getSelectedProjectIds(orderKey)
+        return if (savedProjectIds.isEmpty()) {
+            projectList.map { it.projectId }
+        } else {
+            savedProjectIds
+        }
+    }
+
+    suspend fun getSelectedProjectIdsOrDefault(
+        orderKey: OrderKey,
+        projectList: List<ServiceProjectM>
+    ): List<Int> {
         val savedProjectIds = unifiedOrderRepository.getSelectedProjectIds(orderKey)
         return if (savedProjectIds.isEmpty()) {
             projectList.map { it.projectId }

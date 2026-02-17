@@ -63,7 +63,6 @@ import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewMode
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.ui.rememberOrderInfoRequest
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
@@ -81,9 +80,6 @@ fun PhotoUploadScreen(
     viewModel: PhotoProcessingViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
-    // 从订单键构建请求模型
-    val orderInfoRequest = rememberOrderInfoRequest(orderKey)
-    
     // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
     CustomBackHandler(customAction = actions.onNavigateBack)
 
@@ -95,16 +91,16 @@ fun PhotoUploadScreen(
     }
 
     // 在组件初始化时加载订单信息（如果缓存中没有）
-    LaunchedEffect(orderInfoRequest) {
+    LaunchedEffect(orderKey) {
         // 设置ViewModel的OrderKey以加载图片数据
         viewModel.setOrderKey(orderKey)
         
         // 先检查缓存，如果没有缓存数据才请求
-        if (sharedViewModel.getCachedOrderInfo(orderInfoRequest) == null) {
-            sharedViewModel.getOrderInfo(orderInfoRequest)
+        if (sharedViewModel.getCachedOrderInfo(orderKey) == null) {
+            sharedViewModel.getOrderInfo(orderKey)
         } else {
             // 如果有缓存数据，直接设置为成功状态
-            sharedViewModel.getOrderInfo(orderInfoRequest, forceRefresh = false)
+            sharedViewModel.getOrderInfo(orderKey, forceRefresh = false)
         }
     }
 
@@ -137,8 +133,8 @@ fun PhotoUploadScreen(
                         }
                         val watermarkData = viewModel.generateWatermarkData(
                             taskType = taskType,
-                            address = sharedViewModel.getUserAddress(orderInfoRequest),
-                            orderId = orderInfoRequest.orderId
+                            address = sharedViewModel.getUserAddress(orderKey),
+                            orderId = orderKey.orderId
                         )
                         actions.onNavigateToCamera(watermarkData)
                     }
@@ -163,7 +159,7 @@ fun PhotoUploadScreen(
                     viewModel.addImagesToProcess(
                         uris = listOf(uri),
                         taskType = taskType,
-                        address = sharedViewModel.getUserAddress(orderInfoRequest),
+                        address = sharedViewModel.getUserAddress(orderKey),
                         orderKey = orderKey
                     )
                 }

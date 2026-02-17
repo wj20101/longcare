@@ -38,7 +38,6 @@ import com.ytone.longcare.features.nursingexecution.api.NursingExecutionActions
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.ui.rememberOrderInfoRequest
 
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,9 +48,6 @@ fun NursingExecutionScreen(
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
-    // 从订单键构建请求模型
-    val orderInfoRequest = rememberOrderInfoRequest(orderKey)
-
     // 开启定位会话 (Session Start)
     LaunchedEffect(orderKey.orderId) {
         locationTrackingViewModel.ensureLocationSessionForOrder(orderKey.orderId)
@@ -68,8 +64,8 @@ fun NursingExecutionScreen(
     CustomBackHandler(customAction = actions.onNavigateBack)
     
     // 在组件初始化时加载订单信息
-    LaunchedEffect(orderInfoRequest) {
-        sharedViewModel.getOrderInfo(orderInfoRequest, forceRefresh = true)
+    LaunchedEffect(orderKey) {
+        sharedViewModel.getOrderInfo(orderKey, forceRefresh = true)
     }
     when (val state = uiState) {
         is OrderDetailUiState.Loading -> {
@@ -83,7 +79,7 @@ fun NursingExecutionScreen(
                 orderKey = orderKey,
                 onNavigateToCountdown = { projectList ->
                     val selectedProjectIds = sharedViewModel.getSelectedProjectIdsOrDefault(
-                        request = orderInfoRequest,
+                        orderKey = orderKey,
                         projectList = projectList
                     )
                     actions.onNavigateToServiceCountdown(orderKey, selectedProjectIds)
@@ -94,7 +90,7 @@ fun NursingExecutionScreen(
         is OrderDetailUiState.Error -> {
             ErrorScreen(
                 message = state.message,
-                onRetry = { sharedViewModel.getOrderInfo(orderInfoRequest, forceRefresh = true) }
+                onRetry = { sharedViewModel.getOrderInfo(orderKey, forceRefresh = true) }
             )
         }
         
