@@ -2,15 +2,10 @@ package com.ytone.longcare.features.face.ui
 
 import android.Manifest
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
-import com.ytone.longcare.common.utils.logE
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -32,8 +27,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,14 +40,12 @@ import com.ytone.longcare.theme.PrimaryBlue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.features.face.viewmodel.ManualFaceCaptureViewModel
-import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,26 +75,17 @@ fun ManualFaceCaptureScreen(
     ) { isGranted ->
         viewModel.setCameraPermissionGranted(isGranted)
     }
-    
-    // 检查并请求相机权限
-    LaunchedEffect(Unit) {
-        val permission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-        if (permission == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            viewModel.setCameraPermissionGranted(true)
-        } else {
+
+    ManualFaceCaptureEffects(
+        context = context,
+        currentState = currentState,
+        savedFaceImagePath = uiState.savedFaceImagePath,
+        onSetCameraPermissionGranted = viewModel::setCameraPermissionGranted,
+        onFaceCaptured = onFaceCaptured,
+        requestCameraPermission = {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
-    }
-    
-    // 监听成功状态，返回结果
-    LaunchedEffect(currentState) {
-        if (currentState is ManualFaceCaptureState.Success) {
-            val savedPath = uiState.savedFaceImagePath
-            if (savedPath != null) {
-                onFaceCaptured(savedPath)
-            }
-        }
-    }
+    )
     
     Scaffold(
         topBar = {
@@ -143,7 +125,7 @@ fun ManualFaceCaptureScreen(
                         },
                         onTakePhoto = {
                             viewModel.startCapture()
-                            takePhoto(imageCapture, captureExecutor, viewModel)
+                            takeManualFacePhoto(imageCapture, captureExecutor, viewModel)
                         },
                         isCapturing = currentState is ManualFaceCaptureState.CapturingPhoto
                     )
@@ -555,172 +537,5 @@ private fun FaceSelectionItem(
             }
         }
         
-    }
-}
-
-@Composable
-fun FaceFullScreenPreviewDialog(
-    face: DetectedFace,
-    onDismiss: () -> Unit
-) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.9f))
-                .clickable { onDismiss() },
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // 放大的人脸图片
-                Card(
-                    modifier = Modifier
-                        .size(300.dp)
-                        .clip(RoundedCornerShape(16.dp)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                ) {
-                    Image(
-                        bitmap = face.croppedFace.asImageBitmap(),
-                        contentDescription = "人脸预览",
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // 关闭按钮
-                FloatingActionButton(
-                    onClick = onDismiss,
-                    containerColor = Color.White,
-                    contentColor = Color.Black
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "关闭",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-private fun takePhoto(
-    imageCapture: ImageCapture?,
-    executor: Executor,
-    viewModel: ManualFaceCaptureViewModel
-) {
-    imageCapture?.takePicture(
-        executor,
-        object : ImageCapture.OnImageCapturedCallback() {
-            override fun onCaptureSuccess(image: ImageProxy) {
-                try {
-                    // 从ImageProxy转换为Bitmap
-                    val originalBitmap = imageProxyToBitmap(image)
-
-                    // 获取旋转角度
-                    val rotationDegrees = image.imageInfo.rotationDegrees
-
-                    // 处理前置摄像头的图片方向和镜像
-                    val correctedBitmap = correctImageOrientation(originalBitmap, rotationDegrees)
-                    viewModel.onPhotoCaptured(correctedBitmap)
-                } catch (e: Exception) {
-                    com.ytone.longcare.common.utils.KLogger.e("CameraCapture", "图片处理失败", e)
-                } finally {
-                    image.close()
-                }
-            }
-
-            override fun onError(exception: ImageCaptureException) {
-                com.ytone.longcare.common.utils.KLogger.e("CameraCapture", "拍照失败", exception)
-            }
-        }
-    )
-}
-
-/**
- * 从ImageProxy转换为Bitmap，并进行适当的下采样以避免内存溢出
- */
-private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
-    val planeProxy = image.planes[0]
-    val buffer: java.nio.ByteBuffer = planeProxy.buffer
-    val bytes = ByteArray(buffer.remaining())
-    buffer.get(bytes)
-
-    // 1. 先只解码尺寸
-    val options = BitmapFactory.Options().apply {
-        inJustDecodeBounds = true
-    }
-    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
-
-    // 2. 计算采样率，限制最大宽高为 2048 (4MP左右，足够人脸识别和显示)
-    options.inSampleSize = calculateInSampleSize(options, 2048, 2048)
-    options.inJustDecodeBounds = false
-
-    // 3. 实际解码
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
-        ?: throw IllegalStateException("无法解码图片")
-}
-
-/**
- * 计算采样率
- */
-private fun calculateInSampleSize(
-    options: BitmapFactory.Options,
-    reqWidth: Int,
-    reqHeight: Int
-): Int {
-    val (height: Int, width: Int) = options.run { outHeight to outWidth }
-    var inSampleSize = 1
-
-    if (height > reqHeight || width > reqWidth) {
-        val halfHeight: Int = height / 2
-        val halfWidth: Int = width / 2
-
-        // 计算最大的 inSampleSize 值，该值是 2 的幂，且保持宽高均大于请求的宽高
-        while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
-            inSampleSize *= 2
-        }
-    }
-
-    return inSampleSize
-}
-
-/**
- * 修正图片方向
- * 参考CameraScreen.kt的rotateBitmap实现，只做旋转处理
- */
-private fun correctImageOrientation(bitmap: Bitmap, rotationDegrees: Int): Bitmap {
-    val matrix = Matrix()
-    matrix.postRotate(rotationDegrees.toFloat())
-    
-    return try {
-        Bitmap.createBitmap(
-            bitmap,
-            0,
-            0,
-            bitmap.width,
-            bitmap.height,
-            matrix,
-            true
-        ).also {
-            // 回收原始bitmap以释放内存
-            if (it != bitmap) {
-                bitmap.recycle()
-            }
-        }
-    } catch (e: Exception) {
-        com.ytone.longcare.common.utils.KLogger.e("ImageCorrection", "图片方向修正失败", e)
-        bitmap // 如果修正失败，返回原始图片
     }
 }

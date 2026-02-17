@@ -920,3 +920,17 @@
   - 验证：
     - `./gradlew :app:compileDebugKotlin`：PASS。
     - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS。
+- 执行“持续现代化优化（R2 增量切片：face manual capture 屏幕拆分）”（2026-02-17）：
+  - 副作用拆分：
+    - 新增 `app/src/main/kotlin/com/ytone/longcare/features/face/ui/ManualFaceCaptureEffects.kt`。
+    - 抽离相机权限检查/申请与成功态回传监听（`onFaceCaptured`）逻辑。
+  - 拍照处理拆分：
+    - 新增 `app/src/main/kotlin/com/ytone/longcare/features/face/ui/ManualFaceCaptureProcessor.kt`。
+    - 抽离拍照回调、Bitmap 下采样解码、旋转修正与异常处理逻辑。
+  - 组件归拢：
+    - `FaceFullScreenPreviewDialog` 下沉到 `app/src/main/kotlin/com/ytone/longcare/features/face/ui/components/ManualFaceCaptureDialogComponents.kt`。
+  - 收敛结果：
+    - `ManualFaceCaptureScreen.kt` 从 `726` 行降至 `541` 行。
+  - 验证：
+    - `./gradlew :app:compileDebugKotlin`：PASS。
+    - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS。

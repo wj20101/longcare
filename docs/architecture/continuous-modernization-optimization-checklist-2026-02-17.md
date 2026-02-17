@@ -25,7 +25,7 @@
 | ID | 优化项 | 对应目标 | 状态 |
 |---|---|---|---|
 | R1 | 继续将主体业务从 `app/features/*` 迁移到 `feature/*` 模块（优先：`photoupload`、`identification`、`servicecountdown`） | 现代化模块架构、边界收敛 | IN_PROGRESS（photoupload 核心层 + identification vm 全量 + servicecountdown vm 已下沉，UI/平台适配层留在 app） |
-| R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | IN_PROGRESS（`ServiceCountdownScreen` 副作用/底栏已拆分；`PhotoUploadScreen` 副作用/底栏/Mock调试卡片已拆分；`CameraScreen` 拍照处理与权限门禁已拆分） |
+| R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | IN_PROGRESS（`ServiceCountdownScreen` 副作用/底栏已拆分；`PhotoUploadScreen` 副作用/底栏/Mock调试卡片已拆分；`CameraScreen` 拍照处理与权限门禁已拆分；`ManualFaceCaptureScreen` 副作用/拍照处理已拆分） |
 | R3 | CI 健康监控告警项治理：将 Android CI 取消率从 50% 降到阈值内（触发策略与提交流水优化） | CI/CD 资源效率、稳定性 | TODO |
 | R4 | 在“无缓存 + rerun”基线口径下继续压降 `:app:assembleDebug` 冷构建耗时（当前 79s） | 构建性能目标收敛 | TODO |
 
@@ -111,6 +111,15 @@
     - 新增 `CameraPermissionGate.kt`，集中处理相机权限申请与重试入口。
   - 收敛结果：
     - `CameraScreen.kt` 行数从 `928` 降至 `511`。
+- `R2` 增量切片（`face/manual-capture`）：
+  - 副作用流程拆分：
+    - 新增 `ManualFaceCaptureEffects.kt`，承接相机权限检查/申请与成功态回传路径监听。
+  - 拍照处理流程拆分：
+    - 新增 `ManualFaceCaptureProcessor.kt`，承接拍照回调、位图解码采样、旋转修正与异常处理。
+  - 弹窗组件归拢：
+    - `FaceFullScreenPreviewDialog` 从 `ManualFaceCaptureScreen.kt` 下沉到 `components/ManualFaceCaptureDialogComponents.kt`。
+  - 收敛结果：
+    - `ManualFaceCaptureScreen.kt` 行数从 `726` 降至 `541`。
 - 验证：
   - `./gradlew :app:compileDebugKotlin`：PASS
   - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS
