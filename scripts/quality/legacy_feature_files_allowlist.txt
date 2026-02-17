@@ -88,6 +88,7 @@ app/src/main/kotlin/com/ytone/longcare/features/photoupload/model/ImageTask.kt
 app/src/main/kotlin/com/ytone/longcare/features/photoupload/model/WatermarkData.kt
 app/src/main/kotlin/com/ytone/longcare/features/photoupload/tracker/CameraEventTracker.kt
 app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraCaptureProcessor.kt
+app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraBitmapProcessingUtils.kt
 app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraPermissionGate.kt
 app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraScreen.kt
 app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraScreenContent.kt
