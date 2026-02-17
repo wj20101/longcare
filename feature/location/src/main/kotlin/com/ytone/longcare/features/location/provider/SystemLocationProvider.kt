@@ -3,9 +3,8 @@ package com.ytone.longcare.features.location.provider
 import android.annotation.SuppressLint
 import android.location.Location
 import android.location.LocationManager
-import androidx.core.content.ContextCompat
+import android.os.CancellationSignal
 import androidx.core.location.LocationManagerCompat
-import androidx.core.os.CancellationSignal
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.location.LocationProvider
