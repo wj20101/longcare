@@ -244,175 +244,112 @@ internal fun CameraContent(
                         .padding(start = 13.dp, bottom = 14.dp)
                 )
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp, end = 16.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    DelayTimerButton(
-                        currentMode = delayMode,
-                        onClick = { delayMode = delayMode.next() },
-                        enabled = !isCapturing && !isCountingDown
-                    )
-                }
+                CameraTopToolbar(
+                    delayMode = delayMode,
+                    enabled = !isCapturing && !isCountingDown,
+                    onToggleDelayMode = { delayMode = delayMode.next() }
+                )
 
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(bottom = 32.dp, start = 32.dp, end = 32.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(modifier = Modifier.size(56.dp))
-
-                    ShutterButton(
-                        onClick = {
+                CameraBottomControlBar(
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    hasFrontCamera = hasFrontCamera,
+                    isCameraSwitching = isCameraSwitching,
+                    isCapturing = isCapturing,
+                    isCountingDown = isCountingDown,
+                    onShutterClick = {
+                        if (isCountingDown) {
+                            countdownSeconds = 0
+                        } else if (!isCameraSwitching && !isCapturing) {
+                            val view = watermarkView
+                            if (view == null || view.width <= 0 || view.height <= 0) {
+                                Toast.makeText(context, "请稍候，正在准备中...", Toast.LENGTH_SHORT).show()
+                            } else if (delayMode != DelayMode.OFF) {
+                                countdownSeconds = delayMode.seconds
+                            } else {
+                                isCapturing = true
+                                viewModel.updateTime()
+                                val executor = ContextCompat.getMainExecutor(context)
+                                takePhoto(
+                                    context = context,
+                                    cameraController = cameraController,
+                                    executor = executor,
+                                    watermarkView = view,
+                                    isFrontCamera = isFrontCamera,
+                                    scope = scope,
+                                    onImageCaptured = { file ->
+                                        isCapturing = false
+                                        onImageCaptured(file)
+                                    },
+                                    onError = { isCapturing = false }
+                                )
+                            }
+                        }
+                    },
+                    onSwitchCameraClick = {
+                        if (!isCameraSwitching && !isCapturing) {
                             if (isCountingDown) {
                                 countdownSeconds = 0
-                                return@ShutterButton
                             }
 
-                            if (isCameraSwitching || isCapturing) {
-                                return@ShutterButton
-                            }
+                            val wasUsingFrontCamera = isFrontCamera
 
-                            if (watermarkView == null) {
-                                Toast.makeText(context, "请稍候，正在准备中...", Toast.LENGTH_SHORT).show()
-                                return@ShutterButton
-                            }
-
-                            val view = watermarkView ?: return@ShutterButton
-
-                            if (view.width <= 0 || view.height <= 0) {
-                                Toast.makeText(context, "请稍候，正在准备中...", Toast.LENGTH_SHORT).show()
-                                return@ShutterButton
-                            }
-
-                            if (delayMode != DelayMode.OFF) {
-                                countdownSeconds = delayMode.seconds
-                                return@ShutterButton
-                            }
-
-                            isCapturing = true
-                            viewModel.updateTime()
-                            val executor = ContextCompat.getMainExecutor(context)
-                            takePhoto(
-                                context = context,
-                                cameraController = cameraController,
-                                executor = executor,
-                                watermarkView = view,
-                                isFrontCamera = isFrontCamera,
-                                scope = scope,
-                                onImageCaptured = { file ->
-                                    isCapturing = false
-                                    onImageCaptured(file)
-                                },
-                                onError = { isCapturing = false }
-                            )
-                        },
-                        enabled = !isCameraSwitching && (!isCapturing || isCountingDown),
-                        isCountingDown = isCountingDown
-                    )
-
-                    if (hasFrontCamera) {
-                        CameraSwitchButton(
-                            onClick = {
-                                if (isCameraSwitching || isCapturing) return@CameraSwitchButton
-
-                                if (isCountingDown) {
-                                    countdownSeconds = 0
-                                }
-
-                                val wasUsingFrontCamera = isFrontCamera
-
-                                scope.launch {
-                                    try {
-                                        isCameraSwitching = true
-                                        val newSelector = if (wasUsingFrontCamera) {
-                                            CameraSelector.DEFAULT_BACK_CAMERA
-                                        } else {
-                                            CameraSelector.DEFAULT_FRONT_CAMERA
-                                        }
-
-                                        val targetAvailable = try {
-                                            cameraController.hasCamera(newSelector)
-                                        } catch (_: CameraInfoUnavailableException) {
-                                            false
-                                        }
-
-                                        if (!targetAvailable) {
-                                            Toast.makeText(context, "目标摄像头不可用", Toast.LENGTH_SHORT).show()
-                                            return@launch
-                                        }
-
-                                        cameraController.cameraSelector = newSelector
-                                        isFrontCamera = !wasUsingFrontCamera
-
-                                        var waitTime = 0L
-                                        val maxWaitTime = 1500L
-                                        val checkInterval = 100L
-                                        while (waitTime < maxWaitTime) {
-                                            delay(checkInterval)
-                                            waitTime += checkInterval
-                                            try {
-                                                if (cameraController.cameraInfo != null) break
-                                            } catch (_: IllegalStateException) {
-                                                // 相机切换中可能暂时取不到 cameraInfo，继续轮询。
-                                            }
-                                        }
-
-                                    } catch (e: CancellationException) {
-                                        throw e
-                                    } catch (e: Exception) {
-                                        CameraEventTracker.trackError(
-                                            CameraEventTracker.EventType.CAMERA_SWITCH_ERROR,
-                                            e
-                                        )
-                                        Toast.makeText(context, "切换摄像头失败", Toast.LENGTH_SHORT).show()
-                                    } finally {
-                                        isCameraSwitching = false
+                            scope.launch {
+                                try {
+                                    isCameraSwitching = true
+                                    val newSelector = if (wasUsingFrontCamera) {
+                                        CameraSelector.DEFAULT_BACK_CAMERA
+                                    } else {
+                                        CameraSelector.DEFAULT_FRONT_CAMERA
                                     }
+
+                                    val targetAvailable = try {
+                                        cameraController.hasCamera(newSelector)
+                                    } catch (_: CameraInfoUnavailableException) {
+                                        false
+                                    }
+
+                                    if (!targetAvailable) {
+                                        Toast.makeText(context, "目标摄像头不可用", Toast.LENGTH_SHORT).show()
+                                        return@launch
+                                    }
+
+                                    cameraController.cameraSelector = newSelector
+                                    isFrontCamera = !wasUsingFrontCamera
+
+                                    var waitTime = 0L
+                                    val maxWaitTime = 1500L
+                                    val checkInterval = 100L
+                                    while (waitTime < maxWaitTime) {
+                                        delay(checkInterval)
+                                        waitTime += checkInterval
+                                        try {
+                                            if (cameraController.cameraInfo != null) break
+                                        } catch (_: IllegalStateException) {
+                                            // 相机切换中可能暂时取不到 cameraInfo，继续轮询。
+                                        }
+                                    }
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    CameraEventTracker.trackError(
+                                        CameraEventTracker.EventType.CAMERA_SWITCH_ERROR,
+                                        e
+                                    )
+                                    Toast.makeText(context, "切换摄像头失败", Toast.LENGTH_SHORT).show()
+                                } finally {
+                                    isCameraSwitching = false
                                 }
-                            },
-                            enabled = !isCameraSwitching && !isCapturing
-                        )
-                    } else {
-                        Box(modifier = Modifier.size(56.dp))
+                            }
+                        }
                     }
-                }
+                )
 
-                if (isCountingDown) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = countdownSeconds.toString(),
-                            style = androidx.compose.ui.text.TextStyle(
-                                fontSize = 120.sp,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                color = Color.White,
-                                shadow = androidx.compose.ui.graphics.Shadow(
-                                    color = Color.Black.copy(alpha = 0.5f),
-                                    blurRadius = 8f
-                                )
-                            )
-                        )
-                    }
-                }
+                CameraCountdownOverlay(
+                    countdownSeconds = countdownSeconds,
+                    visible = isCountingDown
+                )
 
-                if (isCapturing && !isCountingDown) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.5f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = Color.White)
-                    }
-                }
+                CameraCapturingOverlay(visible = isCapturing && !isCountingDown)
             }
         }
     }

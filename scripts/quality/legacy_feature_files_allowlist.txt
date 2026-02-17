@@ -91,6 +91,7 @@ app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraCaptureProc
 app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraPermissionGate.kt
 app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraScreen.kt
 app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraScreenContent.kt
+app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraScreenLayoutComponents.kt
 app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadBottomActionBar.kt
 app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadGridComponents.kt
 app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadMockDebugToolsCard.kt

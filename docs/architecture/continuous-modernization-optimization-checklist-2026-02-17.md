@@ -118,8 +118,12 @@
   - 页面内容拆分（本轮新增）：
     - 新增 `CameraScreenContent.kt`，下沉 `CameraContent` 与延迟拍照模式状态/倒计时编排。
     - `CameraScreen.kt` 收敛为页面入口与导航回调，移除内联大段拍照页面内容。
+  - 页面布局组件拆分（本轮新增）：
+    - 新增 `CameraScreenLayoutComponents.kt`，下沉顶部延迟拍照工具条、底部控制栏、倒计时遮罩与拍照中遮罩组件。
+    - `CameraScreenContent.kt` 收敛为状态管理与拍照/切换摄像头业务逻辑编排。
   - 收敛结果：
     - `CameraScreen.kt` 行数从 `928` 降至 `511`，并在本轮进一步降至 `35`。
+    - `CameraScreenContent.kt` 行数从 `431` 降至 `368`。
 - `R2` 增量切片（`face/manual-capture`）：
   - 副作用流程拆分：
     - 新增 `ManualFaceCaptureEffects.kt`，承接相机权限检查/申请与成功态回传路径监听。
@@ -232,6 +236,7 @@
 - `app/src/main/kotlin/com/ytone/longcare/features/nfc/vm/NfcWorkflowContracts.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraScreen.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraScreenContent.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraScreenLayoutComponents.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadGridComponents.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadScreenPreviews.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardScreen.kt`
