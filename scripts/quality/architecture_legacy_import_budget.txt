@@ -1,0 +1,3 @@
+# Maximum allowed entries in architecture_legacy_imports_allowlist.txt.
+# Reduce this number only after removing existing legacy imports.
+0

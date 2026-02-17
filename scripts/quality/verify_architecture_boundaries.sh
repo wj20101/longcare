@@ -5,11 +5,15 @@ PROJECT_ROOT="${1:-.}"
 EXIT_CODE=0
 
 APP_ROOT="${PROJECT_ROOT}/app/src/main/kotlin/com/ytone/longcare"
+APP_DEBUG_ROOT="${PROJECT_ROOT}/app/src/debug/kotlin/com/ytone/longcare"
+APP_TEST_ROOT="${PROJECT_ROOT}/app/src/test/kotlin/com/ytone/longcare"
 CORE_ROOT="${PROJECT_ROOT}/core"
+CORE_MODEL_API_ROOT="${PROJECT_ROOT}/core/model/src/main/kotlin/com/ytone/longcare/api"
 CORE_DOMAIN_ROOT="${PROJECT_ROOT}/core/domain/src/main/kotlin"
 FEATURE_ROOT="${PROJECT_ROOT}/feature"
 LEGACY_APP_FEATURE_ROOT="${APP_ROOT}/features"
 LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST="${PROJECT_ROOT}/scripts/quality/architecture_legacy_imports_allowlist.txt"
+LEGACY_APP_INTERNAL_IMPORT_BUDGET_FILE="${PROJECT_ROOT}/scripts/quality/architecture_legacy_import_budget.txt"
 LEGACY_APP_FEATURE_FILE_ALLOWLIST="${PROJECT_ROOT}/scripts/quality/legacy_feature_files_allowlist.txt"
 
 echo "[architecture] checking layer boundaries under: ${PROJECT_ROOT}"
@@ -100,6 +104,40 @@ run_allowlisted_rule() {
   fi
 }
 
+run_filtered_rule() {
+  local rule_name="$1"
+  local pattern="$2"
+  local exclude_regex="$3"
+  shift 3
+
+  local scan_dirs=()
+  local scan_dir
+  for scan_dir in "$@"; do
+    if [[ -d "${scan_dir}" ]]; then
+      scan_dirs+=("${scan_dir}")
+    fi
+  done
+
+  if [[ "${#scan_dirs[@]}" -eq 0 ]]; then
+    echo "[architecture] ${rule_name} skipped (no matching directories)"
+    return 0
+  fi
+
+  local raw_matches
+  raw_matches="$(rg -n "${pattern}" "${scan_dirs[@]}" --glob '*.kt' || true)"
+  if [[ -z "${raw_matches}" ]]; then
+    return 0
+  fi
+
+  local filtered_matches
+  filtered_matches="$(printf "%s\n" "${raw_matches}" | grep -Ev "${exclude_regex}" || true)"
+  if [[ -n "${filtered_matches}" ]]; then
+    printf "%s\n" "${filtered_matches}"
+    echo "[architecture][FAIL] ${rule_name}"
+    EXIT_CODE=1
+  fi
+}
+
 check_file_line_threshold() {
   local file_path="$1"
   local max_lines="$2"
@@ -159,11 +197,59 @@ check_kotlin_file_allowlist() {
   fi
 }
 
+count_allowlist_entries() {
+  local allowlist_file="$1"
+  awk 'NF && $1 !~ /^#/' "${allowlist_file}" | wc -l | tr -d ' '
+}
+
+check_allowlist_budget() {
+  local rule_label="$1"
+  local allowlist_file="$2"
+  local budget_file="$3"
+
+  if [[ ! -f "${allowlist_file}" ]]; then
+    echo "[architecture][FAIL] ${rule_label} allowlist missing: ${allowlist_file}"
+    EXIT_CODE=1
+    return 0
+  fi
+
+  if [[ ! -f "${budget_file}" ]]; then
+    echo "[architecture][FAIL] ${rule_label} budget file missing: ${budget_file}"
+    EXIT_CODE=1
+    return 0
+  fi
+
+  local budget
+  budget="$(awk 'NF && $1 !~ /^#/ { print $1; exit }' "${budget_file}")"
+  if [[ -z "${budget}" || ! "${budget}" =~ ^[0-9]+$ ]]; then
+    echo "[architecture][FAIL] ${rule_label} invalid budget in ${budget_file}: '${budget}'"
+    EXIT_CODE=1
+    return 0
+  fi
+
+  local current_count
+  current_count="$(count_allowlist_entries "${allowlist_file}")"
+  if [[ "${current_count}" -gt "${budget}" ]]; then
+    echo "[architecture][FAIL] ${rule_label} current=${current_count}, budget=${budget}"
+    echo "[architecture] reduce ${allowlist_file} entries before merging."
+    EXIT_CODE=1
+    return 0
+  fi
+
+  echo "[architecture] ${rule_label} current=${current_count}, budget=${budget}"
+}
+
 echo "[architecture] rule-1: domain must not depend on android.*"
 run_rule \
   "domain layer imports android.*" \
   '^\s*import\s+android\.' \
   "${APP_ROOT}/domain" \
+  "${CORE_DOMAIN_ROOT}"
+
+echo "[architecture] rule-1b: core/domain must not import api/data packages directly"
+run_rule \
+  "core/domain imports com.ytone.longcare.api|data directly" \
+  '^\s*import\s+com\.ytone\.longcare\.(api|data)\.' \
   "${CORE_DOMAIN_ROOT}"
 
 echo "[architecture] rule-2: feature/shared/ui layers must not import data implementation classes"
@@ -189,12 +275,135 @@ run_rule \
   '^\s*import\s+com\.ytone\.longcare\.(data|di|db|api)\.' \
   "${FEATURE_ROOT}"
 
+echo "[architecture] rule-4d: app non-data/api/network layers must not import api request/response directly"
+run_filtered_rule \
+  "app non-data/api/network imports api request/response" \
+  '^\s*import\s+com\.ytone\.longcare\.api\.(request|response)\.' \
+  '/(api|data|network)/' \
+  "${APP_ROOT}"
+
+echo "[architecture] rule-4e: app/api/request must remain empty after request model migration"
+if [[ -d "${APP_ROOT}/api/request" ]]; then
+  if find "${APP_ROOT}/api/request" -type f -name '*.kt' -print | grep -q .; then
+    find "${APP_ROOT}/api/request" -type f -name '*.kt' -print
+    echo "[architecture][FAIL] app/api/request contains Kotlin files"
+    EXIT_CODE=1
+  fi
+fi
+
+echo "[architecture] rule-4f: app non-data/api/network must not reference api request/response FQCN"
+run_filtered_rule \
+  "app non-data/api/network references api request/response FQCN" \
+  'com\.ytone\.longcare\.api\.(request|response)\.' \
+  '/(api|data|network)/' \
+  "${APP_ROOT}"
+
+echo "[architecture] rule-4g: app/api/response must remain empty after response model migration"
+if [[ -d "${APP_ROOT}/api/response" ]]; then
+  if find "${APP_ROOT}/api/response" -type f -name '*.kt' -print | grep -q .; then
+    find "${APP_ROOT}/api/response" -type f -name '*.kt' -print
+    echo "[architecture][FAIL] app/api/response contains Kotlin files"
+    EXIT_CODE=1
+  fi
+fi
+
+echo "[architecture] rule-4h: app data/network layers must not reference api request/response directly"
+run_rule \
+  "app data/network layers reference api request/response directly" \
+  'com\.ytone\.longcare\.api\.(request|response)\.' \
+  "${APP_ROOT}/data" \
+  "${APP_ROOT}/common/network" \
+  "${APP_ROOT}/network"
+
+echo "[architecture] rule-4i: app module must not reference api request/response directly"
+run_rule \
+  "app module references api request/response directly" \
+  'com\.ytone\.longcare\.api\.(request|response)\.' \
+  "${APP_ROOT}"
+
+echo "[architecture] rule-4j: app/api must consume request/response via model aliases only"
+run_rule \
+  "app/api imports api request/response directly" \
+  '^\s*import\s+com\.ytone\.longcare\.api\.(request|response)\.' \
+  "${APP_ROOT}/api"
+
+echo "[architecture] rule-4k: app test/debug sources must consume request/response via model aliases"
+run_rule \
+  "app test/debug sources reference api request/response directly" \
+  'com\.ytone\.longcare\.api\.(request|response)\.' \
+  "${APP_TEST_ROOT}" \
+  "${APP_DEBUG_ROOT}"
+
+echo "[architecture] rule-4l: repository must not reference api request/response FQCN"
+run_rule \
+  "repository references api request/response FQCN" \
+  'com\.ytone\.longcare\.api\.(request|response)\.' \
+  "${APP_ROOT}" \
+  "${APP_TEST_ROOT}" \
+  "${APP_DEBUG_ROOT}" \
+  "${CORE_ROOT}" \
+  "${FEATURE_ROOT}"
+
+echo "[architecture] rule-4m: core/model/api/request|response must remain empty"
+if [[ -d "${CORE_MODEL_API_ROOT}" ]]; then
+  if find "${CORE_MODEL_API_ROOT}" -type f -name '*.kt' -print | grep -q .; then
+    find "${CORE_MODEL_API_ROOT}" -type f -name '*.kt' -print
+    echo "[architecture][FAIL] core/model/api contains Kotlin files"
+    EXIT_CODE=1
+  fi
+fi
+
+echo "[architecture] rule-4n: source files must not declare package api.request|api.response"
+run_rule \
+  "source files declare package com.ytone.longcare.api.request|response" \
+  '^\s*package\s+com\.ytone\.longcare\.api\.(request|response)\b' \
+  "${APP_ROOT}" \
+  "${APP_TEST_ROOT}" \
+  "${APP_DEBUG_ROOT}" \
+  "${CORE_ROOT}" \
+  "${FEATURE_ROOT}"
+
+echo "[architecture] rule-4o: repository must not reference legacy models.protos package"
+run_rule \
+  "repository references legacy com.ytone.longcare.models.protos package" \
+  'com\.ytone\.longcare\.models\.protos\.' \
+  "${APP_ROOT}" \
+  "${APP_TEST_ROOT}" \
+  "${APP_DEBUG_ROOT}" \
+  "${CORE_ROOT}" \
+  "${FEATURE_ROOT}"
+
+echo "[architecture] rule-4p: source files must not declare package com.ytone.longcare.models.protos"
+run_rule \
+  "source files declare legacy package com.ytone.longcare.models.protos" \
+  '^\s*package\s+com\.ytone\.longcare\.models\.protos\b' \
+  "${APP_ROOT}" \
+  "${APP_TEST_ROOT}" \
+  "${APP_DEBUG_ROOT}" \
+  "${CORE_ROOT}" \
+  "${FEATURE_ROOT}"
+
+echo "[architecture] rule-4q: app/model package must remain empty after model extraction"
+if [[ -d "${APP_ROOT}/model" ]]; then
+  if find "${APP_ROOT}/model" -type f -name '*.kt' -print | grep -q .; then
+    find "${APP_ROOT}/model" -type f -name '*.kt' -print
+    echo "[architecture][FAIL] app/model contains Kotlin files"
+    EXIT_CODE=1
+  fi
+fi
+
 echo "[architecture] rule-4b: legacy app/features imports app internals are frozen by allowlist"
 run_allowlisted_rule \
   "legacy app/features import app internals (data/di/db/api)" \
   '^\s*import\s+com\.ytone\.longcare\.(data|di|db|api)\.' \
   "${LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST}" \
   "${LEGACY_APP_FEATURE_ROOT}"
+
+echo "[architecture] rule-4c: legacy import allowlist must not exceed budget"
+check_allowlist_budget \
+  "legacy app/features import app internals allowlist budget" \
+  "${LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST}" \
+  "${LEGACY_APP_INTERNAL_IMPORT_BUDGET_FILE}"
 
 echo "[architecture] rule-5: core modules must not import feature packages"
 run_rule \

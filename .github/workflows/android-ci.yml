@@ -92,29 +92,14 @@ jobs:
       - name: Run affected verification tasks
         run: ./gradlew --no-daemon ${{ needs.detect-affected.outputs.verify_tasks }}
 
-      - name: Enforce release exported component allowlist
-        run: bash scripts/quality/verify_release_exported_components.sh
-
-      - name: Enforce lint warning allowlist
-        run: bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
-
-      - name: Enforce coroutine cancellation guards
-        run: bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
-
-      - name: Enforce no empty catch blocks
-        run: bash scripts/quality/verify_no_empty_catch_blocks.sh app/src/main/kotlin
-
-      - name: Enforce target SDK upgrade gate
-        run: bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
-
-      - name: Enforce exact alarm permission config
-        run: bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml
-
-      - name: Enforce architecture boundaries
-        run: bash scripts/quality/verify_architecture_boundaries.sh .
-
-      - name: Enforce module API visibility
-        run: bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare .
+      - name: Collect quality snapshot and enforce quality gates
+        run: |
+          bash scripts/quality/collect_quality_snapshot.sh \
+            --project-root . \
+            --output-dir build/quality-snapshot \
+            --lint-report app/build/reports/lint-results-debug.txt \
+            --source-root app/src/main/kotlin \
+            --workflow-file .github/workflows/android-ci.yml
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
@@ -159,6 +144,7 @@ jobs:
           path: |
             app/build/reports/**
             app/build/test-results/**
+            build/quality-snapshot/**
             build/reports/problems/**
           if-no-files-found: warn
           retention-days: 14
@@ -172,6 +158,7 @@ jobs:
             app/build/reports/**
             app/build/test-results/**
             app/build/outputs/**
+            build/quality-snapshot/**
             baselineprofile/build/reports/**
             baselineprofile/build/outputs/**
             build/reports/problems/**
