@@ -59,15 +59,6 @@ class NfcWorkflowViewModel @Inject constructor(
     private val _pendingNfcData = MutableStateFlow<PendingNfcData?>(null)
     val pendingNfcData: StateFlow<PendingNfcData?> = _pendingNfcData.asStateFlow()
 
-    data class PendingNfcData(
-        val orderKey: OrderKey,
-        val signInMode: SignInMode,
-        val endOderInfo: EndOderInfo?,
-        val tagId: String,
-        val longitude: String,
-        val latitude: String
-    )
-
     fun startOrder(
         orderKey: OrderKey,
         nfcDeviceId: String,
@@ -553,39 +544,3 @@ class NfcWorkflowViewModel @Inject constructor(
         super.onCleared()
     }
 }
-
-/**
- * NFC签到页面的UI状态密封类
- */
-sealed class NfcSignInUiState {
-    data object Loading : NfcSignInUiState()
-    data class Success(
-        val endOrderSuccessData: EndOrderSuccessData? = null
-    ) : NfcSignInUiState()
-
-    data class Error(val message: String) : NfcSignInUiState()
-    data object Initial : NfcSignInUiState()
-    data class ShowConfirmDialog(
-        val message: String,
-        val endOrderParams: EndOrderParams
-    ) : NfcSignInUiState()
-}
-
-/**
- * 结束订单成功后的数据
- */
-data class EndOrderSuccessData(
-    val trueServiceTime: Int
-)
-
-data class EndOrderParams(
-    val orderKey: OrderKey,
-    val nfcDeviceId: String,
-    val porjectIdList: List<Int>,
-    val beginImgList: List<String>,
-    val endImageList: List<String>,
-    val centerImgList: List<String>,
-    val longitude: String,
-    val latitude: String,
-    val endType: Int
-)

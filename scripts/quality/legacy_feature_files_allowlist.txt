@@ -68,9 +68,11 @@ app/src/main/kotlin/com/ytone/longcare/features/maindashboard/utils/NfcTestHelpe
 app/src/main/kotlin/com/ytone/longcare/features/maindashboard/vm/MainDashboardViewModel.kt
 app/src/main/kotlin/com/ytone/longcare/features/nfc/api/NfcWorkflowActions.kt
 app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowBottomBar.kt
+app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowContentComponents.kt
 app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowDialogs.kt
 app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowEffects.kt
 app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowScreen.kt
+app/src/main/kotlin/com/ytone/longcare/features/nfc/vm/NfcWorkflowContracts.kt
 app/src/main/kotlin/com/ytone/longcare/features/nfc/vm/NfcWorkflowViewModel.kt
 app/src/main/kotlin/com/ytone/longcare/features/nfctest/api/NfcTestActions.kt
 app/src/main/kotlin/com/ytone/longcare/features/nfctest/ui/NfcTestScreen.kt

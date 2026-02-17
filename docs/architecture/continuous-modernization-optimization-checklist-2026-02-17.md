@@ -25,7 +25,7 @@
 | ID | 优化项 | 对应目标 | 状态 |
 |---|---|---|---|
 | R1 | 继续将主体业务从 `app/features/*` 迁移到 `feature/*` 模块（优先：`photoupload`、`identification`、`servicecountdown`） | 现代化模块架构、边界收敛 | IN_PROGRESS（photoupload 核心层 + identification vm 全量 + servicecountdown vm 已下沉，UI/平台适配层留在 app） |
-| R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | IN_PROGRESS（`ServiceCountdownScreen`、`PhotoUploadScreen`、`CameraScreen`、`ManualFaceCaptureScreen`、`NfcWorkflowScreen`、`FaceCaptureScreen`、`MainDashboardScreen` 已完成分层拆分） |
+| R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | IN_PROGRESS（`ServiceCountdownScreen`、`PhotoUploadScreen`、`CameraScreen`、`ManualFaceCaptureScreen`、`NfcWorkflowScreen`、`NfcWorkflowViewModel`（契约层）、`FaceCaptureScreen`、`MainDashboardScreen` 已完成阶段性拆分） |
 | R3 | CI 健康监控告警项治理：将 Android CI 取消率从 50% 降到阈值内（触发策略与提交流水优化） | CI/CD 资源效率、稳定性 | IN_PROGRESS（已完成并发分组与取消策略治理，待远端新样本窗口验证取消率回落） |
 | R4 | 在“无缓存 + rerun”基线口径下继续压降 `:app:assembleDebug` 冷构建耗时（当前 73s） | 构建性能目标收敛 | IN_PROGRESS（依赖精简后 `assembleDebug` 回落，但 `compileDebugKotlin` 波动仍需持续观测） |
 
@@ -132,6 +132,13 @@
     - 新增 `NfcWorkflowDialogs.kt`，统一承接定位激活弹窗与结束工单确认弹窗的显示与回调。
   - 收敛结果：
     - `NfcWorkflowScreen.kt` 行数从 `684` 降至 `596`。
+  - 补充收敛（本轮新增）：
+    - 新增 `NfcWorkflowContentComponents.kt`，下沉 `SignInContentCard`、`StatusDisplay`、`ActionButton`，解耦页面渲染与组件实现。
+    - `NfcWorkflowDialogs.kt` 补齐 `LocationActivationDialog` 与 `EndOrderConfirmDialog` 组件实现，消除拆分后未解析符号。
+    - 新增 `NfcWorkflowContracts.kt`，将 `NfcSignInUiState`、`PendingNfcData`、`EndOrderParams`、`EndOrderSuccessData` 从 `NfcWorkflowViewModel.kt` 抽离。
+    - 收敛结果：
+      - `NfcWorkflowScreen.kt` 行数从 `596` 进一步降至 `265`。
+      - `NfcWorkflowViewModel.kt` 行数从 `591` 降至 `546`。
 - `R2` 增量切片（`facecapture`）：
   - 弹窗组件拆分：
     - 新增 `FaceCaptureDialogs.kt`，承接权限拒绝页与图片全屏预览交互（双击缩放/拖拽/点击关闭）。
@@ -209,6 +216,11 @@
 - `app/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureScreen.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureDialogs.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureUiComponents.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowScreen.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowContentComponents.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowDialogs.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/nfc/vm/NfcWorkflowViewModel.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/nfc/vm/NfcWorkflowContracts.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardScreen.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardHeaderCards.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardOrdersSection.kt`
@@ -230,3 +242,4 @@
 - `bash scripts/quality/monitor_ci_health.sh yyg20101/longcare 50 scripts/quality/ci_health_thresholds.json build/ci-health-r3-after-cancel-policy`
 - `./gradlew --no-daemon :app:testDebugUnitTest --tests "com.ytone.longcare.data.cos.repository.CosRepositoryImplTest"`
 - `./gradlew --no-daemon :app:testDebugUnitTest --tests "*MainDashboardViewModelTest"`
+- `./gradlew --no-daemon :app:testDebugUnitTest --tests "*MainDashboardViewModelTest" --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`
