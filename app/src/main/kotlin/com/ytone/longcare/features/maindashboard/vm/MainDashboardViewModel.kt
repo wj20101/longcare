@@ -71,7 +71,7 @@ class MainDashboardViewModel @Inject constructor(
         }
 
         return ServiceCountdownNavigationData(
-            orderKey = OrderKey(orderId = orderId, planId = planId),
+            orderKey = orderKey,
             projectIdList = selectedProjectIds
         )
     }

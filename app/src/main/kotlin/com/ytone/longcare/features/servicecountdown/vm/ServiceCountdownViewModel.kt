@@ -70,15 +70,16 @@ class ServiceCountdownViewModel @Inject constructor(
         projectList: List<ServiceProjectM>, 
         selectedProjectIds: List<Int>
     ) {
+        val orderKey = orderRequest.toOrderKey()
         // 保存当前订单ID和项目信息，用于后续重新计算
-        stateHolder.currentOrderKey = orderRequest.toOrderKey()
+        stateHolder.currentOrderKey = orderKey
         stateHolder.currentProjectList = projectList
         stateHolder.currentSelectedProjectIds = selectedProjectIds
         
         // 在协程中计算并更新倒计时状态
         viewModelScope.launch {
             val (state, remainingTime, overtimeTime) = calculateCountdownState(
-                orderRequest.toOrderKey(),
+                orderKey,
                 projectList,
                 selectedProjectIds
             )
@@ -179,15 +180,16 @@ class ServiceCountdownViewModel @Inject constructor(
         projectList: List<ServiceProjectM>,
         selectedProjectIds: List<Int>
     ) {
+        val orderKey = orderRequest.toOrderKey()
         // 保存当前订单ID和项目信息
-        stateHolder.currentOrderKey = orderRequest.toOrderKey()
+        stateHolder.currentOrderKey = orderKey
         stateHolder.currentProjectList = projectList
         stateHolder.currentSelectedProjectIds = selectedProjectIds
         
         // 在协程中重新计算当前状态
         viewModelScope.launch {
             val (state, remainingTime, overtimeTime) = calculateCountdownState(
-                orderRequest.toOrderKey(),
+                orderKey,
                 projectList,
                 selectedProjectIds
             )
@@ -352,6 +354,7 @@ class ServiceCountdownViewModel @Inject constructor(
      * @param context 上下文，用于停止前台服务
      */
     fun endService(orderInfoRequest: OrderInfoRequestModel, context: Context? = null) {
+        val orderKey = orderInfoRequest.toOrderKey()
         stateHolder.countdownJob?.cancel()
         stateHolder.orderStatePollingJob?.cancel()
         stateHolder.countdownState.value = ServiceCountdownState.ENDED
@@ -367,8 +370,8 @@ class ServiceCountdownViewModel @Inject constructor(
         
         // 使用unifiedOrderRepository结束服务并清除图片数据
         viewModelScope.launch {
-            unifiedOrderRepository.endLocalService(orderInfoRequest.toOrderKey())
-            imageRepository.deleteImagesByOrderId(orderInfoRequest.toOrderKey())
+            unifiedOrderRepository.endLocalService(orderKey)
+            imageRepository.deleteImagesByOrderId(orderKey)
         }
     }
     
@@ -380,6 +383,7 @@ class ServiceCountdownViewModel @Inject constructor(
      * @param context 上下文，用于停止前台服务
      */
     fun endServiceWithoutClearingImages(orderInfoRequest: OrderInfoRequestModel, context: Context? = null) {
+        val orderKey = orderInfoRequest.toOrderKey()
         stateHolder.countdownJob?.cancel()
         stateHolder.orderStatePollingJob?.cancel()
         stateHolder.countdownState.value = ServiceCountdownState.ENDED
@@ -389,7 +393,7 @@ class ServiceCountdownViewModel @Inject constructor(
         
         // 使用unifiedOrderRepository结束服务（但保留图片数据）
         viewModelScope.launch {
-            unifiedOrderRepository.endLocalService(orderInfoRequest.toOrderKey())
+            unifiedOrderRepository.endLocalService(orderKey)
         }
         // 注意：不清除图片数据，因为订单可能需要重新开始
     }

@@ -287,7 +287,8 @@ class NfcWorkflowViewModel @Inject constructor(
         endOderInfo: EndOderInfo?,
         trueServiceTime: Int
     ): ServiceCompleteData {
-        val cachedOrderInfo = unifiedOrderRepository.getCachedOrderInfo(orderInfoRequest.toOrderKey())
+        val orderKey = orderInfoRequest.toOrderKey()
+        val cachedOrderInfo = unifiedOrderRepository.getCachedOrderInfo(orderKey)
         val userInfo = cachedOrderInfo?.userInfo
         val projectList = cachedOrderInfo?.projectList ?: emptyList()
         val selectedProjectIds = endOderInfo?.projectIdList ?: emptyList()
@@ -411,9 +412,10 @@ class NfcWorkflowViewModel @Inject constructor(
         longitude: String,
         latitude: String
     ) {
+        val orderKey = orderInfoRequest.toOrderKey()
         // 获取订单详情
-        val orderInfo = unifiedOrderRepository.getCachedOrderInfo(orderInfoRequest.toOrderKey())
-            ?: when (val result = unifiedOrderRepository.getOrderInfo(orderInfoRequest.toOrderKey())) {
+        val orderInfo = unifiedOrderRepository.getCachedOrderInfo(orderKey)
+            ?: when (val result = unifiedOrderRepository.getOrderInfo(orderKey)) {
                 is ApiResult.Success -> result.data
                 is ApiResult.Exception -> {
                     showError("获取订单详情失败: ${result.exception.message ?: "网络异常"}")
@@ -553,6 +555,7 @@ class NfcWorkflowViewModel @Inject constructor(
      * 清理服务相关资源
      */
     private fun cleanupResources(orderInfoRequest: OrderInfoRequestModel) {
+        val orderKey = orderInfoRequest.toOrderKey()
         try {
             // 停止前台服务
             CountdownForegroundService.stopCountdown(context)
@@ -563,8 +566,8 @@ class NfcWorkflowViewModel @Inject constructor(
 
             // 清除本地状态和图片数据
             viewModelScope.launch {
-                unifiedOrderRepository.endLocalService(orderInfoRequest.toOrderKey())
-                imageRepository.deleteImagesByOrderId(orderInfoRequest.toOrderKey())
+                unifiedOrderRepository.endLocalService(orderKey)
+                imageRepository.deleteImagesByOrderId(orderKey)
             }
         } catch (e: Exception) {
             logE("清理服务相关资源失败: ${e.message}", tag = "NfcWorkflowViewModel", throwable = e)
