@@ -15,9 +15,7 @@ import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.model.ImageTask
 import com.ytone.longcare.model.ImageTaskType
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
-import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
-import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
-import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
+import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -39,7 +37,7 @@ class ServiceCountdownViewModel @Inject constructor(
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
     private val orderRepository: OrderRepository,
-    private val countdownNotificationManager: CountdownNotificationManager
+    private val systemGateway: ServiceCountdownSystemGateway,
 ) : ViewModel() {
     private val stateHolder = ServiceCountdownStateHolder()
 
@@ -284,7 +282,7 @@ class ServiceCountdownViewModel @Inject constructor(
         serviceName: String,
         totalSeconds: Long
     ) {
-        CountdownForegroundService.startCountdown(context, orderKey, serviceName, totalSeconds)
+        systemGateway.startForegroundService(context, orderKey, serviceName, totalSeconds)
     }
     
     /**
@@ -292,7 +290,7 @@ class ServiceCountdownViewModel @Inject constructor(
      * @param context 上下文
      */
     fun stopForegroundService(context: Context) {
-        CountdownForegroundService.stopCountdown(context)
+        systemGateway.stopForegroundService(context)
     }
     
     // 更新格式化时间
@@ -331,11 +329,11 @@ class ServiceCountdownViewModel @Inject constructor(
         // 停止前台服务和响铃服务
         context?.let { 
             stopForegroundService(it) 
-            AlarmRingtoneService.stopRingtone(it)
+            systemGateway.stopAlarmRingtone(it)
         }
         
         // 取消倒计时闹钟
-        countdownNotificationManager.cancelCountdownAlarmForOrder(orderKey)
+        systemGateway.cancelCountdownAlarmForOrder(orderKey)
         
         // 使用unifiedOrderRepository结束服务并清除图片数据
         viewModelScope.launch {
@@ -547,11 +545,11 @@ class ServiceCountdownViewModel @Inject constructor(
     }
 
     fun canScheduleExactAlarms(): Boolean {
-        return countdownNotificationManager.canScheduleExactAlarms()
+        return systemGateway.canScheduleExactAlarms()
     }
 
     fun canUseFullScreenIntent(): Boolean {
-        return countdownNotificationManager.canUseFullScreenIntent()
+        return systemGateway.canUseFullScreenIntent()
     }
 
     fun scheduleCountdownAlarm(
@@ -559,19 +557,15 @@ class ServiceCountdownViewModel @Inject constructor(
         serviceName: String,
         triggerTimeMillis: Long
     ) {
-        countdownNotificationManager.scheduleCountdownAlarm(
-            orderKey = orderKey,
-            serviceName = serviceName,
-            triggerTimeMillis = triggerTimeMillis
-        )
+        systemGateway.scheduleCountdownAlarm(orderKey, serviceName, triggerTimeMillis)
     }
 
     fun cancelCountdownAlarm() {
-        countdownNotificationManager.cancelCountdownAlarm()
+        systemGateway.cancelCountdownAlarm()
     }
 
     fun cancelCountdownAlarmForOrder(orderKey: OrderKey) {
-        countdownNotificationManager.cancelCountdownAlarmForOrder(orderKey)
+        systemGateway.cancelCountdownAlarmForOrder(orderKey)
     }
 
     /**
