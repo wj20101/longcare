@@ -16,6 +16,13 @@
 - 本地验收：
   - `./gradlew :app:compileDebugKotlin`：PASS
   - `./gradlew :app:compileDebugKotlin :app:testDebugUnitTest --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*ServiceCountdownViewModelTest"`：PASS
+- 执行 R2（`servicecountdown` UI 文件瘦身）：
+  - 将 `ServiceCountdownScreen.kt` 中两个大卡片组件拆分为独立文件：
+    - `ServiceCountdownTimerCard.kt`
+    - `ServiceCountdownSelectedServicesCard.kt`
+  - `ServiceCountdownScreen.kt` 从 781 行降至 667 行，行为保持不变。
+- 本地验收（R2）：
+  - `./gradlew :app:compileDebugKotlin :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest"`：PASS
 
 ## 2026-02-13
 - 初始化 CI/CD 优化任务计划文件：`task_plan.md`、`findings.md`、`progress.md`。
