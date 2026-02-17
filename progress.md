@@ -934,3 +934,12 @@
   - 验证：
     - `./gradlew :app:compileDebugKotlin`：PASS。
     - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS。
+- 执行“持续现代化优化（R2 增量切片：face manual capture 反馈区拆分）”（2026-02-17）：
+  - 新增 `app/src/main/kotlin/com/ytone/longcare/features/face/ui/ManualFaceCaptureFeedbackOverlays.kt`。
+  - 将 `ManualFaceCaptureScreen` 中错误提示卡片与全屏加载遮罩抽离为独立组件：
+    - `ManualFaceCaptureErrorOverlay`
+    - `ManualFaceCaptureLoadingOverlay`
+  - `ManualFaceCaptureScreen` 行数从 `541` 进一步降至 `498`（累计从 `726` 降至 `498`）。
+  - 验证：
+    - `./gradlew :app:compileDebugKotlin`：PASS。
+    - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS。

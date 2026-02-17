@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -144,57 +143,15 @@ fun ManualFaceCaptureScreen(
                 }
             }
             
-            // 错误信息显示
-            uiState.errorMessage?.let { error ->
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp)
-                        .fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = error,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = viewModel::clearError) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "关闭",
-                                tint = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        }
-                    }
-                }
-            }
-            
-            // 加载指示器
-            if (uiState.isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.5f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Card(
-                        modifier = Modifier.padding(32.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            CircularProgressIndicator()
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("处理中...")
-                        }
-                    }
-                }
-            }
+            ManualFaceCaptureErrorOverlay(
+                errorMessage = uiState.errorMessage,
+                onClearError = viewModel::clearError,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+
+            ManualFaceCaptureLoadingOverlay(
+                isLoading = uiState.isLoading
+            )
         }
     }
     
