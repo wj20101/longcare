@@ -14,6 +14,7 @@ dependencies {
     implementation(project(":core:domain"))
     implementation(project(":core:model"))
 
+    implementation(libs.androidx.core.ktx)
     implementation(libs.bundles.hilt)
     implementation(libs.amap.location)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
