@@ -115,8 +115,11 @@
     - 新增 `CameraCaptureProcessor.kt`，承接 `takePhoto` 与水印渲染、EXIF 旋转、超时与资源回收逻辑。
   - 权限门禁拆分：
     - 新增 `CameraPermissionGate.kt`，集中处理相机权限申请与重试入口。
+  - 页面内容拆分（本轮新增）：
+    - 新增 `CameraScreenContent.kt`，下沉 `CameraContent` 与延迟拍照模式状态/倒计时编排。
+    - `CameraScreen.kt` 收敛为页面入口与导航回调，移除内联大段拍照页面内容。
   - 收敛结果：
-    - `CameraScreen.kt` 行数从 `928` 降至 `511`。
+    - `CameraScreen.kt` 行数从 `928` 降至 `511`，并在本轮进一步降至 `35`。
 - `R2` 增量切片（`face/manual-capture`）：
   - 副作用流程拆分：
     - 新增 `ManualFaceCaptureEffects.kt`，承接相机权限检查/申请与成功态回传路径监听。
@@ -227,6 +230,8 @@
 - `app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowDialogs.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/nfc/vm/NfcWorkflowViewModel.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/nfc/vm/NfcWorkflowContracts.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraScreen.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraScreenContent.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadGridComponents.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadScreenPreviews.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardScreen.kt`
