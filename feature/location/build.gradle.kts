@@ -24,12 +24,12 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.bundles.hilt)
+    implementation(libs.dagger.hilt.android)
+    implementation(libs.hilt.navigation.compose)
     implementation(libs.amap.location)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 
     ksp(libs.dagger.hilt.compiler)
-    ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

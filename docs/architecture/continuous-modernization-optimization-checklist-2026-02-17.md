@@ -27,7 +27,7 @@
 | R1 | 继续将主体业务从 `app/features/*` 迁移到 `feature/*` 模块（优先：`photoupload`、`identification`、`servicecountdown`） | 现代化模块架构、边界收敛 | IN_PROGRESS（photoupload 核心层 + identification vm 全量 + servicecountdown vm 已下沉，UI/平台适配层留在 app） |
 | R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | IN_PROGRESS（`ServiceCountdownScreen` 副作用/底栏已拆分；`PhotoUploadScreen` 副作用/底栏/Mock调试卡片已拆分；`CameraScreen` 拍照处理与权限门禁已拆分；`ManualFaceCaptureScreen` 副作用/拍照处理/反馈遮罩已拆分；`NfcWorkflowScreen` 副作用/底栏/弹窗编排已拆分；`FaceCaptureScreen` 弹窗/组件已拆分） |
 | R3 | CI 健康监控告警项治理：将 Android CI 取消率从 50% 降到阈值内（触发策略与提交流水优化） | CI/CD 资源效率、稳定性 | IN_PROGRESS（已完成 Android CI 并发分组治理，待远端样本窗口验证取消率回落） |
-| R4 | 在“无缓存 + rerun”基线口径下继续压降 `:app:assembleDebug` 冷构建耗时（当前 106s） | 构建性能目标收敛 | TODO（已重采样，耗时较前一轮上升，需继续定位） |
+| R4 | 在“无缓存 + rerun”基线口径下继续压降 `:app:assembleDebug` 冷构建耗时（当前 73s） | 构建性能目标收敛 | IN_PROGRESS（依赖精简后 `assembleDebug` 回落，但 `compileDebugKotlin` 波动仍需持续观测） |
 
 ## 增量执行记录（2026-02-17）
 
@@ -156,6 +156,12 @@
     - `:app:compileDebugKotlin`：`49s`
     - `:app:testDebugUnitTest`：`74s`
     - `:app:assembleDebug`：`106s`（较上一轮 `79s` 上升，未达目标）
+  - 继续治理（依赖收敛）：
+    - 将 `app` 和 `feature/*` 的 Hilt 依赖从 `libs.bundles.hilt` 改为按需声明（`dagger.hilt.android` + 必要扩展），减少不必要传递依赖。
+  - 最新样本（2026-02-17 21:21:47）：
+    - `:app:compileDebugKotlin`：`103s`
+    - `:app:testDebugUnitTest`：`81s`
+    - `:app:assembleDebug`：`73s`（较 `106s` 回落 `33s`）
 - 验证：
   - `./gradlew :app:compileDebugKotlin`：PASS
   - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS

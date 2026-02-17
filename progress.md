@@ -988,3 +988,16 @@
     - `:app:assembleDebug`：`106s`
   - 结论：
     - 无缓存 + rerun 口径下，`assembleDebug` 尚未回落到目标区间，R4 保持待继续治理。
+- 执行“持续现代化优化（R4 依赖收敛 + 基线复测）”（2026-02-17）：
+  - 依赖精简：
+    - `app/build.gradle.kts` 将 `libs.bundles.hilt` 拆分为按需依赖（`dagger.hilt.android`、`hilt.work`、`hilt.navigation.compose`）。
+    - `feature/home`、`feature/login`、`feature/identification`、`feature/location`、`feature/photoupload`、`feature/servicecountdown` 改为按需 Hilt 依赖，移除冗余 `ksp(libs.hilt.compiler)`（保留必要模块）。
+  - 验证：
+    - `./gradlew --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS。
+    - `bash scripts/quality/verify_ci_workflow_quality.sh`：PASS。
+    - `bash scripts/quality/verify_jetpack_compat_apis.sh`：PASS。
+    - `BASELINE_CLEAN_BEFORE_RUN=true bash scripts/quality/collect_build_baseline.sh`：PASS。
+  - 基线结果（2026-02-17 21:21:47）：
+    - `:app:compileDebugKotlin`：`103s`
+    - `:app:testDebugUnitTest`：`81s`
+    - `:app:assembleDebug`：`73s`（相较上一轮 `106s` 回落 `33s`）。

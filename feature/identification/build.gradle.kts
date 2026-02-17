@@ -16,8 +16,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
     implementation(libs.androidx.datastore.preferences)
-    implementation(libs.bundles.hilt)
+    implementation(libs.dagger.hilt.android)
     ksp(libs.dagger.hilt.compiler)
-    ksp(libs.hilt.compiler)
     testImplementation(libs.junit)
 }

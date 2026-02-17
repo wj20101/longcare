@@ -303,7 +303,9 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
 
     // Hilt
-    implementation(libs.bundles.hilt)
+    implementation(libs.dagger.hilt.android)
+    implementation(libs.hilt.work)
+    implementation(libs.hilt.navigation.compose)
     ksp(libs.dagger.hilt.compiler)
     ksp(libs.hilt.compiler)
 

@@ -17,9 +17,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
-    implementation(libs.bundles.hilt)
+    implementation(libs.dagger.hilt.android)
     ksp(libs.dagger.hilt.compiler)
-    ksp(libs.hilt.compiler)
 
     implementation(libs.bundles.coil)
     implementation(libs.crashreport)
