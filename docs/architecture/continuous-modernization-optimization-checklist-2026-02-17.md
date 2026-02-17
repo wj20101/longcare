@@ -24,7 +24,7 @@
 
 | ID | 优化项 | 对应目标 | 状态 |
 |---|---|---|---|
-| R1 | 继续将主体业务从 `app/features/*` 迁移到 `feature/*` 模块（优先：`photoupload`、`identification`、`servicecountdown`） | 现代化模块架构、边界收敛 | IN_PROGRESS（photoupload 首批切片已落地） |
+| R1 | 继续将主体业务从 `app/features/*` 迁移到 `feature/*` 模块（优先：`photoupload`、`identification`、`servicecountdown`） | 现代化模块架构、边界收敛 | IN_PROGRESS（photoupload + identification 首批切片已落地） |
 | R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | TODO |
 | R3 | CI 健康监控告警项治理：将 Android CI 取消率从 50% 降到阈值内（触发策略与提交流水优化） | CI/CD 资源效率、稳定性 | TODO |
 | R4 | 在“无缓存 + rerun”基线口径下继续压降 `:app:assembleDebug` 冷构建耗时（当前 79s） | 构建性能目标收敛 | TODO |
@@ -47,6 +47,18 @@
     - `UriExtensions.kt`
   - 去耦合修复：
     - `PhotoProcessingViewModel` 将 `currentCategory`（UI 枚举）改为 `currentTaskType`（`ImageTaskType`），解除对 UI 层类型依赖。
+- `R1` 增量切片（`identification`）：
+  - 将 `app/features/identification` 的非 UI 能力迁移至 `feature:identification`：
+    - `api/IdentificationActions.kt`
+    - `data/*`
+    - `di/IdentificationUseCaseGatewayModule.kt`
+  - `feature:identification/build.gradle.kts` 补齐 Hilt/KSP 注解处理链路：
+    - `alias(libs.plugins.dagger.hilt)`
+    - `alias(libs.plugins.ksp)`
+    - `ksp(libs.dagger.hilt.compiler)`
+    - `ksp(libs.hilt.compiler)`
+  - 迁移评估结论：
+    - `vm/*` 暂不下沉；其当前依赖 `SystemConfigManager`（位于 `app` 且绑定 `LongCareApiService/AppEventBus`），若继续下沉会引入跨层大链路改造，下一轮按公共能力抽象后再推进。
 - 验证：
   - `./gradlew :app:compileDebugKotlin`：PASS
   - `./gradlew :app:testDebugUnitTest --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest"`：PASS

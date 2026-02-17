@@ -752,3 +752,25 @@
     - 提交：`3e514f1`（`refactor: extract photoupload contracts and modularize non-ui flow`）。
     - 推送：`master -> origin/master`。
     - 远端 CI：`Android CI#22096401655`（`in_progress`，head=`3e514f1`）。
+- 执行“持续现代化优化（R1 增量切片：identification 非 UI 下沉）”（2026-02-17）：
+  - 模块化迁移（保留 UI/VM 在 app）：
+    - 从 `app/features/identification` 迁移到 `feature:identification`：
+      - `api/IdentificationActions.kt`
+      - `data/IdentificationFaceDataSource.kt`
+      - `data/SetupFaceGatewayImpl.kt`
+      - `data/UploadElderPhotoGatewayImpl.kt`
+      - `data/VerifyServicePersonDataGatewayImpl.kt`
+      - `di/IdentificationUseCaseGatewayModule.kt`
+  - 构建链路补齐：
+    - `feature/identification/build.gradle.kts` 新增：
+      - `alias(libs.plugins.dagger.hilt)`
+      - `alias(libs.plugins.ksp)`
+      - `ksp(libs.dagger.hilt.compiler)`
+      - `ksp(libs.hilt.compiler)`
+  - 迁移评估与回退决策：
+    - 尝试继续下沉 `vm/*` 到 `feature:identification` 时，`ksp` 失败：
+      - 根因：`IdentificationViewModel` 依赖 `SystemConfigManager`，该能力仍位于 `app` 且绑定 `LongCareApiService/AppEventBus`。
+    - 按低风险增量策略回退 `vm/*` 到 `app`，仅保留 `api/data/di` 下沉成果，避免引入跨层连锁改造。
+  - 验证：
+    - `./gradlew :app:compileDebugKotlin`：PASS（迁移后）。
+    - `./gradlew :app:testDebugUnitTest --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest"`：PASS。
