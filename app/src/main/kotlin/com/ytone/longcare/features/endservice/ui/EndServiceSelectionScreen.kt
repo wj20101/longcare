@@ -34,7 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.ytone.longcare.features.photoupload.model.ImageTaskType
 import android.widget.Toast
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.toRequestModel
+import com.ytone.longcare.features.shared.ui.rememberOrderInfoRequest
 import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.common.utils.singleClick
 
@@ -48,8 +48,8 @@ fun EndServiceSelectionScreen(
     viewModel: EndServiceSelectionViewModel = hiltViewModel(),
     countdownViewModel: ServiceCountdownViewModel = hiltViewModel()
 ) {
-    // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
+    // 从订单键构建请求模型
+    val orderInfoRequest = rememberOrderInfoRequest(orderKey)
     
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val projectList by viewModel.projectList.collectAsStateWithLifecycle()

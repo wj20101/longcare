@@ -35,7 +35,7 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import kotlinx.coroutines.launch
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.toRequestModel
+import com.ytone.longcare.features.shared.ui.rememberOrderInfoRequest
 import com.ytone.longcare.common.utils.singleClick
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,8 +46,8 @@ fun IdentificationScreen(
     sharedOrderDetailViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     identificationViewModel: IdentificationViewModel = hiltViewModel()
 ) {
-    // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
+    // 从订单键构建请求模型
+    val orderInfoRequest = rememberOrderInfoRequest(orderKey)
 
     val context = LocalContext.current
 

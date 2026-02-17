@@ -32,7 +32,7 @@ import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicecomplete.api.ServiceCompleteActions
 import com.ytone.longcare.navigation.ServiceCompleteData
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.toRequestModel
+import com.ytone.longcare.features.shared.ui.rememberOrderInfoRequest
 
 // --- 数据模型 ---
 data class ServiceSummary(
@@ -53,8 +53,8 @@ fun ServiceCompleteScreen(
     serviceCompleteData: ServiceCompleteData,
     viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
-    // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
+    // 从订单键构建请求模型
+    val orderInfoRequest = rememberOrderInfoRequest(orderKey)
     
     // 统一处理系统返回键，与导航按钮行为一致（返回首页并清空堆栈）
     CustomBackHandler(customAction = actions.onNavigateHomeAndClearStack)

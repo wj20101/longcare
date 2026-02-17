@@ -38,7 +38,7 @@ import com.ytone.longcare.features.nursingexecution.api.NursingExecutionActions
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.toRequestModel
+import com.ytone.longcare.features.shared.ui.rememberOrderInfoRequest
 
 // --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,8 +49,8 @@ fun NursingExecutionScreen(
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
-    // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
+    // 从订单键构建请求模型
+    val orderInfoRequest = rememberOrderInfoRequest(orderKey)
 
     // 开启定位会话 (Session Start)
     LaunchedEffect(orderKey.orderId) {

@@ -64,7 +64,7 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.model.toOrderKey
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.toRequestModel
+import com.ytone.longcare.features.shared.ui.rememberOrderInfoRequest
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
@@ -82,8 +82,8 @@ fun PhotoUploadScreen(
     viewModel: PhotoProcessingViewModel = hiltViewModel(),
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
 ) {
-    // 从订单导航参数构建请求模型
-    val orderInfoRequest = remember(orderKey) { orderKey.toRequestModel() }
+    // 从订单键构建请求模型
+    val orderInfoRequest = rememberOrderInfoRequest(orderKey)
     
     // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
     CustomBackHandler(customAction = actions.onNavigateBack)
