@@ -32,9 +32,7 @@ import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
-import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.ui.rememberOrderInfoRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,9 +41,6 @@ fun ServiceHoursScreen(
     orderKey: OrderKey,
     viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
-    // 从orderKey构建请求模型
-    val orderInfoRequest = rememberOrderInfoRequest(orderKey)
-    
     // 获取选中的项目ID
     val selectedProjectIds by viewModel.selectedProjectIds.collectAsStateWithLifecycle()
 
@@ -61,8 +56,8 @@ fun ServiceHoursScreen(
     CustomBackHandler(customAction = actions.onNavigateBack)
 
     // 页面初始化时获取订单详情
-    LaunchedEffect(orderInfoRequest) {
-        viewModel.getOrderInfo(orderInfoRequest)
+    LaunchedEffect(orderKey) {
+        viewModel.getOrderInfo(orderKey)
     }
 
     Box(
