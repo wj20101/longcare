@@ -454,56 +454,61 @@ check_file_line_threshold \
   "IdentificationCard.kt"
 
 echo "[architecture] rule-12: identification ViewModel must stay within threshold"
+IDENTIFICATION_VM_ROOT="${APP_ROOT}/features/identification/vm"
+if [[ ! -d "${IDENTIFICATION_VM_ROOT}" && -d "${FEATURE_ROOT}/identification/src/main/kotlin/com/ytone/longcare/features/identification/vm" ]]; then
+  IDENTIFICATION_VM_ROOT="${FEATURE_ROOT}/identification/src/main/kotlin/com/ytone/longcare/features/identification/vm"
+fi
+
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/vm/IdentificationViewModel.kt" \
+  "${IDENTIFICATION_VM_ROOT}/IdentificationViewModel.kt" \
   290 \
   "IdentificationViewModel.kt"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/vm/IdentificationFaceVerifyCallbacks.kt" \
+  "${IDENTIFICATION_VM_ROOT}/IdentificationFaceVerifyCallbacks.kt" \
   120 \
   "IdentificationFaceVerifyCallbacks.kt"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/vm/IdentificationElderPhotoFlow.kt" \
+  "${IDENTIFICATION_VM_ROOT}/IdentificationElderPhotoFlow.kt" \
   120 \
   "IdentificationElderPhotoFlow.kt"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/vm/IdentificationFaceSetupFlow.kt" \
+  "${IDENTIFICATION_VM_ROOT}/IdentificationFaceSetupFlow.kt" \
   140 \
   "IdentificationFaceSetupFlow.kt"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/vm/IdentificationFaceVerificationRequestFactory.kt" \
+  "${IDENTIFICATION_VM_ROOT}/IdentificationFaceVerificationRequestFactory.kt" \
   120 \
   "IdentificationFaceVerificationRequestFactory.kt"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/vm/IdentificationFaceSetupPreparation.kt" \
+  "${IDENTIFICATION_VM_ROOT}/IdentificationFaceSetupPreparation.kt" \
   120 \
   "IdentificationFaceSetupPreparation.kt"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/vm/IdentificationServicePersonVerificationFlow.kt" \
+  "${IDENTIFICATION_VM_ROOT}/IdentificationServicePersonVerificationFlow.kt" \
   120 \
   "IdentificationServicePersonVerificationFlow.kt"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/vm/IdentificationFaceCaptureResultFlow.kt" \
+  "${IDENTIFICATION_VM_ROOT}/IdentificationFaceCaptureResultFlow.kt" \
   120 \
   "IdentificationFaceCaptureResultFlow.kt"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/vm/IdentificationFaceVerificationExecutionFlow.kt" \
+  "${IDENTIFICATION_VM_ROOT}/IdentificationFaceVerificationExecutionFlow.kt" \
   80 \
   "IdentificationFaceVerificationExecutionFlow.kt"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/vm/IdentificationServicePersonEntryFlow.kt" \
+  "${IDENTIFICATION_VM_ROOT}/IdentificationServicePersonEntryFlow.kt" \
   80 \
   "IdentificationServicePersonEntryFlow.kt"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/vm/IdentificationElderEntryFlow.kt" \
+  "${IDENTIFICATION_VM_ROOT}/IdentificationElderEntryFlow.kt" \
   80 \
   "IdentificationElderEntryFlow.kt"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/vm/IdentificationStandardFaceVerificationFlow.kt" \
+  "${IDENTIFICATION_VM_ROOT}/IdentificationStandardFaceVerificationFlow.kt" \
   80 \
   "IdentificationStandardFaceVerificationFlow.kt"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/vm/IdentificationWatermarkFlow.kt" \
+  "${IDENTIFICATION_VM_ROOT}/IdentificationWatermarkFlow.kt" \
   80 \
   "IdentificationWatermarkFlow.kt"
 
