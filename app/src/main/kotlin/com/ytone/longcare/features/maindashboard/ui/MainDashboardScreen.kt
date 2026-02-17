@@ -1,56 +1,35 @@
 package com.ytone.longcare.features.maindashboard.ui
 
-import androidx.annotation.DrawableRes
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.platform.LocalDensity
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.launch
-import com.ytone.longcare.R
-import com.ytone.longcare.model.TodayServiceOrderModel
-import com.ytone.longcare.model.ServiceOrderModel
-import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
-import com.ytone.longcare.model.handleOrderNavigation
-import com.ytone.longcare.model.isPendingCareState
-import com.ytone.longcare.model.isPendingExecutionState
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
-import com.ytone.longcare.shared.vm.TodayOrderViewModel
-import com.ytone.longcare.theme.IndicatorGradientStart
-import com.ytone.longcare.theme.IndicatorGradientEnd
-import com.ytone.longcare.features.serviceorders.ui.ServiceOrderItem
-import com.ytone.longcare.model.userIdentityShow
-import com.ytone.longcare.model.User
-import com.ytone.longcare.ui.components.UserAvatar
-import com.ytone.longcare.common.utils.logE
-import com.ytone.longcare.features.shared.ui.EmptyView
+import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
+import com.ytone.longcare.model.ServiceOrderModel
+import com.ytone.longcare.model.TodayServiceOrderModel
+import com.ytone.longcare.model.User
+import com.ytone.longcare.model.isPendingCareState
+import com.ytone.longcare.shared.vm.TodayOrderViewModel
 
 @Composable
 fun MainDashboardScreen(
@@ -66,10 +45,8 @@ fun MainDashboardScreen(
     val inOrderList by todayOrderViewModel.inOrderListState.collectAsStateWithLifecycle()
 
     val lifecycleOwner = LocalLifecycleOwner.current
-    
+
     LaunchedEffect(lifecycleOwner) {
-        // 当此 Composable 的生命周期进入 RESUMED 状态时（即回到此页面），
-        // 就会执行刷新操作。
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             todayOrderViewModel.loadTodayOrders()
             todayOrderViewModel.loadInOrders()
@@ -83,7 +60,6 @@ fun MainDashboardScreen(
     Scaffold(
         containerColor = Color.Transparent
     ) { paddingValues ->
-        // 只有在 user 不为 null (即已登录) 的情况下才显示内容
         user?.let { loggedInUser ->
             MainDashboardContent(
                 user = loggedInUser,
@@ -100,7 +76,6 @@ fun MainDashboardScreen(
                 mainDashboardViewModel = mainDashboardViewModel
             )
         } ?: run {
-            // 如果 user 为 null (例如正在登出或初始化)，显示加载指示器
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
@@ -108,10 +83,6 @@ fun MainDashboardScreen(
     }
 }
 
-/**
- * 将主界面的核心内容提取到一个新的 Composable 中
- * @param user 保证不为空的 User 对象
- */
 @Composable
 private fun MainDashboardContent(
     user: User,
@@ -141,7 +112,6 @@ private fun MainDashboardContent(
                 actions = actions
             )
         }
-        // Tab布局显示订单
         item {
             OrderTabLayout(
                 todayOrderList = todayOrderList,
@@ -149,437 +119,6 @@ private fun MainDashboardContent(
                 actions = actions,
                 homeSharedViewModel = homeSharedViewModel,
                 mainDashboardViewModel = mainDashboardViewModel
-            )
-        }
-    }
-}
-
-/**
- * 修改 TopHeader，现在它接收一个非空的 User 对象
- * @param user Protobuf 生成的 User 对象，保证非空
- */
-@Composable
-fun TopHeader(user: User, companyName: String) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                ImageWithAdaptiveWidth(
-                    drawableResId = R.drawable.app_logo_small_white,
-                    fixedHeight = 34.dp,
-                    contentDescription = stringResource(R.string.main_dashboard_logo)
-                )
-                if (companyName.isNotEmpty()) {
-                    Text(
-                        text = companyName,
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = user.userName, fontWeight = FontWeight.Bold, color = Color.White
-                )
-                Text(
-                    text = user.userIdentityShow(),
-                    fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f)
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-
-            UserAvatar(avatarUrl = user.headUrl)
-        }
-    }
-}
-
-@Composable
-fun HomeBannerCard() {
-    // 1. Banner 图片素材列表 (使用网络图片URL)
-    val sampleBanners = listOf(
-        BannerItem(1, R.drawable.main_banner, "Banner 1")
-    )
-
-    ImageBannerPager(
-        bannerItems = sampleBanners, modifier = Modifier.height(120.dp)
-    )
-}
-
-/**
- * 整体仪表盘网格
- * @param pendingCarePlanCount 待护理计划总数
- * @param navController 导航控制器
- */
-@Composable
-fun DashboardGridWithImages(
-    pendingCarePlanCount: Int,
-    actions: MainDashboardActions
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp) // 行之间的间距
-    ) {
-        // 第一行
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            InfoCard(
-                modifier = Modifier.weight(1f),
-                iconRes = R.drawable.main_ic_plan,
-                title = "待护理计划",
-                subtitle = if (pendingCarePlanCount > 0) "你有${pendingCarePlanCount}个护理待执行" else "",
-                badgeCount = pendingCarePlanCount,
-                onClick = actions.onNavigateToCarePlansList
-            )
-            InfoCard(
-                modifier = Modifier.weight(1f),
-                iconRes = R.drawable.main_ic_records,
-                title = "已服务记录",
-                subtitle = "查看过往服务记录",
-                onClick = actions.onNavigateToServiceRecordsList
-            )
-        }
-//        // 第二行
-//        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-//            InfoCard(
-//                modifier = Modifier.weight(1f),
-//                iconRes = R.drawable.main_ic_hours,
-//                title = "工时: 22322",
-//                subtitle = "服务工时统计",
-//            )
-//            InfoCard(
-//                modifier = Modifier.weight(1f),
-//                iconRes = R.drawable.main_ic_study,
-//                title = "待学习",
-//                subtitle = "服务标准学习",
-//                badgeCount = 12,
-//            )
-//        }
-    }
-}
-
-
-@Composable
-fun InfoCard(
-    modifier: Modifier = Modifier,
-    @DrawableRes iconRes: Int,
-    title: String,
-    subtitle: String,
-    badgeCount: Int? = null,
-    iconContentDescription: String? = null,
-    onClick: (() -> Unit)? = null,
-) {
-    Card(
-        onClick = { onClick?.invoke() },
-        modifier = modifier.height(65.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // 左侧图标区域
-            Image(
-                painter = painterResource(id = iconRes),
-                contentDescription = iconContentDescription,
-                modifier = Modifier.size(32.dp)
-            )
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            // 右侧文字区域
-            Column {
-                // 标题行
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = title,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    if (badgeCount != null && badgeCount > 0) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Badge(
-                            containerColor = Color(0xFFFFC107)
-                        ) {
-                            Text(
-                                text = badgeCount.toString(),
-                                color = Color.Black,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-                if (subtitle.isNotBlank()) {
-                    // 副标题
-                    Text(
-                        text = subtitle,
-                        fontSize = 10.sp,
-                        color = Color.Gray,
-                        lineHeight = 12.sp,
-                        style = TextStyle(
-                            lineHeightStyle = LineHeightStyle(
-                                alignment = LineHeightStyle.Alignment.Center,
-                                trim = LineHeightStyle.Trim.Both
-                            )
-                        )
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * 一个固定高度、宽度根据图片原始比例自适应的 Image 组件。
- *
- * @param drawableResId 要加载的本地 drawable 资源 ID。
- * @param fixedHeight 固定的高度。
- * @param modifier 修饰符。
- * @param contentDescription 图片的内容描述，用于无障碍。
- */
-@Composable
-fun ImageWithAdaptiveWidth(
-    @DrawableRes drawableResId: Int,
-    fixedHeight: Dp,
-    modifier: Modifier = Modifier,
-    contentDescription: String? = null
-) {
-    // 1. 使用 painterResource 创建 Painter
-    val painter = painterResource(id = drawableResId)
-
-    // 2. 从 painter 的 intrinsicSize 中计算宽高比
-    //    为防止除以0，增加一个保护判断
-    val aspectRatio = if (painter.intrinsicSize.height > 0) {
-        painter.intrinsicSize.width / painter.intrinsicSize.height
-    } else {
-        1.0f // 如果高度为0，则默认为1:1
-    }
-
-    // 3. 应用 Modifier 链
-    Image(
-        painter = painter,
-        contentDescription = contentDescription,
-        contentScale = ContentScale.FillHeight,
-        modifier = modifier
-            .height(fixedHeight)      // 首先，强制设置固定的高度
-            .aspectRatio(aspectRatio) // 然后，根据宽高比自动计算并设置宽度
-    )
-}
-
-
-// --- Preview ---
-@Composable
-fun InOrderServiceItem(
-    order: ServiceOrderModel,
-    onClick: () -> Unit = { }
-) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                // 使用 FlowRow 让内容在大字体时自动换行
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = order.name,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-
-                    // 服务中状态标签
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFFFFF3E0)
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.service_order_work_hours, order.planTotalTime),
-                            color = Color(0xFFFF9800),
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "地址: ${order.liveAddress}",
-                    fontSize = 12.sp,
-                    color = Color.Gray
-                )
-            }
-
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                contentDescription = "进入详情",
-                tint = Color.Gray,
-                modifier = Modifier.size(16.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun OrderTabLayout(
-    todayOrderList: List<TodayServiceOrderModel>,
-    inOrderList: List<ServiceOrderModel>,
-    actions: MainDashboardActions,
-    homeSharedViewModel: HomeSharedViewModel,
-    mainDashboardViewModel: MainDashboardViewModel
-) {
-    val selectedTabIndex by homeSharedViewModel.selectedTabIndex.collectAsStateWithLifecycle()
-    val tabs = listOf("待护理计划", "服务中")
-    val coroutineScope = rememberCoroutineScope()
-
-    Column {
-        PrimaryTabRow(
-            selectedTabIndex = selectedTabIndex,
-            modifier = Modifier.fillMaxWidth(),
-            containerColor = Color.Transparent,
-            divider = {},
-            indicator = { }
-        ) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTabIndex == index,
-                    onClick = { homeSharedViewModel.updateSelectedTabIndex(index) },
-                    text = {
-                        CustomTabItem(
-                            text = title,
-                            isSelected = selectedTabIndex == index
-                        )
-                    }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        when (selectedTabIndex) {
-            0 -> {
-                val pendingOrders = todayOrderList.filter { it.state.isPendingExecutionState() }
-                if (pendingOrders.isNotEmpty()) {
-                    pendingOrders.forEach { order ->
-                        ServiceOrderItem(order = order) {
-                            handleOrderNavigation(
-                                state = order.state,
-                                orderId = order.orderId,
-                                planId = 0,
-                                onNavigateToNursingExecution = actions.onNavigateToNursingExecution,
-                                onNavigateToService = actions.onNavigateToService,
-                                onNotStartedState = {
-                                    // 未开单状态，不允许跳转
-                                }
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                } else {
-                    EmptyView(modifier = Modifier.height(376.dp), message = "暂无待护理计划")
-                }
-            }
-            1 -> {
-                if (inOrderList.isNotEmpty()) {
-                    inOrderList.forEach { order ->
-                        InOrderServiceItem(order = order) {
-                            coroutineScope.launch {
-                                try {
-                                    val navigationData =
-                                        mainDashboardViewModel.buildServiceCountdownNavigationData(
-                                            orderId = order.orderId,
-                                            planId = 0
-                                        )
-                                    if (navigationData == null) {
-                                        logE("跳转到服务倒计时页面失败: orderId=${order.orderId}, navigationData=null")
-                                        return@launch
-                                    }
-
-                                    actions.onNavigateToServiceCountdown(
-                                        navigationData.orderKey,
-                                        navigationData.projectIdList
-                                    )
-                                } catch (e: Exception) {
-                                    logE("跳转到服务倒计时页面失败: orderId=${order.orderId}", throwable = e)
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                } else {
-                    EmptyView(modifier = Modifier.height(376.dp), message = "暂无服务中订单")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun CustomTabItem(
-    text: String,
-    isSelected: Boolean
-) {
-    val textMeasurer = rememberTextMeasurer()
-    val density = LocalDensity.current
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = text,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            color = if (isSelected) Color(0xFF007AFF) else Color(0xFF999999),
-            fontSize = 16.sp
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // 自定义指示器，宽度与文字宽度一致
-        if (isSelected) {
-            val textLayoutResult = textMeasurer.measure(
-                text = text,
-                style = TextStyle(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-            )
-            val textWidthDp = with(density) { textLayoutResult.size.width.toDp() }
-
-            Box(
-                modifier = Modifier
-                    .width(textWidthDp)
-                    .height(2.dp)
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                IndicatorGradientStart,
-                                IndicatorGradientEnd
-                            )
-                        ),
-                        shape = RoundedCornerShape(4.dp)
-                    )
-            )
-        } else {
-            // 占位符，保持布局一致
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(2.dp)
             )
         }
     }

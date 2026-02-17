@@ -231,7 +231,8 @@ for workflow in "${WORKFLOWS[@]}"; do
   fi
 
   require_pattern "${workflow}" "concurrency:" "has concurrency block"
-  require_pattern "${workflow}" "cancel-in-progress:[[:space:]]*true" "cancel-in-progress enabled"
+  require_pattern "${workflow}" "cancel-in-progress:" "cancel-in-progress configured"
+  require_absent_pattern "${workflow}" "cancel-in-progress:[[:space:]]*false" "cancel-in-progress is not disabled"
   require_pattern "${workflow}" "permissions:" "has permissions block"
   require_pattern "${workflow}" "timeout-minutes:" "has job timeout"
   require_pattern "${workflow}" "uses:[[:space:]]*actions/checkout@v6" "uses pinned checkout action"

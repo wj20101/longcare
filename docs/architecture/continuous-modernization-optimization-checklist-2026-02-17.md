@@ -25,8 +25,8 @@
 | ID | 优化项 | 对应目标 | 状态 |
 |---|---|---|---|
 | R1 | 继续将主体业务从 `app/features/*` 迁移到 `feature/*` 模块（优先：`photoupload`、`identification`、`servicecountdown`） | 现代化模块架构、边界收敛 | IN_PROGRESS（photoupload 核心层 + identification vm 全量 + servicecountdown vm 已下沉，UI/平台适配层留在 app） |
-| R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | IN_PROGRESS（`ServiceCountdownScreen` 副作用/底栏已拆分；`PhotoUploadScreen` 副作用/底栏/Mock调试卡片已拆分；`CameraScreen` 拍照处理与权限门禁已拆分；`ManualFaceCaptureScreen` 副作用/拍照处理/反馈遮罩已拆分；`NfcWorkflowScreen` 副作用/底栏/弹窗编排已拆分；`FaceCaptureScreen` 弹窗/组件已拆分） |
-| R3 | CI 健康监控告警项治理：将 Android CI 取消率从 50% 降到阈值内（触发策略与提交流水优化） | CI/CD 资源效率、稳定性 | IN_PROGRESS（已完成 Android CI 并发分组治理，待远端样本窗口验证取消率回落） |
+| R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | IN_PROGRESS（`ServiceCountdownScreen`、`PhotoUploadScreen`、`CameraScreen`、`ManualFaceCaptureScreen`、`NfcWorkflowScreen`、`FaceCaptureScreen`、`MainDashboardScreen` 已完成分层拆分） |
+| R3 | CI 健康监控告警项治理：将 Android CI 取消率从 50% 降到阈值内（触发策略与提交流水优化） | CI/CD 资源效率、稳定性 | IN_PROGRESS（已完成并发分组与取消策略治理，待远端新样本窗口验证取消率回落） |
 | R4 | 在“无缓存 + rerun”基线口径下继续压降 `:app:assembleDebug` 冷构建耗时（当前 73s） | 构建性能目标收敛 | IN_PROGRESS（依赖精简后 `assembleDebug` 回落，但 `compileDebugKotlin` 波动仍需持续观测） |
 
 ## 增量执行记录（2026-02-17）
@@ -141,6 +141,18 @@
     - `FaceCaptureScreen.kt` 删除内联弹窗与组件实现，仅保留相机编排与页面状态渲染。
   - 收敛结果：
     - `FaceCaptureScreen.kt` 行数从 `495` 降至 `396`。
+- `R2` 增量切片（`maindashboard`）：
+  - 页面骨架与业务编排收敛：
+    - `MainDashboardScreen.kt` 仅保留页面入口、生命周期触发与主布局编排。
+  - 头部/卡片区拆分：
+    - 新增 `MainDashboardHeaderCards.kt`，承接 `TopHeader`、`HomeBannerCard`、`DashboardGridWithImages`、`InfoCard` 与 `ImageWithAdaptiveWidth`。
+  - 订单 Tab 区拆分：
+    - 新增 `MainDashboardOrdersSection.kt`，承接 `OrderTabLayout`、`InOrderServiceItem` 与 `CustomTabItem`。
+  - 收敛结果：
+    - `MainDashboardScreen.kt` 行数从 `586` 降至 `125`。
+  - 补充问题修复（单测稳定性）：
+    - 修复 `MainDashboardViewModelTest` 在 JVM 环境触发 `android.util.Log not mocked` 的失败；
+    - 在失败路径用例中对 `Any.logE(...)` 扩展日志函数进行静态 mock，避免单测依赖 Android Log 实现。
 - `R3` 增量治理（`android-ci` 取消率）：
   - 健康监控基线复测：
     - `monitor_ci_health` 最近 `50` 次样本显示 `Android CI` 取消率 `60%`，高于阈值 `20%`。
@@ -148,6 +160,15 @@
     - 更新 `.github/workflows/android-ci.yml` 的 `concurrency.group`：
       - `pull_request` 维度加入 `head.sha`，降低同 PR 连续提交造成的互相取消。
       - `push` 维度保持分支级分组，继续保留串行保护。
+  - 取消策略收敛（本轮新增）：
+    - `concurrency.cancel-in-progress` 从固定 `true` 调整为表达式：
+      - `${{ github.event_name == 'pull_request' }}`
+      - 仅对 PR superseded 运行执行取消，降低 push 分支流水线被互斥取消的比例。
+    - `scripts/quality/verify_ci_workflow_quality.sh` 调整为：
+      - 校验 `cancel-in-progress` 已配置；
+      - 禁止显式 `cancel-in-progress: false`。
+  - 治理后快照（历史窗口）：
+    - 最近 `50` 次样本仍为取消率 `62%`、非取消成功率 `68.42%`，仍高于阈值，需等待新策略覆盖更多样本。
   - 守卫验证：
     - `scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - `R4` 基线复测（`assembleDebug`）：
@@ -188,7 +209,11 @@
 - `app/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureScreen.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureDialogs.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureUiComponents.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardScreen.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardHeaderCards.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardOrdersSection.kt`
 - `.github/workflows/android-ci.yml`
+- `scripts/quality/legacy_feature_files_allowlist.txt`
 - `docs/refactor/baseline-metrics.md`
 
 ## 本轮验收命令
@@ -202,4 +227,6 @@
 - `bash scripts/quality/collect_quality_snapshot.sh`
 - `BASELINE_CLEAN_BEFORE_RUN=true bash scripts/quality/collect_build_baseline.sh`
 - `bash scripts/quality/monitor_ci_health.sh yyg20101/longcare 50 scripts/quality/ci_health_thresholds.json build/ci-health`
+- `bash scripts/quality/monitor_ci_health.sh yyg20101/longcare 50 scripts/quality/ci_health_thresholds.json build/ci-health-r3-after-cancel-policy`
 - `./gradlew --no-daemon :app:testDebugUnitTest --tests "com.ytone.longcare.data.cos.repository.CosRepositoryImplTest"`
+- `./gradlew --no-daemon :app:testDebugUnitTest --tests "*MainDashboardViewModelTest"`

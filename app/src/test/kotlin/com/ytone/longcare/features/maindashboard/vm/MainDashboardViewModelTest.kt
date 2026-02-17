@@ -5,6 +5,7 @@ import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.util.MainDispatcherRule
@@ -12,6 +13,8 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -89,19 +92,26 @@ class MainDashboardViewModelTest {
 
     @Test
     fun `buildServiceCountdownNavigationData should return null and toast on api failure`() = runTest {
-        val orderId = 1003L
-        val orderKey = OrderKey(orderId = orderId, planId = 0)
-        every { unifiedOrderRepository.getCachedOrderInfo(orderKey) } returns null
-        coEvery { unifiedOrderRepository.getOrderInfo(orderKey) } returns ApiResult.Failure(
-            code = 500,
-            message = "server error"
-        )
-        val viewModel = createViewModel()
+        mockkStatic("com.ytone.longcare.common.utils.LogExtKt")
+        try {
+            every { any<Any>().logE(any(), any(), any()) } returns Unit
 
-        val result = viewModel.buildServiceCountdownNavigationData(orderId = orderId)
+            val orderId = 1003L
+            val orderKey = OrderKey(orderId = orderId, planId = 0)
+            every { unifiedOrderRepository.getCachedOrderInfo(orderKey) } returns null
+            coEvery { unifiedOrderRepository.getOrderInfo(orderKey) } returns ApiResult.Failure(
+                code = 500,
+                message = "server error"
+            )
+            val viewModel = createViewModel()
 
-        assertNull(result)
-        verify(exactly = 1) { toastHelper.showShort("server error") }
+            val result = viewModel.buildServiceCountdownNavigationData(orderId = orderId)
+
+            assertNull(result)
+            verify(exactly = 1) { toastHelper.showShort("server error") }
+        } finally {
+            unmockkStatic("com.ytone.longcare.common.utils.LogExtKt")
+        }
     }
 
     private fun createOrderInfo(orderId: Long, projectIds: List<Int>): ServiceOrderInfoModel {
