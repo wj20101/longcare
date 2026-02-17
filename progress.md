@@ -786,3 +786,13 @@
   - 验证：
     - `./gradlew :app:compileDebugKotlin`：PASS。
     - `./gradlew :app:testDebugUnitTest --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest"`：PASS。
+- 执行“持续现代化优化（R1 增量切片：servicecountdown 状态定义下沉）”（2026-02-17）：
+  - 状态定义与状态持有器模块化：
+    - 新增 `feature/servicecountdown/src/main/kotlin/com/ytone/longcare/features/servicecountdown/model/ServiceCountdownState.kt`。
+    - `ServiceCountdownStateHolder.kt` 从 `app/features/servicecountdown/vm` 迁移至 `feature:servicecountdown`。
+  - 解耦调整：
+    - `ServiceCountdownScreen.kt` 移除内嵌 `enum ServiceCountdownState`，改为引用 `feature` 模块定义。
+    - `ServiceCountdownViewModel.kt` 改为引用 `feature` 模块状态定义，消除对 UI 包类型依赖。
+  - 验证：
+    - `./gradlew :app:compileDebugKotlin`：PASS。
+    - `./gradlew :app:testDebugUnitTest --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest"`：PASS。

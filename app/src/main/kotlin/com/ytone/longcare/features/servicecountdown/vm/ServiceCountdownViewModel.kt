@@ -14,8 +14,8 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.model.ImageTask
 import com.ytone.longcare.model.ImageTaskType
+import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
-import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import dagger.hilt.android.lifecycle.HiltViewModel

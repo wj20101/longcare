@@ -24,7 +24,7 @@
 
 | ID | 优化项 | 对应目标 | 状态 |
 |---|---|---|---|
-| R1 | 继续将主体业务从 `app/features/*` 迁移到 `feature/*` 模块（优先：`photoupload`、`identification`、`servicecountdown`） | 现代化模块架构、边界收敛 | IN_PROGRESS（photoupload + identification + servicecountdown API 首批切片已落地） |
+| R1 | 继续将主体业务从 `app/features/*` 迁移到 `feature/*` 模块（优先：`photoupload`、`identification`、`servicecountdown`） | 现代化模块架构、边界收敛 | IN_PROGRESS（photoupload + identification + servicecountdown API/State 首批切片已落地） |
 | R2 | 对 `app/features/*` 超大目录做二次拆分（按 `ui/vm/domain/data` 纵向分层） | 主体代码质量、可维护性 | TODO |
 | R3 | CI 健康监控告警项治理：将 Android CI 取消率从 50% 降到阈值内（触发策略与提交流水优化） | CI/CD 资源效率、稳定性 | TODO |
 | R4 | 在“无缓存 + rerun”基线口径下继续压降 `:app:assembleDebug` 冷构建耗时（当前 79s） | 构建性能目标收敛 | TODO |
@@ -65,6 +65,10 @@
     - `app/build.gradle.kts` 新增 `implementation(project(":feature:servicecountdown"))`
   - 迁移 `servicecountdown` 首个非 UI 契约文件：
     - `api/ServiceCountdownActions.kt` 从 `app` 迁移到 `feature:servicecountdown`
+  - 迁移 `servicecountdown` 共享状态定义（解除 UI->VM 反向耦合）：
+    - 新增 `feature/servicecountdown/.../model/ServiceCountdownState.kt`
+    - `vm/ServiceCountdownStateHolder.kt` 从 `app` 迁移到 `feature:servicecountdown`
+    - `ServiceCountdownScreen` 与 `ServiceCountdownViewModel` 改为依赖 `feature` 模块中的状态定义
   - 模块依赖补齐：
     - `feature/servicecountdown/build.gradle.kts` 新增 `kotlinx-coroutines-core`（`StateFlow` 依赖）
 - 验证：

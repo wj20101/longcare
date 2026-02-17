@@ -51,17 +51,9 @@ import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
+import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.common.utils.singleClick
-
-
-// 服务倒计时页面状态
-enum class ServiceCountdownState {
-    RUNNING,    // 倒计时运行中
-    COMPLETED,  // 倒计时完成
-    OVERTIME,   // 倒计时超时
-    ENDED       // 服务已结束
-}
 
 /**
  * 倒计时初始化状态

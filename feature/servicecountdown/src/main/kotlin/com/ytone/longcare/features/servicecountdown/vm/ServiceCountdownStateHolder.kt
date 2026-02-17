@@ -4,7 +4,7 @@ import com.ytone.longcare.model.ServiceOrderStateModel
 import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.model.ImageTask
 import com.ytone.longcare.model.ImageTaskType
-import com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownState
+import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 import com.ytone.longcare.model.OrderKey
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
