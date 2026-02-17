@@ -14,7 +14,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -148,49 +152,16 @@ fun NfcWorkflowScreen(
         }
     }
 
-    // NFC检查和处理
-    LaunchedEffect(Unit) {
-        if (activity != null) {
-            when {
-                !nfcViewModel.isNfcSupported() -> {
-                    // 设备不支持NFC，显示错误信息
-                    nfcViewModel.showError("设备不支持NFC功能")
-                }
-
-                else -> {
-                    // 启用NFC功能
-                    nfcViewModel.enableNfcForActivity(activity)
-                }
-            }
-        }
-    }
-
-    // 监听NFC事件
-    LaunchedEffect(orderKey, signInMode) {
-        nfcViewModel.observeNfcEvents(
-            orderKey = orderKey,
-            signInMode = signInMode,
-            endOderInfo = endOderInfo,
-            onLocationRequest = { getCurrentLocationCoordinates() }
-        )
-    }
-
-    // 管理NFC前台调度的生命周期
-    DisposableEffect(activity) {
-        onDispose {
-            // 禁用NFC功能
-            activity?.let { nfcViewModel.disableNfcForActivity(it) }
-        }
-    }
-
-    // 签退成功，关闭定位上传
-    LaunchedEffect(uiState) {
-        if (signInMode == SignInMode.END_ORDER && uiState is NfcSignInUiState.Success) {
-            locationTrackingViewModel.onStopClicked()
-        }
-    }
-
-
+    NfcWorkflowEffects(
+        activity = activity,
+        orderKey = orderKey,
+        signInMode = signInMode,
+        endOderInfo = endOderInfo,
+        uiState = uiState,
+        nfcViewModel = nfcViewModel,
+        locationTrackingViewModel = locationTrackingViewModel,
+        onLocationRequest = { getCurrentLocationCoordinates() }
+    )
 
     val titleRes = when (signInMode) {
         SignInMode.START_ORDER -> R.string.nfc_sign_in_title
@@ -225,81 +196,33 @@ fun NfcWorkflowScreen(
                 )
             },
             bottomBar = {
-                // 根据状态显示不同的底部按钮
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Color.Transparent
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp)
-                            .padding(bottom = 32.dp, top = 16.dp)
-                    ) {
-                        when (signInState) {
-                            SignInState.SUCCESS -> {
-                                val buttonText = when (signInMode) {
-                                    SignInMode.START_ORDER -> stringResource(R.string.common_next_step)
-                                    SignInMode.END_ORDER -> stringResource(R.string.nfc_sign_out_complete_service)
-                                }
-                                ActionButton(
-                                    text = buttonText, onClick = singleClick {
-                                        when (signInMode) {
-                                            SignInMode.START_ORDER -> {
-                                                // 签到成功时开启定位上报任务
-                                                checkLocationPermissionAndStartTracking()
-                                                // 签到成功后跳转到身份认证页面
-                                                actions.onNavigateToIdentification(orderKey)
-                                            }
-
-                                            SignInMode.END_ORDER -> {
-                                                // 签退时停止定位上报任务
-                                                locationTrackingViewModel.onStopClicked()
-                                                // 从状态中获取trueServiceTime
-                                                val successState = uiState as? NfcSignInUiState.Success
-                                                val trueServiceTime = successState?.endOrderSuccessData?.trueServiceTime ?: 0
-                                                val serviceCompleteData =
-                                                    nfcViewModel.buildServiceCompleteDataFromCache(
-                                                        orderKey = orderKey,
-                                                        endOderInfo = endOderInfo,
-                                                        trueServiceTime = trueServiceTime
-                                                    )
-                                                actions.onNavigateToServiceComplete(
-                                                    orderKey,
-                                                    serviceCompleteData
-                                                )
-                                            }
-                                        }
-                                    })
+                NfcWorkflowBottomBar(
+                    signInState = signInState,
+                    signInMode = signInMode,
+                    onSuccessClick = singleClick {
+                        when (signInMode) {
+                            SignInMode.START_ORDER -> {
+                                checkLocationPermissionAndStartTracking()
+                                actions.onNavigateToIdentification(orderKey)
                             }
 
-                            SignInState.FAILURE -> ActionButton(
-                                text = stringResource(R.string.nfc_sign_in_retry), onClick = {
-                                    nfcViewModel.resetState()
-                                    // 重置状态后等待用户重新靠近NFC设备
-                                })
-
-                            SignInState.IDLE -> {
-                                // 初始状态显示等待NFC的提示
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = Color.White.copy(alpha = 0.9f)
-                                    )
-                                ) {
-                                    Text(
-                                        text = "请将NFC设备靠近手机背面",
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        textAlign = TextAlign.Center,
-                                        color = Color.Black.copy(alpha = 0.7f)
-                                    )
-                                }
+                            SignInMode.END_ORDER -> {
+                                locationTrackingViewModel.onStopClicked()
+                                val successState = uiState as? NfcSignInUiState.Success
+                                val trueServiceTime = successState?.endOrderSuccessData?.trueServiceTime ?: 0
+                                val serviceCompleteData = nfcViewModel.buildServiceCompleteDataFromCache(
+                                    orderKey = orderKey,
+                                    endOderInfo = endOderInfo,
+                                    trueServiceTime = trueServiceTime
+                                )
+                                actions.onNavigateToServiceComplete(orderKey, serviceCompleteData)
                             }
                         }
+                    },
+                    onRetryClick = {
+                        nfcViewModel.resetState()
                     }
-                }
+                )
             },
             containerColor = Color.Transparent
         ) { paddingValues ->
@@ -347,25 +270,14 @@ fun NfcWorkflowScreen(
             }
         }
 
-        // 定位激活弹窗
-        pendingNfcData?.let { data ->
-            LocationActivationDialog(
-                onConfirm = { nfcViewModel.confirmLocationActivation(data) },
-                onCancel = { nfcViewModel.cancelLocationActivation() })
-        }
-
-        // 结束工单确认对话框
-        when (val currentState = uiState) {
-            is NfcSignInUiState.ShowConfirmDialog -> {
-                EndOrderConfirmDialog(
-                    message = currentState.message,
-                    onConfirm = { nfcViewModel.confirmEndOrder(currentState.endOrderParams) },
-                    onCancel = { nfcViewModel.cancelEndOrder() })
-            }
-
-            else -> { /* 其他状态不需要显示对话框 */
-            }
-        }
+        NfcWorkflowDialogs(
+            pendingNfcData = pendingNfcData,
+            uiState = uiState,
+            onConfirmLocationActivation = nfcViewModel::confirmLocationActivation,
+            onCancelLocationActivation = nfcViewModel::cancelLocationActivation,
+            onConfirmEndOrder = nfcViewModel::confirmEndOrder,
+            onCancelEndOrder = nfcViewModel::cancelEndOrder
+        )
     }
 }
 

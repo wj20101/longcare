@@ -943,3 +943,18 @@
   - 验证：
     - `./gradlew :app:compileDebugKotlin`：PASS。
     - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS。
+- 执行“持续现代化优化（R2 增量切片：nfc workflow 屏幕拆分）”（2026-02-17）：
+  - 副作用拆分：
+    - 新增 `app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowEffects.kt`。
+    - 抽离 NFC 能力检查、NFC 事件订阅、前台调度生命周期与签退后停止定位逻辑。
+  - 底栏拆分：
+    - 新增 `app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowBottomBar.kt`。
+    - 抽离成功/失败/等待态底部按钮与提示卡片。
+  - 弹窗编排拆分：
+    - 新增 `app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowDialogs.kt`。
+    - 统一承接定位激活与结束工单确认弹窗显示与回调。
+  - 收敛结果：
+    - `NfcWorkflowScreen.kt` 从 `684` 行降至 `596` 行。
+  - 验证：
+    - `./gradlew :app:compileDebugKotlin`：PASS。
+    - `./gradlew :app:testDebugUnitTest --tests "*ServiceCountdownViewModelTest" --tests "*ImageTaskSimplificationTest" --tests "*UriJsonAdapterTest" --tests "*JsonClassAnnotationTest" --tests "*FaceSdkBoundaryTest"`：PASS。
