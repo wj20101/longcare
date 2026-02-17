@@ -41,7 +41,7 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
             actions = ServiceHoursActions(
                 onNavigateBack = { navController.popBackStack() }
             ),
-            orderKey = route.orderParams.toOrderKeyModel()
+            orderKey = route.orderParams.toOrderKey()
         )
     }
 
@@ -59,7 +59,7 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
                     navController.navigateToSelectDevice(orderKey)
                 }
             ),
-            orderKey = route.orderParams.toOrderKeyModel()
+            orderKey = route.orderParams.toOrderKey()
         )
     }
 
@@ -124,7 +124,7 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
                     )
                 }
             ),
-            orderKey = route.orderParams.toOrderKeyModel(),
+            orderKey = route.orderParams.toOrderKey(),
             signInMode = route.signInMode,
             endOderInfo = route.endOrderParams
         )
@@ -144,7 +144,7 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
                     )
                 }
             ),
-            orderKey = route.orderParams.toOrderKeyModel()
+            orderKey = route.orderParams.toOrderKey()
         )
     }
 
@@ -184,7 +184,7 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
                     backStackEntry.savedStateHandle.remove<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)
                 }
             ),
-            orderKey = route.orderParams.toOrderKeyModel()
+            orderKey = route.orderParams.toOrderKey()
         )
     }
 
@@ -215,7 +215,7 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
                     )
                 }
             ),
-            orderKey = route.orderParams.toOrderKeyModel(),
+            orderKey = route.orderParams.toOrderKey(),
             projectIdList = route.projectIdList
         )
     }
@@ -231,7 +231,7 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
             actions = ServiceCompleteActions(
                 onNavigateHomeAndClearStack = { navController.navigateToHomeAndClearStack() }
             ),
-            orderKey = route.orderParams.toOrderKeyModel(),
+            orderKey = route.orderParams.toOrderKey(),
             serviceCompleteData = route.serviceCompleteData
         )
     }
@@ -247,7 +247,7 @@ internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavCont
                     navController.navigateToNfcSignInForEndOrder(orderKey, params)
                 }
             ),
-            orderKey = route.orderParams.toOrderKeyModel(),
+            orderKey = route.orderParams.toOrderKey(),
             endType = route.endType,
             initialProjectIdList = route.initialProjectIdList
         )

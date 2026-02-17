@@ -86,7 +86,7 @@ internal fun NavGraphBuilder.registerSupportNavGraphs(navController: NavControll
                     navController.navigateToSelectService(orderKey)
                 }
             ),
-            orderKey = route.orderParams.toOrderKeyModel()
+            orderKey = route.orderParams.toOrderKey()
         )
     }
 
@@ -101,7 +101,7 @@ internal fun NavGraphBuilder.registerSupportNavGraphs(navController: NavControll
                     navController.navigateToNfcSignInForStartOrder(orderKey)
                 }
             ),
-            orderKey = route.orderParams.toOrderKeyModel()
+            orderKey = route.orderParams.toOrderKey()
         )
     }
 
@@ -134,7 +134,7 @@ internal fun NavGraphBuilder.registerSupportNavGraphs(navController: NavControll
                     backStackEntry.savedStateHandle.remove<String>(NavigationConstants.FACE_IMAGE_PATH_KEY)
                 }
             ),
-            orderKey = route.orderParams.toOrderKeyModel()
+            orderKey = route.orderParams.toOrderKey()
         )
     }
 

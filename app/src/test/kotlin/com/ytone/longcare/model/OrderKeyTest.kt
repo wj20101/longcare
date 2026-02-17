@@ -2,10 +2,9 @@ package com.ytone.longcare.model
 
 import com.ytone.longcare.model.OrderInfoRequestModel
 import com.ytone.longcare.navigation.OrderNavParams
-import com.ytone.longcare.navigation.toOrderKeyModel
+import com.ytone.longcare.navigation.toOrderKey
 import com.ytone.longcare.navigation.toOrderNavParams
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Test
 
 class OrderKeyTest {
@@ -29,9 +28,9 @@ class OrderKeyTest {
     }
 
     @Test
-    fun `test OrderNavParams toOrderKeyModel extension`() {
+    fun `test OrderNavParams toOrderKey extension`() {
         val navParams = OrderNavParams(orderId = 111L, planId = 2)
-        val orderKey = navParams.toOrderKeyModel()
+        val orderKey = navParams.toOrderKey()
         
         assertEquals(111L, orderKey.orderId)
         assertEquals(2, orderKey.planId)
