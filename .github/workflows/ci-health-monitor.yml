@@ -9,6 +9,10 @@ on:
         description: "Number of recent workflow runs to evaluate"
         required: false
         default: "50"
+      fail_on_breach:
+        description: "Fail workflow when thresholds are breached"
+        required: false
+        default: "false"
 
 concurrency:
   group: ci-health-monitor-${{ github.ref }}
@@ -38,11 +42,17 @@ jobs:
           if [[ -z "${SAMPLE_SIZE}" ]]; then
             SAMPLE_SIZE="50"
           fi
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          if [[ -z "${DEFAULT_BRANCH}" ]]; then
+            DEFAULT_BRANCH="${GITHUB_REF_NAME:-master}"
+          fi
           bash scripts/quality/monitor_ci_health.sh \
             "${{ github.repository }}" \
             "${SAMPLE_SIZE}" \
             "scripts/quality/ci_health_thresholds.json" \
-            "build/ci-health"
+            "build/ci-health" \
+            "" \
+            "${DEFAULT_BRANCH}"
 
       - name: Publish CI health summary
         if: always()
@@ -85,8 +95,13 @@ jobs:
             echo "Created new CI health issue."
           fi
 
+      - name: Threshold breach detected (non-blocking by default)
+        if: steps.health_check.outcome == 'failure' && github.event.inputs.fail_on_breach != 'true'
+        run: |
+          echo "CI health threshold breach detected, issue is updated, workflow kept green."
+
       - name: Fail workflow on threshold breach
-        if: steps.health_check.outcome == 'failure'
+        if: steps.health_check.outcome == 'failure' && github.event.inputs.fail_on_breach == 'true'
         run: |
           echo "CI health threshold breach detected."
           exit 1

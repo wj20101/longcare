@@ -6,6 +6,7 @@ LIMIT="${2:-50}"
 THRESHOLD_FILE="${3:-scripts/quality/ci_health_thresholds.json}"
 OUTPUT_DIR="${4:-build/ci-health}"
 RUNS_JSON_FILE="${5:-}"
+BRANCH="${6:-}"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -72,8 +73,18 @@ else
     echo "[ci-health][INFO] gh auth session not detected; using GH_TOKEN from environment."
   fi
 
+  RUN_LIST_ARGS=(
+    run list
+    -R "${REPO}"
+    --limit "${LIMIT}"
+    --json workflowName,status,conclusion,createdAt,updatedAt,url
+  )
+  if [[ -n "${BRANCH}" ]]; then
+    RUN_LIST_ARGS+=(--branch "${BRANCH}")
+  fi
+
   set +e
-  RUNS_JSON="$(gh run list -R "${REPO}" --limit "${LIMIT}" --json workflowName,status,conclusion,createdAt,updatedAt,url 2>&1)"
+  RUNS_JSON="$(gh "${RUN_LIST_ARGS[@]}" 2>&1)"
   GH_EXIT=$?
   set -e
 
@@ -101,16 +112,29 @@ EOF
   exit 0
 fi
 
-echo "${RUNS_JSON}" | jq -c --arg repo "${REPO}" --argjson limit "${LIMIT}" '
+TARGET_WORKFLOWS_JSON="$(jq -c '.workflows | keys // []' "${THRESHOLD_FILE}")"
+
+echo "${RUNS_JSON}" | jq -c \
+  --arg repo "${REPO}" \
+  --arg branch "${BRANCH}" \
+  --argjson limit "${LIMIT}" \
+  --argjson target_workflows "${TARGET_WORKFLOWS_JSON}" '
   def pct($p; $t):
     if $t > 0 then (($p * 10000 / $t) | round / 100) else 0 end;
+  def filter_workflows($runs; $targets):
+    if ($targets | length) > 0
+    then ($runs | map(select(.workflowName as $wf | $targets | index($wf))))
+    else $runs
+    end;
   . as $all
+  | (filter_workflows($all; $target_workflows)) as $filtered
   | {
       repo: $repo,
+      branch: $branch,
       sample_size: $limit,
       generated_at: (now | todateiso8601),
       workflows: (
-        $all
+        $filtered
         | sort_by(.workflowName)
         | group_by(.workflowName)
         | map(
@@ -184,6 +208,7 @@ echo "${RUNS_JSON}" | jq -c --arg repo "${REPO}" --argjson limit "${LIMIT}" '
 declare -a WARNINGS=()
 declare -a VIOLATIONS=()
 
+OVERALL_RUNS="$(jq -r '.overall.runs // 0' "${METRICS_FILE}")"
 OVERALL_NON_CANCELLED_SUCCESS_RATE="$(jq -r '.overall.non_cancelled_success_rate // 0' "${METRICS_FILE}")"
 OVERALL_CANCELLED_RATE="$(jq -r '.overall.cancelled_rate // 0' "${METRICS_FILE}")"
 
@@ -191,15 +216,19 @@ OVERALL_MIN_SUCCESS_RATE="$(jq -r '.overall.min_success_rate // empty' "${THRESH
 OVERALL_MAX_CANCELLED_RATE="$(jq -r '.overall.max_cancelled_rate // empty' "${THRESHOLD_FILE}")"
 OVERALL_ENFORCE_CANCELLED_RATE="$(jq -r '.overall.enforce_cancelled_rate // false' "${THRESHOLD_FILE}")"
 
-if [[ -n "${OVERALL_MIN_SUCCESS_RATE}" ]] && is_less_than "${OVERALL_NON_CANCELLED_SUCCESS_RATE}" "${OVERALL_MIN_SUCCESS_RATE}"; then
-  VIOLATIONS+=("overall non_cancelled_success_rate ${OVERALL_NON_CANCELLED_SUCCESS_RATE}% < min_success_rate ${OVERALL_MIN_SUCCESS_RATE}%")
-fi
+if [[ "${OVERALL_RUNS}" == "0" ]]; then
+  WARNINGS+=("no target workflow runs found in sample; overall threshold checks skipped")
+else
+  if [[ -n "${OVERALL_MIN_SUCCESS_RATE}" ]] && is_less_than "${OVERALL_NON_CANCELLED_SUCCESS_RATE}" "${OVERALL_MIN_SUCCESS_RATE}"; then
+    VIOLATIONS+=("overall non_cancelled_success_rate ${OVERALL_NON_CANCELLED_SUCCESS_RATE}% < min_success_rate ${OVERALL_MIN_SUCCESS_RATE}%")
+  fi
 
-if [[ -n "${OVERALL_MAX_CANCELLED_RATE}" ]] && is_greater_than "${OVERALL_CANCELLED_RATE}" "${OVERALL_MAX_CANCELLED_RATE}"; then
-  if [[ "${OVERALL_ENFORCE_CANCELLED_RATE}" == "true" ]]; then
-    VIOLATIONS+=("overall cancelled_rate ${OVERALL_CANCELLED_RATE}% > max_cancelled_rate ${OVERALL_MAX_CANCELLED_RATE}%")
-  else
-    WARNINGS+=("overall cancelled_rate ${OVERALL_CANCELLED_RATE}% > max_cancelled_rate ${OVERALL_MAX_CANCELLED_RATE}%")
+  if [[ -n "${OVERALL_MAX_CANCELLED_RATE}" ]] && is_greater_than "${OVERALL_CANCELLED_RATE}" "${OVERALL_MAX_CANCELLED_RATE}"; then
+    if [[ "${OVERALL_ENFORCE_CANCELLED_RATE}" == "true" ]]; then
+      VIOLATIONS+=("overall cancelled_rate ${OVERALL_CANCELLED_RATE}% > max_cancelled_rate ${OVERALL_MAX_CANCELLED_RATE}%")
+    else
+      WARNINGS+=("overall cancelled_rate ${OVERALL_CANCELLED_RATE}% > max_cancelled_rate ${OVERALL_MAX_CANCELLED_RATE}%")
+    fi
   fi
 fi
 
@@ -256,6 +285,9 @@ done < <(jq -r '.workflows | keys[]' "${THRESHOLD_FILE}")
   echo ""
   echo "- repo: \`${REPO}\`"
   echo "- sample size: \`${LIMIT}\`"
+  if [[ -n "${BRANCH}" ]]; then
+    echo "- branch: \`${BRANCH}\`"
+  fi
   echo "- generated_at: \`$(jq -r '.generated_at' "${METRICS_FILE}")\`"
   echo ""
   echo "## Overall"
