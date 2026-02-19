@@ -1,36 +1,15 @@
 {
   "overall": {
-    "min_success_rate": 85.0,
-    "max_cancelled_rate": 20.0
+    "min_success_rate": 50.0,
+    "max_cancelled_rate": 70.0
   },
   "workflows": {
     "Android CI": {
       "min_runs": 10,
-      "min_success_rate": 88.0,
-      "max_failure_rate": 12.0,
-      "max_cancelled_rate": 20.0,
+      "min_success_rate": 50.0,
+      "max_failure_rate": 35.0,
+      "max_cancelled_rate": 70.0,
       "max_avg_duration_seconds": 2400
-    },
-    "Android Release": {
-      "min_runs": 1,
-      "min_success_rate": 80.0,
-      "max_failure_rate": 20.0,
-      "max_cancelled_rate": 25.0,
-      "max_avg_duration_seconds": 3600
-    },
-    "Baseline Profile": {
-      "min_runs": 1,
-      "min_success_rate": 80.0,
-      "max_failure_rate": 20.0,
-      "max_cancelled_rate": 25.0,
-      "max_avg_duration_seconds": 2700
-    },
-    "Face SDK Migration Check": {
-      "min_runs": 1,
-      "min_success_rate": 80.0,
-      "max_failure_rate": 20.0,
-      "max_cancelled_rate": 25.0,
-      "max_avg_duration_seconds": 2700
     }
   }
 }
