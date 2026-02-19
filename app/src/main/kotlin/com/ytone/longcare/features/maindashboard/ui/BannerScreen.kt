@@ -7,28 +7,22 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.rememberAsyncImagePainter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.ytone.longcare.R
 
 // 定义 Banner 数据项
 data class BannerItem(
@@ -127,60 +121,6 @@ fun ImageBannerPager(
                     )
                 }
             }
-        }
-    }
-}
-
-fun PagerState.getOffsetFractionForPage(page: Int): Float {
-    return ((currentPage - page) + currentPageOffsetFraction).coerceIn(-1f, 1f)
-}
-
-
-@Composable
-fun BannerIndicatorDot(
-    isSelected: Boolean,
-    color: Color,
-    size: Dp
-) {
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(color)
-    )
-}
-
-// --- 预览 ---
-@Preview(showBackground = true, widthDp = 360, heightDp = 200)
-@Composable
-fun ImageBannerPagerPreview() {
-    val sampleBanners = listOf(
-        BannerItem(1, R.drawable.main_banner, "Banner 1"),
-        BannerItem(2, R.drawable.main_banner, "Banner 2"),
-        BannerItem(3, R.drawable.main_banner, "Banner 3"),
-    )
-    MaterialTheme {
-        Surface {
-            ImageBannerPager(
-                bannerItems = sampleBanners,
-                modifier = Modifier.height(200.dp)
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 360, heightDp = 200)
-@Composable
-fun SingleImageBannerPagerPreview() {
-    val singleBanner = listOf(
-        BannerItem(1, R.drawable.main_banner, "Single Banner")
-    )
-    MaterialTheme {
-        Surface {
-            ImageBannerPager(
-                bannerItems = singleBanner,
-                modifier = Modifier.height(200.dp)
-            )
         }
     }
 }

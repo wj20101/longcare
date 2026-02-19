@@ -54,13 +54,9 @@ class UriJsonAdapterTest {
     @Test
     fun testImageTaskWithUriSerialization() {
         // Given
-        mockkStatic(Uri::class)
-        val mockUri = mockk<Uri>()
-        every { mockUri.toString() } returns "content://test/image"
-        
         val imageTask = ImageTask(
             id = "test-id",
-            originalUri = mockUri,
+            originalUri = "content://test/image",
             taskType = ImageTaskType.BEFORE_CARE,
             status = ImageTaskStatus.PROCESSING
         )

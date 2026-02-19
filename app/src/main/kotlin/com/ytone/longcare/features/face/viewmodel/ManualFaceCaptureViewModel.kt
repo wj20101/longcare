@@ -18,13 +18,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -40,123 +33,71 @@ class ManualFaceCaptureViewModel @Inject constructor(
     private val _currentState = MutableStateFlow<ManualFaceCaptureState>(ManualFaceCaptureState.Idle)
     val currentState: StateFlow<ManualFaceCaptureState> = _currentState.asStateFlow()
 
-    private val faceDetector = StaticImageFaceDetector()
+    private val facePipelineDelegate = ManualFaceCaptureFacePipelineDelegate(
+        faceDetector = StaticImageFaceDetector(),
+        storageDelegate = ManualFaceCaptureStorageDelegate(context),
+        defaultDispatcher = defaultDispatcher,
+        ioDispatcher = ioDispatcher
+    )
 
-    /**
-     * 设置相机权限状态
-     */
     fun setCameraPermissionGranted(granted: Boolean) {
-        _uiState.value = _uiState.value.copy(cameraPermissionGranted = granted)
-        if (granted) {
-            _currentState.value = ManualFaceCaptureState.CameraReady
-        }
+        applyTransition(ManualFaceCaptureStateTransitions.onCameraPermissionChanged(_uiState.value, granted))
     }
 
-    /**
-     * 开始拍照
-     */
     fun startCapture() {
-        _currentState.value = ManualFaceCaptureState.CapturingPhoto
-        _uiState.value = _uiState.value.copy(
-            isLoading = true,
-            errorMessage = null
-        )
+        applyTransition(ManualFaceCaptureStateTransitions.onStartCapture(_uiState.value))
     }
 
-    /**
-     * 处理拍照完成
-     */
     fun onPhotoCaptured(bitmap: Bitmap) {
-        _uiState.value = _uiState.value.copy(
-            capturedPhoto = bitmap,
-            isLoading = false
-        )
-        _currentState.value = ManualFaceCaptureState.ProcessingFaces
-        
-        // 开始人脸检测
+        applyTransition(ManualFaceCaptureStateTransitions.onPhotoCaptured(_uiState.value, bitmap))
         detectFaces(bitmap)
     }
 
-    /**
-     * 检测人脸
-     */
     private fun detectFaces(bitmap: Bitmap) {
         viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(isProcessingFaces = true)
-                
-                val detectedFaces = withContext(defaultDispatcher) {
-                    faceDetector.detectFaces(bitmap)
-                }
-                
-                _uiState.value = _uiState.value.copy(
-                    detectedFaces = detectedFaces,
-                    isProcessingFaces = false
-                )
-                
+                applyTransition(ManualFaceCaptureStateTransitions.onDetectionStarted(_uiState.value))
+                val detectedFaces = facePipelineDelegate.detectFaces(bitmap)
+
+                applyTransition(ManualFaceCaptureStateTransitions.onFacesDetected(_uiState.value, detectedFaces))
                 when {
                     detectedFaces.isEmpty() -> {
-                        _currentState.value = ManualFaceCaptureState.NoFacesDetected
-                        _uiState.value = _uiState.value.copy(
-                            errorMessage = "未检测到人脸，请重新拍照"
-                        )
+                        applyTransition(ManualFaceCaptureStateTransitions.onNoFacesDetected(_uiState.value))
                     }
                     detectedFaces.size == 1 -> {
-                        // 只有一张人脸，自动选择
                         selectFace(0)
                     }
                     else -> {
-                        // 多张人脸，需要用户选择
-                        _currentState.value = ManualFaceCaptureState.FacesDetected
+                        applyTransition(ManualFaceCaptureStateTransitions.onMultipleFacesDetected(_uiState.value))
                     }
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isProcessingFaces = false,
-                    errorMessage = "人脸检测失败: ${e.message}"
-                )
-                _currentState.value = ManualFaceCaptureState.Error(e.message ?: "未知错误")
+                applyTransition(ManualFaceCaptureStateTransitions.onDetectionError(_uiState.value, e.message ?: "未知错误"))
             }
         }
     }
 
-    /**
-     * 选择人脸
-     */
     fun selectFace(index: Int) {
         val faces = _uiState.value.detectedFaces
         if (index in faces.indices) {
-            _uiState.value = _uiState.value.copy(selectedFaceIndex = index)
-            _currentState.value = ManualFaceCaptureState.FaceSelected
-            
-            // 显示确认对话框
-            showConfirmationDialog()
+            applyTransition(ManualFaceCaptureStateTransitions.onFaceSelected(_uiState.value, index))
         }
     }
 
-    /**
-     * 显示确认对话框
-     */
     private fun showConfirmationDialog() {
-        _uiState.value = _uiState.value.copy(showConfirmationDialog = true)
+        applyTransition(ManualFaceCaptureStateTransitions.showConfirmationDialog(_uiState.value))
     }
 
-    /**
-     * 隐藏确认对话框
-     */
     fun hideConfirmationDialog() {
-        _uiState.value = _uiState.value.copy(showConfirmationDialog = false)
+        applyTransition(ManualFaceCaptureStateTransitions.hideConfirmationDialog(_uiState.value))
     }
 
-    /**
-     * 确认选择的人脸
-     */
     fun confirmSelectedFace() {
         val selectedIndex = _uiState.value.selectedFaceIndex
         val faces = _uiState.value.detectedFaces
-        
+
         if (selectedIndex != null && selectedIndex in faces.indices) {
             val selectedFace = faces[selectedIndex]
             hideConfirmationDialog()
@@ -164,99 +105,40 @@ class ManualFaceCaptureViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 取消选择，重新拍照
-     */
     fun cancelAndRetake() {
         hideConfirmationDialog()
         resetState()
     }
 
-    /**
-     * 保存人脸图片
-     */
     private fun saveFaceImage(face: DetectedFace) {
         viewModelScope.launch {
             try {
-                _currentState.value = ManualFaceCaptureState.SavingFace
-                _uiState.value = _uiState.value.copy(isLoading = true)
-                
-                val savedPath = withContext(ioDispatcher) {
-                    saveBitmapToFile(face.croppedFace)
-                }
-                
-                _uiState.value = _uiState.value.copy(
-                    savedFaceImagePath = savedPath,
-                    isLoading = false
-                )
-                _currentState.value = ManualFaceCaptureState.Success
+                applyTransition(ManualFaceCaptureStateTransitions.onSaveStarted(_uiState.value))
+                val savedPath = facePipelineDelegate.saveFaceImage(face)
+                applyTransition(ManualFaceCaptureStateTransitions.onSaveSuccess(_uiState.value, savedPath))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = "保存人脸图片失败: ${e.message}"
-                )
-                _currentState.value = ManualFaceCaptureState.Error(e.message ?: "保存失败")
+                applyTransition(ManualFaceCaptureStateTransitions.onSaveError(_uiState.value, e.message ?: "保存失败"))
             }
         }
     }
 
-    /**
-     * 保存 Bitmap 到文件
-     */
-    private fun saveBitmapToFile(bitmap: Bitmap): String {
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val filename = "face_capture_$timestamp.jpg"
-        
-        // 保存到应用私有目录
-        val file = File(context.filesDir, "face_captures").apply {
-            if (!exists()) mkdirs()
-        }
-        val imageFile = File(file, filename)
-        
-        try {
-            FileOutputStream(imageFile).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
-            }
-            return imageFile.absolutePath
-        } catch (e: IOException) {
-            throw IOException("保存图片失败: ${e.message}")
-        }
-    }
-
-    /**
-     * 重置状态，重新开始
-     */
     fun resetState() {
-        _uiState.value = ManualFaceCaptureUiState(
-            cameraPermissionGranted = _uiState.value.cameraPermissionGranted
-        )
-        _currentState.value = if (_uiState.value.cameraPermissionGranted) {
-            ManualFaceCaptureState.CameraReady
-        } else {
-            ManualFaceCaptureState.Idle
-        }
+        applyTransition(ManualFaceCaptureStateTransitions.onReset(_uiState.value))
     }
 
-    /**
-     * 清除错误信息
-     */
     fun clearError() {
-        _uiState.value = _uiState.value.copy(errorMessage = null)
+        applyTransition(ManualFaceCaptureStateTransitions.onClearError(_uiState.value))
     }
 
-    /**
-     * 获取人脸质量评估
-     */
     fun getFaceQualityHints(faceIndex: Int): List<String> {
         val faces = _uiState.value.detectedFaces
         val capturedPhoto = _uiState.value.capturedPhoto
-        
+
         return if (faceIndex in faces.indices && capturedPhoto != null) {
             val face = faces[faceIndex]
-            val qualityResult = faceDetector.evaluateFaceQuality(face, capturedPhoto)
-            qualityResult.hints
+            facePipelineDelegate.getFaceQualityHints(face, capturedPhoto)
         } else {
             emptyList()
         }
@@ -264,6 +146,11 @@ class ManualFaceCaptureViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        faceDetector.release()
+        facePipelineDelegate.release()
+    }
+
+    private fun applyTransition(transition: ManualFaceCaptureTransition) {
+        _uiState.value = transition.uiState
+        transition.state?.let { _currentState.value = it }
     }
 }

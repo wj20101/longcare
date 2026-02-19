@@ -2,6 +2,7 @@ package com.ytone.longcare.common.utils
 
 import android.content.Context
 import com.ytone.longcare.model.TencentAccessTokenResponse
+import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository
@@ -17,9 +18,10 @@ import org.junit.Test
 class FaceVerificationManagerInputValidationTest {
 
     private val repository = mockk<TencentFaceRepository>()
+    private val runtimeConfigProvider = mockk<RuntimeConfigProvider>(relaxed = true)
     private val callback = mockk<FaceVerifyCallback>(relaxed = true)
     private val context = mockk<Context>(relaxed = true)
-    private val manager = FaceVerificationManager(repository)
+    private val manager = FaceVerificationManager(repository, runtimeConfigProvider)
 
     private val config = FaceVerificationConfig(
         appId = "app-id",

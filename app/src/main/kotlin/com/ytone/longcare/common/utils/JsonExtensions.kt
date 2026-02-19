@@ -5,8 +5,8 @@ import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
-import com.ytone.longcare.di.UnitJsonAdapter
-import com.ytone.longcare.di.UriJsonAdapter
+import com.ytone.longcare.common.json.UnitJsonAdapter
+import com.ytone.longcare.common.json.UriJsonAdapter
 import java.lang.reflect.Type
 
 /**

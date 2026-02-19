@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.photoupload.ui
 
-import android.net.Uri
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -9,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import com.ytone.longcare.model.ImageTask
 import com.ytone.longcare.model.ImageTaskStatus
 import com.ytone.longcare.model.ImageTaskType
@@ -20,20 +18,20 @@ fun PhotoUploadSectionPreview() {
     val tasks = listOf(
         ImageTask(
             id = "1",
-            originalUri = Uri.EMPTY,
+            originalUri = "",
             taskType = ImageTaskType.BEFORE_CARE,
             status = ImageTaskStatus.SUCCESS,
-            resultUri = "content://media/picker/0/com.android.providers.media.photopicker/media/1000000033".toUri()
+            resultUri = "content://media/picker/0/com.android.providers.media.photopicker/media/1000000033"
         ),
         ImageTask(
             id = "2",
-            originalUri = Uri.EMPTY,
+            originalUri = "",
             taskType = ImageTaskType.BEFORE_CARE,
             status = ImageTaskStatus.PROCESSING
         ),
         ImageTask(
             id = "3",
-            originalUri = Uri.EMPTY,
+            originalUri = "",
             taskType = ImageTaskType.BEFORE_CARE,
             status = ImageTaskStatus.FAILED,
             errorMessage = "Upload failed"
@@ -60,7 +58,7 @@ fun AddPhotoButtonPreview() {
 fun ImageTaskItemPreview() {
     val task = ImageTask(
         id = "1",
-        originalUri = Uri.EMPTY,
+        originalUri = "",
         taskType = ImageTaskType.BEFORE_CARE
     )
     ImageTaskItem(task = task, onRetry = {}, onRemove = {})

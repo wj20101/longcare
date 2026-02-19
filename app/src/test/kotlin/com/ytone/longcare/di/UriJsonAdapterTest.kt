@@ -65,17 +65,11 @@ class UriJsonAdapterTest {
     
     @Test
     fun testImageTaskWithUriSerialization() {
-        // 模拟 Uri
-        val mockOriginalUri = mockk<Uri>()
-        val mockResultUri = mockk<Uri>()
-        every { mockOriginalUri.toString() } returns "content://original/123"
-        every { mockResultUri.toString() } returns "content://result/456"
-        
         val imageTask = ImageTask(
             id = "test-id",
-            originalUri = mockOriginalUri,
+            originalUri = "content://original/123",
             taskType = ImageTaskType.BEFORE_CARE,
-            resultUri = mockResultUri
+            resultUri = "content://result/456"
         )
         
         // 序列化 ImageTask
@@ -117,8 +111,8 @@ class UriJsonAdapterTest {
         
         assertNotNull(imageTask)
         assertEquals("test-id", imageTask!!.id)
-        assertEquals("content://original/123", imageTask.originalUri.toString())
-        assertEquals("content://result/456", imageTask.resultUri.toString())
+        assertEquals("content://original/123", imageTask.originalUri)
+        assertEquals("content://result/456", imageTask.resultUri)
         assertEquals(ImageTaskType.BEFORE_CARE, imageTask.taskType)
     }
 }

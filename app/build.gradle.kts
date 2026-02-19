@@ -266,8 +266,10 @@ dependencies {
 
     "baselineProfile"(project(":baselineprofile"))
     implementation(project(":core:common"))
+    implementation(project(":core:data"))
     implementation(project(":core:domain"))
     implementation(project(":core:model"))
+    implementation(project(":core:ui"))
     implementation(project(":feature:login"))
     implementation(project(":feature:home"))
     implementation(project(":feature:identification"))
@@ -377,9 +379,6 @@ dependencies {
         }
     }
     
-    // 腾讯云COS
-    implementation(libs.tencent.cos.android)
-
     // 高德地图定位SDK
     implementation(libs.amap.location)
 

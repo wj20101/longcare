@@ -1,25 +1,14 @@
 package com.ytone.longcare.features.photoupload.ui
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.os.Environment
 import android.view.View
 import android.widget.Toast
 import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
 import androidx.camera.view.LifecycleCameraController
 import com.ytone.longcare.features.photoupload.tracker.CameraEventTracker
 import java.io.File
-import java.io.FileOutputStream
 import java.util.concurrent.Executor
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 
 internal fun takePhoto(
     context: Context,
@@ -68,151 +57,17 @@ internal fun takePhoto(
         cameraController.takePicture(
             outputOptions,
             executor,
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                    scope.launch(Dispatchers.IO) {
-                        var bitmap: Bitmap? = null
-                        var watermarkedBitmap: Bitmap? = null
-
-                        try {
-                            val timeoutMs = calculateDynamicTimeout(context)
-                            withTimeout(timeoutMs) {
-                                ensureActive()
-
-                                val options = BitmapFactory.Options()
-                                options.inJustDecodeBounds = true
-                                BitmapFactory.decodeFile(tempFile.absolutePath, options)
-
-                                val minTargetDimension = 1080
-                                var inSampleSize = 1
-
-                                while (true) {
-                                    val nextSampleSize = inSampleSize * 2
-                                    val scaledWidth = options.outWidth / nextSampleSize
-                                    val scaledHeight = options.outHeight / nextSampleSize
-                                    val scaledMinDimension = minOf(scaledWidth, scaledHeight)
-                                    if (scaledMinDimension >= minTargetDimension) {
-                                        inSampleSize = nextSampleSize
-                                    } else {
-                                        break
-                                    }
-                                }
-
-                                options.inJustDecodeBounds = false
-                                options.inSampleSize = inSampleSize
-                                options.inPreferredConfig = Bitmap.Config.ARGB_8888
-                                options.inMutable = true
-
-                                bitmap = BitmapFactory.decodeFile(tempFile.absolutePath, options)
-
-                                if (bitmap == null) {
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, "图片读取失败，请重试", Toast.LENGTH_SHORT).show()
-                                        onError()
-                                    }
-                                    return@withTimeout
-                                }
-
-                                val currentBitmap = bitmap
-                                val rotatedBitmap = rotateBitmapByExif(currentBitmap, tempFile.absolutePath)
-                                if (rotatedBitmap != null && rotatedBitmap != currentBitmap) {
-                                    currentBitmap.recycle()
-                                    bitmap = rotatedBitmap
-                                }
-
-                                tempFile.delete()
-
-                                var processedBitmap = bitmap
-                                if (isFrontCamera) {
-                                    val flipped = flipBitmapHorizontallySafe(processedBitmap)
-                                    if (flipped != null) {
-                                        if (processedBitmap != flipped) {
-                                            processedBitmap.recycle()
-                                        }
-                                        processedBitmap = flipped
-                                        bitmap = null
-                                    }
-                                }
-
-                                ensureActive()
-
-                                watermarkedBitmap =
-                                    addWatermarkSafe(processedBitmap, watermarkBitmap, startPx, bottomPx)
-
-                                if (watermarkedBitmap == null) {
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, "水印处理失败，请重试", Toast.LENGTH_SHORT).show()
-                                        onError()
-                                    }
-                                    return@withTimeout
-                                }
-
-                                if (processedBitmap != watermarkedBitmap) {
-                                    processedBitmap.recycle()
-                                }
-                                bitmap = null
-                                watermarkBitmap.recycle()
-
-                                ensureActive()
-                                val storageDir =
-                                    context.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: context.filesDir
-                                val finalFile = File(
-                                    storageDir,
-                                    "captured_image_${System.currentTimeMillis()}.jpg"
-                                )
-
-                                FileOutputStream(finalFile).use { out ->
-                                    val finalBitmap = watermarkedBitmap ?: return@use
-                                    finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
-                                }
-
-                                watermarkedBitmap.recycle()
-                                watermarkedBitmap = null
-
-                                withContext(Dispatchers.Main) {
-                                    onImageCaptured(finalFile)
-                                }
-                            }
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            CameraEventTracker.trackError(
-                                CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-                                e,
-                                mapOf("reason" to "图片处理失败: ${e.message}")
-                            )
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, "图片处理失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                                onError()
-                            }
-                        } finally {
-                            runCatching {
-                                bitmap?.recycle()
-                                watermarkedBitmap?.recycle()
-                                if (tempFile.exists()) tempFile.delete()
-                            }.onFailure { cleanupError ->
-                                CameraEventTracker.trackError(
-                                    CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-                                    cleanupError,
-                                    mapOf("reason" to "图片资源回收失败")
-                                )
-                            }
-                        }
-                    }
-                }
-
-                override fun onError(exc: ImageCaptureException) {
-                    CameraEventTracker.trackError(
-                        CameraEventTracker.EventType.CAPTURE_ERROR,
-                        exc,
-                        mapOf("reason" to "拍照保存失败: ${exc.message}")
-                    )
-                    scope.launch(Dispatchers.Main) {
-                        Toast.makeText(context, "拍照失败: ${exc.message}", Toast.LENGTH_SHORT).show()
-                        onError()
-                    }
-                }
-            }
+            createImageSavedCallback(
+                context = context,
+                scope = scope,
+                tempFile = tempFile,
+                watermarkBitmap = watermarkBitmap,
+                startPx = startPx,
+                bottomPx = bottomPx,
+                isFrontCamera = isFrontCamera,
+                onImageCaptured = onImageCaptured,
+                onError = onError
+            )
         )
     } catch (e: Exception) {
         CameraEventTracker.trackError(

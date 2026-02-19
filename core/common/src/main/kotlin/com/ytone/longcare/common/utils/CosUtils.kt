@@ -37,7 +37,7 @@ object CosUtils {
         val contentType = getContentType(extension)
 
         return UploadParams(
-            fileUri = fileUri,
+            fileUri = fileUri.toString(),
             key = key,
             folderType = folderType,
             contentType = contentType

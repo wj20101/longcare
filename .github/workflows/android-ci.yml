@@ -94,7 +94,7 @@ jobs:
 
       - name: Collect quality snapshot and enforce quality gates
         run: |
-          bash scripts/quality/collect_quality_snapshot.sh \
+          bash scripts/quality/run_quality_gate.sh \
             --project-root . \
             --output-dir build/quality-snapshot \
             --lint-report app/build/reports/lint-results-debug.txt \

@@ -1,6 +1,7 @@
 package com.ytone.longcare.common.utils
 
 import android.content.Context
+import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
@@ -16,6 +17,7 @@ import org.junit.Test
 class FaceVerificationManagerCancellationTest {
 
     private val repository = mockk<TencentFaceRepository>()
+    private val runtimeConfigProvider = mockk<RuntimeConfigProvider>(relaxed = true)
     private val callback = mockk<FaceVerifyCallback>(relaxed = true)
     private val context = mockk<Context>(relaxed = true)
 
@@ -35,7 +37,7 @@ class FaceVerificationManagerCancellationTest {
     @Test
     fun `startFaceVerification should rethrow cancellation exception`() = runTest {
         coEvery { repository.getAccessToken(any(), any()) } throws CancellationException("cancel")
-        val manager = FaceVerificationManager(repository)
+        val manager = FaceVerificationManager(repository, runtimeConfigProvider)
 
         val cancelled = try {
             manager.startFaceVerification(context, config, request, callback)

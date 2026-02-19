@@ -67,9 +67,14 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 PROJECT_ROOT="$(cd "${PROJECT_ROOT}" && pwd)"
-mkdir -p "${PROJECT_ROOT}/${OUTPUT_DIR}"
 
-OUTPUT_DIR_ABS="${PROJECT_ROOT}/${OUTPUT_DIR}"
+if [[ "${OUTPUT_DIR}" = /* ]]; then
+  OUTPUT_DIR_ABS="${OUTPUT_DIR}"
+else
+  OUTPUT_DIR_ABS="${PROJECT_ROOT}/${OUTPUT_DIR}"
+fi
+mkdir -p "${OUTPUT_DIR_ABS}"
+
 LOG_DIR="${OUTPUT_DIR_ABS}/logs"
 REPORT_JSON="${OUTPUT_DIR_ABS}/quality_snapshot.json"
 REPORT_MD="${OUTPUT_DIR_ABS}/quality_snapshot.md"
@@ -81,9 +86,23 @@ mkdir -p "${LOG_DIR}"
 
 TIMESTAMP_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
-LINT_REPORT_PATH="${PROJECT_ROOT}/${LINT_REPORT}"
-SOURCE_ROOT_PATH="${PROJECT_ROOT}/${SOURCE_ROOT}"
-WORKFLOW_FILE_PATH="${PROJECT_ROOT}/${WORKFLOW_FILE}"
+if [[ "${LINT_REPORT}" = /* ]]; then
+  LINT_REPORT_PATH="${LINT_REPORT}"
+else
+  LINT_REPORT_PATH="${PROJECT_ROOT}/${LINT_REPORT}"
+fi
+
+if [[ "${SOURCE_ROOT}" = /* ]]; then
+  SOURCE_ROOT_PATH="${SOURCE_ROOT}"
+else
+  SOURCE_ROOT_PATH="${PROJECT_ROOT}/${SOURCE_ROOT}"
+fi
+
+if [[ "${WORKFLOW_FILE}" = /* ]]; then
+  WORKFLOW_FILE_PATH="${WORKFLOW_FILE}"
+else
+  WORKFLOW_FILE_PATH="${PROJECT_ROOT}/${WORKFLOW_FILE}"
+fi
 
 if [[ "${ENSURE_LINT_REPORT}" == "true" ]] && [[ ! -f "${LINT_REPORT_PATH}" ]]; then
   LINT_BOOTSTRAP_LOG="${LOG_DIR}/0_lint_bootstrap.log"
@@ -99,6 +118,7 @@ if [[ "${ENSURE_LINT_REPORT}" == "true" ]] && [[ ! -f "${LINT_REPORT_PATH}" ]]; 
 fi
 
 CHECK_NAMES=(
+  "No Tracked Keystore Files"
   "Release Exported Component Allowlist"
   "Lint Warning Allowlist"
   "Lint Ignore Policy Guard"
@@ -109,11 +129,13 @@ CHECK_NAMES=(
   "Target SDK Upgrade Gate"
   "Exact Alarm Permission Config"
   "Architecture Boundaries"
+  "Module Dependency Whitelist"
   "Module API Visibility"
   "CI Workflow Quality Guard"
 )
 
 CHECK_CMDS=(
+  "bash scripts/quality/verify_no_tracked_keystore_files.sh ."
   "bash scripts/quality/verify_release_exported_components.sh"
   "bash scripts/lint/verify_lint_warning_allowlist.sh \"${LINT_REPORT_PATH}\""
   "bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml"
@@ -124,6 +146,7 @@ CHECK_CMDS=(
   "bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts \"${WORKFLOW_FILE_PATH}\""
   "bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml"
   "bash scripts/quality/verify_architecture_boundaries.sh ."
+  "bash scripts/quality/verify_module_dependency_whitelist.sh ."
   "bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare ."
   "bash scripts/quality/verify_ci_workflow_quality.sh"
 )

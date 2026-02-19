@@ -3,7 +3,6 @@ package com.ytone.longcare.features.countdown.receiver
 import android.app.Application
 import android.content.Context
 import android.content.Intent
-import androidx.core.content.IntentCompat
 import androidx.test.core.app.ApplicationProvider
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
@@ -62,16 +61,13 @@ class DismissAlarmReceiverTest {
         val broadcasts = shadowOf(context as Application).broadcastIntents
         val stopAlarmIntent = broadcasts.lastOrNull { it.action == DismissAlarmReceiver.ACTION_STOP_ALARM }
         assertNotNull(stopAlarmIntent)
+        val nonNullStopAlarmIntent = requireNotNull(stopAlarmIntent)
 
-        val extractedOrderKey = IntentCompat.getParcelableExtra(
-            stopAlarmIntent!!,
-            CountdownNotificationManager.EXTRA_ORDER_KEY,
-            OrderKey::class.java
-        )
+        val extractedOrderKey = CountdownNotificationManager.extractOrderKey(nonNullStopAlarmIntent)
         assertEquals(orderKey, extractedOrderKey)
         assertEquals(
             "旧服务名",
-            stopAlarmIntent.getStringExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME)
+            nonNullStopAlarmIntent.getStringExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME)
         )
     }
 }

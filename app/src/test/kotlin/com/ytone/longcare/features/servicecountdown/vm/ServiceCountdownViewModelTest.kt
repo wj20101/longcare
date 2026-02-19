@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.servicecountdown.vm
 
 import com.ytone.longcare.model.ServiceOrderInfoModel
+import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.model.OrderEntity
@@ -37,6 +38,7 @@ class ServiceCountdownViewModelTest {
     private lateinit var imageRepository: ImageRepository
     private lateinit var orderRepository: OrderRepository
     private lateinit var systemGateway: ServiceCountdownSystemGateway
+    private lateinit var runtimeConfigProvider: RuntimeConfigProvider
     private lateinit var toastHelper: ToastHelper
     private lateinit var viewModel: ServiceCountdownViewModel
 
@@ -47,6 +49,8 @@ class ServiceCountdownViewModelTest {
         imageRepository = mockk(relaxed = true)
         orderRepository = mockk(relaxed = true)
         systemGateway = mockk(relaxed = true)
+        runtimeConfigProvider = mockk(relaxed = true)
+        every { runtimeConfigProvider.useMockData } returns false
         toastHelper = mockk(relaxed = true)
         
         // Mock default flows
@@ -57,7 +61,8 @@ class ServiceCountdownViewModelTest {
             unifiedOrderRepository,
             imageRepository,
             orderRepository,
-            systemGateway
+            systemGateway,
+            runtimeConfigProvider
         )
     }
 

@@ -41,58 +41,6 @@ data class ServiceRoute(val orderParams: OrderNavParams)
 @Serializable
 data class NursingExecutionRoute(val orderParams: OrderNavParams)
 
-/**
- * NFC签到模式枚举
- */
-@Keep
-@Serializable
-enum class SignInMode {
-    /** 开始订单模式 */
-    START_ORDER,
-    /** 结束订单模式 */
-    END_ORDER
-}
-
-/**
- * NFC签到路由
- * @param orderParams 订单导航参数
- * @param signInMode 签到模式（开始订单或结束订单）
- * @param endOrderParams 结束订单时的参数信息
- */
-@Keep
-@Serializable
-data class NfcSignInRoute(
-    val orderParams: OrderNavParams,
-    val signInMode: SignInMode,
-    val endOrderParams: EndOderInfo? = null
-)
-
-/**
- * 服务倒计时页面路由
- * @param orderParams 订单导航参数
- * @param projectIdList 选中的项目ID列表
- */
-@Keep
-@Serializable
-data class ServiceCountdownRoute(val orderParams: OrderNavParams, val projectIdList: List<Int> = emptyList())
-
-/**
- * 结束订单信息数据类
- * @param projectIdList 项目ID列表
- * @param beginImgList 开始时的图片列表
- * @param centerImgList 服务中的图片列表
- * @param endImgList 结束时的图片列表
- * @param endType 结束类型：1=正常结束，2=提前结束
- */
-@Keep
-@Serializable
-data class EndOderInfo(
-    val projectIdList: List<Int> = emptyList(),
-    val beginImgList: List<String> = emptyList(),
-    val centerImgList: List<String> = emptyList(),
-    val endImgList: List<String> = emptyList(),
-    val endType: Int = 1
-)
 
 /**
  * WebView页面路由
@@ -150,37 +98,6 @@ object TxFaceRoute
 @Serializable
 object LocationTrackingRoute
 
-/**
- * 服务完成页面路由
- * @param orderParams 订单导航参数
- * @param serviceCompleteData 服务完成数据
- */
-@Keep
-@Serializable
-data class ServiceCompleteRoute(
-    val orderParams: OrderNavParams,
-    val serviceCompleteData: ServiceCompleteData
-)
-
-/**
- * 服务完成页面所需的数据
- * @param clientName 客户姓名
- * @param clientAge 客户年龄
- * @param clientIdNumber 客户身份证号
- * @param clientAddress 客户地址
- * @param serviceContent 服务内容（已计算好的字符串）
- * @param trueServiceTime 实际服务时长（分钟）
- */
-@Keep
-@Serializable
-data class ServiceCompleteData(
-    val clientName: String = "",
-    val clientAge: Int = 0,
-    val clientIdNumber: String = "",
-    val clientAddress: String = "",
-    val serviceContent: String = "",
-    val trueServiceTime: Int = 0
-)
 
 /**
  * 人脸识别引导页面路由
@@ -244,17 +161,3 @@ data class CameraRoute(val watermarkData: WatermarkData)
  */
 @Serializable
 object ManualFaceCaptureRoute
-
-/**
- * 结束服务选择页面路由
- * @param orderParams 订单导航参数
- * @param endType 结束类型
- * @param initialProjectIdList 初始项目ID列表
- */
-@Keep
-@Serializable
-data class EndServiceSelectionRoute(
-    val orderParams: OrderNavParams,
-    val endType: Int,
-    val initialProjectIdList: List<Int> = emptyList()
-)

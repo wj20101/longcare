@@ -31,6 +31,10 @@ inputs:
     description: Whether to run verify_baselineprofile_journeys.sh.
     required: false
     default: "true"
+  run-module-dependency-check:
+    description: Whether to run verify_module_dependency_whitelist.sh.
+    required: false
+    default: "true"
 
 runs:
   using: composite
@@ -73,6 +77,11 @@ runs:
       if: ${{ inputs.run-baselineprofile-journey-check == 'true' }}
       shell: bash
       run: bash scripts/quality/verify_baselineprofile_journeys.sh
+
+    - name: Verify module dependency whitelist
+      if: ${{ inputs.run-module-dependency-check == 'true' }}
+      shell: bash
+      run: bash scripts/quality/verify_module_dependency_whitelist.sh .
 
     - name: Verify CI workflow quality guardrails
       if: ${{ inputs.run-workflow-quality-check == 'true' }}

@@ -1,17 +1,12 @@
 package com.ytone.longcare.model
 
-import android.net.Uri
-import android.os.Parcelable
-import androidx.annotation.Keep
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
-import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
 
 /**
  * 水印数据模型
  */
-@Keep
 @Serializable
 data class WatermarkData(
     val title: String,
@@ -23,25 +18,22 @@ data class WatermarkData(
 /**
  * 图片处理任务数据模型
  */
-@Keep
-@Parcelize
 @JsonClass(generateAdapter = true)
 data class ImageTask(
     val id: String,
-    val originalUri: Uri,
+    val originalUri: String,
     val taskType: ImageTaskType,
-    val resultUri: Uri? = null,
+    val resultUri: String? = null,
     val status: ImageTaskStatus = ImageTaskStatus.PROCESSING,
     val errorMessage: String? = null,
     val isUploaded: Boolean = false,
     val key: String? = null,
     val cloudUrl: String? = null
-) : Parcelable
+) : java.io.Serializable
 
 /**
  * 图片处理任务类型枚举
  */
-@Keep
 enum class ImageTaskType {
     @Json(name = "BEFORE_CARE")
     BEFORE_CARE,
@@ -56,7 +48,6 @@ enum class ImageTaskType {
 /**
  * 图片处理任务状态枚举
  */
-@Keep
 enum class ImageTaskStatus {
     @Json(name = "PROCESSING")
     PROCESSING,

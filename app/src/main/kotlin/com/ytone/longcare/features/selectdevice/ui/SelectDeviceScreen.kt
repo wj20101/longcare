@@ -1,26 +1,31 @@
-package com.ytone.longcare.features.selectdevice.ui // 包名请根据您的项目结构调整
+package com.ytone.longcare.features.selectdevice.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
@@ -30,13 +35,6 @@ import com.ytone.longcare.theme.bgButtonGradientBrush
 import com.ytone.longcare.features.selectdevice.api.SelectDeviceActions
 import com.ytone.longcare.model.OrderKey
 
-// --- 数据模型 ---
-data class Device(
-    val id: String,
-    val name: String
-)
-
-// --- 主屏幕入口 ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectDeviceScreen(
@@ -102,7 +100,6 @@ fun SelectDeviceScreen(
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
                     .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -126,118 +123,4 @@ fun SelectDeviceScreen(
             }
         }
     }
-}
-
-@Preview
-@Composable
-fun SelectDeviceScreenPreview() {
-    // 预览不可用，因为需要OrderKey
-}
-
-@Composable
-fun DeviceGrid(
-    devices: List<Device>, selectedDeviceIndex: Int?, onDeviceSelected: (Int) -> Unit
-) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White, shape = RoundedCornerShape(8.dp)),
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 16.dp), // 调整Grid的整体内边距
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        itemsIndexed(devices) { index, device ->
-            DeviceItem( // 调用上面修改后的 DeviceItem
-                device = device,
-                isSelected = selectedDeviceIndex == index,
-                onClick = { onDeviceSelected(index) })
-        }
-    }
-}
-
-@Preview
-@Composable
-fun DeviceGridPreview() {
-    val devices = remember {
-        List(6) { index -> Device(id = "id_$index", name = "设备名称") }
-    }
-    var selectedDeviceIndex by remember { mutableStateOf<Int?>(null) }
-    DeviceGrid(devices = devices, selectedDeviceIndex = selectedDeviceIndex, onDeviceSelected = { index -> selectedDeviceIndex = if (selectedDeviceIndex == index) null else index })
-}
-
-@Composable
-fun DeviceItem(device: Device, isSelected: Boolean, onClick: () -> Unit) {
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize() // 填满Card的内部空间
-            .padding(vertical = 12.dp, horizontal = 12.dp), // 调整内边距
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // 上方图片/图标占位符
-        Box(
-            modifier = Modifier
-                .aspectRatio(1f)
-                .background(
-                    color = Color(0xFFEBF5FF), // 占位符的浅灰色背景
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .border(
-                    BorderStroke(width = 1.dp, color = Color(0xFF468AFF)),
-                    shape = RoundedCornerShape(8.dp)
-                ), contentAlignment = Alignment.Center
-        ) {
-            // 在这里放置实际的设备图片或图标
-            // Icon(painter = painterResource(id = R.drawable.ic_device_placeholder), contentDescription = null)
-        }
-
-        Spacer(modifier = Modifier.height(6.dp)) // 图片与文字之间的间距
-
-        // 设备名称
-        Text(
-            text = device.name,
-            fontSize = 13.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, // 使用稍暗的文字颜色
-            textAlign = TextAlign.Center,
-            maxLines = 1
-        )
-    }
-}
-
-@Preview
-@Composable
-fun DeviceItemPreview() {
-    val device = Device(id = "id_0", name = "设备名称")
-    DeviceItem(device = device, isSelected = false, onClick = {})
-}
-
-@Composable
-fun NextStepButton(text: String, enabled: Boolean, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(50.dp)
-            .background(brush = bgButtonGradientBrush, shape = RoundedCornerShape(50)),
-        shape = RoundedCornerShape(50),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent, disabledContainerColor = Color.Gray
-        )
-    ) {
-        Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-    }
-}
-
-@Preview
-@Composable
-fun NextStepButtonPreview() {
-    NextStepButton(text = "Next Step", enabled = true, onClick = {})
-}
-
-@Preview
-@Composable
-fun SelectDeviceScreenWithNavControllerPreview() {
-    // 预览不可用，因为需要OrderKey
 }

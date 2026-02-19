@@ -6,9 +6,6 @@
     <string name="nfc_sign_in_prompt">请将手机碰一碰如图感应区位置，即可完成签到</string>
     <string name="common_next_step">下一步</string>
     <string name="nfc_sign_in_retry">重新碰一碰</string>
-    <string name="common_idle">等待</string>
-    <string name="common_success">成功</string>
-    <string name="common_failure">失败</string>
     <string name="nfc_sign_in_status_success">签到成功</string>
     <string name="nfc_sign_in_status_failure">签到失败，请重新再试一次</string>
     <string name="nfc_sign_in_diagram_description">NFC操作示意图</string>

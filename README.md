@@ -37,10 +37,20 @@
 
 ## 架构守卫与稳定性检查
 
+统一入口（推荐）：
+
+```bash
+bash scripts/quality/run_quality_gate.sh --project-root .
+```
+
+单项检查：
+
 ```bash
 bash scripts/quality/verify_gradle_stability.sh
 bash scripts/quality/verify_ci_workflow_quality.sh
+bash scripts/quality/verify_no_tracked_keystore_files.sh .
 bash scripts/quality/verify_architecture_boundaries.sh .
+bash scripts/quality/verify_module_dependency_whitelist.sh .
 bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare
 bash scripts/quality/free_runner_disk_space.sh --dry-run --min-free-mb 1024
 ```

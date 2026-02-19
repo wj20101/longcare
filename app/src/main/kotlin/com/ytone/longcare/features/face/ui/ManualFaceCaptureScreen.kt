@@ -1,53 +1,37 @@
 package com.ytone.longcare.features.face.ui
 
 import android.Manifest
-import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import com.ytone.longcare.theme.PrimaryBlue
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.features.face.viewmodel.ManualFaceCaptureViewModel
+import com.ytone.longcare.theme.PrimaryBlue
 import java.util.concurrent.Executors
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun ManualFaceCaptureScreen(
     onNavigateBack: () -> Unit,
@@ -58,17 +42,14 @@ fun ManualFaceCaptureScreen(
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currentState by viewModel.currentState.collectAsStateWithLifecycle()
-    
+
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     val captureExecutor = remember { Executors.newSingleThreadExecutor() }
 
     DisposableEffect(captureExecutor) {
-        onDispose {
-            captureExecutor.shutdown()
-        }
+        onDispose { captureExecutor.shutdown() }
     }
 
-    // 相机权限请求
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -81,11 +62,9 @@ fun ManualFaceCaptureScreen(
         savedFaceImagePath = uiState.savedFaceImagePath,
         onSetCameraPermissionGranted = viewModel::setCameraPermissionGranted,
         onFaceCaptured = onFaceCaptured,
-        requestCameraPermission = {
-            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-        }
+        requestCameraPermission = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }
     )
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -116,12 +95,10 @@ fun ManualFaceCaptureScreen(
                         }
                     )
                 }
-                
+
                 uiState.capturedPhoto == null -> {
                     CameraPreviewContent(
-                        onImageCapture = { capture ->
-                            imageCapture = capture
-                        },
+                        onImageCapture = { capture -> imageCapture = capture },
                         onTakePhoto = {
                             viewModel.startCapture()
                             takeManualFacePhoto(imageCapture, captureExecutor, viewModel)
@@ -129,7 +106,7 @@ fun ManualFaceCaptureScreen(
                         isCapturing = currentState is ManualFaceCaptureState.CapturingPhoto
                     )
                 }
-                
+
                 else -> {
                     PhotoReviewContent(
                         bitmap = uiState.capturedPhoto,
@@ -142,7 +119,7 @@ fun ManualFaceCaptureScreen(
                     )
                 }
             }
-            
+
             ManualFaceCaptureErrorOverlay(
                 errorMessage = uiState.errorMessage,
                 onClearError = viewModel::clearError,
@@ -154,8 +131,7 @@ fun ManualFaceCaptureScreen(
             )
         }
     }
-    
-    // 确认对话框
+
     if (uiState.showConfirmationDialog) {
         FaceConfirmationDialog(
             selectedFace = uiState.selectedFaceIndex?.let { index ->
@@ -168,331 +144,5 @@ fun ManualFaceCaptureScreen(
             onCancel = viewModel::cancelAndRetake,
             onDismiss = viewModel::hideConfirmationDialog
         )
-    }
-}
-
-@Composable
-private fun CameraPreviewContent(
-    onImageCapture: (ImageCapture) -> Unit,
-    onTakePhoto: () -> Unit,
-    isCapturing: Boolean
-) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-    
-    // 使用remember来保持相机提供者的引用
-    var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
-    
-    // 在组件销毁时清理资源
-    DisposableEffect(lifecycleOwner) {
-        onDispose {
-            cameraProvider?.unbindAll()
-        }
-    }
-    
-    Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(
-            factory = { ctx ->
-                PreviewView(ctx).apply {
-                    val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                    cameraProviderFuture.addListener({
-                        try {
-                            val provider = cameraProviderFuture.get()
-                            cameraProvider = provider
-                            
-                            val preview = Preview.Builder()
-                                .build()
-                            
-                            val imageCapture = ImageCapture.Builder()
-                                .setTargetRotation(display.rotation)
-                                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                                .build()
-                            
-                            onImageCapture(imageCapture)
-                            
-                            val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
-                            
-                            // 先解绑所有用例
-                            provider.unbindAll()
-                            
-                            // 绑定到生命周期
-                            provider.bindToLifecycle(
-                                lifecycleOwner,
-                                cameraSelector,
-                                preview,
-                                imageCapture
-                            )
-                            
-                            // 设置预览表面提供者
-                            preview.surfaceProvider = surfaceProvider
-                            
-                        } catch (exc: Exception) {
-                            // 记录错误但不崩溃
-                            com.ytone.longcare.common.utils.KLogger.e("CameraPreview", "相机初始化失败", exc)
-                        }
-                    }, ContextCompat.getMainExecutor(ctx))
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
-        
-        // 拍照按钮
-        FloatingActionButton(
-            onClick = onTakePhoto,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(32.dp)
-                .size(72.dp),
-            containerColor = PrimaryBlue,
-            contentColor = Color.White
-        ) {
-            if (isCapturing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(32.dp),
-                    color = Color.White,
-                    strokeWidth = 3.dp
-                )
-            } else {
-                Icon(
-                    Icons.Default.CameraAlt,
-                    contentDescription = "拍照",
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-        }
-        
-        // 拍照提示
-        Card(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.Black.copy(alpha = 0.7f)
-            )
-        ) {
-            Text(
-                text = "请正对相机，点击下方按钮拍照",
-                color = Color.White,
-                modifier = Modifier.padding(16.dp),
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
-
-@Composable
-private fun PhotoReviewContent(
-    bitmap: Bitmap?,
-    detectedFaces: List<DetectedFace>,
-    selectedFaceIndex: Int?,
-    isProcessingFaces: Boolean,
-    onFaceSelected: (Int) -> Unit,
-    onRetakePhoto: () -> Unit,
-    currentState: ManualFaceCaptureState
-) {
-    // 添加全屏预览状态
-    var showFullScreenPreview by remember { mutableStateOf(false) }
-    var fullScreenFace by remember { mutableStateOf<DetectedFace?>(null) }
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // 照片显示区域
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .background(Color.Black)
-        ) {
-            bitmap?.let { bmp ->
-                Image(
-                    bitmap = bmp.asImageBitmap(),
-                    contentDescription = "拍摄的照片",
-                    modifier = Modifier.fillMaxSize()
-                )
-                
-                // 绘制人脸边框
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    detectedFaces.forEachIndexed { index, face ->
-                        val isSelected = index == selectedFaceIndex
-                        val color = if (isSelected) Color.Green else Color.Red
-                        val strokeWidth = if (isSelected) 6.dp.toPx() else 3.dp.toPx()
-                        
-                        drawRect(
-                            color = color,
-                            topLeft = Offset(
-                                face.boundingBox.left.toFloat(),
-                                face.boundingBox.top.toFloat()
-                            ),
-                            size = Size(
-                                face.boundingBox.width().toFloat(),
-                                face.boundingBox.height().toFloat()
-                            ),
-                            style = Stroke(width = strokeWidth)
-                        )
-                    }
-                }
-            }
-            
-            if (isProcessingFaces) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.5f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Card {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            CircularProgressIndicator()
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("正在检测人脸...")
-                        }
-                    }
-                }
-            }
-        }
-        
-        // 底部控制区域
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                when (currentState) {
-                    is ManualFaceCaptureState.NoFacesDetected -> {
-                        Text(
-                            text = "未检测到人脸",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "请确保光线充足，面部清晰可见",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    
-                    is ManualFaceCaptureState.FacesDetected -> {
-                        Text(
-                            text = "检测到 ${detectedFaces.size} 张人脸，请选择一张",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp)
-                        ) {
-                            itemsIndexed(detectedFaces) { index, face ->
-                                FaceSelectionItem(
-                                    face = face,
-                                    isSelected = index == selectedFaceIndex,
-                                    onClick = { onFaceSelected(index) },
-                                    onLongClick = {
-                                        fullScreenFace = face
-                                        showFullScreenPreview = true
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    
-                    else -> {
-                        if (detectedFaces.size == 1) {
-                            Text(
-                                text = "检测到人脸",
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // 操作按钮
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onRetakePhoto,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("重新拍照")
-                    }
-                }
-            }
-        }
-    }
-    
-    // 全屏预览对话框
-    if (showFullScreenPreview && fullScreenFace != null) {
-        FaceFullScreenPreviewDialog(
-            face = fullScreenFace!!,
-            onDismiss = {
-                showFullScreenPreview = false
-                fullScreenFace = null
-            }
-        )
-    }
-}
-
-@Composable
-private fun FaceSelectionItem(
-    face: DetectedFace,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit = {}
-) {
-    Box(
-        modifier = Modifier
-            .size(80.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .border(
-                width = if (isSelected) 3.dp else 1.dp,
-                color = if (isSelected) PrimaryBlue else Color.Gray,
-                shape = RoundedCornerShape(8.dp)
-            )
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-    ) {
-        Image(
-            bitmap = face.croppedFace.asImageBitmap(),
-            contentDescription = "人脸",
-            modifier = Modifier.fillMaxSize()
-        )
-        
-        if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(PrimaryBlue.copy(alpha = 0.3f))
-            ) {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = "已选择",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(24.dp)
-                )
-            }
-        }
-        
     }
 }

@@ -7,7 +7,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.photoupload.api.PhotoUploadActions
 import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewModel
@@ -23,6 +22,7 @@ internal fun PhotoUploadBottomActionBar(
     buttonText: String,
     isUploading: Boolean,
     enabled: Boolean,
+    useMockData: Boolean,
     viewModel: PhotoProcessingViewModel,
     actions: PhotoUploadActions,
     scope: CoroutineScope,
@@ -37,6 +37,7 @@ internal fun PhotoUploadBottomActionBar(
                     com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Confirm Button Clicked")
                     scope.launch {
                         handleConfirmUpload(
+                            useMockData = useMockData,
                             viewModel = viewModel,
                             actions = actions,
                         )
@@ -48,10 +49,11 @@ internal fun PhotoUploadBottomActionBar(
 }
 
 private suspend fun handleConfirmUpload(
+    useMockData: Boolean,
     viewModel: PhotoProcessingViewModel,
     actions: PhotoUploadActions,
 ) {
-    if (BuildConfig.USE_MOCK_DATA) {
+    if (useMockData) {
         val currentTasks = viewModel.imageTasks.value
         actions.onPublishPhotoUploadResultAndNavigateBack(currentTasks.toSuccessfulTaskTypeMap())
         com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Mock Success -> navigateBack")

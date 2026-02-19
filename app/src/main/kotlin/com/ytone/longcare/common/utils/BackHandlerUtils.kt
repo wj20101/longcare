@@ -91,20 +91,3 @@ fun HomeBackHandler(
         enabled = enabled
     )
 }
-
-/**
- * 自定义返回行为的统一处理Composable
- * 用于需要特殊返回逻辑的页面
- * 
- * @param customAction 自定义返回行为
- * @param enabled 是否启用返回键处理，默认为true
- */
-@Composable
-fun CustomBackHandler(
-    customAction: () -> Unit,
-    enabled: Boolean = true
-) {
-    BackHandler(enabled = enabled) {
-        customAction()
-    }
-}

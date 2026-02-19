@@ -2,6 +2,7 @@ package com.ytone.longcare.features.photoupload.utils
 
 import android.app.ActivityManager
 import android.content.Context
+import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.di.ImageLoadingModule
 import io.mockk.every
 import io.mockk.mockk
@@ -13,6 +14,10 @@ import java.io.File
  * 测试Coil缓存优化配置
  */
 class CoilCacheOptimizationTest {
+
+    private val runtimeConfigProvider = mockk<RuntimeConfigProvider>(relaxed = true).also {
+        every { it.isDebug } returns false
+    }
 
     private fun buildContext(
         availableMemoryBytes: Long = 5L * 1024 * 1024 * 1024,
@@ -43,7 +48,7 @@ class CoilCacheOptimizationTest {
         val context = buildContext()
         
         // When
-        val imageLoader = ImageLoadingModule.provideImageLoader(context)
+        val imageLoader = ImageLoadingModule.provideImageLoader(context, runtimeConfigProvider)
         
         // Then
         assertNotNull("ImageLoader should not be null", imageLoader)
@@ -57,7 +62,7 @@ class CoilCacheOptimizationTest {
         val context = buildContext()
         
         // When
-        val imageLoader = ImageLoadingModule.provideImageLoader(context)
+        val imageLoader = ImageLoadingModule.provideImageLoader(context, runtimeConfigProvider)
         val memoryCache = imageLoader.memoryCache
         
         // Then
@@ -71,7 +76,7 @@ class CoilCacheOptimizationTest {
         val context = buildContext()
         
         // When
-        val imageLoader = ImageLoadingModule.provideImageLoader(context)
+        val imageLoader = ImageLoadingModule.provideImageLoader(context, runtimeConfigProvider)
         val diskCache = imageLoader.diskCache
         
         // Then

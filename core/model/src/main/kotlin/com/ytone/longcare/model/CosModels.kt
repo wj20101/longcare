@@ -1,6 +1,5 @@
 package com.ytone.longcare.model
 
-import android.net.Uri
 import kotlinx.serialization.Serializable
 import com.ytone.longcare.model.UploadTokenResultModel
 
@@ -58,7 +57,7 @@ data class UploadProgress(
  * 上传参数
  */
 data class UploadParams(
-    val fileUri: Uri,
+    val fileUri: String,
     val key: String,
     val folderType: Int,
     val contentType: String? = null,

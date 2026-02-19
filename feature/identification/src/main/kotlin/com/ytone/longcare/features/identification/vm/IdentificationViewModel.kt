@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.FaceVerifier
@@ -41,7 +42,10 @@ class IdentificationViewModel @Inject constructor(
     private val uploadElderPhotoUseCase: UploadElderPhotoUseCase,
     private val setupFaceUseCase: SetupFaceUseCase,
     private val toastHelper: ToastHelper,
+    private val runtimeConfigProvider: RuntimeConfigProvider,
 ) : ViewModel() {
+    val isMockDataEnabled: Boolean
+        get() = runtimeConfigProvider.useMockData
 
     // 身份认证状态
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL)
