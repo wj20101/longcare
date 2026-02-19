@@ -152,7 +152,7 @@ jobs:
             app/build/reports/**
             baselineprofile/build/reports/**
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
       - name: Verify baseline profile output
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
@@ -259,7 +259,7 @@ jobs:
             app/build/outputs/release-checksums.txt
             build/quality-snapshot/**
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7
 
       - name: Upload failure diagnostics
         if: failure()
@@ -277,7 +277,7 @@ jobs:
             **/hs_err_pid*.log
             **/*.hprof
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
       - name: Compute release metadata
         id: release_meta

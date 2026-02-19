@@ -107,7 +107,7 @@ jobs:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
 
       - name: Upload AAB
         if: needs.detect-affected.outputs.affected_scope == 'full'
@@ -116,7 +116,7 @@ jobs:
           name: app-debug-aab
           path: app/build/outputs/bundle/debug/*.aab
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
 
       - name: Upload release AAB
         if: needs.detect-affected.outputs.affected_scope == 'full'
@@ -125,7 +125,7 @@ jobs:
           name: app-release-aab
           path: app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
 
       - name: Upload baselineprofile APKs
         if: needs.detect-affected.outputs.affected_scope == 'full'
@@ -134,7 +134,7 @@ jobs:
           name: baselineprofile-apks
           path: baselineprofile/build/outputs/apk/**/*.apk
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
       - name: Upload test and lint reports
         if: always()
@@ -147,7 +147,7 @@ jobs:
             build/quality-snapshot/**
             build/reports/problems/**
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
       - name: Upload failure diagnostics
         if: failure()
@@ -165,7 +165,7 @@ jobs:
             **/hs_err_pid*.log
             **/*.hprof
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
   instrumentation-smoke:
     needs:
@@ -224,7 +224,7 @@ jobs:
             app/build/reports/androidTests/**
             app/build/outputs/androidTest-results/**
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
       - name: Upload failure diagnostics
         if: failure()
@@ -241,4 +241,4 @@ jobs:
             **/hs_err_pid*.log
             **/*.hprof
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7

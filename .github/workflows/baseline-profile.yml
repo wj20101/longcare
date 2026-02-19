@@ -72,7 +72,7 @@ jobs:
             app/build/reports/**
             baselineprofile/build/reports/**
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
       - name: Verify baseline profile output
         run: |
@@ -125,7 +125,7 @@ jobs:
             app/build/outputs/**
             baselineprofile/build/reports/**
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
       - name: Upload failure diagnostics
         if: failure()
@@ -142,4 +142,4 @@ jobs:
             **/hs_err_pid*.log
             **/*.hprof
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7

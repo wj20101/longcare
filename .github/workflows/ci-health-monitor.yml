@@ -73,7 +73,7 @@ jobs:
             build/ci-health/ci_health_metrics.json
             build/ci-health/ci_health_violations.txt
           if-no-files-found: warn
-          retention-days: 21
+          retention-days: 7
 
       - name: Create or update CI health issue on threshold breach
         if: steps.health_check.outcome == 'failure'
