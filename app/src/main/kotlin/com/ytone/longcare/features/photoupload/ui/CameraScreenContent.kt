@@ -49,7 +49,7 @@ internal fun CameraContent(
 
     val locationPermissions = rememberCameraLocationPermissions()
     val launcher = rememberLocationPermissionLauncher(viewModel)
-    observeCameraResume(
+    ObserveCameraResume(
         lifecycleOwner = lifecycleOwner,
         viewModel = viewModel,
         launcher = launcher,
@@ -77,7 +77,7 @@ internal fun CameraContent(
         )
     }
 
-    handleCaptureCountdown(
+    HandleCaptureCountdown(
         countdownSeconds = countdownSeconds,
         onCountdownTick = { countdownSeconds = it },
         onCountdownFinished = performCapture

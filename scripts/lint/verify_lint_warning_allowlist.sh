@@ -30,7 +30,7 @@ trap 'rm -f "${TMP_WARNINGS}"' EXIT
 
 grep ': Warning: ' "${REPORT_PATH}" > "${TMP_WARNINGS}" || true
 
-WARNING_IDS="$(sed -nE 's/.*\[([A-Za-z0-9_]+)\]$/\1/p' "${TMP_WARNINGS}" | sort -u)"
+WARNING_IDS="$(sed -nE 's/.*\[([A-Za-z0-9_]+)([[:space:]]+from[[:space:]]+[^]]+)?\]$/\1/p' "${TMP_WARNINGS}" | sort -u)"
 
 if ! jq -e '.waivers | type == "array"' "${WAIVER_PATH}" >/dev/null; then
   echo "Invalid waiver format: missing waivers array (${WAIVER_PATH})" >&2
@@ -103,7 +103,7 @@ fi
 
 while IFS= read -r warning_line; do
   [[ -z "${warning_line}" ]] && continue
-  issue_id="$(printf '%s\n' "${warning_line}" | sed -nE 's/.*\[([A-Za-z0-9_]+)\]$/\1/p')"
+  issue_id="$(printf '%s\n' "${warning_line}" | sed -nE 's/.*\[([A-Za-z0-9_]+)([[:space:]]+from[[:space:]]+[^]]+)?\]$/\1/p')"
   [[ -z "${issue_id}" ]] && continue
 
   allowed_sources="$(jq -r --arg id "${issue_id}" '

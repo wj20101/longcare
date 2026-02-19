@@ -2,6 +2,7 @@ package com.ytone.longcare.features.countdown.manager
 
 import android.app.AlarmManager
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.ytone.longcare.common.utils.klogI
 
 internal fun logNextAlarmClock(alarmManager: AlarmManager) {
@@ -19,7 +20,9 @@ internal fun saveLastScheduledOrderId(
     keyLastScheduledOrderId: String,
     orderId: Long
 ) {
-    prefs.edit().putLong(keyLastScheduledOrderId, orderId).apply()
+    prefs.edit {
+        putLong(keyLastScheduledOrderId, orderId)
+    }
 }
 
 internal fun getLastScheduledOrderId(
@@ -32,5 +35,7 @@ internal fun clearLastScheduledOrderId(
     prefs: SharedPreferences,
     keyLastScheduledOrderId: String
 ) {
-    prefs.edit().remove(keyLastScheduledOrderId).apply()
+    prefs.edit {
+        remove(keyLastScheduledOrderId)
+    }
 }

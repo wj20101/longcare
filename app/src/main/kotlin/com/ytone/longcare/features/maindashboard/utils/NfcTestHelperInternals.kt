@@ -105,7 +105,7 @@ internal fun copyNfcTagIdToClipboard(
 }
 
 @Composable
-internal fun renderNfcTestTagDialog(
+internal fun RenderNfcTestTagDialog(
     showDialog: Boolean,
     nfcTagId: String,
     onCopy: () -> Unit,

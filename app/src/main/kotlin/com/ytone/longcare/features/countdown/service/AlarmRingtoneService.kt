@@ -114,7 +114,7 @@ class AlarmRingtoneService : Service() {
      */
     private fun startForegroundWithNotification(orderKey: OrderKey, serviceName: String) {
         try {
-            foregroundStarter.startForeground(orderKey, serviceName)
+            foregroundStarter.startAsForeground(orderKey, serviceName)
         } catch (e: Exception) {
             logE("AlarmRingtoneService: ❌ 启动前台服务失败 - ${e.message}", throwable = e)
             

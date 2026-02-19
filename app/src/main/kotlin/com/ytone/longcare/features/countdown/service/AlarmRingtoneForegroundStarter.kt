@@ -17,7 +17,7 @@ internal class AlarmRingtoneForegroundStarter(
     private val countdownNotificationManager: CountdownNotificationManager,
     private val notificationId: Int
 ) {
-    fun startForeground(orderKey: OrderKey, serviceName: String) {
+    fun startAsForeground(orderKey: OrderKey, serviceName: String) {
         val notification = countdownNotificationManager.buildCountdownCompletionNotification(
             orderKey,
             serviceName

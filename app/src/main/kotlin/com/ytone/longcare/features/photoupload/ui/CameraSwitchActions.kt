@@ -34,6 +34,8 @@ internal suspend fun detectFrontCameraAvailability(
                     facing == CameraCharacteristics.LENS_FACING_FRONT
                 } ?: false
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             if (attempt == 3) {
                 CameraEventTracker.trackError(

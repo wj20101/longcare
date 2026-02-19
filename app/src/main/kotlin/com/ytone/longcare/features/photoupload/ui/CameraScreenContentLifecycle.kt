@@ -61,7 +61,7 @@ internal fun rememberLocationPermissionLauncher(
 }
 
 @Composable
-internal fun observeCameraResume(
+internal fun ObserveCameraResume(
     lifecycleOwner: LifecycleOwner,
     viewModel: CameraViewModel,
     launcher: ActivityResultLauncher<Array<String>>,
@@ -83,7 +83,7 @@ internal fun observeCameraResume(
 }
 
 @Composable
-internal fun handleCaptureCountdown(
+internal fun HandleCaptureCountdown(
     countdownSeconds: Int,
     onCountdownTick: (Int) -> Unit,
     onCountdownFinished: () -> Unit

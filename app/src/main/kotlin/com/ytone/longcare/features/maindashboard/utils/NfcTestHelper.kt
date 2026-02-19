@@ -97,7 +97,7 @@ class NfcTestHelper @Inject constructor(
 
     @Composable
     fun NfcTagDialog() {
-        renderNfcTestTagDialog(
+        RenderNfcTestTagDialog(
             showDialog = dialogState.showDialog,
             nfcTagId = dialogState.nfcTagId,
             onCopy = ::copyAndDismiss,

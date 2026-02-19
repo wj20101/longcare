@@ -10,6 +10,7 @@ import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundS
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.ServiceCompleteData
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -58,6 +59,8 @@ internal class NfcOrderCompletionDelegate(
                 unifiedOrderRepository.endLocalService(orderKey)
                 imageRepository.deleteImagesByOrderId(orderKey)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logE("清理服务相关资源失败: ${e.message}", tag = "NfcWorkflowViewModel", throwable = e)
         }
