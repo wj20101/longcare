@@ -4,7 +4,7 @@ agp = "9.0.1"
 core = "1.7.0"
 kotlin = "2.3.10"
 coroutines = "1.10.2"
-ksp = "2.3.5"
+ksp = "2.3.6"
 
 # Compose Versions
 composeBom = "2026.02.00"
