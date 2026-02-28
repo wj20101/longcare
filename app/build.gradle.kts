@@ -30,6 +30,12 @@ val baselineEnableX86_64 =
         .orElse("false")
         .map { it.equals("true", ignoreCase = true) }
         .get()
+val debugUseMockData =
+    providers
+        .gradleProperty("debug.useMockData")
+        .orElse("false")
+        .map { it.equals("true", ignoreCase = true) }
+        .get()
 
 android {
     namespace = "com.ytone.longcare"
@@ -77,7 +83,7 @@ android {
         debug {
             manifestPlaceholders["faceCaptureTestActivityEnabled"] = "true"
             buildConfigField("String", "BASE_URL", "\"$BASE_URL\"")
-            buildConfigField("boolean", "USE_MOCK_DATA", "false")
+            buildConfigField("boolean", "USE_MOCK_DATA", debugUseMockData.toString())
         }
     }
 
