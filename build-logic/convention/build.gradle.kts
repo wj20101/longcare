@@ -25,5 +25,9 @@ gradlePlugin {
             id = "longcare.kotlin.common"
             implementationClass = "KotlinCommonConventionPlugin"
         }
+        create("androidAppSigningTxFaceConvention") {
+            id = "longcare.android.app.signing-txface"
+            implementationClass = "AndroidAppSigningTxFaceConventionPlugin"
+        }
     }
 }
