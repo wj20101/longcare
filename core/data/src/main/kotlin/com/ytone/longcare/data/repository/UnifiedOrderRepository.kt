@@ -1,9 +1,12 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
+import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.network.safeApiCall
+import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.data.database.dao.OrderDao
 import com.ytone.longcare.data.database.dao.OrderElderInfoDao
@@ -31,6 +34,7 @@ class UnifiedOrderRepository @Inject constructor(
     private val apiService: LongCareApiService,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val eventBus: AppEventBus,
+    private val runtimeConfigProvider: RuntimeConfigProvider,
     private val orderDao: OrderDao,
     private val orderElderInfoDao: OrderElderInfoDao,
     private val orderLocalStateDao: OrderLocalStateDao,
@@ -56,6 +60,11 @@ class UnifiedOrderRepository @Inject constructor(
                 apiService.getOrderInfo(OrderInfoParamModel(orderKey.orderId))
             }
             if (apiResult is ApiResult.Success) {
+                logOrderIdConsistencyIfDebug(
+                    source = "getOrderInfo",
+                    requestOrderId = orderKey.orderId,
+                    payloadOrderId = apiResult.data.orderId
+                )
                 memoryCache.put(orderKey, apiResult.data)
                 roomSyncDelegate.syncOrderInfoToRoom(orderKey.orderId, apiResult.data)
             }
@@ -121,9 +130,16 @@ class UnifiedOrderRepository @Inject constructor(
             apiService.getOrderInfo(OrderInfoParamModel(orderId))
         }
         return when (apiResult) {
-            is ApiResult.Success -> ApiResult.Success(
-                roomSyncDelegate.persistOrderInfoAndBuildDetails(orderId, apiResult.data)
-            )
+            is ApiResult.Success -> {
+                logOrderIdConsistencyIfDebug(
+                    source = "refreshOrderFromApi",
+                    requestOrderId = orderId,
+                    payloadOrderId = apiResult.data.orderId
+                )
+                ApiResult.Success(
+                    roomSyncDelegate.persistOrderInfoAndBuildDetails(orderId, apiResult.data)
+                )
+            }
             is ApiResult.Failure -> apiResult
             is ApiResult.Exception -> apiResult
         }
@@ -171,6 +187,20 @@ class UnifiedOrderRepository @Inject constructor(
 
     suspend fun clearAllOrders() {
         orderDao.deleteAll()
+    }
+
+    private fun logOrderIdConsistencyIfDebug(
+        source: String,
+        requestOrderId: Long,
+        payloadOrderId: Long
+    ) {
+        if (!runtimeConfigProvider.isDebug) return
+        val message = "OrderIdConsistency[$source]: requestOrderId=$requestOrderId, payloadOrderId=$payloadOrderId"
+        if (payloadOrderId <= 0L || payloadOrderId != requestOrderId) {
+            logE("$message, mismatch=true")
+        } else {
+            logI("$message, mismatch=false")
+        }
     }
 }
 

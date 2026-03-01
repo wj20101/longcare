@@ -60,17 +60,23 @@ internal fun scheduleCountdownAlarmInSystem(
         false
     )
 
-    val shouldUseAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && canUseExactAlarm
-    if (shouldUseAlarmClock && alarmActivityPendingIntent != null) {
+    val supportsAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val useAlarmClock = supportsAlarmClock && alarmActivityPendingIntent != null
+    if (useAlarmClock) {
+        if (!canUseExactAlarm) {
+            klogI("⚠️ 无精确闹钟权限，使用AlarmClock兜底保障锁屏提醒: orderId=${orderKey.orderId}")
+        }
         val alarmClockInfo = AlarmManager.AlarmClockInfo(
             triggerTimeMillis,
             alarmActivityPendingIntent
         )
         alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
         klogI("✅ 通过AlarmClock设置倒计时闹钟(确保锁屏提醒): orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
-    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        if (shouldUseAlarmClock && alarmActivityPendingIntent == null) {
+    } else if (supportsAlarmClock) {
+        if (alarmActivityPendingIntent == null) {
             klogE("⚠️ AlarmClock 所需 Activity PendingIntent 为空，降级为 setAndAllowWhileIdle")
+        } else {
+            klogE("⚠️ Android 12+ 未使用 AlarmClock，降级为 setAndAllowWhileIdle")
         }
         alarmManager.setAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
@@ -89,7 +95,7 @@ internal fun scheduleCountdownAlarmInSystem(
     }
 
     return CountdownScheduleMetadata(
-        useAlarmClock = shouldUseAlarmClock,
+        useAlarmClock = useAlarmClock,
         nextAlarmTime = alarmManager.nextAlarmClock?.triggerTime
     )
 }

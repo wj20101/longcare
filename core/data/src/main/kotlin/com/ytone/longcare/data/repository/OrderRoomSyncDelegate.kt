@@ -19,7 +19,7 @@ internal class OrderRoomSyncDelegate(
     private val orderProjectDao: OrderProjectDao
 ) {
     suspend fun syncOrderInfoToRoom(orderId: Long, orderInfo: ServiceOrderInfoModel) {
-        orderDao.insertOrUpdate(orderInfo.toOrderEntity().toDb())
+        orderDao.insertOrUpdate(orderInfo.toOrderEntity(orderId).toDb())
 
         val elderInfoEntity = orderInfo.userInfo?.toOrderElderInfoEntity(orderId)?.toDb()
         if (elderInfoEntity != null) {
@@ -60,7 +60,7 @@ internal class OrderRoomSyncDelegate(
     ): OrderWithDetails {
         syncOrderInfoToRoom(orderId, orderInfo)
         return loadOrderWithDetails(orderId) ?: OrderWithDetails(
-            order = orderInfo.toOrderEntity(),
+            order = orderInfo.toOrderEntity(orderId),
             elderInfo = orderInfo.userInfo?.toOrderElderInfoEntity(orderId),
             localState = OrderLocalStateEntity(orderId = orderId),
             projects = orderInfo.projectList?.toOrderProjectEntities(orderId) ?: emptyList()

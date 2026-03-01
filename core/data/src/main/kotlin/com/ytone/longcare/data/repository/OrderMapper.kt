@@ -15,9 +15,9 @@ object OrderMapper {
     /**
      * 将API响应的订单详情转换为OrderEntity
      */
-    fun ServiceOrderInfoModel.toOrderEntity(): OrderEntity {
+    fun ServiceOrderInfoModel.toOrderEntity(targetOrderId: Long = orderId): OrderEntity {
         return OrderEntity(
-            orderId = orderId,
+            orderId = targetOrderId,
             planId = 0, // API暂未提供planId
             state = state,
             startTime = startTime,

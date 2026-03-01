@@ -49,12 +49,27 @@ internal class ServiceTimeNotificationScheduleDelegate(
             ) ?: throw IllegalStateException("创建 AlarmManager PendingIntent 失败: orderId=$orderId")
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !canScheduleExactAlarms()) {
-                logE("无精确闹钟权限，降级为 setAndAllowWhileIdle")
-                alarmManager.setAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
+                logE("无精确闹钟权限，改用 AlarmClock 兜底")
+                val alarmClockShowIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                    ?.apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        putExtra(ServiceTimeNotificationManager.EXTRA_ORDER_ID, orderId)
+                    }
+                    ?.let { launchIntent ->
+                        PendingIntentCompat.getActivity(
+                            context,
+                            buildAlarmRequestCode(orderId) + 1,
+                            launchIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT,
+                            false
+                        )
+                    }
+                    ?: pendingIntent
+                val alarmClockInfo = AlarmManager.AlarmClockInfo(
                     triggerTimeMillis,
-                    pendingIntent
+                    alarmClockShowIntent
                 )
+                alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
             } else {
                 AlarmManagerCompat.setExactAndAllowWhileIdle(
                     alarmManager,

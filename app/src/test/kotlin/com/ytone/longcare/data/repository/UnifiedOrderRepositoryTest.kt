@@ -5,12 +5,15 @@ import com.ytone.longcare.model.OrderInfoParamModel
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.UserInfoM
 import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.data.database.dao.OrderDao
 import com.ytone.longcare.data.database.dao.OrderImageDao
 import com.ytone.longcare.data.database.dao.OrderProjectDao
 import com.ytone.longcare.data.database.dao.OrderElderInfoDao
 import com.ytone.longcare.data.database.dao.OrderLocalStateDao
+import com.ytone.longcare.data.database.entity.OrderElderInfoEntityDb
+import com.ytone.longcare.data.database.entity.OrderEntityDb
 import com.ytone.longcare.model.OrderEntity
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.Response
@@ -32,6 +35,7 @@ class UnifiedOrderRepositoryTest {
     private lateinit var elderInfoDao: OrderElderInfoDao
     private lateinit var localStateDao: OrderLocalStateDao
     private lateinit var eventBus: AppEventBus
+    private lateinit var runtimeConfigProvider: RuntimeConfigProvider
     private lateinit var repository: UnifiedOrderRepository
 
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -45,11 +49,14 @@ class UnifiedOrderRepositoryTest {
         elderInfoDao = mockk(relaxed = true)
         localStateDao = mockk(relaxed = true)
         eventBus = mockk(relaxed = true)
+        runtimeConfigProvider = mockk(relaxed = true)
+        every { runtimeConfigProvider.isDebug } returns false
         
         repository = UnifiedOrderRepository(
             apiService,
             testDispatcher,
             eventBus,
+            runtimeConfigProvider,
             orderDao,
             elderInfoDao,
             localStateDao,
@@ -131,6 +138,31 @@ class UnifiedOrderRepositoryTest {
         coVerify(exactly = 1) { apiService.getOrderInfo(any()) }
         // Verify cache updated
         assertEquals(freshModel, repository.getCachedOrderInfo(orderKey))
+    }
+
+    @Test
+    fun `getOrderInfo should persist using request orderId when payload orderId mismatches`() = runTest(testDispatcher) {
+        val orderKey = OrderKey(12345L, 1)
+        val apiModel = ServiceOrderInfoModel(
+            orderId = 0L,
+            state = 1,
+            userInfo = UserInfoM(userId = 99, name = "Test User")
+        )
+        val insertedOrderSlot = slot<OrderEntityDb>()
+        val insertedElderSlot = slot<OrderElderInfoEntityDb>()
+
+        coEvery { apiService.getOrderInfo(any()) } returns Response(1000, "OK", apiModel)
+        coEvery { orderDao.insertOrUpdate(capture(insertedOrderSlot)) } returns orderKey.orderId
+        coEvery { elderInfoDao.insertOrUpdate(capture(insertedElderSlot)) } returns orderKey.orderId
+        coEvery { projectDao.getSelectedProjectIds(orderKey.orderId) } returns emptyList()
+        coEvery { localStateDao.getByOrderId(orderKey.orderId) } returns null
+        coEvery { localStateDao.insertOrUpdate(any()) } returns orderKey.orderId
+
+        val result = repository.getOrderInfo(orderKey, forceRefresh = false)
+
+        assertTrue(result is ApiResult.Success)
+        assertEquals(orderKey.orderId, insertedOrderSlot.captured.orderId)
+        assertEquals(orderKey.orderId, insertedElderSlot.captured.orderId)
     }
     
     @Test
