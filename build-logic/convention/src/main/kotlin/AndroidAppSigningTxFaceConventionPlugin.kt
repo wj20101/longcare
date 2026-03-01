@@ -31,15 +31,20 @@ private data class TxFaceSdkDependencyConfig(
 class AndroidAppSigningTxFaceConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginManager.withPlugin("com.android.application") {
-            val releaseSigning = target.resolveReleaseSigningConfig()
+            val releaseSigning = target.resolveReleaseSigningConfigOrNull()
+            if (releaseSigning == null && target.requiresReleaseSigning()) {
+                throw GradleException(
+                    "Missing release signing config. Configure LONGCARE_RELEASE_* or RELEASE_* in ~/.gradle/gradle.properties or environment."
+                )
+            }
 
             target.extensions.configure<ApplicationExtension> {
-                val releaseSigningConfig =
-                    signingConfigs.findByName("release") ?: signingConfigs.create("release")
-                releaseSigningConfig.applyReleaseSigning(releaseSigning)
-
-                buildTypes.getByName("release").signingConfig = releaseSigningConfig
-                buildTypes.getByName("debug").signingConfig = releaseSigningConfig
+                if (releaseSigning != null) {
+                    val releaseSigningConfig =
+                        signingConfigs.findByName("release") ?: signingConfigs.create("release")
+                    releaseSigningConfig.applyReleaseSigning(releaseSigning)
+                    buildTypes.getByName("release").signingConfig = releaseSigningConfig
+                }
             }
 
             val txFaceConfig = target.resolveTxFaceSdkDependencyConfig()
@@ -81,7 +86,7 @@ private fun ProviderFactory.resolveGradleOrEnv(
     return firstNonBlank(*(gradleValues + envValues).toTypedArray())
 }
 
-private fun Project.resolveReleaseSigningConfig(): ReleaseSigningConfig {
+private fun Project.resolveReleaseSigningConfigOrNull(): ReleaseSigningConfig? {
     val storeFilePath = providers.resolveGradleOrEnv(RELEASE_STORE_FILE_KEYS, RELEASE_STORE_FILE_ENV_KEYS)
     val storePassword = providers.resolveGradleOrEnv(RELEASE_STORE_PASSWORD_KEYS, RELEASE_STORE_PASSWORD_KEYS)
     val keyAlias = providers.resolveGradleOrEnv(RELEASE_KEY_ALIAS_KEYS, RELEASE_KEY_ALIAS_KEYS)
@@ -96,9 +101,7 @@ private fun Project.resolveReleaseSigningConfig(): ReleaseSigningConfig {
             ?.takeIf(File::exists)
 
     if (storeFile == null || storePassword.isNullOrBlank() || keyAlias.isNullOrBlank() || keyPassword.isNullOrBlank()) {
-        throw GradleException(
-            "Missing release signing config. Configure LONGCARE_RELEASE_* or RELEASE_* in ~/.gradle/gradle.properties or environment."
-        )
+        return null
     }
 
     return ReleaseSigningConfig(
@@ -107,6 +110,18 @@ private fun Project.resolveReleaseSigningConfig(): ReleaseSigningConfig {
         keyAlias = keyAlias,
         keyPassword = keyPassword
     )
+}
+
+private fun Project.requiresReleaseSigning(): Boolean {
+    val requestedTasks = gradle.startParameter.taskNames
+    if (requestedTasks.isEmpty()) {
+        return false
+    }
+    return requestedTasks.any { taskName ->
+        taskName
+            .substringAfterLast(':')
+            .contains("release", ignoreCase = true)
+    }
 }
 
 private fun Project.resolveTxFaceSdkDependencyConfig(): TxFaceSdkDependencyConfig {
