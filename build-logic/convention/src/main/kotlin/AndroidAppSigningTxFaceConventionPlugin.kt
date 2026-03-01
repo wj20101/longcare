@@ -117,10 +117,18 @@ private fun Project.requiresReleaseSigning(): Boolean {
     if (requestedTasks.isEmpty()) {
         return false
     }
+    val signingRequiredReleaseTasks =
+        listOf(
+            "assemblerelease",
+            "bundlerelease",
+            "packagerelease",
+            "publishrelease",
+            "signrelease",
+            "validatesigningrelease"
+        )
     return requestedTasks.any { taskName ->
-        taskName
-            .substringAfterLast(':')
-            .contains("release", ignoreCase = true)
+        val normalized = taskName.substringAfterLast(':').lowercase()
+        signingRequiredReleaseTasks.any { keyword -> normalized.contains(keyword) }
     }
 }
 
