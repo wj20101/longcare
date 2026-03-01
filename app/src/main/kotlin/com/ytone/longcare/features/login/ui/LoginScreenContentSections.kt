@@ -97,7 +97,7 @@ internal fun LoginInputForm(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Bottom
+            verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedTextField(
                 value = verificationCode,
@@ -122,11 +122,13 @@ internal fun LoginInputForm(
             Spacer(modifier = Modifier.width(8.dp))
 
             SendVerificationCodeButton(
-                modifier = Modifier.padding(bottom = 18.dp),
+                modifier = Modifier,
                 viewModel = viewModel,
                 onSendCodeClick = onSendCodeClick
             )
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         Button(
             onClick = onLoginClick,

@@ -33,7 +33,7 @@ val baselineEnableX86_64 =
 val debugUseMockData =
     providers
         .gradleProperty("debug.useMockData")
-        .orElse("false")
+        .orElse("true")
         .map { it.equals("true", ignoreCase = true) }
         .get()
 
