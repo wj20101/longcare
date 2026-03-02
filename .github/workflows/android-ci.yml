@@ -102,7 +102,7 @@ jobs:
             --workflow-file .github/workflows/android-ci.yml
 
       - name: Upload APK
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/*.apk
@@ -111,7 +111,7 @@ jobs:
 
       - name: Upload AAB
         if: needs.detect-affected.outputs.affected_scope == 'full'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: app-debug-aab
           path: app/build/outputs/bundle/debug/*.aab
@@ -120,7 +120,7 @@ jobs:
 
       - name: Upload release AAB
         if: needs.detect-affected.outputs.affected_scope == 'full'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: app-release-aab
           path: app/build/outputs/bundle/release/*.aab
@@ -129,7 +129,7 @@ jobs:
 
       - name: Upload baselineprofile APKs
         if: needs.detect-affected.outputs.affected_scope == 'full'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: baselineprofile-apks
           path: baselineprofile/build/outputs/apk/**/*.apk
@@ -138,7 +138,7 @@ jobs:
 
       - name: Upload test and lint reports
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: app-reports
           path: |
@@ -151,7 +151,7 @@ jobs:
 
       - name: Upload failure diagnostics
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: android-ci-${{ github.job }}-failure-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -217,7 +217,7 @@ jobs:
 
       - name: Upload instrumentation reports
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: instrumentation-smoke-reports
           path: |
@@ -228,7 +228,7 @@ jobs:
 
       - name: Upload failure diagnostics
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: android-ci-${{ github.job }}-failure-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
