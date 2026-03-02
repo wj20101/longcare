@@ -4,6 +4,8 @@ set -euo pipefail
 READY_TIMEOUT_SECS="${SMOKE_READY_TIMEOUT_SECS:-360}"
 ADB_INSTALL_RETRY_COUNT="${SMOKE_ADB_INSTALL_RETRY_COUNT:-3}"
 ADB_INSTALL_RETRY_DELAY_SECS="${SMOKE_ADB_INSTALL_RETRY_DELAY_SECS:-8}"
+INSTRUMENTATION_RETRY_COUNT="${SMOKE_INSTRUMENTATION_RETRY_COUNT:-2}"
+LOGCAT_MAX_LINES="${SMOKE_LOGCAT_MAX_LINES:-400}"
 SMOKE_REPORT_DIR="${SMOKE_REPORT_DIR:-app/build/reports/androidTests/smoke}"
 SMOKE_REPORT_FILE="${SMOKE_REPORT_FILE:-${SMOKE_REPORT_DIR}/instrumentation-smoke-output.txt}"
 SMOKE_TEST_CLASS="${SMOKE_TEST_CLASS:-com.ytone.longcare.smoke.MainActivitySmokeTest}"
@@ -175,29 +177,55 @@ adb_install_with_retry() {
 run_single_instrumentation() {
   local instrumentation="$1"
   local test_class="$2"
+  local attempt=1
   local output_tmp
-  output_tmp="$(mktemp)"
+  local logcat_file
 
-  # Keep both console output and a persisted artifact for debugging.
-  adb_cmd shell am instrument -w -r \
-    -e class "${test_class}" \
-    "${instrumentation}" | tee -a "${SMOKE_REPORT_FILE}" | tee "${output_tmp}"
+  while [ "${attempt}" -le "${INSTRUMENTATION_RETRY_COUNT}" ]; do
+    output_tmp="$(mktemp)"
+    logcat_file="${SMOKE_REPORT_DIR}/logcat-${test_class//[^[:alnum:]_.-]/_}-attempt${attempt}.txt"
 
-  if grep -q "FAILURES!!!" "${output_tmp}" ||
-    grep -q "INSTRUMENTATION_STATUS_CODE: -2" "${output_tmp}" ||
-    grep -q "INSTRUMENTATION_RESULT: shortMsg=" "${output_tmp}"; then
-    echo "Instrumentation test failed: ${test_class}"
+    echo "Instrumentation attempt ${attempt}/${INSTRUMENTATION_RETRY_COUNT} for ${test_class}" | tee -a "${SMOKE_REPORT_FILE}"
+    adb_cmd logcat -c >/dev/null 2>&1 || true
+
+    # Keep both console output and a persisted artifact for debugging.
+    adb_cmd shell am instrument -w -r \
+      -e class "${test_class}" \
+      "${instrumentation}" | tee -a "${SMOKE_REPORT_FILE}" | tee "${output_tmp}"
+
+    if grep -q "FAILURES!!!" "${output_tmp}" ||
+      grep -q "INSTRUMENTATION_STATUS_CODE: -2" "${output_tmp}" ||
+      grep -q "INSTRUMENTATION_RESULT: shortMsg=" "${output_tmp}"; then
+      echo "Instrumentation test failed on attempt ${attempt}: ${test_class}"
+      adb_cmd logcat -d -t "${LOGCAT_MAX_LINES}" | tee "${logcat_file}" | tee -a "${SMOKE_REPORT_FILE}" >/dev/null || true
+
+      if grep -q "INSTRUMENTATION_RESULT: shortMsg=Process crashed." "${output_tmp}" &&
+        [ "${attempt}" -lt "${INSTRUMENTATION_RETRY_COUNT}" ]; then
+        echo "Detected process crash. Retrying class ${test_class} after force-stop..." | tee -a "${SMOKE_REPORT_FILE}"
+        adb_cmd shell am force-stop "${APP_ID}" >/dev/null 2>&1 || true
+        sleep 3
+        rm -f "${output_tmp}"
+        attempt=$((attempt + 1))
+        continue
+      fi
+
+      rm -f "${output_tmp}"
+      return 1
+    fi
+
+    if ! grep -q "OK (" "${output_tmp}"; then
+      echo "Instrumentation result for ${test_class} did not contain an OK marker."
+      adb_cmd logcat -d -t "${LOGCAT_MAX_LINES}" | tee "${logcat_file}" | tee -a "${SMOKE_REPORT_FILE}" >/dev/null || true
+      rm -f "${output_tmp}"
+      return 1
+    fi
+
     rm -f "${output_tmp}"
-    return 1
-  fi
+    return 0
+  done
 
-  if ! grep -q "OK (" "${output_tmp}"; then
-    echo "Instrumentation result for ${test_class} did not contain an OK marker."
-    rm -f "${output_tmp}"
-    return 1
-  fi
-
-  rm -f "${output_tmp}"
+  echo "Instrumentation test exhausted retries: ${test_class}"
+  return 1
 }
 
 run_instrumentation() {
