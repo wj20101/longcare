@@ -187,7 +187,7 @@ jobs:
       - name: Assemble instrumentation APKs
         run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest -Pbaseline.enableX86_64=true
 
-      - name: Resolve target SDK for emulator smoke
+      - name: Resolve emulator API for smoke
         id: target_sdk
         run: |
           TARGET_SDK=$(sed -nE 's/.*appTargetSdkVersion by extra\(([0-9]+)\).*/\1/p' constants.gradle.kts | head -n1)
@@ -195,8 +195,14 @@ jobs:
             echo "Failed to parse appTargetSdkVersion from constants.gradle.kts"
             exit 1
           fi
-          echo "value=${TARGET_SDK}" >> "$GITHUB_OUTPUT"
-          echo "Using emulator API level: ${TARGET_SDK}"
+          STABLE_SMOKE_MAX_API=35
+          EMULATOR_API="${TARGET_SDK}"
+          if [ "${TARGET_SDK}" -gt "${STABLE_SMOKE_MAX_API}" ]; then
+            EMULATOR_API="${STABLE_SMOKE_MAX_API}"
+          fi
+          echo "value=${EMULATOR_API}" >> "$GITHUB_OUTPUT"
+          echo "target_sdk=${TARGET_SDK}" >> "$GITHUB_OUTPUT"
+          echo "Using emulator API level: ${EMULATOR_API} (targetSdk=${TARGET_SDK})"
 
       - name: Free disk space for emulator
         run: bash scripts/quality/free_runner_disk_space.sh --min-free-mb 8192
