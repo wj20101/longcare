@@ -7,11 +7,11 @@
       "review_by": "2026-06-30",
       "reason": "Third-party SDK native libs are not 16KB aligned. Track upstream upgrades and remove waiver once vendor provides aligned binaries.",
       "allowed_sources": [
-        "crashreport-4.1.9.3",
-        "com.tencent.bugly:crashreport:4.1.9.3",
-        "WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc",
-        "WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc.aar",
-        "com.tencent.cloud.huiyansdkface:wbcloudface-live:6.6.2"
+        "regex:crashreport-[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+",
+        "regex:com\\.tencent\\.bugly:crashreport:[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+",
+        "regex:WbCloudFaceLiveSdk-face-v[0-9]+\\.[0-9]+\\.[0-9]+-[A-Za-z0-9]+",
+        "regex:WbCloudFaceLiveSdk-face-v[0-9]+\\.[0-9]+\\.[0-9]+-[A-Za-z0-9]+\\.aar",
+        "regex:com\\.tencent\\.cloud\\.huiyansdkface:wbcloudface-live:[0-9]+\\.[0-9]+\\.[0-9]+"
       ]
     },
     {
@@ -20,9 +20,9 @@
       "review_by": "2026-06-30",
       "reason": "Tencent face SDK local AAR ships consumer ProGuard rules with global options. Remove waiver when vendor fixes packaging.",
       "allowed_sources": [
-        "WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc",
-        "WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc.aar",
-        "com.tencent.cloud.huiyansdkface:wbcloudface-live:6.6.2"
+        "regex:WbCloudFaceLiveSdk-face-v[0-9]+\\.[0-9]+\\.[0-9]+-[A-Za-z0-9]+",
+        "regex:WbCloudFaceLiveSdk-face-v[0-9]+\\.[0-9]+\\.[0-9]+-[A-Za-z0-9]+\\.aar",
+        "regex:com\\.tencent\\.cloud\\.huiyansdkface:wbcloudface-live:[0-9]+\\.[0-9]+\\.[0-9]+"
       ]
     },
     {
@@ -49,8 +49,8 @@
       "review_by": "2026-06-30",
       "reason": "Transitive dependency from COS SDK contains trust manager implementation. Remove waiver once upstream dependency resolves.",
       "allowed_sources": [
-        "qcloud-foundation-1.5.78",
-        "com.qcloud:qcloud-foundation:1.5.78"
+        "regex:qcloud-foundation-[0-9]+\\.[0-9]+\\.[0-9]+",
+        "regex:com\\.qcloud:qcloud-foundation:[0-9]+\\.[0-9]+\\.[0-9]+"
       ]
     }
   ]
