@@ -2,6 +2,8 @@
 set -euo pipefail
 
 READY_TIMEOUT_SECS="${SMOKE_READY_TIMEOUT_SECS:-360}"
+ADB_INSTALL_RETRY_COUNT="${SMOKE_ADB_INSTALL_RETRY_COUNT:-3}"
+ADB_INSTALL_RETRY_DELAY_SECS="${SMOKE_ADB_INSTALL_RETRY_DELAY_SECS:-8}"
 SMOKE_REPORT_DIR="${SMOKE_REPORT_DIR:-app/build/reports/androidTests/smoke}"
 SMOKE_REPORT_FILE="${SMOKE_REPORT_FILE:-${SMOKE_REPORT_DIR}/instrumentation-smoke-output.txt}"
 SMOKE_TEST_CLASS="${SMOKE_TEST_CLASS:-com.ytone.longcare.smoke.MainActivitySmokeTest}"
@@ -126,8 +128,48 @@ install_apks() {
   adb_cmd uninstall "${APP_ID}.test" >/dev/null 2>&1 || true
   adb_cmd uninstall "${APP_ID}" >/dev/null 2>&1 || true
 
-  adb_cmd install -r -d "${app_apk}"
-  adb_cmd install -r -d -t "${test_apk}"
+  adb_install_with_retry "app APK" install -r -d "${app_apk}"
+  adb_install_with_retry "test APK" install -r -d -t "${test_apk}"
+}
+
+adb_install_with_retry() {
+  local artifact_label="$1"
+  shift
+
+  local attempt=1
+  local output=""
+  while [ "${attempt}" -le "${ADB_INSTALL_RETRY_COUNT}" ]; do
+    echo "Installing ${artifact_label} (attempt ${attempt}/${ADB_INSTALL_RETRY_COUNT})..."
+    if output="$(adb_cmd "$@" 2>&1)"; then
+      if [ -n "${output}" ]; then
+        echo "${output}"
+      fi
+      return 0
+    fi
+
+    if [ -n "${output}" ]; then
+      echo "${output}" >&2
+    fi
+
+    if [ "${attempt}" -ge "${ADB_INSTALL_RETRY_COUNT}" ]; then
+      echo "Failed to install ${artifact_label} after ${ADB_INSTALL_RETRY_COUNT} attempts." >&2
+      return 1
+    fi
+
+    echo "Install attempt ${attempt} failed. Restarting adb connection and retrying in ${ADB_INSTALL_RETRY_DELAY_SECS}s..."
+    "${ADB_BIN}" kill-server >/dev/null 2>&1 || true
+    "${ADB_BIN}" start-server >/dev/null 2>&1 || true
+    if [ -n "${TARGET_SERIAL}" ]; then
+      adb_cmd wait-for-device || true
+    else
+      "${ADB_BIN}" wait-for-device || true
+    fi
+    ensure_device_ready || true
+    sleep "${ADB_INSTALL_RETRY_DELAY_SECS}"
+    attempt=$((attempt + 1))
+  done
+
+  return 1
 }
 
 run_single_instrumentation() {
