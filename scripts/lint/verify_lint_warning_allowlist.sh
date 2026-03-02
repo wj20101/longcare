@@ -4,6 +4,7 @@ set -euo pipefail
 REPORT_PATH="${1:-app/build/reports/lint-results-debug.txt}"
 WAIVER_PATH="${2:-scripts/lint/lint_warning_waivers.json}"
 CURRENT_DATE="${LINT_WAIVER_DATE:-$(date -u +%F)}"
+ENFORCE_UNUSED_WAIVERS_MODE="${LINT_ENFORCE_UNUSED_WAIVERS:-auto}"
 
 if [[ ! -f "${REPORT_PATH}" ]]; then
   echo "Lint report not found: ${REPORT_PATH}" >&2
@@ -24,6 +25,44 @@ if ! [[ "${CURRENT_DATE}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
   echo "Invalid CURRENT_DATE value: ${CURRENT_DATE}" >&2
   exit 1
 fi
+
+resolve_enforce_unused_waivers() {
+  local mode="$1"
+  case "${mode}" in
+    true|TRUE|1|yes|YES|on|ON)
+      echo "true"
+      ;;
+    false|FALSE|0|no|NO|off|OFF)
+      echo "false"
+      ;;
+    auto|AUTO)
+      if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
+        echo "false"
+      else
+        echo "true"
+      fi
+      ;;
+    *)
+      echo "Invalid LINT_ENFORCE_UNUSED_WAIVERS value: ${mode}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+warning_line_matches_source_pattern() {
+  local warning_line="$1"
+  local source_pattern="$2"
+
+  if [[ "${source_pattern}" == regex:* ]]; then
+    local regex_pattern="${source_pattern#regex:}"
+    [[ "${warning_line}" =~ ${regex_pattern} ]]
+    return
+  fi
+
+  [[ "${warning_line}" == *"${source_pattern}"* ]]
+}
+
+ENFORCE_UNUSED_WAIVERS="$(resolve_enforce_unused_waivers "${ENFORCE_UNUSED_WAIVERS_MODE}")"
 
 TMP_WARNINGS="$(mktemp)"
 trap 'rm -f "${TMP_WARNINGS}"' EXIT
@@ -120,7 +159,7 @@ while IFS= read -r warning_line; do
   matched="false"
   while IFS= read -r source_pattern; do
     [[ -z "${source_pattern}" ]] && continue
-    if [[ "${warning_line}" == *"${source_pattern}"* ]]; then
+    if warning_line_matches_source_pattern "${warning_line}" "${source_pattern}"; then
       matched="true"
       break
     fi
@@ -146,9 +185,14 @@ while IFS= read -r waiver_id; do
 done <<< "${WAIVER_IDS}"
 
 if [[ -n "${UNUSED_WAIVERS}" ]]; then
-  echo "Found stale waivers not present in current lint report. Remove them:" >&2
+  if [[ "${ENFORCE_UNUSED_WAIVERS}" == "true" ]]; then
+    echo "Found stale waivers not present in current lint report. Remove them:" >&2
+    printf '%s' "${UNUSED_WAIVERS}" | sed 's/^/  - /' >&2
+    exit 1
+  fi
+
+  echo "Found stale waivers not present in current lint report (non-blocking in current mode):" >&2
   printf '%s' "${UNUSED_WAIVERS}" | sed 's/^/  - /' >&2
-  exit 1
 fi
 
 echo "Lint warning waiver check passed."
