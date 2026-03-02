@@ -32,18 +32,32 @@ class AndroidAppSigningTxFaceConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginManager.withPlugin("com.android.application") {
             val releaseSigning = target.resolveReleaseSigningConfigOrNull()
-            if (releaseSigning == null && target.requiresReleaseSigning()) {
+            val requiresReleaseSigning = target.requiresReleaseSigning()
+            val allowUnsignedRelease = target.allowUnsignedReleaseFallback()
+            if (releaseSigning == null && requiresReleaseSigning && !allowUnsignedRelease) {
                 throw GradleException(
                     "Missing release signing config. Configure LONGCARE_RELEASE_* or RELEASE_* in ~/.gradle/gradle.properties or environment."
                 )
             }
 
             target.extensions.configure<ApplicationExtension> {
+                val releaseBuildType = buildTypes.getByName("release")
                 if (releaseSigning != null) {
-                    val releaseSigningConfig =
-                        signingConfigs.findByName("release") ?: signingConfigs.create("release")
+                    val releaseSigningConfig = signingConfigs.findByName("release") ?: signingConfigs.create("release")
                     releaseSigningConfig.applyReleaseSigning(releaseSigning)
-                    buildTypes.getByName("release").signingConfig = releaseSigningConfig
+                    releaseBuildType.signingConfig = releaseSigningConfig
+                } else if (allowUnsignedRelease) {
+                    val debugSigningConfig = signingConfigs.findByName("debug")
+                    if (debugSigningConfig != null) {
+                        releaseBuildType.signingConfig = debugSigningConfig
+                        target.logger.lifecycle(
+                            "Using debug signing config for release tasks because LONGCARE release signing is unavailable in this CI context."
+                        )
+                    } else if (requiresReleaseSigning) {
+                        throw GradleException(
+                            "Unable to configure debug-signing fallback for release tasks. Debug signing config was not found."
+                        )
+                    }
                 }
             }
 
@@ -130,6 +144,28 @@ private fun Project.requiresReleaseSigning(): Boolean {
         val normalized = taskName.substringAfterLast(':').lowercase()
         signingRequiredReleaseTasks.any { keyword -> normalized.contains(keyword) }
     }
+}
+
+private fun String.toBooleanStrictish(): Boolean? =
+    when (trim().lowercase()) {
+        "true", "1", "yes", "y", "on" -> true
+        "false", "0", "no", "n", "off" -> false
+        else -> null
+    }
+
+private fun Project.allowUnsignedReleaseFallback(): Boolean {
+    val explicitOverride =
+        providers.resolveGradleOrEnv(
+            gradleKeys = listOf("LONGCARE_ALLOW_UNSIGNED_RELEASE", "ALLOW_UNSIGNED_RELEASE"),
+            envKeys = listOf("LONGCARE_ALLOW_UNSIGNED_RELEASE", "ALLOW_UNSIGNED_RELEASE")
+        )
+    if (explicitOverride != null) {
+        return explicitOverride.toBooleanStrictish() ?: false
+    }
+
+    val isCi = providers.environmentVariable("CI").orNull?.toBooleanStrictish() == true
+    val githubEvent = providers.environmentVariable("GITHUB_EVENT_NAME").orNull?.trim()?.lowercase()
+    return isCi && githubEvent == "pull_request"
 }
 
 private fun Project.resolveTxFaceSdkDependencyConfig(): TxFaceSdkDependencyConfig {
