@@ -47,7 +47,7 @@ moshi = "1.15.2"
 kotlinxDatetime = "0.7.1-0.6.x-compat"
 kotlinxSerialization = "1.10.0"
 faceDetection = "16.1.7"
-coil = "3.3.0"
+coil = "3.4.0"
 
 # Tencent COS
 tencentCos = "5.9.49"
