@@ -50,7 +50,7 @@ faceDetection = "16.1.7"
 coil = "3.3.0"
 
 # Tencent COS
-tencentCos = "5.9.48"
+tencentCos = "5.9.49"
 
 # Bugly
 crashreport = "4.1.9.3"
