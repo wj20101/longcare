@@ -140,7 +140,13 @@ for file in "${changed_files[@]:-}"; do
   esac
 
   case "${file}" in
-    app/src/androidTest/*|baselineprofile/*|app/src/main/kotlin/com/ytone/longcare/MainActivity.kt|app/src/main/kotlin/com/ytone/longcare/features/service/*|app/src/main/kotlin/com/ytone/longcare/features/servicecountdown/*)
+    app/src/main/*|app/src/androidTest/*|baselineprofile/*)
+      run_instrumentation="true"
+      ;;
+  esac
+
+  case "${file}" in
+    app/src/main/kotlin/com/ytone/longcare/features/service/*|app/src/main/kotlin/com/ytone/longcare/features/servicecountdown/*)
       run_instrumentation="true"
       add_smoke_class_unique "com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest"
       ;;
@@ -156,8 +162,6 @@ done
 
 if [[ "${full_scope}" == "true" ]]; then
   selected_modules=("${ALL_MODULES[@]}")
-  run_instrumentation="true"
-  add_smoke_class_unique "com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest"
 fi
 
 if [[ "${#selected_modules[@]}" -eq 0 ]]; then
