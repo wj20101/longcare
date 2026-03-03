@@ -2,6 +2,7 @@
 set -euo pipefail
 
 READY_TIMEOUT_SECS="${SMOKE_READY_TIMEOUT_SECS:-360}"
+POST_BOOT_STABILIZATION_SECS="${SMOKE_POST_BOOT_STABILIZATION_SECS:-75}"
 ADB_INSTALL_RETRY_COUNT="${SMOKE_ADB_INSTALL_RETRY_COUNT:-3}"
 ADB_INSTALL_RETRY_DELAY_SECS="${SMOKE_ADB_INSTALL_RETRY_DELAY_SECS:-8}"
 INSTRUMENTATION_RETRY_COUNT="${SMOKE_INSTRUMENTATION_RETRY_COUNT:-2}"
@@ -98,6 +99,15 @@ ensure_device_ready() {
   "${ADB_BIN}" devices -l || true
   adb_cmd shell getprop || true
   return 1
+}
+
+wait_for_post_boot_stabilization() {
+  if [ "${POST_BOOT_STABILIZATION_SECS}" -le 0 ]; then
+    return 0
+  fi
+
+  echo "Waiting ${POST_BOOT_STABILIZATION_SECS}s for post-boot stabilization..."
+  sleep "${POST_BOOT_STABILIZATION_SECS}"
 }
 
 install_apks() {
@@ -270,6 +280,8 @@ else
   "${ADB_BIN}" wait-for-device
 fi
 ensure_device_ready
+
+wait_for_post_boot_stabilization
 
 install_apks
 run_instrumentation
