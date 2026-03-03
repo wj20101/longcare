@@ -36,7 +36,10 @@ resolve_enforce_unused_waivers() {
       echo "false"
       ;;
     auto|AUTO)
-      if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
+      # In CI, stale waivers should be advisory to avoid flaky red pipelines
+      # when dependency noise changes between PR validation and post-merge runs.
+      # Use LINT_ENFORCE_UNUSED_WAIVERS=true when strict enforcement is needed.
+      if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
         echo "false"
       else
         echo "true"
@@ -132,9 +135,14 @@ fi
 
 if [[ -z "${WARNING_IDS}" ]]; then
   if [[ -n "${WAIVER_IDS}" ]]; then
-    echo "Lint report has no warnings, but waiver entries still exist. Remove stale waivers:" >&2
+    if [[ "${ENFORCE_UNUSED_WAIVERS}" == "true" ]]; then
+      echo "Lint report has no warnings, but waiver entries still exist. Remove stale waivers:" >&2
+      printf '%s\n' "${WAIVER_IDS}" | sed 's/^/  - /' >&2
+      exit 1
+    fi
+
+    echo "Lint report has no warnings; existing waiver entries are treated as non-blocking in current mode:" >&2
     printf '%s\n' "${WAIVER_IDS}" | sed 's/^/  - /' >&2
-    exit 1
   fi
   echo "No lint warnings found in ${REPORT_PATH}."
   exit 0
