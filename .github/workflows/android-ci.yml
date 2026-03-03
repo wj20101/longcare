@@ -215,7 +215,7 @@ jobs:
           arch: x86_64
           force-avd-creation: true
           cores: 2
-          ram-size: 2048M
+          ram-size: 3072M
           disk-size: 2048M
           emulator-boot-timeout: 900
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -accel off -no-snapshot-load -no-snapshot-save -no-metrics
