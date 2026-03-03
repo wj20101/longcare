@@ -13,12 +13,6 @@ on:
       - "findings.md"
       - "progress.md"
   pull_request:
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
-      - "task_plan.md"
-      - "findings.md"
-      - "progress.md"
   workflow_dispatch:
 
 concurrency:
