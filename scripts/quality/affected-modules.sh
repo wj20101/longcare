@@ -46,7 +46,7 @@ declare -a selected_modules=()
 declare -a changed_files=()
 full_scope="false"
 run_instrumentation="false"
-declare -a smoke_classes=("com.ytone.longcare.smoke.MainActivitySmokeTest")
+declare -a smoke_classes=("com.ytone.longcare.ExampleInstrumentedTest")
 
 add_unique() {
   local value="$1"
@@ -143,6 +143,13 @@ for file in "${changed_files[@]:-}"; do
     app/src/androidTest/*|baselineprofile/*|app/src/main/kotlin/com/ytone/longcare/MainActivity.kt|app/src/main/kotlin/com/ytone/longcare/features/service/*|app/src/main/kotlin/com/ytone/longcare/features/servicecountdown/*)
       run_instrumentation="true"
       add_smoke_class_unique "com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest"
+      ;;
+  esac
+
+  case "${file}" in
+    app/src/main/kotlin/com/ytone/longcare/MainActivity.kt|app/src/main/kotlin/com/ytone/longcare/app/MainApplication.kt)
+      run_instrumentation="true"
+      add_smoke_class_unique "com.ytone.longcare.smoke.MainActivitySmokeTest"
       ;;
   esac
 done
