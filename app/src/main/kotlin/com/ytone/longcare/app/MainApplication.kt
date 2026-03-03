@@ -3,6 +3,7 @@ package com.ytone.longcare.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import coil3.ImageLoader
@@ -18,9 +19,14 @@ import dagger.hilt.android.HiltAndroidApp
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Provider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 @HiltAndroidApp
 class MainApplication : Application(), SingletonImageLoader.Factory, Configuration.Provider {
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     // 如果你想让Coil全局使用Hilt提供的ImageLoader，
     // 你的Application类需要实现ImageLoaderFactory
@@ -39,22 +45,28 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
         super.onCreate()
 
         initLogger()
+        initCrashReportingIfNeeded()
+        scheduleStartupWorkersAsync()
+    }
 
-        // Initialize WorkManager with custom configuration
-        WorkManager.initialize(this, workManagerConfiguration)
-
-        // 初始化Bugly
+    private fun initCrashReportingIfNeeded() {
+        // Debug/instrumentation builds prioritize startup determinism over crash-report SDK bootstrap.
+        if (BuildConfig.DEBUG) return
         val userStrategy = CrashReport.UserStrategy(this)
         CrashReport.initCrashReport(this, userStrategy)
-
-        scheduleStartupWorkers()
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = imageLoaderProvider.get()
 
-    private fun scheduleStartupWorkers() {
-        val updateWorkRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
-        WorkManager.getInstance(this).enqueue(updateWorkRequest)
+    private fun scheduleStartupWorkersAsync() {
+        appScope.launch {
+            val updateWorkRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
+            WorkManager.getInstance(this@MainApplication).enqueueUniqueWork(
+                STARTUP_UPDATE_WORK_NAME,
+                ExistingWorkPolicy.KEEP,
+                updateWorkRequest
+            )
+        }
     }
 
     private fun initLogger() {
@@ -68,5 +80,9 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
                 maskSensitiveInfo = true
             )
         )
+    }
+
+    private companion object {
+        const val STARTUP_UPDATE_WORK_NAME = "startup_update_worker"
     }
 }
