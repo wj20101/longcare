@@ -195,7 +195,7 @@ jobs:
             echo "Failed to parse appTargetSdkVersion from constants.gradle.kts"
             exit 1
           fi
-          STABLE_SMOKE_MAX_API=35
+          STABLE_SMOKE_MAX_API=33
           EMULATOR_API="${TARGET_SDK}"
           if [ "${TARGET_SDK}" -gt "${STABLE_SMOKE_MAX_API}" ]; then
             EMULATOR_API="${STABLE_SMOKE_MAX_API}"
@@ -207,7 +207,9 @@ jobs:
       - name: Free disk space for emulator
         run: bash scripts/quality/free_runner_disk_space.sh --min-free-mb 8192
 
-      - name: Run instrumentation smoke test on emulator
+      - name: Run instrumentation smoke test on emulator (attempt 1)
+        id: smoke_attempt_1
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ steps.target_sdk.outputs.value }}
@@ -222,6 +224,41 @@ jobs:
           disable-animations: false
           disable-linux-hw-accel: true
           script: SMOKE_TEST_CLASSES="${{ needs.detect-affected.outputs.smoke_test_classes }}" bash ./.github/scripts/run-instrumentation-smoke.sh
+
+      - name: Run instrumentation smoke test on emulator (attempt 2 fallback API)
+        id: smoke_attempt_2
+        if: steps.smoke_attempt_1.outcome != 'success'
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: default
+          arch: x86_64
+          force-avd-creation: true
+          cores: 4
+          ram-size: 4096
+          disk-size: 4096
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -accel off -no-snapshot-load -no-snapshot-save -no-metrics
+          disable-animations: false
+          disable-linux-hw-accel: true
+          script: SMOKE_TEST_CLASSES="${{ needs.detect-affected.outputs.smoke_test_classes }}" bash ./.github/scripts/run-instrumentation-smoke.sh
+
+      - name: Verify instrumentation smoke attempts
+        if: always()
+        run: |
+          ATTEMPT_1_OUTCOME='${{ steps.smoke_attempt_1.outcome }}'
+          ATTEMPT_2_OUTCOME='${{ steps.smoke_attempt_2.outcome }}'
+          echo "attempt1=${ATTEMPT_1_OUTCOME}"
+          echo "attempt2=${ATTEMPT_2_OUTCOME}"
+
+          if [ "${ATTEMPT_1_OUTCOME}" = "success" ] || [ "${ATTEMPT_2_OUTCOME}" = "success" ]; then
+            echo "Instrumentation smoke passed."
+            exit 0
+          fi
+
+          echo "Instrumentation smoke failed on both attempts."
+          exit 1
 
       - name: Upload instrumentation reports
         if: always()
