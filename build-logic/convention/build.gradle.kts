@@ -8,7 +8,7 @@ version = "1.0.0"
 
 dependencies {
     compileOnly("com.android.tools.build:gradle:9.1.0")
-    compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.10")
+    compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.20")
 }
 
 gradlePlugin {
