@@ -6,6 +6,8 @@ import android.os.Build
 import androidx.core.app.PendingIntentCompat
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.features.countdown.manager.CountdownAlarmLaunchSource
+import com.ytone.longcare.features.countdown.manager.CountdownAlarmPresentationPolicy
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
 
@@ -25,7 +27,9 @@ internal fun AlarmRingtoneService.launchAlarmActivityIfPossible(
             this,
             orderKey,
             serviceName,
-            autoCloseEnabled = false
+            autoCloseEnabled = CountdownAlarmPresentationPolicy.autoCloseEnabled(
+                launchSource = CountdownAlarmLaunchSource.DIRECT_SERVICE_LAUNCH
+            )
         ).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TOP or

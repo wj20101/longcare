@@ -24,7 +24,8 @@ object DeviceCompatibilityHelper {
     private const val KEY_FULL_SCREEN_GUIDE_SHOWN = "full_screen_guide_shown"
     private const val KEY_OVERLAY_GUIDE_SHOWN = "overlay_guide_shown"
     private const val KEY_MANUFACTURER_GUIDE_SHOWN = "manufacturer_guide_shown"
-    private const val KEY_BATTERY_GUIDE_SHOWN = "battery_guide_shown"
+    private const val KEY_IGNORE_BATTERY_REQUEST_ATTEMPTED = "ignore_battery_request_attempted"
+    private const val KEY_AUTO_START_GUIDE_SHOWN = "auto_start_guide_shown"
     
     /**
      * 获取设备厂商
@@ -104,14 +105,14 @@ object DeviceCompatibilityHelper {
     }
     
     /**
-     * 获取需要引导的权限类型（只返回首个需要引导的权限，每种只显示一次）
+     * 获取需要引导的权限类型（只返回首个需要引导的权限）
      * 优先级：1. 省电策略（所有设备） → 2. 厂商弹窗权限 / 悬浮窗权限
      */
     fun getRequiredPermissionGuide(context: Context): PermissionGuideType {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         
         // 1. 省电策略（适用于所有设备，优先引导）
-        if (!prefs.getBoolean(KEY_BATTERY_GUIDE_SHOWN, false)) {
+        if (getBatteryGuideStep(context) != BatteryGuideStep.NONE) {
             return PermissionGuideType.BATTERY
         }
         
@@ -144,10 +145,35 @@ object DeviceCompatibilityHelper {
             PermissionGuideType.FULL_SCREEN_INTENT -> KEY_FULL_SCREEN_GUIDE_SHOWN
             PermissionGuideType.OVERLAY -> KEY_OVERLAY_GUIDE_SHOWN
             PermissionGuideType.MANUFACTURER_POPUP -> KEY_MANUFACTURER_GUIDE_SHOWN
-            PermissionGuideType.BATTERY -> KEY_BATTERY_GUIDE_SHOWN
+            PermissionGuideType.BATTERY -> return
             PermissionGuideType.NONE -> return
         }
         prefs.edit { putBoolean(key, true) }
+    }
+
+    fun getBatteryGuideStep(context: Context): BatteryGuideStep {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val ignoreBatteryRequestAttempted =
+            prefs.getBoolean(KEY_IGNORE_BATTERY_REQUEST_ATTEMPTED, false)
+        val autoStartGuideShown = prefs.getBoolean(KEY_AUTO_START_GUIDE_SHOWN, false)
+        val needsAutoStartGuide = needsSpecialAdaptation() && getAutoStartIntent(context) != null
+
+        return resolveBatteryGuideStep(
+            isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations(context),
+            ignoreBatteryRequestAttempted = ignoreBatteryRequestAttempted,
+            needsAutoStartGuide = needsAutoStartGuide,
+            autoStartGuideShown = autoStartGuideShown,
+        )
+    }
+
+    fun markIgnoreBatteryOptimizationRequestAttempted(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit { putBoolean(KEY_IGNORE_BATTERY_REQUEST_ATTEMPTED, true) }
+    }
+
+    fun markAutoStartGuideShown(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit { putBoolean(KEY_AUTO_START_GUIDE_SHOWN, true) }
     }
     
     /**
@@ -532,6 +558,78 @@ object DeviceCompatibilityHelper {
                 3. ✅ 关闭电池优化 或 设置为「不限制后台」
                 4. ✅ 允许后台运行
             """.trimIndent()
+        }
+    }
+
+    fun getAutoStartGuideMessage(): String {
+        return when {
+            isXiaomi() -> """
+                为保证后台定时通知和全屏弹窗稳定触发，请开启自启动：
+
+                1. 进入「设置 → 应用设置 → 应用管理」
+                2. 找到本应用 → 点击「自启动管理」
+                3. ✅ 开启「允许自启动」
+            """.trimIndent()
+            isHuawei() -> """
+                为保证后台定时通知和全屏弹窗稳定触发，请开启应用启动管理：
+
+                1. 进入「设置 → 应用 → 应用启动管理」
+                2. 找到本应用，关闭「自动管理」
+                3. ✅ 开启「允许自启动」
+                4. ✅ 开启「允许后台活动」
+                5. ✅ 开启「允许关联启动」
+            """.trimIndent()
+            isOppo() -> """
+                为保证后台定时通知和全屏弹窗稳定触发，请开启自启动：
+
+                1. 进入「设置 → 应用管理 → 自启动管理」
+                2. 找到本应用
+                3. ✅ 开启「允许自启动」
+                4. 如有「后台运行」相关开关，也请一并开启
+            """.trimIndent()
+            isVivo() -> """
+                为保证后台定时通知和全屏弹窗稳定触发，请开启自启动：
+
+                1. 进入「设置 → 应用与权限 → 权限管理 → 自启动」
+                2. 找到本应用
+                3. ✅ 开启「允许自启动」
+                4. 如有「后台高耗电」或「后台弹出界面」，也请允许
+            """.trimIndent()
+            else -> """
+                为保证后台定时通知和全屏弹窗稳定触发，请允许本应用后台自启动和后台运行。
+            """.trimIndent()
+        }
+    }
+
+    fun getBatteryGuideDialogTitle(step: BatteryGuideStep): String {
+        return when (step) {
+            BatteryGuideStep.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS -> "关闭电池优化"
+            BatteryGuideStep.OPEN_BATTERY_SETTINGS -> "设置省电策略"
+            BatteryGuideStep.OPEN_AUTO_START_SETTINGS -> "开启自启动"
+            BatteryGuideStep.NONE -> ""
+        }
+    }
+
+    fun getBatteryGuideConfirmLabel(step: BatteryGuideStep): String {
+        return when (step) {
+            BatteryGuideStep.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS -> "去授权"
+            BatteryGuideStep.OPEN_BATTERY_SETTINGS,
+            BatteryGuideStep.OPEN_AUTO_START_SETTINGS -> "去设置"
+            BatteryGuideStep.NONE -> "知道了"
+        }
+    }
+
+    fun getBatteryGuideMessage(context: Context, step: BatteryGuideStep): String {
+        return when (step) {
+            BatteryGuideStep.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS -> """
+                为保证后台定时通知和全屏弹窗不被系统省电策略拦截，请先将本应用加入“不受电池优化限制”名单。
+
+                点击「去授权」后，请在系统弹窗中选择「允许」。
+            """.trimIndent()
+            BatteryGuideStep.OPEN_BATTERY_SETTINGS -> getBatteryGuideMessage()
+            BatteryGuideStep.OPEN_AUTO_START_SETTINGS ->
+                if (getAutoStartIntent(context) != null) getAutoStartGuideMessage() else getBatteryGuideMessage()
+            BatteryGuideStep.NONE -> ""
         }
     }
     

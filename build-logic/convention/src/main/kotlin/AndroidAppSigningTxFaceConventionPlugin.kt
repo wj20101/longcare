@@ -59,6 +59,23 @@ class AndroidAppSigningTxFaceConventionPlugin : Plugin<Project> {
                         )
                     }
                 }
+
+                if (requiresReleaseSigning) {
+                    val effectiveReleaseSigningConfig = releaseBuildType.signingConfig
+                    val debugStorePath = signingConfigs.findByName("debug")?.storeFile?.absolutePath
+                    val releaseStorePath = effectiveReleaseSigningConfig?.storeFile?.absolutePath
+                    if (
+                        !isSafeReleaseSigningConfig(
+                            signingConfigName = effectiveReleaseSigningConfig?.name,
+                            signingStorePath = releaseStorePath,
+                            debugStorePath = debugStorePath
+                        )
+                    ) {
+                        throw GradleException(
+                            "Unsafe release signing configuration detected. Release variants must not use the debug signing config or debug.keystore."
+                        )
+                    }
+                }
             }
 
             val txFaceConfig = target.resolveTxFaceSdkDependencyConfig()
@@ -159,13 +176,25 @@ private fun Project.allowUnsignedReleaseFallback(): Boolean {
             gradleKeys = listOf("LONGCARE_ALLOW_UNSIGNED_RELEASE", "ALLOW_UNSIGNED_RELEASE"),
             envKeys = listOf("LONGCARE_ALLOW_UNSIGNED_RELEASE", "ALLOW_UNSIGNED_RELEASE")
         )
-    if (explicitOverride != null) {
-        return explicitOverride.toBooleanStrictish() ?: false
-    }
+    return resolveUnsignedReleaseFallback(explicitOverride)
+}
 
-    val isCi = providers.environmentVariable("CI").orNull?.toBooleanStrictish() == true
-    val githubEvent = providers.environmentVariable("GITHUB_EVENT_NAME").orNull?.trim()?.lowercase()
-    return isCi && githubEvent == "pull_request"
+internal fun resolveUnsignedReleaseFallback(explicitOverride: String?): Boolean {
+    return explicitOverride?.toBooleanStrictish() ?: false
+}
+
+internal fun isSafeReleaseSigningConfig(
+    signingConfigName: String?,
+    signingStorePath: String?,
+    debugStorePath: String?
+): Boolean {
+    if (signingConfigName.equals("debug", ignoreCase = true)) {
+        return false
+    }
+    if (!signingStorePath.isNullOrBlank() && !debugStorePath.isNullOrBlank()) {
+        return signingStorePath != debugStorePath
+    }
+    return true
 }
 
 private fun Project.resolveTxFaceSdkDependencyConfig(): TxFaceSdkDependencyConfig {

@@ -99,8 +99,11 @@ internal fun ServiceCountdownLifecycleEffects(
         onDispose {
             countdownViewModel.stopOrderStatePolling()
 
-            if (latestCountdownState != ServiceCountdownState.ENDED) {
+            val disposeActions = resolveServiceCountdownDisposeActions()
+            if (disposeActions.cancelCountdownAlarm && latestCountdownState != ServiceCountdownState.ENDED) {
                 countdownViewModel.cancelCountdownAlarm()
+            }
+            if (disposeActions.stopAlarmRingtone && latestCountdownState != ServiceCountdownState.ENDED) {
                 AlarmRingtoneService.stopRingtone(context)
             }
         }

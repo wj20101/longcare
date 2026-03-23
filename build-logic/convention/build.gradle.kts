@@ -1,3 +1,6 @@
+import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.kotlin.dsl.getByType
+
 plugins {
     `kotlin-dsl`
     `java-gradle-plugin`
@@ -6,9 +9,12 @@ plugins {
 group = "com.ytone.longcare.buildlogic"
 version = "1.0.0"
 
+val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
+
 dependencies {
-    compileOnly("com.android.tools.build:gradle:9.1.0")
-    compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.20")
+    compileOnly(libs.findLibrary("android-gradle-plugin").get())
+    compileOnly(libs.findLibrary("kotlin-gradle-plugin").get())
+    testImplementation(kotlin("test"))
 }
 
 gradlePlugin {

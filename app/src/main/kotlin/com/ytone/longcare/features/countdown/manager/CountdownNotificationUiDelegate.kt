@@ -46,7 +46,9 @@ internal class CountdownNotificationUiDelegate(
             context,
             orderKey,
             serviceName,
-            autoCloseEnabled = true
+            autoCloseEnabled = CountdownAlarmPresentationPolicy.autoCloseEnabled(
+                launchSource = CountdownAlarmLaunchSource.FULL_SCREEN_NOTIFICATION
+            )
         ).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)

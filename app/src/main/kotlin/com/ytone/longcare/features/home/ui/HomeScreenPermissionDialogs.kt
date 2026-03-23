@@ -17,9 +17,11 @@ internal fun HomeScreenPermissionDialogs(
     onOpenPopupSettings: () -> Unit,
     onSkipPopupGuide: () -> Unit,
     showBatteryDialog: Boolean,
+    batteryDialogTitle: String,
     batteryMessage: String,
     onDismissBatteryDialog: () -> Unit,
-    onOpenBatterySettings: () -> Unit,
+    onConfirmBatteryGuide: () -> Unit,
+    batteryConfirmLabel: String,
     onAcknowledgeBatteryGuide: () -> Unit
 ) {
     if (showPermissionDialog) {
@@ -61,11 +63,11 @@ internal fun HomeScreenPermissionDialogs(
     if (showBatteryDialog) {
         AlertDialog(
             onDismissRequest = onDismissBatteryDialog,
-            title = { Text("设置省电策略") },
+            title = { Text(batteryDialogTitle) },
             text = { Text(batteryMessage) },
             confirmButton = {
-                TextButton(onClick = onOpenBatterySettings) {
-                    Text("去设置")
+                TextButton(onClick = onConfirmBatteryGuide) {
+                    Text(batteryConfirmLabel)
                 }
             },
             dismissButton = {

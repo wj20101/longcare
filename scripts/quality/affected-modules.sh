@@ -172,7 +172,7 @@ affected_scope="partial"
 verify_tasks=":app:lintDebug :app:testDebugUnitTest :app:assembleDebug"
 if [[ "${full_scope}" == "true" ]]; then
   affected_scope="full"
-  verify_tasks=":app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:bundleDebug :baselineprofile:assemble :app:bundleRelease"
+  verify_tasks=":app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:bundleDebug :baselineprofile:assemble"
 fi
 
 if [[ "${run_instrumentation}" != "true" ]]; then

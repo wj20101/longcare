@@ -16,7 +16,7 @@ dependencies {
     implementation(libs.moshi.kotlin)
     implementation(libs.retrofit.core)
     implementation(libs.window)
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:${libs.versions.coroutines.get()}")
-    implementation("javax.inject:javax.inject:1")
+    implementation(libs.javax.inject)
     ksp(libs.dagger.hilt.compiler)
+    testImplementation(libs.junit)
 }

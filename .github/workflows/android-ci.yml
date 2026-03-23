@@ -84,8 +84,6 @@ jobs:
           run-workflow-quality-check: 'true'
 
       - name: Run affected verification tasks
-        env:
-          LONGCARE_ALLOW_UNSIGNED_RELEASE: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
         run: ./gradlew --no-daemon ${{ needs.detect-affected.outputs.verify_tasks }}
 
       - name: Collect quality snapshot and enforce quality gates
@@ -111,15 +109,6 @@ jobs:
         with:
           name: app-debug-aab
           path: app/build/outputs/bundle/debug/*.aab
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Upload release AAB
-        if: needs.detect-affected.outputs.affected_scope == 'full'
-        uses: actions/upload-artifact@v7
-        with:
-          name: app-release-aab
-          path: app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 7
 
