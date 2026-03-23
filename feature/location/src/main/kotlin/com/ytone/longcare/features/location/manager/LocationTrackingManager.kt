@@ -65,9 +65,8 @@ class LocationTrackingManager @Inject constructor(
      */
     fun forceStopTracking() {
         logI("强制停止位置上报")
+        isUiActive = false
         locationReportingManager.forceStopReporting()
-        if (!isUiActive) {
-            locationFacade.releaseKeepAlive(UI_SESSION_OWNER)
-        }
+        locationFacade.releaseKeepAlive(UI_SESSION_OWNER)
     }
 }
