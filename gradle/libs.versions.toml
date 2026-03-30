@@ -22,7 +22,7 @@ startup = "1.2.0"
 benchmark = "1.5.0-alpha04"
 baselineprofile = "1.5.0-alpha04"
 profileinstaller = "1.4.1"
-camerax = "1.5.3"
+camerax = "1.6.0"
 constraintlayout = "2.2.1"
 
 # Data Persistence
