@@ -30,7 +30,7 @@ datastore = "1.2.1"
 room = "2.8.4"
 
 # Work
-work = "2.11.1"
+work = "2.11.2"
 
 # Window
 window = "1.5.1"
