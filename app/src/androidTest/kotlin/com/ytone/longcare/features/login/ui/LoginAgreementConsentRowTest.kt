@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import com.ytone.longcare.theme.LongCareTheme
 import org.junit.Rule
 import org.junit.Test
@@ -37,7 +38,10 @@ class LoginAgreementConsentRowTest {
         composeRule.onNodeWithTag("login_agreement_checkbox").performClick()
         composeRule.onNodeWithTag("login_agreement_checkbox").assertIsOn()
 
-        composeRule.onNodeWithText("登录即表明已阅读并同意", substring = true).performClick()
+        composeRule.onNodeWithText("登录即表明已阅读并同意", substring = true).performTouchInput {
+            down(center)
+            up()
+        }
         composeRule.onNodeWithTag("login_agreement_checkbox").assertIsOn()
     }
 }

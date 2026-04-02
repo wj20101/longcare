@@ -2,7 +2,8 @@ package com.ytone.longcare.features.login.ui
 
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 import com.ytone.longcare.features.login.vm.SendSmsCodeUiState
@@ -150,10 +152,10 @@ fun AgreementConsentSection(
                 checkmarkColor = Color.White
             )
         )
+        Spacer(modifier = Modifier.width(8.dp))
         AgreementText(
             onUserAgreementClick = onUserAgreementClick,
-            onPrivacyPolicyClick = onPrivacyPolicyClick,
-            modifier = Modifier.weight(1f)
+            onPrivacyPolicyClick = onPrivacyPolicyClick
         )
     }
 }
