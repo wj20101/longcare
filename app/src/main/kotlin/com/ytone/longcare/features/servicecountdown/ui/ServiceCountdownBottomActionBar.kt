@@ -1,11 +1,8 @@
 package com.ytone.longcare.features.servicecountdown.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -19,28 +16,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
+import com.ytone.longcare.ui.components.BottomSafeActionContainer
 
 @Composable
 internal fun BoxScope.ServiceCountdownBottomActionBar(
     countdownState: ServiceCountdownState,
     onActionClick: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .fillMaxWidth()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        Color(0xFFF6F9FF).copy(alpha = 0.9f),
-                        Color(0xFFF6F9FF)
-                    ),
-                    startY = 0f,
-                    endY = 100f
-                )
-            )
-            .padding(horizontal = 16.dp, vertical = 32.dp)
+    BottomSafeActionContainer(
+        modifier = Modifier.align(Alignment.BottomCenter),
+        horizontalPadding = 16.dp,
+        topPadding = 0.dp,
+        extraBottomPadding = 16.dp,
+        gradientBackground = Brush.verticalGradient(
+            colors = listOf(
+                Color.Transparent,
+                Color(0xFFF6F9FF).copy(alpha = 0.9f),
+                Color(0xFFF6F9FF)
+            ),
+            startY = 0f,
+            endY = 100f
+        )
     ) {
         Button(
             onClick = singleClick(onClick = onActionClick),

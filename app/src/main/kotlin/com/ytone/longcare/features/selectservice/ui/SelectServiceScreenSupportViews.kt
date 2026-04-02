@@ -1,13 +1,11 @@
 package com.ytone.longcare.features.selectservice.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -19,6 +17,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.ui.components.BottomSafeActionContainer
 
 @Composable
 internal fun CenterStateText(
@@ -52,21 +51,20 @@ internal fun SelectServiceBottomActions(
     onToggleSelectAll: () -> Unit,
     onNextStep: () -> Unit
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        Color(0xFFF6F9FF).copy(alpha = 0.9f),
-                        Color(0xFFF6F9FF)
-                    ),
-                    startY = 0f,
-                    endY = 100f
-                )
-            )
-            .padding(horizontal = 20.dp, vertical = 32.dp)
+    BottomSafeActionContainer(
+        modifier = modifier,
+        horizontalPadding = 20.dp,
+        topPadding = 0.dp,
+        extraBottomPadding = 16.dp,
+        gradientBackground = Brush.verticalGradient(
+            colors = listOf(
+                Color.Transparent,
+                Color(0xFFF6F9FF).copy(alpha = 0.9f),
+                Color(0xFFF6F9FF)
+            ),
+            startY = 0f,
+            endY = 100f
+        )
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
