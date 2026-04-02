@@ -1,6 +1,8 @@
 package com.ytone.longcare.features.login.ui
 
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -10,23 +12,14 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
@@ -75,62 +68,45 @@ fun SendVerificationCodeButton(
 fun AgreementText(
     modifier: Modifier = Modifier,
     onUserAgreementClick: () -> Unit,
-    onPrivacyPolicyClick: () -> Unit,
-    onTextLayout: ((TextLayoutResult) -> Unit)? = null
+    onPrivacyPolicyClick: () -> Unit
 ) {
-    val userAgreementTag = "USER_AGREEMENT"
-    val privacyPolicyTag = "PRIVACY_POLICY"
-
-    val annotatedString = buildAnnotatedString {
-        append(stringResource(R.string.login_agreement_prefix))
-        pushStringAnnotation(tag = userAgreementTag, annotation = "user_agreement_link")
-        withStyle(style = SpanStyle(color = LinkColor, fontWeight = FontWeight.Normal)) {
-            append(stringResource(R.string.login_user_agreement))
-        }
-        pop()
-        append(stringResource(R.string.login_agreement_and))
-        pushStringAnnotation(tag = privacyPolicyTag, annotation = "privacy_policy_link")
-        withStyle(style = SpanStyle(color = LinkColor, fontWeight = FontWeight.Normal)) {
-            append(stringResource(R.string.login_privacy_policy))
-        }
-        pop()
-    }
-
-    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-
-    Text(
-        text = annotatedString,
-        style = TextStyle(
-            color = TextColorSecondary,
-            fontSize = 12.sp,
-            textAlign = TextAlign.Center
-        ),
-        onTextLayout = { result ->
-            textLayoutResult = result
-            onTextLayout?.invoke(result)
-        },
-        modifier = modifier.pointerInput(Unit) {
-            detectTapGestures { offset ->
-                textLayoutResult?.let { layoutResult ->
-                    val clickedOffset = layoutResult.getOffsetForPosition(offset)
-                    annotatedString.getStringAnnotations(
-                        tag = userAgreementTag,
-                        start = clickedOffset,
-                        end = clickedOffset
-                    ).firstOrNull()?.let {
-                        onUserAgreementClick()
-                    }
-                    annotatedString.getStringAnnotations(
-                        tag = privacyPolicyTag,
-                        start = clickedOffset,
-                        end = clickedOffset
-                    ).firstOrNull()?.let {
-                        onPrivacyPolicyClick()
-                    }
-                }
-            }
-        }
+    val textStyle = TextStyle(
+        color = TextColorSecondary,
+        fontSize = 12.sp,
+        textAlign = TextAlign.Center
     )
+
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = stringResource(R.string.login_agreement_prefix),
+            style = textStyle,
+            modifier = Modifier.testTag("login_agreement_prefix_text")
+        )
+        Text(
+            text = stringResource(R.string.login_user_agreement),
+            style = textStyle.copy(
+                color = LinkColor,
+                fontWeight = FontWeight.Normal
+            ),
+            modifier = Modifier.clickable(onClick = onUserAgreementClick)
+        )
+        Text(
+            text = stringResource(R.string.login_agreement_and),
+            style = textStyle
+        )
+        Text(
+            text = stringResource(R.string.login_privacy_policy),
+            style = textStyle.copy(
+                color = LinkColor,
+                fontWeight = FontWeight.Normal
+            ),
+            modifier = Modifier.clickable(onClick = onPrivacyPolicyClick)
+        )
+    }
 }
 
 @Composable
@@ -139,7 +115,6 @@ fun AgreementConsentSection(
     onCheckedChange: (Boolean) -> Unit,
     onUserAgreementClick: () -> Unit,
     onPrivacyPolicyClick: () -> Unit,
-    onAgreementTextLayout: ((TextLayoutResult) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -159,7 +134,6 @@ fun AgreementConsentSection(
         AgreementText(
             onUserAgreementClick = onUserAgreementClick,
             onPrivacyPolicyClick = onPrivacyPolicyClick,
-            onTextLayout = onAgreementTextLayout,
             modifier = Modifier.testTag("login_agreement_text")
         )
     }
