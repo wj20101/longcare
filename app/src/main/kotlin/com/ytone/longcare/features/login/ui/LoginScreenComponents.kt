@@ -75,7 +75,8 @@ fun SendVerificationCodeButton(
 fun AgreementText(
     modifier: Modifier = Modifier,
     onUserAgreementClick: () -> Unit,
-    onPrivacyPolicyClick: () -> Unit
+    onPrivacyPolicyClick: () -> Unit,
+    onTextLayout: ((TextLayoutResult) -> Unit)? = null
 ) {
     val userAgreementTag = "USER_AGREEMENT"
     val privacyPolicyTag = "PRIVACY_POLICY"
@@ -106,6 +107,7 @@ fun AgreementText(
         ),
         onTextLayout = { result ->
             textLayoutResult = result
+            onTextLayout?.invoke(result)
         },
         modifier = modifier.pointerInput(Unit) {
             detectTapGestures { offset ->
@@ -137,6 +139,7 @@ fun AgreementConsentSection(
     onCheckedChange: (Boolean) -> Unit,
     onUserAgreementClick: () -> Unit,
     onPrivacyPolicyClick: () -> Unit,
+    onAgreementTextLayout: ((TextLayoutResult) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -155,7 +158,9 @@ fun AgreementConsentSection(
         Spacer(modifier = Modifier.width(8.dp))
         AgreementText(
             onUserAgreementClick = onUserAgreementClick,
-            onPrivacyPolicyClick = onPrivacyPolicyClick
+            onPrivacyPolicyClick = onPrivacyPolicyClick,
+            onTextLayout = onAgreementTextLayout,
+            modifier = Modifier.testTag("login_agreement_text")
         )
     }
 }
