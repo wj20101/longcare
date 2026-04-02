@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.nfc.ui
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
@@ -15,6 +14,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ytone.longcare.R
 import com.ytone.longcare.navigation.SignInMode
+import com.ytone.longcare.ui.components.BottomSafeActionContainer
 
 @Composable
 internal fun NfcWorkflowBottomBar(
@@ -27,10 +27,10 @@ internal fun NfcWorkflowBottomBar(
         modifier = Modifier.fillMaxWidth(),
         color = Color.Transparent
     ) {
-        Box(
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 32.dp, top = 16.dp)
+        BottomSafeActionContainer(
+            horizontalPadding = 16.dp,
+            topPadding = 16.dp,
+            extraBottomPadding = 16.dp
         ) {
             when (signInState) {
                 SignInState.SUCCESS -> {
