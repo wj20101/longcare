@@ -48,12 +48,10 @@ internal suspend fun executeEndOrderRequest(
 
         is ApiResult.Exception -> {
             val message = result.exception.message ?: "网络错误，请检查网络连接"
-            toastHelper.showShort(message)
             uiState.value = NfcSignInUiState.Error(message)
         }
 
         is ApiResult.Failure -> {
-            toastHelper.showShort(result.message)
             uiState.value = NfcSignInUiState.Error(result.message)
         }
     }

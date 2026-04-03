@@ -41,7 +41,6 @@ internal fun applyOrderApiException(
     uiState: MutableStateFlow<NfcSignInUiState>
 ) {
     val message = exception.exception.message ?: "网络错误，请检查网络连接"
-    toastHelper.showShort(message)
     uiState.value = NfcSignInUiState.Error(message)
 }
 
@@ -50,7 +49,6 @@ internal fun applyOrderApiFailure(
     toastHelper: ToastHelper,
     uiState: MutableStateFlow<NfcSignInUiState>
 ) {
-    toastHelper.showShort(failure.message)
     uiState.value = NfcSignInUiState.Error(failure.message)
 }
 
@@ -68,6 +66,5 @@ internal fun applyCheckEndOrderFailure(
         return
     }
 
-    toastHelper.showShort(failure.message)
     uiState.value = NfcSignInUiState.Error(failure.message)
 }

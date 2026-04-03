@@ -107,7 +107,6 @@ internal class NfcOrderWorkflowDelegate(
     }
 
     fun showError(message: String) {
-        toastHelper.showShort(message)
         uiState.value = NfcSignInUiState.Error(message)
     }
 
