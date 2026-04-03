@@ -26,8 +26,8 @@ class ProfileRepositoryImpl @Inject constructor(
     }
 
     override suspend fun logout(): ApiResult<Unit> {
-        val result = safeApiCall(ioDispatcher, eventBus) { apiService.logout() }
         val userId = userSessionRepository.sessionState.value.user?.userId
+        val result = safeApiCall(ioDispatcher, eventBus) { apiService.logout() }
         if (userId != null) {
             try {
                 faceCacheCleaner.clearUserFaceBase64(userId)
