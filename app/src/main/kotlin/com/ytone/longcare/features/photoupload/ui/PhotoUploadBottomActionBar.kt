@@ -1,11 +1,6 @@
 package com.ytone.longcare.features.photoupload.ui
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.photoupload.api.PhotoUploadActions
@@ -13,6 +8,7 @@ import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewMode
 import com.ytone.longcare.model.ImageTask
 import com.ytone.longcare.model.ImageTaskStatus
 import com.ytone.longcare.model.ImageTaskType
+import com.ytone.longcare.ui.components.BottomSafeActionContainer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -27,24 +23,22 @@ internal fun PhotoUploadBottomActionBar(
     actions: PhotoUploadActions,
     scope: CoroutineScope,
 ) {
-    Surface(modifier = Modifier.fillMaxWidth()) {
-        Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
-            ConfirmAndNextButton(
-                text = buttonText,
-                enabled = enabled,
-                isLoading = isUploading,
-                onClick = singleClick {
-                    com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Confirm Button Clicked")
-                    scope.launch {
-                        handleConfirmUpload(
-                            useMockData = useMockData,
-                            viewModel = viewModel,
-                            actions = actions,
-                        )
-                    }
-                },
-            )
-        }
+    BottomSafeActionContainer(horizontalPadding = 24.dp) {
+        ConfirmAndNextButton(
+            text = buttonText,
+            enabled = enabled,
+            isLoading = isUploading,
+            onClick = singleClick {
+                com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Confirm Button Clicked")
+                scope.launch {
+                    handleConfirmUpload(
+                        useMockData = useMockData,
+                        viewModel = viewModel,
+                        actions = actions,
+                    )
+                }
+            },
+        )
     }
 }
 
