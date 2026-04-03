@@ -11,6 +11,7 @@ Representative examples include:
 - `features/photoupload/ui/PhotoUploadBottomActionBar.kt`
 - `features/selectservice/ui/SelectServiceScreenSupportViews.kt`
 - `features/identification/ui/IdentificationScreenScaffoldSections.kt`
+- `features/servicecomplete/ui/ServiceCompleteScreen.kt`
 
 The codebase currently mixes several bottom action layout styles:
 
@@ -87,6 +88,7 @@ This change should cover the known bottom action patterns most likely to be obsc
 - `PhotoUploadBottomActionBar`
 - `SelectServiceBottomActions`
 - `IdentificationBottomBar`
+- `ServiceCompleteScreen` bottom action area
 
 In addition, any nearby screen using `align(Alignment.BottomCenter)` or a custom bottom overlay for its main action should be evaluated during implementation and included if it matches the same risk pattern.
 
@@ -99,6 +101,8 @@ The implementation should preserve current visuals per screen:
 - Button size, shape, text, and action logic stay unchanged
 
 The adaptation should only change how the bottom container is positioned relative to system navigation insets.
+
+`ServiceCompleteScreen` belongs to the plain surface-backed group. It should be treated the same way as other scaffold-owned bottom bars: preserve the existing `Surface` wrapper semantics and migrate only the internal spacing responsibility to the shared safe-area approach.
 
 ### 5. Why Not Fix Only NFC
 
@@ -117,6 +121,7 @@ Expected directly affected files:
 - `app/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadBottomActionBar.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/selectservice/ui/SelectServiceScreenSupportViews.kt`
 - `app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationScreenScaffoldSections.kt`
+- `app/src/main/kotlin/com/ytone/longcare/features/servicecomplete/ui/ServiceCompleteScreen.kt`
 
 Additional pages may be included during implementation if they use the same bottom action pattern and show the same overlap risk.
 
