@@ -1,8 +1,11 @@
 package com.ytone.longcare.features.servicecountdown.ui
 
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -12,6 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.common.utils.singleClick
@@ -23,11 +28,15 @@ internal fun BoxScope.ServiceCountdownBottomActionBar(
     countdownState: ServiceCountdownState,
     onActionClick: () -> Unit
 ) {
+    val navigationBarBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
     BottomSafeActionContainer(
-        modifier = Modifier.align(Alignment.BottomCenter),
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .trimDuplicatedBottomInset(navigationBarBottomInset),
         horizontalPadding = 16.dp,
-        topPadding = 0.dp,
-        extraBottomPadding = 16.dp,
+        topPadding = 32.dp,
+        extraBottomPadding = 32.dp,
         gradientBackground = Brush.verticalGradient(
             colors = listOf(
                 Color.Transparent,
@@ -53,6 +62,20 @@ internal fun BoxScope.ServiceCountdownBottomActionBar(
                 color = Color.White
             )
         }
+    }
+}
+
+// These bars already sit inside Scaffold content padded by the nav bar inset.
+// Trim the shared container's measured height so its extra safe-area space does not lift the CTA.
+private fun Modifier.trimDuplicatedBottomInset(bottomInset: Dp): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    val duplicatedInsetPx = bottomInset.roundToPx()
+
+    layout(
+        width = placeable.width,
+        height = (placeable.height - duplicatedInsetPx).coerceAtLeast(0)
+    ) {
+        placeable.placeRelative(x = 0, y = 0)
     }
 }
 
