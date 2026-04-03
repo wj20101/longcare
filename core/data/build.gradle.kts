@@ -13,7 +13,6 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:domain"))
     implementation(project(":core:model"))
-    implementation(project(":feature:identification"))
     implementation(libs.bundles.hilt)
     implementation(libs.moshi.kotlin)
     implementation(libs.okhttp.core)

@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.core.common.di.IoDispatcher
+import com.ytone.longcare.domain.facecache.FaceCacheCleaner
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -23,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
 class IdentificationFaceDataSource @Inject constructor(
     @param:ApplicationContext private val context: Context,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
-) {
+) : FaceCacheCleaner {
     companion object {
         private const val TAG = "IdentificationFaceDataSource"
         private const val FACE_BASE64_KEY_PREFIX = "face_base64_user_"
@@ -73,7 +74,7 @@ class IdentificationFaceDataSource @Inject constructor(
         }
     }
 
-    suspend fun clearUserFaceBase64(userId: Int) {
+    override suspend fun clearUserFaceBase64(userId: Int) {
         try {
             val dataStore = getDataStoreForUser(userId)
             val key = faceBase64Key(userId)

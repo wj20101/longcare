@@ -6,6 +6,8 @@ import com.ytone.longcare.features.identification.data.SetupFaceGatewayImpl
 import com.ytone.longcare.features.identification.domain.SetupFaceGateway
 import com.ytone.longcare.features.identification.domain.UploadElderPhotoGateway
 import com.ytone.longcare.features.identification.domain.VerifyServicePersonDataGateway
+import com.ytone.longcare.domain.facecache.FaceCacheCleaner
+import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -29,4 +31,9 @@ abstract class IdentificationUseCaseGatewayModule {
     abstract fun bindSetupFaceGateway(
         impl: SetupFaceGatewayImpl,
     ): SetupFaceGateway
+
+    @Binds
+    abstract fun bindFaceCacheCleaner(
+        impl: IdentificationFaceDataSource,
+    ): FaceCacheCleaner
 }
