@@ -37,10 +37,12 @@ class IdentificationFaceDataSource @Inject constructor(
         }
     }
 
+    private fun faceBase64Key(userId: Int) = stringPreferencesKey(FACE_BASE64_KEY_PREFIX + userId)
+
     suspend fun readUserFaceBase64(userId: Int): String? {
         return try {
             val dataStore = getDataStoreForUser(userId)
-            val key = stringPreferencesKey(FACE_BASE64_KEY_PREFIX + userId)
+            val key = faceBase64Key(userId)
             val result = dataStore.data.first()[key]
             if (result != null) {
                 logD("成功读取人脸缓存 (userId=$userId, 长度=${result.length})", tag = TAG)
@@ -59,7 +61,7 @@ class IdentificationFaceDataSource @Inject constructor(
     suspend fun writeUserFaceBase64(userId: Int, base64: String) {
         try {
             val dataStore = getDataStoreForUser(userId)
-            val key = stringPreferencesKey(FACE_BASE64_KEY_PREFIX + userId)
+            val key = faceBase64Key(userId)
             dataStore.edit { prefs ->
                 prefs[key] = base64
             }
@@ -74,7 +76,7 @@ class IdentificationFaceDataSource @Inject constructor(
     suspend fun clearUserFaceBase64(userId: Int) {
         try {
             val dataStore = getDataStoreForUser(userId)
-            val key = stringPreferencesKey(FACE_BASE64_KEY_PREFIX + userId)
+            val key = faceBase64Key(userId)
             dataStore.edit { prefs ->
                 prefs.remove(key)
             }
