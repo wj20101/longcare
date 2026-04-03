@@ -5,9 +5,12 @@ import com.ytone.longcare.model.NurseServiceTimeModel
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.network.safeApiCall
+import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.domain.profile.ProfileRepository
 import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Inject
 
@@ -15,7 +18,8 @@ class ProfileRepositoryImpl @Inject constructor(
     private val apiService: LongCareApiService,
     private val userSessionRepository: UserSessionRepository,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-    private val eventBus: AppEventBus
+    private val eventBus: AppEventBus,
+    private val identificationFaceDataSource: IdentificationFaceDataSource
 ) : ProfileRepository {
     override suspend fun getServiceStatistics(): ApiResult<NurseServiceTimeModel> {
         return safeApiCall(ioDispatcher, eventBus) { apiService.getServiceStatistics() }
@@ -23,6 +27,16 @@ class ProfileRepositoryImpl @Inject constructor(
 
     override suspend fun logout(): ApiResult<Unit> {
         val result = safeApiCall(ioDispatcher, eventBus) { apiService.logout() }
+        val userId = userSessionRepository.sessionState.value.user?.userId
+        if (userId != null) {
+            try {
+                identificationFaceDataSource.clearUserFaceBase64(userId)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (throwable: Throwable) {
+                logE("Failed to clear face cache for user $userId", throwable = throwable)
+            }
+        }
         userSessionRepository.logout()
         return result
     }
