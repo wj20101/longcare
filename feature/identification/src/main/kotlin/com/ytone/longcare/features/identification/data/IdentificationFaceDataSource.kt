@@ -71,6 +71,21 @@ class IdentificationFaceDataSource @Inject constructor(
         }
     }
 
+    suspend fun clearUserFaceBase64(userId: Int) {
+        try {
+            val dataStore = getDataStoreForUser(userId)
+            val key = stringPreferencesKey(FACE_BASE64_KEY_PREFIX + userId)
+            dataStore.edit { prefs ->
+                prefs.remove(key)
+            }
+            logD("清除人脸缓存 (userId=$userId)", tag = TAG)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logE("清除人脸缓存异常 (userId=$userId)", tag = TAG, throwable = e)
+        }
+    }
+
     suspend fun imageFileToBase64(imageFile: File): String {
         return withContext(ioDispatcher) {
             val bytes = imageFile.readBytes()
