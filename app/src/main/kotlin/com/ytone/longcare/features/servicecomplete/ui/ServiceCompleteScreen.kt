@@ -76,16 +76,13 @@ fun ServiceCompleteScreen(
                 )
             )
         }, containerColor = Color.Transparent, bottomBar = {
-            BottomSafeActionContainer(
-                horizontalPadding = 0.dp,
-                topPadding = 0.dp,
-                extraBottomPadding = 0.dp
-            ) {
-                // 将按钮放在 bottomBar 中使其固定在底部
-                Surface(modifier = Modifier.fillMaxWidth()) {
-                    Box(
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
-                    ) {
+            Surface(modifier = Modifier.fillMaxWidth()) {
+                BottomSafeActionContainer(
+                    horizontalPadding = 24.dp,
+                    topPadding = 16.dp,
+                    extraBottomPadding = 16.dp
+                ) {
+                    Box {
                         ActionButton(text = "完成", onClick = {
                             // 清除选中项目数据后再返回首页
                             viewModel.clearSelectedProjects(orderKey.orderId)
