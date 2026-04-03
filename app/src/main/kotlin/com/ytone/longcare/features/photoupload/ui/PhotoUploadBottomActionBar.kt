@@ -1,6 +1,9 @@
 package com.ytone.longcare.features.photoupload.ui
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.photoupload.api.PhotoUploadActions
@@ -23,22 +26,24 @@ internal fun PhotoUploadBottomActionBar(
     actions: PhotoUploadActions,
     scope: CoroutineScope,
 ) {
-    BottomSafeActionContainer(horizontalPadding = 24.dp) {
-        ConfirmAndNextButton(
-            text = buttonText,
-            enabled = enabled,
-            isLoading = isUploading,
-            onClick = singleClick {
-                com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Confirm Button Clicked")
-                scope.launch {
-                    handleConfirmUpload(
-                        useMockData = useMockData,
-                        viewModel = viewModel,
-                        actions = actions,
-                    )
-                }
-            },
-        )
+    Surface(modifier = Modifier.fillMaxWidth()) {
+        BottomSafeActionContainer(horizontalPadding = 24.dp) {
+            ConfirmAndNextButton(
+                text = buttonText,
+                enabled = enabled,
+                isLoading = isUploading,
+                onClick = singleClick {
+                    com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Confirm Button Clicked")
+                    scope.launch {
+                        handleConfirmUpload(
+                            useMockData = useMockData,
+                            viewModel = viewModel,
+                            actions = actions,
+                        )
+                    }
+                },
+            )
+        }
     }
 }
 
