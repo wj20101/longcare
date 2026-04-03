@@ -7,7 +7,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -17,6 +21,7 @@ import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.nfc.api.NfcWorkflowActions
+import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
@@ -37,6 +42,12 @@ fun NfcWorkflowScreen(
     val pendingNfcData by nfcViewModel.pendingNfcData.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
+
+    var isErrorDialogVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState) {
+        isErrorDialogVisible = uiState is NfcSignInUiState.Error
+    }
 
     val signInState = mapNfcSignInState(uiState)
 
@@ -111,10 +122,12 @@ fun NfcWorkflowScreen(
         NfcWorkflowDialogs(
             pendingNfcData = pendingNfcData,
             uiState = uiState,
+            shouldShowErrorDialog = isErrorDialogVisible && uiState is NfcSignInUiState.Error,
             onConfirmLocationActivation = nfcViewModel::confirmLocationActivation,
             onCancelLocationActivation = nfcViewModel::cancelLocationActivation,
             onConfirmEndOrder = nfcViewModel::confirmEndOrder,
-            onCancelEndOrder = nfcViewModel::cancelEndOrder
+            onCancelEndOrder = nfcViewModel::cancelEndOrder,
+            onDismissErrorDialog = { isErrorDialogVisible = false }
         )
     }
 }

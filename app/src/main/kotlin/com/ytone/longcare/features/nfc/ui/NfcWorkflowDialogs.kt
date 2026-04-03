@@ -25,11 +25,12 @@ import com.ytone.longcare.R
 internal fun NfcWorkflowDialogs(
     pendingNfcData: PendingNfcData?,
     uiState: NfcSignInUiState,
+    shouldShowErrorDialog: Boolean,
     onConfirmLocationActivation: (PendingNfcData) -> Unit,
     onCancelLocationActivation: () -> Unit,
     onConfirmEndOrder: (EndOrderParams) -> Unit,
     onCancelEndOrder: () -> Unit,
-    onDismissError: () -> Unit = onCancelEndOrder
+    onDismissErrorDialog: () -> Unit
 ) {
     pendingNfcData?.let { data ->
         LocationActivationDialog(
@@ -47,10 +48,10 @@ internal fun NfcWorkflowDialogs(
             )
         }
 
-        is NfcSignInUiState.Error -> {
+        is NfcSignInUiState.Error -> if (shouldShowErrorDialog) {
             NfcErrorDialog(
                 message = uiState.message,
-                onConfirm = onDismissError
+                onAcknowledge = onDismissErrorDialog
             )
         }
 
@@ -164,10 +165,10 @@ internal fun EndOrderConfirmDialog(
 @Composable
 internal fun NfcErrorDialog(
     message: String,
-    onConfirm: () -> Unit
+    onAcknowledge: () -> Unit
 ) {
     AlertDialog(
-        onDismissRequest = onConfirm,
+        onDismissRequest = onAcknowledge,
         title = {
             Text(
                 text = stringResource(R.string.nfc_error_dialog_title),
@@ -188,7 +189,7 @@ internal fun NfcErrorDialog(
         },
         confirmButton = {
             Button(
-                onClick = onConfirm,
+                onClick = onAcknowledge,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A86FF)),
                 shape = RoundedCornerShape(20.dp)
             ) {
