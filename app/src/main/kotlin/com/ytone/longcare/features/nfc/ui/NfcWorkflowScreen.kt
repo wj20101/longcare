@@ -43,10 +43,12 @@ fun NfcWorkflowScreen(
     val context = LocalContext.current
     val activity = context as? Activity
 
-    var isErrorDialogVisible by remember { mutableStateOf(false) }
+    var acknowledgedErrorState by remember { mutableStateOf<NfcSignInUiState.Error?>(null) }
 
     LaunchedEffect(uiState) {
-        isErrorDialogVisible = uiState is NfcSignInUiState.Error
+        if (uiState !is NfcSignInUiState.Error) {
+            acknowledgedErrorState = null
+        }
     }
 
     val signInState = mapNfcSignInState(uiState)
@@ -119,15 +121,21 @@ fun NfcWorkflowScreen(
             )
         }
 
+        val shouldShowErrorDialog = uiState is NfcSignInUiState.Error && acknowledgedErrorState !== uiState
+
         NfcWorkflowDialogs(
             pendingNfcData = pendingNfcData,
             uiState = uiState,
-            shouldShowErrorDialog = isErrorDialogVisible && uiState is NfcSignInUiState.Error,
+            shouldShowErrorDialog = shouldShowErrorDialog,
             onConfirmLocationActivation = nfcViewModel::confirmLocationActivation,
             onCancelLocationActivation = nfcViewModel::cancelLocationActivation,
             onConfirmEndOrder = nfcViewModel::confirmEndOrder,
             onCancelEndOrder = nfcViewModel::cancelEndOrder,
-            onDismissErrorDialog = { isErrorDialogVisible = false }
+            onDismissErrorDialog = {
+                (uiState as? NfcSignInUiState.Error)?.let { dismissedError ->
+                    acknowledgedErrorState = dismissedError
+                }
+            }
         )
     }
 }
