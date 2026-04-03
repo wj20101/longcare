@@ -7,6 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
+import com.ytone.longcare.features.nfc.vm.LocationRequestResult
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
@@ -20,7 +21,7 @@ internal fun NfcWorkflowEffects(
     uiState: NfcSignInUiState,
     nfcViewModel: NfcWorkflowViewModel,
     locationTrackingViewModel: LocationTrackingViewModel,
-    onLocationRequest: suspend () -> Pair<String, String>
+    onLocationRequest: suspend () -> LocationRequestResult
 ) {
     LaunchedEffect(Unit) {
         if (activity != null) {

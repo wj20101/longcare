@@ -10,8 +10,8 @@ internal suspend fun handleNfcIntentReceived(
     currentState: NfcSignInUiState,
     signInMode: SignInMode,
     endOderInfo: EndOderInfo?,
-    onLocationRequest: suspend () -> Pair<String, String>,
-    onLocationUnavailable: () -> Unit,
+    onLocationRequest: suspend () -> LocationRequestResult,
+    onLocationError: (String) -> Unit,
     onStartOrder: suspend (String, String, String) -> Unit,
     onEndOrder: suspend (String, String, String, EndOderInfo) -> Unit
 ) {
@@ -23,10 +23,13 @@ internal suspend fun handleNfcIntentReceived(
     val tagId = NfcUtils.bytesToHexString(tag.id)
     if (tagId.isEmpty()) return
 
-    val (longitude, latitude) = onLocationRequest()
-    if (longitude.isEmpty() || latitude.isEmpty()) {
-        onLocationUnavailable()
-        return
+    val locationResult = onLocationRequest()
+    val (longitude, latitude) = when (locationResult) {
+        is LocationRequestResult.Coordinates -> locationResult.longitude to locationResult.latitude
+        is LocationRequestResult.Error -> {
+            onLocationError(locationResult.message)
+            return
+        }
     }
 
     executeSignInModeAction(

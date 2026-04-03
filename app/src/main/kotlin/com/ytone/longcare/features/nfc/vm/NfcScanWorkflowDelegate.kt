@@ -28,7 +28,7 @@ internal class NfcScanWorkflowDelegate(
         orderKey: OrderKey,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
-        onLocationRequest: suspend () -> Pair<String, String>
+        onLocationRequest: suspend () -> LocationRequestResult
     ) {
         nfcEventJob?.cancel()
         nfcEventJob = scope.launch {
@@ -40,9 +40,7 @@ internal class NfcScanWorkflowDelegate(
                         signInMode = signInMode,
                         endOderInfo = endOderInfo,
                         onLocationRequest = onLocationRequest,
-                        onLocationUnavailable = {
-                            orderDelegate.showError("无法获取位置信息，请检查定位权限和服务")
-                        },
+                        onLocationError = { message -> orderDelegate.showError(message) },
                         onStartOrder = { tagId, longitude, latitude ->
                             checkUserLocationAndProceed(
                                 unifiedOrderRepository = unifiedOrderRepository,

@@ -45,3 +45,8 @@ data class EndOrderParams(
     val latitude: String,
     val endType: Int
 )
+
+sealed class LocationRequestResult {
+    data class Coordinates(val longitude: String, val latitude: String) : LocationRequestResult()
+    data class Error(val message: String) : LocationRequestResult()
+}

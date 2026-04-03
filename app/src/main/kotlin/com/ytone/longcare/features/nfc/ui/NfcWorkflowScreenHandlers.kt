@@ -8,6 +8,7 @@ import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSetti
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.nfc.api.NfcWorkflowActions
+import com.ytone.longcare.features.nfc.vm.LocationRequestResult
 import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
 import com.ytone.longcare.model.OrderKey
@@ -17,7 +18,7 @@ import kotlinx.coroutines.CancellationException
 
 internal data class NfcWorkflowLocationHandlers(
     val startTrackingWithPermission: () -> Unit,
-    val getCurrentLocationCoordinates: suspend () -> Pair<String, String>
+    val getCurrentLocationCoordinates: suspend () -> LocationRequestResult
 )
 
 internal fun mapNfcSignInState(uiState: NfcSignInUiState): SignInState {
@@ -80,22 +81,26 @@ internal fun rememberNfcWorkflowLocationHandlers(
         )
     }
 
-    val getCurrentLocationCoordinates: suspend () -> Pair<String, String> = {
+    val getCurrentLocationCoordinates: suspend () -> LocationRequestResult = {
         try {
             if (!UnifiedPermissionHelper.hasLocationPermission(context)) {
                 requestLocationPermissionOnly()
-                Pair("", "")
+                LocationRequestResult.Error("请授予定位权限以继续")
             } else if (!UnifiedPermissionHelper.isLocationServiceEnabled(context)) {
                 openLocationSettings(context)
-                nfcViewModel.showError("请开启定位服务以获取位置信息")
-                Pair("", "")
+                LocationRequestResult.Error("请开启定位服务以获取位置信息")
             } else {
-                nfcViewModel.getCurrentLocationCoordinates()
+                val (longitude, latitude) = nfcViewModel.getCurrentLocationCoordinates()
+                if (longitude.isBlank() || latitude.isBlank()) {
+                    LocationRequestResult.Error("无法获取位置信息，请稍后重试")
+                } else {
+                    LocationRequestResult.Coordinates(longitude, latitude)
+                }
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Pair("", "")
+            LocationRequestResult.Error("无法获取位置信息，请稍后重试")
         }
     }
 

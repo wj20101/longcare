@@ -136,7 +136,7 @@ class NfcWorkflowViewModel @Inject constructor(
         orderKey: OrderKey,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
-        onLocationRequest: suspend () -> Pair<String, String>
+        onLocationRequest: suspend () -> LocationRequestResult
     ) = scanDelegate.observeNfcEvents(orderKey, signInMode, endOderInfo, onLocationRequest)
 
     fun confirmLocationActivation(data: PendingNfcData) = scanDelegate.confirmLocationActivation(data)
