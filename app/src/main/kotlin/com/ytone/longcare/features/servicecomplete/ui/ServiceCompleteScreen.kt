@@ -20,6 +20,7 @@ import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicecomplete.api.ServiceCompleteActions
 import com.ytone.longcare.navigation.ServiceCompleteData
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.ui.components.BottomSafeActionContainer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,16 +76,22 @@ fun ServiceCompleteScreen(
                 )
             )
         }, containerColor = Color.Transparent, bottomBar = {
-            // 将按钮放在 bottomBar 中使其固定在底部
-            Surface(modifier = Modifier.fillMaxWidth()) {
-                Box(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
-                ) {
-                    ActionButton(text = "完成", onClick = {
-                        // 清除选中项目数据后再返回首页
-                        viewModel.clearSelectedProjects(orderKey.orderId)
-                        actions.onNavigateHomeAndClearStack()
-                    })
+            BottomSafeActionContainer(
+                horizontalPadding = 0.dp,
+                topPadding = 0.dp,
+                extraBottomPadding = 0.dp
+            ) {
+                // 将按钮放在 bottomBar 中使其固定在底部
+                Surface(modifier = Modifier.fillMaxWidth()) {
+                    Box(
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+                    ) {
+                        ActionButton(text = "完成", onClick = {
+                            // 清除选中项目数据后再返回首页
+                            viewModel.clearSelectedProjects(orderKey.orderId)
+                            actions.onNavigateHomeAndClearStack()
+                        })
+                    }
                 }
             }
         }) { paddingValues ->
