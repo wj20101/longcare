@@ -49,6 +49,8 @@
     <string name="main_dashboard_logo">标志</string>
     <string name="user_avatar_description">头像</string>
     <string name="nfc_sign_out_complete_service">服务完成，结束签到</string>
+    <string name="nfc_error_dialog_title">提示</string>
+    <string name="nfc_error_dialog_confirm">我知道了</string>
 
     <!-- 人脸识别指导页面 -->
     <string name="face_recognition_guide_title">身份认证</string>
