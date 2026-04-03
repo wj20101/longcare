@@ -19,7 +19,10 @@ sealed class NfcSignInUiState {
         val endOrderSuccessData: EndOrderSuccessData? = null
     ) : NfcSignInUiState()
 
-    data class Error(val message: String) : NfcSignInUiState()
+    data class Error(
+        val message: String,
+        val occurrenceId: Long = System.nanoTime()
+    ) : NfcSignInUiState()
     data object Initial : NfcSignInUiState()
     data class ShowConfirmDialog(
         val message: String,
