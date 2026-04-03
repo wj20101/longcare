@@ -4,11 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -18,8 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.ui.components.BottomSafeActionContainer
@@ -56,10 +51,8 @@ internal fun SelectServiceBottomActions(
     onToggleSelectAll: () -> Unit,
     onNextStep: () -> Unit
 ) {
-    val navigationBarBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-
     BottomSafeActionContainer(
-        modifier = modifier.trimDuplicatedBottomInset(navigationBarBottomInset),
+        modifier = modifier,
         horizontalPadding = 20.dp,
         topPadding = 32.dp,
         extraBottomPadding = 32.dp,
@@ -71,7 +64,9 @@ internal fun SelectServiceBottomActions(
             ),
             startY = 0f,
             endY = 100f
-        )
+        ),
+        applyHorizontalNavigationInsets = false,
+        applyBottomNavigationInset = false
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -95,19 +90,5 @@ internal fun SelectServiceBottomActions(
                 modifier = Modifier.weight(1f)
             )
         }
-    }
-}
-
-// These bars already sit inside Scaffold content padded by the nav bar inset.
-// Trim the shared container's measured height so its extra safe-area space does not lift the CTA.
-private fun Modifier.trimDuplicatedBottomInset(bottomInset: Dp): Modifier = layout { measurable, constraints ->
-    val placeable = measurable.measure(constraints)
-    val duplicatedInsetPx = bottomInset.roundToPx()
-
-    layout(
-        width = placeable.width,
-        height = (placeable.height - duplicatedInsetPx).coerceAtLeast(0)
-    ) {
-        placeable.placeRelative(x = 0, y = 0)
     }
 }
