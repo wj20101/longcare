@@ -47,6 +47,13 @@ ownership of each quality script.
   - `preflight_local.sh` runs full `local-fast` baseline checks instead of skip-based filtering
 - This fallback avoids false-green outcomes on multi-commit branches or shallow/limited git history.
 
+### Lint stale-waiver enforcement split
+
+- `scripts/lint/verify_lint_warning_allowlist.sh` defaults `LINT_ENFORCE_UNUSED_WAIVERS=auto`.
+- In local runs (non-`GITHUB_ACTIONS`), `auto` enforces stale-waiver failures as blocking.
+- In CI (`GITHUB_ACTIONS=true`), `auto` keeps stale-waiver findings advisory (non-blocking) to reduce post-merge noise-driven flakes.
+- CI can still run strict stale-waiver enforcement by setting `LINT_ENFORCE_UNUSED_WAIVERS=true`.
+
 ## Script Catalog
 
 | Script | Purpose | Default Execution Layer | Common Failure Modes | Likely Remediation |
