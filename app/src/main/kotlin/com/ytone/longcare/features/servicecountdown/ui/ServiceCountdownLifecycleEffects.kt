@@ -109,3 +109,12 @@ internal fun ServiceCountdownLifecycleEffects(
         }
     }
 }
+
+internal data class ServiceCountdownDisposeActions(
+    val cancelCountdownAlarm: Boolean = false,
+    val stopAlarmRingtone: Boolean = false,
+)
+
+internal fun resolveServiceCountdownDisposeActions(): ServiceCountdownDisposeActions {
+    return ServiceCountdownDisposeActions()
+}
