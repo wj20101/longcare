@@ -75,33 +75,52 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Create or update CI health issue on threshold breach
+      - name: Create or update CI rolling health issue on threshold breach
         if: steps.health_check.outcome == 'failure'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
-          ISSUE_TITLE="CI health threshold breach"
+          REPORT_FILE="build/ci-health/ci_health_report.md"
+          BODY_FILE="${REPORT_FILE}"
+          if [[ ! -f "${REPORT_FILE}" ]]; then
+            FALLBACK_FILE="${RUNNER_TEMP:-/tmp}/ci_health_report_fallback_${GITHUB_RUN_ID:-unknown}.md"
+            {
+              echo "# CI rolling health threshold breach"
+              echo ""
+              echo "- repo: \`${REPO}\`"
+              echo "- note: monitor detected a rolling-threshold breach, but the detailed report file was not generated."
+              echo "- workflow run: https://github.com/${REPO}/actions/runs/${GITHUB_RUN_ID}"
+              echo "- next step: inspect monitor logs and artifacts for failure details."
+            } > "${FALLBACK_FILE}"
+            BODY_FILE="${FALLBACK_FILE}"
+            echo "CI health report file missing at ${REPORT_FILE}; using fallback issue body ${BODY_FILE}."
+          fi
+
+          ISSUE_TITLE="CI rolling health threshold breach"
           ISSUE_NUMBER="$(gh issue list -R "${REPO}" --state open --search "${ISSUE_TITLE} in:title" --limit 1 --json number --jq '.[0].number // empty')"
+          if [[ -z "${ISSUE_NUMBER}" ]]; then
+            ISSUE_NUMBER="$(gh issue list -R "${REPO}" --state open --search "CI health threshold breach in:title" --limit 1 --json number --jq '.[0].number // empty')"
+          fi
 
           if [[ -n "${ISSUE_NUMBER}" ]]; then
-            gh issue comment "${ISSUE_NUMBER}" -R "${REPO}" --body-file build/ci-health/ci_health_report.md
+            gh issue comment "${ISSUE_NUMBER}" -R "${REPO}" --body-file "${BODY_FILE}"
             echo "Updated existing issue #${ISSUE_NUMBER}"
           else
             gh issue create \
               -R "${REPO}" \
               --title "${ISSUE_TITLE}" \
-              --body-file build/ci-health/ci_health_report.md
+              --body-file "${BODY_FILE}"
             echo "Created new CI health issue."
           fi
 
       - name: Threshold breach detected (non-blocking by default)
         if: steps.health_check.outcome == 'failure' && github.event.inputs.fail_on_breach != 'true'
         run: |
-          echo "CI health threshold breach detected, issue is updated, workflow kept green."
+          echo "CI rolling health threshold breach detected, issue updated, workflow kept green."
 
       - name: Fail workflow on threshold breach
         if: steps.health_check.outcome == 'failure' && github.event.inputs.fail_on_breach == 'true'
         run: |
-          echo "CI health threshold breach detected."
+          echo "CI rolling health threshold breach detected."
           exit 1

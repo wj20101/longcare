@@ -121,6 +121,24 @@ echo "${RUNS_JSON}" | jq -c \
   --argjson target_workflows "${TARGET_WORKFLOWS_JSON}" '
   def pct($p; $t):
     if $t > 0 then (($p * 10000 / $t) | round / 100) else 0 end;
+  def is_success($c):
+    $c == "success";
+  def is_cancelled($c):
+    $c == "cancelled";
+  # Conservative rollup: anything that is neither success nor cancelled is treated as failure-equivalent.
+  def is_failure_equivalent($c):
+    (is_success($c) | not) and (is_cancelled($c) | not);
+  def run_time:
+    (.updatedAt // .createdAt // "");
+  def run_summary:
+    {
+      workflow: .workflowName,
+      status: .status,
+      conclusion: .conclusion,
+      created_at: .createdAt,
+      updated_at: .updatedAt,
+      url: .url
+    };
   def filter_workflows($runs; $targets):
     if ($targets | length) > 0
     then ($runs | map(select(.workflowName as $wf | $targets | index($wf))))
@@ -141,8 +159,16 @@ echo "${RUNS_JSON}" | jq -c \
             . as $runs
             | ($runs | length) as $total
             | ($runs | map(select(.conclusion == "success")) | length) as $success
-            | ($runs | map(select(.conclusion == "failure")) | length) as $failure
+            | ($runs | map(select(.conclusion == "failure")) | length) as $explicit_failure
             | ($runs | map(select(.conclusion == "cancelled")) | length) as $cancelled
+            | ($runs | map(select(is_failure_equivalent(.conclusion))) | length) as $failure_equivalent
+            | (
+                $runs
+                | map(select((.conclusion != null) and (.conclusion != "success") and (.conclusion != "failure") and (.conclusion != "cancelled")) | .conclusion)
+                | sort
+                | group_by(.)
+                | map({ conclusion: .[0], count: length })
+              ) as $non_standard_non_success_conclusions
             | (
                 $runs
                 | map(
@@ -156,12 +182,13 @@ echo "${RUNS_JSON}" | jq -c \
                 workflow: (.[0].workflowName),
                 runs: $total,
                 success: $success,
-                failure: $failure,
+                failure: $failure_equivalent,
+                explicit_failure: $explicit_failure,
                 cancelled: $cancelled,
-                non_cancelled_runs: ($success + $failure),
+                non_cancelled_runs: ($success + $failure_equivalent),
                 success_rate: pct($success; $total),
-                non_cancelled_success_rate: pct($success; ($success + $failure)),
-                failure_rate: pct($failure; $total),
+                non_cancelled_success_rate: pct($success; ($success + $failure_equivalent)),
+                failure_rate: pct($failure_equivalent; $total),
                 cancelled_rate: pct($cancelled; $total),
                 duration_runs: $duration_runs,
                 total_duration_seconds: $total_duration_seconds,
@@ -170,7 +197,8 @@ echo "${RUNS_JSON}" | jq -c \
                   then (($total_duration_seconds / $duration_runs) | round)
                   else 0
                   end
-                )
+                ),
+                non_standard_non_success_conclusions: $non_standard_non_success_conclusions
               }
           )
       )
@@ -180,13 +208,16 @@ echo "${RUNS_JSON}" | jq -c \
       | ($wf | map(.runs) | add // 0) as $runs
       | ($wf | map(.success) | add // 0) as $success
       | ($wf | map(.failure) | add // 0) as $failure
+      | ($wf | map(.explicit_failure) | add // 0) as $explicit_failure
       | ($wf | map(.cancelled) | add // 0) as $cancelled
       | ($wf | map(.duration_runs) | add // 0) as $duration_runs
       | ($wf | map(.total_duration_seconds) | add // 0) as $total_duration_seconds
+      | ($wf | map(.non_standard_non_success_conclusions // []) | add // []) as $non_standard_non_success_conclusions
       | {
           runs: $runs,
           success: $success,
           failure: $failure,
+          explicit_failure: $explicit_failure,
           cancelled: $cancelled,
           non_cancelled_runs: ($success + $failure),
           success_rate: pct($success; $runs),
@@ -200,7 +231,68 @@ echo "${RUNS_JSON}" | jq -c \
             then (($total_duration_seconds / $duration_runs) | round)
             else 0
             end
+          ),
+          non_standard_non_success_conclusions: (
+            $non_standard_non_success_conclusions
+            | sort_by(.conclusion)
+            | group_by(.conclusion)
+            | map({ conclusion: .[0].conclusion, count: (map(.count) | add // 0) })
           )
+        }
+    )
+  | .recent_signals = (
+      ($filtered | map(select(.status == "completed")) | sort_by(run_time) | reverse) as $completed_desc
+      | ($completed_desc | map(select(.conclusion == "success"))) as $success_desc
+      | (
+          ($filtered | map(select(.status == "completed")) | sort_by(run_time)) as $completed_asc
+          | reduce $completed_asc[] as $run (
+              {
+                failure_streak_count: 0,
+                first_failure_in_streak: null,
+                last_failure_in_streak: null,
+                latest_recovery_after_failures: null
+              };
+              if is_failure_equivalent($run.conclusion) then
+                .failure_streak_count += 1
+                | .first_failure_in_streak = (.first_failure_in_streak // ($run | run_summary))
+                | .last_failure_in_streak = ($run | run_summary)
+              elif $run.conclusion == "success" then
+                (
+                  if .failure_streak_count > 0 then
+                    .latest_recovery_after_failures = {
+                      recovery_success: ($run | run_summary),
+                      failures_before_success: .failure_streak_count,
+                      first_failure_in_streak: .first_failure_in_streak,
+                      last_failure_in_streak: .last_failure_in_streak
+                    }
+                  else .
+                  end
+                )
+                | .failure_streak_count = 0
+                | .first_failure_in_streak = null
+                | .last_failure_in_streak = null
+              else
+                .failure_streak_count = 0
+                | .first_failure_in_streak = null
+                | .last_failure_in_streak = null
+              end
+            )
+          | .latest_recovery_after_failures
+        ) as $recovery
+      | {
+          latest_completed: (
+            if ($completed_desc | length) > 0
+            then ($completed_desc[0] | run_summary)
+            else null
+            end
+          ),
+          latest_success: (
+            if ($success_desc | length) > 0
+            then ($success_desc[0] | run_summary)
+            else null
+            end
+          ),
+          latest_recovery_after_failures: $recovery
         }
     )
 ' > "${METRICS_FILE}"
@@ -280,6 +372,38 @@ while IFS= read -r WORKFLOW_NAME; do
   fi
 done < <(jq -r '.workflows | keys[]' "${THRESHOLD_FILE}")
 
+ROLLING_STATUS="PASS"
+if [[ "${#VIOLATIONS[@]}" -gt 0 ]]; then
+  ROLLING_STATUS="FAIL"
+fi
+
+NON_STANDARD_CONCLUSIONS_SUMMARY="$(jq -r '
+  .overall.non_standard_non_success_conclusions // []
+  | if length == 0
+    then "none"
+    else (map("\(.conclusion)=\(.count)") | join(", "))
+    end
+' "${METRICS_FILE}")"
+
+LATEST_COMPLETED_WORKFLOW="$(jq -r '.recent_signals.latest_completed.workflow // "n/a"' "${METRICS_FILE}")"
+LATEST_COMPLETED_CONCLUSION="$(jq -r '.recent_signals.latest_completed.conclusion // "n/a"' "${METRICS_FILE}")"
+LATEST_COMPLETED_UPDATED_AT="$(jq -r '.recent_signals.latest_completed.updated_at // .recent_signals.latest_completed.created_at // "n/a"' "${METRICS_FILE}")"
+LATEST_COMPLETED_URL="$(jq -r '.recent_signals.latest_completed.url // ""' "${METRICS_FILE}")"
+
+LATEST_SUCCESS_WORKFLOW="$(jq -r '.recent_signals.latest_success.workflow // "n/a"' "${METRICS_FILE}")"
+LATEST_SUCCESS_UPDATED_AT="$(jq -r '.recent_signals.latest_success.updated_at // .recent_signals.latest_success.created_at // "n/a"' "${METRICS_FILE}")"
+LATEST_SUCCESS_URL="$(jq -r '.recent_signals.latest_success.url // ""' "${METRICS_FILE}")"
+
+HAS_RECOVERY_SIGNAL="$(jq -r '(.recent_signals.latest_recovery_after_failures // null) != null' "${METRICS_FILE}")"
+if [[ "${HAS_RECOVERY_SIGNAL}" == "true" ]]; then
+  RECOVERY_WORKFLOW="$(jq -r '.recent_signals.latest_recovery_after_failures.recovery_success.workflow // "n/a"' "${METRICS_FILE}")"
+  RECOVERY_SUCCESS_AT="$(jq -r '.recent_signals.latest_recovery_after_failures.recovery_success.updated_at // .recent_signals.latest_recovery_after_failures.recovery_success.created_at // "n/a"' "${METRICS_FILE}")"
+  RECOVERY_SUCCESS_URL="$(jq -r '.recent_signals.latest_recovery_after_failures.recovery_success.url // ""' "${METRICS_FILE}")"
+  RECOVERY_FAILURE_COUNT="$(jq -r '.recent_signals.latest_recovery_after_failures.failures_before_success // 0' "${METRICS_FILE}")"
+  RECOVERY_FAILURE_START_AT="$(jq -r '.recent_signals.latest_recovery_after_failures.first_failure_in_streak.updated_at // .recent_signals.latest_recovery_after_failures.first_failure_in_streak.created_at // "n/a"' "${METRICS_FILE}")"
+  RECOVERY_FAILURE_END_AT="$(jq -r '.recent_signals.latest_recovery_after_failures.last_failure_in_streak.updated_at // .recent_signals.latest_recovery_after_failures.last_failure_in_streak.created_at // "n/a"' "${METRICS_FILE}")"
+fi
+
 {
   echo "# CI health report"
   echo ""
@@ -290,19 +414,26 @@ done < <(jq -r '.workflows | keys[]' "${THRESHOLD_FILE}")
   fi
   echo "- generated_at: \`$(jq -r '.generated_at' "${METRICS_FILE}")\`"
   echo ""
-  echo "## Overall"
+  echo "## Rolling sample health (threshold basis)"
+  echo ""
+  echo "- rolling threshold status: **${ROLLING_STATUS}**"
+  echo "- note: threshold evaluation below is based on rolling sample metrics, not a single recent run"
+  echo "- conservative failure classification: conclusions other than \`success\` and \`cancelled\` are treated as failure-equivalent for rollup and threshold checks"
+  echo "- non-standard non-success conclusions in sample: \`${NON_STANDARD_CONCLUSIONS_SUMMARY}\`"
+  echo ""
+  echo "### Overall"
   echo ""
   echo "| Runs | Success % | Non-cancelled Success % | Failure % | Cancelled % | Avg Duration (s) |"
   echo "|---:|---:|---:|---:|---:|---:|"
   jq -r '"| \(.overall.runs) | \(.overall.success_rate) | \(.overall.non_cancelled_success_rate) | \(.overall.failure_rate) | \(.overall.cancelled_rate) | \(.overall.avg_duration_seconds) |"' "${METRICS_FILE}"
   echo ""
-  echo "## Workflow metrics"
+  echo "### Workflow metrics"
   echo ""
   echo "| Workflow | Runs | Success % | Non-cancelled Success % | Failure % | Cancelled % | Avg Duration (s) |"
   echo "|---|---:|---:|---:|---:|---:|---:|"
   jq -r '.workflows[] | "| \(.workflow) | \(.runs) | \(.success_rate) | \(.non_cancelled_success_rate) | \(.failure_rate) | \(.cancelled_rate) | \(.avg_duration_seconds) |"' "${METRICS_FILE}"
   echo ""
-  echo "## Threshold evaluation"
+  echo "### Threshold evaluation"
   echo ""
   if [[ "${#WARNINGS[@]}" -gt 0 ]]; then
     echo "### Warnings"
@@ -319,9 +450,34 @@ done < <(jq -r '.workflows | keys[]' "${THRESHOLD_FILE}")
       echo "- ${item}"
     done
     echo ""
-    echo "**Status:** FAIL"
+  fi
+  echo "**Rolling threshold status:** ${ROLLING_STATUS}"
+  echo ""
+  echo "## Recent repair signals (informational only)"
+  echo ""
+  echo "- latest completed run in sample: workflow=\`${LATEST_COMPLETED_WORKFLOW}\`, conclusion=\`${LATEST_COMPLETED_CONCLUSION}\`, at=\`${LATEST_COMPLETED_UPDATED_AT}\`"
+  if [[ -n "${LATEST_COMPLETED_URL}" ]]; then
+    echo "  - run: ${LATEST_COMPLETED_URL}"
+  fi
+  echo "- latest successful run in sample: workflow=\`${LATEST_SUCCESS_WORKFLOW}\`, at=\`${LATEST_SUCCESS_UPDATED_AT}\`"
+  if [[ -n "${LATEST_SUCCESS_URL}" ]]; then
+    echo "  - run: ${LATEST_SUCCESS_URL}"
+  fi
+  if [[ "${HAS_RECOVERY_SIGNAL}" == "true" ]]; then
+    echo "- latest success after failure streak: workflow=\`${RECOVERY_WORKFLOW}\`, failures_before_success=\`${RECOVERY_FAILURE_COUNT}\`, recovery_at=\`${RECOVERY_SUCCESS_AT}\`"
+    echo "  - failure streak window: \`${RECOVERY_FAILURE_START_AT}\` -> \`${RECOVERY_FAILURE_END_AT}\`"
+    if [[ -n "${RECOVERY_SUCCESS_URL}" ]]; then
+      echo "  - recovery run: ${RECOVERY_SUCCESS_URL}"
+    fi
   else
-    echo "**Status:** PASS"
+    echo "- latest success after failure streak: none found in current sample"
+  fi
+  if [[ "${ROLLING_STATUS}" == "FAIL" && "${HAS_RECOVERY_SIGNAL}" == "true" ]]; then
+    echo "- interpretation: recent repair signal exists, but rolling thresholds are still breached"
+  elif [[ "${ROLLING_STATUS}" == "PASS" && "${HAS_RECOVERY_SIGNAL}" == "true" ]]; then
+    echo "- interpretation: recent repair signal exists and rolling thresholds are currently healthy"
+  elif [[ "${ROLLING_STATUS}" == "FAIL" ]]; then
+    echo "- interpretation: rolling thresholds are breached and no recent recovery signal is present in sample"
   fi
 } > "${REPORT_FILE}"
 

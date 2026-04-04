@@ -215,6 +215,58 @@ check_upload_artifact_step_policies() {
   fi
 }
 
+check_step_contains_pattern() {
+  local file_path="$1"
+  local step_name="$2"
+  local pattern="$3"
+  local message="$4"
+  local step_content=""
+  local matched="false"
+
+  step_content="$(
+    awk -v target_step="${step_name}" '
+      function strip_step_name(line) {
+        sub(/^[[:space:]]*-[[:space:]]+name:[[:space:]]*/, "", line)
+        return line
+      }
+      /^[[:space:]]*-[[:space:]]+name:[[:space:]]*/ {
+        current_step = strip_step_name($0)
+        if (capture == 1 && current_step != target_step) {
+          exit
+        }
+        if (current_step == target_step) {
+          capture = 1
+          next
+        }
+      }
+      capture == 1 {
+        print
+      }
+    ' "${file_path}"
+  )"
+
+  if [[ -z "${step_content}" ]]; then
+    echo "[ci-workflow-quality][FAIL] ${message} (step not found: ${step_name} in ${file_path})"
+    EXIT_CODE=1
+    return
+  fi
+
+  if command -v rg >/dev/null 2>&1; then
+    if printf '%s\n' "${step_content}" | rg -q -- "${pattern}"; then
+      matched="true"
+    fi
+  elif printf '%s\n' "${step_content}" | grep -Eq -- "${pattern}"; then
+    matched="true"
+  fi
+
+  if [[ "${matched}" == "true" ]]; then
+    echo "[ci-workflow-quality][PASS] ${message}"
+  else
+    echo "[ci-workflow-quality][FAIL] ${message} (missing pattern '${pattern}' in step '${step_name}' of ${file_path})"
+    EXIT_CODE=1
+  fi
+}
+
 WORKFLOWS=(
   "${ROOT_DIR}/.github/workflows/android-ci.yml"
   "${ROOT_DIR}/.github/workflows/baseline-profile.yml"
@@ -247,10 +299,16 @@ if [[ ! -f "${SHARED_ANDROID_BUILD_ENV_ACTION}" ]]; then
   echo "[ci-workflow-quality][FAIL] missing shared action: ${SHARED_ANDROID_BUILD_ENV_ACTION}"
   EXIT_CODE=1
 else
-  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/quality/verify_jetpack_compat_apis\\.sh" "shared android build env runs jetpack compat api guard"
-  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/lint/verify_lint_ignore_policy\\.sh" "shared android build env runs lint ignore policy guard"
-  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/quality/verify_baselineprofile_journeys\\.sh" "shared android build env runs baseline profile journey guard"
-  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/quality/verify_module_dependency_whitelist\\.sh" "shared android build env runs module dependency whitelist guard"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/quality/verify_gradle_stability\\.sh" "shared android build env runs lightweight gradle stability guard"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "shared android build env supports optional workflow quality guard"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "run-lint-ignore-policy-check:" "shared android build env exposes optional lint ignore guard input"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "run-jetpack-compat-check:" "shared android build env exposes optional jetpack compat guard input"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "run-baselineprofile-journey-check:" "shared android build env exposes optional baseline journey guard input"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "run-module-dependency-check:" "shared android build env exposes optional module dependency guard input"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/lint/verify_lint_ignore_policy\\.sh" "shared android build env supports reusable lint ignore guard"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/quality/verify_jetpack_compat_apis\\.sh" "shared android build env supports reusable jetpack compat guard"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/quality/verify_baselineprofile_journeys\\.sh" "shared android build env supports reusable baseline journey guard"
+  require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "bash scripts/quality/verify_module_dependency_whitelist\\.sh" "shared android build env supports reusable module dependency guard"
   require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "uses:[[:space:]]*actions/setup-java@v5" "shared android build env pins setup-java@v5"
   require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "uses:[[:space:]]*gradle/actions/setup-gradle@v5" "shared android build env pins setup-gradle@v5"
   require_pattern "${SHARED_ANDROID_BUILD_ENV_ACTION}" "uses:[[:space:]]*android-actions/setup-android@v3" "shared android build env pins setup-android@v3"
@@ -300,6 +358,32 @@ require_any_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "bash scripts
 require_any_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "baseline-profile runs workflow quality gate"
 require_any_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "android-release runs workflow quality gate"
 require_any_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "run-workflow-quality-check:[[:space:]]*'true'" "face-sdk-migration-check runs workflow quality gate"
+require_absent_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "run-workflow-quality-check:[[:space:]]*'true'" "android-ci keeps ci-required workflow quality ownership inside workflow steps"
+require_absent_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "run-workflow-quality-check:[[:space:]]*'true'" "android-release keeps ci-required workflow quality ownership inside workflow steps"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "name:[[:space:]]*Run ci-required quality gates" "android-ci defines explicit ci-required gate step"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "name:[[:space:]]*Collect ci-required quality snapshot" "android-ci defines explicit ci-required snapshot step"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Run ci-required quality gates" "android-release defines explicit ci-required gate step"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Collect ci-required quality snapshot" "android-release defines explicit ci-required snapshot step"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Run release-required signing safety checks" "android-release defines explicit release-required signing step"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Run release-required exported component guard" "android-release defines explicit release-required exported-component step"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "run-lint-ignore-policy-check:[[:space:]]*'false'" "android-ci disables shared lint-ignore guard to keep ownership explicit"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "run-jetpack-compat-check:[[:space:]]*'false'" "android-ci disables shared jetpack guard to keep ownership explicit"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "run-baselineprofile-journey-check:[[:space:]]*'false'" "android-ci disables shared baseline journey guard to keep ownership explicit"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "run-module-dependency-check:[[:space:]]*'false'" "android-ci disables shared module dependency guard to keep ownership explicit"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "run-lint-ignore-policy-check:[[:space:]]*'false'" "android-release disables shared lint-ignore guard to keep ownership explicit"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "run-jetpack-compat-check:[[:space:]]*'false'" "android-release disables shared jetpack guard to keep ownership explicit"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "run-baselineprofile-journey-check:[[:space:]]*'false'" "android-release disables shared baseline journey guard to keep ownership explicit"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "run-module-dependency-check:[[:space:]]*'false'" "android-release disables shared module dependency guard to keep ownership explicit"
+check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "Run ci-required quality gates" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "android-ci ci-required step runs workflow quality guard command"
+check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "Run ci-required quality gates" "bash scripts/lint/verify_lint_ignore_policy\\.sh app/lint\\.xml" "android-ci ci-required step runs lint ignore guard command"
+check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "Run ci-required quality gates" "bash scripts/quality/verify_jetpack_compat_apis\\.sh" "android-ci ci-required step runs jetpack compat guard command"
+check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "Run ci-required quality gates" "bash scripts/quality/verify_baselineprofile_journeys\\.sh" "android-ci ci-required step runs baseline journey guard command"
+check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "Run ci-required quality gates" "bash scripts/quality/verify_module_dependency_whitelist\\.sh \\." "android-ci ci-required step runs module dependency guard command"
+check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Run ci-required quality gates" "bash scripts/quality/verify_ci_workflow_quality\\.sh" "android-release ci-required step runs workflow quality guard command"
+check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Run ci-required quality gates" "bash scripts/lint/verify_lint_ignore_policy\\.sh app/lint\\.xml" "android-release ci-required step runs lint ignore guard command"
+check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Run ci-required quality gates" "bash scripts/quality/verify_jetpack_compat_apis\\.sh" "android-release ci-required step runs jetpack compat guard command"
+check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Run ci-required quality gates" "bash scripts/quality/verify_baselineprofile_journeys\\.sh" "android-release ci-required step runs baseline journey guard command"
+check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Run ci-required quality gates" "bash scripts/quality/verify_module_dependency_whitelist\\.sh \\." "android-release ci-required step runs module dependency guard command"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "contents:[[:space:]]*read" "android-ci uses read-only contents permission"
 require_pattern "${ROOT_DIR}/.github/workflows/face-sdk-migration-check.yml" "contents:[[:space:]]*read" "face-sdk-migration-check uses read-only contents permission"
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "contents:[[:space:]]*write" "android-release uses writable contents permission"

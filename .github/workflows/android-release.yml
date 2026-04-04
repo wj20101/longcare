@@ -41,8 +41,6 @@ env:
   TX_FACE_LIVE_COORD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_live_coord || vars.TX_FACE_LIVE_COORD || '' }}
   TX_FACE_NORMAL_COORD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_normal_coord || vars.TX_FACE_NORMAL_COORD || '' }}
   TX_FACE_MAVEN_REPO_URL: ${{ vars.TX_FACE_MAVEN_REPO_URL || '' }}
-  TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
-  TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
 
 jobs:
   release-build:
@@ -59,7 +57,11 @@ jobs:
         uses: ./.github/actions/android-build-env
         with:
           setup-android-sdk: 'true'
-          run-workflow-quality-check: 'true'
+          run-workflow-quality-check: 'false'
+          run-lint-ignore-policy-check: 'false'
+          run-jetpack-compat-check: 'false'
+          run-baselineprofile-journey-check: 'false'
+          run-module-dependency-check: 'false'
 
       - name: Validate face SDK source settings
         run: |
@@ -71,10 +73,24 @@ jobs:
             fi
           fi
 
-      - name: Verify quality gates
+      - name: Run ci-required quality gates
+        run: |
+          bash scripts/quality/verify_ci_workflow_quality.sh
+          bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
+          bash scripts/quality/verify_jetpack_compat_apis.sh
+          bash scripts/quality/verify_baselineprofile_journeys.sh
+          bash scripts/quality/verify_module_dependency_whitelist.sh .
+
+      - name: Run ci-required compile/lint/unit verification
+        env:
+          TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
+          TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
         run: ./gradlew --no-daemon :app:lintDebug :app:testDebugUnitTest
 
-      - name: Collect quality snapshot and enforce quality gates
+      - name: Collect ci-required quality snapshot
+        env:
+          TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
+          TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
         run: |
           bash scripts/quality/run_quality_gate.sh \
             --project-root . \
@@ -83,7 +99,7 @@ jobs:
             --source-root app/src/main/kotlin \
             --workflow-file .github/workflows/android-ci.yml
 
-      - name: Validate release signing secrets
+      - name: Run release-required signing safety checks
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
@@ -96,7 +112,7 @@ jobs:
           [ -n "$RELEASE_KEY_ALIAS" ] || { echo "::error::Missing secret: RELEASE_KEY_ALIAS"; exit 1; }
           [ -n "$RELEASE_KEY_PASSWORD" ] || { echo "::error::Missing secret: RELEASE_KEY_PASSWORD"; exit 1; }
 
-      - name: Decode Android keystore
+      - name: Run release-required keystore decode check
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
@@ -104,7 +120,7 @@ jobs:
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
           [ -s "$RUNNER_TEMP/release.keystore" ] || { echo "::error::Decoded keystore is empty"; exit 1; }
 
-      - name: Check committed baseline profile files
+      - name: Run release-required baseline profile source check
         run: |
           FILE_COUNT=$(find app/src -type f \( -name 'baseline-prof.txt' -o -name 'startup-prof.txt' -o -path '*/generated/baselineProfiles/*.txt' \) | wc -l | tr -d ' ')
           echo "Committed baseline profile files found: ${FILE_COUNT}"
@@ -127,6 +143,9 @@ jobs:
 
       - name: Setup managed device
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
+        env:
+          TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
+          TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
         run: |
           ./gradlew --no-daemon :baselineprofile:pixel6Api33Setup \
             -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect \
@@ -135,6 +154,9 @@ jobs:
       - name: Generate baseline profile (GMD)
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
         timeout-minutes: 75
+        env:
+          TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
+          TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
         run: |
           ./gradlew --no-daemon :app:generateReleaseBaselineProfile \
             -Pbaseline.enableX86_64=true \
@@ -182,13 +204,15 @@ jobs:
 
       - name: Build release APK and AAB
         env:
+          TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
+          TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease
 
-      - name: Enforce release exported component allowlist
+      - name: Run release-required exported component guard
         run: bash scripts/quality/verify_release_exported_components.sh
 
       - name: Rename release APK with version metadata

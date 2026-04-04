@@ -3,6 +3,9 @@ set -euo pipefail
 
 PROJECT_ROOT="${1:-.}"
 EXIT_CODE=0
+RG_LAST_OUTPUT=""
+RG_LAST_STATUS=1
+ARCH_SCANNER=""
 
 APP_ROOT="${PROJECT_ROOT}/app/src/main/kotlin/com/ytone/longcare"
 APP_DEBUG_ROOT="${PROJECT_ROOT}/app/src/debug/kotlin/com/ytone/longcare"
@@ -17,6 +20,146 @@ LEGACY_APP_INTERNAL_IMPORT_BUDGET_FILE="${PROJECT_ROOT}/scripts/quality/architec
 LEGACY_APP_FEATURE_FILE_ALLOWLIST="${PROJECT_ROOT}/scripts/quality/legacy_feature_files_allowlist.txt"
 
 echo "[architecture] checking layer boundaries under: ${PROJECT_ROOT}"
+
+resolve_arch_scanner() {
+  if [[ -n "${ARCH_SCANNER}" ]]; then
+    return 0
+  fi
+
+  if command -v rg >/dev/null 2>&1; then
+    ARCH_SCANNER="rg"
+    return 0
+  fi
+
+  if command -v grep >/dev/null 2>&1; then
+    ARCH_SCANNER="grep"
+    echo "[architecture][WARN] ripgrep not found; falling back to grep"
+    return 0
+  fi
+
+  ARCH_SCANNER=""
+  return 1
+}
+
+normalize_pattern_for_grep() {
+  local original_pattern="$1"
+  local normalized_pattern="${original_pattern}"
+
+  normalized_pattern="${normalized_pattern//\\s/[[:space:]]}"
+
+  if [[ "${normalized_pattern}" == \\b* ]]; then
+    normalized_pattern="(^|[^[:alnum:]_])${normalized_pattern:2}"
+  fi
+  if [[ "${normalized_pattern}" == *\\b ]]; then
+    normalized_pattern="${normalized_pattern%\\b}([^[:alnum:]_]|$)"
+  fi
+
+  if [[ "${normalized_pattern}" == *\\b* ]]; then
+    echo "[architecture][FAIL] grep fallback cannot safely normalize regex: ${original_pattern}"
+    echo "[architecture][HINT] install 'rg' to preserve boundary regex semantics"
+    return 1
+  fi
+
+  printf "%s" "${normalized_pattern}"
+}
+
+collect_scan_kotlin_files() {
+  local scan_dirs=("$@")
+  local scan_dir
+  local git_file
+  local abs_file
+
+  if git -C "${PROJECT_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    while IFS= read -r git_file; do
+      [[ -z "${git_file}" ]] && continue
+      abs_file="${PROJECT_ROOT%/}/${git_file}"
+      for scan_dir in "${scan_dirs[@]}"; do
+        case "${abs_file}" in
+          "${scan_dir%/}"/*)
+            printf "%s\n" "${abs_file}"
+            break
+            ;;
+        esac
+      done
+    done < <(git -C "${PROJECT_ROOT}" ls-files --cached --others --exclude-standard -- '*.kt')
+    return 0
+  fi
+
+  for scan_dir in "${scan_dirs[@]}"; do
+    find "${scan_dir}" -type f -name '*.kt' -print
+  done
+}
+
+run_rg_scan() {
+  local rule_name="$1"
+  local pattern="$2"
+  shift 2
+
+  local scanner_stderr
+  scanner_stderr="$(mktemp)"
+  local rg_output=""
+  local rg_status=0
+
+  if ! resolve_arch_scanner; then
+    echo "[architecture][FAIL] ${rule_name} (scan failed: no scanner available)"
+    echo "[architecture][HINT] install 'rg' (preferred) or ensure 'grep' is available in PATH"
+    EXIT_CODE=1
+    RG_LAST_OUTPUT=""
+    RG_LAST_STATUS=127
+    rm -f "${scanner_stderr}"
+    return 0
+  fi
+
+  if [[ "${ARCH_SCANNER}" == "rg" ]]; then
+    if rg_output="$(rg -n "${pattern}" "$@" --glob '*.kt' 2>"${scanner_stderr}")"; then
+      rg_status=0
+    else
+      rg_status=$?
+    fi
+  else
+    local grep_pattern
+    if ! grep_pattern="$(normalize_pattern_for_grep "${pattern}")"; then
+      RG_LAST_OUTPUT=""
+      RG_LAST_STATUS=2
+      EXIT_CODE=1
+      rm -f "${scanner_stderr}"
+      return 0
+    fi
+
+    local scan_files=()
+    while IFS= read -r scan_file; do
+      [[ -z "${scan_file}" ]] && continue
+      scan_files+=("${scan_file}")
+    done < <(collect_scan_kotlin_files "$@" | sort -u)
+
+    if [[ "${#scan_files[@]}" -eq 0 ]]; then
+      rg_output=""
+      rg_status=1
+    elif rg_output="$(grep -n -E -- "${grep_pattern}" "${scan_files[@]}" 2>"${scanner_stderr}")"; then
+      rg_status=0
+    else
+      rg_status=$?
+    fi
+  fi
+
+  RG_LAST_OUTPUT="${rg_output}"
+  RG_LAST_STATUS="${rg_status}"
+
+  if [[ "${rg_status}" -gt 1 ]]; then
+    echo "[architecture][FAIL] ${rule_name} (${ARCH_SCANNER} scan failed: exit ${rg_status})"
+    if [[ "${ARCH_SCANNER}" == "rg" ]]; then
+      echo "[architecture][HINT] ensure 'rg' is installed and scan paths are readable"
+    else
+      echo "[architecture][HINT] ensure scan paths are readable and grep regex is valid"
+    fi
+    if [[ -s "${scanner_stderr}" ]]; then
+      sed 's/^/[architecture][DETAIL] /' "${scanner_stderr}"
+    fi
+    EXIT_CODE=1
+  fi
+
+  rm -f "${scanner_stderr}"
+}
 
 run_rule() {
   local rule_name="$1"
@@ -36,7 +179,13 @@ run_rule() {
     return 0
   fi
 
-  if rg -n "${pattern}" "${scan_dirs[@]}" --glob '*.kt'; then
+  run_rg_scan "${rule_name}" "${pattern}" "${scan_dirs[@]}"
+  if [[ "${RG_LAST_STATUS}" -gt 1 ]]; then
+    return 0
+  fi
+
+  if [[ "${RG_LAST_STATUS}" -eq 0 ]]; then
+    printf "%s\n" "${RG_LAST_OUTPUT}"
     echo "[architecture][FAIL] ${rule_name}"
     EXIT_CODE=1
   fi
@@ -61,11 +210,15 @@ run_allowlisted_rule() {
     return 0
   fi
 
-  local raw_matches
-  raw_matches="$(rg -n "${pattern}" "${scan_dirs[@]}" --glob '*.kt' || true)"
-  if [[ -z "${raw_matches}" ]]; then
+  run_rg_scan "${rule_name}" "${pattern}" "${scan_dirs[@]}"
+  if [[ "${RG_LAST_STATUS}" -gt 1 ]]; then
     return 0
   fi
+
+  if [[ "${RG_LAST_STATUS}" -eq 1 ]]; then
+    return 0
+  fi
+  local raw_matches="${RG_LAST_OUTPUT}"
 
   local normalized_matches
   normalized_matches="$(
@@ -100,6 +253,14 @@ run_allowlisted_rule() {
   if [[ "${#unexpected_matches[@]}" -gt 0 ]]; then
     echo "[architecture][FAIL] ${rule_name} (new violations detected)"
     printf "%s\n" "${unexpected_matches[@]}"
+    local allowlist_rel
+    allowlist_rel="${allowlist_file#${PROJECT_ROOT%/}/}"
+    if [[ "${allowlist_rel}" == "${allowlist_file}" ]]; then
+      allowlist_rel="${allowlist_file}"
+    fi
+    echo "[architecture][HINT] this rule is frozen and allowlist-governed"
+    echo "[architecture][HINT] see ${allowlist_rel}"
+    echo "[architecture][HINT] preferred fix: move code to feature/* or inline into an allowlisted file"
     EXIT_CODE=1
   fi
 }
@@ -123,14 +284,31 @@ run_filtered_rule() {
     return 0
   fi
 
-  local raw_matches
-  raw_matches="$(rg -n "${pattern}" "${scan_dirs[@]}" --glob '*.kt' || true)"
-  if [[ -z "${raw_matches}" ]]; then
+  run_rg_scan "${rule_name}" "${pattern}" "${scan_dirs[@]}"
+  if [[ "${RG_LAST_STATUS}" -gt 1 ]]; then
     return 0
   fi
 
+  if [[ "${RG_LAST_STATUS}" -eq 1 ]]; then
+    return 0
+  fi
+  local raw_matches="${RG_LAST_OUTPUT}"
+
   local filtered_matches
-  filtered_matches="$(printf "%s\n" "${raw_matches}" | grep -Ev "${exclude_regex}" || true)"
+  local filter_status=0
+  if filtered_matches="$(printf "%s\n" "${raw_matches}" | grep -Ev "${exclude_regex}")"; then
+    filter_status=0
+  else
+    filter_status=$?
+  fi
+
+  if [[ "${filter_status}" -gt 1 ]]; then
+    echo "[architecture][FAIL] ${rule_name} (filter regex failed: exit ${filter_status})"
+    echo "[architecture][HINT] verify exclude regex syntax: ${exclude_regex}"
+    EXIT_CODE=1
+    return 0
+  fi
+
   if [[ -n "${filtered_matches}" ]]; then
     printf "%s\n" "${filtered_matches}"
     echo "[architecture][FAIL] ${rule_name}"
@@ -193,6 +371,20 @@ check_kotlin_file_allowlist() {
   if [[ "${#unexpected_files[@]}" -gt 0 ]]; then
     echo "[architecture][FAIL] ${rule_label} found new files outside allowlist"
     printf "%s\n" "${unexpected_files[@]}"
+    local allowlist_rel
+    allowlist_rel="${allowlist_file#${PROJECT_ROOT%/}/}"
+    if [[ "${allowlist_rel}" == "${allowlist_file}" ]]; then
+      allowlist_rel="${allowlist_file}"
+    fi
+    local import_allowlist_rel
+    import_allowlist_rel="${LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST#${PROJECT_ROOT%/}/}"
+    if [[ "${import_allowlist_rel}" == "${LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST}" ]]; then
+      import_allowlist_rel="${LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST}"
+    fi
+    echo "[architecture][HINT] app/features is frozen for new Kotlin files"
+    echo "[architecture][HINT] see ${allowlist_rel}"
+    echo "[architecture][HINT] see ${import_allowlist_rel}"
+    echo "[architecture][HINT] preferred fix: move code to feature/* or inline into an allowlisted file"
     EXIT_CODE=1
   fi
 }
