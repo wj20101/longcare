@@ -5,6 +5,7 @@ PROJECT_ROOT="${1:-.}"
 EXIT_CODE=0
 RG_LAST_OUTPUT=""
 RG_LAST_STATUS=1
+ARCH_SCANNER=""
 
 APP_ROOT="${PROJECT_ROOT}/app/src/main/kotlin/com/ytone/longcare"
 APP_DEBUG_ROOT="${PROJECT_ROOT}/app/src/debug/kotlin/com/ytone/longcare"
@@ -20,35 +21,144 @@ LEGACY_APP_FEATURE_FILE_ALLOWLIST="${PROJECT_ROOT}/scripts/quality/legacy_featur
 
 echo "[architecture] checking layer boundaries under: ${PROJECT_ROOT}"
 
+resolve_arch_scanner() {
+  if [[ -n "${ARCH_SCANNER}" ]]; then
+    return 0
+  fi
+
+  if command -v rg >/dev/null 2>&1; then
+    ARCH_SCANNER="rg"
+    return 0
+  fi
+
+  if command -v grep >/dev/null 2>&1; then
+    ARCH_SCANNER="grep"
+    echo "[architecture][WARN] ripgrep not found; falling back to grep"
+    return 0
+  fi
+
+  ARCH_SCANNER=""
+  return 1
+}
+
+normalize_pattern_for_grep() {
+  local original_pattern="$1"
+  local normalized_pattern="${original_pattern}"
+
+  normalized_pattern="${normalized_pattern//\\s/[[:space:]]}"
+
+  if [[ "${normalized_pattern}" == \\b* ]]; then
+    normalized_pattern="(^|[^[:alnum:]_])${normalized_pattern:2}"
+  fi
+  if [[ "${normalized_pattern}" == *\\b ]]; then
+    normalized_pattern="${normalized_pattern%\\b}([^[:alnum:]_]|$)"
+  fi
+
+  if [[ "${normalized_pattern}" == *\\b* ]]; then
+    echo "[architecture][FAIL] grep fallback cannot safely normalize regex: ${original_pattern}"
+    echo "[architecture][HINT] install 'rg' to preserve boundary regex semantics"
+    return 1
+  fi
+
+  printf "%s" "${normalized_pattern}"
+}
+
+collect_scan_kotlin_files() {
+  local scan_dirs=("$@")
+  local scan_dir
+  local git_file
+  local abs_file
+
+  if git -C "${PROJECT_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    while IFS= read -r git_file; do
+      [[ -z "${git_file}" ]] && continue
+      abs_file="${PROJECT_ROOT%/}/${git_file}"
+      for scan_dir in "${scan_dirs[@]}"; do
+        case "${abs_file}" in
+          "${scan_dir%/}"/*)
+            printf "%s\n" "${abs_file}"
+            break
+            ;;
+        esac
+      done
+    done < <(git -C "${PROJECT_ROOT}" ls-files --cached --others --exclude-standard -- '*.kt')
+    return 0
+  fi
+
+  for scan_dir in "${scan_dirs[@]}"; do
+    find "${scan_dir}" -type f -name '*.kt' -print
+  done
+}
+
 run_rg_scan() {
   local rule_name="$1"
   local pattern="$2"
   shift 2
 
-  local rg_stderr
-  rg_stderr="$(mktemp)"
+  local scanner_stderr
+  scanner_stderr="$(mktemp)"
   local rg_output=""
   local rg_status=0
 
-  if rg_output="$(rg -n "${pattern}" "$@" --glob '*.kt' 2>"${rg_stderr}")"; then
-    rg_status=0
+  if ! resolve_arch_scanner; then
+    echo "[architecture][FAIL] ${rule_name} (scan failed: no scanner available)"
+    echo "[architecture][HINT] install 'rg' (preferred) or ensure 'grep' is available in PATH"
+    EXIT_CODE=1
+    RG_LAST_OUTPUT=""
+    RG_LAST_STATUS=127
+    rm -f "${scanner_stderr}"
+    return 0
+  fi
+
+  if [[ "${ARCH_SCANNER}" == "rg" ]]; then
+    if rg_output="$(rg -n "${pattern}" "$@" --glob '*.kt' 2>"${scanner_stderr}")"; then
+      rg_status=0
+    else
+      rg_status=$?
+    fi
   else
-    rg_status=$?
+    local grep_pattern
+    if ! grep_pattern="$(normalize_pattern_for_grep "${pattern}")"; then
+      RG_LAST_OUTPUT=""
+      RG_LAST_STATUS=2
+      EXIT_CODE=1
+      rm -f "${scanner_stderr}"
+      return 0
+    fi
+
+    local scan_files=()
+    while IFS= read -r scan_file; do
+      [[ -z "${scan_file}" ]] && continue
+      scan_files+=("${scan_file}")
+    done < <(collect_scan_kotlin_files "$@" | sort -u)
+
+    if [[ "${#scan_files[@]}" -eq 0 ]]; then
+      rg_output=""
+      rg_status=1
+    elif rg_output="$(grep -n -E -- "${grep_pattern}" "${scan_files[@]}" 2>"${scanner_stderr}")"; then
+      rg_status=0
+    else
+      rg_status=$?
+    fi
   fi
 
   RG_LAST_OUTPUT="${rg_output}"
   RG_LAST_STATUS="${rg_status}"
 
   if [[ "${rg_status}" -gt 1 ]]; then
-    echo "[architecture][FAIL] ${rule_name} (ripgrep scan failed: exit ${rg_status})"
-    echo "[architecture][HINT] ensure 'rg' is installed and scan paths are readable"
-    if [[ -s "${rg_stderr}" ]]; then
-      sed 's/^/[architecture][DETAIL] /' "${rg_stderr}"
+    echo "[architecture][FAIL] ${rule_name} (${ARCH_SCANNER} scan failed: exit ${rg_status})"
+    if [[ "${ARCH_SCANNER}" == "rg" ]]; then
+      echo "[architecture][HINT] ensure 'rg' is installed and scan paths are readable"
+    else
+      echo "[architecture][HINT] ensure scan paths are readable and grep regex is valid"
+    fi
+    if [[ -s "${scanner_stderr}" ]]; then
+      sed 's/^/[architecture][DETAIL] /' "${scanner_stderr}"
     fi
     EXIT_CODE=1
   fi
 
-  rm -f "${rg_stderr}"
+  rm -f "${scanner_stderr}"
 }
 
 run_rule() {
