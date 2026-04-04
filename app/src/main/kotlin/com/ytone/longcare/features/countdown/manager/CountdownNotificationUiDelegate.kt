@@ -16,6 +16,20 @@ import com.ytone.longcare.features.countdown.receiver.DismissAlarmReceiver
 import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
 import com.ytone.longcare.model.OrderKey
 
+internal enum class CountdownAlarmLaunchSource {
+    FULL_SCREEN_NOTIFICATION,
+    DIRECT_SERVICE_LAUNCH,
+}
+
+internal object CountdownAlarmPresentationPolicy {
+    fun autoCloseEnabled(launchSource: CountdownAlarmLaunchSource): Boolean {
+        return when (launchSource) {
+            CountdownAlarmLaunchSource.FULL_SCREEN_NOTIFICATION -> false
+            CountdownAlarmLaunchSource.DIRECT_SERVICE_LAUNCH -> false
+        }
+    }
+}
+
 internal class CountdownNotificationUiDelegate(
     private val context: Context,
     private val notificationManager: NotificationManager,
