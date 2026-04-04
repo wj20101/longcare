@@ -81,12 +81,24 @@ jobs:
       - name: Set up shared Android build environment
         uses: ./.github/actions/android-build-env
         with:
-          run-workflow-quality-check: 'true'
+          run-workflow-quality-check: 'false'
+          run-lint-ignore-policy-check: 'false'
+          run-jetpack-compat-check: 'false'
+          run-baselineprofile-journey-check: 'false'
+          run-module-dependency-check: 'false'
 
-      - name: Run affected verification tasks
+      - name: Run ci-required quality gates
+        run: |
+          bash scripts/quality/verify_ci_workflow_quality.sh
+          bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
+          bash scripts/quality/verify_jetpack_compat_apis.sh
+          bash scripts/quality/verify_baselineprofile_journeys.sh
+          bash scripts/quality/verify_module_dependency_whitelist.sh .
+
+      - name: Run affected compile/lint/unit verification
         run: ./gradlew --no-daemon ${{ needs.detect-affected.outputs.verify_tasks }}
 
-      - name: Collect quality snapshot and enforce quality gates
+      - name: Collect ci-required quality snapshot
         run: |
           bash scripts/quality/run_quality_gate.sh \
             --project-root . \

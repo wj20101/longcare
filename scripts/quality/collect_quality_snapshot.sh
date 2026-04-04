@@ -151,6 +151,83 @@ CHECK_CMDS=(
   "bash scripts/quality/verify_ci_workflow_quality.sh"
 )
 
+CHECK_TIERS=(
+  "ci-required"
+  "release-required"
+  "ci-required"
+  "ci-required"
+  "ci-required"
+  "ci-required"
+  "ci-required"
+  "ci-required"
+  "ci-required"
+  "ci-required"
+  "ci-required"
+  "ci-required"
+  "ci-required"
+  "ci-required"
+)
+
+CHECK_CATEGORIES=(
+  "secrets"
+  "release-safety"
+  "lint-policy"
+  "lint-policy"
+  "api-compatibility"
+  "performance-guardrail"
+  "concurrency-safety"
+  "exception-safety"
+  "sdk-governance"
+  "manifest-policy"
+  "architecture"
+  "module-governance"
+  "module-governance"
+  "workflow-governance"
+)
+
+CHECK_LIKELY_FIXES=(
+  "remove-tracked-keystore-and-use-secret-distribution"
+  "align-exported-components-with-release-allowlist"
+  "fix-lint-warning-or-add-approved-waiver-entry"
+  "remove-forbidden-lint-ignore-and-fix-root-warning"
+  "align-jetpack-usage-with-compat-guardrails"
+  "update-baseline-profile-journeys-to-cover-required-flows"
+  "add-structured-cancellation-handling-in-coroutines"
+  "replace-empty-catch-with-explicit-handling-or-rethrow"
+  "align-workflow-emulator-api-level-with-target-sdk"
+  "align-exact-alarm-permission-config-with-policy"
+  "move-code-to-allowed-layer-or-update-allowlist-policy"
+  "restore-allowed-module-dependencies-or-update-whitelist"
+  "move-public-contracts-to-approved-api-boundaries"
+  "restore-tiered-workflow-structure-and-governance-guards"
+)
+
+CHECK_SOURCE_OF_TRUTH=(
+  "scripts/quality/verify_no_tracked_keystore_files.sh"
+  "scripts/quality/verify_release_exported_components.sh"
+  "scripts/lint/lint_warning_waivers.json"
+  "app/lint.xml"
+  "scripts/quality/verify_jetpack_compat_apis.sh"
+  "scripts/quality/verify_baselineprofile_journeys.sh"
+  "scripts/quality/verify_cancellation_guards.sh"
+  "scripts/quality/verify_no_empty_catch_blocks.sh"
+  "constants.gradle.kts,.github/workflows/android-ci.yml"
+  "app/src/main/AndroidManifest.xml"
+  "scripts/quality/verify_architecture_boundaries.sh"
+  "scripts/quality/module_dependency_allowlist.txt"
+  "scripts/quality/verify_module_api_visibility.sh"
+  "scripts/quality/verify_ci_workflow_quality.sh"
+)
+
+if [[ ${#CHECK_NAMES[@]} -ne ${#CHECK_CMDS[@]} ]] || \
+  [[ ${#CHECK_NAMES[@]} -ne ${#CHECK_TIERS[@]} ]] || \
+  [[ ${#CHECK_NAMES[@]} -ne ${#CHECK_CATEGORIES[@]} ]] || \
+  [[ ${#CHECK_NAMES[@]} -ne ${#CHECK_LIKELY_FIXES[@]} ]] || \
+  [[ ${#CHECK_NAMES[@]} -ne ${#CHECK_SOURCE_OF_TRUTH[@]} ]]; then
+  echo "[quality-snapshot][FAIL] quality check metadata arrays are out of sync." >&2
+  exit 1
+fi
+
 sanitize_name() {
   printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '_' | sed -E 's/^_+|_+$//g'
 }
@@ -169,6 +246,10 @@ OVERALL_EXIT=0
 for i in "${!CHECK_NAMES[@]}"; do
   NAME="${CHECK_NAMES[$i]}"
   CMD="${CHECK_CMDS[$i]}"
+  TIER="${CHECK_TIERS[$i]}"
+  CATEGORY="${CHECK_CATEGORIES[$i]}"
+  LIKELY_FIX="${CHECK_LIKELY_FIXES[$i]}"
+  SOURCE_OF_TRUTH="${CHECK_SOURCE_OF_TRUTH[$i]}"
   SLUG="$(sanitize_name "${NAME}")"
   LOG_FILE="${LOG_DIR}/$((i + 1))_${SLUG}.log"
 
@@ -191,6 +272,10 @@ for i in "${!CHECK_NAMES[@]}"; do
 
   jq -n \
     --arg name "${NAME}" \
+    --arg tier "${TIER}" \
+    --arg category "${CATEGORY}" \
+    --arg likely_fix "${LIKELY_FIX}" \
+    --arg source_of_truth "${SOURCE_OF_TRUTH}" \
     --arg command "${CMD}" \
     --arg status "${STATUS}" \
     --arg log "${LOG_FILE}" \
@@ -200,6 +285,10 @@ for i in "${!CHECK_NAMES[@]}"; do
     --argjson duration_seconds "${DURATION}" \
     '{
       name: $name,
+      tier: $tier,
+      category: $category,
+      likely_fix: $likely_fix,
+      source_of_truth: $source_of_truth,
       command: $command,
       status: $status,
       exit_code: $exit_code,
@@ -255,9 +344,9 @@ jq -n \
   echo "- passed: \`${PASSED_CHECKS}/${TOTAL_CHECKS}\`"
   echo "- project_root: \`${PROJECT_ROOT}\`"
   echo
-  echo "| Check | Status | Duration (s) | Exit Code | Log |"
-  echo "|---|---|---:|---:|---|"
-  jq -r '.[] | "| \(.name) | \(.status) | \(.duration_seconds) | \(.exit_code) | `\(.log)` |"' "${CHECKS_ARRAY_JSON}"
+  echo "| Check | Tier | Category | Status | Likely Fix | Source Of Truth | Duration (s) | Exit Code | Log |"
+  echo "|---|---|---|---|---|---|---:|---:|---|"
+  jq -r '.[] | "| \(.name) | \(.tier) | \(.category) | \(.status) | \(.likely_fix) | `\(.source_of_truth)` | \(.duration_seconds) | \(.exit_code) | `\(.log)` |"' "${CHECKS_ARRAY_JSON}"
   echo
   echo "JSON report: \`${REPORT_JSON}\`"
 } > "${REPORT_MD}"

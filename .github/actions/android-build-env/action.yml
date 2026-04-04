@@ -1,6 +1,6 @@
 name: Android Build Environment
 
-description: Configure Java/Gradle/Android SDK and run shared CI quality guards.
+description: Configure Java/Gradle/Android SDK and run lightweight shared Android guardrails.
 
 inputs:
   setup-android-sdk:
@@ -19,12 +19,12 @@ inputs:
     description: Whether to run verify_ci_workflow_quality.sh.
     required: false
     default: "false"
-  run-jetpack-compat-check:
-    description: Whether to run verify_jetpack_compat_apis.sh.
-    required: false
-    default: "true"
   run-lint-ignore-policy-check:
     description: Whether to run verify_lint_ignore_policy.sh.
+    required: false
+    default: "true"
+  run-jetpack-compat-check:
+    description: Whether to run verify_jetpack_compat_apis.sh.
     required: false
     default: "true"
   run-baselineprofile-journey-check:
@@ -63,15 +63,15 @@ runs:
       shell: bash
       run: bash scripts/quality/verify_gradle_stability.sh
 
-    - name: Verify Jetpack compat API guardrails
-      if: ${{ inputs.run-jetpack-compat-check == 'true' }}
-      shell: bash
-      run: bash scripts/quality/verify_jetpack_compat_apis.sh
-
     - name: Verify lint ignore policy
       if: ${{ inputs.run-lint-ignore-policy-check == 'true' }}
       shell: bash
       run: bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
+
+    - name: Verify Jetpack compat API guardrails
+      if: ${{ inputs.run-jetpack-compat-check == 'true' }}
+      shell: bash
+      run: bash scripts/quality/verify_jetpack_compat_apis.sh
 
     - name: Verify baseline profile journey guardrails
       if: ${{ inputs.run-baselineprofile-journey-check == 'true' }}
