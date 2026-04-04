@@ -3,6 +3,8 @@ set -euo pipefail
 
 PROJECT_ROOT="${1:-.}"
 EXIT_CODE=0
+RG_LAST_OUTPUT=""
+RG_LAST_STATUS=1
 
 APP_ROOT="${PROJECT_ROOT}/app/src/main/kotlin/com/ytone/longcare"
 APP_DEBUG_ROOT="${PROJECT_ROOT}/app/src/debug/kotlin/com/ytone/longcare"
@@ -17,6 +19,37 @@ LEGACY_APP_INTERNAL_IMPORT_BUDGET_FILE="${PROJECT_ROOT}/scripts/quality/architec
 LEGACY_APP_FEATURE_FILE_ALLOWLIST="${PROJECT_ROOT}/scripts/quality/legacy_feature_files_allowlist.txt"
 
 echo "[architecture] checking layer boundaries under: ${PROJECT_ROOT}"
+
+run_rg_scan() {
+  local rule_name="$1"
+  local pattern="$2"
+  shift 2
+
+  local rg_stderr
+  rg_stderr="$(mktemp)"
+  local rg_output=""
+  local rg_status=0
+
+  if rg_output="$(rg -n "${pattern}" "$@" --glob '*.kt' 2>"${rg_stderr}")"; then
+    rg_status=0
+  else
+    rg_status=$?
+  fi
+
+  RG_LAST_OUTPUT="${rg_output}"
+  RG_LAST_STATUS="${rg_status}"
+
+  if [[ "${rg_status}" -gt 1 ]]; then
+    echo "[architecture][FAIL] ${rule_name} (ripgrep scan failed: exit ${rg_status})"
+    echo "[architecture][HINT] ensure 'rg' is installed and scan paths are readable"
+    if [[ -s "${rg_stderr}" ]]; then
+      sed 's/^/[architecture][DETAIL] /' "${rg_stderr}"
+    fi
+    EXIT_CODE=1
+  fi
+
+  rm -f "${rg_stderr}"
+}
 
 run_rule() {
   local rule_name="$1"
@@ -36,7 +69,13 @@ run_rule() {
     return 0
   fi
 
-  if rg -n "${pattern}" "${scan_dirs[@]}" --glob '*.kt'; then
+  run_rg_scan "${rule_name}" "${pattern}" "${scan_dirs[@]}"
+  if [[ "${RG_LAST_STATUS}" -gt 1 ]]; then
+    return 0
+  fi
+
+  if [[ "${RG_LAST_STATUS}" -eq 0 ]]; then
+    printf "%s\n" "${RG_LAST_OUTPUT}"
     echo "[architecture][FAIL] ${rule_name}"
     EXIT_CODE=1
   fi
@@ -61,11 +100,15 @@ run_allowlisted_rule() {
     return 0
   fi
 
-  local raw_matches
-  raw_matches="$(rg -n "${pattern}" "${scan_dirs[@]}" --glob '*.kt' || true)"
-  if [[ -z "${raw_matches}" ]]; then
+  run_rg_scan "${rule_name}" "${pattern}" "${scan_dirs[@]}"
+  if [[ "${RG_LAST_STATUS}" -gt 1 ]]; then
     return 0
   fi
+
+  if [[ "${RG_LAST_STATUS}" -eq 1 ]]; then
+    return 0
+  fi
+  local raw_matches="${RG_LAST_OUTPUT}"
 
   local normalized_matches
   normalized_matches="$(
@@ -100,6 +143,14 @@ run_allowlisted_rule() {
   if [[ "${#unexpected_matches[@]}" -gt 0 ]]; then
     echo "[architecture][FAIL] ${rule_name} (new violations detected)"
     printf "%s\n" "${unexpected_matches[@]}"
+    local allowlist_rel
+    allowlist_rel="${allowlist_file#${PROJECT_ROOT%/}/}"
+    if [[ "${allowlist_rel}" == "${allowlist_file}" ]]; then
+      allowlist_rel="${allowlist_file}"
+    fi
+    echo "[architecture][HINT] this rule is frozen and allowlist-governed"
+    echo "[architecture][HINT] see ${allowlist_rel}"
+    echo "[architecture][HINT] preferred fix: move code to feature/* or inline into an allowlisted file"
     EXIT_CODE=1
   fi
 }
@@ -123,14 +174,31 @@ run_filtered_rule() {
     return 0
   fi
 
-  local raw_matches
-  raw_matches="$(rg -n "${pattern}" "${scan_dirs[@]}" --glob '*.kt' || true)"
-  if [[ -z "${raw_matches}" ]]; then
+  run_rg_scan "${rule_name}" "${pattern}" "${scan_dirs[@]}"
+  if [[ "${RG_LAST_STATUS}" -gt 1 ]]; then
     return 0
   fi
 
+  if [[ "${RG_LAST_STATUS}" -eq 1 ]]; then
+    return 0
+  fi
+  local raw_matches="${RG_LAST_OUTPUT}"
+
   local filtered_matches
-  filtered_matches="$(printf "%s\n" "${raw_matches}" | grep -Ev "${exclude_regex}" || true)"
+  local filter_status=0
+  if filtered_matches="$(printf "%s\n" "${raw_matches}" | grep -Ev "${exclude_regex}")"; then
+    filter_status=0
+  else
+    filter_status=$?
+  fi
+
+  if [[ "${filter_status}" -gt 1 ]]; then
+    echo "[architecture][FAIL] ${rule_name} (filter regex failed: exit ${filter_status})"
+    echo "[architecture][HINT] verify exclude regex syntax: ${exclude_regex}"
+    EXIT_CODE=1
+    return 0
+  fi
+
   if [[ -n "${filtered_matches}" ]]; then
     printf "%s\n" "${filtered_matches}"
     echo "[architecture][FAIL] ${rule_name}"
@@ -193,6 +261,20 @@ check_kotlin_file_allowlist() {
   if [[ "${#unexpected_files[@]}" -gt 0 ]]; then
     echo "[architecture][FAIL] ${rule_label} found new files outside allowlist"
     printf "%s\n" "${unexpected_files[@]}"
+    local allowlist_rel
+    allowlist_rel="${allowlist_file#${PROJECT_ROOT%/}/}"
+    if [[ "${allowlist_rel}" == "${allowlist_file}" ]]; then
+      allowlist_rel="${allowlist_file}"
+    fi
+    local import_allowlist_rel
+    import_allowlist_rel="${LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST#${PROJECT_ROOT%/}/}"
+    if [[ "${import_allowlist_rel}" == "${LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST}" ]]; then
+      import_allowlist_rel="${LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST}"
+    fi
+    echo "[architecture][HINT] app/features is frozen for new Kotlin files"
+    echo "[architecture][HINT] see ${allowlist_rel}"
+    echo "[architecture][HINT] see ${import_allowlist_rel}"
+    echo "[architecture][HINT] preferred fix: move code to feature/* or inline into an allowlisted file"
     EXIT_CODE=1
   fi
 }
