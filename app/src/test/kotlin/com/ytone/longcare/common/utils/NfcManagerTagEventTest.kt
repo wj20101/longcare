@@ -2,6 +2,7 @@ package com.ytone.longcare.common.utils
 
 import android.app.Activity
 import android.content.Intent
+import androidx.activity.ComponentActivity
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.event.ScanSource
@@ -28,7 +29,7 @@ class NfcManagerTagEventTest {
 
     @Before
     fun setUp() {
-        activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        activity = Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
         nfcManager = NfcManager(appEventBus)
 
         mockkObject(NfcForegroundDispatchDelegate)

@@ -9,9 +9,6 @@ import androidx.lifecycle.lifecycleScope
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.event.ScanSource
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,7 +18,6 @@ class NfcManager @Inject constructor(
     private val appEventBus: AppEventBus
 ) : DefaultLifecycleObserver {
 
-    private val fallbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var currentActivity: Activity? = null
     private var isNfcEnabled = false
     private var nfcEnableDialog: AlertDialog? = null
@@ -62,10 +58,6 @@ class NfcManager @Inject constructor(
             activity.lifecycleScope.launch {
                 appEventBus.send(AppEvent.NfcIntentReceived(intent))
             }
-        } else {
-            fallbackScope.launch {
-                appEventBus.send(AppEvent.NfcIntentReceived(intent))
-            }
         }
         handleBuiltInTag(intent)
     }
@@ -78,10 +70,6 @@ class NfcManager @Inject constructor(
         currentActivity?.takeIf { isNfcEnabled }?.let { activity ->
             if (activity is LifecycleOwner) {
                 activity.lifecycleScope.launch {
-                    appEventBus.send(AppEvent.TagScanned(tagId, ScanSource.SYSTEM_NFC))
-                }
-            } else {
-                fallbackScope.launch {
                     appEventBus.send(AppEvent.TagScanned(tagId, ScanSource.SYSTEM_NFC))
                 }
             }
