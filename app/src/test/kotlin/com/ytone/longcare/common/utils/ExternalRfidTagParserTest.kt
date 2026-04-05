@@ -14,6 +14,11 @@ class ExternalRfidTagParserTest {
     }
 
     @Test
+    fun `normalize removes inner spaces`() {
+        assertEquals("01AB", parser.normalize("  01 ab  "))
+    }
+
+    @Test
     fun `normalize rejects blank payloads and non alphanumeric values`() {
         assertNull(parser.normalize("   "))
         assertNull(parser.normalize("01-AB"))
