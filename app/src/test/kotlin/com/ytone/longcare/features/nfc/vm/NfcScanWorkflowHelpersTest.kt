@@ -2,6 +2,7 @@ package com.ytone.longcare.features.nfc.vm
 
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.ScanSource
+import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
@@ -129,6 +130,56 @@ class NfcScanWorkflowHelpersTest {
         )
 
         assertFalse(locationRequested)
+        assertFalse(started)
+        assertFalse(ended)
+    }
+
+    @Test
+    fun `handleTagScanned routes end order when end info exists`() = runTest {
+        val endInfo = EndOderInfo(
+            projectIdList = listOf(1, 2),
+            beginImgList = listOf("b1"),
+            centerImgList = listOf("c1"),
+            endImgList = listOf("e1"),
+            endType = 2,
+        )
+        var started = false
+        var ended: Pair<Triple<String, String, String>, EndOderInfo>? = null
+
+        handleTagScanned(
+            event = AppEvent.TagScanned("END123", ScanSource.EXTERNAL_RFID),
+            currentState = NfcSignInUiState.Initial,
+            signInMode = SignInMode.END_ORDER,
+            endOderInfo = endInfo,
+            onLocationRequest = { LocationRequestResult.Coordinates("120.11", "30.22") },
+            onLocationError = { error("unexpected location error: $it") },
+            onStartOrder = { _, _, _ -> started = true },
+            onEndOrder = { tagId, longitude, latitude, info ->
+                ended = Triple(tagId, longitude, latitude) to info
+            },
+        )
+
+        assertFalse(started)
+        assertEquals(Triple("END123", "120.11", "30.22"), ended?.first)
+        assertEquals(endInfo, ended?.second)
+    }
+
+    @Test
+    fun `handleTagScanned does not route end order when end info is null`() = runTest {
+        var started = false
+        var ended = false
+
+        handleTagScanned(
+            event = AppEvent.TagScanned("END123", ScanSource.EXTERNAL_RFID),
+            currentState = NfcSignInUiState.Initial,
+            signInMode = SignInMode.END_ORDER,
+            endOderInfo = null,
+            onLocationRequest = { LocationRequestResult.Coordinates("120.11", "30.22") },
+            onLocationError = { error("unexpected location error: $it") },
+            onStartOrder = { _, _, _ -> started = true },
+            onEndOrder = { _, _, _, _ -> ended = true },
+        )
+
         assertFalse(started)
         assertFalse(ended)
     }
