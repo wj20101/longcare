@@ -23,13 +23,13 @@ internal fun NfcWorkflowEffects(
     locationTrackingViewModel: LocationTrackingViewModel,
     onLocationRequest: suspend () -> LocationRequestResult
 ) {
-    LaunchedEffect(Unit) {
+    LaunchedEffect(activity) {
         if (activity != null) {
             nfcViewModel.startActiveScanSource(activity)
         }
     }
 
-    LaunchedEffect(orderKey, signInMode) {
+    LaunchedEffect(orderKey, signInMode, endOderInfo) {
         nfcViewModel.observeScanEvents(
             orderKey = orderKey,
             signInMode = signInMode,
