@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.event.AppEventBus
+import com.ytone.longcare.common.utils.ExternalRfidReaderManager
 import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.location.LocationFacade
@@ -34,10 +35,11 @@ class NfcWorkflowViewModel @Inject constructor(
     private val toastHelper: ToastHelper,
     private val appEventBus: AppEventBus,
     private val nfcManager: NfcManager,
+    private val externalRfidReaderManager: ExternalRfidReaderManager,
     private val locationFacade: LocationFacade,
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
-    private val countdownNotificationManager: CountdownNotificationManager
+    private val countdownNotificationManager: CountdownNotificationManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
@@ -63,6 +65,14 @@ class NfcWorkflowViewModel @Inject constructor(
         locationFacade = locationFacade,
     )
 
+    private val _scanMode = MutableStateFlow(selectScanMode(activityAndLocationDelegate.isNfcSupported()))
+    val scanMode: StateFlow<ScanMode> = _scanMode.asStateFlow()
+
+    private val _readerUiState = MutableStateFlow(
+        if (_scanMode.value == ScanMode.SYSTEM_NFC) ReaderUiState.NotRequired else ReaderUiState.Disconnected,
+    )
+    val readerUiState: StateFlow<ReaderUiState> = _readerUiState.asStateFlow()
+
     private val scanDelegate = NfcScanWorkflowDelegate(
         appEventBus = appEventBus,
         unifiedOrderRepository = unifiedOrderRepository,
@@ -70,6 +80,8 @@ class NfcWorkflowViewModel @Inject constructor(
         scope = viewModelScope,
         uiState = _uiState,
         pendingNfcData = _pendingNfcData,
+        scanMode = _scanMode,
+        readerUiState = _readerUiState,
         orderDelegate = orderDelegate,
     )
 
@@ -121,23 +133,31 @@ class NfcWorkflowViewModel @Inject constructor(
     fun buildServiceCompleteDataFromCache(
         orderKey: OrderKey,
         endOderInfo: EndOderInfo?,
-        trueServiceTime: Int
+        trueServiceTime: Int,
     ): ServiceCompleteData = orderDelegate.buildServiceCompleteDataFromCache(orderKey, endOderInfo, trueServiceTime)
 
-    fun isNfcSupported(): Boolean = activityAndLocationDelegate.isNfcSupported()
+    fun startActiveScanSource(activity: Activity) {
+        when (scanMode.value) {
+            ScanMode.SYSTEM_NFC -> activityAndLocationDelegate.enableNfcForActivity(activity)
+            ScanMode.EXTERNAL_RFID -> externalRfidReaderManager.start(activity)
+        }
+    }
 
-    fun enableNfcForActivity(activity: Activity) = activityAndLocationDelegate.enableNfcForActivity(activity)
-
-    fun disableNfcForActivity(activity: Activity) = activityAndLocationDelegate.disableNfcForActivity(activity)
+    fun stopActiveScanSource(activity: Activity) {
+        when (scanMode.value) {
+            ScanMode.SYSTEM_NFC -> activityAndLocationDelegate.disableNfcForActivity(activity)
+            ScanMode.EXTERNAL_RFID -> externalRfidReaderManager.stop(activity)
+        }
+    }
 
     suspend fun getCurrentLocationCoordinates(): Pair<String, String> = activityAndLocationDelegate.getCurrentLocationCoordinates()
 
-    fun observeNfcEvents(
+    fun observeScanEvents(
         orderKey: OrderKey,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
-        onLocationRequest: suspend () -> LocationRequestResult
-    ) = scanDelegate.observeNfcEvents(orderKey, signInMode, endOderInfo, onLocationRequest)
+        onLocationRequest: suspend () -> LocationRequestResult,
+    ) = scanDelegate.observeScanEvents(orderKey, signInMode, endOderInfo, onLocationRequest)
 
     fun confirmLocationActivation(data: PendingNfcData) = scanDelegate.confirmLocationActivation(data)
 
@@ -146,7 +166,7 @@ class NfcWorkflowViewModel @Inject constructor(
     fun mockNfcScan(
         orderKey: OrderKey,
         signInMode: SignInMode,
-        endOderInfo: EndOderInfo?
+        endOderInfo: EndOderInfo?,
     ) = scanDelegate.mockNfcScan(orderKey, signInMode, endOderInfo)
 
     override fun onCleared() {
