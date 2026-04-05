@@ -4,29 +4,42 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
 
+enum class ScanMode {
+    SYSTEM_NFC,
+    EXTERNAL_RFID,
+}
+
+sealed class ReaderUiState {
+    data object NotRequired : ReaderUiState()
+    data object Disconnected : ReaderUiState()
+    data object Ready : ReaderUiState()
+    data object Reading : ReaderUiState()
+    data class DeviceError(val message: String) : ReaderUiState()
+}
+
+internal fun selectScanMode(isNfcSupported: Boolean): ScanMode =
+    if (isNfcSupported) ScanMode.SYSTEM_NFC else ScanMode.EXTERNAL_RFID
+
 data class PendingNfcData(
     val orderKey: OrderKey,
     val signInMode: SignInMode,
     val endOderInfo: EndOderInfo?,
     val tagId: String,
     val longitude: String,
-    val latitude: String
+    val latitude: String,
 )
 
 sealed class NfcSignInUiState {
     data object Loading : NfcSignInUiState()
-    data class Success(
-        val endOrderSuccessData: EndOrderSuccessData? = null
-    ) : NfcSignInUiState()
-
+    data class Success(val endOrderSuccessData: EndOrderSuccessData? = null) : NfcSignInUiState()
     data class Error(
         val message: String,
-        val occurrenceId: Long = System.nanoTime()
+        val occurrenceId: Long = System.nanoTime(),
     ) : NfcSignInUiState()
     data object Initial : NfcSignInUiState()
     data class ShowConfirmDialog(
         val message: String,
-        val endOrderParams: EndOrderParams
+        val endOrderParams: EndOrderParams,
     ) : NfcSignInUiState()
 }
 
