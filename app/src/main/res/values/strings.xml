@@ -8,6 +8,13 @@
     <string name="nfc_sign_in_retry">重新碰一碰</string>
     <string name="nfc_sign_in_status_success">签到成功</string>
     <string name="nfc_sign_in_status_failure">签到失败，请重新再试一次</string>
+    <string name="nfc_sign_in_idle_hint">请将NFC设备靠近手机背面</string>
+    <string name="nfc_external_reader_prompt">请先连接Type-C外置读卡器</string>
+    <string name="nfc_external_reader_disconnected">外置读卡器未连接</string>
+    <string name="nfc_external_reader_disconnected_hint">请连接Type-C外置读卡器后再刷卡</string>
+    <string name="nfc_external_reader_ready_prompt">请将卡片放在外置读卡器感应区</string>
+    <string name="nfc_external_reader_ready">外置读卡器已连接</string>
+    <string name="nfc_external_reader_ready_hint">请在外置读卡器上完成刷卡</string>
     <string name="nfc_sign_in_diagram_description">NFC操作示意图</string>
     <string name="photo_upload_title">护理照片上传</string>
     <string name="photo_upload_confirm_and_next">确定</string>

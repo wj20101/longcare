@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 
 @Composable
-internal fun SignInContentCard(signInState: SignInState) {
+internal fun SignInContentCard(signInState: SignInState, statusOverrideRes: Int? = null) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -68,7 +68,19 @@ internal fun SignInContentCard(signInState: SignInState) {
                     iconColor = Color.Red
                 )
 
-                SignInState.IDLE -> Spacer(modifier = Modifier.height(48.dp))
+                SignInState.IDLE -> {
+                    if (statusOverrideRes != null) {
+                        Text(
+                            text = stringResource(statusOverrideRes),
+                            modifier = Modifier.height(48.dp),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(48.dp))
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

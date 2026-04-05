@@ -13,6 +13,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ytone.longcare.R
+import com.ytone.longcare.features.nfc.vm.ReaderUiState
+import com.ytone.longcare.features.nfc.vm.ScanMode
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.ui.components.BottomSafeActionContainer
 
@@ -20,6 +22,8 @@ import com.ytone.longcare.ui.components.BottomSafeActionContainer
 internal fun NfcWorkflowBottomBar(
     signInState: SignInState,
     signInMode: SignInMode,
+    scanMode: ScanMode,
+    readerUiState: ReaderUiState,
     onSuccessClick: () -> Unit,
     onRetryClick: () -> Unit
 ) {
@@ -49,6 +53,7 @@ internal fun NfcWorkflowBottomBar(
                 }
 
                 SignInState.IDLE -> {
+                    val idleCopy = resolveNfcWorkflowIdleCopy(scanMode, readerUiState)
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -56,7 +61,7 @@ internal fun NfcWorkflowBottomBar(
                         )
                     ) {
                         Text(
-                            text = "请将NFC设备靠近手机背面",
+                            text = stringResource(resolveCopyRes(idleCopy.bottomHintKey)),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
