@@ -14,14 +14,11 @@ class ExternalRfidTagParserTest {
     }
 
     @Test
-<<<<<<< HEAD
     fun `normalize removes inner spaces`() {
         assertEquals("01AB", parser.normalize("  01 ab  "))
     }
 
     @Test
-=======
->>>>>>> 1d86300 (feat: add NFC fallback scan contracts)
     fun `normalize rejects blank payloads and non alphanumeric values`() {
         assertNull(parser.normalize("   "))
         assertNull(parser.normalize("01-AB"))
