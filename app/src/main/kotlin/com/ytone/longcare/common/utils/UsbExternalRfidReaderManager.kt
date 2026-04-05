@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.hardware.usb.UsbManager
+import androidx.core.content.ContextCompat
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.event.ScanSource
@@ -51,7 +52,12 @@ class UsbExternalRfidReaderManager @Inject constructor(
                 addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
                 addAction(permissionAction)
             }
-            context.registerReceiver(usbReceiver, filter)
+            ContextCompat.registerReceiver(
+                context,
+                usbReceiver,
+                filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
             receiverRegistered = true
         }
         publishConnectionState(usbManager.deviceList.isNotEmpty())

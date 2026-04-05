@@ -51,7 +51,13 @@ class NfcManagerTagEventTest {
         nfcManager.handleNfcIntent(activity, Intent("android.nfc.action.TAG_DISCOVERED"))
         advanceUntilIdle()
 
-        coVerify { appEventBus.send(match<AppEvent.NfcIntentReceived> { true }) }
+        coVerify {
+            appEventBus.send(
+                match<AppEvent.NfcIntentReceived> {
+                    it.intent.action == "android.nfc.action.TAG_DISCOVERED"
+                }
+            )
+        }
         coVerify { appEventBus.send(AppEvent.TagScanned("010A", ScanSource.SYSTEM_NFC)) }
     }
 }
