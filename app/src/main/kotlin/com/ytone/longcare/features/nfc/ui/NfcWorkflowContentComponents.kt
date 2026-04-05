@@ -3,6 +3,7 @@ package com.ytone.longcare.features.nfc.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -70,13 +71,19 @@ internal fun SignInContentCard(signInState: SignInState, statusOverrideRes: Int?
 
                 SignInState.IDLE -> {
                     if (statusOverrideRes != null) {
-                        Text(
-                            text = stringResource(statusOverrideRes),
-                            modifier = Modifier.height(48.dp),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Box(
+                            modifier = Modifier
+                                .height(48.dp)
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(statusOverrideRes),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     } else {
                         Spacer(modifier = Modifier.height(48.dp))
                     }

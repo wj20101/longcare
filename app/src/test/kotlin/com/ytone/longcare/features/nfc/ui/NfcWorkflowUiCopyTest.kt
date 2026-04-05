@@ -30,4 +30,16 @@ class NfcWorkflowUiCopyTest {
         assertEquals(NfcWorkflowCopyKey.EXTERNAL_READY_STATUS, copy.statusKey)
         assertEquals(NfcWorkflowCopyKey.EXTERNAL_READY_HINT, copy.bottomHintKey)
     }
+
+    @Test
+    fun `system nfc idle copy keeps default prompt and hint keys`() {
+        val copy = resolveNfcWorkflowIdleCopy(
+            scanMode = ScanMode.SYSTEM_NFC,
+            readerUiState = ReaderUiState.NotRequired,
+        )
+
+        assertEquals(NfcWorkflowCopyKey.SYSTEM_IDLE_PROMPT, copy.promptKey)
+        assertEquals(NfcWorkflowCopyKey.SYSTEM_IDLE_STATUS, copy.statusKey)
+        assertEquals(NfcWorkflowCopyKey.SYSTEM_IDLE_HINT, copy.bottomHintKey)
+    }
 }

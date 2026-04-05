@@ -76,8 +76,15 @@ internal fun NfcWorkflowBodyContent(
     readerUiState: ReaderUiState,
 ) {
     val idleCopy = resolveNfcWorkflowIdleCopy(scanMode, readerUiState)
-    val promptRes = resolveCopyRes(idleCopy.promptKey)
-    val statusOverrideRes = if (scanMode == ScanMode.EXTERNAL_RFID) {
+    val promptRes = if (signInState == SignInState.IDLE) {
+        resolveCopyRes(idleCopy.promptKey)
+    } else {
+        R.string.nfc_sign_in_prompt
+    }
+    val statusOverrideRes = if (
+        signInState == SignInState.IDLE &&
+        scanMode == ScanMode.EXTERNAL_RFID
+    ) {
         resolveCopyRes(idleCopy.statusKey)
     } else {
         null
