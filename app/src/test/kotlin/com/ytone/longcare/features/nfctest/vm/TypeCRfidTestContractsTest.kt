@@ -16,6 +16,16 @@ class TypeCRfidTestContractsTest {
     }
 
     @Test
+    fun `raw payload hex treats high-bit bytes as unsigned`() {
+        val state = TypeCRfidPanelState(
+            probeState = UsbProbeUiState.Ready,
+            rawPayload = byteArrayOf(0x80.toByte(), 0xFF.toByte()),
+        )
+
+        assertEquals("80 FF", state.rawPayloadHex)
+    }
+
+    @Test
     fun `parsed tag id falls back to not parsed when parser returns null`() {
         val state = TypeCRfidPanelState(
             probeState = UsbProbeUiState.ReadFailed("timeout"),

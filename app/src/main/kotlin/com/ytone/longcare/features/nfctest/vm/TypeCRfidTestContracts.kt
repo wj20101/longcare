@@ -37,7 +37,7 @@ data class TypeCRfidPanelState(
     val lastUpdatedAt: String? = null,
 ) {
     val rawPayloadHex: String = rawPayload
-        ?.joinToString(" ") { byte -> "%02X".format(byte) }
+        ?.joinToString(" ") { byte -> "%02X".format(byte.toInt() and 0xFF) }
         .orEmpty()
 
     val parsedTagDisplay: String = parsedTagId ?: "未解析出卡号"
