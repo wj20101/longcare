@@ -1,18 +1,31 @@
 package com.ytone.longcare.common.utils
 
 import android.app.Activity
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+
+sealed class UsbHostDeviceEvent {
+    data object Attached : UsbHostDeviceEvent()
+    data object Detached : UsbHostDeviceEvent()
+}
 
 interface UsbHostProbeManager {
     fun refresh(): UsbHostProbeResult
     fun requestPermission(activity: Activity): UsbHostProbeResult
     fun attemptRead(activity: Activity): UsbHostProbeResult
+    fun observeDeviceChanges(): Flow<UsbHostDeviceEvent>
 }
 
 @Singleton
@@ -84,6 +97,33 @@ class DefaultUsbHostProbeManager @Inject constructor(
                 connection.releaseInterface(usbInterface)
             }
             connection.close()
+        }
+    }
+
+    override fun observeDeviceChanges(): Flow<UsbHostDeviceEvent> = callbackFlow {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                when (intent.action) {
+                    UsbManager.ACTION_USB_DEVICE_ATTACHED -> trySend(UsbHostDeviceEvent.Attached)
+                    UsbManager.ACTION_USB_DEVICE_DETACHED -> trySend(UsbHostDeviceEvent.Detached)
+                }
+            }
+        }
+
+        val filter = IntentFilter().apply {
+            addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+            addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+        }
+
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+
+        awaitClose {
+            context.unregisterReceiver(receiver)
         }
     }
 

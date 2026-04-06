@@ -2,16 +2,28 @@ package com.ytone.longcare.features.nfctest.vm
 
 import android.app.Activity
 import com.ytone.longcare.common.utils.ExternalRfidTagParser
+import com.ytone.longcare.common.utils.UsbHostDeviceEvent
 import com.ytone.longcare.common.utils.UsbHostProbeManager
 import com.ytone.longcare.common.utils.UsbHostProbeResult
 import com.ytone.longcare.common.utils.UsbDeviceSummary
+import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class TypeCRfidTestViewModelTest {
+
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
 
     private val fixedNow = "12:34:56"
 
@@ -30,6 +42,7 @@ class TypeCRfidTestViewModelTest {
     fun `refresh updates state to no device when probe manager finds nothing`() {
         val probeManager = mockk<UsbHostProbeManager>()
         every { probeManager.refresh() } returns UsbHostProbeResult.NoDevice
+        every { probeManager.observeDeviceChanges() } returns emptyFlow()
 
         val viewModel = TypeCRfidTestViewModel(
             probeManager = probeManager,
@@ -45,6 +58,7 @@ class TypeCRfidTestViewModelTest {
     fun `refresh maps device found with permission to ready and stores last updated time`() {
         val probeManager = mockk<UsbHostProbeManager>()
         val summary = sampleSummary()
+        every { probeManager.observeDeviceChanges() } returns emptyFlow()
         every { probeManager.refresh() } returns UsbHostProbeResult.DeviceFound(
             summary = summary,
             hasPermission = true,
@@ -68,6 +82,7 @@ class TypeCRfidTestViewModelTest {
     fun `refresh maps device found without permission to device detected and stores last updated time`() {
         val probeManager = mockk<UsbHostProbeManager>()
         val summary = sampleSummary()
+        every { probeManager.observeDeviceChanges() } returns emptyFlow()
         every { probeManager.refresh() } returns UsbHostProbeResult.DeviceFound(
             summary = summary,
             hasPermission = false,
@@ -93,6 +108,7 @@ class TypeCRfidTestViewModelTest {
         val activity = mockk<Activity>(relaxed = true)
         val summary = sampleSummary()
         val message = "read failed"
+        every { probeManager.observeDeviceChanges() } returns emptyFlow()
         every { probeManager.attemptRead(activity) } returns UsbHostProbeResult.ReadFailure(
             summary = summary,
             message = message,
@@ -120,6 +136,7 @@ class TypeCRfidTestViewModelTest {
         val activity = mockk<Activity>(relaxed = true)
         val summary = sampleSummary()
 
+        every { probeManager.observeDeviceChanges() } returns emptyFlow()
         every { probeManager.attemptRead(activity) } returns UsbHostProbeResult.ReadSuccess(
             summary = summary,
             payload = "ABC123".encodeToByteArray(),
@@ -137,5 +154,54 @@ class TypeCRfidTestViewModelTest {
         assertEquals("41 42 43 31 32 33", viewModel.panelState.value.rawPayloadHex)
         assertEquals("ABC123", viewModel.panelState.value.parsedTagId)
         assertEquals(fixedNow, viewModel.panelState.value.lastUpdatedAt)
+    }
+
+    @Test
+    fun `device attach event reuses refresh path`() = runTest {
+        val probeManager = mockk<UsbHostProbeManager>()
+        val deviceEvents = MutableSharedFlow<UsbHostDeviceEvent>(extraBufferCapacity = 1)
+        val summary = sampleSummary()
+
+        every { probeManager.observeDeviceChanges() } returns deviceEvents
+        every { probeManager.refresh() } returns UsbHostProbeResult.DeviceFound(
+            summary = summary,
+            hasPermission = true,
+        )
+
+        val viewModel = TypeCRfidTestViewModel(
+            probeManager = probeManager,
+            parser = mockk(relaxed = true),
+            nowProvider = { fixedNow },
+        )
+
+        viewModel.startObserving()
+        advanceUntilIdle()
+        deviceEvents.emit(UsbHostDeviceEvent.Attached)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.panelState.value.probeState is UsbProbeUiState.Ready)
+        assertEquals(summary, viewModel.panelState.value.deviceSummary)
+    }
+
+    @Test
+    fun `device detach event reuses refresh path`() = runTest {
+        val probeManager = mockk<UsbHostProbeManager>()
+        val deviceEvents = MutableSharedFlow<UsbHostDeviceEvent>(extraBufferCapacity = 1)
+
+        every { probeManager.observeDeviceChanges() } returns deviceEvents
+        every { probeManager.refresh() } returns UsbHostProbeResult.NoDevice
+
+        val viewModel = TypeCRfidTestViewModel(
+            probeManager = probeManager,
+            parser = mockk(relaxed = true),
+            nowProvider = { fixedNow },
+        )
+
+        viewModel.startObserving()
+        advanceUntilIdle()
+        deviceEvents.emit(UsbHostDeviceEvent.Detached)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.panelState.value.probeState is UsbProbeUiState.NoDevice)
     }
 }
