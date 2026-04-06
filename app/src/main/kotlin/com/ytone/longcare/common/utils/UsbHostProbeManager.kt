@@ -1,6 +1,7 @@
 package com.ytone.longcare.common.utils
 
 import android.app.Activity
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -8,6 +9,7 @@ import android.content.IntentFilter
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
+import androidx.core.app.PendingIntentCompat
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -19,6 +21,7 @@ import kotlinx.coroutines.flow.callbackFlow
 sealed class UsbHostDeviceEvent {
     data object Attached : UsbHostDeviceEvent()
     data object Detached : UsbHostDeviceEvent()
+    data class PermissionChanged(val granted: Boolean) : UsbHostDeviceEvent()
 }
 
 interface UsbHostProbeManager {
@@ -33,6 +36,7 @@ class DefaultUsbHostProbeManager @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : UsbHostProbeManager {
 
+    private val permissionAction = "${context.packageName}.USB_HOST_PROBE_PERMISSION"
     private val usbManager: UsbManager by lazy {
         context.getSystemService(Context.USB_SERVICE) as UsbManager
     }
@@ -46,9 +50,22 @@ class DefaultUsbHostProbeManager @Inject constructor(
     }
 
     override fun requestPermission(activity: Activity): UsbHostProbeResult {
-        // Placeholder behavior for Task 2: report current permission state only.
-        // Real PendingIntent + BroadcastReceiver permission flow will be added later.
         val device = usbManager.deviceList.values.firstOrNull() ?: return UsbHostProbeResult.NoDevice
+        if (!usbManager.hasPermission(device)) {
+            val permissionIntent = Intent(permissionAction).setPackage(context.packageName)
+            val pendingIntent = PendingIntentCompat.getBroadcast(
+                context,
+                1001,
+                permissionIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT,
+                false,
+            )
+
+            if (pendingIntent != null) {
+                usbManager.requestPermission(device, pendingIntent)
+            }
+        }
+
         return UsbHostProbeResult.DeviceFound(
             summary = device.toSummary(),
             hasPermission = usbManager.hasPermission(device),
@@ -106,6 +123,10 @@ class DefaultUsbHostProbeManager @Inject constructor(
                 when (intent.action) {
                     UsbManager.ACTION_USB_DEVICE_ATTACHED -> trySend(UsbHostDeviceEvent.Attached)
                     UsbManager.ACTION_USB_DEVICE_DETACHED -> trySend(UsbHostDeviceEvent.Detached)
+                    permissionAction -> {
+                        val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+                        trySend(UsbHostDeviceEvent.PermissionChanged(granted))
+                    }
                 }
             }
         }
@@ -113,6 +134,7 @@ class DefaultUsbHostProbeManager @Inject constructor(
         val filter = IntentFilter().apply {
             addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
             addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+            addAction(permissionAction)
         }
 
         ContextCompat.registerReceiver(

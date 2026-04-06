@@ -130,6 +130,31 @@ class TypeCRfidTestViewModelTest {
     }
 
     @Test
+    fun `attempt read maps usb permission failure to permission denied`() {
+        val probeManager = mockk<UsbHostProbeManager>()
+        val activity = mockk<Activity>(relaxed = true)
+        val summary = sampleSummary()
+
+        every { probeManager.observeDeviceChanges() } returns emptyFlow()
+        every { probeManager.attemptRead(activity) } returns UsbHostProbeResult.ReadFailure(
+            summary = summary,
+            message = "USB权限未授予",
+        )
+
+        val viewModel = TypeCRfidTestViewModel(
+            probeManager = probeManager,
+            parser = mockk(relaxed = true),
+            nowProvider = { fixedNow },
+        )
+
+        viewModel.attemptRead(activity)
+
+        assertTrue(viewModel.panelState.value.probeState is UsbProbeUiState.PermissionDenied)
+        assertEquals(summary, viewModel.panelState.value.deviceSummary)
+        assertEquals(fixedNow, viewModel.panelState.value.lastUpdatedAt)
+    }
+
+    @Test
     fun `attempt read stores raw payload hex text and parsed tag id`() {
         val probeManager = mockk<UsbHostProbeManager>()
         val parser = mockk<ExternalRfidTagParser>()
@@ -203,5 +228,27 @@ class TypeCRfidTestViewModelTest {
         advanceUntilIdle()
 
         assertTrue(viewModel.panelState.value.probeState is UsbProbeUiState.NoDevice)
+    }
+
+    @Test
+    fun `permission denied event updates panel state without requiring manual refresh`() = runTest {
+        val probeManager = mockk<UsbHostProbeManager>()
+        val deviceEvents = MutableSharedFlow<UsbHostDeviceEvent>(extraBufferCapacity = 1)
+
+        every { probeManager.observeDeviceChanges() } returns deviceEvents
+
+        val viewModel = TypeCRfidTestViewModel(
+            probeManager = probeManager,
+            parser = mockk(relaxed = true),
+            nowProvider = { fixedNow },
+        )
+
+        viewModel.startObserving()
+        advanceUntilIdle()
+        deviceEvents.emit(UsbHostDeviceEvent.PermissionChanged(granted = false))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.panelState.value.probeState is UsbProbeUiState.PermissionDenied)
+        assertEquals(fixedNow, viewModel.panelState.value.lastUpdatedAt)
     }
 }

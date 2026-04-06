@@ -47,6 +47,16 @@ class TypeCRfidTestViewModel @Inject constructor(
                     UsbHostDeviceEvent.Attached,
                     UsbHostDeviceEvent.Detached,
                     -> refreshDevices()
+                    is UsbHostDeviceEvent.PermissionChanged -> {
+                        if (event.granted) {
+                            refreshDevices()
+                        } else {
+                            _panelState.value = _panelState.value.copy(
+                                probeState = UsbProbeUiState.PermissionDenied,
+                                lastUpdatedAt = nowProvider(),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -87,7 +97,11 @@ class TypeCRfidTestViewModel @Inject constructor(
             )
 
             is UsbHostProbeResult.ReadFailure -> TypeCRfidPanelState(
-                probeState = UsbProbeUiState.ReadFailed(result.message),
+                probeState = if (result.message == "USB权限未授予") {
+                    UsbProbeUiState.PermissionDenied
+                } else {
+                    UsbProbeUiState.ReadFailed(result.message)
+                },
                 deviceSummary = result.summary,
                 lastUpdatedAt = nowProvider(),
             )
