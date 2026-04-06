@@ -8,6 +8,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbEndpoint
+import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import androidx.core.app.PendingIntentCompat
 import androidx.core.content.ContextCompat
@@ -30,6 +32,11 @@ interface UsbHostProbeManager {
     fun attemptRead(activity: Activity): UsbHostProbeResult
     fun observeDeviceChanges(): Flow<UsbHostDeviceEvent>
 }
+
+internal data class UsbReadTarget(
+    val usbInterface: UsbInterface,
+    val endpoint: UsbEndpoint,
+)
 
 @Singleton
 class DefaultUsbHostProbeManager @Inject constructor(
@@ -82,36 +89,26 @@ class DefaultUsbHostProbeManager @Inject constructor(
         val connection = usbManager.openDevice(device)
             ?: return UsbHostProbeResult.ReadFailure(summary, "无法打开USB设备")
 
+        val readTarget = device.findReadableTarget()
+            ?: return UsbHostProbeResult.ReadFailure(summary, "未找到可读Endpoint")
+
         var usbInterfaceClaimed = false
-        var usbInterface: android.hardware.usb.UsbInterface? = null
         try {
-            if (device.interfaceCount <= 0) {
-                return UsbHostProbeResult.ReadFailure(summary, "未找到可用Interface")
-            }
-            usbInterface = device.getInterface(0)
-            if (!connection.claimInterface(usbInterface, false)) {
+            if (!connection.claimInterface(readTarget.usbInterface, false)) {
                 return UsbHostProbeResult.ReadFailure(summary, "无法声明USB Interface")
             }
             usbInterfaceClaimed = true
 
-            val endpoint = (0 until usbInterface.endpointCount)
-                .map { usbInterface.getEndpoint(it) }
-                .firstOrNull {
-                    it.direction == UsbConstants.USB_DIR_IN &&
-                        it.type == UsbConstants.USB_ENDPOINT_XFER_BULK
-                }
-                ?: return UsbHostProbeResult.ReadFailure(summary, "未找到可读Bulk Endpoint")
-
-            val buffer = ByteArray(endpoint.maxPacketSize.coerceAtLeast(64))
-            val length = connection.bulkTransfer(endpoint, buffer, buffer.size, 300)
+            val buffer = ByteArray(readTarget.endpoint.maxPacketSize.coerceAtLeast(64))
+            val length = connection.bulkTransfer(readTarget.endpoint, buffer, buffer.size, 300)
             if (length <= 0) {
                 return UsbHostProbeResult.ReadFailure(summary, "未读取到原始数据")
             }
 
             return UsbHostProbeResult.ReadSuccess(summary, buffer.copyOf(length))
         } finally {
-            if (usbInterfaceClaimed && usbInterface != null) {
-                connection.releaseInterface(usbInterface)
+            if (usbInterfaceClaimed) {
+                connection.releaseInterface(readTarget.usbInterface)
             }
             connection.close()
         }
@@ -170,4 +167,30 @@ class DefaultUsbHostProbeManager @Inject constructor(
             }
         },
     )
+}
+
+internal fun UsbDevice.findReadableTarget(): UsbReadTarget? {
+    var interruptFallback: UsbReadTarget? = null
+
+    for (interfaceIndex in 0 until interfaceCount) {
+        val usbInterface = getInterface(interfaceIndex)
+        for (endpointIndex in 0 until usbInterface.endpointCount) {
+            val endpoint = usbInterface.getEndpoint(endpointIndex)
+            if (endpoint.direction != UsbConstants.USB_DIR_IN) continue
+
+            when (endpoint.type) {
+                UsbConstants.USB_ENDPOINT_XFER_BULK -> {
+                    return UsbReadTarget(usbInterface, endpoint)
+                }
+
+                UsbConstants.USB_ENDPOINT_XFER_INT -> {
+                    if (interruptFallback == null) {
+                        interruptFallback = UsbReadTarget(usbInterface, endpoint)
+                    }
+                }
+            }
+        }
+    }
+
+    return interruptFallback
 }
