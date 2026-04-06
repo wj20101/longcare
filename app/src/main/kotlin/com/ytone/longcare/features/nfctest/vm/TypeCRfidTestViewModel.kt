@@ -19,6 +19,16 @@ class TypeCRfidTestViewModel @Inject constructor(
     private val parser: ExternalRfidTagParser,
 ) : ViewModel() {
 
+    private var nowProvider: () -> String = { nowString() }
+
+    internal constructor(
+        probeManager: UsbHostProbeManager,
+        parser: ExternalRfidTagParser,
+        nowProvider: () -> String,
+    ) : this(probeManager, parser) {
+        this.nowProvider = nowProvider
+    }
+
     private val _panelState = MutableStateFlow(TypeCRfidPanelState())
     val panelState: StateFlow<TypeCRfidPanelState> = _panelState.asStateFlow()
 
@@ -48,13 +58,13 @@ class TypeCRfidTestViewModel @Inject constructor(
                     UsbProbeUiState.DeviceDetected
                 },
                 deviceSummary = result.summary,
-                lastUpdatedAt = nowString(),
+                lastUpdatedAt = nowProvider(),
             )
 
             is UsbHostProbeResult.ReadFailure -> TypeCRfidPanelState(
                 probeState = UsbProbeUiState.ReadFailed(result.message),
                 deviceSummary = result.summary,
-                lastUpdatedAt = nowString(),
+                lastUpdatedAt = nowProvider(),
             )
 
             is UsbHostProbeResult.ReadSuccess -> {
@@ -65,7 +75,7 @@ class TypeCRfidTestViewModel @Inject constructor(
                     rawPayload = result.payload,
                     rawPayloadText = text,
                     parsedTagId = parser.normalize(text),
-                    lastUpdatedAt = nowString(),
+                    lastUpdatedAt = nowProvider(),
                 )
             }
         }

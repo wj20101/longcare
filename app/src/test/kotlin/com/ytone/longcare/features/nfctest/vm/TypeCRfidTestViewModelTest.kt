@@ -13,6 +13,19 @@ import org.junit.Test
 
 class TypeCRfidTestViewModelTest {
 
+    private val fixedNow = "12:34:56"
+
+    private fun sampleSummary() = UsbDeviceSummary(
+        deviceName = "reader-1",
+        vendorId = 1234,
+        productId = 5678,
+        deviceClass = 0,
+        deviceSubclass = 0,
+        deviceProtocol = 0,
+        interfaceCount = 1,
+        endpoints = emptyList(),
+    )
+
     @Test
     fun `refresh updates state to no device when probe manager finds nothing`() {
         val probeManager = mockk<UsbHostProbeManager>()
@@ -29,20 +42,83 @@ class TypeCRfidTestViewModelTest {
     }
 
     @Test
+    fun `refresh maps device found with permission to ready and stores last updated time`() {
+        val probeManager = mockk<UsbHostProbeManager>()
+        val summary = sampleSummary()
+        every { probeManager.refresh() } returns UsbHostProbeResult.DeviceFound(
+            summary = summary,
+            hasPermission = true,
+        )
+
+        val viewModel = TypeCRfidTestViewModel(
+            probeManager = probeManager,
+            parser = mockk(relaxed = true),
+            nowProvider = { fixedNow },
+        )
+
+        viewModel.refreshDevices()
+        val panelState = viewModel.panelState.value
+
+        assertTrue(panelState.probeState is UsbProbeUiState.Ready)
+        assertEquals(summary, panelState.deviceSummary)
+        assertEquals(fixedNow, panelState.lastUpdatedAt)
+    }
+
+    @Test
+    fun `refresh maps device found without permission to device detected and stores last updated time`() {
+        val probeManager = mockk<UsbHostProbeManager>()
+        val summary = sampleSummary()
+        every { probeManager.refresh() } returns UsbHostProbeResult.DeviceFound(
+            summary = summary,
+            hasPermission = false,
+        )
+
+        val viewModel = TypeCRfidTestViewModel(
+            probeManager = probeManager,
+            parser = mockk(relaxed = true),
+            nowProvider = { fixedNow },
+        )
+
+        viewModel.refreshDevices()
+        val panelState = viewModel.panelState.value
+
+        assertTrue(panelState.probeState is UsbProbeUiState.DeviceDetected)
+        assertEquals(summary, panelState.deviceSummary)
+        assertEquals(fixedNow, panelState.lastUpdatedAt)
+    }
+
+    @Test
+    fun `attempt read maps read failure message preserves summary and stores last updated time`() {
+        val probeManager = mockk<UsbHostProbeManager>()
+        val activity = mockk<Activity>(relaxed = true)
+        val summary = sampleSummary()
+        val message = "read failed"
+        every { probeManager.attemptRead(activity) } returns UsbHostProbeResult.ReadFailure(
+            summary = summary,
+            message = message,
+        )
+
+        val viewModel = TypeCRfidTestViewModel(
+            probeManager = probeManager,
+            parser = mockk(relaxed = true),
+            nowProvider = { fixedNow },
+        )
+
+        viewModel.attemptRead(activity)
+        val panelState = viewModel.panelState.value
+
+        assertTrue(panelState.probeState is UsbProbeUiState.ReadFailed)
+        assertEquals(message, (panelState.probeState as UsbProbeUiState.ReadFailed).message)
+        assertEquals(summary, panelState.deviceSummary)
+        assertEquals(fixedNow, panelState.lastUpdatedAt)
+    }
+
+    @Test
     fun `attempt read stores raw payload hex text and parsed tag id`() {
         val probeManager = mockk<UsbHostProbeManager>()
         val parser = mockk<ExternalRfidTagParser>()
         val activity = mockk<Activity>(relaxed = true)
-        val summary = UsbDeviceSummary(
-            deviceName = "reader-1",
-            vendorId = 1234,
-            productId = 5678,
-            deviceClass = 0,
-            deviceSubclass = 0,
-            deviceProtocol = 0,
-            interfaceCount = 1,
-            endpoints = emptyList(),
-        )
+        val summary = sampleSummary()
 
         every { probeManager.attemptRead(activity) } returns UsbHostProbeResult.ReadSuccess(
             summary = summary,
