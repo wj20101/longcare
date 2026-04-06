@@ -126,11 +126,16 @@ class TypeCRfidTestViewModelTest {
         )
         every { parser.normalize("ABC123") } returns "ABC123"
 
-        val viewModel = TypeCRfidTestViewModel(probeManager, parser)
+        val viewModel = TypeCRfidTestViewModel(
+            probeManager = probeManager,
+            parser = parser,
+            nowProvider = { fixedNow },
+        )
         viewModel.attemptRead(activity)
 
         assertEquals("ABC123", viewModel.panelState.value.rawPayloadText)
         assertEquals("41 42 43 31 32 33", viewModel.panelState.value.rawPayloadHex)
         assertEquals("ABC123", viewModel.panelState.value.parsedTagId)
+        assertEquals(fixedNow, viewModel.panelState.value.lastUpdatedAt)
     }
 }
