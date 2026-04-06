@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.nfctest.ui
 
+import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.features.nfctest.vm.TypeCRfidPanelState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +60,11 @@ internal fun NfcTestTopBar(onNavigateBack: () -> Unit) {
 @Composable
 internal fun NfcTestBody(
     enabled: Boolean,
+    typeCPanelState: TypeCRfidPanelState,
+    activity: Activity?,
+    onRefreshTypeC: () -> Unit,
+    onRequestTypeCPermission: (Activity) -> Unit,
+    onAttemptTypeCRead: (Activity) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -65,13 +72,20 @@ internal fun NfcTestBody(
             .fillMaxSize()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (enabled) {
             EnabledNfcTestCard()
         } else {
             DisabledNfcTestCard()
         }
+        TypeCRfidTestPanel(
+            state = typeCPanelState,
+            activity = activity,
+            onRefresh = onRefreshTypeC,
+            onRequestPermission = onRequestTypeCPermission,
+            onAttemptRead = onAttemptTypeCRead,
+        )
     }
 }
 
