@@ -5,8 +5,6 @@ import android.content.Context
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
-import com.ytone.longcare.features.nfctest.vm.UsbDeviceSummary
-import com.ytone.longcare.features.nfctest.vm.UsbEndpointSummary
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -35,6 +33,8 @@ class DefaultUsbHostProbeManager @Inject constructor(
     }
 
     override fun requestPermission(activity: Activity): UsbHostProbeResult {
+        // Placeholder behavior for Task 2: report current permission state only.
+        // Real PendingIntent + BroadcastReceiver permission flow will be added later.
         val device = usbManager.deviceList.values.firstOrNull() ?: return UsbHostProbeResult.NoDevice
         return UsbHostProbeResult.DeviceFound(
             summary = device.toSummary(),
@@ -52,17 +52,25 @@ class DefaultUsbHostProbeManager @Inject constructor(
         val connection = usbManager.openDevice(device)
             ?: return UsbHostProbeResult.ReadFailure(summary, "无法打开USB设备")
 
+        var usbInterfaceClaimed = false
+        var usbInterface: android.hardware.usb.UsbInterface? = null
         try {
-            val usbInterface = if (device.interfaceCount > 0) device.getInterface(0) else null
-                ?: return UsbHostProbeResult.ReadFailure(summary, "未找到可用Interface")
-            if (!connection.claimInterface(usbInterface, true)) {
+            if (device.interfaceCount <= 0) {
+                return UsbHostProbeResult.ReadFailure(summary, "未找到可用Interface")
+            }
+            usbInterface = device.getInterface(0)
+            if (!connection.claimInterface(usbInterface, false)) {
                 return UsbHostProbeResult.ReadFailure(summary, "无法声明USB Interface")
             }
+            usbInterfaceClaimed = true
 
             val endpoint = (0 until usbInterface.endpointCount)
                 .map { usbInterface.getEndpoint(it) }
-                .firstOrNull { it.direction == UsbConstants.USB_DIR_IN }
-                ?: return UsbHostProbeResult.ReadFailure(summary, "未找到可读Endpoint")
+                .firstOrNull {
+                    it.direction == UsbConstants.USB_DIR_IN &&
+                        it.type == UsbConstants.USB_ENDPOINT_XFER_BULK
+                }
+                ?: return UsbHostProbeResult.ReadFailure(summary, "未找到可读Bulk Endpoint")
 
             val buffer = ByteArray(endpoint.maxPacketSize.coerceAtLeast(64))
             val length = connection.bulkTransfer(endpoint, buffer, buffer.size, 300)
@@ -72,6 +80,9 @@ class DefaultUsbHostProbeManager @Inject constructor(
 
             return UsbHostProbeResult.ReadSuccess(summary, buffer.copyOf(length))
         } finally {
+            if (usbInterfaceClaimed && usbInterface != null) {
+                connection.releaseInterface(usbInterface)
+            }
             connection.close()
         }
     }

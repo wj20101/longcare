@@ -1,6 +1,22 @@
 package com.ytone.longcare.common.utils
 
-import com.ytone.longcare.features.nfctest.vm.UsbDeviceSummary
+data class UsbEndpointSummary(
+    val address: Int,
+    val direction: Int,
+    val type: Int,
+    val maxPacketSize: Int,
+)
+
+data class UsbDeviceSummary(
+    val deviceName: String,
+    val vendorId: Int,
+    val productId: Int,
+    val deviceClass: Int,
+    val deviceSubclass: Int,
+    val deviceProtocol: Int,
+    val interfaceCount: Int,
+    val endpoints: List<UsbEndpointSummary>,
+)
 
 sealed class UsbHostProbeResult {
     data object NoDevice : UsbHostProbeResult()

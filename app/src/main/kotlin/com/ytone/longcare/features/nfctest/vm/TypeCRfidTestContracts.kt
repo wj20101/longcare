@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.nfctest.vm
 
+import com.ytone.longcare.common.utils.UsbDeviceSummary
+
 sealed class UsbProbeUiState {
     data object Idle : UsbProbeUiState()
     data object NoDevice : UsbProbeUiState()
@@ -9,24 +11,6 @@ sealed class UsbProbeUiState {
     data object Reading : UsbProbeUiState()
     data class ReadFailed(val message: String) : UsbProbeUiState()
 }
-
-data class UsbEndpointSummary(
-    val address: Int,
-    val direction: Int,
-    val type: Int,
-    val maxPacketSize: Int,
-)
-
-data class UsbDeviceSummary(
-    val deviceName: String,
-    val vendorId: Int,
-    val productId: Int,
-    val deviceClass: Int,
-    val deviceSubclass: Int,
-    val deviceProtocol: Int,
-    val interfaceCount: Int,
-    val endpoints: List<UsbEndpointSummary>,
-)
 
 data class TypeCRfidPanelState(
     val probeState: UsbProbeUiState = UsbProbeUiState.Idle,

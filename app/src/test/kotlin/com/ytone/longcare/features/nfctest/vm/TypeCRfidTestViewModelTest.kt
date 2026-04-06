@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.nfctest.vm
 
-import android.app.Activity
 import com.ytone.longcare.common.utils.UsbHostProbeManager
 import com.ytone.longcare.common.utils.UsbHostProbeResult
 import io.mockk.every
