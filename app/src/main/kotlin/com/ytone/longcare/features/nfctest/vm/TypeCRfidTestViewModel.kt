@@ -6,8 +6,9 @@ import com.ytone.longcare.common.utils.ExternalRfidTagParser
 import com.ytone.longcare.common.utils.UsbHostProbeManager
 import com.ytone.longcare.common.utils.UsbHostProbeResult
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -81,5 +82,5 @@ class TypeCRfidTestViewModel @Inject constructor(
         }
     }
 
-    private fun nowString(): String = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+    private fun nowString(): String = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
 }
