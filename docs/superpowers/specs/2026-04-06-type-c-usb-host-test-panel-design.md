@@ -100,6 +100,7 @@ A generic probe manager for exploratory USB Host work.
 Responsibilities:
 
 - enumerate currently attached USB devices
+- observe USB attach and detach changes while the test page is active
 - request permission
 - read device, interface, and endpoint metadata
 - try to open the connection and read from readable endpoints
@@ -188,6 +189,8 @@ The first version should support these actions:
 
 A `停止读取` action may be added if the probe manager needs a long-running read operation, but it is not required for the first version.
 
+Manual refresh should remain even after automatic attach and detach observation is added. It serves as a fallback recovery action if the device broadcast path is delayed or unreliable on a given handset.
+
 ### 4. State Model
 
 Add a dedicated test-panel state rather than reusing the production `ReaderUiState`.
@@ -215,7 +218,30 @@ This separation keeps the panel understandable:
 - the state answers “what stage are we in?”
 - the data fields answer “what did we find?”
 
-### 5. Generic USB Host Strategy
+### 5. Automatic Device Refresh
+
+The panel should not depend only on a manual refresh button.
+
+Add automatic USB device observation so the test page updates while it remains open:
+
+- when a Type-C device is attached, the panel should automatically re-run the current device refresh path
+- when a Type-C device is detached, the panel should automatically re-run the current device refresh path
+
+The simplest implementation model is:
+
+- `UsbHostProbeManager.startObserving(...)`
+- `UsbHostProbeManager.stopObserving()`
+
+The observation path may use either:
+
+- callbacks that tell the view model a device attach or detach event happened
+- or a small `Flow` of attach and detach events
+
+The important rule is not the transport. The important rule is that the test panel reuses the existing refresh logic rather than maintaining a second state machine for broadcasts.
+
+Keep manual refresh as a user-controlled fallback.
+
+### 6. Generic USB Host Strategy
 
 Without an SDK, the first version should act as a conservative probe.
 
@@ -233,7 +259,7 @@ The first version should avoid speculative writes or vendor-specific commands.
 
 This is a probe, not a protocol implementation.
 
-### 6. Error Handling
+### 7. Error Handling
 
 Error handling should remain diagnostic and explicit.
 
@@ -263,7 +289,7 @@ Use separate states for:
 
 This is better than collapsing everything into a generic “失败”, because the panel’s purpose is diagnosis.
 
-### 7. Production Safety
+### 8. Production Safety
 
 This panel must stay isolated from production business flow.
 
@@ -277,7 +303,7 @@ The test page should only display probe information.
 
 This ensures hardware experiments do not create accidental business side effects.
 
-### 8. File Targets
+### 9. File Targets
 
 Expected implementation focus:
 
@@ -305,7 +331,8 @@ If strings are added, `app/src/main/res/values/strings.xml` will change.
 5. The test section can attempt a generic read and display the latest raw payload as text and hex.
 6. The test section attempts to parse the raw payload and displays the parsed card ID or an explicit failure to parse.
 7. The test section does not emit production `TagScanned` events.
-8. The implementation remains generic and does not assume a vendor SDK or private command protocol.
+8. While the test page remains open, attaching or removing the Type-C device automatically refreshes the panel state.
+9. The implementation remains generic and does not assume a vendor SDK or private command protocol.
 
 ## Verification Strategy
 
@@ -316,18 +343,20 @@ Implementation should verify at least the following.
 - state mapping tests for `UsbProbeUiState`
 - parser display tests for text/hex/result formatting
 - UI tests or unit tests for panel copy/state decisions where practical
+- tests that attach and detach observation triggers the existing refresh path
 
 ### Manual
 
 - open the NFC test page with no Type-C reader attached
 - verify `未检测到USB设备`
 - attach the Type-C reader and verify the device summary updates
+- leave the page open and verify attach updates the panel without tapping refresh
 - request USB permission and confirm state changes
 - inspect interface and endpoint details
 - attempt a read while presenting a card
 - verify whether raw payload appears
 - verify whether parser result appears
-- remove the device and confirm the panel returns to the disconnected/no-device state
+- remove the device and confirm the panel returns to the disconnected/no-device state without tapping refresh
 
 ## Risks and Controls
 
@@ -357,6 +386,15 @@ Control:
 - show only the latest useful values
 - keep actions limited to refresh, permission, and read attempt
 - avoid export tools, packet history, and write-command experiments in version one
+
+### Risk: Attach and detach observation introduces a second state machine
+
+If broadcast handling mutates panel state separately from refresh logic, the test panel can drift into inconsistent states.
+
+Control:
+
+- use attach and detach observation only to trigger the existing refresh path
+- keep one source of truth for panel state mapping in the view model
 
 ## Rationale
 
