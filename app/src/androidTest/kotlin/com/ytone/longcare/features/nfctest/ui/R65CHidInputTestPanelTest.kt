@@ -10,8 +10,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -112,5 +115,28 @@ class R65CHidInputTestPanelTest {
         composeRule.onNodeWithTag("r65c_last_raw_value").assertTextEquals("CD\r")
         composeRule.onNodeWithTag("r65c_last_uid_value").assertTextEquals("CD")
         composeRule.onNodeWithTag("r65c_last_completed_at").assertTextEquals("12:34:56")
+    }
+
+    @Test
+    fun body_shows_r65c_panel_and_hides_legacy_usb_host_actions() {
+        composeRule.setContent {
+            LongCareTheme {
+                NfcTestBody(
+                    enabled = true,
+                    r65cPanelState = R65CHidPanelState(
+                        captureState = R65CHidCaptureState.ReadyForScan,
+                    ),
+                    onR65CInputChanged = {},
+                    onR65CFocusChanged = {},
+                    onR65CRequestRefocus = {},
+                    onR65CClearResult = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("R65C HID 键盘口测试").assertExists()
+        composeRule.onAllNodesWithText("刷新设备").assertCountEquals(0)
+        composeRule.onAllNodesWithText("申请权限").assertCountEquals(0)
+        composeRule.onAllNodesWithText("开始尝试读取").assertCountEquals(0)
     }
 }

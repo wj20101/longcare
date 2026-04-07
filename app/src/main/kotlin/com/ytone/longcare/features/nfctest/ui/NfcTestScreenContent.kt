@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.nfctest.ui
 
-import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -29,7 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ytone.longcare.features.nfctest.vm.TypeCRfidPanelState
+import com.ytone.longcare.features.nfctest.vm.R65CHidPanelState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,11 +61,11 @@ internal fun NfcTestTopBar(onNavigateBack: () -> Unit) {
 @Composable
 internal fun NfcTestBody(
     enabled: Boolean,
-    typeCPanelState: TypeCRfidPanelState,
-    activity: Activity?,
-    onRefreshTypeC: () -> Unit,
-    onRequestTypeCPermission: (Activity) -> Unit,
-    onAttemptTypeCRead: (Activity) -> Unit,
+    r65cPanelState: R65CHidPanelState,
+    onR65CInputChanged: (String) -> Unit,
+    onR65CFocusChanged: (Boolean) -> Unit,
+    onR65CRequestRefocus: () -> Unit,
+    onR65CClearResult: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -82,12 +81,12 @@ internal fun NfcTestBody(
         } else {
             DisabledNfcTestCard()
         }
-        TypeCRfidTestPanel(
-            state = typeCPanelState,
-            activity = activity,
-            onRefresh = onRefreshTypeC,
-            onRequestPermission = onRequestTypeCPermission,
-            onAttemptRead = onAttemptTypeCRead,
+        R65CHidInputTestPanel(
+            state = r65cPanelState,
+            onInputChanged = onR65CInputChanged,
+            onFocusChanged = onR65CFocusChanged,
+            onRequestRefocus = onR65CRequestRefocus,
+            onClearResult = onR65CClearResult,
         )
     }
 }
