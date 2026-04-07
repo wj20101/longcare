@@ -147,4 +147,86 @@ class R65CHidInputTestViewModelTest {
         assertEquals(fixedNow, viewModel.panelState.value.lastCompletedAt)
         assertEquals(1L, viewModel.panelState.value.focusRequestToken)
     }
+
+    @Test
+    fun `focus loss cancels pending completion`() = runTest {
+        every { parser.normalize(any()) } returns "SHOULD_NOT_HAPPEN"
+        val viewModel = R65CHidInputTestViewModel(
+            parser = parser,
+            nowProvider = { fixedNow },
+            completionDelayMillis = 400L,
+        )
+
+        viewModel.onFieldFocusChanged(true)
+        viewModel.onInputChanged("AB")
+        viewModel.onFieldFocusChanged(false)
+        advanceTimeBy(401)
+        advanceUntilIdle()
+
+        assertEquals(R65CHidCaptureState.WaitingForFocus, viewModel.panelState.value.captureState)
+        assertEquals(null, viewModel.panelState.value.lastRawInput)
+        assertEquals("AB", viewModel.panelState.value.liveInputBuffer)
+    }
+
+    @Test
+    fun `new input resets idle completion timer`() = runTest {
+        every { parser.normalize("AB") } returns "AB"
+        val viewModel = R65CHidInputTestViewModel(
+            parser = parser,
+            nowProvider = { fixedNow },
+            completionDelayMillis = 400L,
+        )
+
+        viewModel.onFieldFocusChanged(true)
+        viewModel.onInputChanged("A")
+        advanceTimeBy(300)
+        viewModel.onInputChanged("AB")
+        advanceTimeBy(100)
+
+        assertEquals(R65CHidCaptureState.ReceivingInput, viewModel.panelState.value.captureState)
+        assertEquals("AB", viewModel.panelState.value.liveInputBuffer)
+        assertEquals(null, viewModel.panelState.value.lastRawInput)
+
+        advanceTimeBy(300)
+        advanceUntilIdle()
+
+        assertEquals(R65CHidCaptureState.LastCaptureSucceeded, viewModel.panelState.value.captureState)
+        assertEquals("AB", viewModel.panelState.value.lastRawInput)
+        assertEquals("AB", viewModel.panelState.value.lastNormalizedUid)
+    }
+
+    @Test
+    fun `empty input sets ready for scan and clears live buffer`() {
+        val viewModel = R65CHidInputTestViewModel(
+            parser = parser,
+            nowProvider = { fixedNow },
+            completionDelayMillis = 400L,
+        )
+
+        viewModel.onFieldFocusChanged(true)
+        viewModel.onInputChanged("A")
+        viewModel.onInputChanged("")
+
+        assertEquals(R65CHidCaptureState.ReadyForScan, viewModel.panelState.value.captureState)
+        assertEquals("", viewModel.panelState.value.liveInputBuffer)
+    }
+
+    @Test
+    fun `request refocus keeps receiving state when buffer not empty and increments token`() {
+        val viewModel = R65CHidInputTestViewModel(
+            parser = parser,
+            nowProvider = { fixedNow },
+            completionDelayMillis = 400L,
+        )
+
+        viewModel.onFieldFocusChanged(true)
+        viewModel.onInputChanged("AB")
+        val tokenBefore = viewModel.panelState.value.focusRequestToken
+
+        viewModel.requestRefocus()
+
+        assertEquals(R65CHidCaptureState.ReceivingInput, viewModel.panelState.value.captureState)
+        assertEquals("AB", viewModel.panelState.value.liveInputBuffer)
+        assertEquals(tokenBefore + 1, viewModel.panelState.value.focusRequestToken)
+    }
 }

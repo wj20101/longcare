@@ -69,7 +69,7 @@ class R65CHidInputTestViewModel @Inject constructor(
         }
 
         if (newValue.contains('\n') || newValue.contains('\r')) {
-            completeCapture(newValue)
+            finalizeCapture(newValue)
             return
         }
 
@@ -78,8 +78,10 @@ class R65CHidInputTestViewModel @Inject constructor(
                 delay(completionDelayMillis)
                 val pendingBuffer = _panelState.value.liveInputBuffer
                 if (pendingBuffer.isNotBlank()) {
-                    completeCapture(pendingBuffer)
+                    completionJob = null
+                    finalizeCapture(pendingBuffer)
                 }
+                completionJob = null
             }
         }
     }
@@ -112,8 +114,7 @@ class R65CHidInputTestViewModel @Inject constructor(
         }
     }
 
-    private fun completeCapture(rawInput: String) {
-        cancelCompletionJob()
+    private fun finalizeCapture(rawInput: String) {
         val normalized = parser.normalize(rawInput)
         _panelState.update {
             it.copy(
