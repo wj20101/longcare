@@ -45,4 +45,11 @@ class R65CHidInputTestContractsTest {
         assertEquals("未解析出卡号", state.lastNormalizedUidDisplay)
         assertEquals(failureReason, (state.captureState as R65CHidCaptureState.LastCaptureFailed).reason)
     }
+
+    @Test
+    fun `blank normalized uid falls back to placeholder`() {
+        val state = R65CHidPanelState(lastNormalizedUid = "")
+
+        assertEquals("未解析出卡号", state.lastNormalizedUidDisplay)
+    }
 }
