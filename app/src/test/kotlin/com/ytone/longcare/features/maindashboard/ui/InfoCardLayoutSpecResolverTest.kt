@@ -26,7 +26,7 @@ class InfoCardLayoutSpecResolverTest {
     }
 
     @Test
-    fun badge_presence_never_changes_the_single_row_mode() {
+    fun badge_presence_does_not_change_compact_mode_decision() {
         val compact = resolveInfoCardLayoutSpec(cardWidth = 160.dp, hasBadge = true)
         val noBadge = resolveInfoCardLayoutSpec(cardWidth = 160.dp, hasBadge = false)
 
