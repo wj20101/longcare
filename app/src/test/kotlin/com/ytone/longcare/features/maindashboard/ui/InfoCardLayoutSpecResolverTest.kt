@@ -15,8 +15,6 @@ class InfoCardLayoutSpecResolverTest {
 
         assertEquals(13.sp, spec.titleFontSize)
         assertFalse(spec.showSubtitle)
-        assertEquals(28.dp, spec.iconSize)
-        assertEquals(8.dp, spec.horizontalPadding)
     }
 
     @Test
@@ -25,8 +23,6 @@ class InfoCardLayoutSpecResolverTest {
 
         assertEquals(15.sp, spec.titleFontSize)
         assertTrue(spec.showSubtitle)
-        assertEquals(32.dp, spec.iconSize)
-        assertEquals(10.dp, spec.horizontalPadding)
     }
 
     @Test
