@@ -25,7 +25,7 @@ class DashboardGridCompactModeTest {
     fun narrow_width_keeps_cards_in_one_row_and_hides_subtitles() {
         composeRule.setContent {
             LongCareTheme {
-                Box(modifier = Modifier.width(360.dp)) {
+                Box(modifier = Modifier.width(328.dp)) {
                     DashboardGridWithImages(
                         pendingCarePlanCount = 1,
                         actions = MainDashboardActions(
