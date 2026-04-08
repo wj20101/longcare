@@ -45,31 +45,52 @@ internal data class InfoCardLayoutSpec(
     val badgeEndInset: Dp
 )
 
+private object InfoCardLayoutResolverDefaults {
+    val CompactThreshold = 160.dp
+    val MediumThreshold = 172.dp
+
+    val CompactTitleFontSize = 13.sp
+    val MediumTitleFontSize = 14.sp
+    val RegularTitleFontSize = 15.sp
+
+    val CompactIconSize = 28.dp
+    val MediumIconSize = 30.dp
+    val RegularIconSize = 32.dp
+
+    val CompactHorizontalPadding = 8.dp
+    val MediumHorizontalPadding = 9.dp
+    val RegularHorizontalPadding = 10.dp
+
+    val VerticalPadding = 8.dp
+    val CompactBadgeEndInset = 18.dp
+    val RegularBadgeEndInset = 20.dp
+}
+
 internal fun resolveInfoCardLayoutSpec(cardWidth: Dp, hasBadge: Boolean): InfoCardLayoutSpec {
     return when {
-        cardWidth <= 160.dp -> InfoCardLayoutSpec(
-            titleFontSize = 13.sp,
+        cardWidth <= InfoCardLayoutResolverDefaults.CompactThreshold -> InfoCardLayoutSpec(
+            titleFontSize = InfoCardLayoutResolverDefaults.CompactTitleFontSize,
             showSubtitle = false,
-            iconSize = 28.dp,
-            horizontalPadding = 8.dp,
-            verticalPadding = 8.dp,
-            badgeEndInset = if (hasBadge) 18.dp else 0.dp
+            iconSize = InfoCardLayoutResolverDefaults.CompactIconSize,
+            horizontalPadding = InfoCardLayoutResolverDefaults.CompactHorizontalPadding,
+            verticalPadding = InfoCardLayoutResolverDefaults.VerticalPadding,
+            badgeEndInset = if (hasBadge) InfoCardLayoutResolverDefaults.CompactBadgeEndInset else 0.dp
         )
-        cardWidth <= 172.dp -> InfoCardLayoutSpec(
-            titleFontSize = 14.sp,
+        cardWidth <= InfoCardLayoutResolverDefaults.MediumThreshold -> InfoCardLayoutSpec(
+            titleFontSize = InfoCardLayoutResolverDefaults.MediumTitleFontSize,
             showSubtitle = false,
-            iconSize = 30.dp,
-            horizontalPadding = 9.dp,
-            verticalPadding = 8.dp,
-            badgeEndInset = if (hasBadge) 18.dp else 0.dp
+            iconSize = InfoCardLayoutResolverDefaults.MediumIconSize,
+            horizontalPadding = InfoCardLayoutResolverDefaults.MediumHorizontalPadding,
+            verticalPadding = InfoCardLayoutResolverDefaults.VerticalPadding,
+            badgeEndInset = if (hasBadge) InfoCardLayoutResolverDefaults.CompactBadgeEndInset else 0.dp
         )
         else -> InfoCardLayoutSpec(
-            titleFontSize = 15.sp,
+            titleFontSize = InfoCardLayoutResolverDefaults.RegularTitleFontSize,
             showSubtitle = true,
-            iconSize = 32.dp,
-            horizontalPadding = 10.dp,
-            verticalPadding = 8.dp,
-            badgeEndInset = if (hasBadge) 20.dp else 0.dp
+            iconSize = InfoCardLayoutResolverDefaults.RegularIconSize,
+            horizontalPadding = InfoCardLayoutResolverDefaults.RegularHorizontalPadding,
+            verticalPadding = InfoCardLayoutResolverDefaults.VerticalPadding,
+            badgeEndInset = if (hasBadge) InfoCardLayoutResolverDefaults.RegularBadgeEndInset else 0.dp
         )
     }
 }
