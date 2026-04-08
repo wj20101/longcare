@@ -1,7 +1,5 @@
 package com.ytone.longcare.features.maindashboard.ui
 
-import androidx.annotation.DrawableRes
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -84,25 +83,28 @@ fun DashboardGridWithImages(
     pendingCarePlanCount: Int,
     actions: MainDashboardActions
 ) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            InfoCard(
-                modifier = Modifier.weight(1f),
-                iconRes = R.drawable.main_ic_plan,
-                title = "待护理计划",
-                subtitle = if (pendingCarePlanCount > 0) "你有${pendingCarePlanCount}个护理待执行" else "",
-                badgeCount = pendingCarePlanCount,
-                onClick = actions.onNavigateToCarePlansList
-            )
-            InfoCard(
-                modifier = Modifier.weight(1f),
-                iconRes = R.drawable.main_ic_records,
-                title = "已服务记录",
-                subtitle = "查看过往服务记录",
-                onClick = actions.onNavigateToServiceRecordsList
-            )
-        }
+        InfoCard(
+            modifier = Modifier
+                .weight(1f)
+                .testTag("dashboard_pending_card"),
+            iconRes = R.drawable.main_ic_plan,
+            title = "待护理计划",
+            subtitle = if (pendingCarePlanCount > 0) "你有${pendingCarePlanCount}个护理待执行" else "",
+            badgeCount = pendingCarePlanCount,
+            onClick = actions.onNavigateToCarePlansList
+        )
+        InfoCard(
+            modifier = Modifier
+                .weight(1f)
+                .testTag("dashboard_records_card"),
+            iconRes = R.drawable.main_ic_records,
+            title = "已服务记录",
+            subtitle = "查看过往服务记录",
+            onClick = actions.onNavigateToServiceRecordsList
+        )
     }
 }
