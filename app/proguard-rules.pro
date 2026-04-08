@@ -155,6 +155,17 @@
 # --- Tencent Bugly ---
 -dontwarn com.tencent.bugly.**
 -keep public class com.tencent.bugly.**{*;}
+
+# --- AMap Location ---
+# AMap location SDK calls back into Java from JNI via fixed class/member names.
+# Renaming support/logging classes in release builds can trigger NoSuchMethodError
+# during native library loading (for example com.amap.location.support.log.ALLog.d).
+-keep class com.amap.api.location.** { *; }
+-keep class com.amap.api.fence.** { *; }
+-keep class com.loc.** { *; }
+-keep class com.autonavi.aps.amapapi.model.** { *; }
+-keep class com.autonavi.** { *; }
+-keep class com.amap.location.** { *; }
 #===============================================================================
 # 应用特定规则 (请根据您的代码添加)
 #===============================================================================
