@@ -15,6 +15,12 @@ That panel proved two important facts:
 - `R65C` can produce readable HID keyboard-style output
 - the current app-side capture path can observe that output
 
+It also has an important limitation:
+
+- the current panel is built on text-input callbacks from `OutlinedTextField`
+- it is useful as a smoke test
+- but it is not authoritative evidence of the reader's raw HID output because the visible text may already be altered by IME, keyboard-layout, or text-input handling
+
 At the same time, real-device testing exposed a more important question before business integration can proceed:
 
 - some `R65C` output settings can produce a full NFC UID that matches system NFC output
@@ -72,6 +78,11 @@ The new panel should:
 - group one swipe into a single completed session
 - generate several candidate interpretations from the same session
 - make it obvious when text-field output and key-event output diverge
+
+The design explicitly treats the existing `R65C HID 键盘口测试` panel as:
+
+- a smoke-test surface
+- not the source of truth for raw reader output
 
 ## Design
 
