@@ -20,7 +20,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.testTag
@@ -31,6 +33,8 @@ import com.ytone.longcare.model.NurseServiceTimeModel
 import com.ytone.longcare.model.User
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.ui.components.UserAvatar
+
+private val StatsCardRowMinHeight = 88.dp
 
 @Composable
 fun UserInfoSection(user: User) {
@@ -59,6 +63,12 @@ fun UserInfoSection(user: User) {
                 color = Color.White.copy(alpha = 0.5f),
                 fontSize = 12.sp,
                 lineHeight = 12.sp,
+                style = TextStyle(
+                    lineHeightStyle = LineHeightStyle(
+                        alignment = LineHeightStyle.Alignment.Center,
+                        trim = LineHeightStyle.Trim.Both
+                    )
+                ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.testTag("profile_user_identity")
@@ -78,7 +88,7 @@ fun StatsCard(actions: ProfileActions, stats: NurseServiceTimeModel) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 88.dp)
+                .heightIn(min = StatsCardRowMinHeight)
                 .testTag("profile_stats_card_row"),
             verticalAlignment = Alignment.CenterVertically
         ) {
