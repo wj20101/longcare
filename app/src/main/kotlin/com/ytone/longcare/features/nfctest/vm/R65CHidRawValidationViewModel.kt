@@ -36,13 +36,7 @@ class R65CHidRawValidationViewModel @Inject constructor() : ViewModel() {
     fun onFocusChanged(isFocused: Boolean) {
         if (isFocused) {
             _panelState.update { state ->
-                state.copy(
-                    captureState = if (state.currentSessionEvents.isEmpty()) {
-                        R65CHidRawCaptureState.ReadyForScan
-                    } else {
-                        R65CHidRawCaptureState.ReceivingKeys
-                    },
-                )
+                state.copy(captureState = state.captureStateForCurrentSession())
             }
             return
         }
@@ -56,6 +50,10 @@ class R65CHidRawValidationViewModel @Inject constructor() : ViewModel() {
     }
 
     fun onCapturedKey(event: R65CHidCapturedKeyEvent) {
+        if (!event.shouldAffectCurrentSession()) {
+            return
+        }
+
         cancelCompletionJob()
         _panelState.update { state ->
             state.copy(
@@ -65,7 +63,7 @@ class R65CHidRawValidationViewModel @Inject constructor() : ViewModel() {
             )
         }
 
-        if (event.displayChar == "\\n") {
+        if (event.isEnterKey()) {
             completeSession(R65CHidCompletionReason.EnterKey)
             return
         }
@@ -79,8 +77,12 @@ class R65CHidRawValidationViewModel @Inject constructor() : ViewModel() {
     }
 
     fun requestRefocus() {
-        _panelState.update {
-            it.copy(focusRequestToken = it.focusRequestToken + 1)
+        cancelCompletionJob()
+        _panelState.update { state ->
+            state.copy(
+                captureState = state.captureStateForCurrentSession(),
+                focusRequestToken = state.focusRequestToken + 1,
+            )
         }
     }
 
@@ -138,11 +140,29 @@ class R65CHidRawValidationViewModel @Inject constructor() : ViewModel() {
         super.onCleared()
     }
 
+    private fun R65CHidRawValidationState.captureStateForCurrentSession(): R65CHidRawCaptureState {
+        return if (currentSessionEvents.isEmpty()) {
+            R65CHidRawCaptureState.ReadyForScan
+        } else {
+            R65CHidRawCaptureState.ReceivingKeys
+        }
+    }
+
+    private fun R65CHidCapturedKeyEvent.shouldAffectCurrentSession(): Boolean {
+        return action == KEY_ACTION_DOWN
+    }
+
     private fun R65CHidCapturedKeyEvent.visibleDisplayChar(): String {
-        return if (displayChar == "\\n") "" else displayChar
+        return if (isEnterKey()) "" else displayChar
+    }
+
+    private fun R65CHidCapturedKeyEvent.isEnterKey(): Boolean {
+        return displayChar == "\\n" || unicodeChar == '\n'.code || keyCode == KEY_CODE_ENTER
     }
 
     private companion object {
         const val DEFAULT_COMPLETION_DELAY_MILLIS = 400L
+        const val KEY_ACTION_DOWN = 0
+        const val KEY_CODE_ENTER = 66
     }
 }
