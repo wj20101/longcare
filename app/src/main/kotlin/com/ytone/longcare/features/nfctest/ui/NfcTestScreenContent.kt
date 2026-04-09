@@ -28,7 +28,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.features.nfctest.vm.R65CHidCapturedKeyEvent
 import com.ytone.longcare.features.nfctest.vm.R65CHidPanelState
+import com.ytone.longcare.features.nfctest.vm.R65CHidRawValidationState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,7 +40,7 @@ internal fun NfcTestTopBar(onNavigateBack: () -> Unit) {
             Text(
                 text = "碰一碰测试",
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = Color.Black,
             )
         },
         navigationIcon = {
@@ -46,15 +48,15 @@ internal fun NfcTestTopBar(onNavigateBack: () -> Unit) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "返回",
-                    tint = Color.Black
+                    tint = Color.Black,
                 )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color.Transparent,
             titleContentColor = Color.Black,
-            navigationIconContentColor = Color.Black
-        )
+            navigationIconContentColor = Color.Black,
+        ),
     )
 }
 
@@ -62,11 +64,17 @@ internal fun NfcTestTopBar(onNavigateBack: () -> Unit) {
 internal fun NfcTestBody(
     enabled: Boolean,
     r65cPanelState: R65CHidPanelState,
+    rawValidationState: R65CHidRawValidationState = R65CHidRawValidationState(),
     onR65CInputChanged: (String) -> Unit,
     onR65CFocusChanged: (Boolean) -> Unit,
     onR65CRequestRefocus: () -> Unit,
     onR65CClearResult: () -> Unit,
-    modifier: Modifier = Modifier
+    onRawTextFieldValueChanged: (String) -> Unit = {},
+    onRawCapturedKey: (R65CHidCapturedKeyEvent) -> Unit = {},
+    onRawFocusChanged: (Boolean) -> Unit = {},
+    onRawRequestRefocus: () -> Unit = {},
+    onRawClearSession: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
@@ -74,7 +82,7 @@ internal fun NfcTestBody(
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         if (enabled) {
             EnabledNfcTestCard()
@@ -88,6 +96,14 @@ internal fun NfcTestBody(
             onRequestRefocus = onR65CRequestRefocus,
             onClearResult = onR65CClearResult,
         )
+        R65CHidRawValidationPanel(
+            state = rawValidationState,
+            onTextFieldValueChanged = onRawTextFieldValueChanged,
+            onCapturedKey = onRawCapturedKey,
+            onFocusChanged = onRawFocusChanged,
+            onRequestRefocus = onRawRequestRefocus,
+            onClearSession = onRawClearSession,
+        )
     }
 }
 
@@ -99,17 +115,17 @@ private fun EnabledNfcTestCard() {
             .padding(16.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
     ) {
         Column(
             modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = "碰一碰ID读取",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -117,7 +133,7 @@ private fun EnabledNfcTestCard() {
             Text(
                 text = "请将碰一碰靠近智能手机进行测试",
                 fontSize = 16.sp,
-                color = Color.Gray
+                color = Color.Gray,
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -126,7 +142,7 @@ private fun EnabledNfcTestCard() {
                 text = "功能说明：",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -134,7 +150,7 @@ private fun EnabledNfcTestCard() {
             Text(
                 text = "• 检测碰一碰的ID编码\n• 自动复制到剪贴板\n• 显示标签信息弹窗",
                 fontSize = 14.sp,
-                color = Color.Gray
+                color = Color.Gray,
             )
         }
     }
@@ -148,17 +164,17 @@ private fun DisabledNfcTestCard() {
             .padding(16.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
     ) {
         Column(
             modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = "NFC测试功能已禁用",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Gray
+                color = Color.Gray,
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -166,7 +182,7 @@ private fun DisabledNfcTestCard() {
             Text(
                 text = "请在NfcTestConfig中启用测试功能",
                 fontSize = 14.sp,
-                color = Color.Gray
+                color = Color.Gray,
             )
         }
     }

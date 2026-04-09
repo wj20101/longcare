@@ -3,12 +3,15 @@ package com.ytone.longcare.features.nfctest.ui
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ytone.longcare.features.nfctest.vm.R65CHidCandidateKind
 import com.ytone.longcare.features.nfctest.vm.R65CHidCandidateValue
 import com.ytone.longcare.features.nfctest.vm.R65CHidCompletionReason
+import com.ytone.longcare.features.nfctest.vm.R65CHidCaptureState
 import com.ytone.longcare.features.nfctest.vm.R65CHidRawCaptureState
+import com.ytone.longcare.features.nfctest.vm.R65CHidPanelState
 import com.ytone.longcare.features.nfctest.vm.R65CHidRawValidationState
 import com.ytone.longcare.theme.LongCareTheme
 import org.junit.Assert.assertEquals
@@ -109,5 +112,34 @@ class R65CHidRawValidationPanelTest {
         composeRule.onNodeWithTag("r65c_candidate_0_value").assertTextEquals("901948EA80")
         composeRule.onNodeWithTag("r65c_completed_reason").assertTextEquals("Enter结束")
         composeRule.onNodeWithTag("r65c_completed_at").assertTextEquals("21:52:05")
+    }
+
+    @Test
+    fun body_shows_smoke_panel_and_raw_validation_panel() {
+        composeRule.setContent {
+            LongCareTheme {
+                NfcTestBody(
+                    enabled = true,
+                    r65cPanelState = R65CHidPanelState(
+                        captureState = R65CHidCaptureState.ReadyForScan,
+                    ),
+                    rawValidationState = R65CHidRawValidationState(
+                        captureState = R65CHidRawCaptureState.ReadyForScan,
+                    ),
+                    onR65CInputChanged = {},
+                    onR65CFocusChanged = {},
+                    onR65CRequestRefocus = {},
+                    onR65CClearResult = {},
+                    onRawTextFieldValueChanged = {},
+                    onRawCapturedKey = {},
+                    onRawFocusChanged = {},
+                    onRawRequestRefocus = {},
+                    onRawClearSession = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("R65C HID 键盘口测试").assertExists()
+        composeRule.onNodeWithText("R65C 原始 HID 输出验证").assertExists()
     }
 }

@@ -16,53 +16,61 @@ import com.ytone.longcare.debug.NfcTestConfig
 import com.ytone.longcare.features.nfctest.api.NfcTestActions
 import com.ytone.longcare.features.nfctest.vm.NfcTestViewModel
 import com.ytone.longcare.features.nfctest.vm.R65CHidInputTestViewModel
+import com.ytone.longcare.features.nfctest.vm.R65CHidRawValidationViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NfcTestScreen(
-    actions: NfcTestActions
+    actions: NfcTestActions,
 ) {
     val nfcTestViewModel: NfcTestViewModel = hiltViewModel()
     val r65cViewModel: R65CHidInputTestViewModel = hiltViewModel()
+    val rawValidationViewModel: R65CHidRawValidationViewModel = hiltViewModel()
     val r65cPanelState by r65cViewModel.panelState.collectAsStateWithLifecycle()
+    val rawValidationState by rawValidationViewModel.panelState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // 获取NfcTestHelper实例
     val nfcTestHelper = if (NfcTestConfig.ENABLE_NFC_TEST) {
         nfcTestViewModel.getHelper()
-    } else null
-    
+    } else {
+        null
+    }
+
     val lifecycleOwner = LocalLifecycleOwner.current
-    
-    // NFC测试功能管理
+
     if (NfcTestConfig.ENABLE_NFC_TEST && nfcTestHelper != null) {
         BindNfcTestLifecycle(
             enabled = true,
             context = context,
             lifecycleOwner = lifecycleOwner,
             onEnable = nfcTestViewModel::enableNfcTest,
-            onDisable = nfcTestViewModel::disableNfcTest
+            onDisable = nfcTestViewModel::disableNfcTest,
         )
     }
 
     Scaffold(
         topBar = { NfcTestTopBar(onNavigateBack = actions.onNavigateBack) },
-        containerColor = Color.Transparent
+        containerColor = Color.Transparent,
     ) { paddingValues ->
         NfcTestBody(
             enabled = NfcTestConfig.ENABLE_NFC_TEST,
             r65cPanelState = r65cPanelState,
+            rawValidationState = rawValidationState,
             onR65CInputChanged = r65cViewModel::onInputChanged,
             onR65CFocusChanged = r65cViewModel::onFieldFocusChanged,
             onR65CRequestRefocus = r65cViewModel::requestRefocus,
             onR65CClearResult = r65cViewModel::clearLastResult,
+            onRawTextFieldValueChanged = rawValidationViewModel::onTextFieldValueChanged,
+            onRawCapturedKey = rawValidationViewModel::onCapturedKey,
+            onRawFocusChanged = rawValidationViewModel::onFocusChanged,
+            onRawRequestRefocus = rawValidationViewModel::requestRefocus,
+            onRawClearSession = rawValidationViewModel::clearLastSession,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
         )
     }
-    
-    // NFC标签检测弹窗
+
     if (NfcTestConfig.ENABLE_NFC_TEST && nfcTestHelper != null) {
         nfcTestHelper.NfcTagDialog()
     }
