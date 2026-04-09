@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.features.profile.api.ProfileActions
@@ -30,20 +34,29 @@ import com.ytone.longcare.model.User
 import com.ytone.longcare.model.userIdentityShow
 import com.ytone.longcare.ui.components.UserAvatar
 
+private val StatsCardRowMinHeight = 88.dp
+
 @Composable
 fun UserInfoSection(user: User) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        UserAvatar(avatarUrl = user.headUrl)
+        UserAvatar(
+            modifier = Modifier.testTag("profile_user_avatar"),
+            avatarUrl = user.headUrl,
+            size = 40.dp
+        )
         Spacer(modifier = Modifier.width(16.dp))
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = user.userName,
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
-                color = Color.White
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.testTag("profile_user_name")
             )
             Text(
                 text = user.userIdentityShow(),
@@ -55,7 +68,10 @@ fun UserInfoSection(user: User) {
                         alignment = LineHeightStyle.Alignment.Center,
                         trim = LineHeightStyle.Trim.Both
                     )
-                )
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.testTag("profile_user_identity")
             )
         }
     }
@@ -72,7 +88,8 @@ fun StatsCard(actions: ProfileActions, stats: NurseServiceTimeModel) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp),
+                .heightIn(min = StatsCardRowMinHeight)
+                .testTag("profile_stats_card_row"),
             verticalAlignment = Alignment.CenterVertically
         ) {
             StatItem(
@@ -140,13 +157,19 @@ fun StatItem(
             text = value,
             fontWeight = FontWeight.Bold,
             fontSize = 22.sp,
-            color = if (onClick != null) Color(0xFF333333) else Color(0xFF666666)
+            color = if (onClick != null) Color(0xFF333333) else Color(0xFF666666),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
             color = if (onClick != null) Color(0xFF666666) else Color.Gray,
-            fontSize = 12.sp
+            fontSize = 12.sp,
+            lineHeight = 14.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
