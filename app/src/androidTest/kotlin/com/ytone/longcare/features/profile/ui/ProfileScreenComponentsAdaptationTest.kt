@@ -30,7 +30,10 @@ class ProfileScreenComponentsAdaptationTest {
                 Box(modifier = Modifier.width(328.dp)) {
                     Column {
                         UserInfoSection(
-                            user = User(userName = "Mock用户", userIdentity = 1)
+                            user = User(
+                                userName = "Mock用户-这是一个用于窄屏适配验证的超长用户名",
+                                userIdentity = 1
+                            )
                         )
                         StatsCard(
                             actions = ProfileActions(
@@ -53,9 +56,16 @@ class ProfileScreenComponentsAdaptationTest {
         composeRule.onNodeWithTag("profile_user_avatar").assertExists()
         composeRule.onNodeWithTag("profile_stats_card_row").assertExists()
 
+        val userNameBounds = composeRule.onNodeWithTag("profile_user_name").fetchSemanticsNode().boundsInRoot
+        val userIdentityBounds = composeRule.onNodeWithTag("profile_user_identity").fetchSemanticsNode().boundsInRoot
+        val avatarBounds = composeRule.onNodeWithTag("profile_user_avatar").fetchSemanticsNode().boundsInRoot
         val statsBounds = composeRule.onNodeWithTag("profile_stats_card_row").fetchSemanticsNode().boundsInRoot
+        val maxSingleLineNameHeightPx = with(composeRule.density) { 24.dp.toPx() }
         val minStatsHeightPx = with(composeRule.density) { 88.dp.toPx() }
 
+        assertTrue(userNameBounds.left >= avatarBounds.right)
+        assertTrue(userIdentityBounds.left >= avatarBounds.right)
+        assertTrue(userNameBounds.height <= maxSingleLineNameHeightPx)
         assertTrue(statsBounds.height >= minStatsHeightPx)
     }
 }

@@ -39,10 +39,14 @@ class TopHeaderAdaptationTest {
         composeRule.onNodeWithTag("home_top_avatar").assertExists()
 
         val companyBounds = composeRule.onNodeWithTag("home_top_company_name").fetchSemanticsNode().boundsInRoot
+        val userNameBounds = composeRule.onNodeWithTag("home_top_user_name").fetchSemanticsNode().boundsInRoot
+        val userIdentityBounds = composeRule.onNodeWithTag("home_top_user_identity").fetchSemanticsNode().boundsInRoot
         val avatarBounds = composeRule.onNodeWithTag("home_top_avatar").fetchSemanticsNode().boundsInRoot
         val minWrappedHeightPx = with(composeRule.density) { 32.dp.toPx() }
+        val userBlockLeft = minOf(userNameBounds.left, userIdentityBounds.left)
 
         assertTrue(companyBounds.height > minWrappedHeightPx)
+        assertTrue(companyBounds.right < userBlockLeft)
         assertTrue(companyBounds.right < avatarBounds.left)
     }
 }
