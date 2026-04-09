@@ -22,7 +22,7 @@ class DashboardGridCompactModeTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun narrow_width_keeps_cards_in_one_row_and_hides_subtitles() {
+    fun narrow_width_keeps_cards_in_one_row_and_shows_subtitles() {
         composeRule.setContent {
             LongCareTheme {
                 Box(modifier = Modifier.width(328.dp)) {
@@ -42,8 +42,8 @@ class DashboardGridCompactModeTest {
 
         composeRule.onNodeWithText("待护理计划").assertExists()
         composeRule.onNodeWithText("已服务记录").assertExists()
-        composeRule.onNodeWithText("你有1个护理待执行").assertDoesNotExist()
-        composeRule.onNodeWithText("查看过往服务记录").assertDoesNotExist()
+        composeRule.onNodeWithText("你有1个护理待执行").assertExists()
+        composeRule.onNodeWithText("查看过往服务记录").assertExists()
 
         val pendingBounds = composeRule.onNodeWithTag("dashboard_pending_card").fetchSemanticsNode().boundsInRoot
         val recordBounds = composeRule.onNodeWithTag("dashboard_records_card").fetchSemanticsNode().boundsInRoot
