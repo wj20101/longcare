@@ -7,6 +7,7 @@ fun buildR65CHidCandidateValues(
     assembledChars: String,
 ): List<R65CHidCandidateValue> {
     val candidates = mutableListOf<R65CHidCandidateValue>()
+    val isNumericOnly = assembledChars.isNotEmpty() && assembledChars.all { it.isDigit() }
 
     if (assembledChars.isNotEmpty()) {
         candidates += R65CHidCandidateValue(
@@ -24,8 +25,8 @@ fun buildR65CHidCandidateValues(
         )
     }
 
-    val hexFiltered = assembledChars.filter { it.isHexLikeChar() }
-    if (hexFiltered.isNotEmpty()) {
+    val hexFiltered = assembledChars.filter { it.isHexLikeChar() }.uppercase()
+    if (!isNumericOnly && hexFiltered.isNotEmpty()) {
         val hexNote = when (hexFiltered.length) {
             8 -> "looks like 8 hex"
             14 -> "looks like 14 hex"
@@ -39,7 +40,6 @@ fun buildR65CHidCandidateValues(
         )
     }
 
-    val isNumericOnly = assembledChars.isNotEmpty() && assembledChars.all { it.isDigit() }
     val containsNonAscii = assembledChars.any { it.code > 0x7F }
 
     if (isNumericOnly) {
