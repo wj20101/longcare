@@ -3,17 +3,17 @@ package com.ytone.longcare.features.maindashboard.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,9 +29,12 @@ fun TopHeader(user: User, companyName: String) {
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 ImageWithAdaptiveWidth(
                     drawableResId = R.drawable.app_logo_small_white,
                     fixedHeight = 34.dp,
@@ -42,26 +45,40 @@ fun TopHeader(user: User, companyName: String) {
                         text = companyName,
                         color = Color.White,
                         fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 4.dp)
+                        lineHeight = 16.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .testTag("home_top_company_name")
                     )
                 }
             }
-            Spacer(modifier = Modifier.weight(1f))
-            Column(horizontalAlignment = Alignment.End) {
+            Column(
+                modifier = Modifier.widthIn(min = 72.dp, max = 120.dp),
+                horizontalAlignment = Alignment.End
+            ) {
                 Text(
                     text = user.userName,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("home_top_user_name")
                 )
                 Text(
                     text = user.userIdentityShow(),
                     fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.5f)
+                    color = Color.White.copy(alpha = 0.5f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("home_top_user_identity")
                 )
             }
-            Spacer(modifier = Modifier.width(12.dp))
-
-            UserAvatar(avatarUrl = user.headUrl)
+            UserAvatar(
+                modifier = Modifier.testTag("home_top_avatar"),
+                avatarUrl = user.headUrl
+            )
         }
     }
 }
