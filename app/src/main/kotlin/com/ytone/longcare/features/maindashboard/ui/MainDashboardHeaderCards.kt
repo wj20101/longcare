@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -26,60 +27,65 @@ import com.ytone.longcare.ui.components.UserAvatar
 
 @Composable
 fun TopHeader(user: User, companyName: String) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.weight(1f)
         ) {
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                ImageWithAdaptiveWidth(
-                    drawableResId = R.drawable.app_logo_small_white,
-                    fixedHeight = 34.dp,
-                    contentDescription = stringResource(R.string.main_dashboard_logo)
-                )
-                if (companyName.isNotEmpty()) {
-                    Text(
-                        text = companyName,
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .padding(top = 4.dp)
-                            .testTag("home_top_company_name")
-                    )
-                }
-            }
-            Column(
-                modifier = Modifier.widthIn(min = 72.dp, max = 120.dp),
-                horizontalAlignment = Alignment.End
-            ) {
+            ImageWithAdaptiveWidth(
+                drawableResId = R.drawable.app_logo_small_white,
+                fixedHeight = 34.dp,
+                contentDescription = stringResource(R.string.main_dashboard_logo)
+            )
+            if (companyName.isNotEmpty()) {
                 Text(
-                    text = user.userName,
-                    fontWeight = FontWeight.Bold,
+                    text = companyName,
                     color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.testTag("home_top_user_name")
-                )
-                Text(
-                    text = user.userIdentityShow(),
                     fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.5f),
-                    maxLines = 1,
+                    lineHeight = 16.sp,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.testTag("home_top_user_identity")
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("home_top_company_name")
+                        .padding(top = 4.dp)
                 )
             }
-            UserAvatar(
-                modifier = Modifier.testTag("home_top_avatar"),
-                avatarUrl = user.headUrl
+        }
+        Column(
+            modifier = Modifier.widthIn(min = 72.dp, max = 120.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            Text(
+                text = user.userName,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.End,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("home_top_user_name")
+            )
+            Text(
+                text = user.userIdentityShow(),
+                fontSize = 12.sp,
+                color = Color.White.copy(alpha = 0.5f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.End,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("home_top_user_identity")
             )
         }
+        UserAvatar(
+            modifier = Modifier.testTag("home_top_avatar"),
+            avatarUrl = user.headUrl
+        )
     }
 }
 
