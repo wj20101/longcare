@@ -48,6 +48,7 @@ internal data class InfoCardLayoutSpec(
 private object InfoCardLayoutResolverDefaults {
     val CompactThreshold = 160.dp
     val MediumThreshold = 172.dp
+    val CardMinHeight = 92.dp
 
     val CompactTitleFontSize = 13.sp
     val MediumTitleFontSize = 14.sp
@@ -70,7 +71,7 @@ internal fun resolveInfoCardLayoutSpec(cardWidth: Dp, hasBadge: Boolean): InfoCa
     return when {
         cardWidth <= InfoCardLayoutResolverDefaults.CompactThreshold -> InfoCardLayoutSpec(
             titleFontSize = InfoCardLayoutResolverDefaults.CompactTitleFontSize,
-            showSubtitle = false,
+            showSubtitle = true,
             iconSize = InfoCardLayoutResolverDefaults.CompactIconSize,
             horizontalPadding = InfoCardLayoutResolverDefaults.CompactHorizontalPadding,
             verticalPadding = InfoCardLayoutResolverDefaults.VerticalPadding,
@@ -78,7 +79,7 @@ internal fun resolveInfoCardLayoutSpec(cardWidth: Dp, hasBadge: Boolean): InfoCa
         )
         cardWidth <= InfoCardLayoutResolverDefaults.MediumThreshold -> InfoCardLayoutSpec(
             titleFontSize = InfoCardLayoutResolverDefaults.MediumTitleFontSize,
-            showSubtitle = false,
+            showSubtitle = true,
             iconSize = InfoCardLayoutResolverDefaults.MediumIconSize,
             horizontalPadding = InfoCardLayoutResolverDefaults.MediumHorizontalPadding,
             verticalPadding = InfoCardLayoutResolverDefaults.VerticalPadding,
@@ -108,7 +109,7 @@ fun InfoCard(
     val hasBadge = badgeCount != null && badgeCount > 0
     Card(
         onClick = { onClick?.invoke() },
-        modifier = modifier.heightIn(min = 76.dp),
+        modifier = modifier.heightIn(min = InfoCardLayoutResolverDefaults.CardMinHeight),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
