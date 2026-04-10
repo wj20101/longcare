@@ -293,7 +293,6 @@ collect_changed_files
 echo "[preflight] project-root=${ROOT_DIR}"
 echo "[preflight] mode=${MODE}"
 echo "[preflight] gate-layer-summary:"
-echo "[preflight] - mode=${MODE}"
 echo "[preflight] - local-fast = developer prevention checks"
 echo "[preflight] - ci-required = merge-blocking CI checks"
 echo "[preflight] - release-required = release confidence checks"
