@@ -292,6 +292,11 @@ collect_changed_files
 
 echo "[preflight] project-root=${ROOT_DIR}"
 echo "[preflight] mode=${MODE}"
+echo "[preflight] gate-layer-summary:"
+echo "[preflight] - mode=${MODE}"
+echo "[preflight] - local-fast = developer prevention checks"
+echo "[preflight] - ci-required = merge-blocking CI checks"
+echo "[preflight] - release-required = release confidence checks"
 if [[ "${CHANGED_ONLY_FALLBACK_ALL}" == "true" ]]; then
   echo "[preflight] changed-files-count=unknown (fallback-all-files: ${CHANGED_ONLY_FALLBACK_REASON})"
 elif [[ -n "${CHANGED_FILES}" ]]; then
@@ -309,6 +314,8 @@ if [[ "${MODE}" == "full" || "${MODE}" == "release" ]]; then
 fi
 
 if [[ "${MODE}" == "release" ]]; then
+  echo "[preflight] entering release-required gate layer via run_quality_gate.sh"
+  echo
   run_step "run-quality-gate" bash scripts/quality/run_quality_gate.sh --project-root "${ROOT_DIR}"
 fi
 
