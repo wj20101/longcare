@@ -169,6 +169,17 @@ class NfcWorkflowViewModel @Inject constructor(
         endOderInfo: EndOderInfo?,
     ) = scanDelegate.mockNfcScan(orderKey, signInMode, endOderInfo)
 
+    fun onR65cFallbackInputChanged(rawPayload: String) {
+        if (_scanMode.value != ScanMode.EXTERNAL_RFID) return
+        if (rawPayload.isBlank()) return
+
+        _readerUiState.value = ReaderUiState.Reading
+        externalRfidReaderManager.submitHidCandidate(rawPayload)
+        if (_readerUiState.value == ReaderUiState.Reading) {
+            _readerUiState.value = ReaderUiState.Ready
+        }
+    }
+
     override fun onCleared() {
         scanDelegate.clear()
         super.onCleared()

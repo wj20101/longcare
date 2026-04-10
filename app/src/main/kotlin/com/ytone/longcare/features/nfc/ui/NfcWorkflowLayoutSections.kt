@@ -117,6 +117,15 @@ internal fun NfcWorkflowBodyContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        if (scanMode == ScanMode.EXTERNAL_RFID) {
+            R65cWorkflowHidFallbackField(
+                readerUiState = readerUiState,
+                onInputChanged = nfcViewModel::onR65cFallbackInputChanged,
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         NfcWorkflowDebugMockButton(
             orderKey = orderKey,
             signInMode = signInMode,
