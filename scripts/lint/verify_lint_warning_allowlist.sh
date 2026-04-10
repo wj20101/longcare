@@ -5,6 +5,8 @@ REPORT_PATH="${1:-app/build/reports/lint-results-debug.txt}"
 WAIVER_PATH="${2:-scripts/lint/lint_warning_waivers.json}"
 CURRENT_DATE="${LINT_WAIVER_DATE:-$(date -u +%F)}"
 ENFORCE_UNUSED_WAIVERS_MODE="${LINT_ENFORCE_UNUSED_WAIVERS:-auto}"
+REGISTRY_PATH="${LINT_GATE_REGISTRY_PATH:-scripts/quality/quality_gate_registry.json}"
+REGISTRY_GATE_ID="lint_warning_allowlist"
 
 if [[ ! -f "${REPORT_PATH}" ]]; then
   echo "Lint report not found: ${REPORT_PATH}" >&2
@@ -50,6 +52,42 @@ resolve_enforce_unused_waivers() {
       exit 1
       ;;
   esac
+}
+
+registry_gate_field() {
+  local field="$1"
+
+  if [[ ! -f "${REGISTRY_PATH}" ]]; then
+    return 1
+  fi
+
+  jq -r --arg id "${REGISTRY_GATE_ID}" --arg field "${field}" '
+    .gates[]
+    | select(.id == $id)
+    | .[$field] // empty
+  ' "${REGISTRY_PATH}" | head -n 1
+}
+
+lint_gate_metadata() {
+  local owner
+  local source_of_truth
+  local likely_fix
+
+  owner="$(registry_gate_field "owner" || true)"
+  source_of_truth="$(registry_gate_field "source_of_truth" || true)"
+  likely_fix="$(registry_gate_field "likely_fix" || true)"
+
+  if [[ -z "${owner}" ]]; then
+    owner="mobile-platform"
+  fi
+  if [[ -z "${source_of_truth}" ]]; then
+    source_of_truth="scripts/lint/lint_warning_waivers.json"
+  fi
+  if [[ -z "${likely_fix}" ]]; then
+    likely_fix="Fix the lint issue or add/update an approved waiver entry."
+  fi
+
+  printf '%s\t%s\t%s\n' "${owner}" "${source_of_truth}" "${likely_fix}"
 }
 
 warning_line_matches_source_pattern() {
@@ -114,8 +152,16 @@ while IFS= read -r issue_id; do
 done <<< "${WARNING_IDS}"
 
 if [[ -n "${UNKNOWN_IDS}" ]]; then
+  GATE_METADATA="$(lint_gate_metadata)"
+  GATE_OWNER="$(printf '%s' "${GATE_METADATA}" | cut -f1)"
+  GATE_SOURCE_OF_TRUTH="$(printf '%s' "${GATE_METADATA}" | cut -f2)"
+  GATE_LIKELY_FIX="$(printf '%s' "${GATE_METADATA}" | cut -f3)"
   echo "Found lint warning IDs outside waiver allowlist:" >&2
   printf '%s' "${UNKNOWN_IDS}" | sed 's/^/  - /' >&2
+  echo "Gate diagnostics:" >&2
+  echo "  - owner: ${GATE_OWNER}" >&2
+  echo "  - source_of_truth: ${GATE_SOURCE_OF_TRUTH}" >&2
+  echo "  - likely_fix: ${GATE_LIKELY_FIX}" >&2
   echo "Observed warning IDs in report:" >&2
   printf '%s\n' "${WARNING_IDS}" | sed 's/^/  - /' >&2
   exit 1
