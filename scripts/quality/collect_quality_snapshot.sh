@@ -7,6 +7,7 @@ LINT_REPORT="app/build/reports/lint-results-debug.txt"
 SOURCE_ROOT="app/src/main/kotlin"
 WORKFLOW_FILE=".github/workflows/android-ci.yml"
 ENSURE_LINT_REPORT="true"
+REGISTRY_FILE="scripts/quality/quality_gate_registry.json"
 
 usage() {
   cat <<USAGE
@@ -134,6 +135,23 @@ CHECK_NAMES=(
   "CI Workflow Quality Guard"
 )
 
+CHECK_IDS=(
+  "no_tracked_keystore_files"
+  "release_exported_components"
+  "lint_warning_allowlist"
+  "lint_ignore_policy"
+  "jetpack_compat_api_guard"
+  "baseline_profile_journey_guard"
+  "coroutine_cancellation_guards"
+  "no_empty_catch_blocks"
+  "target_sdk_upgrade_gate"
+  "exact_alarm_permission_config"
+  "architecture_boundaries"
+  "module_dependency_whitelist"
+  "module_api_visibility"
+  "workflow_quality"
+)
+
 CHECK_CMDS=(
   "bash scripts/quality/verify_no_tracked_keystore_files.sh ."
   "bash scripts/quality/verify_release_exported_components.sh"
@@ -220,6 +238,7 @@ CHECK_SOURCE_OF_TRUTH=(
 )
 
 if [[ ${#CHECK_NAMES[@]} -ne ${#CHECK_CMDS[@]} ]] || \
+  [[ ${#CHECK_NAMES[@]} -ne ${#CHECK_IDS[@]} ]] || \
   [[ ${#CHECK_NAMES[@]} -ne ${#CHECK_TIERS[@]} ]] || \
   [[ ${#CHECK_NAMES[@]} -ne ${#CHECK_CATEGORIES[@]} ]] || \
   [[ ${#CHECK_NAMES[@]} -ne ${#CHECK_LIKELY_FIXES[@]} ]] || \
@@ -241,15 +260,72 @@ epoch_to_iso_utc() {
   fi
 }
 
+if [[ "${REGISTRY_FILE}" = /* ]]; then
+  REGISTRY_FILE_PATH="${REGISTRY_FILE}"
+else
+  REGISTRY_FILE_PATH="${PROJECT_ROOT}/${REGISTRY_FILE}"
+fi
+
+registry_gate_field() {
+  local gate_id="$1"
+  local field="$2"
+
+  if [[ ! -f "${REGISTRY_FILE_PATH}" ]]; then
+    return 1
+  fi
+
+  jq -r --arg id "${gate_id}" --arg field "${field}" '
+    .gates[]
+    | select(.id == $id)
+    | .[$field] // empty
+  ' "${REGISTRY_FILE_PATH}" | head -n 1
+}
+
+resolve_gate_metadata() {
+  local gate_id="$1"
+  local default_layer="$2"
+  local default_source_of_truth="$3"
+  local default_likely_fix="$4"
+
+  local owner
+  local layer
+  local source_of_truth
+  local likely_fix
+
+  owner="$(registry_gate_field "${gate_id}" "owner" || true)"
+  layer="$(registry_gate_field "${gate_id}" "layer" || true)"
+  source_of_truth="$(registry_gate_field "${gate_id}" "source_of_truth" || true)"
+  likely_fix="$(registry_gate_field "${gate_id}" "likely_fix" || true)"
+
+  if [[ -z "${owner}" ]]; then
+    owner="unknown-owner"
+  fi
+  if [[ -z "${layer}" ]]; then
+    layer="${default_layer}"
+  fi
+  if [[ -z "${source_of_truth}" ]]; then
+    source_of_truth="${default_source_of_truth}"
+  fi
+  if [[ -z "${likely_fix}" ]]; then
+    likely_fix="${default_likely_fix}"
+  fi
+
+  printf '%s\t%s\t%s\t%s\n' "${owner}" "${layer}" "${source_of_truth}" "${likely_fix}"
+}
+
 OVERALL_EXIT=0
 
 for i in "${!CHECK_NAMES[@]}"; do
+  ID="${CHECK_IDS[$i]}"
   NAME="${CHECK_NAMES[$i]}"
   CMD="${CHECK_CMDS[$i]}"
   TIER="${CHECK_TIERS[$i]}"
   CATEGORY="${CHECK_CATEGORIES[$i]}"
-  LIKELY_FIX="${CHECK_LIKELY_FIXES[$i]}"
-  SOURCE_OF_TRUTH="${CHECK_SOURCE_OF_TRUTH[$i]}"
+  REGISTRY_METADATA="$(resolve_gate_metadata "${ID}" "${TIER}" "${CHECK_SOURCE_OF_TRUTH[$i]}" "${CHECK_LIKELY_FIXES[$i]}")"
+  OWNER="$(printf '%s' "${REGISTRY_METADATA}" | cut -f1)"
+  LAYER="$(printf '%s' "${REGISTRY_METADATA}" | cut -f2)"
+  SOURCE_OF_TRUTH="$(printf '%s' "${REGISTRY_METADATA}" | cut -f3)"
+  LIKELY_FIX="$(printf '%s' "${REGISTRY_METADATA}" | cut -f4)"
   SLUG="$(sanitize_name "${NAME}")"
   LOG_FILE="${LOG_DIR}/$((i + 1))_${SLUG}.log"
 
@@ -271,7 +347,10 @@ for i in "${!CHECK_NAMES[@]}"; do
   echo "[quality-snapshot] ${STATUS} - ${NAME} (${DURATION}s)"
 
   jq -n \
+    --arg id "${ID}" \
     --arg name "${NAME}" \
+    --arg owner "${OWNER}" \
+    --arg layer "${LAYER}" \
     --arg tier "${TIER}" \
     --arg category "${CATEGORY}" \
     --arg likely_fix "${LIKELY_FIX}" \
@@ -284,7 +363,10 @@ for i in "${!CHECK_NAMES[@]}"; do
     --argjson exit_code "${EXIT_CODE}" \
     --argjson duration_seconds "${DURATION}" \
     '{
+      id: $id,
       name: $name,
+      owner: $owner,
+      layer: $layer,
       tier: $tier,
       category: $category,
       likely_fix: $likely_fix,
@@ -347,6 +429,15 @@ jq -n \
   echo "| Check | Tier | Category | Status | Likely Fix | Source Of Truth | Duration (s) | Exit Code | Log |"
   echo "|---|---|---|---|---|---|---:|---:|---|"
   jq -r '.[] | "| \(.name) | \(.tier) | \(.category) | \(.status) | \(.likely_fix) | `\(.source_of_truth)` | \(.duration_seconds) | \(.exit_code) | `\(.log)` |"' "${CHECKS_ARRAY_JSON}"
+  if [[ "${FAILED_CHECKS}" -gt 0 ]]; then
+    echo
+    echo "## Failed Check Diagnostics"
+    jq -r '
+      .[]
+      | select(.status == "FAIL")
+      | "- \(.name): owner=`\(.owner)`, layer=`\(.layer)`, source_of_truth=`\(.source_of_truth)`, likely_fix=\(.likely_fix)"
+    ' "${CHECKS_ARRAY_JSON}"
+  fi
   echo
   echo "JSON report: \`${REPORT_JSON}\`"
 } > "${REPORT_MD}"
