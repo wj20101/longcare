@@ -8,7 +8,7 @@ import org.junit.Test
 class NfcWorkflowUiCopyTest {
 
     @Test
-    fun `external disconnected copy instructs the user to connect a type c reader`() {
+    fun `external disconnected copy instructs the user to prepare R65C`() {
         val copy = resolveNfcWorkflowIdleCopy(
             scanMode = ScanMode.EXTERNAL_RFID,
             readerUiState = ReaderUiState.Disconnected,
@@ -20,7 +20,7 @@ class NfcWorkflowUiCopyTest {
     }
 
     @Test
-    fun `external ready copy tells the user to scan on the reader`() {
+    fun `external ready copy instructs the user to scan on R65C`() {
         val copy = resolveNfcWorkflowIdleCopy(
             scanMode = ScanMode.EXTERNAL_RFID,
             readerUiState = ReaderUiState.Ready,
