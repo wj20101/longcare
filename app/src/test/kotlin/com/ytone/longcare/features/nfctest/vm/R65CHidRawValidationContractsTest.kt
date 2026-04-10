@@ -6,10 +6,11 @@ import org.junit.Test
 class R65CHidRawValidationContractsTest {
 
     @Test
-    fun `default raw validation state starts empty and waiting for focus`() {
+    fun `default raw validation state starts idle and not listening`() {
         val state = R65CHidRawValidationState()
 
-        assertEquals(R65CHidRawCaptureState.WaitingForFocus, state.captureState)
+        assertEquals(R65CHidRawCaptureState.Idle, state.captureState)
+        assertEquals(false, state.isListening)
         assertEquals("", state.textFieldValue)
         assertEquals("", state.currentSessionAssembledChars)
         assertEquals("-", state.lastSessionTextFieldValueDisplay)
@@ -18,13 +19,13 @@ class R65CHidRawValidationContractsTest {
         assertEquals("-", state.lastCompletedAtDisplay)
         assertEquals(0, state.lastSessionEvents.size)
         assertEquals(0, state.candidateValues.size)
-        assertEquals(0L, state.focusRequestToken)
     }
 
     @Test
-    fun `completed state exposes displays and candidate summary`() {
+    fun `completed state still exposes displays and candidate summary`() {
         val state = R65CHidRawValidationState(
             captureState = R65CHidRawCaptureState.Completed,
+            isListening = false,
             lastSessionTextFieldValue = "901948不EA8想0想",
             lastSessionAssembledChars = "901948EA80",
             lastCompletedReason = R65CHidCompletionReason.EnterKey,

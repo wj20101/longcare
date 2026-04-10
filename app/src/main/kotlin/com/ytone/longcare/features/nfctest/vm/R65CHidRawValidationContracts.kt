@@ -1,9 +1,9 @@
 package com.ytone.longcare.features.nfctest.vm
 
 sealed interface R65CHidRawCaptureState {
-    data object WaitingForFocus : R65CHidRawCaptureState
-    data object ReadyForScan : R65CHidRawCaptureState
-    data object ReceivingKeys : R65CHidRawCaptureState
+    data object Idle : R65CHidRawCaptureState
+    data object Armed : R65CHidRawCaptureState
+    data object Capturing : R65CHidRawCaptureState
     data object Completed : R65CHidRawCaptureState
     data class CaptureError(val message: String) : R65CHidRawCaptureState
 }
@@ -37,7 +37,8 @@ data class R65CHidCandidateValue(
 )
 
 data class R65CHidRawValidationState(
-    val captureState: R65CHidRawCaptureState = R65CHidRawCaptureState.WaitingForFocus,
+    val captureState: R65CHidRawCaptureState = R65CHidRawCaptureState.Idle,
+    val isListening: Boolean = false,
     val textFieldValue: String = "",
     val currentSessionEvents: List<R65CHidCapturedKeyEvent> = emptyList(),
     val currentSessionAssembledChars: String = "",
@@ -47,7 +48,6 @@ data class R65CHidRawValidationState(
     val lastCompletedReason: R65CHidCompletionReason? = null,
     val candidateValues: List<R65CHidCandidateValue> = emptyList(),
     val lastCompletedAt: String? = null,
-    val focusRequestToken: Long = 0L,
 ) {
     val lastSessionTextFieldValueDisplay: String
         get() = lastSessionTextFieldValue ?: "-"
