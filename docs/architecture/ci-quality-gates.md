@@ -13,6 +13,21 @@ ownership of each quality script.
 - `release-required`: checks required for release confidence/sign-off.
 - `observability-only`: reporting, metrics, and monitoring; does not block merge by itself.
 
+## Gate Registry
+
+The canonical descriptive metadata for high-value gates lives in:
+
+- `scripts/quality/quality_gate_registry.json`
+
+The registry does not replace the current runner scripts. Instead, it defines:
+
+- gate ownership
+- gate layer
+- source of truth
+- likely remediation path
+
+Runner scripts and workflows should emit diagnostics that align with this registry.
+
 ## Local Preflight Modes
 
 `scripts/quality/preflight_local.sh` is the local entrypoint.
