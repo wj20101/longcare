@@ -19,7 +19,16 @@ The canonical descriptive metadata for high-value gates lives in:
 
 - `scripts/quality/quality_gate_registry.json`
 
-The registry does not replace the current runner scripts. Instead, it defines:
+The registry is the canonical governance metadata and target-state contract for high-value gates.
+It does not replace current runner behavior in this task. Existing scripts and workflows continue
+to execute according to their current implementations until later alignment tasks are completed.
+
+Within the registry:
+
+- `id` is the unique stable machine/integration key
+- `name` is display text and may be presented to humans
+
+The registry defines:
 
 - gate ownership
 - gate layer
@@ -70,6 +79,10 @@ Runner scripts and workflows should emit diagnostics that align with this regist
 - CI can still run strict stale-waiver enforcement by setting `LINT_ENFORCE_UNUSED_WAIVERS=true`.
 
 ## Script Catalog
+
+The table below reflects current runner defaults and execution behavior today.
+Until follow-up alignment tasks land, treat the registry as target-state metadata contract,
+not as an automatic execution override.
 
 | Script | Purpose | Default Execution Layer | Common Failure Modes | Likely Remediation |
 |---|---|---|---|---|
