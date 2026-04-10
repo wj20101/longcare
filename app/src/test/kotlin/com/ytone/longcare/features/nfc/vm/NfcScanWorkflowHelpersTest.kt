@@ -46,6 +46,17 @@ class NfcScanWorkflowHelpersTest {
     }
 
     @Test
+    fun `reduceReaderUiState turns reader errors into device error for external mode`() {
+        val next = reduceReaderUiState(
+            currentMode = ScanMode.EXTERNAL_RFID,
+            event = AppEvent.ReaderError("R65C读卡异常，请重试", ScanSource.EXTERNAL_RFID),
+            currentReaderState = ReaderUiState.Ready,
+        )
+
+        assertEquals(ReaderUiState.DeviceError("R65C读卡异常，请重试"), next)
+    }
+
+    @Test
     fun `handleTagScanned ignores blank tag id`() = runTest {
         var locationRequested = false
         var started = false

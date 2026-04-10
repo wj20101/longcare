@@ -22,7 +22,7 @@ import javax.inject.Singleton
 class UsbExternalRfidReaderManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val appEventBus: AppEventBus,
-    private val parser: ExternalRfidTagParser,
+    private val filter: R65cBusinessFallbackFilter,
 ) : ExternalRfidReaderManager {
 
     private val permissionAction = "${context.packageName}.USB_PERMISSION_RFID"
@@ -70,6 +70,10 @@ class UsbExternalRfidReaderManager @Inject constructor(
         }
     }
 
+    override fun submitHidCandidate(rawPayload: String) {
+        publishCandidate(rawPayload)
+    }
+
     private fun publishConnectionState(connected: Boolean) {
         scope.launch {
             appEventBus.send(AppEvent.ReaderConnectionChanged(connected, ScanSource.EXTERNAL_RFID))
@@ -77,15 +81,30 @@ class UsbExternalRfidReaderManager @Inject constructor(
     }
 
     internal fun publishRawPayload(rawPayload: String) {
-        val tagId = parser.normalize(rawPayload) ?: return
-        scope.launch {
-            appEventBus.send(AppEvent.TagScanned(tagId, ScanSource.EXTERNAL_RFID))
-        }
+        publishCandidate(rawPayload)
     }
 
     internal fun publishReaderError(message: String) {
         scope.launch {
             appEventBus.send(AppEvent.ReaderError(message, ScanSource.EXTERNAL_RFID))
+        }
+    }
+
+    private fun publishCandidate(rawPayload: String) {
+        when (val result = filter.consume(rawPayload)) {
+            is R65cBusinessFallbackResult.Valid -> {
+                scope.launch {
+                    appEventBus.send(AppEvent.TagScanned(result.tagId, ScanSource.EXTERNAL_RFID))
+                }
+            }
+
+            is R65cBusinessFallbackResult.DeviceError -> {
+                publishReaderError("R65C读卡异常，请重试")
+            }
+
+            is R65cBusinessFallbackResult.Invalid,
+            is R65cBusinessFallbackResult.DuplicateSuppressed,
+            -> Unit
         }
     }
 }
