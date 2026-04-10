@@ -70,8 +70,9 @@ internal fun NfcTestBody(
     onR65CRequestRefocus: () -> Unit,
     onR65CClearResult: () -> Unit,
     onRawTextFieldValueChanged: (String) -> Unit = {},
-    onRawCapturedKey: (R65CHidCapturedKeyEvent) -> Unit = {},
     onRawFocusChanged: (Boolean) -> Unit = {},
+    onRawStartListening: () -> Unit = {},
+    onRawStopListening: () -> Unit = {},
     onRawRequestRefocus: () -> Unit = {},
     onRawClearSession: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -99,8 +100,9 @@ internal fun NfcTestBody(
         R65CHidRawValidationPanel(
             state = rawValidationState,
             onTextFieldValueChanged = onRawTextFieldValueChanged,
-            onCapturedKey = onRawCapturedKey,
             onFocusChanged = onRawFocusChanged,
+            onStartListening = onRawStartListening,
+            onStopListening = onRawStopListening,
             onRequestRefocus = onRawRequestRefocus,
             onClearSession = onRawClearSession,
         )

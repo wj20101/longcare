@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.nfctest.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -8,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -48,27 +50,41 @@ fun NfcTestScreen(
         )
     }
 
-    Scaffold(
-        topBar = { NfcTestTopBar(onNavigateBack = actions.onNavigateBack) },
-        containerColor = Color.Transparent,
-    ) { paddingValues ->
-        NfcTestBody(
-            enabled = NfcTestConfig.ENABLE_NFC_TEST,
-            r65cPanelState = r65cPanelState,
-            rawValidationState = rawValidationState,
-            onR65CInputChanged = r65cViewModel::onInputChanged,
-            onR65CFocusChanged = r65cViewModel::onFieldFocusChanged,
-            onR65CRequestRefocus = r65cViewModel::requestRefocus,
-            onR65CClearResult = r65cViewModel::clearLastResult,
-            onRawTextFieldValueChanged = rawValidationViewModel::onTextFieldValueChanged,
-            onRawCapturedKey = rawValidationViewModel::onCapturedKey,
-            onRawFocusChanged = rawValidationViewModel::onFocusChanged,
-            onRawRequestRefocus = rawValidationViewModel::requestRefocus,
-            onRawClearSession = rawValidationViewModel::clearLastSession,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-        )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .onPreviewKeyEvent { keyEvent ->
+                toR65CHidCapturedKeyEventIfRelevant(
+                    isListening = rawValidationState.isListening,
+                    currentState = rawValidationState.captureState,
+                    keyEvent = keyEvent.nativeKeyEvent,
+                )?.let(rawValidationViewModel::onHostCapturedKey)
+                false
+            },
+    ) {
+        Scaffold(
+            topBar = { NfcTestTopBar(onNavigateBack = actions.onNavigateBack) },
+            containerColor = Color.Transparent,
+        ) { paddingValues ->
+            NfcTestBody(
+                enabled = NfcTestConfig.ENABLE_NFC_TEST,
+                r65cPanelState = r65cPanelState,
+                rawValidationState = rawValidationState,
+                onR65CInputChanged = r65cViewModel::onInputChanged,
+                onR65CFocusChanged = r65cViewModel::onFieldFocusChanged,
+                onR65CRequestRefocus = r65cViewModel::requestRefocus,
+                onR65CClearResult = r65cViewModel::clearLastResult,
+                onRawTextFieldValueChanged = rawValidationViewModel::onTextFieldValueChanged,
+                onRawFocusChanged = {},
+                onRawStartListening = rawValidationViewModel::startListening,
+                onRawStopListening = rawValidationViewModel::stopListening,
+                onRawRequestRefocus = rawValidationViewModel::requestRefocus,
+                onRawClearSession = rawValidationViewModel::clearLastSession,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+            )
+        }
     }
 
     if (NfcTestConfig.ENABLE_NFC_TEST && nfcTestHelper != null) {
