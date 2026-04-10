@@ -21,6 +21,7 @@ class R65CHidRawValidationViewModel @Inject constructor() : ViewModel() {
     private var nowProvider: () -> String = { nowString() }
     private var completionDelayMillis: Long = DEFAULT_COMPLETION_DELAY_MILLIS
     private var completionJob: Job? = null
+    private var refocusRequestToken: Int = 0
 
     internal constructor(
         nowProvider: () -> String,
@@ -33,33 +34,46 @@ class R65CHidRawValidationViewModel @Inject constructor() : ViewModel() {
     private val _panelState = MutableStateFlow(R65CHidRawValidationState())
     val panelState: StateFlow<R65CHidRawValidationState> = _panelState.asStateFlow()
 
-    fun onFocusChanged(isFocused: Boolean) {
-        if (isFocused) {
-            _panelState.update { state ->
-                state.copy(captureState = state.captureStateForCurrentSession())
-            }
-            return
-        }
-
+    fun startListening() {
         cancelCompletionJob()
-        _panelState.update { it.copy(captureState = R65CHidRawCaptureState.WaitingForFocus) }
+        _panelState.update { state ->
+            state.copy(
+                isListening = true,
+                captureState = if (state.currentSessionEvents.isEmpty()) {
+                    R65CHidRawCaptureState.Armed
+                } else {
+                    R65CHidRawCaptureState.Capturing
+                },
+            )
+        }
+    }
+
+    fun stopListening() {
+        cancelCompletionJob()
+        _panelState.update {
+            it.copy(
+                isListening = false,
+                captureState = R65CHidRawCaptureState.Idle,
+            )
+        }
     }
 
     fun onTextFieldValueChanged(newValue: String) {
         _panelState.update { it.copy(textFieldValue = newValue) }
     }
 
-    fun onCapturedKey(event: R65CHidCapturedKeyEvent) {
-        if (!event.shouldAffectCurrentSession()) {
+    fun onHostCapturedKey(event: R65CHidCapturedKeyEvent) {
+        val state = _panelState.value
+        if (!state.isListening || !event.shouldAffectCurrentSession()) {
             return
         }
 
         cancelCompletionJob()
-        _panelState.update { state ->
-            state.copy(
-                captureState = R65CHidRawCaptureState.ReceivingKeys,
-                currentSessionEvents = state.currentSessionEvents + event,
-                currentSessionAssembledChars = state.currentSessionAssembledChars + event.visibleDisplayChar(),
+        _panelState.update { currentState ->
+            currentState.copy(
+                captureState = R65CHidRawCaptureState.Capturing,
+                currentSessionEvents = currentState.currentSessionEvents + event,
+                currentSessionAssembledChars = currentState.currentSessionAssembledChars + event.visibleDisplayChar(),
             )
         }
 
@@ -77,20 +91,18 @@ class R65CHidRawValidationViewModel @Inject constructor() : ViewModel() {
     }
 
     fun requestRefocus() {
-        cancelCompletionJob()
-        _panelState.update { state ->
-            state.copy(
-                captureState = state.captureStateForCurrentSession(),
-                focusRequestToken = state.focusRequestToken + 1,
-            )
-        }
+        refocusRequestToken += 1
     }
 
     fun clearLastSession() {
         cancelCompletionJob()
-        _panelState.update {
-            it.copy(
-                captureState = R65CHidRawCaptureState.ReadyForScan,
+        _panelState.update { state ->
+            state.copy(
+                captureState = if (state.isListening) {
+                    R65CHidRawCaptureState.Armed
+                } else {
+                    R65CHidRawCaptureState.Idle
+                },
                 textFieldValue = "",
                 currentSessionEvents = emptyList(),
                 currentSessionAssembledChars = "",
@@ -100,7 +112,6 @@ class R65CHidRawValidationViewModel @Inject constructor() : ViewModel() {
                 lastCompletedReason = null,
                 candidateValues = emptyList(),
                 lastCompletedAt = null,
-                focusRequestToken = it.focusRequestToken + 1,
             )
         }
     }
@@ -123,7 +134,7 @@ class R65CHidRawValidationViewModel @Inject constructor() : ViewModel() {
                 lastCompletedReason = reason,
                 candidateValues = buildR65CHidCandidateValues(textFieldValue, assembledChars),
                 lastCompletedAt = nowProvider(),
-                focusRequestToken = state.focusRequestToken + 1,
+                isListening = true,
             )
         }
     }
@@ -138,14 +149,6 @@ class R65CHidRawValidationViewModel @Inject constructor() : ViewModel() {
     override fun onCleared() {
         cancelCompletionJob()
         super.onCleared()
-    }
-
-    private fun R65CHidRawValidationState.captureStateForCurrentSession(): R65CHidRawCaptureState {
-        return if (currentSessionEvents.isEmpty()) {
-            R65CHidRawCaptureState.ReadyForScan
-        } else {
-            R65CHidRawCaptureState.ReceivingKeys
-        }
     }
 
     private fun R65CHidCapturedKeyEvent.shouldAffectCurrentSession(): Boolean {
