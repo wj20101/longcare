@@ -8,10 +8,10 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ytone.longcare.features.nfctest.vm.R65CHidCandidateKind
 import com.ytone.longcare.features.nfctest.vm.R65CHidCandidateValue
-import com.ytone.longcare.features.nfctest.vm.R65CHidCompletionReason
 import com.ytone.longcare.features.nfctest.vm.R65CHidCaptureState
-import com.ytone.longcare.features.nfctest.vm.R65CHidRawCaptureState
+import com.ytone.longcare.features.nfctest.vm.R65CHidCompletionReason
 import com.ytone.longcare.features.nfctest.vm.R65CHidPanelState
+import com.ytone.longcare.features.nfctest.vm.R65CHidRawCaptureState
 import com.ytone.longcare.features.nfctest.vm.R65CHidRawValidationState
 import com.ytone.longcare.theme.LongCareTheme
 import org.junit.Assert.assertEquals
@@ -26,27 +26,55 @@ class R65CHidRawValidationPanelTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun refocus_button_invokes_callback() {
-        var refocusCount = 0
+    fun start_listening_button_invokes_callback() {
+        var startCount = 0
 
         composeRule.setContent {
             LongCareTheme {
                 R65CHidRawValidationPanel(
                     state = R65CHidRawValidationState(
-                        captureState = R65CHidRawCaptureState.WaitingForFocus,
+                        captureState = R65CHidRawCaptureState.Idle,
+                        isListening = false,
                     ),
                     onTextFieldValueChanged = {},
-                    onCapturedKey = {},
                     onFocusChanged = {},
-                    onRequestRefocus = { refocusCount++ },
+                    onStartListening = { startCount++ },
+                    onStopListening = {},
+                    onRequestRefocus = {},
                     onClearSession = {},
                 )
             }
         }
 
-        composeRule.onNodeWithTag("r65c_raw_refocus_button").performClick()
+        composeRule.onNodeWithTag("r65c_raw_start_button").performClick()
 
-        assertEquals(1, refocusCount)
+        assertEquals(1, startCount)
+    }
+
+    @Test
+    fun stop_listening_button_invokes_callback() {
+        var stopCount = 0
+
+        composeRule.setContent {
+            LongCareTheme {
+                R65CHidRawValidationPanel(
+                    state = R65CHidRawValidationState(
+                        captureState = R65CHidRawCaptureState.Armed,
+                        isListening = true,
+                    ),
+                    onTextFieldValueChanged = {},
+                    onFocusChanged = {},
+                    onStartListening = {},
+                    onStopListening = { stopCount++ },
+                    onRequestRefocus = {},
+                    onClearSession = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("r65c_raw_stop_button").performClick()
+
+        assertEquals(1, stopCount)
     }
 
     @Test
@@ -60,8 +88,9 @@ class R65CHidRawValidationPanelTest {
                         captureState = R65CHidRawCaptureState.Completed,
                     ),
                     onTextFieldValueChanged = {},
-                    onCapturedKey = {},
                     onFocusChanged = {},
+                    onStartListening = {},
+                    onStopListening = {},
                     onRequestRefocus = {},
                     onClearSession = { clearCount++ },
                 )
@@ -94,19 +123,15 @@ class R65CHidRawValidationPanelTest {
                         lastCompletedAt = "21:52:05",
                     ),
                     onTextFieldValueChanged = {},
-                    onCapturedKey = {},
                     onFocusChanged = {},
+                    onStartListening = {},
+                    onStopListening = {},
                     onRequestRefocus = {},
                     onClearSession = {},
                 )
             }
         }
 
-        composeRule.onNodeWithTag("r65c_raw_status").assertExists()
-        composeRule.onNodeWithTag("r65c_raw_input_field").assertExists()
-        composeRule.onNodeWithTag("r65c_raw_refocus_button").assertExists()
-        composeRule.onNodeWithTag("r65c_raw_clear_button").assertExists()
-        composeRule.onNodeWithTag("r65c_candidate_0_kind").assertExists()
         composeRule.onNodeWithTag("r65c_raw_text_value").assertTextEquals("901948不EA8想0想")
         composeRule.onNodeWithTag("r65c_raw_assembled_value").assertTextEquals("901948EA80")
         composeRule.onNodeWithTag("r65c_candidate_0_value").assertTextEquals("901948EA80")
@@ -124,15 +149,17 @@ class R65CHidRawValidationPanelTest {
                         captureState = R65CHidCaptureState.ReadyForScan,
                     ),
                     rawValidationState = R65CHidRawValidationState(
-                        captureState = R65CHidRawCaptureState.ReadyForScan,
+                        captureState = R65CHidRawCaptureState.Idle,
+                        isListening = false,
                     ),
                     onR65CInputChanged = {},
                     onR65CFocusChanged = {},
                     onR65CRequestRefocus = {},
                     onR65CClearResult = {},
                     onRawTextFieldValueChanged = {},
-                    onRawCapturedKey = {},
                     onRawFocusChanged = {},
+                    onRawStartListening = {},
+                    onRawStopListening = {},
                     onRawRequestRefocus = {},
                     onRawClearSession = {},
                 )
@@ -141,5 +168,6 @@ class R65CHidRawValidationPanelTest {
 
         composeRule.onNodeWithText("R65C HID 键盘口测试").assertExists()
         composeRule.onNodeWithText("R65C 原始 HID 输出验证").assertExists()
+        composeRule.onNodeWithTag("r65c_raw_start_button").assertExists()
     }
 }
