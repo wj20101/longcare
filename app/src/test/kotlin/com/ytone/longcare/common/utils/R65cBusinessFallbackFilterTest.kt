@@ -25,10 +25,7 @@ class R65cBusinessFallbackFilterTest {
 
     @Test
     fun `suppresses duplicate valid payload inside duplicate window`() {
-        val filter = R65cBusinessFallbackFilter(
-            nowProvider = { 1000L },
-            duplicateWindowMillis = 1500L,
-        )
+        val filter = R65cBusinessFallbackFilter({ 1000L }, 1500L, 3)
 
         val first = filter.consume(rawPayload = "0426FAFA051F91")
         val second = filter.consume(rawPayload = "0426FAFA051F91")
@@ -39,7 +36,7 @@ class R65cBusinessFallbackFilterTest {
 
     @Test
     fun `returns escalated invalid state after threshold`() {
-        val filter = R65cBusinessFallbackFilter(invalidThreshold = 3)
+        val filter = R65cBusinessFallbackFilter({ 0L }, 1500L, 3)
 
         assertEquals(R65cBusinessFallbackResult.Invalid(1), filter.consume("中文"))
         assertEquals(R65cBusinessFallbackResult.Invalid(2), filter.consume("abc-123"))
@@ -48,7 +45,7 @@ class R65cBusinessFallbackFilterTest {
 
     @Test
     fun `valid payload resets invalid streak`() {
-        val filter = R65cBusinessFallbackFilter(invalidThreshold = 3)
+        val filter = R65cBusinessFallbackFilter({ 0L }, 1500L, 3)
 
         filter.consume("中文")
         val valid = filter.consume("0426FAFA051F91")

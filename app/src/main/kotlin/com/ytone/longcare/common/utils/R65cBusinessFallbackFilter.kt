@@ -1,6 +1,8 @@
 package com.ytone.longcare.common.utils
 
 import java.util.Locale
+import javax.inject.Inject
+import javax.inject.Singleton
 
 internal sealed class R65cBusinessFallbackResult {
     data class Valid(val tagId: String) : R65cBusinessFallbackResult()
@@ -9,16 +11,27 @@ internal sealed class R65cBusinessFallbackResult {
     data class DeviceError(val streak: Int) : R65cBusinessFallbackResult()
 }
 
-internal class R65cBusinessFallbackFilter(
-    private val nowProvider: () -> Long = System::currentTimeMillis,
-    private val duplicateWindowMillis: Long = 1500L,
-    private val invalidThreshold: Int = 3,
-) {
+@Singleton
+public class R65cBusinessFallbackFilter @Inject constructor() {
+    private var nowProvider: () -> Long = System::currentTimeMillis
+    private var duplicateWindowMillis: Long = 1500L
+    private var invalidThreshold: Int = 3
+
+    internal constructor(
+        nowProvider: () -> Long,
+        duplicateWindowMillis: Long,
+        invalidThreshold: Int,
+    ) : this() {
+        this.nowProvider = nowProvider
+        this.duplicateWindowMillis = duplicateWindowMillis
+        this.invalidThreshold = invalidThreshold
+    }
+
     private var invalidStreak: Int = 0
     private var lastPublishedTagId: String? = null
     private var lastPublishedAtMillis: Long = 0L
 
-    fun consume(rawPayload: String): R65cBusinessFallbackResult {
+    internal fun consume(rawPayload: String): R65cBusinessFallbackResult {
         val normalized = normalize(rawPayload)
         if (normalized == null) {
             invalidStreak += 1
