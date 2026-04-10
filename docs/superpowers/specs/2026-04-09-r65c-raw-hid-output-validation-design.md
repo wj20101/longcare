@@ -71,13 +71,13 @@ Keep this work inside the existing NFC test surface and add a new validation pan
 
 Do not move directly into production integration yet.
 
-The new panel should:
+The new validation path should:
 
-- capture raw key events instead of trusting only the text field value
-- still show the text field value for comparison
+- capture raw key events at the test-screen host level instead of trusting a text field
+- still preserve the text-field result as a comparison layer
 - group one swipe into a single completed session
 - generate several candidate interpretations from the same session
-- make it obvious when text-field output and key-event output diverge
+- make it obvious when host-level key-event output and text-field output diverge
 
 The design explicitly treats the existing `R65C HID 键盘口测试` panel as:
 
@@ -127,10 +127,30 @@ A dedicated composable panel rendered inside `NfcTestScreen`.
 Responsibilities:
 
 - render the current validation state
-- hold the key-event capture surface
-- show text-field output versus event-assembled output
+- show text-field output versus host-captured event output
 - show recent key events
 - show candidate interpretations for the same swipe
+- expose a small set of explicit controls such as:
+  - `开始监听`
+  - `停止监听`
+  - `清空会话`
+
+It should not be the authority for raw key capture.
+
+#### `R65CHidRawCaptureHost`
+
+A small host-side capture adapter that lives at the `NfcTestScreen` layer.
+
+Responsibilities:
+
+- receive raw `KeyEvent` values from the test screen host
+- forward only relevant events into the validation ViewModel
+- activate only while the raw validation flow is armed
+
+It should not:
+
+- contain candidate interpretation logic
+- format user-facing diagnostic copy
 
 #### `R65CHidRawValidationState`
 
@@ -149,8 +169,8 @@ The panel should include five blocks.
 
 Show states such as:
 
-- waiting for focus
-- ready for scan
+- idle
+- listening
 - receiving raw keys
 - session completed
 - capture error
@@ -163,7 +183,7 @@ This is intentionally kept even though it is not the authoritative layer. It let
 
 #### C. Event-Assembled Output
 
-Show the string assembled from raw key events.
+Show the string assembled from host-captured raw key events.
 
 This is the most important block in the panel because it helps distinguish:
 
@@ -197,9 +217,9 @@ The panel should not guess a single final answer yet. It should show candidates 
 
 Recommended shape:
 
-- `R65CHidRawCaptureState.WaitingForFocus`
-- `R65CHidRawCaptureState.ReadyForScan`
-- `R65CHidRawCaptureState.ReceivingKeys`
+- `R65CHidRawCaptureState.Idle`
+- `R65CHidRawCaptureState.Armed`
+- `R65CHidRawCaptureState.Capturing`
 - `R65CHidRawCaptureState.Completed`
 - `R65CHidRawCaptureState.CaptureError`
 
@@ -214,13 +234,13 @@ Recommended data fields:
 - `lastCompletedReason`
 - `candidateValues`
 - `lastCompletedAt`
-- `focusRequestToken`
+- `isListening`
 
 This keeps “what is happening now” separate from “what was captured last time.”
 
 ### 5. Capture Logic
 
-The validation panel should not rely on `onValueChange(...)` alone.
+The validation workflow should not rely on a composable text field as the source of truth.
 
 Instead, it should capture two layers in parallel:
 
@@ -228,18 +248,25 @@ Instead, it should capture two layers in parallel:
 
 Use the input field’s text callback to preserve the final visible text.
 
-#### Key-event layer
+#### Host key-event layer
 
-Use `onPreviewKeyEvent` or `onKeyEvent` to record raw key events directly.
+Use a host-level key-event path from the test screen container, not the text field, to record raw key events directly.
 
 For each relevant key event, record:
 
 - `keyCode`
 - `unicodeChar`
 - `action`
-- timestamp if useful
+- native event time if available
 
-The view model should also assemble a character sequence directly from those key events for comparison.
+The view model should assemble a character sequence directly from those host-level key events for comparison.
+
+The host adapter should explicitly ignore obvious non-scan keys such as:
+
+- back
+- volume keys
+- navigation keys
+- other system controls
 
 ### 6. Session Completion Rules
 
@@ -270,7 +297,21 @@ When one session completes, generate candidate values using only simple, explici
 
 This feature is diagnostic. It should explain what the observed value resembles, not silently transform it into a production identifier.
 
-### 8. Interpreting Failures
+### 8. Listener Lifecycle
+
+The raw validation flow should not behave like a global keyboard interceptor.
+
+Rules:
+
+- default state is `Idle`
+- the tester explicitly enters listening mode by tapping `开始监听`
+- while listening, host-level key events are captured
+- tapping `停止监听` or leaving the screen stops capture immediately
+- the panel may request focus for the comparison text field, but focus is no longer what grants raw capture authority
+
+This keeps the capture path scoped to the test screen and avoids accidental interference with unrelated key handling.
+
+### 9. Interpreting Failures
 
 The panel should help distinguish three failure classes.
 
@@ -286,15 +327,16 @@ If the key-event layer looks sane but the text-field layer contains garbage, the
 
 If the output is internally consistent but still does not match the NFC-tool UID format, the reader may be emitting a shortened or transformed identifier rather than the full UID.
 
-### 9. Testing Strategy
+### 10. Testing Strategy
 
 #### ViewModel tests
 
 Cover:
 
-- key-event collection into one session
+- host-event collection into one session
 - `Enter` completion
 - idle-timeout completion
+- listener arm / stop behavior
 - event-assembled string generation
 - candidate generation for:
   - hex-looking input
@@ -305,7 +347,7 @@ Cover:
 
 Cover:
 
-- focus behavior
+- listening controls
 - text-field block visibility
 - key-log block visibility
 - candidate-value block visibility
@@ -316,7 +358,7 @@ Manual validation should use the same physical card and compare:
 
 1. system NFC tool UID
 2. text-field value
-3. event-assembled value
+3. host-captured event-assembled value
 4. candidate values
 
 The expected outcome is not “always produce a business-ready answer.” The expected outcome is “make the mismatch visible and diagnosable.”
