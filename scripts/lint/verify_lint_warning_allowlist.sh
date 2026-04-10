@@ -90,6 +90,25 @@ lint_gate_metadata() {
   printf '%s\t%s\t%s\n' "${owner}" "${source_of_truth}" "${likely_fix}"
 }
 
+print_lint_gate_diagnostics() {
+  local layer="$1"
+  local gate_metadata
+  local gate_owner
+  local gate_source_of_truth
+  local gate_likely_fix
+
+  gate_metadata="$(lint_gate_metadata)"
+  gate_owner="$(printf '%s' "${gate_metadata}" | cut -f1)"
+  gate_source_of_truth="$(printf '%s' "${gate_metadata}" | cut -f2)"
+  gate_likely_fix="$(printf '%s' "${gate_metadata}" | cut -f3)"
+
+  echo "Lint gate diagnostics:" >&2
+  echo "  - owner: ${gate_owner}" >&2
+  echo "  - layer: ${layer}" >&2
+  echo "  - source_of_truth: ${gate_source_of_truth}" >&2
+  echo "  - likely_fix: ${gate_likely_fix}" >&2
+}
+
 warning_line_matches_source_pattern() {
   local warning_line="$1"
   local source_pattern="$2"
@@ -138,6 +157,7 @@ INVALID_WAIVER_ENTRIES="$(jq -r '
 if [[ -n "${INVALID_WAIVER_ENTRIES}" ]]; then
   echo "Found invalid waiver entries (missing required fields or invalid date/source config):" >&2
   printf '%s\n' "${INVALID_WAIVER_ENTRIES}" | sed 's/^/  - /' >&2
+  print_lint_gate_diagnostics "ci-required"
   exit 1
 fi
 
@@ -152,16 +172,9 @@ while IFS= read -r issue_id; do
 done <<< "${WARNING_IDS}"
 
 if [[ -n "${UNKNOWN_IDS}" ]]; then
-  GATE_METADATA="$(lint_gate_metadata)"
-  GATE_OWNER="$(printf '%s' "${GATE_METADATA}" | cut -f1)"
-  GATE_SOURCE_OF_TRUTH="$(printf '%s' "${GATE_METADATA}" | cut -f2)"
-  GATE_LIKELY_FIX="$(printf '%s' "${GATE_METADATA}" | cut -f3)"
   echo "Found lint warning IDs outside waiver allowlist:" >&2
   printf '%s' "${UNKNOWN_IDS}" | sed 's/^/  - /' >&2
-  echo "Gate diagnostics:" >&2
-  echo "  - owner: ${GATE_OWNER}" >&2
-  echo "  - source_of_truth: ${GATE_SOURCE_OF_TRUTH}" >&2
-  echo "  - likely_fix: ${GATE_LIKELY_FIX}" >&2
+  print_lint_gate_diagnostics "ci-required"
   echo "Observed warning IDs in report:" >&2
   printf '%s\n' "${WARNING_IDS}" | sed 's/^/  - /' >&2
   exit 1
@@ -176,6 +189,7 @@ EXPIRED_WAIVERS="$(jq -r --arg current_date "${CURRENT_DATE}" '
 if [[ -n "${EXPIRED_WAIVERS}" ]]; then
   echo "Found expired lint waivers (review_by < ${CURRENT_DATE}):" >&2
   printf '%s\n' "${EXPIRED_WAIVERS}" | sed 's/^/  - /' >&2
+  print_lint_gate_diagnostics "ci-required"
   exit 1
 fi
 
@@ -184,6 +198,7 @@ if [[ -z "${WARNING_IDS}" ]]; then
     if [[ "${ENFORCE_UNUSED_WAIVERS}" == "true" ]]; then
       echo "Lint report has no warnings, but waiver entries still exist. Remove stale waivers:" >&2
       printf '%s\n' "${WAIVER_IDS}" | sed 's/^/  - /' >&2
+      print_lint_gate_diagnostics "ci-required"
       exit 1
     fi
 
@@ -227,6 +242,7 @@ done < "${TMP_WARNINGS}"
 if [[ -n "${SOURCE_VIOLATIONS}" ]]; then
   echo "Found allowlisted lint IDs from unexpected sources:" >&2
   printf '%s' "${SOURCE_VIOLATIONS}" | sed 's/^/  - /' >&2
+  print_lint_gate_diagnostics "ci-required"
   exit 1
 fi
 
@@ -242,6 +258,7 @@ if [[ -n "${UNUSED_WAIVERS}" ]]; then
   if [[ "${ENFORCE_UNUSED_WAIVERS}" == "true" ]]; then
     echo "Found stale waivers not present in current lint report. Remove them:" >&2
     printf '%s' "${UNUSED_WAIVERS}" | sed 's/^/  - /' >&2
+    print_lint_gate_diagnostics "ci-required"
     exit 1
   fi
 

@@ -287,30 +287,40 @@ resolve_gate_metadata() {
   local default_source_of_truth="$3"
   local default_likely_fix="$4"
 
+  local registered
   local owner
   local layer
   local source_of_truth
   local likely_fix
 
+  registered="false"
   owner="$(registry_gate_field "${gate_id}" "owner" || true)"
   layer="$(registry_gate_field "${gate_id}" "layer" || true)"
   source_of_truth="$(registry_gate_field "${gate_id}" "source_of_truth" || true)"
   likely_fix="$(registry_gate_field "${gate_id}" "likely_fix" || true)"
 
-  if [[ -z "${owner}" ]]; then
-    owner="unknown-owner"
-  fi
-  if [[ -z "${layer}" ]]; then
-    layer="${default_layer}"
-  fi
-  if [[ -z "${source_of_truth}" ]]; then
-    source_of_truth="${default_source_of_truth}"
-  fi
-  if [[ -z "${likely_fix}" ]]; then
-    likely_fix="${default_likely_fix}"
+  if [[ -n "${owner}" || -n "${layer}" || -n "${source_of_truth}" || -n "${likely_fix}" ]]; then
+    registered="true"
   fi
 
-  printf '%s\t%s\t%s\t%s\n' "${owner}" "${layer}" "${source_of_truth}" "${likely_fix}"
+  if [[ "${registered}" != "true" ]]; then
+    owner=""
+    layer=""
+    source_of_truth="${default_source_of_truth}"
+    likely_fix="${default_likely_fix}"
+  else
+    if [[ -z "${layer}" ]]; then
+      layer="${default_layer}"
+    fi
+    if [[ -z "${source_of_truth}" ]]; then
+      source_of_truth="${default_source_of_truth}"
+    fi
+    if [[ -z "${likely_fix}" ]]; then
+      likely_fix="${default_likely_fix}"
+    fi
+  fi
+
+  printf '%s\t%s\t%s\t%s\t%s\n' "${registered}" "${owner}" "${layer}" "${source_of_truth}" "${likely_fix}"
 }
 
 OVERALL_EXIT=0
@@ -322,10 +332,11 @@ for i in "${!CHECK_NAMES[@]}"; do
   TIER="${CHECK_TIERS[$i]}"
   CATEGORY="${CHECK_CATEGORIES[$i]}"
   REGISTRY_METADATA="$(resolve_gate_metadata "${ID}" "${TIER}" "${CHECK_SOURCE_OF_TRUTH[$i]}" "${CHECK_LIKELY_FIXES[$i]}")"
-  OWNER="$(printf '%s' "${REGISTRY_METADATA}" | cut -f1)"
-  LAYER="$(printf '%s' "${REGISTRY_METADATA}" | cut -f2)"
-  SOURCE_OF_TRUTH="$(printf '%s' "${REGISTRY_METADATA}" | cut -f3)"
-  LIKELY_FIX="$(printf '%s' "${REGISTRY_METADATA}" | cut -f4)"
+  REGISTRY_REGISTERED="$(printf '%s' "${REGISTRY_METADATA}" | cut -f1)"
+  OWNER="$(printf '%s' "${REGISTRY_METADATA}" | cut -f2)"
+  LAYER="$(printf '%s' "${REGISTRY_METADATA}" | cut -f3)"
+  SOURCE_OF_TRUTH="$(printf '%s' "${REGISTRY_METADATA}" | cut -f4)"
+  LIKELY_FIX="$(printf '%s' "${REGISTRY_METADATA}" | cut -f5)"
   SLUG="$(sanitize_name "${NAME}")"
   LOG_FILE="${LOG_DIR}/$((i + 1))_${SLUG}.log"
 
@@ -351,6 +362,7 @@ for i in "${!CHECK_NAMES[@]}"; do
     --arg name "${NAME}" \
     --arg owner "${OWNER}" \
     --arg layer "${LAYER}" \
+    --argjson registry_registered "$(if [[ "${REGISTRY_REGISTERED}" == "true" ]]; then echo true; else echo false; fi)" \
     --arg tier "${TIER}" \
     --arg category "${CATEGORY}" \
     --arg likely_fix "${LIKELY_FIX}" \
@@ -367,6 +379,7 @@ for i in "${!CHECK_NAMES[@]}"; do
       name: $name,
       owner: $owner,
       layer: $layer,
+      registry_registered: $registry_registered,
       tier: $tier,
       category: $category,
       likely_fix: $likely_fix,
@@ -435,7 +448,11 @@ jq -n \
     jq -r '
       .[]
       | select(.status == "FAIL")
-      | "- \(.name): owner=`\(.owner)`, layer=`\(.layer)`, source_of_truth=`\(.source_of_truth)`, likely_fix=\(.likely_fix)"
+      | if .registry_registered then
+          "- \(.name): owner=`\(.owner)`, layer=`\(.layer)`, source_of_truth=`\(.source_of_truth)`, likely_fix=\(.likely_fix)"
+        else
+          "- \(.name): registry_entry=`missing` (layer/owner/source_of_truth/likely_fix unavailable in registry)"
+        end
     ' "${CHECKS_ARRAY_JSON}"
   fi
   echo
