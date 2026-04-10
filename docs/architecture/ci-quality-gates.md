@@ -28,6 +28,22 @@ Within the registry:
 - `id` is the unique stable machine/integration key
 - `name` is display text and may be presented to humans
 
+Current schema contract:
+
+- `version`: schema revision for compatibility-aware consumers.
+- `gates`: list of high-value gate metadata entries.
+- `id`: unique stable machine/integration key for a gate.
+- `name`: human-facing gate label.
+- `layer`: governance tier target (`local-fast`, `ci-required`, `release-required`, `observability-only`).
+- `blocking`: whether the gate is intended to block at its target layer.
+- `owner`: accountable team for policy and remediation direction.
+- `source_of_truth`: canonical file/script/policy location for the rule.
+- `likely_fix`: concise default remediation guidance for diagnostics.
+
+High-value inclusion rule:
+
+- Include gates that are merge/release meaningful, show recurring governance drift risk, or materially benefit from explicit ownership and remediation metadata.
+
 The registry defines:
 
 - gate ownership
