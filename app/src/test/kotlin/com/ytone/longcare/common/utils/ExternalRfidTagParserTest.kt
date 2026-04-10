@@ -9,18 +9,15 @@ class ExternalRfidTagParserTest {
     private val parser = ExternalRfidTagParser()
 
     @Test
-    fun `normalize trims whitespace and uppercases tag ids`() {
-        assertEquals("01AB9F", parser.normalize(" 01ab9f\r\n"))
+    fun `normalize trims separators and uppercases NFC style hex ids`() {
+        assertEquals("0426FAFA051F91", parser.normalize(" 0426-fa fa_051f91 "))
     }
 
     @Test
-    fun `normalize removes inner spaces`() {
-        assertEquals("01AB", parser.normalize("  01 ab  "))
-    }
-
-    @Test
-    fun `normalize rejects blank payloads and non alphanumeric values`() {
+    fun `normalize rejects blank non hex and invalid length payloads`() {
         assertNull(parser.normalize("   "))
-        assertNull(parser.normalize("01-AB"))
+        assertNull(parser.normalize("01-AB-Z9"))
+        assertNull(parser.normalize("123456789"))
+        assertNull(parser.normalize("中文"))
     }
 }

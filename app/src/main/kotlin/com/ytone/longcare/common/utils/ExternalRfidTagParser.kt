@@ -9,11 +9,13 @@ class ExternalRfidTagParser @Inject constructor() {
     fun normalize(rawPayload: String): String? {
         val normalized = rawPayload
             .trim()
-            .replace(Regex("\\s+"), "")
+            .replace(Regex("[\\s:_-]+"), "")
             .uppercase(Locale.ROOT)
 
         return normalized.takeIf {
-            it.isNotBlank() && it.all(Char::isLetterOrDigit)
+            it.isNotBlank() &&
+                it.all { ch -> ch in '0'..'9' || ch in 'A'..'F' } &&
+                (it.length == 8 || it.length == 14)
         }
     }
 }
