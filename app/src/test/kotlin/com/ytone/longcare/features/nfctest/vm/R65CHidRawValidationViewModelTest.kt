@@ -181,4 +181,29 @@ class R65CHidRawValidationViewModelTest {
         assertTrue(viewModel.panelState.value.currentSessionEvents.isEmpty())
         assertEquals("", viewModel.panelState.value.currentSessionAssembledChars)
     }
+
+    @Test
+    fun `stopListening ignores later host keys`() {
+        val viewModel = R65CHidRawValidationViewModel(
+            nowProvider = { fixedNow },
+            completionDelayMillis = 400L,
+        )
+
+        viewModel.startListening()
+        viewModel.stopListening()
+        viewModel.onHostCapturedKey(
+            R65CHidCapturedKeyEvent(
+                keyCode = 29,
+                unicodeChar = 'A'.code,
+                action = 0,
+                displayChar = "A",
+                eventTimeMillis = 1L,
+            ),
+        )
+
+        assertEquals(R65CHidRawCaptureState.Idle, viewModel.panelState.value.captureState)
+        assertEquals(false, viewModel.panelState.value.isListening)
+        assertTrue(viewModel.panelState.value.currentSessionEvents.isEmpty())
+        assertEquals("", viewModel.panelState.value.currentSessionAssembledChars)
+    }
 }
