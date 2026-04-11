@@ -53,6 +53,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Verify Android CI success for target commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TARGET_SHA="${GITHUB_SHA}"
+
+          RUN_JSON="$(gh run list \
+            --workflow "Android CI" \
+            --limit 20 \
+            --json status,conclusion,headSha,databaseId,displayTitle)"
+
+          MATCH_COUNT="$(printf '%s' "${RUN_JSON}" | jq --arg target_sha "${TARGET_SHA}" '[.[] | select(.headSha == $target_sha)] | length')"
+          if [ "${MATCH_COUNT}" -eq 0 ]; then
+            echo "::error::No Android CI run found for commit ${TARGET_SHA}. Run Android CI first."
+            exit 1
+          fi
+
+          STATUS="$(printf '%s' "${RUN_JSON}" | jq -r --arg target_sha "${TARGET_SHA}" '[.[] | select(.headSha == $target_sha)][0].status')"
+          CONCLUSION="$(printf '%s' "${RUN_JSON}" | jq -r --arg target_sha "${TARGET_SHA}" '[.[] | select(.headSha == $target_sha)][0].conclusion')"
+          RUN_ID="$(printf '%s' "${RUN_JSON}" | jq -r --arg target_sha "${TARGET_SHA}" '[.[] | select(.headSha == $target_sha)][0].databaseId')"
+
+          if [ "${STATUS}" != "completed" ] || [ "${CONCLUSION}" != "success" ]; then
+            echo "::error::Latest Android CI run for ${TARGET_SHA} is not green (run_id=${RUN_ID}, status=${STATUS}, conclusion=${CONCLUSION})."
+            exit 1
+          fi
+
       - name: Set up shared Android build environment
         uses: ./.github/actions/android-build-env
         with:

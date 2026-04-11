@@ -87,6 +87,21 @@ jobs:
           run-baselineprofile-journey-check: 'false'
           run-module-dependency-check: 'false'
 
+      - name: Publish ci-required gate summary
+        run: |
+          {
+            echo "## CI required gates"
+            echo ""
+            echo "- lint warning allowlist"
+            echo "- lint ignore policy"
+            echo "- jetpack compat guard"
+            echo "- baseline profile journeys"
+            echo "- module dependency whitelist"
+            echo "- architecture boundaries"
+            echo "- module API visibility"
+            echo "- workflow quality guard"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Run ci-required quality gates
         run: |
           bash scripts/quality/verify_ci_workflow_quality.sh
