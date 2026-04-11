@@ -60,7 +60,7 @@ class UsbExternalRfidReaderManager @Inject constructor(
             )
             receiverRegistered = true
         }
-        publishConnectionState(usbManager.deviceList.isNotEmpty())
+        publishConnectionState(isReaderReady())
     }
 
     override fun stop(activity: Activity) {
@@ -73,6 +73,8 @@ class UsbExternalRfidReaderManager @Inject constructor(
     override fun submitHidCandidate(rawPayload: String) {
         publishCandidate(rawPayload)
     }
+
+    override fun isReaderReady(): Boolean = usbManager.deviceList.isNotEmpty()
 
     private fun publishConnectionState(connected: Boolean) {
         scope.launch {

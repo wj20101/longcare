@@ -6,4 +6,5 @@ interface ExternalRfidReaderManager {
     fun start(activity: Activity)
     fun stop(activity: Activity)
     fun submitHidCandidate(rawPayload: String)
+    fun isReaderReady(): Boolean
 }
