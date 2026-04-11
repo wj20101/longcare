@@ -70,7 +70,11 @@ class NfcWorkflowViewModel @Inject constructor(
     val scanMode: StateFlow<ScanMode> = _scanMode.asStateFlow()
 
     private val _readerUiState = MutableStateFlow(
-        if (_scanMode.value == ScanMode.SYSTEM_NFC) ReaderUiState.NotRequired else ReaderUiState.Disconnected,
+        if (_scanMode.value == ScanMode.SYSTEM_NFC) {
+            ReaderUiState.NotRequired
+        } else {
+            initialExternalReaderUiState(externalRfidReaderManager.isReaderReady())
+        },
     )
     val readerUiState: StateFlow<ReaderUiState> = _readerUiState.asStateFlow()
 
@@ -153,6 +157,11 @@ class NfcWorkflowViewModel @Inject constructor(
         }
     }
 
+    fun refreshExternalReaderReadyState() {
+        if (_scanMode.value != ScanMode.EXTERNAL_RFID) return
+        _readerUiState.value = initialExternalReaderUiState(externalRfidReaderManager.isReaderReady())
+    }
+
     suspend fun getCurrentLocationCoordinates(): Pair<String, String> = activityAndLocationDelegate.getCurrentLocationCoordinates()
 
     fun observeScanEvents(
@@ -215,3 +224,6 @@ class NfcWorkflowViewModel @Inject constructor(
 internal fun nextReaderUiStateAfterR65cFallbackSubmit(current: ReaderUiState): ReaderUiState {
     return if (current == ReaderUiState.Reading) ReaderUiState.Ready else current
 }
+
+internal fun initialExternalReaderUiState(isReaderReady: Boolean): ReaderUiState =
+    if (isReaderReady) ReaderUiState.Ready else ReaderUiState.Disconnected

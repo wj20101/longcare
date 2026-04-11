@@ -26,6 +26,7 @@ internal fun NfcWorkflowEffects(
     LaunchedEffect(activity) {
         if (activity != null) {
             nfcViewModel.startActiveScanSource(activity)
+            nfcViewModel.refreshExternalReaderReadyState()
         }
     }
 
