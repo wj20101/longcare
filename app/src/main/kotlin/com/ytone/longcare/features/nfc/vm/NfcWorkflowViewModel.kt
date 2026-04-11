@@ -194,7 +194,7 @@ class NfcWorkflowViewModel @Inject constructor(
 
     private fun submitR65cFallbackPayload(rawPayload: String) {
         if (_scanMode.value != ScanMode.EXTERNAL_RFID) return
-        _readerUiState.value = ReaderUiState.Ready
+        _readerUiState.value = nextReaderUiStateAfterR65cFallbackSubmit(_readerUiState.value)
         if (rawPayload.isBlank()) return
         externalRfidReaderManager.submitHidCandidate(rawPayload)
     }
@@ -210,4 +210,8 @@ class NfcWorkflowViewModel @Inject constructor(
         scanDelegate.clear()
         super.onCleared()
     }
+}
+
+internal fun nextReaderUiStateAfterR65cFallbackSubmit(current: ReaderUiState): ReaderUiState {
+    return if (current == ReaderUiState.Reading) ReaderUiState.Ready else current
 }
