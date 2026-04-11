@@ -41,7 +41,11 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 
 @Composable
-internal fun SignInContentCard(signInState: SignInState, statusOverrideRes: Int? = null) {
+internal fun SignInContentCard(
+    signInState: SignInState,
+    statusOverrideRes: Int? = null,
+    showReadingIndicator: Boolean = false,
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -71,17 +75,27 @@ internal fun SignInContentCard(signInState: SignInState, statusOverrideRes: Int?
 
                 SignInState.IDLE -> {
                     if (statusOverrideRes != null) {
-                        Box(
+                        Row(
                             modifier = Modifier
                                 .height(48.dp)
                                 .fillMaxWidth(),
-                            contentAlignment = Alignment.Center
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            if (showReadingIndicator) {
+                                androidx.compose.material3.CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+
                             Text(
                                 text = stringResource(statusOverrideRes),
                                 color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
                             )
                         }
                     } else {

@@ -32,6 +32,18 @@ class NfcWorkflowUiCopyTest {
     }
 
     @Test
+    fun `external reading copy shows recognizing state`() {
+        val copy = resolveNfcWorkflowIdleCopy(
+            scanMode = ScanMode.EXTERNAL_RFID,
+            readerUiState = ReaderUiState.Reading,
+        )
+
+        assertEquals(NfcWorkflowCopyKey.EXTERNAL_READING_PROMPT, copy.promptKey)
+        assertEquals(NfcWorkflowCopyKey.EXTERNAL_READING_STATUS, copy.statusKey)
+        assertEquals(NfcWorkflowCopyKey.EXTERNAL_READY_HINT, copy.bottomHintKey)
+    }
+
+    @Test
     fun `system nfc idle copy keeps default prompt and hint keys`() {
         val copy = resolveNfcWorkflowIdleCopy(
             scanMode = ScanMode.SYSTEM_NFC,

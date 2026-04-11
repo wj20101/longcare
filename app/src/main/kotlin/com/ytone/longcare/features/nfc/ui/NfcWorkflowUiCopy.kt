@@ -15,6 +15,8 @@ internal enum class NfcWorkflowCopyKey {
     EXTERNAL_READY_PROMPT,
     EXTERNAL_READY_STATUS,
     EXTERNAL_READY_HINT,
+    EXTERNAL_READING_PROMPT,
+    EXTERNAL_READING_STATUS,
 }
 
 internal data class NfcWorkflowIdleCopy(
@@ -34,9 +36,13 @@ internal fun resolveNfcWorkflowIdleCopy(
     )
 
     ScanMode.EXTERNAL_RFID -> when (readerUiState) {
-        ReaderUiState.Ready,
-        ReaderUiState.Reading,
-        -> NfcWorkflowIdleCopy(
+        ReaderUiState.Reading -> NfcWorkflowIdleCopy(
+            promptKey = NfcWorkflowCopyKey.EXTERNAL_READING_PROMPT,
+            statusKey = NfcWorkflowCopyKey.EXTERNAL_READING_STATUS,
+            bottomHintKey = NfcWorkflowCopyKey.EXTERNAL_READY_HINT,
+        )
+
+        ReaderUiState.Ready -> NfcWorkflowIdleCopy(
             promptKey = NfcWorkflowCopyKey.EXTERNAL_READY_PROMPT,
             statusKey = NfcWorkflowCopyKey.EXTERNAL_READY_STATUS,
             bottomHintKey = NfcWorkflowCopyKey.EXTERNAL_READY_HINT,
@@ -64,4 +70,6 @@ internal fun resolveCopyRes(key: NfcWorkflowCopyKey): Int = when (key) {
     NfcWorkflowCopyKey.EXTERNAL_READY_PROMPT -> R.string.nfc_external_reader_ready_prompt
     NfcWorkflowCopyKey.EXTERNAL_READY_STATUS -> R.string.nfc_external_reader_ready
     NfcWorkflowCopyKey.EXTERNAL_READY_HINT -> R.string.nfc_external_reader_ready_hint
+    NfcWorkflowCopyKey.EXTERNAL_READING_PROMPT -> R.string.nfc_external_reader_reading_prompt
+    NfcWorkflowCopyKey.EXTERNAL_READING_STATUS -> R.string.nfc_external_reader_reading
 }

@@ -113,6 +113,8 @@ internal fun NfcWorkflowBodyContent(
         SignInContentCard(
             signInState = signInState,
             statusOverrideRes = statusOverrideRes,
+            showReadingIndicator = scanMode == ScanMode.EXTERNAL_RFID &&
+                readerUiState == ReaderUiState.Reading,
         )
 
         Spacer(modifier = Modifier.height(24.dp))
