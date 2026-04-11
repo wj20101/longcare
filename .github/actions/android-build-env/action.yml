@@ -1,6 +1,6 @@
 name: Android Build Environment
 
-description: Configure Java/Gradle/Android SDK and run lightweight shared Android guardrails.
+description: Configure Java/Gradle/Android SDK and run shared low-cost Android guardrails. This action is environment/setup-focused and should not replace workflow-specific gate selection.
 
 inputs:
   setup-android-sdk:
