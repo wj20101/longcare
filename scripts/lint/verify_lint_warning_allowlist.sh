@@ -5,6 +5,8 @@ REPORT_PATH="${1:-app/build/reports/lint-results-debug.txt}"
 WAIVER_PATH="${2:-scripts/lint/lint_warning_waivers.json}"
 CURRENT_DATE="${LINT_WAIVER_DATE:-$(date -u +%F)}"
 ENFORCE_UNUSED_WAIVERS_MODE="${LINT_ENFORCE_UNUSED_WAIVERS:-auto}"
+REGISTRY_PATH="${LINT_GATE_REGISTRY_PATH:-scripts/quality/quality_gate_registry.json}"
+REGISTRY_GATE_ID="lint_warning_allowlist"
 
 if [[ ! -f "${REPORT_PATH}" ]]; then
   echo "Lint report not found: ${REPORT_PATH}" >&2
@@ -50,6 +52,61 @@ resolve_enforce_unused_waivers() {
       exit 1
       ;;
   esac
+}
+
+registry_gate_field() {
+  local field="$1"
+
+  if [[ ! -f "${REGISTRY_PATH}" ]]; then
+    return 1
+  fi
+
+  jq -r --arg id "${REGISTRY_GATE_ID}" --arg field "${field}" '
+    .gates[]
+    | select(.id == $id)
+    | .[$field] // empty
+  ' "${REGISTRY_PATH}" | head -n 1
+}
+
+lint_gate_metadata() {
+  local owner
+  local source_of_truth
+  local likely_fix
+
+  owner="$(registry_gate_field "owner" || true)"
+  source_of_truth="$(registry_gate_field "source_of_truth" || true)"
+  likely_fix="$(registry_gate_field "likely_fix" || true)"
+
+  if [[ -z "${owner}" ]]; then
+    owner="mobile-platform"
+  fi
+  if [[ -z "${source_of_truth}" ]]; then
+    source_of_truth="scripts/lint/lint_warning_waivers.json"
+  fi
+  if [[ -z "${likely_fix}" ]]; then
+    likely_fix="Fix the lint issue or add/update an approved waiver entry."
+  fi
+
+  printf '%s\t%s\t%s\n' "${owner}" "${source_of_truth}" "${likely_fix}"
+}
+
+print_lint_gate_diagnostics() {
+  local layer="$1"
+  local gate_metadata
+  local gate_owner
+  local gate_source_of_truth
+  local gate_likely_fix
+
+  gate_metadata="$(lint_gate_metadata)"
+  gate_owner="$(printf '%s' "${gate_metadata}" | cut -f1)"
+  gate_source_of_truth="$(printf '%s' "${gate_metadata}" | cut -f2)"
+  gate_likely_fix="$(printf '%s' "${gate_metadata}" | cut -f3)"
+
+  echo "Lint gate diagnostics:" >&2
+  echo "  - owner: ${gate_owner}" >&2
+  echo "  - layer: ${layer}" >&2
+  echo "  - source_of_truth: ${gate_source_of_truth}" >&2
+  echo "  - likely_fix: ${gate_likely_fix}" >&2
 }
 
 warning_line_matches_source_pattern() {
@@ -100,6 +157,7 @@ INVALID_WAIVER_ENTRIES="$(jq -r '
 if [[ -n "${INVALID_WAIVER_ENTRIES}" ]]; then
   echo "Found invalid waiver entries (missing required fields or invalid date/source config):" >&2
   printf '%s\n' "${INVALID_WAIVER_ENTRIES}" | sed 's/^/  - /' >&2
+  print_lint_gate_diagnostics "ci-required"
   exit 1
 fi
 
@@ -116,6 +174,7 @@ done <<< "${WARNING_IDS}"
 if [[ -n "${UNKNOWN_IDS}" ]]; then
   echo "Found lint warning IDs outside waiver allowlist:" >&2
   printf '%s' "${UNKNOWN_IDS}" | sed 's/^/  - /' >&2
+  print_lint_gate_diagnostics "ci-required"
   echo "Observed warning IDs in report:" >&2
   printf '%s\n' "${WARNING_IDS}" | sed 's/^/  - /' >&2
   exit 1
@@ -130,6 +189,7 @@ EXPIRED_WAIVERS="$(jq -r --arg current_date "${CURRENT_DATE}" '
 if [[ -n "${EXPIRED_WAIVERS}" ]]; then
   echo "Found expired lint waivers (review_by < ${CURRENT_DATE}):" >&2
   printf '%s\n' "${EXPIRED_WAIVERS}" | sed 's/^/  - /' >&2
+  print_lint_gate_diagnostics "ci-required"
   exit 1
 fi
 
@@ -138,6 +198,7 @@ if [[ -z "${WARNING_IDS}" ]]; then
     if [[ "${ENFORCE_UNUSED_WAIVERS}" == "true" ]]; then
       echo "Lint report has no warnings, but waiver entries still exist. Remove stale waivers:" >&2
       printf '%s\n' "${WAIVER_IDS}" | sed 's/^/  - /' >&2
+      print_lint_gate_diagnostics "ci-required"
       exit 1
     fi
 
@@ -181,6 +242,7 @@ done < "${TMP_WARNINGS}"
 if [[ -n "${SOURCE_VIOLATIONS}" ]]; then
   echo "Found allowlisted lint IDs from unexpected sources:" >&2
   printf '%s' "${SOURCE_VIOLATIONS}" | sed 's/^/  - /' >&2
+  print_lint_gate_diagnostics "ci-required"
   exit 1
 fi
 
@@ -196,6 +258,7 @@ if [[ -n "${UNUSED_WAIVERS}" ]]; then
   if [[ "${ENFORCE_UNUSED_WAIVERS}" == "true" ]]; then
     echo "Found stale waivers not present in current lint report. Remove them:" >&2
     printf '%s' "${UNUSED_WAIVERS}" | sed 's/^/  - /' >&2
+    print_lint_gate_diagnostics "ci-required"
     exit 1
   fi
 

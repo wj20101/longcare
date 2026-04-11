@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "gates": [
+    {
+      "id": "no_tracked_keystore_files",
+      "name": "No Tracked Keystore Files",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/verify_no_tracked_keystore_files.sh",
+      "likely_fix": "Remove tracked keystore artifacts and rotate secrets."
+    },
+    {
+      "id": "lint_warning_allowlist",
+      "name": "Lint Warning Allowlist",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/lint/lint_warning_waivers.json",
+      "likely_fix": "Fix the lint issue or add/update an approved waiver entry."
+    },
+    {
+      "id": "lint_ignore_policy",
+      "name": "Lint Ignore Policy Guard",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "app/lint.xml",
+      "likely_fix": "Remove the forbidden lint ignore and fix the root warning."
+    },
+    {
+      "id": "architecture_boundaries",
+      "name": "Architecture Boundaries",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/verify_architecture_boundaries.sh",
+      "likely_fix": "Move code to the allowed layer or update the explicit architecture allowlist."
+    },
+    {
+      "id": "module_dependency_whitelist",
+      "name": "Module Dependency Whitelist",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/module_dependency_allowlist.txt",
+      "likely_fix": "Restore the approved module dependency edge or update the allowlist deliberately."
+    },
+    {
+      "id": "module_api_visibility",
+      "name": "Module API Visibility",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/verify_module_api_visibility.sh",
+      "likely_fix": "Move public contracts back to approved API boundaries."
+    },
+    {
+      "id": "workflow_quality",
+      "name": "CI Workflow Quality Guard",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/verify_ci_workflow_quality.sh",
+      "likely_fix": "Restore workflow governance requirements such as retention, pinning, or trigger policy."
+    },
+    {
+      "id": "release_exported_components",
+      "name": "Release Exported Component Allowlist",
+      "layer": "release-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/verify_release_exported_components.sh",
+      "likely_fix": "Align exported manifest components with the release allowlist."
+    }
+  ]
+}

@@ -13,6 +13,46 @@ ownership of each quality script.
 - `release-required`: checks required for release confidence/sign-off.
 - `observability-only`: reporting, metrics, and monitoring; does not block merge by itself.
 
+## Gate Registry
+
+The canonical descriptive metadata for high-value gates lives in:
+
+- `scripts/quality/quality_gate_registry.json`
+
+The registry is the canonical governance metadata and target-state contract for high-value gates.
+It does not replace current runner behavior in this task. Existing scripts and workflows continue
+to execute according to their current implementations until later alignment tasks are completed.
+
+Within the registry:
+
+- `id` is the unique stable machine/integration key
+- `name` is display text and may be presented to humans
+
+Current schema contract:
+
+- `version`: schema revision for compatibility-aware consumers.
+- `gates`: list of high-value gate metadata entries.
+- `id`: unique stable machine/integration key for a gate.
+- `name`: human-facing gate label.
+- `layer`: governance tier target (`local-fast`, `ci-required`, `release-required`, `observability-only`).
+- `blocking`: whether the gate is intended to block at its target layer.
+- `owner`: accountable team for policy and remediation direction.
+- `source_of_truth`: canonical file/script/policy location for the rule.
+- `likely_fix`: concise default remediation guidance for diagnostics.
+
+High-value inclusion rule:
+
+- Include gates that are merge/release meaningful, show recurring governance drift risk, or materially benefit from explicit ownership and remediation metadata.
+
+The registry defines:
+
+- gate ownership
+- gate layer
+- source of truth
+- likely remediation path
+
+Runner scripts and workflows should emit diagnostics that align with this registry.
+
 ## Local Preflight Modes
 
 `scripts/quality/preflight_local.sh` is the local entrypoint.
@@ -55,6 +95,10 @@ ownership of each quality script.
 - CI can still run strict stale-waiver enforcement by setting `LINT_ENFORCE_UNUSED_WAIVERS=true`.
 
 ## Script Catalog
+
+The table below reflects current runner defaults and execution behavior today.
+Until follow-up alignment tasks land, treat the registry as target-state metadata contract,
+not as an automatic execution override.
 
 | Script | Purpose | Default Execution Layer | Common Failure Modes | Likely Remediation |
 |---|---|---|---|---|
