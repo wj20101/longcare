@@ -13,10 +13,14 @@ class R65cWorkflowHidSessionCollectorTest {
     fun `appends regular characters into one pending session`() {
         val collector = R65cWorkflowHidSessionCollector()
 
-        val result = collector.onKeyEvent(R65cWorkflowHidCapturedKeyEvent(29, 'A'.code, "A", 1L))
+        collector.onKeyEvent(R65cWorkflowHidCapturedKeyEvent(29, 'A'.code, "A", 1L))
+        val result = collector.onKeyEvent(R65cWorkflowHidCapturedKeyEvent(30, 'B'.code, "B", 2L))
+        assertTrue(collector.hasPendingInput())
+        val drained = collector.drainPending()
 
         assertNull(result)
-        assertTrue(collector.hasPendingInput())
+        assertEquals("AB", drained)
+        assertFalse(collector.hasPendingInput())
     }
 
     @Test
