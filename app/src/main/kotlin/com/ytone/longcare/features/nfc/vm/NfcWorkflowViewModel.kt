@@ -13,6 +13,7 @@ import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.features.nfc.ui.R65cWorkflowHidCapturedKeyEvent
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.ServiceCompleteData
@@ -84,6 +85,8 @@ class NfcWorkflowViewModel @Inject constructor(
         readerUiState = _readerUiState,
         orderDelegate = orderDelegate,
     )
+    private val r65cSessionCollector = R65cWorkflowHidSessionCollector()
+    private var r65cCompletionJob: kotlinx.coroutines.Job? = null
 
     private fun launchOrderDelegateAction(action: suspend NfcOrderWorkflowDelegate.() -> Unit) {
         viewModelScope.launch { orderDelegate.action() }
@@ -169,18 +172,41 @@ class NfcWorkflowViewModel @Inject constructor(
         endOderInfo: EndOderInfo?,
     ) = scanDelegate.mockNfcScan(orderKey, signInMode, endOderInfo)
 
-    fun onR65cFallbackInputChanged(rawPayload: String) {
+    internal fun onR65cFallbackKeyEvent(event: R65cWorkflowHidCapturedKeyEvent) {
         if (_scanMode.value != ScanMode.EXTERNAL_RFID) return
-        if (rawPayload.isBlank()) return
+
+        val completedPayload = r65cSessionCollector.onKeyEvent(event)
+        if (completedPayload != null) {
+            cancelR65cCompletionJob()
+            submitR65cFallbackPayload(completedPayload)
+            return
+        }
+
+        if (!r65cSessionCollector.hasPendingInput()) return
 
         _readerUiState.value = ReaderUiState.Reading
-        externalRfidReaderManager.submitHidCandidate(rawPayload)
-        if (_readerUiState.value == ReaderUiState.Reading) {
-            _readerUiState.value = ReaderUiState.Ready
+        cancelR65cCompletionJob()
+        r65cCompletionJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(400L)
+            r65cSessionCollector.drainPending()?.let(::submitR65cFallbackPayload)
         }
     }
 
+    private fun submitR65cFallbackPayload(rawPayload: String) {
+        if (_scanMode.value != ScanMode.EXTERNAL_RFID) return
+        _readerUiState.value = ReaderUiState.Ready
+        if (rawPayload.isBlank()) return
+        externalRfidReaderManager.submitHidCandidate(rawPayload)
+    }
+
+    private fun cancelR65cCompletionJob() {
+        r65cCompletionJob?.cancel()
+        r65cCompletionJob = null
+    }
+
     override fun onCleared() {
+        cancelR65cCompletionJob()
+        r65cSessionCollector.reset()
         scanDelegate.clear()
         super.onCleared()
     }
