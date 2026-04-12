@@ -1,5 +1,17 @@
 # R65C Raw HID Output Validation Design
 
+## Related Docs
+
+- index: [`../README.md`](../README.md)
+- implementation plan: [`../plans/2026-04-09-r65c-raw-hid-output-validation.md`](../plans/2026-04-09-r65c-raw-hid-output-validation.md)
+- acceptance checklist: [`2026-04-10-r65c-raw-hid-output-validation-acceptance.md`](2026-04-10-r65c-raw-hid-output-validation-acceptance.md)
+
+## Recommended Reading Order
+
+1. Start here for problem framing and approved direction.
+2. Move to the implementation plan for concrete execution steps.
+3. Finish with the acceptance checklist for verification.
+
 ## Context
 
 LongCare now has an `R65C HID 键盘口测试` panel inside the NFC test screen:
@@ -374,3 +386,13 @@ That is the correct trade-off right now because:
 - production integration before validating raw output would create ambiguous failures in the sign-in flow
 
 Once this sub-project proves that `R65C` can stably emit a business-compatible UID, the next spec can safely describe formal integration into `NfcWorkflowScreen`.
+
+## Next Step
+
+If the design still looks correct, continue with:
+
+- implementation plan: [`../plans/2026-04-09-r65c-raw-hid-output-validation.md`](../plans/2026-04-09-r65c-raw-hid-output-validation.md)
+
+After implementation, verify against:
+
+- acceptance checklist: [`2026-04-10-r65c-raw-hid-output-validation-acceptance.md`](2026-04-10-r65c-raw-hid-output-validation-acceptance.md)

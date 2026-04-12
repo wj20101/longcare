@@ -8,6 +8,18 @@
 
 **Tech Stack:** Kotlin, Jetpack Compose Material 3, Android `KeyEvent`, `StateFlow`, Hilt ViewModel, JUnit4, MockK, Compose UI instrumentation tests.
 
+## Related Docs
+
+- index: [`../README.md`](../README.md)
+- design: [`../specs/2026-04-09-r65c-raw-hid-output-validation-design.md`](../specs/2026-04-09-r65c-raw-hid-output-validation-design.md)
+- acceptance checklist: [`../specs/2026-04-10-r65c-raw-hid-output-validation-acceptance.md`](../specs/2026-04-10-r65c-raw-hid-output-validation-acceptance.md)
+
+## Recommended Reading Order
+
+1. Read the design doc for intent, constraints, and architecture.
+2. Execute this implementation plan task by task.
+3. Validate the result with the acceptance checklist after implementation.
+
 ---
 
 ## File Structure
@@ -685,3 +697,7 @@ Plan complete and saved to `docs/superpowers/plans/2026-04-09-r65c-raw-hid-outpu
 **2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
 
 **Which approach?**
+
+After execution, use the acceptance checklist:
+
+- [`../specs/2026-04-10-r65c-raw-hid-output-validation-acceptance.md`](../specs/2026-04-10-r65c-raw-hid-output-validation-acceptance.md)
