@@ -10,13 +10,14 @@ Use this order for fast recovery:
 
 1. `AGENT.md`
 2. `conductor/index.md`
-3. `docs/architecture/system-overview.md`
-4. `docs/architecture/business-capability-map.md`
-5. `docs/architecture/ui-and-screen-map.md`
-6. `docs/architecture/roadmap-and-open-gaps.md`
-7. `docs/architecture/dependency-rules.md`
-8. `docs/architecture/module-responsibility-map.md`
-9. `docs/architecture/ci-quality-gates.md`
+3. `docs/architecture/session-handoff-guide.md`
+4. `docs/architecture/system-overview.md`
+5. `docs/architecture/business-capability-map.md`
+6. `docs/architecture/ui-and-screen-map.md`
+7. `docs/architecture/roadmap-and-open-gaps.md`
+8. `conductor/product.md`
+9. `conductor/tech-stack.md`
+10. `conductor/workflow.md`
 
 Then read only the task-relevant code paths.
 
