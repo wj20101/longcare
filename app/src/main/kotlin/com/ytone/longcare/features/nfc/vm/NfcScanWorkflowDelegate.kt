@@ -2,6 +2,7 @@ package com.ytone.longcare.features.nfc.vm
 
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
+import com.ytone.longcare.common.event.ScanSource
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
@@ -20,21 +21,29 @@ internal class NfcScanWorkflowDelegate(
     private val scope: CoroutineScope,
     private val uiState: MutableStateFlow<NfcSignInUiState>,
     private val pendingNfcData: MutableStateFlow<PendingNfcData?>,
+    private val scanMode: MutableStateFlow<ScanMode>,
+    private val readerUiState: MutableStateFlow<ReaderUiState>,
     private val orderDelegate: NfcOrderWorkflowDelegate,
 ) {
     private var nfcEventJob: Job? = null
 
-    fun observeNfcEvents(
+    fun observeScanEvents(
         orderKey: OrderKey,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
-        onLocationRequest: suspend () -> LocationRequestResult
+        onLocationRequest: suspend () -> LocationRequestResult,
     ) {
         nfcEventJob?.cancel()
         nfcEventJob = scope.launch {
             appEventBus.events.collect { event ->
-                if (event is AppEvent.NfcIntentReceived) {
-                    handleNfcIntentReceived(
+                readerUiState.value = reduceReaderUiState(
+                    currentMode = scanMode.value,
+                    event = event,
+                    currentReaderState = readerUiState.value,
+                )
+
+                if (event is AppEvent.TagScanned && event.isFromActiveSource(scanMode.value)) {
+                    handleTagScanned(
                         event = event,
                         currentState = uiState.value,
                         signInMode = signInMode,
@@ -67,7 +76,7 @@ internal class NfcScanWorkflowDelegate(
                                 latitude = latitude,
                                 endType = info.endType
                             )
-                        }
+                        },
                     )
                 }
             }
@@ -105,7 +114,7 @@ internal class NfcScanWorkflowDelegate(
     fun mockNfcScan(
         orderKey: OrderKey,
         signInMode: SignInMode,
-        endOderInfo: EndOderInfo?
+        endOderInfo: EndOderInfo?,
     ) {
         val mockTagId = "MOCK_TAG_ID_123456"
         val mockLongitude = "121.4737"
@@ -144,12 +153,17 @@ internal class NfcScanWorkflowDelegate(
                         latitude = latitude,
                         endType = info.endType
                     )
-                }
+                },
             )
         }
     }
 
     fun clear() {
         nfcEventJob?.cancel()
+    }
+
+    private fun AppEvent.TagScanned.isFromActiveSource(currentMode: ScanMode): Boolean = when (currentMode) {
+        ScanMode.SYSTEM_NFC -> source == ScanSource.SYSTEM_NFC
+        ScanMode.EXTERNAL_RFID -> source == ScanSource.EXTERNAL_RFID
     }
 }

@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.event.AppEventBus
+import com.ytone.longcare.common.utils.ExternalRfidReaderManager
 import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.location.LocationFacade
@@ -12,6 +13,7 @@ import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.features.nfc.ui.R65cWorkflowHidCapturedKeyEvent
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.ServiceCompleteData
@@ -34,10 +36,11 @@ class NfcWorkflowViewModel @Inject constructor(
     private val toastHelper: ToastHelper,
     private val appEventBus: AppEventBus,
     private val nfcManager: NfcManager,
+    private val externalRfidReaderManager: ExternalRfidReaderManager,
     private val locationFacade: LocationFacade,
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
-    private val countdownNotificationManager: CountdownNotificationManager
+    private val countdownNotificationManager: CountdownNotificationManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
@@ -63,6 +66,18 @@ class NfcWorkflowViewModel @Inject constructor(
         locationFacade = locationFacade,
     )
 
+    private val _scanMode = MutableStateFlow(selectScanMode(activityAndLocationDelegate.isNfcSupported()))
+    val scanMode: StateFlow<ScanMode> = _scanMode.asStateFlow()
+
+    private val _readerUiState = MutableStateFlow(
+        if (_scanMode.value == ScanMode.SYSTEM_NFC) {
+            ReaderUiState.NotRequired
+        } else {
+            initialExternalReaderUiState(externalRfidReaderManager.isReaderReady())
+        },
+    )
+    val readerUiState: StateFlow<ReaderUiState> = _readerUiState.asStateFlow()
+
     private val scanDelegate = NfcScanWorkflowDelegate(
         appEventBus = appEventBus,
         unifiedOrderRepository = unifiedOrderRepository,
@@ -70,8 +85,12 @@ class NfcWorkflowViewModel @Inject constructor(
         scope = viewModelScope,
         uiState = _uiState,
         pendingNfcData = _pendingNfcData,
+        scanMode = _scanMode,
+        readerUiState = _readerUiState,
         orderDelegate = orderDelegate,
     )
+    private val r65cSessionCollector = R65cWorkflowHidSessionCollector()
+    private var r65cCompletionJob: kotlinx.coroutines.Job? = null
 
     private fun launchOrderDelegateAction(action: suspend NfcOrderWorkflowDelegate.() -> Unit) {
         viewModelScope.launch { orderDelegate.action() }
@@ -121,23 +140,36 @@ class NfcWorkflowViewModel @Inject constructor(
     fun buildServiceCompleteDataFromCache(
         orderKey: OrderKey,
         endOderInfo: EndOderInfo?,
-        trueServiceTime: Int
+        trueServiceTime: Int,
     ): ServiceCompleteData = orderDelegate.buildServiceCompleteDataFromCache(orderKey, endOderInfo, trueServiceTime)
 
-    fun isNfcSupported(): Boolean = activityAndLocationDelegate.isNfcSupported()
+    fun startActiveScanSource(activity: Activity) {
+        when (scanMode.value) {
+            ScanMode.SYSTEM_NFC -> activityAndLocationDelegate.enableNfcForActivity(activity)
+            ScanMode.EXTERNAL_RFID -> externalRfidReaderManager.start(activity)
+        }
+    }
 
-    fun enableNfcForActivity(activity: Activity) = activityAndLocationDelegate.enableNfcForActivity(activity)
+    fun stopActiveScanSource(activity: Activity) {
+        when (scanMode.value) {
+            ScanMode.SYSTEM_NFC -> activityAndLocationDelegate.disableNfcForActivity(activity)
+            ScanMode.EXTERNAL_RFID -> externalRfidReaderManager.stop(activity)
+        }
+    }
 
-    fun disableNfcForActivity(activity: Activity) = activityAndLocationDelegate.disableNfcForActivity(activity)
+    fun refreshExternalReaderReadyState() {
+        if (_scanMode.value != ScanMode.EXTERNAL_RFID) return
+        _readerUiState.value = initialExternalReaderUiState(externalRfidReaderManager.isReaderReady())
+    }
 
     suspend fun getCurrentLocationCoordinates(): Pair<String, String> = activityAndLocationDelegate.getCurrentLocationCoordinates()
 
-    fun observeNfcEvents(
+    fun observeScanEvents(
         orderKey: OrderKey,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
-        onLocationRequest: suspend () -> LocationRequestResult
-    ) = scanDelegate.observeNfcEvents(orderKey, signInMode, endOderInfo, onLocationRequest)
+        onLocationRequest: suspend () -> LocationRequestResult,
+    ) = scanDelegate.observeScanEvents(orderKey, signInMode, endOderInfo, onLocationRequest)
 
     fun confirmLocationActivation(data: PendingNfcData) = scanDelegate.confirmLocationActivation(data)
 
@@ -146,11 +178,52 @@ class NfcWorkflowViewModel @Inject constructor(
     fun mockNfcScan(
         orderKey: OrderKey,
         signInMode: SignInMode,
-        endOderInfo: EndOderInfo?
+        endOderInfo: EndOderInfo?,
     ) = scanDelegate.mockNfcScan(orderKey, signInMode, endOderInfo)
 
+    internal fun onR65cFallbackKeyEvent(event: R65cWorkflowHidCapturedKeyEvent) {
+        if (_scanMode.value != ScanMode.EXTERNAL_RFID) return
+
+        val completedPayload = r65cSessionCollector.onKeyEvent(event)
+        if (completedPayload != null) {
+            cancelR65cCompletionJob()
+            submitR65cFallbackPayload(completedPayload)
+            return
+        }
+
+        if (!r65cSessionCollector.hasPendingInput()) return
+
+        _readerUiState.value = ReaderUiState.Reading
+        cancelR65cCompletionJob()
+        r65cCompletionJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(400L)
+            r65cSessionCollector.drainPending()?.let(::submitR65cFallbackPayload)
+        }
+    }
+
+    private fun submitR65cFallbackPayload(rawPayload: String) {
+        if (_scanMode.value != ScanMode.EXTERNAL_RFID) return
+        _readerUiState.value = nextReaderUiStateAfterR65cFallbackSubmit(_readerUiState.value)
+        if (rawPayload.isBlank()) return
+        externalRfidReaderManager.submitHidCandidate(rawPayload)
+    }
+
+    private fun cancelR65cCompletionJob() {
+        r65cCompletionJob?.cancel()
+        r65cCompletionJob = null
+    }
+
     override fun onCleared() {
+        cancelR65cCompletionJob()
+        r65cSessionCollector.reset()
         scanDelegate.clear()
         super.onCleared()
     }
 }
+
+internal fun nextReaderUiStateAfterR65cFallbackSubmit(current: ReaderUiState): ReaderUiState {
+    return if (current == ReaderUiState.Reading) ReaderUiState.Ready else current
+}
+
+internal fun initialExternalReaderUiState(isReaderReady: Boolean): ReaderUiState =
+    if (isReaderReady) ReaderUiState.Ready else ReaderUiState.Disconnected

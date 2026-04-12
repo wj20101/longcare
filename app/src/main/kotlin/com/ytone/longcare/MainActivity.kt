@@ -88,6 +88,18 @@ class MainActivity : AppCompatActivity() {
                         // 【业务功能】NFC事件由具体的Screen监听处理 - 与测试功能无关
                     }
 
+                    is AppEvent.TagScanned -> {
+                        // 外部/系统扫描事件由具体业务流程处理
+                    }
+
+                    is AppEvent.ReaderConnectionChanged -> {
+                        // 读卡器连接状态事件由具体业务流程处理
+                    }
+
+                    is AppEvent.ReaderError -> {
+                        // 读卡器错误事件由具体业务流程处理
+                    }
+
                     is AppEvent.AppUpdate -> {
                         viewModel.setAppVersionModel(event.appVersionModel)
                     }
