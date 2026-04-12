@@ -27,7 +27,7 @@ The user also wants a reliable way to start a fresh session and quickly restore 
 
 Create a durable documentation system that:
 
-- updates `AGENT.md` into a better collaboration entrypoint
+- upgrades `AGENT.md` into the default single-entry collaboration document
 - records the project’s technical architecture, UI surface, business capabilities, and open gaps in stable documents
 - archives or removes redundant documents
 - defines a clear “how to sync context in a new session” workflow
@@ -90,7 +90,7 @@ The repository documentation should be organized into five layers.
 
 ### 1. Entry Layer
 
-These are the first documents a person or coding agent should read when entering the repository.
+These are the documents that orient a person or coding agent when entering the repository.
 
 Keep and strengthen:
 
@@ -98,12 +98,16 @@ Keep and strengthen:
 - `README.md`
 - `conductor/index.md`
 
+But with one important behavior change:
+
+- **`AGENT.md` becomes the default single entrypoint**
+- `README.md` and `conductor/index.md` become supporting navigation layers
+
 Responsibilities:
 
-- quick project orientation
-- where current truth lives
-- how to start work
-- which documents to read next
+- `AGENT.md`: the first file a new session should read by default
+- `README.md`: lighter external/project quick-start
+- `conductor/index.md`: stable internal map to current-truth docs and execution history
 
 ### 2. Stable Fact Layer
 
@@ -234,22 +238,28 @@ Must answer:
 
 ## Session Sync Design
 
-The fresh-session context restoration path should be explicit and simple:
+The fresh-session recovery path should optimize for **one-file startup**:
 
 1. Read `AGENT.md`
-2. Read `conductor/index.md`
-3. Read `docs/architecture/session-handoff-guide.md`
-4. Then read, as needed:
+2. Only if the task requires more depth, follow the links from `AGENT.md` to:
+   - `conductor/index.md`
+   - `docs/architecture/session-handoff-guide.md`
    - `docs/architecture/system-overview.md`
    - `docs/architecture/business-capability-map.md`
    - `docs/architecture/ui-and-screen-map.md`
    - `docs/architecture/roadmap-and-open-gaps.md`
-   - `conductor/tracks.md`
+   - `conductor/tracks.md` (progress context only)
 
-This sequence should be documented in both:
+Design intent:
 
-- `AGENT.md`
-- `docs/architecture/session-handoff-guide.md`
+- new sessions should normally begin with only `AGENT.md`
+- deeper docs should be pulled in on demand rather than always read eagerly
+
+This must be reflected in:
+
+- `AGENT.md` as the primary entrypoint
+- `conductor/index.md` as the secondary map
+- `docs/architecture/session-handoff-guide.md` as the detailed expansion path
 
 ## Archive / Cleanup Strategy
 
@@ -294,12 +304,17 @@ Deletion should be conservative and only after verifying the information is eith
 
 `AGENT.md` should be updated to become:
 
-- a practical collaboration entrypoint
-- a map to the current truth documents
+- the default first-read document for future sessions
+- a compact but sufficient project summary
+- a map to deeper current-truth documents
 - a short explanation of where execution history lives
-- a fresh-session sync checklist
+- a practical 3-minute context recovery checklist
+- a task-type router, for example:
+  - if working on business flow, read X next
+  - if working on UI, read Y next
+  - if working on CI/CD, read Z next
 
-It should not try to duplicate every architecture document in full.
+It should not try to duplicate every architecture document in full, but it should contain enough summary that a fresh session can often start from `AGENT.md` alone.
 
 ## README.md Update Direction
 
@@ -315,9 +330,10 @@ It should stay lighter than the full collaboration guide.
 
 This documentation initiative is successful when:
 
-- `AGENT.md` clearly points to the right primary context files
+- `AGENT.md` is sufficient as the default first-read file for a new session
+- `AGENT.md` clearly points to the right deeper context files when more detail is needed
 - the repository has a stable fact set for architecture, UI, business capability, and open gaps
-- a new session can restore context by following an explicit short sequence
+- a new session can restore enough context from `AGENT.md`, then expand only as needed
 - redundant or historical documents no longer compete with current-truth docs
 - low-value file clutter is removed
 
