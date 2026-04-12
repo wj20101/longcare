@@ -9,7 +9,7 @@
   - `app/features`：127 个 Kotlin 文件，约 19,291 行
   - `feature/*`：64 个 Kotlin 文件，约 5,190 行
 - 本轮已完成：
-  - `T1`：迁移映射文档（`docs/refactor/module-migration-map.md`）
+  - `T1`：迁移映射文档（`docs/archive/refactor/module-migration-map.md`）
   - `T3`：数据库与 DAO 下沉到 `core:data`
   - `T4`：`core:model` 纯化（移除 Room 注解与 Android 平台类型）
   - `T5`：`UnusedResources` 清理（当前 lint 无该类告警）

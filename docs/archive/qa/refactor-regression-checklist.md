@@ -26,8 +26,8 @@
 
 ## 4. 性能与产物
 
-- [ ] 更新 `docs/refactor/baseline-metrics.md` 最新基线
-- [ ] 更新 `docs/refactor/build-performance-comparison.md` 对比结论
+- [ ] 更新 `docs/archive/refactor/baseline-metrics.md` 最新基线
+- [ ] 更新 `docs/archive/refactor/build-performance-comparison.md` 对比结论
 - [ ] 检查 APK 体积变化在可接受范围内
 - [ ] 检查 Dex 文件数量变化在可接受范围内
 

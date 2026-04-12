@@ -8,8 +8,8 @@
 
 ## 数据来源
 
-- A1 基线：`docs/refactor/baseline-metrics.md`（2026-02-13 01:07:29 +0800）
-- D26 基线：`docs/refactor/baseline-metrics.md`（2026-02-13 07:53:52 +0800，`BASELINE_CLEAN_BEFORE_RUN=true`）
+- A1 基线：`docs/archive/refactor/baseline-metrics.md`（2026-02-13 01:07:29 +0800）
+- D26 基线：`docs/archive/refactor/baseline-metrics.md`（2026-02-13 07:53:52 +0800，`BASELINE_CLEAN_BEFORE_RUN=true`）
 
 ## 指标对比
 

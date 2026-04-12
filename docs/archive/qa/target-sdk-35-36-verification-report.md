@@ -43,4 +43,4 @@
 
 ## 风险与后续
 - 当前未发现 targetSdk 35/36 适配阻塞项。
-- 后续若上调 targetSdk，继续沿用 `docs/qa/target-sdk-upgrade-checklist.md` 的同一流程。
+- 后续若上调 targetSdk，继续沿用 `docs/archive/qa/target-sdk-upgrade-checklist.md` 的同一流程。

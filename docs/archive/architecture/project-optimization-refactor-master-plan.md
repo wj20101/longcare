@@ -50,7 +50,7 @@
 **计划改动文件**
 
 - `scripts/quality/collect_build_baseline.sh`（新增）
-- `docs/refactor/baseline-metrics.md`（新增）
+- `docs/archive/refactor/baseline-metrics.md`（新增）
 - `README.md`（补充“如何更新基线”段落）
 
 **验收标准**
@@ -283,7 +283,7 @@
 - `gradle.properties`
 - `gradle/gradle-daemon-jvm.properties`
 - `scripts/quality/verify_gradle_stability.sh`（新增）
-- `docs/refactor/gradle-stability-playbook.md`（新增）
+- `docs/archive/refactor/gradle-stability-playbook.md`（新增）
 
 **验收标准**
 
@@ -307,7 +307,7 @@
 
 **计划改动文件**
 
-- `docs/refactor/build-performance-comparison.md`（新增）
+- `docs/archive/refactor/build-performance-comparison.md`（新增）
 - `scripts/quality/collect_build_baseline.sh`
 - `gradle.properties`（必要时微调）
 - `settings.gradle.kts`（必要时仓库/配置阶段优化）
@@ -347,8 +347,8 @@
 
 **计划改动文件**
 
-- `docs/qa/refactor-regression-checklist.md`（新增）
-- `docs/refactor/final-refactor-report.md`（新增）
+- `docs/archive/qa/refactor-regression-checklist.md`（新增）
+- `docs/archive/refactor/final-refactor-report.md`（新增）
 - `README.md`（更新重构后模块结构入口）
 
 **验收标准**
@@ -361,8 +361,8 @@
 
 | 日程 | 对应任务 | 当日具体文件改动清单 | 当日验收门禁 | 状态 |
 |---|---|---|---|---|
-| D01 | A1 | `scripts/quality/collect_build_baseline.sh`、`docs/refactor/baseline-metrics.md` | 脚本可执行，生成 baseline 初稿 | DONE |
-| D02 | A1 | `docs/refactor/baseline-metrics.md`、`README.md` | baseline 指标表完整 | DONE |
+| D01 | A1 | `scripts/quality/collect_build_baseline.sh`、`docs/archive/refactor/baseline-metrics.md` | 脚本可执行，生成 baseline 初稿 | DONE |
+| D02 | A1 | `docs/archive/refactor/baseline-metrics.md`、`README.md` | baseline 指标表完整 | DONE |
 | D03 | A2 | 当前脏改动相关文件（协程注入组） | `:app:compileDebugKotlin` 通过 | DONE |
 | D04 | A2 | 当前脏改动相关文件（Identification/Face 契约组） | `:app:testDebugUnitTest` 通过 | DONE |
 | D05 | A3 | `docs/architecture/adr/ADR-001-layer-boundary.md`、`docs/architecture/module-responsibility-map.md` | ADR 审阅通过 | DONE |
@@ -386,8 +386,8 @@
 | D23 | C5+C6 | `IdentificationViewModel.kt`、`FaceVerificationViewModel.kt`、`ServiceCountdownViewModel.kt`、`CameraScreen.kt`、`AppModule.kt` | 事件流+调度器规范通过 | DONE |
 | D24 | D1 | `build-logic/**`、根 `settings.gradle.kts`、模块 `build.gradle.kts` | convention plugin 生效 | DONE |
 | D25 | D2+D3 | `gradle.properties`、`gradle/gradle-daemon-jvm.properties`、`.github/workflows/android-ci.yml`、`scripts/quality/affected-modules.sh` | 构建稳定且 CI 分层生效 | DONE |
-| D26 | D4+E1 | `docs/refactor/build-performance-comparison.md`、`feature/*/src/test/**`、`core/data/src/test/**` | 性能对比报告 + 测试补齐 | DONE |
-| D27 | E2+E3 | `scripts/quality/verify_architecture_boundaries.sh`、`docs/qa/refactor-regression-checklist.md`、`docs/refactor/final-refactor-report.md`、`README.md` | 架构守卫 + 回归清单 + 终报完成 | DONE |
+| D26 | D4+E1 | `docs/archive/refactor/build-performance-comparison.md`、`feature/*/src/test/**`、`core/data/src/test/**` | 性能对比报告 + 测试补齐 | DONE |
+| D27 | E2+E3 | `scripts/quality/verify_architecture_boundaries.sh`、`docs/archive/qa/refactor-regression-checklist.md`、`docs/archive/refactor/final-refactor-report.md`、`README.md` | 架构守卫 + 回归清单 + 终报完成 | DONE |
 
 ## 6. 执行中同步更新规则（必须执行）
 
@@ -464,7 +464,7 @@
 ### 9.2 每项任务具体文件改动清单
 
 #### F1 CI/CD 现状审计与任务文档化
-- `docs/architecture/ci-cd-automation-optimization-plan.md`（新增）
+- `docs/archive/architecture/ci-cd-automation-optimization-plan.md`（新增）
 - `task_plan.md`（新增）
 - `findings.md`（新增）
 - `progress.md`（新增）
@@ -501,7 +501,7 @@
 
 | 日程 | 对应任务 | 当日具体文件改动清单 | 当日验收门禁 | 状态 |
 |---|---|---|---|---|
-| D28 | F1 | `docs/architecture/ci-cd-automation-optimization-plan.md`、`task_plan.md`、`findings.md`、`progress.md` | 文档任务台账可追溯 | DONE |
+| D28 | F1 | `docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`task_plan.md`、`findings.md`、`progress.md` | 文档任务台账可追溯 | DONE |
 | D29 | F2 | `scripts/quality/free_runner_disk_space.sh`、三套 workflow 引用改造 | `free_runner_disk_space.sh --dry-run` 通过 | DONE |
 | D30 | F3 | `scripts/quality/verify_ci_workflow_quality.sh`、`android-ci.yml` | `verify_ci_workflow_quality.sh` 通过 | DONE |
 | D31 | F4 | `android-ci.yml`（`paths-ignore`） | 触发规则配置已生效 | DONE |
@@ -624,7 +624,7 @@
 | D61 | G4 | `core/domain/**`、`core/data/**`、`app/domain/**`、`app/data/**` | UI 不直接依赖 Impl，架构守卫通过 | DONE |
 | D62 | G5 | `AppNavigation.kt`、架构守卫脚本与 CI 门禁 | 模块边界回归在 CI 可阻断 | DONE |
 | D63 | G5-B4 | `AppNavigation.kt`、`feature/*/api/*Actions`、相关业务 Screen | 业务页面不再直连 `NavController` | DONE |
-| D64 | G5-B5 | `scripts/quality/verify_architecture_boundaries.sh`、`docs/architecture/project-optimization-refactor-master-plan.md`、`progress.md` | Feature UI `NavController` 直连回归可自动阻断 | DONE |
+| D64 | G5-B5 | `scripts/quality/verify_architecture_boundaries.sh`、`docs/archive/architecture/project-optimization-refactor-master-plan.md`、`progress.md` | Feature UI `NavController` 直连回归可自动阻断 | DONE |
 
 ### 10.4 执行日志（G 阶段）
 
@@ -665,4 +665,4 @@
 
 - 说明：
   - 该项属于外部依赖驱动的持续治理，不计入 A~G/F 阶段“未完成优化项”统计；
-  - 具体执行细则与验证步骤见：`docs/architecture/ci-cd-automation-optimization-plan.md` 第 32 节。
+  - 具体执行细则与验证步骤见：`docs/archive/architecture/ci-cd-automation-optimization-plan.md` 第 32 节。

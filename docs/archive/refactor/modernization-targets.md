@@ -10,7 +10,7 @@
 
 ## Current Snapshot (Baseline)
 
-来源：`/Users/yuyingui/StudioProjects/longcare/docs/refactor/baseline-metrics.md` 最近一次记录（2026-02-16 16:05:23 +0800）
+来源：`/Users/yuyingui/StudioProjects/longcare/docs/archive/refactor/baseline-metrics.md` 最近一次记录（2026-02-16 16:05:23 +0800）
 
 | Metric | Current |
 |---|---:|
@@ -42,7 +42,7 @@ cd /Users/yuyingui/StudioProjects/longcare
 
 # 构建基线
 BASELINE_CLEAN_BEFORE_RUN=true ./scripts/quality/collect_build_baseline.sh \
-  /Users/yuyingui/StudioProjects/longcare/docs/refactor/baseline-metrics.md \
+  /Users/yuyingui/StudioProjects/longcare/docs/archive/refactor/baseline-metrics.md \
   /tmp/longcare_baseline_logs
 
 # 架构边界
