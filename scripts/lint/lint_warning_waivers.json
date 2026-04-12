@@ -36,6 +36,15 @@
       ]
     },
     {
+      "id": "GradleDependency",
+      "owner": "mobile-platform",
+      "review_by": "2026-06-30",
+      "reason": "Version catalog dependency update suggestions are advisory and may appear inconsistently across CI verification paths. Restrict this waiver to warnings emitted from gradle/libs.versions.toml only.",
+      "allowed_sources": [
+        "gradle/libs.versions.toml"
+      ]
+    },
+    {
       "id": "NewerVersionAvailable",
       "owner": "mobile-platform",
       "review_by": "2026-06-30",
