@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
+import com.ytone.longcare.features.nfc.vm.ReaderUiState
+import com.ytone.longcare.features.nfc.vm.ScanMode
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
@@ -69,8 +71,25 @@ internal fun NfcWorkflowBodyContent(
     signInMode: SignInMode,
     endOderInfo: EndOderInfo?,
     nfcViewModel: NfcWorkflowViewModel,
-    signInState: SignInState
+    signInState: SignInState,
+    scanMode: ScanMode,
+    readerUiState: ReaderUiState,
 ) {
+    val idleCopy = resolveNfcWorkflowIdleCopy(scanMode, readerUiState)
+    val promptRes = if (signInState == SignInState.IDLE) {
+        resolveCopyRes(idleCopy.promptKey)
+    } else {
+        R.string.nfc_sign_in_prompt
+    }
+    val statusOverrideRes = if (
+        signInState == SignInState.IDLE &&
+        scanMode == ScanMode.EXTERNAL_RFID
+    ) {
+        resolveCopyRes(idleCopy.statusKey)
+    } else {
+        null
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -82,7 +101,7 @@ internal fun NfcWorkflowBodyContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = stringResource(R.string.nfc_sign_in_prompt),
+            text = stringResource(promptRes),
             fontSize = 14.sp,
             color = Color.White.copy(alpha = 0.9f),
             textAlign = TextAlign.Center,
@@ -91,9 +110,23 @@ internal fun NfcWorkflowBodyContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        SignInContentCard(signInState = signInState)
+        SignInContentCard(
+            signInState = signInState,
+            statusOverrideRes = statusOverrideRes,
+            showReadingIndicator = scanMode == ScanMode.EXTERNAL_RFID &&
+                readerUiState == ReaderUiState.Reading,
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        if (scanMode == ScanMode.EXTERNAL_RFID) {
+            R65cWorkflowHidCaptureSurface(
+                readerUiState = readerUiState,
+                onKeyCaptured = nfcViewModel::onR65cFallbackKeyEvent,
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         NfcWorkflowDebugMockButton(
             orderKey = orderKey,

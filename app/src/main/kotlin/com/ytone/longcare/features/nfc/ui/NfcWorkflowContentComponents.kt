@@ -3,6 +3,7 @@ package com.ytone.longcare.features.nfc.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,7 +41,11 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 
 @Composable
-internal fun SignInContentCard(signInState: SignInState) {
+internal fun SignInContentCard(
+    signInState: SignInState,
+    statusOverrideRes: Int? = null,
+    showReadingIndicator: Boolean = false,
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -68,7 +73,35 @@ internal fun SignInContentCard(signInState: SignInState) {
                     iconColor = Color.Red
                 )
 
-                SignInState.IDLE -> Spacer(modifier = Modifier.height(48.dp))
+                SignInState.IDLE -> {
+                    if (statusOverrideRes != null) {
+                        Row(
+                            modifier = Modifier
+                                .height(48.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (showReadingIndicator) {
+                                androidx.compose.material3.CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+
+                            Text(
+                                text = stringResource(statusOverrideRes),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.height(48.dp))
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

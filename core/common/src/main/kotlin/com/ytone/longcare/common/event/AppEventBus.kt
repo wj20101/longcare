@@ -8,25 +8,16 @@ import kotlinx.coroutines.flow.asSharedFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * 一个单例的事件总线，用于在应用内广播全局事件。
- */
 @Singleton
 class AppEventBus @Inject constructor() {
-    // 为事件流提供缓冲，避免在无订阅者或慢订阅者场景下阻塞发送方。
     private val _events = MutableSharedFlow<AppEvent>(
         replay = 0,
         extraBufferCapacity = 64,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
-    // 对外暴露一个不可变的 SharedFlow，供订阅者使用
     val events = _events.asSharedFlow()
 
-    /**
-     * 发送一个全局事件。
-     * @param event 要发送的事件。
-     */
     suspend fun send(event: AppEvent) {
         if (!_events.tryEmit(event)) {
             _events.emit(event)
@@ -34,8 +25,22 @@ class AppEventBus @Inject constructor() {
     }
 }
 
+enum class ScanSource {
+    SYSTEM_NFC,
+    EXTERNAL_RFID,
+}
+
 sealed class AppEvent {
     data class ForceLogout(val reason: String) : AppEvent()
     data class NfcIntentReceived(val intent: Intent) : AppEvent()
+    data class TagScanned(val tagId: String, val source: ScanSource) : AppEvent()
+    data class ReaderConnectionChanged(
+        val connected: Boolean,
+        val source: ScanSource = ScanSource.EXTERNAL_RFID,
+    ) : AppEvent()
+    data class ReaderError(
+        val message: String,
+        val source: ScanSource = ScanSource.EXTERNAL_RFID,
+    ) : AppEvent()
     data class AppUpdate(val appVersionModel: AppVersionModel) : AppEvent()
 }

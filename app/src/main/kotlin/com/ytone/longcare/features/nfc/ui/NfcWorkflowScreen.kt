@@ -40,6 +40,8 @@ fun NfcWorkflowScreen(
 ) {
     val uiState by nfcViewModel.uiState.collectAsStateWithLifecycle()
     val pendingNfcData by nfcViewModel.pendingNfcData.collectAsStateWithLifecycle()
+    val scanMode by nfcViewModel.scanMode.collectAsStateWithLifecycle()
+    val readerUiState by nfcViewModel.readerUiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
 
@@ -92,6 +94,8 @@ fun NfcWorkflowScreen(
                 NfcWorkflowBottomBar(
                     signInState = signInState,
                     signInMode = signInMode,
+                    scanMode = scanMode,
+                    readerUiState = readerUiState,
                     onSuccessClick = singleClick {
                         handleNfcSuccessAction(
                             signInMode = signInMode,
@@ -117,7 +121,9 @@ fun NfcWorkflowScreen(
                 signInMode = signInMode,
                 endOderInfo = endOderInfo,
                 nfcViewModel = nfcViewModel,
-                signInState = signInState
+                signInState = signInState,
+                scanMode = scanMode,
+                readerUiState = readerUiState,
             )
         }
 

@@ -23,32 +23,25 @@ internal fun NfcWorkflowEffects(
     locationTrackingViewModel: LocationTrackingViewModel,
     onLocationRequest: suspend () -> LocationRequestResult
 ) {
-    LaunchedEffect(Unit) {
+    LaunchedEffect(activity) {
         if (activity != null) {
-            when {
-                !nfcViewModel.isNfcSupported() -> {
-                    nfcViewModel.showError("设备不支持NFC功能")
-                }
-
-                else -> {
-                    nfcViewModel.enableNfcForActivity(activity)
-                }
-            }
+            nfcViewModel.startActiveScanSource(activity)
+            nfcViewModel.refreshExternalReaderReadyState()
         }
     }
 
-    LaunchedEffect(orderKey, signInMode) {
-        nfcViewModel.observeNfcEvents(
+    LaunchedEffect(orderKey, signInMode, endOderInfo) {
+        nfcViewModel.observeScanEvents(
             orderKey = orderKey,
             signInMode = signInMode,
             endOderInfo = endOderInfo,
-            onLocationRequest = { onLocationRequest() }
+            onLocationRequest = { onLocationRequest() },
         )
     }
 
     DisposableEffect(activity) {
         onDispose {
-            activity?.let { nfcViewModel.disableNfcForActivity(it) }
+            activity?.let { nfcViewModel.stopActiveScanSource(it) }
         }
     }
 

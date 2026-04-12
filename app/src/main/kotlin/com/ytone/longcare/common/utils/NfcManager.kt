@@ -8,6 +8,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
+import com.ytone.longcare.common.event.ScanSource
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -56,6 +57,21 @@ class NfcManager @Inject constructor(
         if (activity is LifecycleOwner) {
             activity.lifecycleScope.launch {
                 appEventBus.send(AppEvent.NfcIntentReceived(intent))
+            }
+        }
+        handleBuiltInTag(intent)
+    }
+
+    private fun handleBuiltInTag(intent: Intent) {
+        val tag = NfcUtils.getTagFromIntent(intent) ?: return
+        val tagId = NfcUtils.bytesToHexString(tag.id)
+        if (tagId.isBlank()) return
+
+        currentActivity?.takeIf { isNfcEnabled }?.let { activity ->
+            if (activity is LifecycleOwner) {
+                activity.lifecycleScope.launch {
+                    appEventBus.send(AppEvent.TagScanned(tagId, ScanSource.SYSTEM_NFC))
+                }
             }
         }
     }
