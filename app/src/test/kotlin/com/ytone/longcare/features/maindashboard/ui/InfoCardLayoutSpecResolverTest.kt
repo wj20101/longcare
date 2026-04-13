@@ -10,11 +10,11 @@ import org.junit.Test
 class InfoCardLayoutSpecResolverTest {
 
     @Test
-    fun compact_width_hides_subtitle_and_uses_smallest_supported_title_size() {
+    fun compact_width_keeps_subtitle_and_uses_smallest_supported_title_size() {
         val spec = resolveInfoCardLayoutSpec(cardWidth = 160.dp, hasBadge = true)
 
         assertEquals(13.sp, spec.titleFontSize)
-        assertFalse(spec.showSubtitle)
+        assertTrue(spec.showSubtitle)
     }
 
     @Test
