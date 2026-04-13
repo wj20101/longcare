@@ -56,7 +56,7 @@ tencentCos = "5.9.50"
 crashreport = "4.1.9.3"
 
 # amap
-amapLocation = "11.1.000"
+amapLocation = "11.1.001"
 
 # Testing
 junit = "4.13.2"
