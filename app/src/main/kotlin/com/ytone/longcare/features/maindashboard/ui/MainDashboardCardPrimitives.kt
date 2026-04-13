@@ -71,7 +71,7 @@ internal fun resolveInfoCardLayoutSpec(cardWidth: Dp, hasBadge: Boolean): InfoCa
     return when {
         cardWidth <= InfoCardLayoutResolverDefaults.CompactThreshold -> InfoCardLayoutSpec(
             titleFontSize = InfoCardLayoutResolverDefaults.CompactTitleFontSize,
-            showSubtitle = false,
+            showSubtitle = true,
             iconSize = InfoCardLayoutResolverDefaults.CompactIconSize,
             horizontalPadding = InfoCardLayoutResolverDefaults.CompactHorizontalPadding,
             verticalPadding = InfoCardLayoutResolverDefaults.VerticalPadding,
