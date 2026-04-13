@@ -45,6 +45,15 @@
       ]
     },
     {
+      "id": "AndroidGradlePluginVersion",
+      "owner": "mobile-platform",
+      "review_by": "2026-06-30",
+      "reason": "Android Gradle Plugin patch-level newer-version hints are advisory during CI verification. Track AGP upgrades deliberately instead of failing unrelated validation paths.",
+      "allowed_sources": [
+        "gradle/libs.versions.toml"
+      ]
+    },
+    {
       "id": "NewerVersionAvailable",
       "owner": "mobile-platform",
       "review_by": "2026-06-30",

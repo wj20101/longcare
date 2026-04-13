@@ -1,36 +1,50 @@
 # LongCare Context Index
 
 本目录用于沉淀 LongCare 项目的稳定上下文，减少后续会话重复摸底成本。
+`conductor/index.md` 是内部稳定地图：连接当前真相、执行节奏与历史材料。
 
-## Artifacts
+## Recommended Session Path
 
-- [product.md](/Users/wajie/StudioProjects/longcare/conductor/product.md): 产品目标、核心业务能力、用户与路线图
-- [product-guidelines.md](/Users/wajie/StudioProjects/longcare/conductor/product-guidelines.md): 术语、文档表达与用户提示约定
-- [tech-stack.md](/Users/wajie/StudioProjects/longcare/conductor/tech-stack.md): 当前技术栈、依赖、工程基础设施
-- [workflow.md](/Users/wajie/StudioProjects/longcare/conductor/workflow.md): 本地开发、质量门禁、CI/CD 与发布约定
-- [tracks.md](/Users/wajie/StudioProjects/longcare/conductor/tracks.md): 当前已识别的工作主线与完成状态
+默认新会话应先读 `AGENT.md`。  
+只有在需要更深上下文时，再从这里展开。
 
-## Fast Start
+推荐展开顺序：
 
-1. 先读 [product.md](/Users/wajie/StudioProjects/longcare/conductor/product.md) 了解业务域和模块边界。
-2. 再读 [tech-stack.md](/Users/wajie/StudioProjects/longcare/conductor/tech-stack.md) 确认构建链路、依赖与运行前提。
-3. 开工前检查 [workflow.md](/Users/wajie/StudioProjects/longcare/conductor/workflow.md) 中的验证命令。
-4. 若需要判断历史背景或当前主线，查看 [tracks.md](/Users/wajie/StudioProjects/longcare/conductor/tracks.md)。
+1. `AGENT.md`
+2. `conductor/index.md`（当前页）
+3. `docs/architecture/session-handoff-guide.md`
+4. 按需再读：
+   - `docs/architecture/system-overview.md`
+   - `docs/architecture/business-capability-map.md`
+   - `docs/architecture/ui-and-screen-map.md`
+   - `docs/architecture/roadmap-and-open-gaps.md`
+   - `conductor/product.md`
+   - `conductor/tech-stack.md`
+   - `conductor/workflow.md`
 
-## Source Documents
+## Current Truth Set
 
-当前上下文主要基于以下仓库事实整理：
+- [system-overview.md](/Users/wajie/StudioProjects/longcare/docs/architecture/system-overview.md): 当前运行形态、模块拓扑、导航组装、平台边界与外部集成
+- [business-capability-map.md](/Users/wajie/StudioProjects/longcare/docs/architecture/business-capability-map.md): 业务能力状态、主入口路由与关键依赖
+- [ui-and-screen-map.md](/Users/wajie/StudioProjects/longcare/docs/architecture/ui-and-screen-map.md): 路由分组、屏幕清单、模块归属与迁移现状
+- [roadmap-and-open-gaps.md](/Users/wajie/StudioProjects/longcare/docs/architecture/roadmap-and-open-gaps.md): 已交付、在途改造、技术债与功能缺口
+- [session-handoff-guide.md](/Users/wajie/StudioProjects/longcare/docs/architecture/session-handoff-guide.md): 新会话恢复步骤与 5 分钟检查清单
+- [product.md](/Users/wajie/StudioProjects/longcare/conductor/product.md): 产品目标与业务范围
+- [tech-stack.md](/Users/wajie/StudioProjects/longcare/conductor/tech-stack.md): 技术与构建基线
+- [workflow.md](/Users/wajie/StudioProjects/longcare/conductor/workflow.md): 本地验证、质量门禁、CI/CD 约定
 
-- [README.md](/Users/wajie/StudioProjects/longcare/README.md)
-- [settings.gradle.kts](/Users/wajie/StudioProjects/longcare/settings.gradle.kts)
-- [gradle/libs.versions.toml](/Users/wajie/StudioProjects/longcare/gradle/libs.versions.toml)
-- [docs/architecture/module-responsibility-map.md](/Users/wajie/StudioProjects/longcare/docs/architecture/module-responsibility-map.md)
-- [docs/architecture/dependency-rules.md](/Users/wajie/StudioProjects/longcare/docs/architecture/dependency-rules.md)
-- [docs/architecture/project-optimization-refactor-master-plan.md](/Users/wajie/StudioProjects/longcare/docs/architecture/project-optimization-refactor-master-plan.md)
-- [docs/refactor/final-refactor-report.md](/Users/wajie/StudioProjects/longcare/docs/refactor/final-refactor-report.md)
-- [progress.md](/Users/wajie/StudioProjects/longcare/progress.md)
+## Internal Artifacts
+
+- [product-guidelines.md](/Users/wajie/StudioProjects/longcare/conductor/product-guidelines.md): 术语与文案表达约束
+- [tracks.md](/Users/wajie/StudioProjects/longcare/conductor/tracks.md): 当前主线和执行状态（执行/进度视角，不是稳定事实）
+
+## Execution History (Not Primary Truth)
+
+- `docs/superpowers/*`：阶段计划与执行记录，主要用于追溯。
+- 历史 refactor/qa/security 报告：用于背景与证据，不作为当前实现真相入口。
+- 当历史文档与当前代码或 “Current Truth Set” 冲突时，以当前代码和主真相文档为准。
 
 ## Notes
 
 - 本目录记录的是“当前观察到的真实状态”，不是理想目标状态。
-- 如果后续新增模块、依赖、流程或质量门禁，应同步更新对应文档。
+- 如果新增或调整模块、依赖、流程、质量门禁，请同步更新对应真相文档并回链到本索引。

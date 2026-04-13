@@ -12,7 +12,7 @@
 
 | ID | Title | Completed | Evidence |
 |---|---|---|---|
-| TRACK-REF-001 | A1~E3 重构主计划 | completed | [docs/refactor/final-refactor-report.md](/Users/wajie/StudioProjects/longcare/docs/refactor/final-refactor-report.md) |
+| TRACK-REF-001 | A1~E3 重构主计划 | completed | [docs/archive/refactor/final-refactor-report.md](/Users/wajie/StudioProjects/longcare/docs/archive/refactor/final-refactor-report.md) |
 | TRACK-CI-001 | CI/CD 自动化优化首轮落地 | completed | [task_plan.md](/Users/wajie/StudioProjects/longcare/task_plan.md) |
 | TRACK-CONTEXT-001 | `conductor` 项目上下文初始化 | completed | [conductor/index.md](/Users/wajie/StudioProjects/longcare/conductor/index.md) |
 

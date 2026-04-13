@@ -25,8 +25,8 @@
 
 ## 3. 性能与测试结果
 
-- 基线对比：见 `docs/refactor/build-performance-comparison.md`
-- 最新基线明细：见 `docs/refactor/baseline-metrics.md`
+- 基线对比：见 `docs/archive/refactor/build-performance-comparison.md`
+- 最新基线明细：见 `docs/archive/refactor/baseline-metrics.md`
 - D26 模块测试通过：
   - `:feature:login:testDebugUnitTest`
   - `:feature:home:testDebugUnitTest`

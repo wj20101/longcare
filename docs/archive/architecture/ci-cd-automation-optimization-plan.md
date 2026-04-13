@@ -49,30 +49,30 @@
 
 | 日程 | 对应任务 | 具体文件改动清单 | 当日验收门禁 | 状态 |
 |---|---|---|---|---|
-| D28 | F1 | `docs/architecture/ci-cd-automation-optimization-plan.md` | 文档包含审计结论+任务清单+验收标准 | DONE |
+| D28 | F1 | `docs/archive/architecture/ci-cd-automation-optimization-plan.md` | 文档包含审计结论+任务清单+验收标准 | DONE |
 | D29 | F2 | `scripts/quality/free_runner_disk_space.sh`、`.github/workflows/android-ci.yml`、`.github/workflows/baseline-profile.yml`、`.github/workflows/android-release.yml` | 磁盘清理脚本统一接入并可本地 dry-run 验证 | DONE |
 | D30 | F3 | `scripts/quality/verify_ci_workflow_quality.sh`、`.github/workflows/android-ci.yml`、`.github/workflows/baseline-profile.yml`、`.github/workflows/android-release.yml` | workflow 质量守卫脚本通过并接入 CI | DONE |
 | D31 | F4 | `.github/workflows/android-ci.yml` | 纯文档改动不触发 android-ci（基于 paths-ignore） | DONE |
 | D32 | F5 | `.github/workflows/android-ci.yml`、`.github/workflows/android-release.yml`、`.github/workflows/baseline-profile.yml`、`scripts/quality/verify_ci_workflow_quality.sh` | 失败诊断产物按 job 结构化上传 | DONE |
 | D33 | F6 | `.github/actions/android-build-env/action.yml`、`.github/workflows/android-ci.yml`、`.github/workflows/android-release.yml`、`.github/workflows/baseline-profile.yml`、`scripts/quality/verify_ci_workflow_quality.sh` | 重复步骤收敛且功能一致 | DONE |
 | D34 | F7 | `.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh` | face-sdk workflow 与主流水线守卫标准一致 | DONE |
-| D35 | F8 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 权限守卫可阻断 read/write 配置回退 | DONE |
-| D36 | F9 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Action 引用稳定性守卫可阻断可变版本 | DONE |
-| D40 | F10 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 上传产物 action 版本固定守卫可阻断旧版本回归 | DONE |
-| D44 | F11 | `scripts/quality/verify_jetpack_compat_apis.sh`、`.github/actions/android-build-env/action.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Jetpack 兼容 API 回归在 CI 中可自动阻断 | DONE |
-| D45 | F12 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 关键 action 版本漂移可在 CI 守卫阶段阻断 | DONE |
-| D46 | F13 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | workflow 触发策略回归可在 CI 守卫阶段阻断 | DONE |
-| D47 | F14 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | affected plan summary 回归可在 CI 守卫阶段阻断 | DONE |
-| D48 | F15 | `.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | face-sdk 触发范围回归可在 CI 守卫阶段阻断 | DONE |
-| D49 | F16 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | baseline 定时策略回归可在 CI 守卫阶段阻断 | DONE |
-| D50 | F17 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | artifact retention 回归可在 CI 守卫阶段阻断 | DONE |
-| D51 | F18 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | job timeout 预算回归可在 CI 守卫阶段阻断 | DONE |
-| D52 | F19 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | upload-artifact 步骤完整性回归可在 CI 守卫阶段阻断 | DONE |
-| D53 | F20 | `scripts/lint/verify_lint_ignore_policy.sh`、`.github/actions/android-build-env/action.yml`、`.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | lint ignore 策略回归可在 CI 守卫阶段阻断 | DONE |
-| D54 | F21 | `app/lint.xml`、`scripts/lint/verify_lint_warning_allowlist.sh`、`scripts/lint/lint_warning_waivers.json`、`.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 临时 lint 忽略项减少并可稳定通过 lint | DONE |
-| D55 | F22 | `app/src/main/kotlin/com/ytone/longcare/data/cos/repository/CosRepositoryImpl.kt`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 凭证刷新路径不引入主线程阻塞风险 | DONE |
-| D56 | F23 | `app/src/main/kotlin/com/ytone/longcare/features/service/ServiceTimeNotificationManager.kt`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Handler 兜底链路协程化且取消语义稳定 | DONE |
-| D57 | F24 | `scripts/quality/collect_ci_run_metrics.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 输出可复用 CI 成本指标并形成阈值建议 | DONE |
+| D35 | F8 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 权限守卫可阻断 read/write 配置回退 | DONE |
+| D36 | F9 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Action 引用稳定性守卫可阻断可变版本 | DONE |
+| D40 | F10 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 上传产物 action 版本固定守卫可阻断旧版本回归 | DONE |
+| D44 | F11 | `scripts/quality/verify_jetpack_compat_apis.sh`、`.github/actions/android-build-env/action.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Jetpack 兼容 API 回归在 CI 中可自动阻断 | DONE |
+| D45 | F12 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 关键 action 版本漂移可在 CI 守卫阶段阻断 | DONE |
+| D46 | F13 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | workflow 触发策略回归可在 CI 守卫阶段阻断 | DONE |
+| D47 | F14 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | affected plan summary 回归可在 CI 守卫阶段阻断 | DONE |
+| D48 | F15 | `.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | face-sdk 触发范围回归可在 CI 守卫阶段阻断 | DONE |
+| D49 | F16 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | baseline 定时策略回归可在 CI 守卫阶段阻断 | DONE |
+| D50 | F17 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | artifact retention 回归可在 CI 守卫阶段阻断 | DONE |
+| D51 | F18 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | job timeout 预算回归可在 CI 守卫阶段阻断 | DONE |
+| D52 | F19 | `scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | upload-artifact 步骤完整性回归可在 CI 守卫阶段阻断 | DONE |
+| D53 | F20 | `scripts/lint/verify_lint_ignore_policy.sh`、`.github/actions/android-build-env/action.yml`、`.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | lint ignore 策略回归可在 CI 守卫阶段阻断 | DONE |
+| D54 | F21 | `app/lint.xml`、`scripts/lint/verify_lint_warning_allowlist.sh`、`scripts/lint/lint_warning_waivers.json`、`.github/workflows/face-sdk-migration-check.yml`、`scripts/quality/verify_ci_workflow_quality.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 临时 lint 忽略项减少并可稳定通过 lint | DONE |
+| D55 | F22 | `app/src/main/kotlin/com/ytone/longcare/data/cos/repository/CosRepositoryImpl.kt`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 凭证刷新路径不引入主线程阻塞风险 | DONE |
+| D56 | F23 | `app/src/main/kotlin/com/ytone/longcare/features/service/ServiceTimeNotificationManager.kt`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | Handler 兜底链路协程化且取消语义稳定 | DONE |
+| D57 | F24 | `scripts/quality/collect_ci_run_metrics.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md`、`progress.md` | 输出可复用 CI 成本指标并形成阈值建议 | DONE |
 
 ## 4. 本轮已执行改动明细
 
@@ -254,7 +254,7 @@
 - 任务：`D35 | F8`
 - 改动文件：
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 将权限守卫从“仅检测存在 `permissions` 块”升级为“检测最小权限值是否符合预期”；
@@ -270,7 +270,7 @@
 - 任务：`D36 | F9`
 - 改动文件：
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 在 workflow 守卫中新增 action 版本稳定性校验：
@@ -285,7 +285,7 @@
 - 任务：`D40 | F10`
 - 改动文件：
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 在 workflow 守卫中新增 `actions/upload-artifact@v6` 固定版本校验；
@@ -300,7 +300,7 @@
   - `scripts/quality/verify_jetpack_compat_apis.sh`（新增）
   - `.github/actions/android-build-env/action.yml`
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 新增 Jetpack 兼容 API 守卫脚本，阻断以下回归：
@@ -319,7 +319,7 @@
 - 任务：`D45 | F12`
 - 改动文件：
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 对共享 action 增加版本守卫：
@@ -340,7 +340,7 @@
 - 任务：`D46 | F13`
 - 改动文件：
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 新增 `android-ci` 触发策略守卫：必须保留 `push + pull_request`，并且 `paths-ignore` 必含 `docs/**`、`**/*.md`、`task_plan.md`、`findings.md`、`progress.md`。
@@ -356,7 +356,7 @@
 - 任务：`D47 | F14`
 - 改动文件：
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 新增 `android-ci` 可观测性守卫：
@@ -372,7 +372,7 @@
 - 改动文件：
   - `.github/workflows/face-sdk-migration-check.yml`
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 将 `face-sdk-migration-check` 的 `pull_request.paths` 从目录级宽匹配收敛为精准文件列表：
@@ -391,7 +391,7 @@
 - 任务：`D49 | F16`
 - 改动文件：
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 新增 `baseline-profile` 定时策略守卫：
@@ -406,7 +406,7 @@
 - 任务：`D50 | F17`
 - 改动文件：
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 新增 `retention-days` 策略守卫：
@@ -424,7 +424,7 @@
 - 任务：`D51 | F18`
 - 改动文件：
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 新增 job 级 timeout 预算守卫：
@@ -441,7 +441,7 @@
 - 任务：`D52 | F19`
 - 改动文件：
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 新增 `check_upload_artifact_step_policies` 结构化校验函数，逐步扫描 workflow：
@@ -460,7 +460,7 @@
   - `.github/actions/android-build-env/action.yml`
   - `.github/workflows/face-sdk-migration-check.yml`
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 新增 `verify_lint_ignore_policy.sh`，校验 `app/lint.xml` 中 `severity="ignore"` 仅允许审批列表内 issue；
@@ -483,7 +483,7 @@
 - 任务：`D55 | F22`
 - 改动文件：
   - `app/src/main/kotlin/com/ytone/longcare/data/cos/repository/CosRepositoryImpl.kt`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - `DynamicCredentialProvider.getCredentials()` 增加主线程保护：
@@ -501,7 +501,7 @@
 - 任务：`D56 | F23`
 - 改动文件：
   - `app/src/main/kotlin/com/ytone/longcare/features/service/ServiceTimeNotificationManager.kt`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 将 `Handler + Runnable` 兜底任务改为 `CoroutineScope(SupervisorJob + Dispatchers.Main.immediate)` + `Job` 管理；
@@ -518,7 +518,7 @@
 - 任务：`D57 | F24`
 - 改动文件：
   - `scripts/quality/collect_ci_run_metrics.sh`（新增）
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 新增 CI 运行指标脚本：
@@ -556,7 +556,7 @@
 - 任务：`D54 | F21`（阶段完成）
 - 改动文件：
   - `app/lint.xml`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 删除 `app/lint.xml` 中以下临时忽略：
@@ -597,7 +597,7 @@
   - `scripts/lint/lint_warning_waivers.json`（新增）
   - `.github/workflows/face-sdk-migration-check.yml`
   - `scripts/quality/verify_ci_workflow_quality.sh`
-  - `docs/architecture/ci-cd-automation-optimization-plan.md`
+  - `docs/archive/architecture/ci-cd-automation-optimization-plan.md`
   - `progress.md`
 - 具体改动：
   - 将原脚本中的硬编码 allowlist 迁移为 JSON waiver 清单（含 `owner`、`reason`、`review_by`、`allowed_sources`）；
@@ -621,7 +621,7 @@
 
 | ID | 主题 | 触发条件 | 跟踪文件 | 当前状态 |
 |---|---|---|---|---|
-| LT1 | 第三方 lint waiver 收敛（`F21` 延展） | `crashreport`、`cos-android`、`WbCloudFaceLiveSdk` 发布可替换版本或兼容补丁 | `scripts/lint/lint_warning_waivers.json`、`scripts/lint/verify_lint_warning_allowlist.sh`、`docs/architecture/ci-cd-automation-optimization-plan.md` | MONITORING |
+| LT1 | 第三方 lint waiver 收敛（`F21` 延展） | `crashreport`、`cos-android`、`WbCloudFaceLiveSdk` 发布可替换版本或兼容补丁 | `scripts/lint/lint_warning_waivers.json`、`scripts/lint/verify_lint_warning_allowlist.sh`、`docs/archive/architecture/ci-cd-automation-optimization-plan.md` | MONITORING |
 | LT2 | CI 健康阈值巡检自动化 | 每日定时或手动触发 `ci-health-monitor` | `.github/workflows/ci-health-monitor.yml`、`scripts/quality/monitor_ci_health.sh`、`scripts/quality/ci_health_thresholds.json` | ACTIVE |
 
 - 跟踪规则：

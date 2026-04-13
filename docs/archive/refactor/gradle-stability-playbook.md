@@ -61,4 +61,4 @@ bash scripts/quality/verify_gradle_stability.sh
 ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest :app:assembleDebug --no-daemon
 ```
 
-4. 若耗时或失败率异常，补充至 `docs/refactor/baseline-metrics.md` 与主计划偏差说明。
+4. 若耗时或失败率异常，补充至 `docs/archive/refactor/baseline-metrics.md` 与主计划偏差说明。

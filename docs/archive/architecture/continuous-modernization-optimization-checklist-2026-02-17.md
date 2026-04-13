@@ -232,7 +232,7 @@
   - 守卫验证：
     - `scripts/quality/verify_ci_workflow_quality.sh`：PASS。
 - `R4` 基线复测（`assembleDebug`）：
-  - 重新执行“无缓存 + rerun + clean”基线采集，结果已追加到 `docs/refactor/baseline-metrics.md`。
+  - 重新执行“无缓存 + rerun + clean”基线采集，结果已追加到 `docs/archive/refactor/baseline-metrics.md`。
   - 最新样本（2026-02-17 21:03:11）：
     - `:app:compileDebugKotlin`：`49s`
     - `:app:testDebugUnitTest`：`74s`
@@ -297,7 +297,7 @@
 - `app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardOrdersSection.kt`
 - `.github/workflows/android-ci.yml`
 - `scripts/quality/legacy_feature_files_allowlist.txt`
-- `docs/refactor/baseline-metrics.md`
+- `docs/archive/refactor/baseline-metrics.md`
 
 ## 本轮验收命令
 

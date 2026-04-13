@@ -417,8 +417,8 @@ require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "uses:[[:space:]]
 require_absent_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "uses:[[:space:]]*reactivecircus/android-emulator-runner@v([013-9]|[1-9][0-9]+)" "android-ci does not use unexpected emulator runner version"
 require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "uses:[[:space:]]*peter-evans/create-pull-request@v8" "baseline-profile pins create-pull-request action"
 require_absent_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "uses:[[:space:]]*peter-evans/create-pull-request@v([0-79]|[1-9][0-9]+)" "baseline-profile does not use unexpected create-pull-request version"
-require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "uses:[[:space:]]*softprops/action-gh-release@v2" "android-release pins gh-release action"
-require_absent_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "uses:[[:space:]]*softprops/action-gh-release@v([013-9]|[1-9][0-9]+)" "android-release does not use unexpected gh-release version"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "uses:[[:space:]]*softprops/action-gh-release@v3" "android-release pins gh-release action"
+require_absent_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "uses:[[:space:]]*softprops/action-gh-release@v([0-24-9]|[1-9][0-9]+)" "android-release does not use unexpected gh-release version"
 
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[ci-workflow-quality] verification failed."
