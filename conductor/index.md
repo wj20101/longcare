@@ -5,16 +5,22 @@
 
 ## Recommended Session Path
 
+默认新会话应先读 `AGENT.md`。  
+只有在需要更深上下文时，再从这里展开。
+
+推荐展开顺序：
+
 1. `AGENT.md`
 2. `conductor/index.md`（当前页）
 3. `docs/architecture/session-handoff-guide.md`
-4. `docs/architecture/system-overview.md`
-5. `docs/architecture/business-capability-map.md`
-6. `docs/architecture/ui-and-screen-map.md`
-7. `docs/architecture/roadmap-and-open-gaps.md`
-8. `conductor/product.md`
-9. `conductor/tech-stack.md`
-10. `conductor/workflow.md`
+4. 按需再读：
+   - `docs/architecture/system-overview.md`
+   - `docs/architecture/business-capability-map.md`
+   - `docs/architecture/ui-and-screen-map.md`
+   - `docs/architecture/roadmap-and-open-gaps.md`
+   - `conductor/product.md`
+   - `conductor/tech-stack.md`
+   - `conductor/workflow.md`
 
 ## Current Truth Set
 

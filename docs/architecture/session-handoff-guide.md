@@ -2,11 +2,11 @@
 
 Last verified: 2026-04-12
 
-This guide defines how a new session should recover project context quickly and safely.
+This guide defines how a new session should recover deeper project context after starting from `AGENT.md`.
 
 ## 1) Fresh-session reading order (exact)
 
-Use this order for fast recovery:
+Use this order when `AGENT.md` alone is not enough:
 
 1. `AGENT.md`
 2. `conductor/index.md`
@@ -71,7 +71,7 @@ If history conflicts with code and stable architecture docs, trust current code 
 
 ## 6) 5-minute recovery checklist
 
-Use this checklist for a brand new session:
+Use this checklist after reading `AGENT.md` and deciding you need more than the default single-entry summary:
 
 1. Read `AGENT.md` and `conductor/index.md` (entry context).
 2. Read the three architecture fact maps:
