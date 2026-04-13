@@ -64,7 +64,6 @@ internal fun NfcTestTopBar(onNavigateBack: () -> Unit) {
 internal fun NfcTestBody(
     enabled: Boolean,
     r65cPanelState: R65CHidPanelState,
-    modifier: Modifier = Modifier,
     rawValidationState: R65CHidRawValidationState = R65CHidRawValidationState(),
     onR65CInputChanged: (String) -> Unit,
     onR65CFocusChanged: (Boolean) -> Unit,
@@ -76,6 +75,7 @@ internal fun NfcTestBody(
     onRawStopListening: () -> Unit = {},
     onRawRequestRefocus: () -> Unit = {},
     onRawClearSession: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier

@@ -3,17 +3,18 @@ package com.ytone.longcare.features.maindashboard.ui
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class InfoCardLayoutSpecResolverTest {
 
     @Test
-    fun compact_width_shows_subtitle_and_uses_smallest_supported_title_size() {
+    fun compact_width_hides_subtitle_and_uses_smallest_supported_title_size() {
         val spec = resolveInfoCardLayoutSpec(cardWidth = 160.dp, hasBadge = true)
 
         assertEquals(13.sp, spec.titleFontSize)
-        assertTrue(spec.showSubtitle)
+        assertFalse(spec.showSubtitle)
     }
 
     @Test
