@@ -114,18 +114,6 @@ jobs:
           TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
         run: ./gradlew --no-daemon :app:lintDebug :app:assembleDebug
 
-      - name: Collect ci-required quality snapshot
-        env:
-          TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
-          TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
-        run: |
-          bash scripts/quality/run_quality_gate.sh \
-            --project-root . \
-            --output-dir build/quality-snapshot \
-            --lint-report app/build/reports/lint-results-debug.txt \
-            --source-root app/src/main/kotlin \
-            --workflow-file .github/workflows/android-ci.yml
-
       - name: Run release-required signing safety checks
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -308,7 +296,6 @@ jobs:
             app/build/outputs/mapping/release/**
             app/build/outputs/mapping/release-mapping.zip
             app/build/outputs/release-checksums.txt
-            build/quality-snapshot/**
           if-no-files-found: error
           retention-days: 7
 
@@ -321,7 +308,6 @@ jobs:
             app/build/reports/**
             app/build/test-results/**
             app/build/outputs/**
-            build/quality-snapshot/**
             baselineprofile/build/reports/**
             baselineprofile/build/outputs/**
             build/reports/problems/**

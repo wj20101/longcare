@@ -107,6 +107,7 @@ not as an automatic execution override.
 - Blocking CI/CD is build-only.
 - Blocking workflows must not fail solely because of unit tests, UI assertions, business regression checks, or business journey checks.
 - Those broader correctness checks may still run in dedicated workflows or release validation, but they are not part of the blocking compile/build gate set.
+- Quality snapshot collection remains available for local or observability-oriented use, but it is no longer part of the blocking Android CI or Android Release workflow path.
 
 ### Android CI
 

@@ -113,15 +113,6 @@ jobs:
       - name: Run affected compile/lint/assemble verification
         run: ./gradlew --no-daemon ${{ needs.detect-affected.outputs.verify_tasks }}
 
-      - name: Collect ci-required quality snapshot
-        run: |
-          bash scripts/quality/run_quality_gate.sh \
-            --project-root . \
-            --output-dir build/quality-snapshot \
-            --lint-report app/build/reports/lint-results-debug.txt \
-            --source-root app/src/main/kotlin \
-            --workflow-file .github/workflows/android-ci.yml
-
       - name: Upload APK
         uses: actions/upload-artifact@v7
         with:
@@ -156,7 +147,6 @@ jobs:
           path: |
             app/build/reports/**
             app/build/test-results/**
-            build/quality-snapshot/**
             build/reports/problems/**
           if-no-files-found: warn
           retention-days: 7
@@ -170,7 +160,6 @@ jobs:
             app/build/reports/**
             app/build/test-results/**
             app/build/outputs/**
-            build/quality-snapshot/**
             baselineprofile/build/reports/**
             baselineprofile/build/outputs/**
             build/reports/problems/**
