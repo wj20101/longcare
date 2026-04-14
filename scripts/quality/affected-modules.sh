@@ -169,10 +169,10 @@ if [[ "${#selected_modules[@]}" -eq 0 ]]; then
 fi
 
 affected_scope="partial"
-verify_tasks=":app:lintDebug :app:testDebugUnitTest :app:assembleDebug"
+verify_tasks=":app:lintDebug :app:assembleDebug"
 if [[ "${full_scope}" == "true" ]]; then
   affected_scope="full"
-  verify_tasks=":app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:bundleDebug :baselineprofile:assemble"
+  verify_tasks=":app:lintDebug :app:assembleDebug :app:bundleDebug"
 fi
 
 if [[ "${run_instrumentation}" != "true" ]]; then

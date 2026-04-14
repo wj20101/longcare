@@ -100,6 +100,33 @@ The table below reflects current runner defaults and execution behavior today.
 Until follow-up alignment tasks land, treat the registry as target-state metadata contract,
 not as an automatic execution override.
 
+## Workflow Responsibilities
+
+### Blocking policy split
+
+- Blocking CI/CD is build-only.
+- Blocking workflows must not fail solely because of unit tests, UI assertions, business regression checks, or business journey checks.
+- Those broader correctness checks may still run in dedicated workflows or release validation, but they are not part of the blocking compile/build gate set.
+
+### Android CI
+
+- `Android CI` is the primary blocking merge workflow for build validation.
+- It owns compile/build confidence, lint, module policy, architecture policy, and CI governance checks needed for normal pull-request validation.
+- It should not be redefined as the owner of business journey coverage or product-level regression sign-off.
+
+### Android Release
+
+- `Android Release` is the release-sign-off workflow.
+- It owns release packaging confidence, release-only policy checks, and any higher-cost validation required before shipping.
+- It may depend on `Android CI` being green first, but it is responsible for release readiness rather than day-to-day merge blocking.
+
+### Face SDK Migration Check
+
+- `Face SDK Migration Check` is a specialized blocking build-only workflow for Tencent face SDK source switching.
+- Its responsibility is limited to verifying that the app still builds from the Maven-published face SDK path using the required build task set: `:app:compileDebugKotlin`, `:app:lintDebug`, `:app:processReleaseMainManifest`, and `:app:assembleDebug`.
+- It no longer blocks on unit tests, UI assertions, business regression checks, or business journey checks.
+- It may still enforce `scripts/quality/verify_release_exported_components.sh` because exported-component manifest safety remains a release/build safety invariant for the produced app package and release manifest path.
+
 | Script | Purpose | Default Execution Layer | Common Failure Modes | Likely Remediation |
 |---|---|---|---|---|
 | `scripts/quality/preflight_local.sh` | Unified local preflight orchestration | `local-fast` | One or more child gates fail | Fix failing child gate first, then rerun the same mode |

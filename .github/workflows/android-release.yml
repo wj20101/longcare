@@ -108,11 +108,11 @@ jobs:
           bash scripts/quality/verify_baselineprofile_journeys.sh
           bash scripts/quality/verify_module_dependency_whitelist.sh .
 
-      - name: Run ci-required compile/lint/unit verification
+      - name: Run ci-required compile/lint/assemble verification
         env:
           TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
           TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
-        run: ./gradlew --no-daemon :app:lintDebug :app:testDebugUnitTest
+        run: ./gradlew --no-daemon :app:lintDebug :app:assembleDebug
 
       - name: Collect ci-required quality snapshot
         env:

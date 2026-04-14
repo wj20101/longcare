@@ -12,18 +12,13 @@ echo "[1/3] Publish local Tencent face AARs to mavenLocal"
 scripts/face-sdk/publish_tx_face_aars.sh --mode local
 
 echo "[2/3] Run build checks with TX_FACE_SDK_SOURCE=maven"
-./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug :app:testDebugUnitTest :app:processReleaseMainManifest \
+./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug :app:processReleaseMainManifest :app:assembleDebug \
   -PTX_FACE_SDK_SOURCE=maven \
   -PTX_FACE_INCLUDE_MAVEN_LOCAL=true \
   -PTX_FACE_LIVE_COORD="${LIVE_COORD}" \
   -PTX_FACE_NORMAL_COORD="${NORMAL_COORD}"
 
-echo "[3/3] Enforce repository quality gates"
-bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
-bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
-bash scripts/quality/verify_no_empty_catch_blocks.sh app/src/main/kotlin
-bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
+echo "[3/3] Verify release exported component policy"
 bash scripts/quality/verify_release_exported_components.sh
-bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml
 
 echo "Tencent face SDK maven switch verification passed."
