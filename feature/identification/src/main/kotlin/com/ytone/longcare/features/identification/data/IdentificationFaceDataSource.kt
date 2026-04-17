@@ -28,6 +28,7 @@ class IdentificationFaceDataSource @Inject constructor(
     companion object {
         private const val TAG = "IdentificationFaceDataSource"
         private const val FACE_BASE64_KEY_PREFIX = "face_base64_user_"
+        private val CAPTURED_FACE_DIR_NAMES = listOf("face_captures", "face_capture")
     }
 
     private val userDataStoreCache = ConcurrentHashMap<Int, DataStore<Preferences>>()
@@ -81,6 +82,7 @@ class IdentificationFaceDataSource @Inject constructor(
             dataStore.edit { prefs ->
                 prefs.remove(key)
             }
+            clearLocalFaceFiles()
             logD("清除人脸缓存 (userId=$userId)", tag = TAG)
         } catch (e: CancellationException) {
             throw e
@@ -106,6 +108,15 @@ class IdentificationFaceDataSource @Inject constructor(
             } catch (e: Exception) {
                 logE("下载图片失败: $url", tag = TAG, throwable = e)
                 throw e
+            }
+        }
+    }
+
+    private suspend fun clearLocalFaceFiles() = withContext(ioDispatcher) {
+        CAPTURED_FACE_DIR_NAMES.forEach { dirName ->
+            val dir = File(context.filesDir, dirName)
+            if (dir.exists() && !dir.deleteRecursively()) {
+                logE("删除本地人脸文件目录失败: ${dir.absolutePath}", tag = TAG)
             }
         }
     }

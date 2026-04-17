@@ -111,7 +111,9 @@ class IdentificationViewModel @Inject constructor(
     }
 
     private fun navigateToFaceCaptureForSetup() {
-        emitEvent(IdentificationEvent.ShowToast("请先设置人脸信息")); emitEvent(IdentificationEvent.NavigateToFaceCapture)
+        viewModelScope.launch {
+            emitFaceCaptureRequiredEvents(_events::emit)
+        }
     }
     
     /**
