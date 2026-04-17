@@ -14,7 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ytone.longcare.debug.NfcTestConfig
+import com.ytone.longcare.debug.NfcTestEntrySession
 import com.ytone.longcare.features.nfctest.api.NfcTestActions
 import com.ytone.longcare.features.nfctest.vm.NfcTestViewModel
 import com.ytone.longcare.features.nfctest.vm.R65CHidInputTestViewModel
@@ -30,9 +30,10 @@ fun NfcTestScreen(
     val rawValidationViewModel: R65CHidRawValidationViewModel = hiltViewModel()
     val r65cPanelState by r65cViewModel.panelState.collectAsStateWithLifecycle()
     val rawValidationState by rawValidationViewModel.panelState.collectAsStateWithLifecycle()
+    val testEntryEnabled by NfcTestEntrySession.enabled.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    val nfcTestHelper = if (NfcTestConfig.ENABLE_NFC_TEST) {
+    val nfcTestHelper = if (testEntryEnabled) {
         nfcTestViewModel.getHelper()
     } else {
         null
@@ -40,7 +41,7 @@ fun NfcTestScreen(
 
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    if (NfcTestConfig.ENABLE_NFC_TEST && nfcTestHelper != null) {
+    if (testEntryEnabled && nfcTestHelper != null) {
         BindNfcTestLifecycle(
             enabled = true,
             context = context,
@@ -67,7 +68,7 @@ fun NfcTestScreen(
             containerColor = Color.Transparent,
         ) { paddingValues ->
             NfcTestBody(
-                enabled = NfcTestConfig.ENABLE_NFC_TEST,
+                enabled = testEntryEnabled,
                 r65cPanelState = r65cPanelState,
                 rawValidationState = rawValidationState,
                 onR65CInputChanged = r65cViewModel::onInputChanged,
@@ -87,7 +88,7 @@ fun NfcTestScreen(
         }
     }
 
-    if (NfcTestConfig.ENABLE_NFC_TEST && nfcTestHelper != null) {
+    if (testEntryEnabled && nfcTestHelper != null) {
         nfcTestHelper.NfcTagDialog()
     }
 }

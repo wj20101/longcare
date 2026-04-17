@@ -40,6 +40,10 @@
     <string name="login_agreement_confirm_message">登录前请先阅读并同意《用户协议》和《隐私政策》</string>
     <string name="login_agreement_confirm_action">确认并同意</string>
     <string name="login_agreement_cancel_action">取消</string>
+    <string name="login_test_entry_enabled_toast">测试入口已开启</string>
+    <string name="login_test_entry_disabled_toast">测试入口已关闭</string>
+    <string name="login_test_entry_locked_toast">测试入口未开启</string>
+    <string name="nfc_test_disabled_hint">请先在登录页长按 Logo 开启测试入口</string>
     <string name="nursing_execution_title">护理执行</string>
     <string name="nursing_execution_instruction">请阅读并确认订单服务内容以及客户信息，扫描客户容貌验证通过后，开始服务。</string>
     <string name="nursing_execution_client_info_tag">客户信息</string>

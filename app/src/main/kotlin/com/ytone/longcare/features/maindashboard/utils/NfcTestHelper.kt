@@ -8,6 +8,7 @@ import androidx.lifecycle.LifecycleOwner
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logD
+import com.ytone.longcare.debug.NfcTestEntrySession
 import com.ytone.longcare.debug.NfcTestConfig
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -29,7 +30,7 @@ class NfcTestHelper @Inject constructor(
     )
 
     fun enable(activity: Activity) {
-        if (!NfcTestConfig.ENABLE_NFC_TEST) {
+        if (!NfcTestEntrySession.isEnabled()) {
             logD(NfcTestConfig.TEST_TAG, "NFC测试功能已禁用")
             return
         }

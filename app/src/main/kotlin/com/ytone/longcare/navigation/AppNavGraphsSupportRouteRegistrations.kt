@@ -1,10 +1,15 @@
 package com.ytone.longcare.navigation
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.showShortToast
 import com.ytone.longcare.core.navigation.NavigationConstants
+import com.ytone.longcare.debug.NfcTestEntrySession
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.facerecognition.api.FaceRecognitionGuideActions
 import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
@@ -76,11 +81,20 @@ internal fun NavGraphBuilder.registerUserServiceRecordRoute(navController: NavCo
 
 internal fun NavGraphBuilder.registerNfcTestRoute(navController: NavController) {
     composable<NfcTestRoute> {
-        NfcTestScreen(
-            actions = NfcTestActions(
-                onNavigateBack = { navController.popBackStack() }
+        val context = LocalContext.current
+
+        if (NfcTestEntrySession.isEnabled()) {
+            NfcTestScreen(
+                actions = NfcTestActions(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             )
-        )
+        } else {
+            LaunchedEffect(Unit) {
+                context.showShortToast(R.string.login_test_entry_locked_toast)
+                navController.popBackStack()
+            }
+        }
     }
 }
 

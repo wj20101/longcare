@@ -182,7 +182,7 @@ private fun DisabledNfcTestCard() {
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "请在NfcTestConfig中启用测试功能",
+                text = "请先在登录页长按 Logo 开启测试入口",
                 fontSize = 14.sp,
                 color = Color.Gray,
             )

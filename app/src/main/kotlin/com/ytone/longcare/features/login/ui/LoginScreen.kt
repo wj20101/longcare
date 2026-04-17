@@ -39,8 +39,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
+import com.ytone.longcare.common.utils.showShortToast
 import com.ytone.longcare.common.utils.showLongToast
-import com.ytone.longcare.debug.NfcTestConfig
+import com.ytone.longcare.debug.NfcTestEntrySession
 import com.ytone.longcare.feature.login.api.LoginFeatureActions
 import com.ytone.longcare.feature.login.ext.maxPhoneLength
 import com.ytone.longcare.features.login.vm.LoginUiState
@@ -96,6 +97,9 @@ fun LoginScreenContent(
     val agreementConfirmMessage = stringResource(R.string.login_agreement_confirm_message)
     val agreementConfirmAction = stringResource(R.string.login_agreement_confirm_action)
     val agreementCancelAction = stringResource(R.string.login_agreement_cancel_action)
+    val testEntryEnabledToast = stringResource(R.string.login_test_entry_enabled_toast)
+    val testEntryDisabledToast = stringResource(R.string.login_test_entry_disabled_toast)
+    val testEntryEnabled by NfcTestEntrySession.enabled.collectAsStateWithLifecycle()
 
     var phoneNumber by remember { mutableStateOf(initialPhoneNumber) }
     var verificationCode by remember { mutableStateOf("") }
@@ -143,6 +147,13 @@ fun LoginScreenContent(
         }
     }
 
+    val toggleTestEntry = {
+        val enabled = NfcTestEntrySession.toggle()
+        context.showShortToast(
+            if (enabled) testEntryEnabledToast else testEntryDisabledToast
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(id = R.drawable.login_bg),
@@ -162,12 +173,15 @@ fun LoginScreenContent(
                 val formHorizontalPadding = if (compactWidth) 24.dp else 48.dp
                 val agreementSpacing = if (compactHeight) 24.dp else 48.dp
                 val contentBottomPadding = when {
-                    NfcTestConfig.ENABLE_NFC_TEST -> 16.dp
+                    testEntryEnabled -> 16.dp
                     compactHeight -> 20.dp
                     else -> 32.dp
                 }
 
-                LoginBrandingHeader(isCompactLayout = compactHeight)
+                LoginBrandingHeader(
+                    isCompactLayout = compactHeight,
+                    onMainLogoLongPress = toggleTestEntry
+                )
 
                 Column(
                     modifier = Modifier
@@ -210,7 +224,7 @@ fun LoginScreenContent(
                             .padding(horizontal = 32.dp)
                     )
 
-                    if (NfcTestConfig.ENABLE_NFC_TEST) {
+                    if (testEntryEnabled) {
                         Spacer(modifier = Modifier.height(32.dp))
                         LoginNfcTestButtons(
                             actions = actions,
