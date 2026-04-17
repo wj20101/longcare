@@ -72,17 +72,24 @@ internal fun R65CHidInputTestPanel(
                 modifier = Modifier.testTag("r65c_last_completed_at"),
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Button(
                     onClick = onRequestRefocus,
-                    modifier = Modifier.testTag("r65c_refocus_button"),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("r65c_refocus_button"),
                 ) {
                     Text("重新聚焦")
                 }
 
                 Button(
                     onClick = onClearResult,
-                    modifier = Modifier.testTag("r65c_clear_button"),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("r65c_clear_button"),
                 ) {
                     Text("清空结果")
                 }
@@ -90,7 +97,9 @@ internal fun R65CHidInputTestPanel(
                 Button(
                     onClick = onCopyResult,
                     enabled = !state.lastNormalizedUid.isNullOrBlank(),
-                    modifier = Modifier.testTag("r65c_copy_button"),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("r65c_copy_button"),
                 ) {
                     Text("复制结果")
                 }

@@ -66,6 +66,9 @@ class R65CHidInputTestPanelTest {
         composeRule.onAllNodesWithTag("r65c_input_field").assertCountEquals(0)
         composeRule.onNodeWithTag("r65c_live_input_value").assertTextEquals("AB12")
         composeRule.onNodeWithTag("r65c_copy_button").assertIsEnabled()
+        composeRule.onAllNodesWithTag("r65c_refocus_button").assertCountEquals(1)
+        composeRule.onAllNodesWithTag("r65c_clear_button").assertCountEquals(1)
+        composeRule.onAllNodesWithTag("r65c_copy_button").assertCountEquals(1)
     }
 
     @Test
