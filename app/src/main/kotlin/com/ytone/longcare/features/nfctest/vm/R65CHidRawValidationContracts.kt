@@ -22,14 +22,6 @@ enum class R65CHidCandidateKind {
     Classification,
 }
 
-data class R65CHidCapturedKeyEvent(
-    val keyCode: Int,
-    val unicodeChar: Int,
-    val action: Int,
-    val displayChar: String,
-    val eventTimeMillis: Long,
-)
-
 data class R65CHidCandidateValue(
     val kind: R65CHidCandidateKind,
     val value: String,

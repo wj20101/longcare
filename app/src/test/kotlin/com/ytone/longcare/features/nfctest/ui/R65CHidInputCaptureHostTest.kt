@@ -37,6 +37,38 @@ class R65CHidInputCaptureHostTest {
         assertNull(toR65CHidCapturedKeyEventIfRelevant(volume))
     }
 
+    @Test
+    fun `host maps enter key to visible newline token`() {
+        val enter = mockKeyEvent(
+            action = KeyEvent.ACTION_DOWN,
+            keyCode = KeyEvent.KEYCODE_ENTER,
+            unicodeChar = '\n'.code,
+            eventTime = 60L,
+        )
+
+        val result = toR65CHidCapturedKeyEventIfRelevant(enter)
+
+        assertEquals("\\n", result?.displayChar)
+        assertEquals('\n'.code, result?.unicodeChar)
+    }
+
+    @Test
+    fun `host keeps non ignored zero unicode key with empty display char`() {
+        val shift = mockKeyEvent(
+            action = KeyEvent.ACTION_DOWN,
+            keyCode = KeyEvent.KEYCODE_SHIFT_LEFT,
+            unicodeChar = 0,
+            eventTime = 70L,
+        )
+
+        val result = toR65CHidCapturedKeyEventIfRelevant(shift)
+
+        assertEquals(KeyEvent.KEYCODE_SHIFT_LEFT, result?.keyCode)
+        assertEquals(0, result?.unicodeChar)
+        assertEquals("", result?.displayChar)
+        assertEquals(70L, result?.eventTimeMillis)
+    }
+
     private fun mockKeyEvent(
         action: Int,
         keyCode: Int,

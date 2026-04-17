@@ -8,6 +8,14 @@ sealed interface R65CHidCaptureState {
     data class LastCaptureFailed(val reason: String) : R65CHidCaptureState
 }
 
+data class R65CHidCapturedKeyEvent(
+    val keyCode: Int,
+    val unicodeChar: Int,
+    val action: Int,
+    val displayChar: String,
+    val eventTimeMillis: Long,
+)
+
 data class R65CHidPanelState(
     val captureState: R65CHidCaptureState = R65CHidCaptureState.WaitingForFocus,
     val liveInputBuffer: String = "",
