@@ -86,6 +86,18 @@ class R65CHidInputTestViewModel @Inject constructor(
         }
     }
 
+    fun onCapturedKey(event: R65CHidCapturedKeyEvent) {
+        val nextValue = when {
+            event.keyCode == android.view.KeyEvent.KEYCODE_ENTER ||
+                event.unicodeChar == '\n'.code -> panelState.value.liveInputBuffer + "\n"
+
+            event.unicodeChar == 0 -> panelState.value.liveInputBuffer
+            else -> panelState.value.liveInputBuffer + event.unicodeChar.toChar()
+        }
+
+        onInputChanged(nextValue)
+    }
+
     fun requestRefocus() {
         cancelCompletionJob()
         _panelState.update {

@@ -57,6 +57,123 @@ class R65CHidInputTestViewModelTest {
     }
 
     @Test
+    fun `captured key sequence completes immediately on enter`() {
+        every { parser.normalize("AB12\n") } returns "AB12"
+        val viewModel = R65CHidInputTestViewModel(
+            parser = parser,
+            nowProvider = { fixedNow },
+            completionDelayMillis = 400L,
+        )
+
+        viewModel.onFieldFocusChanged(true)
+        viewModel.onCapturedKey(
+            R65CHidCapturedKeyEvent(
+                keyCode = 29,
+                unicodeChar = 'A'.code,
+                action = 0,
+                displayChar = "A",
+                eventTimeMillis = 1L,
+            ),
+        )
+        viewModel.onCapturedKey(
+            R65CHidCapturedKeyEvent(
+                keyCode = 30,
+                unicodeChar = 'B'.code,
+                action = 0,
+                displayChar = "B",
+                eventTimeMillis = 2L,
+            ),
+        )
+        viewModel.onCapturedKey(
+            R65CHidCapturedKeyEvent(
+                keyCode = 8,
+                unicodeChar = '1'.code,
+                action = 0,
+                displayChar = "1",
+                eventTimeMillis = 3L,
+            ),
+        )
+        viewModel.onCapturedKey(
+            R65CHidCapturedKeyEvent(
+                keyCode = 9,
+                unicodeChar = '2'.code,
+                action = 0,
+                displayChar = "2",
+                eventTimeMillis = 4L,
+            ),
+        )
+        viewModel.onCapturedKey(
+            R65CHidCapturedKeyEvent(
+                keyCode = 66,
+                unicodeChar = '\n'.code,
+                action = 0,
+                displayChar = "\\n",
+                eventTimeMillis = 5L,
+            ),
+        )
+
+        assertEquals(R65CHidCaptureState.LastCaptureSucceeded, viewModel.panelState.value.captureState)
+        assertEquals("AB12\n", viewModel.panelState.value.lastRawInput)
+        assertEquals("AB12", viewModel.panelState.value.lastNormalizedUid)
+        assertEquals("", viewModel.panelState.value.liveInputBuffer)
+    }
+
+    @Test
+    fun `captured key sequence completes after idle timeout without enter`() = runTest {
+        every { parser.normalize("AB12") } returns "AB12"
+        val viewModel = R65CHidInputTestViewModel(
+            parser = parser,
+            nowProvider = { fixedNow },
+            completionDelayMillis = 400L,
+        )
+
+        viewModel.onFieldFocusChanged(true)
+        viewModel.onCapturedKey(
+            R65CHidCapturedKeyEvent(
+                keyCode = 29,
+                unicodeChar = 'A'.code,
+                action = 0,
+                displayChar = "A",
+                eventTimeMillis = 1L,
+            ),
+        )
+        viewModel.onCapturedKey(
+            R65CHidCapturedKeyEvent(
+                keyCode = 30,
+                unicodeChar = 'B'.code,
+                action = 0,
+                displayChar = "B",
+                eventTimeMillis = 2L,
+            ),
+        )
+        viewModel.onCapturedKey(
+            R65CHidCapturedKeyEvent(
+                keyCode = 8,
+                unicodeChar = '1'.code,
+                action = 0,
+                displayChar = "1",
+                eventTimeMillis = 3L,
+            ),
+        )
+        viewModel.onCapturedKey(
+            R65CHidCapturedKeyEvent(
+                keyCode = 9,
+                unicodeChar = '2'.code,
+                action = 0,
+                displayChar = "2",
+                eventTimeMillis = 4L,
+            ),
+        )
+
+        advanceTimeBy(400)
+        advanceUntilIdle()
+
+        assertEquals(R65CHidCaptureState.LastCaptureSucceeded, viewModel.panelState.value.captureState)
+        assertEquals("AB12", viewModel.panelState.value.lastRawInput)
+        assertEquals("AB12", viewModel.panelState.value.lastNormalizedUid)
+    }
+
+    @Test
     fun `idle timeout completes when enter does not arrive`() = runTest {
         every { parser.normalize("ab12") } returns "AB12"
         val viewModel = R65CHidInputTestViewModel(
