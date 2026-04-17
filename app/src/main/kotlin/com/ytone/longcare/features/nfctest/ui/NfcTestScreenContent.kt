@@ -153,7 +153,7 @@ private fun DisabledNfcTestCard() {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "NFC测试功能已禁用",
+                text = "测试入口已关闭",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Gray,

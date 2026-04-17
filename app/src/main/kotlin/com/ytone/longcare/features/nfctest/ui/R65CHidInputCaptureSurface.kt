@@ -21,6 +21,7 @@ internal fun R65CHidInputCaptureSurface(
     focusRequestToken: Long,
     onFocusChanged: (Boolean) -> Unit,
     onKeyCaptured: (R65CHidCapturedKeyEvent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -33,7 +34,7 @@ internal fun R65CHidInputCaptureSurface(
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(1.dp)
             .focusRequester(focusRequester)
             .onFocusChanged { onFocusChanged(it.isFocused) }

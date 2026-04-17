@@ -86,6 +86,7 @@ fun NfcTestScreen(
                         ?.let { uid ->
                             clipboardManager.setText(AnnotatedString(uid))
                             context.showShortToast("已复制卡号")
+                            r65cViewModel.requestRefocus()
                         }
                 },
                 modifier = Modifier
