@@ -81,13 +81,12 @@ fun NfcTestScreen(
                 onR65CRequestRefocus = r65cViewModel::requestRefocus,
                 onR65CClearResult = r65cViewModel::clearLastResult,
                 onR65CCopyResult = {
-                    r65cPanelState.lastNormalizedUid
-                        ?.takeIf(String::isNotBlank)
-                        ?.let { uid ->
-                            clipboardManager.setText(AnnotatedString(uid))
-                            context.showShortToast("已复制卡号")
-                            r65cViewModel.requestRefocus()
-                        }
+                    copyNormalizedUidAndRefocus(
+                        uid = r65cPanelState.lastNormalizedUid,
+                        clipboardManager = clipboardManager,
+                        onCopied = { context.showShortToast("已复制卡号") },
+                        onRequestRefocus = r65cViewModel::requestRefocus,
+                    )
                 },
                 modifier = Modifier
                     .fillMaxSize()
@@ -99,4 +98,18 @@ fun NfcTestScreen(
     if (testEntryEnabled && supportsNfc && nfcTestHelper != null) {
         nfcTestHelper.NfcTagDialog()
     }
+}
+
+internal fun copyNormalizedUidAndRefocus(
+    uid: String?,
+    clipboardManager: androidx.compose.ui.platform.ClipboardManager,
+    onCopied: () -> Unit,
+    onRequestRefocus: () -> Unit,
+): Boolean {
+    val normalizedUid = uid?.takeIf(String::isNotBlank) ?: return false
+
+    clipboardManager.setText(AnnotatedString(normalizedUid))
+    onCopied()
+    onRequestRefocus()
+    return true
 }
