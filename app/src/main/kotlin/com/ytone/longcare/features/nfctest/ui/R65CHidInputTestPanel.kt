@@ -9,15 +9,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -28,18 +22,11 @@ import com.ytone.longcare.features.nfctest.vm.R65CHidPanelState
 @Composable
 internal fun R65CHidInputTestPanel(
     state: R65CHidPanelState,
-    onInputChanged: (String) -> Unit,
-    onFocusChanged: (Boolean) -> Unit,
     onRequestRefocus: () -> Unit,
     onClearResult: () -> Unit,
+    onCopyResult: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(state.focusRequestToken) {
-        focusRequester.requestFocus()
-    }
-
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = CardDefaults.shape,
@@ -61,21 +48,9 @@ internal fun R65CHidInputTestPanel(
                 modifier = Modifier.testTag("r65c_status_label"),
             )
 
-            OutlinedTextField(
-                value = state.liveInputBuffer,
-                onValueChange = onInputChanged,
-                label = { Text("刷卡输入框") },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester)
-                    .onFocusChanged { onFocusChanged(it.isFocused) }
-                    .testTag("r65c_input_field"),
-            )
-
-            Text("实时输入:")
+            Text("当前会话输入:")
             Text(
-                text = state.liveInputBuffer,
+                text = state.liveInputBuffer.ifBlank { "-" },
                 modifier = Modifier.testTag("r65c_live_input_value"),
             )
 
@@ -110,6 +85,14 @@ internal fun R65CHidInputTestPanel(
                     modifier = Modifier.testTag("r65c_clear_button"),
                 ) {
                     Text("清空结果")
+                }
+
+                Button(
+                    onClick = onCopyResult,
+                    enabled = !state.lastNormalizedUid.isNullOrBlank(),
+                    modifier = Modifier.testTag("r65c_copy_button"),
+                ) {
+                    Text("复制结果")
                 }
             }
         }

@@ -28,9 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ytone.longcare.features.nfctest.vm.R65CHidCapturedKeyEvent
 import com.ytone.longcare.features.nfctest.vm.R65CHidPanelState
-import com.ytone.longcare.features.nfctest.vm.R65CHidRawValidationState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,19 +61,12 @@ internal fun NfcTestTopBar(onNavigateBack: () -> Unit) {
 @Composable
 internal fun NfcTestBody(
     enabled: Boolean,
+    supportsNfc: Boolean,
     r65cPanelState: R65CHidPanelState,
-    onR65CInputChanged: (String) -> Unit,
-    onR65CFocusChanged: (Boolean) -> Unit,
     onR65CRequestRefocus: () -> Unit,
     onR65CClearResult: () -> Unit,
+    onR65CCopyResult: () -> Unit,
     modifier: Modifier = Modifier,
-    rawValidationState: R65CHidRawValidationState = R65CHidRawValidationState(),
-    onRawTextFieldValueChanged: (String) -> Unit = {},
-    onRawFocusChanged: (Boolean) -> Unit = {},
-    onRawStartListening: () -> Unit = {},
-    onRawStopListening: () -> Unit = {},
-    onRawRequestRefocus: () -> Unit = {},
-    onRawClearSession: () -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -85,27 +76,16 @@ internal fun NfcTestBody(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        if (enabled) {
-            EnabledNfcTestCard()
-        } else {
-            DisabledNfcTestCard()
+        when {
+            !enabled -> DisabledNfcTestCard()
+            supportsNfc -> EnabledNfcTestCard()
+            else -> R65CHidInputTestPanel(
+                state = r65cPanelState,
+                onRequestRefocus = onR65CRequestRefocus,
+                onClearResult = onR65CClearResult,
+                onCopyResult = onR65CCopyResult,
+            )
         }
-        R65CHidInputTestPanel(
-            state = r65cPanelState,
-            onInputChanged = onR65CInputChanged,
-            onFocusChanged = onR65CFocusChanged,
-            onRequestRefocus = onR65CRequestRefocus,
-            onClearResult = onR65CClearResult,
-        )
-        R65CHidRawValidationPanel(
-            state = rawValidationState,
-            onTextFieldValueChanged = onRawTextFieldValueChanged,
-            onFocusChanged = onRawFocusChanged,
-            onStartListening = onRawStartListening,
-            onStopListening = onRawStopListening,
-            onRequestRefocus = onRawRequestRefocus,
-            onClearSession = onRawClearSession,
-        )
     }
 }
 

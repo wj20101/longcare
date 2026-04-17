@@ -1,21 +1,14 @@
 package com.ytone.longcare.features.nfctest.ui
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ytone.longcare.features.nfctest.vm.R65CHidCaptureState
@@ -40,10 +33,9 @@ class R65CHidInputTestPanelTest {
             LongCareTheme {
                 R65CHidInputTestPanel(
                     state = R65CHidPanelState(captureState = R65CHidCaptureState.WaitingForFocus),
-                    onInputChanged = {},
-                    onFocusChanged = {},
                     onRequestRefocus = { refocusCount++ },
                     onClearResult = {},
+                    onCopyResult = {},
                 )
             }
         }
@@ -53,42 +45,27 @@ class R65CHidInputTestPanelTest {
     }
 
     @Test
-    fun input_field_requests_focus_on_token_change() {
-        var panelState by mutableStateOf(
-            R65CHidPanelState(captureState = R65CHidCaptureState.WaitingForFocus),
-        )
-        var externalValue by mutableStateOf("")
-
+    fun panel_is_read_only_and_copy_button_depends_on_uid_presence() {
         composeRule.setContent {
             LongCareTheme {
-                Column {
-                    R65CHidInputTestPanel(
-                        state = panelState,
-                        onInputChanged = {},
-                        onFocusChanged = {},
-                        onRequestRefocus = {},
-                        onClearResult = {},
-                    )
-                    OutlinedTextField(
-                        value = externalValue,
-                        onValueChange = { externalValue = it },
-                        label = { Text("外部输入框") },
-                        modifier = Modifier.testTag("external_input_field"),
-                    )
-                }
+                R65CHidInputTestPanel(
+                    state = R65CHidPanelState(
+                        captureState = R65CHidCaptureState.LastCaptureSucceeded,
+                        liveInputBuffer = "AB12",
+                        lastRawInput = "AB12\n",
+                        lastNormalizedUid = "AB12",
+                        lastCompletedAt = "12:34:56",
+                    ),
+                    onRequestRefocus = {},
+                    onClearResult = {},
+                    onCopyResult = {},
+                )
             }
         }
 
-        composeRule.onNodeWithTag("r65c_input_field").assertIsFocused()
-        composeRule.onNodeWithTag("external_input_field").performClick()
-        composeRule.onNodeWithTag("r65c_input_field").assertIsNotFocused()
-
-        composeRule.runOnUiThread {
-            panelState = panelState.copy(focusRequestToken = panelState.focusRequestToken + 1)
-        }
-        composeRule.waitForIdle()
-
-        composeRule.onNodeWithTag("r65c_input_field").assertIsFocused()
+        composeRule.onAllNodesWithTag("r65c_input_field").assertCountEquals(0)
+        composeRule.onNodeWithTag("r65c_live_input_value").assertTextEquals("AB12")
+        composeRule.onNodeWithTag("r65c_copy_button").assertIsEnabled()
     }
 
     @Test
@@ -103,10 +80,9 @@ class R65CHidInputTestPanelTest {
                         lastNormalizedUid = "CD",
                         lastCompletedAt = "12:34:56",
                     ),
-                    onInputChanged = {},
-                    onFocusChanged = {},
                     onRequestRefocus = {},
                     onClearResult = {},
+                    onCopyResult = {},
                 )
             }
         }
@@ -118,23 +94,43 @@ class R65CHidInputTestPanelTest {
     }
 
     @Test
+    fun copy_button_is_disabled_when_uid_absent() {
+        composeRule.setContent {
+            LongCareTheme {
+                R65CHidInputTestPanel(
+                    state = R65CHidPanelState(
+                        captureState = R65CHidCaptureState.LastCaptureFailed("未解析出卡号"),
+                        lastRawInput = "###",
+                        lastNormalizedUid = null,
+                    ),
+                    onRequestRefocus = {},
+                    onClearResult = {},
+                    onCopyResult = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("r65c_copy_button").assertIsNotEnabled()
+    }
+
+    @Test
     fun body_shows_r65c_panel_and_hides_legacy_usb_host_actions() {
         composeRule.setContent {
             LongCareTheme {
                 NfcTestBody(
                     enabled = true,
+                    supportsNfc = false,
                     r65cPanelState = R65CHidPanelState(
                         captureState = R65CHidCaptureState.ReadyForScan,
                     ),
-                    onR65CInputChanged = {},
-                    onR65CFocusChanged = {},
                     onR65CRequestRefocus = {},
                     onR65CClearResult = {},
+                    onR65CCopyResult = {},
                 )
             }
         }
 
-        composeRule.onNodeWithText("R65C HID 键盘口测试").assertExists()
+        composeRule.onAllNodesWithText("R65C HID 键盘口测试").assertCountEquals(1)
         composeRule.onAllNodesWithText("刷新设备").assertCountEquals(0)
         composeRule.onAllNodesWithText("申请权限").assertCountEquals(0)
         composeRule.onAllNodesWithText("开始尝试读取").assertCountEquals(0)

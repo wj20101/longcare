@@ -1,39 +1,46 @@
 package com.ytone.longcare.features.nfctest.ui
 
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ytone.longcare.common.utils.LockScreenOrientation
+import com.ytone.longcare.common.utils.NfcUtils
+import com.ytone.longcare.common.utils.showShortToast
 import com.ytone.longcare.debug.NfcTestEntrySession
 import com.ytone.longcare.features.nfctest.api.NfcTestActions
 import com.ytone.longcare.features.nfctest.vm.NfcTestViewModel
 import com.ytone.longcare.features.nfctest.vm.R65CHidInputTestViewModel
-import com.ytone.longcare.features.nfctest.vm.R65CHidRawValidationViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NfcTestScreen(
     actions: NfcTestActions,
 ) {
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+
     val nfcTestViewModel: NfcTestViewModel = hiltViewModel()
     val r65cViewModel: R65CHidInputTestViewModel = hiltViewModel()
-    val rawValidationViewModel: R65CHidRawValidationViewModel = hiltViewModel()
     val r65cPanelState by r65cViewModel.panelState.collectAsStateWithLifecycle()
-    val rawValidationState by rawValidationViewModel.panelState.collectAsStateWithLifecycle()
     val testEntryEnabled by NfcTestEntrySession.enabled.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    val supportsNfc = remember(context) { NfcUtils.isNfcSupported(context) }
 
-    val nfcTestHelper = if (testEntryEnabled) {
+    val nfcTestHelper = if (testEntryEnabled && supportsNfc) {
         nfcTestViewModel.getHelper()
     } else {
         null
@@ -41,7 +48,7 @@ fun NfcTestScreen(
 
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    if (testEntryEnabled && nfcTestHelper != null) {
+    if (testEntryEnabled && supportsNfc && nfcTestHelper != null) {
         BindNfcTestLifecycle(
             enabled = true,
             context = context,
@@ -52,35 +59,35 @@ fun NfcTestScreen(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .onPreviewKeyEvent { keyEvent ->
-                toR65CHidCapturedKeyEventIfRelevant(
-                    isListening = rawValidationState.isListening,
-                    currentState = rawValidationState.captureState,
-                    keyEvent = keyEvent.nativeKeyEvent,
-                )?.let(rawValidationViewModel::onHostCapturedKey)
-                false
-            },
+        modifier = Modifier.fillMaxSize(),
     ) {
+        if (testEntryEnabled && !supportsNfc) {
+            R65CHidInputCaptureSurface(
+                enabled = true,
+                focusRequestToken = r65cPanelState.focusRequestToken,
+                onFocusChanged = r65cViewModel::onFieldFocusChanged,
+                onKeyCaptured = r65cViewModel::onCapturedKey,
+            )
+        }
+
         Scaffold(
             topBar = { NfcTestTopBar(onNavigateBack = actions.onNavigateBack) },
             containerColor = Color.Transparent,
         ) { paddingValues ->
             NfcTestBody(
                 enabled = testEntryEnabled,
+                supportsNfc = supportsNfc,
                 r65cPanelState = r65cPanelState,
-                rawValidationState = rawValidationState,
-                onR65CInputChanged = r65cViewModel::onInputChanged,
-                onR65CFocusChanged = r65cViewModel::onFieldFocusChanged,
                 onR65CRequestRefocus = r65cViewModel::requestRefocus,
                 onR65CClearResult = r65cViewModel::clearLastResult,
-                onRawTextFieldValueChanged = rawValidationViewModel::onTextFieldValueChanged,
-                onRawFocusChanged = {},
-                onRawStartListening = rawValidationViewModel::startListening,
-                onRawStopListening = rawValidationViewModel::stopListening,
-                onRawRequestRefocus = rawValidationViewModel::requestRefocus,
-                onRawClearSession = rawValidationViewModel::clearLastSession,
+                onR65CCopyResult = {
+                    r65cPanelState.lastNormalizedUid
+                        ?.takeIf(String::isNotBlank)
+                        ?.let { uid ->
+                            clipboardManager.setText(AnnotatedString(uid))
+                            context.showShortToast("已复制卡号")
+                        }
+                },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
@@ -88,7 +95,7 @@ fun NfcTestScreen(
         }
     }
 
-    if (testEntryEnabled && nfcTestHelper != null) {
+    if (testEntryEnabled && supportsNfc && nfcTestHelper != null) {
         nfcTestHelper.NfcTagDialog()
     }
 }

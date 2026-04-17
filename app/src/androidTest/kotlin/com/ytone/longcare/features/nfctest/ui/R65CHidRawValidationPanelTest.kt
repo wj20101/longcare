@@ -139,35 +139,4 @@ class R65CHidRawValidationPanelTest {
         composeRule.onNodeWithTag("r65c_completed_at").assertTextEquals("21:52:05")
     }
 
-    @Test
-    fun body_shows_smoke_panel_and_raw_validation_panel() {
-        composeRule.setContent {
-            LongCareTheme {
-                NfcTestBody(
-                    enabled = true,
-                    r65cPanelState = R65CHidPanelState(
-                        captureState = R65CHidCaptureState.ReadyForScan,
-                    ),
-                    rawValidationState = R65CHidRawValidationState(
-                        captureState = R65CHidRawCaptureState.Idle,
-                        isListening = false,
-                    ),
-                    onR65CInputChanged = {},
-                    onR65CFocusChanged = {},
-                    onR65CRequestRefocus = {},
-                    onR65CClearResult = {},
-                    onRawTextFieldValueChanged = {},
-                    onRawFocusChanged = {},
-                    onRawStartListening = {},
-                    onRawStopListening = {},
-                    onRawRequestRefocus = {},
-                    onRawClearSession = {},
-                )
-            }
-        }
-
-        composeRule.onNodeWithText("R65C HID 键盘口测试").assertExists()
-        composeRule.onNodeWithText("R65C 原始 HID 输出验证").assertExists()
-        composeRule.onNodeWithTag("r65c_raw_start_button").assertExists()
-    }
 }
