@@ -33,11 +33,15 @@ class LoginRepositoryImplTest {
             }
         } as LongCareApiService
         val eventBus = AppEventBus()
+        val phoneSystem = "Android"
+        val phoneVersion = "16"
+        val networkType = "WIFI"
+        val networkOperator = "Carrier"
         val request = LoginLogParamModel(
-            phoneSystem = "Android",
-            phoneVersion = "16",
-            networkType = "WIFI",
-            networkOperator = "Carrier",
+            phoneSystem = phoneSystem,
+            phoneVersion = phoneVersion,
+            networkType = networkType,
+            networkOperator = networkOperator,
         )
 
         val repository = LoginRepositoryImpl(
@@ -46,7 +50,12 @@ class LoginRepositoryImplTest {
             eventBus = eventBus,
         )
 
-        val result = repository.recordLoginLog(request)
+        val result = repository.recordLoginLog(
+            phoneSystem = phoneSystem,
+            phoneVersion = phoneVersion,
+            networkType = networkType,
+            networkOperator = networkOperator,
+        )
 
         assertTrue(result is ApiResult.Success)
         assertEquals(1, delegatedCallCount)
