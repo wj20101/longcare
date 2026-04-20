@@ -1,13 +1,17 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
+import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.model.LoginLogParamModel
 import com.ytone.longcare.model.Response
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.lang.reflect.Proxy
@@ -60,5 +64,41 @@ class LoginRepositoryImplTest {
         assertTrue(result is ApiResult.Success)
         assertEquals(1, delegatedCallCount)
         assertEquals(request, delegatedParam)
+    }
+
+    @Test
+    fun `recordLoginLog does not emit force logout on 3002`() = runTest(StandardTestDispatcher()) {
+        val apiService = Proxy.newProxyInstance(
+            LongCareApiService::class.java.classLoader,
+            arrayOf(LongCareApiService::class.java)
+        ) { _, method, _ ->
+            when (method.name) {
+                "recordLoginLog" -> Response(resultCode = 3002, resultMsg = "login expired", data = null)
+                else -> error("Unexpected call: ${method.name}")
+            }
+        } as LongCareApiService
+        val eventBus = AppEventBus()
+        var receivedForceLogout = false
+        val collector = launch {
+            receivedForceLogout = eventBus.events.first() is AppEvent.ForceLogout
+        }
+
+        val repository = LoginRepositoryImpl(
+            apiService = apiService,
+            ioDispatcher = StandardTestDispatcher(testScheduler),
+            eventBus = eventBus,
+        )
+
+        val result = repository.recordLoginLog(
+            phoneSystem = "Android",
+            phoneVersion = "16",
+            networkType = "WIFI",
+            networkOperator = "Carrier",
+        )
+
+        collector.cancel()
+
+        assertTrue(result is ApiResult.Failure)
+        assertFalse(receivedForceLogout)
     }
 }
