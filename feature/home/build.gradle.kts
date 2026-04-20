@@ -10,10 +10,13 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:common"))
     implementation(project(":core:domain"))
     implementation(project(":core:model"))
     implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.dagger.hilt.android)
     ksp(libs.dagger.hilt.compiler)
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

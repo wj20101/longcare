@@ -2,16 +2,20 @@ package com.ytone.longcare.features.home.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.features.home.reporting.HomeLoginLogInfoProvider
 import com.ytone.longcare.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -20,7 +24,9 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class HomeSharedViewModel @Inject constructor(
-    private val userSessionRepository: UserSessionRepository
+    private val userSessionRepository: UserSessionRepository,
+    private val loginRepository: LoginRepository,
+    private val homeLoginLogInfoProvider: HomeLoginLogInfoProvider,
 ) : ViewModel() {
 
     /**
@@ -43,11 +49,30 @@ class HomeSharedViewModel @Inject constructor(
     // 主仪表盘Tab状态管理
     private val _selectedTabIndex = MutableStateFlow(0)
     val selectedTabIndex: StateFlow<Int> = _selectedTabIndex.asStateFlow()
+    private var reportHomeEntryJob: Job? = null
 
     /**
      * 更新选中的Tab索引
      */
     fun updateSelectedTabIndex(index: Int) {
         _selectedTabIndex.value = index
+    }
+
+    fun reportHomeEntry() {
+        if (reportHomeEntryJob?.isActive == true) {
+            return
+        }
+
+        reportHomeEntryJob = viewModelScope.launch {
+            runCatching {
+                val payload = homeLoginLogInfoProvider.build()
+                loginRepository.recordLoginLog(
+                    phoneSystem = payload.phoneSystem,
+                    phoneVersion = payload.phoneVersion,
+                    networkType = payload.networkType,
+                    networkOperator = payload.networkOperator,
+                )
+            }
+        }
     }
 }

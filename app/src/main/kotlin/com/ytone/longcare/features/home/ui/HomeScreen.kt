@@ -120,6 +120,8 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
+        homeSharedViewModel.reportHomeEntry()
+
         val missingPermissions = buildRequiredPermissions().filter { permission ->
             ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED
         }
