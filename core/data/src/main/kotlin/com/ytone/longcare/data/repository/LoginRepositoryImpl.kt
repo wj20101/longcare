@@ -2,6 +2,7 @@ package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.model.LoginPhoneParamModel
+import com.ytone.longcare.model.LoginLogParamModel
 import com.ytone.longcare.model.SendSmsCodeParamModel
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.safeApiCall
@@ -26,6 +27,10 @@ class LoginRepositoryImpl @Inject constructor(
 
     override suspend fun sendSmsCode(mobile: String) = safeApiCall(ioDispatcher, eventBus) {
         apiService.sendSmsCode(SendSmsCodeParamModel(mobile = mobile, codeType = 1))
+    }
+
+    override suspend fun recordLoginLog(param: LoginLogParamModel) = safeApiCall(ioDispatcher, eventBus) {
+        apiService.recordLoginLog(param)
     }
 
     override suspend fun getStartConfig() = safeApiCall(ioDispatcher, eventBus) {
