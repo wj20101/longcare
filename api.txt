@@ -1,0 +1,66 @@
+
+
+## 记录登陆日志
+
+
+**接口地址**:`/V1/Login/Log`
+
+
+**请求方式**:`POST`
+
+
+**请求数据类型**:`application/x-www-form-urlencoded,application/json,text/json,application/*+json`
+
+
+**响应数据类型**:`*/*`
+
+
+**接口描述**:
+
+
+**请求示例**:
+
+
+```javascript
+{
+  "phoneSystem": "",
+  "phoneVersion": "",
+  "networkType": "",
+  "networkOperator": ""
+}
+```
+
+
+**请求参数**:
+
+
+**请求参数**:
+
+
+| 参数名称 | 参数说明 | 请求类型    | 是否必须 | 数据类型 | schema |
+| -------- | -------- | ----- | -------- | -------- | ------ |
+|loginLogParamModel|登录日志模型|body|true|LoginLogParamModel|LoginLogParamModel|
+|&emsp;&emsp;phoneSystem|手机系统||false|string||
+|&emsp;&emsp;phoneVersion|手机系统版本||false|string||
+|&emsp;&emsp;networkType|网络类型||false|string||
+|&emsp;&emsp;networkOperator|网络运营商||false|string||
+
+
+**响应状态**:
+
+
+| 状态码 | 说明 | schema |
+| -------- | -------- | ----- |
+|200|OK||
+
+
+**响应参数**:
+
+
+暂无
+
+
+**响应示例**:
+```javascript
+
+```
