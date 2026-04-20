@@ -12,6 +12,6 @@ interface LoginRepository {
         phoneVersion: String,
         networkType: String,
         networkOperator: String,
-    ): ApiResult<Unit>
+    )
     suspend fun getStartConfig(): ApiResult<StartConfigResultModel>
 }

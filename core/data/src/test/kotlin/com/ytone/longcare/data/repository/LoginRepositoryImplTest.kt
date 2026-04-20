@@ -3,7 +3,6 @@ package com.ytone.longcare.data.repository
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
-import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.model.LoginLogParamModel
 import com.ytone.longcare.model.Response
 import kotlinx.coroutines.flow.first
@@ -12,7 +11,6 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.lang.reflect.Proxy
 
@@ -54,14 +52,13 @@ class LoginRepositoryImplTest {
             eventBus = eventBus,
         )
 
-        val result = repository.recordLoginLog(
+        repository.recordLoginLog(
             phoneSystem = phoneSystem,
             phoneVersion = phoneVersion,
             networkType = networkType,
             networkOperator = networkOperator,
         )
 
-        assertTrue(result is ApiResult.Success)
         assertEquals(1, delegatedCallCount)
         assertEquals(request, delegatedParam)
     }
@@ -89,7 +86,7 @@ class LoginRepositoryImplTest {
             eventBus = eventBus,
         )
 
-        val result = repository.recordLoginLog(
+        repository.recordLoginLog(
             phoneSystem = "Android",
             phoneVersion = "16",
             networkType = "WIFI",
@@ -98,7 +95,6 @@ class LoginRepositoryImplTest {
 
         collector.cancel()
 
-        assertTrue(result is ApiResult.Failure)
         assertFalse(receivedForceLogout)
     }
 }

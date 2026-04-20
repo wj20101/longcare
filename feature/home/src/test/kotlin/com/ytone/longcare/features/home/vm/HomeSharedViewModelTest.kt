@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.home.vm
 
-import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
@@ -40,7 +39,7 @@ class HomeSharedViewModelTest {
                 networkType = payload.networkType,
                 networkOperator = payload.networkOperator,
             )
-        } returns ApiResult.Success(Unit)
+        } returns Unit
 
         val viewModel = HomeSharedViewModel(sessionRepository, loginRepository, infoProvider)
 
@@ -75,7 +74,7 @@ class HomeSharedViewModelTest {
             )
         } coAnswers {
             delay(1_000)
-            ApiResult.Success(Unit)
+            Unit
         }
 
         val viewModel = HomeSharedViewModel(sessionRepository, loginRepository, infoProvider)

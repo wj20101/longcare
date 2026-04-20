@@ -40,7 +40,7 @@ class LoginRepositoryImpl @Inject constructor(
         phoneVersion: String,
         networkType: String,
         networkOperator: String,
-    ): ApiResult<Unit> = withContext(ioDispatcher) {
+    ) = withContext(ioDispatcher) {
         try {
             val response = apiService.recordLoginLog(
                 LoginLogParamModel(
@@ -55,17 +55,7 @@ class LoginRepositoryImpl @Inject constructor(
             if (throwable is CancellationException) {
                 throw throwable
             }
-            when (throwable) {
-                is IOException -> ApiResult.Exception(IOException("网络连接异常，请检查您的网络", throwable))
-                is HttpException -> {
-                    val code = throwable.code()
-                    val errorMsg = throwable.message()
-                    ApiResult.Exception(
-                        IOException("服务器异常 (Code: $code): $errorMsg", throwable),
-                    )
-                }
-                else -> ApiResult.Exception(Exception("未知错误: ${throwable.message}", throwable))
-            }
+            Unit
         }
     }
 
@@ -74,10 +64,8 @@ class LoginRepositoryImpl @Inject constructor(
     }
 }
 
-private fun Response<Unit>.toSilentUnitResult(): ApiResult<Unit> {
-    return if (isSuccess()) {
-        ApiResult.Success(Unit)
-    } else {
-        ApiResult.Failure(resultCode, resultMsg)
+private fun Response<Unit>.toSilentUnitResult() {
+    if (!isSuccess()) {
+        return
     }
 }
