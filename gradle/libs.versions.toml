@@ -1,6 +1,6 @@
 [versions]
 # Build Tool Versions
-agp = "9.1.0"
+agp = "9.1.1"
 core = "1.7.0"
 kotlin = "2.3.20"
 coroutines = "1.10.2"
