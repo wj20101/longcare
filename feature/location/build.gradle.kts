@@ -27,7 +27,8 @@ dependencies {
     implementation(libs.dagger.hilt.android)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.amap.location)
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.crashreport)
 
     ksp(libs.dagger.hilt.compiler)
 

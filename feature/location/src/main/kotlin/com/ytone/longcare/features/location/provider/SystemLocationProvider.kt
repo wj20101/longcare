@@ -5,7 +5,7 @@ import android.location.Location
 import android.location.LocationManager
 import android.os.CancellationSignal
 import androidx.core.location.LocationManagerCompat
-import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.location.LocationProvider
 import com.ytone.longcare.model.LocationResult
@@ -79,12 +79,12 @@ class SystemLocationProvider @Inject constructor(
                     logI("系统网络定位获取位置成功")
                     continuation.resume(mapToLocationResult(location))
                 } else {
-                    logE("系统网络定位也获取位置失败")
+                    LocationEventTracker.trackError(LocationEventTracker.EventType.SYSTEM_NETWORK_LOCATION_FAILED)
                     continuation.resume(null)
                 }
             }
         } else {
-            logE("系统GPS和网络定位均不可用")
+            LocationEventTracker.trackError(LocationEventTracker.EventType.SYSTEM_LOCATION_UNAVAILABLE)
             if (continuation.isActive) {
                 continuation.resume(null)
             }

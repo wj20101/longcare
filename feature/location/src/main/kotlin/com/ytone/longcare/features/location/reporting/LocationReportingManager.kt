@@ -2,8 +2,8 @@ package com.ytone.longcare.features.location.reporting
 
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.model.LocationUploadStatus
 import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.OrderLocationEntity
@@ -80,7 +80,11 @@ class LocationReportingManager @Inject constructor(
             } catch (_: CancellationException) {
                 logI("位置上报任务已取消")
             } catch (e: Exception) {
-                logE("位置上报任务异常终止: ${e.message}")
+                LocationEventTracker.trackError(
+                    LocationEventTracker.EventType.REPORTING_TASK_ERROR,
+                    throwable = e,
+                    extras = mapOf("errorMsg" to e.message)
+                )
             } finally {
                 logI("位置上报任务结束")
             }
@@ -121,7 +125,11 @@ class LocationReportingManager @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logE("写入定位上报队列失败: ${e.message}")
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.QUEUE_WRITE_ERROR,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
         }
     }
 
@@ -156,17 +164,28 @@ class LocationReportingManager @Inject constructor(
                 }
                 is ApiResult.Failure -> {
                     locationUploadQueueRepository.updateStatus(pending.id, LocationUploadStatus.FAILED.value)
-                    logE("位置上报业务失败 (id=${pending.id}): ${apiResult.message}")
+                    LocationEventTracker.trackError(
+                        LocationEventTracker.EventType.API_UPLOAD_BUSINESS_ERROR,
+                        extras = mapOf("pendingId" to pending.id, "errorMsg" to apiResult.message)
+                    )
                 }
                 is ApiResult.Exception -> {
                     locationUploadQueueRepository.updateStatus(pending.id, LocationUploadStatus.FAILED.value)
-                    logE("位置上报异常 (id=${pending.id}): ${apiResult.exception.message}")
+                    LocationEventTracker.trackError(
+                        LocationEventTracker.EventType.API_UPLOAD_NETWORK_ERROR,
+                        throwable = apiResult.exception,
+                        extras = mapOf("pendingId" to pending.id)
+                    )
                 }
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logE("上传位置过程发生严重错误: ${e.message}")
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.API_UPLOAD_FATAL_ERROR,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
             try {
                 locationUploadQueueRepository.updateStatus(pending.id, LocationUploadStatus.FAILED.value)
             } catch (_: Exception) {
@@ -186,7 +205,11 @@ class LocationReportingManager @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logE("清理历史成功定位记录失败: ${e.message}")
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.QUEUE_CLEANUP_ERROR,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
         }
     }
 

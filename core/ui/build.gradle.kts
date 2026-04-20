@@ -22,7 +22,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     implementation(libs.androidx.activity.compose)
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
+    implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.bundles.coil)
     implementation(libs.dagger.hilt.android)
     ksp(libs.dagger.hilt.compiler)

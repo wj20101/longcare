@@ -1,7 +1,6 @@
 package com.ytone.longcare.features.face.detector
 
 import android.graphics.Bitmap
-import android.graphics.Rect
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
@@ -20,7 +19,7 @@ import kotlin.coroutines.resumeWithException
  */
 class StaticImageFaceDetector {
     
-    private val faceDetector: FaceDetector by lazy {
+    private val faceDetectorLazy = lazy {
         val options = FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
             .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
@@ -30,6 +29,8 @@ class StaticImageFaceDetector {
             .build()
         FaceDetection.getClient(options)
     }
+
+    private val faceDetector: FaceDetector by faceDetectorLazy
 
     /**
      * 检测静态图片中的人脸
@@ -104,6 +105,8 @@ class StaticImageFaceDetector {
      * 释放资源
      */
     fun release() {
-        faceDetector.close()
+        if (faceDetectorLazy.isInitialized()) {
+            faceDetector.close()
+        }
     }
 }

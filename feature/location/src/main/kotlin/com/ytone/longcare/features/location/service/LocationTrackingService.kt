@@ -10,8 +10,8 @@ import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
-import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -71,7 +71,11 @@ class LocationTrackingService : Service() {
             isKeepAliveStarted = true
         } catch (e: Exception) {
             isKeepAliveStarted = false
-            logE("启动定位前台保活失败: ${e.message}")
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.SERVICE_START_ERROR,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
             stopSelf()
         }
     }
@@ -88,7 +92,11 @@ class LocationTrackingService : Service() {
             stopSelf()
             logI("定位前台保活已停止")
         } catch (e: Exception) {
-            logE("停止定位前台保活失败: ${e.message}")
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.SERVICE_STOP_ERROR,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
         } finally {
             isKeepAliveStarted = false
         }

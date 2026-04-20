@@ -1,6 +1,6 @@
 package com.ytone.longcare.features.location.core
 
-import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
 import com.ytone.longcare.features.location.manager.LocationStateManager
@@ -31,7 +31,11 @@ class DefaultLocationFacade @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logE("高德单次定位异常: ${e.message}")
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.AMAP_SINGLE_LOCATION_ERROR,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
             null
         }
         if (amapResult != null) {
@@ -44,7 +48,11 @@ class DefaultLocationFacade @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logE("系统单次定位异常: ${e.message}")
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.SYSTEM_SINGLE_LOCATION_ERROR,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
             null
         }
         if (systemResult != null) {

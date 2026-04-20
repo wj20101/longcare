@@ -5,7 +5,7 @@ import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClient
 import com.amap.api.location.AMapLocationClientOption
 import com.amap.api.location.AMapLocationListener
-import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.domain.location.AmapApiKeyProvider
@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.shareIn
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
@@ -90,7 +89,11 @@ class ContinuousAmapLocationManager @Inject constructor(
                 logI("初始化时应用后台定位保活 (NotificationId: $id)")
             }
         } catch (e: Exception) {
-            logE("持续高德定位客户端初始化失败: ${e.message}")
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.CLIENT_INIT_ERROR,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
         }
     }
 
@@ -127,7 +130,7 @@ class ContinuousAmapLocationManager @Inject constructor(
         val apiKey = amapApiKeyProvider.getAmapApiKey()?.takeIf { it.isNotBlank() } ?: ""
         
         if (apiKey.isBlank()) {
-            logE("高德定位API Key不可用")
+            LocationEventTracker.trackError(LocationEventTracker.EventType.API_KEY_UNAVAILABLE)
             close()
             return@callbackFlow
         }
@@ -137,7 +140,7 @@ class ContinuousAmapLocationManager @Inject constructor(
         
         val client = locationClient
         if (client == null) {
-            logE("持续高德定位客户端未初始化")
+            LocationEventTracker.trackError(LocationEventTracker.EventType.CLIENT_NOT_INITIALIZED)
             close()
             return@callbackFlow
         }
@@ -154,7 +157,10 @@ class ContinuousAmapLocationManager @Inject constructor(
                 trySend(result)
             } else {
                 val errorMsg = location?.errorInfo ?: "未知错误"
-                logE("持续定位失败: ${location?.errorCode} - $errorMsg")
+                LocationEventTracker.trackError(
+                    LocationEventTracker.EventType.AMAP_CONTINUOUS_LOCATION_ERROR,
+                    extras = mapOf("errorCode" to location?.errorCode, "errorMsg" to errorMsg)
+                )
             }
         }
         
@@ -211,7 +217,11 @@ class ContinuousAmapLocationManager @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logE("单次定位获取失败: ${e.message}")
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.AMAP_SINGLE_LOCATION_FAIL,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
             null
         }
     }
@@ -265,7 +275,11 @@ class ContinuousAmapLocationManager @Inject constructor(
             locationClient?.enableBackgroundLocation(notificationId, notification)
             logI("已开启后台定位保活 (NotificationId: $notificationId)")
         } catch (e: Exception) {
-            logE("开启后台定位失败: ${e.message}")
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.ENABLE_BACKGROUND_LOCATION_ERROR,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
         }
     }
 
@@ -281,7 +295,11 @@ class ContinuousAmapLocationManager @Inject constructor(
             locationClient?.disableBackgroundLocation(removeNotification)
             logI("已关闭后台定位保活")
         } catch (e: Exception) {
-            logE("关闭后台定位失败: ${e.message}")
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.DISABLE_BACKGROUND_LOCATION_ERROR,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
         }
     }
 }

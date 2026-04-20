@@ -1,6 +1,5 @@
 package com.ytone.longcare.domain.cos.repository
 
-import kotlinx.coroutines.flow.Flow
 import com.ytone.longcare.model.CosUploadResult
 import com.ytone.longcare.model.UploadParams
 import com.ytone.longcare.model.UploadProgress

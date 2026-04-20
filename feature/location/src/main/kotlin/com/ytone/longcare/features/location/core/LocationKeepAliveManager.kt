@@ -3,12 +3,12 @@ package com.ytone.longcare.features.location.core
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
-import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
 import com.ytone.longcare.features.location.manager.LocationStateManager
 import com.ytone.longcare.features.location.service.LocationTrackingService
+import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -88,7 +88,11 @@ class LocationKeepAliveManager @Inject constructor(
             } catch (_: CancellationException) {
                 logI("定位缓存采集任务已取消")
             } catch (e: Exception) {
-                logE("定位缓存采集异常: ${e.message}")
+                LocationEventTracker.trackError(
+                    LocationEventTracker.EventType.CACHE_COLLECT_ERROR,
+                    throwable = e,
+                    extras = mapOf("errorMsg" to e.message)
+                )
             }
         }
     }
@@ -107,7 +111,11 @@ class LocationKeepAliveManager @Inject constructor(
                 ContextCompat.startForegroundService(context, it)
             }
         } catch (e: Exception) {
-            logE("启动定位保活服务失败: ${e.message}")
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.KEEP_ALIVE_START_ERROR,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
         }
     }
 
@@ -119,7 +127,11 @@ class LocationKeepAliveManager @Inject constructor(
                 context.startService(it)
             }
         } catch (e: Exception) {
-            logE("停止定位保活服务失败: ${e.message}")
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.KEEP_ALIVE_STOP_ERROR,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
         }
     }
 }
