@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.face.detector
 
 import android.graphics.Bitmap
+import android.util.Log
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
@@ -36,7 +37,7 @@ class StaticImageFaceDetector {
      * 检测静态图片中的人脸
      */
     suspend fun detectFaces(bitmap: Bitmap): List<DetectedFace> {
-        return try {
+        try {
             val inputImage = InputImage.fromBitmap(bitmap, 0)
             val faces = suspendCancellableCoroutine<List<Face>> { continuation ->
                 faceDetector.process(inputImage)
@@ -51,14 +52,23 @@ class StaticImageFaceDetector {
                         }
                     }
             }
-            
-            faces.mapNotNull { face ->
+
+            val detectedFaces = faces.mapNotNull { face ->
                 processFace(face, bitmap)
             }
+
+            if (faces.isNotEmpty() && detectedFaces.isEmpty()) {
+                throw IllegalStateException(
+                    "ML Kit 已检测到 ${faces.size} 张人脸，但后处理阶段全部失败"
+                )
+            }
+
+            return detectedFaces
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            emptyList()
+            Log.e("StaticImageFaceDetector", "静态图片人脸检测失败: ${e.message}", e)
+            throw e
         }
     }
 
@@ -78,6 +88,7 @@ class StaticImageFaceDetector {
                 confidence = face.trackingId?.toFloat() ?: 0.8f
             )
         } catch (e: Exception) {
+            Log.e("StaticImageFaceDetector", "处理检测到的人脸失败: ${e.message}", e)
             null
         }
     }

@@ -3,9 +3,11 @@ package com.ytone.longcare.features.face.ui
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.os.Build
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
+import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.features.face.viewmodel.ManualFaceCaptureViewModel
 import java.util.concurrent.Executor
 
@@ -24,14 +26,14 @@ internal fun takeManualFacePhoto(
                     val correctedBitmap = correctImageOrientation(originalBitmap, rotationDegrees)
                     viewModel.onPhotoCaptured(correctedBitmap)
                 } catch (e: Exception) {
-                    com.ytone.longcare.common.utils.KLogger.e("CameraCapture", "图片处理失败", e)
+                    KLogger.e("CameraCapture", "图片处理失败", e)
                 } finally {
                     image.close()
                 }
             }
 
             override fun onError(exception: ImageCaptureException) {
-                com.ytone.longcare.common.utils.KLogger.e("CameraCapture", "拍照失败", exception)
+                KLogger.e("CameraCapture", "拍照失败", exception)
             }
         }
     )
@@ -50,9 +52,13 @@ private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
 
     options.inSampleSize = calculateInSampleSize(options, 2048, 2048)
     options.inJustDecodeBounds = false
+    options.inPreferredConfig = Bitmap.Config.ARGB_8888
+    options.inMutable = true
 
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+    val decodedBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
         ?: throw IllegalStateException("无法解码图片")
+
+    return ensureSoftwareBitmap(decodedBitmap)
 }
 
 private fun calculateInSampleSize(
@@ -93,7 +99,25 @@ private fun correctImageOrientation(bitmap: Bitmap, rotationDegrees: Int): Bitma
             }
         }
     } catch (e: Exception) {
-        com.ytone.longcare.common.utils.KLogger.e("ImageCorrection", "图片方向修正失败", e)
+        KLogger.e("ImageCorrection", "图片方向修正失败", e)
         bitmap
     }
+}
+
+private fun ensureSoftwareBitmap(bitmap: Bitmap): Bitmap {
+    val needsCopy = when {
+        bitmap.config == Bitmap.Config.ARGB_8888 -> false
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && bitmap.config == Bitmap.Config.HARDWARE -> true
+        else -> true
+    }
+
+    if (!needsCopy) {
+        return bitmap
+    }
+
+    return bitmap.copy(Bitmap.Config.ARGB_8888, false)?.also { copiedBitmap ->
+        if (copiedBitmap != bitmap) {
+            bitmap.recycle()
+        }
+    } ?: bitmap
 }

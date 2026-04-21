@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.face.viewmodel
 
 import android.graphics.Bitmap
+import com.ytone.longcare.features.face.ui.DetectedFace
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureState
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureUiState
 
@@ -46,7 +47,7 @@ internal object ManualFaceCaptureStateTransitions {
 
     fun onFacesDetected(
         currentUiState: ManualFaceCaptureUiState,
-        faces: List<com.ytone.longcare.features.face.ui.DetectedFace>
+        faces: List<DetectedFace>
     ): ManualFaceCaptureTransition = ManualFaceCaptureTransition(
         uiState = currentUiState.copy(
             detectedFaces = faces,

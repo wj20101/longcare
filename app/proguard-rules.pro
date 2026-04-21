@@ -166,6 +166,20 @@
 -keep class com.autonavi.aps.amapapi.model.** { *; }
 -keep class com.autonavi.** { *; }
 -keep class com.amap.location.** { *; }
+
+# --- ML Kit Face Detection ---
+# Face detection relies on provider/component bootstrap plus bundled model/native glue.
+-keep class com.google.mlkit.common.internal.MlKitInitProvider { *; }
+-keep class com.google.mlkit.common.internal.MlKitComponentDiscoveryService { *; }
+-keep class * implements com.google.firebase.components.ComponentRegistrar
+-keep class com.google.mlkit.common.internal.CommonComponentRegistrar { *; }
+-keep class com.google.mlkit.vision.common.internal.VisionCommonRegistrar { *; }
+-keep class com.google.mlkit.vision.face.internal.FaceRegistrar { *; }
+-keep class com.google.mlkit.vision.face.bundled.internal.** { *; }
+-keepclassmembers class * extends com.google.android.gms.internal.mlkit_vision_face_bundled.zzuw {
+    <fields>;
+}
+-dontwarn dalvik.system.VMStack
 #===============================================================================
 # 应用特定规则 (请根据您的代码添加)
 #===============================================================================
