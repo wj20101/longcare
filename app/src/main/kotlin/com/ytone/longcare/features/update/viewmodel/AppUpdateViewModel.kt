@@ -15,6 +15,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
@@ -28,18 +29,24 @@ class AppUpdateViewModel @Inject constructor(
     val uiState: StateFlow<AppUpdateUiState> = _uiState.asStateFlow()
 
     private var currentWorkId: UUID? = null
+    private var downloadObservationJob: Job? = null
     private val workManager = WorkManager.getInstance(context)
     private var pendingInstallFilePath: String? = null
 
-    fun setAppVersionModel(appVersionModel: AppVersionModel) {
+    fun onDialogPresented() {
+        if (_uiState.value.isDownloading || _uiState.value.hasPendingInstall || currentWorkId != null) {
+            return
+        }
+
         _uiState.value = _uiState.value.copy(
-            appVersionModel = appVersionModel,
-            showDialog = true
+            downloadProgress = 0,
+            error = null
         )
     }
 
-    fun startDownload() {
-        val appVersionModel = _uiState.value.appVersionModel ?: return
+    fun startDownload(appVersionModel: AppVersionModel) {
+        pendingInstallFilePath = null
+        downloadObservationJob?.cancel()
         
         val data = Data.Builder()
             .putString(DownloadWorker.KEY_URL, appVersionModel.downUrl)
@@ -55,7 +62,9 @@ class AppUpdateViewModel @Inject constructor(
 
         _uiState.value = _uiState.value.copy(
             isDownloading = true,
-            downloadProgress = 0
+            downloadProgress = 0,
+            error = null,
+            hasPendingInstall = false
         )
 
         // 监听下载进度
@@ -63,7 +72,7 @@ class AppUpdateViewModel @Inject constructor(
     }
 
     private fun observeDownloadProgress(workId: UUID) {
-        viewModelScope.launch {
+        downloadObservationJob = viewModelScope.launch {
             workManager.getWorkInfoByIdFlow(workId).collect { workInfo ->
                 when (workInfo?.state) {
                     WorkInfo.State.RUNNING -> {
@@ -78,9 +87,9 @@ class AppUpdateViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(
                             isDownloading = false,
                             downloadProgress = 100,
-                            downloadedFilePath = filePath,
-                            showDialog = false
+                            error = null
                         )
+                        clearCurrentWorkTracking(workId)
                         // 可以在这里触发安装
                         filePath?.let { installApk(it) }
                     }
@@ -91,12 +100,14 @@ class AppUpdateViewModel @Inject constructor(
                             downloadProgress = 0,
                             error = error ?: "下载失败"
                         )
+                        clearCurrentWorkTracking(workId)
                     }
                     WorkInfo.State.CANCELLED -> {
                         _uiState.value = _uiState.value.copy(
                             isDownloading = false,
                             downloadProgress = 0
                         )
+                        clearCurrentWorkTracking(workId)
                     }
                     else -> {
                         // 其他状态暂不处理
@@ -111,16 +122,10 @@ class AppUpdateViewModel @Inject constructor(
             workManager.cancelWorkById(workId)
             _uiState.value = _uiState.value.copy(
                 isDownloading = false,
-                downloadProgress = 0
+                downloadProgress = 0,
+                hasPendingInstall = false
             )
         }
-    }
-
-    fun dismissDialog() {
-        _uiState.value = _uiState.value.copy(
-            showDialog = false,
-            appVersionModel = null
-        )
     }
 
     fun clearError() {
@@ -129,13 +134,35 @@ class AppUpdateViewModel @Inject constructor(
 
     private fun installApk(filePath: String) {
         if (ApkInstallUtils.canInstallApk(context)) {
-            ApkInstallUtils.installApk(context, filePath)
+            when (val result = ApkInstallUtils.installApk(context, filePath)) {
+                ApkInstallUtils.LaunchResult.Launched -> {
+                    _uiState.value = _uiState.value.copy(error = null)
+                }
+                is ApkInstallUtils.LaunchResult.Failed -> {
+                    pendingInstallFilePath = null
+                    _uiState.value = _uiState.value.copy(
+                        error = result.message,
+                        hasPendingInstall = false
+                    )
+                }
+            }
         } else {
-            // 保存文件路径，等待权限获取后自动安装
-            pendingInstallFilePath = filePath
-            _uiState.value = _uiState.value.copy(hasPendingInstall = true)
-            // 需要权限时，可以提示用户或直接跳转设置
-            ApkInstallUtils.requestInstallPermission(context)
+            when (val result = ApkInstallUtils.requestInstallPermission(context)) {
+                ApkInstallUtils.LaunchResult.Launched -> {
+                    pendingInstallFilePath = filePath
+                    _uiState.value = _uiState.value.copy(
+                        hasPendingInstall = true,
+                        error = null
+                    )
+                }
+                is ApkInstallUtils.LaunchResult.Failed -> {
+                    pendingInstallFilePath = null
+                    _uiState.value = _uiState.value.copy(
+                        hasPendingInstall = false,
+                        error = result.message
+                    )
+                }
+            }
         }
     }
 
@@ -146,20 +173,44 @@ class AppUpdateViewModel @Inject constructor(
     fun checkPermissionAndInstall() {
         pendingInstallFilePath?.let { filePath ->
             if (ApkInstallUtils.canInstallApk(context)) {
-                ApkInstallUtils.installApk(context, filePath)
+                when (val result = ApkInstallUtils.installApk(context, filePath)) {
+                    ApkInstallUtils.LaunchResult.Launched -> {
+                        pendingInstallFilePath = null
+                        _uiState.value = _uiState.value.copy(
+                            hasPendingInstall = false,
+                            error = null
+                        )
+                    }
+                    is ApkInstallUtils.LaunchResult.Failed -> {
+                        pendingInstallFilePath = null
+                        _uiState.value = _uiState.value.copy(
+                            hasPendingInstall = false,
+                            error = result.message
+                        )
+                    }
+                }
+            } else {
                 pendingInstallFilePath = null
-                _uiState.value = _uiState.value.copy(hasPendingInstall = false)
+                _uiState.value = _uiState.value.copy(
+                    hasPendingInstall = false,
+                    error = "请允许安装未知来源应用后重试"
+                )
             }
         }
+    }
+
+    private fun clearCurrentWorkTracking(workId: UUID) {
+        if (currentWorkId == workId) {
+            currentWorkId = null
+        }
+        downloadObservationJob?.cancel()
+        downloadObservationJob = null
     }
 }
 
 data class AppUpdateUiState(
-    val appVersionModel: AppVersionModel? = null,
-    val showDialog: Boolean = false,
     val isDownloading: Boolean = false,
     val downloadProgress: Int = 0,
-    val downloadedFilePath: String? = null,
     val error: String? = null,
     val hasPendingInstall: Boolean = false
 )

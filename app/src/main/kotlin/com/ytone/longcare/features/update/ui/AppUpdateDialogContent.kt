@@ -37,9 +37,11 @@ internal fun AppUpdateDialogContent(
     appVersionModel: AppVersionModel,
     isDownloading: Boolean,
     downloadProgress: Int,
+    errorMessage: String?,
     onDismiss: () -> Unit,
     onStartDownload: () -> Unit,
-    onCancelDownload: () -> Unit
+    onCancelDownload: () -> Unit,
+    onClearError: () -> Unit
 ) {
     val canDismiss = appVersionModel.upType != 2 && !isDownloading
 
@@ -153,12 +155,26 @@ internal fun AppUpdateDialogContent(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                errorMessage?.let { message ->
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
                 AppUpdateDialogActions(
                     appVersionModel = appVersionModel,
                     isDownloading = isDownloading,
                     downloadProgress = downloadProgress,
                     onDismiss = onDismiss,
-                    onStartDownload = onStartDownload,
+                    onStartDownload = {
+                        onClearError()
+                        onStartDownload()
+                    },
                     onCancelDownload = onCancelDownload
                 )
             }

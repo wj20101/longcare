@@ -37,6 +37,7 @@ private fun resolveStartDestination(sessionState: SessionState): Any = when (ses
 fun MainApp(viewModel: MainViewModel = hiltViewModel()) {
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
     val appVersionModel by viewModel.appVersionModel.collectAsStateWithLifecycle()
+    val updateViewModel: AppUpdateViewModel = hiltViewModel()
     val startDestination = resolveStartDestination(sessionState)
 
     if (startDestination == SplashRoute) {
@@ -46,9 +47,8 @@ fun MainApp(viewModel: MainViewModel = hiltViewModel()) {
     }
 
     appVersionModel?.let {
-        val updateViewModel: AppUpdateViewModel = hiltViewModel()
-        updateViewModel.setAppVersionModel(it)
         AppUpdateDialog(
+            appVersionModel = it,
             viewModel = updateViewModel,
             onDismiss = { viewModel.clearAppVersionModel() }
         )
