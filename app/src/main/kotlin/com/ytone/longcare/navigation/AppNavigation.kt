@@ -27,7 +27,7 @@ private val featureRouteRegistry = setOf(
 
 private fun resolveStartDestination(sessionState: SessionState): Any = when (sessionState) {
     is SessionState.Unknown -> SplashRoute
-    is SessionState.LoggedIn -> HomeRoute
+    is SessionState.LoggedIn -> HomeGraphRoute
     is SessionState.LoggedOut -> LoginRoute
 }
 

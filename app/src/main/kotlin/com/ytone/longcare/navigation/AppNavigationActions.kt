@@ -6,7 +6,7 @@ import com.ytone.longcare.features.userlist.ui.UserListType
 import com.ytone.longcare.model.WatermarkData
 
 fun NavController.navigateToHomeFromLogin() {
-    navigate(HomeRoute) {
+    navigate(HomeGraphRoute) {
         popUpTo(LoginRoute) { inclusive = true }
     }
 }
@@ -72,7 +72,7 @@ fun NavController.navigateToServiceComplete(
     serviceCompleteData: ServiceCompleteData
 ) {
     navigate(ServiceCompleteRoute(orderParams = orderParams, serviceCompleteData = serviceCompleteData)) {
-        popUpTo(HomeRoute) { inclusive = false }
+        popUpTo(HomeGraphRoute) { inclusive = false }
         launchSingleTop = true
     }
 }
@@ -106,7 +106,7 @@ fun NavController.navigateToNoServiceUserList() {
 }
 
 fun NavController.navigateToHomeAndClearStack() {
-    safeNavigate(HomeRoute) {
+    safeNavigate(HomeGraphRoute) {
         popUpTo(0) { inclusive = false }
         launchSingleTop = true
     }

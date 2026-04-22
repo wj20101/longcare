@@ -1,16 +1,19 @@
 package com.ytone.longcare.features.face.viewmodel
 
 import android.graphics.Bitmap
+import com.ytone.longcare.core.common.di.DefaultDispatcher
+import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.features.face.detector.StaticImageFaceDetector
 import com.ytone.longcare.features.face.ui.DetectedFace
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-internal class ManualFaceCaptureFacePipelineDelegate(
+class ManualFaceCaptureFacePipelineDelegate @Inject constructor(
     private val faceDetector: StaticImageFaceDetector,
     private val storageDelegate: ManualFaceCaptureStorageDelegate,
-    private val defaultDispatcher: CoroutineDispatcher,
-    private val ioDispatcher: CoroutineDispatcher
+    @param:DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     suspend fun detectFaces(bitmap: Bitmap): List<DetectedFace> = withContext(defaultDispatcher) {

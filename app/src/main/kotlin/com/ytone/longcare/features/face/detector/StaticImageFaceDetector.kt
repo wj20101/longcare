@@ -11,6 +11,7 @@ import com.ytone.longcare.features.face.ui.DetectedFace
 import com.ytone.longcare.features.face.ui.FaceQualityResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
+import javax.inject.Inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -18,9 +19,12 @@ import kotlin.coroutines.resumeWithException
  * 静态图片人脸检测工具类
  * 复用 FaceCaptureAnalyzer 中的人脸检测和质量评估逻辑
  */
-class StaticImageFaceDetector {
-    
-    private val faceDetectorLazy = lazy {
+class StaticImageFaceDetector @Inject constructor() {
+    @Volatile
+    private var faceDetector: FaceDetector? = null
+    private val detectorLock = Any()
+
+    private fun createFaceDetector(): FaceDetector {
         val options = FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
             .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
@@ -28,10 +32,18 @@ class StaticImageFaceDetector {
             .setMinFaceSize(0.1f)
             .enableTracking()
             .build()
-        FaceDetection.getClient(options)
+        return FaceDetection.getClient(options)
     }
 
-    private val faceDetector: FaceDetector by faceDetectorLazy
+    private fun getOrCreateFaceDetector(): FaceDetector {
+        faceDetector?.let { return it }
+
+        return synchronized(detectorLock) {
+            faceDetector ?: createFaceDetector().also { detector ->
+                faceDetector = detector
+            }
+        }
+    }
 
     /**
      * 检测静态图片中的人脸
@@ -39,8 +51,9 @@ class StaticImageFaceDetector {
     suspend fun detectFaces(bitmap: Bitmap): List<DetectedFace> {
         try {
             val inputImage = InputImage.fromBitmap(bitmap, 0)
+            val detector = getOrCreateFaceDetector()
             val faces = suspendCancellableCoroutine<List<Face>> { continuation ->
-                faceDetector.process(inputImage)
+                detector.process(inputImage)
                     .addOnSuccessListener { faces ->
                         if (continuation.isActive) {
                             continuation.resume(faces)
@@ -116,8 +129,14 @@ class StaticImageFaceDetector {
      * 释放资源
      */
     fun release() {
-        if (faceDetectorLazy.isInitialized()) {
-            faceDetector.close()
+        synchronized(detectorLock) {
+            faceDetector?.let { detector ->
+                runCatching { detector.close() }
+                    .onFailure { exception ->
+                        Log.w("StaticImageFaceDetector", "释放人脸检测器失败: ${exception.message}", exception)
+                    }
+            }
+            faceDetector = null
         }
     }
 }

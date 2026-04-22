@@ -5,15 +5,16 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.ytone.longcare.common.utils.findBackStackEntryOrNull
 import com.ytone.longcare.features.serviceorders.api.ServiceOrdersListActions
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrderType
 import com.ytone.longcare.features.serviceorders.ui.ServiceOrdersListScreen
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 
 internal fun NavGraphBuilder.registerServiceOrdersListNavGraphs(navController: NavController) {
-    composable<CarePlansListRoute> {
-        val parentEntry = remember(navController.currentBackStackEntry) {
-            navController.getBackStackEntry(HomeRoute)
+    composable<CarePlansListRoute> { backStackEntry ->
+        val parentEntry = remember(backStackEntry) {
+            navController.findBackStackEntryOrNull(HomeGraphRoute) ?: backStackEntry
         }
         val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
         ServiceOrdersListScreen(
@@ -31,9 +32,9 @@ internal fun NavGraphBuilder.registerServiceOrdersListNavGraphs(navController: N
         )
     }
 
-    composable<ServiceRecordsListRoute> {
-        val parentEntry = remember(navController.currentBackStackEntry) {
-            navController.getBackStackEntry(HomeRoute)
+    composable<ServiceRecordsListRoute> { backStackEntry ->
+        val parentEntry = remember(backStackEntry) {
+            navController.findBackStackEntryOrNull(HomeGraphRoute) ?: backStackEntry
         }
         val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
         ServiceOrdersListScreen(

@@ -2,9 +2,7 @@ package com.ytone.longcare.common.utils
 
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavController
-import androidx.navigation.NavDirections
-import androidx.navigation.NavOptions
-import androidx.navigation.Navigator
+import androidx.navigation.NavBackStackEntry
 
 /**
  * 安全的导航扩展函数
@@ -55,3 +53,10 @@ fun <T : Any> NavController.safeNavigate(route: T, builder: (androidx.navigation
         }
     }
 }
+
+/**
+ * 安全获取指定 route 的 BackStackEntry。
+ * 当目标 route 已经不在回栈中时，返回 null 而不是抛异常。
+ */
+fun <T : Any> NavController.findBackStackEntryOrNull(route: T): NavBackStackEntry? =
+    runCatching { getBackStackEntry(route) }.getOrNull()

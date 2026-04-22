@@ -26,6 +26,14 @@ object LoginRoute
 object HomeRoute
 
 /**
+ * Home 子图路由
+ * 用于承载主页及其共享状态页面。
+ */
+@Keep
+@Serializable
+object HomeGraphRoute
+
+/**
  * 服务详情页面路由
  * @param orderParams 订单导航参数
  */

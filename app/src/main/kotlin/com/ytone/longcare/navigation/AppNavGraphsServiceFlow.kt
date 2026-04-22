@@ -6,7 +6,6 @@ import androidx.navigation.NavGraphBuilder
 internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavController) {
     registerServiceHoursRoute(navController)
     registerNursingExecutionRoute(navController)
-    registerServiceOrdersListNavGraphs(navController)
     registerNfcSignInRoute(navController)
     registerSelectServiceRoute(navController)
     registerPhotoUploadRoute(navController)

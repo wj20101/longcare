@@ -1,19 +1,13 @@
 package com.ytone.longcare.features.face.viewmodel
 
-import android.content.Context
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.core.common.di.DefaultDispatcher
-import com.ytone.longcare.core.common.di.IoDispatcher
-import com.ytone.longcare.features.face.detector.StaticImageFaceDetector
 import com.ytone.longcare.features.face.ui.DetectedFace
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureState
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,9 +16,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ManualFaceCaptureViewModel @Inject constructor(
-    @param:ApplicationContext private val context: Context,
-    @param:DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
-    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    private val facePipelineDelegate: ManualFaceCaptureFacePipelineDelegate
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ManualFaceCaptureUiState())
@@ -32,13 +24,6 @@ class ManualFaceCaptureViewModel @Inject constructor(
 
     private val _currentState = MutableStateFlow<ManualFaceCaptureState>(ManualFaceCaptureState.Idle)
     val currentState: StateFlow<ManualFaceCaptureState> = _currentState.asStateFlow()
-
-    private val facePipelineDelegate = ManualFaceCaptureFacePipelineDelegate(
-        faceDetector = StaticImageFaceDetector(),
-        storageDelegate = ManualFaceCaptureStorageDelegate(context),
-        defaultDispatcher = defaultDispatcher,
-        ioDispatcher = ioDispatcher
-    )
 
     fun setCameraPermissionGranted(granted: Boolean) {
         applyTransition(ManualFaceCaptureStateTransitions.onCameraPermissionChanged(_uiState.value, granted))
