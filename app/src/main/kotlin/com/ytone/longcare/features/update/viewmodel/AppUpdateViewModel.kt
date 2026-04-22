@@ -138,6 +138,13 @@ class AppUpdateViewModel @Inject constructor(
                 ApkInstallUtils.LaunchResult.Launched -> {
                     _uiState.value = _uiState.value.copy(error = null)
                 }
+                is ApkInstallUtils.LaunchResult.ManualFallback -> {
+                    pendingInstallFilePath = null
+                    _uiState.value = _uiState.value.copy(
+                        error = result.message,
+                        hasPendingInstall = false
+                    )
+                }
                 is ApkInstallUtils.LaunchResult.Failed -> {
                     pendingInstallFilePath = null
                     _uiState.value = _uiState.value.copy(
@@ -155,12 +162,16 @@ class AppUpdateViewModel @Inject constructor(
                         error = null
                     )
                 }
-                is ApkInstallUtils.LaunchResult.Failed -> {
+                is ApkInstallUtils.LaunchResult.ManualFallback -> {
                     pendingInstallFilePath = null
                     _uiState.value = _uiState.value.copy(
                         hasPendingInstall = false,
                         error = result.message
                     )
+                }
+                is ApkInstallUtils.LaunchResult.Failed -> {
+                    pendingInstallFilePath = null
+                    handleManualInstallFallback(filePath, result.message)
                 }
             }
         }
@@ -181,6 +192,13 @@ class AppUpdateViewModel @Inject constructor(
                             error = null
                         )
                     }
+                    is ApkInstallUtils.LaunchResult.ManualFallback -> {
+                        pendingInstallFilePath = null
+                        _uiState.value = _uiState.value.copy(
+                            hasPendingInstall = false,
+                            error = result.message
+                        )
+                    }
                     is ApkInstallUtils.LaunchResult.Failed -> {
                         pendingInstallFilePath = null
                         _uiState.value = _uiState.value.copy(
@@ -191,9 +209,29 @@ class AppUpdateViewModel @Inject constructor(
                 }
             } else {
                 pendingInstallFilePath = null
+                handleManualInstallFallback(filePath, "未获得安装未知来源应用权限")
+            }
+        }
+    }
+
+    private fun handleManualInstallFallback(filePath: String, failureMessage: String) {
+        when (val fallback = ApkInstallUtils.openApkForManualInstall(context, filePath)) {
+            ApkInstallUtils.LaunchResult.Launched -> {
                 _uiState.value = _uiState.value.copy(
                     hasPendingInstall = false,
-                    error = "请允许安装未知来源应用后重试"
+                    error = "已打开安装包，请在系统界面中手动完成安装"
+                )
+            }
+            is ApkInstallUtils.LaunchResult.ManualFallback -> {
+                _uiState.value = _uiState.value.copy(
+                    hasPendingInstall = false,
+                    error = fallback.message
+                )
+            }
+            is ApkInstallUtils.LaunchResult.Failed -> {
+                _uiState.value = _uiState.value.copy(
+                    hasPendingInstall = false,
+                    error = "$failureMessage；${fallback.message}"
                 )
             }
         }

@@ -15,6 +15,7 @@ object ApkInstallUtils {
 
     sealed interface LaunchResult {
         data object Launched : LaunchResult
+        data class ManualFallback(val message: String) : LaunchResult
         data class Failed(val message: String) : LaunchResult
     }
 
@@ -31,22 +32,39 @@ object ApkInstallUtils {
 
         try {
             val uri = resolveInstallUri(context, file)
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                clipData = ClipData.newRawUri(file.name, uri)
-                setDataAndType(uri, APK_MIME_TYPE)
-            }
+            val intent = buildInstallIntent(uri, file.name)
 
             if (intent.resolveActivity(context.packageManager) == null) {
-                return LaunchResult.Failed("未找到可用的安装程序")
+                return openApkForManualInstall(context, filePath)
             }
 
             context.startActivity(intent)
             return LaunchResult.Launched
         } catch (e: Exception) {
             logE("启动APK安装失败: ${e.message}", tag = "ApkInstallUtils", throwable = e)
-            return LaunchResult.Failed("启动安装失败: ${e.message ?: "未知错误"}")
+            return openApkForManualInstall(context, filePath)
+        }
+    }
+
+    fun openApkForManualInstall(context: Context, filePath: String): LaunchResult {
+        val file = File(filePath)
+        if (!file.exists() || !file.isFile) {
+            return LaunchResult.Failed("安装包不存在")
+        }
+
+        return try {
+            val uri = resolveInstallUri(context, file)
+            val chooserIntent = buildManualInstallChooser(uri, file.name)
+
+            if (chooserIntent.resolveActivity(context.packageManager) == null) {
+                LaunchResult.Failed("未找到可用于打开安装包的系统应用")
+            } else {
+                context.startActivity(chooserIntent)
+                LaunchResult.ManualFallback("已打开安装包，请在系统界面中手动完成安装")
+            }
+        } catch (e: Exception) {
+            logE("手动打开APK失败: ${e.message}", tag = "ApkInstallUtils", throwable = e)
+            LaunchResult.Failed("打开安装包失败: ${e.message ?: "未知错误"}")
         }
     }
 
@@ -107,6 +125,36 @@ object ApkInstallUtils {
             val sharedApk = File(cacheDir, ensureApkSuffix(sourceFile.name))
             sourceFile.copyTo(sharedApk, overwrite = true)
             FileProviderHelper.getUriForFile(context, sharedApk)
+        }
+    }
+
+    private fun buildInstallIntent(uri: Uri, fileName: String): Intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        clipData = ClipData.newRawUri(fileName, uri)
+        setDataAndType(uri, APK_MIME_TYPE)
+        putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+    }
+
+    private fun buildManualInstallChooser(uri: Uri, fileName: String): Intent {
+        val openIntent = Intent(Intent.ACTION_VIEW).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            clipData = ClipData.newRawUri(fileName, uri)
+            setDataAndType(uri, APK_MIME_TYPE)
+        }
+
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            clipData = ClipData.newRawUri(fileName, uri)
+            putExtra(Intent.EXTRA_STREAM, uri)
+            type = APK_MIME_TYPE
+        }
+
+        return Intent.createChooser(openIntent, "打开安装包").apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(shareIntent))
         }
     }
 
