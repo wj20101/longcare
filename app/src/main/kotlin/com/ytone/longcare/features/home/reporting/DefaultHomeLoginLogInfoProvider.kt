@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
 import android.telephony.TelephonyManager
+import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.model.LoginLogParamModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -16,8 +17,14 @@ class DefaultHomeLoginLogInfoProvider @Inject constructor(
 ) : HomeLoginLogInfoProvider {
 
     override fun build(): LoginLogParamModel = LoginLogParamModel(
-        phoneSystem = "Android",
-        phoneVersion = Build.VERSION.RELEASE.orEmpty(),
+        phoneSystem = formatPhoneSystem(
+            manufacturer = Build.MANUFACTURER.orEmpty(),
+            model = Build.MODEL.orEmpty(),
+        ),
+        phoneVersion = formatPhoneVersion(
+            versionName = BuildConfig.VERSION_NAME,
+            versionCode = BuildConfig.VERSION_CODE,
+        ),
         networkType = resolveNetworkType(),
         networkOperator = resolveNetworkOperator(),
     )
@@ -42,3 +49,17 @@ class DefaultHomeLoginLogInfoProvider @Inject constructor(
         return telephonyManager.networkOperatorName.orEmpty()
     }
 }
+
+internal fun formatPhoneSystem(
+    manufacturer: String,
+    model: String,
+): String = listOf(
+    manufacturer.trim(),
+    model.trim(),
+).filter { it.isNotEmpty() }
+    .joinToString(separator = " ")
+
+internal fun formatPhoneVersion(
+    versionName: String,
+    versionCode: Int,
+): String = "$versionName.$versionCode"

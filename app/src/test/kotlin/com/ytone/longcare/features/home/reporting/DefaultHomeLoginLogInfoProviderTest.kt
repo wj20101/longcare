@@ -4,7 +4,9 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.os.Build
 import android.telephony.TelephonyManager
+import com.ytone.longcare.BuildConfig
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
@@ -13,7 +15,7 @@ import org.junit.Test
 class DefaultHomeLoginLogInfoProviderTest {
 
     @Test
-    fun `build returns wifi payload with operator`() {
+    fun `build returns wifi payload with readable device and app version`() {
         val context = mockk<Context>(relaxed = true)
         val connectivityManager = mockk<ConnectivityManager>()
         val telephonyManager = mockk<TelephonyManager>()
@@ -33,7 +35,8 @@ class DefaultHomeLoginLogInfoProviderTest {
 
         val result = provider.build()
 
-        assertEquals("Android", result.phoneSystem)
+        assertEquals(formatPhoneSystem(Build.MANUFACTURER.orEmpty(), Build.MODEL.orEmpty()), result.phoneSystem)
+        assertEquals(formatPhoneVersion(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE), result.phoneVersion)
         assertEquals("WIFI", result.networkType)
         assertEquals("Carrier", result.networkOperator)
     }
@@ -49,8 +52,33 @@ class DefaultHomeLoginLogInfoProviderTest {
 
         val result = provider.build()
 
-        assertEquals("Android", result.phoneSystem)
+        assertEquals(formatPhoneSystem(Build.MANUFACTURER.orEmpty(), Build.MODEL.orEmpty()), result.phoneSystem)
+        assertEquals(formatPhoneVersion(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE), result.phoneVersion)
         assertEquals("NONE", result.networkType)
         assertEquals("", result.networkOperator)
+    }
+
+    @Test
+    fun `formatPhoneSystem joins manufacturer and model`() {
+        val result = formatPhoneSystem(
+            manufacturer = "HUAWEI",
+            model = "NOH-AN00",
+        )
+
+        assertEquals("HUAWEI NOH-AN00", result)
+    }
+
+    @Test
+    fun `formatPhoneSystem trims blank manufacturer or model parts`() {
+        assertEquals("NOH-AN00", formatPhoneSystem(manufacturer = " ", model = "NOH-AN00"))
+        assertEquals("HUAWEI", formatPhoneSystem(manufacturer = "HUAWEI", model = " "))
+        assertEquals("", formatPhoneSystem(manufacturer = " ", model = " "))
+    }
+
+    @Test
+    fun `formatPhoneVersion joins version name and version code`() {
+        val result = formatPhoneVersion(versionName = "1.0.6", versionCode = 29)
+
+        assertEquals("1.0.6.29", result)
     }
 }
