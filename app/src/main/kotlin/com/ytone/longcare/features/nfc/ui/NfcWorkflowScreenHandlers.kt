@@ -2,9 +2,15 @@ package com.ytone.longcare.features.nfc.ui
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSettings
+import com.ytone.longcare.common.utils.locationPermissionPurposeNotice
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.nfc.api.NfcWorkflowActions
@@ -17,7 +23,7 @@ import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.CancellationException
 
 internal data class NfcWorkflowLocationHandlers(
-    val startTrackingWithPermission: () -> Unit,
+    val startTrackingWithPermission: (onReady: () -> Unit) -> Unit,
     val getCurrentLocationCoordinates: suspend () -> LocationRequestResult
 )
 
@@ -59,8 +65,16 @@ internal fun rememberNfcWorkflowLocationHandlers(
     nfcViewModel: NfcWorkflowViewModel,
     locationTrackingViewModel: LocationTrackingViewModel
 ): NfcWorkflowLocationHandlers {
+    var showTrackingLocationPurposeNotice by remember { mutableStateOf(false) }
+    var showLocationOnlyPurposeNotice by remember { mutableStateOf(false) }
+    var pendingTrackingReadyAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
     val trackingPermissionLauncher = rememberLocationPermissionLauncher(
-        onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderKey) }
+        onPermissionGranted = {
+            locationTrackingViewModel.onStartClicked(orderKey)
+            pendingTrackingReadyAction?.invoke()
+            pendingTrackingReadyAction = null
+        }
     )
 
     val locationOnlyPermissionLauncher = rememberLocationPermissionLauncher(
@@ -69,16 +83,22 @@ internal fun rememberNfcWorkflowLocationHandlers(
 
     val requestLocationPermissionOnly: () -> Unit = {
         if (!UnifiedPermissionHelper.hasLocationPermission(context)) {
-            locationOnlyPermissionLauncher.launch(UnifiedPermissionHelper.getLocationRequiredPermissions())
+            showLocationOnlyPurposeNotice = true
         }
     }
 
-    val startTrackingWithPermission: () -> Unit = {
-        UnifiedPermissionHelper.checkLocationPermissionAndStart(
-            context = context,
-            permissionLauncher = trackingPermissionLauncher,
-            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderKey) }
-        )
+    val startTrackingWithPermission: (onReady: () -> Unit) -> Unit = { onReady ->
+        when {
+            !UnifiedPermissionHelper.isLocationServiceEnabled(context) -> openLocationSettings(context)
+            UnifiedPermissionHelper.hasLocationPermission(context) -> {
+                locationTrackingViewModel.onStartClicked(orderKey)
+                onReady()
+            }
+            else -> {
+                pendingTrackingReadyAction = onReady
+                showTrackingLocationPurposeNotice = true
+            }
+        }
     }
 
     val getCurrentLocationCoordinates: suspend () -> LocationRequestResult = {
@@ -104,6 +124,31 @@ internal fun rememberNfcWorkflowLocationHandlers(
         }
     }
 
+    if (showTrackingLocationPurposeNotice) {
+        PermissionPurposeDialog(
+            notice = locationPermissionPurposeNotice("记录NFC签到后的服务位置"),
+            onConfirm = {
+                showTrackingLocationPurposeNotice = false
+                trackingPermissionLauncher.launch(UnifiedPermissionHelper.getLocationRequiredPermissions())
+            },
+            onDismiss = {
+                pendingTrackingReadyAction = null
+                showTrackingLocationPurposeNotice = false
+            }
+        )
+    }
+
+    if (showLocationOnlyPurposeNotice) {
+        PermissionPurposeDialog(
+            notice = locationPermissionPurposeNotice("获取NFC签到位置"),
+            onConfirm = {
+                showLocationOnlyPurposeNotice = false
+                locationOnlyPermissionLauncher.launch(UnifiedPermissionHelper.getLocationRequiredPermissions())
+            },
+            onDismiss = { showLocationOnlyPurposeNotice = false }
+        )
+    }
+
     return NfcWorkflowLocationHandlers(
         startTrackingWithPermission = startTrackingWithPermission,
         getCurrentLocationCoordinates = getCurrentLocationCoordinates
@@ -118,12 +163,13 @@ internal fun handleNfcSuccessAction(
     nfcViewModel: NfcWorkflowViewModel,
     locationTrackingViewModel: LocationTrackingViewModel,
     actions: NfcWorkflowActions,
-    startTrackingWithPermission: () -> Unit
+    startTrackingWithPermission: (onReady: () -> Unit) -> Unit
 ) {
     when (signInMode) {
         SignInMode.START_ORDER -> {
-            startTrackingWithPermission()
-            actions.onNavigateToIdentification(orderKey)
+            startTrackingWithPermission {
+                actions.onNavigateToIdentification(orderKey)
+            }
         }
 
         SignInMode.END_ORDER -> {

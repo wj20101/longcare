@@ -1,7 +1,5 @@
 package com.ytone.longcare.features.profile.ui
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
@@ -68,20 +66,6 @@ fun OptionsCardPreview() {
     LongCareTheme {
         Surface {
             OptionsCard()
-        }
-    }
-}
-
-@Preview
-@Composable
-fun OptionItemPreview() {
-    LongCareTheme {
-        Surface {
-            OptionItem(
-                icon = Icons.Default.Description,
-                text = "信息上报",
-                onClick = {}
-            )
         }
     }
 }

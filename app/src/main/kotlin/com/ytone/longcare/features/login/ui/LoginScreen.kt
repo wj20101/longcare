@@ -69,6 +69,7 @@ fun LoginScreen(
         startConfigState = startConfigState,
         countdownSeconds = countdownSeconds,
         initialPhoneNumber = remember { viewModel.getLastLoginPhoneNumber() },
+        onPrivacyAgreementConfirmed = viewModel::onPrivacyAgreementConfirmed,
         onSendCodeClick = { phoneNumber -> viewModel.sendSmsCode(phoneNumber) },
         onLoginClick = { phoneNumber, code -> viewModel.login(phoneNumber, code) }
     )
@@ -88,6 +89,7 @@ fun LoginScreenContent(
     startConfigState: StartConfigUiState,
     countdownSeconds: Int,
     initialPhoneNumber: String = "",
+    onPrivacyAgreementConfirmed: () -> Unit = {},
     onSendCodeClick: (String) -> Unit,
     onLoginClick: (String, String) -> Unit
 ) {
@@ -105,7 +107,14 @@ fun LoginScreenContent(
     var verificationCode by remember { mutableStateOf("") }
     var agreementChecked by rememberSaveable { mutableStateOf(false) }
     var showAgreementDialog by rememberSaveable { mutableStateOf(false) }
+    var pendingAgreementAction by rememberSaveable { mutableStateOf<PendingAgreementAction?>(null) }
     val verificationCodeFocusRequester = remember { FocusRequester() }
+    val updateAgreementChecked: (Boolean) -> Unit = { checked ->
+        agreementChecked = checked
+        if (checked) {
+            onPrivacyAgreementConfirmed()
+        }
+    }
 
     val openUserAgreement = {
         when (val state = startConfigState) {
@@ -139,10 +148,20 @@ fun LoginScreenContent(
         onLoginClick(phoneNumber, verificationCode)
     }
 
+    val requestSendCode = {
+        if (agreementChecked) {
+            onSendCodeClick(phoneNumber)
+        } else {
+            pendingAgreementAction = PendingAgreementAction.SEND_CODE
+            showAgreementDialog = true
+        }
+    }
+
     val submitLogin = {
         if (agreementChecked) {
             proceedLogin()
         } else {
+            pendingAgreementAction = PendingAgreementAction.LOGIN
             showAgreementDialog = true
         }
     }
@@ -208,7 +227,7 @@ fun LoginScreenContent(
                         loginState = loginState,
                         horizontalPadding = formHorizontalPadding,
                         isCompactLayout = compactWidth,
-                        onSendCodeClick = { onSendCodeClick(phoneNumber) },
+                        onSendCodeClick = requestSendCode,
                         onLoginClick = submitLogin
                     )
 
@@ -216,7 +235,7 @@ fun LoginScreenContent(
 
                     AgreementConsentSection(
                         checked = agreementChecked,
-                        onCheckedChange = { agreementChecked = it },
+                        onCheckedChange = updateAgreementChecked,
                         onUserAgreementClick = openUserAgreement,
                         onPrivacyPolicyClick = openPrivacyPolicy,
                         modifier = Modifier
@@ -245,16 +264,24 @@ fun LoginScreenContent(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        agreementChecked = true
+                        val action = pendingAgreementAction ?: PendingAgreementAction.LOGIN
+                        updateAgreementChecked(true)
                         showAgreementDialog = false
-                        proceedLogin()
+                        pendingAgreementAction = null
+                        when (action) {
+                            PendingAgreementAction.SEND_CODE -> onSendCodeClick(phoneNumber)
+                            PendingAgreementAction.LOGIN -> proceedLogin()
+                        }
                     }
                 ) {
                     Text(text = agreementConfirmAction)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAgreementDialog = false }) {
+                TextButton(onClick = {
+                    pendingAgreementAction = null
+                    showAgreementDialog = false
+                }) {
                     Text(text = agreementCancelAction)
                 }
             }
@@ -266,6 +293,11 @@ fun LoginScreenContent(
             verificationCodeFocusRequester.requestFocus()
         }
     }
+}
+
+private enum class PendingAgreementAction {
+    SEND_CODE,
+    LOGIN
 }
 
 @Preview(showBackground = true)

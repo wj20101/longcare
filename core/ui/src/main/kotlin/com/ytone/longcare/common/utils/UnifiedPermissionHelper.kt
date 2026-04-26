@@ -11,6 +11,9 @@ import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
@@ -199,6 +202,50 @@ object UnifiedPermissionHelper {
             !isPermissionGranted(context, permission)
         }
     }
+}
+
+data class PermissionPurposeNotice(
+    val title: String,
+    val message: String,
+    val confirmLabel: String = "继续",
+    val cancelLabel: String = "取消"
+)
+
+fun cameraPermissionPurposeNotice(featureName: String): PermissionPurposeNotice {
+    return PermissionPurposeNotice(
+        title = "相机权限说明",
+        message = "需要相机权限用于$featureName。本权限仅在您主动使用拍照、上传或核验功能时申请。"
+    )
+}
+
+fun locationPermissionPurposeNotice(featureName: String): PermissionPurposeNotice {
+    return PermissionPurposeNotice(
+        title = "定位权限说明",
+        message = "需要定位权限用于$featureName。本权限仅在您主动使用NFC签到、开始服务或提交服务位置时申请。"
+    )
+}
+
+@Composable
+fun PermissionPurposeDialog(
+    notice: PermissionPurposeNotice,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(notice.title) },
+        text = { Text(notice.message) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(notice.confirmLabel)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(notice.cancelLabel)
+            }
+        }
+    )
 }
 
 // ==================== Composable 函数 ====================

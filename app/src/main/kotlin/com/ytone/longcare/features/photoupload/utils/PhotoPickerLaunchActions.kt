@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.photoupload.utils
 
-import android.Manifest
 import android.content.Context
 import android.net.Uri
 import androidx.activity.result.ActivityResultLauncher
@@ -31,7 +30,7 @@ fun launchSinglePhotoPicker(
 /**
  * 启动相机拍照
  * 增强版本，包含权限检查、设备检查和安全检查
- * 当没有权限时会自动申请权限
+ * 当没有权限时返回错误。权限申请必须由调用方先展示用途说明后再触发。
  */
 fun launchCamera(
     launcher: CameraLauncher,
@@ -41,11 +40,7 @@ fun launchCamera(
 ) {
     try {
         if (!UnifiedPermissionHelper.isCameraPermissionGranted(context)) {
-            if (permissionLauncher != null) {
-                permissionLauncher.launch(Manifest.permission.CAMERA)
-            } else {
-                onError?.invoke("需要相机权限才能使用拍照功能")
-            }
+            onError?.invoke("需要相机权限才能使用拍照功能")
             return
         }
 
@@ -95,6 +90,7 @@ fun launchCamera(
  */
 fun launchCameraWithPermission(
     cameraLauncher: CameraLauncher,
+    @Suppress("UNUSED_PARAMETER")
     permissionLauncher: ActivityResultLauncher<String>,
     context: Context,
     onError: ((String) -> Unit)? = null

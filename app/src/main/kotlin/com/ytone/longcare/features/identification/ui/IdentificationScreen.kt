@@ -10,6 +10,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.LockScreenOrientation
+import com.ytone.longcare.common.utils.PermissionPurposeDialog
+import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 import com.ytone.longcare.features.identification.api.IdentificationActions
 import com.ytone.longcare.features.identification.vm.FaceSetupState
 import com.ytone.longcare.features.identification.vm.FaceVerificationState
@@ -44,6 +46,7 @@ fun IdentificationScreen(
     val capturedImageUri by actions.capturedImageUriFlow.collectAsStateWithLifecycle()
     val faceImagePath by actions.faceImagePathFlow.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    var showCameraPurposeNotice by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -86,8 +89,19 @@ fun IdentificationScreen(
         onNavigateBack = actions.onNavigateBack,
         onNavigateToSelectService = { actions.onNavigateToSelectService(orderKey) },
         onVerifyServicePerson = { identificationViewModel.verifyServicePerson(context) },
-        onVerifyElder = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+        onVerifyElder = { showCameraPurposeNotice = true },
         onMockVerifyServicePerson = identificationViewModel::mockVerifyServicePerson,
         onMockVerifyElder = identificationViewModel::mockVerifyElder
     )
+
+    if (showCameraPurposeNotice) {
+        PermissionPurposeDialog(
+            notice = cameraPermissionPurposeNotice("拍摄老人核验照片"),
+            onConfirm = {
+                showCameraPurposeNotice = false
+                permissionLauncher.launch(Manifest.permission.CAMERA)
+            },
+            onDismiss = { showCameraPurposeNotice = false }
+        )
+    }
 }

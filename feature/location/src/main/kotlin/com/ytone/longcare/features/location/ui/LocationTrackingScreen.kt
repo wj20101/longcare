@@ -10,11 +10,16 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -32,6 +37,7 @@ fun LocationTrackingScreen(
     val context = LocalContext.current
     // 从 ViewModel 订阅追踪状态
     val isTracking by viewModel.isTracking.collectAsStateWithLifecycle()
+    var showLocationPurposeNotice by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -64,15 +70,7 @@ fun LocationTrackingScreen(
                     return@Button
                 }
 
-                val permissionsToRequest = mutableListOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
-                }
-
-                permissionLauncher.launch(permissionsToRequest.toTypedArray())
+                showLocationPurposeNotice = true
             },
             enabled = !isTracking
         ) {
@@ -94,5 +92,35 @@ fun LocationTrackingScreen(
             Spacer(modifier = Modifier.height(16.dp))
             CircularProgressIndicator()
         }
+    }
+
+    if (showLocationPurposeNotice) {
+        AlertDialog(
+            onDismissRequest = { showLocationPurposeNotice = false },
+            title = { Text("定位权限说明") },
+            text = {
+                Text("需要定位权限用于开启定位上报任务。本权限仅在您主动使用NFC签到、开始服务或提交服务位置时申请。")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLocationPurposeNotice = false
+                    val permissionsToRequest = mutableListOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                    permissionLauncher.launch(permissionsToRequest.toTypedArray())
+                }) {
+                    Text("继续")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLocationPurposeNotice = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }

@@ -13,16 +13,11 @@ internal fun ManualFaceCaptureEffects(
     currentState: ManualFaceCaptureState,
     savedFaceImagePath: String?,
     onSetCameraPermissionGranted: (Boolean) -> Unit,
-    onFaceCaptured: (String) -> Unit,
-    requestCameraPermission: () -> Unit
+    onFaceCaptured: (String) -> Unit
 ) {
     LaunchedEffect(Unit) {
         val permission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-        if (permission == PackageManager.PERMISSION_GRANTED) {
-            onSetCameraPermissionGranted(true)
-        } else {
-            requestCameraPermission()
-        }
+        onSetCameraPermissionGranted(permission == PackageManager.PERMISSION_GRANTED)
     }
 
     LaunchedEffect(currentState, savedFaceImagePath) {

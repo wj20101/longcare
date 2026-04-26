@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.photoupload.ui
 
-import android.Manifest
 import android.content.Context
 import android.view.View
 import androidx.camera.view.LifecycleCameraController
@@ -47,13 +46,10 @@ internal fun CameraContent(
         hasFrontCamera = detectFrontCameraAvailability(context, cameraController)
     }
 
-    val locationPermissions = rememberCameraLocationPermissions()
-    val launcher = rememberLocationPermissionLauncher(viewModel)
     ObserveCameraResume(
+        context = context,
         lifecycleOwner = lifecycleOwner,
-        viewModel = viewModel,
-        launcher = launcher,
-        locationPermissions = locationPermissions
+        viewModel = viewModel
     )
 
     var delayMode by remember { mutableStateOf(DelayMode.OFF) }

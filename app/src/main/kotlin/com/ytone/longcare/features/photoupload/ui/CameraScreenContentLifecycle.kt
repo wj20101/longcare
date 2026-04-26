@@ -2,9 +2,7 @@ package com.ytone.longcare.features.photoupload.ui
 
 import android.Manifest
 import android.content.Context
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
+import android.content.pm.PackageManager
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.view.LifecycleCameraController
@@ -15,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.core.content.ContextCompat
 import com.ytone.longcare.features.photoupload.vm.CameraViewModel
 import kotlinx.coroutines.delay
 import android.util.Size
@@ -37,42 +36,23 @@ internal fun rememberCameraLifecycleController(context: Context): LifecycleCamer
 }
 
 @Composable
-internal fun rememberCameraLocationPermissions(): Array<String> {
-    return remember {
-        arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-    }
-}
-
-@Composable
-internal fun rememberLocationPermissionLauncher(
-    viewModel: CameraViewModel
-): ActivityResultLauncher<Array<String>> {
-    return rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions(),
-        onResult = { permissions ->
-            if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
-                viewModel.updateCurrentLocationInfo()
-            }
-        }
-    )
-}
-
-@Composable
 internal fun ObserveCameraResume(
+    context: Context,
     lifecycleOwner: LifecycleOwner,
-    viewModel: CameraViewModel,
-    launcher: ActivityResultLauncher<Array<String>>,
-    locationPermissions: Array<String>
+    viewModel: CameraViewModel
 ) {
-    DisposableEffect(lifecycleOwner, viewModel, launcher, locationPermissions) {
+    DisposableEffect(context, lifecycleOwner, viewModel) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.updateTime()
                 viewModel.updateSyLogoImg()
-                launcher.launch(locationPermissions)
+                if (ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    viewModel.updateCurrentLocationInfo()
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

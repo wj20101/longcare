@@ -26,6 +26,8 @@ import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewMode
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.model.OrderKey
 import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.common.utils.PermissionPurposeDialog
+import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 
 // --- 数据模型 ---
 enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
@@ -51,6 +53,7 @@ fun PhotoUploadScreen(
     val isUploading by viewModel.isUploading.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val currentTaskType by viewModel.currentTaskType.collectAsStateWithLifecycle()
+    var showCameraPurposeNotice by remember { mutableStateOf(false) }
 
     PhotoUploadScreenEffects(
         actions = actions,
@@ -79,6 +82,11 @@ fun PhotoUploadScreen(
             }
         }
     )
+
+    val requestCameraForTask: (ImageTaskType) -> Unit = { taskType ->
+        viewModel.setCurrentTaskType(taskType)
+        showCameraPurposeNotice = true
+    }
 
     // 根据任务类型获取不同分类的任务
     val beforeCareTasks = imageTasks.filter { it.taskType == ImageTaskType.BEFORE_CARE }
@@ -115,21 +123,29 @@ fun PhotoUploadScreen(
                 isUploading = isUploading,
                 isMockDataEnabled = viewModel.isMockDataEnabled,
                 onAddBeforeCarePhoto = {
-                    viewModel.setCurrentTaskType(ImageTaskType.BEFORE_CARE)
-                    cameraResultLauncher.launch(Manifest.permission.CAMERA)
+                    requestCameraForTask(ImageTaskType.BEFORE_CARE)
                 },
                 onAddCenterCarePhoto = {
-                    viewModel.setCurrentTaskType(ImageTaskType.CENTER_CARE)
-                    cameraResultLauncher.launch(Manifest.permission.CAMERA)
+                    requestCameraForTask(ImageTaskType.CENTER_CARE)
                 },
                 onAddAfterCarePhoto = {
-                    viewModel.setCurrentTaskType(ImageTaskType.AFTER_CARE)
-                    cameraResultLauncher.launch(Manifest.permission.CAMERA)
+                    requestCameraForTask(ImageTaskType.AFTER_CARE)
                 },
                 onRetryTask = viewModel::retryTask,
                 onRemoveTask = viewModel::removeTask,
                 viewModel = viewModel
             )
         }
+    }
+
+    if (showCameraPurposeNotice) {
+        PermissionPurposeDialog(
+            notice = cameraPermissionPurposeNotice("拍摄服务照片并上传护理记录"),
+            onConfirm = {
+                showCameraPurposeNotice = false
+                cameraResultLauncher.launch(Manifest.permission.CAMERA)
+            },
+            onDismiss = { showCameraPurposeNotice = false }
+        )
     }
 }

@@ -40,15 +40,20 @@ class LoginViewModel @Inject constructor(
     
     private var countdownJob: Job? = null
     private var nfcEventJob: Job? = null
-
-    init {
-        // 初始化时获取启动配置
-        loadStartConfig()
-    }
+    private var privacyAgreementConfirmed = false
+    private var startConfigRequested = false
 
     /**
-     * 加载启动配置（用户协议和隐私政策URL）
+     * 用户确认隐私协议后，才加载启动配置（用户协议和隐私政策URL）。
      */
+    fun onPrivacyAgreementConfirmed() {
+        privacyAgreementConfirmed = true
+        if (!startConfigRequested) {
+            startConfigRequested = true
+            loadStartConfig()
+        }
+    }
+
     private fun loadStartConfig() {
         viewModelScope.launch {
             _startConfigState.value = StartConfigUiState.Loading
@@ -75,6 +80,10 @@ class LoginViewModel @Inject constructor(
     }
 
     fun sendSmsCode(mobile: String) {
+        if (!privacyAgreementConfirmed) {
+            showShortToast("请先阅读并同意用户协议和隐私政策")
+            return
+        }
         if (!isValidMobileNumber(mobile)) {
             showShortToast("请输入有效的11位手机号")
             return
@@ -107,6 +116,10 @@ class LoginViewModel @Inject constructor(
      * 执行登录
      */
     fun login(mobile: String, code: String) {
+        if (!privacyAgreementConfirmed) {
+            showShortToast("请先阅读并同意用户协议和隐私政策")
+            return
+        }
         if (!isValidMobileNumber(mobile) || code.isBlank()) {
             showShortToast("手机号或验证码格式不正确")
             return

@@ -23,6 +23,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.ytone.longcare.common.utils.PermissionPurposeDialog
+import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 import java.util.concurrent.Executors
 
 /**
@@ -45,6 +47,7 @@ fun FaceCaptureScreen(
     
     // 图片预览状态
     var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var showCameraPurposeNotice by remember { mutableStateOf(false) }
     
     // 相机权限状态
     var hasCamPermission by remember {
@@ -67,13 +70,6 @@ fun FaceCaptureScreen(
         }
     )
     
-    // 请求相机权限
-    LaunchedEffect(Unit) {
-        if (!hasCamPermission) {
-            launcher.launch(Manifest.permission.CAMERA)
-        }
-    }
-
     if (hasCamPermission) {
         // 检查前置摄像头是否可用，不可用则回退到后置摄像头
         val availableCameraSelector = remember {
@@ -149,8 +145,19 @@ fun FaceCaptureScreen(
     } else {
         // 权限被拒绝的UI
         PermissionDeniedScreen(
-            onRequestPermission = { launcher.launch(Manifest.permission.CAMERA) },
+            onRequestPermission = { showCameraPurposeNotice = true },
             onNavigateBack = onNavigateBack
+        )
+    }
+
+    if (showCameraPurposeNotice) {
+        PermissionPurposeDialog(
+            notice = cameraPermissionPurposeNotice("拍摄和识别人脸照片"),
+            onConfirm = {
+                showCameraPurposeNotice = false
+                launcher.launch(Manifest.permission.CAMERA)
+            },
+            onDismiss = { showCameraPurposeNotice = false }
         )
     }
 }
