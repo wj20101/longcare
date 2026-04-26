@@ -52,6 +52,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Reject tag-triggered auto version bump
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "push" ] && [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "::error::VersionCode auto-bump is only supported for workflow_dispatch branch releases. Use workflow_dispatch instead of tag push."
+            exit 1
+          fi
 
       - name: Verify Android CI success for target commit
         env:
@@ -204,6 +214,44 @@ jobs:
             exit 1
           fi
 
+      - name: Bump app version code
+        id: bump_version_code
+        run: |
+          set -euo pipefail
+
+          CURRENT_VERSION_CODE="$(sed -nE 's/.*appVersionCode by extra\(([0-9]+)\).*/\1/p' constants.gradle.kts | head -n1)"
+          if [ -z "${CURRENT_VERSION_CODE}" ]; then
+            echo "::error::Failed to parse appVersionCode from constants.gradle.kts"
+            exit 1
+          fi
+
+          NEXT_VERSION_CODE="$((CURRENT_VERSION_CODE + 1))"
+          sed -i -E "s/val appVersionCode by extra\([0-9]+\)/val appVersionCode by extra(${NEXT_VERSION_CODE})/" constants.gradle.kts
+
+          if ! git diff -- constants.gradle.kts | grep -q "appVersionCode"; then
+            echo "::error::appVersionCode was not changed"
+            exit 1
+          fi
+
+          CHANGED_FILES="$(git diff --name-only)"
+          if [ "${CHANGED_FILES}" != "constants.gradle.kts" ]; then
+            echo "::error::Unexpected files changed during version bump:"
+            printf '%s\n' "${CHANGED_FILES}"
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add constants.gradle.kts
+          git commit -m "chore(release): bump app version code to ${NEXT_VERSION_CODE}"
+          BUMPED_SHA="$(git rev-parse HEAD)"
+          git push
+
+          echo "previous_version_code=${CURRENT_VERSION_CODE}" >> "$GITHUB_OUTPUT"
+          echo "version_code=${NEXT_VERSION_CODE}" >> "$GITHUB_OUTPUT"
+          echo "commit_sha=${BUMPED_SHA}" >> "$GITHUB_OUTPUT"
+          echo "Bumped appVersionCode: ${CURRENT_VERSION_CODE} -> ${NEXT_VERSION_CODE}"
+
       - name: Extract app version metadata
         id: app_version
         run: |
@@ -340,7 +388,8 @@ jobs:
           VERSION_CODE="${{ steps.app_version.outputs.version_code }}"
           VERSION_NAME="${{ steps.app_version.outputs.version_name }}"
           TAG_NAME="${{ steps.release_meta.outputs.tag_name }}"
-          SHORT_SHA="${GITHUB_SHA::7}"
+          RELEASE_SHA="${{ steps.bump_version_code.outputs.commit_sha }}"
+          SHORT_SHA="${RELEASE_SHA::7}"
 
           {
             echo "## LongCare ${VERSION_NAME} (${VERSION_CODE})"
@@ -359,7 +408,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.release_meta.outputs.tag_name }}
-          target_commitish: ${{ github.sha }}
+          target_commitish: ${{ steps.bump_version_code.outputs.commit_sha }}
           name: ${{ steps.release_meta.outputs.release_name }}
           prerelease: ${{ steps.release_meta.outputs.prerelease }}
           body_path: ${{ steps.release_notes.outputs.path }}
