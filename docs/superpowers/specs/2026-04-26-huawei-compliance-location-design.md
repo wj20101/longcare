@@ -25,7 +25,7 @@ Users have also reported location accuracy problems. The compliance fix must avo
 - Preserve service flow continuity when location fails.
 - Notify the user when location is missing, stale, invalid, or low quality.
 - Report location quality problems through the existing Bugly-based tracking path.
-- Make Profile page option taps visibly respond.
+- Hide Profile page option entries that currently have no implemented behavior.
 
 ## Non-Goals
 
@@ -68,7 +68,7 @@ Use a focused compliance and location-quality update:
 3. Add user-triggered permission purpose prompts for camera and location entry points.
 4. Add location-quality evaluation for critical location actions.
 5. Allow the business action to continue when location is unreliable, but show a warning dialog and report the issue through Bugly.
-6. Add visible responses for Profile page option taps.
+6. Hide Profile page option entries that currently have no implemented behavior.
 
 This is smaller than a global privacy center rewrite and safer than only moving permission prompts.
 
@@ -218,7 +218,7 @@ Responsibilities:
 - Show user warnings before or during continuation.
 - Pass best available coordinates when available, or empty coordinates when not.
 
-### Profile Option Responses
+### Profile Option Visibility
 
 Likely files:
 
@@ -228,8 +228,9 @@ Likely files:
 
 Responsibilities:
 
-- Replace empty click handlers with visible responses.
-- If no real destination exists, show a toast or dialog explaining the entry status.
+- Hide the 信息上报, 个人信息, and 设置 entries while they have no implemented destination or behavior.
+- Avoid showing clickable rows with empty handlers.
+- Keep the rest of the Profile page unchanged.
 
 ## Error Handling
 
@@ -253,7 +254,7 @@ Manual Huawei regression:
 - Deny location from feature action: app warns and allows the flow to continue where business rules allow.
 - Disable system location: app warns and allows the flow to continue where business rules allow.
 - Simulate location timeout/invalid/low accuracy: app warns and sends Bugly tracking.
-- Tap Profile entries 信息上报, 个人信息, 设置: each has visible response.
+- Profile page does not show 信息上报, 个人信息, or 设置 entries while they have no implemented destination or behavior.
 
 Automated or local checks:
 
