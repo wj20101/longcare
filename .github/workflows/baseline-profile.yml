@@ -143,3 +143,25 @@ jobs:
             **/*.hprof
           if-no-files-found: warn
           retention-days: 7
+
+  cleanup-caches:
+    needs: generate-baseline-profile
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Cleanup GitHub Actions caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bash scripts/quality/cleanup_github_actions_caches.sh \
+            --repo "${{ github.repository }}" \
+            --max-total-mb 7168 \
+            --keep-recent-days 2

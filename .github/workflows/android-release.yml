@@ -417,3 +417,25 @@ jobs:
             app/build/outputs/bundle/release/*.aab
             app/build/outputs/mapping/release-mapping.zip
             app/build/outputs/release-checksums.txt
+
+  cleanup-caches:
+    needs: release-build
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Cleanup GitHub Actions caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bash scripts/quality/cleanup_github_actions_caches.sh \
+            --repo "${{ github.repository }}" \
+            --max-total-mb 7168 \
+            --keep-recent-days 2
