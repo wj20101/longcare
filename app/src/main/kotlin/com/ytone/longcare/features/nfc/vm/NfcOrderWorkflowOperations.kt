@@ -15,7 +15,7 @@ internal suspend fun performStartOrderWorkflow(
     toastHelper: ToastHelper,
     uiState: MutableStateFlow<NfcSignInUiState>
 ) {
-    uiState.value = NfcSignInUiState.Loading
+    uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
 
     when (val result = orderRepository.checkOrder(
         orderKey.orderId,
@@ -52,7 +52,7 @@ internal suspend fun performEndOrderWorkflow(
     uiState: MutableStateFlow<NfcSignInUiState>,
     onCheckSuccess: suspend () -> Unit
 ) {
-    uiState.value = NfcSignInUiState.Loading
+    uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
     val endOrderParams = createEndOrderParams(
         orderKey = orderKey,
         nfcDeviceId = nfcDeviceId,

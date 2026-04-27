@@ -11,13 +11,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
+import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 import com.ytone.longcare.features.identification.api.IdentificationActions
-import com.ytone.longcare.features.identification.vm.FaceSetupState
-import com.ytone.longcare.features.identification.vm.FaceVerificationState
-import com.ytone.longcare.features.identification.vm.IdentificationState
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
-import com.ytone.longcare.features.identification.vm.PhotoUploadState
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import kotlinx.coroutines.launch
 import com.ytone.longcare.model.OrderKey
@@ -47,18 +44,22 @@ fun IdentificationScreen(
     val faceImagePath by actions.faceImagePathFlow.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var showCameraPurposeNotice by remember { mutableStateOf(false) }
+    fun openElderCamera() {
+        scope.launch {
+            navigateToElderCamera(
+                sharedOrderDetailViewModel = sharedOrderDetailViewModel,
+                identificationViewModel = identificationViewModel,
+                actions = actions,
+                orderKey = orderKey
+            )
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
             if (isGranted) {
-                scope.launch {
-                    val watermarkData = identificationViewModel.generateWatermarkData(
-                        address = sharedOrderDetailViewModel.getUserAddress(orderKey),
-                        orderKey = orderKey
-                    )
-                    actions.onNavigateToCamera(watermarkData)
-                }
+                openElderCamera()
             } else {
                 identificationViewModel.showToast("需要相机权限才能拍照")
             }
@@ -89,7 +90,13 @@ fun IdentificationScreen(
         onNavigateBack = actions.onNavigateBack,
         onNavigateToSelectService = { actions.onNavigateToSelectService(orderKey) },
         onVerifyServicePerson = { identificationViewModel.verifyServicePerson(context) },
-        onVerifyElder = { showCameraPurposeNotice = true },
+        onVerifyElder = {
+            if (UnifiedPermissionHelper.isCameraPermissionGranted(context)) {
+                openElderCamera()
+            } else {
+                showCameraPurposeNotice = true
+            }
+        },
         onMockVerifyServicePerson = identificationViewModel::mockVerifyServicePerson,
         onMockVerifyElder = identificationViewModel::mockVerifyElder
     )
@@ -104,4 +111,17 @@ fun IdentificationScreen(
             onDismiss = { showCameraPurposeNotice = false }
         )
     }
+}
+
+private suspend fun navigateToElderCamera(
+    sharedOrderDetailViewModel: SharedOrderDetailViewModel,
+    identificationViewModel: IdentificationViewModel,
+    actions: IdentificationActions,
+    orderKey: OrderKey
+) {
+    val watermarkData = identificationViewModel.generateWatermarkData(
+        address = sharedOrderDetailViewModel.getUserAddress(orderKey),
+        orderKey = orderKey
+    )
+    actions.onNavigateToCamera(watermarkData)
 }

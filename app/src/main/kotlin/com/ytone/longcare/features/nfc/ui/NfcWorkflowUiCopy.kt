@@ -2,6 +2,7 @@ package com.ytone.longcare.features.nfc.ui
 
 import androidx.annotation.StringRes
 import com.ytone.longcare.R
+import com.ytone.longcare.features.nfc.vm.NfcLoadingReason
 import com.ytone.longcare.features.nfc.vm.ReaderUiState
 import com.ytone.longcare.features.nfc.vm.ScanMode
 
@@ -72,4 +73,12 @@ internal fun resolveCopyRes(key: NfcWorkflowCopyKey): Int = when (key) {
     NfcWorkflowCopyKey.EXTERNAL_READY_HINT -> R.string.nfc_external_reader_ready_hint
     NfcWorkflowCopyKey.EXTERNAL_READING_PROMPT -> R.string.nfc_external_reader_reading_prompt
     NfcWorkflowCopyKey.EXTERNAL_READING_STATUS -> R.string.nfc_external_reader_reading
+}
+
+@StringRes
+internal fun resolveLoadingCopyRes(reason: NfcLoadingReason): Int = when (reason) {
+    NfcLoadingReason.CARD_RECOGNIZED_FETCHING_LOCATION -> R.string.nfc_loading_card_recognized_fetching_location
+    NfcLoadingReason.WAITING_FOR_LOCATION_PERMISSION -> R.string.nfc_loading_waiting_location_permission
+    NfcLoadingReason.FETCHING_LOCATION -> R.string.nfc_loading_fetching_location
+    NfcLoadingReason.SUBMITTING -> R.string.nfc_loading_submitting
 }

@@ -171,6 +171,11 @@ class NfcWorkflowViewModel @Inject constructor(
         onLocationRequest: suspend () -> LocationRequestResult,
     ) = scanDelegate.observeScanEvents(orderKey, signInMode, endOderInfo, onLocationRequest)
 
+    fun resumePendingPermissionScan(onLocationRequest: suspend () -> LocationRequestResult) =
+        scanDelegate.resumePendingPermissionScan(onLocationRequest)
+
+    fun clearPendingPermissionScan() = scanDelegate.clearPendingPermissionScan()
+
     fun confirmLocationActivation(data: PendingNfcData) = scanDelegate.confirmLocationActivation(data)
 
     fun cancelLocationActivation() = scanDelegate.cancelLocationActivation()

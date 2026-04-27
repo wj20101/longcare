@@ -12,17 +12,25 @@ internal suspend fun handleTagScanned(
     endOderInfo: EndOderInfo?,
     onLocationRequest: suspend () -> LocationRequestResult,
     onLocationError: (String) -> Unit,
+    onLocationPermissionRequired: suspend (String) -> Unit = {},
+    onLoadingReasonChanged: (NfcLoadingReason) -> Unit = {},
     onStartOrder: suspend (String, String, String) -> Unit,
     onEndOrder: suspend (String, String, String, EndOderInfo) -> Unit,
 ) {
     if (currentState is NfcSignInUiState.Success) return
     if (event.tagId.isBlank()) return
 
+    onLoadingReasonChanged(NfcLoadingReason.CARD_RECOGNIZED_FETCHING_LOCATION)
     val locationResult = onLocationRequest()
     val (longitude, latitude) = when (locationResult) {
         is LocationRequestResult.Coordinates -> locationResult.longitude to locationResult.latitude
         is LocationRequestResult.Error -> {
             onLocationError(locationResult.message)
+            return
+        }
+        is LocationRequestResult.PermissionRequired -> {
+            onLoadingReasonChanged(NfcLoadingReason.WAITING_FOR_LOCATION_PERMISSION)
+            onLocationPermissionRequired(event.tagId)
             return
         }
     }

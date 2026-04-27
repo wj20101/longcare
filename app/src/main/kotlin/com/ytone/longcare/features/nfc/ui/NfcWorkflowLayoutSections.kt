@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.singleClick
+import com.ytone.longcare.features.nfc.vm.NfcLoadingReason
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
 import com.ytone.longcare.features.nfc.vm.ReaderUiState
 import com.ytone.longcare.features.nfc.vm.ScanMode
@@ -72,16 +73,21 @@ internal fun NfcWorkflowBodyContent(
     endOderInfo: EndOderInfo?,
     nfcViewModel: NfcWorkflowViewModel,
     signInState: SignInState,
+    loadingReason: NfcLoadingReason?,
     scanMode: ScanMode,
     readerUiState: ReaderUiState,
 ) {
     val idleCopy = resolveNfcWorkflowIdleCopy(scanMode, readerUiState)
-    val promptRes = if (signInState == SignInState.IDLE) {
-        resolveCopyRes(idleCopy.promptKey)
-    } else {
-        R.string.nfc_sign_in_prompt
+    val promptRes = when {
+        loadingReason != null -> resolveLoadingCopyRes(loadingReason)
+        signInState == SignInState.IDLE -> resolveCopyRes(idleCopy.promptKey)
+        else -> R.string.nfc_sign_in_prompt
     }
     val statusOverrideRes = if (
+        loadingReason != null
+    ) {
+        resolveLoadingCopyRes(loadingReason)
+    } else if (
         signInState == SignInState.IDLE &&
         scanMode == ScanMode.EXTERNAL_RFID
     ) {
@@ -113,7 +119,7 @@ internal fun NfcWorkflowBodyContent(
         SignInContentCard(
             signInState = signInState,
             statusOverrideRes = statusOverrideRes,
-            showReadingIndicator = scanMode == ScanMode.EXTERNAL_RFID &&
+            showReadingIndicator = loadingReason != null || scanMode == ScanMode.EXTERNAL_RFID &&
                 readerUiState == ReaderUiState.Reading,
         )
 

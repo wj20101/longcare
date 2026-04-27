@@ -2,6 +2,7 @@ package com.ytone.longcare.common.utils
 
 import java.io.File
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PermissionRequestPolicyTest {
@@ -32,5 +33,16 @@ class PermissionRequestPolicyTest {
 
         assertFalse(source.contains("launcher.launch(locationPermissions)"))
         assertFalse(source.contains("RequestMultiplePermissions"))
+    }
+
+    @Test
+    fun `camera permission gate initializes from system permission`() {
+        val source = File(
+            "src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraPermissionGate.kt"
+        ).readText()
+
+        assertTrue(source.contains("ContextCompat.checkSelfPermission"))
+        assertTrue(source.contains("Manifest.permission.CAMERA"))
+        assertTrue(source.contains("PackageManager.PERMISSION_GRANTED"))
     }
 }

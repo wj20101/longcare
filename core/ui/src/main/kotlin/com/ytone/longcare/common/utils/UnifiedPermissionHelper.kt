@@ -134,13 +134,15 @@ object UnifiedPermissionHelper {
     fun handleLocationPermissionResult(
         permissions: Map<String, Boolean>,
         context: Context,
-        onPermissionGranted: () -> Unit
+        onPermissionGranted: () -> Unit,
+        onPermissionDenied: () -> Unit = {}
     ) {
         if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
             // 权限获取成功，执行回调
             onPermissionGranted()
         } else {
             Toast.makeText(context, "需要定位权限才能开始服务", Toast.LENGTH_LONG).show()
+            onPermissionDenied()
         }
     }
 
@@ -255,7 +257,8 @@ fun PermissionPurposeDialog(
  */
 @Composable
 fun rememberLocationPermissionLauncher(
-    onPermissionGranted: () -> Unit
+    onPermissionGranted: () -> Unit,
+    onPermissionDenied: () -> Unit = {}
 ): ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>> {
     val context = LocalContext.current
     
@@ -265,7 +268,8 @@ fun rememberLocationPermissionLauncher(
             UnifiedPermissionHelper.handleLocationPermissionResult(
                 permissions = permissions,
                 context = context,
-                onPermissionGranted = onPermissionGranted
+                onPermissionGranted = onPermissionGranted,
+                onPermissionDenied = onPermissionDenied
             )
         }
     )

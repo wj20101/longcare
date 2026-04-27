@@ -104,6 +104,61 @@ class NfcScanWorkflowHelpersTest {
     }
 
     @Test
+    fun `handleTagScanned keeps tag id when location permission is required`() = runTest {
+        var pendingTagId: String? = null
+        var locationError: String? = null
+        var started = false
+        val loadingReasons = mutableListOf<NfcLoadingReason>()
+
+        handleTagScanned(
+            event = AppEvent.TagScanned("ABC123", ScanSource.EXTERNAL_RFID),
+            currentState = NfcSignInUiState.Initial,
+            signInMode = SignInMode.START_ORDER,
+            endOderInfo = null,
+            onLocationRequest = { LocationRequestResult.PermissionRequired },
+            onLocationError = { message -> locationError = message },
+            onLocationPermissionRequired = { tagId -> pendingTagId = tagId },
+            onLoadingReasonChanged = loadingReasons::add,
+            onStartOrder = { _, _, _ -> started = true },
+            onEndOrder = { _, _, _, _ -> error("unexpected end order") },
+        )
+
+        assertEquals("ABC123", pendingTagId)
+        assertEquals(null, locationError)
+        assertEquals(
+            listOf(
+                NfcLoadingReason.CARD_RECOGNIZED_FETCHING_LOCATION,
+                NfcLoadingReason.WAITING_FOR_LOCATION_PERMISSION
+            ),
+            loadingReasons
+        )
+        assertFalse(started)
+    }
+
+    @Test
+    fun `handleTagScanned announces card recognized before location succeeds`() = runTest {
+        val loadingReasons = mutableListOf<NfcLoadingReason>()
+        var started: Triple<String, String, String>? = null
+
+        handleTagScanned(
+            event = AppEvent.TagScanned("ABC123", ScanSource.EXTERNAL_RFID),
+            currentState = NfcSignInUiState.Initial,
+            signInMode = SignInMode.START_ORDER,
+            endOderInfo = null,
+            onLocationRequest = { LocationRequestResult.Coordinates("121.47", "31.23") },
+            onLocationError = { error("unexpected location error: $it") },
+            onLoadingReasonChanged = loadingReasons::add,
+            onStartOrder = { tagId, longitude, latitude ->
+                started = Triple(tagId, longitude, latitude)
+            },
+            onEndOrder = { _, _, _, _ -> error("unexpected end order") },
+        )
+
+        assertEquals(listOf(NfcLoadingReason.CARD_RECOGNIZED_FETCHING_LOCATION), loadingReasons)
+        assertEquals(Triple("ABC123", "121.47", "31.23"), started)
+    }
+
+    @Test
     fun `reduceReaderUiState ignores non-active-source reader events`() {
         val unchangedFromConnection = reduceReaderUiState(
             currentMode = ScanMode.EXTERNAL_RFID,

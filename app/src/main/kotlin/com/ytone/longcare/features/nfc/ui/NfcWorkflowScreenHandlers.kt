@@ -69,35 +69,9 @@ internal fun rememberNfcWorkflowLocationHandlers(
     var showLocationOnlyPurposeNotice by remember { mutableStateOf(false) }
     var pendingTrackingReadyAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
-    val trackingPermissionLauncher = rememberLocationPermissionLauncher(
-        onPermissionGranted = {
-            locationTrackingViewModel.onStartClicked(orderKey)
-            pendingTrackingReadyAction?.invoke()
-            pendingTrackingReadyAction = null
-        }
-    )
-
-    val locationOnlyPermissionLauncher = rememberLocationPermissionLauncher(
-        onPermissionGranted = {}
-    )
-
     val requestLocationPermissionOnly: () -> Unit = {
         if (!UnifiedPermissionHelper.hasLocationPermission(context)) {
             showLocationOnlyPurposeNotice = true
-        }
-    }
-
-    val startTrackingWithPermission: (onReady: () -> Unit) -> Unit = { onReady ->
-        when {
-            !UnifiedPermissionHelper.isLocationServiceEnabled(context) -> openLocationSettings(context)
-            UnifiedPermissionHelper.hasLocationPermission(context) -> {
-                locationTrackingViewModel.onStartClicked(orderKey)
-                onReady()
-            }
-            else -> {
-                pendingTrackingReadyAction = onReady
-                showTrackingLocationPurposeNotice = true
-            }
         }
     }
 
@@ -105,7 +79,7 @@ internal fun rememberNfcWorkflowLocationHandlers(
         try {
             if (!UnifiedPermissionHelper.hasLocationPermission(context)) {
                 requestLocationPermissionOnly()
-                LocationRequestResult.Error("请授予定位权限以继续")
+                LocationRequestResult.PermissionRequired
             } else if (!UnifiedPermissionHelper.isLocationServiceEnabled(context)) {
                 openLocationSettings(context)
                 LocationRequestResult.Error("请开启定位服务以获取位置信息")
@@ -121,6 +95,42 @@ internal fun rememberNfcWorkflowLocationHandlers(
             throw e
         } catch (e: Exception) {
             LocationRequestResult.Error("无法获取位置信息，请稍后重试")
+        }
+    }
+
+    val trackingPermissionLauncher = rememberLocationPermissionLauncher(
+        onPermissionGranted = {
+            locationTrackingViewModel.onStartClicked(orderKey)
+            pendingTrackingReadyAction?.invoke()
+            pendingTrackingReadyAction = null
+        },
+        onPermissionDenied = {
+            pendingTrackingReadyAction = null
+        }
+    )
+
+    val locationOnlyPermissionLauncher = rememberLocationPermissionLauncher(
+        onPermissionGranted = {
+            nfcViewModel.resumePendingPermissionScan {
+                getCurrentLocationCoordinates()
+            }
+        },
+        onPermissionDenied = {
+            nfcViewModel.clearPendingPermissionScan()
+        }
+    )
+
+    val startTrackingWithPermission: (onReady: () -> Unit) -> Unit = { onReady ->
+        when {
+            !UnifiedPermissionHelper.isLocationServiceEnabled(context) -> openLocationSettings(context)
+            UnifiedPermissionHelper.hasLocationPermission(context) -> {
+                locationTrackingViewModel.onStartClicked(orderKey)
+                onReady()
+            }
+            else -> {
+                pendingTrackingReadyAction = onReady
+                showTrackingLocationPurposeNotice = true
+            }
         }
     }
 

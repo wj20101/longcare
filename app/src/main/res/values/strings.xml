@@ -17,6 +17,10 @@
     <string name="nfc_external_reader_reading_prompt">正在识别，请保持卡片靠近读卡器</string>
     <string name="nfc_external_reader_reading">正在识别</string>
     <string name="nfc_external_reader_ready_hint">请在读卡器上完成刷卡</string>
+    <string name="nfc_loading_card_recognized_fetching_location">已识别卡片，正在获取定位...</string>
+    <string name="nfc_loading_waiting_location_permission">已识别卡片，请授予定位权限后继续</string>
+    <string name="nfc_loading_fetching_location">正在获取定位...</string>
+    <string name="nfc_loading_submitting">正在提交打卡...</string>
     <string name="nfc_sign_in_diagram_description">NFC操作示意图</string>
     <string name="photo_upload_title">护理照片上传</string>
     <string name="photo_upload_confirm_and_next">确定</string>

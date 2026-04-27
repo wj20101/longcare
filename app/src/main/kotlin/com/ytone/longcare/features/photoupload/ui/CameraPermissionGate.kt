@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.photoupload.ui
 
 import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 
@@ -20,7 +23,13 @@ import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 internal fun CameraPermissionGate(
     onPermissionGranted: @Composable () -> Unit,
 ) {
-    var hasPermission by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var hasPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
     var showPurposeNotice by remember { mutableStateOf(false) }
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),

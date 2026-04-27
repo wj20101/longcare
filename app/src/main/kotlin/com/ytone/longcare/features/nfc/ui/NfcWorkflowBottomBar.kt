@@ -13,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ytone.longcare.R
+import com.ytone.longcare.features.nfc.vm.NfcLoadingReason
 import com.ytone.longcare.features.nfc.vm.ReaderUiState
 import com.ytone.longcare.features.nfc.vm.ScanMode
 import com.ytone.longcare.navigation.SignInMode
@@ -24,6 +25,7 @@ internal fun NfcWorkflowBottomBar(
     signInMode: SignInMode,
     scanMode: ScanMode,
     readerUiState: ReaderUiState,
+    loadingReason: NfcLoadingReason?,
     onSuccessClick: () -> Unit,
     onRetryClick: () -> Unit
 ) {
@@ -54,6 +56,8 @@ internal fun NfcWorkflowBottomBar(
 
                 SignInState.IDLE -> {
                     val idleCopy = resolveNfcWorkflowIdleCopy(scanMode, readerUiState)
+                    val hintRes = loadingReason?.let(::resolveLoadingCopyRes)
+                        ?: resolveCopyRes(idleCopy.bottomHintKey)
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -61,7 +65,7 @@ internal fun NfcWorkflowBottomBar(
                         )
                     ) {
                         Text(
-                            text = stringResource(resolveCopyRes(idleCopy.bottomHintKey)),
+                            text = stringResource(hintRes),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),

@@ -26,6 +26,7 @@ internal class NfcScanWorkflowDelegate(
     private val orderDelegate: NfcOrderWorkflowDelegate,
 ) {
     private var nfcEventJob: Job? = null
+    private var pendingPermissionScan: PendingNfcScan? = null
 
     fun observeScanEvents(
         orderKey: OrderKey,
@@ -50,6 +51,17 @@ internal class NfcScanWorkflowDelegate(
                         endOderInfo = endOderInfo,
                         onLocationRequest = onLocationRequest,
                         onLocationError = { message -> orderDelegate.showError(message) },
+                        onLoadingReasonChanged = { reason ->
+                            uiState.value = NfcSignInUiState.Loading(reason)
+                        },
+                        onLocationPermissionRequired = { tagId ->
+                            pendingPermissionScan = PendingNfcScan(
+                                orderKey = orderKey,
+                                signInMode = signInMode,
+                                endOderInfo = endOderInfo,
+                                tagId = tagId
+                            )
+                        },
                         onStartOrder = { tagId, longitude, latitude ->
                             checkUserLocationAndProceed(
                                 unifiedOrderRepository = unifiedOrderRepository,
@@ -80,6 +92,67 @@ internal class NfcScanWorkflowDelegate(
                     )
                 }
             }
+        }
+    }
+
+    fun resumePendingPermissionScan(onLocationRequest: suspend () -> LocationRequestResult) {
+        val scan = pendingPermissionScan ?: return
+        pendingPermissionScan = null
+        scope.launch {
+            uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.FETCHING_LOCATION)
+            val locationResult = onLocationRequest()
+            val (longitude, latitude) = when (locationResult) {
+                is LocationRequestResult.Coordinates -> locationResult.longitude to locationResult.latitude
+                is LocationRequestResult.Error -> {
+                    orderDelegate.showError(locationResult.message)
+                    return@launch
+                }
+                is LocationRequestResult.PermissionRequired -> return@launch
+            }
+
+            executeSignInModeAction(
+                signInMode = scan.signInMode,
+                endOderInfo = scan.endOderInfo,
+                tagId = scan.tagId,
+                longitude = longitude,
+                latitude = latitude,
+                onStartOrder = { tagId, startLongitude, startLatitude ->
+                    checkUserLocationAndProceed(
+                        unifiedOrderRepository = unifiedOrderRepository,
+                        orderKey = scan.orderKey,
+                        signInMode = scan.signInMode,
+                        endOderInfo = scan.endOderInfo,
+                        tagId = tagId,
+                        longitude = startLongitude,
+                        latitude = startLatitude,
+                        pendingNfcData = pendingNfcData,
+                        scope = scope,
+                        orderDelegate = orderDelegate
+                    )
+                },
+                onEndOrder = { tagId, endLongitude, endLatitude, info ->
+                    orderDelegate.endOrder(
+                        orderKey = scan.orderKey,
+                        nfcDeviceId = tagId,
+                        projectIdList = info.projectIdList,
+                        beginImgList = info.beginImgList,
+                        centerImgList = info.centerImgList,
+                        endImageList = info.endImgList,
+                        longitude = endLongitude,
+                        latitude = endLatitude,
+                        endType = info.endType
+                    )
+                },
+            )
+        }
+    }
+
+    fun clearPendingPermissionScan() {
+        pendingPermissionScan = null
+        if ((uiState.value as? NfcSignInUiState.Loading)?.reason ==
+            NfcLoadingReason.WAITING_FOR_LOCATION_PERMISSION
+        ) {
+            uiState.value = NfcSignInUiState.Initial
         }
     }
 
@@ -160,6 +233,7 @@ internal class NfcScanWorkflowDelegate(
 
     fun clear() {
         nfcEventJob?.cancel()
+        pendingPermissionScan = null
     }
 
     private fun AppEvent.TagScanned.isFromActiveSource(currentMode: ScanMode): Boolean = when (currentMode) {

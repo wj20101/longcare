@@ -54,6 +54,7 @@ fun NfcWorkflowScreen(
     }
 
     val signInState = mapNfcSignInState(uiState)
+    val loadingReason = (uiState as? NfcSignInUiState.Loading)?.reason
 
     val onBack = buildNfcWorkflowBackAction(signInMode, signInState, actions)
     CustomBackHandler(customAction = onBack)
@@ -96,6 +97,7 @@ fun NfcWorkflowScreen(
                     signInMode = signInMode,
                     scanMode = scanMode,
                     readerUiState = readerUiState,
+                    loadingReason = loadingReason,
                     onSuccessClick = singleClick {
                         handleNfcSuccessAction(
                             signInMode = signInMode,
@@ -122,6 +124,7 @@ fun NfcWorkflowScreen(
                 endOderInfo = endOderInfo,
                 nfcViewModel = nfcViewModel,
                 signInState = signInState,
+                loadingReason = loadingReason,
                 scanMode = scanMode,
                 readerUiState = readerUiState,
             )

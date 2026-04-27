@@ -29,8 +29,24 @@ data class PendingNfcData(
     val latitude: String,
 )
 
+data class PendingNfcScan(
+    val orderKey: OrderKey,
+    val signInMode: SignInMode,
+    val endOderInfo: EndOderInfo?,
+    val tagId: String,
+)
+
+enum class NfcLoadingReason {
+    CARD_RECOGNIZED_FETCHING_LOCATION,
+    WAITING_FOR_LOCATION_PERMISSION,
+    FETCHING_LOCATION,
+    SUBMITTING,
+}
+
 sealed class NfcSignInUiState {
-    data object Loading : NfcSignInUiState()
+    data class Loading(
+        val reason: NfcLoadingReason = NfcLoadingReason.SUBMITTING
+    ) : NfcSignInUiState()
     data class Success(val endOrderSuccessData: EndOrderSuccessData? = null) : NfcSignInUiState()
     data class Error(
         val message: String,
@@ -62,4 +78,5 @@ data class EndOrderParams(
 sealed class LocationRequestResult {
     data class Coordinates(val longitude: String, val latitude: String) : LocationRequestResult()
     data class Error(val message: String) : LocationRequestResult()
+    data object PermissionRequired : LocationRequestResult()
 }

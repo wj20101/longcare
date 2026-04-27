@@ -84,7 +84,7 @@ internal class NfcOrderWorkflowDelegate(
     )
 
     suspend fun confirmEndOrder(params: EndOrderParams) {
-        uiState.value = NfcSignInUiState.Loading
+        uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
         executeEndOrder(
             orderKey = params.orderKey,
             nfcDeviceId = params.nfcDeviceId,
