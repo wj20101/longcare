@@ -86,7 +86,7 @@ internal fun rememberNfcWorkflowLocationHandlers(
             } else {
                 val (longitude, latitude) = nfcViewModel.getCurrentLocationCoordinates()
                 if (longitude.isBlank() || latitude.isBlank()) {
-                    LocationRequestResult.Error("无法获取位置信息，请稍后重试")
+                    LocationRequestResult.Coordinates("", "")
                 } else {
                     LocationRequestResult.Coordinates(longitude, latitude)
                 }

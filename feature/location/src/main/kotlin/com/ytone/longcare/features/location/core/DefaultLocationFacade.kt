@@ -8,8 +8,11 @@ import com.ytone.longcare.features.location.provider.SystemLocationProvider
 import com.ytone.longcare.model.LocationResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.max
+import kotlin.math.min
 
 @Singleton
 class DefaultLocationFacade @Inject constructor(
@@ -24,10 +27,14 @@ class DefaultLocationFacade @Inject constructor(
     }
 
     override suspend fun getCurrentLocation(timeoutMs: Long): LocationResult? {
-        locationStateManager.getValidLocation()?.let { return it }
+        locationStateManager.getValidLocation(LocationFacade.BUSINESS_LOCATION_CACHE_MAX_AGE_MS)?.let { return it }
+
+        val boundedTimeoutMs = timeoutMs.coerceIn(MIN_LOCATION_TIMEOUT_MS, MAX_LOCATION_TIMEOUT_MS)
+        val startedAt = System.currentTimeMillis()
+        val amapTimeoutMs = min(MAX_AMAP_WAIT_MS, max(MIN_AMAP_WAIT_MS, boundedTimeoutMs / 2))
 
         val amapResult = try {
-            continuousAmapLocationManager.getCurrentLocation(timeoutMs)
+            continuousAmapLocationManager.getCurrentLocation(amapTimeoutMs)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -43,8 +50,16 @@ class DefaultLocationFacade @Inject constructor(
             return amapResult
         }
 
+        val elapsedMs = System.currentTimeMillis() - startedAt
+        val remainingTimeoutMs = boundedTimeoutMs - elapsedMs
+        if (remainingTimeoutMs <= 0L) {
+            return null
+        }
+
         val systemResult = try {
-            systemLocationProvider.getCurrentLocation()
+            withTimeoutOrNull(remainingTimeoutMs) {
+                systemLocationProvider.getCurrentLocation()
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -71,5 +86,12 @@ class DefaultLocationFacade @Inject constructor(
 
     override fun releaseKeepAlive(owner: String) {
         locationKeepAliveManager.release(owner)
+    }
+
+    private companion object {
+        const val MIN_LOCATION_TIMEOUT_MS = 1_000L
+        const val MAX_LOCATION_TIMEOUT_MS = LocationFacade.DEFAULT_FAST_LOCATION_TIMEOUT_MS
+        const val MIN_AMAP_WAIT_MS = 1_000L
+        const val MAX_AMAP_WAIT_MS = 2_500L
     }
 }

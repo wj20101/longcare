@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
@@ -27,6 +28,7 @@ import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.model.OrderKey
 import androidx.compose.ui.res.stringResource
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
+import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 
 // --- 数据模型 ---
@@ -51,6 +53,7 @@ fun PhotoUploadScreen(
     // 收集ViewModel状态
     val imageTasks by viewModel.imageTasks.collectAsStateWithLifecycle()
     val isUploading by viewModel.isUploading.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val currentTaskType by viewModel.currentTaskType.collectAsStateWithLifecycle()
     var showCameraPurposeNotice by remember { mutableStateOf(false) }
@@ -63,19 +66,23 @@ fun PhotoUploadScreen(
         currentTaskType = currentTaskType
     )
     
+    fun openCameraForTask(taskType: ImageTaskType) {
+        scope.launch {
+            val watermarkData = viewModel.generateWatermarkData(
+                taskType = taskType,
+                address = sharedViewModel.getUserAddress(orderKey),
+                orderId = orderKey.orderId
+            )
+            actions.onNavigateToCamera(watermarkData)
+        }
+    }
+
     val cameraResultLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
             if (isGranted) {
-                scope.launch {
-                    currentTaskType?.let { taskType ->
-                        val watermarkData = viewModel.generateWatermarkData(
-                            taskType = taskType,
-                            address = sharedViewModel.getUserAddress(orderKey),
-                            orderId = orderKey.orderId
-                        )
-                        actions.onNavigateToCamera(watermarkData)
-                    }
+                currentTaskType?.let { taskType ->
+                    openCameraForTask(taskType)
                 }
             } else {
                 viewModel.showToast("需要相机权限才能拍照")
@@ -85,7 +92,11 @@ fun PhotoUploadScreen(
 
     val requestCameraForTask: (ImageTaskType) -> Unit = { taskType ->
         viewModel.setCurrentTaskType(taskType)
-        showCameraPurposeNotice = true
+        if (UnifiedPermissionHelper.isCameraPermissionGranted(context)) {
+            openCameraForTask(taskType)
+        } else {
+            showCameraPurposeNotice = true
+        }
     }
 
     // 根据任务类型获取不同分类的任务

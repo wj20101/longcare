@@ -161,7 +161,7 @@ class SharedOrderDetailViewModel @Inject constructor(
                 return Pair("", "")
             }
             
-            val location = locationFacade.getCurrentLocation()
+            val location = locationFacade.getCurrentLocation(LocationFacade.DEFAULT_FAST_LOCATION_TIMEOUT_MS)
             if (location != null) {
                 Pair(location.longitude.toString(), location.latitude.toString())
             } else {

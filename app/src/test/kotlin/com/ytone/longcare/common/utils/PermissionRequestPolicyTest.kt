@@ -45,4 +45,15 @@ class PermissionRequestPolicyTest {
         assertTrue(source.contains("Manifest.permission.CAMERA"))
         assertTrue(source.contains("PackageManager.PERMISSION_GRANTED"))
     }
+
+    @Test
+    fun `photo upload add photo checks camera permission before showing purpose notice`() {
+        val source = File(
+            "src/main/kotlin/com/ytone/longcare/features/photoupload/ui/PhotoUploadScreen.kt"
+        ).readText()
+
+        assertTrue(source.contains("UnifiedPermissionHelper.isCameraPermissionGranted(context)"))
+        assertTrue(source.contains("openCameraForTask(taskType)"))
+        assertTrue(source.contains("showCameraPurposeNotice = true"))
+    }
 }
