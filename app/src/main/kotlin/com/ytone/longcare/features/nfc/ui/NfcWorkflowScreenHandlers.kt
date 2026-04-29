@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
@@ -21,10 +22,12 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 internal data class NfcWorkflowLocationHandlers(
     val startTrackingWithPermission: (onReady: () -> Unit) -> Unit,
-    val getCurrentLocationCoordinates: suspend () -> LocationRequestResult
+    val getCurrentLocationCoordinates: suspend () -> LocationRequestResult,
+    val prepareLocationOnEntry: () -> Unit
 )
 
 internal fun mapNfcSignInState(uiState: NfcSignInUiState): SignInState {
@@ -65,6 +68,7 @@ internal fun rememberNfcWorkflowLocationHandlers(
     nfcViewModel: NfcWorkflowViewModel,
     locationTrackingViewModel: LocationTrackingViewModel
 ): NfcWorkflowLocationHandlers {
+    val coroutineScope = rememberCoroutineScope()
     var showTrackingLocationPurposeNotice by remember { mutableStateOf(false) }
     var showLocationOnlyPurposeNotice by remember { mutableStateOf(false) }
     var pendingTrackingReadyAction by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -111,6 +115,9 @@ internal fun rememberNfcWorkflowLocationHandlers(
 
     val locationOnlyPermissionLauncher = rememberLocationPermissionLauncher(
         onPermissionGranted = {
+            coroutineScope.launch {
+                getCurrentLocationCoordinates()
+            }
             nfcViewModel.resumePendingPermissionScan {
                 getCurrentLocationCoordinates()
             }
@@ -119,6 +126,22 @@ internal fun rememberNfcWorkflowLocationHandlers(
             nfcViewModel.clearPendingPermissionScan()
         }
     )
+
+    val prepareLocationOnEntry: () -> Unit = {
+        when {
+            !UnifiedPermissionHelper.hasLocationPermission(context) -> {
+                showLocationOnlyPurposeNotice = true
+            }
+            !UnifiedPermissionHelper.isLocationServiceEnabled(context) -> {
+                openLocationSettings(context)
+            }
+            else -> {
+                coroutineScope.launch {
+                    getCurrentLocationCoordinates()
+                }
+            }
+        }
+    }
 
     val startTrackingWithPermission: (onReady: () -> Unit) -> Unit = { onReady ->
         when {
@@ -161,7 +184,8 @@ internal fun rememberNfcWorkflowLocationHandlers(
 
     return NfcWorkflowLocationHandlers(
         startTrackingWithPermission = startTrackingWithPermission,
-        getCurrentLocationCoordinates = getCurrentLocationCoordinates
+        getCurrentLocationCoordinates = getCurrentLocationCoordinates,
+        prepareLocationOnEntry = prepareLocationOnEntry
     )
 }
 

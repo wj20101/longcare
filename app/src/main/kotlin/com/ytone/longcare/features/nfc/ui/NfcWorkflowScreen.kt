@@ -74,7 +74,8 @@ fun NfcWorkflowScreen(
         uiState = uiState,
         nfcViewModel = nfcViewModel,
         locationTrackingViewModel = locationTrackingViewModel,
-        onLocationRequest = { locationHandlers.getCurrentLocationCoordinates() }
+        onLocationRequest = { locationHandlers.getCurrentLocationCoordinates() },
+        onEntryLocationPrepare = locationHandlers.prepareLocationOnEntry
     )
 
     val titleRes = resolveNfcWorkflowTitleRes(signInMode)

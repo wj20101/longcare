@@ -204,6 +204,29 @@ class SystemConfigManager @Inject constructor(
     }
 
     /**
+     * 从接口刷新系统配置并返回最新公司名称。
+     *
+     * 该方法用于首页入口这类需要即时刷新 UI 的场景。刷新成功时会同步更新
+     * SharedPreferences 与内存缓存；失败时返回 null，调用方可继续展示旧值。
+     */
+    suspend fun refreshCompanyName(): String? {
+        return try {
+            when (val result = safeApiCall(ioDispatcher, eventBus) { apiService.getSystemConfig() }) {
+                is ApiResult.Success -> {
+                    saveSystemConfig(result.data)
+                    result.data.companyName
+                }
+                is ApiResult.Exception,
+                is ApiResult.Failure -> null
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
      * 获取最大上传图片数量
      */
     suspend fun getMaxImgNum(): Int {

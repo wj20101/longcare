@@ -21,7 +21,8 @@ internal fun NfcWorkflowEffects(
     uiState: NfcSignInUiState,
     nfcViewModel: NfcWorkflowViewModel,
     locationTrackingViewModel: LocationTrackingViewModel,
-    onLocationRequest: suspend () -> LocationRequestResult
+    onLocationRequest: suspend () -> LocationRequestResult,
+    onEntryLocationPrepare: () -> Unit
 ) {
     LaunchedEffect(activity) {
         if (activity != null) {
@@ -37,6 +38,10 @@ internal fun NfcWorkflowEffects(
             endOderInfo = endOderInfo,
             onLocationRequest = { onLocationRequest() },
         )
+    }
+
+    LaunchedEffect(orderKey, signInMode) {
+        onEntryLocationPrepare()
     }
 
     DisposableEffect(activity) {

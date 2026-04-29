@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,11 +29,20 @@ class MainDashboardViewModel @Inject constructor(
 ) : ViewModel() {
     private val _companyName = MutableStateFlow("")
     val companyName: StateFlow<String> = _companyName.asStateFlow()
+    private var loadCompanyNameJob: Job? = null
 
     fun loadCompanyName() {
-        if (_companyName.value.isNotEmpty()) return
-        viewModelScope.launch {
-            _companyName.value = systemConfigManager.getCompanyName()
+        if (loadCompanyNameJob?.isActive == true) return
+        loadCompanyNameJob = viewModelScope.launch {
+            val refreshedCompanyName = systemConfigManager.refreshCompanyName()?.trim().orEmpty()
+            if (refreshedCompanyName.isNotEmpty()) {
+                _companyName.value = refreshedCompanyName
+                return@launch
+            }
+
+            if (_companyName.value.isEmpty()) {
+                _companyName.value = systemConfigManager.getCompanyName()
+            }
         }
     }
 

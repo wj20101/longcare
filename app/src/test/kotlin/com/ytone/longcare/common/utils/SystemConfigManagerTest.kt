@@ -9,6 +9,7 @@ import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.model.Response
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -82,6 +83,21 @@ class SystemConfigManagerTest {
         assertEquals("appId", config?.appId)
         assertEquals("secret", config?.secret)
         assertEquals("licence", config?.licence)
+    }
+
+    @Test
+    fun `refreshCompanyName should fetch latest config and update cache`() = runTest(testDispatcher) {
+        coEvery { apiService.getSystemConfig() } returns Response(
+            resultCode = 1000,
+            resultMsg = "ok",
+            data = SystemConfigModel(companyName = "LongCare Updated")
+        )
+
+        val companyName = manager.refreshCompanyName()
+
+        assertEquals("LongCare Updated", companyName)
+        assertEquals("LongCare Updated", manager.getSystemConfig()?.companyName)
+        coVerify(exactly = 1) { apiService.getSystemConfig() }
     }
 
     @Test

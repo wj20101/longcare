@@ -44,8 +44,23 @@ class MainDashboardViewModelTest {
     }
 
     @Test
-    fun `loadCompanyName should update state and avoid duplicate load`() = runTest {
-        coEvery { systemConfigManager.getCompanyName() } returns "LongCare"
+    fun `loadCompanyName should request latest company name on every entry call`() = runTest {
+        coEvery { systemConfigManager.refreshCompanyName() } returnsMany listOf("LongCare", "LongCare Updated")
+        val viewModel = createViewModel()
+
+        viewModel.loadCompanyName()
+        advanceUntilIdle()
+        viewModel.loadCompanyName()
+        advanceUntilIdle()
+
+        assertEquals("LongCare Updated", viewModel.companyName.value)
+        coVerify(exactly = 2) { systemConfigManager.refreshCompanyName() }
+        coVerify(exactly = 0) { systemConfigManager.getCompanyName() }
+    }
+
+    @Test
+    fun `loadCompanyName should keep previous company name when refresh is blank`() = runTest {
+        coEvery { systemConfigManager.refreshCompanyName() } returnsMany listOf("LongCare", "")
         val viewModel = createViewModel()
 
         viewModel.loadCompanyName()
@@ -54,7 +69,8 @@ class MainDashboardViewModelTest {
         advanceUntilIdle()
 
         assertEquals("LongCare", viewModel.companyName.value)
-        coVerify(exactly = 1) { systemConfigManager.getCompanyName() }
+        coVerify(exactly = 2) { systemConfigManager.refreshCompanyName() }
+        coVerify(exactly = 0) { systemConfigManager.getCompanyName() }
     }
 
     @Test
