@@ -4,11 +4,9 @@ import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
 import com.ytone.longcare.features.location.manager.LocationStateManager
-import com.ytone.longcare.features.location.provider.SystemLocationProvider
 import com.ytone.longcare.model.LocationResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
@@ -18,7 +16,6 @@ import kotlin.math.min
 class DefaultLocationFacade @Inject constructor(
     private val continuousAmapLocationManager: ContinuousAmapLocationManager,
     private val locationStateManager: LocationStateManager,
-    private val systemLocationProvider: SystemLocationProvider,
     private val locationKeepAliveManager: LocationKeepAliveManager
 ) : LocationFacade {
 
@@ -30,11 +27,9 @@ class DefaultLocationFacade @Inject constructor(
         locationStateManager.getValidLocation(LocationFacade.BUSINESS_LOCATION_CACHE_MAX_AGE_MS)?.let { return it }
 
         val boundedTimeoutMs = timeoutMs.coerceIn(MIN_LOCATION_TIMEOUT_MS, MAX_LOCATION_TIMEOUT_MS)
-        val startedAt = System.currentTimeMillis()
-        val amapTimeoutMs = min(MAX_AMAP_WAIT_MS, max(MIN_AMAP_WAIT_MS, boundedTimeoutMs / 2))
 
         val amapResult = try {
-            continuousAmapLocationManager.getCurrentLocation(amapTimeoutMs)
+            continuousAmapLocationManager.getCurrentLocation(boundedTimeoutMs)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -47,33 +42,8 @@ class DefaultLocationFacade @Inject constructor(
         }
         if (amapResult != null) {
             locationStateManager.recordLocationSuccess(amapResult)
-            return amapResult
         }
-
-        val elapsedMs = System.currentTimeMillis() - startedAt
-        val remainingTimeoutMs = boundedTimeoutMs - elapsedMs
-        if (remainingTimeoutMs <= 0L) {
-            return null
-        }
-
-        val systemResult = try {
-            withTimeoutOrNull(remainingTimeoutMs) {
-                systemLocationProvider.getCurrentLocation()
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            LocationEventTracker.trackError(
-                LocationEventTracker.EventType.SYSTEM_SINGLE_LOCATION_ERROR,
-                throwable = e,
-                extras = mapOf("errorMsg" to e.message)
-            )
-            null
-        }
-        if (systemResult != null) {
-            locationStateManager.recordLocationSuccess(systemResult)
-        }
-        return systemResult
+        return amapResult
     }
 
     override fun getCachedLocation(maxAgeMs: Long): LocationResult? {
@@ -91,7 +61,5 @@ class DefaultLocationFacade @Inject constructor(
     private companion object {
         const val MIN_LOCATION_TIMEOUT_MS = 1_000L
         const val MAX_LOCATION_TIMEOUT_MS = LocationFacade.DEFAULT_FAST_LOCATION_TIMEOUT_MS
-        const val MIN_AMAP_WAIT_MS = 1_000L
-        const val MAX_AMAP_WAIT_MS = 2_500L
     }
 }
