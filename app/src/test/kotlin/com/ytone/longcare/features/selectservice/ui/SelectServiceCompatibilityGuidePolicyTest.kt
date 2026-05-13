@@ -12,9 +12,8 @@ class SelectServiceCompatibilityGuidePolicyTest {
             "src/main/kotlin/com/ytone/longcare/features/selectservice/ui/SelectServiceScreen.kt"
         ).readText()
 
-        assertTrue(source.contains("getRequiredPermissionGuide"))
-        assertTrue(source.contains("getBatteryGuideStep"))
-        assertTrue(source.contains("getPopupPermissionGuideMessage"))
+        assertTrue(source.contains("getAllRequiredGuides"))
+        assertTrue(source.contains("UnifiedPermissionGuideDialog"))
         assertTrue(source.contains("onNextStep = singleClick"))
         assertTrue(source.contains("showCompatibilityGuideIfNeeded"))
         assertTrue(source.contains("onNavigateToServiceCountdown"))

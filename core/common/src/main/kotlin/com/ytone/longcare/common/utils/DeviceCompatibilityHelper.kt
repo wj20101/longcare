@@ -788,4 +788,82 @@ object DeviceCompatibilityHelper {
             }
         }
     }
+
+    /**
+     * 一次性收集所有需要引导的权限（电池 + 弹窗/悬浮窗），用于统一引导页。
+     */
+    fun getAllRequiredGuides(context: Context): List<PermissionGuideItem> {
+        val items = mutableListOf<PermissionGuideItem>()
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        // 1. 电池优化
+        if (!isIgnoringBatteryOptimizations(context)) {
+            val attempted = prefs.getBoolean(KEY_IGNORE_BATTERY_REQUEST_ATTEMPTED, false)
+            items += PermissionGuideItem(
+                type = PermissionGuideType.BATTERY,
+                title = if (attempted) "设置省电策略" else "关闭电池优化",
+                message = if (attempted) getBatteryGuideMessage() else "请将本应用加入「不受电池优化限制」名单，保证后台服务不被中断。",
+                isGranted = false,
+                settingsIntent = if (attempted) getBatteryOptimizationIntent(context) else getRequestIgnoreBatteryOptimizationIntent(context)
+            )
+        }
+
+        // 2. 自启动（仅特殊厂商）
+        if (needsSpecialAdaptation()) {
+            val autoStartIntent = getAutoStartIntent(context)
+            val autoStartGuideShown = prefs.getBoolean(KEY_AUTO_START_GUIDE_SHOWN, false)
+            if (autoStartIntent != null && !autoStartGuideShown) {
+                items += PermissionGuideItem(
+                    type = PermissionGuideType.BATTERY, // 归属电池类
+                    title = "开启自启动",
+                    message = getAutoStartGuideMessage(),
+                    isGranted = false,
+                    settingsIntent = autoStartIntent
+                )
+            }
+        }
+
+        // 3. 弹窗权限（特殊厂商检查后台弹窗；非特殊厂商检查悬浮窗）
+        if (needsSpecialAdaptation()) {
+            if (!hasBgStartPermission(context)) {
+                val shown = prefs.getBoolean(KEY_MANUFACTURER_GUIDE_SHOWN, false)
+                if (!shown) {
+                    items += PermissionGuideItem(
+                        type = PermissionGuideType.MANUFACTURER_POPUP,
+                        title = "开启弹窗权限",
+                        message = getPopupPermissionGuideMessage().orEmpty(),
+                        isGranted = false,
+                        settingsIntent = getPopupPermissionIntent(context)
+                    )
+                }
+            }
+        } else {
+            val fullScreenStatus = getFullScreenIntentStatus(context)
+            if (fullScreenStatus == FullScreenIntentStatus.DENIED && !hasOverlayPermission(context)) {
+                val shown = prefs.getBoolean(KEY_OVERLAY_GUIDE_SHOWN, false)
+                if (!shown) {
+                    items += PermissionGuideItem(
+                        type = PermissionGuideType.OVERLAY,
+                        title = "开启悬浮窗权限",
+                        message = "请开启「显示在其他应用上层」权限，保证服务结束时能弹出全屏提醒。",
+                        isGranted = false,
+                        settingsIntent = getOverlayPermissionIntent(context)
+                    )
+                }
+            }
+        }
+
+        return items
+    }
 }
+
+/**
+ * 统一权限引导项
+ */
+data class PermissionGuideItem(
+    val type: PermissionGuideType,
+    val title: String,
+    val message: String,
+    val isGranted: Boolean,
+    val settingsIntent: Intent
+)
