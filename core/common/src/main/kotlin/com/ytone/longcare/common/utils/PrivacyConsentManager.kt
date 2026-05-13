@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.core.content.edit
 
 /**
  * 隐私政策同意状态管理。
@@ -38,7 +39,7 @@ class PrivacyConsentManager @Inject constructor(
      */
     fun markConsented() {
         cachedConsent = true
-        prefs.edit().putBoolean(KEY_PRIVACY_CONSENTED, true).commit()
+        prefs.edit(commit = true) { putBoolean(KEY_PRIVACY_CONSENTED, true) }
     }
 
     /**
@@ -46,7 +47,7 @@ class PrivacyConsentManager @Inject constructor(
      */
     fun resetConsent() {
         cachedConsent = null
-        prefs.edit().remove(KEY_PRIVACY_CONSENTED).commit()
+        prefs.edit(commit = true) { remove(KEY_PRIVACY_CONSENTED) }
     }
 
     private companion object {

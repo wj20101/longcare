@@ -24,6 +24,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 
 @HiltAndroidApp
 class MainApplication : Application(), SingletonImageLoader.Factory, Configuration.Provider {
@@ -38,7 +39,7 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
     @Inject
     lateinit var privacyConsentManager: PrivacyConsentManager
 
-    private val postConsentInitDone = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val postConsentInitDone = AtomicBoolean(false)
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
