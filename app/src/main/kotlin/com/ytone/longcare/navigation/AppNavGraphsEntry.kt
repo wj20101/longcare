@@ -17,6 +17,7 @@ import com.ytone.longcare.shared.vm.TodayOrderViewModel
 internal fun NavGraphBuilder.registerEntryNavGraphs(navController: NavController) {
     composable<LoginRoute> {
         LoginScreen(
+            initialAgreementChecked = true,
             actions = LoginFeatureActions(
                 onLoginSuccess = { navController.navigateToHomeFromLogin() },
                 onOpenWebPage = { url, title -> navController.navigateToWebView(url, title) },

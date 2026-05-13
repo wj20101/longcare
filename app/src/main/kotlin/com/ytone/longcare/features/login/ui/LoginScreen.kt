@@ -39,7 +39,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
-import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.common.utils.showShortToast
 import com.ytone.longcare.common.utils.showLongToast
 import com.ytone.longcare.debug.NfcTestEntrySession
@@ -55,15 +54,9 @@ import com.ytone.longcare.theme.LongCareTheme
 fun LoginScreen(
     actions: LoginFeatureActions,
     viewModel: LoginViewModel = hiltViewModel(),
-    privacyConsentManager: PrivacyConsentManager? = null
+    initialAgreementChecked: Boolean = false
 ) {
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
-
-    val context = LocalContext.current
-    val consentManager = privacyConsentManager
-        ?: remember {
-            PrivacyConsentManager(context.applicationContext)
-        }
 
     val loginState by viewModel.loginState.collectAsStateWithLifecycle()
     val sendSmsState by viewModel.sendSmsCodeState.collectAsStateWithLifecycle()
@@ -77,7 +70,7 @@ fun LoginScreen(
         startConfigState = startConfigState,
         countdownSeconds = countdownSeconds,
         initialPhoneNumber = remember { viewModel.getLastLoginPhoneNumber() },
-        initialAgreementChecked = consentManager.isPrivacyConsented,
+        initialAgreementChecked = initialAgreementChecked,
         onPrivacyAgreementConfirmed = viewModel::onPrivacyAgreementConfirmed,
         onSendCodeClick = { phoneNumber -> viewModel.sendSmsCode(phoneNumber) },
         onLoginClick = { phoneNumber, code -> viewModel.login(phoneNumber, code) }
