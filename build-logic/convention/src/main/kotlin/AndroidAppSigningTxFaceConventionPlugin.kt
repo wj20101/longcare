@@ -42,10 +42,12 @@ class AndroidAppSigningTxFaceConventionPlugin : Plugin<Project> {
 
             target.extensions.configure<ApplicationExtension> {
                 val releaseBuildType = buildTypes.getByName("release")
+                val debugBuildType = buildTypes.getByName("debug")
                 if (releaseSigning != null) {
                     val releaseSigningConfig = signingConfigs.findByName("release") ?: signingConfigs.create("release")
                     releaseSigningConfig.applyReleaseSigning(releaseSigning)
                     releaseBuildType.signingConfig = releaseSigningConfig
+                    debugBuildType.signingConfig = releaseSigningConfig
                 } else if (allowUnsignedRelease) {
                     val debugSigningConfig = signingConfigs.findByName("debug")
                     if (debugSigningConfig != null) {

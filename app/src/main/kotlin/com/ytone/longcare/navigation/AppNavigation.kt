@@ -5,13 +5,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.MainViewModel
+import com.ytone.longcare.app.MainApplication
+import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.feature.home.FeatureEntry as HomeFeatureEntry
 import com.ytone.longcare.feature.identification.FeatureEntry as IdentificationFeatureEntry
@@ -34,7 +40,28 @@ private fun resolveStartDestination(sessionState: SessionState): Any = when (ses
 // ========== 主要Composable ==========
 
 @Composable
-fun MainApp(viewModel: MainViewModel = hiltViewModel()) {
+fun MainApp(
+    viewModel: MainViewModel = hiltViewModel(),
+    privacyConsentManager: PrivacyConsentManager? = null
+) {
+    val context = LocalContext.current
+    val consentManager = privacyConsentManager
+        ?: (context.applicationContext as MainApplication).privacyConsentManager
+    var isConsented by rememberSaveable { mutableStateOf(consentManager.isPrivacyConsented) }
+
+    // 首次启动时显示隐私政策同意弹窗
+    if (!isConsented) {
+        PrivacyConsentDialog(
+            onAgree = {
+                consentManager.markConsented()
+                (context.applicationContext as? MainApplication)?.performPostConsentInit()
+                isConsented = true
+            },
+            onDisagree = { /* Dialog 内部会 finish Activity */ }
+        )
+        return
+    }
+
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
     val appVersionModel by viewModel.appVersionModel.collectAsStateWithLifecycle()
     val updateViewModel: AppUpdateViewModel = hiltViewModel()

@@ -1,6 +1,7 @@
 package com.ytone.longcare.network.interceptor
 
 import com.ytone.longcare.common.config.RuntimeConfigProvider
+import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.repository.UserSessionRepository
@@ -17,6 +18,7 @@ class RequestInterceptor @Inject constructor(
     private val runtimeConfigProvider: RuntimeConfigProvider,
     private val requestDeviceInfoProvider: RequestDeviceInfoProvider,
     private val requestCryptoProvider: RequestCryptoProvider,
+    private val privacyConsentManager: PrivacyConsentManager,
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -35,8 +37,7 @@ class RequestInterceptor @Inject constructor(
         // 密钥只存在于当前请求的生命周期内，请求完成后自动释放
         newRequestBuilder.tag(AesKeyTag::class.java, AesKeyTag(randomString))
         
-        val skipDeviceId = url.encodedPath == "/V1/System/Start"
-        val map = iniHttpHeader(randomString, skipDeviceId)
+        val map = iniHttpHeader(randomString)
         if (map.isNotEmpty()) {
             for (head in map) {
                 newRequestBuilder.addHeader(head.key, head.value)
@@ -85,7 +86,7 @@ class RequestInterceptor @Inject constructor(
         return chain.proceed(build)
     }
 
-    private fun iniHttpHeader(randomString: String, skipDeviceId: Boolean = false): Map<String, String> {
+    private fun iniHttpHeader(randomString: String): Map<String, String> {
         val baseMap = mutableMapOf<String, Any>(
             "userId" to (userSessionRepository.sessionState.value.user?.userId ?: 0),
             "token" to userSessionRepository.sessionState.value.user?.token.orEmpty(),
@@ -99,8 +100,8 @@ class RequestInterceptor @Inject constructor(
             "versionName" to requestDeviceInfoProvider.getAppVersionName(),
             "channel" to "office"
         )
-        // 隐私政策同意前的请求（如获取协议URL）不发送deviceId，避免访问ANDROID_ID
-        if (!skipDeviceId) {
+        // 用户同意隐私政策后才发送 deviceId，避免在同意前访问 ANDROID_ID
+        if (privacyConsentManager.isPrivacyConsented) {
             baseMap["deviceId"] = requestDeviceInfoProvider.getAppInstanceId()
         }
         val map: Map<String, Any> = baseMap

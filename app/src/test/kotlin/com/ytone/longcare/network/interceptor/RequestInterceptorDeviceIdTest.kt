@@ -1,0 +1,114 @@
+package com.ytone.longcare.network.interceptor
+
+import com.ytone.longcare.common.config.RuntimeConfigProvider
+import com.ytone.longcare.common.utils.PrivacyConsentManager
+import com.ytone.longcare.domain.repository.SessionState
+import com.ytone.longcare.domain.repository.UserSessionRepository
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
+import kotlinx.coroutines.flow.MutableStateFlow
+import okhttp3.Interceptor
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+
+@RunWith(RobolectricTestRunner::class)
+class RequestInterceptorDeviceIdTest {
+
+    private lateinit var consentManager: PrivacyConsentManager
+    private lateinit var deviceInfoProvider: RequestDeviceInfoProvider
+    private lateinit var cryptoProvider: RequestCryptoProvider
+    private lateinit var userSessionRepository: UserSessionRepository
+    private lateinit var runtimeConfigProvider: RuntimeConfigProvider
+    private lateinit var interceptor: RequestInterceptor
+
+    private val capturedHeaderJson = slot<ByteArray>()
+
+    @Before
+    fun setUp() {
+        consentManager = mockk()
+        deviceInfoProvider = mockk()
+        cryptoProvider = mockk()
+        userSessionRepository = mockk()
+        runtimeConfigProvider = mockk()
+
+        every { runtimeConfigProvider.baseUrl } returns "https://api.example.com/"
+        every { runtimeConfigProvider.isDebug } returns false
+        every { runtimeConfigProvider.publicKey } returns "testPublicKey"
+
+        val sessionState = MutableStateFlow<SessionState>(SessionState.LoggedOut)
+        every { userSessionRepository.sessionState } returns sessionState
+
+        every { deviceInfoProvider.getAppVersionCode() } returns 1
+        every { deviceInfoProvider.getAppVersionName() } returns "1.0.0"
+        every { deviceInfoProvider.getAppInstanceId() } returns "test-device-id-123"
+
+        every { cryptoProvider.encryptRsaToHex(any(), any()) } returns "encrypted-aes-key"
+        every { cryptoProvider.encryptAesToHex(capture(capturedHeaderJson), any()) } returns "encrypted-header"
+
+        interceptor = RequestInterceptor(
+            userSessionRepository = userSessionRepository,
+            runtimeConfigProvider = runtimeConfigProvider,
+            requestDeviceInfoProvider = deviceInfoProvider,
+            requestCryptoProvider = cryptoProvider,
+            privacyConsentManager = consentManager,
+        )
+    }
+
+    @Test
+    fun `deviceId is excluded from headers when consent is not given`() {
+        every { consentManager.isPrivacyConsented } returns false
+
+        executeRequest()
+
+        val headerJson = String(capturedHeaderJson.captured)
+        assertFalse("Header should not contain deviceId", headerJson.contains("deviceId"))
+    }
+
+    @Test
+    fun `deviceId is included in headers when consent is given`() {
+        every { consentManager.isPrivacyConsented } returns true
+
+        executeRequest()
+
+        val headerJson = String(capturedHeaderJson.captured)
+        assertTrue("Header should contain deviceId", headerJson.contains("deviceId"))
+        assertTrue("Header should contain actual device id value", headerJson.contains("test-device-id-123"))
+    }
+
+    @Test
+    fun `getAppInstanceId is not called when consent is not given`() {
+        every { consentManager.isPrivacyConsented } returns false
+
+        executeRequest()
+
+        verify(exactly = 0) { deviceInfoProvider.getAppInstanceId() }
+    }
+
+    private fun executeRequest() {
+        val request = Request.Builder()
+            .url("https://api.example.com/V1/Test/Endpoint")
+            .build()
+
+        val dummyResponse = Response.Builder()
+            .request(request)
+            .protocol(Protocol.HTTP_1_1)
+            .code(200)
+            .message("OK")
+            .build()
+
+        val chain = mockk<Interceptor.Chain>()
+        every { chain.request() } returns request
+        every { chain.proceed(any()) } returns dummyResponse
+
+        interceptor.intercept(chain)
+    }
+}

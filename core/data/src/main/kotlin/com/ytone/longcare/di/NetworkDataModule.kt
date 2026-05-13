@@ -10,6 +10,7 @@ import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.common.network.FlavorInterceptorApplier
 import com.ytone.longcare.common.json.UnitJsonAdapter
 import com.ytone.longcare.common.json.UriJsonAdapter
+import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.network.interceptor.RequestCryptoProvider
 import com.ytone.longcare.network.interceptor.RequestDeviceInfoProvider
@@ -66,12 +67,14 @@ object NetworkDataModule {
         runtimeConfigProvider: RuntimeConfigProvider,
         requestDeviceInfoProvider: RequestDeviceInfoProvider,
         requestCryptoProvider: RequestCryptoProvider,
+        privacyConsentManager: PrivacyConsentManager,
     ): RequestInterceptor {
         return RequestInterceptor(
             userSessionRepository = userSessionRepository,
             runtimeConfigProvider = runtimeConfigProvider,
             requestDeviceInfoProvider = requestDeviceInfoProvider,
             requestCryptoProvider = requestCryptoProvider,
+            privacyConsentManager = privacyConsentManager,
         )
     }
 

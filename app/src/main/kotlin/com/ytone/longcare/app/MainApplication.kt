@@ -14,6 +14,7 @@ import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.common.utils.LogConfig
 import com.ytone.longcare.common.utils.LogFileConfig
+import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.worker.UpdateWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.io.File
@@ -28,13 +29,16 @@ import kotlinx.coroutines.launch
 class MainApplication : Application(), SingletonImageLoader.Factory, Configuration.Provider {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    // 如果你想让Coil全局使用Hilt提供的ImageLoader，
-    // 你的Application类需要实现ImageLoaderFactory
     @Inject
     lateinit var imageLoaderProvider: Provider<ImageLoader>
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
+
+    @Inject
+    lateinit var privacyConsentManager: PrivacyConsentManager
+
+    private var postConsentInitDone = false
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
@@ -45,12 +49,25 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
         super.onCreate()
 
         initLogger()
+
+        // 只有用户已同意隐私政策才初始化 SDK 和调度 Worker
+        if (privacyConsentManager.isPrivacyConsented) {
+            performPostConsentInit()
+        }
+    }
+
+    /**
+     * 隐私同意后调用，初始化需要设备标识符的 SDK 和 Worker。
+     * 首次同意时由 UI 层调用，后续启动由 onCreate 直接调用。
+     */
+    fun performPostConsentInit() {
+        if (postConsentInitDone) return
+        postConsentInitDone = true
         initCrashReportingIfNeeded()
         scheduleStartupWorkersAsync()
     }
 
     private fun initCrashReportingIfNeeded() {
-        // Debug/instrumentation builds prioritize startup determinism over crash-report SDK bootstrap.
         if (BuildConfig.DEBUG) return
         val userStrategy = CrashReport.UserStrategy(this)
         CrashReport.initCrashReport(this, userStrategy)
