@@ -173,7 +173,6 @@
             android:name=".presentation.countdown.CountdownAlarmActivity"
             android:exported="false"
             android:launchMode="singleTop"
-            android:showOnLockScreen="true"
             android:turnScreenOn="true"
             tools:targetApi="o_mr1"
             android:theme="@style/Theme.LongCare" />

@@ -82,11 +82,6 @@ fun WebViewScreen(
                                 return !isSafeHttpUrl(request?.url?.toString())
                             }
 
-                            @Suppress("OVERRIDE_DEPRECATION")
-                            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                                return !isSafeHttpUrl(url)
-                            }
-
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 super.onPageFinished(view, url)
                                 isLoading = false
