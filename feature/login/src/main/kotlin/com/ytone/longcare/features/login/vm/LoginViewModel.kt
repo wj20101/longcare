@@ -41,17 +41,16 @@ class LoginViewModel @Inject constructor(
     private var countdownJob: Job? = null
     private var nfcEventJob: Job? = null
     private var privacyAgreementConfirmed = false
-    private var startConfigRequested = false
+
+    init {
+        loadStartConfig()
+    }
 
     /**
-     * 用户确认隐私协议后，才加载启动配置（用户协议和隐私政策URL）。
+     * 用户确认隐私协议后记录状态。
      */
     fun onPrivacyAgreementConfirmed() {
         privacyAgreementConfirmed = true
-        if (!startConfigRequested) {
-            startConfigRequested = true
-            loadStartConfig()
-        }
     }
 
     private fun loadStartConfig() {

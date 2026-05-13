@@ -35,7 +35,8 @@ class RequestInterceptor @Inject constructor(
         // 密钥只存在于当前请求的生命周期内，请求完成后自动释放
         newRequestBuilder.tag(AesKeyTag::class.java, AesKeyTag(randomString))
         
-        val map = iniHttpHeader(randomString)
+        val skipDeviceId = url.encodedPath == "/V1/System/Start"
+        val map = iniHttpHeader(randomString, skipDeviceId)
         if (map.isNotEmpty()) {
             for (head in map) {
                 newRequestBuilder.addHeader(head.key, head.value)
@@ -84,8 +85,8 @@ class RequestInterceptor @Inject constructor(
         return chain.proceed(build)
     }
 
-    private fun iniHttpHeader(randomString: String): Map<String, String> {
-        val map = mapOf<String, Any>(
+    private fun iniHttpHeader(randomString: String, skipDeviceId: Boolean = false): Map<String, String> {
+        val baseMap = mutableMapOf<String, Any>(
             "userId" to (userSessionRepository.sessionState.value.user?.userId ?: 0),
             "token" to userSessionRepository.sessionState.value.user?.token.orEmpty(),
             "accountId" to (userSessionRepository.sessionState.value.user?.accountId ?: 0),
@@ -96,9 +97,13 @@ class RequestInterceptor @Inject constructor(
             "platform" to "android",
             "versionCode" to requestDeviceInfoProvider.getAppVersionCode(),
             "versionName" to requestDeviceInfoProvider.getAppVersionName(),
-            "deviceId" to requestDeviceInfoProvider.getAppInstanceId(),
             "channel" to "office"
         )
+        // 隐私政策同意前的请求（如获取协议URL）不发送deviceId，避免访问ANDROID_ID
+        if (!skipDeviceId) {
+            baseMap["deviceId"] = requestDeviceInfoProvider.getAppInstanceId()
+        }
+        val map: Map<String, Any> = baseMap
         val headerInfo = JSONObject(map).toString()
 
         // 记录加密前的原始Header信息

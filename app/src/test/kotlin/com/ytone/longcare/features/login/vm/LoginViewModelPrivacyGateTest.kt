@@ -24,16 +24,23 @@ class LoginViewModelPrivacyGateTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun `init does not request startup config before privacy confirmation`() = runTest {
+    fun `init loads startup config immediately`() = runTest {
         val repository = mockk<LoginRepository>(relaxed = true)
+        coEvery { repository.getStartConfig() } returns ApiResult.Success(
+            StartConfigResultModel(
+                userXieYiUrl = "https://example.com/user",
+                yinSiXieYiUrl = "https://example.com/privacy"
+            )
+        )
 
-        createViewModel(repository)
+        val viewModel = createViewModel(repository)
 
-        coVerify(exactly = 0) { repository.getStartConfig() }
+        assertTrue(viewModel.startConfigState.value is StartConfigUiState.Success)
+        coVerify(exactly = 1) { repository.getStartConfig() }
     }
 
     @Test
-    fun `privacy confirmation loads startup config once`() = runTest {
+    fun `startup config is loaded only once regardless of privacy confirmation`() = runTest {
         val repository = mockk<LoginRepository>(relaxed = true)
         coEvery { repository.getStartConfig() } returns ApiResult.Success(
             StartConfigResultModel(
@@ -54,6 +61,12 @@ class LoginViewModelPrivacyGateTest {
     @Test
     fun `send code and login are blocked before privacy confirmation`() = runTest {
         val repository = mockk<LoginRepository>(relaxed = true)
+        coEvery { repository.getStartConfig() } returns ApiResult.Success(
+            StartConfigResultModel(
+                userXieYiUrl = "https://example.com/user",
+                yinSiXieYiUrl = "https://example.com/privacy"
+            )
+        )
         val viewModel = createViewModel(repository)
 
         viewModel.sendSmsCode("13800138000")
