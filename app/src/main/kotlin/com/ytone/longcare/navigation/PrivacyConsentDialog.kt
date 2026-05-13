@@ -239,7 +239,9 @@ private fun InAppWebViewDialog(
                                 builtInZoomControls = true
                                 displayZoomControls = false
                             }
-                            loadUrl(url)
+                            if (url.startsWith("https://") || url.startsWith("http://")) {
+                                loadUrl(url)
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxSize()

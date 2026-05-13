@@ -2,7 +2,6 @@ package com.ytone.longcare.common.utils
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.core.content.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -35,18 +34,19 @@ class PrivacyConsentManager @Inject constructor(
 
     /**
      * 记录用户同意隐私政策。
+     * 先更新内存缓存再同步写入磁盘，避免竞态条件。
      */
     fun markConsented() {
-        prefs.edit { putBoolean(KEY_PRIVACY_CONSENTED, true) }
         cachedConsent = true
+        prefs.edit().putBoolean(KEY_PRIVACY_CONSENTED, true).commit()
     }
 
     /**
      * 重置同意状态（用于测试或注销场景）。
      */
     fun resetConsent() {
-        prefs.edit { remove(KEY_PRIVACY_CONSENTED) }
         cachedConsent = null
+        prefs.edit().remove(KEY_PRIVACY_CONSENTED).commit()
     }
 
     private companion object {

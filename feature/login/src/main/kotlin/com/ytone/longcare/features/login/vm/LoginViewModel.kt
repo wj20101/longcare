@@ -43,6 +43,7 @@ class LoginViewModel @Inject constructor(
     private var privacyAgreementConfirmed = false
 
     init {
+        // Safe: LoginViewModel is only created after privacy consent (AppNavigation gates with return)
         loadStartConfig()
     }
 

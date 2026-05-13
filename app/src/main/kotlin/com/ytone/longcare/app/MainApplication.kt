@@ -38,7 +38,7 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
     @Inject
     lateinit var privacyConsentManager: PrivacyConsentManager
 
-    private var postConsentInitDone = false
+    private val postConsentInitDone = java.util.concurrent.atomic.AtomicBoolean(false)
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
@@ -61,8 +61,7 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
      * 首次同意时由 UI 层调用，后续启动由 onCreate 直接调用。
      */
     fun performPostConsentInit() {
-        if (postConsentInitDone) return
-        postConsentInitDone = true
+        if (!postConsentInitDone.compareAndSet(false, true)) return
         initCrashReportingIfNeeded()
         scheduleStartupWorkersAsync()
     }
