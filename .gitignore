@@ -59,4 +59,3 @@ captures/
 !app/src/**/generated/
 !app/src/**/generated/baselineProfiles/
 !app/src/**/generated/baselineProfiles/**
-doc/
