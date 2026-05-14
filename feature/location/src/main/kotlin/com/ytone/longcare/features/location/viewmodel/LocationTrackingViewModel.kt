@@ -32,6 +32,14 @@ class LocationTrackingViewModel @Inject constructor(
     }
 
     /**
+     * 定位权限刚被授予后调用，重启定位引擎再启动追踪。
+     */
+    fun onPermissionGrantedAndStartTracking(orderKey: OrderKey) {
+        trackingManager.notifyPermissionGranted()
+        trackingManager.startTracking(orderKey)
+    }
+
+    /**
      * 进入服务流程时，确保定位会话已开启。
      * 若检测到已有其他订单的定位上报在运行，先停止旧上报再开启当前会话。
      */

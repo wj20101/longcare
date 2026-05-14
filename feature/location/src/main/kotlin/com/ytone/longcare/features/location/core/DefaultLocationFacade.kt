@@ -58,6 +58,10 @@ class DefaultLocationFacade @Inject constructor(
         locationKeepAliveManager.release(owner)
     }
 
+    override fun notifyPermissionGranted() {
+        continuousAmapLocationManager.restartAfterPermissionGrant()
+    }
+
     private companion object {
         const val MIN_LOCATION_TIMEOUT_MS = 1_000L
         const val MAX_LOCATION_TIMEOUT_MS = LocationFacade.DEFAULT_FAST_LOCATION_TIMEOUT_MS

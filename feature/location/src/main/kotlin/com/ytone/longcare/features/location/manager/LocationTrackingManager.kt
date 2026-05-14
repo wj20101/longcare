@@ -53,6 +53,11 @@ class LocationTrackingManager @Inject constructor(
         locationReportingManager.startReporting(orderKey)
     }
 
+    /** 定位权限授予后调用，重启底层定位引擎 */
+    fun notifyPermissionGranted() {
+        locationFacade.notifyPermissionGranted()
+    }
+
     /**
      * 停止位置上报业务。
      */

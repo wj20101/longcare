@@ -21,6 +21,9 @@ interface LocationFacade {
 
     fun releaseKeepAlive(owner: String)
 
+    /** 定位权限授予后调用，重启定位引擎 */
+    fun notifyPermissionGranted() {}
+
     companion object {
         const val DEFAULT_FAST_LOCATION_TIMEOUT_MS: Long = 4_000L
         const val BUSINESS_LOCATION_CACHE_MAX_AGE_MS: Long = 5 * 60 * 1000L

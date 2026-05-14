@@ -227,6 +227,17 @@ class ContinuousAmapLocationManager @Inject constructor(
     }
     
     /**
+     * 权限授予后重启定位引擎。
+     * AMap SDK 在无权限时启动会进入错误状态，授权后需要 stop+start 才能恢复。
+     */
+    fun restartAfterPermissionGrant() {
+        val client = locationClient ?: return
+        logI("权限变更，重启高德定位引擎")
+        client.stopLocation()
+        client.startLocation()
+    }
+
+    /**
      * 停止持续定位
      */
     fun stopContinuousLocation() {

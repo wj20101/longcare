@@ -104,7 +104,7 @@ internal fun rememberNfcWorkflowLocationHandlers(
 
     val trackingPermissionLauncher = rememberLocationPermissionLauncher(
         onPermissionGranted = {
-            locationTrackingViewModel.onStartClicked(orderKey)
+            locationTrackingViewModel.onPermissionGrantedAndStartTracking(orderKey)
             pendingTrackingReadyAction?.invoke()
             pendingTrackingReadyAction = null
         },
