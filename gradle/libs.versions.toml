@@ -7,7 +7,7 @@ coroutines = "1.11.0"
 ksp = "2.3.7"
 
 # Compose Versions
-composeBom = "2026.05.00"
+composeBom = "2026.05.01"
 
 # AndroidX Core & Lifecycle
 coreKtx = "1.18.0"
