@@ -40,7 +40,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.showShortToast
-import com.ytone.longcare.common.utils.showLongToast
 import com.ytone.longcare.debug.NfcTestEntrySession
 import com.ytone.longcare.feature.login.api.LoginFeatureActions
 import com.ytone.longcare.feature.login.ext.maxPhoneLength
@@ -49,6 +48,9 @@ import com.ytone.longcare.features.login.vm.LoginViewModel
 import com.ytone.longcare.features.login.vm.SendSmsCodeUiState
 import com.ytone.longcare.features.login.vm.StartConfigUiState
 import com.ytone.longcare.theme.LongCareTheme
+
+private const val FALLBACK_USER_AGREEMENT_URL = "https://www.ytone.com.cn/longcare/xieyi/user.html"
+private const val FALLBACK_PRIVACY_POLICY_URL = "https://www.ytone.com.cn/longcare/xieyi/yinsi.html"
 
 @Composable
 fun LoginScreen(
@@ -104,8 +106,6 @@ fun LoginScreenContent(
     onLoginClick: (String, String) -> Unit
 ) {
     val context = LocalContext.current
-    val userAgreementToast = stringResource(R.string.login_user_agreement_toast)
-    val privacyPolicyToast = stringResource(R.string.login_privacy_policy_toast)
     val agreementConfirmMessage = stringResource(R.string.login_agreement_confirm_message)
     val agreementConfirmAction = stringResource(R.string.login_agreement_confirm_action)
     val agreementCancelAction = stringResource(R.string.login_agreement_cancel_action)
@@ -127,31 +127,17 @@ fun LoginScreenContent(
     }
 
     val openUserAgreement = {
-        when (val state = startConfigState) {
-            is StartConfigUiState.Success -> {
-                if (state.data.userXieYiUrl.isNotEmpty()) {
-                    actions.onOpenWebPage(state.data.userXieYiUrl, "")
-                } else {
-                    context.showLongToast(userAgreementToast)
-                }
-            }
-
-            else -> context.showLongToast(userAgreementToast)
-        }
+        val url = (startConfigState as? StartConfigUiState.Success)
+            ?.data?.userXieYiUrl?.takeIf { it.isNotEmpty() }
+            ?: FALLBACK_USER_AGREEMENT_URL
+        actions.onOpenWebPage(url, "")
     }
 
     val openPrivacyPolicy = {
-        when (val state = startConfigState) {
-            is StartConfigUiState.Success -> {
-                if (state.data.yinSiXieYiUrl.isNotEmpty()) {
-                    actions.onOpenWebPage(state.data.yinSiXieYiUrl, "")
-                } else {
-                    context.showLongToast(privacyPolicyToast)
-                }
-            }
-
-            else -> context.showLongToast(privacyPolicyToast)
-        }
+        val url = (startConfigState as? StartConfigUiState.Success)
+            ?.data?.yinSiXieYiUrl?.takeIf { it.isNotEmpty() }
+            ?: FALLBACK_PRIVACY_POLICY_URL
+        actions.onOpenWebPage(url, "")
     }
 
     val proceedLogin = {
