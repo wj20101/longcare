@@ -13,6 +13,7 @@ import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.domain.facecache.FaceCacheCleaner
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.first
@@ -21,6 +22,7 @@ import java.io.File
 import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 
+@Singleton
 class IdentificationFaceDataSource @Inject constructor(
     @param:ApplicationContext private val context: Context,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
