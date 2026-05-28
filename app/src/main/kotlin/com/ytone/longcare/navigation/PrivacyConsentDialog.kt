@@ -7,6 +7,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.core.net.toUri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -239,7 +240,7 @@ private fun InAppWebViewDialog(
                                 builtInZoomControls = true
                                 displayZoomControls = false
                             }
-                            if (url.startsWith("https://") || url.startsWith("http://")) {
+                            if (isSafeHttpUrl(url)) {
                                 loadUrl(url)
                             }
                         }
@@ -257,4 +258,10 @@ private fun InAppWebViewDialog(
             }
         }
     }
+}
+
+private fun isSafeHttpUrl(url: String?): Boolean {
+    if (url.isNullOrBlank()) return false
+    val scheme = runCatching { url.toUri().scheme?.lowercase() }.getOrNull()
+    return scheme == "http" || scheme == "https"
 }

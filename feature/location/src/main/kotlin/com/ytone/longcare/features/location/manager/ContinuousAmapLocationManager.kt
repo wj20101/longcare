@@ -60,6 +60,7 @@ class ContinuousAmapLocationManager @Inject constructor(
      * 
      * @param interval 定位间隔（毫秒），默认30秒
      */
+    @Synchronized
     private fun initContinuousLocationClient(
         apiKey: String,
         interval: Long = DEFAULT_INTERVAL
@@ -230,6 +231,7 @@ class ContinuousAmapLocationManager @Inject constructor(
      * 权限授予后重启定位引擎。
      * AMap SDK 在无权限时启动会进入错误状态，授权后需要 stop+start 才能恢复。
      */
+    @Synchronized
     fun restartAfterPermissionGrant() {
         val client = locationClient ?: return
         logI("权限变更，重启高德定位引擎")
@@ -240,6 +242,7 @@ class ContinuousAmapLocationManager @Inject constructor(
     /**
      * 停止持续定位
      */
+    @Synchronized
     fun stopContinuousLocation() {
         locationClient?.stopLocation()
         logI("持续高德定位已手动停止")
@@ -248,6 +251,7 @@ class ContinuousAmapLocationManager @Inject constructor(
     /**
      * 销毁定位客户端
      */
+    @Synchronized
     fun destroy() {
         locationClient?.onDestroy()
         locationClient = null
@@ -260,6 +264,7 @@ class ContinuousAmapLocationManager @Inject constructor(
      * 
      * @param interval 新的定位间隔（毫秒）
      */
+    @Synchronized
     fun updateInterval(interval: Long) {
         val coercedInterval = interval.coerceIn(MIN_INTERVAL, MAX_INTERVAL)
         currentIntervalMs = coercedInterval
@@ -274,6 +279,7 @@ class ContinuousAmapLocationManager @Inject constructor(
      * @param notificationId 通知的ID
      * @param notification 通知对象
      */
+    @Synchronized
     fun enableBackgroundLocation(notificationId: Int, notification: android.app.Notification) {
         // 无论是否初始化，都缓存通知，确保重建时能自动恢复
         pendingNotification = notificationId to notification
@@ -299,6 +305,7 @@ class ContinuousAmapLocationManager @Inject constructor(
      *
      * @param removeNotification 是否移除通知
      */
+    @Synchronized
     fun disableBackgroundLocation(removeNotification: Boolean) {
         pendingNotification = null
         if (locationClient == null) return
