@@ -60,13 +60,6 @@ fun LoginScreen(
 ) {
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
-    // 隐私弹窗已同意时，同步通知 ViewModel
-    LaunchedEffect(initialAgreementChecked) {
-        if (initialAgreementChecked) {
-            viewModel.onPrivacyAgreementConfirmed()
-        }
-    }
-
     val loginState by viewModel.loginState.collectAsStateWithLifecycle()
     val sendSmsState by viewModel.sendSmsCodeState.collectAsStateWithLifecycle()
     val startConfigState by viewModel.startConfigState.collectAsStateWithLifecycle()
