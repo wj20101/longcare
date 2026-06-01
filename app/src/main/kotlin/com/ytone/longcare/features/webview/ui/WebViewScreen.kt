@@ -130,6 +130,7 @@ fun WebViewScreen(
 
 private fun isSafeHttpUrl(url: String?): Boolean {
     if (url.isNullOrBlank()) return false
-    val scheme = runCatching { url.toUri().scheme?.lowercase() }.getOrNull()
+    val uri = runCatching { url.toUri() }.getOrNull() ?: return false
+    val scheme = uri.scheme?.lowercase()
     return scheme == "http" || scheme == "https"
 }

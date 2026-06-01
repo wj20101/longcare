@@ -82,7 +82,9 @@ internal fun HomeScreenPagerContent(
                     2 -> ProfileScreen(
                         actions = ProfileActions(
                             onNavigateToHaveServiceUserList = actions.onNavigateToHaveServiceUserList,
-                            onNavigateToNoServiceUserList = actions.onNavigateToNoServiceUserList
+                            onNavigateToNoServiceUserList = actions.onNavigateToNoServiceUserList,
+                            onOpenUserAgreement = actions.onOpenUserAgreement,
+                            onOpenPrivacyPolicy = actions.onOpenPrivacyPolicy
                         ),
                         homeSharedViewModel = homeSharedViewModel
                     )

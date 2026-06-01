@@ -47,10 +47,8 @@ import com.ytone.longcare.features.login.vm.LoginUiState
 import com.ytone.longcare.features.login.vm.LoginViewModel
 import com.ytone.longcare.features.login.vm.SendSmsCodeUiState
 import com.ytone.longcare.features.login.vm.StartConfigUiState
+import com.ytone.longcare.privacy.AgreementUrls
 import com.ytone.longcare.theme.LongCareTheme
-
-private const val FALLBACK_USER_AGREEMENT_URL = "https://www.ytone.com.cn/longcare/xieyi/user.html"
-private const val FALLBACK_PRIVACY_POLICY_URL = "https://www.ytone.com.cn/longcare/xieyi/yinsi.html"
 
 @Composable
 fun LoginScreen(
@@ -110,11 +108,13 @@ fun LoginScreenContent(
     var verificationCode by remember { mutableStateOf("") }
     var agreementChecked by rememberSaveable { mutableStateOf(initialAgreementChecked) }
     var showAgreementDialog by rememberSaveable { mutableStateOf(false) }
-    var pendingAgreementAction by rememberSaveable { mutableStateOf<PendingAgreementAction?>(null) }
     val verificationCodeFocusRequester = remember { FocusRequester() }
     val updateAgreementChecked: (Boolean) -> Unit = { checked ->
         agreementChecked = checked
-        if (checked) {
+    }
+
+    LaunchedEffect(agreementChecked) {
+        if (agreementChecked) {
             onPrivacyAgreementConfirmed()
         }
     }
@@ -122,15 +122,12 @@ fun LoginScreenContent(
     val openUserAgreement = {
         val url = (startConfigState as? StartConfigUiState.Success)
             ?.data?.userXieYiUrl?.takeIf { it.isNotEmpty() }
-            ?: FALLBACK_USER_AGREEMENT_URL
+            ?: AgreementUrls.USER_AGREEMENT_URL
         actions.onOpenWebPage(url, "")
     }
 
     val openPrivacyPolicy = {
-        val url = (startConfigState as? StartConfigUiState.Success)
-            ?.data?.yinSiXieYiUrl?.takeIf { it.isNotEmpty() }
-            ?: FALLBACK_PRIVACY_POLICY_URL
-        actions.onOpenWebPage(url, "")
+        actions.onOpenWebPage(AgreementUrls.PRIVACY_POLICY_URL, "")
     }
 
     val proceedLogin = {
@@ -141,7 +138,6 @@ fun LoginScreenContent(
         if (agreementChecked) {
             onSendCodeClick(phoneNumber)
         } else {
-            pendingAgreementAction = PendingAgreementAction.SEND_CODE
             showAgreementDialog = true
         }
     }
@@ -150,7 +146,6 @@ fun LoginScreenContent(
         if (agreementChecked) {
             proceedLogin()
         } else {
-            pendingAgreementAction = PendingAgreementAction.LOGIN
             showAgreementDialog = true
         }
     }
@@ -253,14 +248,7 @@ fun LoginScreenContent(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val action = pendingAgreementAction ?: PendingAgreementAction.LOGIN
-                        updateAgreementChecked(true)
                         showAgreementDialog = false
-                        pendingAgreementAction = null
-                        when (action) {
-                            PendingAgreementAction.SEND_CODE -> onSendCodeClick(phoneNumber)
-                            PendingAgreementAction.LOGIN -> proceedLogin()
-                        }
                     }
                 ) {
                     Text(text = agreementConfirmAction)
@@ -268,7 +256,6 @@ fun LoginScreenContent(
             },
             dismissButton = {
                 TextButton(onClick = {
-                    pendingAgreementAction = null
                     showAgreementDialog = false
                 }) {
                     Text(text = agreementCancelAction)
@@ -282,11 +269,6 @@ fun LoginScreenContent(
             verificationCodeFocusRequester.requestFocus()
         }
     }
-}
-
-private enum class PendingAgreementAction {
-    SEND_CODE,
-    LOGIN
 }
 
 @Preview(showBackground = true)

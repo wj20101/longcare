@@ -9,5 +9,7 @@ data class HomeActions(
     val onNavigateToService: (OrderKey) -> Unit,
     val onNavigateToServiceCountdown: (OrderKey, List<Int>) -> Unit,
     val onNavigateToHaveServiceUserList: () -> Unit,
-    val onNavigateToNoServiceUserList: () -> Unit
+    val onNavigateToNoServiceUserList: () -> Unit,
+    val onOpenUserAgreement: () -> Unit,
+    val onOpenPrivacyPolicy: () -> Unit
 )

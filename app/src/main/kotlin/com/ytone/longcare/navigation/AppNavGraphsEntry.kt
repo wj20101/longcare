@@ -12,6 +12,7 @@ import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.model.WatermarkData
+import com.ytone.longcare.privacy.AgreementUrls
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 
 internal fun NavGraphBuilder.registerEntryNavGraphs(navController: NavController) {
@@ -56,7 +57,13 @@ internal fun NavGraphBuilder.registerEntryNavGraphs(navController: NavController
                         navController.navigateToServiceCountdown(orderKey, projectIdList)
                     },
                     onNavigateToHaveServiceUserList = { navController.navigateToHaveServiceUserList() },
-                    onNavigateToNoServiceUserList = { navController.navigateToNoServiceUserList() }
+                    onNavigateToNoServiceUserList = { navController.navigateToNoServiceUserList() },
+                    onOpenUserAgreement = {
+                        navController.navigateToWebView(AgreementUrls.USER_AGREEMENT_URL, "用户协议")
+                    },
+                    onOpenPrivacyPolicy = {
+                        navController.navigateToWebView(AgreementUrls.PRIVACY_POLICY_URL, "隐私政策")
+                    }
                 ),
                 todayOrderViewModel = todayOrderViewModel
             )

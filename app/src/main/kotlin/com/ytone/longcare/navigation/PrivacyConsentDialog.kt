@@ -48,9 +48,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.ytone.longcare.R
-
-private const val USER_AGREEMENT_URL = "https://www.ytone.com.cn/longcare/xieyi/user.html"
-private const val PRIVACY_POLICY_URL = "https://www.ytone.com.cn/longcare/xieyi/yinsi.html"
+import com.ytone.longcare.privacy.AgreementUrls
 
 /**
  * 首次启动的隐私政策同意弹窗。
@@ -94,7 +92,7 @@ fun PrivacyConsentDialog(
                     append("欢迎使用${appName}！\n\n")
                     append("我们非常重视您的个人信息和隐私保护。在您使用我们的服务前，请仔细阅读并了解")
 
-                    pushStringAnnotation(tag = "URL", annotation = USER_AGREEMENT_URL)
+                    pushStringAnnotation(tag = "URL", annotation = AgreementUrls.USER_AGREEMENT_URL)
                     withStyle(SpanStyle(color = linkColor, fontWeight = FontWeight.Medium)) {
                         append("《用户服务协议》")
                     }
@@ -102,7 +100,7 @@ fun PrivacyConsentDialog(
 
                     append("和")
 
-                    pushStringAnnotation(tag = "URL", annotation = PRIVACY_POLICY_URL)
+                    pushStringAnnotation(tag = "URL", annotation = AgreementUrls.PRIVACY_POLICY_URL)
                     withStyle(SpanStyle(color = linkColor, fontWeight = FontWeight.Medium)) {
                         append("《隐私政策》")
                     }
@@ -112,8 +110,9 @@ fun PrivacyConsentDialog(
                     withStyle(SpanStyle(fontWeight = FontWeight.Medium)) {
                         append("我们将通过上述协议向您说明：\n")
                     }
-                    append("(1)《隐私政策》中关于个人设备用户信息的收集和使用的说明。\n")
-                    append("(2)《隐私政策》中与第三方SDK类服务商数据共享、相关信息收集和使用说明。\n\n")
+                    append("(1) 设备信息、Android ID、MAC地址、软件安装列表、应用安装实例ID、位置信息、相机/相册、剪贴板写入等个人信息的处理目的、方式和范围。\n")
+                    append("(2) 开机后服务提醒恢复、应用内更新安装等系统能力的使用场景。\n")
+                    append("(3) 高德定位、腾讯Bugly、腾讯云人脸核验、腾讯云COS等第三方SDK/服务的数据共享和信息处理说明。\n\n")
                     append("如您同意以上协议内容，请点击\"同意并继续\"开始使用我们的服务。")
                 }
 
@@ -217,8 +216,7 @@ private fun InAppWebViewDialog(
                                 override fun shouldOverrideUrlLoading(
                                     view: WebView?, request: WebResourceRequest?
                                 ): Boolean {
-                                    val scheme = request?.url?.scheme?.lowercase()
-                                    return scheme != "http" && scheme != "https"
+                                    return !isSafeHttpUrl(request?.url?.toString())
                                 }
 
                                 override fun onPageFinished(view: WebView?, url: String?) {
@@ -242,6 +240,8 @@ private fun InAppWebViewDialog(
                             }
                             if (isSafeHttpUrl(url)) {
                                 loadUrl(url)
+                            } else {
+                                isLoading = false
                             }
                         }
                     },
@@ -262,6 +262,7 @@ private fun InAppWebViewDialog(
 
 private fun isSafeHttpUrl(url: String?): Boolean {
     if (url.isNullOrBlank()) return false
-    val scheme = runCatching { url.toUri().scheme?.lowercase() }.getOrNull()
+    val uri = runCatching { url.toUri() }.getOrNull() ?: return false
+    val scheme = uri.scheme?.lowercase()
     return scheme == "http" || scheme == "https"
 }

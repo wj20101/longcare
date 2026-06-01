@@ -75,7 +75,7 @@ class LoginAgreementConsentRowTest {
         composeRule.onNodeWithTag("login_agreement_checkbox").performClick()
         composeRule.onNodeWithTag("login_agreement_checkbox").assertIsOn()
 
-        composeRule.onNodeWithText("登录即表明已阅读并同意", substring = true).performClick()
+        composeRule.onNodeWithText("我已阅读并同意", substring = true).performClick()
         composeRule.onNodeWithTag("login_agreement_checkbox").assertIsOn()
     }
 }
@@ -240,10 +240,10 @@ class LoginScreenAgreementDialogTest {
         composeRule.onNodeWithText("请输入您的手机号码").performTextInput("13800138000")
         composeRule.onNodeWithText("输入验证码").performTextInput("123456")
         composeRule.onNodeWithText("确定登录").performClick()
-        composeRule.onNodeWithText("确认并同意").performClick()
+        composeRule.onNodeWithText("我知道了").performClick()
 
-        composeRule.onNodeWithTag("login_agreement_checkbox").assertIsOn()
-        assertEquals(1, loginCount)
+        composeRule.onNodeWithTag("login_agreement_checkbox").assertIsOff()
+        assertEquals(0, loginCount)
     }
 }
 ```
@@ -264,8 +264,8 @@ Expected: FAIL because the login screen does not yet show an agreement dialog or
 Add the new strings in `app/src/main/res/values/strings.xml`:
 
 ```xml
-<string name="login_agreement_confirm_message">登录前请先阅读并同意《用户协议》和《隐私政策》</string>
-<string name="login_agreement_confirm_action">确认并同意</string>
+<string name="login_agreement_confirm_message">请先主动勾选同意《用户协议》和《隐私政策》后再继续</string>
+<string name="login_agreement_confirm_action">我知道了</string>
 <string name="login_agreement_cancel_action">取消</string>
 ```
 
@@ -414,7 +414,7 @@ Manual checklist:
 6. Return, tap 《隐私政策》, and confirm the privacy page opens.
 7. Return, tap login while unchecked, and confirm the dialog appears.
 8. Tap 取消 and confirm login does not continue.
-9. Tap login again, then tap 确认并同意 and confirm the checkbox becomes checked and login continues.
+9. Tap login again, then tap 我知道了 and confirm the checkbox remains unchecked and login does not continue.
 ```
 
 - [ ] **Step 5: Commit any final polish if verification required small follow-up changes**

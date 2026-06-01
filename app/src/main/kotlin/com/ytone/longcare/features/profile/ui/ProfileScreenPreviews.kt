@@ -42,7 +42,9 @@ fun StatsCardPreview() {
             StatsCard(
                 actions = ProfileActions(
                     onNavigateToHaveServiceUserList = {},
-                    onNavigateToNoServiceUserList = {}
+                    onNavigateToNoServiceUserList = {},
+                    onOpenUserAgreement = {},
+                    onOpenPrivacyPolicy = {}
                 ),
                 stats = stats
             )
@@ -65,7 +67,14 @@ fun StatItemPreview() {
 fun OptionsCardPreview() {
     LongCareTheme {
         Surface {
-            OptionsCard()
+            OptionsCard(
+                actions = ProfileActions(
+                    onNavigateToHaveServiceUserList = {},
+                    onNavigateToNoServiceUserList = {},
+                    onOpenUserAgreement = {},
+                    onOpenPrivacyPolicy = {}
+                )
+            )
         }
     }
 }

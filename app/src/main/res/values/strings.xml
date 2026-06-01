@@ -37,12 +37,12 @@
     <string name="login_privacy_policy_toast">隐私政策</string>
     <string name="login_resend_code_countdown">%d秒后重发</string>
     <string name="login_send_code_button_text">发送验证码</string>
-    <string name="login_agreement_prefix">登录即表明已阅读并同意</string>
+    <string name="login_agreement_prefix">我已阅读并同意</string>
     <string name="login_user_agreement">《用户协议》</string>
     <string name="login_agreement_and">和</string>
     <string name="login_privacy_policy">《隐私政策》</string>
-    <string name="login_agreement_confirm_message">登录前请先阅读并同意《用户协议》和《隐私政策》</string>
-    <string name="login_agreement_confirm_action">确认并同意</string>
+    <string name="login_agreement_confirm_message">请先主动勾选同意《用户协议》和《隐私政策》后再继续</string>
+    <string name="login_agreement_confirm_action">我知道了</string>
     <string name="login_agreement_cancel_action">取消</string>
     <string name="login_test_entry_enabled_toast">测试入口已开启</string>
     <string name="login_test_entry_disabled_toast">测试入口已关闭</string>

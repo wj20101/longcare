@@ -38,7 +38,9 @@ class ProfileScreenComponentsAdaptationTest {
                         StatsCard(
                             actions = ProfileActions(
                                 onNavigateToHaveServiceUserList = {},
-                                onNavigateToNoServiceUserList = {}
+                                onNavigateToNoServiceUserList = {},
+                                onOpenUserAgreement = {},
+                                onOpenPrivacyPolicy = {}
                             ),
                             stats = NurseServiceTimeModel(
                                 haveServiceTime = 1230,

@@ -1,5 +1,7 @@
 # Login Agreement Confirmation Design
 
+> Superseded note (2026-05-31): app-store privacy review remediation now requires the login agreement checkbox to remain user-selected only. The confirmation dialog must not auto-check the agreement or continue login on the user's behalf. See `docs/compliance/2026-05-app-store-privacy-remediation.md`.
+
 ## Context
 
 The login screen currently supports:
@@ -44,7 +46,7 @@ If the user has not agreed and taps login, show a dialog that clearly states tha
 Dialog actions:
 
 - `取消`: dismiss the dialog and do not log in
-- `确认并同意`: set the checkbox to selected, dismiss the dialog, and immediately continue the login flow
+- `我知道了`: dismiss the dialog and do not log in; the user must actively tick the checkbox before retrying
 
 ### 4. State Ownership
 
@@ -124,7 +126,7 @@ Verify the following:
 2. Tapping the agreement links opens the correct pages and does not toggle consent.
 3. With valid phone number and code but unchecked consent, tapping login shows the dialog.
 4. Tapping `取消` dismisses the dialog and does not log in.
-5. Tapping `确认并同意` checks the checkbox and continues login.
+5. Tapping `我知道了` keeps the checkbox unchecked and does not log in.
 6. With consent already checked, tapping login follows the existing login flow directly.
 
 ## Rationale

@@ -106,6 +106,8 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 StatsCard(actions = actions, stats = statsState)
                 Spacer(modifier = Modifier.height(24.dp))
+                OptionsCard(actions = actions)
+                Spacer(modifier = Modifier.height(24.dp))
             }
         } ?: Box(
             modifier = Modifier.fillMaxSize(),
