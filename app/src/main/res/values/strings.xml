@@ -41,8 +41,8 @@
     <string name="login_user_agreement">《用户协议》</string>
     <string name="login_agreement_and">和</string>
     <string name="login_privacy_policy">《隐私政策》</string>
-    <string name="login_agreement_confirm_message">请先主动勾选同意《用户协议》和《隐私政策》后再继续</string>
-    <string name="login_agreement_confirm_action">我知道了</string>
+    <string name="login_agreement_confirm_message">点击“同意”即表示您已阅读并同意《用户协议》和《隐私政策》，系统将为您自动勾选。点击“取消”将关闭弹窗。</string>
+    <string name="login_agreement_confirm_action">同意</string>
     <string name="login_agreement_cancel_action">取消</string>
     <string name="login_test_entry_enabled_toast">测试入口已开启</string>
     <string name="login_test_entry_disabled_toast">测试入口已关闭</string>

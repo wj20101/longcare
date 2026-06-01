@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.login.ui
 
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -54,11 +55,12 @@ class LoginScreenAgreementDialogTest {
         composeRule.onNodeWithText(agreementCancelAction).performClick()
 
         composeRule.onNodeWithText(agreementConfirmMessage).assertDoesNotExist()
+        composeRule.onNodeWithTag("login_agreement_checkbox").assertIsOff()
         assertEquals(0, loginCount)
     }
 
     @Test
-    fun acknowledge_dialog_keeps_checkbox_unchecked_and_does_not_submit_login() {
+    fun agree_from_confirmation_dialog_checks_checkbox_without_submitting_login() {
         var loginCount = 0
 
         setLoginScreenContent(onLoginInvoked = { loginCount++ })
@@ -67,7 +69,7 @@ class LoginScreenAgreementDialogTest {
         composeRule.onNodeWithTag("login_submit_button").performClick()
         composeRule.onNodeWithText(agreementConfirmAction).performClick()
 
-        composeRule.onNodeWithTag("login_agreement_checkbox").assertIsOff()
+        composeRule.onNodeWithTag("login_agreement_checkbox").assertIsOn()
         assertEquals(0, loginCount)
     }
 

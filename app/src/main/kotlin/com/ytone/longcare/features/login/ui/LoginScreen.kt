@@ -248,6 +248,7 @@ fun LoginScreenContent(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        agreementChecked = true
                         showAgreementDialog = false
                     }
                 ) {
