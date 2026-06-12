@@ -24,12 +24,21 @@ class ManualFaceCaptureStorageDelegate @Inject constructor(
         val imageFile = File(file, filename)
 
         try {
-            FileOutputStream(imageFile).use { out ->
+            val compressed = FileOutputStream(imageFile).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+            }
+            if (!compressed) {
+                imageFile.delete()
+                throw IOException("图片压缩失败")
+            }
+            if (imageFile.length() <= 0L) {
+                imageFile.delete()
+                throw IOException("图片文件为空")
             }
             return imageFile.absolutePath
         } catch (e: IOException) {
-            throw IOException("保存图片失败: ${e.message}")
+            imageFile.delete()
+            throw IOException("保存图片失败: ${e.message}", e)
         }
     }
 }

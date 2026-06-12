@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.identification.data
 
-import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -9,6 +8,7 @@ import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.ResponseBody
+import okio.Buffer
 
 class RemoteFaceImageDownloader(
     private val callFactory: Call.Factory,
@@ -31,10 +31,8 @@ class RemoteFaceImageDownloader(
                 throw IOException("Unsupported face image content type.")
             }
 
-            val bytes = body.readBytesWithLimit(MAX_REMOTE_FACE_IMAGE_BYTES)
-            if (!bytes.looksLikeSupportedImage()) {
-                throw IOException("Downloaded face image format is unsupported.")
-            }
+            val bytes = body.readProtectedBytes(MAX_REMOTE_FACE_IMAGE_BYTES)
+            FaceImageValidation.requireSupportedFaceImageBytes(bytes)
             return bytes
         }
     }
@@ -61,27 +59,24 @@ class RemoteFaceImageDownloader(
         return uri
     }
 
-    private fun ResponseBody.readBytesWithLimit(maxBytes: Long): ByteArray {
+    private fun ResponseBody.readProtectedBytes(maxBytes: Long): ByteArray {
         val declaredLength = contentLength()
         if (declaredLength > maxBytes) {
-            throw IOException("Face image is too large.")
+            throw IOException("Face image download is too large.")
         }
 
-        val output = ByteArrayOutputStream()
-        byteStream().use { input ->
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            var totalBytes = 0L
-            while (true) {
-                val read = input.read(buffer)
-                if (read == -1) break
-                totalBytes += read
-                if (totalBytes > maxBytes) {
-                    throw IOException("Face image is too large.")
-                }
-                output.write(buffer, 0, read)
+        val source = source()
+        val buffer = Buffer()
+        var totalBytes = 0L
+        while (true) {
+            val read = source.read(buffer, DOWNLOAD_CHUNK_BYTES)
+            if (read == -1L) break
+            totalBytes += read
+            if (totalBytes > maxBytes) {
+                throw IOException("Face image download is too large.")
             }
         }
-        return output.toByteArray()
+        return buffer.readByteArray()
     }
 
     private fun String.isTrustedCosHost(): Boolean {
@@ -91,40 +86,12 @@ class RemoteFaceImageDownloader(
             )
     }
 
-    private fun ByteArray.looksLikeSupportedImage(): Boolean {
-        return isJpeg() || isPng() || isBmp()
-    }
-
-    private fun ByteArray.isJpeg(): Boolean {
-        return size >= 3 &&
-            this[0] == 0xFF.toByte() &&
-            this[1] == 0xD8.toByte() &&
-            this[2] == 0xFF.toByte()
-    }
-
-    private fun ByteArray.isPng(): Boolean {
-        val signature = byteArrayOf(
-            0x89.toByte(),
-            0x50,
-            0x4E,
-            0x47,
-            0x0D,
-            0x0A,
-            0x1A,
-            0x0A,
-        )
-        return size >= signature.size && copyOfRange(0, signature.size).contentEquals(signature)
-    }
-
-    private fun ByteArray.isBmp(): Boolean {
-        return size >= 2 && this[0] == 0x42.toByte() && this[1] == 0x4D.toByte()
-    }
-
     companion object {
         private const val HTTPS_SCHEME = "https"
         private const val HTTPS_PORT = 443
         private const val OCTET_STREAM = "application/octet-stream"
-        private const val MAX_REMOTE_FACE_IMAGE_BYTES = 512L * 1024L
+        private const val DOWNLOAD_CHUNK_BYTES = 8L * 1024L
+        private const val MAX_REMOTE_FACE_IMAGE_BYTES = 10L * 1024L * 1024L
         private val ALLOWED_CONTENT_TYPES = setOf(
             "image/jpeg",
             "image/jpg",

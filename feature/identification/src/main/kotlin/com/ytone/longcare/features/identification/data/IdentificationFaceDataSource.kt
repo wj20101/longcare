@@ -28,7 +28,6 @@ class IdentificationFaceDataSource @Inject constructor(
 ) : FaceCacheCleaner {
     companion object {
         private const val TAG = "IdentificationFaceDataSource"
-        private const val FACE_BASE64_KEY_PREFIX = "face_base64_user_"
         private const val FACE_CACHE_RECORD_KEY_PREFIX = "face_cache_record_user_"
         private val CAPTURED_FACE_DIR_NAMES = listOf("face_captures", "face_capture")
     }
@@ -43,8 +42,6 @@ class IdentificationFaceDataSource @Inject constructor(
         }
     }
 
-    private fun faceBase64Key(userId: Int) = stringPreferencesKey(FACE_BASE64_KEY_PREFIX + userId)
-
     private fun faceCacheRecordKey(userId: Int) =
         stringPreferencesKey(FACE_CACHE_RECORD_KEY_PREFIX + userId)
 
@@ -53,23 +50,22 @@ class IdentificationFaceDataSource @Inject constructor(
             val dataStore = getDataStoreForUser(userId)
             val preferences = dataStore.data.first()
             val recordKey = faceCacheRecordKey(userId)
-            val legacyKey = faceBase64Key(userId)
 
-            val cachedRecord = preferences[recordKey]?.toFaceCacheRecord()
+            val cachedRecordValue = preferences[recordKey]
+            val cachedRecord = cachedRecordValue?.toFaceCacheRecord()
             if (cachedRecord != null) {
-                return readRecordAsBase64(userId, cachedRecord)
-            }
-
-            val legacyBase64 = preferences[legacyKey]
-            if (!legacyBase64.isNullOrBlank()) {
-                val bytes = Base64.decode(legacyBase64, Base64.NO_WRAP)
-                val record = faceFileStore.writeFaceBytes(userId, bytes)
+                readRecordAsBase64OrNull(
+                    userId = userId,
+                    record = cachedRecord,
+                    dataStore = dataStore,
+                    recordKey = recordKey,
+                )?.let { return it }
+            } else if (cachedRecordValue != null) {
                 dataStore.edit { prefs ->
-                    prefs[recordKey] = record.toPreferenceValue()
-                    prefs.remove(legacyKey)
+                    prefs.remove(recordKey)
                 }
-                logD("已迁移旧版人脸缓存 (userId=$userId, 长度=${legacyBase64.length})", tag = TAG)
-                return legacyBase64
+                faceFileStore.deleteUserFaceFiles(userId)
+                logE("人脸缓存记录格式无效，已移除 (userId=$userId)", tag = TAG)
             }
 
             logD("人脸缓存为空 (userId=$userId)", tag = TAG)
@@ -84,14 +80,12 @@ class IdentificationFaceDataSource @Inject constructor(
 
     suspend fun writeUserFaceBase64(userId: Int, base64: String) {
         try {
-            val bytes = Base64.decode(base64, Base64.NO_WRAP)
+            val bytes = decodeFaceBase64(base64)
             val record = faceFileStore.writeFaceBytes(userId, bytes)
             val dataStore = getDataStoreForUser(userId)
             val recordKey = faceCacheRecordKey(userId)
-            val legacyKey = faceBase64Key(userId)
             dataStore.edit { prefs ->
                 prefs[recordKey] = record.toPreferenceValue()
-                prefs.remove(legacyKey)
             }
             logD("成功写入人脸文件缓存 (userId=$userId, size=${record.sizeBytes})", tag = TAG)
         } catch (e: CancellationException) {
@@ -105,10 +99,8 @@ class IdentificationFaceDataSource @Inject constructor(
         try {
             val dataStore = getDataStoreForUser(userId)
             val recordKey = faceCacheRecordKey(userId)
-            val legacyKey = faceBase64Key(userId)
             dataStore.edit { prefs ->
                 prefs.remove(recordKey)
-                prefs.remove(legacyKey)
             }
             faceFileStore.deleteUserFaceFiles(userId)
             clearLocalFaceFiles()
@@ -123,6 +115,7 @@ class IdentificationFaceDataSource @Inject constructor(
     suspend fun imageFileToBase64(imageFile: File): String {
         return withContext(ioDispatcher) {
             val bytes = imageFile.readBytes()
+            FaceImageValidation.requireSupportedFaceImageBytes(bytes)
             Base64.encodeToString(bytes, Base64.NO_WRAP)
         }
     }
@@ -146,9 +139,36 @@ class IdentificationFaceDataSource @Inject constructor(
         record: FaceCacheRecord,
     ): String {
         val bytes = faceFileStore.readFaceBytes(record)
+        FaceImageValidation.requireSupportedFaceImageBytes(bytes)
         val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
         logD("成功读取人脸文件缓存 (userId=$userId, 长度=${base64.length})", tag = TAG)
         return base64
+    }
+
+    private suspend fun readRecordAsBase64OrNull(
+        userId: Int,
+        record: FaceCacheRecord,
+        dataStore: DataStore<Preferences>,
+        recordKey: Preferences.Key<String>,
+    ): String? {
+        return try {
+            readRecordAsBase64(userId, record)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logE("人脸文件缓存无效，已忽略 (userId=$userId)", tag = TAG, throwable = e)
+            dataStore.edit { prefs ->
+                prefs.remove(recordKey)
+            }
+            faceFileStore.deleteUserFaceFiles(userId)
+            null
+        }
+    }
+
+    private fun decodeFaceBase64(base64: String): ByteArray {
+        val bytes = Base64.decode(base64, Base64.NO_WRAP)
+        FaceImageValidation.requireSupportedFaceImageBytes(bytes)
+        return bytes
     }
 
     private suspend fun clearLocalFaceFiles() = withContext(ioDispatcher) {

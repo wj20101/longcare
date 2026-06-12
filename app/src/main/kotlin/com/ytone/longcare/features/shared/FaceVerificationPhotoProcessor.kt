@@ -21,8 +21,13 @@ internal fun loadProcessedFacePhoto(imagePath: String): ProcessedFacePhoto {
         ?: throw IllegalStateException("图片处理失败")
 
     val outputStream = ByteArrayOutputStream()
-    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+    if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)) {
+        throw IllegalStateException("图片压缩失败")
+    }
     val imageBytes = outputStream.toByteArray()
+    if (imageBytes.isEmpty()) {
+        throw IllegalStateException("图片处理失败")
+    }
     val sourcePhotoBase64 = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
     outputStream.close()
 

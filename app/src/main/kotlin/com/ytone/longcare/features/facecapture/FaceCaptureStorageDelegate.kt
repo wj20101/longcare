@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -20,6 +21,7 @@ internal object FaceCaptureStorageDelegate {
         bitmap: Bitmap,
         ioDispatcher: CoroutineDispatcher
     ): String? = withContext(ioDispatcher) {
+        var file: File? = null
         try {
             val faceCaptureDir = File(context.filesDir, "face_capture")
             if (!faceCaptureDir.exists()) {
@@ -28,17 +30,27 @@ internal object FaceCaptureStorageDelegate {
 
             val timestamp =
                 SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
-            val file = File(faceCaptureDir, "face_$timestamp.jpg")
+            val targetFile = File(faceCaptureDir, "face_$timestamp.jpg")
+            file = targetFile
 
-            FileOutputStream(file).use { out ->
+            val compressed = FileOutputStream(targetFile).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
             }
+            if (!compressed) {
+                targetFile.delete()
+                throw IOException("Face image compression failed.")
+            }
+            if (targetFile.length() <= 0L) {
+                targetFile.delete()
+                throw IOException("Face image file is empty.")
+            }
 
-            logI("Face image saved successfully: ${file.absolutePath}", tag = "FaceCaptureViewModel")
-            file.absolutePath
+            logI("Face image saved successfully: ${targetFile.absolutePath}", tag = "FaceCaptureViewModel")
+            targetFile.absolutePath
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            file?.delete()
             logE("Failed to save face image", tag = "FaceCaptureViewModel", throwable = e)
             null
         }
