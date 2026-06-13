@@ -20,6 +20,7 @@
     <string name="nfc_loading_card_recognized_fetching_location">已识别卡片，正在获取定位...</string>
     <string name="nfc_loading_waiting_location_permission">已识别卡片，请授予定位权限后继续</string>
     <string name="nfc_loading_fetching_location">正在获取定位...</string>
+    <string name="nfc_location_preparing_hint">定位准备中，请稍候...</string>
     <string name="nfc_loading_submitting">正在提交打卡...</string>
     <string name="nfc_sign_in_diagram_description">NFC操作示意图</string>
     <string name="photo_upload_title">护理照片上传</string>

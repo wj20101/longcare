@@ -23,6 +23,7 @@ class NfcWorkflowEntryLocationPolicyTest {
         assertTrue(effectsSource.contains("onEntryLocationPrepare()"))
         assertTrue(handlersSource.contains("val prepareLocationOnEntry: () -> Unit"))
         assertTrue(handlersSource.contains("showLocationOnlyPurposeNotice = true"))
-        assertTrue(handlersSource.contains("getCurrentLocationCoordinates()"))
+        assertTrue(handlersSource.contains("isLocationPreparing = true"))
+        assertTrue(handlersSource.contains("isLocationPreparing = false"))
     }
 }

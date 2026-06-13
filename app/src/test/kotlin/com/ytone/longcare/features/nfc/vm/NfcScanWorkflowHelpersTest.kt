@@ -201,6 +201,31 @@ class NfcScanWorkflowHelpersTest {
     }
 
     @Test
+    fun `handleTagScanned ignores event when ui is error`() = runTest {
+        var locationRequested = false
+        var started = false
+        var ended = false
+
+        handleTagScanned(
+            event = AppEvent.TagScanned("ABC123", ScanSource.EXTERNAL_RFID),
+            currentState = NfcSignInUiState.Error("位置信息错误"),
+            signInMode = SignInMode.START_ORDER,
+            endOderInfo = null,
+            onLocationRequest = {
+                locationRequested = true
+                LocationRequestResult.Coordinates("121.47", "31.23")
+            },
+            onLocationError = { error("unexpected location error: $it") },
+            onStartOrder = { _, _, _ -> started = true },
+            onEndOrder = { _, _, _, _ -> ended = true },
+        )
+
+        assertFalse(locationRequested)
+        assertFalse(started)
+        assertFalse(ended)
+    }
+
+    @Test
     fun `handleTagScanned routes end order when end info exists`() = runTest {
         val endInfo = EndOderInfo(
             projectIdList = listOf(1, 2),

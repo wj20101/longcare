@@ -27,7 +27,8 @@ import kotlinx.coroutines.launch
 internal data class NfcWorkflowLocationHandlers(
     val startTrackingWithPermission: (onReady: () -> Unit) -> Unit,
     val getCurrentLocationCoordinates: suspend () -> LocationRequestResult,
-    val prepareLocationOnEntry: () -> Unit
+    val prepareLocationOnEntry: () -> Unit,
+    val isLocationPreparing: Boolean
 )
 
 internal fun mapNfcSignInState(uiState: NfcSignInUiState): SignInState {
@@ -46,6 +47,8 @@ internal fun resolveNfcWorkflowTitleRes(signInMode: SignInMode): Int {
         SignInMode.END_ORDER -> R.string.nfc_sign_out_title
     }
 }
+
+private const val LOCATION_UNAVAILABLE_MESSAGE = "无法获取位置信息，请稍后重试"
 
 internal fun buildNfcWorkflowBackAction(
     signInMode: SignInMode,
@@ -72,33 +75,37 @@ internal fun rememberNfcWorkflowLocationHandlers(
     var showTrackingLocationPurposeNotice by remember { mutableStateOf(false) }
     var showLocationOnlyPurposeNotice by remember { mutableStateOf(false) }
     var pendingTrackingReadyAction by remember { mutableStateOf<(() -> Unit)?>(null) }
-
-    val requestLocationPermissionOnly: () -> Unit = {
-        if (!UnifiedPermissionHelper.hasLocationPermission(context)) {
-            showLocationOnlyPurposeNotice = true
-        }
-    }
+    var isLocationPreparing by remember { mutableStateOf(false) }
 
     val getCurrentLocationCoordinates: suspend () -> LocationRequestResult = {
         try {
             if (!UnifiedPermissionHelper.hasLocationPermission(context)) {
-                requestLocationPermissionOnly()
+                showLocationOnlyPurposeNotice = true
                 LocationRequestResult.PermissionRequired
             } else if (!UnifiedPermissionHelper.isLocationServiceEnabled(context)) {
                 openLocationSettings(context)
                 LocationRequestResult.Error("请开启定位服务以获取位置信息")
             } else {
                 val (longitude, latitude) = nfcViewModel.getCurrentLocationCoordinates()
-                if (longitude.isBlank() || latitude.isBlank()) {
-                    LocationRequestResult.Coordinates("", "")
-                } else {
-                    LocationRequestResult.Coordinates(longitude, latitude)
-                }
+                toLocationRequestResult(longitude, latitude)
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            LocationRequestResult.Error("无法获取位置信息，请稍后重试")
+            LocationRequestResult.Error(LOCATION_UNAVAILABLE_MESSAGE)
+        }
+    }
+
+    val launchLocationPreparation: () -> Unit = {
+        if (!isLocationPreparing) {
+            isLocationPreparing = true
+            coroutineScope.launch {
+                try {
+                    getCurrentLocationCoordinates()
+                } finally {
+                    isLocationPreparing = false
+                }
+            }
         }
     }
 
@@ -115,11 +122,12 @@ internal fun rememberNfcWorkflowLocationHandlers(
 
     val locationOnlyPermissionLauncher = rememberLocationPermissionLauncher(
         onPermissionGranted = {
-            coroutineScope.launch {
+            nfcViewModel.notifyLocationPermissionGranted()
+            val resumedPendingScan = nfcViewModel.resumePendingPermissionScan {
                 getCurrentLocationCoordinates()
             }
-            nfcViewModel.resumePendingPermissionScan {
-                getCurrentLocationCoordinates()
+            if (!resumedPendingScan) {
+                launchLocationPreparation()
             }
         },
         onPermissionDenied = {
@@ -136,9 +144,7 @@ internal fun rememberNfcWorkflowLocationHandlers(
                 openLocationSettings(context)
             }
             else -> {
-                coroutineScope.launch {
-                    getCurrentLocationCoordinates()
-                }
+                launchLocationPreparation()
             }
         }
     }
@@ -178,15 +184,30 @@ internal fun rememberNfcWorkflowLocationHandlers(
                 showLocationOnlyPurposeNotice = false
                 locationOnlyPermissionLauncher.launch(UnifiedPermissionHelper.getLocationRequiredPermissions())
             },
-            onDismiss = { showLocationOnlyPurposeNotice = false }
+            onDismiss = {
+                showLocationOnlyPurposeNotice = false
+                nfcViewModel.clearPendingPermissionScan()
+            }
         )
     }
 
     return NfcWorkflowLocationHandlers(
         startTrackingWithPermission = startTrackingWithPermission,
         getCurrentLocationCoordinates = getCurrentLocationCoordinates,
-        prepareLocationOnEntry = prepareLocationOnEntry
+        prepareLocationOnEntry = prepareLocationOnEntry,
+        isLocationPreparing = isLocationPreparing
     )
+}
+
+internal fun toLocationRequestResult(
+    longitude: String,
+    latitude: String
+): LocationRequestResult {
+    return if (longitude.isBlank() || latitude.isBlank()) {
+        LocationRequestResult.Error(LOCATION_UNAVAILABLE_MESSAGE)
+    } else {
+        LocationRequestResult.Coordinates(longitude, latitude)
+    }
 }
 
 internal fun handleNfcSuccessAction(

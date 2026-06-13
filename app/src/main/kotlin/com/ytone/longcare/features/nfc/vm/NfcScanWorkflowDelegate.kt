@@ -95,8 +95,8 @@ internal class NfcScanWorkflowDelegate(
         }
     }
 
-    fun resumePendingPermissionScan(onLocationRequest: suspend () -> LocationRequestResult) {
-        val scan = pendingPermissionScan ?: return
+    fun resumePendingPermissionScan(onLocationRequest: suspend () -> LocationRequestResult): Boolean {
+        val scan = pendingPermissionScan ?: return false
         pendingPermissionScan = null
         scope.launch {
             uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.FETCHING_LOCATION)
@@ -145,6 +145,7 @@ internal class NfcScanWorkflowDelegate(
                 },
             )
         }
+        return true
     }
 
     fun clearPendingPermissionScan() {

@@ -164,6 +164,8 @@ class NfcWorkflowViewModel @Inject constructor(
 
     suspend fun getCurrentLocationCoordinates(): Pair<String, String> = activityAndLocationDelegate.getCurrentLocationCoordinates()
 
+    fun notifyLocationPermissionGranted() = activityAndLocationDelegate.notifyLocationPermissionGranted()
+
     fun observeScanEvents(
         orderKey: OrderKey,
         signInMode: SignInMode,

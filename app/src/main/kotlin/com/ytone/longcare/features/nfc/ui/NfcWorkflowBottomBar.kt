@@ -26,6 +26,7 @@ internal fun NfcWorkflowBottomBar(
     scanMode: ScanMode,
     readerUiState: ReaderUiState,
     loadingReason: NfcLoadingReason?,
+    isLocationPreparing: Boolean,
     onSuccessClick: () -> Unit,
     onRetryClick: () -> Unit
 ) {
@@ -56,8 +57,11 @@ internal fun NfcWorkflowBottomBar(
 
                 SignInState.IDLE -> {
                     val idleCopy = resolveNfcWorkflowIdleCopy(scanMode, readerUiState)
-                    val hintRes = loadingReason?.let(::resolveLoadingCopyRes)
-                        ?: resolveCopyRes(idleCopy.bottomHintKey)
+                    val hintRes = resolveBottomHintRes(
+                        loadingReason = loadingReason,
+                        isLocationPreparing = isLocationPreparing,
+                        idleBottomHintKey = idleCopy.bottomHintKey,
+                    )
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(

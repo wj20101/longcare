@@ -24,6 +24,10 @@ internal class NfcActivityAndLocationDelegate(
         nfcManager.disableNfcForActivity(activity)
     }
 
+    fun notifyLocationPermissionGranted() {
+        locationFacade.notifyPermissionGranted()
+    }
+
     suspend fun getCurrentLocationCoordinates(): Pair<String, String> {
         return try {
             val location = locationFacade.getCurrentLocation()

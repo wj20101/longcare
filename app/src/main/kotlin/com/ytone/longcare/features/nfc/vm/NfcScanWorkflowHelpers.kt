@@ -17,7 +17,7 @@ internal suspend fun handleTagScanned(
     onStartOrder: suspend (String, String, String) -> Unit,
     onEndOrder: suspend (String, String, String, EndOderInfo) -> Unit,
 ) {
-    if (currentState is NfcSignInUiState.Success) return
+    if (currentState !is NfcSignInUiState.Initial) return
     if (event.tagId.isBlank()) return
 
     onLoadingReasonChanged(NfcLoadingReason.CARD_RECOGNIZED_FETCHING_LOCATION)

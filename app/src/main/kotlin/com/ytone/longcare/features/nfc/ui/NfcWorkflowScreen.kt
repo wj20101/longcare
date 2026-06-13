@@ -99,6 +99,7 @@ fun NfcWorkflowScreen(
                     scanMode = scanMode,
                     readerUiState = readerUiState,
                     loadingReason = loadingReason,
+                    isLocationPreparing = locationHandlers.isLocationPreparing,
                     onSuccessClick = singleClick {
                         handleNfcSuccessAction(
                             signInMode = signInMode,
