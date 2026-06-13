@@ -46,6 +46,8 @@ jobs:
 
       - name: Detect affected modules and tasks
         id: detect
+        env:
+          BASE_REF: ${{ github.event_name == 'push' && github.event.before || '' }}
         run: bash scripts/quality/affected-modules.sh --format github >> "$GITHUB_OUTPUT"
 
       - name: Print affected plan
