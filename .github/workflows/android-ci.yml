@@ -140,7 +140,7 @@ jobs:
         with:
           name: baselineprofile-apks
           path: baselineprofile/build/outputs/apk/**/*.apk
-          if-no-files-found: warn
+          if-no-files-found: ignore
           retention-days: 7
 
       - name: Upload test and lint reports

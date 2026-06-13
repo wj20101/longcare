@@ -189,7 +189,7 @@ check_upload_artifact_step_policies() {
         has_if_no_files_found = 0
         has_retention_days = 0
       }
-      in_upload_step && /if-no-files-found:[[:space:]]*(warn|error)/ {
+      in_upload_step && /if-no-files-found:[[:space:]]*(warn|error|ignore)/ {
         has_if_no_files_found = 1
       }
       in_upload_step && /retention-days:[[:space:]]*[0-9]+/ {
