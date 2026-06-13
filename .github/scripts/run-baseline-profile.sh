@@ -92,7 +92,7 @@ if [[ -z "${CMDLINE_TOOLS_BIN}" || ! -x "${SDKMANAGER}" || ! -x "${AVDMANAGER}" 
   echo "Missing sdkmanager/avdmanager under ${ANDROID_SDK_ROOT}/cmdline-tools/*/bin."
   echo "Detected cmdline-tools directories:"
   find "${ANDROID_SDK_ROOT}/cmdline-tools" -maxdepth 2 -type d 2>/dev/null | sort || true
-  echo "Ensure android-actions/setup-android@v3 runs before this script."
+  echo "Ensure android-actions/setup-android@v4.0.1 runs before this script."
   exit 1
 fi
 

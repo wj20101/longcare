@@ -50,7 +50,7 @@ runs:
 
     - name: Set up Android SDK
       if: ${{ inputs.setup-android-sdk == 'true' }}
-      uses: android-actions/setup-android@v3
+      uses: android-actions/setup-android@v4.0.1
       with:
         packages: ${{ inputs.android-packages }}
 
