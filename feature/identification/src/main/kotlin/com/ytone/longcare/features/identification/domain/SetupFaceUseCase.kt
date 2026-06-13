@@ -29,7 +29,10 @@ class SetupFaceUseCase @Inject constructor(
 
         return when (val setFaceResult = gateway.setFaceOnServer(base64Image, uploadedKey)) {
             SetupFaceServerResult.Success -> {
-                gateway.cacheUserFace(currentUserId, base64Image)
+                // Cache only after the server accepts the face to keep local state behind server truth.
+                if (!gateway.cacheUserFace(currentUserId, base64Image)) {
+                    return SetupFaceResult.Error("本地人脸缓存失败，请重试")
+                }
                 gateway.refreshCurrentUserSession()
                 SetupFaceResult.Success
             }

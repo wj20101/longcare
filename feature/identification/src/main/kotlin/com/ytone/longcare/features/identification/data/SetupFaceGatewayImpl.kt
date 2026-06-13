@@ -61,8 +61,8 @@ class SetupFaceGatewayImpl @Inject constructor(
     override suspend fun cacheUserFace(
         userId: Int,
         base64Image: String,
-    ) {
-        faceDataSource.writeUserFaceBase64(userId, base64Image)
+    ): Boolean {
+        return faceDataSource.writeUserFaceBase64(userId, base64Image)
     }
 
     override fun refreshCurrentUserSession() {

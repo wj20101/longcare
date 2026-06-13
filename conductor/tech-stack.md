@@ -16,7 +16,7 @@
 
 | Item | Value | Notes |
 |---|---|---|
-| `compileSdk` | 36 | 来自 [constants.gradle.kts](/Users/wajie/StudioProjects/longcare/constants.gradle.kts) |
+| `compileSdk` | 37 | 来自 [constants.gradle.kts](/Users/wajie/StudioProjects/longcare/constants.gradle.kts) |
 | `targetSdk` | 36 | 当前目标 SDK |
 | `minSdk` | 24 | 最低支持版本 |
 | Application ID | `com.ytone.longcare` | 来自 [app/build.gradle.kts](/Users/wajie/StudioProjects/longcare/app/build.gradle.kts) |
