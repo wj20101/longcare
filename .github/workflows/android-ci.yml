@@ -82,6 +82,7 @@ jobs:
       - name: Set up shared Android build environment
         uses: ./.github/actions/android-build-env
         with:
+          setup-android-sdk: 'true'
           run-workflow-quality-check: 'false'
           run-lint-ignore-policy-check: 'false'
           run-jetpack-compat-check: 'false'

@@ -19,7 +19,7 @@ interface SetupFaceGateway {
 
     suspend fun setFaceOnServer(base64Image: String, uploadedKey: String): SetupFaceServerResult
 
-    suspend fun cacheUserFace(userId: Int, base64Image: String)
+    suspend fun cacheUserFace(userId: Int, base64Image: String): Boolean
 
     fun refreshCurrentUserSession()
 }

@@ -1,112 +1,86 @@
 package com.ytone.longcare.features.identification.data
 
+import java.io.File
 import java.io.IOException
-import java.net.URI
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.ResponseBody
-import okio.Buffer
+import okio.buffer
+import okio.sink
 
 class RemoteFaceImageDownloader(
     private val callFactory: Call.Factory,
 ) {
     @Inject constructor() : this(defaultCallFactory())
 
-    fun download(url: String): ByteArray {
-        val uri = parseAndValidateUri(url)
-        val request = Request.Builder()
-            .url(uri.toString())
-            .get()
-            .build()
-        callFactory.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IOException("Face image download failed with HTTP ${response.code}.")
-            }
-            val body = response.body
-            val contentType = body.contentType()?.let { "${it.type}/${it.subtype}".lowercase() }
-            if (contentType != null && contentType !in ALLOWED_CONTENT_TYPES && contentType != OCTET_STREAM) {
-                throw IOException("Unsupported face image content type.")
+    fun downloadToFile(url: String, destinationFile: File): File {
+        val request = buildRequest(url)
+        val destinationDir = destinationFile.parentFile
+            ?: throw IOException("Face image download file must have a parent directory.")
+        val tempFile = File(destinationDir, "${destinationFile.name}.tmp")
+        try {
+            if (destinationFile.exists()) {
+                throw IOException("Face image download file already exists.")
             }
 
-            val bytes = body.readProtectedBytes(MAX_REMOTE_FACE_IMAGE_BYTES)
-            FaceImageValidation.requireSupportedFaceImageBytes(bytes)
-            return bytes
+            callFactory.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IOException("Face image download failed with HTTP ${response.code}.")
+                }
+
+                if (!destinationDir.exists() && !destinationDir.mkdirs()) {
+                    throw IOException("Failed to create face image download directory.")
+                }
+                if (tempFile.exists() && !tempFile.delete()) {
+                    throw IOException("Failed to replace temporary face image download file.")
+                }
+
+                tempFile.sink().buffer().use { sink ->
+                    sink.writeAll(response.body.source())
+                }
+            }
+
+            if (!tempFile.renameTo(destinationFile)) {
+                tempFile.copyTo(destinationFile, overwrite = false)
+                tempFile.deleteIfExists()
+            }
+            return destinationFile
+        } catch (e: Exception) {
+            tempFile.deleteIfExists(suppressedBy = e)
+            throw e
         }
     }
 
-    private fun parseAndValidateUri(url: String): URI {
-        val uri = try {
-            URI(url)
+    private fun File.deleteIfExists(suppressedBy: Exception? = null) {
+        if (!exists() || delete()) return
+
+        val exception = IOException("Failed to remove temporary face image download file.")
+        if (suppressedBy == null) {
+            throw exception
+        } else {
+            suppressedBy.addSuppressed(exception)
+        }
+    }
+
+    private fun buildRequest(url: String): Request {
+        return try {
+            Request.Builder()
+                .url(url)
+                .get()
+                .build()
         } catch (exception: Exception) {
             throw IOException("Invalid face image URL.", exception)
         }
-        if (uri.scheme?.lowercase() != HTTPS_SCHEME) {
-            throw IOException("Face image URL must use HTTPS.")
-        }
-        if (uri.userInfo != null) {
-            throw IOException("Face image URL must not contain user info.")
-        }
-        if (uri.port != -1 && uri.port != HTTPS_PORT) {
-            throw IOException("Face image URL must use the default HTTPS port.")
-        }
-        val host = uri.host?.lowercase().orEmpty()
-        if (!host.isTrustedCosHost()) {
-            throw IOException("Face image URL host is not trusted.")
-        }
-        return uri
-    }
-
-    private fun ResponseBody.readProtectedBytes(maxBytes: Long): ByteArray {
-        val declaredLength = contentLength()
-        if (declaredLength > maxBytes) {
-            throw IOException("Face image download is too large.")
-        }
-
-        val source = source()
-        val buffer = Buffer()
-        var totalBytes = 0L
-        while (true) {
-            val read = source.read(buffer, DOWNLOAD_CHUNK_BYTES)
-            if (read == -1L) break
-            totalBytes += read
-            if (totalBytes > maxBytes) {
-                throw IOException("Face image download is too large.")
-            }
-        }
-        return buffer.readByteArray()
-    }
-
-    private fun String.isTrustedCosHost(): Boolean {
-        return contains(".cos.") && (
-            endsWith(".myqcloud.com") ||
-                endsWith(".tencentcos.cn")
-            )
     }
 
     companion object {
-        private const val HTTPS_SCHEME = "https"
-        private const val HTTPS_PORT = 443
-        private const val OCTET_STREAM = "application/octet-stream"
-        private const val DOWNLOAD_CHUNK_BYTES = 8L * 1024L
-        private const val MAX_REMOTE_FACE_IMAGE_BYTES = 10L * 1024L * 1024L
-        private val ALLOWED_CONTENT_TYPES = setOf(
-            "image/jpeg",
-            "image/jpg",
-            "image/png",
-            "image/bmp",
-            "image/x-ms-bmp",
-        )
-
         private fun defaultCallFactory(): Call.Factory {
             return OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(10, TimeUnit.SECONDS)
                 .writeTimeout(10, TimeUnit.SECONDS)
-                .followRedirects(false)
-                .followSslRedirects(false)
                 .build()
         }
     }

@@ -1,100 +1,130 @@
 package com.ytone.longcare.features.identification.data
 
-import android.graphics.Bitmap
-import android.graphics.Color
 import android.util.Base64
-import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.IOException
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Response
+import okhttp3.ResponseBody
 import okhttp3.ResponseBody.Companion.toResponseBody
+import okio.Buffer
+import okio.BufferedSource
+import okio.Source
+import okio.Timeout
+import okio.buffer
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertThrows
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.junit.rules.TemporaryFolder
 import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class RemoteFaceImageDownloaderTest {
 
+    @get:Rule
+    val temporaryFolder = TemporaryFolder()
+
     @Test
     fun `download accepts https cos image response`() {
         val imageBytes = pngBytes()
+        val destination = destinationFile("face.png")
         val downloader = RemoteFaceImageDownloader(
             callFactory = fakeClient {
                 imageBytes.toResponseBody("image/png".toMediaType())
             }
         )
 
-        val result = downloader.download("https://longcare-bucket.cos.ap-beijing.myqcloud.com/face.png")
+        val result = downloader.downloadToFile(
+            url = "https://longcare-bucket.cos.ap-beijing.myqcloud.com/face.png",
+            destinationFile = destination,
+        )
 
-        assertArrayEquals(imageBytes, result)
+        assertArrayEquals(imageBytes, result.readBytes())
     }
 
     @Test
-    fun `download rejects non https url`() {
-        val downloader = RemoteFaceImageDownloader(callFactory = fakeClient())
-
-        assertThrows(IOException::class.java) {
-            downloader.download("http://longcare-bucket.cos.ap-beijing.myqcloud.com/face.jpg")
-        }
-    }
-
-    @Test
-    fun `download rejects untrusted host`() {
-        val downloader = RemoteFaceImageDownloader(callFactory = fakeClient())
-
-        assertThrows(IOException::class.java) {
-            downloader.download("https://example.com/face.jpg")
-        }
-    }
-
-    @Test
-    fun `download rejects unsupported content type`() {
+    fun `download accepts http image response`() {
+        val imageBytes = pngBytes()
+        val destination = destinationFile("face.png")
         val downloader = RemoteFaceImageDownloader(
             callFactory = fakeClient {
-                "not an image".toResponseBody("text/plain".toMediaType())
+                imageBytes.toResponseBody("image/png".toMediaType())
             }
         )
 
-        assertThrows(IOException::class.java) {
-            downloader.download("https://longcare-bucket.cos.ap-beijing.myqcloud.com/face.jpg")
-        }
+        val result = downloader.downloadToFile(
+            url = "http://longcare-bucket.cos.ap-beijing.myqcloud.com/face.png",
+            destinationFile = destination,
+        )
+
+        assertArrayEquals(imageBytes, result.readBytes())
     }
 
     @Test
-    fun `download rejects undecodable image bytes`() {
+    fun `download accepts image response from any host`() {
+        val imageBytes = pngBytes()
+        val destination = destinationFile("face.png")
         val downloader = RemoteFaceImageDownloader(
             callFactory = fakeClient {
-                truncatedJpegHeaderBytes().toResponseBody("image/jpeg".toMediaType())
+                imageBytes.toResponseBody("image/png".toMediaType())
             }
         )
 
-        assertThrows(IOException::class.java) {
-            downloader.download("https://longcare-bucket.cos.ap-beijing.myqcloud.com/face.jpg")
-        }
+        val result = downloader.downloadToFile(
+            url = "https://example.com/face.png",
+            destinationFile = destination,
+        )
+
+        assertArrayEquals(imageBytes, result.readBytes())
     }
 
     @Test
-    fun `download rejects corrupted image with valid header`() {
+    fun `download accepts image bytes with misleading content type`() {
+        val imageBytes = pngBytes()
+        val destination = destinationFile("face.png")
         val downloader = RemoteFaceImageDownloader(
             callFactory = fakeClient {
-                corruptedJpegWithReadableBoundsBytes().toResponseBody("image/jpeg".toMediaType())
+                imageBytes.toResponseBody("text/plain".toMediaType())
             }
         )
 
-        assertThrows(IOException::class.java) {
-            downloader.download("https://longcare-bucket.cos.ap-beijing.myqcloud.com/face.jpg")
-        }
+        val result = downloader.downloadToFile(
+            url = "https://static.example.com/face.png",
+            destinationFile = destination,
+        )
+
+        assertArrayEquals(imageBytes, result.readBytes())
+    }
+
+    @Test
+    fun `download accepts server provided non image bytes`() {
+        val bodyBytes = "not-image-content".toByteArray()
+        val destination = destinationFile("face.jpg")
+        val downloader = RemoteFaceImageDownloader(
+            callFactory = fakeClient {
+                bodyBytes.toResponseBody("image/jpeg".toMediaType())
+            }
+        )
+
+        val result = downloader.downloadToFile(
+            url = "https://longcare-bucket.cos.ap-beijing.myqcloud.com/face.jpg",
+            destinationFile = destination,
+        )
+
+        assertArrayEquals(bodyBytes, result.readBytes())
     }
 
     @Test
     fun `download accepts image larger than previous local limit`() {
-        val imageBytes = largeJpegBytes()
+        val imageBytes = bytesOfSize(512 * 1024 + 1)
+        val destination = destinationFile("face.jpg")
         assertTrue(imageBytes.size > 512 * 1024)
         val downloader = RemoteFaceImageDownloader(
             callFactory = fakeClient {
@@ -102,28 +132,94 @@ class RemoteFaceImageDownloaderTest {
             }
         )
 
-        val result = downloader.download("https://longcare-bucket.cos.ap-beijing.myqcloud.com/face.jpg")
+        val result = downloader.downloadToFile(
+            url = "https://longcare-bucket.cos.ap-beijing.myqcloud.com/face.jpg",
+            destinationFile = destination,
+        )
 
-        assertArrayEquals(imageBytes, result)
+        assertArrayEquals(imageBytes, result.readBytes())
     }
 
     @Test
-    fun `download rejects image above protective limit`() {
-        val imageBytes = veryLargeJpegBytes()
-        assertTrue(imageBytes.size > PROTECTIVE_LIMIT_BYTES)
-        FaceImageValidation.requireSupportedFaceImageBytes(imageBytes)
+    fun `download accepts image above previous protective limit`() {
+        val imageBytes = bytesOfSize(PREVIOUS_PROTECTIVE_LIMIT_BYTES + 1)
+        val destination = destinationFile("face.jpg")
+        assertTrue(imageBytes.size > PREVIOUS_PROTECTIVE_LIMIT_BYTES)
         val downloader = RemoteFaceImageDownloader(
             callFactory = fakeClient {
                 imageBytes.toResponseBody("image/jpeg".toMediaType())
             }
         )
 
+        val result = downloader.downloadToFile(
+            url = "https://longcare-bucket.cos.ap-beijing.myqcloud.com/face.jpg",
+            destinationFile = destination,
+        )
+
+        assertArrayEquals(imageBytes, result.readBytes())
+    }
+
+    @Test
+    fun `download http failure does not create destination file`() {
+        val destination = destinationFile("face.jpg")
+        val downloader = RemoteFaceImageDownloader(
+            callFactory = fakeClient(responseCode = 500) {
+                "server-error".toResponseBody("text/plain".toMediaType())
+            }
+        )
+
         assertThrows(IOException::class.java) {
-            downloader.download("https://longcare-bucket.cos.ap-beijing.myqcloud.com/face.jpg")
+            downloader.downloadToFile(
+                url = "https://longcare-bucket.cos.ap-beijing.myqcloud.com/face.jpg",
+                destinationFile = destination,
+            )
         }
+        assertFalse(destination.exists())
+    }
+
+    @Test
+    fun `download refuses to overwrite existing destination file`() {
+        val existingBytes = "existing-face-cache".toByteArray()
+        val destination = temporaryFolder.newFile("face.jpg").apply {
+            writeBytes(existingBytes)
+        }
+        val downloader = RemoteFaceImageDownloader(
+            callFactory = fakeClient {
+                "new-face-cache".toResponseBody("image/jpeg".toMediaType())
+            }
+        )
+
+        assertThrows(IOException::class.java) {
+            downloader.downloadToFile(
+                url = "https://longcare-bucket.cos.ap-beijing.myqcloud.com/face.jpg",
+                destinationFile = destination,
+            )
+        }
+        assertArrayEquals(existingBytes, destination.readBytes())
+    }
+
+    @Test
+    fun `download stream failure removes temporary file`() {
+        val destination = destinationFile("face.jpg")
+        val tempFile = File(temporaryFolder.root, "${destination.name}.tmp")
+        val downloader = RemoteFaceImageDownloader(
+            callFactory = fakeClient {
+                failingResponseBody()
+            }
+        )
+
+        assertThrows(IOException::class.java) {
+            downloader.downloadToFile(
+                url = "https://longcare-bucket.cos.ap-beijing.myqcloud.com/face.jpg",
+                destinationFile = destination,
+            )
+        }
+        assertFalse(destination.exists())
+        assertFalse(tempFile.exists())
     }
 
     private fun fakeClient(
+        responseCode: Int = 200,
         responseBodyProvider: () -> okhttp3.ResponseBody = {
             pngBytes().toResponseBody("image/png".toMediaType())
         },
@@ -133,7 +229,7 @@ class RemoteFaceImageDownloaderTest {
                 Response.Builder()
                     .request(chain.request())
                     .protocol(Protocol.HTTP_1_1)
-                    .code(200)
+                    .code(responseCode)
                     .message("OK")
                     .body(responseBodyProvider())
                     .build()
@@ -148,50 +244,42 @@ class RemoteFaceImageDownloaderTest {
         )
     }
 
-    private fun truncatedJpegHeaderBytes(): ByteArray {
-        return byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0x00)
+    private fun destinationFile(name: String): File {
+        return File(temporaryFolder.root, name)
     }
 
-    private fun corruptedJpegWithReadableBoundsBytes(): ByteArray {
-        val validJpeg = smallJpegBytes()
-        return validJpeg.copyOf((validJpeg.size / 2).coerceAtLeast(4))
+    private fun bytesOfSize(size: Int): ByteArray {
+        return ByteArray(size) { index -> (index % 251).toByte() }
     }
 
-    private fun smallJpegBytes(): ByteArray {
-        val bitmap = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
-        bitmap.eraseColor(Color.WHITE)
-        val output = ByteArrayOutputStream()
-        check(bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output))
-        bitmap.recycle()
-        return output.toByteArray()
-    }
+    private fun failingResponseBody(): ResponseBody {
+        return object : ResponseBody() {
+            override fun contentType() = "image/jpeg".toMediaType()
 
-    private fun largeJpegBytes(): ByteArray {
-        return randomJpegBytes(width = 1024, height = 1024)
-    }
+            override fun contentLength() = -1L
 
-    private fun veryLargeJpegBytes(): ByteArray {
-        return randomJpegBytes(width = 3072, height = 3072).also { bytes ->
-            check(bytes.size > PROTECTIVE_LIMIT_BYTES) {
-                "Generated JPEG must exceed the protective download limit."
+            override fun source(): BufferedSource {
+                return object : Source {
+                    private var emitted = false
+
+                    override fun read(sink: Buffer, byteCount: Long): Long {
+                        if (!emitted) {
+                            emitted = true
+                            sink.writeUtf8("partial")
+                            return "partial".length.toLong()
+                        }
+                        throw IOException("stream failed")
+                    }
+
+                    override fun timeout(): Timeout = Timeout.NONE
+
+                    override fun close() = Unit
+                }.buffer()
             }
         }
     }
 
-    private fun randomJpegBytes(width: Int, height: Int): ByteArray {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val pixels = IntArray(width * height) { index ->
-            val value = index * 1103515245 + 12345
-            Color.rgb(value and 0xFF, value ushr 8 and 0xFF, value ushr 16 and 0xFF)
-        }
-        bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-        val output = ByteArrayOutputStream()
-        check(bitmap.compress(Bitmap.CompressFormat.JPEG, 100, output))
-        bitmap.recycle()
-        return output.toByteArray()
-    }
-
     private companion object {
-        const val PROTECTIVE_LIMIT_BYTES = 10 * 1024 * 1024
+        const val PREVIOUS_PROTECTIVE_LIMIT_BYTES = 10 * 1024 * 1024
     }
 }

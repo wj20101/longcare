@@ -2,6 +2,8 @@ package com.ytone.longcare.features.identification.data
 
 import android.content.Context
 import android.util.Base64
+import android.util.Base64InputStream
+import android.util.Base64OutputStream
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -12,7 +14,10 @@ import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.domain.facecache.FaceCacheCleaner
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -29,6 +34,11 @@ class IdentificationFaceDataSource @Inject constructor(
     companion object {
         private const val TAG = "IdentificationFaceDataSource"
         private const val FACE_CACHE_RECORD_KEY_PREFIX = "face_cache_record_user_"
+        private const val FACE_TEMP_DIR_NAME = "face_temp"
+        private const val REMOTE_FACE_DOWNLOAD_FILE_PREFIX = "remote_face_"
+        private const val REMOTE_FACE_DOWNLOAD_FILE_SUFFIX = ".img"
+        private const val LOCAL_FACE_DECODE_FILE_PREFIX = "local_face_"
+        private const val LOCAL_FACE_DECODE_FILE_SUFFIX = ".img"
         private val CAPTURED_FACE_DIR_NAMES = listOf("face_captures", "face_capture")
     }
 
@@ -78,20 +88,23 @@ class IdentificationFaceDataSource @Inject constructor(
         }
     }
 
-    suspend fun writeUserFaceBase64(userId: Int, base64: String) {
-        try {
-            val bytes = decodeFaceBase64(base64)
-            val record = faceFileStore.writeFaceBytes(userId, bytes)
-            val dataStore = getDataStoreForUser(userId)
-            val recordKey = faceCacheRecordKey(userId)
-            dataStore.edit { prefs ->
-                prefs[recordKey] = record.toPreferenceValue()
+    suspend fun writeUserFaceBase64(userId: Int, base64: String): Boolean {
+        return try {
+            withContext(ioDispatcher) {
+                val decodedFile = createLocalFaceDecodeFile()
+                try {
+                    writeBase64ToFile(base64, decodedFile)
+                    persistUserFaceFile(userId, decodedFile)
+                } finally {
+                    decodedFile.delete()
+                }
             }
-            logD("成功写入人脸文件缓存 (userId=$userId, size=${record.sizeBytes})", tag = TAG)
+            true
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             logE("写入人脸缓存异常 (userId=$userId)", tag = TAG, throwable = e)
+            false
         }
     }
 
@@ -114,22 +127,24 @@ class IdentificationFaceDataSource @Inject constructor(
 
     suspend fun imageFileToBase64(imageFile: File): String {
         return withContext(ioDispatcher) {
-            val bytes = imageFile.readBytes()
-            FaceImageValidation.requireSupportedFaceImageBytes(bytes)
-            Base64.encodeToString(bytes, Base64.NO_WRAP)
+            encodeFileToBase64(imageFile)
         }
     }
 
-    suspend fun downloadAndConvertToBase64(url: String): String {
+    suspend fun downloadCacheAndConvertToBase64(url: String, userId: Int): String {
         return withContext(ioDispatcher) {
+            val downloadedFile = createRemoteFaceDownloadFile()
             try {
-                val bytes = remoteFaceImageDownloader.download(url)
-                Base64.encodeToString(bytes, Base64.NO_WRAP)
+                remoteFaceImageDownloader.downloadToFile(url, downloadedFile)
+                persistUserFaceFile(userId, downloadedFile)
+                encodeFileToBase64(downloadedFile)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                logE("下载人脸图片失败", tag = TAG, throwable = e)
+                logE("处理远程人脸图片失败", tag = TAG, throwable = e)
                 throw e
+            } finally {
+                downloadedFile.delete()
             }
         }
     }
@@ -138,9 +153,8 @@ class IdentificationFaceDataSource @Inject constructor(
         userId: Int,
         record: FaceCacheRecord,
     ): String {
-        val bytes = faceFileStore.readFaceBytes(record)
-        FaceImageValidation.requireSupportedFaceImageBytes(bytes)
-        val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+        val file = faceFileStore.readFaceFile(record)
+        val base64 = encodeFileToBase64(file)
         logD("成功读取人脸文件缓存 (userId=$userId, 长度=${base64.length})", tag = TAG)
         return base64
     }
@@ -165,10 +179,66 @@ class IdentificationFaceDataSource @Inject constructor(
         }
     }
 
-    private fun decodeFaceBase64(base64: String): ByteArray {
-        val bytes = Base64.decode(base64, Base64.NO_WRAP)
-        FaceImageValidation.requireSupportedFaceImageBytes(bytes)
-        return bytes
+    private suspend fun persistUserFaceFile(userId: Int, imageFile: File) {
+        persistFaceCacheRecord(
+            userId = userId,
+            record = faceFileStore.writeFaceFile(userId, imageFile),
+        )
+    }
+
+    private suspend fun persistFaceCacheRecord(
+        userId: Int,
+        record: FaceCacheRecord,
+    ) {
+        val dataStore = getDataStoreForUser(userId)
+        val recordKey = faceCacheRecordKey(userId)
+        dataStore.edit { prefs ->
+            prefs[recordKey] = record.toPreferenceValue()
+        }
+        logD("成功写入人脸文件缓存 (userId=$userId, size=${record.sizeBytes})", tag = TAG)
+    }
+
+    private fun encodeFileToBase64(imageFile: File): String {
+        val output = ByteArrayOutputStream()
+        Base64OutputStream(output, Base64.NO_WRAP).use { base64Output ->
+            imageFile.inputStream().use { input ->
+                input.copyTo(base64Output)
+            }
+        }
+        return output.toString(Charsets.US_ASCII.name())
+    }
+
+    private fun createRemoteFaceDownloadFile(): File {
+        return createTempFaceFile(
+            prefix = REMOTE_FACE_DOWNLOAD_FILE_PREFIX,
+            suffix = REMOTE_FACE_DOWNLOAD_FILE_SUFFIX,
+        )
+    }
+
+    private fun createLocalFaceDecodeFile(): File {
+        return createTempFaceFile(
+            prefix = LOCAL_FACE_DECODE_FILE_PREFIX,
+            suffix = LOCAL_FACE_DECODE_FILE_SUFFIX,
+        )
+    }
+
+    private fun createTempFaceFile(prefix: String, suffix: String): File {
+        val dir = File(context.cacheDir, FACE_TEMP_DIR_NAME).apply {
+            if (!exists() && !mkdirs() && !exists()) {
+                throw IOException("Failed to create face temp directory.")
+            }
+        }
+        return File(dir, "$prefix${UUID.randomUUID()}$suffix")
+    }
+
+    private fun writeBase64ToFile(base64: String, destinationFile: File) {
+        base64.byteInputStream(Charsets.US_ASCII).use { rawInput ->
+            Base64InputStream(rawInput, Base64.NO_WRAP).use { base64Input ->
+                destinationFile.outputStream().use { output ->
+                    base64Input.copyTo(output)
+                }
+            }
+        }
     }
 
     private suspend fun clearLocalFaceFiles() = withContext(ioDispatcher) {

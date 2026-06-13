@@ -5,7 +5,6 @@ import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
-import com.ytone.longcare.model.User
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -17,9 +16,9 @@ internal fun launchSelfProvidedFaceVerificationAndCache(
     idNo: String,
     orderNo: String,
     userId: String,
+    cacheUserId: Int,
     sourcePhotoUrl: String,
     faceDataSource: IdentificationFaceDataSource,
-    resolveCurrentUser: suspend () -> User?,
     beginVerification: (VerificationType) -> Unit,
     startVerificationWithRequest: suspend (Context, FaceVerificationRequest) -> Unit,
     onFailure: (String) -> Unit,
@@ -29,14 +28,12 @@ internal fun launchSelfProvidedFaceVerificationAndCache(
 
         try {
             logD("从服务器下载人脸图片: $sourcePhotoUrl", tag = "IdentificationVM")
-            val sourcePhotoBase64 = faceDataSource.downloadAndConvertToBase64(sourcePhotoUrl)
+            val sourcePhotoBase64 = faceDataSource.downloadCacheAndConvertToBase64(
+                url = sourcePhotoUrl,
+                userId = cacheUserId,
+            )
             logD("下载成功，Base64长度: ${sourcePhotoBase64.length}", tag = "IdentificationVM")
-
-            val currentUser = resolveCurrentUser()
-            if (currentUser != null) {
-                faceDataSource.writeUserFaceBase64(currentUser.userId, sourcePhotoBase64)
-                logD("已保存到本地缓存", tag = "IdentificationVM")
-            }
+            logD("已保存到本地缓存", tag = "IdentificationVM")
 
             executeSelfProvidedVerification(
                 context = context,

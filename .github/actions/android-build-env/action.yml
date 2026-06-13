@@ -4,13 +4,13 @@ description: Configure Java/Gradle/Android SDK and run shared low-cost Android g
 
 inputs:
   setup-android-sdk:
-    description: Whether to install Android SDK platform-tools.
+    description: Whether to install Android SDK packages required for Android builds.
     required: false
     default: "false"
   android-packages:
     description: Android SDK packages to install when setup-android-sdk is true.
     required: false
-    default: "platform-tools"
+    default: "platform-tools platforms;android-37.0"
   run-gradle-stability-check:
     description: Whether to run verify_gradle_stability.sh.
     required: false
