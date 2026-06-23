@@ -30,7 +30,7 @@ jobs:
           ls /dev/kvm
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up shared Android build environment
         uses: ./.github/actions/android-build-env
@@ -155,7 +155,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Cleanup GitHub Actions caches
         env:

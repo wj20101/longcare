@@ -287,7 +287,7 @@ for workflow in "${WORKFLOWS[@]}"; do
   require_absent_pattern "${workflow}" "cancel-in-progress:[[:space:]]*false" "cancel-in-progress is not disabled"
   require_pattern "${workflow}" "permissions:" "has permissions block"
   require_pattern "${workflow}" "timeout-minutes:" "has job timeout"
-  require_pattern "${workflow}" "uses:[[:space:]]*actions/checkout@v6" "uses pinned checkout action"
+  require_pattern "${workflow}" "uses:[[:space:]]*actions/checkout@v7" "uses pinned checkout action"
   require_absent_pattern "${workflow}" "uses:[[:space:]]*[^[:space:]]+@(main|master|HEAD)" "does not use mutable action refs"
   require_pattern "${workflow}" "uses:[[:space:]]*actions/upload-artifact@v(6|7)" "uses supported pinned upload-artifact action"
   require_absent_pattern "${workflow}" "uses:[[:space:]]*actions/upload-artifact@v([0-58-9]|[1-9][0-9]+)" "does not use unsupported upload-artifact action"
