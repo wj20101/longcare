@@ -30,7 +30,7 @@ internal class NfcActivityAndLocationDelegate(
 
     suspend fun getCurrentLocationCoordinates(): Pair<String, String> {
         return try {
-            val location = locationFacade.getCurrentLocation()
+            val location = locationFacade.getFreshLocation()
             if (location != null) {
                 Pair(location.longitude.toString(), location.latitude.toString())
             } else {
