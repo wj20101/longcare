@@ -7,15 +7,15 @@ coroutines = "1.11.0"
 ksp = "2.3.9"
 
 # Compose Versions
-composeBom = "2026.05.01"
+composeBom = "2026.06.00"
 
 # AndroidX Core & Lifecycle
 coreKtx = "1.19.0"
-lifecycle = "2.10.0"
+lifecycle = "2.11.0"
 activityCompose = "1.13.0"
 fragmentCompose = "1.8.9"
 mockk = "1.14.11"
-navigation3 = "1.1.2"
+navigation3 = "1.1.3"
 appcompat = "1.7.1"
 robolectric = "4.16.1"
 startup = "1.2.0"
