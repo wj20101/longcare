@@ -15,6 +15,8 @@ interface LocationFacade {
 
     suspend fun getCurrentLocation(timeoutMs: Long = DEFAULT_FAST_LOCATION_TIMEOUT_MS): LocationResult?
 
+    suspend fun getFreshLocation(timeoutMs: Long = DEFAULT_FRESH_LOCATION_TIMEOUT_MS): LocationResult?
+
     fun getCachedLocation(maxAgeMs: Long = 30_000L): LocationResult?
 
     fun acquireKeepAlive(owner: String)
@@ -26,6 +28,7 @@ interface LocationFacade {
 
     companion object {
         const val DEFAULT_FAST_LOCATION_TIMEOUT_MS: Long = 4_000L
+        const val DEFAULT_FRESH_LOCATION_TIMEOUT_MS: Long = 10_000L
         const val BUSINESS_LOCATION_CACHE_MAX_AGE_MS: Long = 5 * 60 * 1000L
     }
 }

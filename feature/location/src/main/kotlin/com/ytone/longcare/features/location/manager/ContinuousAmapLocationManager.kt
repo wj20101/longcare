@@ -9,8 +9,11 @@ import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.domain.location.AmapApiKeyProvider
+import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.model.LocationResult
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.awaitClose
@@ -19,6 +22,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -47,6 +51,10 @@ class ContinuousAmapLocationManager @Inject constructor(
         const val MIN_INTERVAL = 5_000L
         /** 最大定位间隔（毫秒） */
         const val MAX_INTERVAL = 120_000L
+        /** NFC新鲜定位最小超时，低于高德建议值时自动提升 */
+        const val MIN_FRESH_TIMEOUT = 8_000L
+        /** NFC新鲜定位最大超时，避免用户在扫码后等待过久 */
+        const val MAX_FRESH_TIMEOUT = 15_000L
     }
 
     @Volatile
@@ -114,6 +122,20 @@ class ContinuousAmapLocationManager @Inject constructor(
             interval = intervalMs.coerceIn(MIN_INTERVAL, MAX_INTERVAL)
             // 设置定位超时时间
             httpTimeOut = 20000
+        }
+    }
+
+    private fun buildFreshLocationOption(timeoutMs: Long): AMapLocationClientOption {
+        return AMapLocationClientOption().apply {
+            setLocationPurpose(AMapLocationClientOption.AMapLocationPurpose.SignIn)
+            locationMode = AMapLocationClientOption.AMapLocationMode.Hight_Accuracy
+            isNeedAddress = false
+            setOnceLocation(true)
+            setOnceLocationLatest(true)
+            isWifiScan = true
+            isMockEnable = false
+            setLocationCacheEnable(false)
+            httpTimeOut = timeoutMs.coerceIn(MIN_FRESH_TIMEOUT, MAX_FRESH_TIMEOUT)
         }
     }
     
@@ -214,6 +236,106 @@ class ContinuousAmapLocationManager @Inject constructor(
             withTimeoutOrNull(timeoutMs) {
                 // 调用此方法会自动增加订阅者计数，触发定位启动
                 startContinuousLocation().first() 
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.AMAP_SINGLE_LOCATION_FAIL,
+                throwable = e,
+                extras = mapOf("errorMsg" to e.message)
+            )
+            null
+        }
+    }
+
+    suspend fun getFreshLocation(timeoutMs: Long = LocationFacade.DEFAULT_FRESH_LOCATION_TIMEOUT_MS): LocationResult? {
+        val apiKey = amapApiKeyProvider.getAmapApiKey()?.takeIf { it.isNotBlank() } ?: ""
+
+        if (apiKey.isBlank()) {
+            LocationEventTracker.trackError(LocationEventTracker.EventType.API_KEY_UNAVAILABLE)
+            return null
+        }
+
+        val boundedTimeoutMs = timeoutMs.coerceIn(MIN_FRESH_TIMEOUT, MAX_FRESH_TIMEOUT)
+        return try {
+            withTimeoutOrNull(boundedTimeoutMs) {
+                suspendCancellableCoroutine { continuation ->
+                    // Fresh location must use an isolated client with SignIn + once/latest + cache disabled:
+                    // AMapLocationClientOption.AMapLocationPurpose.SignIn
+                    // setOnceLocation(true)
+                    // setOnceLocationLatest(true)
+                    // setLocationCacheEnable(false)
+                    AMapLocationClient.setApiKey(apiKey)
+                    AMapLocationClient.updatePrivacyShow(context, true, true)
+                    AMapLocationClient.updatePrivacyAgree(context, true)
+
+                    val finished = AtomicBoolean(false)
+                    var client: AMapLocationClient? = null
+                    var listener: AMapLocationListener? = null
+
+                    fun cleanup() {
+                        try {
+                            listener?.let { client?.unRegisterLocationListener(it) }
+                            client?.stopLocation()
+                            client?.onDestroy()
+                        } catch (e: Exception) {
+                            LocationEventTracker.trackError(
+                                LocationEventTracker.EventType.AMAP_SINGLE_LOCATION_FAIL,
+                                throwable = e,
+                                extras = mapOf("errorMsg" to e.message)
+                            )
+                        }
+                    }
+
+                    fun finish(result: LocationResult?) {
+                        if (!finished.compareAndSet(false, true)) return
+                        cleanup()
+                        continuation.resume(result)
+                    }
+
+                    try {
+                        val freshClient = AMapLocationClient(context)
+                        client = freshClient
+                        listener = AMapLocationListener { location: AMapLocation? ->
+                            if (location != null && location.errorCode == 0) {
+                                finish(
+                                    LocationResult(
+                                        latitude = location.latitude,
+                                        longitude = location.longitude,
+                                        provider = "amap_fresh",
+                                        accuracy = location.accuracy
+                                    )
+                                )
+                            } else {
+                                LocationEventTracker.trackError(
+                                    LocationEventTracker.EventType.AMAP_SINGLE_LOCATION_FAIL,
+                                    extras = mapOf(
+                                        "errorCode" to location?.errorCode,
+                                        "errorMsg" to (location?.errorInfo ?: "未知错误")
+                                    )
+                                )
+                                finish(null)
+                            }
+                        }
+                        freshClient.setLocationListener(listener)
+                        freshClient.setLocationOption(buildFreshLocationOption(boundedTimeoutMs))
+                        freshClient.startLocation()
+                    } catch (e: Exception) {
+                        LocationEventTracker.trackError(
+                            LocationEventTracker.EventType.AMAP_SINGLE_LOCATION_FAIL,
+                            throwable = e,
+                            extras = mapOf("errorMsg" to e.message)
+                        )
+                        finish(null)
+                    }
+
+                    continuation.invokeOnCancellation {
+                        if (finished.compareAndSet(false, true)) {
+                            cleanup()
+                        }
+                    }
+                }
             }
         } catch (e: CancellationException) {
             throw e
