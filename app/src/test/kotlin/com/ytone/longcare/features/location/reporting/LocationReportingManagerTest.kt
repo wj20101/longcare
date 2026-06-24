@@ -10,10 +10,16 @@ import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.location.LocationRepository
 import com.ytone.longcare.domain.location.LocationUploadQueueRepository
 import com.ytone.longcare.features.location.manager.LocationStateManager
+import com.ytone.longcare.features.location.tracker.LocationEventTracker
+import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.runs
+import io.mockk.unmockkAll
 import io.mockk.verify
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -24,6 +30,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
@@ -33,6 +40,16 @@ class LocationReportingManagerTest {
     @Before
     fun setUp() {
         KLogger.updateConfig { enabled = false }
+        mockkObject(LocationEventTracker)
+        every { LocationEventTracker.trackEvent(any(), any()) } just runs
+        every { LocationEventTracker.trackLocationSample(any(), any(), any(), any()) } just runs
+        every { LocationEventTracker.trackError(any(), any(), any()) } just runs
+    }
+
+    @After
+    fun tearDown() {
+        clearAllMocks()
+        unmockkAll()
     }
 
     @Test
@@ -98,6 +115,12 @@ class LocationReportingManagerTest {
         assertEquals(orderKey, manager.currentTrackingOrderKey.value)
         verify { locationStateManager.startTracking(orderKey) }
         verify { locationFacade.acquireKeepAlive("location_report_100") }
+        verify(exactly = 1) {
+            LocationEventTracker.trackEvent(
+                LocationEventTracker.EventType.REPORTING_START,
+                match { it["orderId"] == 100L }
+            )
+        }
 
         flow.emit(sample)
         runCurrent()
@@ -123,6 +146,12 @@ class LocationReportingManagerTest {
         assertEquals(null, manager.currentTrackingOrderKey.value)
         verify { locationFacade.releaseKeepAlive("location_report_100") }
         verify { locationStateManager.stopTracking() }
+        verify(exactly = 1) {
+            LocationEventTracker.trackEvent(
+                LocationEventTracker.EventType.REPORTING_STOP,
+                match { it["orderId"] == 100L }
+            )
+        }
     }
 
     @Test
@@ -233,12 +262,160 @@ class LocationReportingManagerTest {
         runCurrent()
 
         coVerify(exactly = 0) { queueRepository.insert(any()) }
+        verify(exactly = 1) {
+            LocationEventTracker.trackLocationSample(
+                LocationEventTracker.EventType.LOCATION_STALE_SKIPPED,
+                250L,
+                staleLocation,
+                match {
+                    it["ageMs"] is Long &&
+                        it["staleThresholdMs"] == 2 * 60 * 1000L
+                }
+            )
+        }
 
         flow.emit(freshLocation)
         runCurrent()
 
         coVerify(exactly = 1) {
             queueRepository.insert(match { it.orderId == 250L && it.latitude == 30.1 && it.longitude == 120.1 })
+        }
+
+        manager.stopReporting()
+        runCurrent()
+    }
+
+    @Test
+    fun `accepted samples should emit one sample event until throttle window passes`() = runTest {
+        val locationFacade = mockk<LocationFacade>()
+        val locationStateManager = mockk<LocationStateManager>(relaxed = true)
+        val locationRepository = mockk<LocationRepository>()
+        val queueRepository = mockk<LocationUploadQueueRepository>()
+        val flow = MutableSharedFlow<LocationResult>()
+        val dispatcher = StandardTestDispatcher(testScheduler)
+
+        val orderKey = OrderKey(orderId = 260L, planId = 0)
+        val firstLocation = LocationResult(
+            latitude = 30.0,
+            longitude = 120.0,
+            provider = "amap_continuous",
+            accuracy = 8f,
+            locationTime = System.currentTimeMillis()
+        )
+        val secondLocation = firstLocation.copy(
+            latitude = 30.0005,
+            longitude = 120.0005,
+            locationTime = firstLocation.locationTime + 30_000L
+        )
+
+        every { locationFacade.observeLocations(any()) } returns flow
+        every { locationFacade.acquireKeepAlive(any()) } returns Unit
+        every { locationFacade.releaseKeepAlive(any()) } returns Unit
+        coEvery { queueRepository.insert(any()) } returnsMany listOf(11L, 12L)
+        coEvery { queueRepository.getUploadQueue(any(), any()) } returns emptyList()
+        coEvery { queueRepository.deleteByStatusBefore(any(), any()) } returns 0
+
+        val manager = LocationReportingManager(
+            locationFacade = locationFacade,
+            locationStateManager = locationStateManager,
+            locationRepository = locationRepository,
+            locationUploadQueueRepository = queueRepository,
+            ioDispatcher = dispatcher
+        )
+
+        manager.startReporting(orderKey)
+        runCurrent()
+
+        flow.emit(firstLocation)
+        runCurrent()
+
+        flow.emit(secondLocation)
+        runCurrent()
+
+        verify(exactly = 1) {
+            LocationEventTracker.trackLocationSample(
+                LocationEventTracker.EventType.LOCATION_SAMPLE_RECORDED,
+                260L,
+                firstLocation,
+                match { it["sampleReason"] == "first" }
+            )
+        }
+        verify(exactly = 0) {
+            LocationEventTracker.trackLocationSample(
+                LocationEventTracker.EventType.LOCATION_SAMPLE_RECORDED,
+                260L,
+                secondLocation,
+                any()
+            )
+        }
+
+        manager.stopReporting()
+        runCurrent()
+    }
+
+    @Test
+    fun `suspicious jump should emit jump detected event`() = runTest {
+        val locationFacade = mockk<LocationFacade>()
+        val locationStateManager = mockk<LocationStateManager>(relaxed = true)
+        val locationRepository = mockk<LocationRepository>()
+        val queueRepository = mockk<LocationUploadQueueRepository>()
+        val flow = MutableSharedFlow<LocationResult>()
+        val dispatcher = StandardTestDispatcher(testScheduler)
+
+        val orderKey = OrderKey(orderId = 270L, planId = 0)
+        val firstLocation = LocationResult(
+            latitude = 30.0,
+            longitude = 120.0,
+            provider = "amap_continuous",
+            accuracy = 5f,
+            coordType = "GCJ02",
+            locationType = 5,
+            trustedLevel = 2,
+            locationTime = System.currentTimeMillis()
+        )
+        val jumpedLocation = firstLocation.copy(
+            latitude = 30.02,
+            longitude = 120.02,
+            locationTime = firstLocation.locationTime + 60_000L
+        )
+
+        every { locationFacade.observeLocations(any()) } returns flow
+        every { locationFacade.acquireKeepAlive(any()) } returns Unit
+        every { locationFacade.releaseKeepAlive(any()) } returns Unit
+        coEvery { queueRepository.insert(any()) } returnsMany listOf(21L, 22L)
+        coEvery { queueRepository.getUploadQueue(any(), any()) } returns emptyList()
+        coEvery { queueRepository.deleteByStatusBefore(any(), any()) } returns 0
+
+        val manager = LocationReportingManager(
+            locationFacade = locationFacade,
+            locationStateManager = locationStateManager,
+            locationRepository = locationRepository,
+            locationUploadQueueRepository = queueRepository,
+            ioDispatcher = dispatcher
+        )
+
+        manager.startReporting(orderKey)
+        runCurrent()
+
+        flow.emit(firstLocation)
+        runCurrent()
+
+        flow.emit(jumpedLocation)
+        runCurrent()
+
+        verify(exactly = 1) {
+            LocationEventTracker.trackLocationSample(
+                LocationEventTracker.EventType.LOCATION_JUMP_DETECTED,
+                270L,
+                jumpedLocation,
+                match {
+                    it["previousLatitude"] == "30.00000" &&
+                        it["previousLongitude"] == "120.00000" &&
+                        it["previousCoordType"] == "GCJ02" &&
+                        it["distanceMeters"] != null &&
+                        it["elapsedSeconds"] == "60.0"
+                }
+            )
         }
 
         manager.stopReporting()

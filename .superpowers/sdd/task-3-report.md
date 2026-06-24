@@ -60,3 +60,33 @@ The task brief asked for the literal `locationTime = 1_717_000_000_123L` in the 
 - the success-path metadata test uses a fresh runtime `locationTime` so the sample is enqueued and uploaded
 
 No production behavior was relaxed to accommodate the test.
+
+## Fix Review
+
+Applied the follow-up review fixes while keeping the Bugly diagnostics in place:
+
+- Added direct telemetry coverage for `REPORTING_START`, `REPORTING_STOP`, `LOCATION_SAMPLE_RECORDED`, `LOCATION_JUMP_DETECTED`, and `LOCATION_STALE_SKIPPED`.
+- Mocked `LocationEventTracker` in `LocationReportingManagerTest` so Bugly is never called during unit tests.
+- Tightened `LocationStateManager.updateTrackingState(true)` compatibility semantics so it no longer invents an incomplete tracking session; it now preserves existing tracking state and only clears transient error state when already tracking.
+
+### Files Changed
+
+- `feature/location/src/main/kotlin/com/ytone/longcare/features/location/manager/LocationStateManager.kt`
+- `app/src/test/kotlin/com/ytone/longcare/features/location/manager/LocationStateManagerTest.kt`
+- `app/src/test/kotlin/com/ytone/longcare/features/location/reporting/LocationReportingManagerTest.kt`
+
+### Test Command
+
+```bash
+./gradlew :app:testDebugUnitTest \
+  --tests 'com.ytone.longcare.features.location.manager.LocationStateManagerTest' \
+  --tests 'com.ytone.longcare.features.location.reporting.LocationReportingManagerTest'
+```
+
+### Test Output
+
+```text
+BUILD SUCCESSFUL in 5s
+228 actionable tasks: 4 executed, 224 up-to-date
+Configuration cache entry reused.
+```

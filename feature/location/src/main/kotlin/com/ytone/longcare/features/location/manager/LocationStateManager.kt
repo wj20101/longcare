@@ -57,7 +57,13 @@ class LocationStateManager @Inject constructor() {
         if (!isTracking) {
             stopTracking()
         } else {
-            _state.update { it.copy(isTracking = true) }
+            _state.update { state ->
+                if (state.isTracking) {
+                    state.copy(error = null)
+                } else {
+                    state
+                }
+            }
         }
     }
     
