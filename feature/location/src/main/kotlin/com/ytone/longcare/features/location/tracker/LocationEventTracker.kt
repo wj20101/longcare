@@ -113,7 +113,10 @@ object LocationEventTracker {
         location: LocationResult,
         extras: Map<String, Any?>
     ): Map<String, Any?> {
-        val locationExtras = linkedMapOf<String, Any?>(
+        val locationExtras = LinkedHashMap<String, Any?>()
+        locationExtras.putAll(extras)
+        locationExtras.putAll(
+            linkedMapOf(
             "orderId" to orderId,
             "latitude" to location.latitude.formatCoordinate(),
             "longitude" to location.longitude.formatCoordinate(),
@@ -123,8 +126,8 @@ object LocationEventTracker {
             "locationType" to location.locationType,
             "trustedLevel" to location.trustedLevel,
             "locationTime" to location.locationTime
+            )
         )
-        locationExtras.putAll(extras)
         return locationExtras
     }
 
