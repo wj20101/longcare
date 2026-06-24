@@ -1,7 +1,7 @@
 package com.ytone.longcare.common.utils
 
 import android.content.Context
-import androidx.core.os.bundleOf
+import android.os.Bundle
 import com.tencent.cloud.huiyansdkface.facelight.api.WbCloudFaceContant
 import com.tencent.cloud.huiyansdkface.facelight.api.WbCloudFaceVerifySdk
 import com.tencent.cloud.huiyansdkface.facelight.api.listeners.WbCloudFaceVerifyLoginListener
@@ -73,16 +73,16 @@ class FaceVerificationManager @Inject constructor(
                 params.keyLicence
             )
 
-            val data = bundleOf(
-                WbCloudFaceContant.INPUT_DATA to inputData,
-                WbCloudFaceContant.LANGUAGE to WbCloudFaceContant.LANGUAGE_ZH_CN,
-                WbCloudFaceContant.COLOR_MODE to WbCloudFaceContant.WHITE,
-                WbCloudFaceContant.VIDEO_UPLOAD to false,
-                WbCloudFaceContant.PLAY_VOICE to false,
-                WbCloudFaceContant.IS_LANDSCAPE to false,
-                WbCloudFaceContant.COMPARE_TYPE to WbCloudFaceContant.ID_CARD,
-                WbCloudFaceContant.IS_ENABLE_LOG to runtimeConfigProvider.isDebug
-            )
+            val data = Bundle().apply {
+                putSerializable(WbCloudFaceContant.INPUT_DATA, inputData)
+                putString(WbCloudFaceContant.LANGUAGE, WbCloudFaceContant.LANGUAGE_ZH_CN)
+                putString(WbCloudFaceContant.COLOR_MODE, WbCloudFaceContant.WHITE)
+                putBoolean(WbCloudFaceContant.VIDEO_UPLOAD, false)
+                putBoolean(WbCloudFaceContant.PLAY_VOICE, false)
+                putBoolean(WbCloudFaceContant.IS_LANDSCAPE, false)
+                putString(WbCloudFaceContant.COMPARE_TYPE, WbCloudFaceContant.ID_CARD)
+                putBoolean(WbCloudFaceContant.IS_ENABLE_LOG, runtimeConfigProvider.isDebug)
+            }
 
             WbCloudFaceVerifySdk.getInstance().initSdk(
                 context,

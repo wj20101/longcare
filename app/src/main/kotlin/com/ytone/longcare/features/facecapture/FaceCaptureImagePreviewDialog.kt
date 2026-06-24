@@ -41,7 +41,7 @@ internal fun ImagePreviewDialog(
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
 
-    val transformableState = rememberTransformableState { zoomChange, offsetChange, _ ->
+    val transformableState = rememberTransformableState { _, zoomChange, offsetChange, _ ->
         scale = (scale * zoomChange).coerceIn(0.5f, 5f)
         offsetX += offsetChange.x
         offsetY += offsetChange.y

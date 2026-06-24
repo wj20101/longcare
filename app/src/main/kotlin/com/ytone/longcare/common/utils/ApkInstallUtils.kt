@@ -128,7 +128,7 @@ object ApkInstallUtils {
         }
     }
 
-    private fun buildInstallIntent(uri: Uri, fileName: String): Intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+    internal fun buildInstallIntent(uri: Uri, fileName: String): Intent = Intent(Intent.ACTION_VIEW).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         clipData = ClipData.newRawUri(fileName, uri)

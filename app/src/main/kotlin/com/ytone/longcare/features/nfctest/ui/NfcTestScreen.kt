@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.nfctest.ui
 
+import android.content.ClipData
 import android.content.pm.ActivityInfo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,11 +10,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,6 +26,7 @@ import com.ytone.longcare.debug.NfcTestEntrySession
 import com.ytone.longcare.features.nfctest.api.NfcTestActions
 import com.ytone.longcare.features.nfctest.vm.NfcTestViewModel
 import com.ytone.longcare.features.nfctest.vm.R65CHidInputTestViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +40,8 @@ fun NfcTestScreen(
     val r65cPanelState by r65cViewModel.panelState.collectAsStateWithLifecycle()
     val testEntryEnabled by NfcTestEntrySession.enabled.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val coroutineScope = rememberCoroutineScope()
     val supportsNfc = remember(context) { NfcUtils.isNfcSupported(context) }
 
     val nfcTestHelper = if (testEntryEnabled && supportsNfc) {
@@ -81,12 +85,18 @@ fun NfcTestScreen(
                 onR65CRequestRefocus = r65cViewModel::requestRefocus,
                 onR65CClearResult = r65cViewModel::clearLastResult,
                 onR65CCopyResult = {
-                    copyNormalizedUidAndRefocus(
-                        uid = r65cPanelState.lastNormalizedUid,
-                        clipboardManager = clipboardManager,
-                        onCopied = { context.showShortToast("已复制卡号") },
-                        onRequestRefocus = r65cViewModel::requestRefocus,
-                    )
+                    coroutineScope.launch {
+                        copyNormalizedUidAndRefocus(
+                            uid = r65cPanelState.lastNormalizedUid,
+                            writeClipboardText = { text ->
+                                clipboard.setClipEntry(
+                                    ClipEntry(ClipData.newPlainText("NFC UID", text))
+                                )
+                            },
+                            onCopied = { context.showShortToast("已复制卡号") },
+                            onRequestRefocus = r65cViewModel::requestRefocus,
+                        )
+                    }
                 },
                 modifier = Modifier
                     .fillMaxSize()
@@ -100,15 +110,15 @@ fun NfcTestScreen(
     }
 }
 
-internal fun copyNormalizedUidAndRefocus(
+internal suspend fun copyNormalizedUidAndRefocus(
     uid: String?,
-    clipboardManager: androidx.compose.ui.platform.ClipboardManager,
+    writeClipboardText: suspend (String) -> Unit,
     onCopied: () -> Unit,
     onRequestRefocus: () -> Unit,
 ): Boolean {
     val normalizedUid = uid?.takeIf(String::isNotBlank) ?: return false
 
-    clipboardManager.setText(AnnotatedString(normalizedUid))
+    writeClipboardText(normalizedUid)
     onCopied()
     onRequestRefocus()
     return true

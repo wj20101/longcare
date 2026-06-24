@@ -71,7 +71,7 @@ fun ImagePreviewDialog(
     val screenWidth = with(density) { windowInfo.containerSize.width.toDp().toPx() }
     val screenHeight = with(density) { windowInfo.containerSize.height.toDp().toPx() }
 
-    val transformableState = rememberTransformableState { zoomChange, offsetChange, _ ->
+    val transformableState = rememberTransformableState { _, zoomChange, offsetChange, _ ->
         val newScale = (scale * zoomChange).coerceIn(1f, 5f)
         val maxOffsetX = if (newScale > 1f) (screenWidth * (newScale - 1f)) / 2f else 0f
         val maxOffsetY = if (newScale > 1f) (screenHeight * (newScale - 1f)) / 2f else 0f
