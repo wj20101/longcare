@@ -17,12 +17,12 @@ private val BASE_URL = "https://careapi.ytone.cn"
 private val PUBLIC_KEY =
     "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk45Er/DSjJwRNhReRT+4lINV6GanR3FwNutADNBwVoNQgY33bM/adLN5ZDmb8CwCeRJ4iBdcIX0co+2cm169HSHtJvOHUm864UbT63BrxKtnJCR+GkmsB3dj7YMwDbYArg7ymGP3EhWsiqMPdnR15+4LYIfK3l74nOZqPIPp8XkUKbbvJeieyslBIVSux2eytUGQjY8EPTE7nOHbAh8boWhiekFKevmx24dQBLoOrKrpTIv4pNiFSPxWCdBayCXjyr3Vq6Eg+vEDYN1+sxXWAj4bo/91TIbGQzdPCcCiZUQ1d7EgBp1JJKAsTTzkd+CusSTVpmmz/uVwjOaEHNzqWwIDAQAB"
 
-val appCompileSdkVersion: Int by rootProject.extra
-val appTargetSdkVersion: Int by rootProject.extra
-val appMinSdkVersion: Int by rootProject.extra
-val appJdkVersion: Int by rootProject.extra
-val appVersionCode: Int by rootProject.extra
-val appVersionName: String by rootProject.extra
+val appCompileSdkVersion = rootProject.extra["appCompileSdkVersion"] as Int
+val appTargetSdkVersion = rootProject.extra["appTargetSdkVersion"] as Int
+val appMinSdkVersion = rootProject.extra["appMinSdkVersion"] as Int
+val appJdkVersion = rootProject.extra["appJdkVersion"] as Int
+val appVersionCode = rootProject.extra["appVersionCode"] as Int
+val appVersionName = rootProject.extra["appVersionName"] as String
 
 val baselineEnableX86_64 =
     providers

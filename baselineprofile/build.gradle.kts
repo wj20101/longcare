@@ -3,10 +3,10 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
-val appCompileSdkVersion: Int by rootProject.extra
-val appTargetSdkVersion: Int by rootProject.extra
-val appMinSdkVersion: Int by rootProject.extra
-val appJdkVersion: Int by rootProject.extra
+val appCompileSdkVersion = rootProject.extra["appCompileSdkVersion"] as Int
+val appTargetSdkVersion = rootProject.extra["appTargetSdkVersion"] as Int
+val appMinSdkVersion = rootProject.extra["appMinSdkVersion"] as Int
+val appJdkVersion = rootProject.extra["appJdkVersion"] as Int
 
 android {
     namespace = "com.ytone.longcare.baselineprofile"

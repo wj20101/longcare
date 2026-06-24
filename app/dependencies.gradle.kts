@@ -11,27 +11,30 @@ fun lib(alias: String): Provider<MinimalExternalModuleDependency> =
         IllegalStateException("Missing library alias in version catalog: $alias")
     }
 
+fun DependencyHandler.projectDependency(path: String): Any =
+    project.dependencyFactory.createProjectDependency(path)
+
 fun DependencyHandler.addAll(configuration: String, dependencies: Iterable<Any>) {
     dependencies.forEach { add(configuration, it) }
 }
 
 dependencies {
-    add("baselineProfile", project(":baselineprofile"))
+    add("baselineProfile", projectDependency(":baselineprofile"))
 
     addAll(
         "implementation",
         listOf(
-            project(":core:common"),
-            project(":core:data"),
-            project(":core:domain"),
-            project(":core:model"),
-            project(":core:ui"),
-            project(":feature:login"),
-            project(":feature:home"),
-            project(":feature:identification"),
-            project(":feature:location"),
-            project(":feature:photoupload"),
-            project(":feature:servicecountdown")
+            projectDependency(":core:common"),
+            projectDependency(":core:data"),
+            projectDependency(":core:domain"),
+            projectDependency(":core:model"),
+            projectDependency(":core:ui"),
+            projectDependency(":feature:login"),
+            projectDependency(":feature:home"),
+            projectDependency(":feature:identification"),
+            projectDependency(":feature:location"),
+            projectDependency(":feature:photoupload"),
+            projectDependency(":feature:servicecountdown")
         )
     )
 
