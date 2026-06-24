@@ -22,8 +22,21 @@ The latest local release build succeeds, but emits several warning categories:
 4. NFC sign-in and NFC test behavior must remain compatible with existing tag dispatch flows.
 5. The release signing configuration must remain unchanged and must continue to use the configured `longcare` release key.
 6. Jetifier should be disabled only if the Tencent face SDK build and runtime dependency graph still compile safely without it.
+7. Prefer Jetpack and AndroidX APIs over platform compatibility workarounds whenever Jetpack provides a stable solution.
 
 ## Proposed Approach
+
+### Jetpack-First Rule
+
+Use Jetpack as the first option for warning cleanup:
+
+- Prefer Jetpack Room configuration over annotation-processor-only wiring for schema export.
+- Prefer Jetpack Compose replacement APIs for transform and clipboard warnings.
+- Prefer AndroidX Activity APIs for launching external flows when the current call site can support lifecycle-aware launchers.
+- Prefer AndroidX compatibility helpers only when they reduce API-level branching without hiding real behavior.
+- Use direct platform APIs only when Jetpack does not provide a meaningful wrapper, such as low-level NFC tag dispatch compatibility.
+
+This rule is a priority, not a mandate to over-refactor. If a warning can only be removed by changing public behavior or ownership boundaries, keep behavior stable and isolate the compatibility code.
 
 ### Room Schema Export
 
@@ -47,18 +60,19 @@ This keeps release output quiet while preserving useful warnings for future regr
 
 ### Kotlin and Android API Deprecations
 
-Replace low-risk deprecated usages with current APIs:
+Replace low-risk deprecated usages with Jetpack or current Android APIs:
 
-- APK install intent: use a modern install flow while preserving `FileProvider` URI permission behavior.
+- APK install intent: prefer AndroidX Activity Result integration at call sites that own a lifecycle; keep `FileProvider` URI permission behavior.
 - `bundleOf`: replace with direct `Bundle` construction where type safety warnings are emitted.
-- Compose transform APIs: migrate to the newer transform callback shape while preserving pan and zoom behavior.
-- Compose clipboard APIs: migrate the NFC test copy action to the current clipboard API and keep copy behavior covered by tests.
+- Compose transform APIs: migrate to the current Jetpack Compose transform callback shape while preserving pan and zoom behavior.
+- Compose clipboard APIs: migrate the NFC test copy action to the current Jetpack Compose clipboard API and keep copy behavior covered by tests.
 
 ### NFC Deprecation Handling
 
 Handle NFC tag action deprecations conservatively:
 
 - Keep support for existing platform-dispatched NFC intents that the app already receives.
+- Prefer lifecycle-aware integration around existing NFC helpers where it fits the current architecture.
 - Prefer modern foreground dispatch or reader-mode configuration only where it does not break current tests and sign-in flow.
 - If Android still requires `ACTION_TAG_DISCOVERED` as a compatibility fallback, isolate the deprecated reference in one compatibility helper with a clear suppression and test coverage.
 
@@ -69,7 +83,7 @@ The target is to avoid scattered deprecation warnings without removing real-worl
 Try disabling Jetifier in a controlled validation pass:
 
 - Run debug and release compilation with `android.enableJetifier=false`.
-- If compilation succeeds and Tencent face SDK dependencies do not require rewriting legacy support references, remove the property.
+- If compilation succeeds and Tencent face SDK dependencies do not require rewriting legacy support references, remove the property and keep all app dependencies on AndroidX/Jetpack artifacts.
 - If compilation fails or produces unresolved legacy support references, keep Jetifier enabled and update the comment to explain the current SDK constraint.
 
 Jetifier removal is desirable, but not at the cost of breaking the face SDK.
