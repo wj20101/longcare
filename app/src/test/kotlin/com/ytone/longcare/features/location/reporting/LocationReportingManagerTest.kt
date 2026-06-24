@@ -45,7 +45,17 @@ class LocationReportingManagerTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
 
         val orderKey = OrderKey(orderId = 100L, planId = 0)
-        val sample = LocationResult(31.2, 121.5, "amap_continuous", 5f)
+        val sampleTime = System.currentTimeMillis()
+        val sample = LocationResult(
+            latitude = 31.2,
+            longitude = 121.5,
+            provider = "amap_continuous",
+            accuracy = 5f,
+            coordType = "GCJ02",
+            locationType = 5,
+            trustedLevel = 2,
+            locationTime = sampleTime
+        )
         val pending = OrderLocationEntity(
             id = 1L,
             orderId = 100L,
@@ -53,6 +63,10 @@ class LocationReportingManagerTest {
             longitude = 121.5,
             accuracy = 5f,
             provider = "amap_continuous",
+            coordType = "GCJ02",
+            locationType = 5,
+            trustedLevel = 2,
+            locationTime = sampleTime,
             uploadStatus = LocationUploadStatus.PENDING.value,
             timestamp = System.currentTimeMillis()
         )
@@ -82,14 +96,22 @@ class LocationReportingManagerTest {
 
         assertTrue(manager.isTracking.value)
         assertEquals(orderKey, manager.currentTrackingOrderKey.value)
-        verify { locationStateManager.updateTrackingState(true) }
+        verify { locationStateManager.startTracking(orderKey) }
         verify { locationFacade.acquireKeepAlive("location_report_100") }
 
         flow.emit(sample)
         runCurrent()
 
         coVerify(exactly = 1) {
-            queueRepository.insert(match { it.orderId == 100L && it.latitude == 31.2 && it.longitude == 121.5 })
+            queueRepository.insert(match {
+                it.orderId == 100L &&
+                    it.latitude == 31.2 &&
+                    it.longitude == 121.5 &&
+                    it.coordType == "GCJ02" &&
+                    it.locationType == 5 &&
+                    it.trustedLevel == 2 &&
+                    it.locationTime == sampleTime
+            })
         }
         coVerify(exactly = 1) { locationRepository.addPosition(100L, 31.2, 121.5) }
         coVerify(exactly = 1) { queueRepository.updateStatus(1L, LocationUploadStatus.SUCCESS.value) }
@@ -100,7 +122,7 @@ class LocationReportingManagerTest {
         assertFalse(manager.isTracking.value)
         assertEquals(null, manager.currentTrackingOrderKey.value)
         verify { locationFacade.releaseKeepAlive("location_report_100") }
-        verify { locationStateManager.updateTrackingState(false) }
+        verify { locationStateManager.stopTracking() }
     }
 
     @Test
@@ -167,6 +189,63 @@ class LocationReportingManagerTest {
     }
 
     @Test
+    fun `stale replayed location should be skipped before enqueue`() = runTest {
+        val locationFacade = mockk<LocationFacade>()
+        val locationStateManager = mockk<LocationStateManager>(relaxed = true)
+        val locationRepository = mockk<LocationRepository>()
+        val queueRepository = mockk<LocationUploadQueueRepository>()
+        val flow = MutableSharedFlow<LocationResult>()
+        val dispatcher = StandardTestDispatcher(testScheduler)
+
+        val orderKey = OrderKey(orderId = 250L, planId = 0)
+        val staleLocation = LocationResult(
+            latitude = 30.0,
+            longitude = 120.0,
+            provider = "amap_continuous",
+            accuracy = 10f,
+            locationTime = System.currentTimeMillis() - 5 * 60 * 1000L
+        )
+        val freshLocation = staleLocation.copy(
+            latitude = 30.1,
+            longitude = 120.1,
+            locationTime = System.currentTimeMillis()
+        )
+
+        every { locationFacade.observeLocations(any()) } returns flow
+        every { locationFacade.acquireKeepAlive(any()) } returns Unit
+        every { locationFacade.releaseKeepAlive(any()) } returns Unit
+        coEvery { queueRepository.insert(any()) } returns 5L
+        coEvery { queueRepository.getUploadQueue(any(), any()) } returns emptyList()
+        coEvery { queueRepository.deleteByStatusBefore(any(), any()) } returns 0
+
+        val manager = LocationReportingManager(
+            locationFacade = locationFacade,
+            locationStateManager = locationStateManager,
+            locationRepository = locationRepository,
+            locationUploadQueueRepository = queueRepository,
+            ioDispatcher = dispatcher
+        )
+
+        manager.startReporting(orderKey)
+        runCurrent()
+
+        flow.emit(staleLocation)
+        runCurrent()
+
+        coVerify(exactly = 0) { queueRepository.insert(any()) }
+
+        flow.emit(freshLocation)
+        runCurrent()
+
+        coVerify(exactly = 1) {
+            queueRepository.insert(match { it.orderId == 250L && it.latitude == 30.1 && it.longitude == 120.1 })
+        }
+
+        manager.stopReporting()
+        runCurrent()
+    }
+
+    @Test
     fun `stopReporting should clear state and release keep alive`() = runTest {
         val locationFacade = mockk<LocationFacade>()
         val locationStateManager = mockk<LocationStateManager>(relaxed = true)
@@ -200,7 +279,8 @@ class LocationReportingManagerTest {
         assertEquals(null, manager.currentTrackingOrderKey.value)
         verify { locationFacade.acquireKeepAlive("location_report_300") }
         verify { locationFacade.releaseKeepAlive("location_report_300") }
-        verify { locationStateManager.updateTrackingState(false) }
+        verify { locationStateManager.startTracking(orderKey) }
+        verify { locationStateManager.stopTracking() }
     }
 
     @Test

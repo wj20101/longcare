@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.location.manager
 
 import com.ytone.longcare.model.LocationResult
+import com.ytone.longcare.model.OrderKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,11 +29,36 @@ class LocationStateManager @Inject constructor() {
 
     // ========== 服务控制 ==========
 
+    fun startTracking(orderKey: OrderKey) {
+        _state.update { state ->
+            state.copy(
+                isTracking = true,
+                currentOrderId = orderKey.orderId,
+                startTime = System.currentTimeMillis(),
+                error = null
+            )
+        }
+    }
+
+    fun stopTracking() {
+        _state.update { state ->
+            state.copy(
+                isTracking = false,
+                currentOrderId = null,
+                startTime = null
+            )
+        }
+    }
+
     /**
      * 更新追踪状态
      */
     fun updateTrackingState(isTracking: Boolean) {
-        _state.update { it.copy(isTracking = isTracking) }
+        if (!isTracking) {
+            stopTracking()
+        } else {
+            _state.update { it.copy(isTracking = true) }
+        }
     }
     
     /**
