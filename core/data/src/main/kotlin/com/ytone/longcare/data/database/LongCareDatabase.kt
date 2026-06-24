@@ -35,7 +35,7 @@ import com.ytone.longcare.data.database.entity.OrderProjectEntityDb
         OrderImageEntityDb::class,
         OrderLocationEntityDb::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class LongCareDatabase : RoomDatabase() {

@@ -3,6 +3,8 @@ package com.ytone.longcare.di
 import android.content.Context
 import android.database.sqlite.SQLiteDatabaseCorruptException
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.ytone.longcare.data.database.LongCareDatabase
 import com.ytone.longcare.data.database.dao.OrderDao
 import com.ytone.longcare.data.database.dao.OrderElderInfoDao
@@ -35,6 +37,15 @@ object DatabaseModule {
 
     private const val TAG = "LongCareDatabase"
 
+    private val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE order_locations ADD COLUMN coord_type TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE order_locations ADD COLUMN location_type INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE order_locations ADD COLUMN trusted_level INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE order_locations ADD COLUMN location_time INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideLongCareDatabase(
@@ -65,7 +76,8 @@ object DatabaseModule {
             context = context,
             klass = LongCareDatabase::class.java,
             name = LongCareDatabase.DATABASE_NAME
-        ).fallbackToDestructiveMigration(dropAllTables = true)
+        ).addMigrations(MIGRATION_1_2)
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true).build()
     }
 

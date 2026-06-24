@@ -234,6 +234,14 @@ data class OrderLocationEntityDb(
     val accuracy: Float = 0f,
     @ColumnInfo(name = "provider", defaultValue = "")
     val provider: String = "",
+    @ColumnInfo(name = "coord_type", defaultValue = "")
+    val coordType: String = "",
+    @ColumnInfo(name = "location_type", defaultValue = "0")
+    val locationType: Int = 0,
+    @ColumnInfo(name = "trusted_level", defaultValue = "0")
+    val trustedLevel: Int = 0,
+    @ColumnInfo(name = "location_time", defaultValue = "0")
+    val locationTime: Long = 0L,
     @ColumnInfo(name = "upload_status", defaultValue = "0")
     val uploadStatus: Int = LocationUploadStatus.PENDING.value,
     @ColumnInfo(name = "timestamp", defaultValue = "0")

@@ -146,6 +146,10 @@ fun OrderLocationEntityDb.toModel(): OrderLocationEntity = OrderLocationEntity(
     longitude = longitude,
     accuracy = accuracy,
     provider = provider,
+    coordType = coordType,
+    locationType = locationType,
+    trustedLevel = trustedLevel,
+    locationTime = locationTime,
     uploadStatus = uploadStatus,
     timestamp = timestamp
 )
@@ -157,6 +161,10 @@ fun OrderLocationEntity.toDb(): OrderLocationEntityDb = OrderLocationEntityDb(
     longitude = longitude,
     accuracy = accuracy,
     provider = provider,
+    coordType = coordType,
+    locationType = locationType,
+    trustedLevel = trustedLevel,
+    locationTime = locationTime,
     uploadStatus = uploadStatus,
     timestamp = timestamp
 )
