@@ -4,6 +4,8 @@ import android.os.Build
 import com.tencent.bugly.crashreport.CrashReport
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.model.LocationResult
+import java.util.Locale
 
 /**
  * 定位事件追踪器
@@ -41,6 +43,11 @@ object LocationEventTracker {
         SERVICE_STOP_ERROR("service_stop_error", "停止定位前台保活失败"),
 
         // LocationReportingManager 相关
+        REPORTING_START("reporting_start", "位置上报任务启动"),
+        REPORTING_STOP("reporting_stop", "位置上报任务停止"),
+        LOCATION_SAMPLE_RECORDED("location_sample_recorded", "采集到定位样本"),
+        LOCATION_JUMP_DETECTED("location_jump_detected", "检测到疑似定位跳点"),
+        LOCATION_STALE_SKIPPED("location_stale_skipped", "跳过陈旧定位样本"),
         REPORTING_TASK_ERROR("reporting_task_error", "位置上报任务异常终止"),
         QUEUE_WRITE_ERROR("queue_write_error", "写入定位上报队列失败"),
         API_UPLOAD_BUSINESS_ERROR("api_upload_business_error", "位置上报业务失败"),
@@ -62,6 +69,18 @@ object LocationEventTracker {
         extras: Map<String, Any?> = emptyMap()
     ) {
         report(eventType, throwable, extras, "追踪错误事件失败")
+    }
+
+    fun trackLocationSample(
+        eventType: EventType,
+        orderId: Long,
+        location: LocationResult,
+        extras: Map<String, Any?> = emptyMap()
+    ) {
+        trackEvent(
+            eventType = eventType,
+            extras = buildLocationExtras(orderId, location, extras)
+        )
     }
 
     private fun report(
@@ -87,6 +106,30 @@ object LocationEventTracker {
         } catch (e: Exception) {
             logE("$TAG: $failureMessage - ${e.message}")
         }
+    }
+
+    private fun buildLocationExtras(
+        orderId: Long,
+        location: LocationResult,
+        extras: Map<String, Any?>
+    ): Map<String, Any?> {
+        val locationExtras = linkedMapOf<String, Any?>(
+            "orderId" to orderId,
+            "latitude" to location.latitude.formatCoordinate(),
+            "longitude" to location.longitude.formatCoordinate(),
+            "provider" to location.provider,
+            "accuracy" to location.accuracy,
+            "coordType" to location.coordType,
+            "locationType" to location.locationType,
+            "trustedLevel" to location.trustedLevel,
+            "locationTime" to location.locationTime
+        )
+        locationExtras.putAll(extras)
+        return locationExtras
+    }
+
+    private fun Double.formatCoordinate(): String {
+        return String.format(Locale.US, "%.5f", this)
     }
 
     private fun buildEventInfo(

@@ -25,4 +25,16 @@ class ContinuousAmapLocationManagerFreshLocationSourceTest {
         assertFalse(method.contains("startContinuousLocation().first()"))
         assertFalse(method.contains("getCurrentLocation(timeoutMs)"))
     }
+
+    @Test
+    fun `amap location results carry sdk diagnostic metadata`() {
+        val source = File(
+            "../feature/location/src/main/kotlin/com/ytone/longcare/features/location/manager/ContinuousAmapLocationManager.kt"
+        ).readText()
+
+        assertTrue(source.contains("coordType = location.coordType.orEmpty()"))
+        assertTrue(source.contains("locationType = location.locationType"))
+        assertTrue(source.contains("trustedLevel = location.trustedLevel"))
+        assertTrue(source.contains("locationTime = location.time"))
+    }
 }

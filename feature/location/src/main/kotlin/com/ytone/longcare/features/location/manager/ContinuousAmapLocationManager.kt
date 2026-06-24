@@ -175,7 +175,11 @@ class ContinuousAmapLocationManager @Inject constructor(
                     latitude = location.latitude,
                     longitude = location.longitude,
                     provider = "amap_continuous",
-                    accuracy = location.accuracy
+                    accuracy = location.accuracy,
+                    coordType = location.coordType.orEmpty(),
+                    locationType = location.locationType,
+                    trustedLevel = location.trustedLevel,
+                    locationTime = location.time
                 )
                 trySend(result)
             } else {
@@ -304,7 +308,11 @@ class ContinuousAmapLocationManager @Inject constructor(
                                         latitude = location.latitude,
                                         longitude = location.longitude,
                                         provider = "amap_fresh",
-                                        accuracy = location.accuracy
+                                        accuracy = location.accuracy,
+                                        coordType = location.coordType.orEmpty(),
+                                        locationType = location.locationType,
+                                        trustedLevel = location.trustedLevel,
+                                        locationTime = location.time
                                     )
                                 )
                             } else {
