@@ -81,7 +81,7 @@ object NfcUtils {
         }
 
         // 你也可以添加对其他 action 的支持，如 TAG_DISCOVERED 或 TECH_DISCOVERED
-        val tagIntentFilter = IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED)
+        val tagIntentFilter = NfcIntentActions.createLegacyTagDiscoveredFilter()
         val techIntentFilter = IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED)
 
 

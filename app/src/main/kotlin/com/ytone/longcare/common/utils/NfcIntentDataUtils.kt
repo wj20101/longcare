@@ -10,24 +10,14 @@ import androidx.core.content.IntentCompat
 object NfcIntentDataUtils {
 
     fun getTagFromIntent(intent: Intent): Tag? {
-        val action = intent.action
-        if (
-            action == NfcAdapter.ACTION_TAG_DISCOVERED ||
-            action == NfcAdapter.ACTION_TECH_DISCOVERED ||
-            action == NfcAdapter.ACTION_NDEF_DISCOVERED
-        ) {
+        if (NfcIntentActions.isSupportedTagAction(intent.action)) {
             return IntentCompat.getParcelableExtra(intent, NfcAdapter.EXTRA_TAG, Tag::class.java)
         }
         return null
     }
 
     fun getNdefMessagesFromIntent(intent: Intent): Array<NdefMessage>? {
-        val action = intent.action
-        if (
-            action == NfcAdapter.ACTION_NDEF_DISCOVERED ||
-            action == NfcAdapter.ACTION_TAG_DISCOVERED ||
-            action == NfcAdapter.ACTION_TECH_DISCOVERED
-        ) {
+        if (NfcIntentActions.isSupportedTagAction(intent.action)) {
             val rawMessages = IntentCompat.getParcelableArrayExtra(
                 intent,
                 NfcAdapter.EXTRA_NDEF_MESSAGES,
