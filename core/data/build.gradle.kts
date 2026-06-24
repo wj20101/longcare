@@ -3,10 +3,15 @@ plugins {
     id("longcare.kotlin.common")
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 android {
     namespace = "com.ytone.longcare.core.data"
+}
+
+extensions.configure<androidx.room.gradle.RoomExtension>("room") {
+    schemaDirectory("${rootProject.projectDir}/app/schemas")
 }
 
 fun projectDependency(path: String) = dependencies.project(path)

@@ -6,7 +6,6 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.room)
     alias(libs.plugins.baselineprofile)
     id("kotlin-parcelize")
 }
@@ -96,10 +95,6 @@ android {
 
 extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension>("kotlin") {
     jvmToolchain(appJdkVersion)
-}
-
-extensions.configure<androidx.room.gradle.RoomExtension>("room") {
-    schemaDirectory("$projectDir/schemas")
 }
 
 baselineProfile {
