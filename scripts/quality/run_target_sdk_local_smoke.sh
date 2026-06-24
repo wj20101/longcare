@@ -11,6 +11,9 @@ ADB_BIN="${ADB_BIN:-}"
 EMULATOR_BIN="${EMULATOR_BIN:-}"
 STARTED_EMULATOR="false"
 
+# shellcheck source=scripts/quality/gradle_constants.sh
+source "${ROOT_DIR}/scripts/quality/gradle_constants.sh"
+
 resolve_bin() {
   local explicit="$1"
   shift
@@ -31,7 +34,7 @@ resolve_bin() {
 }
 
 extract_target_sdk() {
-  sed -nE 's/.*appTargetSdkVersion by extra\(([0-9]+)\).*/\1/p' "${CONSTANTS_FILE}" | head -n1
+  read_gradle_extra_value "${CONSTANTS_FILE}" "appTargetSdkVersion"
 }
 
 list_emulator_serials() {

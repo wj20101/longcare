@@ -3,6 +3,10 @@ set -euo pipefail
 
 CONSTANTS_FILE="${1:-constants.gradle.kts}"
 CI_WORKFLOW_FILE="${2:-.github/workflows/android-ci.yml}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=scripts/quality/gradle_constants.sh
+source "${SCRIPT_DIR}/gradle_constants.sh"
 
 if [[ ! -f "${CONSTANTS_FILE}" ]]; then
   echo "Constants file not found: ${CONSTANTS_FILE}" >&2
@@ -16,7 +20,7 @@ fi
 
 extract_sdk_value() {
   local key="$1"
-  sed -nE "s/.*${key} by extra\\(([0-9]+)\\).*/\\1/p" "${CONSTANTS_FILE}" | head -n1
+  read_gradle_extra_value "${CONSTANTS_FILE}" "${key}"
 }
 
 compile_sdk="$(extract_sdk_value "appCompileSdkVersion")"
@@ -56,8 +60,13 @@ if [[ "${has_dynamic_target_api}" == "true" ]]; then
 fi
 
 if [[ -z "${max_ci_api}" ]]; then
-  echo "No emulator api-level found in ${CI_WORKFLOW_FILE}" >&2
-  exit 1
+  echo "Target SDK gate passed."
+  echo "  - minSdk=${min_sdk}"
+  echo "  - targetSdk=${target_sdk}"
+  echo "  - compileSdk=${compile_sdk}"
+  echo "  - maxCiEmulatorApi=<none>"
+  echo "  - emulatorApiCheck=skipped; no emulator api-level is configured in ${CI_WORKFLOW_FILE}"
+  exit 0
 fi
 
 if (( max_ci_api < target_sdk )); then

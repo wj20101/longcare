@@ -8,6 +8,9 @@ CONSTANTS_FILE="${3:-${ROOT_DIR}/constants.gradle.kts}"
 JAVA_VERSION_FILE="${4:-${ROOT_DIR}/.java-version}"
 EXIT_CODE=0
 
+# shellcheck source=scripts/quality/gradle_constants.sh
+source "${ROOT_DIR}/scripts/quality/gradle_constants.sh"
+
 read_property() {
   local file_path="$1"
   local key="$2"
@@ -57,7 +60,7 @@ require_non_empty "${GRADLE_PROPERTIES_FILE}" "kotlin.daemon.jvmargs"
 require_non_empty "${DAEMON_JVM_FILE}" "toolchainVendor"
 require_non_empty "${DAEMON_JVM_FILE}" "toolchainVersion"
 
-expected_jdk="$(sed -nE 's/.*appJdkVersion by extra\(([0-9]+)\).*/\1/p' "${CONSTANTS_FILE}" | head -n1)"
+expected_jdk="$(read_gradle_extra_value "${CONSTANTS_FILE}" "appJdkVersion")"
 daemon_jdk="$(read_property "${DAEMON_JVM_FILE}" "toolchainVersion")"
 
 if [[ -z "${expected_jdk}" ]]; then

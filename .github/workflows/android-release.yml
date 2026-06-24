@@ -221,15 +221,40 @@ jobs:
           RUN_BASELINE_PROFILE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile || 'false' }}
         run: |
           set -euo pipefail
+          source scripts/quality/gradle_constants.sh
 
-          CURRENT_VERSION_CODE="$(sed -nE 's/.*appVersionCode by extra\(([0-9]+)\).*/\1/p' constants.gradle.kts | head -n1)"
+          CURRENT_VERSION_CODE="$(read_gradle_extra_value constants.gradle.kts appVersionCode)"
           if [ -z "${CURRENT_VERSION_CODE}" ]; then
             echo "::error::Failed to parse appVersionCode from constants.gradle.kts"
             exit 1
           fi
 
           NEXT_VERSION_CODE="$((CURRENT_VERSION_CODE + 1))"
-          sed -i -E "s/val appVersionCode by extra\([0-9]+\)/val appVersionCode by extra(${NEXT_VERSION_CODE})/" constants.gradle.kts
+          python3 - "${NEXT_VERSION_CODE}" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          next_version_code = sys.argv[1]
+          path = Path("constants.gradle.kts")
+          text = path.read_text()
+          text, count = re.subn(
+              r'extra\.set\("appVersionCode",\s*[0-9]+\)',
+              f'extra.set("appVersionCode", {next_version_code})',
+              text,
+              count=1,
+          )
+          if count == 0:
+              text, count = re.subn(
+                  r'val\s+appVersionCode\s+by\s+extra\([0-9]+\)',
+                  f'val appVersionCode by extra({next_version_code})',
+                  text,
+                  count=1,
+              )
+          if count != 1:
+              raise SystemExit("Failed to update appVersionCode in constants.gradle.kts")
+          path.write_text(text)
+          PY
 
           if ! git diff -- constants.gradle.kts | grep -q "appVersionCode"; then
             echo "::error::appVersionCode was not changed"
@@ -295,8 +320,9 @@ jobs:
       - name: Extract app version metadata
         id: app_version
         run: |
-          VERSION_CODE=$(sed -nE 's/.*appVersionCode by extra\(([0-9]+)\).*/\1/p' constants.gradle.kts | head -n1)
-          VERSION_NAME=$(sed -nE 's/.*appVersionName by extra\("([^"]+)"\).*/\1/p' constants.gradle.kts | head -n1)
+          source scripts/quality/gradle_constants.sh
+          VERSION_CODE=$(read_gradle_extra_value constants.gradle.kts appVersionCode)
+          VERSION_NAME=$(read_gradle_extra_value constants.gradle.kts appVersionName)
           if [ -z "$VERSION_CODE" ] || [ -z "$VERSION_NAME" ]; then
             echo "Failed to parse app version from constants.gradle.kts"
             exit 1
