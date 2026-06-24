@@ -1,9 +1,6 @@
 package com.ytone.longcare.features.maindashboard.utils
 
 import android.app.Activity
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -83,24 +80,6 @@ internal fun handleNfcTestIntent(
     } catch (e: Exception) {
         nfcTestLog("处理NFC数据失败: ${e.message}")
         toastHelper.showShort("处理NFC数据失败: ${e.message}")
-    }
-}
-
-internal fun copyNfcTagIdToClipboard(
-    activity: Activity,
-    text: String,
-    toastHelper: ToastHelper
-) {
-    try {
-        val clipboardManager =
-            activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clipData = ClipData.newPlainText("NFC Tag ID", text)
-        clipboardManager.setPrimaryClip(clipData)
-        nfcTestLog("已复制到剪贴板: $text")
-        toastHelper.showShort("已复制到剪贴板")
-    } catch (e: Exception) {
-        nfcTestLog("复制到剪贴板失败: ${e.message}")
-        toastHelper.showShort("复制失败")
     }
 }
 

@@ -1,7 +1,11 @@
 package com.ytone.longcare.features.maindashboard.utils
 
 import android.app.Activity
+import android.content.ClipData
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -12,6 +16,7 @@ import com.ytone.longcare.debug.NfcTestEntrySession
 import com.ytone.longcare.debug.NfcTestConfig
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.launch
 
 @Singleton
 class NfcTestHelper @Inject constructor(
@@ -79,29 +84,28 @@ class NfcTestHelper @Inject constructor(
         listeningDelegate.stop(activity)
     }
 
-    private fun copyToClipboard(text: String) {
-        currentActivity?.let { activity ->
-            copyNfcTagIdToClipboard(activity, text, toastHelper)
-        }
-    }
-
     fun dismissDialog() {
         logD(NfcTestConfig.TEST_TAG, "关闭弹窗")
         dialogState.dismiss()
     }
 
-    fun copyAndDismiss() {
-        logD(NfcTestConfig.TEST_TAG, "复制Tag ID: ${dialogState.nfcTagId}")
-        copyToClipboard(dialogState.nfcTagId)
-        dismissDialog()
-    }
-
     @Composable
     fun NfcTagDialog() {
+        val clipboard = LocalClipboard.current
+        val coroutineScope = rememberCoroutineScope()
         RenderNfcTestTagDialog(
             showDialog = dialogState.showDialog,
             nfcTagId = dialogState.nfcTagId,
-            onCopy = ::copyAndDismiss,
+            onCopy = {
+                coroutineScope.launch {
+                    logD(NfcTestConfig.TEST_TAG, "复制Tag ID: ${dialogState.nfcTagId}")
+                    clipboard.setClipEntry(
+                        ClipEntry(ClipData.newPlainText("NFC Tag ID", dialogState.nfcTagId))
+                    )
+                    toastHelper.showShort("已复制到剪贴板")
+                    dismissDialog()
+                }
+            },
             onDismiss = ::dismissDialog
         )
     }
