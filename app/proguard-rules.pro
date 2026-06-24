@@ -166,6 +166,11 @@
 -keep class com.autonavi.aps.amapapi.model.** { *; }
 -keep class com.autonavi.** { *; }
 -keep class com.amap.location.** { *; }
+# Optional classes referenced by bundled third-party SDK code. App code does not
+# call these classes directly; keep the suppression narrow so new missing classes
+# still fail loudly in release builds.
+-dontwarn com.amap.ams.gnss.GnssSoftLocator
+-dontwarn net.jafama.FastMath
 
 # --- ML Kit Face Detection ---
 # Face detection relies on provider/component bootstrap plus bundled model/native glue.

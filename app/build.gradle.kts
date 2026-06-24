@@ -91,6 +91,27 @@ android {
         compose = true
         viewBinding = true
     }
+
+    packaging {
+        jniLibs {
+            keepDebugSymbols +=
+                setOf(
+                    "**/libBugly_Native.so",
+                    "**/libBugly_Native_idasc.so",
+                    "**/libYTCommonLiveness.so",
+                    "**/libandroidx.graphics.path.so",
+                    "**/libapssdk.so",
+                    "**/libdatastore_shared_counter.so",
+                    "**/libface_detector_v2_jni.so",
+                    "**/libimage_processing_util_jni.so",
+                    "**/libkyctoolkit.so",
+                    "**/libsurface_util_jni.so",
+                    "**/libturingmfa.so",
+                    "**/libweconvert.so",
+                    "**/libweyuv.so",
+                )
+        }
+    }
 }
 
 extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension>("kotlin") {
