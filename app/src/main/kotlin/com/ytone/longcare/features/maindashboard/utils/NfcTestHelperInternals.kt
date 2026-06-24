@@ -83,6 +83,27 @@ internal fun handleNfcTestIntent(
     }
 }
 
+internal suspend fun copyNfcTagIdAndDismiss(
+    tagId: String,
+    writeClipboardEntry: suspend (String) -> Unit,
+    onCopySuccess: () -> Unit,
+    onCopyFailure: () -> Unit,
+    dismissDialog: () -> Unit
+): Boolean {
+    return try {
+        writeClipboardEntry(tagId)
+        nfcTestLog("已复制到剪贴板: $tagId")
+        onCopySuccess()
+        true
+    } catch (e: Exception) {
+        nfcTestLog("复制到剪贴板失败: ${e.message}")
+        onCopyFailure()
+        false
+    } finally {
+        dismissDialog()
+    }
+}
+
 @Composable
 internal fun RenderNfcTestTagDialog(
     showDialog: Boolean,

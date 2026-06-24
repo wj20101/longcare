@@ -98,12 +98,18 @@ class NfcTestHelper @Inject constructor(
             nfcTagId = dialogState.nfcTagId,
             onCopy = {
                 coroutineScope.launch {
-                    logD(NfcTestConfig.TEST_TAG, "复制Tag ID: ${dialogState.nfcTagId}")
-                    clipboard.setClipEntry(
-                        ClipEntry(ClipData.newPlainText("NFC Tag ID", dialogState.nfcTagId))
+                    copyNfcTagIdAndDismiss(
+                        tagId = dialogState.nfcTagId,
+                        writeClipboardEntry = { text ->
+                            logD(NfcTestConfig.TEST_TAG, "复制Tag ID: $text")
+                            clipboard.setClipEntry(
+                                ClipEntry(ClipData.newPlainText("NFC Tag ID", text))
+                            )
+                        },
+                        onCopySuccess = { toastHelper.showShort("已复制到剪贴板") },
+                        onCopyFailure = { toastHelper.showShort("复制失败") },
+                        dismissDialog = ::dismissDialog
                     )
-                    toastHelper.showShort("已复制到剪贴板")
-                    dismissDialog()
                 }
             },
             onDismiss = ::dismissDialog
