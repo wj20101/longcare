@@ -14,10 +14,12 @@ android {
     }
 }
 
+fun projectDependency(path: String) = dependencies.project(path)
+
 dependencies {
-    implementation(project(":core:common"))
-    implementation(project(":core:domain"))
-    implementation(project(":core:model"))
+    implementation(projectDependency(":core:common"))
+    implementation(projectDependency(":core:domain"))
+    implementation(projectDependency(":core:model"))
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)

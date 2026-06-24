@@ -9,8 +9,10 @@ android {
     namespace = "com.ytone.longcare.core.common"
 }
 
+fun projectDependency(path: String) = dependencies.project(path)
+
 dependencies {
-    implementation(project(":core:model"))
+    implementation(projectDependency(":core:model"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.dagger.hilt.android)
     implementation(libs.moshi.kotlin)

@@ -11,8 +11,8 @@ fun lib(alias: String): Provider<MinimalExternalModuleDependency> =
         IllegalStateException("Missing library alias in version catalog: $alias")
     }
 
-fun DependencyHandler.projectDependency(path: String): Any =
-    project.dependencyFactory.createProjectDependency(path)
+fun projectDependency(path: String): Any =
+    dependencies.project(path)
 
 fun DependencyHandler.addAll(configuration: String, dependencies: Iterable<Any>) {
     dependencies.forEach { add(configuration, it) }

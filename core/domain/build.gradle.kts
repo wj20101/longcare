@@ -7,8 +7,10 @@ android {
     namespace = "com.ytone.longcare.core.domain"
 }
 
+fun projectDependency(path: String) = dependencies.project(path)
+
 dependencies {
-    implementation(project(":core:common"))
-    implementation(project(":core:model"))
+    implementation(projectDependency(":core:common"))
+    implementation(projectDependency(":core:model"))
     implementation(libs.kotlinx.coroutines.android)
 }
