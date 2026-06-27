@@ -6,6 +6,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.core.common.di.IoDispatcher
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -65,12 +66,30 @@ class DownloadWorker @AssistedInject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: IOException) {
+                DiagnosticEventTracker.trackError(
+                    category = UPDATE_DIAGNOSTIC_CATEGORY,
+                    event = "apk_download_io_exception",
+                    description = "APK下载网络IO异常",
+                    throwable = e,
+                    extras = DiagnosticEventTracker.safeUrlExtras(url) + mapOf(
+                        "fileName" to fileName,
+                    ),
+                )
                 return@withContext Result.failure(
-                    workDataOf(KEY_ERROR to "网络错误: ${e.message}")
+                    workDataOf(KEY_ERROR to "网络错误: ${e.message ?: "请检查网络后重试"}")
                 )
             } catch (e: Exception) {
+                DiagnosticEventTracker.trackError(
+                    category = UPDATE_DIAGNOSTIC_CATEGORY,
+                    event = "apk_download_exception",
+                    description = "APK下载过程异常",
+                    throwable = e,
+                    extras = DiagnosticEventTracker.safeUrlExtras(url) + mapOf(
+                        "fileName" to fileName,
+                    ),
+                )
                 return@withContext Result.failure(
-                    workDataOf(KEY_ERROR to "下载失败: ${e.message}")
+                    workDataOf(KEY_ERROR to "安装包下载失败: ${e.message ?: "请稍后重试"}")
                 )
             }
         }
@@ -83,14 +102,33 @@ class DownloadWorker @AssistedInject constructor(
     ): Result {
         val response = downloadApi.downloadFile(url)
         if (!response.isSuccessful) {
+            DiagnosticEventTracker.trackError(
+                category = UPDATE_DIAGNOSTIC_CATEGORY,
+                event = "apk_download_http_failure",
+                description = "APK下载HTTP状态失败",
+                extras = DiagnosticEventTracker.safeUrlExtras(url) + mapOf(
+                    "fileName" to fileName,
+                    "httpCode" to response.code(),
+                    "httpMessage" to response.message(),
+                ),
+            )
             return Result.failure(
                 workDataOf(KEY_ERROR to "下载失败，HTTP状态码: ${response.code()}")
             )
         }
 
-        val responseBody = response.body() ?: return Result.failure(
-            workDataOf(KEY_ERROR to "响应体为空")
-        )
+        val responseBody = response.body() ?: run {
+            DiagnosticEventTracker.trackError(
+                category = UPDATE_DIAGNOSTIC_CATEGORY,
+                event = "apk_download_empty_body",
+                description = "APK下载响应体为空",
+                extras = DiagnosticEventTracker.safeUrlExtras(url) + mapOf(
+                    "fileName" to fileName,
+                    "httpCode" to response.code(),
+                ),
+            )
+            return Result.failure(workDataOf(KEY_ERROR to "响应体为空"))
+        }
 
         val file = File(downloadDir, fileName)
         val contentLength = responseBody.contentLength()
@@ -150,5 +188,6 @@ class DownloadWorker @AssistedInject constructor(
         const val KEY_FILE_PATH = "filePath"
         const val KEY_PROGRESS = "progress"
         const val KEY_ERROR = "error"
+        private const val UPDATE_DIAGNOSTIC_CATEGORY = "app_update"
     }
 }

@@ -63,7 +63,8 @@ suspend fun <T : TencentApiResponse> safeTencentApiCall(
                 }
                 
                 else -> {
-                    ApiResult.Exception(Exception("未知错误: ${throwable.message}", throwable))
+                    val message = throwable.message ?: "服务未返回具体原因"
+                    ApiResult.Exception(Exception("腾讯云接口请求异常: $message", throwable))
                 }
             }
         }

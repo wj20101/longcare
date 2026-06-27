@@ -40,6 +40,18 @@ internal object ManualFaceCaptureStateTransitions {
         state = ManualFaceCaptureState.ProcessingFaces
     )
 
+    fun onPhotoCaptureError(
+        currentUiState: ManualFaceCaptureUiState,
+        message: String
+    ): ManualFaceCaptureTransition = ManualFaceCaptureTransition(
+        uiState = currentUiState.copy(
+            isLoading = false,
+            isProcessingFaces = false,
+            errorMessage = message
+        ),
+        state = ManualFaceCaptureState.Error(message)
+    )
+
     fun onDetectionStarted(currentUiState: ManualFaceCaptureUiState): ManualFaceCaptureTransition =
         ManualFaceCaptureTransition(
             uiState = currentUiState.copy(isProcessingFaces = true)
@@ -75,7 +87,7 @@ internal object ManualFaceCaptureStateTransitions {
             isProcessingFaces = false,
             errorMessage = "人脸检测失败: $message"
         ),
-        state = ManualFaceCaptureState.Error(message.ifBlank { "未知错误" })
+        state = ManualFaceCaptureState.Error(message.ifBlank { "人脸检测异常" })
     )
 
     fun onFaceSelected(

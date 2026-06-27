@@ -64,7 +64,7 @@ object ApkInstallUtils {
             }
         } catch (e: Exception) {
             logE("手动打开APK失败: ${e.message}", tag = "ApkInstallUtils", throwable = e)
-            LaunchResult.Failed("打开安装包失败: ${e.message ?: "未知错误"}")
+            LaunchResult.Failed("打开安装包失败: ${e.message ?: "系统未返回具体原因"}")
         }
     }
 
@@ -109,7 +109,7 @@ object ApkInstallUtils {
             }
         } catch (e: Exception) {
             logE("跳转未知来源安装权限页面失败: ${e.message}", tag = "ApkInstallUtils", throwable = e)
-            LaunchResult.Failed("打开安装权限设置失败: ${e.message ?: "未知错误"}")
+            LaunchResult.Failed("打开安装权限设置失败: ${e.message ?: "系统未返回具体原因"}")
         }
     }
 

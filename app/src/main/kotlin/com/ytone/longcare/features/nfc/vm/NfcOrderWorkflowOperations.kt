@@ -1,9 +1,9 @@
 package com.ytone.longcare.features.nfc.vm
 
 import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.flow.MutableStateFlow
 
 internal suspend fun performStartOrderWorkflow(
@@ -12,7 +12,6 @@ internal suspend fun performStartOrderWorkflow(
     nfcDeviceId: String,
     longitude: String,
     latitude: String,
-    toastHelper: ToastHelper,
     uiState: MutableStateFlow<NfcSignInUiState>
 ) {
     uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
@@ -24,16 +23,30 @@ internal suspend fun performStartOrderWorkflow(
         latitude
     )) {
         is ApiResult.Success -> applyOrderCheckSuccess(uiState)
-        is ApiResult.Exception -> applyOrderApiException(
-            exception = result,
-            toastHelper = toastHelper,
-            uiState = uiState
-        )
-        is ApiResult.Failure -> applyOrderApiFailure(
-            failure = result,
-            toastHelper = toastHelper,
-            uiState = uiState
-        )
+        is ApiResult.Exception -> {
+            trackNfcException(
+                event = "start_order_check_exception",
+                description = "NFC开始工单校验异常",
+                throwable = result.exception,
+                orderKey = orderKey,
+                signInMode = SignInMode.START_ORDER,
+                nfcDeviceId = nfcDeviceId,
+                extras = locationExtras(longitude, latitude),
+            )
+            applyOrderApiException(exception = result, uiState = uiState)
+        }
+        is ApiResult.Failure -> {
+            trackNfcFailure(
+                event = "start_order_check_failure",
+                description = "NFC开始工单校验业务失败",
+                failure = result,
+                orderKey = orderKey,
+                signInMode = SignInMode.START_ORDER,
+                nfcDeviceId = nfcDeviceId,
+                extras = locationExtras(longitude, latitude),
+            )
+            applyOrderApiFailure(failure = result, uiState = uiState)
+        }
     }
 }
 
@@ -48,7 +61,6 @@ internal suspend fun performEndOrderWorkflow(
     longitude: String,
     latitude: String,
     endType: Int,
-    toastHelper: ToastHelper,
     uiState: MutableStateFlow<NfcSignInUiState>,
     onCheckSuccess: suspend () -> Unit
 ) {
@@ -70,16 +82,51 @@ internal suspend fun performEndOrderWorkflow(
         projectIdList = projectIdList
     )) {
         is ApiResult.Success -> onCheckSuccess()
-        is ApiResult.Exception -> applyOrderApiException(
-            exception = checkResult,
-            toastHelper = toastHelper,
-            uiState = uiState
-        )
-        is ApiResult.Failure -> applyCheckEndOrderFailure(
-            failure = checkResult,
-            endOrderParams = endOrderParams,
-            toastHelper = toastHelper,
-            uiState = uiState
-        )
+        is ApiResult.Exception -> {
+            trackNfcException(
+                event = "end_order_check_exception",
+                description = "NFC结束工单校验异常",
+                throwable = checkResult.exception,
+                orderKey = orderKey,
+                signInMode = SignInMode.END_ORDER,
+                nfcDeviceId = nfcDeviceId,
+                extras = locationExtras(longitude, latitude) + mapOf(
+                    "projectCount" to projectIdList.size,
+                    "beginImageCount" to beginImgList.size,
+                    "centerImageCount" to centerImgList.size,
+                    "endImageCount" to endImageList.size,
+                    "endType" to endType,
+                ),
+            )
+            applyOrderApiException(exception = checkResult, uiState = uiState)
+        }
+        is ApiResult.Failure -> {
+            trackNfcFailure(
+                event = "end_order_check_failure",
+                description = "NFC结束工单校验业务失败",
+                failure = checkResult,
+                orderKey = orderKey,
+                signInMode = SignInMode.END_ORDER,
+                nfcDeviceId = nfcDeviceId,
+                extras = locationExtras(longitude, latitude) + mapOf(
+                    "projectCount" to projectIdList.size,
+                    "beginImageCount" to beginImgList.size,
+                    "centerImageCount" to centerImgList.size,
+                    "endImageCount" to endImageList.size,
+                    "endType" to endType,
+                ),
+            )
+            applyCheckEndOrderFailure(
+                failure = checkResult,
+                endOrderParams = endOrderParams,
+                uiState = uiState,
+            )
+        }
     }
 }
+
+private fun locationExtras(longitude: String, latitude: String): Map<String, Any?> =
+    mapOf(
+        "hasLongitude" to longitude.isNotBlank(),
+        "hasLatitude" to latitude.isNotBlank(),
+    )

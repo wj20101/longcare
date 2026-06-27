@@ -2,6 +2,7 @@ package com.ytone.longcare.shared.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.location.LocationFacade
@@ -25,6 +26,7 @@ class OrderDetailViewModel @Inject constructor(
 ) : ViewModel() {
     companion object {
         private const val UI_SESSION_OWNER = "location_ui_session"
+        private const val ORDER_DETAIL_DIAGNOSTIC_CATEGORY = "order_detail"
     }
 
     private val _uiState = MutableStateFlow<OrderDetailUiState>(OrderDetailUiState.Initial)
@@ -50,8 +52,18 @@ class OrderDetailViewModel @Inject constructor(
                 }
 
                 is ApiResult.Exception -> {
+                    DiagnosticEventTracker.trackError(
+                        category = ORDER_DETAIL_DIAGNOSTIC_CATEGORY,
+                        event = "order_detail_load_exception",
+                        description = "订单详情加载异常",
+                        throwable = result.exception,
+                        extras = mapOf(
+                            "orderId" to orderKey.orderId,
+                            "planId" to orderKey.planId,
+                        ),
+                    )
                     _uiState.value = OrderDetailUiState.Error(
-                        result.exception.message ?: "未知错误"
+                        result.exception.message ?: "订单详情加载失败，请稍后重试"
                     )
                 }
 

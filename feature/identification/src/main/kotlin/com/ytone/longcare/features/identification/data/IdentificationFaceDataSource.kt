@@ -13,6 +13,8 @@ import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.domain.facecache.FaceCacheCleaner
+import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker
+import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker.EventType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -75,6 +77,13 @@ class IdentificationFaceDataSource @Inject constructor(
                     prefs.remove(recordKey)
                 }
                 faceFileStore.deleteUserFaceFiles(userId)
+                FaceVerificationEventTracker.trackError(
+                    eventType = EventType.FACE_CACHE_INVALID,
+                    extras = mapOf(
+                        "userId" to userId,
+                        "reason" to "malformed_record",
+                    ),
+                )
                 logE("人脸缓存记录格式无效，已移除 (userId=$userId)", tag = TAG)
             }
 
@@ -84,6 +93,14 @@ class IdentificationFaceDataSource @Inject constructor(
             throw e
         } catch (e: Exception) {
             logE("读取人脸缓存异常 (userId=$userId)", tag = TAG, throwable = e)
+            FaceVerificationEventTracker.trackError(
+                eventType = EventType.FACE_CACHE_INVALID,
+                throwable = e,
+                extras = mapOf(
+                    "userId" to userId,
+                    "reason" to "read_exception",
+                ),
+            )
             null
         }
     }
@@ -94,7 +111,16 @@ class IdentificationFaceDataSource @Inject constructor(
                 val decodedFile = createLocalFaceDecodeFile()
                 try {
                     writeBase64ToFile(base64, decodedFile)
+                    val sizeBytes = decodedFile.length()
                     persistUserFaceFile(userId, decodedFile)
+                    FaceVerificationEventTracker.trackEvent(
+                        eventType = EventType.FACE_CACHE_WRITE_SUCCESS,
+                        extras = mapOf(
+                            "userId" to userId,
+                            "sizeBytes" to sizeBytes,
+                            "sourcePhotoBase64Length" to base64.length,
+                        ),
+                    )
                 } finally {
                     decodedFile.delete()
                 }
@@ -104,6 +130,11 @@ class IdentificationFaceDataSource @Inject constructor(
             throw e
         } catch (e: Exception) {
             logE("写入人脸缓存异常 (userId=$userId)", tag = TAG, throwable = e)
+            FaceVerificationEventTracker.trackError(
+                eventType = EventType.FACE_CACHE_WRITE_ERROR,
+                throwable = e,
+                extras = mapOf("userId" to userId),
+            )
             false
         }
     }
@@ -136,8 +167,18 @@ class IdentificationFaceDataSource @Inject constructor(
             val downloadedFile = createRemoteFaceDownloadFile()
             try {
                 remoteFaceImageDownloader.downloadToFile(url, downloadedFile)
+                val downloadedSizeBytes = downloadedFile.length()
                 persistUserFaceFile(userId, downloadedFile)
-                encodeFileToBase64(downloadedFile)
+                val base64 = encodeFileToBase64(downloadedFile)
+                FaceVerificationEventTracker.trackEvent(
+                    eventType = EventType.REMOTE_FACE_DOWNLOAD_SUCCESS,
+                    extras = FaceVerificationEventTracker.safeUrlExtras(url) + mapOf(
+                        "userId" to userId,
+                        "sizeBytes" to downloadedSizeBytes,
+                        "sourcePhotoBase64Length" to base64.length,
+                    ),
+                )
+                base64
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -155,6 +196,14 @@ class IdentificationFaceDataSource @Inject constructor(
     ): String {
         val file = faceFileStore.readFaceFile(record)
         val base64 = encodeFileToBase64(file)
+        FaceVerificationEventTracker.trackEvent(
+            eventType = EventType.FACE_CACHE_READ_SUCCESS,
+            extras = mapOf(
+                "userId" to userId,
+                "sizeBytes" to record.sizeBytes,
+                "sourcePhotoBase64Length" to base64.length,
+            ),
+        )
         logD("成功读取人脸文件缓存 (userId=$userId, 长度=${base64.length})", tag = TAG)
         return base64
     }
@@ -171,6 +220,15 @@ class IdentificationFaceDataSource @Inject constructor(
             throw e
         } catch (e: Exception) {
             logE("人脸文件缓存无效，已忽略 (userId=$userId)", tag = TAG, throwable = e)
+            FaceVerificationEventTracker.trackError(
+                eventType = EventType.FACE_CACHE_INVALID,
+                throwable = e,
+                extras = mapOf(
+                    "userId" to userId,
+                    "reason" to "file_integrity_failed",
+                    "sizeBytes" to record.sizeBytes,
+                ),
+            )
             dataStore.edit { prefs ->
                 prefs.remove(recordKey)
             }

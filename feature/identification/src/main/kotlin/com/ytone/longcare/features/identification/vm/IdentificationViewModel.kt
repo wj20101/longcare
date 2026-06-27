@@ -15,6 +15,8 @@ import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
 import com.ytone.longcare.features.identification.domain.UploadElderPhotoUseCase
 import com.ytone.longcare.features.identification.domain.VerifyServicePersonUseCase
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
+import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker
+import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker.EventType
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
@@ -73,13 +75,35 @@ class IdentificationViewModel @Inject constructor(
     private fun emitEvent(event: IdentificationEvent) = _events.tryEmit(event)
 
     private fun setFaceVerificationError(message: String, error: FaceVerifyError? = null) {
+        FaceVerificationEventTracker.trackError(
+            eventType = faceVerificationErrorEventType(message),
+            extras = FaceVerificationEventTracker.faceErrorExtras(
+                error = error,
+                extras = mapOf(
+                    "verificationType" to _currentVerificationType.value,
+                    "message" to message,
+                ),
+            ),
+        )
         _faceVerificationState.value = FaceVerificationState.Error(error = error, message = message)
-        emitEvent(IdentificationEvent.ShowToast(message))
+        emitEvent(IdentificationEvent.ShowToast(message = message, long = true))
     }
 
     private fun setFaceSetupError(message: String) {
+        FaceVerificationEventTracker.trackError(
+            eventType = EventType.FACE_SETUP_ERROR,
+            extras = mapOf("message" to message),
+        )
         _faceSetupState.value = FaceSetupState.Error(message)
-        emitEvent(IdentificationEvent.ShowToast(message))
+        emitEvent(IdentificationEvent.ShowToast(message = message, long = true))
+    }
+
+    private fun faceVerificationErrorEventType(message: String): EventType {
+        return when {
+            message.contains("初始化") -> EventType.FACE_INIT_ERROR
+            message.contains("获取人脸照片") || message.contains("人脸来源") -> EventType.SERVICE_FACE_SOURCE_ERROR
+            else -> EventType.FACE_VERIFY_ERROR
+        }
     }
     
     /**
@@ -229,7 +253,13 @@ class IdentificationViewModel @Inject constructor(
         )
     }
 
-    fun showToast(message: String) = toastHelper.showShort(message)
+    fun showToast(message: String, long: Boolean = false) {
+        if (long) {
+            toastHelper.showLong(message)
+        } else {
+            toastHelper.showShort(message)
+        }
+    }
 
     fun resetPhotoUploadState() { _photoUploadState.value = PhotoUploadState.Initial }
     

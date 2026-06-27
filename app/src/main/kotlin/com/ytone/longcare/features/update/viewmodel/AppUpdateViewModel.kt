@@ -7,6 +7,7 @@ import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.model.AppVersionModel
 import com.ytone.longcare.worker.DownloadWorker
 import com.ytone.longcare.common.utils.ApkInstallUtils
@@ -95,10 +96,19 @@ class AppUpdateViewModel @Inject constructor(
                     }
                     WorkInfo.State.FAILED -> {
                         val error = workInfo.outputData.getString(DownloadWorker.KEY_ERROR)
+                        DiagnosticEventTracker.trackError(
+                            category = UPDATE_DIAGNOSTIC_CATEGORY,
+                            event = "apk_download_worker_failed",
+                            description = "APK下载任务失败",
+                            extras = mapOf(
+                                "workId" to workId.toString(),
+                                "error" to error,
+                            ),
+                        )
                         _uiState.value = _uiState.value.copy(
                             isDownloading = false,
                             downloadProgress = 0,
-                            error = error ?: "下载失败"
+                            error = error ?: "安装包下载失败，请检查网络后重试"
                         )
                         clearCurrentWorkTracking(workId)
                     }
@@ -139,6 +149,12 @@ class AppUpdateViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(error = null)
                 }
                 is ApkInstallUtils.LaunchResult.ManualFallback -> {
+                    trackInstallIssue(
+                        event = "apk_install_manual_fallback",
+                        description = "APK安装需要手动兜底",
+                        filePath = filePath,
+                        message = result.message,
+                    )
                     pendingInstallFilePath = null
                     _uiState.value = _uiState.value.copy(
                         error = result.message,
@@ -146,6 +162,12 @@ class AppUpdateViewModel @Inject constructor(
                     )
                 }
                 is ApkInstallUtils.LaunchResult.Failed -> {
+                    trackInstallIssue(
+                        event = "apk_install_launch_failed",
+                        description = "APK安装启动失败",
+                        filePath = filePath,
+                        message = result.message,
+                    )
                     pendingInstallFilePath = null
                     _uiState.value = _uiState.value.copy(
                         error = result.message,
@@ -163,6 +185,12 @@ class AppUpdateViewModel @Inject constructor(
                     )
                 }
                 is ApkInstallUtils.LaunchResult.ManualFallback -> {
+                    trackInstallIssue(
+                        event = "apk_install_permission_manual_fallback",
+                        description = "APK安装权限设置需要手动兜底",
+                        filePath = filePath,
+                        message = result.message,
+                    )
                     pendingInstallFilePath = null
                     _uiState.value = _uiState.value.copy(
                         hasPendingInstall = false,
@@ -170,6 +198,12 @@ class AppUpdateViewModel @Inject constructor(
                     )
                 }
                 is ApkInstallUtils.LaunchResult.Failed -> {
+                    trackInstallIssue(
+                        event = "apk_install_permission_failed",
+                        description = "APK安装权限设置打开失败",
+                        filePath = filePath,
+                        message = result.message,
+                    )
                     pendingInstallFilePath = null
                     handleManualInstallFallback(filePath, result.message)
                 }
@@ -193,6 +227,12 @@ class AppUpdateViewModel @Inject constructor(
                         )
                     }
                     is ApkInstallUtils.LaunchResult.ManualFallback -> {
+                        trackInstallIssue(
+                            event = "apk_pending_install_manual_fallback",
+                            description = "待安装APK需要手动兜底",
+                            filePath = filePath,
+                            message = result.message,
+                        )
                         pendingInstallFilePath = null
                         _uiState.value = _uiState.value.copy(
                             hasPendingInstall = false,
@@ -200,6 +240,12 @@ class AppUpdateViewModel @Inject constructor(
                         )
                     }
                     is ApkInstallUtils.LaunchResult.Failed -> {
+                        trackInstallIssue(
+                            event = "apk_pending_install_failed",
+                            description = "待安装APK启动安装失败",
+                            filePath = filePath,
+                            message = result.message,
+                        )
                         pendingInstallFilePath = null
                         _uiState.value = _uiState.value.copy(
                             hasPendingInstall = false,
@@ -223,12 +269,24 @@ class AppUpdateViewModel @Inject constructor(
                 )
             }
             is ApkInstallUtils.LaunchResult.ManualFallback -> {
+                trackInstallIssue(
+                    event = "apk_manual_install_fallback",
+                    description = "APK手动安装兜底已触发",
+                    filePath = filePath,
+                    message = fallback.message,
+                )
                 _uiState.value = _uiState.value.copy(
                     hasPendingInstall = false,
                     error = fallback.message
                 )
             }
             is ApkInstallUtils.LaunchResult.Failed -> {
+                trackInstallIssue(
+                    event = "apk_manual_install_failed",
+                    description = "APK手动安装兜底失败",
+                    filePath = filePath,
+                    message = "$failureMessage；${fallback.message}",
+                )
                 _uiState.value = _uiState.value.copy(
                     hasPendingInstall = false,
                     error = "$failureMessage；${fallback.message}"
@@ -243,6 +301,29 @@ class AppUpdateViewModel @Inject constructor(
         }
         downloadObservationJob?.cancel()
         downloadObservationJob = null
+    }
+
+    private fun trackInstallIssue(
+        event: String,
+        description: String,
+        filePath: String,
+        message: String,
+    ) {
+        val file = java.io.File(filePath)
+        DiagnosticEventTracker.trackError(
+            category = UPDATE_DIAGNOSTIC_CATEGORY,
+            event = event,
+            description = description,
+            extras = mapOf(
+                "message" to message,
+                "fileExists" to file.exists(),
+                "fileSize" to file.takeIf { it.exists() }?.length(),
+            ),
+        )
+    }
+
+    private companion object {
+        const val UPDATE_DIAGNOSTIC_CATEGORY = "app_update"
     }
 }
 

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
@@ -42,11 +43,30 @@ class UpdateWorker @AssistedInject constructor(
                 Result.success()
             }
             is ApiResult.Failure -> {
+                DiagnosticEventTracker.trackError(
+                    category = UPDATE_DIAGNOSTIC_CATEGORY,
+                    event = "version_check_failure",
+                    description = "版本检查业务失败",
+                    extras = mapOf(
+                        "failureCode" to result.code,
+                        "failureMessage" to result.message,
+                    ),
+                )
                 Result.failure()
             }
             is ApiResult.Exception -> {
+                DiagnosticEventTracker.trackError(
+                    category = UPDATE_DIAGNOSTIC_CATEGORY,
+                    event = "version_check_exception",
+                    description = "版本检查接口异常",
+                    throwable = result.exception,
+                )
                 Result.failure()
             }
         }
+    }
+
+    private companion object {
+        const val UPDATE_DIAGNOSTIC_CATEGORY = "app_update"
     }
 }

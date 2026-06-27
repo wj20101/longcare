@@ -1,7 +1,6 @@
 package com.ytone.longcare.features.nfc.vm
 
 import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.model.OrderKey
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -37,7 +36,6 @@ internal fun applyOrderCheckSuccess(
 
 internal fun applyOrderApiException(
     exception: ApiResult.Exception,
-    toastHelper: ToastHelper,
     uiState: MutableStateFlow<NfcSignInUiState>
 ) {
     val message = exception.exception.message ?: "网络错误，请检查网络连接"
@@ -46,7 +44,6 @@ internal fun applyOrderApiException(
 
 internal fun applyOrderApiFailure(
     failure: ApiResult.Failure,
-    toastHelper: ToastHelper,
     uiState: MutableStateFlow<NfcSignInUiState>
 ) {
     uiState.value = NfcSignInUiState.Error(failure.message)
@@ -55,7 +52,6 @@ internal fun applyOrderApiFailure(
 internal fun applyCheckEndOrderFailure(
     failure: ApiResult.Failure,
     endOrderParams: EndOrderParams,
-    toastHelper: ToastHelper,
     uiState: MutableStateFlow<NfcSignInUiState>
 ) {
     if (failure.code == 3005) {

@@ -26,12 +26,38 @@ internal suspend fun checkUserLocationAndProceed(
         ?: when (val result = unifiedOrderRepository.getOrderInfo(orderKey)) {
             is ApiResult.Success -> result.data
             is ApiResult.Exception -> {
-                orderDelegate.showError("获取订单详情失败: ${result.exception.message ?: "网络异常"}")
+                val message = "获取订单详情失败: ${result.exception.message ?: "网络异常"}"
+                trackNfcException(
+                    event = "location_activation_order_detail_exception",
+                    description = "NFC绑定定位前获取订单详情异常",
+                    throwable = result.exception,
+                    orderKey = orderKey,
+                    signInMode = signInMode,
+                    nfcDeviceId = tagId,
+                    extras = mapOf(
+                        "hasLongitude" to longitude.isNotBlank(),
+                        "hasLatitude" to latitude.isNotBlank(),
+                    ),
+                )
+                orderDelegate.showError(message)
                 return
             }
 
             is ApiResult.Failure -> {
-                orderDelegate.showError("获取订单详情失败: ${result.message}")
+                val message = "获取订单详情失败: ${result.message}"
+                trackNfcFailure(
+                    event = "location_activation_order_detail_failure",
+                    description = "NFC绑定定位前获取订单详情业务失败",
+                    failure = result,
+                    orderKey = orderKey,
+                    signInMode = signInMode,
+                    nfcDeviceId = tagId,
+                    extras = mapOf(
+                        "hasLongitude" to longitude.isNotBlank(),
+                        "hasLatitude" to latitude.isNotBlank(),
+                    ),
+                )
+                orderDelegate.showError(message)
                 return
             }
         }

@@ -3,6 +3,8 @@ package com.ytone.longcare.features.identification.vm
 import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
+import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker
+import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker.EventType
 
 internal fun createFaceVerifyCallback(
     onInitSuccess: () -> Unit,
@@ -25,7 +27,7 @@ internal fun createFaceVerifyCallback(
 }
 
 internal fun buildFaceVerifyErrorMessage(prefix: String, error: FaceVerifyError?): String {
-    return "$prefix: ${error?.description ?: "未知错误"} (错误码: ${error?.code ?: "无"})"
+    return "$prefix: ${error?.description ?: "SDK未返回具体原因"} (错误码: ${error?.code ?: "无"})"
 }
 
 internal fun createIdentificationFlowVerifyCallback(
@@ -38,6 +40,10 @@ internal fun createIdentificationFlowVerifyCallback(
 ): FaceVerifyCallback {
     return createFaceVerifyCallback(
         onInitSuccess = {
+            FaceVerificationEventTracker.trackEvent(
+                eventType = EventType.FACE_INIT_SUCCESS,
+                extras = mapOf("verificationType" to currentVerificationType()),
+            )
             showToast("人脸验证初始化成功")
             setVerificationState(FaceVerificationState.Verifying)
         },
@@ -45,6 +51,13 @@ internal fun createIdentificationFlowVerifyCallback(
             onSetFaceVerificationError(buildFaceVerifyErrorMessage("人脸识别初始化失败", error), error)
         },
         onVerifySuccess = { result ->
+            FaceVerificationEventTracker.trackEvent(
+                eventType = EventType.FACE_VERIFY_SUCCESS,
+                extras = mapOf(
+                    "verificationType" to currentVerificationType(),
+                    "isSuccess" to result.isSuccess,
+                ),
+            )
             showToast("人脸验证成功")
             setVerificationState(FaceVerificationState.Success(result))
 
@@ -68,6 +81,10 @@ internal fun createIdentificationFlowVerifyCallback(
             onSetFaceVerificationError(buildFaceVerifyErrorMessage("人脸验证失败", error), error)
         },
         onVerifyCancel = {
+            FaceVerificationEventTracker.trackEvent(
+                eventType = EventType.FACE_VERIFY_CANCELLED,
+                extras = mapOf("verificationType" to currentVerificationType()),
+            )
             showToast("人脸验证已取消")
             setVerificationState(FaceVerificationState.Cancelled)
         }

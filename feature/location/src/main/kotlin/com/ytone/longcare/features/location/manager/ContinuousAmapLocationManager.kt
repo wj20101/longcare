@@ -183,7 +183,7 @@ class ContinuousAmapLocationManager @Inject constructor(
                 )
                 trySend(result)
             } else {
-                val errorMsg = location?.errorInfo ?: "未知错误"
+                val errorMsg = location?.errorInfo ?: "高德未返回错误原因"
                 LocationEventTracker.trackError(
                     LocationEventTracker.EventType.AMAP_CONTINUOUS_LOCATION_ERROR,
                     extras = mapOf("errorCode" to location?.errorCode, "errorMsg" to errorMsg)
@@ -320,7 +320,7 @@ class ContinuousAmapLocationManager @Inject constructor(
                                     LocationEventTracker.EventType.AMAP_SINGLE_LOCATION_FAIL,
                                     extras = mapOf(
                                         "errorCode" to location?.errorCode,
-                                        "errorMsg" to (location?.errorInfo ?: "未知错误")
+                                        "errorMsg" to (location?.errorInfo ?: "高德未返回错误原因")
                                     )
                                 )
                                 finish(null)

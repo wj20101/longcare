@@ -5,6 +5,8 @@ import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
+import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker
+import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker.EventType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -48,6 +50,14 @@ internal fun launchSelfProvidedFaceVerificationAndCache(
             throw e
         } catch (e: Exception) {
             logE("下载人脸图片失败", tag = "IdentificationVM", throwable = e)
+            FaceVerificationEventTracker.trackError(
+                eventType = EventType.REMOTE_FACE_DOWNLOAD_ERROR,
+                throwable = e,
+                extras = FaceVerificationEventTracker.safeUrlExtras(sourcePhotoUrl) + mapOf(
+                    "userId" to cacheUserId,
+                    "orderNo" to orderNo,
+                ),
+            )
             onFailure("获取人脸照片失败: ${e.message}")
         }
     }

@@ -51,8 +51,11 @@ class FaceVerificationViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertTrue(state is FaceVerificationViewModel.FaceVerifyUiState.Error)
-        assertEquals("人脸配置不可用", (state as FaceVerificationViewModel.FaceVerifyUiState.Error).message)
+        assertTrue("Expected Error state but was $state", state is FaceVerificationViewModel.FaceVerifyUiState.Error)
+        assertEquals(
+            "人脸验证配置不可用，请重新登录后重试",
+            (state as FaceVerificationViewModel.FaceVerifyUiState.Error).message
+        )
         coVerify(exactly = 0) { faceVerifier.startFaceVerification(any(), any(), any(), any()) }
     }
 
@@ -108,10 +111,10 @@ class FaceVerificationViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertTrue(state is FaceVerificationViewModel.FaceVerifyUiState.Error)
+        assertTrue("Expected Error state but was $state", state is FaceVerificationViewModel.FaceVerifyUiState.Error)
         val errorState = state as FaceVerificationViewModel.FaceVerifyUiState.Error
         assertEquals(sdkError, errorState.error)
-        assertEquals("人脸验证失败: verify failed", errorState.message)
+        assertEquals("人脸验证失败：verify failed，错误码: E001", errorState.message)
     }
 
     @Test

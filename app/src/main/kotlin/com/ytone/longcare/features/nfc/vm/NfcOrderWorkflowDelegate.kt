@@ -1,7 +1,6 @@
 package com.ytone.longcare.features.nfc.vm
 
 import android.content.Context
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
@@ -15,7 +14,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 internal class NfcOrderWorkflowDelegate(
     private val context: Context,
     private val orderRepository: OrderRepository,
-    private val toastHelper: ToastHelper,
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
     private val countdownNotificationManager: CountdownNotificationManager,
@@ -41,7 +39,6 @@ internal class NfcOrderWorkflowDelegate(
         nfcDeviceId = nfcDeviceId,
         longitude = longitude,
         latitude = latitude,
-        toastHelper = toastHelper,
         uiState = uiState
     )
 
@@ -66,7 +63,6 @@ internal class NfcOrderWorkflowDelegate(
         longitude = longitude,
         latitude = latitude,
         endType = endType,
-        toastHelper = toastHelper,
         uiState = uiState,
         onCheckSuccess = {
             executeEndOrder(
@@ -132,7 +128,6 @@ internal class NfcOrderWorkflowDelegate(
         endType: Int
     ) = executeEndOrderRequest(
         orderRepository = orderRepository,
-        toastHelper = toastHelper,
         completionDelegate = completionDelegate,
         uiState = uiState,
         orderKey = orderKey,

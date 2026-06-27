@@ -27,6 +27,11 @@ internal fun takeManualFacePhoto(
                     viewModel.onPhotoCaptured(correctedBitmap)
                 } catch (e: Exception) {
                     KLogger.e("CameraCapture", "图片处理失败", e)
+                    viewModel.onPhotoCaptureFailed(
+                        stage = "process_image",
+                        messagePrefix = "人脸图片处理失败",
+                        error = e,
+                    )
                 } finally {
                     image.close()
                 }
@@ -34,6 +39,11 @@ internal fun takeManualFacePhoto(
 
             override fun onError(exception: ImageCaptureException) {
                 KLogger.e("CameraCapture", "拍照失败", exception)
+                viewModel.onPhotoCaptureFailed(
+                    stage = "capture",
+                    messagePrefix = "拍照失败",
+                    error = exception,
+                )
             }
         }
     )

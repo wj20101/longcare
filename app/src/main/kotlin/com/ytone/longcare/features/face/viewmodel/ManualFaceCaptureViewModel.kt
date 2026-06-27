@@ -3,6 +3,7 @@ package com.ytone.longcare.features.face.viewmodel
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.features.face.ui.DetectedFace
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureState
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureUiState
@@ -38,6 +39,26 @@ class ManualFaceCaptureViewModel @Inject constructor(
         detectFaces(bitmap)
     }
 
+    fun onPhotoCaptureFailed(stage: String, messagePrefix: String, error: Throwable) {
+        val detail = error.message ?: "请重新拍摄后重试"
+        DiagnosticEventTracker.trackError(
+            category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
+            event = "manual_face_photo_capture_failed",
+            description = "手动人脸采集拍照或图片处理失败",
+            throwable = error,
+            extras = mapOf(
+                "stage" to stage,
+                "messagePrefix" to messagePrefix,
+            ),
+        )
+        applyTransition(
+            ManualFaceCaptureStateTransitions.onPhotoCaptureError(
+                _uiState.value,
+                "$messagePrefix: $detail",
+            ),
+        )
+    }
+
     private fun detectFaces(bitmap: Bitmap) {
         viewModelScope.launch {
             try {
@@ -59,7 +80,22 @@ class ManualFaceCaptureViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                applyTransition(ManualFaceCaptureStateTransitions.onDetectionError(_uiState.value, e.message ?: "未知错误"))
+                DiagnosticEventTracker.trackError(
+                    category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
+                    event = "manual_face_detect_exception",
+                    description = "手动人脸采集静态图检测异常",
+                    throwable = e,
+                    extras = mapOf(
+                        "bitmapWidth" to bitmap.width,
+                        "bitmapHeight" to bitmap.height,
+                    ),
+                )
+                applyTransition(
+                    ManualFaceCaptureStateTransitions.onDetectionError(
+                        _uiState.value,
+                        e.message ?: "人脸检测异常",
+                    ),
+                )
             }
         }
     }
@@ -104,7 +140,23 @@ class ManualFaceCaptureViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                applyTransition(ManualFaceCaptureStateTransitions.onSaveError(_uiState.value, e.message ?: "保存失败"))
+                DiagnosticEventTracker.trackError(
+                    category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
+                    event = "manual_face_save_exception",
+                    description = "手动人脸采集保存图片异常",
+                    throwable = e,
+                    extras = mapOf(
+                        "faceQuality" to face.quality,
+                        "faceWidth" to face.boundingBox.width(),
+                        "faceHeight" to face.boundingBox.height(),
+                    ),
+                )
+                applyTransition(
+                    ManualFaceCaptureStateTransitions.onSaveError(
+                        _uiState.value,
+                        e.message ?: "保存失败",
+                    ),
+                )
             }
         }
     }
@@ -137,5 +189,9 @@ class ManualFaceCaptureViewModel @Inject constructor(
     private fun applyTransition(transition: ManualFaceCaptureTransition) {
         _uiState.value = transition.uiState
         transition.state?.let { _currentState.value = it }
+    }
+
+    private companion object {
+        const val FACE_CAPTURE_DIAGNOSTIC_CATEGORY = "face_capture"
     }
 }

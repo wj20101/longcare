@@ -5,6 +5,8 @@ import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.features.identification.domain.SetupFaceResult
 import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
+import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker
+import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker.EventType
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -52,7 +54,7 @@ internal fun launchFaceSetupUpload(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            onError("上传失败: ${e.message}")
+            onError("上传失败: ${e.message ?: "请稍后重试"}")
         }
     }
 }
@@ -110,6 +112,13 @@ internal fun createStandardFaceSetupFlowVerifyCallback(
         setupFaceUseCase = setupFaceUseCase,
         resolveCurrentUserId = resolveCurrentUserId,
         onInitSuccess = {
+            FaceVerificationEventTracker.trackEvent(
+                eventType = EventType.FACE_INIT_SUCCESS,
+                extras = mapOf(
+                    "verificationType" to VerificationType.SERVICE_PERSON,
+                    "flow" to "face_setup",
+                ),
+            )
             showToast("人脸验证初始化成功")
             setFaceSetupState(FaceSetupState.Initial)
         },
@@ -122,6 +131,10 @@ internal fun createStandardFaceSetupFlowVerifyCallback(
         onUploading = { setFaceSetupState(FaceSetupState.UploadingImage) },
         onUploadSuccess = {
             setFaceSetupState(FaceSetupState.Success)
+            FaceVerificationEventTracker.trackEvent(
+                eventType = EventType.FACE_SETUP_UPLOAD_SUCCESS,
+                extras = mapOf("flow" to "face_setup"),
+            )
             showToast("人脸信息设置成功")
             onServicePersonVerified()
         },

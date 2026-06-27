@@ -70,6 +70,7 @@ internal fun takePhoto(
             )
         )
     } catch (e: Exception) {
+        val detail = e.message ?: "请检查相机权限后重试"
         CameraEventTracker.trackError(
             CameraEventTracker.EventType.CAPTURE_ERROR,
             e,
@@ -78,7 +79,7 @@ internal fun takePhoto(
                 "elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime)
             )
         )
-        Toast.makeText(context, "调用相机失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "调用相机失败: $detail", Toast.LENGTH_SHORT).show()
         onError()
     }
 }

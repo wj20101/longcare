@@ -14,6 +14,7 @@ fun projectDependency(path: String) = dependencies.project(path)
 dependencies {
     implementation(projectDependency(":core:model"))
     implementation(libs.androidx.core.ktx)
+    implementation(libs.crashreport)
     implementation(libs.dagger.hilt.android)
     implementation(libs.moshi.kotlin)
     implementation(libs.retrofit.core)

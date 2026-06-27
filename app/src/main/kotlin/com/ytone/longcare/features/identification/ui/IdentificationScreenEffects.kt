@@ -69,7 +69,10 @@ internal fun IdentificationScreenEffects(
         identificationViewModel.events.collect { event ->
             when (event) {
                 IdentificationEvent.NavigateToFaceCapture -> actions.onNavigateToManualFaceCapture()
-                is IdentificationEvent.ShowToast -> identificationViewModel.showToast(event.message)
+                is IdentificationEvent.ShowToast -> identificationViewModel.showToast(
+                    message = event.message,
+                    long = event.long,
+                )
             }
         }
     }

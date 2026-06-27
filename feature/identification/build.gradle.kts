@@ -19,6 +19,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.okhttp.core)
+    implementation(libs.crashreport)
     implementation(libs.dagger.hilt.android)
     ksp(libs.dagger.hilt.compiler)
     testImplementation(libs.junit)

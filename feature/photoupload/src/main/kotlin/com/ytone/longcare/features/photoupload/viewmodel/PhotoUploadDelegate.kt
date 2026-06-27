@@ -2,6 +2,7 @@ package com.ytone.longcare.features.photoupload.viewmodel
 
 import android.content.Context
 import android.net.Uri
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.domain.cos.repository.CosRepository
@@ -65,7 +66,24 @@ internal class PhotoUploadDelegate(
                     taskQueueDelegate.updateTaskUploadStatus(task.id, uploadedUrl, uploadedKey)
                 } else {
                     isUploading.value = false
-                    return Result.failure(Exception("上传失败: ${result.errorMessage}"))
+                    val errorMessage = result.errorMessage ?: "COS未返回具体原因"
+                    DiagnosticEventTracker.trackError(
+                        category = PHOTO_DIAGNOSTIC_CATEGORY,
+                        event = "cloud_upload_failure",
+                        description = "服务照片上传COS失败",
+                        extras = mapOf(
+                            "orderId" to taskQueueDelegate.currentOrderKey.value?.orderId,
+                            "planId" to taskQueueDelegate.currentOrderKey.value?.planId,
+                            "taskType" to task.taskType.name,
+                            "taskIdLength" to task.id.length,
+                            "uploadedTaskCount" to taskQueueDelegate.getTasksSnapshot().count { it.isUploaded },
+                            "pendingTaskCount" to successfulTasks.size,
+                            "hasUploadedUrl" to (uploadedUrl != null),
+                            "hasUploadedKey" to (uploadedKey != null),
+                            "errorMessage" to errorMessage,
+                        ),
+                    )
+                    return Result.failure(Exception("上传失败: $errorMessage"))
                 }
             }
 
@@ -76,6 +94,17 @@ internal class PhotoUploadDelegate(
             throw e
         } catch (e: Exception) {
             isUploading.value = false
+            DiagnosticEventTracker.trackError(
+                category = PHOTO_DIAGNOSTIC_CATEGORY,
+                event = "cloud_upload_exception",
+                description = "服务照片上传过程异常",
+                throwable = e,
+                extras = mapOf(
+                    "orderId" to taskQueueDelegate.currentOrderKey.value?.orderId,
+                    "planId" to taskQueueDelegate.currentOrderKey.value?.planId,
+                    "taskCount" to taskQueueDelegate.getTasksSnapshot().size,
+                ),
+            )
             Result.failure(e)
         }
     }
@@ -92,5 +121,9 @@ internal class PhotoUploadDelegate(
             is SessionState.LoggedIn -> sessionState.user
             else -> null
         }
+    }
+
+    private companion object {
+        const val PHOTO_DIAGNOSTIC_CATEGORY = "photo_upload"
     }
 }

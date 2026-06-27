@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.ytone.longcare.R
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSettings
@@ -48,7 +49,7 @@ internal fun resolveNfcWorkflowTitleRes(signInMode: SignInMode): Int {
     }
 }
 
-private const val LOCATION_UNAVAILABLE_MESSAGE = "无法获取位置信息，请稍后重试"
+private const val LOCATION_UNAVAILABLE_MESSAGE = "无法获取当前定位，请确认定位权限和定位服务后重试"
 
 internal fun buildNfcWorkflowBackAction(
     signInMode: SignInMode,
@@ -87,11 +88,35 @@ internal fun rememberNfcWorkflowLocationHandlers(
                 LocationRequestResult.Error("请开启定位服务以获取位置信息")
             } else {
                 val (longitude, latitude) = nfcViewModel.getCurrentLocationCoordinates()
-                toLocationRequestResult(longitude, latitude)
+                toLocationRequestResult(longitude, latitude).also { result ->
+                    if (result is LocationRequestResult.Error) {
+                        DiagnosticEventTracker.trackError(
+                            category = "nfc_workflow",
+                            event = "nfc_location_empty",
+                            description = "NFC签到获取定位结果为空",
+                            extras = mapOf(
+                                "orderId" to orderKey.orderId,
+                                "planId" to orderKey.planId,
+                                "hasLongitude" to longitude.isNotBlank(),
+                                "hasLatitude" to latitude.isNotBlank(),
+                            ),
+                        )
+                    }
+                }
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            DiagnosticEventTracker.trackError(
+                category = "nfc_workflow",
+                event = "nfc_location_request_exception",
+                description = "NFC签到请求定位异常",
+                throwable = e,
+                extras = mapOf(
+                    "orderId" to orderKey.orderId,
+                    "planId" to orderKey.planId,
+                ),
+            )
             LocationRequestResult.Error(LOCATION_UNAVAILABLE_MESSAGE)
         }
     }

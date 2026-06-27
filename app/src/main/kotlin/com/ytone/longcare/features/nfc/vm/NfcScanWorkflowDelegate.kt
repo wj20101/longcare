@@ -170,10 +170,35 @@ internal class NfcScanWorkflowDelegate(
                 }
 
                 is ApiResult.Exception -> {
-                    orderDelegate.showError(result.exception.message ?: "绑定定位失败")
+                    val message = result.exception.message ?: "绑定定位失败，请检查网络后重试"
+                    trackNfcException(
+                        event = "bind_location_exception",
+                        description = "NFC绑定定位异常",
+                        throwable = result.exception,
+                        orderKey = data.orderKey,
+                        signInMode = data.signInMode,
+                        nfcDeviceId = data.tagId,
+                        extras = mapOf(
+                            "hasLongitude" to data.longitude.isNotBlank(),
+                            "hasLatitude" to data.latitude.isNotBlank(),
+                        ),
+                    )
+                    orderDelegate.showError(message)
                 }
 
                 is ApiResult.Failure -> {
+                    trackNfcFailure(
+                        event = "bind_location_failure",
+                        description = "NFC绑定定位业务失败",
+                        failure = result,
+                        orderKey = data.orderKey,
+                        signInMode = data.signInMode,
+                        nfcDeviceId = data.tagId,
+                        extras = mapOf(
+                            "hasLongitude" to data.longitude.isNotBlank(),
+                            "hasLatitude" to data.latitude.isNotBlank(),
+                        ),
+                    )
                     orderDelegate.showError(result.message)
                 }
             }

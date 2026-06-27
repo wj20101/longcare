@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.photoupload.viewmodel
 
 import android.net.Uri
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.model.ImageTask
 import com.ytone.longcare.model.ImageTaskStatus
@@ -62,6 +63,17 @@ internal class PhotoTaskQueueDelegate(
                         throw e
                     } catch (e: Exception) {
                         logE("Failed to save image to DB", tag = "PhotoVM", throwable = e)
+                        DiagnosticEventTracker.trackError(
+                            category = PHOTO_DIAGNOSTIC_CATEGORY,
+                            event = "local_image_record_save_exception",
+                            description = "服务照片本地记录保存异常",
+                            throwable = e,
+                            extras = mapOf(
+                                "orderId" to effectiveOrderKey.orderId,
+                                "planId" to effectiveOrderKey.planId,
+                                "taskType" to taskType.name,
+                            ),
+                        )
                         null
                     }
                 } else {
@@ -185,7 +197,19 @@ internal class PhotoTaskQueueDelegate(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                updateTaskStatus(task.id, ImageTaskStatus.FAILED, errorMessage = e.message ?: "未知错误")
+                DiagnosticEventTracker.trackError(
+                    category = PHOTO_DIAGNOSTIC_CATEGORY,
+                    event = "image_task_process_exception",
+                    description = "服务照片任务处理异常",
+                    throwable = e,
+                    extras = mapOf(
+                        "orderId" to currentOrderKey.value?.orderId,
+                        "planId" to currentOrderKey.value?.planId,
+                        "taskType" to task.taskType.name,
+                        "taskIdLength" to task.id.length,
+                    ),
+                )
+                updateTaskStatus(task.id, ImageTaskStatus.FAILED, errorMessage = e.message ?: "图片处理异常")
             } finally {
                 isProcessing.value = imageTasks.value.any { it.status == ImageTaskStatus.PROCESSING }
             }
@@ -233,6 +257,10 @@ internal class PhotoTaskQueueDelegate(
     private fun ImageUploadStatus.toImageTaskStatus(): ImageTaskStatus = when (this) {
         ImageUploadStatus.PENDING, ImageUploadStatus.UPLOADING, ImageUploadStatus.SUCCESS -> ImageTaskStatus.SUCCESS
         ImageUploadStatus.FAILED, ImageUploadStatus.CANCELLED -> ImageTaskStatus.FAILED
+    }
+
+    private companion object {
+        const val PHOTO_DIAGNOSTIC_CATEGORY = "photo_upload"
     }
 }
 

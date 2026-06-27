@@ -69,13 +69,13 @@ private suspend fun handleConfirmUpload(
                 com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Upload Success -> navigateBack")
             },
             onFailure = { error ->
-                viewModel.showToast("图片上传失败: ${error.message}")
+                viewModel.showToast("图片上传失败: ${error.message ?: "请检查网络后重试"}")
             },
         )
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        viewModel.showToast("上传过程中发生错误: ${e.message}")
+        viewModel.showToast("上传过程中发生错误: ${e.message ?: "请稍后重试"}")
     }
 }
 

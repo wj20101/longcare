@@ -76,7 +76,8 @@ suspend fun <T> safeApiCall(
                 }
 
                 else -> {
-                    ApiResult.Exception(Exception("未知错误: ${throwable.message}", throwable))
+                    val message = throwable.message ?: "服务未返回具体原因"
+                    ApiResult.Exception(Exception("接口请求异常: $message", throwable))
                 }
             }
         }

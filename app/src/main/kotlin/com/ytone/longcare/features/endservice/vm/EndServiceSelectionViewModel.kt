@@ -2,6 +2,7 @@ package com.ytone.longcare.features.endservice.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.common.network.ApiResult
@@ -66,7 +67,20 @@ class EndServiceSelectionViewModel @Inject constructor(
                         _uiState.value = EndServiceSelectionUiState.Error(result.message)
                     }
                     is ApiResult.Exception -> {
-                        _uiState.value = EndServiceSelectionUiState.Error(result.exception.message ?: "未知错误")
+                        DiagnosticEventTracker.trackError(
+                            category = END_SERVICE_DIAGNOSTIC_CATEGORY,
+                            event = "end_service_project_load_exception",
+                            description = "结束服务项目列表加载异常",
+                            throwable = result.exception,
+                            extras = mapOf(
+                                "orderId" to orderKey.orderId,
+                                "planId" to orderKey.planId,
+                                "initialSelectedCount" to initialSelectedIds.size,
+                            ),
+                        )
+                        _uiState.value = EndServiceSelectionUiState.Error(
+                            result.exception.message ?: "结束服务项目加载失败，请稍后重试"
+                        )
                     }
                 }
             }
@@ -113,6 +127,10 @@ class EndServiceSelectionViewModel @Inject constructor(
      */
     fun getConfirmedProjectIds(): List<Int> {
         return _selectedProjectIds.value.toList()
+    }
+
+    private companion object {
+        const val END_SERVICE_DIAGNOSTIC_CATEGORY = "end_service"
     }
 }
 

@@ -45,6 +45,15 @@ internal fun createImageSavedCallback(
                     )
 
                     if (finalFile == null) {
+                        CameraEventTracker.trackError(
+                            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
+                            null,
+                            mapOf(
+                                "reason" to "图片处理未生成文件",
+                                "tempFileExists" to tempFile.exists(),
+                                "tempFileSize" to tempFile.takeIf { it.exists() }?.length()
+                            )
+                        )
                         withContext(Dispatchers.Main) {
                             Toast.makeText(context, "图片处理失败，请重试", Toast.LENGTH_SHORT).show()
                             onError()
@@ -61,10 +70,11 @@ internal fun createImageSavedCallback(
                     CameraEventTracker.trackError(
                         CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
                         e,
-                        mapOf("reason" to "图片处理失败: ${e.message}")
+                        mapOf("reason" to "图片处理异常: ${e.message ?: e.javaClass.simpleName}")
                     )
+                    val detail = e.message ?: "请重新拍摄后重试"
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "图片处理失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "图片处理失败: $detail", Toast.LENGTH_SHORT).show()
                         onError()
                     }
                 }
@@ -75,10 +85,11 @@ internal fun createImageSavedCallback(
             CameraEventTracker.trackError(
                 CameraEventTracker.EventType.CAPTURE_ERROR,
                 exc,
-                mapOf("reason" to "拍照保存失败: ${exc.message}")
+                mapOf("reason" to "拍照保存失败: ${exc.message ?: exc.javaClass.simpleName}")
             )
             scope.launch(Dispatchers.Main) {
-                Toast.makeText(context, "拍照失败: ${exc.message}", Toast.LENGTH_SHORT).show()
+                val detail = exc.message ?: "请重新拍摄后重试"
+                Toast.makeText(context, "拍照失败: $detail", Toast.LENGTH_SHORT).show()
                 onError()
             }
         }

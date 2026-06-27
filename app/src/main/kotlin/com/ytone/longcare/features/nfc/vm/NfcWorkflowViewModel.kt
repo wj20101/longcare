@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.utils.ExternalRfidReaderManager
 import com.ytone.longcare.common.utils.NfcManager
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
@@ -33,7 +32,6 @@ import javax.inject.Inject
 class NfcWorkflowViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val orderRepository: OrderRepository,
-    private val toastHelper: ToastHelper,
     private val appEventBus: AppEventBus,
     private val nfcManager: NfcManager,
     private val externalRfidReaderManager: ExternalRfidReaderManager,
@@ -52,7 +50,6 @@ class NfcWorkflowViewModel @Inject constructor(
     private val orderDelegate = NfcOrderWorkflowDelegate(
         context = context,
         orderRepository = orderRepository,
-        toastHelper = toastHelper,
         unifiedOrderRepository = unifiedOrderRepository,
         imageRepository = imageRepository,
         countdownNotificationManager = countdownNotificationManager,

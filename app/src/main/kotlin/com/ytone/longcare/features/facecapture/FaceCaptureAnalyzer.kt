@@ -7,6 +7,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logW
 import java.util.concurrent.atomic.AtomicBoolean
@@ -85,7 +86,14 @@ class FaceCaptureAnalyzer(
                             throw e
                         } catch (e: Exception) {
                             logE("Error processing faces", tag = "FaceCaptureAnalyzer", throwable = e)
-                            onHintChanged("处理失败，请重试")
+                            DiagnosticEventTracker.trackError(
+                                category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
+                                event = "camera_frame_process_exception",
+                                description = "人脸采集相机帧处理异常",
+                                throwable = e,
+                                extras = imageProxy.diagnosticExtras("process_faces"),
+                            )
+                            onHintChanged("人脸图像处理失败，请重试")
                             onFaceDetectionChanged(false, 0f)
                         } finally {
                             isProcessing.set(false)
@@ -100,6 +108,13 @@ class FaceCaptureAnalyzer(
                 }
                 .addOnFailureListener { exception ->
                     logE("Face detection failed", tag = "FaceCaptureAnalyzer", throwable = exception)
+                    DiagnosticEventTracker.trackError(
+                        category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
+                        event = "camera_frame_detect_failure",
+                        description = "人脸采集相机帧检测失败",
+                        throwable = exception,
+                        extras = imageProxy.diagnosticExtras("mlkit_detect"),
+                    )
                     onHintChanged("检测失败，请重试")
                     onFaceDetectionChanged(false, 0f)
                     isProcessing.set(false)
@@ -134,18 +149,49 @@ class FaceCaptureAnalyzer(
                     onFaceCaptured(bitmap, quality)
                     onHintChanged("人脸捕获成功！")
                 } ?: run {
-                    onHintChanged("图像处理失败，请重试")
+                    DiagnosticEventTracker.trackError(
+                        category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
+                        event = "camera_frame_crop_empty",
+                        description = "人脸采集裁剪结果为空",
+                        extras = imageProxy.diagnosticExtras("crop_face") + mapOf(
+                            "faceWidth" to face.boundingBox.width(),
+                            "faceHeight" to face.boundingBox.height(),
+                            "quality" to quality,
+                        ),
+                    )
+                    onHintChanged("人脸图像处理失败，请重试")
                 }
             } else {
                 onHintChanged(qualityEvaluator.getHint(face))
             }
         } ?: run {
             onFaceDetectionChanged(false, 0f)
+            DiagnosticEventTracker.trackError(
+                category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
+                event = "camera_frame_best_face_missing",
+                description = "人脸采集未选出最佳人脸",
+                extras = imageProxy.diagnosticExtras("select_best_face") + mapOf(
+                    "detectedFaceCount" to faces.size,
+                ),
+            )
             onHintChanged("人脸检测异常，请重试")
         }
     }
 
     fun release() {
         detector.close()
+    }
+
+    private fun ImageProxy.diagnosticExtras(stage: String): Map<String, Any?> =
+        mapOf(
+            "stage" to stage,
+            "imageWidth" to width,
+            "imageHeight" to height,
+            "rotationDegrees" to imageInfo.rotationDegrees,
+            "frameCount" to frameCount,
+        )
+
+    private companion object {
+        const val FACE_CAPTURE_DIAGNOSTIC_CATEGORY = "face_capture"
     }
 }

@@ -31,35 +31,47 @@ internal class FaceVerificationParamAssembler(
     ): FaceVerifyParamBuildResult {
         val nonce = buildFaceNonce()
 
-        val accessToken = fetchFaceAccessToken(
-            repository = tencentFaceRepository,
-            config = config
-        )
-            ?: return FaceVerifyParamBuildResult.Failure("获取访问令牌失败")
-
-        val signTicket = fetchFaceSignTicket(
+        val accessTokenResult = fetchFaceAccessToken(
             repository = tencentFaceRepository,
             config = config,
-            accessToken = accessToken
         )
-            ?: return FaceVerifyParamBuildResult.Failure("获取SIGN票据失败")
+        val accessToken = when (accessTokenResult) {
+            is FaceApiStepResult.Success -> accessTokenResult.value
+            is FaceApiStepResult.Failure -> return FaceVerifyParamBuildResult.Failure(accessTokenResult.message)
+        }
 
-        val faceId = fetchFaceId(
+        val signTicketResult = fetchFaceSignTicket(
+            repository = tencentFaceRepository,
+            config = config,
+            accessToken = accessToken,
+        )
+        val signTicket = when (signTicketResult) {
+            is FaceApiStepResult.Success -> signTicketResult.value
+            is FaceApiStepResult.Failure -> return FaceVerifyParamBuildResult.Failure(signTicketResult.message)
+        }
+
+        val faceIdResult = fetchFaceId(
             repository = tencentFaceRepository,
             config = config,
             request = request,
             signTicket = signTicket,
-            nonce = nonce
+            nonce = nonce,
         )
-            ?: return FaceVerifyParamBuildResult.Failure("获取faceId失败")
+        val faceId = when (faceIdResult) {
+            is FaceApiStepResult.Success -> faceIdResult.value
+            is FaceApiStepResult.Failure -> return FaceVerifyParamBuildResult.Failure(faceIdResult.message)
+        }
 
-        val nonceTicket = fetchFaceNonceTicket(
+        val nonceTicketResult = fetchFaceNonceTicket(
             repository = tencentFaceRepository,
             config = config,
             accessToken = accessToken,
-            userId = request.userId
+            userId = request.userId,
         )
-            ?: return FaceVerifyParamBuildResult.Failure("获取NONCE票据失败")
+        val nonceTicket = when (nonceTicketResult) {
+            is FaceApiStepResult.Success -> nonceTicketResult.value
+            is FaceApiStepResult.Failure -> return FaceVerifyParamBuildResult.Failure(nonceTicketResult.message)
+        }
 
         val params = createFaceVerifyParams(config, request, faceId, nonceTicket, nonce)
         return FaceVerifyParamBuildResult.Success(params)

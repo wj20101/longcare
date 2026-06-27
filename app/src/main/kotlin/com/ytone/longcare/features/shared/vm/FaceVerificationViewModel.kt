@@ -3,6 +3,7 @@ package com.ytone.longcare.features.shared.vm
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.faceauth.FaceVerifier
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
@@ -104,33 +105,106 @@ class FaceVerificationViewModel @Inject constructor(
     ) {
         val config = systemConfigManager.getFaceVerificationConfig()
         if (config == null) {
-            emitError("人脸配置不可用", null)
+            emitError(
+                message = "人脸验证配置不可用，请重新登录后重试",
+                error = null,
+                event = "shared_face_config_missing",
+                description = "共享人脸验证配置缺失",
+                extras = request.diagnosticExtras("config_missing"),
+            )
             return
         }
         faceVerifier.startFaceVerification(
             context = context,
             config = config,
             request = request,
-            callback = createFaceVerifyCallback()
+            callback = createFaceVerifyCallback(request)
         )
     }
 
-    private fun createFaceVerifyCallback() = buildFaceVerifyCallback(
+    private fun createFaceVerifyCallback(request: FaceVerificationRequest) = buildFaceVerifyCallback(
         onInitSuccess = { _uiState.value = FaceVerifyUiState.Verifying },
-        onInitFailed = { error -> emitError("人脸识别初始化失败: ${error?.description ?: "未知错误"}", error) },
+        onInitFailed = { error ->
+            emitError(
+                message = "人脸验证初始化失败：${error.readableDescription()}",
+                error = error,
+                event = "shared_face_init_failed",
+                description = "共享人脸验证初始化失败",
+                extras = request.diagnosticExtras("init_failed"),
+            )
+        },
         onVerifySuccess = { result ->
             _uiState.value = FaceVerifyUiState.Success(result)
             _events.tryEmit(FaceVerifyEvent.Success(result))
         },
-        onVerifyFailed = { error -> emitError("人脸验证失败: ${error?.description ?: "未知错误"}", error) },
+        onVerifyFailed = { error ->
+            emitError(
+                message = "人脸验证失败：${error.readableDescription()}",
+                error = error,
+                event = "shared_face_verify_failed",
+                description = "共享人脸验证失败",
+                extras = request.diagnosticExtras("verify_failed"),
+            )
+        },
         onVerifyCancel = {
+            DiagnosticEventTracker.trackEvent(
+                category = DIAGNOSTIC_CATEGORY,
+                event = "shared_face_cancelled",
+                description = "共享人脸验证取消",
+                extras = request.diagnosticExtras("cancelled"),
+            )
             _uiState.value = FaceVerifyUiState.Cancelled
             _events.tryEmit(FaceVerifyEvent.Cancelled)
         }
     )
 
-    private fun emitError(message: String, error: FaceVerifyError?) {
+    private fun emitError(
+        message: String,
+        error: FaceVerifyError?,
+        event: String,
+        description: String,
+        extras: Map<String, Any?>,
+    ) {
+        DiagnosticEventTracker.trackError(
+            category = DIAGNOSTIC_CATEGORY,
+            event = event,
+            description = description,
+            extras = error.diagnosticExtras() + extras + mapOf("message" to message),
+        )
         _uiState.value = FaceVerifyUiState.Error(error = error, message = message)
         _events.tryEmit(FaceVerifyEvent.Error(message))
+    }
+
+    private fun FaceVerificationRequest.diagnosticExtras(stage: String): Map<String, Any?> =
+        mapOf(
+            "stage" to stage,
+            "orderNoLength" to orderNo.length,
+            "userIdLength" to userId.length,
+            "usesSourcePhoto" to !sourcePhotoStr.isNullOrBlank(),
+            "sourcePhotoLength" to (sourcePhotoStr?.length ?: 0),
+            "usesIdentityFields" to (!name.isNullOrBlank() || !idNo.isNullOrBlank()),
+        )
+
+    private fun FaceVerifyError?.diagnosticExtras(): Map<String, Any?> {
+        if (this == null) return emptyMap()
+        return mapOf(
+            "errorDomain" to domain,
+            "errorCode" to code,
+            "errorDescription" to description,
+            "errorReason" to reason,
+        )
+    }
+
+    private fun FaceVerifyError?.readableDescription(): String {
+        if (this == null) return "SDK未返回具体原因"
+        val baseMessage = description?.takeIf { it.isNotBlank() } ?: reason?.takeIf { it.isNotBlank() }
+        val codeMessage = code?.takeIf { it.isNotBlank() }?.let { "错误码: $it" }
+        return listOfNotNull(baseMessage, codeMessage)
+            .joinToString("，")
+            .ifBlank { "SDK未返回具体原因" }
+    }
+
+    private companion object {
+        const val DIAGNOSTIC_CATEGORY = "face_verification"
     }
 }

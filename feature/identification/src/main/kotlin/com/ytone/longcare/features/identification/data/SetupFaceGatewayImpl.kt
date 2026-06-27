@@ -34,7 +34,7 @@ class SetupFaceGatewayImpl @Inject constructor(
         val uploadResult = cosRepository.uploadFile(uploadParams)
         val uploadedKey = uploadResult.key
         return if (!uploadResult.success || uploadedKey == null) {
-            SetupFaceUploadResult.Error(uploadResult.errorMessage ?: "图片上传失败")
+            SetupFaceUploadResult.Error(uploadResult.errorMessage ?: "人脸图片上传失败，请稍后重试")
         } else {
             SetupFaceUploadResult.Success(uploadedKey = uploadedKey)
         }

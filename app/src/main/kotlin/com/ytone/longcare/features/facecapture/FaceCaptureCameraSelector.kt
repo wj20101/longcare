@@ -5,6 +5,7 @@ import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import androidx.camera.core.CameraSelector
 import androidx.core.content.getSystemService
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 
 /**
  * 获取可用的相机选择器。
@@ -30,6 +31,12 @@ internal fun getAvailableCameraSelector(context: Context): CameraSelector {
         }
     } catch (e: Exception) {
         com.ytone.longcare.common.utils.KLogger.e("FaceCaptureScreen", "检测相机失败: ${e.message}", e)
+        DiagnosticEventTracker.trackError(
+            category = "face_capture",
+            event = "camera_selector_exception",
+            description = "手动人脸采集检测相机异常",
+            throwable = e,
+        )
         CameraSelector.DEFAULT_FRONT_CAMERA
     }
 }

@@ -4,6 +4,8 @@ import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.domain.identification.IdentificationRepository
 import com.ytone.longcare.features.identification.domain.ServicePersonFaceSource
 import com.ytone.longcare.features.identification.domain.VerifyServicePersonDataGateway
+import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker
+import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker.EventType
 import javax.inject.Inject
 
 class VerifyServicePersonDataGatewayImpl @Inject constructor(
@@ -30,11 +32,23 @@ class VerifyServicePersonDataGatewayImpl @Inject constructor(
                 if (faceResult.code == SUCCESS_CODE) {
                     ServicePersonFaceSource.RequireFaceSetup
                 } else {
+                    FaceVerificationEventTracker.trackError(
+                        eventType = EventType.SERVICE_FACE_SOURCE_ERROR,
+                        extras = mapOf(
+                            "apiCode" to faceResult.code,
+                            "apiMessage" to faceResult.message,
+                        ),
+                    )
                     ServicePersonFaceSource.Error(faceResult.message)
                 }
             }
 
             is ApiResult.Exception -> {
+                FaceVerificationEventTracker.trackError(
+                    eventType = EventType.SERVICE_FACE_SOURCE_ERROR,
+                    throwable = faceResult.exception,
+                    extras = mapOf("message" to faceResult.exception.message),
+                )
                 ServicePersonFaceSource.Error("网络异常: ${faceResult.exception.message}")
             }
         }

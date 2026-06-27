@@ -29,7 +29,7 @@ class UploadElderPhotoGatewayImpl @Inject constructor(
         val uploadedKey = uploadResult.key
 
         return if (!uploadResult.success || uploadedKey == null) {
-            UploadElderPhotoSourceResult.Error(uploadResult.errorMessage ?: "图片上传失败")
+            UploadElderPhotoSourceResult.Error(uploadResult.errorMessage ?: "老人照片上传失败，请稍后重试")
         } else {
             UploadElderPhotoSourceResult.Success(uploadedKey = uploadedKey)
         }
