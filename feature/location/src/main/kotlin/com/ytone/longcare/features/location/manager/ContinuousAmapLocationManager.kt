@@ -26,6 +26,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * 持续高德定位管理器
@@ -127,14 +128,14 @@ class ContinuousAmapLocationManager @Inject constructor(
 
     private fun buildFreshLocationOption(timeoutMs: Long): AMapLocationClientOption {
         return AMapLocationClientOption().apply {
-            setLocationPurpose(AMapLocationClientOption.AMapLocationPurpose.SignIn)
+            locationPurpose = AMapLocationClientOption.AMapLocationPurpose.SignIn
             locationMode = AMapLocationClientOption.AMapLocationMode.Hight_Accuracy
             isNeedAddress = false
-            setOnceLocation(true)
-            setOnceLocationLatest(true)
+            isOnceLocation = true
+            isOnceLocationLatest = true
             isWifiScan = true
             isMockEnable = false
-            setLocationCacheEnable(false)
+            isLocationCacheEnable = false
             httpTimeOut = timeoutMs.coerceIn(MIN_FRESH_TIMEOUT, MAX_FRESH_TIMEOUT)
         }
     }
@@ -142,7 +143,6 @@ class ContinuousAmapLocationManager @Inject constructor(
     /**
      * 开始持续定位并返回位置更新Flow
      * 
-     * @param interval 定位间隔（毫秒）
      * @return 位置更新Flow，收集时自动开始定位，取消收集时自动停止
      */
     /**
@@ -237,7 +237,7 @@ class ContinuousAmapLocationManager @Inject constructor(
         // 如果已经有缓存且很新（Replay=1），first()会立即返回
         // 即使没有，startContinuousLocation()会触发定位（如果尚未启动）
         return try {
-            withTimeoutOrNull(timeoutMs) {
+            withTimeoutOrNull(timeoutMs.milliseconds) {
                 // 调用此方法会自动增加订阅者计数，触发定位启动
                 startContinuousLocation().first() 
             }
@@ -263,7 +263,7 @@ class ContinuousAmapLocationManager @Inject constructor(
 
         val boundedTimeoutMs = timeoutMs.coerceIn(MIN_FRESH_TIMEOUT, MAX_FRESH_TIMEOUT)
         return try {
-            withTimeoutOrNull(boundedTimeoutMs) {
+            withTimeoutOrNull(boundedTimeoutMs.milliseconds) {
                 suspendCancellableCoroutine { continuation ->
                     // Fresh location must use an isolated client with SignIn + once/latest + cache disabled:
                     // AMapLocationClientOption.AMapLocationPurpose.SignIn
