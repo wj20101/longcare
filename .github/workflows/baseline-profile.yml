@@ -163,5 +163,5 @@ jobs:
         run: |
           bash scripts/quality/cleanup_github_actions_caches.sh \
             --repo "${{ github.repository }}" \
-            --max-total-mb 7168 \
-            --keep-recent-days 2
+            --max-total-mb 2048 \
+            --keep-recent-days 1

@@ -1,4 +1,4 @@
-name: Actions Runs Cleanup
+name: Actions Storage Cleanup
 
 on:
   schedule:
@@ -9,6 +9,18 @@ on:
         description: "Keep runs newer than this many days"
         required: false
         default: "7"
+      artifact_keep_days:
+        description: "Keep artifacts newer than this many days"
+        required: false
+        default: "2"
+      cache_max_total_mb:
+        description: "Maximum allowed total cache size in MB"
+        required: false
+        default: "2048"
+      cache_keep_recent_days:
+        description: "Protect caches created or accessed within this many days"
+        required: false
+        default: "1"
       dry_run:
         description: "Dry run only (true/false)"
         required: false
@@ -19,7 +31,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: actions-runs-cleanup-${{ github.ref }}
+  group: actions-storage-cleanup-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -27,22 +39,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Delete completed runs older than retention window
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Cleanup Actions storage
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           KEEP_DAYS: ${{ github.event.inputs.keep_days }}
+          ARTIFACT_KEEP_DAYS: ${{ github.event.inputs.artifact_keep_days }}
+          CACHE_MAX_TOTAL_MB: ${{ github.event.inputs.cache_max_total_mb }}
+          CACHE_KEEP_RECENT_DAYS: ${{ github.event.inputs.cache_keep_recent_days }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
         run: |
           set -euo pipefail
 
           KEEP_DAYS="${KEEP_DAYS:-7}"
-          if ! [[ "${KEEP_DAYS}" =~ ^[0-9]+$ ]]; then
-            echo "Invalid KEEP_DAYS: ${KEEP_DAYS}" >&2
-            exit 1
-          fi
-
+          ARTIFACT_KEEP_DAYS="${ARTIFACT_KEEP_DAYS:-2}"
+          CACHE_MAX_TOTAL_MB="${CACHE_MAX_TOTAL_MB:-2048}"
+          CACHE_KEEP_RECENT_DAYS="${CACHE_KEEP_RECENT_DAYS:-1}"
           DRY_RUN="${DRY_RUN:-false}"
+
           case "${DRY_RUN}" in
             true|false) ;;
             *)
@@ -51,42 +68,16 @@ jobs:
               ;;
           esac
 
-          CUTOFF_EPOCH="$(date -u -d "${KEEP_DAYS} days ago" +%s)"
-
-          scanned=0
-          candidates=0
-          deleted=0
-
-          while IFS=$'\t' read -r run_id created_at workflow_name conclusion html_url; do
-            scanned=$((scanned + 1))
-            created_epoch="$(date -u -d "${created_at}" +%s)"
-
-            if (( created_epoch >= CUTOFF_EPOCH )); then
-              continue
-            fi
-
-            candidates=$((candidates + 1))
-
-            if [[ "${DRY_RUN}" == "true" ]]; then
-              echo "[DRY-RUN] would delete run=${run_id} workflow=${workflow_name} conclusion=${conclusion} created_at=${created_at} url=${html_url}"
-              continue
-            fi
-
-            gh run delete -R "${REPO}" "${run_id}"
-            deleted=$((deleted + 1))
-            echo "Deleted run=${run_id} workflow=${workflow_name} created_at=${created_at}"
-          done < <(
-            gh api --paginate "repos/${REPO}/actions/runs?status=completed&per_page=100" \
-              --jq '.workflow_runs[] | [.id,.created_at,.name,.conclusion,.html_url] | @tsv'
+          args=(
+            --repo "${REPO}"
+            --run-keep-days "${KEEP_DAYS}"
+            --artifact-keep-days "${ARTIFACT_KEEP_DAYS}"
+            --cache-max-total-mb "${CACHE_MAX_TOTAL_MB}"
+            --cache-keep-recent-days "${CACHE_KEEP_RECENT_DAYS}"
           )
 
-          {
-            echo "# Actions Cleanup Summary"
-            echo ""
-            echo "- repo: ${REPO}"
-            echo "- keep_days: ${KEEP_DAYS}"
-            echo "- dry_run: ${DRY_RUN}"
-            echo "- scanned_runs: ${scanned}"
-            echo "- older_than_window: ${candidates}"
-            echo "- deleted_runs: ${deleted}"
-          } >> "${GITHUB_STEP_SUMMARY}"
+          if [[ "${DRY_RUN}" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+
+          bash scripts/quality/cleanup_github_actions_storage.sh "${args[@]}"

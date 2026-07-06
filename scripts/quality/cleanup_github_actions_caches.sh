@@ -7,16 +7,16 @@ Usage: cleanup_github_actions_caches.sh --repo OWNER/REPO [options]
 
 Options:
   --repo OWNER/REPO       Repository to inspect and clean. Required.
-  --max-total-mb N        Maximum allowed total cache size in MB. Default: 7168.
-  --keep-recent-days N    Protect caches created or accessed within N days. Default: 2.
+  --max-total-mb N        Maximum allowed total cache size in MB. Default: 2048.
+  --keep-recent-days N    Protect caches created or accessed within N days. Default: 1.
   --dry-run               Print deletion candidates without deleting.
   --help                  Show this help.
 USAGE
 }
 
 repo=""
-max_total_mb=7168
-keep_recent_days=2
+max_total_mb=2048
+keep_recent_days=1
 dry_run=false
 
 while [[ $# -gt 0 ]]; do
