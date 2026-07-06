@@ -14,6 +14,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.receiver.DismissAlarmReceiver
+import com.ytone.longcare.features.countdown.service.AlarmRingtoneActivityVisibilityTracker
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.model.OrderKey
@@ -165,5 +166,18 @@ class CountdownAlarmActivity : AppCompatActivity() {
             stopAlarmReceiverRegistered = false
         }
         cleanupAlarmState()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        AlarmRingtoneActivityVisibilityTracker.markVisible(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        AlarmRingtoneActivityVisibilityTracker.markVisible(false)
+        if (!isChangingConfigurations) {
+            cleanupAlarmState()
+        }
     }
 }

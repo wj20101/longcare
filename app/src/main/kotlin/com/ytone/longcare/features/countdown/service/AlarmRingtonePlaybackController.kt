@@ -34,23 +34,29 @@ internal class AlarmRingtonePlaybackController(
     }
 
     fun stop() {
-        try {
-            mediaPlayer?.let {
+        mediaPlayer?.let {
+            try {
                 if (it.isPlaying) {
                     it.stop()
                 }
                 it.release()
+            } catch (e: Exception) {
+                logE("AlarmRingtoneService: 停止MediaPlayer失败 - ${e.message}")
+            } finally {
                 mediaPlayer = null
             }
-
-            vibrator?.cancel()
-            vibrator = null
-
-            isPlaying = false
-            logI("AlarmRingtoneService: 闹铃和震动已停止")
-        } catch (e: Exception) {
-            logE("AlarmRingtoneService: 停止闹铃失败 - ${e.message}")
         }
+
+        try {
+            vibrator?.cancel()
+        } catch (e: Exception) {
+            logE("AlarmRingtoneService: 停止Vibrator失败 - ${e.message}")
+        } finally {
+            vibrator = null
+        }
+
+        isPlaying = false
+        logI("AlarmRingtoneService: 闹铃和震动已停止")
     }
 
     private fun initializeMediaPlayer() {

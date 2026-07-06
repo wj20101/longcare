@@ -3,7 +3,9 @@ package com.ytone.longcare.features.countdown.service
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
@@ -13,7 +15,18 @@ import com.ytone.longcare.features.countdown.manager.CountdownNotificationManage
 import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
 import com.ytone.longcare.model.OrderKey
 import dagger.hilt.android.AndroidEntryPoint
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
+
+internal object AlarmRingtoneActivityVisibilityTracker {
+    private val alarmActivityVisible = AtomicBoolean(false)
+
+    fun markVisible(visible: Boolean) {
+        alarmActivityVisible.set(visible)
+    }
+
+    fun isVisible(): Boolean = alarmActivityVisible.get()
+}
 
 /**
  * 闹铃响铃服务
@@ -29,16 +42,25 @@ class AlarmRingtoneService : Service() {
     private lateinit var playbackController: AlarmRingtonePlaybackController
     private lateinit var foregroundStarter: AlarmRingtoneForegroundStarter
     private var wakeLock: PowerManager.WakeLock? = null
+    private var lastOrderKey: OrderKey? = null
+    private var lastServiceName: String = ""
+    private var resourcesCleanedUp = false
+    private val fallbackHandler = Handler(Looper.getMainLooper())
+    private var noVisibleActivityFallback: Runnable? = null
     
     companion object {
         // 通知ID，与CountdownNotificationManager中保持一致
         private const val NOTIFICATION_ID = 2001
+        internal const val NO_VISIBLE_ACTIVITY_TIMEOUT_MS = 30_000L
+        internal const val ACTION_START_RINGTONE = "com.ytone.longcare.action.START_RINGTONE"
+        internal const val ACTION_STOP_RINGTONE = "com.ytone.longcare.action.STOP_RINGTONE"
         
         /**
          * 启动响铃服务
          */
         fun startRingtone(context: Context, orderKey: OrderKey, serviceName: String) {
             val intent = Intent(context, AlarmRingtoneService::class.java).apply {
+                action = ACTION_START_RINGTONE
                 putExtra(CountdownNotificationManager.EXTRA_ORDER_KEY, orderKey)
                 putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, serviceName)
             }
@@ -50,7 +72,14 @@ class AlarmRingtoneService : Service() {
          * 停止响铃服务
          */
         fun stopRingtone(context: Context) {
-            val intent = Intent(context, AlarmRingtoneService::class.java)
+            val intent = Intent(context, AlarmRingtoneService::class.java).apply {
+                action = ACTION_STOP_RINGTONE
+            }
+            runCatching {
+                context.startService(intent)
+            }.onFailure { error ->
+                logE("AlarmRingtoneService: 发送停止命令失败，回退 stopService - ${error.message}")
+            }
             context.stopService(intent)
         }
     }
@@ -71,19 +100,34 @@ class AlarmRingtoneService : Service() {
         wakeLock = powerManager?.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
             "LongCare:AlarmRingtoneService"
-        )
+        )?.apply {
+            setReferenceCounted(false)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         logI("AlarmRingtoneService: 收到启动命令")
-        
-        // 获取WakeLock，保持屏幕常亮
-        wakeLock?.acquire(10 * 60 * 1000L /* 10 minutes */)
-        
-        
+
+        if (intent?.action == ACTION_STOP_RINGTONE) {
+            logI("AlarmRingtoneService: 收到停止命令")
+            stopAlarmAndSelf("stop_action")
+            return START_NOT_STICKY
+        }
+
         val orderKey = CountdownNotificationManager.extractOrderKey(intent)
-        
         val serviceName = CountdownNotificationManager.extractServiceName(intent, "未知服务")
+
+        if (orderKey.orderId == -1L) {
+            logE("AlarmRingtoneService: 启动参数缺少订单信息，停止响铃服务")
+            stopAlarmAndSelf("invalid_start_intent")
+            return START_NOT_STICKY
+        }
+
+        lastOrderKey = orderKey
+        lastServiceName = serviceName
+        resourcesCleanedUp = false
+
+        acquireWakeLock()
         
         // 追踪响铃服务启动事件
         CountdownEventTracker.trackEvent(
@@ -97,7 +141,9 @@ class AlarmRingtoneService : Service() {
         
         // 启动响铃和震动
         if (!playbackController.isPlaying && !playbackController.start()) {
-            stopSelf()
+            logE("AlarmRingtoneService: 响铃播放启动失败，停止响铃服务")
+            stopAlarmAndSelf("playback_start_failed")
+            return START_NOT_STICKY
         }
         
         // 尝试从前台服务启动Activity (作为fullScreenIntent的补充)
@@ -105,8 +151,9 @@ class AlarmRingtoneService : Service() {
         // 前台服务属于"可见应用"，通常允许启动Activity，但在某些ROM上可能仍受限
         // 我们在startForegroundWithNotification中已经设置了fullScreenIntent，这是官方推荐的做法
         launchAlarmActivityIfPossible(orderKey, serviceName)
+        scheduleNoVisibleActivityFallback(orderKey, serviceName)
         
-        return START_STICKY
+        return START_NOT_STICKY
     }
     
     /**
@@ -131,14 +178,89 @@ class AlarmRingtoneService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        super.onDestroy()
-        playbackController.stop()
-        
-        // 释放WakeLock
-        if (wakeLock?.isHeld == true) {
-            wakeLock?.release()
-        }
-        
+        cleanupAlarmResources("on_destroy")
         logI("AlarmRingtoneService: 服务销毁")
+        super.onDestroy()
+    }
+
+    private fun stopAlarmAndSelf(reason: String) {
+        cleanupAlarmResources(reason)
+        stopSelf()
+    }
+
+    private fun cleanupAlarmResources(reason: String) {
+        if (resourcesCleanedUp) {
+            return
+        }
+        resourcesCleanedUp = true
+
+        cancelNoVisibleActivityFallback()
+        playbackController.stop()
+        removeForegroundNotification()
+        releaseWakeLock()
+
+        CountdownEventTracker.trackEvent(
+            eventType = CountdownEventTracker.EventType.RINGTONE_SERVICE_STOP,
+            orderId = lastOrderKey?.orderId,
+            extras = mapOf(
+                "serviceName" to lastServiceName,
+                "reason" to reason
+            )
+        )
+    }
+
+    private fun scheduleNoVisibleActivityFallback(orderKey: OrderKey, serviceName: String) {
+        cancelNoVisibleActivityFallback()
+        val fallback = Runnable {
+            if (!AlarmRingtoneActivityVisibilityTracker.isVisible()) {
+                logE("AlarmRingtoneService: 响铃弹窗未保持可见，自动停止响铃")
+                stopAlarmAndSelf("no_visible_alarm_activity")
+            } else {
+                logI("AlarmRingtoneService: 响铃弹窗可见，跳过自动停止检查")
+            }
+        }
+        noVisibleActivityFallback = fallback
+        fallbackHandler.postDelayed(fallback, NO_VISIBLE_ACTIVITY_TIMEOUT_MS)
+        logI(
+            "AlarmRingtoneService: 已安排弹窗可见性兜底检查，orderId=${orderKey.orderId}, " +
+                "serviceName=$serviceName, timeout=${NO_VISIBLE_ACTIVITY_TIMEOUT_MS}ms"
+        )
+    }
+
+    private fun cancelNoVisibleActivityFallback() {
+        noVisibleActivityFallback?.let { fallbackHandler.removeCallbacks(it) }
+        noVisibleActivityFallback = null
+    }
+
+    private fun removeForegroundNotification() {
+        try {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } catch (e: Exception) {
+            logE("AlarmRingtoneService: 退出前台服务失败 - ${e.message}", throwable = e)
+        }
+
+        try {
+            countdownNotificationManager.cancelCountdownCompletionNotification()
+        } catch (e: Exception) {
+            logE("AlarmRingtoneService: 取消响铃通知失败 - ${e.message}", throwable = e)
+        }
+    }
+
+    private fun acquireWakeLock() {
+        try {
+            wakeLock?.acquire(10 * 60 * 1000L /* 10 minutes */)
+        } catch (e: Exception) {
+            logE("AlarmRingtoneService: 获取WakeLock失败 - ${e.message}", throwable = e)
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+        } catch (e: Exception) {
+            logE("AlarmRingtoneService: 释放WakeLock失败 - ${e.message}", throwable = e)
+        }
     }
 }
