@@ -8,10 +8,8 @@ on:
       - develop
     paths-ignore:
       - "docs/**"
+      - "*.md"
       - "**/*.md"
-      - "task_plan.md"
-      - "findings.md"
-      - "progress.md"
   pull_request:
   workflow_dispatch:
 
