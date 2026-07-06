@@ -1,4 +1,4 @@
-name: Actions Storage Cleanup
+name: Actions 存储自动清理
 
 on:
   schedule:
@@ -6,23 +6,27 @@ on:
   workflow_dispatch:
     inputs:
       keep_days:
-        description: "Keep runs newer than this many days"
+        description: "保留最近多少天内的历史运行记录"
         required: false
         default: "7"
       artifact_keep_days:
-        description: "Keep artifacts newer than this many days"
+        description: "保留最近多少天内的构建产物"
         required: false
         default: "2"
+      artifact_max_total_mb:
+        description: "构建产物总量超过多少 MB 时继续清理"
+        required: false
+        default: "1024"
       cache_max_total_mb:
-        description: "Maximum allowed total cache size in MB"
+        description: "缓存总量超过多少 MB 时执行清理"
         required: false
         default: "2048"
       cache_keep_recent_days:
-        description: "Protect caches created or accessed within this many days"
+        description: "优先保护最近多少天内创建或访问过的缓存"
         required: false
         default: "1"
       dry_run:
-        description: "Dry run only (true/false)"
+        description: "仅预览清理内容，不实际删除（true/false）"
         required: false
         default: "true"
 
@@ -39,15 +43,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@v7
 
-      - name: Cleanup Actions storage
+      - name: 清理 Actions 存储
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           KEEP_DAYS: ${{ github.event.inputs.keep_days }}
           ARTIFACT_KEEP_DAYS: ${{ github.event.inputs.artifact_keep_days }}
+          ARTIFACT_MAX_TOTAL_MB: ${{ github.event.inputs.artifact_max_total_mb }}
           CACHE_MAX_TOTAL_MB: ${{ github.event.inputs.cache_max_total_mb }}
           CACHE_KEEP_RECENT_DAYS: ${{ github.event.inputs.cache_keep_recent_days }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
@@ -56,6 +61,7 @@ jobs:
 
           KEEP_DAYS="${KEEP_DAYS:-7}"
           ARTIFACT_KEEP_DAYS="${ARTIFACT_KEEP_DAYS:-2}"
+          ARTIFACT_MAX_TOTAL_MB="${ARTIFACT_MAX_TOTAL_MB:-1024}"
           CACHE_MAX_TOTAL_MB="${CACHE_MAX_TOTAL_MB:-2048}"
           CACHE_KEEP_RECENT_DAYS="${CACHE_KEEP_RECENT_DAYS:-1}"
           DRY_RUN="${DRY_RUN:-false}"
@@ -72,6 +78,7 @@ jobs:
             --repo "${REPO}"
             --run-keep-days "${KEEP_DAYS}"
             --artifact-keep-days "${ARTIFACT_KEEP_DAYS}"
+            --artifact-max-total-mb "${ARTIFACT_MAX_TOTAL_MB}"
             --cache-max-total-mb "${CACHE_MAX_TOTAL_MB}"
             --cache-keep-recent-days "${CACHE_KEEP_RECENT_DAYS}"
           )

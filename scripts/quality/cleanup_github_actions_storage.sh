@@ -9,6 +9,7 @@ Options:
   --repo OWNER/REPO             Repository to inspect and clean. Required.
   --run-keep-days N             Keep completed workflow runs newer than N days. Default: 7.
   --artifact-keep-days N        Keep artifacts newer than N days. Default: 2.
+  --artifact-max-total-mb N      Maximum allowed total artifact size in MB. Default: 1024.
   --cache-max-total-mb N        Maximum allowed total cache size in MB. Default: 2048.
   --cache-keep-recent-days N    Protect caches created or accessed within N days. Default: 1.
   --dry-run                     Print deletion candidates without deleting.
@@ -19,6 +20,7 @@ USAGE
 repo=""
 run_keep_days=7
 artifact_keep_days=2
+artifact_max_total_mb=1024
 cache_max_total_mb=2048
 cache_keep_recent_days=1
 dry_run=false
@@ -35,6 +37,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --artifact-keep-days)
       artifact_keep_days="${2:-}"
+      shift 2
+      ;;
+    --artifact-max-total-mb)
+      artifact_max_total_mb="${2:-}"
       shift 2
       ;;
     --cache-max-total-mb)
@@ -90,6 +96,7 @@ fi
 
 require_non_negative_int "--run-keep-days" "${run_keep_days}"
 require_non_negative_int "--artifact-keep-days" "${artifact_keep_days}"
+require_positive_int "--artifact-max-total-mb" "${artifact_max_total_mb}"
 require_positive_int "--cache-max-total-mb" "${cache_max_total_mb}"
 require_non_negative_int "--cache-keep-recent-days" "${cache_keep_recent_days}"
 
@@ -110,6 +117,14 @@ if [[ ! -x "${cache_cleanup_script}" ]]; then
   echo "Cache cleanup script is missing or not executable: ${cache_cleanup_script}" >&2
   exit 1
 fi
+
+artifact_tsv_file="$(mktemp)"
+artifact_sorted_tsv_file="$(mktemp)"
+
+cleanup_storage_temp_files() {
+  rm -f "${artifact_tsv_file}" "${artifact_sorted_tsv_file}"
+}
+trap cleanup_storage_temp_files EXIT
 
 format_mb() {
   local bytes="$1"
@@ -219,6 +234,7 @@ delete_old_runs() {
 delete_old_artifacts() {
   local cutoff_epoch
   cutoff_epoch="$(days_ago_epoch "${artifact_keep_days}")"
+  local threshold_bytes=$((artifact_max_total_mb * 1024 * 1024))
 
   local scanned=0
   local candidates=0
@@ -226,18 +242,53 @@ delete_old_artifacts() {
   local failed=0
   local candidate_bytes=0
   local reclaimed_bytes=0
+  local total_bytes=0
+  local remaining_bytes=0
+  local age_candidates=0
+  local capacity_candidates=0
 
   echo "[actions-storage-cleanup] Listing artifacts for ${repo}..."
 
   while IFS=$'\t' read -r artifact_id name size_bytes created_at expired archive_url; do
     [[ -n "${artifact_id}" ]] || continue
-    scanned=$((scanned + 1))
     size_bytes="${size_bytes:-0}"
 
     local created_epoch
     created_epoch="$(date_to_epoch "${created_at}")"
 
-    if [[ "${expired}" != "true" ]] && (( created_epoch >= cutoff_epoch )); then
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "${created_epoch}" \
+      "${artifact_id}" \
+      "${name}" \
+      "${size_bytes}" \
+      "${created_at}" \
+      "${expired}" \
+      "${archive_url}" >> "${artifact_tsv_file}"
+  done < <(
+    gh api --paginate "repos/${repo}/actions/artifacts?per_page=100" \
+      --jq '.artifacts[]? | [.id,.name,.size_in_bytes,.created_at,.expired,.archive_download_url] | @tsv'
+  )
+
+  sort -t $'\t' -k1,1n "${artifact_tsv_file}" > "${artifact_sorted_tsv_file}"
+  scanned="$(wc -l < "${artifact_sorted_tsv_file}" | tr -d ' ')"
+  total_bytes="$(awk -F '\t' '{ total += $4 } END { print total + 0 }' "${artifact_sorted_tsv_file}")"
+  remaining_bytes="${total_bytes}"
+
+  while IFS=$'\t' read -r created_epoch artifact_id name size_bytes created_at expired archive_url; do
+    [[ -n "${artifact_id}" ]] || continue
+    size_bytes="${size_bytes:-0}"
+
+    local reason=""
+    if [[ "${expired}" == "true" ]]; then
+      reason="expired"
+      age_candidates=$((age_candidates + 1))
+    elif (( created_epoch < cutoff_epoch )); then
+      reason="older_than_window"
+      age_candidates=$((age_candidates + 1))
+    elif (( remaining_bytes > threshold_bytes )); then
+      reason="over_capacity"
+      capacity_candidates=$((capacity_candidates + 1))
+    else
       continue
     fi
 
@@ -245,22 +296,21 @@ delete_old_artifacts() {
     candidate_bytes=$((candidate_bytes + size_bytes))
 
     if [[ "${dry_run}" == "true" ]]; then
-      echo "[DRY-RUN] would delete artifact=${artifact_id} name=${name} size=$(format_mb "${size_bytes}")MB expired=${expired} created_at=${created_at} url=${archive_url}"
+      remaining_bytes=$((remaining_bytes - size_bytes))
+      echo "[DRY-RUN] would delete artifact=${artifact_id} reason=${reason} name=${name} size=$(format_mb "${size_bytes}")MB expired=${expired} created_at=${created_at} url=${archive_url}"
       continue
     fi
 
     if gh api -X DELETE "repos/${repo}/actions/artifacts/${artifact_id}" >/dev/null; then
       deleted=$((deleted + 1))
       reclaimed_bytes=$((reclaimed_bytes + size_bytes))
-      echo "[actions-storage-cleanup] Deleted artifact=${artifact_id} name=${name} size=$(format_mb "${size_bytes}")MB created_at=${created_at}"
+      remaining_bytes=$((remaining_bytes - size_bytes))
+      echo "[actions-storage-cleanup] Deleted artifact=${artifact_id} reason=${reason} name=${name} size=$(format_mb "${size_bytes}")MB created_at=${created_at}"
     else
       failed=$((failed + 1))
       echo "[actions-storage-cleanup][WARN] Failed to delete artifact=${artifact_id} name=${name}" >&2
     fi
-  done < <(
-    gh api --paginate "repos/${repo}/actions/artifacts?per_page=100" \
-      --jq '.artifacts[]? | [.id,.name,.size_in_bytes,.created_at,.expired,.archive_download_url] | @tsv'
-  )
+  done < "${artifact_sorted_tsv_file}"
 
   {
     echo "# GitHub Actions Artifact Cleanup Summary"
@@ -268,8 +318,13 @@ delete_old_artifacts() {
     echo "- repo: \`${repo}\`"
     echo "- dry_run: \`${dry_run}\`"
     echo "- artifact_keep_days: \`${artifact_keep_days}\`"
+    echo "- artifact_max_total_mb: \`${artifact_max_total_mb}\`"
     echo "- scanned_artifacts: \`${scanned}\`"
+    echo "- total_before_mb: \`$(format_mb "${total_bytes}")\`"
+    echo "- threshold_mb: \`${artifact_max_total_mb}\`"
     echo "- deletion_candidates: \`${candidates}\`"
+    echo "- time_or_expired_candidates: \`${age_candidates}\`"
+    echo "- capacity_candidates: \`${capacity_candidates}\`"
     echo "- candidate_size_mb: \`$(format_mb "${candidate_bytes}")\`"
     if [[ "${dry_run}" == "true" ]]; then
       echo "- would_delete_artifacts: \`${candidates}\`"
@@ -279,6 +334,7 @@ delete_old_artifacts() {
       echo "- failed_artifact_deletions: \`${failed}\`"
       echo "- reclaimed_mb: \`$(format_mb "${reclaimed_bytes}")\`"
     fi
+    echo "- estimated_total_after_mb: \`$(format_mb "${remaining_bytes}")\`"
     echo ""
   } | emit_summary
 

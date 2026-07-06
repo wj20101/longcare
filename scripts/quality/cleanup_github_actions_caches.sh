@@ -108,8 +108,7 @@ jq -r -s --argjson cutoff "${cutoff_epoch}" '
   [
     .[]
     | .created_epoch = (.created_at | epoch)
-    | .last_accessed_epoch = (.last_accessed_at | epoch)
-    | select(.created_epoch < $cutoff and .last_accessed_epoch < $cutoff)
+    | .last_accessed_epoch = ((.last_accessed_at // .created_at) | epoch)
   ]
   | sort_by(.last_accessed_epoch, .created_epoch)
   | .[]
@@ -119,40 +118,54 @@ jq -r -s --argjson cutoff "${cutoff_epoch}" '
       .ref,
       .size_in_bytes,
       .created_at,
-      .last_accessed_at
+      (.last_accessed_at // .created_at),
+      .created_epoch,
+      .last_accessed_epoch
     ]
   | @tsv
 ' "${cache_json_file}" > "${candidate_tsv_file}"
 
-candidate_count="$(wc -l < "${candidate_tsv_file}" | tr -d ' ')"
+scanned_sorted_count="$(wc -l < "${candidate_tsv_file}" | tr -d ' ')"
 remaining_bytes="${total_bytes}"
 deleted_count=0
 failed_count=0
 reclaimed_bytes=0
 would_delete_count=0
 would_reclaim_bytes=0
+deletion_candidate_count=0
+stale_candidate_count=0
+capacity_candidate_count=0
 
 format_mb() {
   local bytes="$1"
   awk -v bytes="${bytes}" 'BEGIN { printf "%.2f", bytes / 1024 / 1024 }'
 }
 
-echo "[actions-cache-cleanup] total=$(format_mb "${total_bytes}")MB threshold=${max_total_mb}MB scanned=${scanned_count} candidates=${candidate_count} dry_run=${dry_run}"
+echo "[actions-cache-cleanup] total=$(format_mb "${total_bytes}")MB threshold=${max_total_mb}MB scanned=${scanned_count} sorted=${scanned_sorted_count} dry_run=${dry_run}"
 
 if (( total_bytes <= threshold_bytes )); then
   echo "[actions-cache-cleanup] Cache total is below threshold; nothing to delete."
 else
-  while IFS=$'\t' read -r cache_id cache_key cache_ref size_bytes created_at last_accessed_at; do
+  while IFS=$'\t' read -r cache_id cache_key cache_ref size_bytes created_at last_accessed_at created_epoch last_accessed_epoch; do
     [[ -n "${cache_id}" ]] || continue
     if (( remaining_bytes <= threshold_bytes )); then
       break
     fi
 
+    reason="over_capacity"
+    if (( created_epoch < cutoff_epoch && last_accessed_epoch < cutoff_epoch )); then
+      reason="stale"
+      stale_candidate_count=$((stale_candidate_count + 1))
+    else
+      capacity_candidate_count=$((capacity_candidate_count + 1))
+    fi
+    deletion_candidate_count=$((deletion_candidate_count + 1))
+
     if [[ "${dry_run}" == "true" ]]; then
       would_delete_count=$((would_delete_count + 1))
       would_reclaim_bytes=$((would_reclaim_bytes + size_bytes))
       remaining_bytes=$((remaining_bytes - size_bytes))
-      echo "[DRY-RUN] would delete id=${cache_id} size=$(format_mb "${size_bytes}")MB ref=${cache_ref} created_at=${created_at} last_accessed_at=${last_accessed_at} key=${cache_key}"
+      echo "[DRY-RUN] would delete id=${cache_id} reason=${reason} size=$(format_mb "${size_bytes}")MB ref=${cache_ref} created_at=${created_at} last_accessed_at=${last_accessed_at} key=${cache_key}"
       continue
     fi
 
@@ -160,7 +173,7 @@ else
       deleted_count=$((deleted_count + 1))
       reclaimed_bytes=$((reclaimed_bytes + size_bytes))
       remaining_bytes=$((remaining_bytes - size_bytes))
-      echo "[actions-cache-cleanup] Deleted id=${cache_id} size=$(format_mb "${size_bytes}")MB ref=${cache_ref} key=${cache_key}"
+      echo "[actions-cache-cleanup] Deleted id=${cache_id} reason=${reason} size=$(format_mb "${size_bytes}")MB ref=${cache_ref} key=${cache_key}"
     else
       failed_count=$((failed_count + 1))
       echo "[actions-cache-cleanup][WARN] Failed to delete id=${cache_id} ref=${cache_ref} key=${cache_key}" >&2
@@ -180,7 +193,9 @@ fi
   echo "- max_total_mb: \`${max_total_mb}\`"
   echo "- keep_recent_days: \`${keep_recent_days}\`"
   echo "- scanned_caches: \`${scanned_count}\`"
-  echo "- deletion_candidates: \`${candidate_count}\`"
+  echo "- deletion_candidates: \`${deletion_candidate_count}\`"
+  echo "- stale_candidates: \`${stale_candidate_count}\`"
+  echo "- capacity_candidates: \`${capacity_candidate_count}\`"
   echo "- total_before_mb: \`$(format_mb "${total_bytes}")\`"
   echo "- threshold_mb: \`${max_total_mb}\`"
   if [[ "${dry_run}" == "true" ]]; then
