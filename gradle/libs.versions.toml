@@ -62,7 +62,7 @@ amapLocation = "11.2.000"
 junit = "4.13.2"
 androidxJunit = "1.3.0"
 espressoCore = "3.7.0"
-uiautomator = "2.3.0"
+uiautomator = "2.4.0"
 benchmarkMacroJunit4 = "1.5.0-alpha06"
 javaxInject = "1"
 
