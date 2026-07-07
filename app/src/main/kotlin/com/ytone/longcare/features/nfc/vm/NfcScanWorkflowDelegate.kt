@@ -50,7 +50,14 @@ internal class NfcScanWorkflowDelegate(
                         signInMode = signInMode,
                         endOderInfo = endOderInfo,
                         onLocationRequest = onLocationRequest,
-                        onLocationError = { message -> orderDelegate.showError(message) },
+                        onLocationError = { message ->
+                            orderDelegate.showError(
+                                message = message,
+                                source = "scan_location_error",
+                                orderKey = orderKey,
+                                signInMode = signInMode,
+                            )
+                        },
                         onLoadingReasonChanged = { reason ->
                             uiState.value = NfcSignInUiState.Loading(reason)
                         },
@@ -104,7 +111,13 @@ internal class NfcScanWorkflowDelegate(
             val (longitude, latitude) = when (locationResult) {
                 is LocationRequestResult.Coordinates -> locationResult.longitude to locationResult.latitude
                 is LocationRequestResult.Error -> {
-                    orderDelegate.showError(locationResult.message)
+                    orderDelegate.showError(
+                        message = locationResult.message,
+                        source = "resume_permission_scan_location_error",
+                        orderKey = scan.orderKey,
+                        signInMode = scan.signInMode,
+                        nfcDeviceId = scan.tagId,
+                    )
                     return@launch
                 }
                 is LocationRequestResult.PermissionRequired -> return@launch
@@ -183,7 +196,18 @@ internal class NfcScanWorkflowDelegate(
                             "hasLatitude" to data.latitude.isNotBlank(),
                         ),
                     )
-                    orderDelegate.showError(message)
+                    orderDelegate.showError(
+                        message = message,
+                        source = "bind_location",
+                        orderKey = data.orderKey,
+                        signInMode = data.signInMode,
+                        nfcDeviceId = data.tagId,
+                        buglyAlreadyReported = true,
+                        extras = mapOf(
+                            "hasLongitude" to data.longitude.isNotBlank(),
+                            "hasLatitude" to data.latitude.isNotBlank(),
+                        ),
+                    )
                 }
 
                 is ApiResult.Failure -> {
@@ -199,7 +223,18 @@ internal class NfcScanWorkflowDelegate(
                             "hasLatitude" to data.latitude.isNotBlank(),
                         ),
                     )
-                    orderDelegate.showError(result.message)
+                    orderDelegate.showError(
+                        message = result.message,
+                        source = "bind_location",
+                        orderKey = data.orderKey,
+                        signInMode = data.signInMode,
+                        nfcDeviceId = data.tagId,
+                        buglyAlreadyReported = true,
+                        extras = mapOf(
+                            "hasLongitude" to data.longitude.isNotBlank(),
+                            "hasLatitude" to data.latitude.isNotBlank(),
+                        ),
+                    )
                 }
             }
             pendingNfcData.value = null

@@ -8,8 +8,35 @@ import com.ytone.longcare.features.countdown.manager.CountdownNotificationManage
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.ServiceCompleteData
+import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+
+internal fun applyUserVisibleNfcError(
+    uiState: MutableStateFlow<NfcSignInUiState>,
+    message: String,
+    source: String,
+    orderKey: OrderKey? = null,
+    signInMode: SignInMode? = null,
+    nfcDeviceId: String? = null,
+    buglyAlreadyReported: Boolean = false,
+    extras: Map<String, Any?> = emptyMap(),
+    reporter: (NfcUserVisibleErrorReport) -> Unit = ::sendNfcUserVisibleErrorReport,
+) {
+    uiState.value = if (buglyAlreadyReported) {
+        reportedNfcError(message)
+    } else {
+        reportUserVisibleNfcError(
+            message = message,
+            source = source,
+            orderKey = orderKey,
+            signInMode = signInMode,
+            nfcDeviceId = nfcDeviceId,
+            extras = extras,
+            reporter = reporter,
+        )
+    }
+}
 
 internal class NfcOrderWorkflowDelegate(
     private val context: Context,
@@ -102,8 +129,25 @@ internal class NfcOrderWorkflowDelegate(
         uiState.value = NfcSignInUiState.Initial
     }
 
-    fun showError(message: String) {
-        uiState.value = NfcSignInUiState.Error(message)
+    fun showError(
+        message: String,
+        source: String = "nfc_order_workflow_show_error",
+        orderKey: OrderKey? = null,
+        signInMode: SignInMode? = null,
+        nfcDeviceId: String? = null,
+        buglyAlreadyReported: Boolean = false,
+        extras: Map<String, Any?> = emptyMap(),
+    ) {
+        applyUserVisibleNfcError(
+            uiState = uiState,
+            message = message,
+            source = source,
+            orderKey = orderKey,
+            signInMode = signInMode,
+            nfcDeviceId = nfcDeviceId,
+            buglyAlreadyReported = buglyAlreadyReported,
+            extras = extras,
+        )
     }
 
     fun buildServiceCompleteDataFromCache(

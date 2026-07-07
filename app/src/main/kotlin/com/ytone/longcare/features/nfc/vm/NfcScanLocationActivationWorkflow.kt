@@ -39,7 +39,18 @@ internal suspend fun checkUserLocationAndProceed(
                         "hasLatitude" to latitude.isNotBlank(),
                     ),
                 )
-                orderDelegate.showError(message)
+                orderDelegate.showError(
+                    message = message,
+                    source = "location_activation_order_detail",
+                    orderKey = orderKey,
+                    signInMode = signInMode,
+                    nfcDeviceId = tagId,
+                    buglyAlreadyReported = true,
+                    extras = mapOf(
+                        "hasLongitude" to longitude.isNotBlank(),
+                        "hasLatitude" to latitude.isNotBlank(),
+                    ),
+                )
                 return
             }
 
@@ -57,7 +68,18 @@ internal suspend fun checkUserLocationAndProceed(
                         "hasLatitude" to latitude.isNotBlank(),
                     ),
                 )
-                orderDelegate.showError(message)
+                orderDelegate.showError(
+                    message = message,
+                    source = "location_activation_order_detail",
+                    orderKey = orderKey,
+                    signInMode = signInMode,
+                    nfcDeviceId = tagId,
+                    buglyAlreadyReported = true,
+                    extras = mapOf(
+                        "hasLongitude" to longitude.isNotBlank(),
+                        "hasLatitude" to latitude.isNotBlank(),
+                    ),
+                )
                 return
             }
         }

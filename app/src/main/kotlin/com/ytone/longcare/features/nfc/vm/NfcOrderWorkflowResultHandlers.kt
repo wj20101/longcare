@@ -39,14 +39,14 @@ internal fun applyOrderApiException(
     uiState: MutableStateFlow<NfcSignInUiState>
 ) {
     val message = exception.exception.message ?: "网络错误，请检查网络连接"
-    uiState.value = NfcSignInUiState.Error(message)
+    uiState.value = reportedNfcError(message)
 }
 
 internal fun applyOrderApiFailure(
     failure: ApiResult.Failure,
     uiState: MutableStateFlow<NfcSignInUiState>
 ) {
-    uiState.value = NfcSignInUiState.Error(failure.message)
+    uiState.value = reportedNfcError(failure.message)
 }
 
 internal fun applyCheckEndOrderFailure(
@@ -62,5 +62,5 @@ internal fun applyCheckEndOrderFailure(
         return
     }
 
-    uiState.value = NfcSignInUiState.Error(failure.message)
+    uiState.value = reportedNfcError(failure.message)
 }

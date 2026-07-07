@@ -64,7 +64,7 @@ internal suspend fun executeEndOrderRequest(
                     endType = endType,
                 ),
             )
-            uiState.value = NfcSignInUiState.Error(message)
+            uiState.value = reportedNfcError(message)
         }
 
         is ApiResult.Failure -> {
@@ -85,7 +85,7 @@ internal suspend fun executeEndOrderRequest(
                     endType = endType,
                 ),
             )
-            uiState.value = NfcSignInUiState.Error(result.message)
+            uiState.value = reportedNfcError(result.message)
         }
     }
 }
