@@ -45,6 +45,7 @@ keystore.properties
 
 # Sandbox stuff
 _sandbox
+.worktrees/
 
 # Android Studio captures folder
 captures/
