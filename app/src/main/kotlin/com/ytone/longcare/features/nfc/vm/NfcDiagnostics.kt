@@ -132,6 +132,65 @@ private fun buildNfcExtras(
         values["nfcDeviceIdLength"] = nfcDeviceId.length
         values["nfcDeviceIdHash"] = nfcDeviceId.hashCode()
     }
-    values.putAll(extras)
+    extras.forEach { (key, value) ->
+        sanitizeNfcExtra(key, value)?.let { sanitizedValue ->
+            if (key !in values) {
+                values[key] = sanitizedValue
+            }
+        }
+    }
     return values
 }
+
+private fun sanitizeNfcExtra(key: String, value: Any?): Any? {
+    if (!isAllowedNfcExtraKey(key)) return null
+    if (value is String && looksLikeFullUrl(value)) return null
+    return when (value) {
+        null,
+        is Boolean,
+        is Byte,
+        is Short,
+        is Int,
+        is Long,
+        is Float,
+        is Double,
+        is Char,
+        is String -> value
+        else -> null
+    }
+}
+
+private fun isAllowedNfcExtraKey(key: String): Boolean {
+    if (key in allowedNfcExtraKeys) return true
+    if (key.startsWith("has") && key.length > 3 && key[3].isUpperCase()) return true
+    if (key.endsWith("Count") || key.endsWith("Type")) return true
+    if (key.endsWith("Name") && (key == "stageName" || key == "eventName")) return true
+    return false
+}
+
+private fun looksLikeFullUrl(value: String): Boolean {
+    val trimmed = value.trim()
+    return trimmed.startsWith("http://") ||
+        trimmed.startsWith("https://") ||
+        trimmed.startsWith("www.")
+}
+
+private val allowedNfcExtraKeys = setOf(
+    "source",
+    "message",
+    "signInMode",
+    "scanSource",
+    "stage",
+    "stageName",
+    "event",
+    "eventName",
+    "orderId",
+    "planId",
+    "endType",
+    "failureCode",
+    "failureMessage",
+    "hasLongitude",
+    "hasLatitude",
+    "nfcDeviceIdLength",
+    "nfcDeviceIdHash",
+)
