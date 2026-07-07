@@ -3,14 +3,12 @@ package com.ytone.longcare.features.nfc.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,6 +34,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
@@ -44,19 +44,20 @@ import com.ytone.longcare.R
 internal fun SignInContentCard(
     signInState: SignInState,
     statusOverrideRes: Int? = null,
+    failureStatusText: String? = null,
     showReadingIndicator: Boolean = false,
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(325f / 260f),
+            .heightIn(min = 260.dp),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(vertical = 24.dp, horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -69,8 +70,10 @@ internal fun SignInContentCard(
 
                 SignInState.FAILURE -> StatusDisplay(
                     icon = Icons.Default.Error,
-                    text = stringResource(R.string.nfc_sign_in_status_failure),
-                    iconColor = Color.Red
+                    text = failureStatusText ?: stringResource(R.string.nfc_sign_in_status_failure),
+                    iconColor = MaterialTheme.colorScheme.error,
+                    textColor = MaterialTheme.colorScheme.error,
+                    maxLines = 3,
                 )
 
                 SignInState.IDLE -> {
@@ -119,11 +122,19 @@ internal fun SignInContentCard(
 }
 
 @Composable
-internal fun StatusDisplay(icon: ImageVector, text: String, iconColor: Color) {
+internal fun StatusDisplay(
+    icon: ImageVector,
+    text: String,
+    iconColor: Color,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
+    maxLines: Int = 2,
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
-        modifier = Modifier.height(48.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
     ) {
         Icon(
             imageVector = icon,
@@ -134,9 +145,14 @@ internal fun StatusDisplay(icon: ImageVector, text: String, iconColor: Color) {
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = text,
-            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f, fill = false),
+            color = textColor,
             fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            lineHeight = 20.sp,
+            textAlign = TextAlign.Center,
+            maxLines = maxLines,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

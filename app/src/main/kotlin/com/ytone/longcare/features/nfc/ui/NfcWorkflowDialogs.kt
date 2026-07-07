@@ -11,7 +11,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -19,18 +18,15 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.features.nfc.vm.EndOrderParams
 import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.features.nfc.vm.PendingNfcData
-import com.ytone.longcare.R
 
 @Composable
 internal fun NfcWorkflowDialogs(
     pendingNfcData: PendingNfcData?,
     uiState: NfcSignInUiState,
-    shouldShowErrorDialog: Boolean,
     onConfirmLocationActivation: (PendingNfcData) -> Unit,
     onCancelLocationActivation: () -> Unit,
     onConfirmEndOrder: (EndOrderParams) -> Unit,
-    onCancelEndOrder: () -> Unit,
-    onDismissErrorDialog: () -> Unit
+    onCancelEndOrder: () -> Unit
 ) {
     pendingNfcData?.let { data ->
         LocationActivationDialog(
@@ -45,13 +41,6 @@ internal fun NfcWorkflowDialogs(
                 message = uiState.message,
                 onConfirm = { onConfirmEndOrder(uiState.endOrderParams) },
                 onCancel = onCancelEndOrder
-            )
-        }
-
-        is NfcSignInUiState.Error -> if (shouldShowErrorDialog) {
-            NfcErrorDialog(
-                message = uiState.message,
-                onAcknowledge = onDismissErrorDialog
             )
         }
 
@@ -155,49 +144,6 @@ internal fun EndOrderConfirmDialog(
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Text(text = "取消", fontSize = 14.sp)
-            }
-        },
-        containerColor = Color.White,
-        shape = RoundedCornerShape(12.dp)
-    )
-}
-
-@Composable
-internal fun NfcErrorDialog(
-    message: String,
-    onAcknowledge: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onAcknowledge,
-        title = {
-            Text(
-                text = stringResource(R.string.nfc_error_dialog_title),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        text = {
-            Text(
-                text = message,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 20.sp,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = onAcknowledge,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A86FF)),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.nfc_error_dialog_confirm),
-                    color = Color.White,
-                    fontSize = 14.sp
-                )
             }
         },
         containerColor = Color.White,

@@ -7,11 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -45,16 +41,11 @@ fun NfcWorkflowScreen(
     val context = LocalContext.current
     val activity = context as? Activity
 
-    var acknowledgedErrorState by remember { mutableStateOf<NfcSignInUiState.Error?>(null) }
-
-    LaunchedEffect(uiState) {
-        if (uiState !is NfcSignInUiState.Error) {
-            acknowledgedErrorState = null
-        }
-    }
-
     val signInState = mapNfcSignInState(uiState)
     val loadingReason = (uiState as? NfcSignInUiState.Loading)?.reason
+    val failureStatusText = (uiState as? NfcSignInUiState.Error)
+        ?.message
+        ?.takeIf { it.isNotBlank() }
 
     val onBack = buildNfcWorkflowBackAction(signInMode, signInState, actions)
     CustomBackHandler(customAction = onBack)
@@ -127,26 +118,19 @@ fun NfcWorkflowScreen(
                 nfcViewModel = nfcViewModel,
                 signInState = signInState,
                 loadingReason = loadingReason,
+                failureStatusText = failureStatusText,
                 scanMode = scanMode,
                 readerUiState = readerUiState,
             )
         }
 
-        val shouldShowErrorDialog = uiState is NfcSignInUiState.Error && acknowledgedErrorState !== uiState
-
         NfcWorkflowDialogs(
             pendingNfcData = pendingNfcData,
             uiState = uiState,
-            shouldShowErrorDialog = shouldShowErrorDialog,
             onConfirmLocationActivation = nfcViewModel::confirmLocationActivation,
             onCancelLocationActivation = nfcViewModel::cancelLocationActivation,
             onConfirmEndOrder = nfcViewModel::confirmEndOrder,
-            onCancelEndOrder = nfcViewModel::cancelEndOrder,
-            onDismissErrorDialog = {
-                (uiState as? NfcSignInUiState.Error)?.let { dismissedError ->
-                    acknowledgedErrorState = dismissedError
-                }
-            }
+            onCancelEndOrder = nfcViewModel::cancelEndOrder
         )
     }
 }

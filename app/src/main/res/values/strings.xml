@@ -7,7 +7,7 @@
     <string name="common_next_step">下一步</string>
     <string name="nfc_sign_in_retry">重新碰一碰</string>
     <string name="nfc_sign_in_status_success">签到成功</string>
-    <string name="nfc_sign_in_status_failure">签到失败，请重新再试一次</string>
+    <string name="nfc_sign_in_status_failure">操作失败，请重试</string>
     <string name="nfc_sign_in_idle_hint">请将NFC设备靠近手机背面</string>
     <string name="nfc_external_reader_prompt">请准备读卡器</string>
     <string name="nfc_external_reader_disconnected">读卡器未就绪</string>

@@ -74,6 +74,7 @@ internal fun NfcWorkflowBodyContent(
     nfcViewModel: NfcWorkflowViewModel,
     signInState: SignInState,
     loadingReason: NfcLoadingReason?,
+    failureStatusText: String?,
     scanMode: ScanMode,
     readerUiState: ReaderUiState,
 ) {
@@ -119,6 +120,7 @@ internal fun NfcWorkflowBodyContent(
         SignInContentCard(
             signInState = signInState,
             statusOverrideRes = statusOverrideRes,
+            failureStatusText = failureStatusText,
             showReadingIndicator = loadingReason != null || scanMode == ScanMode.EXTERNAL_RFID &&
                 readerUiState == ReaderUiState.Reading,
         )
