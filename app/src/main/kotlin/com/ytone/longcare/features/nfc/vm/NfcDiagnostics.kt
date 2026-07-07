@@ -161,11 +161,7 @@ private fun sanitizeNfcExtra(key: String, value: Any?): Any? {
 }
 
 private fun isAllowedNfcExtraKey(key: String): Boolean {
-    if (key in allowedNfcExtraKeys) return true
-    if (key.startsWith("has") && key.length > 3 && key[3].isUpperCase()) return true
-    if (key.endsWith("Count") || key.endsWith("Type")) return true
-    if (key.endsWith("Name") && (key == "stageName" || key == "eventName")) return true
-    return false
+    return key in allowedNfcExtraKeys
 }
 
 private fun looksLikeFullUrl(value: String): Boolean {
@@ -193,4 +189,8 @@ private val allowedNfcExtraKeys = setOf(
     "hasLatitude",
     "nfcDeviceIdLength",
     "nfcDeviceIdHash",
+    "projectCount",
+    "beginImageCount",
+    "centerImageCount",
+    "endImageCount",
 )

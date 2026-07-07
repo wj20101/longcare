@@ -56,14 +56,21 @@ class NfcDiagnosticsTest {
             signInMode = SignInMode.START_ORDER,
             nfcDeviceId = "TAG_998877",
             extras = mapOf(
+                "stage" to "bind",
                 "stageName" to "bind",
+                "event" to "nfc_scan",
+                "eventName" to "scan_success",
                 "scanSource" to "SYSTEM_NFC",
                 "orderId" to 999L,
                 "nfcDeviceIdLength" to 999,
                 "nfcDeviceIdHash" to 123456,
                 "projectCount" to 3,
+                "beginImageCount" to 1,
+                "centerImageCount" to 2,
+                "endImageCount" to 3,
                 "endType" to 1,
                 "hasLongitude" to true,
+                "hasLatitude" to false,
                 "longitude" to "121.4737",
                 "latitude" to "31.2304",
                 "nfcId" to "RAW_TAG_001",
@@ -79,14 +86,21 @@ class NfcDiagnosticsTest {
         assertEquals("bind_location_failure", report.extras["source"])
         assertEquals("定位失败", report.extras["message"])
         assertEquals("START_ORDER", report.extras["signInMode"])
+        assertEquals("bind", report.extras["stage"])
         assertEquals("bind", report.extras["stageName"])
+        assertEquals("nfc_scan", report.extras["event"])
+        assertEquals("scan_success", report.extras["eventName"])
         assertEquals("SYSTEM_NFC", report.extras["scanSource"])
         assertEquals(7L, report.extras["orderId"])
         assertEquals("TAG_998877".length, report.extras["nfcDeviceIdLength"])
         assertEquals("TAG_998877".hashCode(), report.extras["nfcDeviceIdHash"])
         assertEquals(3, report.extras["projectCount"])
+        assertEquals(1, report.extras["beginImageCount"])
+        assertEquals(2, report.extras["centerImageCount"])
+        assertEquals(3, report.extras["endImageCount"])
         assertEquals(1, report.extras["endType"])
         assertEquals(true, report.extras["hasLongitude"])
+        assertEquals(false, report.extras["hasLatitude"])
         assertEquals(8, report.extras["planId"])
 
         assertFalse(report.extras.containsKey("longitude"))
@@ -102,6 +116,31 @@ class NfcDiagnosticsTest {
         assertFalse(report.extras.containsValue("310101199001011234"))
         assertFalse(report.extras.containsValue("https://example.com/photo.jpg"))
         assertFalse(report.extras.containsValue("https://example.com/report?id=1"))
+    }
+
+    @Test
+    fun `pattern looking keys do not bypass the allowlist`() {
+        val report = buildNfcUserVisibleErrorReport(
+            message = "定位失败",
+            source = "bind_location_failure",
+            extras = mapOf(
+                "identityType" to "id-card",
+                "tokenType" to "refresh",
+                "customCount" to "42",
+                "hasIdentityNumber" to "310101199001011234",
+            )
+        )
+
+        assertEquals("bind_location_failure", report.extras["source"])
+        assertEquals("定位失败", report.extras["message"])
+        assertFalse(report.extras.containsKey("identityType"))
+        assertFalse(report.extras.containsKey("tokenType"))
+        assertFalse(report.extras.containsKey("customCount"))
+        assertFalse(report.extras.containsKey("hasIdentityNumber"))
+        assertFalse(report.extras.containsValue("id-card"))
+        assertFalse(report.extras.containsValue("refresh"))
+        assertFalse(report.extras.containsValue("42"))
+        assertFalse(report.extras.containsValue("310101199001011234"))
     }
 
     @Test
