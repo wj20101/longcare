@@ -2,6 +2,7 @@ package com.ytone.longcare.features.nfc.vm
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -24,5 +25,24 @@ class NfcOrderWorkflowDelegateTest {
         assertTrue(error.buglyReported)
         assertEquals("nfc_user_visible_error", capturedReport?.event)
         assertEquals("scan_location_error", capturedReport?.extras?.get("source"))
+    }
+
+    @Test
+    fun `applyUserVisibleError skips reporter when bugly already reported`() {
+        val uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
+
+        applyUserVisibleNfcError(
+            uiState = uiState,
+            message = "定位权限已被拒绝",
+            source = "scan_location_error",
+            buglyAlreadyReported = true,
+            reporter = {
+                fail("reporter should not be invoked when buglyAlreadyReported is true")
+            }
+        )
+
+        val error = uiState.value as NfcSignInUiState.Error
+        assertEquals("定位权限已被拒绝", error.message)
+        assertTrue(error.buglyReported)
     }
 }
