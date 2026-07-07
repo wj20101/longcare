@@ -2,6 +2,7 @@ package com.ytone.longcare.features.nfc.ui
 
 import com.ytone.longcare.features.nfc.vm.LocationRequestResult
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -12,6 +13,7 @@ class NfcWorkflowLocationResultTest {
         val result = toLocationRequestResult("", "31.23")
 
         assertTrue(result is LocationRequestResult.Error)
+        assertFalse((result as LocationRequestResult.Error).buglyReported)
     }
 
     @Test
@@ -19,6 +21,7 @@ class NfcWorkflowLocationResultTest {
         val result = toLocationRequestResult("121.47", " ")
 
         assertTrue(result is LocationRequestResult.Error)
+        assertFalse((result as LocationRequestResult.Error).buglyReported)
     }
 
     @Test

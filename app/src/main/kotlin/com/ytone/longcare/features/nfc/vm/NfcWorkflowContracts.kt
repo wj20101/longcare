@@ -78,6 +78,9 @@ data class EndOrderParams(
 
 sealed class LocationRequestResult {
     data class Coordinates(val longitude: String, val latitude: String) : LocationRequestResult()
-    data class Error(val message: String) : LocationRequestResult()
+    data class Error(
+        val message: String,
+        val buglyReported: Boolean = false,
+    ) : LocationRequestResult()
     data object PermissionRequired : LocationRequestResult()
 }

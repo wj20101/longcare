@@ -11,7 +11,7 @@ internal suspend fun handleTagScanned(
     signInMode: SignInMode,
     endOderInfo: EndOderInfo?,
     onLocationRequest: suspend () -> LocationRequestResult,
-    onLocationError: (String) -> Unit,
+    onLocationError: (LocationRequestResult.Error) -> Unit,
     onLocationPermissionRequired: suspend (String) -> Unit = {},
     onLoadingReasonChanged: (NfcLoadingReason) -> Unit = {},
     onStartOrder: suspend (String, String, String) -> Unit,
@@ -25,7 +25,7 @@ internal suspend fun handleTagScanned(
     val (longitude, latitude) = when (locationResult) {
         is LocationRequestResult.Coordinates -> locationResult.longitude to locationResult.latitude
         is LocationRequestResult.Error -> {
-            onLocationError(locationResult.message)
+            onLocationError(locationResult)
             return
         }
         is LocationRequestResult.PermissionRequired -> {

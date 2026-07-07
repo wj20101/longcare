@@ -85,7 +85,7 @@ class NfcScanWorkflowHelpersTest {
     fun `handleTagScanned location error does not trigger start or end`() = runTest {
         var started = false
         var ended = false
-        var locationError: String? = null
+        var locationError: LocationRequestResult.Error? = null
 
         handleTagScanned(
             event = AppEvent.TagScanned("ABC123", ScanSource.EXTERNAL_RFID),
@@ -93,20 +93,44 @@ class NfcScanWorkflowHelpersTest {
             signInMode = SignInMode.START_ORDER,
             endOderInfo = null,
             onLocationRequest = { LocationRequestResult.Error("location unavailable") },
-            onLocationError = { message -> locationError = message },
+            onLocationError = { error -> locationError = error },
             onStartOrder = { _, _, _ -> started = true },
             onEndOrder = { _, _, _, _ -> ended = true },
         )
 
-        assertEquals("location unavailable", locationError)
+        assertEquals(LocationRequestResult.Error("location unavailable"), locationError)
         assertFalse(started)
         assertFalse(ended)
     }
 
     @Test
+    fun `handleTagScanned preserves location error bugly report flag`() = runTest {
+        var locationError: LocationRequestResult.Error? = null
+
+        handleTagScanned(
+            event = AppEvent.TagScanned("ABC123", ScanSource.EXTERNAL_RFID),
+            currentState = NfcSignInUiState.Initial,
+            signInMode = SignInMode.START_ORDER,
+            endOderInfo = null,
+            onLocationRequest = {
+                LocationRequestResult.Error(
+                    message = "location unavailable",
+                    buglyReported = true,
+                )
+            },
+            onLocationError = { error -> locationError = error },
+            onStartOrder = { _, _, _ -> error("unexpected start order") },
+            onEndOrder = { _, _, _, _ -> error("unexpected end order") },
+        )
+
+        assertEquals("location unavailable", locationError?.message)
+        assertTrue(locationError?.buglyReported == true)
+    }
+
+    @Test
     fun `handleTagScanned keeps tag id when location permission is required`() = runTest {
         var pendingTagId: String? = null
-        var locationError: String? = null
+        var locationError: LocationRequestResult.Error? = null
         var started = false
         val loadingReasons = mutableListOf<NfcLoadingReason>()
 
@@ -116,7 +140,7 @@ class NfcScanWorkflowHelpersTest {
             signInMode = SignInMode.START_ORDER,
             endOderInfo = null,
             onLocationRequest = { LocationRequestResult.PermissionRequired },
-            onLocationError = { message -> locationError = message },
+            onLocationError = { error -> locationError = error },
             onLocationPermissionRequired = { tagId -> pendingTagId = tagId },
             onLoadingReasonChanged = loadingReasons::add,
             onStartOrder = { _, _, _ -> started = true },

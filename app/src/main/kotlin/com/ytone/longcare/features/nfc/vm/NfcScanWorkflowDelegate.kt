@@ -50,12 +50,13 @@ internal class NfcScanWorkflowDelegate(
                         signInMode = signInMode,
                         endOderInfo = endOderInfo,
                         onLocationRequest = onLocationRequest,
-                        onLocationError = { message ->
+                        onLocationError = { error ->
                             orderDelegate.showError(
-                                message = message,
+                                message = error.message,
                                 source = "scan_location_error",
                                 orderKey = orderKey,
                                 signInMode = signInMode,
+                                buglyAlreadyReported = error.buglyReported,
                             )
                         },
                         onLoadingReasonChanged = { reason ->
@@ -117,6 +118,7 @@ internal class NfcScanWorkflowDelegate(
                         orderKey = scan.orderKey,
                         signInMode = scan.signInMode,
                         nfcDeviceId = scan.tagId,
+                        buglyAlreadyReported = locationResult.buglyReported,
                     )
                     return@launch
                 }

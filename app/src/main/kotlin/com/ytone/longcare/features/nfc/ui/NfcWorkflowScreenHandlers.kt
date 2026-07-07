@@ -88,7 +88,7 @@ internal fun rememberNfcWorkflowLocationHandlers(
                 LocationRequestResult.Error("请开启定位服务以获取位置信息")
             } else {
                 val (longitude, latitude) = nfcViewModel.getCurrentLocationCoordinates()
-                toLocationRequestResult(longitude, latitude).also { result ->
+                toLocationRequestResult(longitude, latitude).let { result ->
                     if (result is LocationRequestResult.Error) {
                         DiagnosticEventTracker.trackError(
                             category = "nfc_workflow",
@@ -101,6 +101,9 @@ internal fun rememberNfcWorkflowLocationHandlers(
                                 "hasLatitude" to latitude.isNotBlank(),
                             ),
                         )
+                        result.copy(buglyReported = true)
+                    } else {
+                        result
                     }
                 }
             }
@@ -117,7 +120,10 @@ internal fun rememberNfcWorkflowLocationHandlers(
                     "planId" to orderKey.planId,
                 ),
             )
-            LocationRequestResult.Error(LOCATION_UNAVAILABLE_MESSAGE)
+            LocationRequestResult.Error(
+                message = LOCATION_UNAVAILABLE_MESSAGE,
+                buglyReported = true,
+            )
         }
     }
 

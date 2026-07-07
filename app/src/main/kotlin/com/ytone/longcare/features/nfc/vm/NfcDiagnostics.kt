@@ -144,7 +144,7 @@ private fun buildNfcExtras(
 
 private fun sanitizeNfcExtra(key: String, value: Any?): Any? {
     if (!isAllowedNfcExtraKey(key)) return null
-    if (value is String && looksLikeFullUrl(value)) return null
+    if (value is String && containsFullUrl(value)) return null
     return when (value) {
         null,
         is Boolean,
@@ -164,12 +164,9 @@ private fun isAllowedNfcExtraKey(key: String): Boolean {
     return key in allowedNfcExtraKeys
 }
 
-private fun looksLikeFullUrl(value: String): Boolean {
-    val trimmed = value.trim()
-    return trimmed.startsWith("http://") ||
-        trimmed.startsWith("https://") ||
-        trimmed.startsWith("www.")
-}
+private fun containsFullUrl(value: String): Boolean = fullUrlRegex.containsMatchIn(value)
+
+private val fullUrlRegex = Regex("""(?i)\b(?:https?://|www\.)\S+""")
 
 private val allowedNfcExtraKeys = setOf(
     "source",

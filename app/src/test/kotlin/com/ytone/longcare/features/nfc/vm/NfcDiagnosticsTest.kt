@@ -144,6 +144,44 @@ class NfcDiagnosticsTest {
     }
 
     @Test
+    fun `embedded url in message is omitted from extras`() {
+        val rawMessage = "定位失败，详情见 https://example.com/ticket?id=42"
+
+        val report = buildNfcUserVisibleErrorReport(
+            message = rawMessage,
+            source = "scan_location_error",
+        )
+
+        assertFalse(report.extras.containsKey("message"))
+        assertFalse(report.extras.values.any { it == rawMessage })
+        assertFalse(
+            report.extras.values.filterIsInstance<String>().any {
+                it.contains("https://example.com/ticket?id=42")
+            }
+        )
+    }
+
+    @Test
+    fun `embedded url in failure message is omitted from extras`() {
+        val failureMessage = "后端拒绝请求，请访问 www.example.com/debug/token 查看"
+
+        val report = buildNfcUserVisibleErrorReport(
+            message = "定位失败",
+            source = "bind_location_failure",
+            extras = mapOf("failureMessage" to failureMessage, "failureCode" to 500),
+        )
+
+        assertEquals(500, report.extras["failureCode"])
+        assertFalse(report.extras.containsKey("failureMessage"))
+        assertFalse(report.extras.values.any { it == failureMessage })
+        assertFalse(
+            report.extras.values.filterIsInstance<String>().any {
+                it.contains("www.example.com/debug/token")
+            }
+        )
+    }
+
+    @Test
     fun `reportUserVisibleNfcError invokes reporter and returns reported error`() {
         var capturedReport: NfcUserVisibleErrorReport? = null
 
