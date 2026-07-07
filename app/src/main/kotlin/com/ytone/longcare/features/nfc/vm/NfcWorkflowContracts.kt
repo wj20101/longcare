@@ -51,6 +51,7 @@ sealed class NfcSignInUiState {
     data class Error(
         val message: String,
         val occurrenceId: Long = System.nanoTime(),
+        val buglyReported: Boolean = false,
     ) : NfcSignInUiState()
     data object Initial : NfcSignInUiState()
     data class ShowConfirmDialog(

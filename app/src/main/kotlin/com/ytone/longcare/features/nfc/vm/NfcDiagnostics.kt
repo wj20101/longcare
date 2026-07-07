@@ -50,6 +50,70 @@ internal fun trackNfcFailure(
     )
 }
 
+internal data class NfcUserVisibleErrorReport(
+    val event: String,
+    val description: String,
+    val extras: Map<String, Any?>,
+)
+
+internal fun reportedNfcError(message: String): NfcSignInUiState.Error =
+    NfcSignInUiState.Error(
+        message = message,
+        buglyReported = true,
+    )
+
+internal fun buildNfcUserVisibleErrorReport(
+    message: String,
+    source: String,
+    orderKey: OrderKey? = null,
+    signInMode: SignInMode? = null,
+    nfcDeviceId: String? = null,
+    extras: Map<String, Any?> = emptyMap(),
+): NfcUserVisibleErrorReport =
+    NfcUserVisibleErrorReport(
+        event = "nfc_user_visible_error",
+        description = "NFC用户可见错误",
+        extras = buildNfcExtras(
+            orderKey = orderKey,
+            signInMode = signInMode,
+            nfcDeviceId = nfcDeviceId,
+            extras = extras + mapOf(
+                "source" to source,
+                "message" to message,
+            ),
+        ),
+    )
+
+internal fun reportUserVisibleNfcError(
+    message: String,
+    source: String,
+    orderKey: OrderKey? = null,
+    signInMode: SignInMode? = null,
+    nfcDeviceId: String? = null,
+    extras: Map<String, Any?> = emptyMap(),
+    reporter: (NfcUserVisibleErrorReport) -> Unit = ::sendNfcUserVisibleErrorReport,
+): NfcSignInUiState.Error {
+    val report = buildNfcUserVisibleErrorReport(
+        message = message,
+        source = source,
+        orderKey = orderKey,
+        signInMode = signInMode,
+        nfcDeviceId = nfcDeviceId,
+        extras = extras,
+    )
+    reporter(report)
+    return reportedNfcError(message)
+}
+
+internal fun sendNfcUserVisibleErrorReport(report: NfcUserVisibleErrorReport) {
+    DiagnosticEventTracker.trackError(
+        category = NFC_DIAGNOSTIC_CATEGORY,
+        event = report.event,
+        description = report.description,
+        extras = report.extras,
+    )
+}
+
 private fun buildNfcExtras(
     orderKey: OrderKey?,
     signInMode: SignInMode?,
