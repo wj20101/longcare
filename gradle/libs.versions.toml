@@ -36,7 +36,7 @@ work = "2.11.2"
 window = "1.5.1"
 
 # Dependency Injection
-dagger = "2.60"
+dagger = "2.60.1"
 hilt = "1.4.0"
 
 # Networking
