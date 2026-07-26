@@ -36,6 +36,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,6 +46,9 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.model.UserLatentCheckState
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
+import kotlinx.coroutines.delay
+
+internal const val CUSTOMER_SEARCH_DEBOUNCE_MILLIS = 300L
 
 @Composable
 internal fun SalesCustomerListScreen(
@@ -59,6 +64,7 @@ internal fun SalesCustomerListScreen(
     var selectedState by remember(initialCheckState) {
         mutableIntStateOf(initialCheckState)
     }
+    val focusManager = LocalFocusManager.current
     val loadingIndicatorState =
         rememberContentLoadingIndicatorState(isLoading = isLoading)
     val tabs =
@@ -69,7 +75,8 @@ internal fun SalesCustomerListScreen(
             UserLatentCheckState.REJECTED to "未通过",
         )
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(keyword, selectedState) {
+        delay(CUSTOMER_SEARCH_DEBOUNCE_MILLIS)
         onSearch(keyword, selectedState)
     }
 
@@ -95,23 +102,31 @@ internal fun SalesCustomerListScreen(
             placeholder = {
                 Text(
                     text = "请输入关键词搜索",
-                    color = Color(0xFFA2A4A8),
+                    color = Color(0xFF757A82),
                     fontSize = 16.sp,
                 )
             },
+            textStyle =
+                TextStyle(
+                    color = SalesTextPrimary,
+                    fontSize = 16.sp,
+                ),
             singleLine = true,
             shape = RoundedCornerShape(28.dp),
             colors =
                 OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
+                    focusedTextColor = SalesTextPrimary,
+                    unfocusedTextColor = SalesTextPrimary,
                     focusedBorderColor = Color.Transparent,
                     unfocusedBorderColor = Color.Transparent,
+                    cursorColor = SalesBlue,
                 ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions =
                 KeyboardActions(
-                    onSearch = { onSearch(keyword, selectedState) }
+                    onSearch = { focusManager.clearFocus() },
                 ),
         )
         Row(
@@ -128,7 +143,6 @@ internal fun SalesCustomerListScreen(
                             .clickable {
                                 if (selectedState != state) {
                                     selectedState = state
-                                    onSearch(keyword, state)
                                 }
                             }
                             .padding(horizontal = 5.dp, vertical = 5.dp),
