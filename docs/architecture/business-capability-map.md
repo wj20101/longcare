@@ -1,6 +1,6 @@
 # Business Capability Map
 
-Last verified: 2026-04-12
+Last verified: 2026-07-25
 
 This map focuses on current implemented behavior and its technical ownership.
 
@@ -128,7 +128,24 @@ Status: implemented (including test paths)
   - location/NFC coordination in workflow handlers
   - optional R65C HID-related debug capture surfaces
 
-## 8) Supporting capabilities
+## 8) QLZ assessment and sales leads
+
+Status: data and SDK integration implemented; production UI pending
+
+- Current debug entry:
+  - `QlzSdkDemoActivity` (debug-only launcher)
+- Main flow:
+  - add/search/select a prospective customer
+  - obtain a one-time assessment Token through the LongCare Sale API
+  - initialize the QLZ SDK and open its built-in Bluetooth assessment UI
+  - receive progress, completion, cancellation, and report callbacks
+- Key dependencies:
+  - QLZ SDK AAR 1.3.0.2 and protobuf Lite runtime
+  - `SaleRepository` (`core:domain`) and `SaleRepositoryImpl` (`core:data`)
+  - app-owned `QlzSdkClient` Android/vendor boundary
+  - full details in `docs/integrations/qlz-sdk.md`
+
+## 9) Supporting capabilities
 
 Status: implemented
 
@@ -141,7 +158,7 @@ Status: implemented
   - shared typed navigation parameters
   - route-bound support screens currently in `:app`
 
-## 9) Capability summary by status
+## 10) Capability summary by status
 
 - implemented:
   - login/session
@@ -151,6 +168,7 @@ Status: implemented
   - photo capture/upload
   - service countdown/end/complete
   - NFC start/end order workflows and test flow
+  - QLZ Sale APIs and debug assessment SDK flow
   - user list, service records, webview, update dialog
 - in-progress (technical, not user-facing capability gap):
   - modularization: route-bound UI ownership is still mixed between `:app` and `:feature:*`

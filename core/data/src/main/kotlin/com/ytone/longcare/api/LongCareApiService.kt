@@ -31,10 +31,18 @@ import com.ytone.longcare.model.AppVersionModel
 import com.ytone.longcare.model.StartConfigResultModel
 import com.ytone.longcare.model.EndOrderResultModel
 import com.ytone.longcare.model.SendSmsCodeParamModel
+import com.ytone.longcare.model.AddUserLatentParamModel
+import com.ytone.longcare.model.AddUserLatentResultModel
+import com.ytone.longcare.model.CheckTokenModel
+import com.ytone.longcare.model.GetCheckTokenParamModel
+import com.ytone.longcare.model.SearchUserLatentParamModel
+import com.ytone.longcare.model.UserLatentDetailModel
+import com.ytone.longcare.model.UserLatentListModel
 import com.ytone.longcare.model.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Query
 
 interface LongCareApiService {
 
@@ -247,4 +255,42 @@ interface LongCareApiService {
      */
     @POST("/V1/Service/OrderState")
     suspend fun getOrderState(@Body orderStateParamModel: OrderStateParamModel): Response<ServiceOrderStateModel>
+
+    /**
+     * 获取一次性俏郎中检测 Token。
+     */
+    @POST("/V1/Sale/GetCheckToken")
+    suspend fun getCheckToken(
+        @Body getCheckTokenParamModel: GetCheckTokenParamModel,
+    ): Response<CheckTokenModel>
+
+    /**
+     * 添加潜在客户。
+     */
+    @POST("/V1/Sale/AddUserLatent")
+    suspend fun addUserLatent(
+        @Body addUserLatentParamModel: AddUserLatentParamModel,
+    ): Response<AddUserLatentResultModel>
+
+    /**
+     * 查询最近 10 个潜在客户。
+     */
+    @GET("/V1/Sale/GetRecentUserLatentList")
+    suspend fun getRecentUserLatentList(): Response<List<UserLatentListModel>>
+
+    /**
+     * 按姓名和审核状态搜索潜在客户。
+     */
+    @POST("/V1/Sale/SearchUserLatentList")
+    suspend fun searchUserLatentList(
+        @Body searchUserLatentParamModel: SearchUserLatentParamModel,
+    ): Response<List<UserLatentListModel>>
+
+    /**
+     * 查询潜在客户详情。
+     */
+    @GET("/V1/Sale/GetUserLatentDetail")
+    suspend fun getUserLatentDetail(
+        @Query("id") customerId: Int,
+    ): Response<UserLatentDetailModel>
 }

@@ -1,6 +1,6 @@
 # System Overview
 
-Last verified: 2026-04-12
+Last verified: 2026-07-25
 
 This document describes the current runtime architecture as implemented today.
 
@@ -117,6 +117,8 @@ The Android component surface is defined in `app/src/main/AndroidManifest.xml`:
 - Tencent face verification SDK (`WbCloudFaceVerifySdk`) via app common face verification manager
 - ML Kit face detection (`com.google.mlkit:face-detection`) for face image processing/validation
 - Bugly crash reporting (`com.tencent.bugly:crashreport`) in app startup and camera/countdown trackers
+- QLZ assessment SDK 1.3.0.2 through the app-owned `QlzSdkClient`; Sale contracts and
+  implementations remain in `core:domain` / `core:data`
 - WorkManager for startup update checks and background jobs
 
 ## 7) Current-state architecture summary

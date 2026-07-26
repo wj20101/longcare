@@ -1,6 +1,6 @@
 # UI And Screen Map
 
-Last verified: 2026-04-12
+Last verified: 2026-07-25
 
 This document lists route-bound screens and practical ownership in the current codebase.
 
@@ -42,6 +42,13 @@ This document lists route-bound screens and practical ownership in the current c
 
 - app update modal:
   - `AppUpdateDialog` (`:app`, shown from `MainApp`)
+
+### Debug-only standalone activities
+
+- `QlzSdkDemoActivity`
+  - separate debug Launcher entry for QLZ SDK and all five Sale API operations
+  - intentionally absent from the release manifest
+  - implementation lives under `app/src/debug/kotlin`
 
 ## 2) Route type inventory
 

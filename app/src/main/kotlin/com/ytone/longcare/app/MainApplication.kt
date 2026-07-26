@@ -15,6 +15,7 @@ import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.common.utils.LogConfig
 import com.ytone.longcare.common.utils.LogFileConfig
 import com.ytone.longcare.common.utils.PrivacyConsentManager
+import com.ytone.longcare.integration.qlz.QlzSdkWindowInsetsCompat
 import com.ytone.longcare.worker.UpdateWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.io.File
@@ -50,6 +51,7 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
         super.onCreate()
 
         initLogger()
+        QlzSdkWindowInsetsCompat.register(this)
 
         // 只有用户已同意隐私政策才初始化 SDK 和调度 Worker
         if (privacyConsentManager.isPrivacyConsented) {

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+
+    <!-- QLZ 1.3.0.2 测试服务及报告页仍包含 HTTP 地址。 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">test.qiaolz.com</domain>
+        <domain includeSubdomains="false">app.qiaolz.com</domain>
+        <domain includeSubdomains="false">pan.qiaolz.com</domain>
+    </domain-config>
+</network-security-config>

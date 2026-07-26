@@ -44,6 +44,8 @@ retrofit = "3.0.0"
 okhttp = "5.4.0"
 okio = "3.18.0"
 moshi = "1.15.2"
+gson = "2.14.0"
+protobufLite = "3.0.1"
 kotlinxDatetime = "0.8.0-0.6.x-compat"
 kotlinxSerialization = "1.11.0"
 faceDetection = "16.1.7"
@@ -142,6 +144,8 @@ okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-i
 okio-core = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
 moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "moshi" }
 moshi-kotlin-codegen = { group = "com.squareup.moshi", name = "moshi-kotlin-codegen", version.ref = "moshi" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+protobuf-lite = { group = "com.google.protobuf", name = "protobuf-lite", version.ref = "protobufLite" }
 retrofit-converter-moshi = { group = "com.squareup.retrofit2", name = "converter-moshi", version.ref = "retrofit" }
 kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }

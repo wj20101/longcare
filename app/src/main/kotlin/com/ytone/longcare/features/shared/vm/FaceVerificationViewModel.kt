@@ -196,12 +196,11 @@ class FaceVerificationViewModel @Inject constructor(
     }
 
     private fun FaceVerifyError?.readableDescription(): String {
-        if (this == null) return "SDK未返回具体原因"
-        val baseMessage = description?.takeIf { it.isNotBlank() } ?: reason?.takeIf { it.isNotBlank() }
-        val codeMessage = code?.takeIf { it.isNotBlank() }?.let { "错误码: $it" }
-        return listOfNotNull(baseMessage, codeMessage)
-            .joinToString("，")
-            .ifBlank { "SDK未返回具体原因" }
+        if (this == null) return "请稍后重试"
+        return description
+            ?.takeIf { it.isNotBlank() }
+            ?: reason?.takeIf { it.isNotBlank() }
+            ?: "请稍后重试"
     }
 
     private companion object {

@@ -69,6 +69,8 @@ dependencies {
             lib("okhttp-logging-interceptor"),
             lib("okio-core"),
             lib("moshi-kotlin"),
+            lib("gson"),
+            lib("protobuf-lite"),
             lib("retrofit-converter-moshi"),
             lib("kotlinx-serialization-json"),
             lib("androidx-datastore-preferences"),
@@ -131,4 +133,9 @@ dependencies {
 
     add("debugImplementation", lib("compose-ui-tooling"))
     add("debugImplementation", lib("androidx-compose-ui-test-manifest"))
+
+    add(
+        "implementation",
+        files("libs/qlzsdk-1.3.0.2-protobufLiteRelease-ui.aar")
+    )
 }

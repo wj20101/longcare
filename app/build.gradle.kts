@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("longcare.android.application")
     id("longcare.kotlin.common")
@@ -35,6 +37,35 @@ val debugUseMockData =
         .orElse("true")
         .map { it.equals("true", ignoreCase = true) }
         .get()
+val localProperties =
+    Properties().apply {
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.isFile) {
+            localPropertiesFile.inputStream().use(::load)
+        }
+    }
+val qlzSdkKey =
+    providers
+        .gradleProperty("QLZ_SDK_KEY")
+        .orElse(providers.environmentVariable("QLZ_SDK_KEY"))
+        .orElse(localProperties.getProperty("QLZ_SDK_KEY").orEmpty())
+        .get()
+val qlzProductionSdkKey =
+    providers
+        .gradleProperty("QLZ_PRODUCTION_SDK_KEY")
+        .orElse(providers.environmentVariable("QLZ_PRODUCTION_SDK_KEY"))
+        .orElse(localProperties.getProperty("QLZ_PRODUCTION_SDK_KEY").orEmpty())
+        .get()
+val qlzTestMode =
+    providers
+        .gradleProperty("QLZ_TEST_MODE")
+        .orElse(providers.environmentVariable("QLZ_TEST_MODE"))
+        .orElse(localProperties.getProperty("QLZ_TEST_MODE") ?: "true")
+        .map { it.equals("true", ignoreCase = true) }
+        .get()
+
+fun String.asBuildConfigString(): String =
+    "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
 android {
     namespace = "com.ytone.longcare"
@@ -48,7 +79,6 @@ android {
         versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "PUBLIC_KEY", "\"$PUBLIC_KEY\"")
-
         ndk {
             val enabledAbis = mutableListOf("arm64-v8a")
             if (baselineEnableX86_64) {
@@ -77,12 +107,20 @@ android {
             )
             buildConfigField("String", "BASE_URL", "\"$BASE_URL\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
+            buildConfigField(
+                "String",
+                "QLZ_SDK_KEY",
+                qlzProductionSdkKey.asBuildConfigString(),
+            )
+            buildConfigField("boolean", "QLZ_TEST_MODE", "false")
         }
 
         debug {
             manifestPlaceholders["faceCaptureTestActivityEnabled"] = "true"
             buildConfigField("String", "BASE_URL", "\"$BASE_URL\"")
             buildConfigField("boolean", "USE_MOCK_DATA", debugUseMockData.toString())
+            buildConfigField("String", "QLZ_SDK_KEY", qlzSdkKey.asBuildConfigString())
+            buildConfigField("boolean", "QLZ_TEST_MODE", qlzTestMode.toString())
         }
     }
 

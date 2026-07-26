@@ -45,13 +45,17 @@ class FaceVerificationManager @Inject constructor(
                     startSdkVerification(context, paramResult.params, callback)
                 }
                 is FaceVerifyParamBuildResult.Failure -> {
-                    callback.onInitFailed(createError(paramResult.message))
+                    callback.onInitFailed(
+                        createError("人脸核验准备失败，请稍后重试")
+                    )
                 }
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
-            callback.onInitFailed(createError("人脸验证初始化失败: ${e.message}"))
+        } catch (_: Exception) {
+            callback.onInitFailed(
+                createError("人脸核验准备失败，请稍后重试")
+            )
         }
     }
 
@@ -89,8 +93,10 @@ class FaceVerificationManager @Inject constructor(
                 data,
                 createSdkLoginListener(context, callback)
             )
-        } catch (e: Exception) {
-            callback.onVerifyFailed(createError("启动验证失败: ${e.message}"))
+        } catch (_: Exception) {
+            callback.onVerifyFailed(
+                createError("人脸核验启动失败，请稍后重试")
+            )
         }
     }
 
@@ -105,7 +111,10 @@ class FaceVerificationManager @Inject constructor(
             }
 
             override fun onLoginFailed(error: WbFaceError?) {
-                callback.onVerifyFailed(error?.toDomainError() ?: createError("SDK登录失败"))
+                callback.onVerifyFailed(
+                    error?.toDomainError()
+                        ?: createError("人脸核验启动失败，请稍后重试")
+                )
             }
         }
     }
@@ -115,8 +124,10 @@ class FaceVerificationManager @Inject constructor(
             WbCloudFaceVerifySdk.getInstance().startWbFaceVerifySdk(context) { result ->
                 handleVerificationResult(result, callback)
             }
-        } catch (e: Exception) {
-            callback.onVerifyFailed(createError("人脸验证失败: ${e.message}"))
+        } catch (_: Exception) {
+            callback.onVerifyFailed(
+                createError("人脸核验暂时无法继续，请稍后重试")
+            )
         }
     }
 
@@ -132,7 +143,10 @@ class FaceVerificationManager @Inject constructor(
                 ) {
                     callback.onVerifyCancel()
                 } else {
-                    callback.onVerifyFailed(result.error?.toDomainError() ?: createError("验证失败"))
+                    callback.onVerifyFailed(
+                        result.error?.toDomainError()
+                            ?: createError("人脸核验失败，请稍后重试")
+                    )
                 }
             }
         }

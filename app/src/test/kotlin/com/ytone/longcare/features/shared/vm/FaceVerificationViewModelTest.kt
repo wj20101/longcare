@@ -114,7 +114,7 @@ class FaceVerificationViewModelTest {
         assertTrue("Expected Error state but was $state", state is FaceVerificationViewModel.FaceVerifyUiState.Error)
         val errorState = state as FaceVerificationViewModel.FaceVerifyUiState.Error
         assertEquals(sdkError, errorState.error)
-        assertEquals("人脸验证失败：verify failed，错误码: E001", errorState.message)
+        assertEquals("人脸验证失败：verify failed", errorState.message)
     }
 
     @Test

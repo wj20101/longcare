@@ -27,7 +27,12 @@ internal fun createFaceVerifyCallback(
 }
 
 internal fun buildFaceVerifyErrorMessage(prefix: String, error: FaceVerifyError?): String {
-    return "$prefix: ${error?.description ?: "SDK未返回具体原因"} (错误码: ${error?.code ?: "无"})"
+    val reason =
+        error?.description
+            ?.takeIf { it.isNotBlank() }
+            ?: error?.reason?.takeIf { it.isNotBlank() }
+            ?: "请稍后重试"
+    return "$prefix：$reason"
 }
 
 internal fun createIdentificationFlowVerifyCallback(

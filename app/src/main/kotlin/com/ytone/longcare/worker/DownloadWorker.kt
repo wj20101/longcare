@@ -44,9 +44,11 @@ class DownloadWorker @AssistedInject constructor(
     }
 
     override suspend fun doWork(): Result {
-        val url = inputData.getString(KEY_URL) ?: return Result.failure(
-            workDataOf(KEY_ERROR to "URL不能为空")
-        )
+        val url =
+            inputData.getString(KEY_URL)
+                ?: return Result.failure(
+                    workDataOf(KEY_ERROR to "下载地址无效")
+                )
         val fileName = inputData.getString(KEY_FILE_NAME) ?: return Result.failure(
             workDataOf(KEY_ERROR to "文件名不能为空")
         )
@@ -113,7 +115,7 @@ class DownloadWorker @AssistedInject constructor(
                 ),
             )
             return Result.failure(
-                workDataOf(KEY_ERROR to "下载失败，HTTP状态码: ${response.code()}")
+                workDataOf(KEY_ERROR to "下载失败，请稍后重试")
             )
         }
 
