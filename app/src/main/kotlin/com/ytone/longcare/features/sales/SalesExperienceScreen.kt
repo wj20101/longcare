@@ -57,7 +57,7 @@ internal fun SalesExperienceScreen(
     var detailReturnPageName by rememberSaveable {
         mutableStateOf(SalesPage.HOME.name)
     }
-    var evaluationReturnPageName by rememberSaveable {
+    var evaluationChoiceReturnPageName by rememberSaveable {
         mutableStateOf(SalesPage.HOME.name)
     }
     var reminderCustomerId by rememberSaveable { mutableIntStateOf(0) }
@@ -114,15 +114,11 @@ internal fun SalesExperienceScreen(
         navigate(SalesPage.CUSTOMER_DETAIL)
     }
 
-    fun startAutomaticEvaluation(
-        customerId: Int,
-        returnPage: SalesPage,
-    ) {
+    fun startAutomaticEvaluation(customerId: Int) {
         if (customerId <= 0) {
             showMessage("请先选择需要评估的客户")
             return
         }
-        evaluationReturnPageName = returnPage.name
         viewModel.prepareEvaluation(customerId)
         navigate(SalesPage.DEVICE_STATUS)
     }
@@ -145,19 +141,20 @@ internal fun SalesExperienceScreen(
             SalesPage.REGISTRATION -> goHome()
             SalesPage.REGISTRATION_CONFIRM -> navigate(SalesPage.REGISTRATION)
             SalesPage.SUBMIT_SUCCESS -> finishSubmissionFlow()
-            SalesPage.EVALUATION_CHOICE ->
+            SalesPage.EVALUATION_CHOICE,
+            SalesPage.DEVICE_STATUS,
+            SalesPage.EVALUATION_GUIDE,
+            ->
                 navigate(
-                    runCatching { SalesPage.valueOf(evaluationReturnPageName) }
-                        .getOrDefault(SalesPage.HOME)
+                    evaluationBackTarget(
+                        currentPage = currentPage,
+                        choiceReturnPage =
+                            runCatching {
+                                SalesPage.valueOf(evaluationChoiceReturnPageName)
+                            }.getOrDefault(SalesPage.HOME),
+                    )
                 )
 
-            SalesPage.DEVICE_STATUS ->
-                navigate(
-                    runCatching { SalesPage.valueOf(evaluationReturnPageName) }
-                        .getOrDefault(SalesPage.HOME)
-                )
-
-            SalesPage.EVALUATION_GUIDE -> navigate(SalesPage.DEVICE_STATUS)
             SalesPage.EVALUATION_COMPLETE -> goHome()
         }
     }
@@ -256,7 +253,7 @@ internal fun SalesExperienceScreen(
             uiState.submissionResult != null &&
                 currentPage == SalesPage.REGISTRATION_CONFIRM
         ) {
-            evaluationReturnPageName = SalesPage.SUBMIT_SUCCESS.name
+            evaluationChoiceReturnPageName = SalesPage.SUBMIT_SUCCESS.name
             navigate(SalesPage.SUBMIT_SUCCESS)
         }
     }
@@ -395,7 +392,7 @@ internal fun SalesExperienceScreen(
                         customer = uiState.selectedCustomer,
                         onBack = ::back,
                         onEvaluate = { customerId ->
-                            evaluationReturnPageName =
+                            evaluationChoiceReturnPageName =
                                 SalesPage.CUSTOMER_DETAIL.name
                             viewModel.selectCustomer(customerId)
                             navigate(SalesPage.EVALUATION_CHOICE)
@@ -445,7 +442,7 @@ internal fun SalesExperienceScreen(
                     SalesSubmitSuccessScreen(
                         onBack = ::finishSubmissionFlow,
                         onEvaluation = {
-                            evaluationReturnPageName =
+                            evaluationChoiceReturnPageName =
                                 SalesPage.SUBMIT_SUCCESS.name
                             navigate(SalesPage.EVALUATION_CHOICE)
                         },
@@ -455,10 +452,7 @@ internal fun SalesExperienceScreen(
                     SalesEvaluationChoiceScreen(
                         onBack = ::back,
                         onAutomaticEvaluation = {
-                            startAutomaticEvaluation(
-                                customerId = uiState.selectedCustomerId,
-                                returnPage = SalesPage.EVALUATION_CHOICE,
-                            )
+                            startAutomaticEvaluation(uiState.selectedCustomerId)
                         },
                         onFormEvaluation = {
                             val formUrl =
@@ -518,7 +512,7 @@ internal fun SalesExperienceScreen(
     }
 }
 
-private enum class SalesPage {
+internal enum class SalesPage {
     HOME,
     REMINDERS,
     REMINDER_DETAIL,
@@ -532,3 +526,21 @@ private enum class SalesPage {
     EVALUATION_GUIDE,
     EVALUATION_COMPLETE,
 }
+
+internal fun evaluationBackTarget(
+    currentPage: SalesPage,
+    choiceReturnPage: SalesPage,
+): SalesPage =
+    when (currentPage) {
+        SalesPage.EVALUATION_CHOICE ->
+            choiceReturnPage.takeUnless {
+                it == SalesPage.EVALUATION_CHOICE ||
+                    it == SalesPage.DEVICE_STATUS ||
+                    it == SalesPage.EVALUATION_GUIDE ||
+                    it == SalesPage.EVALUATION_COMPLETE
+            } ?: SalesPage.HOME
+
+        SalesPage.DEVICE_STATUS -> SalesPage.EVALUATION_CHOICE
+        SalesPage.EVALUATION_GUIDE -> SalesPage.DEVICE_STATUS
+        else -> currentPage
+    }

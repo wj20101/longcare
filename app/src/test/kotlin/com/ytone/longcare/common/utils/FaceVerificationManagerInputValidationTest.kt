@@ -16,8 +16,9 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FaceVerificationManagerInputValidationTest {
@@ -65,7 +66,7 @@ class FaceVerificationManagerInputValidationTest {
     }
 
     @Test
-    fun `startFaceVerification should surface getFaceId failure detail`() = runTest {
+    fun `startFaceVerification should hide getFaceId failure detail`() = runTest {
         coEvery { repository.getAccessToken(any(), any()) } returns ApiResult.Success(
             TencentAccessTokenResponse(
                 code = "0",
@@ -89,9 +90,9 @@ class FaceVerificationManagerInputValidationTest {
         val error = initError
         assertNotNull(error)
         val description = error!!.description.orEmpty()
-        assertTrue(description.contains("获取faceId失败"))
-        assertTrue(description.contains("source photo is invalid"))
-        assertTrue(description.contains("400101"))
+        assertEquals("人脸核验准备失败，请稍后重试", description)
+        assertFalse(description.contains("source photo is invalid"))
+        assertFalse(description.contains("400101"))
     }
 
     private fun ticketResponse(value: String): TencentApiTicketResponse {
