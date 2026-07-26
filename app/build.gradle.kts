@@ -1,5 +1,3 @@
-import java.util.Properties
-
 plugins {
     id("longcare.android.application")
     id("longcare.kotlin.common")
@@ -17,6 +15,9 @@ apply(from = "$projectDir/dependencies.gradle.kts")
 private val BASE_URL = "https://careapi.ytone.cn"
 private val PUBLIC_KEY =
     "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk45Er/DSjJwRNhReRT+4lINV6GanR3FwNutADNBwVoNQgY33bM/adLN5ZDmb8CwCeRJ4iBdcIX0co+2cm169HSHtJvOHUm864UbT63BrxKtnJCR+GkmsB3dj7YMwDbYArg7ymGP3EhWsiqMPdnR15+4LYIfK3l74nOZqPIPp8XkUKbbvJeieyslBIVSux2eytUGQjY8EPTE7nOHbAh8boWhiekFKevmx24dQBLoOrKrpTIv4pNiFSPxWCdBayCXjyr3Vq6Eg+vEDYN1+sxXWAj4bo/91TIbGQzdPCcCiZUQ1d7EgBp1JJKAsTTzkd+CusSTVpmmz/uVwjOaEHNzqWwIDAQAB"
+// TODO(QLZ): Remove this fixed test configuration after the Sale API returns the SDK key.
+private val TEMPORARY_QLZ_SDK_KEY = "qlz235624a5adc96ccb"
+private val TEMPORARY_QLZ_TEST_MODE = true
 
 val appCompileSdkVersion = rootProject.extra["appCompileSdkVersion"] as Int
 val appTargetSdkVersion = rootProject.extra["appTargetSdkVersion"] as Int
@@ -37,32 +38,6 @@ val debugUseMockData =
         .orElse("true")
         .map { it.equals("true", ignoreCase = true) }
         .get()
-val localProperties =
-    Properties().apply {
-        val localPropertiesFile = rootProject.file("local.properties")
-        if (localPropertiesFile.isFile) {
-            localPropertiesFile.inputStream().use(::load)
-        }
-    }
-val qlzSdkKey =
-    providers
-        .gradleProperty("QLZ_SDK_KEY")
-        .orElse(providers.environmentVariable("QLZ_SDK_KEY"))
-        .orElse(localProperties.getProperty("QLZ_SDK_KEY").orEmpty())
-        .get()
-val qlzProductionSdkKey =
-    providers
-        .gradleProperty("QLZ_PRODUCTION_SDK_KEY")
-        .orElse(providers.environmentVariable("QLZ_PRODUCTION_SDK_KEY"))
-        .orElse(localProperties.getProperty("QLZ_PRODUCTION_SDK_KEY").orEmpty())
-        .get()
-val qlzTestMode =
-    providers
-        .gradleProperty("QLZ_TEST_MODE")
-        .orElse(providers.environmentVariable("QLZ_TEST_MODE"))
-        .orElse(localProperties.getProperty("QLZ_TEST_MODE") ?: "true")
-        .map { it.equals("true", ignoreCase = true) }
-        .get()
 
 fun String.asBuildConfigString(): String =
     "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
@@ -79,6 +54,12 @@ android {
         versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "PUBLIC_KEY", "\"$PUBLIC_KEY\"")
+        buildConfigField(
+            "String",
+            "QLZ_SDK_KEY",
+            TEMPORARY_QLZ_SDK_KEY.asBuildConfigString(),
+        )
+        buildConfigField("boolean", "QLZ_TEST_MODE", TEMPORARY_QLZ_TEST_MODE.toString())
         ndk {
             val enabledAbis = mutableListOf("arm64-v8a")
             if (baselineEnableX86_64) {
@@ -107,20 +88,12 @@ android {
             )
             buildConfigField("String", "BASE_URL", "\"$BASE_URL\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
-            buildConfigField(
-                "String",
-                "QLZ_SDK_KEY",
-                qlzProductionSdkKey.asBuildConfigString(),
-            )
-            buildConfigField("boolean", "QLZ_TEST_MODE", "false")
         }
 
         debug {
             manifestPlaceholders["faceCaptureTestActivityEnabled"] = "true"
             buildConfigField("String", "BASE_URL", "\"$BASE_URL\"")
             buildConfigField("boolean", "USE_MOCK_DATA", debugUseMockData.toString())
-            buildConfigField("String", "QLZ_SDK_KEY", qlzSdkKey.asBuildConfigString())
-            buildConfigField("boolean", "QLZ_TEST_MODE", qlzTestMode.toString())
         }
     }
 

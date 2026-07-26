@@ -15,18 +15,14 @@ Last verified: 2026-07-25
 `com.google.protobuf:protobuf-lite:3.0.1`。工程已有的 OkHttp 和 AppCompat 版本继续统一
 由版本目录管理，未额外引入厂商文档中的旧版本。
 
-## 本地配置
+## 临时联调配置
 
-在被 Git 忽略的根目录 `local.properties` 中配置：
+测试阶段在 `app/build.gradle.kts` 中统一固化测试 appKey：
 
-```properties
-QLZ_SDK_KEY=<测试 appKey>
-QLZ_TEST_MODE=true
-```
-
-也可以使用同名 Gradle property 或环境变量覆盖。
-生产构建使用独立的 `QLZ_PRODUCTION_SDK_KEY`，未配置时保持为空，避免测试 appKey
-误连生产环境。
+`debug` 与 `release` 构建当前都会将该 appKey 写入 `BuildConfig.QLZ_SDK_KEY`，并设置
+`BuildConfig.QLZ_TEST_MODE=true`，保证线上打包环境不依赖本机 `local.properties` 或 CI
+环境变量。测试完成、Sale 接口提供 SDK key 后，应删除这段固定配置，改为使用接口返回值
+初始化 `QlzSdkClient`。
 
 `appSecret` 只允许配置在 LongCare 服务端。它用于俏郎中 OpenAPI 请求签名，不得写入
 Android 源码、资源、BuildConfig 或 APK。客户端通过
