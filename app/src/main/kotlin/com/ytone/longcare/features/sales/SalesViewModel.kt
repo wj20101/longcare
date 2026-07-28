@@ -60,8 +60,6 @@ class SalesViewModel @Inject constructor(
                 _uiState.value =
                     _uiState.value.copy(
                         recentCustomers = customers,
-                        customers =
-                            _uiState.value.customers.ifEmpty { customers },
                     )
             },
         )
@@ -71,12 +69,19 @@ class SalesViewModel @Inject constructor(
         keyword: String,
         checkState: Int,
     ) {
+        val normalizedKeyword = keyword.trim()
+        val normalizedCheckState =
+            if (normalizedKeyword.isNotEmpty()) {
+                UserLatentCheckState.ALL
+            } else {
+                checkState
+            }
         val requestId = ++customerSearchRequestId
         customerSearchJob?.cancel()
         _uiState.value =
             _uiState.value.copy(
                 customerSearchKeyword = keyword,
-                customerCheckState = checkState,
+                customerCheckState = normalizedCheckState,
                 isCustomerListLoading = true,
                 errorMessage = null,
             )
@@ -87,8 +92,8 @@ class SalesViewModel @Inject constructor(
                         val result =
                             saleRepository.searchUserLatentList(
                                 SearchUserLatentParamModel(
-                                    userName = keyword.trim(),
-                                    checkState = checkState,
+                                    userName = normalizedKeyword,
+                                    checkState = normalizedCheckState,
                                 )
                             )
                     ) {
@@ -514,7 +519,7 @@ class SalesViewModel @Inject constructor(
 
 data class SalesUiState(
     val isLoading: Boolean = false,
-    val isCustomerListLoading: Boolean = false,
+    val isCustomerListLoading: Boolean = true,
     val operation: String = "",
     val errorMessage: String? = null,
     val noticeMessage: String? = null,
@@ -522,7 +527,7 @@ data class SalesUiState(
     val recentCustomers: List<UserLatentListModel> = emptyList(),
     val customers: List<UserLatentListModel> = emptyList(),
     val customerSearchKeyword: String = "",
-    val customerCheckState: Int = UserLatentCheckState.NOT_SUBMITTED,
+    val customerCheckState: Int = UserLatentCheckState.ALL,
     val selectedCustomerId: Int = 0,
     val selectedCustomer: UserLatentDetailModel? = null,
     val currentLocation: LocationResult? = null,

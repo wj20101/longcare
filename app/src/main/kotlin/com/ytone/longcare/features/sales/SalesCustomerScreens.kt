@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -37,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -69,6 +72,7 @@ internal fun SalesCustomerListScreen(
         rememberContentLoadingIndicatorState(isLoading = isLoading)
     val tabs =
         listOf(
+            UserLatentCheckState.ALL to "全部",
             UserLatentCheckState.NOT_SUBMITTED to "未审核",
             UserLatentCheckState.PENDING_REVIEW to "待审核",
             UserLatentCheckState.APPROVED to "通过",
@@ -93,7 +97,12 @@ internal fun SalesCustomerListScreen(
         )
         OutlinedTextField(
             value = keyword,
-            onValueChange = { keyword = it },
+            onValueChange = { updatedKeyword ->
+                keyword = updatedKeyword
+                if (updatedKeyword.isNotBlank()) {
+                    selectedState = UserLatentCheckState.ALL
+                }
+            },
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -133,6 +142,7 @@ internal fun SalesCustomerListScreen(
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .selectableGroup()
                     .padding(horizontal = 18.dp, vertical = 8.dp),
         ) {
             tabs.forEach { (state, label) ->
@@ -140,11 +150,22 @@ internal fun SalesCustomerListScreen(
                     modifier =
                         Modifier
                             .weight(1f)
-                            .clickable {
-                                if (selectedState != state) {
-                                    selectedState = state
-                                }
-                            }
+                            .selectable(
+                                selected = selectedState == state,
+                                role = Role.Tab,
+                                onClick = {
+                                    if (
+                                        state != UserLatentCheckState.ALL &&
+                                        keyword.isNotEmpty()
+                                    ) {
+                                        keyword = ""
+                                    }
+                                    if (selectedState != state) {
+                                        selectedState = state
+                                    }
+                                    focusManager.clearFocus()
+                                },
+                            )
                             .padding(horizontal = 5.dp, vertical = 5.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
