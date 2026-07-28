@@ -62,9 +62,12 @@ data class TencentAccessTokenResponse(
     
     /**
      * access_token 的最大生存时间（单位：秒）
+     *
+     * 腾讯接口在不同版本中可能返回 JSON 字符串或数字；Moshi 的 String
+     * 读取方式可兼容两者，使用方再按秒解析。
      */
     @param:Json(name = "expire_in")
-    val expireIn: Int? = null
+    val expireIn: String? = null
 ) : TencentApiResponse
 
 /**

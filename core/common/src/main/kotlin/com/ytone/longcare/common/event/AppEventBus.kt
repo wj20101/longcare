@@ -31,7 +31,6 @@ enum class ScanSource {
 }
 
 sealed class AppEvent {
-    data class ForceLogout(val reason: String) : AppEvent()
     data class NfcIntentReceived(val intent: Intent) : AppEvent()
     data class TagScanned(val tagId: String, val source: ScanSource) : AppEvent()
     data class ReaderConnectionChanged(

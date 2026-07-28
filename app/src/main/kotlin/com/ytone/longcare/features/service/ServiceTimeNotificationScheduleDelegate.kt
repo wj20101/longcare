@@ -48,36 +48,10 @@ internal class ServiceTimeNotificationScheduleDelegate(
                 false
             ) ?: throw IllegalStateException("创建 AlarmManager PendingIntent 失败: orderId=$orderId")
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !canScheduleExactAlarms()) {
-                logE("无精确闹钟权限，改用 AlarmClock 兜底")
-                val alarmClockShowIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                    ?.apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                        putExtra(ServiceTimeNotificationManager.EXTRA_ORDER_ID, orderId)
-                    }
-                    ?.let { launchIntent ->
-                        PendingIntentCompat.getActivity(
-                            context,
-                            buildAlarmRequestCode(orderId) + 1,
-                            launchIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT,
-                            false
-                        )
-                    }
-                    ?: pendingIntent
-                val alarmClockInfo = AlarmManager.AlarmClockInfo(
-                    triggerTimeMillis,
-                    alarmClockShowIntent
-                )
-                alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
-            } else {
-                AlarmManagerCompat.setExactAndAllowWhileIdle(
-                    alarmManager,
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTimeMillis,
-                    pendingIntent
-                )
-            }
+            scheduleAlarm(
+                triggerTimeMillis = triggerTimeMillis,
+                pendingIntent = pendingIntent,
+            )
             logI("AlarmManager通知已设置: orderId=$orderId, triggerTime=$triggerTimeMillis")
         } catch (e: Exception) {
             logE("设置AlarmManager通知失败: ${e.message}")
@@ -169,6 +143,33 @@ internal class ServiceTimeNotificationScheduleDelegate(
         } else {
             true
         }
+    }
+
+    private fun scheduleAlarm(
+        triggerTimeMillis: Long,
+        pendingIntent: PendingIntent,
+    ) {
+        if (canScheduleExactAlarms()) {
+            try {
+                AlarmManagerCompat.setExactAndAllowWhileIdle(
+                    alarmManager,
+                    AlarmManager.RTC_WAKEUP,
+                    triggerTimeMillis,
+                    pendingIntent,
+                )
+                return
+            } catch (exception: SecurityException) {
+                logE("精确闹钟权限在调度时不可用，降级为非精确闹钟: ${exception.message}")
+            }
+        } else {
+            logI("无精确闹钟权限，降级为 setAndAllowWhileIdle")
+        }
+
+        alarmManager.setAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            triggerTimeMillis,
+            pendingIntent,
+        )
     }
 
     private fun buildAlarmRequestCode(orderId: Long): Int {

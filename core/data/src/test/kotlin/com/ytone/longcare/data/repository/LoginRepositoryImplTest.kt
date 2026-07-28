@@ -1,16 +1,11 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.common.event.AppEvent
-import com.ytone.longcare.common.event.AppEventBus
+import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.model.LoginLogParamModel
-import com.ytone.longcare.model.Response
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Test
 import java.lang.reflect.Proxy
 
@@ -28,13 +23,12 @@ class LoginRepositoryImplTest {
                 "recordLoginLog" -> {
                     delegatedCallCount += 1
                     delegatedParam = args?.firstOrNull() as? LoginLogParamModel
-                    Response(resultCode = 1000, resultMsg = "ok", data = Unit)
+                    ApiResult.Success(Unit)
                 }
 
                 else -> error("Unexpected call: ${method.name}")
             }
         } as LongCareApiService
-        val eventBus = AppEventBus()
         val phoneSystem = "Android"
         val phoneVersion = "16"
         val networkType = "WIFI"
@@ -48,8 +42,6 @@ class LoginRepositoryImplTest {
 
         val repository = LoginRepositoryImpl(
             apiService = apiService,
-            ioDispatcher = StandardTestDispatcher(testScheduler),
-            eventBus = eventBus,
         )
 
         repository.recordLoginLog(
@@ -64,26 +56,19 @@ class LoginRepositoryImplTest {
     }
 
     @Test
-    fun `recordLoginLog does not emit force logout on 3002`() = runTest(StandardTestDispatcher()) {
+    fun `recordLoginLog ignores API failure`() = runTest(StandardTestDispatcher()) {
         val apiService = Proxy.newProxyInstance(
             LongCareApiService::class.java.classLoader,
             arrayOf(LongCareApiService::class.java)
         ) { _, method, _ ->
             when (method.name) {
-                "recordLoginLog" -> Response(resultCode = 3002, resultMsg = "login expired", data = null)
+                "recordLoginLog" -> ApiResult.Failure(code = 3002, message = "login expired")
                 else -> error("Unexpected call: ${method.name}")
             }
         } as LongCareApiService
-        val eventBus = AppEventBus()
-        var receivedForceLogout = false
-        val collector = launch {
-            receivedForceLogout = eventBus.events.first() is AppEvent.ForceLogout
-        }
 
         val repository = LoginRepositoryImpl(
             apiService = apiService,
-            ioDispatcher = StandardTestDispatcher(testScheduler),
-            eventBus = eventBus,
         )
 
         repository.recordLoginLog(
@@ -93,8 +78,5 @@ class LoginRepositoryImplTest {
             networkOperator = "Carrier",
         )
 
-        collector.cancel()
-
-        assertFalse(receivedForceLogout)
     }
 }

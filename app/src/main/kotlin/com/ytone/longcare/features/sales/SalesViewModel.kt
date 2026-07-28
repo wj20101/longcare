@@ -45,6 +45,7 @@ class SalesViewModel @Inject constructor(
     val uiState: StateFlow<SalesUiState> = _uiState.asStateFlow()
     private var customerSearchJob: Job? = null
     private var customerSearchRequestId = 0L
+    private var sdkTokenRecoveryAttempted = false
 
     init {
         loadCompanyName()
@@ -255,6 +256,7 @@ class SalesViewModel @Inject constructor(
             showError("请先选择需要评估的客户")
             return
         }
+        sdkTokenRecoveryAttempted = false
         viewModelScope.launch {
             _uiState.value =
                 _uiState.value.copy(
@@ -328,12 +330,19 @@ class SalesViewModel @Inject constructor(
             showError("评估尚未准备完成，请稍后重试")
             return
         }
+        openSdkWithToken(activity, token)
+    }
+
+    private fun openSdkWithToken(
+        activity: Activity,
+        token: String,
+    ) {
         qlzSdkClient.openByToken(
             activity = activity,
             token = token,
             onEvent = { event ->
                 viewModelScope.launch {
-                    onSdkEvent(event)
+                    onSdkEvent(event, activity)
                 }
             },
         )
@@ -427,7 +436,10 @@ class SalesViewModel @Inject constructor(
         loadRecentCustomers()
     }
 
-    private fun onSdkEvent(event: QlzSdkEvent) {
+    private suspend fun onSdkEvent(
+        event: QlzSdkEvent,
+        activity: Activity,
+    ) {
         when (event) {
             is QlzSdkEvent.Completed ->
                 _uiState.value =
@@ -450,12 +462,17 @@ class SalesViewModel @Inject constructor(
                             "检测进度 ${event.successCount}/${event.totalCount}",
                     )
 
-            is QlzSdkEvent.Error ->
-                showError(
-                    event.message.ifBlank {
-                        "评估暂时无法继续，请稍后重试"
-                    }
-                )
+            is QlzSdkEvent.Error -> {
+                if (event.requiresTokenRefresh) {
+                    recoverSdkTokenAndRelaunch(activity)
+                } else {
+                    showError(
+                        event.message.ifBlank {
+                            "评估暂时无法继续，请稍后重试"
+                        }
+                    )
+                }
+            }
 
             QlzSdkEvent.Cancelled ->
                 _uiState.value =
@@ -471,6 +488,80 @@ class SalesViewModel @Inject constructor(
                     )
 
             QlzSdkEvent.ReportPageClosed -> Unit
+        }
+    }
+
+    private suspend fun recoverSdkTokenAndRelaunch(activity: Activity) {
+        if (sdkTokenRecoveryAttempted) {
+            showError("本次评估已失效，请重新进入评估页面")
+            return
+        }
+        sdkTokenRecoveryAttempted = true
+
+        val customerId = _uiState.value.selectedCustomerId
+        if (customerId <= 0) {
+            showError("客户信息无效，请重新进入评估页面")
+            return
+        }
+
+        _uiState.value =
+            _uiState.value.copy(
+                isLoading = true,
+                operation = "正在重新准备评估",
+                errorMessage = null,
+                checkToken = null,
+            )
+        try {
+            val deviceId =
+                _uiState.value.sdkDeviceId.ifBlank {
+                    qlzSdkClient.getDeviceId().getOrElse { throwable ->
+                        throw IllegalStateException(
+                            "检测设备准备失败，请稍后重试",
+                            throwable,
+                        )
+                    }
+                }
+            when (
+                val result =
+                    saleRepository.getCheckToken(
+                        customerId = customerId,
+                        checkDeviceId = deviceId,
+                    )
+            ) {
+                is ApiResult.Success -> {
+                    val refreshedToken = result.data.token.trim()
+                    if (refreshedToken.isBlank()) {
+                        showError("评估凭证获取失败，请重新进入评估页面")
+                        return
+                    }
+                    _uiState.value =
+                        _uiState.value.copy(
+                            sdkDeviceId = deviceId,
+                            checkToken = result.data,
+                            connectedDeviceName =
+                                qlzSdkClient.getConnectedDeviceName(),
+                        )
+                    if (activity.isFinishing || activity.isDestroyed) {
+                        showError("评估页面已关闭，请重新进入")
+                    } else {
+                        openSdkWithToken(activity, refreshedToken)
+                    }
+                }
+
+                is ApiResult.Failure -> showError(result.message)
+                is ApiResult.Exception ->
+                    showError("评估凭证刷新失败，请重新进入评估页面")
+            }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Throwable) {
+            showError("评估凭证刷新失败，请重新进入评估页面")
+        } finally {
+            _uiState.value =
+                _uiState.value.copy(
+                    isLoading = false,
+                    operation = "",
+                )
         }
     }
 

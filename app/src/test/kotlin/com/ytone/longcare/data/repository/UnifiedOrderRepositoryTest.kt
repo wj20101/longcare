@@ -6,7 +6,6 @@ import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.UserInfoM
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.config.RuntimeConfigProvider
-import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.data.database.dao.OrderDao
 import com.ytone.longcare.data.database.dao.OrderImageDao
 import com.ytone.longcare.data.database.dao.OrderProjectDao
@@ -16,7 +15,6 @@ import com.ytone.longcare.data.database.entity.OrderElderInfoEntityDb
 import com.ytone.longcare.data.database.entity.OrderEntityDb
 import com.ytone.longcare.model.OrderEntity
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.Response
 import io.mockk.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -34,7 +32,6 @@ class UnifiedOrderRepositoryTest {
     private lateinit var imageDao: OrderImageDao
     private lateinit var elderInfoDao: OrderElderInfoDao
     private lateinit var localStateDao: OrderLocalStateDao
-    private lateinit var eventBus: AppEventBus
     private lateinit var runtimeConfigProvider: RuntimeConfigProvider
     private lateinit var repository: UnifiedOrderRepository
 
@@ -48,19 +45,16 @@ class UnifiedOrderRepositoryTest {
         imageDao = mockk(relaxed = true)
         elderInfoDao = mockk(relaxed = true)
         localStateDao = mockk(relaxed = true)
-        eventBus = mockk(relaxed = true)
         runtimeConfigProvider = mockk(relaxed = true)
         every { runtimeConfigProvider.isDebug } returns false
         
         repository = UnifiedOrderRepository(
-            apiService,
-            testDispatcher,
-            eventBus,
-            runtimeConfigProvider,
-            orderDao,
-            elderInfoDao,
-            localStateDao,
-            projectDao
+            apiService = apiService,
+            runtimeConfigProvider = runtimeConfigProvider,
+            orderDao = orderDao,
+            orderElderInfoDao = elderInfoDao,
+            orderLocalStateDao = localStateDao,
+            orderProjectDao = projectDao,
         )
     }
 
@@ -75,7 +69,7 @@ class UnifiedOrderRepositoryTest {
         )
         
         // Mock API success
-        coEvery { apiService.getOrderInfo(any()) } returns Response(1000, "OK", apiModel)
+        coEvery { apiService.getOrderInfo(any()) } returns ApiResult.Success(apiModel)
         
         // When
         val result = repository.getOrderInfo(orderKey, forceRefresh = false)
@@ -125,7 +119,7 @@ class UnifiedOrderRepositoryTest {
         repository.updateCachedOrderInfo(orderKey, cachedModel)
         
         // Mock API success
-        coEvery { apiService.getOrderInfo(any()) } returns Response(1000, "OK", freshModel)
+        coEvery { apiService.getOrderInfo(any()) } returns ApiResult.Success(freshModel)
         
         // When
         val result = repository.getOrderInfo(orderKey, forceRefresh = true)
@@ -151,7 +145,7 @@ class UnifiedOrderRepositoryTest {
         val insertedOrderSlot = slot<OrderEntityDb>()
         val insertedElderSlot = slot<OrderElderInfoEntityDb>()
 
-        coEvery { apiService.getOrderInfo(any()) } returns Response(1000, "OK", apiModel)
+        coEvery { apiService.getOrderInfo(any()) } returns ApiResult.Success(apiModel)
         coEvery { orderDao.insertOrUpdate(capture(insertedOrderSlot)) } returns orderKey.orderId
         coEvery { elderInfoDao.insertOrUpdate(capture(insertedElderSlot)) } returns orderKey.orderId
         coEvery { projectDao.getSelectedProjectIds(orderKey.orderId) } returns emptyList()

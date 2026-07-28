@@ -2,12 +2,9 @@ package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.common.config.RuntimeConfigProvider
-import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.network.safeApiCall
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
-import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.data.database.dao.OrderDao
 import com.ytone.longcare.data.database.dao.OrderElderInfoDao
 import com.ytone.longcare.data.database.dao.OrderLocalStateDao
@@ -24,7 +21,6 @@ import com.ytone.longcare.model.OrderProjectEntity
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -32,8 +28,6 @@ import kotlinx.coroutines.flow.map
 @Singleton
 class UnifiedOrderRepository @Inject constructor(
     private val apiService: LongCareApiService,
-    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-    private val eventBus: AppEventBus,
     private val runtimeConfigProvider: RuntimeConfigProvider,
     private val orderDao: OrderDao,
     private val orderElderInfoDao: OrderElderInfoDao,
@@ -56,9 +50,8 @@ class UnifiedOrderRepository @Inject constructor(
             if (!forceRefresh) {
                 memoryCache.get(orderKey)?.let { return@withOrderLock ApiResult.Success(it) }
             }
-            val apiResult = safeApiCall(ioDispatcher, eventBus) {
+            val apiResult =
                 apiService.getOrderInfo(OrderInfoParamModel(orderKey.orderId))
-            }
             if (apiResult is ApiResult.Success) {
                 logOrderIdConsistencyIfDebug(
                     source = "getOrderInfo",
@@ -126,9 +119,7 @@ class UnifiedOrderRepository @Inject constructor(
 
     suspend fun refreshOrderFromApi(orderKey: OrderKey): ApiResult<OrderWithDetails> {
         val orderId = orderKey.orderId
-        val apiResult = safeApiCall(ioDispatcher, eventBus) {
-            apiService.getOrderInfo(OrderInfoParamModel(orderId))
-        }
+        val apiResult = apiService.getOrderInfo(OrderInfoParamModel(orderId))
         return when (apiResult) {
             is ApiResult.Success -> {
                 logOrderIdConsistencyIfDebug(

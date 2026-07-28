@@ -1,16 +1,12 @@
 package com.ytone.longcare.data.repository
 
-import com.ytone.longcare.model.GetFaceIdRequest
 import com.ytone.longcare.api.TencentFaceApiService
+import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.domain.faceauth.TencentFaceRepository
+import com.ytone.longcare.model.GetFaceIdRequest
 import com.ytone.longcare.model.TencentAccessTokenResponse
 import com.ytone.longcare.model.TencentApiTicketResponse
 import com.ytone.longcare.model.TencentFaceIdResponse
-import com.ytone.longcare.common.event.AppEventBus
-import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.network.safeTencentApiCall
-import com.ytone.longcare.core.common.di.IoDispatcher
-import com.ytone.longcare.domain.faceauth.TencentFaceRepository
-import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Inject
 
 /**
@@ -18,41 +14,41 @@ import javax.inject.Inject
  */
 class TencentFaceRepositoryImpl @Inject constructor(
     private val apiService: TencentFaceApiService,
-    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-    private val eventBus: AppEventBus
 ) : TencentFaceRepository {
+    private val credentialCache = TencentCredentialCache()
 
     override suspend fun getAccessToken(
         appId: String,
         secret: String
-    ): ApiResult<TencentAccessTokenResponse> = safeTencentApiCall(ioDispatcher, eventBus) {
-        apiService.getAccessToken(
-            appId = appId,
-            secret = secret
-        )
-    }
+    ): ApiResult<TencentAccessTokenResponse> =
+        credentialCache.getAccessToken(appId) {
+            apiService.getAccessToken(
+                appId = appId,
+                secret = secret
+            )
+        }
 
     override suspend fun getApiTicket(
         appId: String,
         accessToken: String,
         userId: String
-    ): ApiResult<TencentApiTicketResponse> = safeTencentApiCall(ioDispatcher, eventBus) {
+    ): ApiResult<TencentApiTicketResponse> =
         apiService.getApiTicket(
             appId = appId,
             accessToken = accessToken,
             userId = userId
         )
-    }
 
     override suspend fun getSignTicket(
         appId: String,
         accessToken: String
-    ): ApiResult<TencentApiTicketResponse> = safeTencentApiCall(ioDispatcher, eventBus) {
-        apiService.getSignTicket(
-            appId = appId,
-            accessToken = accessToken
-        )
-    }
+    ): ApiResult<TencentApiTicketResponse> =
+        credentialCache.getSignTicket(appId) {
+            apiService.getSignTicket(
+                appId = appId,
+                accessToken = accessToken
+            )
+        }
 
     override suspend fun getFaceId(
         appId: String,
@@ -64,7 +60,7 @@ class TencentFaceRepositoryImpl @Inject constructor(
         nonce: String,
         sourcePhotoStr: String?,
         sourcePhotoType: String?
-    ): ApiResult<TencentFaceIdResponse> = safeTencentApiCall(ioDispatcher, eventBus) {
+    ): ApiResult<TencentFaceIdResponse> {
         val request = GetFaceIdRequest(
             appId = appId,
             orderNo = orderNo,
@@ -76,7 +72,7 @@ class TencentFaceRepositoryImpl @Inject constructor(
             sourcePhotoStr = sourcePhotoStr,
             sourcePhotoType = sourcePhotoType
         )
-        apiService.getFaceId(
+        return apiService.getFaceId(
             request = request,
             orderNo = orderNo
         )

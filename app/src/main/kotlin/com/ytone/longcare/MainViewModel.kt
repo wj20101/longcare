@@ -31,8 +31,4 @@ class MainViewModel @Inject constructor(
     fun clearAppVersionModel() {
         _appVersionModel.value = null
     }
-
-    fun forceLogout() {
-        userSessionRepository.logout()
-    }
 }

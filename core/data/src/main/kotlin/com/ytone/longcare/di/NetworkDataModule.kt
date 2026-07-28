@@ -7,9 +7,12 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.TencentFaceApiService
 import com.ytone.longcare.common.config.RuntimeConfigProvider
-import com.ytone.longcare.common.network.FlavorInterceptorApplier
 import com.ytone.longcare.common.json.UnitJsonAdapter
 import com.ytone.longcare.common.json.UriJsonAdapter
+import com.ytone.longcare.common.network.ApiResultCallAdapterFactory
+import com.ytone.longcare.common.network.FlavorInterceptorApplier
+import com.ytone.longcare.common.network.SessionInvalidationHandler
+import com.ytone.longcare.common.network.TencentApiResultCallAdapterFactory
 import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.network.interceptor.RequestCryptoProvider
@@ -132,8 +135,10 @@ object NetworkDataModule {
         okHttpClient: OkHttpClient,
         moshi: Moshi,
         runtimeConfigProvider: RuntimeConfigProvider,
+        sessionInvalidationHandler: SessionInvalidationHandler,
     ): Retrofit {
         return Retrofit.Builder().baseUrl(runtimeConfigProvider.baseUrl).client(okHttpClient)
+            .addCallAdapterFactory(ApiResultCallAdapterFactory(sessionInvalidationHandler))
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
     }
@@ -148,12 +153,13 @@ object NetworkDataModule {
     @Singleton
     @TencentFaceRetrofit
     fun provideTencentFaceRetrofit(
-        okHttpClient: OkHttpClient,
+        @DefaultOkHttpClient okHttpClient: OkHttpClient,
         moshi: Moshi
     ): Retrofit {
         return Retrofit.Builder()
             .baseUrl(TENCENT_FACE_BASE_URL)
             .client(okHttpClient)
+            .addCallAdapterFactory(TencentApiResultCallAdapterFactory())
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
     }

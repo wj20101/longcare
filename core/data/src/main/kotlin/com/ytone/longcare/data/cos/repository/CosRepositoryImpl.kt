@@ -5,9 +5,7 @@ import com.tencent.cos.xml.CosXmlService
 import com.tencent.cos.xml.CosXmlServiceConfig
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.common.constants.CosConstants
-import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.network.safeApiCall
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.model.CosConfig
@@ -69,7 +67,6 @@ class CosRepositoryImpl @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val apiService: LongCareApiService,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-    private val eventBus: AppEventBus
 ) : CosRepository {
 
     companion object {
@@ -142,9 +139,12 @@ class CosRepositoryImpl @Inject constructor(
     private suspend fun refreshCosConfig(folderType: Int): CosConfig = withContext(ioDispatcher) {
         try {
             logD("Refreshing COS config...", tag = TAG)
-            when (val response = safeApiCall(ioDispatcher, eventBus) {
-                apiService.getUploadToken(UploadTokenParamModel(folderType = folderType))
-            }) {
+            when (
+                val response =
+                    apiService.getUploadToken(
+                        UploadTokenParamModel(folderType = folderType)
+                    )
+            ) {
                 is ApiResult.Success -> {
                     val token = response.data
                     val config = token.toCosConfig()
@@ -156,10 +156,17 @@ class CosRepositoryImpl @Inject constructor(
                     config
                 }
                 is ApiResult.Failure -> {
-                    throw Exception("Failed to get upload token: ${response.message}")
+                    throw cosBackendFailure(
+                        operation = "获取文件上传授权",
+                        code = response.code,
+                        message = response.message,
+                    )
                 }
                 is ApiResult.Exception -> {
-                    throw Exception("Failed to get upload token: ${response.exception.message}")
+                    throw cosBackendException(
+                        operation = "获取文件上传授权",
+                        throwable = response.exception,
+                    )
                 }
             }
         } catch (e: CancellationException) {

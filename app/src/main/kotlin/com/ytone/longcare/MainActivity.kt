@@ -6,19 +6,21 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
+import com.ytone.longcare.common.network.SessionInvalidationHandler
 import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.navigation.MainApp
 import com.ytone.longcare.theme.LongCareTheme
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -34,6 +36,9 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var nfcManager: NfcManager
 
+    @Inject
+    lateinit var sessionInvalidationHandler: SessionInvalidationHandler
+
     // 获取 MainViewModel，它持有 UserSessionRepository
     private val viewModel: MainViewModel by viewModels()
 
@@ -43,6 +48,7 @@ class MainActivity : AppCompatActivity() {
 
         // 启动全局事件监听
         observeAppEvents()
+        observeSessionInvalidations()
         
         // 【日志调试】检查启动Intent是否是NFC Intent - 与测试功能无关
         intent?.let {
@@ -77,13 +83,6 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             appEventBus.events.collect { event ->
                 when (event) {
-                    is AppEvent.ForceLogout -> {
-                        withContext(Dispatchers.Main) {
-                            toastHelper.showLong("登录已失效，请重新登录")
-                            viewModel.forceLogout()
-                        }
-                    }
-
                     is AppEvent.NfcIntentReceived -> {
                         // 【业务功能】NFC事件由具体的Screen监听处理 - 与测试功能无关
                     }
@@ -104,6 +103,19 @@ class MainActivity : AppCompatActivity() {
                         viewModel.setAppVersionModel(event.appVersionModel)
                     }
                 }
+            }
+        }
+    }
+
+    private fun observeSessionInvalidations() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                sessionInvalidationHandler.invalidations
+                    .filterNotNull()
+                    .collect { invalidation ->
+                        toastHelper.showLong("登录已失效，请重新登录")
+                        sessionInvalidationHandler.consume(invalidation.id)
+                    }
             }
         }
     }

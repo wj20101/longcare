@@ -229,7 +229,12 @@ sealed interface QlzSdkEvent {
     data class Error(
         val code: Int,
         val message: String,
-    ) : QlzSdkEvent
+    ) : QlzSdkEvent {
+        val requiresTokenRefresh: Boolean
+            get() =
+                code == ErrorCodeConfig.error_token_outtime ||
+                    code == ErrorCodeConfig.error_no_token
+    }
 }
 
 private val DEVELOPMENT_COPY_PATTERN =

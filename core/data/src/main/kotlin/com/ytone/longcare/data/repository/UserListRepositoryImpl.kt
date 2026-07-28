@@ -1,50 +1,35 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.model.UserOrderParamModel
+import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.domain.userlist.UserListRepository
 import com.ytone.longcare.model.UserInfoModel
 import com.ytone.longcare.model.UserOrderModel
-import com.ytone.longcare.common.event.AppEventBus
-import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.network.safeApiCall
-import com.ytone.longcare.core.common.di.IoDispatcher
-import com.ytone.longcare.domain.userlist.UserListRepository
-import kotlinx.coroutines.CoroutineDispatcher
+import com.ytone.longcare.model.UserOrderParamModel
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class UserListRepositoryImpl @Inject constructor(
     private val apiService: LongCareApiService,
-    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-    private val eventBus: AppEventBus
 ) : UserListRepository {
 
     /**
      * 获取本月已服务的用户列表
      */
-    override suspend fun getHaveServiceUserList(): ApiResult<List<UserInfoModel>> {
-        return safeApiCall(ioDispatcher, eventBus) {
-            apiService.getHaveServiceUserList()
-        }
-    }
+    override suspend fun getHaveServiceUserList(): ApiResult<List<UserInfoModel>> =
+        apiService.getHaveServiceUserList()
 
     /**
      * 获取本月未服务的用户列表
      */
-    override suspend fun getNoServiceUserList(): ApiResult<List<UserInfoModel>> {
-        return safeApiCall(ioDispatcher, eventBus) {
-            apiService.getNoServiceUserList()
-        }
-    }
+    override suspend fun getNoServiceUserList(): ApiResult<List<UserInfoModel>> =
+        apiService.getNoServiceUserList()
 
     /**
      * 获取用户服务记录列表
      * @param userId 用户ID
      */
-    override suspend fun getUserOrderList(userId: Long): ApiResult<List<UserOrderModel>> {
-        return safeApiCall(ioDispatcher, eventBus) {
-            apiService.getUserOrderList(UserOrderParamModel(userId = userId.toInt()))
-        }
-    }
+    override suspend fun getUserOrderList(userId: Long): ApiResult<List<UserOrderModel>> =
+        apiService.getUserOrderList(UserOrderParamModel(userId = userId.toInt()))
 }

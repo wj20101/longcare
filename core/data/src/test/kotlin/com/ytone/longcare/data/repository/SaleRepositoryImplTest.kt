@@ -1,17 +1,14 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.model.AddUserLatentParamModel
 import com.ytone.longcare.model.AddUserLatentResultModel
 import com.ytone.longcare.model.CheckTokenModel
 import com.ytone.longcare.model.GetCheckTokenParamModel
-import com.ytone.longcare.model.Response
 import com.ytone.longcare.model.SearchUserLatentParamModel
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -43,18 +40,16 @@ class SaleRepositoryImplTest {
                 }
             calls += method.name to requestArgument
             when (method.name) {
-                "getCheckToken" -> Response(1000, "ok", token)
-                "addUserLatent" -> Response(1000, "ok", created)
-                "getRecentUserLatentList" -> Response(1000, "ok", list)
-                "searchUserLatentList" -> Response(1000, "ok", list)
-                "getUserLatentDetail" -> Response(1000, "ok", detail)
+                "getCheckToken" -> ApiResult.Success(token)
+                "addUserLatent" -> ApiResult.Success(created)
+                "getRecentUserLatentList" -> ApiResult.Success(list)
+                "searchUserLatentList" -> ApiResult.Success(list)
+                "getUserLatentDetail" -> ApiResult.Success(detail)
                 else -> error("Unexpected call: ${method.name}")
             }
         } as LongCareApiService
         val repository = SaleRepositoryImpl(
             apiService = apiService,
-            ioDispatcher = StandardTestDispatcher(testScheduler),
-            eventBus = AppEventBus(),
         )
         val addRequest = AddUserLatentParamModel(userName = "测试客户")
         val searchRequest = SearchUserLatentParamModel(userName = "测试")

@@ -2,27 +2,23 @@ package com.ytone.longcare.common.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.squareup.moshi.Moshi
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.network.safeApiCall
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
-import javax.inject.Singleton
-import androidx.core.content.edit
 import com.ytone.longcare.core.common.di.ApplicationScope
-import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.model.SystemConfigModel
 import com.ytone.longcare.model.ThirdKeyReturnModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * 系统配置管理器
@@ -34,8 +30,6 @@ class SystemConfigManager @Inject constructor(
     @param:ApplicationScope private val applicationScope: CoroutineScope,
     private val moshi: Moshi,
     private val apiService: LongCareApiService,
-    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-    private val eventBus: AppEventBus
 ) : FaceVerificationConfigProvider {
     companion object {
         private const val PREFS_NAME = "system_config_prefs"
@@ -165,7 +159,7 @@ class SystemConfigManager @Inject constructor(
             } else {
                 // 本地没有缓存，从网络加载
                 try {
-                    val result = safeApiCall(ioDispatcher, eventBus) { apiService.getSystemConfig() }
+                    val result = apiService.getSystemConfig()
                     if (result is ApiResult.Success) {
                         cachedConfig = result.data
                         saveSystemConfig(result.data)
@@ -184,7 +178,7 @@ class SystemConfigManager @Inject constructor(
     private fun refreshSystemConfigInBackground() {
         applicationScope.launch {
             try {
-                val result = safeApiCall(ioDispatcher, eventBus) { apiService.getSystemConfig() }
+                val result = apiService.getSystemConfig()
                 if (result is ApiResult.Success) {
                     saveSystemConfig(result.data)
                 }
@@ -211,7 +205,7 @@ class SystemConfigManager @Inject constructor(
      */
     suspend fun refreshCompanyName(): String? {
         return try {
-            when (val result = safeApiCall(ioDispatcher, eventBus) { apiService.getSystemConfig() }) {
+            when (val result = apiService.getSystemConfig()) {
                 is ApiResult.Success -> {
                     saveSystemConfig(result.data)
                     result.data.companyName

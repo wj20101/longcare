@@ -3,10 +3,9 @@ package com.ytone.longcare.common.utils
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.ytone.longcare.api.LongCareApiService
+import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.model.SystemConfigModel
 import com.ytone.longcare.model.ThirdKeyReturnModel
-import com.ytone.longcare.common.event.AppEventBus
-import com.ytone.longcare.model.Response
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -34,7 +33,6 @@ class SystemConfigManagerTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val apiService = mockk<LongCareApiService>()
-    private val eventBus = AppEventBus()
     private val testDispatcher = StandardTestDispatcher()
     private val appScope = CoroutineScope(SupervisorJob() + testDispatcher)
 
@@ -44,18 +42,13 @@ class SystemConfigManagerTest {
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
-        coEvery { apiService.getSystemConfig() } returns Response(
-            resultCode = 1000,
-            resultMsg = "ok",
-            data = SystemConfigModel()
-        )
+        coEvery { apiService.getSystemConfig() } returns
+            ApiResult.Success(SystemConfigModel())
         manager = SystemConfigManager(
             context = context,
             applicationScope = appScope,
             moshi = DefaultMoshi,
             apiService = apiService,
-            ioDispatcher = testDispatcher,
-            eventBus = eventBus
         )
         manager.clearSystemConfig()
     }
@@ -87,11 +80,8 @@ class SystemConfigManagerTest {
 
     @Test
     fun `refreshCompanyName should fetch latest config and update cache`() = runTest(testDispatcher) {
-        coEvery { apiService.getSystemConfig() } returns Response(
-            resultCode = 1000,
-            resultMsg = "ok",
-            data = SystemConfigModel(companyName = "LongCare Updated")
-        )
+        coEvery { apiService.getSystemConfig() } returns
+            ApiResult.Success(SystemConfigModel(companyName = "LongCare Updated"))
 
         val companyName = manager.refreshCompanyName()
 

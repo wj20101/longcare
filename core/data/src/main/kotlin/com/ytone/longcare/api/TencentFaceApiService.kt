@@ -1,5 +1,6 @@
 package com.ytone.longcare.api
 
+import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.model.GetFaceIdRequest
 import com.ytone.longcare.model.TencentAccessTokenResponse
 import com.ytone.longcare.model.TencentApiTicketResponse
@@ -31,7 +32,7 @@ interface TencentFaceApiService {
         @Query("secret") secret: String,
         @Query("grant_type") grantType: String = "client_credential",
         @Query("version") version: String = FACE_AUTH_API_VERSION
-    ): TencentAccessTokenResponse
+    ): ApiResult<TencentAccessTokenResponse>
     
     /**
      * 获取NONCE ticket
@@ -51,7 +52,7 @@ interface TencentFaceApiService {
         @Query("type") type: String = "NONCE",
         @Query("version") version: String = FACE_AUTH_API_VERSION,
         @Query("user_id") userId: String
-    ): TencentApiTicketResponse
+    ): ApiResult<TencentApiTicketResponse>
     
     /**
      * 获取SIGN ticket
@@ -70,7 +71,7 @@ interface TencentFaceApiService {
         @Query("access_token") accessToken: String,
         @Query("type") type: String = "SIGN",
         @Query("version") version: String = FACE_AUTH_API_VERSION
-    ): TencentApiTicketResponse
+    ): ApiResult<TencentApiTicketResponse>
     
     /**
      * 获取faceId
@@ -85,5 +86,5 @@ interface TencentFaceApiService {
     suspend fun getFaceId(
         @Body request: GetFaceIdRequest,
         @Query("orderNo") orderNo: String
-    ): TencentFaceIdResponse
+    ): ApiResult<TencentFaceIdResponse>
 }

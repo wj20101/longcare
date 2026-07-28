@@ -1,5 +1,7 @@
 package com.ytone.longcare.api
 
+import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.common.network.SuppressSessionInvalidation
 import com.ytone.longcare.model.OrderListParamModel
 import com.ytone.longcare.model.LoginLogParamModel
 import com.ytone.longcare.model.LoginPhoneParamModel
@@ -38,7 +40,6 @@ import com.ytone.longcare.model.GetCheckTokenParamModel
 import com.ytone.longcare.model.SearchUserLatentParamModel
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
-import com.ytone.longcare.model.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -53,7 +54,7 @@ interface LongCareApiService {
      * @return 启动配置信息
      */
     @GET("/V1/System/Start")
-    suspend fun getStartConfig(): Response<StartConfigResultModel>
+    suspend fun getStartConfig(): ApiResult<StartConfigResultModel>
 
     /**
      * 发送短信验证码
@@ -62,7 +63,7 @@ interface LongCareApiService {
      * @return 无返回值
      */
     @POST("/V1/Phone/SendSmsCode")
-    suspend fun sendSmsCode(@Body sendSmsCodeParamModel: SendSmsCodeParamModel): Response<Unit>
+    suspend fun sendSmsCode(@Body sendSmsCodeParamModel: SendSmsCodeParamModel): ApiResult<Unit>
 
     /**
      * 手机号码登录
@@ -71,7 +72,7 @@ interface LongCareApiService {
      * @return 登录结果
      */
     @POST("/V1/Login/Phone")
-    suspend fun phoneLogin(@Body loginPhoneParamModel: LoginPhoneParamModel): Response<LoginResultModel>
+    suspend fun phoneLogin(@Body loginPhoneParamModel: LoginPhoneParamModel): ApiResult<LoginResultModel>
 
     /**
      * 按天查询服务订单
@@ -80,7 +81,7 @@ interface LongCareApiService {
      * @return 返回服务订单列表
      */
     @POST("/V1/Service/OrderList")
-    suspend fun getOrderList(@Body orderListParamModel: OrderListParamModel): Response<List<ServiceOrderModel>>
+    suspend fun getOrderList(@Body orderListParamModel: OrderListParamModel): ApiResult<List<ServiceOrderModel>>
 
     /**
      * 记录登录日志
@@ -89,7 +90,8 @@ interface LongCareApiService {
      * @return 无返回值
      */
     @POST("/V1/Login/Log")
-    suspend fun recordLoginLog(@Body loginLogParamModel: LoginLogParamModel): Response<Unit>
+    @SuppressSessionInvalidation
+    suspend fun recordLoginLog(@Body loginLogParamModel: LoginLogParamModel): ApiResult<Unit>
 
     /**
      * 获取今天的服务订单
@@ -97,7 +99,7 @@ interface LongCareApiService {
      * @return 返回今天的服务订单列表
      */
     @GET("/V1/Service/TodayOrder")
-    suspend fun getTodayOrderList(): Response<List<TodayServiceOrderModel>>
+    suspend fun getTodayOrderList(): ApiResult<List<TodayServiceOrderModel>>
 
     /**
      * 查询服务中的订单
@@ -105,7 +107,7 @@ interface LongCareApiService {
      * @return 返回服务中的订单列表
      */
     @GET("/V1/Service/InOrder")
-    suspend fun getInOrderList(): Response<List<ServiceOrderModel>>
+    suspend fun getInOrderList(): ApiResult<List<ServiceOrderModel>>
 
     /**
      * 查询服务订单详情
@@ -114,7 +116,7 @@ interface LongCareApiService {
      * @return 返回服务订单详情
      */
     @POST("/V1/Service/OrderInfo")
-    suspend fun getOrderInfo(@Body orderInfoParamModel: OrderInfoParamModel): Response<ServiceOrderInfoModel>
+    suspend fun getOrderInfo(@Body orderInfoParamModel: OrderInfoParamModel): ApiResult<ServiceOrderInfoModel>
 
     /**
      * 工单开始(正式计时)
@@ -123,7 +125,7 @@ interface LongCareApiService {
      * @return 无返回值
      */
     @POST("/V1/Service/StarOrder")
-    suspend fun starOrder(@Body starOrderParamModel: StarOrderParamModel): Response<Unit>
+    suspend fun starOrder(@Body starOrderParamModel: StarOrderParamModel): ApiResult<Unit>
 
     /**
      * 结束服务工单
@@ -132,61 +134,61 @@ interface LongCareApiService {
      * @return 无返回值
      */
     @POST("/V1/Service/EndOrder")
-    suspend fun endOrder(@Body endOrderParamModel: EndOrderParamModel): Response<EndOrderResultModel>
+    suspend fun endOrder(@Body endOrderParamModel: EndOrderParamModel): ApiResult<EndOrderResultModel>
 
     /**
      * 添加定位
      */
     @POST("/V1/Service/AddPostion")
-    suspend fun addPosition(@Body param: AddPositionParamModel): Response<Unit>
+    suspend fun addPosition(@Body param: AddPositionParamModel): ApiResult<Unit>
 
     /**
      * 获取本月服务统计信息
      */
     @GET("/V1/Service/Statistics")
-    suspend fun getServiceStatistics(): Response<NurseServiceTimeModel>
+    suspend fun getServiceStatistics(): ApiResult<NurseServiceTimeModel>
 
     /**
      * 获取本月已服务的用户列表
      */
     @GET("/V1/Service/HaveServiceUserList")
-    suspend fun getHaveServiceUserList(): Response<List<UserInfoModel>>
+    suspend fun getHaveServiceUserList(): ApiResult<List<UserInfoModel>>
 
     /**
      * 获取本月未服务的用户列表
      */
     @GET("/V1/Service/NoServiceUserList")
-    suspend fun getNoServiceUserList(): Response<List<UserInfoModel>>
+    suspend fun getNoServiceUserList(): ApiResult<List<UserInfoModel>>
 
     /**
      * 获取本月用户的服务记录情况
      */
     @POST("/V1/Service/UserOrderList")
-    suspend fun getUserOrderList(@Body param: UserOrderParamModel): Response<List<UserOrderModel>>
+    suspend fun getUserOrderList(@Body param: UserOrderParamModel): ApiResult<List<UserOrderModel>>
 
     /**
      * 获取文件上传token
      */
     @POST("/V1/File/UploadToken")
-    suspend fun getUploadToken(@Body uploadTokenParamModel: UploadTokenParamModel): Response<UploadTokenResultModel>
+    suspend fun getUploadToken(@Body uploadTokenParamModel: UploadTokenParamModel): ApiResult<UploadTokenResultModel>
 
     /**
      * 文件上传完之后获取访问连接,因为图片是私有的
      */
     @POST("/V1/File/GetFileUrl")
-    suspend fun getFileUrl(@Body saveFileParamModel: SaveFileParamModel): Response<String>
+    suspend fun getFileUrl(@Body saveFileParamModel: SaveFileParamModel): ApiResult<String>
 
     /**
      * 系统相关配置
      */
     @GET("/V1/System/Config")
-    suspend fun getSystemConfig(): Response<SystemConfigModel>
+    suspend fun getSystemConfig(): ApiResult<SystemConfigModel>
 
     /**
      * 退出登录
      */
     @GET("/V1/Login/Out")
-    suspend fun logout(): Response<Unit>
+    suspend fun logout(): ApiResult<Unit>
 
     /**
      * 工单前校验
@@ -195,7 +197,7 @@ interface LongCareApiService {
      * @return 无返回值
      */
     @POST("/V1/Service/CheckOrder")
-    suspend fun checkOrder(@Body checkOrderParamModel: CheckOrderParamModel): Response<Unit>
+    suspend fun checkOrder(@Body checkOrderParamModel: CheckOrderParamModel): ApiResult<Unit>
 
     /**
      * 添加开始老人照片
@@ -204,13 +206,13 @@ interface LongCareApiService {
      * @return 无返回值
      */
     @POST("/V1/Service/UpUserStartImg")
-    suspend fun upUserStartImg(@Body upUserStartImgParamModel: UpUserStartImgParamModel): Response<Unit>
+    suspend fun upUserStartImg(@Body upUserStartImgParamModel: UpUserStartImgParamModel): ApiResult<Unit>
 
     /**
      * 版本检测
      */
     @GET("/V1/System/ChecVersion")
-    suspend fun checkVersion(): Response<AppVersionModel>
+    suspend fun checkVersion(): ApiResult<AppVersionModel>
 
     /**
      * 绑定定位
@@ -219,7 +221,7 @@ interface LongCareApiService {
      * @return 无返回值
      */
     @POST("/V1/Service/BindLocation")
-    suspend fun bindLocation(@Body bindLocationParamModel: BindLocationParamModel): Response<Unit>
+    suspend fun bindLocation(@Body bindLocationParamModel: BindLocationParamModel): ApiResult<Unit>
 
     /**
      * 设置人脸信息
@@ -228,7 +230,7 @@ interface LongCareApiService {
      * @return 无返回值
      */
     @POST("/V1/User/SetFace")
-    suspend fun setFace(@Body setFaceParamModel: SetFaceParamModel): Response<Unit>
+    suspend fun setFace(@Body setFaceParamModel: SetFaceParamModel): ApiResult<Unit>
 
     /**
      * 获取人脸信息
@@ -236,7 +238,7 @@ interface LongCareApiService {
      * @return FaceResultModel，包含人脸图片地址
      */
     @GET("/V1/User/GetFace")
-    suspend fun getFace(): Response<FaceResultModel>
+    suspend fun getFace(): ApiResult<FaceResultModel>
 
     /**
      * 检测结束工单
@@ -245,7 +247,7 @@ interface LongCareApiService {
      * @return 无返回值
      */
     @POST("/V1/Service/CheckEndOrder")
-    suspend fun checkEndOrder(@Body checkEndOrderParamModel: CheckEndOrderParamModel): Response<Unit>
+    suspend fun checkEndOrder(@Body checkEndOrderParamModel: CheckEndOrderParamModel): ApiResult<Unit>
 
     /**
      * 查询服务订单状态
@@ -254,7 +256,7 @@ interface LongCareApiService {
      * @return 订单状态信息
      */
     @POST("/V1/Service/OrderState")
-    suspend fun getOrderState(@Body orderStateParamModel: OrderStateParamModel): Response<ServiceOrderStateModel>
+    suspend fun getOrderState(@Body orderStateParamModel: OrderStateParamModel): ApiResult<ServiceOrderStateModel>
 
     /**
      * 获取一次性俏郎中检测 Token。
@@ -262,7 +264,7 @@ interface LongCareApiService {
     @POST("/V1/Sale/GetCheckToken")
     suspend fun getCheckToken(
         @Body getCheckTokenParamModel: GetCheckTokenParamModel,
-    ): Response<CheckTokenModel>
+    ): ApiResult<CheckTokenModel>
 
     /**
      * 添加潜在客户。
@@ -270,13 +272,13 @@ interface LongCareApiService {
     @POST("/V1/Sale/AddUserLatent")
     suspend fun addUserLatent(
         @Body addUserLatentParamModel: AddUserLatentParamModel,
-    ): Response<AddUserLatentResultModel>
+    ): ApiResult<AddUserLatentResultModel>
 
     /**
      * 查询最近 10 个潜在客户。
      */
     @GET("/V1/Sale/GetRecentUserLatentList")
-    suspend fun getRecentUserLatentList(): Response<List<UserLatentListModel>>
+    suspend fun getRecentUserLatentList(): ApiResult<List<UserLatentListModel>>
 
     /**
      * 按姓名和审核状态搜索潜在客户。
@@ -284,7 +286,7 @@ interface LongCareApiService {
     @POST("/V1/Sale/SearchUserLatentList")
     suspend fun searchUserLatentList(
         @Body searchUserLatentParamModel: SearchUserLatentParamModel,
-    ): Response<List<UserLatentListModel>>
+    ): ApiResult<List<UserLatentListModel>>
 
     /**
      * 查询潜在客户详情。
@@ -292,5 +294,5 @@ interface LongCareApiService {
     @GET("/V1/Sale/GetUserLatentDetail")
     suspend fun getUserLatentDetail(
         @Query("id") customerId: Int,
-    ): Response<UserLatentDetailModel>
+    ): ApiResult<UserLatentDetailModel>
 }

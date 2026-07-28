@@ -3,6 +3,7 @@ package com.ytone.longcare.domain.cos.repository
 import com.ytone.longcare.model.CosUploadResult
 import com.ytone.longcare.model.UploadParams
 import com.ytone.longcare.model.UploadProgress
+import com.ytone.longcare.model.CosStorageException
 
 /**
  * COS存储服务接口
@@ -32,21 +33,21 @@ interface CosRepository {
     /**
      * 删除文件
      * @param key 文件键名
-     * @return 删除是否成功
+     * @return 删除是否成功；文件不存在返回 false，其它失败抛出 [CosStorageException]
      */
     suspend fun deleteFile(key: String): Boolean
     
     /**
      * 检查文件是否存在
      * @param key 文件键名
-     * @return 文件是否存在
+     * @return 文件是否存在；鉴权、网络或服务端失败抛出 [CosStorageException]
      */
     suspend fun fileExists(key: String): Boolean
     
     /**
      * 获取文件信息
      * @param key 文件键名
-     * @return 文件大小（字节），如果文件不存在返回null
+     * @return 文件大小（字节），文件不存在返回 null，其它失败抛出 [CosStorageException]
      */
     suspend fun getFileSize(key: String): Long?
 }

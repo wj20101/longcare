@@ -61,22 +61,32 @@ internal fun scheduleCountdownAlarmInSystem(
     )
 
     val supportsAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    val useAlarmClock = supportsAlarmClock && alarmActivityPendingIntent != null
+    var useAlarmClock =
+        supportsAlarmClock &&
+            canUseExactAlarm &&
+            alarmActivityPendingIntent != null
     if (useAlarmClock) {
-        if (!canUseExactAlarm) {
-            klogI("⚠️ 无精确闹钟权限，使用AlarmClock兜底保障锁屏提醒: orderId=${orderKey.orderId}")
+        try {
+            val alarmClockInfo = AlarmManager.AlarmClockInfo(
+                triggerTimeMillis,
+                alarmActivityPendingIntent
+            )
+            alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+            klogI("✅ 通过AlarmClock设置倒计时闹钟(确保锁屏提醒): orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+        } catch (exception: SecurityException) {
+            useAlarmClock = false
+            klogE("⚠️ 精确闹钟权限在调度时不可用，降级为 setAndAllowWhileIdle: ${exception.message}")
+            alarmManager.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerTimeMillis,
+                pendingIntent
+            )
         }
-        val alarmClockInfo = AlarmManager.AlarmClockInfo(
-            triggerTimeMillis,
-            alarmActivityPendingIntent
-        )
-        alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
-        klogI("✅ 通过AlarmClock设置倒计时闹钟(确保锁屏提醒): orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
     } else if (supportsAlarmClock) {
-        if (alarmActivityPendingIntent == null) {
-            klogE("⚠️ AlarmClock 所需 Activity PendingIntent 为空，降级为 setAndAllowWhileIdle")
+        if (!canUseExactAlarm) {
+            klogI("⚠️ 无精确闹钟权限，降级为 setAndAllowWhileIdle")
         } else {
-            klogE("⚠️ Android 12+ 未使用 AlarmClock，降级为 setAndAllowWhileIdle")
+            klogE("⚠️ AlarmClock 所需 Activity PendingIntent 为空，降级为 setAndAllowWhileIdle")
         }
         alarmManager.setAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
