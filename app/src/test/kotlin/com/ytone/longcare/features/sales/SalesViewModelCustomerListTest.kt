@@ -13,9 +13,12 @@ import com.ytone.longcare.model.UserLatentListModel
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -82,6 +85,7 @@ class SalesViewModelCustomerListTest {
             assertEquals(
                 listOf(
                     SearchUserLatentParamModel(
+                        pageIndex = 1,
                         userName = "搜索客户",
                         checkState = UserLatentCheckState.ALL,
                     )
@@ -118,6 +122,7 @@ class SalesViewModelCustomerListTest {
             assertEquals(
                 listOf(
                     SearchUserLatentParamModel(
+                        pageIndex = 1,
                         userName = "",
                         checkState = UserLatentCheckState.APPROVED,
                     )
@@ -128,6 +133,142 @@ class SalesViewModelCustomerListTest {
                 UserLatentCheckState.APPROVED,
                 viewModel.uiState.value.customerCheckState,
             )
+        }
+
+    @Test
+    fun `next pages append unique customers and stop after an empty page`() =
+        runTest {
+            val requests = mutableListOf<SearchUserLatentParamModel>()
+            val repository =
+                mockk<SaleRepository>(relaxed = true) {
+                    coEvery { getRecentUserLatentList() } returns
+                        ApiResult.Success(emptyList())
+                    coEvery { searchUserLatentList(any()) } answers {
+                        val request = firstArg<SearchUserLatentParamModel>()
+                        requests += request
+                        when (request.pageIndex) {
+                            1 ->
+                                ApiResult.Success(
+                                    listOf(
+                                        UserLatentListModel(id = 1, userName = "客户一"),
+                                        UserLatentListModel(id = 2, userName = "客户二"),
+                                    )
+                                )
+
+                            2 ->
+                                ApiResult.Success(
+                                    listOf(
+                                        UserLatentListModel(id = 2, userName = "客户二"),
+                                        UserLatentListModel(id = 3, userName = "客户三"),
+                                    )
+                                )
+
+                            else -> ApiResult.Success(emptyList())
+                        }
+                    }
+                }
+            val viewModel = createViewModel(repository)
+
+            viewModel.searchCustomers("", UserLatentCheckState.ALL)
+            viewModel.loadNextCustomerPage()
+
+            assertEquals(
+                listOf(1, 2, 3),
+                viewModel.uiState.value.customers.map(UserLatentListModel::id),
+            )
+            assertEquals(2, viewModel.uiState.value.customerPageIndex)
+            assertTrue(viewModel.uiState.value.canLoadMoreCustomers)
+
+            viewModel.loadNextCustomerPage()
+            viewModel.loadNextCustomerPage()
+
+            assertEquals(listOf(1, 2, 3), requests.map { it.pageIndex })
+            assertEquals(3, viewModel.uiState.value.customerPageIndex)
+            assertFalse(viewModel.uiState.value.canLoadMoreCustomers)
+        }
+
+    @Test
+    fun `failed next page is retried without clearing loaded customers`() =
+        runTest {
+            var secondPageAttempts = 0
+            val requests = mutableListOf<SearchUserLatentParamModel>()
+            val repository =
+                mockk<SaleRepository>(relaxed = true) {
+                    coEvery { getRecentUserLatentList() } returns
+                        ApiResult.Success(emptyList())
+                    coEvery { searchUserLatentList(any()) } answers {
+                        val request = firstArg<SearchUserLatentParamModel>()
+                        requests += request
+                        if (request.pageIndex == 1) {
+                            ApiResult.Success(
+                                listOf(UserLatentListModel(id = 1, userName = "客户一"))
+                            )
+                        } else if (secondPageAttempts++ == 0) {
+                            ApiResult.Failure(code = 500, message = "加载失败")
+                        } else {
+                            ApiResult.Success(
+                                listOf(UserLatentListModel(id = 2, userName = "客户二"))
+                            )
+                        }
+                    }
+                }
+            val viewModel = createViewModel(repository)
+
+            viewModel.searchCustomers("", UserLatentCheckState.ALL)
+            viewModel.loadNextCustomerPage()
+
+            assertEquals(listOf(1), viewModel.uiState.value.customers.map { it.id })
+            assertEquals(1, viewModel.uiState.value.customerPageIndex)
+            assertEquals("加载失败", viewModel.uiState.value.customerLoadMoreErrorMessage)
+
+            viewModel.loadNextCustomerPage()
+
+            assertEquals(listOf(1, 2, 2), requests.map { it.pageIndex })
+            assertEquals(listOf(1, 2), viewModel.uiState.value.customers.map { it.id })
+            assertEquals(2, viewModel.uiState.value.customerPageIndex)
+            assertEquals(null, viewModel.uiState.value.customerLoadMoreErrorMessage)
+        }
+
+    @Test
+    fun `new search cancels an unfinished page and rejects its stale result`() =
+        runTest {
+            val oldPageResult =
+                CompletableDeferred<ApiResult<List<UserLatentListModel>>>()
+            val repository =
+                mockk<SaleRepository>(relaxed = true) {
+                    coEvery { getRecentUserLatentList() } returns
+                        ApiResult.Success(emptyList())
+                    coEvery { searchUserLatentList(any()) } coAnswers {
+                        val request = firstArg<SearchUserLatentParamModel>()
+                        when {
+                            request.userName == "旧条件" && request.pageIndex == 1 ->
+                                ApiResult.Success(
+                                    listOf(UserLatentListModel(id = 1, userName = "旧客户"))
+                                )
+
+                            request.userName == "旧条件" -> oldPageResult.await()
+                            else ->
+                                ApiResult.Success(
+                                    listOf(UserLatentListModel(id = 9, userName = "新客户"))
+                                )
+                        }
+                    }
+                }
+            val viewModel = createViewModel(repository)
+
+            viewModel.searchCustomers("旧条件", UserLatentCheckState.ALL)
+            viewModel.loadNextCustomerPage()
+            viewModel.searchCustomers("新条件", UserLatentCheckState.ALL)
+            oldPageResult.complete(
+                ApiResult.Success(
+                    listOf(UserLatentListModel(id = 2, userName = "迟到的旧客户"))
+                )
+            )
+            advanceUntilIdle()
+
+            assertEquals(listOf(9), viewModel.uiState.value.customers.map { it.id })
+            assertEquals("新条件", viewModel.uiState.value.customerSearchKeyword)
+            assertEquals(1, viewModel.uiState.value.customerPageIndex)
         }
 
     private fun createViewModel(repository: SaleRepository): SalesViewModel =

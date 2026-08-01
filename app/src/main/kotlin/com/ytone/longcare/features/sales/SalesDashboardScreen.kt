@@ -19,7 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,6 +44,8 @@ internal fun SalesDashboardScreen(
     user: User,
     companyName: String,
     customers: List<UserLatentListModel>,
+    toDoCount: Int?,
+    isToDoCountLoading: Boolean,
     onRegisterCustomer: () -> Unit,
     onReminders: () -> Unit,
     onCustomerClick: (Int) -> Unit,
@@ -90,7 +92,15 @@ internal fun SalesDashboardScreen(
                 SalesHomeFeatureCard(
                     iconRes = R.drawable.sales_home_signin,
                     title = "代办提醒",
-                    subtitle = "今日还未签到",
+                    subtitle =
+                        when {
+                            toDoCount != null && toDoCount > 0 ->
+                                "${toDoCount}项待处理"
+
+                            toDoCount == 0 -> "暂无待办事项"
+                            isToDoCountLoading -> "正在加载待办"
+                            else -> "点击查看待办"
+                        },
                     onClick = onReminders,
                     modifier = Modifier.weight(1f),
                 )
@@ -225,7 +235,7 @@ private fun SalesLatestCustomerCard(
             )
         }
         Icon(
-            imageVector = Icons.Rounded.KeyboardArrowRight,
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
             contentDescription = "查看客户",
             tint = Color(0xFFB9C9DD),
         )

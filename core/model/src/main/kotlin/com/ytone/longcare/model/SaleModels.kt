@@ -74,6 +74,8 @@ data class AddUserLatentResultModel(
  */
 @JsonClass(generateAdapter = true)
 data class SearchUserLatentParamModel(
+    @param:Json(name = "pageIndex")
+    val pageIndex: Int = 1,
     @param:Json(name = "userName")
     val userName: String = "",
     @param:Json(name = "checkState")
@@ -95,6 +97,31 @@ data class UserLatentListModel(
     val liveAddress: String = "",
     @param:Json(name = "identityCardNumber")
     val identityCardNumber: String = "",
+)
+
+/**
+ * 当前账号的待办事项数量。
+ */
+@JsonClass(generateAdapter = true)
+data class ToDoNumResultModel(
+    @param:Json(name = "num")
+    val num: Int = 0,
+)
+
+/**
+ * 待办事项列表项。
+ *
+ * 接口文档将三个字段均声明为 nullable，因此这里保留可空类型，避免服务端返回
+ * 显式 null 时导致整页解析失败。
+ */
+@JsonClass(generateAdapter = true)
+data class ToDoResultModel(
+    @param:Json(name = "title")
+    val title: String? = null,
+    @param:Json(name = "content")
+    val content: String? = null,
+    @param:Json(name = "createTime")
+    val createTime: String? = null,
 )
 
 /**

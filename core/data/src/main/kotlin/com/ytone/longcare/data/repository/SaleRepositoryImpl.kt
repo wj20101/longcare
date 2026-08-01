@@ -8,6 +8,8 @@ import com.ytone.longcare.model.AddUserLatentResultModel
 import com.ytone.longcare.model.CheckTokenModel
 import com.ytone.longcare.model.GetCheckTokenParamModel
 import com.ytone.longcare.model.SearchUserLatentParamModel
+import com.ytone.longcare.model.ToDoNumResultModel
+import com.ytone.longcare.model.ToDoResultModel
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
 import javax.inject.Inject
@@ -36,6 +38,12 @@ class SaleRepositoryImpl @Inject constructor(
 
     override suspend fun getRecentUserLatentList(): ApiResult<List<UserLatentListModel>> =
         apiService.getRecentUserLatentList()
+
+    override suspend fun getToDoCount(): ApiResult<ToDoNumResultModel> =
+        apiService.getToDoCount()
+
+    override suspend fun getToDoList(): ApiResult<List<ToDoResultModel>> =
+        apiService.getToDoList()
 
     override suspend fun searchUserLatentList(
         request: SearchUserLatentParamModel,

@@ -60,7 +60,7 @@ internal fun SalesExperienceScreen(
     var evaluationChoiceReturnPageName by rememberSaveable {
         mutableStateOf(SalesPage.HOME.name)
     }
-    var reminderCustomerId by rememberSaveable { mutableIntStateOf(0) }
+    var reminderIndex by rememberSaveable { mutableIntStateOf(-1) }
     var registrationDraft by remember {
         mutableStateOf(SalesCustomerDraft())
     }
@@ -163,6 +163,20 @@ internal fun SalesExperienceScreen(
         enabled = currentPage != SalesPage.HOME || rootTab != 0,
         onBack = ::back,
     )
+
+    LaunchedEffect(currentPage, rootTab) {
+        when {
+            currentPage == SalesPage.HOME && rootTab == 0 ->
+                viewModel.loadToDoCount()
+
+            currentPage == SalesPage.REMINDERS ->
+                viewModel.loadToDoList()
+
+            currentPage == SalesPage.REMINDER_DETAIL &&
+                uiState.toDoItems.isEmpty() ->
+                viewModel.loadToDoList()
+        }
+    }
 
     val sdkPermissionLauncher =
         rememberLauncherForActivityResult(
@@ -318,6 +332,9 @@ internal fun SalesExperienceScreen(
                                         user = loggedInUser,
                                         companyName = uiState.companyName,
                                         customers = uiState.recentCustomers,
+                                        toDoCount = uiState.toDoCount,
+                                        isToDoCountLoading =
+                                            uiState.isToDoCountLoading,
                                         onRegisterCustomer = {
                                             registrationDraft = SalesCustomerDraft()
                                             photoUriStrings = emptyList()
@@ -348,37 +365,35 @@ internal fun SalesExperienceScreen(
 
                 SalesPage.REMINDERS ->
                     SalesReminderListScreen(
-                        customers = uiState.recentCustomers,
+                        reminders = uiState.toDoItems,
+                        isLoading = uiState.isToDoListLoading,
+                        errorMessage = uiState.toDoListErrorMessage,
                         onBack = ::back,
-                        onReminderClick = { customerId ->
-                            reminderCustomerId = customerId
+                        onRetry = viewModel::loadToDoList,
+                        onReminderClick = { index ->
+                            reminderIndex = index
                             navigate(SalesPage.REMINDER_DETAIL)
                         },
                     )
 
                 SalesPage.REMINDER_DETAIL ->
                     SalesReminderDetailScreen(
-                        customer =
-                            uiState.recentCustomers.firstOrNull {
-                                it.id == reminderCustomerId
-                            },
+                        reminder = uiState.toDoItems.getOrNull(reminderIndex),
                         onBack = ::back,
-                        onOpenCustomer = { customerId ->
-                            openCustomerDetail(
-                                customerId = customerId,
-                                returnPage = SalesPage.REMINDERS,
-                            )
-                        },
                     )
 
                 SalesPage.CUSTOMERS ->
                     SalesCustomerListScreen(
                         customers = uiState.customers,
                         isLoading = uiState.isCustomerListLoading,
+                        isLoadingMore = uiState.isCustomerListLoadingMore,
+                        canLoadMore = uiState.canLoadMoreCustomers,
+                        loadMoreErrorMessage = uiState.customerLoadMoreErrorMessage,
                         initialKeyword = uiState.customerSearchKeyword,
                         initialCheckState = uiState.customerCheckState,
                         onBack = ::back,
                         onSearch = viewModel::searchCustomers,
+                        onLoadMore = viewModel::loadNextCustomerPage,
                         onCustomerClick = { customerId ->
                             openCustomerDetail(
                                 customerId = customerId,

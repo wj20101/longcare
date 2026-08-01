@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +25,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
@@ -34,7 +37,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,17 +55,24 @@ import com.ytone.longcare.model.UserLatentCheckState
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 
 internal const val CUSTOMER_SEARCH_DEBOUNCE_MILLIS = 300L
+private const val CUSTOMER_LOAD_MORE_THRESHOLD = 3
 
 @Composable
 internal fun SalesCustomerListScreen(
     customers: List<UserLatentListModel>,
     isLoading: Boolean,
+    isLoadingMore: Boolean,
+    canLoadMore: Boolean,
+    loadMoreErrorMessage: String?,
     initialKeyword: String,
     initialCheckState: Int,
     onBack: () -> Unit,
     onSearch: (String, Int) -> Unit,
+    onLoadMore: () -> Unit,
     onCustomerClick: (Int) -> Unit,
 ) {
     var keyword by remember(initialKeyword) { mutableStateOf(initialKeyword) }
@@ -68,6 +80,8 @@ internal fun SalesCustomerListScreen(
         mutableIntStateOf(initialCheckState)
     }
     val focusManager = LocalFocusManager.current
+    val listState = rememberLazyListState()
+    val latestOnLoadMore by rememberUpdatedState(onLoadMore)
     val loadingIndicatorState =
         rememberContentLoadingIndicatorState(isLoading = isLoading)
     val tabs =
@@ -81,7 +95,40 @@ internal fun SalesCustomerListScreen(
 
     LaunchedEffect(keyword, selectedState) {
         delay(CUSTOMER_SEARCH_DEBOUNCE_MILLIS)
+        listState.scrollToItem(0)
         onSearch(keyword, selectedState)
+    }
+
+    LaunchedEffect(
+        listState,
+        customers.size,
+        isLoading,
+        isLoadingMore,
+        canLoadMore,
+        loadMoreErrorMessage,
+    ) {
+        if (
+            customers.isEmpty() ||
+            isLoading ||
+            isLoadingMore ||
+            !canLoadMore ||
+            loadMoreErrorMessage != null
+        ) {
+            return@LaunchedEffect
+        }
+
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastVisibleItemIndex =
+                layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            val loadMoreIndex =
+                (layoutInfo.totalItemsCount - CUSTOMER_LOAD_MORE_THRESHOLD)
+                    .coerceAtLeast(0)
+            layoutInfo.totalItemsCount > 0 &&
+                lastVisibleItemIndex >= loadMoreIndex
+        }.filter { shouldLoadMore -> shouldLoadMore }
+            .first()
+        latestOnLoadMore()
     }
 
     Column(
@@ -208,6 +255,7 @@ internal fun SalesCustomerListScreen(
                     .weight(1f),
         ) {
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding =
                     PaddingValues(
@@ -251,6 +299,56 @@ internal fun SalesCustomerListScreen(
                             customer = customer,
                             onClick = { onCustomerClick(customer.id) },
                         )
+                    }
+                }
+                if (isLoadingMore) {
+                    item(key = "customer_page_loading") {
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = SalesBlue,
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "正在加载更多客户",
+                                color = SalesTextSecondary,
+                                fontSize = 13.sp,
+                            )
+                        }
+                    }
+                } else if (loadMoreErrorMessage != null) {
+                    item(key = "customer_page_error") {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable(
+                                        role = Role.Button,
+                                        onClick = onLoadMore,
+                                    )
+                                    .padding(vertical = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                text = loadMoreErrorMessage,
+                                color = SalesTextSecondary,
+                                fontSize = 13.sp,
+                            )
+                            Text(
+                                text = "点击重试",
+                                color = SalesBlue,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
                     }
                 }
             }

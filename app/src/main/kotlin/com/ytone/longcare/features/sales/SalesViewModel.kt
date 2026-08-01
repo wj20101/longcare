@@ -19,6 +19,7 @@ import com.ytone.longcare.model.AddUserLatentResultModel
 import com.ytone.longcare.model.CheckTokenModel
 import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.SearchUserLatentParamModel
+import com.ytone.longcare.model.ToDoResultModel
 import com.ytone.longcare.model.UserLatentCheckState
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
@@ -45,6 +46,10 @@ class SalesViewModel @Inject constructor(
     val uiState: StateFlow<SalesUiState> = _uiState.asStateFlow()
     private var customerSearchJob: Job? = null
     private var customerSearchRequestId = 0L
+    private var toDoCountJob: Job? = null
+    private var toDoCountRequestId = 0L
+    private var toDoListJob: Job? = null
+    private var toDoListRequestId = 0L
     private var sdkTokenRecoveryAttempted = false
 
     init {
@@ -66,6 +71,130 @@ class SalesViewModel @Inject constructor(
         )
     }
 
+    fun loadToDoCount() {
+        val requestId = ++toDoCountRequestId
+        toDoCountJob?.cancel()
+        _uiState.value =
+            _uiState.value.copy(
+                isToDoCountLoading = true,
+                toDoCountErrorMessage = null,
+            )
+        toDoCountJob =
+            viewModelScope.launch {
+                try {
+                    when (val result = saleRepository.getToDoCount()) {
+                        is ApiResult.Success -> {
+                            if (requestId == toDoCountRequestId) {
+                                _uiState.value =
+                                    _uiState.value.copy(
+                                        toDoCount = result.data.num.coerceAtLeast(0),
+                                    )
+                            }
+                        }
+
+                        is ApiResult.Failure -> {
+                            if (requestId == toDoCountRequestId) {
+                                _uiState.value =
+                                    _uiState.value.copy(
+                                        toDoCountErrorMessage =
+                                            result.message.ifBlank {
+                                                "待办数量加载失败"
+                                            },
+                                    )
+                            }
+                        }
+
+                        is ApiResult.Exception -> {
+                            if (requestId == toDoCountRequestId) {
+                                _uiState.value =
+                                    _uiState.value.copy(
+                                        toDoCountErrorMessage =
+                                            result.exception.message
+                                                ?: "待办数量加载失败",
+                                    )
+                            }
+                        }
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (throwable: Throwable) {
+                    if (requestId == toDoCountRequestId) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                toDoCountErrorMessage =
+                                    throwable.message ?: "待办数量加载失败",
+                            )
+                    }
+                } finally {
+                    if (requestId == toDoCountRequestId) {
+                        _uiState.value =
+                            _uiState.value.copy(isToDoCountLoading = false)
+                    }
+                }
+            }
+    }
+
+    fun loadToDoList() {
+        val requestId = ++toDoListRequestId
+        toDoListJob?.cancel()
+        _uiState.value =
+            _uiState.value.copy(
+                isToDoListLoading = true,
+                toDoListErrorMessage = null,
+            )
+        toDoListJob =
+            viewModelScope.launch {
+                try {
+                    when (val result = saleRepository.getToDoList()) {
+                        is ApiResult.Success -> {
+                            if (requestId == toDoListRequestId) {
+                                _uiState.value =
+                                    _uiState.value.copy(toDoItems = result.data)
+                            }
+                        }
+
+                        is ApiResult.Failure -> {
+                            if (requestId == toDoListRequestId) {
+                                _uiState.value =
+                                    _uiState.value.copy(
+                                        toDoListErrorMessage =
+                                            result.message.ifBlank {
+                                                "待办事项加载失败"
+                                            },
+                                    )
+                            }
+                        }
+
+                        is ApiResult.Exception -> {
+                            if (requestId == toDoListRequestId) {
+                                _uiState.value =
+                                    _uiState.value.copy(
+                                        toDoListErrorMessage =
+                                            result.exception.message
+                                                ?: "待办事项加载失败",
+                                    )
+                            }
+                        }
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (throwable: Throwable) {
+                    if (requestId == toDoListRequestId) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                toDoListErrorMessage =
+                                    throwable.message ?: "待办事项加载失败",
+                            )
+                    }
+                } finally {
+                    if (requestId == toDoListRequestId) {
+                        _uiState.value =
+                            _uiState.value.copy(isToDoListLoading = false)
+                    }
+                }
+            }
+    }
+
     fun searchCustomers(
         keyword: String,
         checkState: Int,
@@ -84,6 +213,10 @@ class SalesViewModel @Inject constructor(
                 customerSearchKeyword = keyword,
                 customerCheckState = normalizedCheckState,
                 isCustomerListLoading = true,
+                isCustomerListLoadingMore = false,
+                customerPageIndex = 0,
+                canLoadMoreCustomers = true,
+                customerLoadMoreErrorMessage = null,
                 errorMessage = null,
             )
         customerSearchJob =
@@ -93,6 +226,7 @@ class SalesViewModel @Inject constructor(
                         val result =
                             saleRepository.searchUserLatentList(
                                 SearchUserLatentParamModel(
+                                    pageIndex = FIRST_CUSTOMER_PAGE,
                                     userName = normalizedKeyword,
                                     checkState = normalizedCheckState,
                                 )
@@ -100,8 +234,13 @@ class SalesViewModel @Inject constructor(
                     ) {
                         is ApiResult.Success -> {
                             if (requestId == customerSearchRequestId) {
+                                val customers = result.data.distinctBy { it.id }
                                 _uiState.value =
-                                    _uiState.value.copy(customers = result.data)
+                                    _uiState.value.copy(
+                                        customers = customers,
+                                        customerPageIndex = FIRST_CUSTOMER_PAGE,
+                                        canLoadMoreCustomers = result.data.isNotEmpty(),
+                                    )
                             }
                         }
 
@@ -122,10 +261,110 @@ class SalesViewModel @Inject constructor(
                     }
                 } catch (cancellation: CancellationException) {
                     throw cancellation
+                } catch (throwable: Throwable) {
+                    if (requestId == customerSearchRequestId) {
+                        showError(
+                            throwable.message ?: "网络异常，请稍后重试"
+                        )
+                    }
                 } finally {
                     if (requestId == customerSearchRequestId) {
                         _uiState.value =
                             _uiState.value.copy(isCustomerListLoading = false)
+                    }
+                }
+            }
+    }
+
+    fun loadNextCustomerPage() {
+        val currentState = _uiState.value
+        if (
+            currentState.isCustomerListLoading ||
+            currentState.isCustomerListLoadingMore ||
+            !currentState.canLoadMoreCustomers ||
+            currentState.customerPageIndex < FIRST_CUSTOMER_PAGE
+        ) {
+            return
+        }
+
+        val requestId = customerSearchRequestId
+        val nextPageIndex = currentState.customerPageIndex + 1
+        _uiState.value =
+            currentState.copy(
+                isCustomerListLoadingMore = true,
+                customerLoadMoreErrorMessage = null,
+            )
+        customerSearchJob =
+            viewModelScope.launch {
+                try {
+                    when (
+                        val result =
+                            saleRepository.searchUserLatentList(
+                                SearchUserLatentParamModel(
+                                    pageIndex = nextPageIndex,
+                                    userName = currentState.customerSearchKeyword.trim(),
+                                    checkState = currentState.customerCheckState,
+                                )
+                            )
+                    ) {
+                        is ApiResult.Success -> {
+                            if (requestId == customerSearchRequestId) {
+                                val existingCustomers = _uiState.value.customers
+                                val mergedCustomers =
+                                    (existingCustomers + result.data)
+                                        .distinctBy { it.id }
+                                val hasNewCustomers =
+                                    mergedCustomers.size > existingCustomers.size
+                                _uiState.value =
+                                    _uiState.value.copy(
+                                        customers = mergedCustomers,
+                                        customerPageIndex = nextPageIndex,
+                                        canLoadMoreCustomers =
+                                            result.data.isNotEmpty() && hasNewCustomers,
+                                        customerLoadMoreErrorMessage = null,
+                                    )
+                            }
+                        }
+
+                        is ApiResult.Failure -> {
+                            if (requestId == customerSearchRequestId) {
+                                _uiState.value =
+                                    _uiState.value.copy(
+                                        customerLoadMoreErrorMessage =
+                                            result.message.ifBlank {
+                                                "更多客户加载失败"
+                                            },
+                                    )
+                            }
+                        }
+
+                        is ApiResult.Exception -> {
+                            if (requestId == customerSearchRequestId) {
+                                _uiState.value =
+                                    _uiState.value.copy(
+                                        customerLoadMoreErrorMessage =
+                                            result.exception.message
+                                                ?: "更多客户加载失败",
+                                    )
+                            }
+                        }
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (throwable: Throwable) {
+                    if (requestId == customerSearchRequestId) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                customerLoadMoreErrorMessage =
+                                    throwable.message ?: "更多客户加载失败",
+                            )
+                    }
+                } finally {
+                    if (requestId == customerSearchRequestId) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                isCustomerListLoadingMore = false,
+                            )
                     }
                 }
             }
@@ -604,6 +843,7 @@ class SalesViewModel @Inject constructor(
     }
 
     private companion object {
+        const val FIRST_CUSTOMER_PAGE = 1
         const val MAX_CUSTOMER_PHOTOS = 3
     }
 }
@@ -611,14 +851,24 @@ class SalesViewModel @Inject constructor(
 data class SalesUiState(
     val isLoading: Boolean = false,
     val isCustomerListLoading: Boolean = true,
+    val isCustomerListLoadingMore: Boolean = false,
+    val isToDoCountLoading: Boolean = false,
+    val isToDoListLoading: Boolean = false,
     val operation: String = "",
     val errorMessage: String? = null,
     val noticeMessage: String? = null,
     val companyName: String = "",
     val recentCustomers: List<UserLatentListModel> = emptyList(),
+    val toDoCount: Int? = null,
+    val toDoCountErrorMessage: String? = null,
+    val toDoItems: List<ToDoResultModel> = emptyList(),
+    val toDoListErrorMessage: String? = null,
     val customers: List<UserLatentListModel> = emptyList(),
     val customerSearchKeyword: String = "",
     val customerCheckState: Int = UserLatentCheckState.ALL,
+    val customerPageIndex: Int = 0,
+    val canLoadMoreCustomers: Boolean = true,
+    val customerLoadMoreErrorMessage: String? = null,
     val selectedCustomerId: Int = 0,
     val selectedCustomer: UserLatentDetailModel? = null,
     val currentLocation: LocationResult? = null,

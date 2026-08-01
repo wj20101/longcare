@@ -38,6 +38,8 @@ import com.ytone.longcare.model.AddUserLatentResultModel
 import com.ytone.longcare.model.CheckTokenModel
 import com.ytone.longcare.model.GetCheckTokenParamModel
 import com.ytone.longcare.model.SearchUserLatentParamModel
+import com.ytone.longcare.model.ToDoNumResultModel
+import com.ytone.longcare.model.ToDoResultModel
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
 import retrofit2.http.Body
@@ -279,6 +281,18 @@ interface LongCareApiService {
      */
     @GET("/V1/Sale/GetRecentUserLatentList")
     suspend fun getRecentUserLatentList(): ApiResult<List<UserLatentListModel>>
+
+    /**
+     * 查询当前账号的待办事项数量。
+     */
+    @GET("/V1/Sale/ToDoNum")
+    suspend fun getToDoCount(): ApiResult<ToDoNumResultModel>
+
+    /**
+     * 查询当前账号的待办事项列表。
+     */
+    @GET("/V1/Sale/ToDoList")
+    suspend fun getToDoList(): ApiResult<List<ToDoResultModel>>
 
     /**
      * 按姓名和审核状态搜索潜在客户。

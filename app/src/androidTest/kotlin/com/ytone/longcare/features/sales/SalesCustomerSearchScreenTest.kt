@@ -8,7 +8,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ytone.longcare.model.UserLatentCheckState
+import com.ytone.longcare.model.UserLatentListModel
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -29,12 +32,16 @@ class SalesCustomerSearchScreenTest {
                 SalesCustomerListScreen(
                     customers = emptyList(),
                     isLoading = false,
+                    isLoadingMore = false,
+                    canLoadMore = false,
+                    loadMoreErrorMessage = null,
                     initialKeyword = "",
                     initialCheckState = UserLatentCheckState.NOT_SUBMITTED,
                     onBack = {},
                     onSearch = { keyword, checkState ->
                         requests += keyword to checkState
                     },
+                    onLoadMore = {},
                     onCustomerClick = {},
                 )
             }
@@ -61,12 +68,16 @@ class SalesCustomerSearchScreenTest {
                 SalesCustomerListScreen(
                     customers = emptyList(),
                     isLoading = false,
+                    isLoadingMore = false,
+                    canLoadMore = false,
+                    loadMoreErrorMessage = null,
                     initialKeyword = "ios",
                     initialCheckState = UserLatentCheckState.ALL,
                     onBack = {},
                     onSearch = { keyword, checkState ->
                         requests += keyword to checkState
                     },
+                    onLoadMore = {},
                     onCustomerClick = {},
                 )
             }
@@ -81,5 +92,39 @@ class SalesCustomerSearchScreenTest {
         }
 
         assertTrue(requests.contains(expectedRequest))
+    }
+
+    @Test
+    fun reachingListEndRequestsTheNextPage() {
+        val loadMoreCalls = AtomicInteger(0)
+        composeRule.setContent {
+            SalesPageBackground {
+                SalesCustomerListScreen(
+                    customers =
+                        listOf(
+                            UserLatentListModel(
+                                id = 1,
+                                userName = "分页测试客户",
+                            )
+                        ),
+                    isLoading = false,
+                    isLoadingMore = false,
+                    canLoadMore = true,
+                    loadMoreErrorMessage = null,
+                    initialKeyword = "",
+                    initialCheckState = UserLatentCheckState.ALL,
+                    onBack = {},
+                    onSearch = { _, _ -> },
+                    onLoadMore = { loadMoreCalls.incrementAndGet() },
+                    onCustomerClick = {},
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 3_000) {
+            loadMoreCalls.get() > 0
+        }
+
+        assertEquals(1, loadMoreCalls.get())
     }
 }

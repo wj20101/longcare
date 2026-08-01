@@ -5,6 +5,8 @@ import com.ytone.longcare.model.AddUserLatentParamModel
 import com.ytone.longcare.model.AddUserLatentResultModel
 import com.ytone.longcare.model.CheckTokenModel
 import com.ytone.longcare.model.SearchUserLatentParamModel
+import com.ytone.longcare.model.ToDoNumResultModel
+import com.ytone.longcare.model.ToDoResultModel
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
 
@@ -22,6 +24,10 @@ interface SaleRepository {
     ): ApiResult<AddUserLatentResultModel>
 
     suspend fun getRecentUserLatentList(): ApiResult<List<UserLatentListModel>>
+
+    suspend fun getToDoCount(): ApiResult<ToDoNumResultModel>
+
+    suspend fun getToDoList(): ApiResult<List<ToDoResultModel>>
 
     suspend fun searchUserLatentList(
         request: SearchUserLatentParamModel,

@@ -2,6 +2,7 @@ package com.ytone.longcare.features.sales
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,11 +14,14 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,15 +30,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ytone.longcare.model.UserLatentListModel
+import com.ytone.longcare.model.ToDoResultModel
 
 @Composable
 internal fun SalesReminderListScreen(
-    customers: List<UserLatentListModel>,
+    reminders: List<ToDoResultModel>,
+    isLoading: Boolean,
+    errorMessage: String?,
     onBack: () -> Unit,
+    onRetry: () -> Unit,
     onReminderClick: (Int) -> Unit,
 ) {
-    val reminders = customers.filter { it.checkState == 0 }
     Column(
         modifier =
             Modifier
@@ -57,39 +63,91 @@ internal fun SalesReminderListScreen(
                 ),
             verticalArrangement = Arrangement.spacedBy(13.dp),
         ) {
-            if (reminders.isEmpty()) {
+            if (isLoading && reminders.isNotEmpty()) {
                 item {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .height(120.dp)
-                                .salesWhiteCard()
-                                .padding(18.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Text(
-                            text = "暂无待办提醒",
-                            color = SalesTextPrimary,
-                            fontSize = 17.sp,
-                        )
-                        Text(
-                            text = "未完成评估的客户会显示在这里",
-                            color = SalesTextSecondary,
-                            fontSize = 13.sp,
-                        )
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = SalesBlue,
+                    )
+                }
+            }
+            when {
+                isLoading && reminders.isEmpty() -> {
+                    item {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp)
+                                    .salesWhiteCard(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(color = SalesBlue)
+                        }
                     }
                 }
-            } else {
-                items(
-                    items = reminders,
-                    key = UserLatentListModel::id,
-                ) { customer ->
-                    SalesReminderCard(
-                        customer = customer,
-                        onClick = { onReminderClick(customer.id) },
-                    )
+
+                errorMessage != null && reminders.isEmpty() -> {
+                    item {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(140.dp)
+                                    .salesWhiteCard()
+                                    .padding(18.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Text(
+                                text = errorMessage,
+                                color = SalesTextPrimary,
+                                fontSize = 16.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            TextButton(onClick = onRetry) {
+                                Text(text = "重新加载", color = SalesBlue)
+                            }
+                        }
+                    }
+                }
+
+                reminders.isEmpty() -> {
+                    item {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp)
+                                    .salesWhiteCard()
+                                    .padding(18.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Text(
+                                text = "暂无待办提醒",
+                                color = SalesTextPrimary,
+                                fontSize = 17.sp,
+                            )
+                            Text(
+                                text = "新的待办事项会显示在这里",
+                                color = SalesTextSecondary,
+                                fontSize = 13.sp,
+                            )
+                        }
+                    }
+                }
+
+                else -> {
+                    itemsIndexed(
+                        items = reminders,
+                    ) { index, reminder ->
+                        SalesReminderCard(
+                            reminder = reminder,
+                            onClick = { onReminderClick(index) },
+                        )
+                    }
                 }
             }
         }
@@ -98,7 +156,7 @@ internal fun SalesReminderListScreen(
 
 @Composable
 private fun SalesReminderCard(
-    customer: UserLatentListModel,
+    reminder: ToDoResultModel,
     onClick: () -> Unit,
 ) {
     Row(
@@ -113,7 +171,7 @@ private fun SalesReminderCard(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "去${customer.userName.ifBlank { "客户" }}家完成设备安装",
+                text = reminder.title.orEmpty().ifBlank { "待办事项" },
                 color = SalesTextPrimary,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Medium,
@@ -121,13 +179,16 @@ private fun SalesReminderCard(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "提醒时间待安排",
+                text =
+                    reminder.createTime.orEmpty().ifBlank {
+                        "提醒时间待安排"
+                    },
                 color = SalesTextSecondary,
                 fontSize = 14.sp,
             )
         }
         Icon(
-            imageVector = Icons.Rounded.KeyboardArrowRight,
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
             contentDescription = "查看待办详情",
             tint = Color(0xFFB7C8DC),
         )
@@ -136,9 +197,8 @@ private fun SalesReminderCard(
 
 @Composable
 internal fun SalesReminderDetailScreen(
-    customer: UserLatentListModel?,
+    reminder: ToDoResultModel?,
     onBack: () -> Unit,
-    onOpenCustomer: (Int) -> Unit,
 ) {
     Column(
         modifier =
@@ -167,7 +227,9 @@ internal fun SalesReminderDetailScreen(
             ) {
                 Text(
                     text =
-                        "去${customer?.userName?.ifBlank { "客户" } ?: "客户"}家完成设备安装",
+                        reminder?.title.orEmpty().ifBlank {
+                            "待办事项"
+                        },
                     modifier = Modifier.fillMaxWidth(),
                     color = SalesTextPrimary,
                     fontSize = 20.sp,
@@ -184,11 +246,8 @@ internal fun SalesReminderDetailScreen(
                 )
                 Text(
                     text =
-                        buildString {
-                            append("请与客户确认上门时间，完成评估设备连接和身体能力评估。")
-                            customer?.liveAddress
-                                ?.takeIf { it.isNotBlank() }
-                                ?.let { append("\n客户地址：$it") }
+                        reminder?.content.orEmpty().ifBlank {
+                            "暂无详细说明"
                         },
                     color = SalesTextSecondary,
                     fontSize = 16.sp,
@@ -202,7 +261,10 @@ internal fun SalesReminderDetailScreen(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "待安排",
+                    text =
+                        reminder?.createTime.orEmpty().ifBlank {
+                            "待安排"
+                        },
                     color = SalesTextSecondary,
                     fontSize = 16.sp,
                 )
@@ -211,12 +273,6 @@ internal fun SalesReminderDetailScreen(
                 text = "返回",
                 onClick = onBack,
             )
-            if (customer != null) {
-                SalesPrimaryButton(
-                    text = "查看客户",
-                    onClick = { onOpenCustomer(customer.id) },
-                )
-            }
         }
     }
 }
