@@ -23,7 +23,7 @@ benchmark = "1.5.0-beta01"
 baselineprofile = "1.5.0-alpha07"
 profileinstaller = "1.4.1"
 camerax = "1.6.1"
-constraintlayout = "2.2.1"
+constraintlayout = "2.2.2"
 
 # Data Persistence
 datastore = "1.2.1"
