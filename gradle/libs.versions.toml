@@ -42,7 +42,7 @@ hilt = "1.4.0"
 # Networking
 retrofit = "3.0.0"
 okhttp = "5.4.0"
-okio = "3.18.0"
+okio = "3.18.1"
 moshi = "1.15.2"
 gson = "2.14.0"
 protobufLite = "3.0.1"
