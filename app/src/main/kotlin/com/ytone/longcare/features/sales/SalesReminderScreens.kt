@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -49,7 +50,7 @@ internal fun SalesReminderListScreen(
                 .navigationBarsPadding(),
     ) {
         SalesTopBar(
-            title = "代办提醒",
+            title = "待办提醒",
             onBack = onBack,
         )
         LazyColumn(
@@ -78,7 +79,7 @@ internal fun SalesReminderListScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .height(120.dp)
+                                    .heightIn(min = 120.dp)
                                     .salesWhiteCard(),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -93,7 +94,7 @@ internal fun SalesReminderListScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .height(140.dp)
+                                    .heightIn(min = 140.dp)
                                     .salesWhiteCard()
                                     .padding(18.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -119,7 +120,7 @@ internal fun SalesReminderListScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .height(120.dp)
+                                    .heightIn(min = 120.dp)
                                     .salesWhiteCard()
                                     .padding(18.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -163,10 +164,10 @@ private fun SalesReminderCard(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(76.dp)
+                .heightIn(min = 76.dp)
                 .salesWhiteCard()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 18.dp),
+                .padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -208,71 +209,79 @@ internal fun SalesReminderDetailScreen(
                 .navigationBarsPadding(),
     ) {
         SalesTopBar(
-            title = "代办提醒详情",
+            title = "待办提醒详情",
             onBack = onBack,
         )
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 18.dp, vertical = 10.dp),
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding =
+                PaddingValues(
+                    start = 18.dp,
+                    end = 18.dp,
+                    top = 10.dp,
+                    bottom = 20.dp,
+                ),
             verticalArrangement = Arrangement.spacedBy(26.dp),
         ) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .salesWhiteCard()
-                        .padding(horizontal = 20.dp, vertical = 22.dp),
-            ) {
-                Text(
-                    text =
-                        reminder?.title.orEmpty().ifBlank {
-                            "待办事项"
-                        },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = SalesTextPrimary,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(28.dp))
-                Text(
-                    text = "事情详情：",
-                    color = Color.Black,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text =
-                        reminder?.content.orEmpty().ifBlank {
-                            "暂无详细说明"
-                        },
-                    color = SalesTextSecondary,
-                    fontSize = 16.sp,
-                    lineHeight = 24.sp,
-                )
-                Spacer(Modifier.height(26.dp))
-                Text(
-                    text = "提醒时间：",
-                    color = Color.Black,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text =
-                        reminder?.createTime.orEmpty().ifBlank {
-                            "待安排"
-                        },
-                    color = SalesTextSecondary,
-                    fontSize = 16.sp,
+            item {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .salesWhiteCard()
+                            .padding(horizontal = 20.dp, vertical = 22.dp),
+                ) {
+                    Text(
+                        text =
+                            reminder?.title.orEmpty().ifBlank {
+                                "待办事项"
+                            },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = SalesTextPrimary,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(28.dp))
+                    Text(
+                        text = "事项详情：",
+                        color = Color.Black,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text =
+                            reminder?.content.orEmpty().ifBlank {
+                                "暂无详细说明"
+                            },
+                        color = SalesTextSecondary,
+                        fontSize = 16.sp,
+                        lineHeight = 24.sp,
+                    )
+                    Spacer(Modifier.height(26.dp))
+                    Text(
+                        text = "提醒时间：",
+                        color = Color.Black,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text =
+                            reminder?.createTime.orEmpty().ifBlank {
+                                "待安排"
+                            },
+                        color = SalesTextSecondary,
+                        fontSize = 16.sp,
+                    )
+                }
+            }
+            item {
+                SalesOutlinedActionButton(
+                    text = "返回",
+                    onClick = onBack,
                 )
             }
-            SalesOutlinedActionButton(
-                text = "返回",
-                onClick = onBack,
-            )
         }
     }
 }

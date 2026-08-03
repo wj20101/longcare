@@ -1,6 +1,8 @@
 package com.ytone.longcare.features.sales
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,11 +12,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -44,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -84,6 +89,7 @@ internal fun SalesCustomerListScreen(
     val latestOnLoadMore by rememberUpdatedState(onLoadMore)
     val loadingIndicatorState =
         rememberContentLoadingIndicatorState(isLoading = isLoading)
+    val useLargeTextLayout = useSalesLargeTextLayout()
     val tabs =
         listOf(
             UserLatentCheckState.ALL to "全部",
@@ -154,18 +160,20 @@ internal fun SalesCustomerListScreen(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 10.dp)
-                    .height(52.dp),
+                    .heightIn(min = 56.dp),
             placeholder = {
                 Text(
                     text = "请输入关键词搜索",
                     color = Color(0xFF757A82),
                     fontSize = 16.sp,
+                    lineHeight = 22.sp,
                 )
             },
             textStyle =
                 TextStyle(
                     color = SalesTextPrimary,
                     fontSize = 16.sp,
+                    lineHeight = 22.sp,
                 ),
             singleLine = true,
             shape = RoundedCornerShape(28.dp),
@@ -185,66 +193,54 @@ internal fun SalesCustomerListScreen(
                     onSearch = { focusManager.clearFocus() },
                 ),
         )
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .selectableGroup()
-                    .padding(horizontal = 18.dp, vertical = 8.dp),
-        ) {
-            tabs.forEach { (state, label) ->
-                Column(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .selectable(
-                                selected = selectedState == state,
-                                role = Role.Tab,
-                                onClick = {
-                                    if (
-                                        state != UserLatentCheckState.ALL &&
-                                        keyword.isNotEmpty()
-                                    ) {
-                                        keyword = ""
-                                    }
-                                    if (selectedState != state) {
-                                        selectedState = state
-                                    }
-                                    focusManager.clearFocus()
-                                },
-                            )
-                            .padding(horizontal = 5.dp, vertical = 5.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text = label,
-                        color =
-                            if (selectedState == state) {
-                                Color.White
-                            } else {
-                                Color.White.copy(alpha = 0.55f)
-                            },
-                        fontSize = 15.sp,
-                        fontWeight =
-                            if (selectedState == state) {
-                                FontWeight.Medium
-                            } else {
-                                FontWeight.Normal
-                            },
-                        maxLines = 1,
+        val onTabSelected: (Int) -> Unit = { state ->
+            if (
+                state != UserLatentCheckState.ALL &&
+                keyword.isNotEmpty()
+            ) {
+                keyword = ""
+            }
+            if (selectedState != state) {
+                selectedState = state
+            }
+            focusManager.clearFocus()
+        }
+        if (useLargeTextLayout) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .selectableGroup()
+                        .testTag("customer_status_tabs")
+                        .padding(horizontal = 18.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                tabs.forEach { (state, label) ->
+                    SalesCustomerStatusTab(
+                        label = label,
+                        selected = selectedState == state,
+                        onClick = { onTabSelected(state) },
+                        modifier = Modifier.widthIn(min = 72.dp),
                     )
-                    Spacer(Modifier.height(5.dp))
-                    if (selectedState == state) {
-                        Spacer(
-                            modifier =
-                                Modifier
-                                    .width(22.dp)
-                                    .height(3.dp)
-                                    .salesWhiteCard(radius = 2)
-                        )
-                    } else {
-                        Spacer(Modifier.height(3.dp))
-                    }
+                }
+            }
+        } else {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .selectableGroup()
+                        .testTag("customer_status_tabs")
+                        .padding(horizontal = 18.dp, vertical = 8.dp),
+            ) {
+                tabs.forEach { (state, label) ->
+                    SalesCustomerStatusTab(
+                        label = label,
+                        selected = selectedState == state,
+                        onClick = { onTabSelected(state) },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }
@@ -272,7 +268,7 @@ internal fun SalesCustomerListScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .height(110.dp)
+                                    .heightIn(min = 110.dp)
                                     .salesWhiteCard()
                                     .padding(18.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -307,7 +303,7 @@ internal fun SalesCustomerListScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .height(48.dp),
+                                    .heightIn(min = 48.dp),
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -368,6 +364,57 @@ internal fun SalesCustomerListScreen(
 }
 
 @Composable
+private fun SalesCustomerStatusTab(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier =
+            modifier
+                .selectable(
+                    selected = selected,
+                    role = Role.Tab,
+                    onClick = onClick,
+                )
+                .padding(horizontal = 5.dp, vertical = 5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = label,
+            color =
+                if (selected) {
+                    Color.White
+                } else {
+                    Color.White.copy(alpha = 0.55f)
+                },
+            fontSize = 15.sp,
+            lineHeight = 21.sp,
+            fontWeight =
+                if (selected) {
+                    FontWeight.Medium
+                } else {
+                    FontWeight.Normal
+                },
+            maxLines = 1,
+        )
+        Spacer(Modifier.height(5.dp))
+        if (selected) {
+            Spacer(
+                modifier =
+                    Modifier
+                        .width(22.dp)
+                        .height(3.dp)
+                        .salesWhiteCard(radius = 2)
+            )
+        } else {
+            Spacer(Modifier.height(3.dp))
+        }
+    }
+}
+
+@Composable
 private fun SalesCustomerListCard(
     customer: UserLatentListModel,
     onClick: () -> Unit,
@@ -376,10 +423,10 @@ private fun SalesCustomerListCard(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(70.dp)
+                .heightIn(min = 70.dp)
                 .salesWhiteCard()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 18.dp),
+                .padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -388,6 +435,8 @@ private fun SalesCustomerListCard(
                 color = SalesTextPrimary,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = customer.liveAddress.ifBlank { "地址待补充" },
@@ -401,6 +450,8 @@ private fun SalesCustomerListCard(
             text = customer.checkState.toSalesCheckStateLabel(),
             color = SalesTextSecondary,
             fontSize = 13.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
         Icon(
             imageVector = Icons.Rounded.KeyboardArrowRight,
@@ -434,7 +485,7 @@ internal fun SalesCustomerDetailScreen(
                     Modifier
                         .fillMaxWidth()
                         .padding(18.dp)
-                        .height(180.dp)
+                        .heightIn(min = 180.dp)
                         .salesWhiteCard(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,

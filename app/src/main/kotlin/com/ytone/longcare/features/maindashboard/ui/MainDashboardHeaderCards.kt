@@ -63,7 +63,8 @@ fun TopHeader(user: User, companyName: String) {
                 text = user.userName,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
-                maxLines = 1,
+                lineHeight = 20.sp,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.End,
                 modifier = Modifier

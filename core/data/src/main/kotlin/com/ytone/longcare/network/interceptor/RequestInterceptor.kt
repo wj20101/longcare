@@ -59,10 +59,13 @@ class RequestInterceptor @Inject constructor(
                 requestBody.writeTo(buffer)
                 val requestBodyBytes = buffer.readByteArray()
 
-                // 记录加密前的原始请求参数
+                // KLogger 只对日志文本脱敏；requestBodyBytes 保持原始内容并直接用于后续加密。
                 if (runtimeConfigProvider.isDebug) {
                     val originalRequestBody = String(requestBodyBytes, Charsets.UTF_8)
-                    logI("【请求加密前】URL: ${url}\n原始请求体: $originalRequestBody", tag = "RequestInterceptor")
+                    logI(
+                        "【请求加密前】URL: ${url}\n请求体（日志已脱敏）: $originalRequestBody",
+                        tag = "RequestInterceptor",
+                    )
                 }
 
                 val encryptRequest = encryptRequest(randomString, requestBodyBytes)
@@ -107,9 +110,12 @@ class RequestInterceptor @Inject constructor(
         val map: Map<String, Any> = baseMap
         val headerInfo = JSONObject(map).toString()
 
-        // 记录加密前的原始Header信息
+        // 请求头日志同样由 KLogger 脱敏，不改变实际加密内容。
         if (runtimeConfigProvider.isDebug) {
-            logI("【请求Header加密前】原始Header参数: $headerInfo", tag = "RequestInterceptor")
+            logI(
+                "【请求头加密前】请求头（日志已脱敏）: $headerInfo",
+                tag = "RequestInterceptor",
+            )
         }
 
         return mapOf(

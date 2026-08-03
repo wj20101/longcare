@@ -1,7 +1,10 @@
 package com.ytone.longcare.features.sales
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -16,35 +19,57 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Assignment
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Assignment
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material.icons.rounded.PhotoLibrary
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.FileProviderHelper
 import com.ytone.longcare.model.LocationResult
 
 @Composable
@@ -60,13 +85,89 @@ internal fun SalesRegistrationScreen(
     onContinue: () -> Unit,
     onValidationError: (String) -> Unit,
 ) {
+    val context = LocalContext.current
+    var showPhotoSourceSheet by rememberSaveable { mutableStateOf(false) }
+    var pendingCameraUri by rememberSaveable { mutableStateOf("") }
+    val currentPhotoUris by rememberUpdatedState(photoUris)
+    val currentOnPhotosSelected by rememberUpdatedState(onPhotosSelected)
+    val currentOnValidationError by rememberUpdatedState(onValidationError)
+
     val photoPicker =
         rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetMultipleContents(),
+            contract =
+                ActivityResultContracts.PickMultipleVisualMedia(
+                    MAX_SALES_CUSTOMER_PHOTOS
+                ),
             onResult = { selected ->
-                onPhotosSelected((photoUris + selected).distinct().take(3))
+                currentOnPhotosSelected(
+                    mergeSalesCustomerPhotoUris(currentPhotoUris, selected)
+                )
             },
         )
+    val cameraLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.TakePicture(),
+            onResult = { success ->
+                val capturedUri = pendingCameraUri.takeIf(String::isNotBlank)?.let(Uri::parse)
+                pendingCameraUri = ""
+                if (success && capturedUri != null) {
+                    currentOnPhotosSelected(
+                        mergeSalesCustomerPhotoUris(
+                            existing = currentPhotoUris,
+                            added = listOf(capturedUri),
+                        )
+                    )
+                } else if (capturedUri != null) {
+                    runCatching {
+                        context.contentResolver.delete(capturedUri, null, null)
+                    }
+                }
+            },
+        )
+    val launchCameraCapture: () -> Unit = {
+        if (!context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+            currentOnValidationError("当前设备不支持拍照")
+        } else {
+            runCatching {
+                val cameraUri = FileProviderHelper.createCameraPhotoUri(context)
+                pendingCameraUri = cameraUri.toString()
+                cameraLauncher.launch(cameraUri)
+            }.onFailure {
+                pendingCameraUri
+                    .takeIf(String::isNotBlank)
+                    ?.let(Uri::parse)
+                    ?.let { uri ->
+                        runCatching {
+                            context.contentResolver.delete(uri, null, null)
+                        }
+                    }
+                pendingCameraUri = ""
+                currentOnValidationError("无法打开相机，请稍后重试")
+            }
+        }
+    }
+    val cameraPermissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission(),
+            onResult = { granted ->
+                if (granted) {
+                    launchCameraCapture()
+                } else {
+                    currentOnValidationError("请允许使用相机后再拍照")
+                }
+            },
+        )
+    val requestCameraCapture = {
+        if (
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            launchCameraCapture()
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
     Column(
         modifier =
             Modifier
@@ -183,7 +284,7 @@ internal fun SalesRegistrationScreen(
             }
             item {
                 Text(
-                    text = "现场照片（最多3张）",
+                    text = "照片",
                     color = Color.White,
                     fontSize = 15.sp,
                 )
@@ -200,13 +301,16 @@ internal fun SalesRegistrationScreen(
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    if (photoUris.size < 3) {
+                    if (photoUris.size < MAX_SALES_CUSTOMER_PHOTOS) {
                         SalesPhotoAddButton(
-                            onClick = { photoPicker.launch("image/*") },
+                            onClick = { showPhotoSourceSheet = true },
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    repeat((3 - photoUris.size - 1).coerceAtLeast(0)) {
+                    repeat(
+                        (MAX_SALES_CUSTOMER_PHOTOS - photoUris.size - 1)
+                            .coerceAtLeast(0)
+                    ) {
                         Spacer(Modifier.weight(1f))
                     }
                 }
@@ -227,6 +331,161 @@ internal fun SalesRegistrationScreen(
             }
         }
     }
+
+    if (showPhotoSourceSheet) {
+        SalesPhotoSourceSheet(
+            onDismiss = { showPhotoSourceSheet = false },
+            onCamera = {
+                showPhotoSourceSheet = false
+                requestCameraCapture()
+            },
+            onGallery = {
+                showPhotoSourceSheet = false
+                photoPicker.launch(
+                    PickVisualMediaRequest(
+                        ActivityResultContracts.PickVisualMedia.ImageOnly
+                    )
+                )
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SalesPhotoSourceSheet(
+    onDismiss: () -> Unit,
+    onCamera: () -> Unit,
+    onGallery: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFFFDFDFF),
+        contentColor = SalesTextPrimary,
+        dragHandle = {
+            BottomSheetDefaults.DragHandle(color = Color(0xFFBBC2CC))
+        },
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = "添加照片",
+                        color = SalesTextPrimary,
+                        fontSize = 22.sp,
+                        lineHeight = 28.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "请选择照片来源，最多可添加 3 张",
+                        color = SalesTextSecondary,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "关闭",
+                        tint = SalesTextSecondary,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFFF3F7FC)),
+            ) {
+                SalesPhotoSourceOption(
+                    icon = Icons.Rounded.PhotoCamera,
+                    title = "拍照",
+                    description = "使用相机拍摄照片",
+                    onClick = onCamera,
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 80.dp),
+                    color = Color(0xFFDDE5EF),
+                )
+                SalesPhotoSourceOption(
+                    icon = Icons.Rounded.PhotoLibrary,
+                    title = "从相册选择",
+                    description = "从设备中选择已有照片",
+                    onClick = onGallery,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SalesPhotoSourceOption(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        headlineContent = {
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                lineHeight = 22.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        },
+        supportingContent = {
+            Text(
+                text = description,
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+            )
+        },
+        leadingContent = {
+            Box(
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(SalesBlue.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = SalesBlue,
+                    modifier = Modifier.size(25.dp),
+                )
+            }
+        },
+        colors =
+            ListItemDefaults.colors(
+                containerColor = Color.Transparent,
+                headlineColor = SalesTextPrimary,
+                supportingColor = SalesTextSecondary,
+            ),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(
+                    role = Role.Button,
+                    onClick = onClick,
+                ),
+    )
 }
 
 @Composable
@@ -244,14 +503,21 @@ private fun SalesRegistrationField(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(minHeight.dp),
+                .heightIn(min = minHeight.dp),
         placeholder = {
             Text(
                 text = placeholder,
                 color = Color(0xFFA0A3A7),
                 fontSize = 15.sp,
+                lineHeight = 21.sp,
             )
         },
+        textStyle =
+            TextStyle(
+                color = SalesTextPrimary,
+                fontSize = 15.sp,
+                lineHeight = 21.sp,
+            ),
         singleLine = singleLine,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         shape = RoundedCornerShape(12.dp),
@@ -281,7 +547,7 @@ private fun SalesPhotoThumbnail(
     ) {
         AsyncImage(
             model = uri,
-            contentDescription = "现场照片",
+            contentDescription = "照片",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
         )
@@ -322,7 +588,7 @@ private fun SalesPhotoAddButton(
     ) {
         Icon(
             imageVector = Icons.Rounded.Add,
-            contentDescription = "添加现场照片",
+            contentDescription = "添加照片",
             tint = SalesBlue,
             modifier = Modifier.size(35.dp),
         )
@@ -388,7 +654,7 @@ internal fun SalesInformationConfirmationScreen(
                             photoUris.forEach { uri ->
                                 AsyncImage(
                                     model = uri,
-                                    contentDescription = "现场照片",
+                                    contentDescription = "照片",
                                     modifier =
                                         Modifier
                                             .weight(1f)
@@ -397,7 +663,10 @@ internal fun SalesInformationConfirmationScreen(
                                     contentScale = ContentScale.Crop,
                                 )
                             }
-                            repeat((3 - photoUris.size).coerceAtLeast(0)) {
+                            repeat(
+                                (MAX_SALES_CUSTOMER_PHOTOS - photoUris.size)
+                                    .coerceAtLeast(0)
+                            ) {
                                 Spacer(Modifier.weight(1f))
                             }
                         }
@@ -430,28 +699,52 @@ internal fun SalesSubmitSuccessScreen(
             title = "信息提交结果",
             onBack = onBack,
         )
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 18.dp, vertical = 10.dp),
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding =
+                PaddingValues(
+                    start = 18.dp,
+                    end = 18.dp,
+                    top = 10.dp,
+                    bottom = 20.dp,
+                ),
             verticalArrangement = Arrangement.spacedBy(34.dp),
         ) {
-            SalesSuccessPanel(title = "信息提交成功")
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                SalesOutlinedActionButton(
-                    text = "确认并返回",
-                    onClick = onBack,
-                    modifier = Modifier.weight(1f),
-                )
-                SalesPrimaryButton(
-                    text = "进行评估",
-                    onClick = onEvaluation,
-                    modifier = Modifier.weight(1f),
-                )
+            item {
+                SalesSuccessPanel(title = "信息提交成功")
+            }
+            item {
+                if (useSalesLargeTextLayout()) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        SalesOutlinedActionButton(
+                            text = "确认并返回",
+                            onClick = onBack,
+                        )
+                        SalesPrimaryButton(
+                            text = "进行评估",
+                            onClick = onEvaluation,
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        SalesOutlinedActionButton(
+                            text = "确认并返回",
+                            onClick = onBack,
+                            modifier = Modifier.weight(1f),
+                        )
+                        SalesPrimaryButton(
+                            text = "进行评估",
+                            onClick = onEvaluation,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
             }
         }
     }
@@ -463,6 +756,7 @@ internal fun SalesEvaluationChoiceScreen(
     onAutomaticEvaluation: () -> Unit,
     onFormEvaluation: () -> Unit,
 ) {
+    val useLargeTextLayout = useSalesLargeTextLayout()
     Column(
         modifier =
             Modifier
@@ -474,46 +768,94 @@ internal fun SalesEvaluationChoiceScreen(
             title = "信息提交结果",
             onBack = onBack,
         )
-        Row(
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding =
+                PaddingValues(
+                    start = 18.dp,
+                    end = 18.dp,
+                    top = 10.dp,
+                    bottom = 20.dp,
+                ),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (useLargeTextLayout) {
+                item {
+                    SalesAutomaticEvaluationChoiceCard(
+                        onClick = onAutomaticEvaluation,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                item {
+                    SalesFormEvaluationChoiceCard(
+                        onClick = onFormEvaluation,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        SalesAutomaticEvaluationChoiceCard(
+                            onClick = onAutomaticEvaluation,
+                            modifier = Modifier.weight(1f),
+                        )
+                        SalesFormEvaluationChoiceCard(
+                            onClick = onFormEvaluation,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SalesAutomaticEvaluationChoiceCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SalesEvaluationChoiceCard(
+        title = "设备自动评估",
+        subtitle = "手握住设备即可评估完成",
+        onClick = onClick,
+        modifier = modifier,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.sales_qlz_device_design),
+            contentDescription = "健康评估设备",
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            SalesEvaluationChoiceCard(
-                title = "设备自动评估",
-                subtitle = "手握住设备即可评估完成",
-                onClick = onAutomaticEvaluation,
-                modifier = Modifier.weight(1f),
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.sales_qlz_device_design),
-                    contentDescription = "健康评估设备",
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(64.dp),
-                    contentScale = ContentScale.Fit,
-                )
-            }
-            SalesEvaluationChoiceCard(
-                title = "表单评估",
-                subtitle = "问卷调研形式评估",
-                onClick = onFormEvaluation,
-                modifier = Modifier.weight(1f),
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Assignment,
-                    contentDescription = null,
-                    tint = Color(0xFFFFC47B),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(58.dp),
-                )
-            }
-        }
+                    .height(64.dp),
+            contentScale = ContentScale.Fit,
+        )
+    }
+}
+
+@Composable
+private fun SalesFormEvaluationChoiceCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SalesEvaluationChoiceCard(
+        title = "表单评估",
+        subtitle = "问卷调研形式评估",
+        onClick = onClick,
+        modifier = modifier,
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.Assignment,
+            contentDescription = null,
+            tint = Color(0xFFFFC47B),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(58.dp),
+        )
     }
 }
 
@@ -528,10 +870,10 @@ private fun SalesEvaluationChoiceCard(
     Column(
         modifier =
             modifier
-                .height(128.dp)
+                .heightIn(min = 128.dp)
                 .salesWhiteCard()
                 .clickable(onClick = onClick)
-                .padding(start = 16.dp, end = 10.dp, top = 14.dp),
+                .padding(start = 16.dp, end = 10.dp, top = 14.dp, bottom = 10.dp),
     ) {
         Text(
             text = title,
@@ -545,7 +887,7 @@ private fun SalesEvaluationChoiceCard(
             color = SalesTextSecondary,
             fontSize = 12.sp,
             lineHeight = 16.sp,
-            maxLines = 1,
+            maxLines = 2,
         )
         Box(
             modifier = Modifier.fillMaxWidth(),

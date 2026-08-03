@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -78,32 +78,48 @@ internal fun SalesDashboardScreen(
             )
         }
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                SalesHomeFeatureCard(
-                    iconRes = R.drawable.sales_home_registration,
-                    title = "对象登记",
-                    subtitle = "客访登记信息",
-                    onClick = onRegisterCustomer,
-                    modifier = Modifier.weight(1f),
-                )
-                SalesHomeFeatureCard(
-                    iconRes = R.drawable.sales_home_signin,
-                    title = "代办提醒",
-                    subtitle =
-                        when {
-                            toDoCount != null && toDoCount > 0 ->
-                                "${toDoCount}项待处理"
-
-                            toDoCount == 0 -> "暂无待办事项"
-                            isToDoCountLoading -> "正在加载待办"
-                            else -> "点击查看待办"
-                        },
-                    onClick = onReminders,
-                    modifier = Modifier.weight(1f),
-                )
+            if (useSalesLargeTextLayout()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SalesHomeFeatureCard(
+                        iconRes = R.drawable.sales_home_registration,
+                        title = "对象登记",
+                        subtitle = "客访登记信息",
+                        onClick = onRegisterCustomer,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    SalesHomeFeatureCard(
+                        iconRes = R.drawable.sales_home_signin,
+                        title = "待办提醒",
+                        subtitle =
+                            toDoCount.toSalesToDoSubtitle(isToDoCountLoading),
+                        onClick = onReminders,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SalesHomeFeatureCard(
+                        iconRes = R.drawable.sales_home_registration,
+                        title = "对象登记",
+                        subtitle = "客访登记信息",
+                        onClick = onRegisterCustomer,
+                        modifier = Modifier.weight(1f),
+                    )
+                    SalesHomeFeatureCard(
+                        iconRes = R.drawable.sales_home_signin,
+                        title = "待办提醒",
+                        subtitle =
+                            toDoCount.toSalesToDoSubtitle(isToDoCountLoading),
+                        onClick = onReminders,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
         item {
@@ -124,9 +140,9 @@ internal fun SalesDashboardScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(82.dp)
+                            .heightIn(min = 82.dp)
                             .salesWhiteCard()
-                            .padding(horizontal = 18.dp),
+                            .padding(horizontal = 18.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
@@ -166,11 +182,11 @@ private fun SalesHomeFeatureCard(
     Row(
         modifier =
             modifier
-                .height(70.dp)
+                .heightIn(min = 70.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(Color(0xFFF3F7FE))
                 .clickable(onClick = onClick)
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -182,7 +198,8 @@ private fun SalesHomeFeatureCard(
                 fontSize = 17.sp,
                 lineHeight = 22.sp,
                 fontWeight = FontWeight.Medium,
-                maxLines = 1,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = subtitle,
@@ -205,25 +222,30 @@ private fun SalesLatestCustomerCard(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(64.dp)
+                .heightIn(min = 64.dp)
                 .salesWhiteCard()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 18.dp),
+                .padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = customer.userName.ifBlank { "未命名客户" },
+                    modifier = Modifier.weight(1f),
                     color = SalesTextPrimary,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
                     text = customer.checkState.toSalesHomeCheckStateLabel(),
                     color = customer.checkState.toSalesHomeCheckStateColor(),
                     fontSize = 14.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
@@ -241,6 +263,14 @@ private fun SalesLatestCustomerCard(
         )
     }
 }
+
+private fun Int?.toSalesToDoSubtitle(isLoading: Boolean): String =
+    when {
+        this != null && this > 0 -> "${this}项待处理"
+        this == 0 -> "暂无待办事项"
+        isLoading -> "正在加载待办"
+        else -> "点击查看待办"
+    }
 
 private fun Int.toSalesHomeCheckStateLabel(): String =
     when (this) {

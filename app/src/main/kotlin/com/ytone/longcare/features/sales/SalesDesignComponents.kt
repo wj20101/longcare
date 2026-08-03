@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,6 +60,10 @@ internal val SalesGradient =
         0.46f to Color(0xFF9CC5FB),
         1f to Color(0xFFF5F8FD),
     )
+
+@Composable
+internal fun useSalesLargeTextLayout(): Boolean =
+    LocalDensity.current.fontScale >= 1.3f
 
 @Composable
 internal fun SalesPageBackground(
@@ -83,7 +90,7 @@ internal fun SalesTopBar(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(58.dp),
+                .heightIn(min = 58.dp),
         contentAlignment = Alignment.Center,
     ) {
         if (onBack != null) {
@@ -127,7 +134,7 @@ internal fun SalesPrimaryButton(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(52.dp),
+                .heightIn(min = 52.dp),
         enabled = enabled,
         shape = RoundedCornerShape(28.dp),
         colors =
@@ -142,7 +149,10 @@ internal fun SalesPrimaryButton(
         Text(
             text = text,
             fontSize = 18.sp,
+            lineHeight = 24.sp,
             fontWeight = FontWeight.Normal,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
         )
     }
 }
@@ -159,7 +169,7 @@ internal fun SalesOutlinedActionButton(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(52.dp),
+                .heightIn(min = 52.dp),
         enabled = enabled,
         shape = RoundedCornerShape(28.dp),
         border = BorderStroke(1.dp, SalesBlue),
@@ -170,7 +180,13 @@ internal fun SalesOutlinedActionButton(
                 disabledContentColor = Color(0xFF9CB4D1),
             ),
     ) {
-        Text(text = text, fontSize = 18.sp)
+        Text(
+            text = text,
+            fontSize = 18.sp,
+            lineHeight = 24.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
     }
 }
 
@@ -210,6 +226,8 @@ internal fun SalesStatusBadge(
             text = label,
             color = color,
             fontSize = 18.sp,
+            lineHeight = 24.sp,
+            textAlign = TextAlign.Center,
         )
     }
 }
@@ -223,7 +241,7 @@ internal fun SalesSectionTab(
     Box(
         modifier =
             modifier
-                .height(42.dp)
+                .heightIn(min = 42.dp)
                 .clip(
                     RoundedCornerShape(
                         topStart = 18.dp,
@@ -232,7 +250,7 @@ internal fun SalesSectionTab(
                     )
                 )
                 .background(Brush.horizontalGradient(colors))
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 24.dp, vertical = 4.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
         Text(
@@ -301,23 +319,41 @@ internal fun SalesInfoRow(
     modifier: Modifier = Modifier,
     valueColor: Color = Color(0xFF171717),
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
-    ) {
+    val labelContent: @Composable () -> Unit = {
         Text(
             text = label,
-            modifier = Modifier.size(width = 70.dp, height = 28.dp),
             color = SalesTextSecondary,
             fontSize = 16.sp,
+            lineHeight = 23.sp,
         )
+    }
+    val valueContent: @Composable (Modifier) -> Unit = { valueModifier ->
         Text(
             text = value.ifBlank { "—" },
-            modifier = Modifier.weight(1f),
+            modifier = valueModifier,
             color = valueColor,
             fontSize = 16.sp,
             lineHeight = 23.sp,
         )
+    }
+    if (useSalesLargeTextLayout()) {
+        Column(
+            modifier = modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            labelContent()
+            valueContent(Modifier.fillMaxWidth())
+        }
+    } else {
+        Row(
+            modifier = modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Box(modifier = Modifier.width(70.dp)) {
+                labelContent()
+            }
+            valueContent(Modifier.weight(1f))
+        }
     }
 }
 
@@ -377,7 +413,7 @@ internal fun SalesSuccessPanel(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(196.dp)
+                .heightIn(min = 196.dp)
                 .salesWhiteCard()
                 .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

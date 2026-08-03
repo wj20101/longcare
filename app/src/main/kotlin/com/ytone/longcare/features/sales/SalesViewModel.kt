@@ -451,13 +451,14 @@ class SalesViewModel @Inject constructor(
                         if (photoUris.isEmpty()) {
                             "正在提交客户信息"
                         } else {
-                            "正在上传现场照片"
+                            "正在上传照片"
                         },
                     errorMessage = null,
                     submissionResult = null,
                 )
             try {
-                val uploadedUrls = uploadPhotos(photoUris.take(MAX_CUSTOMER_PHOTOS))
+                val uploadedKeys =
+                    uploadPhotoKeys(photoUris.take(MAX_SALES_CUSTOMER_PHOTOS))
                 _uiState.value =
                     _uiState.value.copy(operation = "正在提交客户信息")
                 when (
@@ -465,7 +466,7 @@ class SalesViewModel @Inject constructor(
                         saleRepository.addUserLatent(
                             draft.toRequest(
                                 location = _uiState.value.currentLocation,
-                                photoUrls = uploadedUrls,
+                                photoKeys = uploadedKeys,
                             )
                         )
                 ) {
@@ -638,14 +639,14 @@ class SalesViewModel @Inject constructor(
         }
     }
 
-    private suspend fun uploadPhotos(photoUris: List<Uri>): List<String> {
+    private suspend fun uploadPhotoKeys(photoUris: List<Uri>): List<String> {
         if (photoUris.isEmpty()) {
             return emptyList()
         }
         return photoUris.mapIndexed { index, uri ->
             _uiState.value =
                 _uiState.value.copy(
-                    operation = "正在上传现场照片 ${index + 1}/${photoUris.size}"
+                    operation = "正在上传照片 ${index + 1}/${photoUris.size}"
                 )
             val result =
                 cosRepository.uploadFile(
@@ -655,13 +656,13 @@ class SalesViewModel @Inject constructor(
                         folderType = CosConstants.DEFAULT_FOLDER_TYPE,
                     )
                 )
-            val uploadedUrl = result.url
-            if (!result.success || uploadedUrl.isNullOrBlank()) {
+            val uploadedKey = result.key
+            if (!result.success || uploadedKey.isNullOrBlank()) {
                 throw IllegalStateException(
-                    result.errorMessage ?: "第 ${index + 1} 张照片上传失败"
+                    "第 ${index + 1} 张照片上传失败，请稍后重试"
                 )
             }
-            uploadedUrl
+            uploadedKey
         }
     }
 
@@ -844,7 +845,6 @@ class SalesViewModel @Inject constructor(
 
     private companion object {
         const val FIRST_CUSTOMER_PAGE = 1
-        const val MAX_CUSTOMER_PHOTOS = 3
     }
 }
 
@@ -905,7 +905,7 @@ data class SalesCustomerDraft(
 
     fun toRequest(
         location: LocationResult?,
-        photoUrls: List<String>,
+        photoKeys: List<String>,
     ): AddUserLatentParamModel =
         AddUserLatentParamModel(
             userName = userName.trim(),
@@ -916,8 +916,8 @@ data class SalesCustomerDraft(
             liveAddress = liveAddress.trim(),
             liveLng = location?.longitude?.toString().orEmpty(),
             liveLat = location?.latitude?.toString().orEmpty(),
-            img1 = photoUrls.getOrNull(0).orEmpty(),
-            img2 = photoUrls.getOrNull(1).orEmpty(),
-            img3 = photoUrls.getOrNull(2).orEmpty(),
+            img1 = photoKeys.getOrNull(0).orEmpty(),
+            img2 = photoKeys.getOrNull(1).orEmpty(),
+            img3 = photoKeys.getOrNull(2).orEmpty(),
         )
 }

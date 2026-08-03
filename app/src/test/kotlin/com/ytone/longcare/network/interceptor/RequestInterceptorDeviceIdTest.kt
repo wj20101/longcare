@@ -10,9 +10,12 @@ import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import okhttp3.Interceptor
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Protocol
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -31,6 +34,7 @@ class RequestInterceptorDeviceIdTest {
     private lateinit var interceptor: RequestInterceptor
 
     private val capturedHeaderJson = slot<ByteArray>()
+    private val capturedRequestBody = slot<ByteArray>()
 
     @Before
     fun setUp() {
@@ -93,10 +97,32 @@ class RequestInterceptorDeviceIdTest {
         verify(exactly = 0) { deviceInfoProvider.getAppInstanceId() }
     }
 
-    private fun executeRequest() {
-        val request = Request.Builder()
-            .url("https://api.example.com/V1/Test/Endpoint")
-            .build()
+    @Test
+    fun `request body keeps original guardian phone before encryption`() {
+        every { consentManager.isPrivacyConsented } returns true
+        every {
+            cryptoProvider.encryptAesToHex(capture(capturedRequestBody), any())
+        } returns "encrypted-payload"
+        val originalBody = """{"guardianPhone":"13666665555"}"""
+        val request =
+            Request.Builder()
+                .url("https://api.example.com/V1/Sale/AddUserLatent")
+                .post(originalBody.toRequestBody("application/json".toMediaType()))
+                .build()
+
+        executeRequest(request)
+
+        val encryptedInput = String(capturedRequestBody.captured, Charsets.UTF_8)
+        assertEquals(originalBody, encryptedInput)
+        assertFalse(encryptedInput.contains("136****5555"))
+    }
+
+    private fun executeRequest(
+        request: Request =
+            Request.Builder()
+                .url("https://api.example.com/V1/Test/Endpoint")
+                .build()
+    ) {
 
         val dummyResponse = Response.Builder()
             .request(request)
