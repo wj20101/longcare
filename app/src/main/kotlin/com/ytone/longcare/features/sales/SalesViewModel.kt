@@ -3,8 +3,10 @@ package com.ytone.longcare.features.sales
 import android.app.Activity
 import android.content.Context
 import android.net.Uri
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.R
 import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.CosUtils
@@ -62,7 +64,7 @@ class SalesViewModel @Inject constructor(
 
     fun loadRecentCustomers() {
         execute(
-            operation = "正在加载销售计划",
+            operation = text(R.string.sales_loading_recent_customers),
             request = saleRepository::getRecentUserLatentList,
             onSuccess = { customers ->
                 _uiState.value =
@@ -100,7 +102,7 @@ class SalesViewModel @Inject constructor(
                                     _uiState.value.copy(
                                         toDoCountErrorMessage =
                                             result.message.ifBlank {
-                                                "待办数量加载失败"
+                                                text(R.string.sales_error_todo_count)
                                             },
                                     )
                             }
@@ -111,20 +113,19 @@ class SalesViewModel @Inject constructor(
                                 _uiState.value =
                                     _uiState.value.copy(
                                         toDoCountErrorMessage =
-                                            result.exception.message
-                                                ?: "待办数量加载失败",
+                                            text(R.string.sales_error_todo_count),
                                     )
                             }
                         }
                     }
                 } catch (cancellation: CancellationException) {
                     throw cancellation
-                } catch (throwable: Throwable) {
+                } catch (_: Throwable) {
                     if (requestId == toDoCountRequestId) {
                         _uiState.value =
                             _uiState.value.copy(
-                                toDoCountErrorMessage =
-                                    throwable.message ?: "待办数量加载失败",
+                            toDoCountErrorMessage =
+                                    text(R.string.sales_error_todo_count),
                             )
                     }
                 } finally {
@@ -161,7 +162,7 @@ class SalesViewModel @Inject constructor(
                                     _uiState.value.copy(
                                         toDoListErrorMessage =
                                             result.message.ifBlank {
-                                                "待办事项加载失败"
+                                                text(R.string.sales_error_todo_list)
                                             },
                                     )
                             }
@@ -172,20 +173,19 @@ class SalesViewModel @Inject constructor(
                                 _uiState.value =
                                     _uiState.value.copy(
                                         toDoListErrorMessage =
-                                            result.exception.message
-                                                ?: "待办事项加载失败",
+                                            text(R.string.sales_error_todo_list),
                                     )
                             }
                         }
                     }
                 } catch (cancellation: CancellationException) {
                     throw cancellation
-                } catch (throwable: Throwable) {
+                } catch (_: Throwable) {
                     if (requestId == toDoListRequestId) {
                         _uiState.value =
                             _uiState.value.copy(
-                                toDoListErrorMessage =
-                                    throwable.message ?: "待办事项加载失败",
+                            toDoListErrorMessage =
+                                    text(R.string.sales_error_todo_list),
                             )
                     }
                 } finally {
@@ -254,20 +254,15 @@ class SalesViewModel @Inject constructor(
 
                         is ApiResult.Exception -> {
                             if (requestId == customerSearchRequestId) {
-                                showError(
-                                    result.exception.message
-                                        ?: "网络异常，请稍后重试"
-                                )
+                                showError(text(R.string.sales_error_network))
                             }
                         }
                     }
                 } catch (cancellation: CancellationException) {
                     throw cancellation
-                } catch (throwable: Throwable) {
+                } catch (_: Throwable) {
                     if (requestId == customerSearchRequestId) {
-                        showError(
-                            throwable.message ?: "网络异常，请稍后重试"
-                        )
+                        showError(text(R.string.sales_error_network))
                     }
                 } finally {
                     if (requestId == customerSearchRequestId) {
@@ -334,7 +329,7 @@ class SalesViewModel @Inject constructor(
                                     _uiState.value.copy(
                                         customerLoadMoreErrorMessage =
                                             result.message.ifBlank {
-                                                "更多客户加载失败"
+                                                text(R.string.sales_error_more_customers)
                                             },
                                     )
                             }
@@ -345,20 +340,19 @@ class SalesViewModel @Inject constructor(
                                 _uiState.value =
                                     _uiState.value.copy(
                                         customerLoadMoreErrorMessage =
-                                            result.exception.message
-                                                ?: "更多客户加载失败",
+                                            text(R.string.sales_error_more_customers),
                                     )
                             }
                         }
                     }
                 } catch (cancellation: CancellationException) {
                     throw cancellation
-                } catch (throwable: Throwable) {
+                } catch (_: Throwable) {
                     if (requestId == customerSearchRequestId) {
                         _uiState.value =
                             _uiState.value.copy(
-                                customerLoadMoreErrorMessage =
-                                    throwable.message ?: "更多客户加载失败",
+                            customerLoadMoreErrorMessage =
+                                    text(R.string.sales_error_more_customers),
                             )
                     }
                 } finally {
@@ -381,7 +375,8 @@ class SalesViewModel @Inject constructor(
                     selectedCustomerId = customerId,
                     selectedCustomer = null,
                     isCustomerDetailLoading = false,
-                    customerDetailErrorMessage = "客户信息无效，请返回后重试",
+                    customerDetailErrorMessage =
+                        text(R.string.sales_error_customer_invalid_return),
                 )
             return
         }
@@ -412,7 +407,9 @@ class SalesViewModel @Inject constructor(
                                         _uiState.value.copy(
                                             selectedCustomer = null,
                                             customerDetailErrorMessage =
-                                                "客户详情数据异常，请重试",
+                                                text(
+                                                    R.string.sales_error_customer_detail_data
+                                                ),
                                         )
                                     }
                             }
@@ -424,7 +421,7 @@ class SalesViewModel @Inject constructor(
                                     _uiState.value.copy(
                                         customerDetailErrorMessage =
                                             result.message.ifBlank {
-                                                "客户详情加载失败，请重试"
+                                                text(R.string.sales_error_customer_detail)
                                             },
                                     )
                             }
@@ -435,23 +432,19 @@ class SalesViewModel @Inject constructor(
                                 _uiState.value =
                                     _uiState.value.copy(
                                         customerDetailErrorMessage =
-                                            result.exception.message
-                                                ?.takeIf(String::isNotBlank)
-                                                ?: "客户详情加载失败，请重试",
+                                            text(R.string.sales_error_customer_detail),
                                     )
                             }
                         }
                     }
                 } catch (cancellation: CancellationException) {
                     throw cancellation
-                } catch (throwable: Throwable) {
+                } catch (_: Throwable) {
                     if (requestId == customerDetailRequestId) {
                         _uiState.value =
                             _uiState.value.copy(
-                                customerDetailErrorMessage =
-                                    throwable.message
-                                        ?.takeIf(String::isNotBlank)
-                                        ?: "客户详情加载失败，请重试",
+                            customerDetailErrorMessage =
+                                    text(R.string.sales_error_customer_detail),
                             )
                     }
                 } finally {
@@ -478,24 +471,24 @@ class SalesViewModel @Inject constructor(
             _uiState.value =
                 _uiState.value.copy(
                     isLoading = true,
-                    operation = "正在获取当前位置",
+                    operation = text(R.string.sales_loading_location),
                     errorMessage = null,
                 )
             try {
                 val location = locationFacade.getFreshLocation()
                 if (location == null) {
-                    showError("定位失败，请检查定位服务后重试")
+                    showError(text(R.string.sales_error_location_service))
                 } else {
                     _uiState.value =
                         _uiState.value.copy(
                             currentLocation = location,
-                            noticeMessage = "定位成功",
+                            noticeMessage = text(R.string.sales_notice_location_success),
                         )
                 }
             } catch (cancellation: CancellationException) {
                 throw cancellation
-            } catch (throwable: Throwable) {
-                showError(throwable.message ?: "定位失败，请稍后重试")
+            } catch (_: Throwable) {
+                showError(text(R.string.sales_error_location))
             } finally {
                 _uiState.value =
                     _uiState.value.copy(
@@ -515,8 +508,8 @@ class SalesViewModel @Inject constructor(
         draft: SalesCustomerDraft,
         photoUris: List<Uri>,
     ) {
-        draft.validationMessage()?.let {
-            showError(it)
+        draft.validationMessageRes()?.let { messageRes ->
+            showError(text(messageRes))
             return
         }
         viewModelScope.launch {
@@ -525,9 +518,9 @@ class SalesViewModel @Inject constructor(
                     isLoading = true,
                     operation =
                         if (photoUris.isEmpty()) {
-                            "正在提交客户信息"
+                            text(R.string.sales_loading_submit_customer)
                         } else {
-                            "正在上传照片"
+                            text(R.string.sales_loading_upload_photos)
                         },
                     errorMessage = null,
                     submissionResult = null,
@@ -536,7 +529,9 @@ class SalesViewModel @Inject constructor(
                 val uploadedKeys =
                     uploadPhotoKeys(photoUris.take(MAX_SALES_CUSTOMER_PHOTOS))
                 _uiState.value =
-                    _uiState.value.copy(operation = "正在提交客户信息")
+                    _uiState.value.copy(
+                        operation = text(R.string.sales_loading_submit_customer)
+                    )
                 when (
                     val result =
                         saleRepository.addUserLatent(
@@ -549,14 +544,14 @@ class SalesViewModel @Inject constructor(
                     is ApiResult.Success -> onCustomerSubmitted(result.data)
                     is ApiResult.Failure -> showError(result.message)
                     is ApiResult.Exception ->
-                        showError(
-                            result.exception.message ?: "提交失败，请稍后重试"
-                        )
+                        showError(text(R.string.sales_error_submit))
                 }
             } catch (cancellation: CancellationException) {
                 throw cancellation
-            } catch (throwable: Throwable) {
-                showError(throwable.message ?: "提交失败，请稍后重试")
+            } catch (userFacing: SalesUserFacingException) {
+                showError(userFacing.message.orEmpty())
+            } catch (_: Throwable) {
+                showError(text(R.string.sales_error_submit))
             } finally {
                 _uiState.value =
                     _uiState.value.copy(
@@ -569,7 +564,7 @@ class SalesViewModel @Inject constructor(
 
     fun prepareEvaluation(customerId: Int) {
         if (customerId <= 0) {
-            showError("请先选择需要评估的客户")
+            showError(text(R.string.sales_error_select_customer))
             return
         }
         sdkTokenRecoveryAttempted = false
@@ -577,7 +572,7 @@ class SalesViewModel @Inject constructor(
             _uiState.value =
                 _uiState.value.copy(
                     isLoading = true,
-                    operation = "正在准备评估",
+                    operation = text(R.string.sales_loading_prepare_evaluation),
                     errorMessage = null,
                     selectedCustomerId = customerId,
                     evaluationCompleted = null,
@@ -588,7 +583,7 @@ class SalesViewModel @Inject constructor(
                 val sdkDeviceId =
                     qlzSdkClient.getDeviceId().getOrElse { throwable ->
                         throw IllegalStateException(
-                            "检测设备准备失败，请稍后重试",
+                            text(R.string.sales_error_device_prepare),
                             throwable,
                         )
                     }
@@ -596,7 +591,7 @@ class SalesViewModel @Inject constructor(
                     _uiState.value.copy(
                         sdkDeviceId = sdkDeviceId,
                         connectedDeviceName = qlzSdkClient.getConnectedDeviceName(),
-                        operation = "正在准备评估",
+                        operation = text(R.string.sales_loading_prepare_evaluation),
                     )
                 when (
                     val result =
@@ -615,14 +610,12 @@ class SalesViewModel @Inject constructor(
 
                     is ApiResult.Failure -> showError(result.message)
                     is ApiResult.Exception ->
-                        showError(
-                            "评估准备失败，请稍后重试"
-                        )
+                        showError(text(R.string.sales_error_evaluation_prepare))
                 }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (_: Throwable) {
-                showError("评估准备失败，请稍后重试")
+                showError(text(R.string.sales_error_evaluation_prepare))
             } finally {
                 _uiState.value =
                     _uiState.value.copy(
@@ -643,7 +636,7 @@ class SalesViewModel @Inject constructor(
     fun launchSdk(activity: Activity) {
         val token = _uiState.value.checkToken?.token.orEmpty()
         if (token.isBlank()) {
-            showError("评估尚未准备完成，请稍后重试")
+            showError(text(R.string.sales_error_evaluation_not_ready))
             return
         }
         openSdkWithToken(activity, token)
@@ -673,7 +666,7 @@ class SalesViewModel @Inject constructor(
                 .orEmpty()
                 .ifBlank { _uiState.value.selectedCustomer?.pgUrl.orEmpty() }
         if (reportUrl.isBlank()) {
-            showError("当前客户暂无可查看的评估报告")
+            showError(text(R.string.sales_error_no_report))
             return
         }
         qlzSdkClient.openReport(activity, reportUrl)
@@ -684,7 +677,7 @@ class SalesViewModel @Inject constructor(
         reportUrl: String,
     ) {
         if (reportUrl.isBlank()) {
-            showError("评估页面地址为空，请稍后重试")
+            showError(text(R.string.sales_error_report_url_empty))
             return
         }
         qlzSdkClient.openReport(activity, reportUrl)
@@ -722,7 +715,12 @@ class SalesViewModel @Inject constructor(
         return photoUris.mapIndexed { index, uri ->
             _uiState.value =
                 _uiState.value.copy(
-                    operation = "正在上传照片 ${index + 1}/${photoUris.size}"
+                    operation =
+                        text(
+                            R.string.sales_loading_photo_progress,
+                            index + 1,
+                            photoUris.size,
+                        )
                 )
             val result =
                 cosRepository.uploadFile(
@@ -734,8 +732,8 @@ class SalesViewModel @Inject constructor(
                 )
             val uploadedKey = result.key
             if (!result.success || uploadedKey.isNullOrBlank()) {
-                throw IllegalStateException(
-                    "第 ${index + 1} 张照片上传失败，请稍后重试"
+                throw SalesUserFacingException(
+                    text(R.string.sales_error_photo_upload, index + 1)
                 )
             }
             uploadedKey
@@ -747,7 +745,7 @@ class SalesViewModel @Inject constructor(
             _uiState.value.copy(
                 submissionResult = result,
                 selectedCustomerId = result.id,
-                noticeMessage = "客户信息提交成功",
+                noticeMessage = text(R.string.sales_notice_customer_submitted),
             )
         loadRecentCustomers()
     }
@@ -764,8 +762,8 @@ class SalesViewModel @Inject constructor(
                             qlzSdkClient.getConnectedDeviceName()
                                 ?: _uiState.value.connectedDeviceName,
                         evaluationCompleted = event,
-                        sdkProgressText = "检测完成",
-                        noticeMessage = "评估成功",
+                        sdkProgressText = text(R.string.sales_progress_detection_complete),
+                        noticeMessage = text(R.string.sales_notice_evaluation_success),
                     )
 
             is QlzSdkEvent.Progress ->
@@ -775,7 +773,11 @@ class SalesViewModel @Inject constructor(
                             qlzSdkClient.getConnectedDeviceName()
                                 ?: _uiState.value.connectedDeviceName,
                         sdkProgressText =
-                            "检测进度 ${event.successCount}/${event.totalCount}",
+                            text(
+                                R.string.sales_progress_detection,
+                                event.successCount,
+                                event.totalCount,
+                            ),
                     )
 
             is QlzSdkEvent.Error -> {
@@ -784,7 +786,7 @@ class SalesViewModel @Inject constructor(
                 } else {
                     showError(
                         event.message.ifBlank {
-                            "评估暂时无法继续，请稍后重试"
+                            text(R.string.sales_error_evaluation_continue)
                         }
                     )
                 }
@@ -794,7 +796,8 @@ class SalesViewModel @Inject constructor(
                 _uiState.value =
                     _uiState.value.copy(
                         connectedDeviceName = qlzSdkClient.getConnectedDeviceName(),
-                        noticeMessage = "已取消本次评估",
+                        noticeMessage =
+                            text(R.string.sales_notice_evaluation_cancelled),
                     )
 
             QlzSdkEvent.DetectionPageClosed ->
@@ -809,21 +812,21 @@ class SalesViewModel @Inject constructor(
 
     private suspend fun recoverSdkTokenAndRelaunch(activity: Activity) {
         if (sdkTokenRecoveryAttempted) {
-            showError("本次评估已失效，请重新进入评估页面")
+            showError(text(R.string.sales_error_evaluation_expired))
             return
         }
         sdkTokenRecoveryAttempted = true
 
         val customerId = _uiState.value.selectedCustomerId
         if (customerId <= 0) {
-            showError("客户信息无效，请重新进入评估页面")
+            showError(text(R.string.sales_error_customer_invalid_evaluation))
             return
         }
 
         _uiState.value =
             _uiState.value.copy(
                 isLoading = true,
-                operation = "正在重新准备评估",
+                operation = text(R.string.sales_loading_reprepare_evaluation),
                 errorMessage = null,
                 checkToken = null,
             )
@@ -832,7 +835,7 @@ class SalesViewModel @Inject constructor(
                 _uiState.value.sdkDeviceId.ifBlank {
                     qlzSdkClient.getDeviceId().getOrElse { throwable ->
                         throw IllegalStateException(
-                            "检测设备准备失败，请稍后重试",
+                            text(R.string.sales_error_device_prepare),
                             throwable,
                         )
                     }
@@ -847,7 +850,7 @@ class SalesViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     val refreshedToken = result.data.token.trim()
                     if (refreshedToken.isBlank()) {
-                        showError("评估凭证获取失败，请重新进入评估页面")
+                        showError(text(R.string.sales_error_evaluation_credential))
                         return
                     }
                     _uiState.value =
@@ -858,7 +861,7 @@ class SalesViewModel @Inject constructor(
                                 qlzSdkClient.getConnectedDeviceName(),
                         )
                     if (activity.isFinishing || activity.isDestroyed) {
-                        showError("评估页面已关闭，请重新进入")
+                        showError(text(R.string.sales_error_evaluation_page_closed))
                     } else {
                         openSdkWithToken(activity, refreshedToken)
                     }
@@ -866,12 +869,14 @@ class SalesViewModel @Inject constructor(
 
                 is ApiResult.Failure -> showError(result.message)
                 is ApiResult.Exception ->
-                    showError("评估凭证刷新失败，请重新进入评估页面")
+                    showError(
+                        text(R.string.sales_error_evaluation_credential_refresh)
+                    )
             }
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (_: Throwable) {
-            showError("评估凭证刷新失败，请重新进入评估页面")
+            showError(text(R.string.sales_error_evaluation_credential_refresh))
         } finally {
             _uiState.value =
                 _uiState.value.copy(
@@ -898,9 +903,7 @@ class SalesViewModel @Inject constructor(
                     is ApiResult.Success -> onSuccess(result.data)
                     is ApiResult.Failure -> showError(result.message)
                     is ApiResult.Exception ->
-                        showError(
-                            result.exception.message ?: "网络异常，请稍后重试"
-                        )
+                        showError(text(R.string.sales_error_network))
                 }
             } finally {
                 _uiState.value =
@@ -915,14 +918,29 @@ class SalesViewModel @Inject constructor(
     private fun showError(message: String) {
         _uiState.value =
             _uiState.value.copy(
-                errorMessage = message.ifBlank { "操作失败，请稍后重试" },
+                errorMessage =
+                    message.ifBlank { text(R.string.sales_error_operation) },
             )
     }
+
+    private fun text(
+        @StringRes resId: Int,
+        vararg formatArgs: Any,
+    ): String =
+        if (formatArgs.isEmpty()) {
+            applicationContext.getString(resId)
+        } else {
+            applicationContext.getString(resId, *formatArgs)
+        }
 
     private companion object {
         const val FIRST_CUSTOMER_PAGE = 1
     }
 }
+
+private class SalesUserFacingException(
+    message: String,
+) : IllegalStateException(message)
 
 data class SalesUiState(
     val isLoading: Boolean = false,
@@ -966,18 +984,19 @@ data class SalesCustomerDraft(
     val guardianRelation: String = "",
     val liveAddress: String = "",
 ) {
-    fun validationMessage(): String? =
+    @StringRes
+    fun validationMessageRes(): Int? =
         when {
-            userName.isBlank() -> "请输入老人姓名"
+            userName.isBlank() -> R.string.sales_registration_name_hint
             identityCardNumber.length !in setOf(15, 18) ->
-                "请输入正确的老人身份证号码"
+                R.string.sales_validation_identity
 
-            guardianName.isBlank() -> "请输入联系人"
+            guardianName.isBlank() -> R.string.sales_registration_contact_hint
             !guardianPhone.matches(Regex("^1[3-9]\\d{9}$")) ->
-                "请输入正确的联系人手机号码"
+                R.string.sales_validation_phone
 
-            guardianRelation.isBlank() -> "请输入与老人关系"
-            liveAddress.isBlank() -> "请输入居住地址"
+            guardianRelation.isBlank() -> R.string.sales_registration_relation_hint
+            liveAddress.isBlank() -> R.string.sales_registration_address_hint
             else -> null
         }
 

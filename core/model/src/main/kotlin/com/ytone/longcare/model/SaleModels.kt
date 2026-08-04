@@ -177,14 +177,4 @@ object UserLatentCheckState {
     const val PENDING_REVIEW = 1
     const val APPROVED = 2
     const val REJECTED = 3
-
-    fun label(value: Int): String =
-        when (value) {
-            ALL -> "全部"
-            NOT_SUBMITTED -> "未申报"
-            PENDING_REVIEW -> "待审核"
-            APPROVED -> "审核通过"
-            REJECTED -> "审核被拒绝"
-            else -> "未知($value)"
-        }
 }

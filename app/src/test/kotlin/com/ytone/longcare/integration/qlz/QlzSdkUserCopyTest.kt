@@ -14,11 +14,12 @@ class QlzSdkUserCopyTest {
                 "缺少 QLZ_SDK_KEY，请检查 local.properties",
                 "设备 ID 为空",
             )
+        val fallbackMessage = "评估暂时无法继续，请稍后重试"
 
         technicalMessages.forEach { message ->
             assertEquals(
-                "评估暂时无法继续，请稍后重试",
-                message.toUserFacingEvaluationError(),
+                fallbackMessage,
+                message.toUserFacingEvaluationError(fallbackMessage),
             )
         }
     }
@@ -27,7 +28,9 @@ class QlzSdkUserCopyTest {
     fun `actionable device guidance is preserved`() {
         assertEquals(
             "请打开蓝牙后重试",
-            "请打开蓝牙后重试".toUserFacingEvaluationError(),
+            "请打开蓝牙后重试".toUserFacingEvaluationError(
+                fallbackMessage = "评估暂时无法继续，请稍后重试"
+            ),
         )
     }
 }

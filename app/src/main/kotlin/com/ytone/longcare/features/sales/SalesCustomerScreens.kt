@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
@@ -57,6 +58,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.R
 import com.ytone.longcare.model.UserLatentCheckState
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
@@ -90,14 +92,13 @@ internal fun SalesCustomerListScreen(
     val latestOnLoadMore by rememberUpdatedState(onLoadMore)
     val loadingIndicatorState =
         rememberContentLoadingIndicatorState(isLoading = isLoading)
-    val useLargeTextLayout = useSalesLargeTextLayout()
     val tabs =
         listOf(
-            UserLatentCheckState.ALL to "全部",
-            UserLatentCheckState.NOT_SUBMITTED to "未审核",
-            UserLatentCheckState.PENDING_REVIEW to "待审核",
-            UserLatentCheckState.APPROVED to "通过",
-            UserLatentCheckState.REJECTED to "未通过",
+            UserLatentCheckState.ALL,
+            UserLatentCheckState.NOT_SUBMITTED,
+            UserLatentCheckState.PENDING_REVIEW,
+            UserLatentCheckState.APPROVED,
+            UserLatentCheckState.REJECTED,
         )
 
     LaunchedEffect(keyword, selectedState) {
@@ -146,7 +147,7 @@ internal fun SalesCustomerListScreen(
                 .navigationBarsPadding(),
     ) {
         SalesTopBar(
-            title = "我的客户",
+            title = stringResource(R.string.sales_customer_list_title),
             onBack = onBack,
         )
         OutlinedTextField(
@@ -164,7 +165,7 @@ internal fun SalesCustomerListScreen(
                     .heightIn(min = 56.dp),
             placeholder = {
                 Text(
-                    text = "请输入关键词搜索",
+                    text = stringResource(R.string.sales_customer_search_hint),
                     color = Color(0xFF757A82),
                     fontSize = 16.sp,
                     lineHeight = 22.sp,
@@ -206,43 +207,23 @@ internal fun SalesCustomerListScreen(
             }
             focusManager.clearFocus()
         }
-        if (useLargeTextLayout) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .selectableGroup()
-                        .testTag("customer_status_tabs")
-                        .padding(horizontal = 18.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                tabs.forEach { (state, label) ->
-                    SalesCustomerStatusTab(
-                        label = label,
-                        selected = selectedState == state,
-                        onClick = { onTabSelected(state) },
-                        modifier = Modifier.widthIn(min = 72.dp),
-                    )
-                }
-            }
-        } else {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .selectableGroup()
-                        .testTag("customer_status_tabs")
-                        .padding(horizontal = 18.dp, vertical = 8.dp),
-            ) {
-                tabs.forEach { (state, label) ->
-                    SalesCustomerStatusTab(
-                        label = label,
-                        selected = selectedState == state,
-                        onClick = { onTabSelected(state) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .selectableGroup()
+                    .testTag("customer_status_tabs")
+                    .padding(horizontal = 18.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            tabs.forEach { state ->
+                SalesCustomerStatusTab(
+                    label = state.toSalesCheckStateLabel(),
+                    selected = selectedState == state,
+                    onClick = { onTabSelected(state) },
+                    modifier = Modifier.widthIn(min = 72.dp),
+                )
             }
         }
         Box(
@@ -276,12 +257,12 @@ internal fun SalesCustomerListScreen(
                             verticalArrangement = Arrangement.Center,
                         ) {
                             Text(
-                                text = "暂无符合条件的客户",
+                                text = stringResource(R.string.sales_customer_empty_title),
                                 color = SalesTextPrimary,
                                 fontSize = 16.sp,
                             )
                             Text(
-                                text = "可切换审核状态或修改搜索关键词",
+                                text = stringResource(R.string.sales_customer_empty_hint),
                                 color = SalesTextSecondary,
                                 fontSize = 13.sp,
                             )
@@ -315,7 +296,7 @@ internal fun SalesCustomerListScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "正在加载更多客户",
+                                text = stringResource(R.string.sales_customer_loading_more),
                                 color = SalesTextSecondary,
                                 fontSize = 13.sp,
                             )
@@ -340,7 +321,7 @@ internal fun SalesCustomerListScreen(
                                 fontSize = 13.sp,
                             )
                             Text(
-                                text = "点击重试",
+                                text = stringResource(R.string.sales_common_retry),
                                 color = SalesBlue,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
@@ -432,7 +413,10 @@ private fun SalesCustomerListCard(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = customer.userName.ifBlank { "未命名客户" },
+                text =
+                    customer.userName.ifBlank {
+                        stringResource(R.string.sales_customer_unnamed)
+                    },
                 color = SalesTextPrimary,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
@@ -440,7 +424,10 @@ private fun SalesCustomerListCard(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = customer.liveAddress.ifBlank { "地址待补充" },
+                text =
+                    customer.liveAddress.ifBlank {
+                        stringResource(R.string.sales_customer_address_pending)
+                    },
                 color = SalesTextSecondary,
                 fontSize = 13.sp,
                 maxLines = 1,
@@ -449,14 +436,15 @@ private fun SalesCustomerListCard(
         }
         Text(
             text = customer.checkState.toSalesCheckStateLabel(),
-            color = SalesTextSecondary,
+            color = customer.checkState.toSalesCheckStateColor(),
             fontSize = 13.sp,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = "查看详情",
+            contentDescription =
+                stringResource(R.string.sales_customer_view_detail_description),
             tint = Color(0xFFB8C9DF),
         )
     }
@@ -480,7 +468,7 @@ internal fun SalesCustomerDetailScreen(
                 .navigationBarsPadding(),
     ) {
         SalesTopBar(
-            title = "客户详情",
+            title = stringResource(R.string.sales_customer_detail_title),
             onBack = onBack,
         )
         if (customer == null) {
@@ -507,7 +495,7 @@ internal fun SalesCustomerDetailScreen(
             item {
                 Column {
                     SalesSectionTab(
-                        text = "客户信息",
+                        text = stringResource(R.string.sales_customer_info_section),
                         colors =
                             listOf(
                                 Color(0xFF26F57A),
@@ -527,28 +515,43 @@ internal fun SalesCustomerDetailScreen(
                                 ),
                         verticalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
-                        SalesInfoRow("姓名：", customer.userName.orEmpty())
                         SalesInfoRow(
-                            "年龄：",
+                            stringResource(R.string.sales_customer_label_name),
+                            customer.userName.orEmpty(),
+                        )
+                        SalesInfoRow(
+                            stringResource(R.string.sales_customer_label_age),
                             identityCardAge(customer.identityCardNumber.orEmpty())
                                 ?.toString()
                                 .orEmpty(),
                         )
                         SalesInfoRow(
-                            "身份证号：",
+                            stringResource(R.string.sales_customer_label_identity_number),
                             customer.identityCardNumber.orEmpty(),
                         )
-                        SalesInfoRow("联系人：", customer.guardianName.orEmpty())
-                        SalesInfoRow("手机号码：", customer.guardianPhone.orEmpty())
-                        SalesInfoRow("关系：", customer.guardianRelation.orEmpty())
-                        SalesInfoRow("地址：", customer.liveAddress.orEmpty())
+                        SalesInfoRow(
+                            stringResource(R.string.sales_customer_label_contact),
+                            customer.guardianName.orEmpty(),
+                        )
+                        SalesInfoRow(
+                            stringResource(R.string.sales_customer_label_phone),
+                            customer.guardianPhone.orEmpty(),
+                        )
+                        SalesInfoRow(
+                            stringResource(R.string.sales_customer_label_relation),
+                            customer.guardianRelation.orEmpty(),
+                        )
+                        SalesInfoRow(
+                            stringResource(R.string.sales_customer_label_address),
+                            customer.liveAddress.orEmpty(),
+                        )
                     }
                 }
             }
             item {
                 Column {
                     SalesSectionTab(
-                        text = "其他信息",
+                        text = stringResource(R.string.sales_customer_other_info_section),
                         colors =
                             listOf(
                                 Color(0xFFFFF05B),
@@ -564,23 +567,21 @@ internal fun SalesCustomerDetailScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         SalesInfoRow(
-                            label = "申报状态：",
-                            value = "已申报",
-                            valueColor = Color(0xFF2696EB),
+                            label = stringResource(R.string.sales_customer_label_declaration),
+                            value = customer.checkStatus.toSalesCheckStateLabel(),
+                            valueColor = customer.checkStatus.toSalesCheckStateColor(),
                         )
                         SalesInfoRow(
-                            label = "评估：",
+                            label = stringResource(R.string.sales_customer_label_evaluation),
                             value =
                                 if (hasEvaluation) {
-                                    buildString {
-                                        append("已评估")
-                                        if (customer.pgResult.orEmpty().isNotBlank()) {
-                                            append("，评估结果：\n")
-                                            append(customer.pgResult.orEmpty())
-                                        }
+                                    customer.pgResult.orEmpty().ifBlank {
+                                        stringResource(
+                                            R.string.sales_customer_no_evaluation_result
+                                        )
                                     }
                                 } else {
-                                    "未评估"
+                                    stringResource(R.string.sales_customer_no_evaluation)
                                 },
                         )
                     }
@@ -588,21 +589,21 @@ internal fun SalesCustomerDetailScreen(
             }
             item {
                 SalesOutlinedActionButton(
-                    text = "返回",
+                    text = stringResource(R.string.common_back),
                     onClick = onBack,
                 )
             }
             if (!hasEvaluation) {
                 item {
                     SalesPrimaryButton(
-                        text = "立即评估",
+                        text = stringResource(R.string.sales_customer_evaluate_now),
                         onClick = { onEvaluate(customer.id) },
                     )
                 }
             } else if (customer.pgUrl.orEmpty().isNotBlank()) {
                 item {
                     SalesPrimaryButton(
-                        text = "查看评估报告",
+                        text = stringResource(R.string.sales_customer_view_report),
                         onClick = onOpenReport,
                     )
                 }
@@ -637,7 +638,7 @@ private fun SalesCustomerDetailPlaceholder(
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "正在加载客户信息…",
+                    text = stringResource(R.string.sales_customer_loading_detail),
                     color = SalesTextPrimary,
                     fontSize = 16.sp,
                 )
@@ -645,7 +646,7 @@ private fun SalesCustomerDetailPlaceholder(
 
             errorMessage != null -> {
                 Text(
-                    text = "客户信息加载失败",
+                    text = stringResource(R.string.sales_customer_detail_load_failed),
                     color = SalesTextPrimary,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Medium,
@@ -662,13 +663,16 @@ private fun SalesCustomerDetailPlaceholder(
                     onClick = onRetry,
                     modifier = Modifier.testTag("customer_detail_retry"),
                 ) {
-                    Text(text = "重新加载", color = SalesBlue)
+                    Text(
+                        text = stringResource(R.string.sales_common_reload),
+                        color = SalesBlue,
+                    )
                 }
             }
 
             else -> {
                 Text(
-                    text = "暂无客户信息",
+                    text = stringResource(R.string.sales_customer_no_detail),
                     color = SalesTextPrimary,
                     fontSize = 16.sp,
                 )

@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -86,6 +87,10 @@ internal fun SalesRegistrationScreen(
     onValidationError: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    val cameraUnavailableMessage = stringResource(R.string.sales_error_camera_unavailable)
+    val cameraOpenErrorMessage = stringResource(R.string.sales_error_camera_open)
+    val cameraPermissionMessage = stringResource(R.string.sales_error_camera_permission)
+    val validationMessage = draft.validationMessageRes()?.let { stringResource(it) }
     var showPhotoSourceSheet by rememberSaveable { mutableStateOf(false) }
     var pendingCameraUri by rememberSaveable { mutableStateOf("") }
     val currentPhotoUris by rememberUpdatedState(photoUris)
@@ -126,7 +131,7 @@ internal fun SalesRegistrationScreen(
         )
     val launchCameraCapture: () -> Unit = {
         if (!context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-            currentOnValidationError("当前设备不支持拍照")
+            currentOnValidationError(cameraUnavailableMessage)
         } else {
             runCatching {
                 val cameraUri = FileProviderHelper.createCameraPhotoUri(context)
@@ -142,7 +147,7 @@ internal fun SalesRegistrationScreen(
                         }
                     }
                 pendingCameraUri = ""
-                currentOnValidationError("无法打开相机，请稍后重试")
+                currentOnValidationError(cameraOpenErrorMessage)
             }
         }
     }
@@ -153,7 +158,7 @@ internal fun SalesRegistrationScreen(
                 if (granted) {
                     launchCameraCapture()
                 } else {
-                    currentOnValidationError("请允许使用相机后再拍照")
+                    currentOnValidationError(cameraPermissionMessage)
                 }
             },
         )
@@ -176,7 +181,7 @@ internal fun SalesRegistrationScreen(
                 .navigationBarsPadding(),
     ) {
         SalesTopBar(
-            title = "信息登记",
+            title = stringResource(R.string.sales_registration_title),
             onBack = onBack,
         )
         LazyColumn(
@@ -193,7 +198,7 @@ internal fun SalesRegistrationScreen(
             item {
                 SalesRegistrationField(
                     value = draft.userName,
-                    placeholder = "请输入老人姓名",
+                    placeholder = stringResource(R.string.sales_registration_name_hint),
                     onValueChange = {
                         onDraftChange(draft.copy(userName = it))
                     },
@@ -202,7 +207,8 @@ internal fun SalesRegistrationScreen(
             item {
                 SalesRegistrationField(
                     value = draft.identityCardNumber,
-                    placeholder = "请输入老人身份证号码",
+                    placeholder =
+                        stringResource(R.string.sales_registration_identity_hint),
                     onValueChange = {
                         onDraftChange(
                             draft.copy(
@@ -219,7 +225,8 @@ internal fun SalesRegistrationScreen(
             item {
                 SalesRegistrationField(
                     value = draft.guardianName,
-                    placeholder = "请输入联系人",
+                    placeholder =
+                        stringResource(R.string.sales_registration_contact_hint),
                     onValueChange = {
                         onDraftChange(draft.copy(guardianName = it))
                     },
@@ -228,7 +235,8 @@ internal fun SalesRegistrationScreen(
             item {
                 SalesRegistrationField(
                     value = draft.guardianPhone,
-                    placeholder = "请输入联系人手机号码",
+                    placeholder =
+                        stringResource(R.string.sales_registration_phone_hint),
                     onValueChange = {
                         onDraftChange(
                             draft.copy(
@@ -242,7 +250,8 @@ internal fun SalesRegistrationScreen(
             item {
                 SalesRegistrationField(
                     value = draft.guardianRelation,
-                    placeholder = "请输入与老人关系",
+                    placeholder =
+                        stringResource(R.string.sales_registration_relation_hint),
                     onValueChange = {
                         onDraftChange(draft.copy(guardianRelation = it))
                     },
@@ -251,7 +260,8 @@ internal fun SalesRegistrationScreen(
             item {
                 SalesRegistrationField(
                     value = draft.liveAddress,
-                    placeholder = "请输入居住地址",
+                    placeholder =
+                        stringResource(R.string.sales_registration_address_hint),
                     onValueChange = {
                         onDraftChange(draft.copy(liveAddress = it))
                     },
@@ -264,9 +274,9 @@ internal fun SalesRegistrationScreen(
                     SalesPrimaryButton(
                         text =
                             if (location == null) {
-                                "获取定位"
+                                stringResource(R.string.sales_registration_get_location)
                             } else {
-                                "重新定位"
+                                stringResource(R.string.sales_registration_refresh_location)
                             },
                         onClick = onRequestLocation,
                         modifier = Modifier.fillMaxWidth(0.46f),
@@ -274,8 +284,11 @@ internal fun SalesRegistrationScreen(
                     if (location != null) {
                         Text(
                             text =
-                                "已定位：${"%.6f".format(location.latitude)}, " +
-                                    "%.6f".format(location.longitude),
+                                stringResource(
+                                    R.string.sales_registration_location_format,
+                                    location.latitude,
+                                    location.longitude,
+                                ),
                             color = Color.White,
                             fontSize = 12.sp,
                         )
@@ -284,7 +297,7 @@ internal fun SalesRegistrationScreen(
             }
             item {
                 Text(
-                    text = "照片",
+                    text = stringResource(R.string.sales_registration_photos),
                     color = Color.White,
                     fontSize = 15.sp,
                 )
@@ -318,13 +331,12 @@ internal fun SalesRegistrationScreen(
             item {
                 Spacer(Modifier.height(4.dp))
                 SalesPrimaryButton(
-                    text = "提交",
+                    text = stringResource(R.string.sales_registration_submit),
                     onClick = {
-                        val error = draft.validationMessage()
-                        if (error == null) {
+                        if (validationMessage == null) {
                             onContinue()
                         } else {
-                            onValidationError(error)
+                            onValidationError(validationMessage)
                         }
                     },
                 )
@@ -381,14 +393,14 @@ private fun SalesPhotoSourceSheet(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        text = "添加照片",
+                        text = stringResource(R.string.sales_photo_add),
                         color = SalesTextPrimary,
                         fontSize = 22.sp,
                         lineHeight = 28.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = "请选择照片来源，最多可添加 3 张",
+                        text = stringResource(R.string.sales_photo_source_hint),
                         color = SalesTextSecondary,
                         fontSize = 14.sp,
                         lineHeight = 20.sp,
@@ -397,7 +409,7 @@ private fun SalesPhotoSourceSheet(
                 IconButton(onClick = onDismiss) {
                     Icon(
                         imageVector = Icons.Rounded.Close,
-                        contentDescription = "关闭",
+                        contentDescription = stringResource(R.string.sales_common_close),
                         tint = SalesTextSecondary,
                     )
                 }
@@ -413,8 +425,9 @@ private fun SalesPhotoSourceSheet(
             ) {
                 SalesPhotoSourceOption(
                     icon = Icons.Rounded.PhotoCamera,
-                    title = "拍照",
-                    description = "使用相机拍摄照片",
+                    title = stringResource(R.string.sales_photo_camera_title),
+                    description =
+                        stringResource(R.string.sales_photo_camera_description),
                     onClick = onCamera,
                 )
                 HorizontalDivider(
@@ -423,8 +436,9 @@ private fun SalesPhotoSourceSheet(
                 )
                 SalesPhotoSourceOption(
                     icon = Icons.Rounded.PhotoLibrary,
-                    title = "从相册选择",
-                    description = "从设备中选择已有照片",
+                    title = stringResource(R.string.sales_photo_gallery_title),
+                    description =
+                        stringResource(R.string.sales_photo_gallery_description),
                     onClick = onGallery,
                 )
             }
@@ -547,7 +561,7 @@ private fun SalesPhotoThumbnail(
     ) {
         AsyncImage(
             model = uri,
-            contentDescription = "照片",
+            contentDescription = stringResource(R.string.sales_photo_description),
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
         )
@@ -564,7 +578,8 @@ private fun SalesPhotoThumbnail(
         ) {
             Icon(
                 imageVector = Icons.Rounded.Close,
-                contentDescription = "移除照片",
+                contentDescription =
+                    stringResource(R.string.sales_photo_remove_description),
                 tint = Color.White,
                 modifier = Modifier.size(16.dp),
             )
@@ -588,7 +603,7 @@ private fun SalesPhotoAddButton(
     ) {
         Icon(
             imageVector = Icons.Rounded.Add,
-            contentDescription = "添加照片",
+            contentDescription = stringResource(R.string.sales_photo_add_description),
             tint = SalesBlue,
             modifier = Modifier.size(35.dp),
         )
@@ -610,7 +625,7 @@ internal fun SalesInformationConfirmationScreen(
                 .navigationBarsPadding(),
     ) {
         SalesTopBar(
-            title = "信息确认",
+            title = stringResource(R.string.sales_confirmation_title),
             onBack = onBack,
         )
         LazyColumn(
@@ -633,18 +648,36 @@ internal fun SalesInformationConfirmationScreen(
                             .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
-                    SalesInfoRow("姓名：", draft.userName)
                     SalesInfoRow(
-                        "年龄：",
+                        stringResource(R.string.sales_customer_label_name),
+                        draft.userName,
+                    )
+                    SalesInfoRow(
+                        stringResource(R.string.sales_customer_label_age),
                         identityCardAge(draft.identityCardNumber)
                             ?.toString()
                             .orEmpty(),
                     )
-                    SalesInfoRow("身份证号：", draft.identityCardNumber)
-                    SalesInfoRow("联系人：", draft.guardianName)
-                    SalesInfoRow("手机号码：", draft.guardianPhone)
-                    SalesInfoRow("关系：", draft.guardianRelation)
-                    SalesInfoRow("地址：", draft.liveAddress)
+                    SalesInfoRow(
+                        stringResource(R.string.sales_customer_label_identity_number),
+                        draft.identityCardNumber,
+                    )
+                    SalesInfoRow(
+                        stringResource(R.string.sales_customer_label_contact),
+                        draft.guardianName,
+                    )
+                    SalesInfoRow(
+                        stringResource(R.string.sales_customer_label_phone),
+                        draft.guardianPhone,
+                    )
+                    SalesInfoRow(
+                        stringResource(R.string.sales_customer_label_relation),
+                        draft.guardianRelation,
+                    )
+                    SalesInfoRow(
+                        stringResource(R.string.sales_customer_label_address),
+                        draft.liveAddress,
+                    )
                     if (photoUris.isNotEmpty()) {
                         Spacer(Modifier.height(4.dp))
                         Row(
@@ -654,7 +687,8 @@ internal fun SalesInformationConfirmationScreen(
                             photoUris.forEach { uri ->
                                 AsyncImage(
                                     model = uri,
-                                    contentDescription = "照片",
+                                    contentDescription =
+                                        stringResource(R.string.sales_photo_description),
                                     modifier =
                                         Modifier
                                             .weight(1f)
@@ -675,7 +709,7 @@ internal fun SalesInformationConfirmationScreen(
             }
             item {
                 SalesPrimaryButton(
-                    text = "确定提交",
+                    text = stringResource(R.string.sales_confirmation_submit),
                     onClick = onSubmit,
                 )
             }
@@ -696,7 +730,7 @@ internal fun SalesSubmitSuccessScreen(
                 .navigationBarsPadding(),
     ) {
         SalesTopBar(
-            title = "信息提交结果",
+            title = stringResource(R.string.sales_submission_result_title),
             onBack = onBack,
         )
         LazyColumn(
@@ -711,7 +745,9 @@ internal fun SalesSubmitSuccessScreen(
             verticalArrangement = Arrangement.spacedBy(34.dp),
         ) {
             item {
-                SalesSuccessPanel(title = "信息提交成功")
+                SalesSuccessPanel(
+                    title = stringResource(R.string.sales_submission_success)
+                )
             }
             item {
                 if (useSalesLargeTextLayout()) {
@@ -720,11 +756,15 @@ internal fun SalesSubmitSuccessScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         SalesOutlinedActionButton(
-                            text = "确认并返回",
+                            text =
+                                stringResource(R.string.sales_submission_confirm_return),
                             onClick = onBack,
                         )
                         SalesPrimaryButton(
-                            text = "进行评估",
+                            text =
+                                stringResource(
+                                    R.string.sales_submission_start_evaluation
+                                ),
                             onClick = onEvaluation,
                         )
                     }
@@ -734,12 +774,16 @@ internal fun SalesSubmitSuccessScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         SalesOutlinedActionButton(
-                            text = "确认并返回",
+                            text =
+                                stringResource(R.string.sales_submission_confirm_return),
                             onClick = onBack,
                             modifier = Modifier.weight(1f),
                         )
                         SalesPrimaryButton(
-                            text = "进行评估",
+                            text =
+                                stringResource(
+                                    R.string.sales_submission_start_evaluation
+                                ),
                             onClick = onEvaluation,
                             modifier = Modifier.weight(1f),
                         )
@@ -765,7 +809,7 @@ internal fun SalesEvaluationChoiceScreen(
                 .navigationBarsPadding(),
     ) {
         SalesTopBar(
-            title = "信息提交结果",
+            title = stringResource(R.string.sales_submission_result_title),
             onBack = onBack,
         )
         LazyColumn(
@@ -819,14 +863,15 @@ private fun SalesAutomaticEvaluationChoiceCard(
     modifier: Modifier = Modifier,
 ) {
     SalesEvaluationChoiceCard(
-        title = "设备自动评估",
-        subtitle = "手握住设备即可评估完成",
+        title = stringResource(R.string.sales_evaluation_automatic_title),
+        subtitle = stringResource(R.string.sales_evaluation_automatic_subtitle),
         onClick = onClick,
         modifier = modifier,
     ) {
         Image(
             painter = painterResource(R.drawable.sales_qlz_device_design),
-            contentDescription = "健康评估设备",
+            contentDescription =
+                stringResource(R.string.sales_evaluation_device_image_description),
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -842,8 +887,8 @@ private fun SalesFormEvaluationChoiceCard(
     modifier: Modifier = Modifier,
 ) {
     SalesEvaluationChoiceCard(
-        title = "表单评估",
-        subtitle = "问卷调研形式评估",
+        title = stringResource(R.string.sales_evaluation_form_title),
+        subtitle = stringResource(R.string.sales_evaluation_form_subtitle),
         onClick = onClick,
         modifier = modifier,
     ) {

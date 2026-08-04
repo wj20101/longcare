@@ -2,6 +2,7 @@ package com.ytone.longcare.features.sales
 
 import android.content.Context
 import android.net.Uri
+import com.ytone.longcare.R
 import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.CosUtils
@@ -110,7 +111,12 @@ class SalesViewModelSubmissionTest {
     fun `customer submission stops when COS does not return a key`() =
         runTest {
             val photo = mockk<Uri>()
-            val applicationContext = mockk<Context>(relaxed = true)
+            val applicationContext =
+                mockk<Context>(relaxed = true) {
+                    every {
+                        getString(R.string.sales_error_photo_upload, 1)
+                    } returns "第 1 张照片上传失败，请稍后重试"
+                }
             val upload = uploadParams("content://photo/without-key")
             mockkObject(CosUtils)
             every {

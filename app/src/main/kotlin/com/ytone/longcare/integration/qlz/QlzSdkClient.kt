@@ -13,6 +13,7 @@ import com.evenmed.sdk.call.ErrorCodeConfig
 import com.evenmed.sdk.call.SDKCall
 import com.google.gson.Gson
 import com.ytone.longcare.BuildConfig
+import com.ytone.longcare.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -55,7 +56,7 @@ class QlzSdkClient @Inject constructor(
             QlzSdkInitialization.Ready
         } catch (_: Throwable) {
             QlzSdkInitialization.Failed(
-                "评估服务启动失败，请稍后重试",
+                appContext.getString(R.string.sales_error_evaluation_service_start),
             )
         }
     }
@@ -64,10 +65,14 @@ class QlzSdkClient @Inject constructor(
         runCatching {
             val initialization = initialize()
             check(initialization is QlzSdkInitialization.Ready) {
-                initialization.message
+                initializationMessage(initialization)
             }
             CheckIml.getDeviceId(appContext).orEmpty().also {
-                check(it.isNotBlank()) { "评估设备准备失败" }
+                check(it.isNotBlank()) {
+                    appContext.getString(
+                        R.string.sales_error_evaluation_device_prepare_short
+                    )
+                }
             }
         }
 
@@ -82,7 +87,7 @@ class QlzSdkClient @Inject constructor(
         runCatching {
             val initialization = initialize()
             check(initialization is QlzSdkInitialization.Ready) {
-                initialization.message
+                initializationMessage(initialization)
             }
             CheckIml.getBlueDeviceName()
                 ?.trim()
@@ -98,14 +103,21 @@ class QlzSdkClient @Inject constructor(
             onEvent(
                 QlzSdkEvent.Error(
                     ErrorCodeConfig.error_no_token,
-                    "本次评估已失效，请重新进入",
+                    appContext.getString(
+                        R.string.sales_error_evaluation_expired_short
+                    ),
                 )
             )
             return
         }
         val initialization = initialize()
         if (initialization !is QlzSdkInitialization.Ready) {
-            onEvent(QlzSdkEvent.Error(ErrorCodeConfig.error_no_key, initialization.message))
+            onEvent(
+                QlzSdkEvent.Error(
+                    ErrorCodeConfig.error_no_key,
+                    initializationMessage(initialization),
+                )
+            )
             return
         }
 
@@ -122,7 +134,12 @@ class QlzSdkClient @Inject constructor(
             onEvent(
                 QlzSdkEvent.Error(
                     ErrorCodeConfig.code_othererror,
-                    throwable.message.toUserFacingEvaluationError(),
+                    throwable.message.toUserFacingEvaluationError(
+                        fallbackMessage =
+                            appContext.getString(
+                                R.string.sales_error_evaluation_continue
+                            )
+                    ),
                 )
             )
         }
@@ -166,7 +183,12 @@ class QlzSdkClient @Inject constructor(
                         (
                             errorMsg?.takeIf { it.isNotBlank() }
                                 ?: ErrorCodeConfig.getErrMsg(errorcode)
-                        ).toUserFacingEvaluationError(),
+                        ).toUserFacingEvaluationError(
+                            fallbackMessage =
+                                appContext.getString(
+                                    R.string.sales_error_evaluation_continue
+                                )
+                        ),
                 )
         }
 
@@ -181,8 +203,24 @@ class QlzSdkClient @Inject constructor(
         } catch (_: Throwable) {
             QlzSdkEvent.Error(
                 code = ErrorCodeConfig.error_server_gson,
-                message = "评估结果读取失败，请稍后重试",
+                message =
+                    appContext.getString(R.string.sales_error_evaluation_result_read),
             )
+        }
+
+    private fun initializationMessage(
+        initialization: QlzSdkInitialization,
+    ): String =
+        when (initialization) {
+            QlzSdkInitialization.Ready ->
+                appContext.getString(R.string.sales_evaluation_service_ready)
+
+            QlzSdkInitialization.MissingSdkKey ->
+                appContext.getString(
+                    R.string.sales_error_evaluation_service_configuration
+                )
+
+            is QlzSdkInitialization.Failed -> initialization.message
         }
 
     private companion object {
@@ -195,18 +233,12 @@ class QlzSdkClient @Inject constructor(
 }
 
 sealed interface QlzSdkInitialization {
-    val message: String
+    data object Ready : QlzSdkInitialization
 
-    data object Ready : QlzSdkInitialization {
-        override val message = "评估服务已准备"
-    }
-
-    data object MissingSdkKey : QlzSdkInitialization {
-        override val message = "评估服务配置异常，请联系管理员"
-    }
+    data object MissingSdkKey : QlzSdkInitialization
 
     data class Failed(
-        override val message: String,
+        val message: String,
     ) : QlzSdkInitialization
 }
 
@@ -244,12 +276,14 @@ private val DEVELOPMENT_COPY_PATTERN =
                 """设备\s*ID|错误码|code\s*[:=]|local\.properties""",
     )
 
-internal fun String?.toUserFacingEvaluationError(): String {
+internal fun String?.toUserFacingEvaluationError(
+    fallbackMessage: String,
+): String {
     val candidate = this?.trim().orEmpty()
     return candidate
         .takeIf {
             it.isNotBlank() &&
                 !DEVELOPMENT_COPY_PATTERN.containsMatchIn(it)
         }
-        ?: "评估暂时无法继续，请稍后重试"
+        ?: fallbackMessage
 }

@@ -261,7 +261,7 @@ class SalesLargeFontLayoutTest {
         }
 
         composeRule
-            .onNodeWithText("进入评估页面开始检测")
+            .onNodeWithText("继续评估")
             .performScrollTo()
             .assertIsDisplayed()
     }

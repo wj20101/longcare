@@ -26,10 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ytone.longcare.R
 import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.features.home.ui.AppBottomNavigation
 import com.ytone.longcare.features.home.ui.CustomBottomNavigationItem
@@ -72,14 +74,19 @@ internal fun SalesExperienceScreen(
         runCatching { SalesPage.valueOf(currentPageName) }
             .getOrDefault(SalesPage.HOME)
     val photoUris = photoUriStrings.map(Uri::parse)
+    val selectCustomerMessage = stringResource(R.string.sales_error_select_customer)
+    val evaluationPermissionMessage =
+        stringResource(R.string.sales_error_evaluation_permission)
+    val locationPermissionMessage =
+        stringResource(R.string.sales_error_location_permission)
+    val openEvaluationErrorMessage =
+        stringResource(R.string.sales_error_open_evaluation)
     val bottomItems =
-        remember {
-            listOf(
-                CustomBottomNavigationItem("首页"),
-                CustomBottomNavigationItem("我的客户"),
-                CustomBottomNavigationItem("我的"),
-            )
-        }
+        listOf(
+            CustomBottomNavigationItem(stringResource(R.string.sales_nav_home)),
+            CustomBottomNavigationItem(stringResource(R.string.sales_nav_customers)),
+            CustomBottomNavigationItem(stringResource(R.string.sales_nav_profile)),
+        )
 
     fun showMessage(message: String) {
         coroutineScope.launch {
@@ -116,7 +123,7 @@ internal fun SalesExperienceScreen(
 
     fun startAutomaticEvaluation(customerId: Int) {
         if (customerId <= 0) {
-            showMessage("请先选择需要评估的客户")
+            showMessage(selectCustomerMessage)
             return
         }
         viewModel.prepareEvaluation(customerId)
@@ -191,7 +198,7 @@ internal fun SalesExperienceScreen(
             if (allGranted && activity != null) {
                 viewModel.launchSdk(activity)
             } else {
-                showMessage("请允许附近设备/定位权限后连接评估设备")
+                showMessage(evaluationPermissionMessage)
             }
         }
 
@@ -213,14 +220,14 @@ internal fun SalesExperienceScreen(
             if (granted) {
                 viewModel.onLocationPermissionGranted()
             } else {
-                showMessage("请允许定位权限后获取客户位置")
+                showMessage(locationPermissionMessage)
             }
         }
 
     fun openSdkWithPermission() {
         val hostActivity = activity
         if (hostActivity == null) {
-            showMessage("当前无法打开评估页面，请稍后重试")
+            showMessage(openEvaluationErrorMessage)
             return
         }
         navigate(SalesPage.EVALUATION_GUIDE)

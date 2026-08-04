@@ -2,6 +2,7 @@ package com.ytone.longcare.features.sales
 
 import android.app.Activity
 import android.content.Context
+import com.ytone.longcare.R
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.cos.repository.CosRepository
@@ -106,13 +107,19 @@ class SalesViewModelSdkTokenRecoveryTest {
     private fun createViewModel(
         repository: SaleRepository,
         qlzSdkClient: QlzSdkClient,
-    ): SalesViewModel =
-        SalesViewModel(
+    ): SalesViewModel {
+        val applicationContext =
+            mockk<Context>(relaxed = true) {
+                every { getString(R.string.sales_error_evaluation_expired) } returns
+                    "本次评估已失效，请重新进入评估页面"
+            }
+        return SalesViewModel(
             saleRepository = repository,
             locationFacade = mockk<LocationFacade>(relaxed = true),
             cosRepository = mockk<CosRepository>(relaxed = true),
             qlzSdkClient = qlzSdkClient,
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
-            applicationContext = mockk<Context>(relaxed = true),
+            applicationContext = applicationContext,
         )
+    }
 }

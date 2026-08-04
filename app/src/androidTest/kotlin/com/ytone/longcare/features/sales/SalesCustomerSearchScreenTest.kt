@@ -2,7 +2,7 @@ package com.ytone.longcare.features.sales
 
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasSetTextAction
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
@@ -22,6 +22,41 @@ class SalesCustomerSearchScreenTest {
 
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun statusTabsUseTheCanonicalReviewLabels() {
+        composeRule.setContent {
+            SalesPageBackground {
+                SalesCustomerListScreen(
+                    customers = emptyList(),
+                    isLoading = false,
+                    isLoadingMore = false,
+                    canLoadMore = false,
+                    loadMoreErrorMessage = null,
+                    initialKeyword = "",
+                    initialCheckState = UserLatentCheckState.ALL,
+                    onBack = {},
+                    onSearch = { _, _ -> },
+                    onLoadMore = {},
+                    onCustomerClick = {},
+                )
+            }
+        }
+
+        listOf(
+            "全部",
+            "未申报",
+            "待审核",
+            "审核通过",
+            "审核被拒绝",
+        ).forEach { label ->
+            composeRule.onNodeWithText(label).assertExists()
+        }
+        composeRule.onNodeWithText("搜索客户姓名").assertExists()
+        composeRule
+            .onNodeWithText("可切换状态或修改客户姓名")
+            .assertExists()
+    }
 
     @Test
     fun typingKeywordSwitchesToAllAndTriggersGlobalSearchWithoutImeAction() {

@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.sales
 
 import android.content.Context
+import com.ytone.longcare.R
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.cos.repository.CosRepository
@@ -10,6 +11,7 @@ import com.ytone.longcare.integration.qlz.QlzSdkClient
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
@@ -126,13 +128,19 @@ class SalesViewModelCustomerDetailTest {
             coEvery { getUserLatentDetail(any()) } returns result
         }
 
-    private fun createViewModel(repository: SaleRepository): SalesViewModel =
-        SalesViewModel(
+    private fun createViewModel(repository: SaleRepository): SalesViewModel {
+        val applicationContext =
+            mockk<Context>(relaxed = true) {
+                every { getString(R.string.sales_error_customer_detail_data) } returns
+                    "客户详情数据异常，请重试"
+            }
+        return SalesViewModel(
             saleRepository = repository,
             locationFacade = mockk<LocationFacade>(relaxed = true),
             cosRepository = mockk<CosRepository>(relaxed = true),
             qlzSdkClient = mockk<QlzSdkClient>(relaxed = true),
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
-            applicationContext = mockk<Context>(relaxed = true),
+            applicationContext = applicationContext,
         )
+    }
 }

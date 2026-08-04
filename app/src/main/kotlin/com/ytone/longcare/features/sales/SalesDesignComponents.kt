@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -41,11 +42,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.R
+import com.ytone.longcare.model.UserLatentCheckState
 import java.util.Calendar
 
 internal val SalesBlue = Color(0xFF348CF5)
@@ -103,7 +107,7 @@ internal fun SalesTopBar(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.ArrowBackIosNew,
-                    contentDescription = "返回",
+                    contentDescription = stringResource(R.string.common_back),
                     tint = Color.White,
                     modifier = Modifier.size(25.dp),
                 )
@@ -290,7 +294,7 @@ internal fun SalesLoadingOverlay(
                 strokeWidth = 3.dp,
             )
             Text(
-                text = message.ifBlank { "请稍候" },
+                text = message.ifBlank { stringResource(R.string.sales_common_wait) },
                 color = SalesTextPrimary,
                 fontSize = 15.sp,
             )
@@ -376,13 +380,32 @@ internal fun identityCardAge(identityCardNumber: String): Int? {
     return (currentYear - birthYear).takeIf { it in 0..120 }
 }
 
-internal fun Int.toSalesCheckStateLabel(): String =
+@StringRes
+internal fun Int.toSalesCheckStateLabelRes(): Int =
     when (this) {
-        0 -> "未审核"
-        1 -> "待审核"
-        2 -> "通过"
-        3 -> "未通过"
-        else -> "全部"
+        UserLatentCheckState.ALL -> R.string.sales_check_state_all
+        UserLatentCheckState.NOT_SUBMITTED ->
+            R.string.sales_check_state_not_submitted
+
+        UserLatentCheckState.PENDING_REVIEW ->
+            R.string.sales_check_state_pending_review
+
+        UserLatentCheckState.APPROVED -> R.string.sales_check_state_approved
+        UserLatentCheckState.REJECTED -> R.string.sales_check_state_rejected
+        else -> R.string.sales_check_state_unknown
+    }
+
+@Composable
+internal fun Int.toSalesCheckStateLabel(): String =
+    stringResource(toSalesCheckStateLabelRes())
+
+internal fun Int.toSalesCheckStateColor(): Color =
+    when (this) {
+        UserLatentCheckState.NOT_SUBMITTED -> Color(0xFFF09A00)
+        UserLatentCheckState.PENDING_REVIEW -> Color(0xFF1688F8)
+        UserLatentCheckState.APPROVED -> Color(0xFF20B83D)
+        UserLatentCheckState.REJECTED -> Color(0xFFFF4A19)
+        else -> SalesTextSecondary
     }
 
 internal fun String.displayDate(): String {

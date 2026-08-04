@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -36,7 +37,6 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 import com.ytone.longcare.features.maindashboard.ui.TopHeader
 import com.ytone.longcare.model.User
-import com.ytone.longcare.model.UserLatentCheckState
 import com.ytone.longcare.model.UserLatentListModel
 
 @Composable
@@ -68,7 +68,8 @@ internal fun SalesDashboardScreen(
         item {
             Image(
                 painter = painterResource(R.drawable.sales_home_banner),
-                contentDescription = "居家养老方案",
+                contentDescription =
+                    stringResource(R.string.sales_home_banner_description),
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -85,14 +86,15 @@ internal fun SalesDashboardScreen(
                 ) {
                     SalesHomeFeatureCard(
                         iconRes = R.drawable.sales_home_registration,
-                        title = "对象登记",
-                        subtitle = "客访登记信息",
+                        title = stringResource(R.string.sales_home_registration_title),
+                        subtitle =
+                            stringResource(R.string.sales_home_registration_subtitle),
                         onClick = onRegisterCustomer,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     SalesHomeFeatureCard(
                         iconRes = R.drawable.sales_home_signin,
-                        title = "待办提醒",
+                        title = stringResource(R.string.sales_home_reminder_title),
                         subtitle =
                             toDoCount.toSalesToDoSubtitle(isToDoCountLoading),
                         onClick = onReminders,
@@ -106,14 +108,15 @@ internal fun SalesDashboardScreen(
                 ) {
                     SalesHomeFeatureCard(
                         iconRes = R.drawable.sales_home_registration,
-                        title = "对象登记",
-                        subtitle = "客访登记信息",
+                        title = stringResource(R.string.sales_home_registration_title),
+                        subtitle =
+                            stringResource(R.string.sales_home_registration_subtitle),
                         onClick = onRegisterCustomer,
                         modifier = Modifier.weight(1f),
                     )
                     SalesHomeFeatureCard(
                         iconRes = R.drawable.sales_home_signin,
-                        title = "待办提醒",
+                        title = stringResource(R.string.sales_home_reminder_title),
                         subtitle =
                             toDoCount.toSalesToDoSubtitle(isToDoCountLoading),
                         onClick = onReminders,
@@ -124,7 +127,7 @@ internal fun SalesDashboardScreen(
         }
         item {
             Text(
-                text = "最新客户",
+                text = stringResource(R.string.sales_home_latest_customers),
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -146,12 +149,12 @@ internal fun SalesDashboardScreen(
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
-                        text = "暂无客户",
+                        text = stringResource(R.string.sales_home_no_customers),
                         color = SalesTextPrimary,
                         fontSize = 16.sp,
                     )
                     Text(
-                        text = "登记客户后会显示在这里",
+                        text = stringResource(R.string.sales_home_no_customers_hint),
                         color = SalesTextSecondary,
                         fontSize = 14.sp,
                     )
@@ -231,7 +234,10 @@ private fun SalesLatestCustomerCard(
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = customer.userName.ifBlank { "未命名客户" },
+                    text =
+                        customer.userName.ifBlank {
+                            stringResource(R.string.sales_customer_unnamed)
+                        },
                     modifier = Modifier.weight(1f),
                     color = SalesTextPrimary,
                     fontSize = 17.sp,
@@ -241,15 +247,21 @@ private fun SalesLatestCustomerCard(
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    text = customer.checkState.toSalesHomeCheckStateLabel(),
-                    color = customer.checkState.toSalesHomeCheckStateColor(),
+                    text = customer.checkState.toSalesCheckStateLabel(),
+                    color = customer.checkState.toSalesCheckStateColor(),
                     fontSize = 14.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
-                text = "地址：${customer.liveAddress.ifBlank { "待补充" }}",
+                text =
+                    stringResource(
+                        R.string.sales_customer_address_format,
+                        customer.liveAddress.ifBlank {
+                            stringResource(R.string.sales_customer_address_value_pending)
+                        },
+                    ),
                 color = SalesTextSecondary,
                 fontSize = 14.sp,
                 maxLines = 1,
@@ -258,34 +270,19 @@ private fun SalesLatestCustomerCard(
         }
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = "查看客户",
+            contentDescription = stringResource(R.string.sales_customer_view_description),
             tint = Color(0xFFB9C9DD),
         )
     }
 }
 
+@Composable
 private fun Int?.toSalesToDoSubtitle(isLoading: Boolean): String =
     when {
-        this != null && this > 0 -> "${this}项待处理"
-        this == 0 -> "暂无待办事项"
-        isLoading -> "正在加载待办"
-        else -> "点击查看待办"
-    }
+        this != null && this > 0 ->
+            stringResource(R.string.sales_todo_count_format, this)
 
-private fun Int.toSalesHomeCheckStateLabel(): String =
-    when (this) {
-        UserLatentCheckState.NOT_SUBMITTED -> "未申报"
-        UserLatentCheckState.PENDING_REVIEW -> "待审核"
-        UserLatentCheckState.APPROVED -> "审核通过"
-        UserLatentCheckState.REJECTED -> "审核不通过"
-        else -> "未知状态"
-    }
-
-private fun Int.toSalesHomeCheckStateColor(): Color =
-    when (this) {
-        UserLatentCheckState.NOT_SUBMITTED -> Color(0xFFF09A00)
-        UserLatentCheckState.PENDING_REVIEW -> Color(0xFF1688F8)
-        UserLatentCheckState.APPROVED -> Color(0xFF20B83D)
-        UserLatentCheckState.REJECTED -> Color(0xFFFF4A19)
-        else -> SalesTextSecondary
+        this == 0 -> stringResource(R.string.sales_todo_none)
+        isLoading -> stringResource(R.string.sales_todo_loading)
+        else -> stringResource(R.string.sales_todo_open_hint)
     }

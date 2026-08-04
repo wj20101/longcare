@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,6 +38,28 @@ internal fun SalesDeviceStatusScreen(
     onStartEvaluation: () -> Unit,
 ) {
     val isConnected = !connectedDeviceName.isNullOrBlank()
+    val deviceStatusLabel =
+        stringResource(
+            if (isConnected) {
+                R.string.sales_evaluation_device_connected
+            } else {
+                R.string.sales_evaluation_device_disconnected
+            }
+        )
+    val actionText =
+        when {
+            progressText.isNotBlank() -> progressText
+            isConnected -> stringResource(R.string.sales_evaluation_start)
+            else -> stringResource(R.string.sales_evaluation_connect_and_start)
+        }
+    val statusHint =
+        stringResource(
+            if (tokenReady) {
+                R.string.sales_evaluation_sdk_connection_hint
+            } else {
+                R.string.sales_evaluation_preparing
+            }
+        )
     Column(
         modifier =
             Modifier
@@ -46,7 +69,7 @@ internal fun SalesDeviceStatusScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SalesTopBar(
-            title = "设备检测",
+            title = stringResource(R.string.sales_evaluation_device_status_title),
             onBack = onBack,
         )
         LazyColumn(
@@ -63,7 +86,7 @@ internal fun SalesDeviceStatusScreen(
         ) {
             item {
                 Text(
-                    text = "当前设备状态",
+                    text = stringResource(R.string.sales_evaluation_device_status),
                     color = Color.White,
                     fontSize = 16.sp,
                     modifier = Modifier.padding(bottom = 12.dp),
@@ -86,7 +109,10 @@ internal fun SalesDeviceStatusScreen(
                 ) {
                     Image(
                         painter = painterResource(R.drawable.sales_qlz_device_design),
-                        contentDescription = "健康评估设备",
+                        contentDescription =
+                            stringResource(
+                                R.string.sales_evaluation_device_image_description
+                            ),
                         modifier =
                             Modifier
                                 .width(200.dp)
@@ -95,12 +121,7 @@ internal fun SalesDeviceStatusScreen(
                     )
                     SalesStatusBadge(
                         connected = isConnected,
-                        label =
-                            if (isConnected) {
-                                "设备已连接"
-                            } else {
-                                "设备未连接"
-                            },
+                        label = deviceStatusLabel,
                     )
                     if (isConnected) {
                         Text(
@@ -115,24 +136,14 @@ internal fun SalesDeviceStatusScreen(
             }
             item {
                 SalesPrimaryButton(
-                    text =
-                        when {
-                            progressText.isNotBlank() -> progressText
-                            isConnected -> "开始评估"
-                            else -> "连接设备并开始评估"
-                        },
+                    text = actionText,
                     onClick = onStartEvaluation,
                     enabled = tokenReady,
                 )
             }
             item {
                 Text(
-                    text =
-                        if (tokenReady) {
-                            "进入评估页面后，请按页面提示连接设备"
-                        } else {
-                            "正在准备评估…"
-                        },
+                    text = statusHint,
                     color = Color.White.copy(alpha = 0.82f),
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
@@ -150,6 +161,31 @@ internal fun SalesEvaluationGuideScreen(
     onBack: () -> Unit,
     onOpenSdk: () -> Unit,
 ) {
+    val isConnected = !connectedDeviceName.isNullOrBlank()
+    val deviceStatusLabel =
+        stringResource(
+            if (isConnected) {
+                R.string.sales_evaluation_device_connected
+            } else {
+                R.string.sales_evaluation_device_disconnected
+            }
+        )
+    val guideText =
+        stringResource(
+            if (isConnected) {
+                R.string.sales_evaluation_guide_connected
+            } else {
+                R.string.sales_evaluation_guide_disconnected
+            }
+        )
+    val defaultActionText =
+        stringResource(
+            if (isConnected) {
+                R.string.sales_evaluation_continue
+            } else {
+                R.string.sales_evaluation_connect_and_start
+            }
+        )
     Column(
         modifier =
             Modifier
@@ -159,7 +195,7 @@ internal fun SalesEvaluationGuideScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SalesTopBar(
-            title = "评估",
+            title = stringResource(R.string.sales_evaluation_title),
             onBack = onBack,
         )
         LazyColumn(
@@ -176,7 +212,7 @@ internal fun SalesEvaluationGuideScreen(
         ) {
             item {
                 Text(
-                    text = "设备已连接成功，请按照图示进行评估检测",
+                    text = guideText,
                     color = Color.White,
                     fontSize = 15.sp,
                     textAlign = TextAlign.Center,
@@ -206,13 +242,16 @@ internal fun SalesEvaluationGuideScreen(
                             contentScale = ContentScale.Fit,
                         )
                         SalesStatusBadge(
-                            connected = true,
-                            label = "设备已连接",
+                            connected = isConnected,
+                            label = deviceStatusLabel,
                         )
                     }
                     Image(
                         painter = painterResource(R.drawable.sales_evaluation_instruction),
-                        contentDescription = "握持设备评估示意图",
+                        contentDescription =
+                            stringResource(
+                                R.string.sales_evaluation_hold_device_description
+                            ),
                         modifier =
                             Modifier
                                 .fillMaxWidth()
@@ -220,7 +259,7 @@ internal fun SalesEvaluationGuideScreen(
                         contentScale = ContentScale.Fit,
                     )
                     Text(
-                        text = "请将每根手指触碰到相应的金属片",
+                        text = stringResource(R.string.sales_evaluation_finger_instruction),
                         color = Color(0xFF282828),
                         fontSize = 16.sp,
                         textAlign = TextAlign.Center,
@@ -229,14 +268,18 @@ internal fun SalesEvaluationGuideScreen(
             }
             item {
                 SalesPrimaryButton(
-                    text = progressText.ifBlank { "进入评估页面开始检测" },
+                    text = progressText.ifBlank { defaultActionText },
                     onClick = onOpenSdk,
                 )
             }
             if (!connectedDeviceName.isNullOrBlank()) {
                 item {
                     Text(
-                        text = "当前设备：$connectedDeviceName",
+                        text =
+                            stringResource(
+                                R.string.sales_evaluation_current_device,
+                                connectedDeviceName,
+                            ),
                         color = Color.White.copy(alpha = 0.78f),
                         fontSize = 11.sp,
                         textAlign = TextAlign.Center,
@@ -262,7 +305,7 @@ internal fun SalesEvaluationCompleteScreen(
                 .navigationBarsPadding(),
     ) {
         SalesTopBar(
-            title = "评估完成",
+            title = stringResource(R.string.sales_evaluation_complete_title),
             onBack = onBack,
         )
         LazyColumn(
@@ -277,18 +320,20 @@ internal fun SalesEvaluationCompleteScreen(
             verticalArrangement = Arrangement.spacedBy(26.dp),
         ) {
             item {
-                SalesSuccessPanel(title = "评估成功")
+                SalesSuccessPanel(
+                    title = stringResource(R.string.sales_evaluation_success)
+                )
             }
             item {
                 SalesOutlinedActionButton(
-                    text = "完成",
+                    text = stringResource(R.string.sales_common_done),
                     onClick = onDone,
                 )
             }
             if (hasReport) {
                 item {
                     SalesPrimaryButton(
-                        text = "查看评估报告",
+                        text = stringResource(R.string.sales_customer_view_report),
                         onClick = onOpenReport,
                     )
                 }

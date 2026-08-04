@@ -27,10 +27,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.R
 import com.ytone.longcare.model.ToDoResultModel
 
 @Composable
@@ -50,7 +52,7 @@ internal fun SalesReminderListScreen(
                 .navigationBarsPadding(),
     ) {
         SalesTopBar(
-            title = "待办提醒",
+            title = stringResource(R.string.sales_reminder_list_title),
             onBack = onBack,
         )
         LazyColumn(
@@ -108,7 +110,10 @@ internal fun SalesReminderListScreen(
                                 overflow = TextOverflow.Ellipsis,
                             )
                             TextButton(onClick = onRetry) {
-                                Text(text = "重新加载", color = SalesBlue)
+                                Text(
+                                    text = stringResource(R.string.sales_common_reload),
+                                    color = SalesBlue,
+                                )
                             }
                         }
                     }
@@ -127,12 +132,12 @@ internal fun SalesReminderListScreen(
                             verticalArrangement = Arrangement.Center,
                         ) {
                             Text(
-                                text = "暂无待办提醒",
+                                text = stringResource(R.string.sales_reminder_empty_title),
                                 color = SalesTextPrimary,
                                 fontSize = 17.sp,
                             )
                             Text(
-                                text = "新的待办事项会显示在这里",
+                                text = stringResource(R.string.sales_reminder_empty_hint),
                                 color = SalesTextSecondary,
                                 fontSize = 13.sp,
                             )
@@ -172,7 +177,10 @@ private fun SalesReminderCard(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = reminder.title.orEmpty().ifBlank { "待办事项" },
+                text =
+                    reminder.title.orEmpty().ifBlank {
+                        stringResource(R.string.sales_reminder_default_title)
+                    },
                 color = SalesTextPrimary,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Medium,
@@ -182,7 +190,7 @@ private fun SalesReminderCard(
             Text(
                 text =
                     reminder.createTime.orEmpty().ifBlank {
-                        "提醒时间待安排"
+                        stringResource(R.string.sales_reminder_time_pending)
                     },
                 color = SalesTextSecondary,
                 fontSize = 14.sp,
@@ -190,7 +198,7 @@ private fun SalesReminderCard(
         }
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = "查看待办详情",
+            contentDescription = stringResource(R.string.sales_reminder_view_description),
             tint = Color(0xFFB7C8DC),
         )
     }
@@ -209,7 +217,7 @@ internal fun SalesReminderDetailScreen(
                 .navigationBarsPadding(),
     ) {
         SalesTopBar(
-            title = "待办提醒详情",
+            title = stringResource(R.string.sales_reminder_detail_title),
             onBack = onBack,
         )
         LazyColumn(
@@ -234,7 +242,7 @@ internal fun SalesReminderDetailScreen(
                     Text(
                         text =
                             reminder?.title.orEmpty().ifBlank {
-                                "待办事项"
+                                stringResource(R.string.sales_reminder_default_title)
                             },
                         modifier = Modifier.fillMaxWidth(),
                         color = SalesTextPrimary,
@@ -245,7 +253,7 @@ internal fun SalesReminderDetailScreen(
                     )
                     Spacer(Modifier.height(28.dp))
                     Text(
-                        text = "事项详情：",
+                        text = stringResource(R.string.sales_reminder_detail_label),
                         color = Color.Black,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
@@ -253,7 +261,7 @@ internal fun SalesReminderDetailScreen(
                     Text(
                         text =
                             reminder?.content.orEmpty().ifBlank {
-                                "暂无详细说明"
+                                stringResource(R.string.sales_reminder_no_detail)
                             },
                         color = SalesTextSecondary,
                         fontSize = 16.sp,
@@ -261,7 +269,7 @@ internal fun SalesReminderDetailScreen(
                     )
                     Spacer(Modifier.height(26.dp))
                     Text(
-                        text = "提醒时间：",
+                        text = stringResource(R.string.sales_reminder_time_label),
                         color = Color.Black,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
@@ -269,7 +277,7 @@ internal fun SalesReminderDetailScreen(
                     Text(
                         text =
                             reminder?.createTime.orEmpty().ifBlank {
-                                "待安排"
+                                stringResource(R.string.sales_reminder_pending)
                             },
                         color = SalesTextSecondary,
                         fontSize = 16.sp,
@@ -278,7 +286,7 @@ internal fun SalesReminderDetailScreen(
             }
             item {
                 SalesOutlinedActionButton(
-                    text = "返回",
+                    text = stringResource(R.string.common_back),
                     onClick = onBack,
                 )
             }
