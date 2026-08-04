@@ -28,13 +28,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -454,7 +455,7 @@ private fun SalesCustomerListCard(
             overflow = TextOverflow.Ellipsis,
         )
         Icon(
-            imageVector = Icons.Rounded.KeyboardArrowRight,
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
             contentDescription = "查看详情",
             tint = Color(0xFFB8C9DF),
         )
@@ -464,7 +465,10 @@ private fun SalesCustomerListCard(
 @Composable
 internal fun SalesCustomerDetailScreen(
     customer: UserLatentDetailModel?,
+    isLoading: Boolean,
+    errorMessage: String?,
     onBack: () -> Unit,
+    onRetry: () -> Unit,
     onEvaluate: (Int) -> Unit,
     onOpenReport: () -> Unit,
 ) {
@@ -480,22 +484,11 @@ internal fun SalesCustomerDetailScreen(
             onBack = onBack,
         )
         if (customer == null) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp)
-                        .heightIn(min = 180.dp)
-                        .salesWhiteCard(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = "正在加载客户信息…",
-                    color = SalesTextPrimary,
-                    fontSize = 16.sp,
-                )
-            }
+            SalesCustomerDetailPlaceholder(
+                isLoading = isLoading,
+                errorMessage = errorMessage,
+                onRetry = onRetry,
+            )
             return
         }
 
@@ -534,18 +527,21 @@ internal fun SalesCustomerDetailScreen(
                                 ),
                         verticalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
-                        SalesInfoRow("姓名：", customer.userName)
+                        SalesInfoRow("姓名：", customer.userName.orEmpty())
                         SalesInfoRow(
                             "年龄：",
-                            identityCardAge(customer.identityCardNumber)
+                            identityCardAge(customer.identityCardNumber.orEmpty())
                                 ?.toString()
                                 .orEmpty(),
                         )
-                        SalesInfoRow("身份证号：", customer.identityCardNumber)
-                        SalesInfoRow("联系人：", customer.guardianName)
-                        SalesInfoRow("手机号码：", customer.guardianPhone)
-                        SalesInfoRow("关系：", customer.guardianRelation)
-                        SalesInfoRow("地址：", customer.liveAddress)
+                        SalesInfoRow(
+                            "身份证号：",
+                            customer.identityCardNumber.orEmpty(),
+                        )
+                        SalesInfoRow("联系人：", customer.guardianName.orEmpty())
+                        SalesInfoRow("手机号码：", customer.guardianPhone.orEmpty())
+                        SalesInfoRow("关系：", customer.guardianRelation.orEmpty())
+                        SalesInfoRow("地址：", customer.liveAddress.orEmpty())
                     }
                 }
             }
@@ -578,9 +574,9 @@ internal fun SalesCustomerDetailScreen(
                                 if (hasEvaluation) {
                                     buildString {
                                         append("已评估")
-                                        if (customer.pgResult.isNotBlank()) {
+                                        if (customer.pgResult.orEmpty().isNotBlank()) {
                                             append("，评估结果：\n")
-                                            append(customer.pgResult)
+                                            append(customer.pgResult.orEmpty())
                                         }
                                     }
                                 } else {
@@ -603,7 +599,7 @@ internal fun SalesCustomerDetailScreen(
                         onClick = { onEvaluate(customer.id) },
                     )
                 }
-            } else if (customer.pgUrl.isNotBlank()) {
+            } else if (customer.pgUrl.orEmpty().isNotBlank()) {
                 item {
                     SalesPrimaryButton(
                         text = "查看评估报告",
@@ -615,9 +611,75 @@ internal fun SalesCustomerDetailScreen(
     }
 }
 
+@Composable
+private fun SalesCustomerDetailPlaceholder(
+    isLoading: Boolean,
+    errorMessage: String?,
+    onRetry: () -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
+                .heightIn(min = 180.dp)
+                .salesWhiteCard()
+                .padding(18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        when {
+            isLoading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(28.dp),
+                    color = SalesBlue,
+                    strokeWidth = 3.dp,
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "正在加载客户信息…",
+                    color = SalesTextPrimary,
+                    fontSize = 16.sp,
+                )
+            }
+
+            errorMessage != null -> {
+                Text(
+                    text = "客户信息加载失败",
+                    color = SalesTextPrimary,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = errorMessage,
+                    color = SalesTextSecondary,
+                    fontSize = 14.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                TextButton(
+                    onClick = onRetry,
+                    modifier = Modifier.testTag("customer_detail_retry"),
+                ) {
+                    Text(text = "重新加载", color = SalesBlue)
+                }
+            }
+
+            else -> {
+                Text(
+                    text = "暂无客户信息",
+                    color = SalesTextPrimary,
+                    fontSize = 16.sp,
+                )
+            }
+        }
+    }
+}
+
 /**
  * `pgUrl` is created before an evaluation and points to the form entry, so it
  * must not be used as proof that the customer has already been evaluated.
  */
 internal fun UserLatentDetailModel.hasCompletedEvaluation(): Boolean =
-    pgId > 0 || pgResult.isNotBlank()
+    pgId > 0 || pgResult.orEmpty().isNotBlank()

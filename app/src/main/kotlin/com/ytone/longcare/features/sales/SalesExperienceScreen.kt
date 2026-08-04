@@ -405,7 +405,10 @@ internal fun SalesExperienceScreen(
                 SalesPage.CUSTOMER_DETAIL ->
                     SalesCustomerDetailScreen(
                         customer = uiState.selectedCustomer,
+                        isLoading = uiState.isCustomerDetailLoading,
+                        errorMessage = uiState.customerDetailErrorMessage,
                         onBack = ::back,
+                        onRetry = viewModel::retryCustomerDetail,
                         onEvaluate = { customerId ->
                             evaluationChoiceReturnPageName =
                                 SalesPage.CUSTOMER_DETAIL.name

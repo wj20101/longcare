@@ -11,6 +11,7 @@ import com.ytone.longcare.common.network.SessionInvalidationHandler
 import com.ytone.longcare.common.network.SuppressSessionInvalidation
 import com.ytone.longcare.common.network.TencentApiResultCallAdapterFactory
 import com.ytone.longcare.model.TencentAccessTokenResponse
+import com.ytone.longcare.model.UserLatentDetailModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
@@ -21,6 +22,7 @@ import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -45,6 +47,24 @@ class ApiResultCallAdapterIntegrationTest {
         )
         assertEquals(ApiResult.Success(Unit), api.unitSuccess())
     }
+
+    @Test
+    fun `standard adapter accepts nullable fields from customer detail contract`() =
+        runTest {
+            val api = createStandardApi(RecordingSessionInvalidationHandler())
+
+            val result = api.nullableCustomerDetail()
+
+            assertTrue(result is ApiResult.Success)
+            val detail = (result as ApiResult.Success).data
+            assertEquals(7, detail.id)
+            assertEquals("测试客户", detail.userName)
+            assertNull(detail.guardianName)
+            assertNull(detail.checkTime)
+            assertNull(detail.pgResult)
+            assertEquals("资料待补充", detail.checkDesc)
+            assertEquals(82, detail.pgScore)
+        }
 
     @Test
     fun `standard adapter invalidates session for 1001 and 3002 except silent endpoint`() = runTest {
@@ -186,6 +206,9 @@ private interface StandardAdapterTestApi {
     @GET("success")
     suspend fun success(): ApiResult<String>
 
+    @GET("nullable-customer-detail")
+    suspend fun nullableCustomerDetail(): ApiResult<UserLatentDetailModel>
+
     @GET("success")
     fun cancellableCall(): Call<ApiResult<String>>
 
@@ -267,6 +290,37 @@ private class FakeResponseInterceptor : Interceptor {
                 "unit-success" ->
                     200 to
                         """{"resultCode":1000,"resultMsg":"ok","data":{}}"""
+
+                "nullable-customer-detail" ->
+                    200 to
+                        """
+                        {
+                          "resultCode":1000,
+                          "resultMsg":"ok",
+                          "data":{
+                            "id":7,
+                            "userName":"测试客户",
+                            "identityCardNumber":null,
+                            "guardianName":null,
+                            "guardianPhone":null,
+                            "guardianRelation":null,
+                            "liveAddress":null,
+                            "liveLng":null,
+                            "liveLat":null,
+                            "img1":null,
+                            "img2":null,
+                            "img3":null,
+                            "checkStatus":0,
+                            "checkTime":null,
+                            "checkDesc":"资料待补充",
+                            "createTime":null,
+                            "pgId":0,
+                            "pgResult":null,
+                            "pgScore":82,
+                            "pgUrl":null
+                          }
+                        }
+                        """.trimIndent()
 
                 "expired", "silent-expired" ->
                     200 to

@@ -177,7 +177,10 @@ class SalesLargeFontLayoutTest {
                         guardianRelation = "子女",
                         liveAddress = "浙江省杭州市测试地址",
                     ),
+                isLoading = false,
+                errorMessage = null,
                 onBack = {},
+                onRetry = {},
                 onEvaluate = {},
                 onOpenReport = {},
             )

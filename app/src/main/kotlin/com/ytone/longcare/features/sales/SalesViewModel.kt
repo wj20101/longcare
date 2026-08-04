@@ -46,6 +46,8 @@ class SalesViewModel @Inject constructor(
     val uiState: StateFlow<SalesUiState> = _uiState.asStateFlow()
     private var customerSearchJob: Job? = null
     private var customerSearchRequestId = 0L
+    private var customerDetailJob: Job? = null
+    private var customerDetailRequestId = 0L
     private var toDoCountJob: Job? = null
     private var toDoCountRequestId = 0L
     private var toDoListJob: Job? = null
@@ -371,26 +373,100 @@ class SalesViewModel @Inject constructor(
     }
 
     fun loadCustomerDetail(customerId: Int) {
+        val requestId = ++customerDetailRequestId
+        customerDetailJob?.cancel()
         if (customerId <= 0) {
-            showError("客户信息无效，请返回后重试")
+            _uiState.value =
+                _uiState.value.copy(
+                    selectedCustomerId = customerId,
+                    selectedCustomer = null,
+                    isCustomerDetailLoading = false,
+                    customerDetailErrorMessage = "客户信息无效，请返回后重试",
+                )
             return
         }
         _uiState.value =
             _uiState.value.copy(
                 selectedCustomerId = customerId,
                 selectedCustomer = null,
+                isCustomerDetailLoading = true,
+                customerDetailErrorMessage = null,
             )
-        execute(
-            operation = "正在加载客户详情",
-            request = { saleRepository.getUserLatentDetail(customerId) },
-            onSuccess = { detail ->
-                _uiState.value =
-                    _uiState.value.copy(
-                        selectedCustomerId = detail.id,
-                        selectedCustomer = detail,
-                    )
-            },
-        )
+        customerDetailJob =
+            viewModelScope.launch {
+                try {
+                    when (
+                        val result =
+                            saleRepository.getUserLatentDetail(customerId)
+                    ) {
+                        is ApiResult.Success -> {
+                            if (requestId == customerDetailRequestId) {
+                                val detail = result.data
+                                _uiState.value =
+                                    if (detail.id == customerId) {
+                                        _uiState.value.copy(
+                                            selectedCustomer = detail,
+                                            customerDetailErrorMessage = null,
+                                        )
+                                    } else {
+                                        _uiState.value.copy(
+                                            selectedCustomer = null,
+                                            customerDetailErrorMessage =
+                                                "客户详情数据异常，请重试",
+                                        )
+                                    }
+                            }
+                        }
+
+                        is ApiResult.Failure -> {
+                            if (requestId == customerDetailRequestId) {
+                                _uiState.value =
+                                    _uiState.value.copy(
+                                        customerDetailErrorMessage =
+                                            result.message.ifBlank {
+                                                "客户详情加载失败，请重试"
+                                            },
+                                    )
+                            }
+                        }
+
+                        is ApiResult.Exception -> {
+                            if (requestId == customerDetailRequestId) {
+                                _uiState.value =
+                                    _uiState.value.copy(
+                                        customerDetailErrorMessage =
+                                            result.exception.message
+                                                ?.takeIf(String::isNotBlank)
+                                                ?: "客户详情加载失败，请重试",
+                                    )
+                            }
+                        }
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (throwable: Throwable) {
+                    if (requestId == customerDetailRequestId) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                customerDetailErrorMessage =
+                                    throwable.message
+                                        ?.takeIf(String::isNotBlank)
+                                        ?: "客户详情加载失败，请重试",
+                            )
+                    }
+                } finally {
+                    if (requestId == customerDetailRequestId) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                isCustomerDetailLoading = false,
+                            )
+                    }
+                }
+            }
+    }
+
+    fun retryCustomerDetail() {
+        loadCustomerDetail(_uiState.value.selectedCustomerId)
     }
 
     fun selectCustomer(customerId: Int) {
@@ -852,6 +928,7 @@ data class SalesUiState(
     val isLoading: Boolean = false,
     val isCustomerListLoading: Boolean = true,
     val isCustomerListLoadingMore: Boolean = false,
+    val isCustomerDetailLoading: Boolean = false,
     val isToDoCountLoading: Boolean = false,
     val isToDoListLoading: Boolean = false,
     val operation: String = "",
@@ -871,6 +948,7 @@ data class SalesUiState(
     val customerLoadMoreErrorMessage: String? = null,
     val selectedCustomerId: Int = 0,
     val selectedCustomer: UserLatentDetailModel? = null,
+    val customerDetailErrorMessage: String? = null,
     val currentLocation: LocationResult? = null,
     val submissionResult: AddUserLatentResultModel? = null,
     val sdkDeviceId: String = "",
