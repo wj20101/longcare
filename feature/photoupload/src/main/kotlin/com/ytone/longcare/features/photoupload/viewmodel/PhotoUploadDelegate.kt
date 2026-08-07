@@ -1,11 +1,7 @@
 package com.ytone.longcare.features.photoupload.viewmodel
 
-import android.content.Context
 import android.net.Uri
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
-import com.ytone.longcare.common.constants.CosConstants
-import com.ytone.longcare.common.utils.CosUtils
-import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
@@ -14,12 +10,12 @@ import com.ytone.longcare.model.ImageTaskType
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.User
 import com.ytone.longcare.model.WatermarkData
+import com.ytone.longcare.features.photoupload.upload.PhotoCloudUploader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 
 internal class PhotoUploadDelegate(
-    private val applicationContext: Context,
-    private val cosRepository: CosRepository,
+    private val photoCloudUploader: PhotoCloudUploader,
     private val userSessionRepository: UserSessionRepository,
     private val orderDetailRepository: OrderDetailRepository,
     private val taskQueueDelegate: PhotoTaskQueueDelegate,
@@ -54,19 +50,18 @@ internal class PhotoUploadDelegate(
             }
 
             for (task in successfulTasks) {
-                val uploadParams = CosUtils.createUploadParams(
-                    context = applicationContext,
-                    fileUri = Uri.parse(task.resultUri),
-                    folderType = CosConstants.DEFAULT_FOLDER_TYPE
-                )
-                val result = cosRepository.uploadFile(uploadParams)
-                val uploadedUrl = result.url
-                val uploadedKey = result.key
-                if (result.success && uploadedUrl != null && uploadedKey != null) {
-                    taskQueueDelegate.updateTaskUploadStatus(task.id, uploadedUrl, uploadedKey)
-                } else {
+                try {
+                    val uploadedPhoto = photoCloudUploader.upload(Uri.parse(task.resultUri))
+                    taskQueueDelegate.updateTaskUploadStatus(
+                        taskId = task.id,
+                        cloudUrl = uploadedPhoto.url,
+                        key = uploadedPhoto.key,
+                    )
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (uploadError: Exception) {
                     isUploading.value = false
-                    val errorMessage = result.errorMessage ?: "COS未返回具体原因"
+                    val errorMessage = uploadError.message ?: "COS未返回具体原因"
                     DiagnosticEventTracker.trackError(
                         category = PHOTO_DIAGNOSTIC_CATEGORY,
                         event = "cloud_upload_failure",
@@ -78,12 +73,10 @@ internal class PhotoUploadDelegate(
                             "taskIdLength" to task.id.length,
                             "uploadedTaskCount" to taskQueueDelegate.getTasksSnapshot().count { it.isUploaded },
                             "pendingTaskCount" to successfulTasks.size,
-                            "hasUploadedUrl" to (uploadedUrl != null),
-                            "hasUploadedKey" to (uploadedKey != null),
                             "errorMessage" to errorMessage,
                         ),
                     )
-                    return Result.failure(Exception("上传失败: $errorMessage"))
+                    return Result.failure(Exception("上传失败: $errorMessage", uploadError))
                 }
             }
 

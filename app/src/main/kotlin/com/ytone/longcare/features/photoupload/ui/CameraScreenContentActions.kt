@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.camera.view.LifecycleCameraController
 import androidx.core.content.ContextCompat
+import com.ytone.longcare.common.image.WatermarkedCaptureRequest
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 
@@ -14,6 +15,7 @@ internal fun startWatermarkCapture(
     watermarkView: View?,
     isFrontCamera: Boolean,
     scope: CoroutineScope,
+    processCapturedImage: suspend (WatermarkedCaptureRequest) -> File,
     preparingMessage: String,
     onCaptureStarted: () -> Unit,
     onCaptureFinished: () -> Unit,
@@ -33,6 +35,7 @@ internal fun startWatermarkCapture(
         watermarkView = view,
         isFrontCamera = isFrontCamera,
         scope = scope,
+        processCapturedImage = processCapturedImage,
         onImageCaptured = { file ->
             onCaptureFinished()
             onImageCaptured(file)
@@ -52,6 +55,7 @@ internal fun onShutterPressed(
     isCapturing: Boolean,
     isFrontCamera: Boolean,
     scope: CoroutineScope,
+    processCapturedImage: suspend (WatermarkedCaptureRequest) -> File,
     onCountdownUpdate: (Int) -> Unit,
     onCaptureStateChanged: (Boolean) -> Unit,
     onBeforeCapture: () -> Unit,
@@ -82,6 +86,7 @@ internal fun onShutterPressed(
         watermarkView = view,
         isFrontCamera = isFrontCamera,
         scope = scope,
+        processCapturedImage = processCapturedImage,
         preparingMessage = "请稍候，正在准备中...",
         onCaptureStarted = {
             onCaptureStateChanged(true)

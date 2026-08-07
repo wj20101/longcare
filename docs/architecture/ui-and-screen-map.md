@@ -1,6 +1,6 @@
 # UI And Screen Map
 
-Last verified: 2026-07-25
+Last verified: 2026-08-07
 
 This document lists route-bound screens and practical ownership in the current codebase.
 
@@ -10,6 +10,10 @@ This document lists route-bound screens and practical ownership in the current c
 
 - `LoginRoute` -> `LoginScreen` (`:app`, `features/login/ui/LoginScreen.kt`)
 - `HomeRoute` -> `HomeScreen` (`:app`, `features/home/ui/HomeScreen.kt`)
+  - sales accounts render `SalesExperienceScreen` and its home, customer, registration,
+    confirmation, reminder, and assessment pages within the same route
+  - sales registration opens the shared `CameraRoute` for watermarked capture and receives
+    the resulting URI through the `HomeRoute` saved-state handle
 
 ### Service-flow routes
 
@@ -106,6 +110,10 @@ Major screen packages currently under `app/src/main/kotlin/com/ytone/longcare/fe
 - action-interface pattern for screen navigation callbacks (for example `*Actions` contracts)
 - ViewModel + `collectAsStateWithLifecycle()` + `StateFlow` state projection
 - screen decomposition into `Screen`, `Components`, `Sections`, `Dialogs`, `Handlers` files
+- one shared `PhotoPreviewDialog` in `:core:ui` for URI/File/URL/Bitmap previews across photo
+  upload, sales registration, automatic face capture, and manual face capture
+- one standard watermarked `CameraRoute` reused by nursing and sales; face-analysis screens keep
+  their specialized capture UI while sharing preview and persistent-image processing
 
 ## 5) Legacy app/features footprint (still active)
 

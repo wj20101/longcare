@@ -1,11 +1,6 @@
 package com.ytone.longcare.features.sales
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,52 +20,37 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Assignment
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.PhotoCamera
-import androidx.compose.material.icons.rounded.PhotoLibrary
-import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import com.ytone.longcare.R
-import com.ytone.longcare.common.utils.FileProviderHelper
+import com.ytone.longcare.core.ui.image.PhotoPreviewDialog
 import com.ytone.longcare.model.LocationResult
 
 @Composable
@@ -79,99 +59,14 @@ internal fun SalesRegistrationScreen(
     photoUris: List<Uri>,
     location: LocationResult?,
     onDraftChange: (SalesCustomerDraft) -> Unit,
-    onPhotosSelected: (List<Uri>) -> Unit,
+    onTakePhoto: () -> Unit,
     onRemovePhoto: (Uri) -> Unit,
     onRequestLocation: () -> Unit,
     onBack: () -> Unit,
     onContinue: () -> Unit,
     onValidationError: (String) -> Unit,
 ) {
-    val context = LocalContext.current
-    val cameraUnavailableMessage = stringResource(R.string.sales_error_camera_unavailable)
-    val cameraOpenErrorMessage = stringResource(R.string.sales_error_camera_open)
-    val cameraPermissionMessage = stringResource(R.string.sales_error_camera_permission)
     val validationMessage = draft.validationMessageRes()?.let { stringResource(it) }
-    var showPhotoSourceSheet by rememberSaveable { mutableStateOf(false) }
-    var pendingCameraUri by rememberSaveable { mutableStateOf("") }
-    val currentPhotoUris by rememberUpdatedState(photoUris)
-    val currentOnPhotosSelected by rememberUpdatedState(onPhotosSelected)
-    val currentOnValidationError by rememberUpdatedState(onValidationError)
-
-    val photoPicker =
-        rememberLauncherForActivityResult(
-            contract =
-                ActivityResultContracts.PickMultipleVisualMedia(
-                    MAX_SALES_CUSTOMER_PHOTOS
-                ),
-            onResult = { selected ->
-                currentOnPhotosSelected(
-                    mergeSalesCustomerPhotoUris(currentPhotoUris, selected)
-                )
-            },
-        )
-    val cameraLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.TakePicture(),
-            onResult = { success ->
-                val capturedUri = pendingCameraUri.takeIf(String::isNotBlank)?.let(Uri::parse)
-                pendingCameraUri = ""
-                if (success && capturedUri != null) {
-                    currentOnPhotosSelected(
-                        mergeSalesCustomerPhotoUris(
-                            existing = currentPhotoUris,
-                            added = listOf(capturedUri),
-                        )
-                    )
-                } else if (capturedUri != null) {
-                    runCatching {
-                        context.contentResolver.delete(capturedUri, null, null)
-                    }
-                }
-            },
-        )
-    val launchCameraCapture: () -> Unit = {
-        if (!context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-            currentOnValidationError(cameraUnavailableMessage)
-        } else {
-            runCatching {
-                val cameraUri = FileProviderHelper.createCameraPhotoUri(context)
-                pendingCameraUri = cameraUri.toString()
-                cameraLauncher.launch(cameraUri)
-            }.onFailure {
-                pendingCameraUri
-                    .takeIf(String::isNotBlank)
-                    ?.let(Uri::parse)
-                    ?.let { uri ->
-                        runCatching {
-                            context.contentResolver.delete(uri, null, null)
-                        }
-                    }
-                pendingCameraUri = ""
-                currentOnValidationError(cameraOpenErrorMessage)
-            }
-        }
-    }
-    val cameraPermissionLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission(),
-            onResult = { granted ->
-                if (granted) {
-                    launchCameraCapture()
-                } else {
-                    currentOnValidationError(cameraPermissionMessage)
-                }
-            },
-        )
-    val requestCameraCapture = {
-        if (
-            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            launchCameraCapture()
-        } else {
-            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
 
     Column(
         modifier =
@@ -316,7 +211,7 @@ internal fun SalesRegistrationScreen(
                     }
                     if (photoUris.size < MAX_SALES_CUSTOMER_PHOTOS) {
                         SalesPhotoAddButton(
-                            onClick = { showPhotoSourceSheet = true },
+                            onClick = onTakePhoto,
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -343,163 +238,6 @@ internal fun SalesRegistrationScreen(
             }
         }
     }
-
-    if (showPhotoSourceSheet) {
-        SalesPhotoSourceSheet(
-            onDismiss = { showPhotoSourceSheet = false },
-            onCamera = {
-                showPhotoSourceSheet = false
-                requestCameraCapture()
-            },
-            onGallery = {
-                showPhotoSourceSheet = false
-                photoPicker.launch(
-                    PickVisualMediaRequest(
-                        ActivityResultContracts.PickVisualMedia.ImageOnly
-                    )
-                )
-            },
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SalesPhotoSourceSheet(
-    onDismiss: () -> Unit,
-    onCamera: () -> Unit,
-    onGallery: () -> Unit,
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = Color(0xFFFDFDFF),
-        contentColor = SalesTextPrimary,
-        dragHandle = {
-            BottomSheetDefaults.DragHandle(color = Color(0xFFBBC2CC))
-        },
-    ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.sales_photo_add),
-                        color = SalesTextPrimary,
-                        fontSize = 22.sp,
-                        lineHeight = 28.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = stringResource(R.string.sales_photo_source_hint),
-                        color = SalesTextSecondary,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
-                    )
-                }
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Rounded.Close,
-                        contentDescription = stringResource(R.string.sales_common_close),
-                        tint = SalesTextSecondary,
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(18.dp))
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFFF3F7FC)),
-            ) {
-                SalesPhotoSourceOption(
-                    icon = Icons.Rounded.PhotoCamera,
-                    title = stringResource(R.string.sales_photo_camera_title),
-                    description =
-                        stringResource(R.string.sales_photo_camera_description),
-                    onClick = onCamera,
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(start = 80.dp),
-                    color = Color(0xFFDDE5EF),
-                )
-                SalesPhotoSourceOption(
-                    icon = Icons.Rounded.PhotoLibrary,
-                    title = stringResource(R.string.sales_photo_gallery_title),
-                    description =
-                        stringResource(R.string.sales_photo_gallery_description),
-                    onClick = onGallery,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SalesPhotoSourceOption(
-    icon: ImageVector,
-    title: String,
-    description: String,
-    onClick: () -> Unit,
-) {
-    ListItem(
-        headlineContent = {
-            Text(
-                text = title,
-                fontSize = 16.sp,
-                lineHeight = 22.sp,
-                fontWeight = FontWeight.Medium,
-            )
-        },
-        supportingContent = {
-            Text(
-                text = description,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-            )
-        },
-        leadingContent = {
-            Box(
-                modifier =
-                    Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(SalesBlue.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = SalesBlue,
-                    modifier = Modifier.size(25.dp),
-                )
-            }
-        },
-        colors =
-            ListItemDefaults.colors(
-                containerColor = Color.Transparent,
-                headlineColor = SalesTextPrimary,
-                supportingColor = SalesTextSecondary,
-            ),
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(
-                    role = Role.Button,
-                    onClick = onClick,
-                ),
-    )
 }
 
 @Composable
@@ -552,6 +290,8 @@ private fun SalesPhotoThumbnail(
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showPreview by rememberSaveable(uri) { mutableStateOf(false) }
+
     Box(
         modifier =
             modifier
@@ -562,7 +302,10 @@ private fun SalesPhotoThumbnail(
         AsyncImage(
             model = uri,
             contentDescription = stringResource(R.string.sales_photo_description),
-            modifier = Modifier.fillMaxSize(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .clickable { showPreview = true },
             contentScale = ContentScale.Crop,
         )
         Box(
@@ -584,6 +327,13 @@ private fun SalesPhotoThumbnail(
                 modifier = Modifier.size(16.dp),
             )
         }
+    }
+
+    if (showPreview) {
+        PhotoPreviewDialog(
+            imageModel = uri,
+            onDismiss = { showPreview = false },
+        )
     }
 }
 

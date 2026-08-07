@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.core.ui.image.PhotoPreviewDialog
 import androidx.compose.ui.unit.dp
 import coil3.compose.rememberAsyncImagePainter
 import com.ytone.longcare.R
@@ -73,6 +74,30 @@ fun AddPhotoButton(
             text = stringResource(R.string.photo_upload_add_photo),
             fontSize = 12.sp,
             color = lineColor
+        )
+    }
+}
+
+@Composable
+private fun DeleteTaskButton(
+    modifier: Modifier = Modifier,
+    onRemove: () -> Unit,
+) {
+    Box(
+        modifier =
+            modifier
+                .padding(top = 2.dp, end = 2.dp)
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable(onClick = onRemove),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Delete,
+            contentDescription = "删除照片",
+            modifier = Modifier.size(12.dp),
+            tint = Color.White,
         )
     }
 }
@@ -159,8 +184,8 @@ fun ImageTaskItem(
 
     if (showPreview && task.status == ImageTaskStatus.SUCCESS) {
         task.resultUri?.let { uri ->
-            ImagePreviewDialog(
-                imageUri = uri,
+            PhotoPreviewDialog(
+                imageModel = uri,
                 onDismiss = { showPreview = false }
             )
         }

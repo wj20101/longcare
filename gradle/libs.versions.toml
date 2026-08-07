@@ -15,7 +15,7 @@ lifecycle = "2.11.0"
 activityCompose = "1.13.0"
 fragmentCompose = "1.8.9"
 mockk = "1.14.11"
-navigation3 = "1.1.4"
+navigation3 = "1.1.5"
 appcompat = "1.7.1"
 robolectric = "4.16.1"
 startup = "1.2.0"
@@ -24,6 +24,7 @@ baselineprofile = "1.5.0-beta01"
 profileinstaller = "1.4.1"
 camerax = "1.6.1"
 constraintlayout = "2.2.2"
+exifinterface = "1.4.2"
 
 # Data Persistence
 datastore = "1.2.1"
@@ -67,6 +68,7 @@ espressoCore = "3.7.0"
 uiautomator = "2.4.0"
 benchmarkMacroJunit4 = "1.5.0-beta01"
 javaxInject = "1"
+truth = "1.4.5"
 
 [libraries]
 # Build Logic
@@ -75,6 +77,7 @@ kotlin-gradle-plugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-p
 
 # AndroidX Core & Lifecycle
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterface", version.ref = "exifinterface" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-appcompat-resources = { group = "androidx.appcompat", name = "appcompat-resources", version.ref = "appcompat" }
@@ -176,6 +179,7 @@ androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomato
 androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmarkMacroJunit4" } # Version from BOM
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 javax-inject = { module = "javax.inject:javax.inject", version.ref = "javaxInject" }
+truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

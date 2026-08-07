@@ -1,6 +1,6 @@
 # System Overview
 
-Last verified: 2026-07-25
+Last verified: 2026-08-07
 
 This document describes the current runtime architecture as implemented today.
 
@@ -36,8 +36,10 @@ LongCare is an Android app with a shell-first architecture:
   - repository implementations, network/database/COS implementations, DI bindings
 - `:core:ui`
   - shared UI helpers/components and UI support code
+  - owns the single full-screen image preview implementation (`PhotoPreviewDialog`)
 - `:core:common`
   - logging, runtime config, utility abstractions, common helpers
+  - owns the unified image output pipeline, JPEG policies, managed storage, and cleanup
 
 ### Feature modules (current reality)
 
@@ -54,6 +56,7 @@ LongCare is an Android app with a shell-first architecture:
   - currently includes route-bound UI (`LocationTrackingScreen`) and service/managers
 - `:feature:photoupload`
   - currently provides APIs, domain support, ViewModel/delegates, trackers
+  - owns the validated `PhotoCloudUploader` boundary used by photo-task and sales flows
   - route-bound UI still in `:app` (`PhotoUploadScreen`, `CameraScreen`)
 - `:feature:servicecountdown`
   - currently provides APIs, domain support, ViewModel/delegates
@@ -129,3 +132,13 @@ The codebase is in a transitional but stable state:
 - domain/data/core boundaries are established and script-guarded
 - service execution chain is implemented end-to-end
 - UI/module ownership migration is still in progress, with significant route-bound UI remaining in `:app`
+
+## 8) Unified image lifecycle
+
+- Standard business photos use one CameraX route (`CameraRoute`) for capture and watermark rendering.
+- The app converts every persistent JPEG through `UnifiedImagePipeline` / `UnifiedJpegEncoder`; policy values are centralized in `ImageProcessingPolicies`.
+- Watermarked output is written atomically into the app-specific Pictures directory. Face output uses app-internal managed directories.
+- Temporary captures are removed after processing, including failure and cancellation paths. Registration/task-owned files are removed when the user deletes or abandons them and after successful completion.
+- `core:data` couples order-image row deletion with managed-file deletion, so every service-completion and order-cleanup caller gets the same local-file lifecycle automatically.
+- All image thumbnails open the shared `PhotoPreviewDialog`; the former upload, sales, automatic-face, and manual-face preview implementations have been removed.
+- ML-driven face capture retains specialized camera analysis because it has a different runtime contract, while its persistent output and preview still pass through the shared boundaries.

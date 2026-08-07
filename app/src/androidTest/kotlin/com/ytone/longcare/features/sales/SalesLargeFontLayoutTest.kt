@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.sales
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
@@ -11,6 +12,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -42,7 +44,7 @@ class SalesLargeFontLayoutTest {
                 photoUris = emptyList(),
                 location = null,
                 onDraftChange = {},
-                onPhotosSelected = {},
+                onTakePhoto = {},
                 onRemovePhoto = {},
                 onRequestLocation = {},
                 onBack = {},
@@ -72,14 +74,15 @@ class SalesLargeFontLayoutTest {
     }
 
     @Test
-    fun photoAddUsesMaterialBottomSheet() {
+    fun photoAddOpensCameraDirectlyWithoutGalleryChoice() {
+        var takePhotoRequests = 0
         setLargeFontContent {
             SalesRegistrationScreen(
                 draft = SalesCustomerDraft(),
                 photoUris = emptyList(),
                 location = null,
                 onDraftChange = {},
-                onPhotosSelected = {},
+                onTakePhoto = { takePhotoRequests += 1 },
                 onRemovePhoto = {},
                 onRequestLocation = {},
                 onBack = {},
@@ -95,14 +98,35 @@ class SalesLargeFontLayoutTest {
             .onNode(hasContentDescription("添加照片"))
             .performClick()
 
-        composeRule.onNodeWithText("添加照片").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(1, takePhotoRequests)
+        }
+        composeRule.onNodeWithText("从相册选择").assertDoesNotExist()
+    }
+
+    @Test
+    fun photoThumbnailOpensSharedFullScreenPreview() {
+        setLargeFontContent {
+            SalesRegistrationScreen(
+                draft = SalesCustomerDraft(),
+                photoUris = listOf(Uri.parse("file:///tmp/sales-photo.jpg")),
+                location = null,
+                onDraftChange = {},
+                onTakePhoto = {},
+                onRemovePhoto = {},
+                onRequestLocation = {},
+                onBack = {},
+                onContinue = {},
+                onValidationError = {},
+            )
+        }
+
         composeRule
-            .onNodeWithText("请选择照片来源，最多可添加 3 张")
-            .assertIsDisplayed()
-        composeRule.onNodeWithText("拍照").assertIsDisplayed()
-        composeRule.onNodeWithText("使用相机拍摄照片").assertIsDisplayed()
-        composeRule.onNodeWithText("从相册选择").assertIsDisplayed()
-        composeRule.onNodeWithText("从设备中选择已有照片").assertIsDisplayed()
+            .onNode(hasScrollAction())
+            .performScrollToNode(hasContentDescription("照片"))
+        composeRule.onNodeWithContentDescription("照片").performClick()
+
+        composeRule.onNodeWithContentDescription("预览图片").assertIsDisplayed()
     }
 
     @Test

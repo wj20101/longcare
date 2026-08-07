@@ -3,7 +3,6 @@ package com.ytone.longcare.features.sales
 import android.content.Context
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
-import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.sale.SaleRepository
 import com.ytone.longcare.integration.qlz.QlzSdkClient
@@ -275,7 +274,8 @@ class SalesViewModelCustomerListTest {
         SalesViewModel(
             saleRepository = repository,
             locationFacade = mockk<LocationFacade>(relaxed = true),
-            cosRepository = mockk<CosRepository>(relaxed = true),
+            photoCloudUploader = UnusedPhotoCloudUploader,
+            imagePipeline = testImagePipeline(mockk(relaxed = true)),
             qlzSdkClient = mockk<QlzSdkClient>(relaxed = true),
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
             applicationContext = mockk<Context>(relaxed = true),

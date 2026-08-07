@@ -2,6 +2,8 @@ package com.ytone.longcare.features.photoupload.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.image.UnifiedImagePipeline
+import com.ytone.longcare.common.image.WatermarkedCaptureRequest
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.location.LocationFacade
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,7 +20,8 @@ import javax.inject.Inject
 @HiltViewModel
 class CameraViewModel @Inject constructor(
     private val systemConfigManager: SystemConfigManager,
-    private val locationFacade: LocationFacade
+    private val locationFacade: LocationFacade,
+    private val imagePipeline: UnifiedImagePipeline,
 ) : ViewModel() {
 
     private val _location = MutableStateFlow("正在获取定位...")
@@ -56,5 +59,8 @@ class CameraViewModel @Inject constructor(
             _syLogoImg.value = systemConfigManager.getSyLogoImg()
         }
     }
+
+    suspend fun processCapturedImage(request: WatermarkedCaptureRequest) =
+        imagePipeline.processWatermarkedCapture(request)
 
 }

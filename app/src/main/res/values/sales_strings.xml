@@ -6,7 +6,6 @@
     <string name="sales_common_reload">重新加载</string>
     <string name="sales_common_retry">点击重试</string>
     <string name="sales_common_wait">请稍候</string>
-    <string name="sales_common_close">关闭</string>
     <string name="sales_common_done">完成</string>
 
     <!-- Sale 接口状态值映射：与 checkState/checkStatus 定义保持一致 -->
@@ -88,15 +87,11 @@
     <string name="sales_registration_location_format">已定位：%1$.6f, %2$.6f</string>
     <string name="sales_registration_photos">照片</string>
     <string name="sales_registration_submit">提交</string>
-    <string name="sales_photo_add">添加照片</string>
-    <string name="sales_photo_source_hint">请选择照片来源，最多可添加 3 张</string>
-    <string name="sales_photo_camera_title">拍照</string>
-    <string name="sales_photo_camera_description">使用相机拍摄照片</string>
-    <string name="sales_photo_gallery_title">从相册选择</string>
-    <string name="sales_photo_gallery_description">从设备中选择已有照片</string>
     <string name="sales_photo_description">照片</string>
     <string name="sales_photo_remove_description">移除照片</string>
     <string name="sales_photo_add_description">添加照片</string>
+    <string name="sales_watermark_title">长者顾问</string>
+    <string name="sales_watermark_unknown_advisor">未知顾问</string>
     <string name="sales_confirmation_title">信息确认</string>
     <string name="sales_confirmation_submit">确定提交</string>
     <string name="sales_submission_result_title">信息提交结果</string>
@@ -130,8 +125,8 @@
 
     <!-- 权限与操作反馈 -->
     <string name="sales_error_camera_unavailable">当前设备不支持拍照</string>
-    <string name="sales_error_camera_open">无法打开相机，请稍后重试</string>
     <string name="sales_error_camera_permission">请允许使用相机后再拍照</string>
+    <string name="sales_camera_permission_purpose">拍摄客户登记照片并添加水印</string>
     <string name="sales_error_evaluation_permission">请允许附近设备或定位权限后连接评估设备</string>
     <string name="sales_error_location_permission">请允许定位权限后获取客户位置</string>
     <string name="sales_error_open_evaluation">当前无法打开评估页面，请稍后重试</string>

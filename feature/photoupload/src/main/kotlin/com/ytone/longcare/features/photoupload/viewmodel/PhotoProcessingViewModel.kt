@@ -1,12 +1,11 @@
 package com.ytone.longcare.features.photoupload.viewmodel
 
-import android.content.Context
 import android.net.Uri
+import com.ytone.longcare.common.image.UnifiedImagePipeline
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.common.utils.ToastHelper
-import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.domain.repository.UserSessionRepository
@@ -15,8 +14,8 @@ import com.ytone.longcare.model.ImageTaskStatus
 import com.ytone.longcare.model.ImageTaskType
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.WatermarkData
+import com.ytone.longcare.features.photoupload.upload.PhotoCloudUploader
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
@@ -27,9 +26,9 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class PhotoProcessingViewModel @Inject constructor(
-    @param:ApplicationContext private val applicationContext: Context,
     private val toastHelper: ToastHelper,
-    private val cosRepository: CosRepository,
+    private val photoCloudUploader: PhotoCloudUploader,
+    private val imagePipeline: UnifiedImagePipeline,
     private val userSessionRepository: UserSessionRepository,
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
@@ -39,11 +38,11 @@ class PhotoProcessingViewModel @Inject constructor(
     private val taskQueueDelegate = PhotoTaskQueueDelegate(
         scope = viewModelScope,
         imageRepository = imageRepository,
+        imagePipeline = imagePipeline,
     )
 
     private val uploadDelegate = PhotoUploadDelegate(
-        applicationContext = applicationContext,
-        cosRepository = cosRepository,
+        photoCloudUploader = photoCloudUploader,
         userSessionRepository = userSessionRepository,
         orderDetailRepository = unifiedOrderRepository,
         taskQueueDelegate = taskQueueDelegate,

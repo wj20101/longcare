@@ -5,7 +5,6 @@ import android.content.Context
 import com.ytone.longcare.R
 import com.ytone.longcare.common.network.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
-import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.sale.SaleRepository
 import com.ytone.longcare.integration.qlz.QlzSdkClient
@@ -116,7 +115,8 @@ class SalesViewModelSdkTokenRecoveryTest {
         return SalesViewModel(
             saleRepository = repository,
             locationFacade = mockk<LocationFacade>(relaxed = true),
-            cosRepository = mockk<CosRepository>(relaxed = true),
+            photoCloudUploader = UnusedPhotoCloudUploader,
+            imagePipeline = testImagePipeline(applicationContext),
             qlzSdkClient = qlzSdkClient,
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
             applicationContext = applicationContext,

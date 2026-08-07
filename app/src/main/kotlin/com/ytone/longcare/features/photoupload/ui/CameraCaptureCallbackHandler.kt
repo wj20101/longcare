@@ -5,13 +5,12 @@ import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
+import com.ytone.longcare.common.image.WatermarkedCaptureRequest
 import com.ytone.longcare.features.photoupload.tracker.CameraEventTracker
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 internal fun createImageSavedCallback(
     context: Context,
@@ -21,49 +20,24 @@ internal fun createImageSavedCallback(
     startPx: Float,
     bottomPx: Float,
     isFrontCamera: Boolean,
+    processCapturedImage: suspend (WatermarkedCaptureRequest) -> File,
     onImageCaptured: (File) -> Unit,
     onError: () -> Unit
 ): ImageCapture.OnImageSavedCallback {
     return object : ImageCapture.OnImageSavedCallback {
         override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-            scope.launch(Dispatchers.IO) {
+            val processingJob = scope.launch {
                 try {
-                    val finalFile = processCapturedImageToFile(
-                        context = context,
-                        tempFile = tempFile,
-                        watermarkBitmap = watermarkBitmap,
-                        startPx = startPx,
-                        bottomPx = bottomPx,
-                        isFrontCamera = isFrontCamera,
-                        onCleanupFailure = { cleanupError ->
-                            CameraEventTracker.trackError(
-                                CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-                                cleanupError,
-                                mapOf("reason" to "图片资源回收失败")
-                            )
-                        }
-                    )
-
-                    if (finalFile == null) {
-                        CameraEventTracker.trackError(
-                            CameraEventTracker.EventType.IMAGE_PROCESS_ERROR,
-                            null,
-                            mapOf(
-                                "reason" to "图片处理未生成文件",
-                                "tempFileExists" to tempFile.exists(),
-                                "tempFileSize" to tempFile.takeIf { it.exists() }?.length()
-                            )
+                    val finalFile = processCapturedImage(
+                        WatermarkedCaptureRequest(
+                            temporaryCaptureFile = tempFile,
+                            watermarkBitmap = watermarkBitmap,
+                            watermarkStartPx = startPx,
+                            watermarkBottomPx = bottomPx,
+                            mirrorHorizontally = isFrontCamera,
                         )
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(context, "图片处理失败，请重试", Toast.LENGTH_SHORT).show()
-                            onError()
-                        }
-                        return@launch
-                    }
-
-                    withContext(Dispatchers.Main) {
-                        onImageCaptured(finalFile)
-                    }
+                    )
+                    onImageCaptured(finalFile)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -73,11 +47,12 @@ internal fun createImageSavedCallback(
                         mapOf("reason" to "图片处理异常: ${e.message ?: e.javaClass.simpleName}")
                     )
                     val detail = e.message ?: "请重新拍摄后重试"
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "图片处理失败: $detail", Toast.LENGTH_SHORT).show()
-                        onError()
-                    }
+                    Toast.makeText(context, "图片处理失败: $detail", Toast.LENGTH_SHORT).show()
+                    onError()
                 }
+            }
+            processingJob.invokeOnCompletion {
+                cleanupCaptureArtifacts(tempFile, watermarkBitmap)
             }
         }
 
@@ -87,11 +62,20 @@ internal fun createImageSavedCallback(
                 exc,
                 mapOf("reason" to "拍照保存失败: ${exc.message ?: exc.javaClass.simpleName}")
             )
-            scope.launch(Dispatchers.Main) {
+            cleanupCaptureArtifacts(tempFile, watermarkBitmap)
+            scope.launch {
                 val detail = exc.message ?: "请重新拍摄后重试"
                 Toast.makeText(context, "拍照失败: $detail", Toast.LENGTH_SHORT).show()
                 onError()
             }
         }
     }
+}
+
+internal fun cleanupCaptureArtifacts(
+    temporaryFile: File,
+    watermarkBitmap: Bitmap,
+) {
+    if (temporaryFile.exists()) temporaryFile.delete()
+    if (!watermarkBitmap.isRecycled) watermarkBitmap.recycle()
 }

@@ -17,7 +17,9 @@ object CosConstants {
      */
     const val DEFAULT_FACE_TYPE = 14
 
+    /** 业务图片上传前允许的最大文件大小。 */
+    const val MAX_IMAGE_FILE_SIZE_BYTES = 10L * 1024L * 1024L
+
     // 可以在这里添加其他COS相关的常量
-    // const val MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
     // const val ALLOWED_IMAGE_TYPES = "image/jpeg,image/png,image/webp"
 }

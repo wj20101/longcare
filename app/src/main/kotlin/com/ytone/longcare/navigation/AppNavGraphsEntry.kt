@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.ytone.longcare.common.utils.findBackStackEntryOrNull
+import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.feature.login.api.LoginFeatureActions
 import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.features.home.ui.HomeScreen
@@ -63,7 +64,20 @@ internal fun NavGraphBuilder.registerEntryNavGraphs(navController: NavController
                     },
                     onOpenPrivacyPolicy = {
                         navController.navigateToWebView(AgreementUrls.PRIVACY_POLICY_URL, "隐私政策")
-                    }
+                    },
+                    onNavigateToCamera = { watermarkData ->
+                        navController.navigateToCamera(watermarkData)
+                    },
+                    capturedImageUriFlow =
+                        backStackEntry.savedStateHandle.getStateFlow(
+                            NavigationConstants.CAPTURED_IMAGE_URI_KEY,
+                            null,
+                        ),
+                    clearCapturedImageUri = {
+                        backStackEntry.savedStateHandle.remove<String>(
+                            NavigationConstants.CAPTURED_IMAGE_URI_KEY
+                        )
+                    },
                 ),
                 todayOrderViewModel = todayOrderViewModel
             )

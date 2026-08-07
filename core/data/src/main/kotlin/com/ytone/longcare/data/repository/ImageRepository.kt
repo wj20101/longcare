@@ -1,5 +1,7 @@
 package com.ytone.longcare.data.repository
 
+import android.net.Uri
+import com.ytone.longcare.common.image.UnifiedImagePipeline
 import com.ytone.longcare.data.database.dao.OrderImageDao
 import com.ytone.longcare.data.database.entity.toDb
 import com.ytone.longcare.data.database.entity.toModel
@@ -23,7 +25,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class ImageRepository @Inject constructor(
-    private val orderImageDao: OrderImageDao
+    private val orderImageDao: OrderImageDao,
+    private val imagePipeline: UnifiedImagePipeline,
 ) : OrderImageRepository {
     
     // ========== 查询操作 ==========
@@ -192,7 +195,9 @@ class ImageRepository @Inject constructor(
      * 删除单张图片
      */
     override suspend fun deleteImage(imageId: Long) {
+        val image = orderImageDao.getById(imageId)?.toModel()
         orderImageDao.deleteById(imageId)
+        image?.let { deleteManagedFiles(listOf(it)) }
     }
     
     /**
@@ -200,7 +205,9 @@ class ImageRepository @Inject constructor(
      * @param orderKey 订单标识符
      */
     override suspend fun deleteImagesByOrderId(orderKey: OrderKey) {
+        val images = getImagesByOrderId(orderKey)
         orderImageDao.deleteByOrderId(orderKey.orderId)
+        deleteManagedFiles(images)
     }
     
     /**
@@ -209,7 +216,18 @@ class ImageRepository @Inject constructor(
      * @param imageType 图片类型
      */
     suspend fun deleteImagesByType(orderKey: OrderKey, imageType: ImageType) {
+        val images = getImagesByType(orderKey, imageType)
         orderImageDao.deleteByType(orderKey.orderId, imageType.value)
+        deleteManagedFiles(images)
+    }
+
+    private suspend fun deleteManagedFiles(images: Iterable<OrderImageEntity>) {
+        imagePipeline.deleteManagedImages(
+            images
+                .map { image -> image.localPath ?: image.localUri }
+                .distinct()
+                .map(Uri::parse)
+        )
     }
     
     // ========== 统计操作 ==========

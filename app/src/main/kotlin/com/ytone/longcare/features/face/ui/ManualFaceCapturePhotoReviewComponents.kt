@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.ytone.longcare.core.ui.image.PhotoPreviewDialog
 
 @Composable
 internal fun PhotoReviewContent(
@@ -48,12 +49,15 @@ internal fun PhotoReviewContent(
         )
     }
 
-    PhotoReviewFullScreenPreviewDialog(
-        showFullScreenPreview = showFullScreenPreview,
-        fullScreenFace = fullScreenFace,
-        onDismiss = {
-            showFullScreenPreview = false
-            fullScreenFace = null
+    if (showFullScreenPreview) {
+        fullScreenFace?.let { face ->
+            PhotoPreviewDialog(
+                imageModel = face.croppedFace,
+                onDismiss = {
+                    showFullScreenPreview = false
+                    fullScreenFace = null
+                },
+            )
         }
-    )
+    }
 }

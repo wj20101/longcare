@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.camera.core.ImageCapture
 import androidx.camera.view.LifecycleCameraController
+import com.ytone.longcare.common.image.WatermarkedCaptureRequest
 import com.ytone.longcare.features.photoupload.tracker.CameraEventTracker
 import java.io.File
 import java.util.concurrent.Executor
@@ -17,6 +18,7 @@ internal fun takePhoto(
     watermarkView: View,
     isFrontCamera: Boolean,
     scope: CoroutineScope,
+    processCapturedImage: suspend (WatermarkedCaptureRequest) -> File,
     onImageCaptured: (File) -> Unit,
     onError: () -> Unit
 ) {
@@ -65,11 +67,13 @@ internal fun takePhoto(
                 startPx = startPx,
                 bottomPx = bottomPx,
                 isFrontCamera = isFrontCamera,
+                processCapturedImage = processCapturedImage,
                 onImageCaptured = onImageCaptured,
                 onError = onError
             )
         )
     } catch (e: Exception) {
+        cleanupCaptureArtifacts(tempFile, watermarkBitmap)
         val detail = e.message ?: "请检查相机权限后重试"
         CameraEventTracker.trackError(
             CameraEventTracker.EventType.CAPTURE_ERROR,

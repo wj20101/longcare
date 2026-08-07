@@ -69,11 +69,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
         android:text="@string/watermark_caregiver_label"
         android:textColor="#333333"
         android:textSize="7sp"
         app:layout_constraintStart_toEndOf="@id/insuredPersonTextView"
-        app:layout_constraintTop_toTopOf="@+id/insuredPersonLabelTextView" />
+        app:layout_constraintTop_toBottomOf="@id/serviceTypeTextView" />
 
     <TextView
         android:id="@+id/caregiverTextView"
@@ -98,7 +99,7 @@
         android:textColor="#333333"
         android:textSize="7sp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/insuredPersonLabelTextView" />
+        app:layout_constraintTop_toBottomOf="@id/caregiverLabelTextView" />
 
     <TextView
         android:id="@+id/captureTimeTextView"

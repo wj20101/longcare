@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ytone.longcare.core.ui.image.PhotoPreviewDialog
 
 @Composable
 internal fun FaceCaptureCameraLayout(
@@ -64,8 +65,8 @@ internal fun FaceCaptureCameraLayout(
         }
 
         previewBitmap?.let { bitmap ->
-            ImagePreviewDialog(
-                bitmap = bitmap,
+            PhotoPreviewDialog(
+                imageModel = bitmap,
                 onDismiss = { onPreviewBitmapChange(null) }
             )
         }

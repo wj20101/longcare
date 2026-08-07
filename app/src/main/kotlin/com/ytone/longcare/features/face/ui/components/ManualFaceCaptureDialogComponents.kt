@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.core.ui.image.PhotoPreviewDialog
 
 @Composable
 fun PermissionDeniedContent(
@@ -146,8 +147,8 @@ fun FaceConfirmationDialog(
     )
 
     if (showFullScreenPreview && selectedFace != null) {
-        FaceFullScreenPreviewDialog(
-            face = selectedFace,
+        PhotoPreviewDialog(
+            imageModel = selectedFace.croppedFace,
             onDismiss = { showFullScreenPreview = false },
         )
     }

@@ -1,6 +1,8 @@
 package com.ytone.longcare.features.home.api
 
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.WatermarkData
+import kotlinx.coroutines.flow.StateFlow
 
 data class HomeActions(
     val onNavigateToCarePlansList: () -> Unit,
@@ -11,5 +13,8 @@ data class HomeActions(
     val onNavigateToHaveServiceUserList: () -> Unit,
     val onNavigateToNoServiceUserList: () -> Unit,
     val onOpenUserAgreement: () -> Unit,
-    val onOpenPrivacyPolicy: () -> Unit
+    val onOpenPrivacyPolicy: () -> Unit,
+    val onNavigateToCamera: (WatermarkData) -> Unit,
+    val capturedImageUriFlow: StateFlow<String?>,
+    val clearCapturedImageUri: () -> Unit,
 )

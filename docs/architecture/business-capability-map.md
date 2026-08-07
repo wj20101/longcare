@@ -1,6 +1,6 @@
 # Business Capability Map
 
-Last verified: 2026-07-25
+Last verified: 2026-08-07
 
 This map focuses on current implemented behavior and its technical ownership.
 
@@ -84,11 +84,14 @@ Status: implemented
   - service countdown can navigate to photo upload
   - photo upload can navigate to camera
   - results are exchanged via `savedStateHandle` keys
+  - persistent output is oriented, watermarked, compressed, size-validated, and stored through
+    the shared image pipeline; no gallery entry remains in standard business capture
 - Key dependencies:
   - camera/photo upload route screens currently in `:app`
   - `:feature:photoupload` module APIs, delegates, queue processing, and trackers
-  - Coil and Bugly tracker integration
-  - COS upload path via `core:data` COS repository
+  - common full-screen preview in `:core:ui`
+  - image output policy and managed-file lifecycle in `:core:common`
+  - validated COS upload facade in `:feature:photoupload`, backed by `core:data`
 
 ## 6) Service countdown and completion
 
@@ -130,12 +133,19 @@ Status: implemented (including test paths)
 
 ## 8) QLZ assessment and sales leads
 
-Status: data and SDK integration implemented; production UI pending
+Status: data, customer-facing sales UI, and SDK integration implemented
 
-- Current debug entry:
+- Current entries:
+  - sales accounts (`userIdentity == 2`) use `SalesExperienceScreen` inside `HomeRoute`
   - `QlzSdkDemoActivity` (debug-only launcher)
 - Main flow:
   - add/search/select a prospective customer
+  - customer registration accepts up to three camera photos; capture, watermark rendering,
+    result delivery, and full-screen preview reuse the nursing `CameraRoute` workflow
+  - deleting, abandoning, replacing, or successfully submitting a draft releases its managed
+    local photo files; failed submission retains them for retry
+  - sales watermarks identify the advisor and capture metadata while omitting insured-person
+    and address rows
   - obtain a one-time assessment Token through the LongCare Sale API
   - initialize the QLZ SDK and open its built-in Bluetooth assessment UI
   - receive progress, completion, cancellation, and report callbacks
@@ -168,7 +178,7 @@ Status: implemented
   - photo capture/upload
   - service countdown/end/complete
   - NFC start/end order workflows and test flow
-  - QLZ Sale APIs and debug assessment SDK flow
+  - QLZ Sale APIs, customer-facing sales UI, and assessment SDK flow
   - user list, service records, webview, update dialog
 - in-progress (technical, not user-facing capability gap):
   - modularization: route-bound UI ownership is still mixed between `:app` and `:feature:*`

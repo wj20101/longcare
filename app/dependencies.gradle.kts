@@ -117,7 +117,8 @@ dependencies {
             lib("robolectric"),
             lib("androidx-work-testing"),
             lib("androidx-test-core"),
-            lib("kotlinx-coroutines-test")
+            lib("kotlinx-coroutines-test"),
+            lib("truth")
         )
     )
 

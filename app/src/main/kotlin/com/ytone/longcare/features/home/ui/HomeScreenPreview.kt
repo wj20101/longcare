@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.theme.LongCareTheme
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @Preview
 @Composable
@@ -19,7 +20,10 @@ fun HomeScreenPreview() {
                 onNavigateToHaveServiceUserList = {},
                 onNavigateToNoServiceUserList = {},
                 onOpenUserAgreement = {},
-                onOpenPrivacyPolicy = {}
+                onOpenPrivacyPolicy = {},
+                onNavigateToCamera = {},
+                capturedImageUriFlow = MutableStateFlow(null),
+                clearCapturedImageUri = {},
             )
         )
     }

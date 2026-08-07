@@ -2,7 +2,6 @@ package com.ytone.longcare.features.sales
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +19,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -29,15 +29,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.PermissionPurposeDialog
+import com.ytone.longcare.common.utils.UnifiedPermissionHelper
+import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.features.home.ui.AppBottomNavigation
 import com.ytone.longcare.features.home.ui.CustomBottomNavigationItem
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.profile.api.ProfileActions
 import com.ytone.longcare.features.profile.ui.ProfileScreen
+import com.ytone.longcare.model.WatermarkData
 import kotlinx.coroutines.launch
 
 @Composable
@@ -48,6 +53,7 @@ internal fun SalesExperienceScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
+    val capturedImageUri by actions.capturedImageUriFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context.findActivity()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -63,17 +69,18 @@ internal fun SalesExperienceScreen(
         mutableStateOf(SalesPage.HOME.name)
     }
     var reminderIndex by rememberSaveable { mutableIntStateOf(-1) }
-    var registrationDraft by remember {
+    var registrationDraft by rememberSaveable(stateSaver = salesCustomerDraftSaver) {
         mutableStateOf(SalesCustomerDraft())
     }
     var photoUriStrings by rememberSaveable {
         mutableStateOf(emptyList<String>())
     }
+    var showCameraPurposeNotice by rememberSaveable { mutableStateOf(false) }
 
     val currentPage =
         runCatching { SalesPage.valueOf(currentPageName) }
             .getOrDefault(SalesPage.HOME)
-    val photoUris = photoUriStrings.map(Uri::parse)
+    val photoUris = photoUriStrings.map(String::toUri)
     val selectCustomerMessage = stringResource(R.string.sales_error_select_customer)
     val evaluationPermissionMessage =
         stringResource(R.string.sales_error_evaluation_permission)
@@ -81,6 +88,14 @@ internal fun SalesExperienceScreen(
         stringResource(R.string.sales_error_location_permission)
     val openEvaluationErrorMessage =
         stringResource(R.string.sales_error_open_evaluation)
+    val cameraUnavailableMessage =
+        stringResource(R.string.sales_error_camera_unavailable)
+    val cameraPermissionMessage =
+        stringResource(R.string.sales_error_camera_permission)
+    val cameraPermissionPurpose =
+        stringResource(R.string.sales_camera_permission_purpose)
+    val salesWatermarkTitle = stringResource(R.string.sales_watermark_title)
+    val unknownAdvisorName = stringResource(R.string.sales_watermark_unknown_advisor)
     val bottomItems =
         listOf(
             CustomBottomNavigationItem(stringResource(R.string.sales_nav_home)),
@@ -103,12 +118,19 @@ internal fun SalesExperienceScreen(
         rootTab = 0
     }
 
+    fun discardRegistrationPhotos() {
+        if (photoUriStrings.isNotEmpty()) {
+            viewModel.discardManagedPhotos(photoUriStrings.map(String::toUri))
+            photoUriStrings = emptyList()
+        }
+    }
+
     fun finishSubmissionFlow() {
         // Leave the result page before clearing its state so a state emission
         // cannot re-enter or visually pin the completed submission route.
         goHome()
         registrationDraft = SalesCustomerDraft()
-        photoUriStrings = emptyList()
+        discardRegistrationPhotos()
         viewModel.resetSubmission()
     }
 
@@ -145,7 +167,12 @@ internal fun SalesExperienceScreen(
                         .getOrDefault(SalesPage.HOME)
                 )
 
-            SalesPage.REGISTRATION -> goHome()
+            SalesPage.REGISTRATION -> {
+                discardRegistrationPhotos()
+                registrationDraft = SalesCustomerDraft()
+                viewModel.resetSubmission()
+                goHome()
+            }
             SalesPage.REGISTRATION_CONFIRM -> navigate(SalesPage.REGISTRATION)
             SalesPage.SUBMIT_SUCCESS -> finishSubmissionFlow()
             SalesPage.EVALUATION_CHOICE,
@@ -182,6 +209,22 @@ internal fun SalesExperienceScreen(
             currentPage == SalesPage.REMINDER_DETAIL &&
                 uiState.toDoItems.isEmpty() ->
                 viewModel.loadToDoList()
+        }
+    }
+
+    LaunchedEffect(capturedImageUri) {
+        capturedImageUri?.let { uriString ->
+            val capturedUri = uriString.toUri()
+            if (photoUriStrings.size >= MAX_SALES_CUSTOMER_PHOTOS) {
+                viewModel.discardManagedPhoto(capturedUri)
+            } else {
+                photoUriStrings =
+                    mergeSalesCustomerPhotoUris(
+                        existing = photoUriStrings.map(String::toUri),
+                        added = listOf(capturedUri),
+                    ).map { uri -> uri.toString() }
+            }
+            actions.clearCapturedImageUri()
         }
     }
 
@@ -223,6 +266,39 @@ internal fun SalesExperienceScreen(
                 showMessage(locationPermissionMessage)
             }
         }
+
+    fun openSalesWatermarkCamera() {
+        actions.onNavigateToCamera(
+            createSalesCustomerWatermarkData(
+                title = salesWatermarkTitle,
+                advisorName = user?.userName.orEmpty(),
+                unknownAdvisorName = unknownAdvisorName,
+            )
+        )
+    }
+
+    val salesCameraPermissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission(),
+        ) { granted ->
+            if (granted) {
+                openSalesWatermarkCamera()
+            } else {
+                showMessage(cameraPermissionMessage)
+            }
+        }
+
+    fun requestSalesCamera() {
+        if (!context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+            showMessage(cameraUnavailableMessage)
+            return
+        }
+        if (UnifiedPermissionHelper.isCameraPermissionGranted(context)) {
+            openSalesWatermarkCamera()
+        } else {
+            showCameraPurposeNotice = true
+        }
+    }
 
     fun openSdkWithPermission() {
         val hostActivity = activity
@@ -343,8 +419,8 @@ internal fun SalesExperienceScreen(
                                         isToDoCountLoading =
                                             uiState.isToDoCountLoading,
                                         onRegisterCustomer = {
+                                            discardRegistrationPhotos()
                                             registrationDraft = SalesCustomerDraft()
-                                            photoUriStrings = emptyList()
                                             viewModel.resetSubmission()
                                             navigate(SalesPage.REGISTRATION)
                                         },
@@ -433,10 +509,9 @@ internal fun SalesExperienceScreen(
                         photoUris = photoUris,
                         location = uiState.currentLocation,
                         onDraftChange = { registrationDraft = it },
-                        onPhotosSelected = { selected ->
-                            photoUriStrings = selected.map(Uri::toString)
-                        },
+                        onTakePhoto = ::requestSalesCamera,
                         onRemovePhoto = { removed ->
+                            viewModel.discardManagedPhoto(removed)
                             photoUriStrings =
                                 photoUriStrings.filterNot {
                                     it == removed.toString()
@@ -535,7 +610,42 @@ internal fun SalesExperienceScreen(
             )
         }
     }
+
+    if (showCameraPurposeNotice) {
+        PermissionPurposeDialog(
+            notice = cameraPermissionPurposeNotice(cameraPermissionPurpose),
+            onConfirm = {
+                showCameraPurposeNotice = false
+                salesCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            },
+            onDismiss = { showCameraPurposeNotice = false },
+        )
+    }
 }
+
+private val salesCustomerDraftSaver =
+    listSaver<SalesCustomerDraft, String>(
+        save = { draft ->
+            listOf(
+                draft.userName,
+                draft.identityCardNumber,
+                draft.guardianName,
+                draft.guardianPhone,
+                draft.guardianRelation,
+                draft.liveAddress,
+            )
+        },
+        restore = { values ->
+            SalesCustomerDraft(
+                userName = values[0],
+                identityCardNumber = values[1],
+                guardianName = values[2],
+                guardianPhone = values[3],
+                guardianRelation = values[4],
+                liveAddress = values[5],
+            )
+        },
+    )
 
 internal enum class SalesPage {
     HOME,

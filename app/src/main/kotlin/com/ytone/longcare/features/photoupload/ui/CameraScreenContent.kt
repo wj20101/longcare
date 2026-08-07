@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.ytone.longcare.common.image.WatermarkedCaptureRequest
 import com.ytone.longcare.features.photoupload.vm.CameraViewModel
 import com.ytone.longcare.model.WatermarkData
 import java.io.File
@@ -63,6 +64,7 @@ internal fun CameraContent(
             watermarkView = watermarkView,
             isFrontCamera = isFrontCamera,
             scope = scope,
+            processCapturedImage = viewModel::processCapturedImage,
             preparingMessage = "水印准备中，请稍后...",
             onCaptureStarted = {
                 isCapturing = true
@@ -115,6 +117,7 @@ internal fun CameraContent(
                         isCapturing = isCapturing,
                         isFrontCamera = isFrontCamera,
                         scope = scope,
+                        processCapturedImage = viewModel::processCapturedImage,
                         onCountdownUpdate = { countdownSeconds = it },
                         onCaptureStateChanged = { isCapturing = it },
                         onBeforeCapture = { viewModel.updateTime() },

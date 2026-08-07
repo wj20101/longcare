@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.photoupload.viewmodel
 
 import android.net.Uri
+import com.ytone.longcare.common.image.UnifiedImagePipeline
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.model.ImageTask
@@ -23,6 +24,7 @@ import java.util.UUID
 internal class PhotoTaskQueueDelegate(
     private val scope: CoroutineScope,
     private val imageRepository: OrderImageRepository,
+    private val imagePipeline: UnifiedImagePipeline,
 ) {
     val currentOrderKey = MutableStateFlow<OrderKey?>(null)
     val imageTasks = MutableStateFlow<List<ImageTask>>(emptyList())
@@ -103,16 +105,28 @@ internal class PhotoTaskQueueDelegate(
     }
 
     fun removeTask(taskId: String) {
+        val removedTask = imageTasks.value.find { it.id == taskId }
         imageTasks.value = imageTasks.value.filter { it.id != taskId }
         scope.launch {
             taskId.toLongOrNull()?.let { imageRepository.deleteImage(it) }
+            removedTask
+                ?.localUris()
+                ?.filterNot { uri -> imageTasks.value.any { remaining -> uri in remaining.localUris() } }
+                ?.forEach { imagePipeline.deleteManagedImage(Uri.parse(it)) }
         }
     }
 
     fun clearAllTasks() {
+        val removedTasks = imageTasks.value
         imageTasks.value = emptyList()
         scope.launch {
             currentOrderKey.value?.let { imageRepository.deleteImagesByOrderId(it) }
+            imagePipeline.deleteManagedImages(
+                removedTasks
+                    .flatMap { task -> task.localUris() }
+                    .distinct()
+                    .map(Uri::parse)
+            )
         }
     }
 
@@ -258,6 +272,9 @@ internal class PhotoTaskQueueDelegate(
         ImageUploadStatus.PENDING, ImageUploadStatus.UPLOADING, ImageUploadStatus.SUCCESS -> ImageTaskStatus.SUCCESS
         ImageUploadStatus.FAILED, ImageUploadStatus.CANCELLED -> ImageTaskStatus.FAILED
     }
+
+    private fun ImageTask.localUris(): Set<String> =
+        setOfNotNull(originalUri, resultUri)
 
     private companion object {
         const val PHOTO_DIAGNOSTIC_CATEGORY = "photo_upload"

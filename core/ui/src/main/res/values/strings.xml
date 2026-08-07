@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="photo_preview_content_description">预览图片</string>
+    <string name="photo_preview_close">关闭图片预览</string>
+    <string name="photo_preview_hint">双击缩放 · 双指缩放 · 拖动查看</string>
+</resources>

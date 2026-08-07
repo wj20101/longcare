@@ -7,15 +7,14 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.R
-import com.ytone.longcare.common.constants.CosConstants
+import com.ytone.longcare.common.image.UnifiedImagePipeline
 import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.common.utils.SystemConfigManager
-import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.sale.SaleRepository
 import com.ytone.longcare.integration.qlz.QlzSdkClient
 import com.ytone.longcare.integration.qlz.QlzSdkEvent
+import com.ytone.longcare.features.photoupload.upload.PhotoCloudUploader
 import com.ytone.longcare.model.AddUserLatentParamModel
 import com.ytone.longcare.model.AddUserLatentResultModel
 import com.ytone.longcare.model.CheckTokenModel
@@ -39,7 +38,8 @@ import javax.inject.Inject
 class SalesViewModel @Inject constructor(
     private val saleRepository: SaleRepository,
     private val locationFacade: LocationFacade,
-    private val cosRepository: CosRepository,
+    private val photoCloudUploader: PhotoCloudUploader,
+    private val imagePipeline: UnifiedImagePipeline,
     private val qlzSdkClient: QlzSdkClient,
     private val systemConfigManager: SystemConfigManager,
     @param:ApplicationContext private val applicationContext: Context,
@@ -722,21 +722,32 @@ class SalesViewModel @Inject constructor(
                             photoUris.size,
                         )
                 )
-            val result =
-                cosRepository.uploadFile(
-                    CosUtils.createUploadParams(
-                        context = applicationContext,
-                        fileUri = uri,
-                        folderType = CosConstants.DEFAULT_FOLDER_TYPE,
-                    )
-                )
-            val uploadedKey = result.key
-            if (!result.success || uploadedKey.isNullOrBlank()) {
+            val uploadedKey =
+                try {
+                    photoCloudUploader.upload(uri).key
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Throwable) {
+                    null
+                }
+            if (uploadedKey.isNullOrBlank()) {
                 throw SalesUserFacingException(
                     text(R.string.sales_error_photo_upload, index + 1)
                 )
             }
             uploadedKey
+        }
+    }
+
+    fun discardManagedPhoto(uri: Uri) {
+        viewModelScope.launch {
+            imagePipeline.deleteManagedImage(uri)
+        }
+    }
+
+    fun discardManagedPhotos(uris: Iterable<Uri>) {
+        viewModelScope.launch {
+            imagePipeline.deleteManagedImages(uris)
         }
     }
 
