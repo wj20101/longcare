@@ -999,15 +999,14 @@ data class SalesCustomerDraft(
     fun validationMessageRes(): Int? =
         when {
             userName.isBlank() -> R.string.sales_registration_name_hint
-            identityCardNumber.length !in setOf(15, 18) ->
+            identityCardNumber.isNotBlank() &&
+                identityCardNumber.length !in setOf(15, 18) ->
                 R.string.sales_validation_identity
 
-            guardianName.isBlank() -> R.string.sales_registration_contact_hint
-            !guardianPhone.matches(Regex("^1[3-9]\\d{9}$")) ->
+            guardianPhone.isNotBlank() &&
+                !guardianPhone.matches(Regex("^1[3-9]\\d{9}$")) ->
                 R.string.sales_validation_phone
 
-            guardianRelation.isBlank() -> R.string.sales_registration_relation_hint
-            liveAddress.isBlank() -> R.string.sales_registration_address_hint
             else -> null
         }
 

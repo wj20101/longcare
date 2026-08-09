@@ -23,6 +23,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
@@ -31,6 +32,69 @@ class SalesViewModelSubmissionTest {
 
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
+
+    @Test
+    fun `customer submission only requires user name`() =
+        runTest {
+            val applicationContext = mockk<Context>(relaxed = true)
+            val submittedRequest = slot<AddUserLatentParamModel>()
+            val saleRepository =
+                mockk<SaleRepository>(relaxed = true) {
+                    coEvery { getRecentUserLatentList() } returns ApiResult.Success(emptyList())
+                    coEvery { addUserLatent(capture(submittedRequest)) } returns
+                        ApiResult.Success(AddUserLatentResultModel(id = 7))
+                }
+            val photoUploader = QueuePhotoCloudUploader(results = ArrayDeque())
+            val viewModel =
+                createViewModel(
+                    saleRepository = saleRepository,
+                    photoCloudUploader = photoUploader,
+                    applicationContext = applicationContext,
+                )
+
+            viewModel.submitCustomer(
+                draft = SalesCustomerDraft(userName = "  测试老人  "),
+                photoUris = emptyList(),
+            )
+            advanceUntilIdle()
+
+            assertEquals("测试老人", submittedRequest.captured.userName)
+            assertEquals("", submittedRequest.captured.identityCardNumber)
+            assertEquals("", submittedRequest.captured.guardianName)
+            assertEquals("", submittedRequest.captured.guardianPhone)
+            assertEquals("", submittedRequest.captured.guardianRelation)
+            assertEquals("", submittedRequest.captured.liveAddress)
+            assertEquals("", submittedRequest.captured.liveLng)
+            assertEquals("", submittedRequest.captured.liveLat)
+            assertEquals(emptyList<Uri>(), photoUploader.uploadedUris)
+            assertNull(viewModel.uiState.value.errorMessage)
+        }
+
+    @Test
+    fun `optional identity and phone are validated only when entered`() {
+        assertEquals(
+            R.string.sales_registration_name_hint,
+            SalesCustomerDraft(
+                identityCardNumber = "330106199001011234",
+                guardianPhone = "13800138000",
+            ).validationMessageRes(),
+        )
+        assertNull(SalesCustomerDraft(userName = "测试老人").validationMessageRes())
+        assertEquals(
+            R.string.sales_validation_identity,
+            SalesCustomerDraft(
+                userName = "测试老人",
+                identityCardNumber = "123456",
+            ).validationMessageRes(),
+        )
+        assertEquals(
+            R.string.sales_validation_phone,
+            SalesCustomerDraft(
+                userName = "测试老人",
+                guardianPhone = "123456",
+            ).validationMessageRes(),
+        )
+    }
 
     @Test
     fun `customer submission sends COS keys instead of private URLs`() =

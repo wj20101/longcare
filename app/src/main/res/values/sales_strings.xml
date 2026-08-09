@@ -76,16 +76,16 @@
 
     <!-- 信息登记 -->
     <string name="sales_registration_title">信息登记</string>
-    <string name="sales_registration_name_hint">请输入老人姓名</string>
-    <string name="sales_registration_identity_hint">请输入老人身份证号码</string>
-    <string name="sales_registration_contact_hint">请输入联系人</string>
-    <string name="sales_registration_phone_hint">请输入联系人手机号码</string>
-    <string name="sales_registration_relation_hint">请输入与老人关系</string>
-    <string name="sales_registration_address_hint">请输入居住地址</string>
+    <string name="sales_registration_name_hint">请输入老人姓名（必填）</string>
+    <string name="sales_registration_identity_hint">请输入老人身份证号码（选填）</string>
+    <string name="sales_registration_contact_hint">请输入联系人（选填）</string>
+    <string name="sales_registration_phone_hint">请输入联系人手机号码（选填）</string>
+    <string name="sales_registration_relation_hint">请输入与老人关系（选填）</string>
+    <string name="sales_registration_address_hint">请输入居住地址（选填）</string>
     <string name="sales_registration_get_location">获取定位</string>
     <string name="sales_registration_refresh_location">重新定位</string>
     <string name="sales_registration_location_format">已定位：%1$.6f, %2$.6f</string>
-    <string name="sales_registration_photos">照片</string>
+    <string name="sales_registration_photos">照片（选填）</string>
     <string name="sales_registration_submit">提交</string>
     <string name="sales_photo_description">照片</string>
     <string name="sales_photo_remove_description">移除照片</string>
