@@ -1,12 +1,9 @@
 package com.ytone.longcare.features.nfc.vm
 
-import android.content.Context
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
-import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
-import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
-import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
+import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.ServiceCompleteData
@@ -15,10 +12,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 internal class NfcOrderCompletionDelegate(
-    private val context: Context,
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
-    private val countdownNotificationManager: CountdownNotificationManager,
+    private val serviceCountdownSystemGateway: ServiceCountdownSystemGateway,
     private val scope: CoroutineScope
 ) {
 
@@ -51,9 +47,9 @@ internal class NfcOrderCompletionDelegate(
 
     fun cleanupResources(orderKey: OrderKey) {
         try {
-            CountdownForegroundService.stopCountdown(context)
-            AlarmRingtoneService.stopRingtone(context)
-            countdownNotificationManager.cancelCountdownAlarmForOrder(orderKey)
+            serviceCountdownSystemGateway.stopForegroundService()
+            serviceCountdownSystemGateway.stopAlarmRingtone()
+            serviceCountdownSystemGateway.cancelCountdownAlarmForOrder(orderKey)
 
             scope.launch {
                 unifiedOrderRepository.endLocalService(orderKey)

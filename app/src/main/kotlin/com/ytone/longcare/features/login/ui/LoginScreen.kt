@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.login.ui
 
-import android.content.pm.ActivityInfo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
@@ -11,12 +10,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,7 +33,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -38,9 +40,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
-import com.ytone.longcare.common.utils.LockScreenOrientation
-import com.ytone.longcare.common.utils.showShortToast
-import com.ytone.longcare.debug.NfcTestEntrySession
 import com.ytone.longcare.feature.login.api.LoginFeatureActions
 import com.ytone.longcare.feature.login.ext.maxPhoneLength
 import com.ytone.longcare.features.login.vm.LoginUiState
@@ -56,30 +55,47 @@ fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
     initialAgreementChecked: Boolean = false
 ) {
-    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     val loginState by viewModel.loginState.collectAsStateWithLifecycle()
     val sendSmsState by viewModel.sendSmsCodeState.collectAsStateWithLifecycle()
     val startConfigState by viewModel.startConfigState.collectAsStateWithLifecycle()
     val countdownSeconds by viewModel.countdownSeconds.collectAsStateWithLifecycle()
+    val feedback by viewModel.feedback.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    LoginScreenContent(
-        actions = actions,
-        loginState = loginState,
-        sendSmsState = sendSmsState,
-        startConfigState = startConfigState,
-        countdownSeconds = countdownSeconds,
-        initialPhoneNumber = remember { viewModel.getLastLoginPhoneNumber() },
-        initialAgreementChecked = initialAgreementChecked,
-        onPrivacyAgreementConfirmed = viewModel::onPrivacyAgreementConfirmed,
-        onSendCodeClick = { phoneNumber -> viewModel.sendSmsCode(phoneNumber) },
-        onLoginClick = { phoneNumber, code -> viewModel.login(phoneNumber, code) }
-    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        LoginScreenContent(
+            actions = actions,
+            loginState = loginState,
+            sendSmsState = sendSmsState,
+            startConfigState = startConfigState,
+            countdownSeconds = countdownSeconds,
+            initialPhoneNumber = remember { viewModel.getLastLoginPhoneNumber() },
+            initialAgreementChecked = initialAgreementChecked,
+            onPrivacyAgreementConfirmed = viewModel::onPrivacyAgreementConfirmed,
+            onSendCodeClick = { phoneNumber -> viewModel.sendSmsCode(phoneNumber) },
+            onLoginClick = { phoneNumber, code -> viewModel.login(phoneNumber, code) }
+        )
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(16.dp)
+        )
+    }
 
     LaunchedEffect(loginState) {
         if (loginState is LoginUiState.Success) {
             actions.onLoginSuccess()
         }
+    }
+
+    LaunchedEffect(feedback?.id) {
+        val currentFeedback = feedback ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(currentFeedback.message)
+        viewModel.consumeFeedback(currentFeedback.id)
     }
 }
 
@@ -96,13 +112,9 @@ fun LoginScreenContent(
     onSendCodeClick: (String) -> Unit,
     onLoginClick: (String, String) -> Unit
 ) {
-    val context = LocalContext.current
     val agreementConfirmMessage = stringResource(R.string.login_agreement_confirm_message)
     val agreementConfirmAction = stringResource(R.string.login_agreement_confirm_action)
     val agreementCancelAction = stringResource(R.string.login_agreement_cancel_action)
-    val testEntryEnabledToast = stringResource(R.string.login_test_entry_enabled_toast)
-    val testEntryDisabledToast = stringResource(R.string.login_test_entry_disabled_toast)
-    val testEntryEnabled by NfcTestEntrySession.enabled.collectAsStateWithLifecycle()
 
     var phoneNumber by remember { mutableStateOf(initialPhoneNumber) }
     var verificationCode by remember { mutableStateOf("") }
@@ -150,13 +162,6 @@ fun LoginScreenContent(
         }
     }
 
-    val toggleTestEntry = {
-        val enabled = NfcTestEntrySession.toggle()
-        context.showShortToast(
-            if (enabled) testEntryEnabledToast else testEntryDisabledToast
-        )
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(id = R.drawable.login_bg),
@@ -175,20 +180,14 @@ fun LoginScreenContent(
                 val compactHeight = maxHeight < 720.dp
                 val formHorizontalPadding = if (compactWidth) 24.dp else 48.dp
                 val agreementSpacing = if (compactHeight) 24.dp else 48.dp
-                val contentBottomPadding = when {
-                    testEntryEnabled -> 16.dp
-                    compactHeight -> 20.dp
-                    else -> 32.dp
-                }
+                val contentBottomPadding = if (compactHeight) 20.dp else 32.dp
 
-                LoginBrandingHeader(
-                    isCompactLayout = compactHeight,
-                    onMainLogoLongPress = toggleTestEntry
-                )
+                LoginBrandingHeader(isCompactLayout = compactHeight)
 
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .widthIn(max = 720.dp)
                         .fillMaxWidth()
                         .imePadding()
                         .verticalScroll(rememberScrollState())
@@ -227,13 +226,6 @@ fun LoginScreenContent(
                             .padding(horizontal = 32.dp)
                     )
 
-                    if (testEntryEnabled) {
-                        Spacer(modifier = Modifier.height(32.dp))
-                        LoginNfcTestButtons(
-                            actions = actions,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
                 }
             }
         }

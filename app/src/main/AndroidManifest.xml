@@ -23,7 +23,6 @@
         android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
 
     <!--允许获取精确位置，精准定位必选-->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -35,12 +34,8 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!--允许获取wifi状态改变，用于网络定位（无gps情况下的定位），若需网络定位功能则必选-->
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-    <!--后台获取位置信息，若需后台定位则必选-->
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <!--用于申请调用A-GPS模块,卫星定位加速-->
     <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
-    <!--允许写设备缓存，用于问题排查-->
-    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
 
     <!-- 倒计时通知所需权限 -->
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -54,7 +49,6 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <!-- Android 14+ 前台服务媒体播放权限 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <uses-feature
         android:name="android.hardware.nfc"
@@ -180,7 +174,6 @@
             android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
             <intent-filter android:priority="1000">
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
@@ -194,13 +187,6 @@
             tools:targetApi="o_mr1"
             android:theme="@style/Theme.LongCare" />
             
-        <!-- 人脸捕获测试Activity -->
-        <activity
-            android:name=".features.facecapture.FaceCaptureTestActivity"
-            android:enabled="${faceCaptureTestActivityEnabled}"
-            android:exported="false"
-            android:theme="@style/Theme.LongCare" />
-
         <!-- SDK 的外部 deep link 不是当前接入路径，保持为应用内组件。 -->
         <activity
             android:name="com.evenmed.sdk.call.MainLoadingActivity"

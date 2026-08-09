@@ -48,15 +48,15 @@ interface UserSessionRepository {
     /**
      * 登录用户，并持久化用户信息。
      */
-    fun login(user: User)
+    suspend fun login(user: User)
 
     /**
      * 更新当前登录的用户信息。
      */
-    fun updateUser(user: User)
+    suspend fun updateUser(user: User)
 
     /**
      * 退出登录，并清除持久化的用户信息。
      */
-    fun logout()
+    suspend fun logout()
 }

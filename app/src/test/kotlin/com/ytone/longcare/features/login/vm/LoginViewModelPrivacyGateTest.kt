@@ -1,8 +1,7 @@
 package com.ytone.longcare.features.login.vm
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.LoginPreferencesManager
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.model.StartConfigResultModel
@@ -14,6 +13,8 @@ import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
@@ -74,6 +75,31 @@ class LoginViewModelPrivacyGateTest {
 
         coVerify(exactly = 0) { repository.sendSmsCode(any()) }
         coVerify(exactly = 0) { repository.login(any(), any()) }
+        assertEquals(
+            "请先阅读并同意用户协议和隐私政策",
+            viewModel.feedback.value?.message
+        )
+    }
+
+    @Test
+    fun `feedback remains until UI consumes the matching event`() = runTest {
+        val repository = mockk<LoginRepository>(relaxed = true)
+        coEvery { repository.getStartConfig() } returns ApiResult.Success(
+            StartConfigResultModel(
+                userXieYiUrl = "https://example.com/user",
+                yinSiXieYiUrl = "https://example.com/privacy"
+            )
+        )
+        val viewModel = createViewModel(repository)
+
+        viewModel.sendSmsCode("invalid")
+        val feedback = requireNotNull(viewModel.feedback.value)
+
+        viewModel.consumeFeedback(feedback.id + 1)
+        assertEquals(feedback, viewModel.feedback.value)
+
+        viewModel.consumeFeedback(feedback.id)
+        assertNull(viewModel.feedback.value)
     }
 
     private fun createViewModel(repository: LoginRepository): LoginViewModel {
@@ -84,7 +110,6 @@ class LoginViewModelPrivacyGateTest {
         return LoginViewModel(
             loginRepository = repository,
             userSessionRepository = mockk<UserSessionRepository>(relaxed = true),
-            toastHelper = mockk<ToastHelper>(relaxed = true),
             loginPreferencesManager = preferences
         )
     }

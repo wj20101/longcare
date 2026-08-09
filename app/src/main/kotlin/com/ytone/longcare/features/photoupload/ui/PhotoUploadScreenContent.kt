@@ -67,13 +67,11 @@ internal fun PhotoUploadScreenContent(
     centerCareTasks: List<ImageTask>,
     afterCareTasks: List<ImageTask>,
     isUploading: Boolean,
-    isMockDataEnabled: Boolean,
     onAddBeforeCarePhoto: () -> Unit,
     onAddCenterCarePhoto: () -> Unit,
     onAddAfterCarePhoto: () -> Unit,
     onRetryTask: (String) -> Unit,
     onRemoveTask: (String) -> Unit,
-    viewModel: com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewModel
 ) {
     LazyColumn(
         modifier = Modifier
@@ -127,13 +125,6 @@ internal fun PhotoUploadScreenContent(
                 onRetryTask = onRetryTask,
                 onRemoveTask = onRemoveTask
             )
-        }
-
-        if (isMockDataEnabled) {
-            item {
-                Spacer(modifier = Modifier.height(24.dp))
-                PhotoUploadMockDebugToolsCard(viewModel = viewModel)
-            }
         }
     }
 }

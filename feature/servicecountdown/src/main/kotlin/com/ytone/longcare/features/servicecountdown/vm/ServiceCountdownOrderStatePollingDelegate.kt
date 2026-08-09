@@ -1,6 +1,6 @@
 package com.ytone.longcare.features.servicecountdown.vm
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
@@ -8,14 +8,12 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderStateModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 internal class ServiceCountdownOrderStatePollingDelegate(
     private val stateHolder: ServiceCountdownStateHolder,
     private val orderRepository: OrderRepository,
-    private val orderStateErrorEvents: MutableSharedFlow<ServiceOrderStateModel>,
     private val viewModelScope: CoroutineScope,
     private val pollingIntervalMillis: Long = 5000L,
 ) {
@@ -32,7 +30,6 @@ internal class ServiceCountdownOrderStatePollingDelegate(
                         val orderState = result.data
                         if (!orderState.isInProgress()) {
                             stateHolder.orderStateError.value = orderState
-                            orderStateErrorEvents.tryEmit(orderState)
                             break
                         }
                     }

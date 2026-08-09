@@ -146,10 +146,7 @@ class AlarmRingtoneService : Service() {
             return START_NOT_STICKY
         }
         
-        // 尝试从前台服务启动Activity (作为fullScreenIntent的补充)
-        // 注意：Android 10+ (API 29) 限制了后台启动Activity，必须申请 SYSTEM_ALERT_WINDOW 权限或满足特定条件
-        // 前台服务属于"可见应用"，通常允许启动Activity，但在某些ROM上可能仍受限
-        // 我们在startForegroundWithNotification中已经设置了fullScreenIntent，这是官方推荐的做法
+        // fullScreenIntent 是锁屏提醒的主路径；直接启动仅作为系统允许时的兼容补充。
         launchAlarmActivityIfPossible(orderKey, serviceName)
         scheduleNoVisibleActivityFallback(orderKey, serviceName)
         

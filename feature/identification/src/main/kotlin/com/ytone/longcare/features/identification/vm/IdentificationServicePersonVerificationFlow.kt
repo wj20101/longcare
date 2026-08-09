@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.identification.vm
 
-import android.content.Context
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
@@ -13,7 +12,6 @@ import kotlinx.coroutines.launch
 
 internal fun launchSelfProvidedFaceVerificationAndCache(
     scope: CoroutineScope,
-    context: Context,
     name: String,
     idNo: String,
     orderNo: String,
@@ -22,7 +20,7 @@ internal fun launchSelfProvidedFaceVerificationAndCache(
     sourcePhotoUrl: String,
     faceDataSource: IdentificationFaceDataSource,
     beginVerification: (VerificationType) -> Unit,
-    startVerificationWithRequest: suspend (Context, FaceVerificationRequest) -> Unit,
+    startVerificationWithRequest: suspend (FaceVerificationRequest) -> Unit,
     onFailure: (String) -> Unit,
 ) {
     scope.launch {
@@ -38,7 +36,6 @@ internal fun launchSelfProvidedFaceVerificationAndCache(
             logD("已保存到本地缓存", tag = "IdentificationVM")
 
             executeSelfProvidedVerification(
-                context = context,
                 name = name,
                 idNo = idNo,
                 orderNo = orderNo,
@@ -65,14 +62,13 @@ internal fun launchSelfProvidedFaceVerificationAndCache(
 
 internal fun launchSelfProvidedFaceVerificationWithBase64(
     scope: CoroutineScope,
-    context: Context,
     name: String,
     idNo: String,
     orderNo: String,
     userId: String,
     sourcePhotoBase64: String,
     beginVerification: (VerificationType) -> Unit,
-    startVerificationWithRequest: suspend (Context, FaceVerificationRequest) -> Unit,
+    startVerificationWithRequest: suspend (FaceVerificationRequest) -> Unit,
     onFailure: (String, Throwable?) -> Unit,
 ) {
     scope.launch {
@@ -80,7 +76,6 @@ internal fun launchSelfProvidedFaceVerificationWithBase64(
 
         try {
             executeSelfProvidedVerification(
-                context = context,
                 name = name,
                 idNo = idNo,
                 orderNo = orderNo,
@@ -97,13 +92,12 @@ internal fun launchSelfProvidedFaceVerificationWithBase64(
 }
 
 private suspend fun executeSelfProvidedVerification(
-    context: Context,
     name: String,
     idNo: String,
     orderNo: String,
     userId: String,
     sourcePhotoBase64: String,
-    startVerificationWithRequest: suspend (Context, FaceVerificationRequest) -> Unit,
+    startVerificationWithRequest: suspend (FaceVerificationRequest) -> Unit,
 ) {
     val request = createFaceVerificationRequest(
         name = name,
@@ -112,5 +106,5 @@ private suspend fun executeSelfProvidedVerification(
         userId = userId,
         sourcePhotoBase64 = sourcePhotoBase64
     )
-    startVerificationWithRequest(context, request)
+    startVerificationWithRequest(request)
 }

@@ -5,7 +5,6 @@ import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
-import com.ytone.longcare.features.countdown.worker.CountdownBackupWorker
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import com.ytone.longcare.model.OrderKey
 import io.mockk.clearAllMocks
@@ -31,12 +30,10 @@ class CountdownAlarmReceiverTest {
         context = ApplicationProvider.getApplicationContext()
 
         mockkObject(CountdownEventTracker)
-        mockkObject(CountdownBackupWorker.Companion)
         mockkObject(CountdownForegroundService.Companion)
         mockkObject(AlarmRingtoneService.Companion)
 
         every { CountdownEventTracker.trackEvent(any(), any(), any()) } just runs
-        every { CountdownBackupWorker.markAlarmTriggered(any(), any()) } just runs
         every { CountdownForegroundService.stopCountdown(any()) } just runs
         every { AlarmRingtoneService.startRingtone(any(), any(), any()) } just runs
     }
@@ -64,7 +61,6 @@ class CountdownAlarmReceiverTest {
                 any()
             )
         }
-        verify(exactly = 1) { CountdownBackupWorker.markAlarmTriggered(context, orderKey.orderId) }
         verify(exactly = 1) { CountdownForegroundService.stopCountdown(context) }
         verify(exactly = 1) { AlarmRingtoneService.startRingtone(context, orderKey, "旧服务名") }
     }
@@ -78,7 +74,6 @@ class CountdownAlarmReceiverTest {
         CountdownAlarmReceiverDelegate.handle(context, intent)
 
         verify(exactly = 0) { CountdownEventTracker.trackEvent(any(), any(), any()) }
-        verify(exactly = 0) { CountdownBackupWorker.markAlarmTriggered(any(), any()) }
         verify(exactly = 0) { CountdownForegroundService.stopCountdown(any()) }
         verify(exactly = 0) { AlarmRingtoneService.startRingtone(any(), any(), any()) }
     }

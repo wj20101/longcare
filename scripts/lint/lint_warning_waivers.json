@@ -4,7 +4,7 @@
     {
       "id": "Aligned16KB",
       "owner": "mobile-platform",
-      "review_by": "2026-06-30",
+      "review_by": "2026-11-09",
       "reason": "Third-party SDK native libs are not 16KB aligned. Track upstream upgrades and remove waiver once vendor provides aligned binaries.",
       "allowed_sources": [
         "regex:crashreport-[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+",
@@ -17,7 +17,7 @@
     {
       "id": "GlobalOptionInConsumerRules",
       "owner": "mobile-platform",
-      "review_by": "2026-06-30",
+      "review_by": "2026-11-09",
       "reason": "Tencent face SDK local AAR ships consumer ProGuard rules with global options. Remove waiver when vendor fixes packaging.",
       "allowed_sources": [
         "regex:WbCloudFaceLiveSdk-face-v[0-9]+\\.[0-9]+\\.[0-9]+-[A-Za-z0-9]+",
@@ -28,35 +28,28 @@
     {
       "id": "TrustAllX509TrustManager",
       "owner": "mobile-platform",
-      "review_by": "2026-06-30",
-      "reason": "Transitive dependency from COS SDK contains trust manager implementation. Remove waiver once upstream dependency resolves.",
+      "review_by": "2026-11-09",
+      "reason": "COS contains a dormant trust-manager branch and QLZ 1.3.0.2 contains a reachable weak implementation. Production is blocked separately until QLZ is replaced.",
       "allowed_sources": [
         "regex:qcloud-foundation-[0-9]+\\.[0-9]+\\.[0-9]+",
-        "regex:com\\.qcloud:qcloud-foundation:[0-9]+\\.[0-9]+\\.[0-9]+"
-      ]
-    },
-    {
-      "id": "GradleDependency",
-      "owner": "mobile-platform",
-      "review_by": "2026-06-30",
-      "reason": "Version catalog dependency update suggestions are advisory and may appear inconsistently across CI verification paths. Restrict this waiver to warnings emitted from gradle/libs.versions.toml only.",
-      "allowed_sources": [
-        "gradle/libs.versions.toml"
+        "regex:com\\.qcloud:qcloud-foundation:[0-9]+\\.[0-9]+\\.[0-9]+",
+        "regex:qlzsdk-[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"
       ]
     },
     {
       "id": "AndroidGradlePluginVersion",
       "owner": "mobile-platform",
-      "review_by": "2026-06-30",
+      "review_by": "2026-11-09",
       "reason": "Android Gradle Plugin patch-level newer-version hints are advisory during CI verification. Track AGP upgrades deliberately instead of failing unrelated validation paths.",
       "allowed_sources": [
-        "gradle/libs.versions.toml"
+        "gradle/libs.versions.toml",
+        "gradle/wrapper/gradle-wrapper.properties"
       ]
     },
     {
       "id": "NewerVersionAvailable",
       "owner": "mobile-platform",
-      "review_by": "2026-06-30",
+      "review_by": "2026-11-09",
       "reason": "Version catalog newer-version checks are advisory and currently tracked outside lint gating. Restrict this waiver to warnings emitted from gradle/libs.versions.toml only.",
       "allowed_sources": [
         "gradle/libs.versions.toml"

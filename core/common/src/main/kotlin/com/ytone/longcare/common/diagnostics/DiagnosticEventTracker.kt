@@ -1,7 +1,6 @@
 package com.ytone.longcare.common.diagnostics
 
 import android.os.Build
-import com.tencent.bugly.crashreport.CrashReport
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import java.net.URI
@@ -87,7 +86,7 @@ object DiagnosticEventTracker {
             } else {
                 safeLogInfo("$TAG: $description - $eventInfo")
             }
-            CrashReport.postCatchedException(
+            CrashReportGateway.postCaughtException(
                 DiagnosticTrackingException(
                     category = category,
                     event = event,

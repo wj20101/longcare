@@ -25,6 +25,7 @@ class SystemConfigResponseProcessor @Inject constructor(
     companion object {
         private const val TAG = "SystemConfigProcessor"
         private const val SYSTEM_CONFIG_PATH = "/V1/System/Config"
+        private const val MAX_PEEK_BYTES = 1_048_576L
     }
     
     // 创建Moshi适配器
@@ -54,37 +55,30 @@ class SystemConfigResponseProcessor @Inject constructor(
         }
         
         try {
-            // 读取响应体
+            // Parse a non-consuming snapshot so every unchanged/error path can return the original body.
             val responseBody = response.body
-
-            val responseString = responseBody.string()
+            val responseString = response.peekBody(MAX_PEEK_BYTES).string()
             
             // 使用Moshi解析响应
             val apiResponse = responseAdapter.fromJson(responseString)
             
             if (apiResponse == null) {
                 logE(TAG, "Failed to parse response")
-                return response.newBuilder()
-                    .body(responseString.toResponseBody(responseBody.contentType()))
-                    .build()
+                return response
             }
             
             // 检查data字段
             val systemConfig = apiResponse.data
             if (systemConfig == null) {
                 logD(TAG, "No data in response")
-                return response.newBuilder()
-                    .body(responseString.toResponseBody(responseBody.contentType()))
-                    .build()
+                return response
             }
             
             // 检查thirdKeyStr字段
             val encryptedThirdKeyStr = systemConfig.thirdKeyStr
             if (encryptedThirdKeyStr.isEmpty()) {
                 logD(TAG, "thirdKeyStr is empty, no decryption needed")
-                return response.newBuilder()
-                    .body(responseString.toResponseBody(responseBody.contentType()))
-                    .build()
+                return response
             }
             
             // 解密thirdKeyStr
@@ -116,23 +110,12 @@ class SystemConfigResponseProcessor @Inject constructor(
                     .build()
             } else {
                 logE(TAG, "Failed to decrypt thirdKeyStr, returning original response")
-                return response.newBuilder()
-                    .body(responseString.toResponseBody(responseBody.contentType()))
-                    .build()
+                return response
             }
             
         } catch (e: Exception) {
             logE(TAG, "Error processing response", e)
-            // 发生异常时返回原始响应
-            try {
-                val responseBody = response.body
-                val responseString = responseBody.string()
-                return response.newBuilder()
-                    .body(responseString.toResponseBody(responseBody.contentType()))
-                    .build()
-            } catch (_: Exception) {
-                return response
-            }
+            return response
         }
     }
 }

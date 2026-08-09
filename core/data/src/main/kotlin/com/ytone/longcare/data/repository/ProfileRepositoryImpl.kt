@@ -1,7 +1,7 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.domain.facecache.FaceCacheCleaner
 import com.ytone.longcare.domain.profile.ProfileRepository

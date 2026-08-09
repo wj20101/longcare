@@ -1,10 +1,7 @@
 package com.ytone.longcare.features.servicecountdown.vm
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.common.config.RuntimeConfigProvider
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
@@ -16,23 +13,18 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderStateModel
 import com.ytone.longcare.model.ServiceProjectM
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class ServiceCountdownViewModel @Inject constructor(
-    private val toastHelper: ToastHelper,
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
     private val orderRepository: OrderRepository,
     private val systemGateway: ServiceCountdownSystemGateway,
-    private val runtimeConfigProvider: RuntimeConfigProvider,
 ) : ViewModel() {
 
     private data class CountdownInitializationState(
@@ -45,8 +37,6 @@ class ServiceCountdownViewModel @Inject constructor(
 
     private val initializationState = MutableStateFlow(CountdownInitializationState())
     private val stateHolder = ServiceCountdownStateHolder()
-    private val _orderStateErrorEvents = MutableSharedFlow<ServiceOrderStateModel>(replay = 0, extraBufferCapacity = 1)
-
     private val timerDelegate = ServiceCountdownTimerDelegate(
         stateHolder = stateHolder,
         orderDetailRepository = unifiedOrderRepository,
@@ -67,18 +57,15 @@ class ServiceCountdownViewModel @Inject constructor(
     private val orderStatePollingDelegate = ServiceCountdownOrderStatePollingDelegate(
         stateHolder = stateHolder,
         orderRepository = orderRepository,
-        orderStateErrorEvents = _orderStateErrorEvents,
         viewModelScope = viewModelScope
     )
 
-    val isMockDataEnabled: Boolean get() = runtimeConfigProvider.useMockData
     val countdownState: StateFlow<ServiceCountdownState> = stateHolder.countdownState.asStateFlow()
     val remainingTimeMillis: StateFlow<Long> = stateHolder.remainingTimeMillis.asStateFlow()
     val formattedTime: StateFlow<String> = stateHolder.formattedTime.asStateFlow()
     val overtimeMillis: StateFlow<Long> = stateHolder.overtimeMillis.asStateFlow()
     val uploadedImages: StateFlow<Map<ImageTaskType, List<ImageTask>>> = stateHolder.uploadedImages.asStateFlow()
     val orderStateError: StateFlow<ServiceOrderStateModel?> = stateHolder.orderStateError.asStateFlow()
-    val orderStateErrorEvents: SharedFlow<ServiceOrderStateModel> = _orderStateErrorEvents.asSharedFlow()
 
     fun setCountdownTimeFromProjects(orderKey: OrderKey, projectList: List<ServiceProjectM>, selectedProjectIds: List<Int>) {
         viewModelScope.launch {
@@ -104,7 +91,6 @@ class ServiceCountdownViewModel @Inject constructor(
     fun isInitialized(): Boolean = initializationState.value.isInitialized
 
     suspend fun initializeCountdownSession(
-        context: Context,
         orderKey: OrderKey,
         projectList: List<ServiceProjectM>,
         selectedProjectIds: List<Int>
@@ -119,7 +105,7 @@ class ServiceCountdownViewModel @Inject constructor(
             startTicker = true
         )
 
-        startForegroundService(context, orderKey, serviceInfo.serviceName, serviceInfo.totalMinutes * 60L)
+        startForegroundService(orderKey, serviceInfo.serviceName, serviceInfo.totalMinutes * 60L)
         if (state == ServiceCountdownState.RUNNING && remainingMillis > 0) {
             scheduleCountdownAlarm(orderKey, serviceInfo.serviceName, System.currentTimeMillis() + remainingMillis)
         }
@@ -134,12 +120,11 @@ class ServiceCountdownViewModel @Inject constructor(
     fun resetCountdown(totalMinutes: Int = 0) = timerDelegate.resetCountdown(totalMinutes)
     fun setCountdownTime(hours: Long, minutes: Long, seconds: Long) = timerDelegate.setCountdownTime(hours, minutes, seconds)
 
-    fun startForegroundService(context: Context, orderKey: OrderKey, serviceName: String, totalSeconds: Long) =
-        serviceDelegate.startForegroundService(context, orderKey, serviceName, totalSeconds)
-    fun stopForegroundService(context: Context) = serviceDelegate.stopForegroundService(context)
-    fun endService(orderKey: OrderKey, context: Context? = null) = serviceDelegate.endService(orderKey, context)
-    fun endServiceWithoutClearingImages(orderKey: OrderKey, context: Context? = null) =
-        serviceDelegate.endServiceWithoutClearingImages(orderKey, context)
+    private fun startForegroundService(orderKey: OrderKey, serviceName: String, totalSeconds: Long) =
+        serviceDelegate.startForegroundService(orderKey, serviceName, totalSeconds)
+    fun endService(orderKey: OrderKey) = serviceDelegate.endService(orderKey)
+    fun endServiceWithoutClearingImages(orderKey: OrderKey) =
+        serviceDelegate.endServiceWithoutClearingImages(orderKey)
     fun canScheduleExactAlarms(): Boolean = serviceDelegate.canScheduleExactAlarms()
     fun canUseFullScreenIntent(): Boolean = serviceDelegate.canUseFullScreenIntent()
     fun scheduleCountdownAlarm(orderKey: OrderKey, serviceName: String, triggerTimeMillis: Long) =
@@ -158,10 +143,6 @@ class ServiceCountdownViewModel @Inject constructor(
     fun loadUploadedImagesFromRepository(orderKey: OrderKey) = imageDelegate.loadUploadedImagesFromRepository(orderKey)
     suspend fun hasLocalUploadedImages(orderKey: OrderKey): Boolean = imageDelegate.hasLocalUploadedImages(orderKey)
     fun clearUploadedImagesFromLocal(orderKey: OrderKey) = imageDelegate.clearUploadedImagesFromLocal(orderKey)
-
-    fun showToast(message: String) {
-        toastHelper.showShort(message)
-    }
 
     override fun onCleared() {
         super.onCleared()

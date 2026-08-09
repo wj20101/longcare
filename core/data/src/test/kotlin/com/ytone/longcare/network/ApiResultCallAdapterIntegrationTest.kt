@@ -4,7 +4,7 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.ytone.longcare.common.json.UnitJsonAdapter
 import com.ytone.longcare.common.network.ApiRequestException
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.network.ApiResultCallAdapterFactory
 import com.ytone.longcare.common.network.SessionInvalidation
 import com.ytone.longcare.common.network.SessionInvalidationHandler

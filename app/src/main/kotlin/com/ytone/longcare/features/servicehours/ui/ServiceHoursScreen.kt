@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.servicehours.ui
 
-import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -18,7 +17,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.CustomBackHandler
-import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.servicehours.api.ServiceHoursActions
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
@@ -40,7 +38,6 @@ fun ServiceHoursScreen(
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
     // ==========================================================
-    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     // 获取UI状态
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

@@ -63,6 +63,7 @@ fun NfcWorkflowScreen(
         signInMode = signInMode,
         endOderInfo = endOderInfo,
         uiState = uiState,
+        scanMode = scanMode,
         nfcViewModel = nfcViewModel,
         locationTrackingViewModel = locationTrackingViewModel,
         onLocationRequest = { locationHandlers.getCurrentLocationCoordinates() },

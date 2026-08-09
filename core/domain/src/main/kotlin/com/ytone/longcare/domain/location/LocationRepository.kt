@@ -1,6 +1,6 @@
 package com.ytone.longcare.domain.location
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 
 /**
  * 定位相关的数据仓库接口

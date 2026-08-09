@@ -23,6 +23,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.common.utils.DisplayDate
 import com.ytone.longcare.common.utils.TimeUtils
+import com.ytone.longcare.core.ui.message.UiMessageSnackbarEffect
 import com.ytone.longcare.features.nursing.api.NursingActions
 import com.ytone.longcare.features.nursing.vm.NursingViewModel
 import com.ytone.longcare.model.handleOrderNavigation
@@ -59,13 +60,14 @@ fun NursingScreen(
     // 观察ViewModel状态
     val orderList by viewModel.orderListState.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val uiMessages by viewModel.uiMessages.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // 初始化时加载今天的数据
-    LaunchedEffect(Unit) {
-        val selectedDate = dateList[selectedTabIndex]
-        val dateString = TimeUtils.formatDateForApi(selectedDate.displayInfo)
-        viewModel.getOrderList(dateString)
-    }
+    UiMessageSnackbarEffect(
+        messages = uiMessages,
+        snackbarHostState = snackbarHostState,
+        onConsumed = viewModel::consumeUiMessage,
+    )
 
     // 当选中的日期改变时，获取对应日期的订单数据
     LaunchedEffect(selectedTabIndex) {
@@ -85,6 +87,7 @@ fun NursingScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         modifier = Modifier, topBar = {
             NursingTopBar()
         }, containerColor = Color.Transparent

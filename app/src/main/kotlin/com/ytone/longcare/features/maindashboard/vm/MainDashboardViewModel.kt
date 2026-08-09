@@ -2,10 +2,10 @@ package com.ytone.longcare.features.maindashboard.vm
 
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.ViewModel
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.core.ui.message.UiMessageQueue
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,11 +25,14 @@ data class ServiceCountdownNavigationData(
 class MainDashboardViewModel @Inject constructor(
     private val systemConfigManager: SystemConfigManager,
     private val unifiedOrderRepository: OrderDetailRepository,
-    private val toastHelper: ToastHelper
 ) : ViewModel() {
     private val _companyName = MutableStateFlow("")
     val companyName: StateFlow<String> = _companyName.asStateFlow()
     private var loadCompanyNameJob: Job? = null
+    private val messageQueue = UiMessageQueue()
+    val uiMessages = messageQueue.messages
+
+    fun consumeUiMessage(id: Long) = messageQueue.consume(id)
 
     fun loadCompanyName() {
         if (loadCompanyNameJob?.isActive == true) return
@@ -58,12 +61,12 @@ class MainDashboardViewModel @Inject constructor(
             is ApiResult.Success -> result.data
             is ApiResult.Exception -> {
                 val message = result.exception.message ?: "网络错误，请检查网络连接"
-                toastHelper.showShort(message)
+                messageQueue.enqueue(message)
                 logE("获取订单详情异常: orderId=$orderId, message=$message", throwable = result.exception)
                 return null
             }
             is ApiResult.Failure -> {
-                toastHelper.showShort(result.message)
+                messageQueue.enqueue(result.message)
                 logE("获取订单详情失败: orderId=$orderId, message=${result.message}")
                 return null
             }

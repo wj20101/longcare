@@ -34,10 +34,7 @@ class CoilCacheOptimizationTest {
         every { context.cacheDir } returns cacheDir
         every { context.getSystemService(Context.ACTIVITY_SERVICE) } returns activityManager
         every { activityManager.getMemoryInfo(any()) } answers {
-            firstArg<ActivityManager.MemoryInfo>().apply {
-                availMem = availableMemoryBytes
-            }
-            Unit
+            firstArg<ActivityManager.MemoryInfo>().availMem = availableMemoryBytes
         }
         return context
     }

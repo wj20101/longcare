@@ -119,7 +119,7 @@ class SetupFaceUseCaseTest {
             return cacheResult
         }
 
-        override fun refreshCurrentUserSession() {
+        override suspend fun refreshCurrentUserSession() {
             callOrder.add("refreshCurrentUserSession")
             sessionRefreshed = true
         }

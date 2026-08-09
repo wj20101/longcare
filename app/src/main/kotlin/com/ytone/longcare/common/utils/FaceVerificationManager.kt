@@ -9,8 +9,8 @@ import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.tencent.cloud.huiyansdkface.facelight.process.FaceVerifyStatus
 import com.ytone.longcare.common.config.RuntimeConfigProvider
-import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
-import com.ytone.longcare.domain.faceauth.FaceVerifier
+import com.ytone.longcare.common.faceauth.FaceVerifyCallback
+import com.ytone.longcare.common.faceauth.FaceVerifier
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
@@ -180,8 +180,8 @@ class FaceVerificationManager @Inject constructor(
     override fun release() {
         try {
             WbCloudFaceVerifySdk.getInstance().release()
-        } catch (_: Exception) {
-            // ignore
+        } catch (exception: Exception) {
+            logE("释放腾讯人脸 SDK 失败", throwable = exception)
         }
     }
 }

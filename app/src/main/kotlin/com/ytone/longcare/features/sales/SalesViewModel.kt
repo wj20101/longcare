@@ -1,18 +1,15 @@
 package com.ytone.longcare.features.sales
 
-import android.app.Activity
-import android.content.Context
 import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.R
 import com.ytone.longcare.common.image.UnifiedImagePipeline
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.sale.SaleRepository
-import com.ytone.longcare.integration.qlz.QlzSdkClient
 import com.ytone.longcare.integration.qlz.QlzSdkEvent
 import com.ytone.longcare.features.photoupload.upload.PhotoCloudUploader
 import com.ytone.longcare.model.AddUserLatentParamModel
@@ -24,8 +21,9 @@ import com.ytone.longcare.model.ToDoResultModel
 import com.ytone.longcare.model.UserLatentCheckState
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
+import com.ytone.longcare.platform.sales.SalesEvaluationDeviceGateway
+import com.ytone.longcare.platform.text.SalesTextResolver
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,9 +38,9 @@ class SalesViewModel @Inject constructor(
     private val locationFacade: LocationFacade,
     private val photoCloudUploader: PhotoCloudUploader,
     private val imagePipeline: UnifiedImagePipeline,
-    private val qlzSdkClient: QlzSdkClient,
+    private val evaluationDeviceGateway: SalesEvaluationDeviceGateway,
     private val systemConfigManager: SystemConfigManager,
-    @param:ApplicationContext private val applicationContext: Context,
+    private val textResolver: SalesTextResolver,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SalesUiState())
     val uiState: StateFlow<SalesUiState> = _uiState.asStateFlow()
@@ -55,6 +53,7 @@ class SalesViewModel @Inject constructor(
     private var toDoListJob: Job? = null
     private var toDoListRequestId = 0L
     private var sdkTokenRecoveryAttempted = false
+    private var sdkLaunchRequestId = 0L
 
     init {
         loadCompanyName()
@@ -578,10 +577,11 @@ class SalesViewModel @Inject constructor(
                     evaluationCompleted = null,
                     sdkProgressText = "",
                     checkToken = null,
+                    sdkLaunchRequest = null,
                 )
             try {
                 val sdkDeviceId =
-                    qlzSdkClient.getDeviceId().getOrElse { throwable ->
+                    evaluationDeviceGateway.getDeviceId().getOrElse { throwable ->
                         throw IllegalStateException(
                             text(R.string.sales_error_device_prepare),
                             throwable,
@@ -590,7 +590,7 @@ class SalesViewModel @Inject constructor(
                 _uiState.value =
                     _uiState.value.copy(
                         sdkDeviceId = sdkDeviceId,
-                        connectedDeviceName = qlzSdkClient.getConnectedDeviceName(),
+                        connectedDeviceName = evaluationDeviceGateway.getConnectedDeviceName(),
                         operation = text(R.string.sales_loading_prepare_evaluation),
                     )
                 when (
@@ -605,7 +605,7 @@ class SalesViewModel @Inject constructor(
                             _uiState.value.copy(
                                 checkToken = result.data,
                                 connectedDeviceName =
-                                    qlzSdkClient.getConnectedDeviceName(),
+                                    evaluationDeviceGateway.getConnectedDeviceName(),
                             )
 
                     is ApiResult.Failure -> showError(result.message)
@@ -629,58 +629,25 @@ class SalesViewModel @Inject constructor(
     fun refreshDeviceState() {
         _uiState.value =
             _uiState.value.copy(
-                connectedDeviceName = qlzSdkClient.getConnectedDeviceName(),
+                connectedDeviceName = evaluationDeviceGateway.getConnectedDeviceName(),
             )
     }
 
-    fun launchSdk(activity: Activity) {
-        val token = _uiState.value.checkToken?.token.orEmpty()
-        if (token.isBlank()) {
-            showError(text(R.string.sales_error_evaluation_not_ready))
-            return
+    fun onSdkEvent(event: QlzSdkEvent) {
+        viewModelScope.launch {
+            reduceSdkEvent(event)
         }
-        openSdkWithToken(activity, token)
     }
 
-    private fun openSdkWithToken(
-        activity: Activity,
-        token: String,
-    ) {
-        qlzSdkClient.openByToken(
-            activity = activity,
-            token = token,
-            onEvent = { event ->
-                viewModelScope.launch {
-                    onSdkEvent(event, activity)
-                }
-            },
-        )
+    fun consumeSdkLaunchRequest(requestId: Long) {
+        if (_uiState.value.sdkLaunchRequest?.id == requestId) {
+            _uiState.value = _uiState.value.copy(sdkLaunchRequest = null)
+        }
     }
 
-    fun requiredSdkPermissions(): Array<String> =
-        qlzSdkClient.requiredRuntimePermissions()
-
-    fun openLatestReport(activity: Activity) {
-        val reportUrl =
-            _uiState.value.evaluationCompleted?.reportUrl
-                .orEmpty()
-                .ifBlank { _uiState.value.selectedCustomer?.pgUrl.orEmpty() }
-        if (reportUrl.isBlank()) {
-            showError(text(R.string.sales_error_no_report))
-            return
-        }
-        qlzSdkClient.openReport(activity, reportUrl)
-    }
-
-    fun openReportUrl(
-        activity: Activity,
-        reportUrl: String,
-    ) {
-        if (reportUrl.isBlank()) {
-            showError(text(R.string.sales_error_report_url_empty))
-            return
-        }
-        qlzSdkClient.openReport(activity, reportUrl)
+    fun rejectSdkLaunchRequest(requestId: Long) {
+        consumeSdkLaunchRequest(requestId)
+        showError(text(R.string.sales_error_evaluation_page_closed))
     }
 
     fun clearTransientMessage() {
@@ -761,16 +728,13 @@ class SalesViewModel @Inject constructor(
         loadRecentCustomers()
     }
 
-    private suspend fun onSdkEvent(
-        event: QlzSdkEvent,
-        activity: Activity,
-    ) {
+    private suspend fun reduceSdkEvent(event: QlzSdkEvent) {
         when (event) {
             is QlzSdkEvent.Completed ->
                 _uiState.value =
                     _uiState.value.copy(
                         connectedDeviceName =
-                            qlzSdkClient.getConnectedDeviceName()
+                            evaluationDeviceGateway.getConnectedDeviceName()
                                 ?: _uiState.value.connectedDeviceName,
                         evaluationCompleted = event,
                         sdkProgressText = text(R.string.sales_progress_detection_complete),
@@ -781,7 +745,7 @@ class SalesViewModel @Inject constructor(
                 _uiState.value =
                     _uiState.value.copy(
                         connectedDeviceName =
-                            qlzSdkClient.getConnectedDeviceName()
+                            evaluationDeviceGateway.getConnectedDeviceName()
                                 ?: _uiState.value.connectedDeviceName,
                         sdkProgressText =
                             text(
@@ -793,7 +757,7 @@ class SalesViewModel @Inject constructor(
 
             is QlzSdkEvent.Error -> {
                 if (event.requiresTokenRefresh) {
-                    recoverSdkTokenAndRelaunch(activity)
+                    recoverSdkToken()
                 } else {
                     showError(
                         event.message.ifBlank {
@@ -806,7 +770,7 @@ class SalesViewModel @Inject constructor(
             QlzSdkEvent.Cancelled ->
                 _uiState.value =
                     _uiState.value.copy(
-                        connectedDeviceName = qlzSdkClient.getConnectedDeviceName(),
+                        connectedDeviceName = evaluationDeviceGateway.getConnectedDeviceName(),
                         noticeMessage =
                             text(R.string.sales_notice_evaluation_cancelled),
                     )
@@ -814,14 +778,14 @@ class SalesViewModel @Inject constructor(
             QlzSdkEvent.DetectionPageClosed ->
                 _uiState.value =
                     _uiState.value.copy(
-                        connectedDeviceName = qlzSdkClient.getConnectedDeviceName(),
+                        connectedDeviceName = evaluationDeviceGateway.getConnectedDeviceName(),
                     )
 
             QlzSdkEvent.ReportPageClosed -> Unit
         }
     }
 
-    private suspend fun recoverSdkTokenAndRelaunch(activity: Activity) {
+    private suspend fun recoverSdkToken() {
         if (sdkTokenRecoveryAttempted) {
             showError(text(R.string.sales_error_evaluation_expired))
             return
@@ -844,7 +808,7 @@ class SalesViewModel @Inject constructor(
         try {
             val deviceId =
                 _uiState.value.sdkDeviceId.ifBlank {
-                    qlzSdkClient.getDeviceId().getOrElse { throwable ->
+                    evaluationDeviceGateway.getDeviceId().getOrElse { throwable ->
                         throw IllegalStateException(
                             text(R.string.sales_error_device_prepare),
                             throwable,
@@ -864,18 +828,19 @@ class SalesViewModel @Inject constructor(
                         showError(text(R.string.sales_error_evaluation_credential))
                         return
                     }
+                    sdkLaunchRequestId += 1
                     _uiState.value =
                         _uiState.value.copy(
                             sdkDeviceId = deviceId,
                             checkToken = result.data,
                             connectedDeviceName =
-                                qlzSdkClient.getConnectedDeviceName(),
+                                evaluationDeviceGateway.getConnectedDeviceName(),
+                            sdkLaunchRequest =
+                                SalesSdkLaunchRequest(
+                                    id = sdkLaunchRequestId,
+                                    token = refreshedToken,
+                                ),
                         )
-                    if (activity.isFinishing || activity.isDestroyed) {
-                        showError(text(R.string.sales_error_evaluation_page_closed))
-                    } else {
-                        openSdkWithToken(activity, refreshedToken)
-                    }
                 }
 
                 is ApiResult.Failure -> showError(result.message)
@@ -935,14 +900,9 @@ class SalesViewModel @Inject constructor(
     }
 
     private fun text(
-        @StringRes resId: Int,
+        resId: Int,
         vararg formatArgs: Any,
-    ): String =
-        if (formatArgs.isEmpty()) {
-            applicationContext.getString(resId)
-        } else {
-            applicationContext.getString(resId, *formatArgs)
-        }
+    ): String = textResolver.text(resId, *formatArgs)
 
     private companion object {
         const val FIRST_CUSTOMER_PAGE = 1
@@ -985,6 +945,12 @@ data class SalesUiState(
     val checkToken: CheckTokenModel? = null,
     val sdkProgressText: String = "",
     val evaluationCompleted: QlzSdkEvent.Completed? = null,
+    val sdkLaunchRequest: SalesSdkLaunchRequest? = null,
+)
+
+data class SalesSdkLaunchRequest(
+    val id: Long,
+    val token: String,
 )
 
 data class SalesCustomerDraft(

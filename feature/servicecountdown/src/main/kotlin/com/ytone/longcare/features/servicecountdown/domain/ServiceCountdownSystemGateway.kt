@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.servicecountdown.domain
 
-import android.content.Context
 import com.ytone.longcare.model.OrderKey
 
 /**
@@ -9,15 +8,14 @@ import com.ytone.longcare.model.OrderKey
  */
 interface ServiceCountdownSystemGateway {
     fun startForegroundService(
-        context: Context,
         orderKey: OrderKey,
         serviceName: String,
         totalSeconds: Long,
     )
 
-    fun stopForegroundService(context: Context)
+    fun stopForegroundService()
 
-    fun stopAlarmRingtone(context: Context)
+    fun stopAlarmRingtone()
 
     fun canScheduleExactAlarms(): Boolean
 

@@ -1,6 +1,8 @@
 package com.ytone.longcare.features.location.di
 
 import com.ytone.longcare.domain.location.LocationFacade
+import com.ytone.longcare.domain.location.LocationRuntimeReadiness
+import com.ytone.longcare.features.location.core.AndroidLocationRuntimeReadiness
 import com.ytone.longcare.features.location.core.DefaultLocationFacade
 import dagger.Binds
 import dagger.Module
@@ -15,4 +17,10 @@ abstract class LocationCoreBindModule {
     @Binds
     @Singleton
     abstract fun bindLocationFacade(impl: DefaultLocationFacade): LocationFacade
+
+    @Binds
+    @Singleton
+    abstract fun bindLocationRuntimeReadiness(
+        impl: AndroidLocationRuntimeReadiness,
+    ): LocationRuntimeReadiness
 }

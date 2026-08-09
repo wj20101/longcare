@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.identification.tracker
 
 import android.os.Build
-import com.tencent.bugly.crashreport.CrashReport
+import com.ytone.longcare.common.diagnostics.CrashReportGateway
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
@@ -93,7 +93,7 @@ object FaceVerificationEventTracker {
             } else {
                 logE("$TAG: ${eventType.description} - $eventInfo", throwable = throwable)
             }
-            CrashReport.postCatchedException(
+            CrashReportGateway.postCaughtException(
                 FaceVerificationTrackingException(
                     eventType = eventType.code,
                     message = eventInfo,

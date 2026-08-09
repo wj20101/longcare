@@ -3,14 +3,11 @@ package com.ytone.longcare.features.home.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
@@ -29,12 +26,12 @@ internal fun HomeScreenPagerContent(
     homeSharedViewModel: HomeSharedViewModel,
     todayOrderViewModel: TodayOrderViewModel
 ) {
-    val bottomNavItems = listOf(
-        CustomBottomNavigationItem("首页"),
-        CustomBottomNavigationItem("护理工作"),
-        CustomBottomNavigationItem("我的")
+    val navigationItems = listOf(
+        AppNavigationItem("首页"),
+        AppNavigationItem("护理工作"),
+        AppNavigationItem("我的")
     )
-    val pagerState = rememberPagerState(pageCount = { bottomNavItems.size })
+    val pagerState = rememberPagerState(pageCount = { navigationItems.size })
     val coroutineScope = rememberCoroutineScope()
 
     Box(
@@ -42,21 +39,16 @@ internal fun HomeScreenPagerContent(
             .fillMaxSize()
             .background(brush = bgGradientBrush)
     ) {
-        Scaffold(
-            bottomBar = {
-                AppBottomNavigation(
-                    items = bottomNavItems,
-                    selectedItemIndex = pagerState.currentPage,
-                    onItemSelected = {
-                        coroutineScope.launch { pagerState.scrollToPage(it) }
-                    }
-                )
+        AdaptiveAppNavigationScaffold(
+            items = navigationItems,
+            selectedItemIndex = pagerState.currentPage,
+            onItemSelected = {
+                coroutineScope.launch { pagerState.scrollToPage(it) }
             },
-            containerColor = Color.Transparent
-        ) { paddingValues ->
+        ) {
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding()),
+                modifier = Modifier.fillMaxSize(),
                 userScrollEnabled = false
             ) { page ->
                 when (page) {

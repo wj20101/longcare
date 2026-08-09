@@ -10,6 +10,7 @@ import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.debug.NfcTestConfig
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -95,6 +96,8 @@ internal suspend fun copyNfcTagIdAndDismiss(
         nfcTestLog("已复制到剪贴板: $tagId")
         onCopySuccess()
         true
+    } catch (e: CancellationException) {
+        throw e
     } catch (e: Exception) {
         nfcTestLog("复制到剪贴板失败: ${e.message}")
         onCopyFailure()

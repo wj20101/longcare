@@ -8,9 +8,11 @@ import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
 import com.ytone.longcare.features.nfc.vm.LocationRequestResult
+import com.ytone.longcare.features.nfc.vm.ScanMode
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
+import com.ytone.longcare.platform.nfc.rememberNfcScanSourceUiController
 
 @Composable
 internal fun NfcWorkflowEffects(
@@ -19,14 +21,20 @@ internal fun NfcWorkflowEffects(
     signInMode: SignInMode,
     endOderInfo: EndOderInfo?,
     uiState: NfcSignInUiState,
+    scanMode: ScanMode,
     nfcViewModel: NfcWorkflowViewModel,
     locationTrackingViewModel: LocationTrackingViewModel,
     onLocationRequest: suspend () -> LocationRequestResult,
     onEntryLocationPrepare: () -> Unit
 ) {
-    LaunchedEffect(activity) {
+    val scanSourceUiController = rememberNfcScanSourceUiController()
+
+    LaunchedEffect(activity, scanMode) {
         if (activity != null) {
-            nfcViewModel.startActiveScanSource(activity)
+            when (scanMode) {
+                ScanMode.SYSTEM_NFC -> scanSourceUiController.startSystemNfc(activity)
+                ScanMode.EXTERNAL_RFID -> scanSourceUiController.startExternalReader(activity)
+            }
             nfcViewModel.refreshExternalReaderReadyState()
         }
     }
@@ -44,9 +52,14 @@ internal fun NfcWorkflowEffects(
         onEntryLocationPrepare()
     }
 
-    DisposableEffect(activity) {
+    DisposableEffect(activity, scanMode) {
         onDispose {
-            activity?.let { nfcViewModel.stopActiveScanSource(it) }
+            activity?.let { currentActivity ->
+                when (scanMode) {
+                    ScanMode.SYSTEM_NFC -> scanSourceUiController.stopSystemNfc(currentActivity)
+                    ScanMode.EXTERNAL_RFID -> scanSourceUiController.stopExternalReader(currentActivity)
+                }
+            }
         }
     }
 

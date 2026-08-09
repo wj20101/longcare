@@ -1,5 +1,8 @@
 package com.ytone.longcare.features.sales
 
+import com.ytone.longcare.presentation.sales.SalesNavigationState
+import com.ytone.longcare.presentation.sales.SalesPage
+import com.ytone.longcare.presentation.sales.evaluationBackTarget
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -34,5 +37,23 @@ class SalesEvaluationNavigationTest {
                 choiceReturnPage = SalesPage.EVALUATION_CHOICE,
             ),
         )
+    }
+
+    @Test
+    fun `navigation holder keeps return targets and resets root state`() {
+        val state = SalesNavigationState()
+
+        state.selectRootTab(2)
+        state.showCustomerDetail(SalesPage.CUSTOMERS)
+        state.rememberEvaluationChoiceReturnPage(SalesPage.CUSTOMER_DETAIL)
+
+        assertEquals(SalesPage.CUSTOMER_DETAIL, state.currentPage)
+        assertEquals(SalesPage.CUSTOMERS, state.detailReturnPage)
+        assertEquals(SalesPage.CUSTOMER_DETAIL, state.evaluationChoiceReturnPage)
+
+        state.goHome()
+
+        assertEquals(SalesPage.HOME, state.currentPage)
+        assertEquals(0, state.rootTab)
     }
 }

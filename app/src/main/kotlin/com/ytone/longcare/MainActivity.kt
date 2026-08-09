@@ -9,8 +9,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.ytone.longcare.common.event.AppEvent
-import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.network.SessionInvalidationHandler
 import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.ToastHelper
@@ -25,10 +23,6 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
-
-    // 通过 Hilt 注入 EventBus
-    @Inject
-    lateinit var appEventBus: AppEventBus
 
     @Inject
     lateinit var toastHelper: ToastHelper
@@ -46,8 +40,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // 启动全局事件监听
-        observeAppEvents()
         observeSessionInvalidations()
         
         // 【日志调试】检查启动Intent是否是NFC Intent - 与测试功能无关
@@ -76,34 +68,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             // 非NFC Intent直接处理
             nfcManager.handleNfcIntent(this, intent)
-        }
-    }
-
-    private fun observeAppEvents() {
-        lifecycleScope.launch {
-            appEventBus.events.collect { event ->
-                when (event) {
-                    is AppEvent.NfcIntentReceived -> {
-                        // 【业务功能】NFC事件由具体的Screen监听处理 - 与测试功能无关
-                    }
-
-                    is AppEvent.TagScanned -> {
-                        // 外部/系统扫描事件由具体业务流程处理
-                    }
-
-                    is AppEvent.ReaderConnectionChanged -> {
-                        // 读卡器连接状态事件由具体业务流程处理
-                    }
-
-                    is AppEvent.ReaderError -> {
-                        // 读卡器错误事件由具体业务流程处理
-                    }
-
-                    is AppEvent.AppUpdate -> {
-                        viewModel.setAppVersionModel(event.appVersionModel)
-                    }
-                }
-            }
         }
     }
 

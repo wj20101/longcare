@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.home.ui
 
-import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,7 +11,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.sales.SalesExperienceScreen
@@ -25,7 +23,6 @@ fun HomeScreen(
     homeSharedViewModel: HomeSharedViewModel = hiltViewModel(),
     todayOrderViewModel: TodayOrderViewModel = hiltViewModel()
 ) {
-    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
     val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {

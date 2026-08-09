@@ -1,8 +1,6 @@
 package com.ytone.longcare.common.event
 
 import android.content.Intent
-import com.ytone.longcare.model.AppVersionModel
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import javax.inject.Inject
@@ -13,15 +11,12 @@ class AppEventBus @Inject constructor() {
     private val _events = MutableSharedFlow<AppEvent>(
         replay = 0,
         extraBufferCapacity = 64,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
     val events = _events.asSharedFlow()
 
     suspend fun send(event: AppEvent) {
-        if (!_events.tryEmit(event)) {
-            _events.emit(event)
-        }
+        _events.emit(event)
     }
 }
 
@@ -41,5 +36,4 @@ sealed class AppEvent {
         val message: String,
         val source: ScanSource = ScanSource.EXTERNAL_RFID,
     ) : AppEvent()
-    data class AppUpdate(val appVersionModel: AppVersionModel) : AppEvent()
 }

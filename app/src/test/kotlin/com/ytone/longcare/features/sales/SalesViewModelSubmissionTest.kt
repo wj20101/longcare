@@ -3,16 +3,17 @@ package com.ytone.longcare.features.sales
 import android.content.Context
 import android.net.Uri
 import com.ytone.longcare.R
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.sale.SaleRepository
 import com.ytone.longcare.features.photoupload.upload.PhotoCloudUploadException
 import com.ytone.longcare.features.photoupload.upload.PhotoCloudUploader
 import com.ytone.longcare.features.photoupload.upload.UploadedPhoto
-import com.ytone.longcare.integration.qlz.QlzSdkClient
 import com.ytone.longcare.model.AddUserLatentParamModel
 import com.ytone.longcare.model.AddUserLatentResultModel
+import com.ytone.longcare.platform.sales.SalesEvaluationDeviceGateway
+import com.ytone.longcare.platform.text.SalesTextResolver
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -221,9 +222,9 @@ class SalesViewModelSubmissionTest {
             locationFacade = mockk<LocationFacade>(relaxed = true),
             photoCloudUploader = photoCloudUploader,
             imagePipeline = testImagePipeline(applicationContext),
-            qlzSdkClient = mockk<QlzSdkClient>(relaxed = true),
+            evaluationDeviceGateway = mockk<SalesEvaluationDeviceGateway>(relaxed = true),
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
-            applicationContext = applicationContext,
+            textResolver = SalesTextResolver(applicationContext),
         )
 
     private fun validDraft(): SalesCustomerDraft =

@@ -10,9 +10,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,6 +26,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
+import com.ytone.longcare.core.ui.message.UiMessageSnackbarEffect
 import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
 import com.ytone.longcare.model.ServiceOrderModel
@@ -43,6 +47,9 @@ fun MainDashboardScreen(
 
     val todayOrderList by todayOrderViewModel.todayOrderListState.collectAsStateWithLifecycle()
     val inOrderList by todayOrderViewModel.inOrderListState.collectAsStateWithLifecycle()
+    val orderMessages by todayOrderViewModel.uiMessages.collectAsStateWithLifecycle()
+    val dashboardMessages by mainDashboardViewModel.uiMessages.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -57,7 +64,19 @@ fun MainDashboardScreen(
         mainDashboardViewModel.loadCompanyName()
     }
 
+    UiMessageSnackbarEffect(
+        messages = orderMessages,
+        snackbarHostState = snackbarHostState,
+        onConsumed = todayOrderViewModel::consumeUiMessage,
+    )
+    UiMessageSnackbarEffect(
+        messages = dashboardMessages,
+        snackbarHostState = snackbarHostState,
+        onConsumed = mainDashboardViewModel::consumeUiMessage,
+    )
+
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = Color.Transparent
     ) { paddingValues ->
         user?.let { loggedInUser ->

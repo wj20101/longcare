@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.core.net.toUri
 import com.ytone.longcare.model.SetFaceParamModel
 import com.ytone.longcare.common.constants.CosConstants
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.identification.IdentificationRepository
@@ -65,7 +65,7 @@ class SetupFaceGatewayImpl @Inject constructor(
         return faceDataSource.writeUserFaceBase64(userId, base64Image)
     }
 
-    override fun refreshCurrentUserSession() {
+    override suspend fun refreshCurrentUserSession() {
         val sessionState = userSessionRepository.sessionState.value
         if (sessionState is SessionState.LoggedIn) {
             userSessionRepository.updateUser(sessionState.user)

@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.location.tracker
 
 import android.os.Build
-import com.tencent.bugly.crashreport.CrashReport
+import com.ytone.longcare.common.diagnostics.CrashReportGateway
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.model.LocationResult
@@ -96,7 +96,7 @@ object LocationEventTracker {
             } else {
                 logE("$TAG: ${eventType.description} - $eventInfo", throwable = throwable)
             }
-            CrashReport.postCatchedException(
+            CrashReportGateway.postCaughtException(
                 LocationTrackingException(
                     eventType = eventType.code,
                     message = eventInfo,

@@ -2,7 +2,6 @@ package com.ytone.longcare.common.utils
 
 import android.annotation.SuppressLint
 import android.app.AppOpsManager
-import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
@@ -22,7 +21,6 @@ object DeviceCompatibilityHelper {
     private const val PREFS_NAME = "device_compatibility_prefs"
     private const val KEY_DEVICE_GUIDE_SHOWN = "device_guide_shown"
     private const val KEY_FULL_SCREEN_GUIDE_SHOWN = "full_screen_guide_shown"
-    private const val KEY_OVERLAY_GUIDE_SHOWN = "overlay_guide_shown"
     private const val KEY_MANUFACTURER_GUIDE_SHOWN = "manufacturer_guide_shown"
     private const val KEY_IGNORE_BATTERY_REQUEST_ATTEMPTED = "ignore_battery_request_attempted"
     private const val KEY_AUTO_START_GUIDE_SHOWN = "auto_start_guide_shown"
@@ -69,81 +67,12 @@ object DeviceCompatibilityHelper {
         isHuawei() || isXiaomi() || isOppo() || isVivo()
     
     /**
-     * 检查是否有悬浮窗权限（SYSTEM_ALERT_WINDOW）
-     */
-    fun hasOverlayPermission(context: Context): Boolean {
-        return Settings.canDrawOverlays(context)
-    }
-    
-    /**
-     * 获取全屏通知权限状态
-     */
-    fun getFullScreenIntentStatus(context: Context): FullScreenIntentStatus {
-        return when {
-            Build.VERSION.SDK_INT >= 34 -> {
-                val notificationManager = context.getSystemService<NotificationManager>()
-                if (notificationManager?.canUseFullScreenIntent() == true) {
-                    FullScreenIntentStatus.GRANTED
-                } else {
-                    FullScreenIntentStatus.DENIED
-                }
-            }
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> FullScreenIntentStatus.GRANTED
-            else -> FullScreenIntentStatus.NOT_REQUIRED
-        }
-    }
-    
-    /**
-     * 综合判断是否可以显示全屏通知
-     */
-    fun canShowFullScreenNotification(context: Context): Boolean {
-        val status = getFullScreenIntentStatus(context)
-        if (status == FullScreenIntentStatus.GRANTED || status == FullScreenIntentStatus.NOT_REQUIRED) {
-            return true
-        }
-        return hasOverlayPermission(context)
-    }
-    
-    /**
-     * 获取需要引导的权限类型（只返回首个需要引导的权限）
-     * 优先级：1. 省电策略（所有设备） → 2. 厂商弹窗权限 / 悬浮窗权限
-     */
-    fun getRequiredPermissionGuide(context: Context): PermissionGuideType {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        
-        // 1. 省电策略（适用于所有设备，优先引导）
-        if (getBatteryGuideStep(context) != BatteryGuideStep.NONE) {
-            return PermissionGuideType.BATTERY
-        }
-        
-        // 2. 特殊厂商（小米/华为/OPPO/vivo）检查厂商弹窗权限
-        if (needsSpecialAdaptation()) {
-            if (!hasBgStartPermission(context)) {
-                if (!prefs.getBoolean(KEY_MANUFACTURER_GUIDE_SHOWN, false)) {
-                    return PermissionGuideType.MANUFACTURER_POPUP
-                }
-            }
-        } else {
-            // 3. 非特殊厂商：检查悬浮窗权限（作为全屏通知的备选）
-            val fullScreenStatus = getFullScreenIntentStatus(context)
-            if (fullScreenStatus == FullScreenIntentStatus.DENIED && !hasOverlayPermission(context)) {
-                if (!prefs.getBoolean(KEY_OVERLAY_GUIDE_SHOWN, false)) {
-                    return PermissionGuideType.OVERLAY
-                }
-            }
-        }
-        
-        return PermissionGuideType.NONE
-    }
-    
-    /**
      * 标记权限引导已显示
      */
     fun markPermissionGuideShown(context: Context, guideType: PermissionGuideType) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val key = when (guideType) {
             PermissionGuideType.FULL_SCREEN_INTENT -> KEY_FULL_SCREEN_GUIDE_SHOWN
-            PermissionGuideType.OVERLAY -> KEY_OVERLAY_GUIDE_SHOWN
             PermissionGuideType.MANUFACTURER_POPUP -> KEY_MANUFACTURER_GUIDE_SHOWN
             PermissionGuideType.BATTERY -> return
             PermissionGuideType.NONE -> return
@@ -186,15 +115,6 @@ object DeviceCompatibilityHelper {
             }
         } else {
             getAppSettingsIntent(context)
-        }
-    }
-    
-    /**
-     * 获取悬浮窗权限设置 Intent
-     */
-    fun getOverlayPermissionIntent(context: Context): Intent {
-        return Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
-            data = "package:${context.packageName}".toUri()
         }
     }
     
@@ -823,7 +743,8 @@ object DeviceCompatibilityHelper {
             }
         }
 
-        // 3. 弹窗权限（特殊厂商检查后台弹窗；非特殊厂商检查悬浮窗）
+        // 3. 特殊厂商后台弹窗权限。标准 Android 设备只使用全屏通知权限，
+        // 不再申请高风险的悬浮窗权限作为兜底。
         if (needsSpecialAdaptation()) {
             if (!hasBgStartPermission(context)) {
                 val shown = prefs.getBoolean(KEY_MANUFACTURER_GUIDE_SHOWN, false)
@@ -834,20 +755,6 @@ object DeviceCompatibilityHelper {
                         message = getPopupPermissionGuideMessage().orEmpty(),
                         isGranted = false,
                         settingsIntent = getPopupPermissionIntent(context)
-                    )
-                }
-            }
-        } else {
-            val fullScreenStatus = getFullScreenIntentStatus(context)
-            if (fullScreenStatus == FullScreenIntentStatus.DENIED && !hasOverlayPermission(context)) {
-                val shown = prefs.getBoolean(KEY_OVERLAY_GUIDE_SHOWN, false)
-                if (!shown) {
-                    items += PermissionGuideItem(
-                        type = PermissionGuideType.OVERLAY,
-                        title = "开启悬浮窗权限",
-                        message = "请开启「显示在其他应用上层」权限，保证服务结束时能弹出全屏提醒。",
-                        isGranted = false,
-                        settingsIntent = getOverlayPermissionIntent(context)
                     )
                 }
             }

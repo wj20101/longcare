@@ -6,9 +6,5 @@ package com.ytone.longcare.feature.login.api
  */
 data class LoginFeatureActions(
     val onLoginSuccess: () -> Unit,
-    val onOpenWebPage: (url: String, title: String) -> Unit,
-    val onOpenNfcTest: () -> Unit = {},
-    val onOpenCameraTest: () -> Unit = {},
-    val onOpenFaceVerificationTest: () -> Unit = {},
-    val onOpenManualFaceCapture: () -> Unit = {}
+    val onOpenWebPage: (url: String, title: String) -> Unit
 )

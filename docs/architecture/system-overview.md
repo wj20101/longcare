@@ -1,6 +1,6 @@
 # System Overview
 
-Last verified: 2026-08-07
+Last verified: 2026-08-09
 
 This document describes the current runtime architecture as implemented today.
 
@@ -29,9 +29,11 @@ LongCare is an Android app with a shell-first architecture:
 ### Core modules
 
 - `:core:model`
-  - shared data models and value objects
+  - shared data models, value objects, and transport-neutral `ApiResult`
+  - compiled as a pure Kotlin/JVM module
 - `:core:domain`
   - repository/use-case contracts, intended pure Kotlin boundary
+  - compiled as a pure Kotlin/JVM module so Android dependencies fail at build time
 - `:core:data`
   - repository implementations, network/database/COS implementations, DI bindings
 - `:core:ui`
@@ -53,7 +55,7 @@ LongCare is an Android app with a shell-first architecture:
   - has feature entry constant, domain/data/use-case/ViewModel/DI support
   - route screen is currently in `:app` (`features/identification/ui/IdentificationScreen.kt`)
 - `:feature:location`
-  - currently includes route-bound UI (`LocationTrackingScreen`) and service/managers
+  - owns location service/managers/reporting; tracking is embedded in service flows rather than exposed as a standalone route
 - `:feature:photoupload`
   - currently provides APIs, domain support, ViewModel/delegates, trackers
   - owns the validated `PhotoCloudUploader` boundary used by photo-task and sales flows
@@ -73,7 +75,7 @@ Navigation is typed (`@Serializable` route objects/data classes) and assembled i
 - Route groups:
   - entry graph: login/home
   - service-flow graph: service/nursing/NFC/select-service/photo-upload/countdown/complete/end-selection
-  - support graph: face-guide/identification/device/user lists/NFC test/camera/webview/location
+  - support graph: face-guide/identification/device/user lists/camera/webview
 - Feature route registry guard currently validates exactly 3 feature route constants:
   - `feature_login`
   - `feature_home`
@@ -85,7 +87,11 @@ Project rules currently enforced by docs/scripts:
 
 - domain should remain Android-free and contract-first
 - feature/presentation should not directly depend on data implementations
-- ViewModel handles state orchestration; long-lived UI state uses `StateFlow`; one-off events use `SharedFlow(replay = 0)`
+- ViewModel handles state orchestration; durable UI state and user-visible actions use `StateFlow`
+- user-visible actions remain queued until the UI acknowledges them; replay-zero flows are limited to loss-tolerant live signals
+- Android services, alarms, installers, NFC sources, and SDK entry points are accessed through app-owned platform gateways/controllers
+- Sale Retrofit methods and network-only DTOs are locked by method/path/annotation/JSON-key contract tests
+- session mutations are suspend operations; login/logout callers cannot report completion before DataStore persistence finishes
 
 Current codebase reality:
 
@@ -99,7 +105,6 @@ The Android component surface is defined in `app/src/main/AndroidManifest.xml`:
 - activities:
   - `MainActivity`
   - `CountdownAlarmActivity`
-  - debug-gated `FaceCaptureTestActivity`
 - services:
   - location tracking foreground service
   - countdown foreground service
@@ -110,19 +115,20 @@ The Android component surface is defined in `app/src/main/AndroidManifest.xml`:
   - service-time alarm
   - boot completed
 - providers:
-  - custom `FileProvider`
+  - custom `FileProvider` restricted to update APK directories
   - WorkManager startup initializer override/removal
 
 ## 6) External integrations currently in use
 
 - AMap Location SDK (`com.amap.api:location`) for foreground/background location flows
 - Tencent COS SDK (`com.qcloud.cos:cos-android`) via `core/data` COS repository layer
-- Tencent face verification SDK (`WbCloudFaceVerifySdk`) via app common face verification manager
+- Tencent face verification SDK (`WbCloudFaceVerifySdk`) via an app-owned UI controller
 - ML Kit face detection (`com.google.mlkit:face-detection`) for face image processing/validation
-- Bugly crash reporting (`com.tencent.bugly:crashreport`) in app startup and camera/countdown trackers
-- QLZ assessment SDK 1.3.0.2 through the app-owned `QlzSdkClient`; Sale contracts and
-  implementations remain in `core:domain` / `core:data`
-- WorkManager for startup update checks and background jobs
+- Bugly crash reporting (`com.tencent.bugly:crashreport`) behind `CrashReportGateway`; local diagnostics
+  remain available in Debug, while remote reporting is enabled only after consent and successful SDK initialization
+- QLZ assessment SDK 1.3.0.2 through app-owned UI/device controllers; Sale domain contracts remain
+  in `core:domain`, while exact network DTOs and implementations remain in `core:data`
+- WorkManager for startup update checks and background jobs; the UI observes only the exact latest startup request ID, so historical succeeded work cannot revive a withdrawn update
 
 ## 7) Current-state architecture summary
 
@@ -130,6 +136,12 @@ The codebase is in a transitional but stable state:
 
 - stable shell + typed navigation are in place
 - domain/data/core boundaries are established and script-guarded
+- `:core:model` and `:core:domain` are Android-free JVM modules
+- Room upgrades use explicit migrations and never delete the production database as an exception fallback
+- WorkManager-backed update checks and downloads can reconnect after Activity/ViewModel recreation
+- boot notification recovery resolves persisted session state inside `goAsync()` instead of reading the initial `Unknown` value
+- route screens no longer force portrait orientation, allowing Android large-screen window policies to apply
+- top-level destinations use Material 3 `NavigationSuiteScaffold`, selecting bottom navigation or a rail from current window size/posture
 - service execution chain is implemented end-to-end
 - UI/module ownership migration is still in progress, with significant route-bound UI remaining in `:app`
 
@@ -142,3 +154,4 @@ The codebase is in a transitional but stable state:
 - `core:data` couples order-image row deletion with managed-file deletion, so every service-completion and order-cleanup caller gets the same local-file lifecycle automatically.
 - All image thumbnails open the shared `PhotoPreviewDialog`; the former upload, sales, automatic-face, and manual-face preview implementations have been removed.
 - ML-driven face capture retains specialized camera analysis because it has a different runtime contract, while its persistent output and preview still pass through the shared boundaries.
+- Face-verification preview/Base64 loading reads the already-compressed managed JPEG on an injected IO dispatcher; Compose only renders ViewModel state and does not decode or recompress on the main thread.

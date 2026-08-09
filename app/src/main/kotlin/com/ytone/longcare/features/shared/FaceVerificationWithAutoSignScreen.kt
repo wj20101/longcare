@@ -14,6 +14,7 @@ import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.shared.vm.FaceVerificationViewModel
+import com.ytone.longcare.platform.face.rememberFaceSdkUiController
 
 @Composable
 fun FaceVerificationWithAutoSignScreen(
@@ -23,16 +24,18 @@ fun FaceVerificationWithAutoSignScreen(
 ) {
     val homeSharedViewModel: HomeSharedViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val sdkLaunchRequest by viewModel.sdkLaunchRequest.collectAsStateWithLifecycle()
+    val photoProcessingState by viewModel.photoProcessingState.collectAsStateWithLifecycle()
     val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
 
     var showSnackbar by remember { mutableStateOf(false) }
     var snackbarMessage by remember { mutableStateOf("") }
     var capturedPhoto by remember { mutableStateOf<Bitmap?>(null) }
     var sourcePhotoBase64 by remember { mutableStateOf<String?>(null) }
-    var isProcessingPhoto by remember { mutableStateOf(false) }
     var showFaceCapture by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
+    val faceSdkUiController = rememberFaceSdkUiController()
     val currentUserId = user?.userId?.toString()
 
     val showMessage: (String) -> Unit = { message ->
@@ -44,24 +47,13 @@ fun FaceVerificationWithAutoSignScreen(
         startAutoSignVerification(
             sourcePhotoBase64 = sourcePhotoBase64,
             currentUserId = currentUserId,
-            context = context,
             viewModel = viewModel,
             onShowMessage = showMessage
         )
     }
 
     val handleFaceCaptured = { imagePath: String ->
-        isProcessingPhoto = true
-        processCapturedFacePhoto(
-            imagePath = imagePath,
-            onSuccess = { processed ->
-                capturedPhoto = processed.bitmap
-                sourcePhotoBase64 = processed.base64
-                showFaceCapture = false
-            },
-            onError = showMessage
-        )
-        isProcessingPhoto = false
+        viewModel.processCapturedPhoto(imagePath)
     }
 
     LaunchedEffect(uiState) {
@@ -70,6 +62,36 @@ fun FaceVerificationWithAutoSignScreen(
             onShowMessage = showMessage,
             onVerificationSuccess = onVerificationSuccess
         )
+    }
+
+    LaunchedEffect(photoProcessingState) {
+        when (val state = photoProcessingState) {
+            is FaceVerificationViewModel.PhotoProcessingState.Success -> {
+                capturedPhoto = state.photo.bitmap
+                sourcePhotoBase64 = state.photo.base64
+                showFaceCapture = false
+                viewModel.clearPhotoProcessingState()
+            }
+
+            is FaceVerificationViewModel.PhotoProcessingState.Error -> {
+                showMessage(state.message)
+                viewModel.clearPhotoProcessingState()
+            }
+
+            FaceVerificationViewModel.PhotoProcessingState.Idle,
+            FaceVerificationViewModel.PhotoProcessingState.Processing -> Unit
+        }
+    }
+
+    LaunchedEffect(sdkLaunchRequest?.id) {
+        val launchRequest = sdkLaunchRequest ?: return@LaunchedEffect
+        faceSdkUiController.start(
+            context = context,
+            config = launchRequest.config,
+            request = launchRequest.request,
+            onEvent = { event -> viewModel.onFaceSdkEvent(launchRequest.id, event) },
+        )
+        viewModel.consumeSdkLaunchRequest(launchRequest.id)
     }
 
     if (showFaceCapture) {
@@ -86,8 +108,10 @@ fun FaceVerificationWithAutoSignScreen(
         snackbarMessage = snackbarMessage,
         onDismissSnackbar = { showSnackbar = false },
         capturedPhoto = capturedPhoto,
-        isProcessingPhoto = isProcessingPhoto,
+        isProcessingPhoto =
+            photoProcessingState is FaceVerificationViewModel.PhotoProcessingState.Processing,
         onRetakePhoto = {
+            viewModel.clearPhotoProcessingState()
             capturedPhoto = null
             sourcePhotoBase64 = null
         },

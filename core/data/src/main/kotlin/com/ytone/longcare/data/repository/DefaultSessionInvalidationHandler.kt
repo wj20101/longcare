@@ -2,10 +2,12 @@ package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.common.network.SessionInvalidation
 import com.ytone.longcare.common.network.SessionInvalidationHandler
+import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -16,7 +18,7 @@ import javax.inject.Singleton
 @Singleton
 class DefaultSessionInvalidationHandler @Inject constructor(
     private val userSessionRepository: UserSessionRepository,
-    @ApplicationScope applicationScope: CoroutineScope,
+    @ApplicationScope private val applicationScope: CoroutineScope,
 ) : SessionInvalidationHandler {
 
     private val nextId = AtomicLong()
@@ -54,7 +56,7 @@ class DefaultSessionInvalidationHandler @Inject constructor(
     }
 
     override fun invalidate(reason: String) {
-        synchronized(lock) {
+        val invalidation = synchronized(lock) {
             val user = userSessionRepository.sessionState.value.user ?: return
             val sessionKey = "${user.userId}:${user.token}"
             if (invalidatedSessionKey == sessionKey) {
@@ -62,12 +64,21 @@ class DefaultSessionInvalidationHandler @Inject constructor(
             }
 
             invalidatedSessionKey = sessionKey
-            userSessionRepository.logout()
-            _invalidations.value =
-                SessionInvalidation(
-                    id = nextId.incrementAndGet(),
-                    reason = reason,
-                )
+            SessionInvalidation(
+                id = nextId.incrementAndGet(),
+                reason = reason,
+            )
+        }
+
+        applicationScope.launch {
+            try {
+                userSessionRepository.logout()
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                logE("Failed to persist invalidated session logout", throwable = exception)
+            }
+            _invalidations.value = invalidation
         }
     }
 

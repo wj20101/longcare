@@ -1,12 +1,14 @@
 package com.ytone.longcare.features.identification.ui
 
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.core.net.toUri
 import com.ytone.longcare.features.identification.api.IdentificationActions
 import com.ytone.longcare.features.identification.vm.FaceVerificationState
-import com.ytone.longcare.features.identification.vm.IdentificationEvent
+import com.ytone.longcare.features.identification.vm.IdentificationUiAction
+import com.ytone.longcare.features.identification.vm.IdentificationUiEffect
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.features.identification.vm.PhotoUploadState
 import com.ytone.longcare.features.identification.vm.VerificationType
@@ -24,6 +26,7 @@ internal fun IdentificationScreenEffects(
     faceVerificationState: FaceVerificationState,
     currentVerificationType: VerificationType?,
     photoUploadState: PhotoUploadState,
+    pendingUiActions: List<IdentificationUiAction>,
     context: Context,
 ) {
     LaunchedEffect(capturedImageUri) {
@@ -65,21 +68,27 @@ internal fun IdentificationScreenEffects(
         }
     }
 
-    LaunchedEffect(Unit) {
-        identificationViewModel.events.collect { event ->
-            when (event) {
-                IdentificationEvent.NavigateToFaceCapture -> actions.onNavigateToManualFaceCapture()
-                is IdentificationEvent.ShowToast -> identificationViewModel.showToast(
-                    message = event.message,
-                    long = event.long,
-                )
+    val pendingAction = pendingUiActions.firstOrNull()
+    LaunchedEffect(pendingAction?.id) {
+        pendingAction?.let { action ->
+            when (val effect = action.effect) {
+                is IdentificationUiEffect.NavigateToFaceCapture -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                    actions.onNavigateToManualFaceCapture()
+                }
+
+                is IdentificationUiEffect.ShowMessage -> {
+                    val duration = if (effect.long) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
+                    Toast.makeText(context, effect.message, duration).show()
+                }
             }
+            identificationViewModel.consumeUiAction(action.id)
         }
     }
 
     LaunchedEffect(faceImagePath) {
         faceImagePath?.let { imagePath ->
-            identificationViewModel.handleFaceCaptureResult(context, imagePath)
+            identificationViewModel.handleFaceCaptureResult(imagePath)
             actions.clearFaceImagePath()
         }
     }

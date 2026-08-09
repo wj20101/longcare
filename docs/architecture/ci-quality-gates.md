@@ -19,9 +19,9 @@ The canonical descriptive metadata for high-value gates lives in:
 
 - `scripts/quality/quality_gate_registry.json`
 
-The registry is the canonical governance metadata and target-state contract for high-value gates.
-It does not replace current runner behavior in this task. Existing scripts and workflows continue
-to execute according to their current implementations until later alignment tasks are completed.
+The registry is the canonical governance metadata contract for high-value gates. Blocking CI and
+release workflows explicitly execute their matching checks; generated lint checks run after Lint has
+created its report.
 
 Within the registry:
 
@@ -137,6 +137,7 @@ not as an automatic execution override.
 | `scripts/quality/verify_module_api_visibility.sh` | Enforce API visibility boundaries and contract ownership | `local-fast` | Internal package imports, repository contracts outside domain | Move contracts to `core/domain`, stop importing internal symbols directly |
 | `scripts/quality/verify_no_tracked_keystore_files.sh` | Block tracked keystore artifacts | `ci-required` | Keystore file tracked by git | Remove file from index/history and use secret distribution |
 | `scripts/quality/verify_release_exported_components.sh` | Validate exported component allowlist for release | `ci-required` | AndroidManifest exported mismatch | Fix manifest export settings or allowlist policy |
+| `scripts/quality/verify_vendor_sdk_release_readiness.sh` | Block production on known vendor TLS/16 KB/R8 findings | `release-required` | QLZ weak TLS or Tencent face binary warnings remain | Replace the vendor artifacts and rerun Lint/SDK regression |
 | `scripts/lint/verify_lint_warning_allowlist.sh` | Enforce lint waiver policy from lint report | `ci-required` | New lint warning not allowlisted | Fix lint issue or formally manage waiver policy |
 | `scripts/lint/verify_lint_ignore_policy.sh` | Enforce lint ignore policy integrity | `ci-required` | Disallowed lint ignore entry | Remove forbidden ignore and fix root warning |
 | `scripts/quality/verify_jetpack_compat_apis.sh` | Guard Jetpack API compatibility baselines | `ci-required` | Regression in guarded API usage | Revert incompatible API usage or update compatible implementation |

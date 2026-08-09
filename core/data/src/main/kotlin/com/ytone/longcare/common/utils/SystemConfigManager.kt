@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.squareup.moshi.Moshi
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
@@ -168,7 +168,7 @@ class SystemConfigManager @Inject constructor(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    // 网络请求失败，返回null
+                    logE("加载系统配置失败", throwable = e)
                 }
                 null
             }
@@ -184,8 +184,8 @@ class SystemConfigManager @Inject constructor(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
-                // 静默处理后台刷新失败
+            } catch (e: Exception) {
+                logE("后台刷新系统配置失败", throwable = e)
             }
         }
     }

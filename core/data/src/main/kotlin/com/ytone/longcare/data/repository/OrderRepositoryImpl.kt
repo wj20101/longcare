@@ -16,7 +16,7 @@ import com.ytone.longcare.model.TodayServiceOrderModel
 import com.ytone.longcare.model.ServiceOrderModel
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.EndOrderResultModel
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.order.OrderRepository
 import javax.inject.Inject
 import javax.inject.Singleton

@@ -2,7 +2,7 @@ package com.ytone.longcare.network
 
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.TencentFaceApiService
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.network.SuppressSessionInvalidation
 import com.ytone.longcare.di.DefaultOkHttpClient
 import com.ytone.longcare.di.NetworkDataModule

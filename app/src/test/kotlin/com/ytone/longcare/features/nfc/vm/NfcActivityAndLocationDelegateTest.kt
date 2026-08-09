@@ -1,7 +1,5 @@
 package com.ytone.longcare.features.nfc.vm
 
-import android.content.Context
-import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.model.LocationResult
 import io.mockk.coEvery
@@ -12,14 +10,12 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class NfcActivityAndLocationDelegateTest {
+class NfcLocationDelegateTest {
 
     @Test
     fun `notifyLocationPermissionGranted restarts location facade after permission grant`() {
         val locationFacade = mockk<LocationFacade>(relaxed = true)
-        val delegate = NfcActivityAndLocationDelegate(
-            context = mockk<Context>(relaxed = true),
-            nfcManager = mockk<NfcManager>(relaxed = true),
+        val delegate = NfcLocationDelegate(
             locationFacade = locationFacade,
         )
 
@@ -31,9 +27,7 @@ class NfcActivityAndLocationDelegateTest {
     @Test
     fun `getCurrentLocationCoordinates uses fresh location for NFC`() = runTest {
         val locationFacade = mockk<LocationFacade>(relaxed = true)
-        val delegate = NfcActivityAndLocationDelegate(
-            context = mockk<Context>(relaxed = true),
-            nfcManager = mockk<NfcManager>(relaxed = true),
+        val delegate = NfcLocationDelegate(
             locationFacade = locationFacade,
         )
         coEvery { locationFacade.getFreshLocation(any()) } returns LocationResult(
@@ -55,9 +49,7 @@ class NfcActivityAndLocationDelegateTest {
     @Test
     fun `getCurrentLocationCoordinates returns blank coordinates when fresh location is unavailable`() = runTest {
         val locationFacade = mockk<LocationFacade>(relaxed = true)
-        val delegate = NfcActivityAndLocationDelegate(
-            context = mockk<Context>(relaxed = true),
-            nfcManager = mockk<NfcManager>(relaxed = true),
+        val delegate = NfcLocationDelegate(
             locationFacade = locationFacade,
         )
         coEvery { locationFacade.getFreshLocation(any()) } returns null

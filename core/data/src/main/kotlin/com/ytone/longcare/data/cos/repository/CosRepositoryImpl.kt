@@ -5,7 +5,7 @@ import com.tencent.cos.xml.CosXmlService
 import com.tencent.cos.xml.CosXmlServiceConfig
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.common.constants.CosConstants
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.model.CosConfig

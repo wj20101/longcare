@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.photoupload.tracker
 
 import android.os.Build
-import com.tencent.bugly.crashreport.CrashReport
+import com.ytone.longcare.common.diagnostics.CrashReportGateway
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 
@@ -9,7 +9,7 @@ import com.ytone.longcare.common.utils.logI
  * 相机事件追踪器
  * 用于记录相机拍照流程中的关键事件，便于问题排查
  * 
- * 使用 CrashReport.postCatchedException 上报日志到 Bugly
+ * 通过初始化感知的统一网关按需上报日志到 Bugly
  */
 object CameraEventTracker {
     
@@ -72,7 +72,7 @@ object CameraEventTracker {
                 eventType = eventType.code,
                 message = eventInfo
             )
-            CrashReport.postCatchedException(exception)
+            CrashReportGateway.postCaughtException(exception)
         } catch (e: Exception) {
             logE("$TAG: 追踪事件失败 - ${e.message}")
         }
@@ -106,7 +106,7 @@ object CameraEventTracker {
                     message = eventInfo
                 )
             }
-            CrashReport.postCatchedException(exception)
+            CrashReportGateway.postCaughtException(exception)
         } catch (e: Exception) {
             logE("$TAG: 追踪错误事件失败 - ${e.message}")
         }

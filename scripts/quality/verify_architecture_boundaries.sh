@@ -75,6 +75,10 @@ collect_scan_kotlin_files() {
       abs_file="${PROJECT_ROOT%/}/${git_file}"
       for scan_dir in "${scan_dirs[@]}"; do
         case "${abs_file}" in
+          "${scan_dir}")
+            printf "%s\n" "${abs_file}"
+            break
+            ;;
           "${scan_dir%/}"/*)
             printf "%s\n" "${abs_file}"
             break
@@ -86,7 +90,11 @@ collect_scan_kotlin_files() {
   fi
 
   for scan_dir in "${scan_dirs[@]}"; do
-    find "${scan_dir}" -type f -name '*.kt' -print
+    if [[ -f "${scan_dir}" && "${scan_dir}" == *.kt ]]; then
+      printf "%s\n" "${scan_dir}"
+    elif [[ -d "${scan_dir}" ]]; then
+      find "${scan_dir}" -type f -name '*.kt' -print
+    fi
   done
 }
 
@@ -311,6 +319,34 @@ run_filtered_rule() {
 
   if [[ -n "${filtered_matches}" ]]; then
     printf "%s\n" "${filtered_matches}"
+    echo "[architecture][FAIL] ${rule_name}"
+    EXIT_CODE=1
+  fi
+}
+
+run_viewmodel_rule() {
+  local rule_name="$1"
+  local pattern="$2"
+  shift 2
+
+  local viewmodel_files=()
+  local scan_dir
+  while IFS= read -r file_path; do
+    [[ -n "${file_path}" ]] && viewmodel_files+=("${file_path}")
+  done < <(
+    for scan_dir in "$@"; do
+      [[ -d "${scan_dir}" ]] && find "${scan_dir}" -type f -name '*ViewModel.kt' -print
+    done | sort -u
+  )
+
+  if [[ "${#viewmodel_files[@]}" -eq 0 ]]; then
+    echo "[architecture] ${rule_name} skipped (no ViewModel files)"
+    return 0
+  fi
+
+  run_rg_scan "${rule_name}" "${pattern}" "${viewmodel_files[@]}"
+  if [[ "${RG_LAST_STATUS}" -eq 0 ]]; then
+    printf "%s\n" "${RG_LAST_OUTPUT}"
     echo "[architecture][FAIL] ${rule_name}"
     EXIT_CODE=1
   fi
@@ -617,6 +653,30 @@ run_rule \
   "feature UI imports NavController directly" \
   '^\s*import\s+androidx\.navigation\.NavController\b' \
   "${APP_ROOT}/features" \
+  "${FEATURE_ROOT}"
+
+echo "[architecture] rule-7b: ViewModels must not depend on Activity, Context, or ApplicationContext"
+run_viewmodel_rule \
+  "ViewModels depend on Android lifecycle contexts" \
+  '^\s*import\s+android\.(app\.Activity|content\.Context)|@ApplicationContext' \
+  "${APP_ROOT}" \
+  "${CORE_ROOT}" \
+  "${FEATURE_ROOT}"
+
+echo "[architecture] rule-7c: ViewModels must not invoke Toast or UI SDK implementations"
+run_viewmodel_rule \
+  "ViewModels depend on ToastHelper or FaceVerifier" \
+  '^\s*import\s+com\.ytone\.longcare\.(common\.utils\.ToastHelper|common\.faceauth\.FaceVerifier)' \
+  "${APP_ROOT}" \
+  "${CORE_ROOT}" \
+  "${FEATURE_ROOT}"
+
+echo "[architecture] rule-7d: ViewModels must receive coroutine dispatchers through boundaries"
+run_viewmodel_rule \
+  "ViewModels hardcode Dispatchers" \
+  'Dispatchers\.' \
+  "${APP_ROOT}" \
+  "${CORE_ROOT}" \
   "${FEATURE_ROOT}"
 
 echo "[architecture] rule-8: AppNavigation.kt line count must stay within threshold"

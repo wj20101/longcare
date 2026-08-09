@@ -21,10 +21,10 @@ internal fun PhotoUploadBottomActionBar(
     buttonText: String,
     isUploading: Boolean,
     enabled: Boolean,
-    useMockData: Boolean,
     viewModel: PhotoProcessingViewModel,
     actions: PhotoUploadActions,
     scope: CoroutineScope,
+    onShowMessage: (String) -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxWidth()) {
         BottomSafeActionContainer(horizontalPadding = 24.dp) {
@@ -36,9 +36,9 @@ internal fun PhotoUploadBottomActionBar(
                     com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Confirm Button Clicked")
                     scope.launch {
                         handleConfirmUpload(
-                            useMockData = useMockData,
                             viewModel = viewModel,
                             actions = actions,
+                            onShowMessage = onShowMessage,
                         )
                     }
                 },
@@ -48,17 +48,10 @@ internal fun PhotoUploadBottomActionBar(
 }
 
 private suspend fun handleConfirmUpload(
-    useMockData: Boolean,
     viewModel: PhotoProcessingViewModel,
     actions: PhotoUploadActions,
+    onShowMessage: (String) -> Unit,
 ) {
-    if (useMockData) {
-        val currentTasks = viewModel.imageTasks.value
-        actions.onPublishPhotoUploadResultAndNavigateBack(currentTasks.toSuccessfulTaskTypeMap())
-        com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Mock Success -> navigateBack")
-        return
-    }
-
     try {
         val uploadResult = viewModel.uploadSuccessfulImagesToCloud()
         uploadResult.fold(
@@ -69,20 +62,14 @@ private suspend fun handleConfirmUpload(
                 com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Upload Success -> navigateBack")
             },
             onFailure = { error ->
-                viewModel.showToast("图片上传失败: ${error.message ?: "请检查网络后重试"}")
+                onShowMessage("图片上传失败: ${error.message ?: "请检查网络后重试"}")
             },
         )
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        viewModel.showToast("上传过程中发生错误: ${e.message ?: "请稍后重试"}")
+        onShowMessage("上传过程中发生错误: ${e.message ?: "请稍后重试"}")
     }
-}
-
-private fun List<ImageTask>.toSuccessfulTaskTypeMap(): Map<ImageTaskType, List<ImageTask>> {
-    return this
-        .filter { it.status == ImageTaskStatus.SUCCESS }
-        .groupBy { it.taskType }
 }
 
 private fun Map<ImageTaskType, List<String>>.toTaskMap(

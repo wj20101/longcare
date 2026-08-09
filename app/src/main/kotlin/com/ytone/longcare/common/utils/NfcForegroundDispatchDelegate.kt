@@ -18,8 +18,8 @@ internal object NfcForegroundDispatchDelegate {
         if (requireResumed && !isResumed(activity)) return
         try {
             NfcUtils.disableForegroundDispatch(activity)
-        } catch (_: IllegalStateException) {
-            // Ignore: Activity may have already left resumed state.
+        } catch (exception: IllegalStateException) {
+            logE("Activity 已离开前台，NFC 前台分发无需重复关闭", throwable = exception)
         }
     }
 }

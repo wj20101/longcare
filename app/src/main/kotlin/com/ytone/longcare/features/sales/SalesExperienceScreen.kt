@@ -9,13 +9,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,12 +35,17 @@ import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 import com.ytone.longcare.features.home.api.HomeActions
-import com.ytone.longcare.features.home.ui.AppBottomNavigation
-import com.ytone.longcare.features.home.ui.CustomBottomNavigationItem
+import com.ytone.longcare.features.home.ui.AdaptiveAppNavigationScaffold
+import com.ytone.longcare.features.home.ui.AppNavigationItem
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.profile.api.ProfileActions
 import com.ytone.longcare.features.profile.ui.ProfileScreen
 import com.ytone.longcare.model.WatermarkData
+import com.ytone.longcare.platform.sales.rememberSalesSdkUiController
+import com.ytone.longcare.presentation.sales.SalesNavigationState
+import com.ytone.longcare.presentation.sales.SalesPage
+import com.ytone.longcare.presentation.sales.evaluationBackTarget
+import com.ytone.longcare.presentation.sales.rememberSalesNavigationState
 import kotlinx.coroutines.launch
 
 @Composable
@@ -56,19 +59,13 @@ internal fun SalesExperienceScreen(
     val capturedImageUri by actions.capturedImageUriFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context.findActivity()
+    val sdkUiController = rememberSalesSdkUiController()
+    val sdkPermissions = remember(sdkUiController) {
+        sdkUiController.requiredRuntimePermissions()
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-    var currentPageName by rememberSaveable {
-        mutableStateOf(SalesPage.HOME.name)
-    }
-    var rootTab by rememberSaveable { mutableIntStateOf(0) }
-    var detailReturnPageName by rememberSaveable {
-        mutableStateOf(SalesPage.HOME.name)
-    }
-    var evaluationChoiceReturnPageName by rememberSaveable {
-        mutableStateOf(SalesPage.HOME.name)
-    }
-    var reminderIndex by rememberSaveable { mutableIntStateOf(-1) }
+    val navigationState = rememberSalesNavigationState()
     var registrationDraft by rememberSaveable(stateSaver = salesCustomerDraftSaver) {
         mutableStateOf(SalesCustomerDraft())
     }
@@ -77,9 +74,7 @@ internal fun SalesExperienceScreen(
     }
     var showCameraPurposeNotice by rememberSaveable { mutableStateOf(false) }
 
-    val currentPage =
-        runCatching { SalesPage.valueOf(currentPageName) }
-            .getOrDefault(SalesPage.HOME)
+    val currentPage = navigationState.currentPage
     val photoUris = photoUriStrings.map(String::toUri)
     val selectCustomerMessage = stringResource(R.string.sales_error_select_customer)
     val evaluationPermissionMessage =
@@ -88,6 +83,10 @@ internal fun SalesExperienceScreen(
         stringResource(R.string.sales_error_location_permission)
     val openEvaluationErrorMessage =
         stringResource(R.string.sales_error_open_evaluation)
+    val evaluationNotReadyMessage =
+        stringResource(R.string.sales_error_evaluation_not_ready)
+    val noReportMessage = stringResource(R.string.sales_error_no_report)
+    val reportUrlEmptyMessage = stringResource(R.string.sales_error_report_url_empty)
     val cameraUnavailableMessage =
         stringResource(R.string.sales_error_camera_unavailable)
     val cameraPermissionMessage =
@@ -96,11 +95,11 @@ internal fun SalesExperienceScreen(
         stringResource(R.string.sales_camera_permission_purpose)
     val salesWatermarkTitle = stringResource(R.string.sales_watermark_title)
     val unknownAdvisorName = stringResource(R.string.sales_watermark_unknown_advisor)
-    val bottomItems =
+    val navigationItems =
         listOf(
-            CustomBottomNavigationItem(stringResource(R.string.sales_nav_home)),
-            CustomBottomNavigationItem(stringResource(R.string.sales_nav_customers)),
-            CustomBottomNavigationItem(stringResource(R.string.sales_nav_profile)),
+            AppNavigationItem(stringResource(R.string.sales_nav_home)),
+            AppNavigationItem(stringResource(R.string.sales_nav_customers)),
+            AppNavigationItem(stringResource(R.string.sales_nav_profile)),
         )
 
     fun showMessage(message: String) {
@@ -110,12 +109,45 @@ internal fun SalesExperienceScreen(
     }
 
     fun navigate(page: SalesPage) {
-        currentPageName = page.name
+        navigationState.navigate(page)
+    }
+
+    fun launchEvaluationSdk(hostActivity: android.app.Activity) {
+        val token = uiState.checkToken?.token.orEmpty()
+        if (token.isBlank()) {
+            showMessage(evaluationNotReadyMessage)
+            return
+        }
+        sdkUiController.openEvaluation(
+            activity = hostActivity,
+            token = token,
+            onEvent = viewModel::onSdkEvent,
+        )
+    }
+
+    fun openReport(
+        reportUrl: String,
+        missingMessage: String,
+    ) {
+        val hostActivity = activity
+        when {
+            reportUrl.isBlank() -> showMessage(missingMessage)
+            hostActivity == null || hostActivity.isFinishing || hostActivity.isDestroyed ->
+                showMessage(openEvaluationErrorMessage)
+            else -> sdkUiController.openReport(hostActivity, reportUrl)
+        }
+    }
+
+    fun openLatestReport() {
+        val reportUrl =
+            uiState.evaluationCompleted?.reportUrl
+                .orEmpty()
+                .ifBlank { uiState.selectedCustomer?.pgUrl.orEmpty() }
+        openReport(reportUrl, noReportMessage)
     }
 
     fun goHome() {
-        currentPageName = SalesPage.HOME.name
-        rootTab = 0
+        navigationState.goHome()
     }
 
     fun discardRegistrationPhotos() {
@@ -138,9 +170,8 @@ internal fun SalesExperienceScreen(
         customerId: Int,
         returnPage: SalesPage,
     ) {
-        detailReturnPageName = returnPage.name
         viewModel.loadCustomerDetail(customerId)
-        navigate(SalesPage.CUSTOMER_DETAIL)
+        navigationState.showCustomerDetail(returnPage)
     }
 
     fun startAutomaticEvaluation(customerId: Int) {
@@ -155,17 +186,14 @@ internal fun SalesExperienceScreen(
     fun back() {
         when (currentPage) {
             SalesPage.HOME -> {
-                if (rootTab != 0) rootTab = 0
+                if (navigationState.rootTab != 0) navigationState.selectRootTab(0)
             }
 
             SalesPage.REMINDERS -> goHome()
             SalesPage.REMINDER_DETAIL -> navigate(SalesPage.REMINDERS)
             SalesPage.CUSTOMERS -> goHome()
             SalesPage.CUSTOMER_DETAIL ->
-                navigate(
-                    runCatching { SalesPage.valueOf(detailReturnPageName) }
-                        .getOrDefault(SalesPage.HOME)
-                )
+                navigate(navigationState.detailReturnPage)
 
             SalesPage.REGISTRATION -> {
                 discardRegistrationPhotos()
@@ -182,10 +210,7 @@ internal fun SalesExperienceScreen(
                 navigate(
                     evaluationBackTarget(
                         currentPage = currentPage,
-                        choiceReturnPage =
-                            runCatching {
-                                SalesPage.valueOf(evaluationChoiceReturnPageName)
-                            }.getOrDefault(SalesPage.HOME),
+                        choiceReturnPage = navigationState.evaluationChoiceReturnPage,
                     )
                 )
 
@@ -194,13 +219,13 @@ internal fun SalesExperienceScreen(
     }
 
     BackHandler(
-        enabled = currentPage != SalesPage.HOME || rootTab != 0,
+        enabled = navigationState.canHandleBack,
         onBack = ::back,
     )
 
-    LaunchedEffect(currentPage, rootTab) {
+    LaunchedEffect(currentPage, navigationState.rootTab) {
         when {
-            currentPage == SalesPage.HOME && rootTab == 0 ->
+            currentPage == SalesPage.HOME && navigationState.rootTab == 0 ->
                 viewModel.loadToDoCount()
 
             currentPage == SalesPage.REMINDERS ->
@@ -233,13 +258,13 @@ internal fun SalesExperienceScreen(
             contract = ActivityResultContracts.RequestMultiplePermissions(),
         ) { permissions ->
             val allGranted =
-                viewModel.requiredSdkPermissions().all { permission ->
+                sdkPermissions.all { permission ->
                     permissions[permission] == true ||
                         ContextCompat.checkSelfPermission(context, permission) ==
                         PackageManager.PERMISSION_GRANTED
                 }
             if (allGranted && activity != null) {
-                viewModel.launchSdk(activity)
+                launchEvaluationSdk(activity)
             } else {
                 showMessage(evaluationPermissionMessage)
             }
@@ -308,12 +333,12 @@ internal fun SalesExperienceScreen(
         }
         navigate(SalesPage.EVALUATION_GUIDE)
         val missing =
-            viewModel.requiredSdkPermissions().filter { permission ->
+            sdkPermissions.filter { permission ->
                 ContextCompat.checkSelfPermission(context, permission) !=
                     PackageManager.PERMISSION_GRANTED
             }
         if (missing.isEmpty()) {
-            viewModel.launchSdk(hostActivity)
+            launchEvaluationSdk(hostActivity)
         } else {
             sdkPermissionLauncher.launch(missing.toTypedArray())
         }
@@ -350,7 +375,7 @@ internal fun SalesExperienceScreen(
             uiState.submissionResult != null &&
                 currentPage == SalesPage.REGISTRATION_CONFIRM
         ) {
-            evaluationChoiceReturnPageName = SalesPage.SUBMIT_SUCCESS.name
+            navigationState.rememberEvaluationChoiceReturnPage(SalesPage.SUBMIT_SUCCESS)
             navigate(SalesPage.SUBMIT_SUCCESS)
         }
     }
@@ -361,52 +386,53 @@ internal fun SalesExperienceScreen(
         }
     }
 
+    LaunchedEffect(uiState.sdkLaunchRequest?.id) {
+        val request = uiState.sdkLaunchRequest ?: return@LaunchedEffect
+        val hostActivity = activity
+        if (hostActivity == null || hostActivity.isFinishing || hostActivity.isDestroyed) {
+            viewModel.rejectSdkLaunchRequest(request.id)
+        } else {
+            viewModel.consumeSdkLaunchRequest(request.id)
+            sdkUiController.openEvaluation(
+                activity = hostActivity,
+                token = request.token,
+                onEvent = viewModel::onSdkEvent,
+            )
+        }
+    }
+
     SalesPageBackground {
         Box(modifier = Modifier.fillMaxSize()) {
             when (currentPage) {
                 SalesPage.HOME -> {
-                    Scaffold(
+                    AdaptiveAppNavigationScaffold(
                         modifier = Modifier.fillMaxSize(),
-                        containerColor = Color.Transparent,
-                        bottomBar = {
-                            AppBottomNavigation(
-                                items = bottomItems,
-                                selectedItemIndex = rootTab,
-                                onItemSelected = { selected ->
-                                    when (selected) {
-                                        0 -> rootTab = 0
-                                        1 -> navigate(SalesPage.CUSTOMERS)
-                                        2 -> rootTab = 2
-                                    }
-                                },
-                            )
+                        items = navigationItems,
+                        selectedItemIndex = navigationState.rootTab,
+                        onItemSelected = { selected ->
+                            when (selected) {
+                                0 -> navigationState.selectRootTab(0)
+                                1 -> navigate(SalesPage.CUSTOMERS)
+                                2 -> navigationState.selectRootTab(2)
+                            }
                         },
-                    ) { paddingValues ->
-                        when (rootTab) {
+                    ) {
+                        when (navigationState.rootTab) {
                             2 ->
-                                Box(
-                                    modifier =
-                                        Modifier.padding(
-                                            bottom =
-                                                paddingValues
-                                                    .calculateBottomPadding()
-                                        )
-                                ) {
-                                    ProfileScreen(
-                                        actions =
-                                            ProfileActions(
-                                                onNavigateToHaveServiceUserList =
-                                                    actions.onNavigateToHaveServiceUserList,
-                                                onNavigateToNoServiceUserList =
-                                                    actions.onNavigateToNoServiceUserList,
-                                                onOpenUserAgreement =
-                                                    actions.onOpenUserAgreement,
-                                                onOpenPrivacyPolicy =
-                                                    actions.onOpenPrivacyPolicy,
-                                            ),
-                                        homeSharedViewModel = homeSharedViewModel,
-                                    )
-                                }
+                                ProfileScreen(
+                                    actions =
+                                        ProfileActions(
+                                            onNavigateToHaveServiceUserList =
+                                                actions.onNavigateToHaveServiceUserList,
+                                            onNavigateToNoServiceUserList =
+                                                actions.onNavigateToNoServiceUserList,
+                                            onOpenUserAgreement =
+                                                actions.onOpenUserAgreement,
+                                            onOpenPrivacyPolicy =
+                                                actions.onOpenPrivacyPolicy,
+                                        ),
+                                    homeSharedViewModel = homeSharedViewModel,
+                                )
 
                             else -> {
                                 val loggedInUser = user
@@ -433,12 +459,7 @@ internal fun SalesExperienceScreen(
                                                 returnPage = SalesPage.HOME,
                                             )
                                         },
-                                        modifier =
-                                            Modifier.padding(
-                                                bottom =
-                                                    paddingValues
-                                                        .calculateBottomPadding()
-                                            ),
+                                        modifier = Modifier,
                                     )
                                 }
                             }
@@ -454,14 +475,13 @@ internal fun SalesExperienceScreen(
                         onBack = ::back,
                         onRetry = viewModel::loadToDoList,
                         onReminderClick = { index ->
-                            reminderIndex = index
-                            navigate(SalesPage.REMINDER_DETAIL)
+                            navigationState.selectReminder(index)
                         },
                     )
 
                 SalesPage.REMINDER_DETAIL ->
                     SalesReminderDetailScreen(
-                        reminder = uiState.toDoItems.getOrNull(reminderIndex),
+                        reminder = uiState.toDoItems.getOrNull(navigationState.reminderIndex),
                         onBack = ::back,
                     )
 
@@ -493,13 +513,14 @@ internal fun SalesExperienceScreen(
                         onBack = ::back,
                         onRetry = viewModel::retryCustomerDetail,
                         onEvaluate = { customerId ->
-                            evaluationChoiceReturnPageName =
-                                SalesPage.CUSTOMER_DETAIL.name
+                            navigationState.rememberEvaluationChoiceReturnPage(
+                                SalesPage.CUSTOMER_DETAIL
+                            )
                             viewModel.selectCustomer(customerId)
                             navigate(SalesPage.EVALUATION_CHOICE)
                         },
                         onOpenReport = {
-                            activity?.let(viewModel::openLatestReport)
+                            openLatestReport()
                         },
                     )
 
@@ -542,8 +563,9 @@ internal fun SalesExperienceScreen(
                     SalesSubmitSuccessScreen(
                         onBack = ::finishSubmissionFlow,
                         onEvaluation = {
-                            evaluationChoiceReturnPageName =
-                                SalesPage.SUBMIT_SUCCESS.name
+                            navigationState.rememberEvaluationChoiceReturnPage(
+                                SalesPage.SUBMIT_SUCCESS
+                            )
                             navigate(SalesPage.EVALUATION_CHOICE)
                         },
                     )
@@ -561,9 +583,7 @@ internal fun SalesExperienceScreen(
                                     .ifBlank {
                                         uiState.selectedCustomer?.pgUrl.orEmpty()
                                     }
-                            if (activity != null) {
-                                viewModel.openReportUrl(activity, formUrl)
-                            }
+                            openReport(formUrl, reportUrlEmptyMessage)
                         },
                     )
 
@@ -591,7 +611,7 @@ internal fun SalesExperienceScreen(
                         onBack = ::goHome,
                         onDone = ::goHome,
                         onOpenReport = {
-                            activity?.let(viewModel::openLatestReport)
+                            openLatestReport()
                         },
                     )
             }
@@ -646,36 +666,3 @@ private val salesCustomerDraftSaver =
             )
         },
     )
-
-internal enum class SalesPage {
-    HOME,
-    REMINDERS,
-    REMINDER_DETAIL,
-    CUSTOMERS,
-    CUSTOMER_DETAIL,
-    REGISTRATION,
-    REGISTRATION_CONFIRM,
-    SUBMIT_SUCCESS,
-    EVALUATION_CHOICE,
-    DEVICE_STATUS,
-    EVALUATION_GUIDE,
-    EVALUATION_COMPLETE,
-}
-
-internal fun evaluationBackTarget(
-    currentPage: SalesPage,
-    choiceReturnPage: SalesPage,
-): SalesPage =
-    when (currentPage) {
-        SalesPage.EVALUATION_CHOICE ->
-            choiceReturnPage.takeUnless {
-                it == SalesPage.EVALUATION_CHOICE ||
-                    it == SalesPage.DEVICE_STATUS ||
-                    it == SalesPage.EVALUATION_GUIDE ||
-                    it == SalesPage.EVALUATION_COMPLETE
-            } ?: SalesPage.HOME
-
-        SalesPage.DEVICE_STATUS -> SalesPage.EVALUATION_CHOICE
-        SalesPage.EVALUATION_GUIDE -> SalesPage.DEVICE_STATUS
-        else -> currentPage
-    }

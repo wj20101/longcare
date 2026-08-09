@@ -1,6 +1,6 @@
 package com.ytone.longcare.domain.system
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.AppVersionModel
 
 interface SystemRepository {

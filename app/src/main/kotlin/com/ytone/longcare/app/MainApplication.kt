@@ -3,34 +3,27 @@ package com.ytone.longcare.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import com.tencent.bugly.crashreport.CrashReport
 import com.ytone.longcare.BuildConfig
+import com.ytone.longcare.common.diagnostics.CrashReportGateway
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.common.utils.LogConfig
 import com.ytone.longcare.common.utils.LogFileConfig
 import com.ytone.longcare.common.utils.PrivacyConsentManager
+import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.integration.qlz.QlzSdkWindowInsetsCompat
-import com.ytone.longcare.worker.UpdateWorker
+import com.ytone.longcare.worker.StartupUpdateWorkObserver
 import dagger.hilt.android.HiltAndroidApp
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Provider
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
 @HiltAndroidApp
 class MainApplication : Application(), SingletonImageLoader.Factory, Configuration.Provider {
-    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
     @Inject
     lateinit var imageLoaderProvider: Provider<ImageLoader>
 
@@ -39,6 +32,9 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
 
     @Inject
     lateinit var privacyConsentManager: PrivacyConsentManager
+
+    @Inject
+    lateinit var startupUpdateWorkObserver: StartupUpdateWorkObserver
 
     private val postConsentInitDone = AtomicBoolean(false)
 
@@ -66,26 +62,27 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
     fun performPostConsentInit() {
         if (!postConsentInitDone.compareAndSet(false, true)) return
         initCrashReportingIfNeeded()
-        scheduleStartupWorkersAsync()
+        scheduleStartupWorkers()
     }
 
     private fun initCrashReportingIfNeeded() {
         if (BuildConfig.DEBUG) return
-        val userStrategy = CrashReport.UserStrategy(this)
-        CrashReport.initCrashReport(this, userStrategy)
+        try {
+            val userStrategy = CrashReport.UserStrategy(this)
+            CrashReport.initCrashReport(this, userStrategy)
+            CrashReportGateway.markInitialized()
+        } catch (initializationFailure: Throwable) {
+            logE(
+                message = "Crash reporting initialization failed",
+                throwable = initializationFailure,
+            )
+        }
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = imageLoaderProvider.get()
 
-    private fun scheduleStartupWorkersAsync() {
-        appScope.launch {
-            val updateWorkRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
-            WorkManager.getInstance(this@MainApplication).enqueueUniqueWork(
-                STARTUP_UPDATE_WORK_NAME,
-                ExistingWorkPolicy.KEEP,
-                updateWorkRequest
-            )
-        }
+    private fun scheduleStartupWorkers() {
+        startupUpdateWorkObserver.enqueueLatestCheck()
     }
 
     private fun initLogger() {
@@ -99,9 +96,5 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
                 maskSensitiveInfo = true
             )
         )
-    }
-
-    private companion object {
-        const val STARTUP_UPDATE_WORK_NAME = "startup_update_worker"
     }
 }

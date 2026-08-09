@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.login.ui
 
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -48,8 +46,7 @@ import com.ytone.longcare.theme.TextColorPrimary
 
 @Composable
 internal fun BoxScope.LoginBrandingHeader(
-    isCompactLayout: Boolean = false,
-    onMainLogoLongPress: () -> Unit = {}
+    isCompactLayout: Boolean = false
 ) {
     val smallLogoWidth = if (isCompactLayout) 72.dp else 86.dp
     val smallLogoTopPadding = if (isCompactLayout) 12.dp else 20.dp
@@ -73,11 +70,6 @@ internal fun BoxScope.LoginBrandingHeader(
             .width(mainLogoWidth)
             .padding(top = mainLogoTopPadding)
             .testTag("login_main_logo")
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onLongPress = { onMainLogoLongPress() }
-                )
-            }
     )
 }
 

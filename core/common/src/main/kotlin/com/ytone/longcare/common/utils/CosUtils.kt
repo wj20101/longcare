@@ -212,7 +212,7 @@ object CosUtils {
                 }
             }
         } catch (e: Exception) {
-            // 忽略清理错误
+            logE("清理 COS 临时文件失败", throwable = e)
         }
     }
 

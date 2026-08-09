@@ -40,7 +40,6 @@ internal fun ServiceCountdownDialogsHost(
         onDismiss = onDismissConfirmDialog,
         onConfirm = {
             handleEndService(
-                context = context,
                 orderKey = orderKey,
                 projectIdList = projectIdList,
                 countdownViewModel = countdownViewModel,
@@ -57,7 +56,6 @@ internal fun ServiceCountdownDialogsHost(
         onConfirm = {
             onDismissOrderStateErrorDialog()
             handleOrderStateErrorAndExit(
-                context = context,
                 orderKey = orderKey,
                 countdownViewModel = countdownViewModel,
                 locationTrackingViewModel = locationTrackingViewModel,

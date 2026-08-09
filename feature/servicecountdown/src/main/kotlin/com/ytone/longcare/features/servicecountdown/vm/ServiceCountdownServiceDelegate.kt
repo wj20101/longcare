@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.servicecountdown.vm
 
-import android.content.Context
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
@@ -17,39 +16,29 @@ internal class ServiceCountdownServiceDelegate(
     private val viewModelScope: CoroutineScope,
 ) {
     fun startForegroundService(
-        context: Context,
         orderKey: OrderKey,
         serviceName: String,
         totalSeconds: Long
     ) {
-        systemGateway.startForegroundService(context, orderKey, serviceName, totalSeconds)
+        systemGateway.startForegroundService(orderKey, serviceName, totalSeconds)
     }
 
-    fun stopForegroundService(context: Context) {
-        systemGateway.stopForegroundService(context)
-    }
-
-    fun endService(orderKey: OrderKey, context: Context? = null) {
+    fun endService(orderKey: OrderKey) {
         stateHolder.countdownJob?.cancel()
         stateHolder.orderStatePollingJob?.cancel()
         stateHolder.countdownState.value = ServiceCountdownState.ENDED
-
-        context?.let {
-            stopForegroundService(it)
-            systemGateway.stopAlarmRingtone(it)
-        }
-        systemGateway.cancelCountdownAlarmForOrder(orderKey)
+        stopPlatformWork(orderKey)
         viewModelScope.launch {
             orderDetailRepository.endLocalService(orderKey)
             imageRepository.deleteImagesByOrderId(orderKey)
         }
     }
 
-    fun endServiceWithoutClearingImages(orderKey: OrderKey, context: Context? = null) {
+    fun endServiceWithoutClearingImages(orderKey: OrderKey) {
         stateHolder.countdownJob?.cancel()
         stateHolder.orderStatePollingJob?.cancel()
         stateHolder.countdownState.value = ServiceCountdownState.ENDED
-        context?.let { stopForegroundService(it) }
+        stopPlatformWork(orderKey)
         viewModelScope.launch {
             orderDetailRepository.endLocalService(orderKey)
         }
@@ -68,6 +57,12 @@ internal class ServiceCountdownServiceDelegate(
     }
 
     fun cancelCountdownAlarmForOrder(orderKey: OrderKey) {
+        systemGateway.cancelCountdownAlarmForOrder(orderKey)
+    }
+
+    private fun stopPlatformWork(orderKey: OrderKey) {
+        systemGateway.stopForegroundService()
+        systemGateway.stopAlarmRingtone()
         systemGateway.cancelCountdownAlarmForOrder(orderKey)
     }
 

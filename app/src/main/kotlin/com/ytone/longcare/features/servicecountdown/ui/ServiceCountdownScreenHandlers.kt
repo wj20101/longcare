@@ -54,13 +54,12 @@ internal fun rememberServiceCountdownScreenLaunchers(
 
 internal fun handleServiceCountdownBottomAction(
     countdownState: ServiceCountdownState,
-    isMockDataEnabled: Boolean,
     validatePhotosUploaded: () -> Boolean,
     onShowToast: (String) -> Unit,
     onRequireConfirm: () -> Unit,
     onEndServiceDirectly: () -> Unit
 ) {
-    if (!isMockDataEnabled && !validatePhotosUploaded()) {
+    if (!validatePhotosUploaded()) {
         onShowToast("请上传照片")
         return
     }

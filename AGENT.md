@@ -61,7 +61,7 @@ LongCare 是一个面向护理/长护服务执行场景的 Android 客户端。�
   - `TxFaceRoute`
   - `ManualFaceCaptureRoute`
 - 支撑链路：
-  - `LocationTrackingRoute`
+  - 服务流程内嵌定位跟踪
   - `PhotoUploadRoute`
   - `CameraRoute`
   - `WebViewRoute`

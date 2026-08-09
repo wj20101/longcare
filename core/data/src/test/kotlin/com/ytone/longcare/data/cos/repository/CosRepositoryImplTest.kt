@@ -3,7 +3,7 @@ package com.ytone.longcare.data.cos.repository
 import com.tencent.cos.xml.common.ClientErrorCode
 import com.tencent.cos.xml.exception.CosXmlClientException
 import com.tencent.cos.xml.exception.CosXmlServiceException
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.CosStorageException
 import com.ytone.longcare.model.CosStorageFailureKind
 import kotlinx.coroutines.ExperimentalCoroutinesApi

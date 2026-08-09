@@ -1,14 +1,15 @@
 package com.ytone.longcare.features.sales
 
 import android.content.Context
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.sale.SaleRepository
-import com.ytone.longcare.integration.qlz.QlzSdkClient
 import com.ytone.longcare.model.SearchUserLatentParamModel
 import com.ytone.longcare.model.UserLatentCheckState
 import com.ytone.longcare.model.UserLatentListModel
+import com.ytone.longcare.platform.sales.SalesEvaluationDeviceGateway
+import com.ytone.longcare.platform.text.SalesTextResolver
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -276,8 +277,8 @@ class SalesViewModelCustomerListTest {
             locationFacade = mockk<LocationFacade>(relaxed = true),
             photoCloudUploader = UnusedPhotoCloudUploader,
             imagePipeline = testImagePipeline(mockk(relaxed = true)),
-            qlzSdkClient = mockk<QlzSdkClient>(relaxed = true),
+            evaluationDeviceGateway = mockk<SalesEvaluationDeviceGateway>(relaxed = true),
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
-            applicationContext = mockk<Context>(relaxed = true),
+            textResolver = SalesTextResolver(mockk<Context>(relaxed = true)),
         )
 }

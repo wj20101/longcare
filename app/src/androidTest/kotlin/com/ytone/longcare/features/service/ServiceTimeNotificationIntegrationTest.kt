@@ -41,8 +41,12 @@ class ServiceTimeNotificationIntegrationTest {
 
         try {
             WorkManager.initialize(context, config)
-        } catch (_: IllegalStateException) {
-            // WorkManager 可能已在同一进程中初始化，复用现有实例即可。
+        } catch (exception: IllegalStateException) {
+            android.util.Log.d(
+                "ServiceTimeNotificationTest",
+                "WorkManager 已初始化，复用当前实例",
+                exception,
+            )
         }
         workManager = WorkManager.getInstance(context)
         

@@ -2,9 +2,9 @@ package com.ytone.longcare.shared.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.core.ui.message.UiMessageQueue
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.model.ServiceOrderModel
 import com.ytone.longcare.model.TodayServiceOrderModel
@@ -18,7 +18,6 @@ import javax.inject.Inject
 @HiltViewModel
 class TodayOrderViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
-    private val toastHelper: ToastHelper
 ) : ViewModel() {
 
     // 创建一个 StateFlow 用于存放今日订单列表的UI状态
@@ -28,6 +27,10 @@ class TodayOrderViewModel @Inject constructor(
     // 创建一个 StateFlow 用于存放服务中订单列表的UI状态
     private val _inOrderListState = MutableStateFlow<List<ServiceOrderModel>>(emptyList())
     val inOrderListState: StateFlow<List<ServiceOrderModel>> = _inOrderListState.asStateFlow()
+    private val messageQueue = UiMessageQueue()
+    val uiMessages = messageQueue.messages
+
+    fun consumeUiMessage(id: Long) = messageQueue.consume(id)
 
     fun loadTodayOrders() {
         viewModelScope.launch {
@@ -40,11 +43,11 @@ class TodayOrderViewModel @Inject constructor(
                 is ApiResult.Failure -> {
                     // 请求失败或异常，将列表清空
                     _todayOrderListState.value = emptyList()
-                    // 这里可以添加错误处理逻辑，例如通过另一个 StateFlow 显示Toast
-                    toastHelper.showShort(result.message)
+                    messageQueue.enqueue(result.message)
                 }
 
                 is ApiResult.Exception -> {
+                    messageQueue.enqueue(result.exception.message ?: "网络异常，请稍后重试")
                     logE(message = "今日订单请求接口失败", throwable = result.exception)
                 }
             }
@@ -62,11 +65,11 @@ class TodayOrderViewModel @Inject constructor(
                 is ApiResult.Failure -> {
                     // 请求失败或异常，将列表清空
                     _inOrderListState.value = emptyList()
-                    // 这里可以添加错误处理逻辑，例如通过另一个 StateFlow 显示Toast
-                    toastHelper.showShort(result.message)
+                    messageQueue.enqueue(result.message)
                 }
 
                 is ApiResult.Exception -> {
+                    messageQueue.enqueue(result.exception.message ?: "网络异常，请稍后重试")
                     logE(message = "服务中订单请求接口失败", throwable = result.exception)
                 }
             }

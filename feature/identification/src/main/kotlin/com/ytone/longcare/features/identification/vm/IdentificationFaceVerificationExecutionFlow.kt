@@ -1,59 +1,79 @@
 package com.ytone.longcare.features.identification.vm
 
-import android.content.Context
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
-import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
-import com.ytone.longcare.domain.faceauth.FaceVerifier
-import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
+import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
+import com.ytone.longcare.common.faceauth.FaceSdkEvent
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
-internal suspend fun startFaceVerificationWithResolvedConfigOrNotify(
-    context: Context,
-    request: FaceVerificationRequest,
-    callback: FaceVerifyCallback,
-    configProvider: FaceVerificationConfigProvider,
-    faceVerifier: FaceVerifier,
-    onConfigMissing: () -> Unit,
-) {
-    val config = configProvider.getFaceVerificationConfig()
-    if (config == null) {
-        onConfigMissing()
-        return
-    }
+data class IdentificationFaceSdkLaunchRequest(
+    val id: Long,
+    val config: FaceVerificationConfig,
+    val request: FaceVerificationRequest,
+)
 
-    faceVerifier.startFaceVerification(
-        context = context,
-        config = config,
-        request = request,
-        callback = callback
-    )
+internal sealed interface IdentificationFaceSdkPurpose {
+    data object Standard : IdentificationFaceSdkPurpose
+    data class FaceSetup(val ready: FaceSetupPreparation.Ready) : IdentificationFaceSdkPurpose
 }
 
-internal suspend fun startFaceVerificationWithIdentificationBindings(
-    context: Context,
-    request: FaceVerificationRequest,
-    currentVerificationType: () -> VerificationType?,
-    setVerificationState: (FaceVerificationState) -> Unit,
-    onSetFaceVerificationError: (String, FaceVerifyError?) -> Unit,
-    onServicePersonVerified: () -> Unit,
-    onElderVerified: () -> Unit,
-    showToast: (String) -> Unit,
-    configProvider: FaceVerificationConfigProvider,
-    faceVerifier: FaceVerifier,
+internal class IdentificationFaceSdkCoordinator(
+    private val configProvider: FaceVerificationConfigProvider,
+    private val onStandardConfigMissing: () -> Unit,
+    private val onFaceSetupConfigMissing: () -> Unit,
 ) {
-    startFaceVerificationWithResolvedConfigOrNotify(
-        context = context,
+    private val mutableLaunchRequest = MutableStateFlow<IdentificationFaceSdkLaunchRequest?>(null)
+    val launchRequest: StateFlow<IdentificationFaceSdkLaunchRequest?> = mutableLaunchRequest.asStateFlow()
+    private var activePurpose: Pair<Long, IdentificationFaceSdkPurpose>? = null
+    private var nextId = 0L
+    private var latestPreparationId = 0L
+
+    suspend fun prepareStandard(request: FaceVerificationRequest) = prepare(
         request = request,
-        callback = createIdentificationFlowVerifyCallback(
-            currentVerificationType = currentVerificationType,
-            setVerificationState = setVerificationState,
-            onSetFaceVerificationError = onSetFaceVerificationError,
-            onServicePersonVerified = onServicePersonVerified,
-            onElderVerified = onElderVerified,
-            showToast = showToast,
-        ),
-        configProvider = configProvider,
-        faceVerifier = faceVerifier,
-        onConfigMissing = { onSetFaceVerificationError("人脸配置不可用", null) }
+        purpose = IdentificationFaceSdkPurpose.Standard,
+        onConfigMissing = onStandardConfigMissing,
     )
+
+    suspend fun prepareFaceSetup(
+        request: FaceVerificationRequest,
+        ready: FaceSetupPreparation.Ready,
+    ) = prepare(request, IdentificationFaceSdkPurpose.FaceSetup(ready), onFaceSetupConfigMissing)
+
+    fun consume(id: Long) {
+        if (mutableLaunchRequest.value?.id == id) mutableLaunchRequest.value = null
+    }
+
+    fun dispatch(
+        id: Long,
+        event: FaceSdkEvent,
+        onStandard: (FaceSdkEvent) -> Unit,
+        onFaceSetup: (FaceSdkEvent, FaceSetupPreparation.Ready) -> Unit,
+    ) {
+        val purpose = activePurpose?.takeIf { it.first == id }?.second ?: return
+        when (purpose) {
+            IdentificationFaceSdkPurpose.Standard -> onStandard(event)
+            is IdentificationFaceSdkPurpose.FaceSetup -> onFaceSetup(event, purpose.ready)
+        }
+        if (event !is FaceSdkEvent.InitSuccess) activePurpose = null
+    }
+
+    private suspend fun prepare(
+        request: FaceVerificationRequest,
+        purpose: IdentificationFaceSdkPurpose,
+        onConfigMissing: () -> Unit,
+    ) {
+        val preparationId = ++latestPreparationId
+        mutableLaunchRequest.value = null
+        activePurpose = null
+        val config = configProvider.getFaceVerificationConfig() ?: run {
+            onConfigMissing()
+            return
+        }
+        if (preparationId != latestPreparationId) return
+        val launch = IdentificationFaceSdkLaunchRequest(++nextId, config, request)
+        activePurpose = launch.id to purpose
+        mutableLaunchRequest.value = launch
+    }
 }

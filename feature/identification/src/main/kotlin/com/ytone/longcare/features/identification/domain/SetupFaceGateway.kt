@@ -21,5 +21,5 @@ interface SetupFaceGateway {
 
     suspend fun cacheUserFace(userId: Int, base64Image: String): Boolean
 
-    fun refreshCurrentUserSession()
+    suspend fun refreshCurrentUserSession()
 }

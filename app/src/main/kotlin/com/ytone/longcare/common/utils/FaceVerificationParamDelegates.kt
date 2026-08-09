@@ -1,6 +1,6 @@
 package com.ytone.longcare.common.utils
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository
 import com.ytone.longcare.domain.faceauth.model.FACE_AUTH_API_VERSION
 import com.ytone.longcare.domain.faceauth.model.FACE_AUTH_SOURCE_PHOTO_TYPE_HD

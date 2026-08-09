@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -60,31 +59,28 @@ class DefaultUserSessionRepository @Inject constructor(
         }
         .stateIn(
             scope = coroutineScope,
-            started = SharingStarted.WhileSubscribed(5000L),
-            initialValue = SessionState.Unknown // <-- 关键：初始状态为 Unknown
+            // Session is process-wide state used by receivers and interceptors, not only by UI collectors.
+            started = SharingStarted.Eagerly,
+            initialValue = SessionState.Unknown
         )
 
-    override fun login(user: User) {
+    override suspend fun login(user: User) {
         updateUserInternal(user)
     }
 
-    override fun updateUser(user: User) {
+    override suspend fun updateUser(user: User) {
         updateUserInternal(user)
     }
 
-    private fun updateUserInternal(user: User) {
-        coroutineScope.launch {
-            appDataStore.edit { preferences ->
-                preferences[APP_USER_KEY] = user.encode()
-            }
+    private suspend fun updateUserInternal(user: User) {
+        appDataStore.edit { preferences ->
+            preferences[APP_USER_KEY] = user.encode()
         }
     }
 
-    override fun logout() {
-        coroutineScope.launch {
-            appDataStore.edit { preferences ->
-                preferences.remove(APP_USER_KEY)
-            }
+    override suspend fun logout() {
+        appDataStore.edit { preferences ->
+            preferences.remove(APP_USER_KEY)
         }
     }
 }

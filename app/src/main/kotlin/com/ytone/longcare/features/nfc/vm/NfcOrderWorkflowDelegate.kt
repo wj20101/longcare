@@ -1,10 +1,9 @@
 package com.ytone.longcare.features.nfc.vm
 
-import android.content.Context
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
-import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.ServiceCompleteData
@@ -39,19 +38,17 @@ internal fun applyUserVisibleNfcError(
 }
 
 internal class NfcOrderWorkflowDelegate(
-    private val context: Context,
     private val orderRepository: OrderRepository,
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
-    private val countdownNotificationManager: CountdownNotificationManager,
+    private val serviceCountdownSystemGateway: ServiceCountdownSystemGateway,
     private val scope: CoroutineScope,
     private val uiState: MutableStateFlow<NfcSignInUiState>,
 ) {
     private val completionDelegate = NfcOrderCompletionDelegate(
-        context = context,
         unifiedOrderRepository = unifiedOrderRepository,
         imageRepository = imageRepository,
-        countdownNotificationManager = countdownNotificationManager,
+        serviceCountdownSystemGateway = serviceCountdownSystemGateway,
         scope = scope
     )
 

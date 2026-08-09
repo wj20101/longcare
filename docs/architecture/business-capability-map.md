@@ -61,11 +61,9 @@ Status: implemented (with multiple paths)
 
 Status: implemented
 
-- Main entry route:
-  - `LocationTrackingRoute`
 - Main flow:
   - permissions and location-service check
-  - start/stop tracking tied to service workflow and dedicated tracking screens
+  - start/stop tracking tied to service workflow
   - background/foreground location tracking service integration
 - Key dependencies:
   - AMap location SDK and fallback system location provider
@@ -114,22 +112,19 @@ Status: implemented
 
 ## 7) NFC and device-related flows
 
-Status: implemented (including test paths)
+Status: implemented
 
 - Main entry routes:
   - `NfcSignInRoute`
   - `SelectDeviceRoute` (route exists but is not the active start-order hop)
-  - `NfcTestRoute`
 - Main flow:
   - start/end order NFC workflow with scan mode differences
   - current start-order path does not use a meaningful device-selection hop:
     `navigateToSelectDevice()` immediately forwards to `navigateToNfcSignInForStartOrder()`
-  - NFC test/debug flows available from login/support routes
 - Key dependencies:
   - Android NFC intent filters in app manifest
   - NFC workflow ViewModel/delegates in `:app` feature package
   - location/NFC coordination in workflow handlers
-  - optional R65C HID-related debug capture surfaces
 
 ## 8) QLZ assessment and sales leads
 
@@ -137,7 +132,6 @@ Status: data, customer-facing sales UI, and SDK integration implemented
 
 - Current entries:
   - sales accounts (`userIdentity == 2`) use `SalesExperienceScreen` inside `HomeRoute`
-  - `QlzSdkDemoActivity` (debug-only launcher)
 - Main flow:
   - add/search/select a prospective customer
   - customer registration accepts up to three camera photos; capture, watermark rendering,
@@ -177,7 +171,7 @@ Status: implemented
   - location tracking/reporting
   - photo capture/upload
   - service countdown/end/complete
-  - NFC start/end order workflows and test flow
+  - NFC start/end order workflows
   - QLZ Sale APIs, customer-facing sales UI, and assessment SDK flow
   - user list, service records, webview, update dialog
 - in-progress (technical, not user-facing capability gap):

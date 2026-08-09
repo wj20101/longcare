@@ -7,7 +7,6 @@ plugins {
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.baselineprofile)
-    id("kotlin-parcelize")
 }
 
 apply(from = "$projectDir/dependencies.gradle.kts")
@@ -38,6 +37,36 @@ val debugUseMockData =
         .orElse("true")
         .map { it.equals("true", ignoreCase = true) }
         .get()
+val productionReleaseRequested =
+    providers
+        .gradleProperty("release.production")
+        .orElse("true")
+        .map { it.equals("true", ignoreCase = true) }
+val acceptanceReleaseRequested =
+    providers
+        .gradleProperty("release.acceptance")
+        .orElse("false")
+        .map { it.equals("true", ignoreCase = true) }
+val txFaceSdkSource =
+    providers
+        .gradleProperty("TX_FACE_SDK_SOURCE")
+        .orElse(providers.environmentVariable("TX_FACE_SDK_SOURCE"))
+        .orElse("local")
+        .map { it.trim().lowercase() }
+val txFaceLiveCoordinate =
+    providers
+        .gradleProperty("TX_FACE_LIVE_COORD")
+        .orElse(providers.environmentVariable("TX_FACE_LIVE_COORD"))
+        .orElse("")
+val knownUnsafeFaceSdkPresent =
+    providers.provider {
+        txFaceSdkSource.get() == "local" ||
+            txFaceLiveCoordinate.get().contains("6.6.2-8e4718fc", ignoreCase = true)
+    }
+val knownUnsafeQlzSdkPresent =
+    providers.provider {
+        file("libs/qlzsdk-1.3.0.2-protobufLiteRelease-ui.aar").exists()
+    }
 
 fun String.asBuildConfigString(): String =
     "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
@@ -80,7 +109,6 @@ android {
             isShrinkResources = true
             isDebuggable = false
             isJniDebuggable = false
-            manifestPlaceholders["faceCaptureTestActivityEnabled"] = "false"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -91,7 +119,6 @@ android {
         }
 
         debug {
-            manifestPlaceholders["faceCaptureTestActivityEnabled"] = "true"
             buildConfigField("String", "BASE_URL", "\"$BASE_URL\"")
             buildConfigField("boolean", "USE_MOCK_DATA", debugUseMockData.toString())
         }
@@ -134,6 +161,34 @@ baselineProfile {
         maxAgpVersion = false
     }
 }
+
+val verifyProductionReleaseConfiguration =
+    tasks.register<Exec>("verifyProductionReleaseConfiguration") {
+        group = "verification"
+        description =
+            "Prevents the temporary QLZ test configuration from being published as production."
+        commandLine(
+            "bash",
+            rootProject.file("scripts/quality/verify_production_release_config.sh").absolutePath,
+            "--production-requested",
+            productionReleaseRequested.get().toString(),
+            "--acceptance-requested",
+            acceptanceReleaseRequested.get().toString(),
+            "--temporary-qlz-key-present",
+            TEMPORARY_QLZ_SDK_KEY.isNotBlank().toString(),
+            "--qlz-test-mode",
+            TEMPORARY_QLZ_TEST_MODE.toString(),
+            "--known-unsafe-qlz-sdk-present",
+            knownUnsafeQlzSdkPresent.get().toString(),
+            "--known-unsafe-face-sdk-present",
+            knownUnsafeFaceSdkPresent.get().toString(),
+        )
+    }
+
+tasks.matching { it.name == "assembleRelease" || it.name == "bundleRelease" }
+    .configureEach {
+        dependsOn(verifyProductionReleaseConfiguration)
+    }
 
 configurations.configureEach {
     if (name.startsWith("hiltAnnotationProcessor")) {
