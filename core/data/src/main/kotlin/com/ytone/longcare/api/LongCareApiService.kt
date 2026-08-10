@@ -15,6 +15,7 @@ import com.ytone.longcare.model.CheckOrderParamModel
 import com.ytone.longcare.model.StarOrderParamModel
 import com.ytone.longcare.model.UpUserStartImgParamModel
 import com.ytone.longcare.model.BindLocationParamModel
+import com.ytone.longcare.model.CheckFaceParamModel
 import com.ytone.longcare.model.SetFaceParamModel
 import com.ytone.longcare.model.FaceResultModel
 import com.ytone.longcare.model.CheckEndOrderParamModel
@@ -241,6 +242,15 @@ interface LongCareApiService {
      */
     @GET("/V1/User/GetFace")
     suspend fun getFace(): ApiResult<FaceResultModel>
+
+    /**
+     * 对订单关联的人脸图片进行对比验证。
+     *
+     * @param checkFaceParamModel 订单 ID 与 Base64 人脸图片
+     * @return 无返回值
+     */
+    @POST("/V1/User/CheckFace")
+    suspend fun checkFace(@Body checkFaceParamModel: CheckFaceParamModel): ApiResult<Unit>
 
     /**
      * 检测结束工单

@@ -60,4 +60,19 @@ class LogExtTest {
         assertTrue(loggedMessage.contains("13800138000"))
         assertTrue(loggedMessage.contains("test.user@example.com"))
     }
+
+    @Test
+    fun log_masksFaceImageRequestBody_whenMaskingEnabled() {
+        val rawMessage =
+            """请求体: {"orderId":123,"faceImg":"data:image/png;base64,SECRET_BASE64","faceImgUrl":"private/face.jpg"}"""
+
+        KLogger.i("MaskingFaceImage", rawMessage)
+
+        val loggedMessage = ShadowLog.getLogs().last().msg
+
+        assertTrue(loggedMessage.contains("\"faceImg\":\"***\""))
+        assertTrue(loggedMessage.contains("\"faceImgUrl\":\"***\""))
+        assertFalse(loggedMessage.contains("SECRET_BASE64"))
+        assertFalse(loggedMessage.contains("private/face.jpg"))
+    }
 }

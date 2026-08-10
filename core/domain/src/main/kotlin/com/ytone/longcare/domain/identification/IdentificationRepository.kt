@@ -1,6 +1,7 @@
 package com.ytone.longcare.domain.identification
 
 import com.ytone.longcare.model.result.ApiResult
+import com.ytone.longcare.model.CheckFaceParamModel
 import com.ytone.longcare.model.FaceResultModel
 import com.ytone.longcare.model.SetFaceParamModel
 
@@ -17,4 +18,9 @@ interface IdentificationRepository {
      * 获取用户人脸地址
      */
     suspend fun getFace(): ApiResult<FaceResultModel>
+
+    /**
+     * 对订单关联的人脸图片进行对比验证。
+     */
+    suspend fun checkFace(checkFaceParamModel: CheckFaceParamModel): ApiResult<Unit>
 }

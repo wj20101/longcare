@@ -125,8 +125,15 @@ object KLogger {
 
     private fun sanitizeSensitiveContent(raw: String): String {
         var sanitized = raw
+        val faceImageQuotedValueRegex = Regex(
+            pattern = """(?i)(["']?face[_-]?img(?:[_-]?url)?["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*')"""
+        )
+        sanitized = faceImageQuotedValueRegex.replace(sanitized) { match ->
+            "${match.groupValues[1]}\"***\""
+        }
+
         val sensitiveKeyValueRegex = Regex(
-            pattern = """(?i)(["']?(?:password|pwd|token|access_token|refresh_token|secret|api[_-]?key|authorization)["']?\s*[:=]\s*["']?)([^"',\s}]+)(["']?)"""
+            pattern = """(?i)(["']?(?:password|pwd|token|access_token|refresh_token|secret|api[_-]?key|authorization|face[_-]?img(?:[_-]?url)?)["']?\s*[:=]\s*["']?)([^"',\s}]+)(["']?)"""
         )
         sanitized = sensitiveKeyValueRegex.replace(sanitized) { match ->
             "${match.groupValues[1]}***${match.groupValues[3]}"

@@ -110,6 +110,7 @@ class MockInterceptor(private val context: Context) : Interceptor {
             "/V1/Service/CheckOrder",  // 新增：工单前校验
             "/V1/Service/UpUserStartImg",  // 新增：添加开始老人照片
             "/V1/User/SetFace",  // 新增：设置人脸信息
+            "/V1/User/CheckFace",
             "/V1/Login/Out" -> "mock/common_success_unit.json"  // 新增：退出登录
 
             // 具体数据模型的响应
