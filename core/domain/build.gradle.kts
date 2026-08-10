@@ -1,16 +1,11 @@
 plugins {
-    id("longcare.android.library")
+    id("org.jetbrains.kotlin.jvm")
     id("longcare.kotlin.common")
-}
-
-android {
-    namespace = "com.ytone.longcare.core.domain"
 }
 
 fun projectDependency(path: String) = dependencies.project(path)
 
 dependencies {
-    implementation(projectDependency(":core:common"))
     implementation(projectDependency(":core:model"))
-    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.core)
 }

@@ -1,23 +1,15 @@
 package com.ytone.longcare.navigation
 
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
-import com.ytone.longcare.R
-import com.ytone.longcare.common.utils.showShortToast
 import com.ytone.longcare.core.navigation.NavigationConstants
-import com.ytone.longcare.debug.NfcTestEntrySession
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.facerecognition.api.FaceRecognitionGuideActions
 import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
 import com.ytone.longcare.features.identification.api.IdentificationActions
 import com.ytone.longcare.features.identification.ui.IdentificationScreen
-import com.ytone.longcare.features.location.ui.LocationTrackingScreen
-import com.ytone.longcare.features.nfctest.api.NfcTestActions
-import com.ytone.longcare.features.nfctest.ui.NfcTestScreen
 import com.ytone.longcare.features.photoupload.api.CameraActions
 import com.ytone.longcare.features.photoupload.ui.CameraScreen
 import com.ytone.longcare.features.selectdevice.api.SelectDeviceActions
@@ -38,12 +30,6 @@ internal fun NavGraphBuilder.registerTxFaceRoute(navController: NavController) {
             onNavigateBack = { navController.popBackStack() },
             onVerificationSuccess = {},
         )
-    }
-}
-
-internal fun NavGraphBuilder.registerLocationTrackingRoute() {
-    composable<LocationTrackingRoute> {
-        LocationTrackingScreen()
     }
 }
 
@@ -76,25 +62,6 @@ internal fun NavGraphBuilder.registerUserServiceRecordRoute(navController: NavCo
             userAddress = route.userAddress,
             onBackClick = { navController.popBackStack() }
         )
-    }
-}
-
-internal fun NavGraphBuilder.registerNfcTestRoute(navController: NavController) {
-    composable<NfcTestRoute> {
-        val context = LocalContext.current
-
-        if (NfcTestEntrySession.isEnabled()) {
-            NfcTestScreen(
-                actions = NfcTestActions(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            )
-        } else {
-            LaunchedEffect(Unit) {
-                context.showShortToast(R.string.login_test_entry_locked_toast)
-                navController.popBackStack()
-            }
-        }
     }
 }
 

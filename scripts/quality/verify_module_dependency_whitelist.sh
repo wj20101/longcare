@@ -71,6 +71,12 @@ while IFS= read -r build_file; do
   allowed_targets="${allowlist_entry#*=}"
   allowed_targets=" $(trim "${allowed_targets}") "
 
+  dependency_files=("${build_file}")
+  module_dependency_script="$(dirname "${build_file}")/dependencies.gradle.kts"
+  if [[ -f "${module_dependency_script}" ]]; then
+    dependency_files+=("${module_dependency_script}")
+  fi
+
   checked_count=0
   while IFS= read -r target_module; do
     [[ -z "${target_module}" ]] && continue
@@ -82,8 +88,10 @@ while IFS= read -r build_file; do
     fi
   done <<EOF_TARGETS
 $(
-    { grep -oE 'project\("[:][^"]+"\)' "${build_file}" || true; } |
-      sed -E 's#project\("(:[^"]+)"\)#\1#' |
+    {
+      grep -h -oE '(project|projectDependency)\("[:][^"]+"\)' "${dependency_files[@]}" || true
+    } |
+      sed -E 's#(project|projectDependency)\("(:[^"]+)"\)#\2#' |
       sort -u
 )
 EOF_TARGETS

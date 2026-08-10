@@ -1,12 +1,10 @@
 package com.ytone.longcare.features.nursingexecution.ui
 
-import android.content.pm.ActivityInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.common.utils.CustomBackHandler
-import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.nursingexecution.api.NursingExecutionActions
 import com.ytone.longcare.model.OrderKey
@@ -24,7 +22,6 @@ fun NursingExecutionScreen(
         locationTrackingViewModel.ensureLocationSessionForOrder(orderKey.orderId)
     }
 
-    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     val uiState = sharedViewModel.uiState.collectAsStateWithLifecycle().value
 

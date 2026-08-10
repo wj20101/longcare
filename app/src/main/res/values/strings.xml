@@ -17,11 +17,11 @@
     <string name="nfc_external_reader_reading_prompt">正在识别，请保持卡片靠近读卡器</string>
     <string name="nfc_external_reader_reading">正在识别</string>
     <string name="nfc_external_reader_ready_hint">请在读卡器上完成刷卡</string>
-    <string name="nfc_loading_card_recognized_fetching_location">已识别卡片，正在获取定位...</string>
+    <string name="nfc_loading_card_recognized_fetching_location">已识别卡片，正在获取定位…</string>
     <string name="nfc_loading_waiting_location_permission">已识别卡片，请授予定位权限后继续</string>
-    <string name="nfc_loading_fetching_location">正在获取定位...</string>
-    <string name="nfc_location_preparing_hint">定位准备中，请稍候...</string>
-    <string name="nfc_loading_submitting">正在提交打卡...</string>
+    <string name="nfc_loading_fetching_location">正在获取定位…</string>
+    <string name="nfc_location_preparing_hint">定位准备中，请稍候…</string>
+    <string name="nfc_loading_submitting">正在提交打卡…</string>
     <string name="nfc_sign_in_diagram_description">NFC操作示意图</string>
     <string name="photo_upload_title">护理照片上传</string>
     <string name="photo_upload_confirm_and_next">确定</string>
@@ -34,8 +34,6 @@
     <string name="login_phone_number_hint">请输入您的手机号码</string>
     <string name="login_verification_code_hint">输入验证码</string>
     <string name="login_button_text">确定登录</string>
-    <string name="login_user_agreement_toast">用户协议</string>
-    <string name="login_privacy_policy_toast">隐私政策</string>
     <string name="login_resend_code_countdown">%d秒后重发</string>
     <string name="login_send_code_button_text">发送验证码</string>
     <string name="login_agreement_prefix">我已阅读并同意</string>
@@ -45,10 +43,6 @@
     <string name="login_agreement_confirm_message">点击“同意”即表示您已阅读并同意《用户协议》和《隐私政策》，系统将为您自动勾选。点击“取消”将关闭弹窗。</string>
     <string name="login_agreement_confirm_action">同意</string>
     <string name="login_agreement_cancel_action">取消</string>
-    <string name="login_test_entry_enabled_toast">测试入口已开启</string>
-    <string name="login_test_entry_disabled_toast">测试入口已关闭</string>
-    <string name="login_test_entry_locked_toast">测试入口未开启</string>
-    <string name="nfc_test_disabled_hint">请先在登录页长按 Logo 开启测试入口</string>
     <string name="nursing_execution_title">护理执行</string>
     <string name="nursing_execution_instruction">请阅读并确认订单服务内容以及客户信息，扫描客户容貌验证通过后，开始服务。</string>
     <string name="nursing_execution_client_info_tag">客户信息</string>
@@ -62,13 +56,10 @@
     <string name="select_device_instruction">请先选择相应设备，进行碰一碰</string>
     <string name="common_selected">已选择</string>
     <string name="common_unselected">未选择</string>
-    <string name="common_arrow_right">向右箭头</string>
     <string name="common_details">详情</string>
     <string name="main_dashboard_logo">标志</string>
     <string name="user_avatar_description">头像</string>
     <string name="nfc_sign_out_complete_service">服务完成，结束签到</string>
-    <string name="nfc_error_dialog_title">提示</string>
-    <string name="nfc_error_dialog_confirm">我知道了</string>
 
     <!-- 人脸识别指导页面 -->
     <string name="face_recognition_guide_title">身份认证</string>

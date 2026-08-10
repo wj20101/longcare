@@ -9,17 +9,36 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class HomeSharedViewModelTest {
 
+    private val mainDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setUpMainDispatcher() {
+        Dispatchers.setMain(mainDispatcher)
+    }
+
+    @After
+    fun resetMainDispatcher() {
+        Dispatchers.resetMain()
+    }
+
     @Test
-    fun `reportHomeEntry sends one log payload`() = runTest(StandardTestDispatcher()) {
+    fun `reportHomeEntry sends one log payload`() = runTest {
         val sessionRepository = mockk<UserSessionRepository>()
         val loginRepository = mockk<LoginRepository>()
         val infoProvider = mockk<HomeLoginLogInfoProvider>()
@@ -57,7 +76,7 @@ class HomeSharedViewModelTest {
     }
 
     @Test
-    fun `reportHomeEntry ignores concurrent duplicate call while request in flight`() = runTest(StandardTestDispatcher()) {
+    fun `reportHomeEntry ignores concurrent duplicate call while request in flight`() = runTest {
         val sessionRepository = mockk<UserSessionRepository>()
         val loginRepository = mockk<LoginRepository>()
         val infoProvider = mockk<HomeLoginLogInfoProvider>()
@@ -74,7 +93,6 @@ class HomeSharedViewModelTest {
             )
         } coAnswers {
             delay(1_000)
-            Unit
         }
 
         val viewModel = HomeSharedViewModel(sessionRepository, loginRepository, infoProvider)
@@ -94,7 +112,7 @@ class HomeSharedViewModelTest {
     }
 
     @Test
-    fun `reportHomeEntry swallows repository failure`() = runTest(StandardTestDispatcher()) {
+    fun `reportHomeEntry swallows repository failure`() = runTest {
         val sessionRepository = mockk<UserSessionRepository>()
         val loginRepository = mockk<LoginRepository>()
         val infoProvider = mockk<HomeLoginLogInfoProvider>()

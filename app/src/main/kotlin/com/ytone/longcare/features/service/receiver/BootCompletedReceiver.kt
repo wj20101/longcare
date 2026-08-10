@@ -13,9 +13,14 @@ import com.ytone.longcare.features.service.ServiceTimeNotificationManager
 import com.ytone.longcare.features.service.storage.PendingOrder
 import com.ytone.longcare.features.service.storage.PendingOrdersStorage
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
+
+private const val SESSION_RESOLUTION_TIMEOUT_MS = 5_000L
 
 /**
  * 设备重启完成广播接收器
@@ -44,7 +49,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
         logI("收到设备重启完成广播: ${intent.action}")
         
         // 验证广播Action
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED && 
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED &&
             intent.action != Intent.ACTION_LOCKED_BOOT_COMPLETED &&
             intent.action != "android.intent.action.QUICKBOOT_POWERON") {
             logE("收到非重启相关的广播: ${intent.action}")
@@ -57,26 +62,34 @@ class BootCompletedReceiver : BroadcastReceiver() {
             return
         }
 
-        // 用户未登录时不需要恢复通知
-        if (userSessionRepository.sessionState.value !is SessionState.LoggedIn) {
-            logI("用户未登录，跳过通知恢复")
-            return
-        }
-
-        // 无待处理订单时无需启动后台任务
-        val pendingOrders = pendingOrdersStorage.getAllPendingOrders()
-        if (pendingOrders.isEmpty()) {
-            logI("无待处理订单，跳过通知恢复")
-            return
-        }
-
         val pendingResult = goAsync()
         applicationScope.launch {
             try {
+                val sessionState =
+                    withTimeoutOrNull(SESSION_RESOLUTION_TIMEOUT_MS) {
+                        userSessionRepository.awaitResolvedSessionState()
+                    }
+                if (sessionState == null) {
+                    logE("等待用户会话状态超时，跳过通知恢复")
+                    return@launch
+                }
+                if (sessionState !is SessionState.LoggedIn) {
+                    logI("用户未登录，跳过通知恢复")
+                    return@launch
+                }
+
+                val pendingOrders = pendingOrdersStorage.getAllPendingOrders()
+                if (pendingOrders.isEmpty()) {
+                    logI("无待处理订单，跳过通知恢复")
+                    return@launch
+                }
+
                 recoverServiceTimeNotifications(pendingOrders)
                 logI("设备重启后通知恢复任务已完成")
+            } catch (exception: CancellationException) {
+                throw exception
             } catch (e: Exception) {
-                logE("恢复服务时间通知失败: ${e.message}")
+                logE("恢复服务时间通知失败: ${e.message}", throwable = e)
             } finally {
                 pendingResult.finish()
             }
@@ -115,3 +128,6 @@ class BootCompletedReceiver : BroadcastReceiver() {
         logI("服务时间通知任务恢复完成，成功恢复 $recoveredCount 个通知")
     }
 }
+
+internal suspend fun UserSessionRepository.awaitResolvedSessionState(): SessionState =
+    sessionState.first { it !is SessionState.Unknown }

@@ -36,7 +36,6 @@ internal suspend fun setupCountdownSessionIfNeeded(
     }
 
     val initialized = countdownViewModel.initializeCountdownSession(
-        context = context,
         orderKey = orderKey,
         projectList = orderInfo.projectList ?: emptyList(),
         selectedProjectIds = projectIdList

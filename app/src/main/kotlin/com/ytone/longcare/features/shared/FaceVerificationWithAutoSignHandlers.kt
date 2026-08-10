@@ -1,15 +1,11 @@
 package com.ytone.longcare.features.shared
 
-import android.content.Context
-import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.features.shared.vm.FaceVerificationViewModel
-import java.io.File
 
 internal fun startAutoSignVerification(
     sourcePhotoBase64: String?,
     currentUserId: String?,
-    context: Context,
     viewModel: FaceVerificationViewModel,
     onShowMessage: (String) -> Unit
 ) {
@@ -23,30 +19,10 @@ internal fun startAutoSignVerification(
         return
     }
     viewModel.startFaceVerificationWithAutoSign(
-        context = context,
         orderNo = "order_${System.currentTimeMillis()}",
         userId = currentUserId,
         sourcePhotoStr = sourcePhoto
     )
-}
-
-internal fun processCapturedFacePhoto(
-    imagePath: String,
-    onSuccess: (ProcessedFacePhoto) -> Unit,
-    onError: (String) -> Unit
-) {
-    try {
-        onSuccess(loadProcessedFacePhoto(imagePath))
-    } catch (e: Exception) {
-        DiagnosticEventTracker.trackError(
-            category = "face_verification",
-            event = "shared_face_photo_process_exception",
-            description = "共享人脸照片处理异常",
-            throwable = e,
-            extras = File(imagePath).diagnosticExtras(),
-        )
-        onError(resolveFaceCaptureErrorMessage(e))
-    }
 }
 
 internal fun resolveFaceCaptureErrorMessage(error: Exception): String {
@@ -78,10 +54,3 @@ internal fun consumeFaceVerifyUiState(
         else -> Unit
     }
 }
-
-private fun File.diagnosticExtras(): Map<String, Any?> =
-    mapOf(
-        "fileExists" to exists(),
-        "fileSize" to takeIf { exists() }?.length(),
-        "pathLength" to path.length,
-    )

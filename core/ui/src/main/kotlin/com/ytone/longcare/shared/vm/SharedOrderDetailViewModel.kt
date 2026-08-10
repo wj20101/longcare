@@ -1,23 +1,16 @@
 package com.ytone.longcare.shared.vm
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.location.LocationManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.core.content.ContextCompat
-import androidx.core.location.LocationManagerCompat
-import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.location.LocationFacade
+import com.ytone.longcare.domain.location.LocationRuntimeReadiness
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.ServiceProjectM
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,9 +26,8 @@ import javax.inject.Inject
 class SharedOrderDetailViewModel @Inject constructor(
     private val unifiedOrderRepository: OrderDetailRepository,
     private val orderRepository: OrderRepository,
-    private val toastHelper: ToastHelper,
     private val locationFacade: LocationFacade,
-    @param:ApplicationContext private val context: Context
+    private val locationRuntimeReadiness: LocationRuntimeReadiness,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<OrderDetailUiState>(OrderDetailUiState.Initial)
@@ -64,11 +56,9 @@ class SharedOrderDetailViewModel @Inject constructor(
                 is ApiResult.Exception -> {
                     val errorMessage = result.exception.message ?: "网络错误，请检查网络连接"
                     _uiState.value = OrderDetailUiState.Error(errorMessage)
-                    toastHelper.showShort(errorMessage)
                 }
                 is ApiResult.Failure -> {
                     _uiState.value = OrderDetailUiState.Error(result.message)
-                    toastHelper.showShort(result.message)
                 }
             }
         }
@@ -150,13 +140,13 @@ class SharedOrderDetailViewModel @Inject constructor(
     private suspend fun getCurrentLocationCoordinates(): Pair<String, String> {
         return try {
             // 检查定位权限
-            if (!hasLocationPermission()) {
+            if (!locationRuntimeReadiness.hasLocationPermission()) {
                 // 权限未授予，返回空字符串
                 return Pair("", "")
             }
             
             // 检查定位服务是否开启
-            if (!isLocationServiceEnabled()) {
+            if (!locationRuntimeReadiness.isLocationServiceEnabled()) {
                 // 定位服务未开启，返回空字符串
                 return Pair("", "")
             }
@@ -175,18 +165,6 @@ class SharedOrderDetailViewModel @Inject constructor(
         }
     }
 
-    private fun hasLocationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun isLocationServiceEnabled(): Boolean {
-        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        return LocationManagerCompat.isLocationEnabled(locationManager)
-    }
-
     fun starOrder(orderKey: OrderKey, selectedProjectIds: List<Long> = emptyList(), onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             _starOrderState.value = StarOrderUiState.Loading
@@ -197,17 +175,14 @@ class SharedOrderDetailViewModel @Inject constructor(
             when (val result = orderRepository.starOrder(orderKey.orderId, selectedProjectIds, longitude, latitude)) {
                 is ApiResult.Success -> {
                     _starOrderState.value = StarOrderUiState.Success
-                    toastHelper.showShort("工单开始成功")
                     onSuccess()
                 }
                 is ApiResult.Exception -> {
                     val errorMessage = result.exception.message ?: "网络错误，请检查网络连接"
                     _starOrderState.value = StarOrderUiState.Error(errorMessage)
-                    toastHelper.showShort(errorMessage)
                 }
                 is ApiResult.Failure -> {
                     _starOrderState.value = StarOrderUiState.Error(result.message)
-                    toastHelper.showShort(result.message)
                 }
             }
         }

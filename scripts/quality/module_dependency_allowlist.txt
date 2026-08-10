@@ -7,7 +7,7 @@
 :baselineprofile=
 :core:common=:core:model
 :core:data=:core:common :core:domain :core:model
-:core:domain=:core:common :core:model
+:core:domain=:core:model
 :core:model=
 :core:ui=:core:common :core:domain :core:model
 :feature:home=:core:domain :core:model

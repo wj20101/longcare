@@ -1,5 +1,6 @@
 package com.ytone.longcare.common.network
 
+import com.ytone.longcare.model.result.ApiResult
 import kotlinx.coroutines.CancellationException
 import okhttp3.Request
 import okio.Timeout

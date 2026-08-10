@@ -1,11 +1,9 @@
 package com.ytone.longcare.features.photoupload.ui
 
-import android.content.pm.ActivityInfo
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.photoupload.api.CameraActions
 import com.ytone.longcare.features.photoupload.vm.CameraViewModel
 import com.ytone.longcare.model.WatermarkData
@@ -16,7 +14,6 @@ fun CameraScreen(
     watermarkData: WatermarkData,
     viewModel: CameraViewModel = hiltViewModel()
 ) {
-    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
     val context = LocalContext.current
 
     CameraPermissionGate(

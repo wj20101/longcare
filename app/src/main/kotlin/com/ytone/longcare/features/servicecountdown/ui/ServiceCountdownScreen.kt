@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.servicecountdown.ui
 
-import android.content.pm.ActivityInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
@@ -8,13 +7,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.ui.screen.TagCategory
 import com.ytone.longcare.common.utils.CustomBackHandler
+import com.ytone.longcare.common.utils.showShortToast
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
 import com.ytone.longcare.model.OrderKey
 
@@ -48,9 +47,6 @@ fun ServiceCountdownScreen(
     countdownViewModel: ServiceCountdownViewModel = hiltViewModel(),
     locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
-    // 强制设置为竖屏
-    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
-
     // 统一处理系统返回键，确保与导航按钮行为一致
     CustomBackHandler(customAction = actions.onNavigateHomeAndClearStack)
 
@@ -120,13 +116,11 @@ fun ServiceCountdownScreen(
         onBottomActionClick = {
             handleServiceCountdownBottomAction(
                 countdownState = countdownState,
-                isMockDataEnabled = countdownViewModel.isMockDataEnabled,
                 validatePhotosUploaded = countdownViewModel::validatePhotosUploaded,
-                onShowToast = countdownViewModel::showToast,
+                onShowToast = context::showShortToast,
                 onRequireConfirm = { showConfirmDialog = true },
                 onEndServiceDirectly = {
                     handleEndService(
-                        context = context,
                         orderKey = orderKey,
                         projectIdList = projectIdList,
                         countdownViewModel = countdownViewModel,

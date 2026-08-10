@@ -22,13 +22,10 @@ internal fun IdentificationScreenScaffoldContent(
     photoUploadState: PhotoUploadState,
     faceSetupState: FaceSetupState,
     identificationViewModel: IdentificationViewModel,
-    isMockDataEnabled: Boolean,
     onNavigateBack: () -> Unit,
     onNavigateToSelectService: () -> Unit,
     onVerifyServicePerson: () -> Unit,
     onVerifyElder: () -> Unit,
-    onMockVerifyServicePerson: () -> Unit,
-    onMockVerifyElder: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -53,11 +50,8 @@ internal fun IdentificationScreenScaffoldContent(
                 photoUploadState = photoUploadState,
                 faceSetupState = faceSetupState,
                 identificationViewModel = identificationViewModel,
-                isMockDataEnabled = isMockDataEnabled,
                 onVerifyServicePerson = onVerifyServicePerson,
                 onVerifyElder = onVerifyElder,
-                onMockVerifyServicePerson = onMockVerifyServicePerson,
-                onMockVerifyElder = onMockVerifyElder,
                 modifier = Modifier.padding(paddingValues)
             )
         }

@@ -1,6 +1,6 @@
 # UI And Screen Map
 
-Last verified: 2026-08-07
+Last verified: 2026-08-09
 
 This document lists route-bound screens and practical ownership in the current codebase.
 
@@ -31,10 +31,8 @@ This document lists route-bound screens and practical ownership in the current c
 ### Support routes
 
 - `TxFaceRoute` -> `FaceVerificationWithAutoSignScreen` (`:app`)
-- `LocationTrackingRoute` -> `LocationTrackingScreen` (`:feature:location`)
 - `UserListRoute` -> `UserListScreen` (`:app`)
 - `UserServiceRecordRoute` -> `UserServiceRecordScreen` (`:app`)
-- `NfcTestRoute` -> `NfcTestScreen` (`:app`)
 - `FaceRecognitionGuideRoute` -> `FaceRecognitionGuideScreen` (`:app`)
 - `SelectDeviceRoute` -> route/screen exists (`SelectDeviceScreen`, `:app`), but current start-order navigation path bypasses it
 - `IdentificationRoute` -> `IdentificationScreen` (`:app`)
@@ -47,19 +45,12 @@ This document lists route-bound screens and practical ownership in the current c
 - app update modal:
   - `AppUpdateDialog` (`:app`, shown from `MainApp`)
 
-### Debug-only standalone activities
-
-- `QlzSdkDemoActivity`
-  - separate debug Launcher entry for QLZ SDK and all five Sale API operations
-  - intentionally absent from the release manifest
-  - implementation lives under `app/src/debug/kotlin`
-
 ## 2) Route type inventory
 
 Typed routes defined under `navigation/`:
 
 - object routes:
-  - `LoginRoute`, `HomeRoute`, `CarePlansListRoute`, `ServiceRecordsListRoute`, `TxFaceRoute`, `LocationTrackingRoute`, `NfcTestRoute`, `ManualFaceCaptureRoute`
+  - `LoginRoute`, `HomeRoute`, `CarePlansListRoute`, `ServiceRecordsListRoute`, `TxFaceRoute`, `ManualFaceCaptureRoute`
 - parameterized routes:
   - `ServiceRoute`, `NursingExecutionRoute`, `WebViewRoute`, `SelectServiceRoute`, `PhotoUploadRoute`, `FaceRecognitionGuideRoute`, `SelectDeviceRoute`, `IdentificationRoute`, `UserListRoute`, `UserServiceRecordRoute`, `CameraRoute`
 - service-flow parameterized routes:
@@ -88,14 +79,14 @@ Major screen packages currently under `app/src/main/kotlin/com/ytone/longcare/fe
 - nursingexecution, selectservice
 - servicecountdown, endservice, servicecomplete
 - identification, facerecognition, face/manual capture, shared face verification
-- nfc + nfctest
+- nfc
 - photoupload + camera
 - userlist, userservicerecord, webview
 
 ### `:feature:*` modules current UI ownership
 
 - `:feature:location`
-  - owns `LocationTrackingScreen` plus location service/managers/VM
+  - owns location service/managers/VM; tracking is embedded in service execution and has no standalone route
 - `:feature:login`, `:feature:home`, `:feature:identification`
   - currently provide feature entry constants, actions, domain/VM/DI support
   - route-bound UI still in `:app`
@@ -114,6 +105,8 @@ Major screen packages currently under `app/src/main/kotlin/com/ytone/longcare/fe
   upload, sales registration, automatic face capture, and manual face capture
 - one standard watermarked `CameraRoute` reused by nursing and sales; face-analysis screens keep
   their specialized capture UI while sharing preview and persistent-image processing
+- Material 3 adaptive navigation suite keeps phone bottom navigation and selects a navigation rail
+  for larger windows without duplicating destination state
 
 ## 5) Legacy app/features footprint (still active)
 

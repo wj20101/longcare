@@ -142,7 +142,8 @@ internal class CountdownNotificationUiDelegate(
 
         try {
             notificationManagerCompat.deleteNotificationChannel("countdown_completion_channel")
-        } catch (_: Exception) {
+        } catch (exception: Exception) {
+            logE("删除旧倒计时通知渠道失败: ${exception.message}", throwable = exception)
         }
 
         val channel = NotificationChannelCompat.Builder(

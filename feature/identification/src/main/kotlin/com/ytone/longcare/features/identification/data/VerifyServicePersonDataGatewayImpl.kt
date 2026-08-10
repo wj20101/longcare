@@ -1,6 +1,6 @@
 package com.ytone.longcare.features.identification.data
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.identification.IdentificationRepository
 import com.ytone.longcare.features.identification.domain.ServicePersonFaceSource
 import com.ytone.longcare.features.identification.domain.VerifyServicePersonDataGateway

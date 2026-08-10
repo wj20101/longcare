@@ -2,7 +2,7 @@ package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.common.config.RuntimeConfigProvider
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.data.database.dao.OrderDao

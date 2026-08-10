@@ -1,6 +1,6 @@
 package com.ytone.longcare.features.nfc.vm
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderInfoModel

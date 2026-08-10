@@ -1,6 +1,6 @@
 package com.ytone.longcare.api
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.GetFaceIdRequest
 import com.ytone.longcare.model.TencentAccessTokenResponse
 import com.ytone.longcare.model.TencentApiTicketResponse

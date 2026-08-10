@@ -121,6 +121,7 @@ fi
 CHECK_NAMES=(
   "No Tracked Keystore Files"
   "Release Exported Component Allowlist"
+  "Vendor SDK Release Readiness"
   "Lint Warning Allowlist"
   "Lint Ignore Policy Guard"
   "Jetpack Compat API Guard"
@@ -138,6 +139,7 @@ CHECK_NAMES=(
 CHECK_IDS=(
   "no_tracked_keystore_files"
   "release_exported_components"
+  "vendor_sdk_release_readiness"
   "lint_warning_allowlist"
   "lint_ignore_policy"
   "jetpack_compat_api_guard"
@@ -155,12 +157,13 @@ CHECK_IDS=(
 CHECK_CMDS=(
   "bash scripts/quality/verify_no_tracked_keystore_files.sh ."
   "bash scripts/quality/verify_release_exported_components.sh"
+  "bash scripts/quality/verify_vendor_sdk_release_readiness.sh \"${LINT_REPORT_PATH}\""
   "bash scripts/lint/verify_lint_warning_allowlist.sh \"${LINT_REPORT_PATH}\""
   "bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml"
   "bash scripts/quality/verify_jetpack_compat_apis.sh"
   "bash scripts/quality/verify_baselineprofile_journeys.sh"
   "bash scripts/quality/verify_cancellation_guards.sh \"${SOURCE_ROOT_PATH}\""
-  "bash scripts/quality/verify_no_empty_catch_blocks.sh \"${SOURCE_ROOT_PATH}\""
+  "bash scripts/quality/verify_no_empty_catch_blocks.sh \"${PROJECT_ROOT}\""
   "bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts \"${WORKFLOW_FILE_PATH}\""
   "bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml"
   "bash scripts/quality/verify_architecture_boundaries.sh ."
@@ -171,6 +174,7 @@ CHECK_CMDS=(
 
 CHECK_TIERS=(
   "ci-required"
+  "release-required"
   "release-required"
   "ci-required"
   "ci-required"
@@ -189,6 +193,7 @@ CHECK_TIERS=(
 CHECK_CATEGORIES=(
   "secrets"
   "release-safety"
+  "vendor-security"
   "lint-policy"
   "lint-policy"
   "api-compatibility"
@@ -206,6 +211,7 @@ CHECK_CATEGORIES=(
 CHECK_LIKELY_FIXES=(
   "remove-tracked-keystore-and-use-secret-distribution"
   "align-exported-components-with-release-allowlist"
+  "replace-production-blocking-vendor-sdk-binaries"
   "fix-lint-warning-or-add-approved-waiver-entry"
   "remove-forbidden-lint-ignore-and-fix-root-warning"
   "align-jetpack-usage-with-compat-guardrails"
@@ -223,6 +229,7 @@ CHECK_LIKELY_FIXES=(
 CHECK_SOURCE_OF_TRUTH=(
   "scripts/quality/verify_no_tracked_keystore_files.sh"
   "scripts/quality/verify_release_exported_components.sh"
+  "scripts/quality/verify_vendor_sdk_release_readiness.sh"
   "scripts/lint/lint_warning_waivers.json"
   "app/lint.xml"
   "scripts/quality/verify_jetpack_compat_apis.sh"

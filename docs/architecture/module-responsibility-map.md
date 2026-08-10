@@ -5,7 +5,7 @@
 | 模块 | 责任 | 允许依赖 | 禁止依赖 |
 |---|---|---|---|
 | `:app` | 应用壳层、导航组装、启动配置 | `:core:*`, `:feature:*` | 业务实现细节 |
-| `:core:model` | 通用模型与值对象 | Kotlin stdlib | Android framework |
+| `:core:model` | 通用模型、值对象与传输无关的 `ApiResult` | Kotlin stdlib | Android framework |
 | `:core:domain` | 用例、Repository 接口、领域规则 | `:core:model` | Data 实现、Android framework |
 | `:core:data` | Repository 实现、数据源访问 | `:core:domain`, `:core:model` | Feature/UI |
 | `:core:ui` | 主题、通用 UI 组件（包括统一图片预览） | `:core:model` | Data 实现 |
@@ -14,6 +14,15 @@
 | `:feature:home` | 首页业务 UI 与状态编排 | `:core:domain`, `:core:ui`, `:core:model` | Data 实现 |
 | `:feature:identification` | 身份识别业务 UI 与状态编排 | `:core:domain`, `:core:ui`, `:core:model` | Data 实现 |
 | `:feature:photoupload` | 图片任务编排、统一云端上传门面 | `:core:common`, `:core:domain`, `:core:model` | App 路由/UI 实现 |
+| `:feature:servicecountdown` | 倒计时状态、业务编排与平台网关契约 | `:core:domain`, `:core:model` | Android Service/闹钟具体实现 |
+
+## 平台能力边界
+
+- `:app` 实现 Android 平台网关并持有 application context；ViewModel 只调用无 Context 的业务动作。
+- 倒计时前台服务、响铃和订单闹钟由 `ServiceCountdownSystemGateway` 统一启停，UI 不得直接操作 Service。
+- 应用更新安装由 `ApkInstallGateway` 封装；下载与启动检查状态通过 WorkManager 持久化并可重新观察。
+- 人脸 SDK、QLZ SDK UI 与 NFC 前台扫描源由 `:app/platform` 控制器封装；ViewModel 只接收纯 Kotlin 请求和回调事件。
+- Sale Retrofit 契约与网络 DTO 只属于 `:core:data`；领域层不得携带 Moshi/Retrofit 注解。
 
 ## 图片能力边界
 

@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.userlist.ui
 
-import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -11,18 +10,21 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.common.utils.CustomBackHandler
-import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.singleClick
+import com.ytone.longcare.core.ui.message.UiMessageSnackbarEffect
 import com.ytone.longcare.features.userlist.api.UserListActions
 import com.ytone.longcare.features.userlist.vm.UserListViewModel
 import com.ytone.longcare.theme.bgGradientBrush
@@ -42,10 +44,17 @@ fun UserListScreen(
     userListType: UserListType,
     viewModel: UserListViewModel = hiltViewModel()
 ) {
-    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     val userList by viewModel.userListState.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val uiMessages by viewModel.uiMessages.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    UiMessageSnackbarEffect(
+        messages = uiMessages,
+        snackbarHostState = snackbarHostState,
+        onConsumed = viewModel::consumeUiMessage,
+    )
 
     val title = when (userListType) {
         UserListType.HAVE_SERVICE -> "已服务工时"
@@ -67,6 +76,7 @@ fun UserListScreen(
             .background(bgGradientBrush)
     ) {
         Scaffold(
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text(title) },

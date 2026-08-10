@@ -12,7 +12,7 @@ import javax.inject.Singleton
 
 /**
  * 服务时间结束通知管理器
- * 实现三重保障机制：AlarmManager + WorkManager + Coroutine fallback
+ * 使用 AlarmManager 提供时效性，并由 WorkManager 提供可持久化的后台兜底。
  */
 @Singleton
 class ServiceTimeNotificationManager @Inject constructor(
@@ -99,13 +99,7 @@ class ServiceTimeNotificationManager @Inject constructor(
             pendingOrdersStorage.addPendingOrder(orderId, serviceName, serviceEndTimeMillis)
             scheduleDelegate.scheduleAlarmManagerNotification(orderId, serviceName, serviceEndTimeMillis)
             scheduleDelegate.scheduleWorkManagerNotification(orderId, serviceName, delayMillis)
-            scheduleDelegate.scheduleFallbackNotification(orderId, delayMillis) {
-                if (!recordDelegate.isNotificationAlreadyProcessed(orderId)) {
-                    logI("Coroutine兜底通知触发: orderId=$orderId")
-                    showServiceTimeEndNotification(orderId, serviceName)
-                }
-            }
-            logI("三重保障通知调度完成: orderId=$orderId")
+            logI("持久化双通道通知调度完成: orderId=$orderId")
         } catch (e: Exception) {
             logE("调度服务时间结束通知失败: ${e.message}")
             throw e
@@ -118,7 +112,6 @@ class ServiceTimeNotificationManager @Inject constructor(
             pendingOrdersStorage.removePendingOrder(orderId)
             scheduleDelegate.cancelAlarmManagerNotification(orderId)
             scheduleDelegate.cancelWorkManagerNotification(orderId)
-            scheduleDelegate.cancelFallbackNotification(orderId)
             recordDelegate.clearNotificationProcessedMark(orderId)
             logI("服务时间结束通知已取消: orderId=$orderId")
         } catch (e: Exception) {
@@ -135,7 +128,6 @@ class ServiceTimeNotificationManager @Inject constructor(
             logI("显示服务时间结束通知: orderId=$orderId, serviceName=$serviceName")
             notificationUiDelegate.showServiceTimeEndNotification(orderId, serviceName)
             recordDelegate.markNotificationAsProcessed(orderId)
-            scheduleDelegate.cancelFallbackNotification(orderId)
             logI("服务时间结束通知已显示: orderId=$orderId")
         } catch (e: Exception) {
             logE("显示服务时间结束通知失败: ${e.message}")

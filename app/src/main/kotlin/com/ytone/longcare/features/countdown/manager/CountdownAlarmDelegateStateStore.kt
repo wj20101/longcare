@@ -3,6 +3,7 @@ package com.ytone.longcare.features.countdown.manager
 import android.app.AlarmManager
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import com.ytone.longcare.common.utils.klogE
 import com.ytone.longcare.common.utils.klogI
 
 internal fun logNextAlarmClock(alarmManager: AlarmManager) {
@@ -11,7 +12,8 @@ internal fun logNextAlarmClock(alarmManager: AlarmManager) {
         if (nextAlarmClock != null) {
             klogI("当前系统下一个闹钟时间: ${nextAlarmClock.triggerTime}")
         }
-    } catch (_: Exception) {
+    } catch (exception: Exception) {
+        klogE("读取系统下一个闹钟失败", throwable = exception)
     }
 }
 

@@ -14,12 +14,12 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logW
+import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 internal class PhotoTaskQueueDelegate(
     private val scope: CoroutineScope,
@@ -156,32 +156,6 @@ internal class PhotoTaskQueueDelegate(
             success = tasks.count { it.status == ImageTaskStatus.SUCCESS },
             failed = tasks.count { it.status == ImageTaskStatus.FAILED }
         )
-    }
-
-    fun mockAddUploadedPhoto(taskType: ImageTaskType) {
-        val now = System.currentTimeMillis()
-        imageTasks.update {
-            it + ImageTask(
-                id = UUID.randomUUID().toString(),
-                originalUri = "content://mock/image_$now",
-                taskType = taskType,
-                status = ImageTaskStatus.SUCCESS,
-                resultUri = "content://mock/result_$now",
-                isUploaded = true,
-                cloudUrl = "https://mock.cos.example.com/mock_image_$now.jpg",
-                key = "mock_key_$now"
-            )
-        }
-    }
-
-    fun mockAddBeforeCarePhoto() = mockAddUploadedPhoto(ImageTaskType.BEFORE_CARE)
-    fun mockAddCenterCarePhoto() = mockAddUploadedPhoto(ImageTaskType.CENTER_CARE)
-    fun mockAddAfterCarePhoto() = mockAddUploadedPhoto(ImageTaskType.AFTER_CARE)
-
-    fun mockAddAllPhotos() {
-        mockAddBeforeCarePhoto()
-        mockAddCenterCarePhoto()
-        mockAddAfterCarePhoto()
     }
 
     fun getTasksSnapshot(): List<ImageTask> = imageTasks.value

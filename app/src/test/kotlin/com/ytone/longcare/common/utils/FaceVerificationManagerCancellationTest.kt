@@ -2,7 +2,7 @@ package com.ytone.longcare.common.utils
 
 import android.content.Context
 import com.ytone.longcare.common.config.RuntimeConfigProvider
-import com.ytone.longcare.domain.faceauth.FaceVerifyCallback
+import com.ytone.longcare.common.faceauth.FaceVerifyCallback
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest

@@ -5,16 +5,17 @@ import com.ytone.longcare.features.countdown.manager.CountdownNotificationManage
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
 import com.ytone.longcare.model.OrderKey
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class ServiceCountdownSystemGatewayImpl @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val countdownNotificationManager: CountdownNotificationManager,
 ) : ServiceCountdownSystemGateway {
 
     override fun startForegroundService(
-        context: Context,
         orderKey: OrderKey,
         serviceName: String,
         totalSeconds: Long,
@@ -22,11 +23,11 @@ class ServiceCountdownSystemGatewayImpl @Inject constructor(
         CountdownForegroundService.startCountdown(context, orderKey, serviceName, totalSeconds)
     }
 
-    override fun stopForegroundService(context: Context) {
+    override fun stopForegroundService() {
         CountdownForegroundService.stopCountdown(context)
     }
 
-    override fun stopAlarmRingtone(context: Context) {
+    override fun stopAlarmRingtone() {
         AlarmRingtoneService.stopRingtone(context)
     }
 

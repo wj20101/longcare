@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.location.reporting
 
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.model.LocationUploadStatus
@@ -321,7 +321,17 @@ class LocationReportingManager @Inject constructor(
             )
             try {
                 locationUploadQueueRepository.updateStatus(pending.id, LocationUploadStatus.FAILED.value)
-            } catch (_: Exception) {
+            } catch (statusException: CancellationException) {
+                throw statusException
+            } catch (statusException: Exception) {
+                LocationEventTracker.trackError(
+                    LocationEventTracker.EventType.API_UPLOAD_FATAL_ERROR,
+                    throwable = statusException,
+                    extras = mapOf(
+                        "pendingId" to pending.id,
+                        "phase" to "mark_failed",
+                    ),
+                )
             }
         }
     }

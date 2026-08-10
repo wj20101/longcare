@@ -1,6 +1,6 @@
 package com.ytone.longcare.api
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.network.SuppressSessionInvalidation
 import com.ytone.longcare.model.OrderListParamModel
 import com.ytone.longcare.model.LoginLogParamModel
@@ -33,15 +33,15 @@ import com.ytone.longcare.model.AppVersionModel
 import com.ytone.longcare.model.StartConfigResultModel
 import com.ytone.longcare.model.EndOrderResultModel
 import com.ytone.longcare.model.SendSmsCodeParamModel
-import com.ytone.longcare.model.AddUserLatentParamModel
-import com.ytone.longcare.model.AddUserLatentResultModel
-import com.ytone.longcare.model.CheckTokenModel
-import com.ytone.longcare.model.GetCheckTokenParamModel
-import com.ytone.longcare.model.SearchUserLatentParamModel
-import com.ytone.longcare.model.ToDoNumResultModel
-import com.ytone.longcare.model.ToDoResultModel
-import com.ytone.longcare.model.UserLatentDetailModel
-import com.ytone.longcare.model.UserLatentListModel
+import com.ytone.longcare.api.model.AddUserLatentRequestDto
+import com.ytone.longcare.api.model.AddUserLatentResponseDto
+import com.ytone.longcare.api.model.CheckTokenDto
+import com.ytone.longcare.api.model.GetCheckTokenRequestDto
+import com.ytone.longcare.api.model.SearchUserLatentRequestDto
+import com.ytone.longcare.api.model.ToDoCountDto
+import com.ytone.longcare.api.model.ToDoItemDto
+import com.ytone.longcare.api.model.UserLatentDetailDto
+import com.ytone.longcare.api.model.UserLatentListDto
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -265,42 +265,42 @@ interface LongCareApiService {
      */
     @POST("/V1/Sale/GetCheckToken")
     suspend fun getCheckToken(
-        @Body getCheckTokenParamModel: GetCheckTokenParamModel,
-    ): ApiResult<CheckTokenModel>
+        @Body request: GetCheckTokenRequestDto,
+    ): ApiResult<CheckTokenDto>
 
     /**
      * 添加潜在客户。
      */
     @POST("/V1/Sale/AddUserLatent")
     suspend fun addUserLatent(
-        @Body addUserLatentParamModel: AddUserLatentParamModel,
-    ): ApiResult<AddUserLatentResultModel>
+        @Body request: AddUserLatentRequestDto,
+    ): ApiResult<AddUserLatentResponseDto>
 
     /**
      * 查询最近 10 个潜在客户。
      */
     @GET("/V1/Sale/GetRecentUserLatentList")
-    suspend fun getRecentUserLatentList(): ApiResult<List<UserLatentListModel>>
+    suspend fun getRecentUserLatentList(): ApiResult<List<UserLatentListDto>>
 
     /**
      * 查询当前账号的待办事项数量。
      */
     @GET("/V1/Sale/ToDoNum")
-    suspend fun getToDoCount(): ApiResult<ToDoNumResultModel>
+    suspend fun getToDoCount(): ApiResult<ToDoCountDto>
 
     /**
      * 查询当前账号的待办事项列表。
      */
     @GET("/V1/Sale/ToDoList")
-    suspend fun getToDoList(): ApiResult<List<ToDoResultModel>>
+    suspend fun getToDoList(): ApiResult<List<ToDoItemDto>>
 
     /**
      * 按姓名和审核状态搜索潜在客户。
      */
     @POST("/V1/Sale/SearchUserLatentList")
     suspend fun searchUserLatentList(
-        @Body searchUserLatentParamModel: SearchUserLatentParamModel,
-    ): ApiResult<List<UserLatentListModel>>
+        @Body request: SearchUserLatentRequestDto,
+    ): ApiResult<List<UserLatentListDto>>
 
     /**
      * 查询潜在客户详情。
@@ -308,5 +308,5 @@ interface LongCareApiService {
     @GET("/V1/Sale/GetUserLatentDetail")
     suspend fun getUserLatentDetail(
         @Query("id") customerId: Int,
-    ): ApiResult<UserLatentDetailModel>
+    ): ApiResult<UserLatentDetailDto>
 }

@@ -3,13 +3,10 @@ package com.ytone.longcare.features.identification.ui
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,11 +27,8 @@ internal fun IdentificationBodyContent(
     photoUploadState: PhotoUploadState,
     faceSetupState: FaceSetupState,
     identificationViewModel: IdentificationViewModel,
-    isMockDataEnabled: Boolean,
     onVerifyServicePerson: () -> Unit,
     onVerifyElder: () -> Unit,
-    onMockVerifyServicePerson: () -> Unit,
-    onMockVerifyElder: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -71,25 +65,6 @@ internal fun IdentificationBodyContent(
             faceVerificationState = faceVerificationState,
             photoUploadState = photoUploadState
         )
-
-        if (isMockDataEnabled) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = onMockVerifyServicePerson,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Magenta),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Mock: 服务人员验证通过")
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = onMockVerifyElder,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Magenta),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Mock: 老人验证通过")
-            }
-        }
 
         Spacer(modifier = Modifier.height(24.dp))
     }

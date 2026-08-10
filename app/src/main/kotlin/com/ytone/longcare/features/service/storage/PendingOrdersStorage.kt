@@ -8,8 +8,6 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.common.utils.logE
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * 待处理订单数据类
@@ -25,8 +23,7 @@ data class PendingOrder(
  * 待处理订单存储管理器
  * 用于持久化存储待处理的服务时间结束通知订单
  */
-@Singleton
-class PendingOrdersStorage @Inject constructor(
+class PendingOrdersStorage(
     private val context: Context,
     private val prefsName: String = "pending_orders_storage"
 ) {
@@ -47,6 +44,7 @@ class PendingOrdersStorage @Inject constructor(
     /**
      * 添加待处理订单
      */
+    @Synchronized
     fun addPendingOrder(orderId: Long, serviceName: String, serviceEndTime: Long) {
         try {
             val orders = getAllPendingOrders().toMutableList()
@@ -72,6 +70,7 @@ class PendingOrdersStorage @Inject constructor(
     /**
      * 获取所有待处理订单
      */
+    @Synchronized
     fun getAllPendingOrders(): List<PendingOrder> {
         return try {
             val json = sharedPreferences.getString(KEY_PENDING_ORDERS, null)
@@ -89,6 +88,7 @@ class PendingOrdersStorage @Inject constructor(
     /**
      * 移除待处理订单
      */
+    @Synchronized
     fun removePendingOrder(orderId: Long) {
         try {
             val orders = getAllPendingOrders().toMutableList()
@@ -106,6 +106,7 @@ class PendingOrdersStorage @Inject constructor(
     /**
      * 清理过期订单
      */
+    @Synchronized
     fun cleanupExpiredOrders() {
         try {
             val currentTime = System.currentTimeMillis()
@@ -124,9 +125,12 @@ class PendingOrdersStorage @Inject constructor(
     /**
      * 清空所有待处理订单
      */
+    @Synchronized
     fun clearAllPendingOrders() {
         try {
-            sharedPreferences.edit { remove(KEY_PENDING_ORDERS) }
+            sharedPreferences.edit(commit = true) {
+                remove(KEY_PENDING_ORDERS)
+            }
             logI("清空所有待处理订单")
         } catch (e: Exception) {
             logE("清空待处理订单失败: ${e.message}")
@@ -139,7 +143,9 @@ class PendingOrdersStorage @Inject constructor(
     private fun saveOrders(orders: List<PendingOrder>) {
         try {
             val json = adapter.toJson(orders)
-            sharedPreferences.edit { putString(KEY_PENDING_ORDERS, json) }
+            sharedPreferences.edit(commit = true) {
+                putString(KEY_PENDING_ORDERS, json)
+            }
         } catch (e: Exception) {
             logE("保存待处理订单失败: ${e.message}")
         }

@@ -17,10 +17,12 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 
 /**
  * 服务时间结束通知集成测试
- * 验证三重保障机制的完整流程
+ * 验证持久化双通道调度的完整流程
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -49,6 +51,7 @@ class ServiceTimeNotificationIntegrationTest {
         workManager = WorkManager.getInstance(context)
         sharedPreferences = context.getSharedPreferences("test_prefs", Context.MODE_PRIVATE)
         pendingOrdersStorage = PendingOrdersStorage(context, "test_pending_orders")
+        pendingOrdersStorage.clearAllPendingOrders()
         
         serviceTimeNotificationManager = ServiceTimeNotificationManager(
             context,
@@ -209,5 +212,30 @@ class ServiceTimeNotificationIntegrationTest {
         val remainingOrders = pendingOrdersStorage.getAllPendingOrders()
         assertEquals(1, remainingOrders.size)
         assertEquals(orderId1, remainingOrders[0].orderId)
+    }
+
+    @Test
+    fun concurrentWrites_doNotLosePendingOrders() {
+        val orderCount = 40
+        val executor = Executors.newFixedThreadPool(8)
+        val completed = CountDownLatch(orderCount)
+
+        repeat(orderCount) { index ->
+            executor.execute {
+                try {
+                    pendingOrdersStorage.addPendingOrder(
+                        orderId = index.toLong(),
+                        serviceName = "并发服务$index",
+                        serviceEndTime = System.currentTimeMillis() + 60_000L,
+                    )
+                } finally {
+                    completed.countDown()
+                }
+            }
+        }
+
+        assertTrue(completed.await(10, TimeUnit.SECONDS))
+        executor.shutdownNow()
+        assertEquals(orderCount, pendingOrdersStorage.getAllPendingOrders().size)
     }
 }

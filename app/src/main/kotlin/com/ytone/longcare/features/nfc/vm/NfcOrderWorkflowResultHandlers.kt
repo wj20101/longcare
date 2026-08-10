@@ -1,6 +1,6 @@
 package com.ytone.longcare.features.nfc.vm
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.OrderKey
 import kotlinx.coroutines.flow.MutableStateFlow
 

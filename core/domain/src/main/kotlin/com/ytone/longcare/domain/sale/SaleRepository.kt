@@ -1,6 +1,6 @@
 package com.ytone.longcare.domain.sale
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.AddUserLatentParamModel
 import com.ytone.longcare.model.AddUserLatentResultModel
 import com.ytone.longcare.model.CheckTokenModel

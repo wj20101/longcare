@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.facerecognition.ui
 
-import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +16,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.CustomBackHandler
-import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.facerecognition.api.FaceRecognitionGuideActions
 import com.ytone.longcare.features.facerecognition.vm.FaceRecognitionViewModel
@@ -34,7 +32,6 @@ fun FaceRecognitionGuideScreen(
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
     // ==========================================================
-    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     // 统一处理系统返回键，与导航按钮行为一致
     CustomBackHandler(customAction = actions.onNavigateBack)

@@ -12,7 +12,7 @@ import kotlinx.coroutines.CancellationException
 
 /**
  * 服务时间结束通知Worker
- * 作为三重保障机制的第二重保障（WorkManager）
+ * 作为 AlarmManager 之外的可持久化后台兜底。
  */
 @HiltWorker
 class ServiceTimeEndWorker @AssistedInject constructor(

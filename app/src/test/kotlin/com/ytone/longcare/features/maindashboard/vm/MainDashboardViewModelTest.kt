@@ -2,9 +2,8 @@ package com.ytone.longcare.features.maindashboard.vm
 
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.ServiceProjectM
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.model.OrderKey
@@ -15,7 +14,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
-import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -33,13 +31,10 @@ class MainDashboardViewModelTest {
 
     private val systemConfigManager = mockk<SystemConfigManager>(relaxed = true)
     private val unifiedOrderRepository = mockk<UnifiedOrderRepository>(relaxed = true)
-    private val toastHelper = mockk<ToastHelper>(relaxed = true)
-
     private fun createViewModel(): MainDashboardViewModel {
         return MainDashboardViewModel(
             systemConfigManager = systemConfigManager,
             unifiedOrderRepository = unifiedOrderRepository,
-            toastHelper = toastHelper
         )
     }
 
@@ -107,7 +102,7 @@ class MainDashboardViewModelTest {
     }
 
     @Test
-    fun `buildServiceCountdownNavigationData should return null and toast on api failure`() = runTest {
+    fun `buildServiceCountdownNavigationData should retain an acknowledged message on api failure`() = runTest {
         mockkStatic("com.ytone.longcare.common.utils.LogExtKt")
         try {
             every { any<Any>().logE(any(), any(), any()) } returns Unit
@@ -124,7 +119,9 @@ class MainDashboardViewModelTest {
             val result = viewModel.buildServiceCountdownNavigationData(orderId = orderId)
 
             assertNull(result)
-            verify(exactly = 1) { toastHelper.showShort("server error") }
+            assertEquals("server error", viewModel.uiMessages.value.single().text)
+            viewModel.consumeUiMessage(viewModel.uiMessages.value.single().id)
+            assertEquals(emptyList<Any>(), viewModel.uiMessages.value)
         } finally {
             unmockkStatic("com.ytone.longcare.common.utils.LogExtKt")
         }

@@ -3,8 +3,8 @@ package com.ytone.longcare.features.nursing.vm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.model.ServiceOrderModel
-import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.model.result.ApiResult
+import com.ytone.longcare.core.ui.message.UiMessageQueue
 import com.ytone.longcare.domain.order.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +16,6 @@ import javax.inject.Inject
 @HiltViewModel
 class NursingViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
-    private val toastHelper: ToastHelper
 ) : ViewModel() {
 
     private val _orderListState = MutableStateFlow<List<ServiceOrderModel>>(emptyList())
@@ -24,6 +23,10 @@ class NursingViewModel @Inject constructor(
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    private val messageQueue = UiMessageQueue()
+    val uiMessages = messageQueue.messages
+
+    fun consumeUiMessage(id: Long) = messageQueue.consume(id)
 
     /**
      * 获取指定日期的订单列表
@@ -38,13 +41,12 @@ class NursingViewModel @Inject constructor(
                 }
 
                 is ApiResult.Failure -> {
-                    toastHelper.showShort(result.message)
-                    // 处理错误，可以添加错误状态或显示Toast
+                    messageQueue.enqueue(result.message)
                     _orderListState.value = emptyList()
                 }
 
                 is ApiResult.Exception -> {
-                    // 处理错误，可以添加错误状态或显示Toast
+                    messageQueue.enqueue(result.exception.message ?: "网络异常，请稍后重试")
                     _orderListState.value = emptyList()
                 }
             }

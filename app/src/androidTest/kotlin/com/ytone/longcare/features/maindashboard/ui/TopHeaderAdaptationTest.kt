@@ -2,9 +2,12 @@ package com.ytone.longcare.features.maindashboard.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ytone.longcare.model.User
@@ -23,12 +26,21 @@ class TopHeaderAdaptationTest {
     @Test
     fun long_company_name_wraps_without_colliding_with_user_block() {
         composeRule.setContent {
-            LongCareTheme {
-                Box(modifier = Modifier.width(328.dp)) {
-                    TopHeader(
-                        user = User(userName = "Mock用户", userIdentity = 1),
-                        companyName = "浙江省杭州市长护智慧养老服务科技有限公司"
+            val currentDensity = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides
+                    Density(
+                        density = currentDensity.density,
+                        fontScale = 1f,
                     )
+            ) {
+                LongCareTheme {
+                    Box(modifier = Modifier.width(328.dp)) {
+                        TopHeader(
+                            user = User(userName = "Mock用户", userIdentity = 1),
+                            companyName = "浙江省杭州市长护智慧养老服务科技有限公司"
+                        )
+                    }
                 }
             }
         }
@@ -48,5 +60,77 @@ class TopHeaderAdaptationTest {
         assertTrue(companyBounds.height > minWrappedHeightPx)
         assertTrue(companyBounds.right < userBlockLeft)
         assertTrue(companyBounds.right < avatarBounds.left)
+    }
+
+    @Test
+    fun compact_large_font_keeps_user_name_on_one_line() {
+        composeRule.setContent {
+            val currentDensity = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides
+                    Density(
+                        density = currentDensity.density,
+                        fontScale = 1.4f,
+                    )
+            ) {
+                LongCareTheme {
+                    Box(modifier = Modifier.width(324.dp)) {
+                        TopHeader(
+                            user = User(userName = "Android销售", userIdentity = 1),
+                            companyName = "庆平智慧养老测试",
+                        )
+                    }
+                }
+            }
+        }
+
+        val userNameBounds =
+            composeRule.onNodeWithTag("home_top_user_name").fetchSemanticsNode().boundsInRoot
+        val avatarBounds =
+            composeRule.onNodeWithTag("home_top_avatar").fetchSemanticsNode().boundsInRoot
+        val companyBounds =
+            composeRule.onNodeWithTag("home_top_company_name").fetchSemanticsNode().boundsInRoot
+        val maxSingleLineHeightPx = with(composeRule.density) { 32.dp.toPx() }
+
+        assertTrue(userNameBounds.height <= maxSingleLineHeightPx)
+        assertTrue(userNameBounds.right < avatarBounds.left)
+        assertTrue(companyBounds.top >= avatarBounds.bottom)
+    }
+
+    @Test
+    fun medium_width_large_font_keeps_user_name_on_one_line() {
+        composeRule.setContent {
+            val currentDensity = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides
+                    Density(
+                        density = currentDensity.density,
+                        fontScale = 1.4f,
+                    )
+            ) {
+                LongCareTheme {
+                    Box(modifier = Modifier.width(645.dp)) {
+                        TopHeader(
+                            user = User(userName = "Android销售", userIdentity = 1),
+                            companyName = "庆平智慧养老测试",
+                        )
+                    }
+                }
+            }
+        }
+
+        val userNameBounds =
+            composeRule.onNodeWithTag("home_top_user_name").fetchSemanticsNode().boundsInRoot
+        val avatarBounds =
+            composeRule.onNodeWithTag("home_top_avatar").fetchSemanticsNode().boundsInRoot
+        val companyBounds =
+            composeRule.onNodeWithTag("home_top_company_name").fetchSemanticsNode().boundsInRoot
+        val maxSingleLineHeightPx = with(composeRule.density) { 32.dp.toPx() }
+        val expectedUserBlockWidthPx = with(composeRule.density) { 160.dp.toPx() }
+
+        assertTrue(userNameBounds.height <= maxSingleLineHeightPx)
+        assertTrue(userNameBounds.width >= expectedUserBlockWidthPx)
+        assertTrue(userNameBounds.right < avatarBounds.left)
+        assertTrue(companyBounds.right < userNameBounds.left)
     }
 }

@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,6 +53,7 @@ fun SelectServiceScreen(
     val coroutineScope = rememberCoroutineScope()
     val uiState by sharedViewModel.uiState.collectAsStateWithLifecycle()
     val starOrderState by sharedViewModel.starOrderState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     CustomBackHandler(customAction = actions.onNavigateBack)
 
@@ -59,8 +62,13 @@ fun SelectServiceScreen(
     }
 
     LaunchedEffect(starOrderState) {
-        if (starOrderState is StarOrderUiState.Success) {
-            sharedViewModel.resetStarOrderState()
+        when (val currentState = starOrderState) {
+            is StarOrderUiState.Success -> sharedViewModel.resetStarOrderState()
+            is StarOrderUiState.Error -> {
+                snackbarHostState.showSnackbar(currentState.message)
+                sharedViewModel.resetStarOrderState()
+            }
+            else -> Unit
         }
     }
 
@@ -113,6 +121,7 @@ fun SelectServiceScreen(
             .background(bgGradientBrush)
     ) {
         Scaffold(
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             topBar = {
                 SelectServiceTopBar(onNavigateBack = actions.onNavigateBack)
             },

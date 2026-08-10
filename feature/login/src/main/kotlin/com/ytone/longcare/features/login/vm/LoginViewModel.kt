@@ -4,9 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.model.LoginResultModel
 import com.ytone.longcare.model.StartConfigResultModel
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.LoginPreferencesManager
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.model.User
@@ -22,7 +21,6 @@ import javax.inject.Inject
 class LoginViewModel @Inject constructor(
     private val loginRepository: LoginRepository,
     private val userSessionRepository: UserSessionRepository,
-    private val toastHelper: ToastHelper,
     private val loginPreferencesManager: LoginPreferencesManager
 ) : ViewModel() {
 
@@ -34,13 +32,16 @@ class LoginViewModel @Inject constructor(
 
     private val _countdownSeconds = MutableStateFlow(0)
     val countdownSeconds: StateFlow<Int> = _countdownSeconds
+
+    private val _feedback = MutableStateFlow<LoginFeedback?>(null)
+    val feedback: StateFlow<LoginFeedback?> = _feedback
     
     private val _startConfigState = MutableStateFlow<StartConfigUiState>(StartConfigUiState.Idle)
     val startConfigState: StateFlow<StartConfigUiState> = _startConfigState
     
     private var countdownJob: Job? = null
-    private var nfcEventJob: Job? = null
     private var privacyAgreementConfirmed = false
+    private var nextFeedbackId = 0L
 
     init {
         // Safe: LoginViewModel is only created after privacy consent (AppNavigation gates with return)
@@ -81,11 +82,11 @@ class LoginViewModel @Inject constructor(
 
     fun sendSmsCode(mobile: String) {
         if (!privacyAgreementConfirmed) {
-            showShortToast("请先阅读并同意用户协议和隐私政策")
+            publishFeedback("请先阅读并同意用户协议和隐私政策")
             return
         }
         if (!isValidMobileNumber(mobile)) {
-            showShortToast("请输入有效的11位手机号")
+            publishFeedback("请输入有效的11位手机号")
             return
         }
         viewModelScope.launch {
@@ -93,20 +94,20 @@ class LoginViewModel @Inject constructor(
             when (val result = loginRepository.sendSmsCode(mobile)) {
                 is ApiResult.Success -> {
                     _sendSmsCodeState.value = SendSmsCodeUiState.Success
-                    showShortToast("验证码已发送")
+                    publishFeedback("验证码已发送")
                     startCountdown()
                 }
 
                 is ApiResult.Failure -> {
                     val errorMessage = "发送失败: ${result.message}"
                     _sendSmsCodeState.value = SendSmsCodeUiState.Error(errorMessage)
-                    showShortToast(errorMessage)
+                    publishFeedback(errorMessage)
                 }
 
                 is ApiResult.Exception -> {
                     val exceptionMessage = result.exception.message ?: "网络异常"
                     _sendSmsCodeState.value = SendSmsCodeUiState.Error(exceptionMessage)
-                    showShortToast(exceptionMessage)
+                    publishFeedback(exceptionMessage)
                 }
             }
         }
@@ -117,11 +118,11 @@ class LoginViewModel @Inject constructor(
      */
     fun login(mobile: String, code: String) {
         if (!privacyAgreementConfirmed) {
-            showShortToast("请先阅读并同意用户协议和隐私政策")
+            publishFeedback("请先阅读并同意用户协议和隐私政策")
             return
         }
         if (!isValidMobileNumber(mobile) || code.isBlank()) {
-            showShortToast("手机号或验证码格式不正确")
+            publishFeedback("手机号或验证码格式不正确")
             return
         }
         viewModelScope.launch {
@@ -137,19 +138,18 @@ class LoginViewModel @Inject constructor(
                     loginPreferencesManager.saveLastLoginPhoneNumber(mobile)
 
                     _loginState.value = LoginUiState.Success(user)
-                    showShortToast("登录成功")
                 }
 
                 is ApiResult.Failure -> {
                     val errorMessage = "登录失败: ${result.message}"
                     _loginState.value = LoginUiState.Error(errorMessage)
-                    showShortToast(errorMessage)
+                    publishFeedback(errorMessage)
                 }
 
                 is ApiResult.Exception -> {
                     val exceptionMessage = result.exception.message ?: "网络异常"
                     _loginState.value = LoginUiState.Error(exceptionMessage)
-                    showShortToast(exceptionMessage)
+                    publishFeedback(exceptionMessage)
                 }
             }
         }
@@ -162,8 +162,17 @@ class LoginViewModel @Inject constructor(
         return loginPreferencesManager.getLastLoginPhoneNumber()
     }
 
-    private fun showShortToast(msg: CharSequence) {
-        toastHelper.showShort(msg)
+    fun consumeFeedback(id: Long) {
+        if (_feedback.value?.id == id) {
+            _feedback.value = null
+        }
+    }
+
+    private fun publishFeedback(message: String) {
+        _feedback.value = LoginFeedback(
+            id = ++nextFeedbackId,
+            message = message
+        )
     }
 
     private fun startCountdown() {
@@ -180,7 +189,6 @@ class LoginViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         countdownJob?.cancel()
-        nfcEventJob?.cancel()
     }
 
     companion object {
@@ -188,6 +196,11 @@ class LoginViewModel @Inject constructor(
         private const val SMS_TIME_TOTAL = 60
     }
 }
+
+data class LoginFeedback(
+    val id: Long,
+    val message: String
+)
 
 private fun LoginResultModel.toUser(): User {
     return User(

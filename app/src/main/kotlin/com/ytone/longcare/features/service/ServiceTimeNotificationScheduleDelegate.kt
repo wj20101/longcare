@@ -26,8 +26,6 @@ internal class ServiceTimeNotificationScheduleDelegate(
     private val workTag: String,
     private val retryDelaySeconds: Long,
 ) {
-    private val fallbackScheduler = ServiceTimeFallbackScheduler()
-
     fun scheduleAlarmManagerNotification(
         orderId: Long,
         serviceName: String,
@@ -92,14 +90,6 @@ internal class ServiceTimeNotificationScheduleDelegate(
         }
     }
 
-    fun scheduleFallbackNotification(
-        orderId: Long,
-        delayMillis: Long,
-        onTrigger: () -> Unit
-    ) {
-        fallbackScheduler.scheduleFallbackNotification(orderId, delayMillis, onTrigger)
-    }
-
     fun cancelAlarmManagerNotification(orderId: Long) {
         try {
             val intent = Intent(context, ServiceTimeAlarmReceiver::class.java).apply {
@@ -131,10 +121,6 @@ internal class ServiceTimeNotificationScheduleDelegate(
         } catch (e: Exception) {
             logE("取消WorkManager通知失败: ${e.message}")
         }
-    }
-
-    fun cancelFallbackNotification(orderId: Long) {
-        fallbackScheduler.cancelFallbackNotification(orderId)
     }
 
     private fun canScheduleExactAlarms(): Boolean {

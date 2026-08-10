@@ -13,7 +13,7 @@ import javax.inject.Inject
 
 /**
  * 服务时间结束闹钟广播接收器
- * 作为三重保障机制的第一重保障（AlarmManager）
+ * 作为服务结束通知的准时触发通道（AlarmManager）。
  */
 @AndroidEntryPoint
 class ServiceTimeAlarmReceiver : BroadcastReceiver() {

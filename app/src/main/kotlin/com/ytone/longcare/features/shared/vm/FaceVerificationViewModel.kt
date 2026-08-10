@@ -1,35 +1,31 @@
 package com.ytone.longcare.features.shared.vm
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
+import com.ytone.longcare.common.faceauth.FaceSdkEvent
 import com.ytone.longcare.common.utils.SystemConfigManager
-import com.ytone.longcare.domain.faceauth.FaceVerifier
+import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
+import com.ytone.longcare.features.shared.FaceVerificationPhotoProcessor
+import com.ytone.longcare.features.shared.ProcessedFacePhoto
+import com.ytone.longcare.features.shared.resolveFaceCaptureErrorMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 @HiltViewModel
 class FaceVerificationViewModel @Inject constructor(
-    private val faceVerifier: FaceVerifier,
-    private val systemConfigManager: SystemConfigManager
+    private val systemConfigManager: SystemConfigManager,
+    private val photoProcessor: FaceVerificationPhotoProcessor,
 ) : ViewModel() {
-
-    sealed interface FaceVerifyEvent {
-        data class Success(val result: FaceVerifyResult) : FaceVerifyEvent
-        data class Error(val message: String) : FaceVerifyEvent
-        data object Cancelled : FaceVerifyEvent
-    }
 
     sealed class FaceVerifyUiState {
         object Idle : FaceVerifyUiState()
@@ -40,33 +36,45 @@ class FaceVerificationViewModel @Inject constructor(
         object Cancelled : FaceVerifyUiState()
     }
 
+    sealed interface PhotoProcessingState {
+        data object Idle : PhotoProcessingState
+        data object Processing : PhotoProcessingState
+        data class Success(val photo: ProcessedFacePhoto) : PhotoProcessingState
+        data class Error(val message: String) : PhotoProcessingState
+    }
+
     private val _uiState = MutableStateFlow<FaceVerifyUiState>(FaceVerifyUiState.Idle)
     val uiState: StateFlow<FaceVerifyUiState> = _uiState.asStateFlow()
 
-    private val _events = MutableSharedFlow<FaceVerifyEvent>(replay = 0, extraBufferCapacity = 1)
-    val events: SharedFlow<FaceVerifyEvent> = _events.asSharedFlow()
+    private val _sdkLaunchRequest = MutableStateFlow<SharedFaceSdkLaunchRequest?>(null)
+    val sdkLaunchRequest: StateFlow<SharedFaceSdkLaunchRequest?> = _sdkLaunchRequest.asStateFlow()
+    private val _photoProcessingState =
+        MutableStateFlow<PhotoProcessingState>(PhotoProcessingState.Idle)
+    val photoProcessingState: StateFlow<PhotoProcessingState> =
+        _photoProcessingState.asStateFlow()
+    private var activeLaunchRequest: SharedFaceSdkLaunchRequest? = null
+    private var photoProcessingJob: Job? = null
+    private var latestPhotoProcessingId = 0L
+    private var nextLaunchId = 0L
+    private var latestPreparationId = 0L
 
     fun startFaceVerificationWithAutoSign(
-        context: Context,
         name: String,
         idNo: String,
         orderNo: String,
         userId: String
     ) {
-        launchFaceVerification(
-            context,
+        prepareFaceVerification(
             FaceVerificationRequest(name = name, idNo = idNo, orderNo = orderNo, userId = userId)
         )
     }
 
     fun startFaceVerificationWithAutoSign(
-        context: Context,
         orderNo: String,
         userId: String,
         sourcePhotoStr: String
     ) {
-        launchFaceVerification(
-            context,
+        prepareFaceVerification(
             FaceVerificationRequest(
                 name = null,
                 idNo = null,
@@ -78,7 +86,44 @@ class FaceVerificationViewModel @Inject constructor(
     }
 
     fun resetState() {
+        latestPreparationId++
+        clearPhotoProcessingState()
         _uiState.value = FaceVerifyUiState.Idle
+        _sdkLaunchRequest.value = null
+        activeLaunchRequest = null
+    }
+
+    fun processCapturedPhoto(imagePath: String) {
+        val processingId = ++latestPhotoProcessingId
+        photoProcessingJob?.cancel()
+        _photoProcessingState.value = PhotoProcessingState.Processing
+        photoProcessingJob =
+            viewModelScope.launch {
+                try {
+                    val processedPhoto = photoProcessor.process(imagePath)
+                    if (processingId == latestPhotoProcessingId) {
+                        _photoProcessingState.value =
+                            PhotoProcessingState.Success(processedPhoto)
+                    }
+                } catch (exception: CancellationException) {
+                    if (processingId == latestPhotoProcessingId) {
+                        _photoProcessingState.value = PhotoProcessingState.Idle
+                    }
+                    throw exception
+                } catch (exception: Exception) {
+                    if (processingId == latestPhotoProcessingId) {
+                        _photoProcessingState.value =
+                            PhotoProcessingState.Error(resolveFaceCaptureErrorMessage(exception))
+                    }
+                }
+            }
+    }
+
+    fun clearPhotoProcessingState() {
+        latestPhotoProcessingId++
+        photoProcessingJob?.cancel()
+        photoProcessingJob = null
+        _photoProcessingState.value = PhotoProcessingState.Idle
     }
 
     fun clearError() {
@@ -87,76 +132,73 @@ class FaceVerificationViewModel @Inject constructor(
         }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        faceVerifier.release()
-    }
-
-    private fun launchFaceVerification(context: Context, request: FaceVerificationRequest) {
-        viewModelScope.launch {
-            _uiState.value = FaceVerifyUiState.Initializing
-            startFaceVerificationInternal(context, request)
+    fun consumeSdkLaunchRequest(id: Long) {
+        if (_sdkLaunchRequest.value?.id == id) {
+            _sdkLaunchRequest.value = null
         }
     }
 
-    private suspend fun startFaceVerificationInternal(
-        context: Context,
-        request: FaceVerificationRequest
-    ) {
-        val config = systemConfigManager.getFaceVerificationConfig()
-        if (config == null) {
-            emitError(
-                message = "人脸验证配置不可用，请重新登录后重试",
-                error = null,
-                event = "shared_face_config_missing",
-                description = "共享人脸验证配置缺失",
-                extras = request.diagnosticExtras("config_missing"),
-            )
-            return
-        }
-        faceVerifier.startFaceVerification(
-            context = context,
-            config = config,
-            request = request,
-            callback = createFaceVerifyCallback(request)
-        )
-    }
-
-    private fun createFaceVerifyCallback(request: FaceVerificationRequest) = buildFaceVerifyCallback(
-        onInitSuccess = { _uiState.value = FaceVerifyUiState.Verifying },
-        onInitFailed = { error ->
-            emitError(
-                message = "人脸验证初始化失败：${error.readableDescription()}",
-                error = error,
+    fun onFaceSdkEvent(launchId: Long, event: FaceSdkEvent) {
+        val launch = activeLaunchRequest?.takeIf { it.id == launchId } ?: return
+        when (event) {
+            FaceSdkEvent.InitSuccess -> _uiState.value = FaceVerifyUiState.Verifying
+            is FaceSdkEvent.InitFailed -> emitError(
+                message = "人脸验证初始化失败：${event.error.readableDescription()}",
+                error = event.error,
                 event = "shared_face_init_failed",
                 description = "共享人脸验证初始化失败",
-                extras = request.diagnosticExtras("init_failed"),
+                extras = launch.request.diagnosticExtras("init_failed"),
             )
-        },
-        onVerifySuccess = { result ->
-            _uiState.value = FaceVerifyUiState.Success(result)
-            _events.tryEmit(FaceVerifyEvent.Success(result))
-        },
-        onVerifyFailed = { error ->
-            emitError(
-                message = "人脸验证失败：${error.readableDescription()}",
-                error = error,
+            is FaceSdkEvent.VerifySuccess -> _uiState.value = FaceVerifyUiState.Success(event.result)
+            is FaceSdkEvent.VerifyFailed -> emitError(
+                message = "人脸验证失败：${event.error.readableDescription()}",
+                error = event.error,
                 event = "shared_face_verify_failed",
                 description = "共享人脸验证失败",
-                extras = request.diagnosticExtras("verify_failed"),
+                extras = launch.request.diagnosticExtras("verify_failed"),
             )
-        },
-        onVerifyCancel = {
-            DiagnosticEventTracker.trackEvent(
-                category = DIAGNOSTIC_CATEGORY,
-                event = "shared_face_cancelled",
-                description = "共享人脸验证取消",
-                extras = request.diagnosticExtras("cancelled"),
-            )
-            _uiState.value = FaceVerifyUiState.Cancelled
-            _events.tryEmit(FaceVerifyEvent.Cancelled)
+            FaceSdkEvent.Cancelled -> {
+                DiagnosticEventTracker.trackEvent(
+                    category = DIAGNOSTIC_CATEGORY,
+                    event = "shared_face_cancelled",
+                    description = "共享人脸验证取消",
+                    extras = launch.request.diagnosticExtras("cancelled"),
+                )
+                _uiState.value = FaceVerifyUiState.Cancelled
+            }
         }
-    )
+        if (event !is FaceSdkEvent.InitSuccess) {
+            activeLaunchRequest = null
+        }
+    }
+
+    private fun prepareFaceVerification(request: FaceVerificationRequest) {
+        val preparationId = ++latestPreparationId
+        _sdkLaunchRequest.value = null
+        activeLaunchRequest = null
+        _uiState.value = FaceVerifyUiState.Initializing
+        viewModelScope.launch {
+            val config = systemConfigManager.getFaceVerificationConfig()
+            if (preparationId != latestPreparationId) return@launch
+            if (config == null) {
+                emitError(
+                    message = "人脸验证配置不可用，请重新登录后重试",
+                    error = null,
+                    event = "shared_face_config_missing",
+                    description = "共享人脸验证配置缺失",
+                    extras = request.diagnosticExtras("config_missing"),
+                )
+                return@launch
+            }
+            val launchRequest = SharedFaceSdkLaunchRequest(
+                id = ++nextLaunchId,
+                config = config,
+                request = request,
+            )
+            activeLaunchRequest = launchRequest
+            _sdkLaunchRequest.value = launchRequest
+        }
+    }
 
     private fun emitError(
         message: String,
@@ -172,7 +214,6 @@ class FaceVerificationViewModel @Inject constructor(
             extras = error.diagnosticExtras() + extras + mapOf("message" to message),
         )
         _uiState.value = FaceVerifyUiState.Error(error = error, message = message)
-        _events.tryEmit(FaceVerifyEvent.Error(message))
     }
 
     private fun FaceVerificationRequest.diagnosticExtras(stage: String): Map<String, Any?> =
@@ -207,3 +248,9 @@ class FaceVerificationViewModel @Inject constructor(
         const val DIAGNOSTIC_CATEGORY = "face_verification"
     }
 }
+
+data class SharedFaceSdkLaunchRequest(
+    val id: Long,
+    val config: FaceVerificationConfig,
+    val request: FaceVerificationRequest,
+)

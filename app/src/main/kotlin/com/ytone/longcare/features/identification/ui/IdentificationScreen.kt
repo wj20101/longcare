@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.identification.ui
 
 import android.Manifest
-import android.content.pm.ActivityInfo
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
@@ -9,7 +9,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.common.utils.CustomBackHandler
-import com.ytone.longcare.common.utils.LockScreenOrientation
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
@@ -18,6 +17,7 @@ import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import kotlinx.coroutines.launch
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.platform.face.rememberFaceSdkUiController
 
 @Composable
 fun IdentificationScreen(
@@ -31,7 +31,6 @@ fun IdentificationScreen(
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
     // ==========================================================
-    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     // 统一处理系统返回键，与导航按钮行为一致（返回上一页）
     CustomBackHandler(customAction = actions.onNavigateBack)
@@ -40,10 +39,24 @@ fun IdentificationScreen(
     val faceVerificationState by identificationViewModel.faceVerificationState.collectAsStateWithLifecycle()
     val photoUploadState by identificationViewModel.photoUploadState.collectAsStateWithLifecycle()
     val faceSetupState by identificationViewModel.faceSetupState.collectAsStateWithLifecycle()
+    val pendingUiActions by identificationViewModel.pendingUiActions.collectAsStateWithLifecycle()
+    val faceSdkLaunchRequest by identificationViewModel.faceSdkLaunchRequest.collectAsStateWithLifecycle()
     val capturedImageUri by actions.capturedImageUriFlow.collectAsStateWithLifecycle()
     val faceImagePath by actions.faceImagePathFlow.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var showCameraPurposeNotice by remember { mutableStateOf(false) }
+    val faceSdkUiController = rememberFaceSdkUiController()
+
+    LaunchedEffect(faceSdkLaunchRequest?.id) {
+        val launchRequest = faceSdkLaunchRequest ?: return@LaunchedEffect
+        faceSdkUiController.start(
+            context = context,
+            config = launchRequest.config,
+            request = launchRequest.request,
+            onEvent = { event -> identificationViewModel.onFaceSdkEvent(launchRequest.id, event) },
+        )
+        identificationViewModel.consumeFaceSdkLaunchRequest(launchRequest.id)
+    }
     fun openElderCamera() {
         scope.launch {
             navigateToElderCamera(
@@ -61,7 +74,7 @@ fun IdentificationScreen(
             if (isGranted) {
                 openElderCamera()
             } else {
-                identificationViewModel.showToast("需要相机权限才能拍照")
+                Toast.makeText(context, "需要相机权限才能拍照", Toast.LENGTH_SHORT).show()
             }
         }
     )
@@ -77,6 +90,7 @@ fun IdentificationScreen(
         faceVerificationState = faceVerificationState,
         currentVerificationType = currentVerificationType,
         photoUploadState = photoUploadState,
+        pendingUiActions = pendingUiActions,
         context = context
     )
 
@@ -86,19 +100,16 @@ fun IdentificationScreen(
         photoUploadState = photoUploadState,
         faceSetupState = faceSetupState,
         identificationViewModel = identificationViewModel,
-        isMockDataEnabled = identificationViewModel.isMockDataEnabled,
         onNavigateBack = actions.onNavigateBack,
         onNavigateToSelectService = { actions.onNavigateToSelectService(orderKey) },
-        onVerifyServicePerson = { identificationViewModel.verifyServicePerson(context) },
+        onVerifyServicePerson = identificationViewModel::verifyServicePerson,
         onVerifyElder = {
             if (UnifiedPermissionHelper.isCameraPermissionGranted(context)) {
                 openElderCamera()
             } else {
                 showCameraPurposeNotice = true
             }
-        },
-        onMockVerifyServicePerson = identificationViewModel::mockVerifyServicePerson,
-        onMockVerifyElder = identificationViewModel::mockVerifyElder
+        }
     )
 
     if (showCameraPurposeNotice) {

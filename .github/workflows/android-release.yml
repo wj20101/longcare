@@ -113,17 +113,29 @@ jobs:
 
       - name: Run ci-required quality gates
         run: |
+          bash scripts/quality/verify_no_tracked_keystore_files.sh .
           bash scripts/quality/verify_ci_workflow_quality.sh
           bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
           bash scripts/quality/verify_jetpack_compat_apis.sh
           bash scripts/quality/verify_baselineprofile_journeys.sh
+          bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
+          bash scripts/quality/verify_no_empty_catch_blocks.sh .
+          bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
+          bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml
+          bash scripts/quality/verify_architecture_boundaries.sh .
           bash scripts/quality/verify_module_dependency_whitelist.sh .
+          bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare .
 
       - name: Run ci-required compile/lint/assemble verification
         env:
           TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
           TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
         run: ./gradlew --no-daemon :app:lintDebug :app:assembleDebug
+
+      - name: Enforce lint and vendor SDK release readiness
+        run: |
+          bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
+          bash scripts/quality/verify_vendor_sdk_release_readiness.sh app/build/reports/lint-results-debug.txt
 
       - name: Run release-required signing safety checks
         env:
@@ -339,7 +351,7 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease
+        run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease -Prelease.production=true
 
       - name: Run release-required exported component guard
         run: bash scripts/quality/verify_release_exported_components.sh

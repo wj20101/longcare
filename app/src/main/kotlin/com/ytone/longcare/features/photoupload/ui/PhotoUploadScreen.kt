@@ -57,6 +57,10 @@ fun PhotoUploadScreen(
     val scope = rememberCoroutineScope()
     val currentTaskType by viewModel.currentTaskType.collectAsStateWithLifecycle()
     var showCameraPurposeNotice by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val showMessage: (String) -> Unit = { message ->
+        scope.launch { snackbarHostState.showSnackbar(message) }
+    }
 
     PhotoUploadScreenEffects(
         actions = actions,
@@ -85,7 +89,7 @@ fun PhotoUploadScreen(
                     openCameraForTask(taskType)
                 }
             } else {
-                viewModel.showToast("需要相机权限才能拍照")
+                showMessage("需要相机权限才能拍照")
             }
         }
     )
@@ -112,6 +116,7 @@ fun PhotoUploadScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(bgGradientBrush)) {
         Scaffold(
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             topBar = { PhotoUploadTopBar(actions = actions) },
             containerColor = Color.Transparent,
             bottomBar = {
@@ -119,10 +124,10 @@ fun PhotoUploadScreen(
                 buttonText = if (isUploading) "上传中..." else stringResource(R.string.photo_upload_confirm_and_next),
                 isUploading = isUploading,
                 enabled = hasCategoriesHaveImages && !isUploading,
-                useMockData = viewModel.isMockDataEnabled,
                 viewModel = viewModel,
                 actions = actions,
-                scope = scope
+                scope = scope,
+                onShowMessage = showMessage,
             )
             }
         ) { paddingValues ->
@@ -132,7 +137,6 @@ fun PhotoUploadScreen(
                 centerCareTasks = centerCareTasks,
                 afterCareTasks = afterCareTasks,
                 isUploading = isUploading,
-                isMockDataEnabled = viewModel.isMockDataEnabled,
                 onAddBeforeCarePhoto = {
                     requestCameraForTask(ImageTaskType.BEFORE_CARE)
                 },
@@ -143,8 +147,7 @@ fun PhotoUploadScreen(
                     requestCameraForTask(ImageTaskType.AFTER_CARE)
                 },
                 onRetryTask = viewModel::retryTask,
-                onRemoveTask = viewModel::removeTask,
-                viewModel = viewModel
+                onRemoveTask = viewModel::removeTask
             )
         }
     }

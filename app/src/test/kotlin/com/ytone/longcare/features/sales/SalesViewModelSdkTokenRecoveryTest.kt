@@ -1,22 +1,21 @@
 package com.ytone.longcare.features.sales
 
-import android.app.Activity
 import android.content.Context
 import com.ytone.longcare.R
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.sale.SaleRepository
-import com.ytone.longcare.integration.qlz.QlzSdkClient
 import com.ytone.longcare.integration.qlz.QlzSdkEvent
 import com.ytone.longcare.model.CheckTokenModel
+import com.ytone.longcare.platform.sales.SalesEvaluationDeviceGateway
+import com.ytone.longcare.platform.text.SalesTextResolver
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
-import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -30,7 +29,7 @@ class SalesViewModelSdkTokenRecoveryTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun `expired SDK token is refreshed once and relaunched without a retry loop`() =
+    fun `expired SDK token emits one UI relaunch request without a retry loop`() =
         runTest {
             var tokenRequests = 0
             val repository =
@@ -51,51 +50,36 @@ class SalesViewModelSdkTokenRecoveryTest {
                         )
                     }
                 }
-            val callback = slot<(QlzSdkEvent) -> Unit>()
-            val qlzSdkClient =
-                mockk<QlzSdkClient>(relaxed = true) {
+            val evaluationDeviceGateway =
+                mockk<SalesEvaluationDeviceGateway>(relaxed = true) {
                     every { getDeviceId() } returns Result.success("device-1")
                     every { getConnectedDeviceName() } returns "QLZ-device"
-                    every {
-                        openByToken(any(), any(), capture(callback))
-                    } returns Unit
                 }
-            val activity =
-                mockk<Activity>(relaxed = true) {
-                    every { isFinishing } returns false
-                    every { isDestroyed } returns false
-                }
-            val viewModel = createViewModel(repository, qlzSdkClient)
+            val viewModel = createViewModel(repository, evaluationDeviceGateway)
 
             viewModel.prepareEvaluation(7)
-            viewModel.launchSdk(activity)
-            callback.captured(
+            advanceUntilIdle()
+            viewModel.onSdkEvent(
                 QlzSdkEvent.Error(
                     code = 100,
                     message = "token expired",
                 )
             )
+            advanceUntilIdle()
 
             assertEquals(2, tokenRequests)
-            verify(exactly = 1) {
-                qlzSdkClient.openByToken(activity, "old-token", any())
-            }
-            verify(exactly = 1) {
-                qlzSdkClient.openByToken(activity, "new-token", any())
-            }
             assertEquals("new-token", viewModel.uiState.value.checkToken?.token)
+            assertEquals("new-token", viewModel.uiState.value.sdkLaunchRequest?.token)
 
-            callback.captured(
+            viewModel.onSdkEvent(
                 QlzSdkEvent.Error(
                     code = 100,
                     message = "token expired again",
                 )
             )
+            advanceUntilIdle()
 
             assertEquals(2, tokenRequests)
-            verify(exactly = 2) {
-                qlzSdkClient.openByToken(activity, any(), any())
-            }
             assertTrue(
                 viewModel.uiState.value.errorMessage
                     .orEmpty()
@@ -105,7 +89,7 @@ class SalesViewModelSdkTokenRecoveryTest {
 
     private fun createViewModel(
         repository: SaleRepository,
-        qlzSdkClient: QlzSdkClient,
+        evaluationDeviceGateway: SalesEvaluationDeviceGateway,
     ): SalesViewModel {
         val applicationContext =
             mockk<Context>(relaxed = true) {
@@ -117,9 +101,9 @@ class SalesViewModelSdkTokenRecoveryTest {
             locationFacade = mockk<LocationFacade>(relaxed = true),
             photoCloudUploader = UnusedPhotoCloudUploader,
             imagePipeline = testImagePipeline(applicationContext),
-            qlzSdkClient = qlzSdkClient,
+            evaluationDeviceGateway = evaluationDeviceGateway,
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
-            applicationContext = applicationContext,
+            textResolver = SalesTextResolver(applicationContext),
         )
     }
 }

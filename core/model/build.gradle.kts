@@ -1,13 +1,8 @@
 plugins {
-    id("longcare.android.library")
+    id("org.jetbrains.kotlin.jvm")
     id("longcare.kotlin.common")
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.ksp)
-    id("kotlin-parcelize")
-}
-
-android {
-    namespace = "com.ytone.longcare.core.model"
 }
 
 dependencies {

@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.location.reporting
 
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.model.LocationUploadStatus
 import com.ytone.longcare.model.LocationResult

@@ -101,19 +101,32 @@ jobs:
             echo "- module dependency whitelist"
             echo "- architecture boundaries"
             echo "- module API visibility"
+            echo "- coroutine cancellation and empty catch guards"
+            echo "- target SDK and exact alarm policy"
+            echo "- tracked keystore guard"
             echo "- workflow quality guard"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run ci-required quality gates
         run: |
+          bash scripts/quality/verify_no_tracked_keystore_files.sh .
           bash scripts/quality/verify_ci_workflow_quality.sh
           bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
           bash scripts/quality/verify_jetpack_compat_apis.sh
           bash scripts/quality/verify_baselineprofile_journeys.sh
+          bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
+          bash scripts/quality/verify_no_empty_catch_blocks.sh .
+          bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
+          bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml
+          bash scripts/quality/verify_architecture_boundaries.sh .
           bash scripts/quality/verify_module_dependency_whitelist.sh .
+          bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare .
 
       - name: Run affected compile/lint/assemble verification
         run: ./gradlew --no-daemon ${{ needs.detect-affected.outputs.verify_tasks }}
+
+      - name: Enforce generated lint warning allowlist
+        run: bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
 
       - name: Upload APK
         uses: actions/upload-artifact@v7

@@ -1,5 +1,6 @@
 package com.ytone.longcare.common.network
 
+import com.ytone.longcare.model.result.ApiResult
 import com.squareup.moshi.Types
 import com.ytone.longcare.model.Response as ApiResponse
 import retrofit2.Call

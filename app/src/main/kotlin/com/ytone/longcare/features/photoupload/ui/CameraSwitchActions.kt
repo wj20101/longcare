@@ -8,6 +8,7 @@ import androidx.camera.core.CameraInfoUnavailableException
 import androidx.camera.core.CameraSelector
 import androidx.camera.view.LifecycleCameraController
 import androidx.core.content.getSystemService
+import com.ytone.longcare.common.utils.klogI
 import com.ytone.longcare.features.photoupload.tracker.CameraEventTracker
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -90,8 +91,8 @@ internal suspend fun switchCameraWithFeedback(
             if (cameraController.cameraInfo != null) {
                 break
             }
-        } catch (_: IllegalStateException) {
-            // 相机切换中可能暂时取不到 cameraInfo，继续轮询。
+        } catch (exception: IllegalStateException) {
+            klogI("相机切换尚未完成，继续等待: ${exception.message}")
         }
     }
 }

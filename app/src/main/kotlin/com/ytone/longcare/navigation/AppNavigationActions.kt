@@ -116,10 +116,6 @@ fun NavController.navigateToUserServiceRecord(userId: Long, userName: String, us
     navigate(UserServiceRecordRoute(userId, userName, userAddress))
 }
 
-fun NavController.navigateToNfcTest() {
-    navigate(NfcTestRoute)
-}
-
 fun NavController.navigateToCamera(watermarkData: WatermarkData) {
     navigate(CameraRoute(watermarkData))
 }

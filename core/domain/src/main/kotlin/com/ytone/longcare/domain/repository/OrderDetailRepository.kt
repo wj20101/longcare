@@ -1,6 +1,6 @@
 package com.ytone.longcare.domain.repository
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.OrderLocalStateEntity
 import com.ytone.longcare.model.ServiceOrderInfoModel

@@ -10,7 +10,6 @@ import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
-import com.ytone.longcare.features.countdown.worker.CountdownBackupWorker
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -54,9 +53,6 @@ internal object CountdownAlarmReceiverDelegate {
 
         // 记录闹钟触发事件（用于问题排查）
         logAlarmTriggerEvent(orderId, serviceName)
-
-        // 标记闹钟已触发（通知备份Worker不需要再次触发）
-        CountdownBackupWorker.markAlarmTriggered(context, orderId)
 
         // 获取WakeLock确保设备唤醒
         // 使用 PARTIAL_WAKE_LOCK 保持CPU运行，屏幕点亮由 Activity 的 setTurnScreenOn 处理

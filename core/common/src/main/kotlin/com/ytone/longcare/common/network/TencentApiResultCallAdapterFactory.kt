@@ -1,5 +1,6 @@
 package com.ytone.longcare.common.network
 
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.TencentApiResponse
 import retrofit2.Call
 import retrofit2.CallAdapter

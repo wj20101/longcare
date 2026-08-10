@@ -1,7 +1,7 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.TencentFaceApiService
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository
 import com.ytone.longcare.model.GetFaceIdRequest
 import com.ytone.longcare.model.TencentAccessTokenResponse

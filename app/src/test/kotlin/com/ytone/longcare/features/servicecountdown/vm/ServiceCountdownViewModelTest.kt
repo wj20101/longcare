@@ -1,13 +1,11 @@
 package com.ytone.longcare.features.servicecountdown.vm
 
 import com.ytone.longcare.model.ServiceOrderInfoModel
-import com.ytone.longcare.common.config.RuntimeConfigProvider
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.model.OrderEntity
 import com.ytone.longcare.model.OrderLocalStateEntity
 import com.ytone.longcare.model.OrderProjectEntity
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.data.repository.ImageRepository
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.domain.order.OrderRepository
@@ -18,6 +16,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceTimeBy
@@ -38,8 +37,6 @@ class ServiceCountdownViewModelTest {
     private lateinit var imageRepository: ImageRepository
     private lateinit var orderRepository: OrderRepository
     private lateinit var systemGateway: ServiceCountdownSystemGateway
-    private lateinit var runtimeConfigProvider: RuntimeConfigProvider
-    private lateinit var toastHelper: ToastHelper
     private lateinit var viewModel: ServiceCountdownViewModel
 
     @Before
@@ -49,21 +46,29 @@ class ServiceCountdownViewModelTest {
         imageRepository = mockk(relaxed = true)
         orderRepository = mockk(relaxed = true)
         systemGateway = mockk(relaxed = true)
-        runtimeConfigProvider = mockk(relaxed = true)
-        every { runtimeConfigProvider.useMockData } returns false
-        toastHelper = mockk(relaxed = true)
         
         // Mock default flows
         every { unifiedOrderRepository.observeOrderWithDetails(any()) } returns MutableStateFlow(null)
         
         viewModel = ServiceCountdownViewModel(
-            toastHelper,
             unifiedOrderRepository,
             imageRepository,
             orderRepository,
-            systemGateway,
-            runtimeConfigProvider
+            systemGateway
         )
+    }
+
+    @Test
+    fun `ending service stops platform work through gateway`() = runTest {
+        val orderKey = OrderKey(orderId = 12345L, planId = 1)
+
+        viewModel.endServiceWithoutClearingImages(orderKey)
+        advanceUntilIdle()
+
+        verify(exactly = 1) { systemGateway.stopForegroundService() }
+        verify(exactly = 1) { systemGateway.stopAlarmRingtone() }
+        verify(exactly = 1) { systemGateway.cancelCountdownAlarmForOrder(orderKey) }
+        coVerify(exactly = 1) { unifiedOrderRepository.endLocalService(orderKey) }
     }
 
     @Test

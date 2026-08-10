@@ -23,6 +23,7 @@ class DefaultSessionInvalidationHandlerTest {
         runCurrent()
 
         handler.invalidate("登录过期")
+        runCurrent()
 
         assertEquals(1, repository.logoutCalls)
         val invalidation = handler.invalidations.value
@@ -40,8 +41,10 @@ class DefaultSessionInvalidationHandlerTest {
         runCurrent()
 
         handler.invalidate("第一次")
+        runCurrent()
         val firstId = handler.invalidations.value?.id
         handler.invalidate("第二次")
+        runCurrent()
 
         assertEquals(1, repository.logoutCalls)
         assertEquals(firstId, handler.invalidations.value?.id)
@@ -55,12 +58,14 @@ class DefaultSessionInvalidationHandlerTest {
         runCurrent()
 
         handler.invalidate("旧会话过期")
+        runCurrent()
         repository.setState(SessionState.LoggedOut)
         runCurrent()
         repository.setState(loggedInUser(token = "token-b"))
         runCurrent()
 
         handler.invalidate("新会话过期")
+        runCurrent()
 
         assertEquals(2, repository.logoutCalls)
         assertEquals("新会话过期", handler.invalidations.value?.reason)
@@ -73,6 +78,7 @@ class DefaultSessionInvalidationHandlerTest {
         runCurrent()
 
         handler.invalidate("登录过期")
+        runCurrent()
 
         assertEquals(0, repository.logoutCalls)
         assertNull(handler.invalidations.value)
@@ -87,15 +93,15 @@ private class FakeUserSessionRepository(
     var logoutCalls: Int = 0
         private set
 
-    override fun login(user: User) {
+    override suspend fun login(user: User) {
         mutableSessionState.value = SessionState.LoggedIn(user)
     }
 
-    override fun updateUser(user: User) {
+    override suspend fun updateUser(user: User) {
         mutableSessionState.value = SessionState.LoggedIn(user)
     }
 
-    override fun logout() {
+    override suspend fun logout() {
         logoutCalls += 1
     }
 

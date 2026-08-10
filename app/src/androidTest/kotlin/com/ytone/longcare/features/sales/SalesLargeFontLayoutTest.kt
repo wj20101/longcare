@@ -25,6 +25,7 @@ import com.ytone.longcare.model.User
 import com.ytone.longcare.model.UserLatentCheckState
 import com.ytone.longcare.model.UserLatentDetailModel
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -71,6 +72,39 @@ class SalesLargeFontLayoutTest {
                 it.boundsInRoot.height + PIXEL_ROUNDING_TOLERANCE >= addressMinimumHeight
             }
         )
+    }
+
+    @Test
+    fun registrationOnlyRequiresUserName() {
+        var continueRequests = 0
+        var validationError: String? = null
+        setLargeFontContent {
+            SalesRegistrationScreen(
+                draft = SalesCustomerDraft(userName = "测试客户"),
+                photoUris = emptyList(),
+                location = null,
+                onDraftChange = {},
+                onTakePhoto = {},
+                onRemovePhoto = {},
+                onRequestLocation = {},
+                onBack = {},
+                onContinue = { continueRequests += 1 },
+                onValidationError = { validationError = it },
+            )
+        }
+
+        composeRule
+            .onNodeWithText("请输入老人身份证号码（选填）")
+            .assertIsDisplayed()
+        composeRule
+            .onNode(hasScrollAction())
+            .performScrollToNode(hasText("提交"))
+        composeRule.onNodeWithText("提交").performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, continueRequests)
+            assertNull(validationError)
+        }
     }
 
     @Test

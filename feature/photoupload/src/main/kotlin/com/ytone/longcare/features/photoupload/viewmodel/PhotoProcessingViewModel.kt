@@ -4,8 +4,6 @@ import android.net.Uri
 import com.ytone.longcare.common.image.UnifiedImagePipeline
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.common.config.RuntimeConfigProvider
-import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.domain.repository.UserSessionRepository
@@ -26,13 +24,11 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class PhotoProcessingViewModel @Inject constructor(
-    private val toastHelper: ToastHelper,
     private val photoCloudUploader: PhotoCloudUploader,
     private val imagePipeline: UnifiedImagePipeline,
     private val userSessionRepository: UserSessionRepository,
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
-    private val runtimeConfigProvider: RuntimeConfigProvider,
 ) : ViewModel() {
 
     private val taskQueueDelegate = PhotoTaskQueueDelegate(
@@ -48,18 +44,11 @@ class PhotoProcessingViewModel @Inject constructor(
         taskQueueDelegate = taskQueueDelegate,
     )
 
-    val isMockDataEnabled: Boolean
-        get() = runtimeConfigProvider.useMockData
-
     val currentOrderKey: StateFlow<OrderKey?> = taskQueueDelegate.currentOrderKey.asStateFlow()
     val imageTasks: StateFlow<List<ImageTask>> = taskQueueDelegate.imageTasks.asStateFlow()
     val isProcessing: StateFlow<Boolean> = taskQueueDelegate.isProcessing.asStateFlow()
     val isUploading: StateFlow<Boolean> = uploadDelegate.isUploading.asStateFlow()
     val currentTaskType: StateFlow<ImageTaskType?> = taskQueueDelegate.currentTaskType.asStateFlow()
-
-    fun showToast(string: String) {
-        toastHelper.showShort(string)
-    }
 
     fun setCurrentTaskType(taskType: ImageTaskType) {
         taskQueueDelegate.setCurrentTaskType(taskType)
@@ -133,23 +122,4 @@ class PhotoProcessingViewModel @Inject constructor(
         return taskQueueDelegate.getTaskStats()
     }
 
-    fun mockAddUploadedPhoto(taskType: ImageTaskType) {
-        taskQueueDelegate.mockAddUploadedPhoto(taskType)
-    }
-
-    fun mockAddBeforeCarePhoto() {
-        taskQueueDelegate.mockAddBeforeCarePhoto()
-    }
-
-    fun mockAddCenterCarePhoto() {
-        taskQueueDelegate.mockAddCenterCarePhoto()
-    }
-
-    fun mockAddAfterCarePhoto() {
-        taskQueueDelegate.mockAddAfterCarePhoto()
-    }
-
-    fun mockAddAllPhotos() {
-        taskQueueDelegate.mockAddAllPhotos()
-    }
 }

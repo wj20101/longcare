@@ -3,10 +3,9 @@ package com.ytone.longcare.features.profile.vm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.model.NurseServiceTimeModel
-import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.network.isSuccess
-import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.core.ui.message.UiMessageQueue
 import com.ytone.longcare.domain.profile.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,11 +17,14 @@ import javax.inject.Inject
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
-    private val toastHelper: ToastHelper
 ) : ViewModel() {
 
     private val _statsState = MutableStateFlow(NurseServiceTimeModel())
     val statsState: StateFlow<NurseServiceTimeModel> = _statsState.asStateFlow()
+    private val messageQueue = UiMessageQueue()
+    val uiMessages = messageQueue.messages
+
+    fun consumeUiMessage(id: Long) = messageQueue.consume(id)
 
 
     fun refreshStats() {
@@ -34,10 +36,11 @@ class ProfileViewModel @Inject constructor(
                     _statsState.value = result.data
                 }
                 is ApiResult.Failure -> {
-                    toastHelper.showShort(result.message)
+                    messageQueue.enqueue(result.message)
                     logE("获取统计数据失败: code=${result.code}, msg=${result.message}")
                 }
                 is ApiResult.Exception -> {
+                    messageQueue.enqueue(result.exception.message ?: "网络异常，请稍后重试")
                     logE("获取统计数据异常", throwable = result.exception)
                 }
             }
@@ -46,8 +49,7 @@ class ProfileViewModel @Inject constructor(
 
     fun logout() {
         viewModelScope.launch {
-            val result = profileRepository.logout()
-            if (result.isSuccess()) toastHelper.showShort("退出登录成功")
+            profileRepository.logout()
         }
     }
 }

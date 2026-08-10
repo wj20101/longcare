@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.countdown.tracker
 
 import android.os.Build
-import com.tencent.bugly.crashreport.CrashReport
+import com.ytone.longcare.common.diagnostics.CrashReportGateway
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 
@@ -69,7 +69,7 @@ object CountdownEventTracker {
             } else {
                 logE("$TAG: ${eventType.description} - $eventInfo", throwable = throwable)
             }
-            CrashReport.postCatchedException(
+            CrashReportGateway.postCaughtException(
                 CountdownTrackingException(
                     eventType = eventType.code,
                     message = eventInfo,

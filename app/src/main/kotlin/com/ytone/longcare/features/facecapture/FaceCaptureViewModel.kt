@@ -88,7 +88,6 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
     }
 
     override fun onCleared() {
-        super.onCleared()
         FaceCaptureBitmapCacheDelegate.recycleAndClear(bitmapCache)
     }
 }

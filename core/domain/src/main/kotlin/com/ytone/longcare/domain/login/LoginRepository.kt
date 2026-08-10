@@ -1,6 +1,6 @@
 package com.ytone.longcare.domain.login
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.LoginResultModel
 import com.ytone.longcare.model.StartConfigResultModel
 

@@ -17,11 +17,13 @@ object NfcNdefUtils {
             ndef.connect()
             ndef.ndefMessage
         } catch (e: Exception) {
+            logE("读取 NDEF 标签失败", throwable = e)
             null
         } finally {
             try {
                 ndef.close()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                logE("关闭 NDEF 标签连接失败", throwable = e)
             }
         }
     }
@@ -43,11 +45,13 @@ object NfcNdefUtils {
             ndef.writeNdefMessage(message)
             true
         } catch (e: Exception) {
+            logE("写入 NDEF 标签失败", throwable = e)
             false
         } finally {
             try {
                 ndef.close()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                logE("关闭 NDEF 标签连接失败", throwable = e)
             }
         }
     }

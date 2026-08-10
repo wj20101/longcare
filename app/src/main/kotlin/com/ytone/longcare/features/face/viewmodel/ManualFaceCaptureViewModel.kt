@@ -182,7 +182,6 @@ class ManualFaceCaptureViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        super.onCleared()
         facePipelineDelegate.release()
     }
 

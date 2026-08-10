@@ -46,35 +46,6 @@
 -keepattributes EnclosingMethod # 保留匿名内部类指向外部方法的信息
 -keepattributes *Annotation* # 保留注解信息，很多现代库依赖注解
 
-# 保留所有 Application, Activity, Service, BroadcastReceiver, ContentProvider 的子类
-# R8 通常能自动处理，但显式声明更保险
--keep public class * extends android.app.Application
--keep public class * extends android.app.Activity
--keep public class * extends android.app.Service
--keep public class * extends android.content.BroadcastReceiver
--keep public class * extends android.content.ContentProvider
--keep public class * extends android.app.backup.BackupAgentHelper
--keep public class * extends android.preference.Preference
--keep public class com.android.vending.licensing.ILicensingService
-
-# 保留所有 View 的子类中带有特定参数类型的构造函数 (用于XML布局实例化)
--keep public class * extends android.view.View {
-    public <init>(android.content.Context);
-    public <init>(android.content.Context, android.util.AttributeSet);
-    public <init>(android.content.Context, android.util.AttributeSet, int);
-    public void set*(...);
-}
-
-# 保留 Parcelable 实现类
--keep class * implements android.os.Parcelable {
-  public static final android.os.Parcelable$Creator *;
-}
-
-# 保留所有 R$* 内部类及其所有字段 (资源ID)
--keep class **.R$* {
-    *;
-}
-
 # 保留 native 方法
 -keepclasseswithmembernames class * {
     native <methods>;
@@ -89,11 +60,6 @@
 #===============================================================================
 # Kotlin 相关规则 (部分可能由 kotlin-reflect 或 kotlinx.coroutines 自动处理)
 #===============================================================================
-# 通常由 AGP 和 Kotlin 插件自动处理，但如果遇到问题可以尝试添加
--dontwarn kotlin.**
--keep class kotlin.Metadata { *; }
--keep class kotlin.coroutines.Continuation
-
 # 保留所有被 @Keep 注解的类、方法和字段
 -keep @androidx.annotation.Keep class * {*;}
 -keepclasseswithmembers class * {
@@ -125,31 +91,6 @@
 }
 -keepnames class * { # 保留被 @Serializable 注解的类名
     @kotlinx.serialization.Serializable <methods>;
-}
-
-# --- Wire (Protocol Buffers) ---
-# (您在 app/build.gradle.kts 中使用了 libs.plugins.wire)
-# Wire 生成的代码通常需要保留，特别是如果模型类被用于序列化或网络。
-# Wire 插件本身可能提供 Proguard 规则，或者您需要参考其文档。
-# 一般来说，生成的 Message 和 Enum 类需要保留。
--keep class com.squareup.wire.** { *; }
--keep interface com.squareup.wire.** { *; }
-# 保留所有生成的 Wire Model 类及其字段和方法
-# 您可能需要根据您的 protobuf 包名调整
-# 例如，如果您的 .proto 文件包名是 com.example.protos
-# -keep class com.example.protos.** { *; }
-# 更通用的做法是保留所有 com.squareup.wire.Message 的子类
--keep public class * extends com.squareup.wire.Message {
-    <fields>;
-    <methods>;
-}
--keep public class * extends com.squareup.wire.ProtoAdapter {
-    <fields>;
-    <methods>;
-}
--keep public enum * extends com.squareup.wire.WireEnum {
-    <fields>;
-    <methods>;
 }
 
 # --- Tencent Bugly ---

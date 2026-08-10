@@ -1,6 +1,6 @@
 package com.ytone.longcare.domain.userlist
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.UserInfoModel
 import com.ytone.longcare.model.UserOrderModel
 

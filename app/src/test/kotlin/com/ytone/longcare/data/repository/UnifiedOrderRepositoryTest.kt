@@ -4,7 +4,7 @@ import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.model.OrderInfoParamModel
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.UserInfoM
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.data.database.dao.OrderDao
 import com.ytone.longcare.data.database.dao.OrderImageDao

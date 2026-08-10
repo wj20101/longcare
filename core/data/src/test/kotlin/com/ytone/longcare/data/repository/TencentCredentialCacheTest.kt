@@ -1,6 +1,6 @@
 package com.ytone.longcare.data.repository
 
-import com.ytone.longcare.common.network.ApiResult
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.TencentAccessTokenResponse
 import com.ytone.longcare.model.TencentApiTicketResponse
 import com.ytone.longcare.model.TicketInfo

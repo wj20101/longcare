@@ -72,6 +72,15 @@
       "owner": "mobile-platform",
       "source_of_truth": "scripts/quality/verify_release_exported_components.sh",
       "likely_fix": "Align exported manifest components with the release allowlist."
+    },
+    {
+      "id": "vendor_sdk_release_readiness",
+      "name": "Vendor SDK Release Readiness",
+      "layer": "release-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/verify_vendor_sdk_release_readiness.sh",
+      "likely_fix": "Replace vendor SDK binaries that still contain weak TLS validation, non-16KB ELF libraries, or invalid consumer rules."
     }
   ]
 }

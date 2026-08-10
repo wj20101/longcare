@@ -4,26 +4,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.theme.BottomNavBackground
@@ -32,68 +29,68 @@ import com.ytone.longcare.theme.BottomNavUnselectedText
 import com.ytone.longcare.theme.IndicatorGradientEnd
 import com.ytone.longcare.theme.IndicatorGradientStart
 
-
 @Composable
-fun AppBottomNavigation(
-    items: List<CustomBottomNavigationItem>, selectedItemIndex: Int, onItemSelected: (Int) -> Unit
-) {
-    CustomBottomNavigationBar(
-        items = items, selectedItemIndex = selectedItemIndex, onItemSelected = onItemSelected
-    )
-}
-
-@Preview
-@Composable
-fun AppBottomNavigationPreview() {
-    val bottomNavItems = listOf(
-        CustomBottomNavigationItem("首页"),
-        CustomBottomNavigationItem("护理工作"),
-        CustomBottomNavigationItem("我的")
-    )
-    CustomBottomNavigationBar(items = bottomNavItems, selectedItemIndex = 1, onItemSelected = {})
-}
-
-// 定义底部导航项的数据结构
-data class CustomBottomNavigationItem(
-    val text: String,
-)
-
-@Composable
-fun CustomBottomNavigationBar(
-    modifier: Modifier = Modifier,
-    items: List<CustomBottomNavigationItem>,
+fun AdaptiveAppNavigationScaffold(
+    items: List<AppNavigationItem>,
     selectedItemIndex: Int,
     onItemSelected: (Int) -> Unit,
-    topCornerRadius: Int = 16 // 顶部圆角大小，可以根据需要调整
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
 ) {
-    NavigationBar(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = topCornerRadius.dp, topEnd = topCornerRadius.dp)),
-        containerColor = BottomNavBackground, // 使用在Color.kt中定义的背景色
-        tonalElevation = 4.dp // 可以根据需要调整阴影效果
-    ) {
-        items.forEachIndexed { index, item ->
-            val isSelected = selectedItemIndex == index
-            NavigationBarItem(
-                // 当前项是否被选中
-                selected = isSelected,
-                // 点击事件：更新选中的索引
-                onClick = { onItemSelected(index) },
-                // 关键点：使用 icon 参数来放置我们的自定义Composable
-                icon = {
-                    CustomNavItem(
-                        text = item.text, isSelected = isSelected
-                    )
-                },
-                // 关键点：通过设置颜色来移除默认的指示器背景
-                colors = NavigationBarItemDefaults.colors(
-                    indicatorColor = Color.Transparent
+    val itemColors =
+        NavigationSuiteDefaults.itemColors(
+            navigationBarItemColors =
+                NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
+        )
+
+    NavigationSuiteScaffold(
+        modifier = modifier,
+        navigationSuiteItems = {
+            items.forEachIndexed { index, item ->
+                val isSelected = selectedItemIndex == index
+                item(
+                    selected = isSelected,
+                    onClick = { onItemSelected(index) },
+                    icon = {
+                        CustomNavItem(
+                            text = item.text,
+                            isSelected = isSelected,
+                        )
+                    },
+                    colors = itemColors,
                 )
-            )
-        }
+            }
+        },
+        navigationSuiteColors =
+            NavigationSuiteDefaults.colors(
+                navigationBarContainerColor = BottomNavBackground,
+                navigationRailContainerColor = BottomNavBackground,
+            ),
+        containerColor = Color.Transparent,
+        content = content,
+    )
+}
+
+@PreviewScreenSizes
+@Composable
+fun AdaptiveAppNavigationPreview() {
+    val navigationItems = listOf(
+        AppNavigationItem("首页"),
+        AppNavigationItem("护理工作"),
+        AppNavigationItem("我的")
+    )
+    AdaptiveAppNavigationScaffold(
+        items = navigationItems,
+        selectedItemIndex = 1,
+        onItemSelected = {},
+    ) {
+        Box(modifier = Modifier.fillMaxSize())
     }
 }
+
+data class AppNavigationItem(
+    val text: String,
+)
 
 /**
  * 单个导航项的自定义UI

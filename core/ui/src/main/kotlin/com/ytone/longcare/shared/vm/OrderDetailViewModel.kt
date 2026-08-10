@@ -3,8 +3,7 @@ package com.ytone.longcare.shared.vm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
-import com.ytone.longcare.common.network.ApiResult
-import com.ytone.longcare.common.utils.ToastHelper
+import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
@@ -21,7 +20,6 @@ import javax.inject.Inject
 class OrderDetailViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val unifiedOrderRepository: OrderDetailRepository,
-    private val toastHelper: ToastHelper,
     private val locationFacade: LocationFacade
 ) : ViewModel() {
     companion object {
@@ -68,7 +66,6 @@ class OrderDetailViewModel @Inject constructor(
                 }
 
                 is ApiResult.Failure -> {
-                    toastHelper.showShort(result.message)
                     _uiState.value = OrderDetailUiState.Error(
                         result.message
                     )

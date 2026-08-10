@@ -13,9 +13,8 @@ composeBom = "2026.06.01"
 coreKtx = "1.19.0"
 lifecycle = "2.11.0"
 activityCompose = "1.13.0"
-fragmentCompose = "1.8.9"
 mockk = "1.14.11"
-navigation3 = "1.1.5"
+navigation = "2.9.8"
 appcompat = "1.7.1"
 robolectric = "4.16.1"
 startup = "1.2.0"
@@ -85,9 +84,8 @@ androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-ru
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "lifecycle" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
-androidx-fragment-compose = { group = "androidx.fragment", name = "fragment-compose", version.ref = "fragmentCompose" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
-androidx-navigation3-ui = { group = "androidx.navigation3", name = "navigation3-ui", version.ref = "navigation3" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
 crashreport = { module = "com.tencent.bugly:crashreport", version.ref = "crashreport" }
 face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetection" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
@@ -99,10 +97,7 @@ androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profi
 androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
 androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
-androidx-camera-video = { group = "androidx.camera", name = "camera-video", version.ref = "camerax" }
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
-androidx-camera-extensions = { group = "androidx.camera", name = "camera-extensions", version.ref = "camerax" }
-androidx-camera-compose = { group = "androidx.camera", name = "camera-compose", version.ref = "camerax" }
 
 # Jetpack Compose (using BOM)
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -113,11 +108,13 @@ compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling
 compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 compose-material3-adaptive = { group = "androidx.compose.material3.adaptive", name = "adaptive" }
+compose-material3-adaptive-navigation-suite = { group = "androidx.compose.material3", name = "material3-adaptive-navigation-suite" }
 
 # Data Persistence - Room
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" } # For KSP
+room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 
 # Work
 work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
@@ -132,16 +129,12 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 # Dependency Injection - Hilt
 dagger-hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "dagger" }
 dagger-hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "dagger" }
-hilt-common = { group = "androidx.hilt", name = "hilt-common", version.ref = "hilt" }
 hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hilt" }
-hilt-navigation = { group = "androidx.hilt", name = "hilt-navigation", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hilt" }
-hilt-navigation-fragment = { group = "androidx.hilt", name = "hilt-navigation-fragment", version.ref = "hilt" }
 hilt-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hilt" }
 
 # Networking
 retrofit-core = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
-retrofit-converter-kotlinx-serialization = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization", version.ref = "retrofit" }
 okhttp-core = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" } # OkHttp itself
 okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" } # OkHttp itself
 okio-core = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
@@ -152,6 +145,7 @@ protobuf-lite = { group = "com.google.protobuf", name = "protobuf-lite", version
 retrofit-converter-moshi = { group = "com.squareup.retrofit2", name = "converter-moshi", version.ref = "retrofit" }
 kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 
 # Image Loading
@@ -171,6 +165,7 @@ amap-location = { group = "com.amap.api", name = "location", version.ref = "amap
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "core" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "core" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxJunit" }
 androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" } # Version from BOM
@@ -195,4 +190,3 @@ baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprof
 
 [bundles]
 coil = ["coil-core", "coil-compose", "coil-network-okhttp", "coil-gif", "coil-svg", "coil-video"]
-hilt = ["dagger-hilt-android", "hilt-common", "hilt-work", "hilt-navigation", "hilt-navigation-compose", "hilt-navigation-fragment"]

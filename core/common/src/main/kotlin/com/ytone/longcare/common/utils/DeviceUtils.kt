@@ -179,7 +179,7 @@ class DeviceUtils @Inject constructor(
                 if (it.isNotBlank()) return it.uppercase(Locale.ROOT) // 使用 Locale.ROOT 保证大小写转换的一致性
             }
         } catch (e: Exception) {
-            // Log.w("DeviceUtils", "Cannot get country from TelephonyManager", e)
+            logE("无法从 TelephonyManager 获取国家代码", throwable = e)
         }
         return Locale.getDefault().country.uppercase(Locale.ROOT)
     }

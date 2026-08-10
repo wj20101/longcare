@@ -100,14 +100,6 @@ object ServiceRecordsListRoute
 object TxFaceRoute
 
 /**
- * 位置追踪页面路由
- */
-@Keep
-@Serializable
-object LocationTrackingRoute
-
-
-/**
  * 人脸识别引导页面路由
  * @param orderParams 订单导航参数
  */
@@ -148,13 +140,6 @@ data class UserListRoute(val listType: String)
 @Keep
 @Serializable
 data class UserServiceRecordRoute(val userId: Long, val userName: String, val userAddress: String)
-
-/**
- * NFC测试页面路由
- */
-@Keep
-@Serializable
-object NfcTestRoute
 
 /**
  * 相机页面路由

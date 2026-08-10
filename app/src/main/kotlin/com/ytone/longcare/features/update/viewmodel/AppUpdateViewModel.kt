@@ -1,9 +1,12 @@
 package com.ytone.longcare.features.update.viewmodel
 
-import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.Data
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -11,28 +14,44 @@ import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.model.AppVersionModel
 import com.ytone.longcare.worker.DownloadWorker
 import com.ytone.longcare.common.utils.ApkInstallUtils
+import com.ytone.longcare.platform.update.ApkInstallGateway
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltViewModel
 class AppUpdateViewModel @Inject constructor(
-    @param:ApplicationContext private val context: Context
+    private val workManager: WorkManager,
+    private val apkInstallGateway: ApkInstallGateway,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppUpdateUiState())
     val uiState: StateFlow<AppUpdateUiState> = _uiState.asStateFlow()
 
-    private var currentWorkId: UUID? = null
     private var downloadObservationJob: Job? = null
-    private val workManager = WorkManager.getInstance(context)
-    private var pendingInstallFilePath: String? = null
+
+    private var currentWorkId: UUID?
+        get() = savedStateHandle.get<String>(KEY_CURRENT_WORK_ID)?.toUuidOrNull()
+        set(value) {
+            savedStateHandle[KEY_CURRENT_WORK_ID] = value?.toString()
+        }
+
+    private var pendingInstallFilePath: String?
+        get() = savedStateHandle[KEY_PENDING_INSTALL_PATH]
+        set(value) {
+            savedStateHandle[KEY_PENDING_INSTALL_PATH] = value
+        }
+
+    init {
+        currentWorkId?.let(::observeDownloadProgress)
+    }
 
     fun onDialogPresented() {
         if (_uiState.value.isDownloading || _uiState.value.hasPendingInstall || currentWorkId != null) {
@@ -52,10 +71,17 @@ class AppUpdateViewModel @Inject constructor(
         val data = Data.Builder()
             .putString(DownloadWorker.KEY_URL, appVersionModel.downUrl)
             .putString(DownloadWorker.KEY_FILE_NAME, "longcare_${appVersionModel.versionName}.apk")
+            .putLong(DownloadWorker.KEY_EXPECTED_VERSION_CODE, appVersionModel.versionCode.toLong())
             .build()
 
         val downloadWorkRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
             .setInputData(data)
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build()
 
         currentWorkId = downloadWorkRequest.id
@@ -135,6 +161,7 @@ class AppUpdateViewModel @Inject constructor(
                 downloadProgress = 0,
                 hasPendingInstall = false
             )
+            clearCurrentWorkTracking(workId)
         }
     }
 
@@ -143,8 +170,8 @@ class AppUpdateViewModel @Inject constructor(
     }
 
     private fun installApk(filePath: String) {
-        if (ApkInstallUtils.canInstallApk(context)) {
-            when (val result = ApkInstallUtils.installApk(context, filePath)) {
+        if (apkInstallGateway.canInstallApk()) {
+            when (val result = apkInstallGateway.installApk(filePath)) {
                 ApkInstallUtils.LaunchResult.Launched -> {
                     _uiState.value = _uiState.value.copy(error = null)
                 }
@@ -176,7 +203,7 @@ class AppUpdateViewModel @Inject constructor(
                 }
             }
         } else {
-            when (val result = ApkInstallUtils.requestInstallPermission(context)) {
+            when (val result = apkInstallGateway.requestInstallPermission()) {
                 ApkInstallUtils.LaunchResult.Launched -> {
                     pendingInstallFilePath = filePath
                     _uiState.value = _uiState.value.copy(
@@ -217,8 +244,8 @@ class AppUpdateViewModel @Inject constructor(
      */
     fun checkPermissionAndInstall() {
         pendingInstallFilePath?.let { filePath ->
-            if (ApkInstallUtils.canInstallApk(context)) {
-                when (val result = ApkInstallUtils.installApk(context, filePath)) {
+            if (apkInstallGateway.canInstallApk()) {
+                when (val result = apkInstallGateway.installApk(filePath)) {
                     ApkInstallUtils.LaunchResult.Launched -> {
                         pendingInstallFilePath = null
                         _uiState.value = _uiState.value.copy(
@@ -261,7 +288,7 @@ class AppUpdateViewModel @Inject constructor(
     }
 
     private fun handleManualInstallFallback(filePath: String, failureMessage: String) {
-        when (val fallback = ApkInstallUtils.openApkForManualInstall(context, filePath)) {
+        when (val fallback = apkInstallGateway.openForManualInstall(filePath)) {
             ApkInstallUtils.LaunchResult.Launched -> {
                 _uiState.value = _uiState.value.copy(
                     hasPendingInstall = false,
@@ -324,8 +351,12 @@ class AppUpdateViewModel @Inject constructor(
 
     private companion object {
         const val UPDATE_DIAGNOSTIC_CATEGORY = "app_update"
+        const val KEY_CURRENT_WORK_ID = "app_update.current_work_id"
+        const val KEY_PENDING_INSTALL_PATH = "app_update.pending_install_path"
     }
 }
+
+private fun String.toUuidOrNull(): UUID? = runCatching(UUID::fromString).getOrNull()
 
 data class AppUpdateUiState(
     val isDownloading: Boolean = false,
