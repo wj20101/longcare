@@ -1,6 +1,6 @@
 # System Overview
 
-Last verified: 2026-08-09
+Last verified: 2026-08-14
 
 This document describes the current runtime architecture as implemented today.
 
@@ -53,7 +53,9 @@ LongCare is an Android app with a shell-first architecture:
   - route screen is currently in `:app` (`features/home/ui/HomeScreen.kt`)
 - `:feature:identification`
   - has feature entry constant, domain/data/use-case/ViewModel/DI support
-  - route screen is currently in `:app` (`features/identification/ui/IdentificationScreen.kt`)
+  - owns the default CameraX/ML Kit face-verification page and `CheckFace` orchestration
+  - identification host screen is currently in `:app`
+    (`features/identification/ui/IdentificationScreen.kt`)
 - `:feature:location`
   - owns location service/managers/reporting; tracking is embedded in service flows rather than exposed as a standalone route
 - `:feature:photoupload`
@@ -122,8 +124,10 @@ The Android component surface is defined in `app/src/main/AndroidManifest.xml`:
 
 - AMap Location SDK (`com.amap.api:location`) for foreground/background location flows
 - Tencent COS SDK (`com.qcloud.cos:cos-android`) via `core/data` COS repository layer
-- Tencent face verification SDK (`WbCloudFaceVerifySdk`) via an app-owned UI controller
-- ML Kit face detection (`com.google.mlkit:face-detection`) for face image processing/validation
+- CameraX + ML Kit face detection (`com.google.mlkit:face-detection`) provide the default
+  service-person capture page; verification uses the documented `/V1/User/CheckFace` contract
+- Tencent face verification SDK (`WbCloudFaceVerifySdk`) remains behind an app-owned UI controller
+  for legacy compatibility routes and is not the default order-identification entry
 - Bugly crash reporting (`com.tencent.bugly:crashreport`) behind `CrashReportGateway`; local diagnostics
   remain available in Debug, while remote reporting is enabled only after consent and successful SDK initialization
 - QLZ assessment SDK 1.3.0.2 through app-owned UI/device controllers; Sale domain contracts remain
@@ -140,7 +144,9 @@ The codebase is in a transitional but stable state:
 - Room upgrades use explicit migrations and never delete the production database as an exception fallback
 - WorkManager-backed update checks and downloads can reconnect after Activity/ViewModel recreation
 - boot notification recovery resolves persisted session state inside `goAsync()` instead of reading the initial `Unknown` value
-- route screens no longer force portrait orientation, allowing Android large-screen window policies to apply
+- app-owned routes hosted by `MainActivity` are portrait-only; the Android 16 restricted-resizability
+  compatibility opt-out is scoped to that Activity for targetSdk 36, while SDK-owned Activities retain
+  their own orientation policies
 - top-level destinations use Material 3 `NavigationSuiteScaffold`, selecting bottom navigation or a rail from current window size/posture
 - service execution chain is implemented end-to-end
 - UI/module ownership migration is still in progress, with significant route-bound UI remaining in `:app`
@@ -153,5 +159,8 @@ The codebase is in a transitional but stable state:
 - Temporary captures are removed after processing, including failure and cancellation paths. Registration/task-owned files are removed when the user deletes or abandons them and after successful completion.
 - `core:data` couples order-image row deletion with managed-file deletion, so every service-completion and order-cleanup caller gets the same local-file lifecycle automatically.
 - All image thumbnails open the shared `PhotoPreviewDialog`; the former upload, sales, automatic-face, and manual-face preview implementations have been removed.
-- ML-driven face capture retains specialized camera analysis because it has a different runtime contract, while its persistent output and preview still pass through the shared boundaries.
+- ML-driven face capture retains specialized lifecycle-bound CameraX analysis because it has a
+  different runtime contract. The default verification path keeps the captured face in memory,
+  compresses it under the shared 500 KiB face-comparison policy, and sends raw Base64 without a
+  gallery or persistent-preview step.
 - Face-verification preview/Base64 loading reads the already-compressed managed JPEG on an injected IO dispatcher; Compose only renders ViewModel state and does not decode or recompress on the main thread.

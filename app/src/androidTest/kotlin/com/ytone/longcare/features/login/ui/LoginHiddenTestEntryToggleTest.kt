@@ -16,13 +16,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class LoginProductionSurfaceTest {
+class LoginHiddenTestEntryTest {
 
     @get:Rule
     val composeRule = createComposeRule()
 
     @Test
-    fun long_pressing_logo_does_not_expose_test_controls() {
+    fun long_pressing_logo_opens_all_validation_entries() {
         composeRule.setContent {
             LongCareTheme {
                 LoginScreenContent(
@@ -40,12 +40,17 @@ class LoginProductionSurfaceTest {
             }
         }
 
-        composeRule.onNodeWithText("碰一碰测试").assertDoesNotExist()
+        composeRule.onNodeWithText("功能验证").assertDoesNotExist()
 
         composeRule.onNodeWithTag("login_main_logo").performTouchInput {
             longClick()
         }
 
-        composeRule.onNodeWithText("碰一碰测试").assertDoesNotExist()
+        composeRule.onNodeWithText("功能验证").assertExists()
+        composeRule.onNodeWithText("人脸验证").assertExists()
+        composeRule.onNodeWithText("碰一碰 / R65C 验证").assertExists()
+        composeRule.onNodeWithText("拍照验证").assertExists()
+        composeRule.onNodeWithText("备用人脸验证").assertExists()
+        composeRule.onNodeWithText("人脸采集验证").assertExists()
     }
 }

@@ -10,6 +10,7 @@ internal fun NavGraphBuilder.registerSupportNavGraphs(navController: NavControll
     registerFaceRecognitionGuideRoute(navController)
     registerSelectDeviceRoute(navController)
     registerIdentificationRoute(navController)
+    registerDefaultFaceVerificationRoute(navController)
     registerCameraRoute(navController)
     registerManualFaceCaptureRoute(navController)
     registerWebViewRoute(navController)

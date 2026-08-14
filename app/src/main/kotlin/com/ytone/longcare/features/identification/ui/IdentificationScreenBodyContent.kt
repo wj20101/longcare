@@ -63,7 +63,7 @@ internal fun IdentificationBodyContent(
             onVerifyClick = onVerifyElder,
             viewModel = identificationViewModel,
             faceVerificationState = faceVerificationState,
-            photoUploadState = photoUploadState
+            photoUploadState = photoUploadState,
         )
 
         Spacer(modifier = Modifier.height(24.dp))

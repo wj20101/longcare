@@ -1,0 +1,30 @@
+<resources>
+    <string name="default_face_verification_title">人脸验证</string>
+    <string name="default_face_verification_back">返回</string>
+    <string name="default_face_verification_processing_title">正在处理人脸照片</string>
+    <string name="default_face_verification_processing_message">请稍候，请勿退出当前页面</string>
+    <string name="default_face_verification_verifying_title">正在核验身份</string>
+    <string name="default_face_verification_verifying_message">正在进行人脸对比验证</string>
+    <string name="default_face_verification_success_title">人脸验证通过</string>
+    <string name="default_face_verification_success_message">身份验证已完成</string>
+    <string name="default_face_verification_continue">完成</string>
+    <string name="default_face_verification_error_title">人脸验证未通过</string>
+    <string name="default_face_verification_retry">重新拍摄</string>
+    <string name="default_face_verification_order_id_unsupported">订单 ID 超出当前接口支持范围，请返回并核对订单信息</string>
+    <string name="face_capture_prepare_title">请准备</string>
+    <string name="face_capture_countdown_description">准备拍摄，倒计时%1$d秒</string>
+    <string name="face_capture_starting_camera">正在启动相机…</string>
+    <string name="face_capture_wait_for_countdown">倒计时结束后开始识别</string>
+    <string name="face_capture_searching">寻找人脸中…</string>
+    <string name="face_capture_checking_quality">检测到人脸，正在检查质量</string>
+    <string name="face_capture_confirming_progress">请保持不动，正在确认 %1$d%%</string>
+    <string name="face_capture_success">采集成功</string>
+    <string name="face_capture_camera_permission_title">需要相机权限</string>
+    <string name="face_capture_camera_permission_message">为了完成人脸验证，需要使用相机拍摄人脸</string>
+    <string name="face_capture_camera_permission_settings_message">相机权限已被停用，请前往应用设置开启后继续验证</string>
+    <string name="face_capture_grant_permission">授予权限</string>
+    <string name="face_capture_open_settings">打开应用设置</string>
+    <string name="face_capture_camera_unavailable_title">相机暂时无法使用</string>
+    <string name="face_capture_camera_unavailable_message">请确认设备存在可用相机，且相机未被其他应用占用，然后重试</string>
+    <string name="face_capture_camera_retry">重试</string>
+</resources>

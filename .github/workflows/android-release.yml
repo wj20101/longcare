@@ -56,6 +56,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
       - name: Reject tag-triggered auto version bump
         run: |
           set -euo pipefail
@@ -115,6 +118,7 @@ jobs:
         run: |
           bash scripts/quality/verify_no_tracked_keystore_files.sh .
           bash scripts/quality/verify_ci_workflow_quality.sh
+          bash scripts/quality/verify_release_validation_entry.sh .
           bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
           bash scripts/quality/verify_jetpack_compat_apis.sh
           bash scripts/quality/verify_baselineprofile_journeys.sh

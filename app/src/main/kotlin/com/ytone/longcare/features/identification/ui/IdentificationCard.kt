@@ -36,7 +36,7 @@ fun IdentificationCard(
     viewModel: IdentificationViewModel,
     faceVerificationState: FaceVerificationState,
     photoUploadState: PhotoUploadState = PhotoUploadState.Initial,
-    faceSetupState: FaceSetupState = FaceSetupState.Initial
+    faceSetupState: FaceSetupState = FaceSetupState.Initial,
 ) {
     val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
     val currentVerificationType by viewModel.currentVerificationType.collectAsStateWithLifecycle()

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <activity
+            android:name=".presentation.validation.FaceVerificationValidationActivity"
+            android:exported="true"
+            android:label="@string/face_validation_launcher_label"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.LongCare"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity"
+            tools:replace="android:exported">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

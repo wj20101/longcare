@@ -93,6 +93,10 @@ fun NavController.navigateToIdentification(orderParams: OrderNavParams) {
     }
 }
 
+fun NavController.navigateToDefaultFaceVerification(orderParams: OrderNavParams) {
+    navigate(DefaultFaceVerificationRoute(orderParams = orderParams))
+}
+
 fun NavController.navigateToUserList(listType: String) {
     navigate(UserListRoute(listType))
 }

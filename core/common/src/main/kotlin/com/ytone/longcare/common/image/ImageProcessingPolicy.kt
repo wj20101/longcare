@@ -22,6 +22,20 @@ data class ImageProcessingPolicy(
 }
 
 object ImageProcessingPolicies {
+    /**
+     * `/V1/User/CheckFace` requires the decoded image payload to stay within 500 kB.
+     * Keep this limit next to the app-wide image policies so feature code does not
+     * introduce another ad-hoc JPEG configuration.
+     */
+    val FACE_COMPARISON_API =
+        ImageProcessingPolicy(
+            targetShortEdgePx = null,
+            initialJpegQuality = 90,
+            minimumJpegQuality = 55,
+            jpegQualityStep = 5,
+            maxOutputBytes = 500_000L,
+        )
+
     val WATERMARKED_PHOTO =
         ImageProcessingPolicy(
             targetShortEdgePx = 1080,

@@ -48,8 +48,8 @@ This includes:
 - the unexported activity declarations required by both variants
 
 The current Release no-op sheet and navigation callback implementations are removed. Validation
-classes moved out of the Debug source set use a production-neutral `features.validation` package
-instead of a `debug` package.
+classes moved out of the Debug source set use the app shell's production-neutral
+`presentation.validation` package instead of the frozen legacy `features` tree or a `debug` package.
 
 Debug-only dependency injection and `MockInterceptor` stay in `src/debug` and remain excluded from
 Release.

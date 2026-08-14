@@ -29,5 +29,8 @@ object NavigationConstants {
      */
     const val FACE_IMAGE_PATH_KEY = "face_image_path"
 
+    /** 默认人脸服务比对成功后返回身份认证页面的结果。 */
+    const val DEFAULT_FACE_VERIFICATION_RESULT_KEY = "default_face_verification_result"
+
     const val WATERMARK_DATA_KEY = "watermark_data_key"
 }

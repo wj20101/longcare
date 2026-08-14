@@ -20,7 +20,8 @@ internal fun NavGraphBuilder.registerEntryNavGraphs(navController: NavController
         LoginScreen(
             actions = LoginFeatureActions(
                 onLoginSuccess = { navController.navigateToHomeFromLogin() },
-                onOpenWebPage = { url, title -> navController.navigateToWebView(url, title) }
+                onOpenWebPage = { url, title -> navController.navigateToWebView(url, title) },
+                validationEntryActions = navController.createLoginValidationEntryActions(),
             )
         )
     }

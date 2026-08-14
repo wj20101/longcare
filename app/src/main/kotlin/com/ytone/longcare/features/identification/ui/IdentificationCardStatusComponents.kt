@@ -3,7 +3,9 @@ package com.ytone.longcare.features.identification.ui
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.R
 import com.ytone.longcare.features.identification.vm.FaceSetupState
 import com.ytone.longcare.features.identification.vm.FaceVerificationState
 import com.ytone.longcare.features.identification.vm.IdentificationState
@@ -96,7 +98,11 @@ internal fun IdentificationCardStatusArea(
                 LoadingStatusRow(text = statusText)
             } else {
                 PrimaryActionButton(
-                    text = if (personType == IdentificationConstants.ELDER) "拍照验证" else "进行${personType}识别",
+                    text = if (personType == IdentificationConstants.ELDER) {
+                        stringResource(R.string.identification_elder_photo_action)
+                    } else {
+                        "进行${personType}识别"
+                    },
                     enabled = isButtonEnabled,
                     textSize = 12.sp,
                     onClick = onVerifyClick

@@ -65,6 +65,15 @@
       "likely_fix": "Restore workflow governance requirements such as retention, pinning, or trigger policy."
     },
     {
+      "id": "release_validation_entry",
+      "name": "Release Validation Entry Contract",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/verify_release_validation_entry.sh",
+      "likely_fix": "Restore the shared hidden validation entry sources and Release-safe navigation contract."
+    },
+    {
       "id": "release_exported_components",
       "name": "Release Exported Component Allowlist",
       "layer": "release-required",

@@ -66,6 +66,8 @@
     <string name="face_recognition_guide_subtitle">请按照要求进行人脸识别</string>
     <string name="face_recognition_guide_start_button">开始人脸识别</string>
     <string name="face_recognition_guide_privacy_agreement">提通科技将手机并提供您身份验证过程中产生的图像、视频、数据信息以确认您的本人身份避免的身份信息被盗用，勾选即表示您同意人脸信息的手机、使用、保存和删除</string>
+    <string name="identification_elder_photo_action">拍摄老人照片</string>
+    <string name="identification_elder_photo_purpose">拍摄老人核验照片</string>
     <string name="new_version_found">发现新版本</string>
     <string name="update_now">立即更新</string>
     <string name="update_later">稍后更新</string>
@@ -80,4 +82,52 @@
     <string name="watermark_capture_time_label">拍摄时间:</string>
     <string name="watermark_capture_location_label">拍摄地址:</string>
     <string name="watermark_coordinates_label">卫星定位:</string>
+
+    <!-- 隐藏功能验证入口（Debug 与 Release 共用） -->
+    <string name="face_validation_title">人脸验证</string>
+    <string name="face_validation_close">关闭人脸验证</string>
+    <string name="face_validation_description">请先完成账号登录，再输入有效订单 ID。验证过程使用正式人脸验证页面和服务接口。</string>
+    <string name="face_validation_order_id">订单 ID</string>
+    <string name="face_validation_invalid_order_id">请输入有效的订单 ID</string>
+    <string name="face_validation_order_id_out_of_range">订单 ID 超出人脸验证接口支持范围</string>
+    <string name="face_validation_open">进入人脸验证</string>
+    <string name="face_validation_photo_metrics">照片信息：%1$d × %2$d px\n压缩后：%3$.1f KiB（%4$d 字节）</string>
+    <string name="login_validation_entry_title">功能验证</string>
+    <string name="login_validation_entry_description">可在此验证人脸、读卡和拍照等设备及业务能力。</string>
+    <string name="login_validation_entry_face_verification">人脸验证</string>
+    <string name="login_validation_entry_face_verification_description">输入订单 ID，使用正式服务验证人脸</string>
+    <string name="login_validation_entry_nfc">碰一碰 / R65C 验证</string>
+    <string name="login_validation_entry_nfc_description">验证手机 NFC 或 R65C 外接读卡器读取卡号</string>
+    <string name="login_validation_entry_camera">拍照验证</string>
+    <string name="login_validation_entry_camera_description">验证拍照、水印、压缩与预览流程</string>
+    <string name="login_validation_entry_backup_face">备用人脸验证</string>
+    <string name="login_validation_entry_backup_face_description">验证备用人脸识别流程</string>
+    <string name="login_validation_entry_manual_face">人脸采集验证</string>
+    <string name="login_validation_entry_manual_face_description">验证手动人脸采集流程</string>
+
+    <string name="nfc_validation_title">碰一碰验证</string>
+    <string name="nfc_validation_back">返回</string>
+    <string name="nfc_validation_native_title">手机 NFC 读卡</string>
+    <string name="nfc_validation_native_ready">请将卡片贴近手机 NFC 感应区域。读取成功后可查看并复制卡号。</string>
+    <string name="nfc_validation_native_disabled">当前设备支持 NFC，但 NFC 开关尚未开启。</string>
+    <string name="nfc_validation_open_settings">打开 NFC 设置</string>
+    <string name="nfc_validation_r65c_title">R65C 外接读卡器</string>
+    <string name="nfc_validation_r65c_description">当前设备未提供系统 NFC，将自动接收外接读卡器输入。请保持本页在前台后刷卡。</string>
+    <string name="nfc_validation_status">状态</string>
+    <string name="nfc_validation_status_waiting_focus">正在准备</string>
+    <string name="nfc_validation_status_ready">等待刷卡</string>
+    <string name="nfc_validation_status_receiving">正在接收</string>
+    <string name="nfc_validation_status_success">读取成功</string>
+    <string name="nfc_validation_status_failure">读取失败：%1$s</string>
+    <string name="nfc_validation_parse_failure">未识别出有效卡号</string>
+    <string name="nfc_validation_live_input">当前输入</string>
+    <string name="nfc_validation_raw_input">最近原始输入</string>
+    <string name="nfc_validation_normalized_uid">卡号</string>
+    <string name="nfc_validation_completed_at">完成时间</string>
+    <string name="nfc_validation_empty_value">—</string>
+    <string name="nfc_validation_no_uid">未识别出卡号</string>
+    <string name="nfc_validation_refocus">重新准备</string>
+    <string name="nfc_validation_clear">清空结果</string>
+    <string name="nfc_validation_copy">复制卡号</string>
+    <string name="nfc_validation_copy_success">卡号已复制</string>
 </resources>

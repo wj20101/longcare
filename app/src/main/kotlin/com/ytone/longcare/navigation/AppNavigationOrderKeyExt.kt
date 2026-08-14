@@ -50,3 +50,7 @@ fun NavController.navigateToSelectDevice(orderKey: OrderKey) {
 fun NavController.navigateToIdentification(orderKey: OrderKey) {
     navigateToIdentification(orderKey.toOrderNavParams())
 }
+
+fun NavController.navigateToDefaultFaceVerification(orderKey: OrderKey) {
+    navigateToDefaultFaceVerification(orderKey.toOrderNavParams())
+}

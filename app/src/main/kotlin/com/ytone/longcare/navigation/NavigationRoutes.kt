@@ -124,6 +124,14 @@ data class SelectDeviceRoute(val orderParams: OrderNavParams)
 data class IdentificationRoute(val orderParams: OrderNavParams)
 
 /**
+ * 订单默认人脸检测与服务端比对页面路由。
+ * @param orderParams 订单导航参数
+ */
+@Keep
+@Serializable
+data class DefaultFaceVerificationRoute(val orderParams: OrderNavParams)
+
+/**
  * 用户列表页面路由
  * @param listType 列表类型：HAVE_SERVICE(已服务工时)、NO_SERVICE(未服务工时)、SERVICE_COUNT(服务次数)
  */

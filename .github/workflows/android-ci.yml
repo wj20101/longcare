@@ -79,6 +79,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
       - name: Set up shared Android build environment
         uses: ./.github/actions/android-build-env
         with:
@@ -104,6 +107,7 @@ jobs:
             echo "- coroutine cancellation and empty catch guards"
             echo "- target SDK and exact alarm policy"
             echo "- tracked keystore guard"
+            echo "- Release validation entry contract"
             echo "- workflow quality guard"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -111,6 +115,7 @@ jobs:
         run: |
           bash scripts/quality/verify_no_tracked_keystore_files.sh .
           bash scripts/quality/verify_ci_workflow_quality.sh
+          bash scripts/quality/verify_release_validation_entry.sh .
           bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
           bash scripts/quality/verify_jetpack_compat_apis.sh
           bash scripts/quality/verify_baselineprofile_journeys.sh

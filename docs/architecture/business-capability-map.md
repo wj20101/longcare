@@ -1,6 +1,6 @@
 # Business Capability Map
 
-Last verified: 2026-08-07
+Last verified: 2026-08-14
 
 This map focuses on current implemented behavior and its technical ownership.
 
@@ -40,22 +40,30 @@ Status: implemented
 
 ## 3) Identification and face-related capabilities
 
-Status: implemented (with multiple paths)
+Status: implemented
 
 - Main entry routes:
   - `IdentificationRoute`
-  - `TxFaceRoute` (Tencent face verification test/flow)
-  - `ManualFaceCaptureRoute`
+  - `DefaultFaceVerificationRoute`
+  - `TxFaceRoute` (legacy Tencent compatibility/test flow; not the default order path)
+  - `ManualFaceCaptureRoute` (legacy face-setup compatibility flow)
   - `FaceRecognitionGuideRoute`
 - Main flow:
   - service/NFC flow enters identification
-  - identification supports capture, upload, setup, and verification transitions
-  - manual face capture can return image path via navigation saved state
+  - service-person verification opens `DefaultFaceVerificationRoute`, which performs a CameraX
+    countdown/stability capture and calls documented `POST /V1/User/CheckFace` with exactly
+    `orderId` and raw Base64 `faceImg`
+  - successful default verification returns through navigation saved state and unlocks the elder
+    record-photo step; elder capture continues to use the standard watermarked camera/upload flow
+  - Tencent SDK and manual capture remain compatibility routes but are not selected by the default
+    identification action
 - Key dependencies:
-  - Tencent face verification SDK (`WbCloudFaceVerifySdk`)
-  - ML Kit face detection
+  - CameraX + ML Kit face detection in `:feature:identification`
+  - `CheckFaceUseCase` and `CheckFaceGateway` in `:feature:identification`
+  - Tencent face verification SDK (`WbCloudFaceVerifySdk`) behind an app adapter for legacy flows
   - identification domain/data/use cases in `:feature:identification`
-  - route screens currently in `:app` for identification and related UI
+  - identification host screen remains in `:app`; the default face-verification screen and capture
+    implementation live in `:feature:identification`
 
 ## 4) Location tracking and reporting
 
@@ -125,6 +133,9 @@ Status: implemented
   - Android NFC intent filters in app manifest
   - NFC workflow ViewModel/delegates in `:app` feature package
   - location/NFC coordination in workflow handlers
+  - Debug and Release both expose the internal `NfcValidationActivity` from the hidden login-logo
+    validation sheet for native NFC and R65C external-reader verification; the Release component is
+    not exported and Debug-only mock networking remains excluded
 
 ## 8) QLZ assessment and sales leads
 

@@ -35,25 +35,6 @@
         "regex:com\\.qcloud:qcloud-foundation:[0-9]+\\.[0-9]+\\.[0-9]+",
         "regex:qlzsdk-[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"
       ]
-    },
-    {
-      "id": "AndroidGradlePluginVersion",
-      "owner": "mobile-platform",
-      "review_by": "2026-11-09",
-      "reason": "Android Gradle Plugin patch-level newer-version hints are advisory during CI verification. Track AGP upgrades deliberately instead of failing unrelated validation paths.",
-      "allowed_sources": [
-        "gradle/libs.versions.toml",
-        "gradle/wrapper/gradle-wrapper.properties"
-      ]
-    },
-    {
-      "id": "NewerVersionAvailable",
-      "owner": "mobile-platform",
-      "review_by": "2026-11-09",
-      "reason": "Version catalog newer-version checks are advisory and currently tracked outside lint gating. Restrict this waiver to warnings emitted from gradle/libs.versions.toml only.",
-      "allowed_sources": [
-        "gradle/libs.versions.toml"
-      ]
     }
   ]
 }

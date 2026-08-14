@@ -1,8 +1,11 @@
 # UI And Screen Map
 
-Last verified: 2026-08-09
+Last verified: 2026-08-14
 
 This document lists route-bound screens and practical ownership in the current codebase.
+
+`MainActivity` is fixed to portrait and hosts all app-owned Compose routes. Third-party SDK Activities
+keep their own orientation declarations rather than inheriting an app-wide override.
 
 ## 1) Route groups and screens
 
@@ -30,12 +33,14 @@ This document lists route-bound screens and practical ownership in the current c
 
 ### Support routes
 
-- `TxFaceRoute` -> `FaceVerificationWithAutoSignScreen` (`:app`)
+- `TxFaceRoute` -> `FaceVerificationWithAutoSignScreen` (`:app`, legacy compatibility/test route)
 - `UserListRoute` -> `UserListScreen` (`:app`)
 - `UserServiceRecordRoute` -> `UserServiceRecordScreen` (`:app`)
 - `FaceRecognitionGuideRoute` -> `FaceRecognitionGuideScreen` (`:app`)
 - `SelectDeviceRoute` -> route/screen exists (`SelectDeviceScreen`, `:app`), but current start-order navigation path bypasses it
 - `IdentificationRoute` -> `IdentificationScreen` (`:app`)
+- `DefaultFaceVerificationRoute` -> `DefaultFaceVerificationScreen`
+  (`:feature:identification`, default service-person order verification page)
 - `CameraRoute` -> `CameraScreen` (`:app`)
 - `ManualFaceCaptureRoute` -> `ManualFaceCaptureScreen` (`:app`)
 - `WebViewRoute` -> `WebViewScreen` (`:app`)
@@ -45,6 +50,22 @@ This document lists route-bound screens and practical ownership in the current c
 - app update modal:
   - `AppUpdateDialog` (`:app`, shown from `MainApp`)
 
+### Hidden validation entry points
+
+- Long-pressing the login logo opens a Material 3 `功能验证` sheet in both Debug and Release builds.
+  Release does not expose a launcher icon or normal navigation entry for this sheet.
+- `FaceVerificationValidationActivity` (`:app` main source set)
+  - accepts an order ID and reuses the production `DefaultFaceVerificationScreen` plus real API path
+  - shows the final uploaded JPEG dimensions and compressed byte size after a valid face capture
+  - is internal (`exported=false`) in Release; Debug keeps its additional launcher overlay
+- `NfcValidationActivity` (`:app` main source set)
+  - uses native NFC foreground dispatch on NFC-capable devices and the R65C external-reader input
+    path on devices without system NFC
+  - is internal (`exported=false`) in both build variants and opens from the hidden sheet
+- the same shared sheet provides real shortcuts to the production camera, backup face verification,
+  and manual face-capture flows. Mock networking and Debug dependency injection remain excluded from
+  Release.
+
 ## 2) Route type inventory
 
 Typed routes defined under `navigation/`:
@@ -52,7 +73,10 @@ Typed routes defined under `navigation/`:
 - object routes:
   - `LoginRoute`, `HomeRoute`, `CarePlansListRoute`, `ServiceRecordsListRoute`, `TxFaceRoute`, `ManualFaceCaptureRoute`
 - parameterized routes:
-  - `ServiceRoute`, `NursingExecutionRoute`, `WebViewRoute`, `SelectServiceRoute`, `PhotoUploadRoute`, `FaceRecognitionGuideRoute`, `SelectDeviceRoute`, `IdentificationRoute`, `UserListRoute`, `UserServiceRecordRoute`, `CameraRoute`
+  - `ServiceRoute`, `NursingExecutionRoute`, `WebViewRoute`, `SelectServiceRoute`,
+    `PhotoUploadRoute`, `FaceRecognitionGuideRoute`, `SelectDeviceRoute`,
+    `IdentificationRoute`, `DefaultFaceVerificationRoute`, `UserListRoute`,
+    `UserServiceRecordRoute`, `CameraRoute`
 - service-flow parameterized routes:
   - `NfcSignInRoute`, `ServiceCountdownRoute`, `ServiceCompleteRoute`, `EndServiceSelectionRoute`
 
@@ -89,7 +113,8 @@ Major screen packages currently under `app/src/main/kotlin/com/ytone/longcare/fe
   - owns location service/managers/VM; tracking is embedded in service execution and has no standalone route
 - `:feature:login`, `:feature:home`, `:feature:identification`
   - currently provide feature entry constants, actions, domain/VM/DI support
-  - route-bound UI still in `:app`
+  - `:feature:identification` also owns `DefaultFaceVerificationScreen` and its shared CameraX/ML Kit
+    capture UI; its `IdentificationScreen` host remains in `:app`
 - `:feature:photoupload`, `:feature:servicecountdown`
   - currently provide API/domain/viewmodel/delegate layers
   - route-bound Compose screens still in `:app`
@@ -105,6 +130,9 @@ Major screen packages currently under `app/src/main/kotlin/com/ytone/longcare/fe
   upload, sales registration, automatic face capture, and manual face capture
 - one standard watermarked `CameraRoute` reused by nursing and sales; face-analysis screens keep
   their specialized capture UI while sharing preview and persistent-image processing
+- service-person verification from `IdentificationRoute` uses `DefaultFaceVerificationRoute`; its
+  result returns through `DEFAULT_FACE_VERIFICATION_RESULT_KEY`, while the elder step remains the
+  standard watermarked `CameraRoute`
 - Material 3 adaptive navigation suite keeps phone bottom navigation and selects a navigation rail
   for larger windows without duplicating destination state
 

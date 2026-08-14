@@ -1,9 +1,9 @@
 package com.ytone.longcare.features.facecapture
 
 import androidx.camera.view.LifecycleCameraController
+import androidx.camera.view.PreviewView
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -11,26 +11,49 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Observer
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @Composable
 internal fun FaceCaptureCameraPreview(
     cameraController: LifecycleCameraController,
+    onStreamStateChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val latestOnStreamStateChanged by rememberUpdatedState(onStreamStateChanged)
+    val previewView = remember(context) { PreviewView(context) }
+
+    DisposableEffect(previewView, lifecycleOwner) {
+        val observer = Observer<PreviewView.StreamState> { streamState ->
+            latestOnStreamStateChanged(streamState == PreviewView.StreamState.STREAMING)
+        }
+        previewView.previewStreamState.observe(lifecycleOwner, observer)
+
+        onDispose {
+            previewView.previewStreamState.removeObserver(observer)
+        }
+    }
+
     AndroidView(
-        factory = { context ->
-            androidx.camera.view.PreviewView(context).apply {
-                controller = cameraController
-            }
+        factory = {
+            previewView.apply { controller = cameraController }
         },
+        update = { view -> view.controller = cameraController },
         modifier = modifier.semantics {
-            contentDescription = "相机预览，用于人脸捕获"
+            contentDescription = "相机预览，用于人脸采集"
         }
     )
 }
@@ -38,15 +61,14 @@ internal fun FaceCaptureCameraPreview(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun FaceCaptureTopBar(
-    hasCapturedFaces: Boolean,
+    title: String,
     onNavigateBack: () -> Unit,
-    onClearAllFaces: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
         title = {
             Text(
-                text = "人脸捕获",
+                text = title,
                 color = Color.White,
                 fontWeight = FontWeight.Bold
             )
@@ -58,17 +80,6 @@ internal fun FaceCaptureTopBar(
                     contentDescription = "返回",
                     tint = Color.White
                 )
-            }
-        },
-        actions = {
-            if (hasCapturedFaces) {
-                IconButton(onClick = onClearAllFaces) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "清空所有照片",
-                        tint = Color.White
-                    )
-                }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(

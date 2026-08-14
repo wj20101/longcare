@@ -12,7 +12,7 @@ class PermissionRequestPolicyTest {
         val files = listOf(
             "src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraPermissionGate.kt",
             "src/main/kotlin/com/ytone/longcare/features/face/ui/ManualFaceCaptureEffects.kt",
-            "src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureScreen.kt"
+            "../feature/identification/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureScreen.kt"
         )
 
         files.forEach { path ->

@@ -18,13 +18,55 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.ytone.longcare.feature.identification.R
 
 @Composable
 internal fun PermissionDeniedScreen(
-    onRequestPermission: () -> Unit,
+    showSettingsAction: Boolean,
+    onPermissionAction: () -> Unit,
     onNavigateBack: () -> Unit
+) {
+    CameraProblemScreen(
+        title = stringResource(R.string.face_capture_camera_permission_title),
+        message = if (showSettingsAction) {
+            stringResource(R.string.face_capture_camera_permission_settings_message)
+        } else {
+            stringResource(R.string.face_capture_camera_permission_message)
+        },
+        actionLabel = if (showSettingsAction) {
+            stringResource(R.string.face_capture_open_settings)
+        } else {
+            stringResource(R.string.face_capture_grant_permission)
+        },
+        onAction = onPermissionAction,
+        onNavigateBack = onNavigateBack,
+    )
+}
+
+@Composable
+internal fun CameraUnavailableScreen(
+    onRetry: () -> Unit,
+    onNavigateBack: () -> Unit,
+) {
+    CameraProblemScreen(
+        title = stringResource(R.string.face_capture_camera_unavailable_title),
+        message = stringResource(R.string.face_capture_camera_unavailable_message),
+        actionLabel = stringResource(R.string.face_capture_camera_retry),
+        onAction = onRetry,
+        onNavigateBack = onNavigateBack,
+    )
+}
+
+@Composable
+private fun CameraProblemScreen(
+    title: String,
+    message: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -43,7 +85,7 @@ internal fun PermissionDeniedScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "需要相机权限",
+            text = title,
             style = MaterialTheme.typography.headlineSmall,
             textAlign = TextAlign.Center
         )
@@ -51,7 +93,7 @@ internal fun PermissionDeniedScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "为了使用人脸捕获功能，需要访问您的相机",
+            text = message,
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -60,16 +102,16 @@ internal fun PermissionDeniedScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = onRequestPermission,
+            onClick = onAction,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("授予权限")
+            Text(actionLabel)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
         TextButton(onClick = onNavigateBack) {
-            Text("返回")
+            Text(stringResource(R.string.default_face_verification_back))
         }
     }
 }

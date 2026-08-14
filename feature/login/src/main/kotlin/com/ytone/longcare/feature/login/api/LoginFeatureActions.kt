@@ -6,5 +6,16 @@ package com.ytone.longcare.feature.login.api
  */
 data class LoginFeatureActions(
     val onLoginSuccess: () -> Unit,
-    val onOpenWebPage: (url: String, title: String) -> Unit
+    val onOpenWebPage: (url: String, title: String) -> Unit,
+    val validationEntryActions: LoginValidationEntryActions = LoginValidationEntryActions(),
+)
+
+/**
+ * 登录页隐藏功能验证入口的导航动作。
+ * 契约保留在 login feature 中，使登录 UI 不直接依赖 NavController。
+ */
+data class LoginValidationEntryActions(
+    val onOpenCameraValidation: () -> Unit = {},
+    val onOpenBackupFaceVerification: () -> Unit = {},
+    val onOpenManualFaceCapture: () -> Unit = {},
 )

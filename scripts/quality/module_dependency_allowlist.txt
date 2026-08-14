@@ -11,7 +11,7 @@
 :core:model=
 :core:ui=:core:common :core:domain :core:model
 :feature:home=:core:domain :core:model
-:feature:identification=:core:common :core:domain :core:model
+:feature:identification=:core:common :core:domain :core:model :core:ui
 :feature:location=:core:common :core:domain :core:model
 :feature:login=:core:common :core:domain :core:model
 :feature:photoupload=:core:common :core:domain :core:model

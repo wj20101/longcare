@@ -6,8 +6,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
@@ -43,6 +45,7 @@ fun IdentificationScreen(
     val faceSdkLaunchRequest by identificationViewModel.faceSdkLaunchRequest.collectAsStateWithLifecycle()
     val capturedImageUri by actions.capturedImageUriFlow.collectAsStateWithLifecycle()
     val faceImagePath by actions.faceImagePathFlow.collectAsStateWithLifecycle()
+    val defaultFaceVerificationResult by actions.defaultFaceVerificationResultFlow.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var showCameraPurposeNotice by remember { mutableStateOf(false) }
     val faceSdkUiController = rememberFaceSdkUiController()
@@ -79,6 +82,22 @@ fun IdentificationScreen(
         }
     )
 
+    fun requestElderRecordPhoto() {
+        if (UnifiedPermissionHelper.isCameraPermissionGranted(context)) {
+            openElderCamera()
+        } else {
+            showCameraPurposeNotice = true
+        }
+    }
+
+    LaunchedEffect(defaultFaceVerificationResult) {
+        if (defaultFaceVerificationResult == true) {
+            actions.clearDefaultFaceVerificationResult()
+            identificationViewModel.setServicePersonVerified()
+            identificationViewModel.updateFaceVerificationStatus(orderKey, verified = true)
+        }
+    }
+
     val currentVerificationType by identificationViewModel.currentVerificationType.collectAsStateWithLifecycle()
     IdentificationScreenEffects(
         actions = actions,
@@ -102,19 +121,15 @@ fun IdentificationScreen(
         identificationViewModel = identificationViewModel,
         onNavigateBack = actions.onNavigateBack,
         onNavigateToSelectService = { actions.onNavigateToSelectService(orderKey) },
-        onVerifyServicePerson = identificationViewModel::verifyServicePerson,
-        onVerifyElder = {
-            if (UnifiedPermissionHelper.isCameraPermissionGranted(context)) {
-                openElderCamera()
-            } else {
-                showCameraPurposeNotice = true
-            }
-        }
+        onVerifyServicePerson = { actions.onNavigateToDefaultFaceVerification(orderKey) },
+        onVerifyElder = ::requestElderRecordPhoto,
     )
 
     if (showCameraPurposeNotice) {
         PermissionPurposeDialog(
-            notice = cameraPermissionPurposeNotice("拍摄老人核验照片"),
+            notice = cameraPermissionPurposeNotice(
+                stringResource(R.string.identification_elder_photo_purpose),
+            ),
             onConfirm = {
                 showCameraPurposeNotice = false
                 permissionLauncher.launch(Manifest.permission.CAMERA)

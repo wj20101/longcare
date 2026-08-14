@@ -1,40 +1,20 @@
 package com.ytone.longcare.features.facecapture
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.ImageFormat
 import android.graphics.Matrix
 import android.graphics.Rect
 import androidx.camera.core.ImageProxy
 import androidx.core.graphics.scale
-import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
-import com.ytone.longcare.common.utils.logW
 
 private object FaceCaptureLog
 
-@androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
 internal fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap? {
     return try {
-        val image = imageProxy.image
-        if (image == null) {
-            FaceCaptureLog.logW("Image is null", tag = "FaceCaptureAnalyzer")
-            return null
-        }
-
-        try {
-            val format = image.format
-            FaceCaptureLog.logD("Converting image format: $format", tag = "FaceCaptureAnalyzer")
-
-            when (format) {
-                ImageFormat.YUV_420_888 -> convertYuv420ToBitmap(image)
-                ImageFormat.JPEG -> convertJpegToBitmap(image)
-                else -> convertUnsupportedFormatBitmap(imageProxy, format)
-            }
-        } catch (e: IllegalStateException) {
-            FaceCaptureLog.logW("Image state error: ${e.message}", tag = "FaceCaptureAnalyzer")
-            null
-        }
+        // CameraX owns the YUV/JPEG conversion and correctly honors every plane's
+        // rowStride/pixelStride. Manually concatenating Y/U/V planes corrupts frames on
+        // devices whose camera buffers contain row padding or interleaved chroma data.
+        imageProxy.toBitmap()
     } catch (e: Exception) {
         FaceCaptureLog.logE("Error converting ImageProxy to Bitmap", tag = "FaceCaptureAnalyzer", throwable = e)
         null
@@ -102,28 +82,4 @@ internal fun buildExpandedFaceRect(
     val finalWidth = newWidth.coerceAtMost(bitmapWidth - newLeft)
     val finalHeight = newHeight.coerceAtMost(bitmapHeight - newTop)
     return Rect(newLeft, newTop, newLeft + finalWidth, newTop + finalHeight)
-}
-
-private fun convertJpegToBitmap(image: android.media.Image): Bitmap? {
-    if (image.planes.isEmpty()) {
-        FaceCaptureLog.logW("JPEG image has no planes", tag = "FaceCaptureAnalyzer")
-        return null
-    }
-    val buffer = image.planes[0].buffer
-    val bytes = ByteArray(buffer.remaining())
-    buffer.get(bytes)
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-}
-
-private fun convertUnsupportedFormatBitmap(imageProxy: ImageProxy, format: Int): Bitmap? {
-    return try {
-        imageProxy.toBitmap()
-    } catch (e: Exception) {
-        FaceCaptureLog.logW(
-            "Failed to convert image format $format",
-            tag = "FaceCaptureAnalyzer",
-            throwable = e
-        )
-        null
-    }
 }

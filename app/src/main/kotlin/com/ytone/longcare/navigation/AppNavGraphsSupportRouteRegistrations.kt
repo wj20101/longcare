@@ -8,6 +8,7 @@ import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.facerecognition.api.FaceRecognitionGuideActions
 import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
+import com.ytone.longcare.features.identification.facecheck.DefaultFaceVerificationScreen
 import com.ytone.longcare.features.identification.api.IdentificationActions
 import com.ytone.longcare.features.identification.ui.IdentificationScreen
 import com.ytone.longcare.features.photoupload.api.CameraActions
@@ -111,6 +112,9 @@ internal fun NavGraphBuilder.registerIdentificationRoute(navController: NavContr
                     navController.navigateToCamera(watermarkData)
                 },
                 onNavigateToManualFaceCapture = { navController.navigateToManualFaceCapture() },
+                onNavigateToDefaultFaceVerification = { orderKey ->
+                    navController.navigateToDefaultFaceVerification(orderKey)
+                },
                 onNavigateToSelectService = { orderKey ->
                     navController.navigateToSelectService(orderKey)
                 },
@@ -127,9 +131,37 @@ internal fun NavGraphBuilder.registerIdentificationRoute(navController: NavContr
                 ),
                 clearFaceImagePath = {
                     backStackEntry.savedStateHandle.remove<String>(NavigationConstants.FACE_IMAGE_PATH_KEY)
+                },
+                defaultFaceVerificationResultFlow = backStackEntry.savedStateHandle.getStateFlow(
+                    NavigationConstants.DEFAULT_FACE_VERIFICATION_RESULT_KEY,
+                    null,
+                ),
+                clearDefaultFaceVerificationResult = {
+                    backStackEntry.savedStateHandle.remove<Boolean>(
+                        NavigationConstants.DEFAULT_FACE_VERIFICATION_RESULT_KEY,
+                    )
                 }
             ),
             orderKey = route.orderParams.toOrderKey()
+        )
+    }
+}
+
+internal fun NavGraphBuilder.registerDefaultFaceVerificationRoute(navController: NavController) {
+    composable<DefaultFaceVerificationRoute>(
+        typeMap = mapOf(typeOf<OrderNavParams>() to OrderNavParamsNavType),
+    ) { backStackEntry ->
+        val route = backStackEntry.toRoute<DefaultFaceVerificationRoute>()
+        DefaultFaceVerificationScreen(
+            orderKey = route.orderParams.toOrderKey(),
+            onNavigateBack = { navController.popBackStack() },
+            onVerificationSuccess = {
+                navController.previousBackStackEntry?.savedStateHandle?.set(
+                    NavigationConstants.DEFAULT_FACE_VERIFICATION_RESULT_KEY,
+                    true,
+                )
+                navController.popBackStack()
+            },
         )
     }
 }
