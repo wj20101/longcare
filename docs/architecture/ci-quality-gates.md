@@ -120,6 +120,7 @@ not as an automatic execution override.
 - `Android Release` is the release-sign-off workflow.
 - It owns release packaging confidence, release-only policy checks, and any higher-cost validation required before shipping.
 - It may depend on `Android CI` being green first, but it is responsible for release readiness rather than day-to-day merge blocking.
+- Manual runs require an explicit release mode. Acceptance mode permits only the documented, time-bounded vendor waivers and labels every published artifact as acceptance; production mode remains fail-closed on the vendor SDK readiness gate.
 
 ### Face SDK Migration Check
 

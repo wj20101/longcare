@@ -157,10 +157,11 @@ has_changed_paths() {
   fi
 
   if command -v rg >/dev/null 2>&1; then
-    if printf '%s\n' "${CHANGED_FILES}" | rg -q "${regex}"; then
+    local rg_status=0
+    rg -q -- "${regex}" <<< "${CHANGED_FILES}" || rg_status=$?
+    if [[ "${rg_status}" -eq 0 ]]; then
       return 0
     fi
-    local rg_status=$?
     if [[ "${rg_status}" -eq 1 ]]; then
       return 1
     fi
@@ -168,10 +169,11 @@ has_changed_paths() {
     return 2
   fi
 
-  if printf '%s\n' "${CHANGED_FILES}" | grep -Eq "${regex}"; then
+  local grep_status=0
+  grep -Eq -- "${regex}" <<< "${CHANGED_FILES}" || grep_status=$?
+  if [[ "${grep_status}" -eq 0 ]]; then
     return 0
   fi
-  local grep_status=$?
   if [[ "${grep_status}" -eq 1 ]]; then
     return 1
   fi

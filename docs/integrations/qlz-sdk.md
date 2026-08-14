@@ -1,6 +1,6 @@
 # QLZ SDK 1.3.0.2 接入说明
 
-Last verified: 2026-08-09
+Last verified: 2026-08-14
 
 ## 接入范围
 
@@ -27,6 +27,11 @@ Last verified: 2026-08-09
 必须同时显式传入 `-Prelease.production=false -Prelease.acceptance=true`。生产构建只要仍存在
 固定测试 key、`QLZ_TEST_MODE=true`、QLZ 1.3.0.2 弱 TLS 实现或未兼容 16 KB 的腾讯人脸包，
 构建门禁都会直接失败。
+
+GitHub 的 `Android Release` 手动工作流提供 `release_mode` 选项。当前测试阶段默认选择
+`acceptance`，工作流会自动传入上述两个 Gradle 参数，并在 APK、AAB、GitHub Release 名称中
+标记为验收包。只有厂商 SDK 与服务端下发配置全部达到生产要求后，才可选择 `production`；
+生产模式始终执行 `verify_vendor_sdk_release_readiness.sh`，不会绕过安全门禁。
 
 `appSecret` 只允许配置在 LongCare 服务端。它用于俏郎中 OpenAPI 请求签名，不得写入
 Android 源码、资源、BuildConfig 或 APK。客户端通过

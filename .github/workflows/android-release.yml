@@ -6,6 +6,14 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
+      release_mode:
+        description: "Release mode (acceptance allows the temporary test vendor configuration)"
+        required: true
+        type: choice
+        options:
+          - acceptance
+          - production
+        default: acceptance
       run_baseline_profile:
         description: "Generate baseline profile before release build (slow)"
         required: false
@@ -38,6 +46,7 @@ permissions:
 
 env:
   JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
+  RELEASE_MODE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_mode || 'production' }}
   TX_FACE_SDK_SOURCE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_sdk_source || vars.TX_FACE_SDK_SOURCE || 'local' }}
   TX_FACE_LIVE_COORD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_live_coord || vars.TX_FACE_LIVE_COORD || '' }}
   TX_FACE_NORMAL_COORD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_normal_coord || vars.TX_FACE_NORMAL_COORD || '' }}
@@ -66,6 +75,37 @@ jobs:
             echo "::error::VersionCode auto-bump is only supported for workflow_dispatch branch releases. Use workflow_dispatch instead of tag push."
             exit 1
           fi
+
+      - name: Resolve release mode
+        id: release_mode
+        run: |
+          set -euo pipefail
+
+          case "${RELEASE_MODE}" in
+            acceptance)
+              if [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ]; then
+                echo "::error::Acceptance releases are only supported through workflow_dispatch."
+                exit 1
+              fi
+              PRODUCTION_REQUESTED="false"
+              ACCEPTANCE_REQUESTED="true"
+              ;;
+            production)
+              PRODUCTION_REQUESTED="true"
+              ACCEPTANCE_REQUESTED="false"
+              ;;
+            *)
+              echo "::error::Unsupported release mode: ${RELEASE_MODE}"
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "mode=${RELEASE_MODE}"
+            echo "production=${PRODUCTION_REQUESTED}"
+            echo "acceptance=${ACCEPTANCE_REQUESTED}"
+          } >> "${GITHUB_OUTPUT}"
+          echo "Resolved release mode: ${RELEASE_MODE}"
 
       - name: Verify Android CI success for target commit
         env:
@@ -136,10 +176,12 @@ jobs:
           TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
         run: ./gradlew --no-daemon :app:lintDebug :app:assembleDebug
 
-      - name: Enforce lint and vendor SDK release readiness
-        run: |
-          bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
-          bash scripts/quality/verify_vendor_sdk_release_readiness.sh app/build/reports/lint-results-debug.txt
+      - name: Enforce lint release readiness
+        run: bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
+
+      - name: Enforce production vendor SDK release readiness
+        if: ${{ steps.release_mode.outputs.production == 'true' }}
+        run: bash scripts/quality/verify_vendor_sdk_release_readiness.sh app/build/reports/lint-results-debug.txt
 
       - name: Run release-required signing safety checks
         env:
@@ -202,6 +244,8 @@ jobs:
         run: |
           ./gradlew --no-daemon :app:generateReleaseBaselineProfile \
             -Pbaseline.enableX86_64=true \
+            -Prelease.production=${{ steps.release_mode.outputs.production }} \
+            -Prelease.acceptance=${{ steps.release_mode.outputs.acceptance }} \
             -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile \
             -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect \
             -Pandroid.experimental.testOptions.managedDevices.emulator.showKernelLogging=true
@@ -355,7 +399,10 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease -Prelease.production=true
+        run: |
+          ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease \
+            -Prelease.production=${{ steps.release_mode.outputs.production }} \
+            -Prelease.acceptance=${{ steps.release_mode.outputs.acceptance }}
 
       - name: Run release-required exported component guard
         run: bash scripts/quality/verify_release_exported_components.sh
@@ -365,6 +412,7 @@ jobs:
         run: |
           VERSION_CODE="${{ steps.app_version.outputs.version_code }}"
           VERSION_NAME="${{ steps.app_version.outputs.version_name }}"
+          RELEASE_MODE="${{ steps.release_mode.outputs.mode }}"
           DATE_STR=$(date +'%y%m%d')
 
           APK_SOURCE=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" | head -n1)
@@ -373,7 +421,7 @@ jobs:
             exit 1
           fi
 
-          APK_TARGET="app/build/outputs/apk/release/app-v${VERSION_NAME}-${DATE_STR}-${VERSION_CODE}-release.apk"
+          APK_TARGET="app/build/outputs/apk/release/app-v${VERSION_NAME}-${DATE_STR}-${VERSION_CODE}-${RELEASE_MODE}-release.apk"
           if [ "$APK_SOURCE" != "$APK_TARGET" ]; then
             mv "$APK_SOURCE" "$APK_TARGET"
           fi
@@ -387,6 +435,7 @@ jobs:
         run: |
           VERSION_CODE="${{ steps.app_version.outputs.version_code }}"
           VERSION_NAME="${{ steps.app_version.outputs.version_name }}"
+          RELEASE_MODE="${{ steps.release_mode.outputs.mode }}"
           DATE_STR=$(date +'%y%m%d')
 
           AAB_SOURCE=$(find app/build/outputs/bundle/release -maxdepth 1 -type f -name "*.aab" | head -n1)
@@ -395,7 +444,7 @@ jobs:
             exit 1
           fi
 
-          AAB_TARGET="app/build/outputs/bundle/release/app-v${VERSION_NAME}-${DATE_STR}-${VERSION_CODE}-release.aab"
+          AAB_TARGET="app/build/outputs/bundle/release/app-v${VERSION_NAME}-${DATE_STR}-${VERSION_CODE}-${RELEASE_MODE}-release.aab"
           if [ "$AAB_SOURCE" != "$AAB_TARGET" ]; then
             mv "$AAB_SOURCE" "$AAB_TARGET"
           fi
@@ -416,7 +465,7 @@ jobs:
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: app-release-artifacts
+          name: app-${{ steps.release_mode.outputs.mode }}-release-artifacts
           path: |
             app/src/**/baseline-prof.txt
             app/src/**/startup-prof.txt
@@ -451,11 +500,17 @@ jobs:
         run: |
           VERSION_CODE="${{ steps.app_version.outputs.version_code }}"
           VERSION_NAME="${{ steps.app_version.outputs.version_name }}"
+          RELEASE_MODE="${{ steps.release_mode.outputs.mode }}"
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"
             echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
             echo "release_name=Release ${TAG_NAME} (v${VERSION_NAME}, code ${VERSION_CODE})" >> "$GITHUB_OUTPUT"
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          elif [ "${RELEASE_MODE}" = "acceptance" ]; then
+            TAG_NAME="v${VERSION_NAME}-${VERSION_CODE}-acceptance"
+            echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+            echo "release_name=Acceptance Release v${VERSION_NAME} (${VERSION_CODE})" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
           else
             TAG_NAME="v${VERSION_NAME}-${VERSION_CODE}"
             echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
@@ -469,6 +524,7 @@ jobs:
           NOTES_FILE="${RUNNER_TEMP}/release-notes.md"
           VERSION_CODE="${{ steps.app_version.outputs.version_code }}"
           VERSION_NAME="${{ steps.app_version.outputs.version_name }}"
+          RELEASE_MODE="${{ steps.release_mode.outputs.mode }}"
           TAG_NAME="${{ steps.release_meta.outputs.tag_name }}"
           RELEASE_SHA="${{ steps.bump_version_code.outputs.commit_sha }}"
           SHORT_SHA="${RELEASE_SHA::7}"
@@ -478,6 +534,7 @@ jobs:
             echo
             echo "- Tag: \`${TAG_NAME}\`"
             echo "- Commit: \`${SHORT_SHA}\`"
+            echo "- Mode: \`${RELEASE_MODE}\`"
             echo
             echo "### Latest commits"
             git log --no-merges -n 12 --pretty=format:'- %s (%h)'
