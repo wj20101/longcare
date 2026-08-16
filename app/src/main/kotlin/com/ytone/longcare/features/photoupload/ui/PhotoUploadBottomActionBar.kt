@@ -55,9 +55,9 @@ private suspend fun handleConfirmUpload(
     try {
         val uploadResult = viewModel.uploadSuccessfulImagesToCloud()
         uploadResult.fold(
-            onSuccess = { cloudUrlsMap ->
+            onSuccess = { uploadedKeysMap ->
                 val currentTasks = viewModel.imageTasks.value
-                val imageTasksMap = cloudUrlsMap.toTaskMap(currentTasks)
+                val imageTasksMap = uploadedKeysMap.toTaskMap(currentTasks)
                 actions.onPublishPhotoUploadResultAndNavigateBack(imageTasksMap)
                 com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: Upload Success -> navigateBack")
             },

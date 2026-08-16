@@ -53,8 +53,8 @@ interface OrderImageDao {
     @Query("UPDATE order_images SET upload_status = :status, updated_at = :updatedAt WHERE id = :id")
     suspend fun updateStatus(id: Long, status: Int, updatedAt: Long = System.currentTimeMillis())
     
-    @Query("UPDATE order_images SET upload_status = :status, cloud_key = :cloudKey, cloud_url = :cloudUrl, updated_at = :updatedAt WHERE id = :id")
-    suspend fun updateUploadSuccess(id: Long, status: Int, cloudKey: String, cloudUrl: String, updatedAt: Long = System.currentTimeMillis())
+    @Query("UPDATE order_images SET upload_status = :status, cloud_key = :cloudKey, cloud_url = NULL, updated_at = :updatedAt WHERE id = :id")
+    suspend fun updateUploadSuccess(id: Long, status: Int, cloudKey: String, updatedAt: Long = System.currentTimeMillis())
     
     @Query("UPDATE order_images SET upload_status = :status, error_message = :errorMessage, updated_at = :updatedAt WHERE id = :id")
     suspend fun updateUploadFailed(id: Long, status: Int, errorMessage: String, updatedAt: Long = System.currentTimeMillis())

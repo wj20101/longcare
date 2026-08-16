@@ -54,7 +54,6 @@ internal class PhotoUploadDelegate(
                     val uploadedPhoto = photoCloudUploader.upload(Uri.parse(task.resultUri))
                     taskQueueDelegate.updateTaskUploadStatus(
                         taskId = task.id,
-                        cloudUrl = uploadedPhoto.url,
                         key = uploadedPhoto.key,
                     )
                 } catch (cancellation: CancellationException) {

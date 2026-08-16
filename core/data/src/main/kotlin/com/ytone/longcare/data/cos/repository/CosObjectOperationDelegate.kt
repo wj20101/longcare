@@ -1,6 +1,5 @@
 package com.ytone.longcare.data.cos.repository
 
-import android.content.Context
 import android.net.Uri
 import com.tencent.cos.xml.CosXmlService
 import com.tencent.cos.xml.model.`object`.DeleteObjectRequest
@@ -9,7 +8,6 @@ import com.tencent.cos.xml.model.`object`.PutObjectRequest
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.utils.CosUtils
-import com.ytone.longcare.common.utils.getFileSize
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.model.CosConfig
@@ -23,7 +21,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
 internal class CosObjectOperationDelegate(
-    private val context: Context,
     private val apiService: LongCareApiService,
     private val ioDispatcher: CoroutineDispatcher,
     private val tag: String,
@@ -39,6 +36,30 @@ internal class CosObjectOperationDelegate(
         params: UploadParams,
         onProgress: (UploadProgress) -> Unit
     ): CosUploadResult = uploadFileInternal(params, onProgress)
+
+    suspend fun getFileUrl(
+        fileKey: String,
+        folderType: Int?,
+        fileSize: Long?,
+    ): String = withContext(ioDispatcher) {
+        require(fileKey.isNotBlank()) { "fileKey must not be blank" }
+        executeCosOperationWithRetry(
+            clearCache = {},
+            operation = {
+                apiService
+                    .getFileUrl(
+                        SaveFileParamModel(
+                            folderType = folderType,
+                            fileKey = fileKey,
+                            fileSize = fileSize,
+                        )
+                    )
+                    .requirePrivateCosUrl()
+            },
+        ).also {
+            logD("Private file URL obtained from backend", tag = tag)
+        }
+    }
 
     suspend fun deleteFile(key: String): Boolean = withContext(ioDispatcher) {
         try {
@@ -142,18 +163,11 @@ internal class CosObjectOperationDelegate(
                         currentConfig
                     }
 
-                val uploadedParams = params.copy(key = resolvedKey)
-                val privateUrl =
-                    executeCosOperationWithRetry(
-                        clearCache = {},
-                        operation = { getPrivateUrl(uploadedParams) },
-                    )
                 CosUploadResult(
                     success = true,
                     key = resolvedKey,
                     bucket = config.bucket,
                     region = config.region,
-                    url = privateUrl,
                 )
             }
         } catch (e: CancellationException) {
@@ -168,18 +182,5 @@ internal class CosObjectOperationDelegate(
                 errorCode = failure.errorCode,
             )
         }
-    }
-
-    private suspend fun getPrivateUrl(params: UploadParams): String {
-        val fileSize = Uri.parse(params.fileUri).getFileSize(context)
-        val saveFileParam =
-            SaveFileParamModel(
-                folderType = params.folderType,
-                fileKey = params.key,
-                fileSize = fileSize,
-            )
-        val url = apiService.getFileUrl(saveFileParam).requirePrivateCosUrl()
-        logD("Private file URL obtained from backend", tag = tag)
-        return url
     }
 }

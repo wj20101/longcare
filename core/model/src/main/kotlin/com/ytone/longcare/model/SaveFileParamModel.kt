@@ -3,7 +3,7 @@ package com.ytone.longcare.model
 import com.squareup.moshi.JsonClass
 
 /**
- * 保存文件请求参数
+ * 私有文件访问链接请求参数。
  */
 @JsonClass(generateAdapter = true)
 data class SaveFileParamModel(

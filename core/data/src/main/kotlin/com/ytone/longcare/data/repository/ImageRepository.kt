@@ -155,12 +155,11 @@ class ImageRepository @Inject constructor(
     /**
      * 标记上传成功
      */
-    override suspend fun markAsSuccess(imageId: Long, cloudKey: String, cloudUrl: String) {
+    override suspend fun markAsSuccess(imageId: Long, cloudKey: String) {
         orderImageDao.updateUploadSuccess(
             id = imageId,
             status = ImageUploadStatus.SUCCESS.value,
             cloudKey = cloudKey,
-            cloudUrl = cloudUrl
         )
     }
     
@@ -256,42 +255,4 @@ class ImageRepository @Inject constructor(
         return orderImageDao.countByStatus(orderKey.orderId, ImageUploadStatus.FAILED.value)
     }
     
-    // ========== 便捷方法 ==========
-    
-    /**
-     * 获取已上传成功的图片URL列表（按类型分组）
-     * @param orderKey 订单标识符
-     */
-    suspend fun getUploadedImageUrls(orderKey: OrderKey): Map<ImageType, List<String>> {
-        val successImages = orderImageDao.getImagesByStatus(orderKey.orderId, ImageUploadStatus.SUCCESS.value)
-        return successImages
-            .map { it.toModel() }
-            .filter { it.cloudUrl != null }
-            .groupBy { it.getImageTypeEnum() }
-            .mapValues { (_, images) -> images.mapNotNull { it.cloudUrl } }
-    }
-    
-    /**
-     * 获取护理前照片URL列表
-     * @param orderKey 订单标识符
-     */
-    suspend fun getBeforeCareImageUrls(orderKey: OrderKey): List<String> {
-        return getUploadedImageUrls(orderKey)[ImageType.BEFORE_CARE] ?: emptyList()
-    }
-    
-    /**
-     * 获取护理中照片URL列表
-     * @param orderKey 订单标识符
-     */
-    suspend fun getCenterCareImageUrls(orderKey: OrderKey): List<String> {
-        return getUploadedImageUrls(orderKey)[ImageType.CENTER_CARE] ?: emptyList()
-    }
-    
-    /**
-     * 获取护理后照片URL列表
-     * @param orderKey 订单标识符
-     */
-    suspend fun getAfterCareImageUrls(orderKey: OrderKey): List<String> {
-        return getUploadedImageUrls(orderKey)[ImageType.AFTER_CARE] ?: emptyList()
-    }
 }

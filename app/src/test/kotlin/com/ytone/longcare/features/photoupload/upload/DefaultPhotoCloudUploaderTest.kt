@@ -26,19 +26,17 @@ class DefaultPhotoCloudUploaderTest {
     private val sourceUri = Uri.fromFile(File(context.cacheDir, "upload_test.jpg"))
 
     @Test
-    fun `successful upload exposes validated key and url`() =
+    fun `successful upload exposes validated key without resolving a file url`() =
         runTest {
             coEvery { cosRepository.uploadFile(any()) } returns
                 CosUploadResult(
                     success = true,
                     key = "customer/photo.jpg",
-                    url = "https://cos.example.test/customer/photo.jpg",
                 )
 
             val result = uploader.upload(sourceUri)
 
             assertThat(result.key).isEqualTo("customer/photo.jpg")
-            assertThat(result.url).isEqualTo("https://cos.example.test/customer/photo.jpg")
         }
 
     @Test
@@ -48,7 +46,6 @@ class DefaultPhotoCloudUploaderTest {
                 CosUploadResult(
                     success = true,
                     key = " ",
-                    url = "https://cos.example.test/customer/photo.jpg",
                 )
 
             val failure = runCatching { uploader.upload(sourceUri) }.exceptionOrNull()

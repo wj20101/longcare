@@ -12,7 +12,7 @@ interface OrderImageRepository {
         localUri: String,
         localPath: String? = null
     ): Long
-    suspend fun markAsSuccess(imageId: Long, cloudKey: String, cloudUrl: String)
+    suspend fun markAsSuccess(imageId: Long, cloudKey: String)
     suspend fun deleteImage(imageId: Long)
     suspend fun deleteImagesByOrderId(orderKey: OrderKey)
 }

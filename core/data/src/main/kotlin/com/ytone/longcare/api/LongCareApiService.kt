@@ -176,7 +176,7 @@ interface LongCareApiService {
     suspend fun getUploadToken(@Body uploadTokenParamModel: UploadTokenParamModel): ApiResult<UploadTokenResultModel>
 
     /**
-     * 文件上传完之后获取访问连接,因为图片是私有的
+     * 按需获取私有文件访问链接，仅在展示或下载文件时调用。
      */
     @POST("/V1/File/GetFileUrl")
     suspend fun getFileUrl(@Body saveFileParamModel: SaveFileParamModel): ApiResult<String>

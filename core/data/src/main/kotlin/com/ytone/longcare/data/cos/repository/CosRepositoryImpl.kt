@@ -82,7 +82,6 @@ class CosRepositoryImpl @Inject constructor(
 
     private val objectOperationDelegate by lazy {
         CosObjectOperationDelegate(
-            context = context,
             apiService = apiService,
             ioDispatcher = ioDispatcher,
             tag = TAG,
@@ -211,6 +210,14 @@ class CosRepositoryImpl @Inject constructor(
         onProgress: (UploadProgress) -> Unit
     ): CosUploadResult {
         return objectOperationDelegate.uploadFileWithProgress(params, onProgress)
+    }
+
+    override suspend fun getFileUrl(
+        fileKey: String,
+        folderType: Int?,
+        fileSize: Long?,
+    ): String {
+        return objectOperationDelegate.getFileUrl(fileKey, folderType, fileSize)
     }
 
     override suspend fun deleteFile(key: String): Boolean {

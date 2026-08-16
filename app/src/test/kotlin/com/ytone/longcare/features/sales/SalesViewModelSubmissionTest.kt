@@ -118,13 +118,11 @@ class SalesViewModelSubmissionTest {
                             listOf(
                                 Result.success(
                                     UploadedPhoto(
-                                        url = "https://private.example/one",
                                         key = "customer/one.jpg",
                                     )
                                 ),
                                 Result.success(
                                     UploadedPhoto(
-                                        url = "https://private.example/two",
                                         key = "customer/two.jpg",
                                     )
                                 ),

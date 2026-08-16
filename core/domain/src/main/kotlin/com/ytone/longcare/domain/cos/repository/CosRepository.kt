@@ -28,7 +28,17 @@ interface CosRepository {
         params: UploadParams,
         onProgress: (UploadProgress) -> Unit
     ): CosUploadResult
-    
+
+    /**
+     * 按需获取私有文件访问地址。
+     *
+     * 上传阶段只保存 [fileKey]；只有展示、下载等真正读取文件的场景才调用本方法。
+     */
+    suspend fun getFileUrl(
+        fileKey: String,
+        folderType: Int? = null,
+        fileSize: Long? = null,
+    ): String
 
     /**
      * 删除文件

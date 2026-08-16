@@ -9,7 +9,6 @@ import com.ytone.longcare.model.UploadTokenResultModel
 @Serializable
 data class CosUploadResult(
     val success: Boolean,
-    val url: String? = null,
     val key: String? = null,
     val bucket: String? = null,
     val region: String? = null,

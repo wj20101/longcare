@@ -15,7 +15,6 @@ import javax.inject.Singleton
 
 data class UploadedPhoto(
     val key: String,
-    val url: String,
 )
 
 class PhotoCloudUploadException(message: String) : Exception(message)
@@ -45,14 +44,13 @@ class DefaultPhotoCloudUploader @Inject constructor(
                 )
             )
         val key = result.key
-        val url = result.url
-        if (!result.success || key.isNullOrBlank() || url.isNullOrBlank()) {
+        if (!result.success || key.isNullOrBlank()) {
             throw PhotoCloudUploadException(
                 result.errorMessage?.takeIf(String::isNotBlank)
                     ?: "图片上传未返回有效文件信息"
             )
         }
-        return UploadedPhoto(key = key, url = url)
+        return UploadedPhoto(key = key)
     }
 }
 
