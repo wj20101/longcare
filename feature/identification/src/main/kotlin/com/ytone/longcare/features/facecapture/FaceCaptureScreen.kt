@@ -12,6 +12,9 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,10 +22,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -43,6 +47,8 @@ import java.util.concurrent.Executors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 
 /**
  * 人脸捕获主界面
@@ -67,7 +73,7 @@ fun FaceCaptureScreen(
     var showCameraPurposeNotice by remember { mutableStateOf(false) }
     var isPreviewStreaming by remember { mutableStateOf(false) }
     var cameraPermissionRequested by rememberSaveable { mutableStateOf(false) }
-    var cameraRetryToken by rememberSaveable { mutableStateOf(0) }
+    var cameraRetryToken by rememberSaveable { mutableIntStateOf(0) }
 
     // 相机权限状态
     var hasCamPermission by remember {
@@ -99,65 +105,118 @@ fun FaceCaptureScreen(
     }
 
     if (hasCamPermission) {
-        val analyzerScope = rememberCoroutineScope()
         val analysisExecutor = remember(cameraRetryToken) {
             Executors.newSingleThreadExecutor()
         }
-        val analyzer = remember(viewModel, analyzerScope, cameraRetryToken) {
+        val analyzer = remember(viewModel, analysisExecutor, cameraRetryToken) {
             FaceCaptureAnalyzer(
-                onFaceCaptured = { bitmap, quality ->
-                    viewModel.onFaceCaptured(bitmap, quality)
-                },
+                callbackExecutor = analysisExecutor,
+                onCaptureRequested = viewModel::onBlinkVerified,
                 onHintChanged = { hint ->
                     viewModel.updateUserHint(hint)
                 },
                 onFaceDetectionChanged = { snapshot ->
                     viewModel.updateFaceDetectionState(snapshot)
                 },
-                coroutineScope = analyzerScope
+            )
+        }
+        val capturedFaceProcessor = remember(viewModel, analysisExecutor, cameraRetryToken) {
+            CapturedFaceProcessor(
+                callbackExecutor = analysisExecutor,
+                onFaceProcessed = viewModel::onFaceCaptured,
+                onFailure = { message, error ->
+                    if (error != null) {
+                        DiagnosticEventTracker.trackError(
+                            category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
+                            event = "still_image_process_failure",
+                            description = "眨眼完成后的人脸照片处理失败",
+                            throwable = error,
+                        )
+                    }
+                    viewModel.onStillCaptureFailed(message)
+                },
             )
         }
         var cameraStartupFailed by remember(cameraRetryToken) { mutableStateOf(false) }
 
         // 创建相机控制器
-        val cameraController = remember(context, cameraRetryToken) {
+        val cameraController = remember(context, cameraRetryToken, analyzer, analysisExecutor) {
             LifecycleCameraController(context).apply {
                 // 优化设置
                 imageAnalysisBackpressureStrategy = ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
                 setEnabledUseCases(
-                    CameraController.IMAGE_ANALYSIS
+                    CameraController.IMAGE_ANALYSIS or CameraController.IMAGE_CAPTURE,
                 )
+                setImageAnalysisAnalyzer(analysisExecutor, analyzer.imageAnalyzer)
             }
         }
 
         LaunchedEffect(
             uiState.isDetectionEnabled,
+            analyzer,
+        ) {
+            analyzer.setDetectionEnabled(uiState.isDetectionEnabled)
+        }
+
+        LaunchedEffect(
+            uiState.isStillCaptureRequested,
+            isPreviewStreaming,
             cameraStartupFailed,
             cameraController,
-            analyzer,
             analysisExecutor,
+            capturedFaceProcessor,
         ) {
-            if (uiState.isDetectionEnabled && !cameraStartupFailed) {
-                analyzer.reset()
-                cameraController.setImageAnalysisAnalyzer(analysisExecutor, analyzer)
-            } else {
-                cameraController.clearImageAnalysisAnalyzer()
+            if (
+                !uiState.isStillCaptureRequested ||
+                !isPreviewStreaming ||
+                cameraStartupFailed
+            ) {
+                return@LaunchedEffect
+            }
+
+            try {
+                cameraController.takePicture(
+                    analysisExecutor,
+                    object : ImageCapture.OnImageCapturedCallback() {
+                        override fun onCaptureSuccess(image: ImageProxy) {
+                            capturedFaceProcessor.process(image)
+                        }
+
+                        override fun onError(exception: ImageCaptureException) {
+                            DiagnosticEventTracker.trackError(
+                                category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
+                                event = "still_image_capture_failure",
+                                description = "眨眼完成后相机拍照失败",
+                                throwable = exception,
+                            )
+                            viewModel.onStillCaptureFailed("拍照失败，请重新尝试")
+                        }
+                    },
+                )
+            } catch (error: Exception) {
+                DiagnosticEventTracker.trackError(
+                    category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
+                    event = "still_image_capture_start_failure",
+                    description = "眨眼完成后无法启动拍照",
+                    throwable = error,
+                )
+                viewModel.onStillCaptureFailed("拍照失败，请重新尝试")
             }
         }
 
         LaunchedEffect(uiState.captureReady, cameraController, hapticFeedback) {
             if (uiState.captureReady) {
-                cameraController.clearImageAnalysisAnalyzer()
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
                 delay(CAPTURE_SUCCESS_FEEDBACK_MILLIS)
                 viewModel.takeCapturedFace()?.let(onFaceCaptured)
             }
         }
 
-        DisposableEffect(cameraController, analyzer, analysisExecutor) {
+        DisposableEffect(cameraController, analyzer, capturedFaceProcessor, analysisExecutor) {
             onDispose {
-                analyzer.release()
                 cameraController.clearImageAnalysisAnalyzer()
+                capturedFaceProcessor.release()
+                analyzer.release()
                 cameraController.unbind()
                 analysisExecutor.shutdown()
             }
@@ -176,8 +235,9 @@ fun FaceCaptureScreen(
                         event = "camera_unavailable",
                         description = "人脸采集未检测到可用相机",
                     )
-                    analyzer.release()
                     cameraController.clearImageAnalysisAnalyzer()
+                    capturedFaceProcessor.release()
+                    analyzer.release()
                     analysisExecutor.shutdown()
                     cameraStartupFailed = true
                     isPreviewStreaming = false
@@ -216,8 +276,9 @@ fun FaceCaptureScreen(
                     description = "人脸采集相机启动失败",
                     throwable = exception,
                 )
-                analyzer.release()
                 cameraController.clearImageAnalysisAnalyzer()
+                capturedFaceProcessor.release()
+                analyzer.release()
                 runCatching { cameraController.unbind() }
                 analysisExecutor.shutdown()
                 cameraStartupFailed = true
@@ -225,13 +286,11 @@ fun FaceCaptureScreen(
             }
         }
 
-        LaunchedEffect(lifecycleOwner, resetToken, viewModel, isPreviewStreaming) {
-            if (!isPreviewStreaming) {
-                viewModel.resetCapture()
-                return@LaunchedEffect
-            }
-
+        LaunchedEffect(lifecycleOwner, resetToken, cameraRetryToken, viewModel) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                snapshotFlow { isPreviewStreaming }
+                    .filter { it }
+                    .first()
                 viewModel.startPreparationCountdown()
                 try {
                     awaitCancellation()

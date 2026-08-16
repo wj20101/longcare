@@ -12,12 +12,13 @@
     <string name="default_face_verification_retry">重新拍摄</string>
     <string name="default_face_verification_order_id_unsupported">订单 ID 超出当前接口支持范围，请返回并核对订单信息</string>
     <string name="face_capture_prepare_title">请准备</string>
-    <string name="face_capture_countdown_description">准备拍摄，倒计时%1$d秒</string>
+    <string name="face_capture_countdown_description">准备进行眨眼验证，倒计时%1$d秒</string>
     <string name="face_capture_starting_camera">正在启动相机…</string>
-    <string name="face_capture_wait_for_countdown">倒计时结束后开始识别</string>
+    <string name="face_capture_wait_for_countdown">倒计时结束后请按提示眨眼</string>
     <string name="face_capture_searching">寻找人脸中…</string>
-    <string name="face_capture_checking_quality">检测到人脸，正在检查质量</string>
-    <string name="face_capture_confirming_progress">请保持不动，正在确认 %1$d%%</string>
+    <string name="face_capture_checking_quality">检测到人脸，准备眨眼验证</string>
+    <string name="face_capture_confirming_progress">眨眼验证进度 %1$d%%</string>
+    <string name="face_capture_capturing">眨眼完成，正在拍照…</string>
     <string name="face_capture_success">采集成功</string>
     <string name="face_capture_camera_permission_title">需要相机权限</string>
     <string name="face_capture_camera_permission_message">为了完成人脸验证，需要使用相机拍摄人脸</string>

@@ -2,40 +2,31 @@ package com.ytone.longcare.features.facecapture
 
 import android.graphics.Bitmap
 import android.graphics.Rect
-import androidx.camera.core.ImageProxy
 import com.ytone.longcare.common.utils.logE
 
 internal class FaceImageExtractor {
 
-    fun cropFaceFromImage(imageProxy: ImageProxy, boundingBox: Rect): Bitmap? {
+    /** Crops a face from an upright bitmap. The caller retains ownership of [source]. */
+    fun cropFaceFromBitmap(source: Bitmap, boundingBox: Rect): Bitmap? {
+        var croppedBitmap: Bitmap? = null
         return try {
-            val fullBitmap = imageProxyToBitmap(imageProxy) ?: return null
-            val rotatedBitmap = rotateFaceBitmap(fullBitmap, imageProxy.imageInfo.rotationDegrees)
             val cropRect = buildExpandedFaceRect(
                 boundingBox = boundingBox,
-                bitmapWidth = rotatedBitmap.width,
-                bitmapHeight = rotatedBitmap.height
+                bitmapWidth = source.width,
+                bitmapHeight = source.height,
             )
 
-            val croppedBitmap = Bitmap.createBitmap(
-                rotatedBitmap,
+            croppedBitmap = Bitmap.createBitmap(
+                source,
                 cropRect.left,
                 cropRect.top,
                 cropRect.width(),
-                cropRect.height()
+                cropRect.height(),
             )
-            val optimizedBitmap = optimizeFaceBitmapSize(croppedBitmap)
-
-            if (rotatedBitmap != fullBitmap && rotatedBitmap != optimizedBitmap) {
-                rotatedBitmap.recycle()
-            }
-            if (fullBitmap != optimizedBitmap) {
-                fullBitmap.recycle()
-            }
-
-            optimizedBitmap
+            optimizeFaceBitmapSize(croppedBitmap)
         } catch (e: Exception) {
-            logE("Error cropping face from image", tag = "FaceCaptureAnalyzer", throwable = e)
+            croppedBitmap?.takeUnless(Bitmap::isRecycled)?.recycle()
+            logE("Error cropping face from image", tag = "FaceImageExtractor", throwable = e)
             null
         }
     }

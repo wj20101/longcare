@@ -35,7 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -79,7 +81,9 @@ internal fun FaceCaptureBottomPanel(
                 color = Color.White,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 16.dp),
+                modifier = Modifier
+                    .padding(bottom = 16.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
 
@@ -138,6 +142,12 @@ internal fun FaceCaptureBottomPanel(
                     )
                 }
             }
+
+            FaceCapturePhase.CAPTURING -> FaceCaptureStatusRow(
+                icon = Icons.Default.CameraAlt,
+                text = stringResource(R.string.face_capture_capturing),
+                tint = Color(0xFF34C759),
+            )
 
             FaceCapturePhase.CAPTURED -> FaceCaptureStatusRow(
                 icon = Icons.Default.CheckCircle,

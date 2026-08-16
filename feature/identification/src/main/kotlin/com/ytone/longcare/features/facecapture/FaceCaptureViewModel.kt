@@ -33,7 +33,7 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
         _uiState.value = FaceCaptureUiState(
             phase = FaceCapturePhase.PREPARING,
             countdownSeconds = PREPARATION_COUNTDOWN_SECONDS,
-            userHint = "请正对摄像头，保持面部光线充足",
+            userHint = "请正对摄像头，倒计时后按提示眨眼",
         )
 
         preparationJob = viewModelScope.launch {
@@ -53,7 +53,7 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
                     current.copy(
                         phase = FaceCapturePhase.SCANNING,
                         countdownSeconds = 0,
-                        userHint = "请正对摄像头，保持面部光线充足",
+                        userHint = "请睁开双眼并正对摄像头",
                     )
                 } else {
                     current
@@ -63,8 +63,23 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
     }
 
     @Synchronized
+    fun onBlinkVerified(quality: Float) {
+        val current = _uiState.value
+        if (!current.isDetectionEnabled || captureAccepted.get()) return
+
+        _uiState.value = current.copy(
+            phase = FaceCapturePhase.CAPTURING,
+            countdownSeconds = 0,
+            userHint = "眨眼验证完成，正在拍照…",
+            faceDetected = true,
+            faceQuality = quality,
+            confirmationProgress = 1f,
+        )
+    }
+
+    @Synchronized
     fun onFaceCaptured(faceBitmap: Bitmap, quality: Float) {
-        if (!_uiState.value.isDetectionEnabled) {
+        if (!_uiState.value.isStillCaptureRequested) {
             faceBitmap.recycle()
             return
         }
@@ -86,6 +101,17 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
                 confirmationProgress = 1f,
             )
         }
+    }
+
+    @Synchronized
+    fun onStillCaptureFailed(message: String) {
+        if (!_uiState.value.isStillCaptureRequested || captureAccepted.get()) return
+
+        _uiState.value = FaceCaptureUiState(
+            phase = FaceCapturePhase.SCANNING,
+            countdownSeconds = 0,
+            userHint = message,
+        )
     }
 
     /** 将唯一一张相机采集图移交给验证流程，调用方接管 Bitmap 生命周期。 */

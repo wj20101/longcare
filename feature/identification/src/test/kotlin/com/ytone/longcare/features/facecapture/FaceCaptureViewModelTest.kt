@@ -85,11 +85,14 @@ class FaceCaptureViewModelTest {
     }
 
     @Test
-    fun `first stable camera face is accepted and later frames are discarded`() =
+    fun `first still image after verified blink is accepted and later images are discarded`() =
         runTest(mainDispatcher) {
             val viewModel = scanningViewModel()
             val first = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
             val later = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
+
+            viewModel.onBlinkVerified(quality = 0.91f)
+            assertThat(viewModel.uiState.value.phase).isEqualTo(FaceCapturePhase.CAPTURING)
 
             viewModel.onFaceCaptured(first, quality = 0.91f)
             viewModel.onFaceCaptured(later, quality = 0.96f)
@@ -114,6 +117,7 @@ class FaceCaptureViewModelTest {
             val first = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
             val next = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
 
+            viewModel.onBlinkVerified(quality = 0.9f)
             viewModel.onFaceCaptured(first, quality = 0.9f)
             viewModel.resetCapture()
             viewModel.onFaceCaptured(next, quality = 0.92f)
@@ -122,6 +126,20 @@ class FaceCaptureViewModelTest {
             assertThat(next.isRecycled).isTrue()
             assertThat(viewModel.uiState.value.phase).isEqualTo(FaceCapturePhase.STARTING)
             assertThat(viewModel.uiState.value.captureReady).isFalse()
+        }
+
+    @Test
+    fun `still capture failure resumes blink detection without another countdown`() =
+        runTest(mainDispatcher) {
+            val viewModel = scanningViewModel()
+
+            viewModel.onBlinkVerified(quality = 0.93f)
+            viewModel.onStillCaptureFailed("拍照失败，请重新尝试")
+
+            assertThat(viewModel.uiState.value.phase).isEqualTo(FaceCapturePhase.SCANNING)
+            assertThat(viewModel.uiState.value.isDetectionEnabled).isTrue()
+            assertThat(viewModel.uiState.value.confirmationProgress).isEqualTo(0f)
+            assertThat(viewModel.uiState.value.userHint).isEqualTo("拍照失败，请重新尝试")
         }
 
     private suspend fun TestScope.scanningViewModel(): FaceCaptureViewModel {

@@ -57,6 +57,7 @@ internal fun FaceDetectionGuide(
             fraction = uiState.confirmationProgress,
         )
 
+        FaceCapturePhase.CAPTURING,
         FaceCapturePhase.CAPTURED -> Color(0xFF34C759)
     }
     val guideColor by animateColorAsState(

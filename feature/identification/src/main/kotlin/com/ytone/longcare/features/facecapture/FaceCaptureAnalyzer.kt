@@ -1,29 +1,19 @@
 package com.ytone.longcare.features.facecapture
 
-import android.graphics.Bitmap
 import android.os.SystemClock
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
-import com.google.mlkit.vision.common.InputImage
+import androidx.camera.mlkit.vision.MlKitAnalyzer
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.utils.logE
-import com.ytone.longcare.common.utils.logW
+import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
-/**
- * 回调函数类型定义
- */
-typealias FaceCaptureCallback = (bitmap: Bitmap, quality: Float) -> Unit
 typealias HintCallback = (hint: String) -> Unit
 typealias FaceDetectionCallback = (snapshot: FaceDetectionSnapshot) -> Unit
+typealias FaceCaptureRequestCallback = (quality: Float) -> Unit
 
 data class FaceDetectionSnapshot(
     val detected: Boolean,
@@ -32,338 +22,195 @@ data class FaceDetectionSnapshot(
 )
 
 /**
- * 人脸捕获图像分析器
- * 负责相机帧编排、ML Kit检测回调与捕获时序控制。
+ * CameraX/ML Kit analyzer that verifies one complete blink before requesting a still capture.
+ *
+ * [MlKitAnalyzer] owns analysis frame closing and CameraX backpressure. The final photo is captured
+ * separately through ImageCapture, so the app does not hold or manually crop an analysis frame.
  */
 class FaceCaptureAnalyzer(
-    private val onFaceCaptured: FaceCaptureCallback,
+    callbackExecutor: Executor,
+    private val onCaptureRequested: FaceCaptureRequestCallback,
     private val onHintChanged: HintCallback,
     private val onFaceDetectionChanged: FaceDetectionCallback,
-    private val coroutineScope: CoroutineScope
-) : ImageAnalysis.Analyzer {
-
-    private val detectorOptions = FaceDetectorOptions.Builder()
-        .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
-        .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-        .setMinFaceSize(0.3f)
-        .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
-        .build()
-
-    private val detector = FaceDetection.getClient(detectorOptions)
+) {
+    private val detector = FaceDetection.getClient(
+        FaceDetectorOptions.Builder()
+            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+            .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
+            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+            .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
+            .setMinFaceSize(0.3f)
+            .enableTracking()
+            .build(),
+    )
     private val qualityEvaluator = FaceCaptureQualityEvaluator()
-    private val stabilityGate = FaceCaptureStabilityGate()
-    private val imageExtractor = FaceImageExtractor()
-
-    private val frameCount = AtomicInteger(0)
-    private val frameSkip = 3
-    private val isProcessing = AtomicBoolean(false)
+    private val blinkGate = FaceBlinkGate()
     private val captureDispatched = AtomicBoolean(false)
+    private val isDetectionEnabled = AtomicBoolean(false)
     private val isReleased = AtomicBoolean(false)
-    private val frameLease = SingleFrameLease<ImageProxy>(::closeImageProxy)
 
-    @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
-    override fun analyze(imageProxy: ImageProxy) {
-        if (isReleased.get() || isProcessing.get()) {
-            closeImageProxy(imageProxy)
-            return
+    val imageAnalyzer: ImageAnalysis.Analyzer = MlKitAnalyzer(
+        listOf(detector),
+        ImageAnalysis.COORDINATE_SYSTEM_ORIGINAL,
+        callbackExecutor,
+    ) { result ->
+        if (!isReleased.get() && isDetectionEnabled.get()) {
+            handleResult(result)
         }
+    }
 
-        val currentFrame = frameCount.incrementAndGet()
-        if (currentFrame % frameSkip != 0) {
-            closeImageProxy(imageProxy)
-            return
-        }
-
-        val mediaImage = imageProxy.image
-        if (mediaImage == null) {
-            closeImageProxy(imageProxy)
-            return
-        }
-        if (!isProcessing.compareAndSet(false, true)) {
-            closeImageProxy(imageProxy)
-            return
-        }
-        if (!frameLease.acquire(imageProxy)) {
-            isProcessing.set(false)
-            closeImageProxy(imageProxy)
+    private fun handleResult(result: MlKitAnalyzer.Result) {
+        val detectionFailure = result.getThrowable(detector)
+        if (detectionFailure != null) {
+            handleDetectionFailure(detectionFailure)
             return
         }
 
         try {
-            val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-            detector.process(image)
-                .addOnSuccessListener { faces ->
-                    if (isReleased.get()) {
-                        completeFrame(imageProxy)
-                        return@addOnSuccessListener
-                    }
-
-                    val processingJob = coroutineScope.launch(Dispatchers.Default) {
-                        try {
-                            processFaces(faces, imageProxy)
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            if (!isReleased.get()) {
-                                logE(
-                                    "Error processing faces",
-                                    tag = "FaceCaptureAnalyzer",
-                                    throwable = e,
-                                )
-                                DiagnosticEventTracker.trackError(
-                                    category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
-                                    event = "camera_frame_process_exception",
-                                    description = "人脸采集相机帧处理异常",
-                                    throwable = e,
-                                    extras = imageProxy.diagnosticExtras("process_faces"),
-                                )
-                                onHintChanged("人脸图像处理失败，请重试")
-                                resetDetectionState()
-                            }
-                        }
-                    }
-                    // invokeOnCompletion also runs when launch returns an already-cancelled Job,
-                    // which closes the frame even if the coroutine body never starts.
-                    processingJob.invokeOnCompletion { completeFrame(imageProxy) }
-                }
-                .addOnFailureListener { exception ->
-                    if (isReleased.get()) {
-                        completeFrame(imageProxy)
-                    } else {
-                        failAndCompleteFrame(imageProxy, exception)
-                    }
-                }
-                .addOnCanceledListener {
-                    completeFrame(imageProxy)
-                }
-        } catch (exception: Exception) {
-            if (isReleased.get()) {
-                completeFrame(imageProxy)
-            } else {
-                failAndCompleteFrame(imageProxy, exception)
-            }
+            processFaces(result.getValue(detector).orEmpty())
+        } catch (error: Exception) {
+            handleDetectionFailure(error)
         }
     }
 
-    private suspend fun processFaces(faces: List<Face>, imageProxy: ImageProxy) {
-        if (isReleased.get()) return
+    private fun processFaces(faces: List<Face>) {
+        when {
+            faces.isEmpty() -> {
+                resetDetectionState()
+                onHintChanged("未检测到人脸，请将面部置于取景框内")
+            }
 
-        if (faces.isEmpty()) {
-            resetDetectionState()
-            onHintChanged("未检测到人脸，请调整位置")
+            faces.size > 1 -> {
+                resetDetectionState()
+                onHintChanged("请确保取景框内只有一人")
+            }
+
+            else -> processSingleFace(faces.single())
+        }
+    }
+
+    private fun processSingleFace(face: Face) {
+        val positionQuality = qualityEvaluator.calculatePositionQuality(face)
+        val positionHint = qualityEvaluator.getPositionHint(face)
+        if (positionHint != null) {
+            blinkGate.reset()
+            publishDetection(
+                detected = true,
+                quality = positionQuality,
+                progress = 0f,
+            )
+            onHintChanged(positionHint)
             return
         }
 
-        val bestFace = faces.maxByOrNull { qualityEvaluator.calculate(it) }
-        bestFace?.let { face ->
-            val quality = qualityEvaluator.calculate(face)
-            val stability = stabilityGate.evaluate(
-                quality = quality,
+        if (face.trackingId == null) {
+            blinkGate.reset()
+            publishDetection(
+                detected = true,
+                quality = positionQuality,
+                progress = 0f,
+            )
+            onHintChanged("请保持面部不动，正在确认人脸")
+            return
+        }
+
+        val blinkResult = blinkGate.evaluate(
+            FaceBlinkObservation(
+                trackingId = face.trackingId,
+                leftEyeOpenProbability = face.leftEyeOpenProbability,
+                rightEyeOpenProbability = face.rightEyeOpenProbability,
+                positionQualified = true,
                 timestampMillis = SystemClock.elapsedRealtime(),
-            )
-            onFaceDetectionChanged(
-                FaceDetectionSnapshot(
-                    detected = true,
-                    quality = quality,
-                    confirmationProgress = stability.confirmationProgress,
-                ),
-            )
+            ),
+        )
+        publishDetection(
+            detected = true,
+            quality = positionQuality,
+            progress = blinkResult.progress,
+        )
 
-            when {
-                stability.isReadyToCapture && captureDispatched.compareAndSet(false, true) -> {
-                    onHintChanged("人脸确认完成，正在采集...")
-
-                    imageExtractor.cropFaceFromImage(imageProxy, face.boundingBox)?.let { bitmap ->
-                        if (isReleased.get()) {
-                            bitmap.recycle()
-                        } else {
-                            onFaceCaptured(bitmap, quality)
-                            onHintChanged("人脸采集成功")
-                        }
-                    } ?: run {
-                        captureDispatched.set(false)
-                        stabilityGate.reset()
-                        onFaceDetectionChanged(
-                            FaceDetectionSnapshot(
-                                detected = true,
-                                quality = quality,
-                                confirmationProgress = 0f,
-                            ),
-                        )
-                        DiagnosticEventTracker.trackError(
-                            category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
-                            event = "camera_frame_crop_empty",
-                            description = "人脸采集裁剪结果为空",
-                            extras = imageProxy.diagnosticExtras("crop_face") + mapOf(
-                                "faceWidth" to face.boundingBox.width(),
-                                "faceHeight" to face.boundingBox.height(),
-                                "quality" to quality,
-                            ),
-                        )
-                        onHintChanged("人脸图像处理失败，请重试")
-                    }
-                }
-
-                stability.isQualified -> {
-                    onHintChanged("请保持不动，正在确认人脸")
-                }
-
-                else -> {
-                    onHintChanged(qualityEvaluator.getHint(face))
-                }
-            }
-        } ?: run {
-            resetDetectionState()
-            DiagnosticEventTracker.trackError(
-                category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
-                event = "camera_frame_best_face_missing",
-                description = "人脸采集未选出最佳人脸",
-                extras = imageProxy.diagnosticExtras("select_best_face") + mapOf(
-                    "detectedFaceCount" to faces.size,
-                ),
-            )
-            onHintChanged("人脸检测异常，请重试")
+        if (
+            blinkResult.isReadyToCapture &&
+            captureDispatched.compareAndSet(false, true)
+        ) {
+            onHintChanged("眨眼验证完成，正在拍照…")
+            onCaptureRequested(qualityEvaluator.calculate(face))
+        } else {
+            onHintChanged(blinkResult.stage.userHint)
         }
     }
 
-    fun reset() {
-        frameCount.set(0)
-        stabilityGate.reset()
+    fun setDetectionEnabled(enabled: Boolean) {
+        if (isReleased.get()) return
+
+        val wasEnabled = isDetectionEnabled.getAndSet(enabled)
+        when {
+            enabled && !wasEnabled -> reset()
+            !enabled && wasEnabled -> blinkGate.reset()
+        }
+    }
+
+    private fun reset() {
+        blinkGate.reset()
         captureDispatched.set(false)
+        if (!isReleased.get() && isDetectionEnabled.get()) {
+            resetDetectionState()
+        }
     }
 
     fun release() {
         if (!isReleased.compareAndSet(false, true)) return
-
-        reset()
-        // ML Kit or the crop coroutine can still be reading the active ImageProxy. Stop accepting
-        // new frames now, but let the active owner close its frame before closing the detector.
-        frameLease.stopAcceptingFrames(onDrained = detector::close)
+        blinkGate.reset()
+        detector.close()
     }
 
-    private fun handleDetectionFailure(
-        imageProxy: ImageProxy,
-        exception: Exception,
-    ) {
-        logE("Face detection failed", tag = "FaceCaptureAnalyzer", throwable = exception)
+    private fun handleDetectionFailure(error: Throwable) {
+        if (!isDetectionEnabled.get() || isReleased.get()) return
+        logE("Face detection failed", tag = "FaceCaptureAnalyzer", throwable = error)
         DiagnosticEventTracker.trackError(
             category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
             event = "camera_frame_detect_failure",
             description = "人脸采集相机帧检测失败",
-            throwable = exception,
-            extras = imageProxy.diagnosticExtras("mlkit_detect"),
+            throwable = error,
         )
-        onHintChanged("检测失败，请重试")
         resetDetectionState()
-    }
-
-    private fun failAndCompleteFrame(
-        imageProxy: ImageProxy,
-        exception: Exception,
-    ) {
-        try {
-            handleDetectionFailure(imageProxy, exception)
-        } finally {
-            completeFrame(imageProxy)
-        }
-    }
-
-    private fun completeFrame(imageProxy: ImageProxy) {
-        frameLease.close(imageProxy)
-        isProcessing.set(false)
-    }
-
-    private fun closeImageProxy(imageProxy: ImageProxy) {
-        try {
-            imageProxy.close()
-        } catch (exception: Exception) {
-            logW("Error closing ImageProxy", tag = "FaceCaptureAnalyzer", throwable = exception)
-        }
+        onHintChanged("人脸检测失败，请重试")
     }
 
     private fun resetDetectionState() {
-        stabilityGate.reset()
+        blinkGate.reset()
+        publishDetection(
+            detected = false,
+            quality = 0f,
+            progress = 0f,
+        )
+    }
+
+    private fun publishDetection(
+        detected: Boolean,
+        quality: Float,
+        progress: Float,
+    ) {
+        if (!isDetectionEnabled.get() || isReleased.get()) return
         onFaceDetectionChanged(
             FaceDetectionSnapshot(
-                detected = false,
-                quality = 0f,
-                confirmationProgress = 0f,
+                detected = detected,
+                quality = quality,
+                confirmationProgress = progress,
             ),
         )
     }
 
-    private fun ImageProxy.diagnosticExtras(stage: String): Map<String, Any?> =
-        mapOf(
-            "stage" to stage,
-            "imageWidth" to width,
-            "imageHeight" to height,
-            "rotationDegrees" to imageInfo.rotationDegrees,
-            "frameCount" to frameCount.get(),
-        )
+    private val FaceBlinkStage.userHint: String
+        get() = when (this) {
+            FaceBlinkStage.WAITING_FOR_OPEN_EYES -> "请睁开双眼并正对摄像头"
+            FaceBlinkStage.WAITING_FOR_BLINK -> "请自然眨一下眼睛"
+            FaceBlinkStage.WAITING_FOR_REOPEN -> "请睁开双眼"
+            FaceBlinkStage.VERIFYING_REOPEN -> "眨眼完成，请保持不动"
+            FaceBlinkStage.COMPLETE -> "眨眼验证完成，正在拍照…"
+        }
 
     private companion object {
         const val FACE_CAPTURE_DIAGNOSTIC_CATEGORY = "face_capture"
-    }
-}
-
-/**
- * Holds at most one analyzer frame and guarantees that its close action runs once.
- *
- * Releasing the analyzer only stops new acquisitions. The active frame remains valid until its
- * detector/crop owner completes, so teardown cannot close an ImageProxy while it is being read.
- */
-internal class SingleFrameLease<T : Any>(
-    private val closeAction: (T) -> Unit,
-) {
-    private val lock = Any()
-    private var activeFrame: T? = null
-    private var acceptsFrames = true
-    private var onDrained: (() -> Unit)? = null
-
-    fun acquire(frame: T): Boolean = synchronized(lock) {
-        if (!acceptsFrames || activeFrame != null) {
-            false
-        } else {
-            activeFrame = frame
-            true
-        }
-    }
-
-    fun close(frame: T) {
-        var drainAction: (() -> Unit)? = null
-        val shouldClose = synchronized(lock) {
-            if (activeFrame === frame) {
-                activeFrame = null
-                if (!acceptsFrames) {
-                    drainAction = onDrained
-                    onDrained = null
-                }
-                true
-            } else {
-                false
-            }
-        }
-        if (shouldClose) {
-            try {
-                closeAction(frame)
-            } finally {
-                drainAction?.invoke()
-            }
-        }
-    }
-
-    fun stopAcceptingFrames(onDrained: () -> Unit) {
-        val isAlreadyDrained = synchronized(lock) {
-            acceptsFrames = false
-            if (activeFrame == null) {
-                true
-            } else {
-                this.onDrained = onDrained
-                false
-            }
-        }
-        if (isAlreadyDrained) {
-            onDrained()
-        }
     }
 }

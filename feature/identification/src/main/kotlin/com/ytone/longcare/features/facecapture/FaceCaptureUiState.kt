@@ -6,6 +6,7 @@ enum class FaceCapturePhase {
     PREPARING,
     SCANNING,
     CONFIRMING,
+    CAPTURING,
     CAPTURED,
 }
 
@@ -21,6 +22,9 @@ data class FaceCaptureUiState(
 ) {
     val isDetectionEnabled: Boolean
         get() = phase == FaceCapturePhase.SCANNING || phase == FaceCapturePhase.CONFIRMING
+
+    val isStillCaptureRequested: Boolean
+        get() = phase == FaceCapturePhase.CAPTURING
 }
 
 internal const val PREPARATION_COUNTDOWN_SECONDS = 3
