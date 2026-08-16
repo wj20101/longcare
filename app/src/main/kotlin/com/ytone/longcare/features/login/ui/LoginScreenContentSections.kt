@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.login.ui
 
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -53,6 +55,7 @@ internal fun BoxScope.LoginBrandingHeader(
     onMainLogoLongPress: (() -> Unit)? = null,
 ) {
     val hapticFeedback = LocalHapticFeedback.current
+    val mainLogoInteractionSource = remember { MutableInteractionSource() }
     val smallLogoWidth = if (isCompactLayout) 72.dp else 86.dp
     val smallLogoTopPadding = if (isCompactLayout) 12.dp else 20.dp
     val mainLogoWidth = if (isCompactLayout) 160.dp else 200.dp
@@ -78,6 +81,8 @@ internal fun BoxScope.LoginBrandingHeader(
             .then(
                 if (onMainLogoLongPress != null) {
                     Modifier.combinedClickable(
+                        interactionSource = mainLogoInteractionSource,
+                        indication = null,
                         onClick = {},
                         onLongClick = {
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)

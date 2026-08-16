@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.login.ui
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -22,7 +23,35 @@ class LoginHiddenTestEntryTest {
     val composeRule = createComposeRule()
 
     @Test
+    fun tapping_logo_does_not_open_validation_entries() {
+        setLoginContent()
+
+        composeRule.onNodeWithTag("login_main_logo").performTouchInput {
+            click()
+        }
+
+        composeRule.onNodeWithText("功能验证").assertDoesNotExist()
+    }
+
+    @Test
     fun long_pressing_logo_opens_all_validation_entries() {
+        setLoginContent()
+
+        composeRule.onNodeWithText("功能验证").assertDoesNotExist()
+
+        composeRule.onNodeWithTag("login_main_logo").performTouchInput {
+            longClick()
+        }
+
+        composeRule.onNodeWithText("功能验证").assertExists()
+        composeRule.onNodeWithText("人脸验证").assertExists()
+        composeRule.onNodeWithText("碰一碰 / R65C 验证").assertExists()
+        composeRule.onNodeWithText("拍照验证").assertExists()
+        composeRule.onNodeWithText("备用人脸验证").assertExists()
+        composeRule.onNodeWithText("人脸采集验证").assertExists()
+    }
+
+    private fun setLoginContent() {
         composeRule.setContent {
             LongCareTheme {
                 LoginScreenContent(
@@ -39,18 +68,5 @@ class LoginHiddenTestEntryTest {
                 )
             }
         }
-
-        composeRule.onNodeWithText("功能验证").assertDoesNotExist()
-
-        composeRule.onNodeWithTag("login_main_logo").performTouchInput {
-            longClick()
-        }
-
-        composeRule.onNodeWithText("功能验证").assertExists()
-        composeRule.onNodeWithText("人脸验证").assertExists()
-        composeRule.onNodeWithText("碰一碰 / R65C 验证").assertExists()
-        composeRule.onNodeWithText("拍照验证").assertExists()
-        composeRule.onNodeWithText("备用人脸验证").assertExists()
-        composeRule.onNodeWithText("人脸采集验证").assertExists()
     }
 }
