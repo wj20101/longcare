@@ -20,6 +20,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal class PhotoTaskQueueDelegate(
     private val scope: CoroutineScope,
@@ -30,6 +32,7 @@ internal class PhotoTaskQueueDelegate(
     val imageTasks = MutableStateFlow<List<ImageTask>>(emptyList())
     val isProcessing = MutableStateFlow(false)
     val currentTaskType = MutableStateFlow<ImageTaskType?>(null)
+    private val addImagesMutex = Mutex()
 
     fun setCurrentTaskType(taskType: ImageTaskType) {
         currentTaskType.value = taskType
@@ -42,58 +45,74 @@ internal class PhotoTaskQueueDelegate(
         loadImagesFromRoom(orderKey)
     }
 
-    fun addImageToProcess(uri: Uri, taskType: ImageTaskType, address: String, orderKey: OrderKey? = null) {
-        addImagesToProcess(listOf(uri), taskType, address, orderKey)
-    }
+    suspend fun addImagesToProcess(
+        uris: List<Uri>,
+        taskType: ImageTaskType,
+        address: String,
+        orderKey: OrderKey? = null,
+        maxPhotosPerCategory: Int? = null,
+    ): AddImagesResult = addImagesMutex.withLock {
+        val currentCount = imageTasks.value.count { it.taskType == taskType }
+        val acceptedCount = ServicePhotoLimitPolicy.allowedIncomingCount(
+            currentCount = currentCount,
+            requestedCount = uris.size,
+            maxCount = maxPhotosPerCategory,
+        )
+        val acceptedUris = uris.take(acceptedCount)
+        val rejectedUris = uris.drop(acceptedCount)
+        val effectiveOrderKey = orderKey ?: currentOrderKey.value
+        logD(
+            "addImagesToProcess: requested=${uris.size}, accepted=${acceptedUris.size}, key=$effectiveOrderKey",
+            tag = "PhotoVM",
+        )
+        val newTasks = mutableListOf<ImageTask>()
 
-    fun addImagesToProcess(uris: List<Uri>, taskType: ImageTaskType, address: String, orderKey: OrderKey? = null) {
-        scope.launch {
-            val effectiveOrderKey = orderKey ?: currentOrderKey.value
-            logD("addImagesToProcess: count=${uris.size}, key=$effectiveOrderKey", tag = "PhotoVM")
-            val newTasks = mutableListOf<ImageTask>()
-
-            for (uri in uris) {
-                val dbId = if (effectiveOrderKey != null) {
-                    try {
-                        imageRepository.addImage(
-                            orderKey = effectiveOrderKey,
-                            imageType = taskType.toImageType(),
-                            localUri = uri.toString(),
-                            localPath = uri.path
-                        ).also { logD("Saved to DB: id=$it, type=$taskType", tag = "PhotoVM") }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        logE("Failed to save image to DB", tag = "PhotoVM", throwable = e)
-                        DiagnosticEventTracker.trackError(
-                            category = PHOTO_DIAGNOSTIC_CATEGORY,
-                            event = "local_image_record_save_exception",
-                            description = "服务照片本地记录保存异常",
-                            throwable = e,
-                            extras = mapOf(
-                                "orderId" to effectiveOrderKey.orderId,
-                                "planId" to effectiveOrderKey.planId,
-                                "taskType" to taskType.name,
-                            ),
-                        )
-                        null
-                    }
-                } else {
-                    logW("No effectiveOrderKey, using UUID", tag = "PhotoVM")
+        for (uri in acceptedUris) {
+            val dbId = if (effectiveOrderKey != null) {
+                try {
+                    imageRepository.addImage(
+                        orderKey = effectiveOrderKey,
+                        imageType = taskType.toImageType(),
+                        localUri = uri.toString(),
+                        localPath = uri.path
+                    ).also { logD("Saved to DB: id=$it, type=$taskType", tag = "PhotoVM") }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logE("Failed to save image to DB", tag = "PhotoVM", throwable = e)
+                    DiagnosticEventTracker.trackError(
+                        category = PHOTO_DIAGNOSTIC_CATEGORY,
+                        event = "local_image_record_save_exception",
+                        description = "服务照片本地记录保存异常",
+                        throwable = e,
+                        extras = mapOf(
+                            "orderId" to effectiveOrderKey.orderId,
+                            "planId" to effectiveOrderKey.planId,
+                            "taskType" to taskType.name,
+                        ),
+                    )
                     null
                 }
-
-                newTasks += ImageTask(
-                    id = dbId?.toString() ?: UUID.randomUUID().toString(),
-                    originalUri = uri.toString(),
-                    taskType = taskType,
-                    status = ImageTaskStatus.PROCESSING
-                )
+            } else {
+                logW("No effectiveOrderKey, using UUID", tag = "PhotoVM")
+                null
             }
 
-            imageTasks.update { it + newTasks }
-            newTasks.forEach { processImageTask(it) }
+            newTasks += ImageTask(
+                id = dbId?.toString() ?: UUID.randomUUID().toString(),
+                originalUri = uri.toString(),
+                taskType = taskType,
+                status = ImageTaskStatus.PROCESSING
+            )
         }
+
+        imageTasks.update { it + newTasks }
+        newTasks.forEach { processImageTask(it) }
+        imagePipeline.deleteManagedImages(rejectedUris)
+
+        AddImagesResult(
+            rejectedCount = rejectedUris.size,
+        )
     }
 
     fun retryTask(taskId: String) {

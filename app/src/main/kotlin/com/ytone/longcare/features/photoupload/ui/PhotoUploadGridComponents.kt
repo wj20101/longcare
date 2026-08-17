@@ -13,9 +13,11 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.ytone.longcare.R
 import com.ytone.longcare.model.ImageTask
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 
@@ -24,11 +26,15 @@ fun PhotoUploadSection(
     category: PhotoCategory,
     tasks: List<ImageTask>,
     isUploading: Boolean,
+    isPhotoLimitLoaded: Boolean,
+    maxPhotosPerCategory: Int?,
     onAddPhoto: () -> Unit,
     onRetryTask: (String) -> Unit,
     onRemoveTask: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isPhotoLimitReached = maxPhotosPerCategory?.let { tasks.size >= it } == true
+
     Box(modifier = modifier) {
         Card(
             modifier = Modifier
@@ -47,7 +53,17 @@ fun PhotoUploadSection(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 item {
-                    AddPhotoButton(onClick = onAddPhoto, enabled = !isUploading)
+                    AddPhotoButton(
+                        onClick = onAddPhoto,
+                        enabled = isPhotoLimitLoaded && !isUploading && !isPhotoLimitReached,
+                        label = stringResource(
+                            if (isPhotoLimitReached) {
+                                R.string.photo_upload_limit_reached_short
+                            } else {
+                                R.string.photo_upload_add_photo
+                            }
+                        ),
+                    )
                 }
                 items(tasks) { task ->
                     ImageTaskItem(

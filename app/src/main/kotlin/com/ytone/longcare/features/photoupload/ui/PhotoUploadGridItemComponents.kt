@@ -47,7 +47,8 @@ import com.ytone.longcare.model.ImageTaskStatus
 @Composable
 fun AddPhotoButton(
     onClick: () -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    label: String? = null,
 ) {
     val lineColor = if (enabled) Color(0xFF2C87FE) else Color.Gray
     val alpha = if (enabled) 1f else 0.5f
@@ -71,7 +72,7 @@ fun AddPhotoButton(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = stringResource(R.string.photo_upload_add_photo),
+            text = label ?: stringResource(R.string.photo_upload_add_photo),
             fontSize = 12.sp,
             color = lineColor
         )

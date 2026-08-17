@@ -3,9 +3,12 @@ package com.ytone.longcare.features.photoupload.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.core.net.toUri
 import com.ytone.longcare.features.photoupload.api.PhotoUploadActions
 import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewModel
+import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingEvent
 import com.ytone.longcare.model.ImageTaskType
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
@@ -17,7 +20,11 @@ internal fun PhotoUploadScreenEffects(
     viewModel: PhotoProcessingViewModel,
     sharedViewModel: SharedOrderDetailViewModel,
     currentTaskType: ImageTaskType?,
+    onPhotoLimitReached: (Int) -> Unit,
 ) {
+    val latestTaskType by rememberUpdatedState(currentTaskType)
+    val latestOnPhotoLimitReached by rememberUpdatedState(onPhotoLimitReached)
+
     DisposableEffect(Unit) {
         com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: 🟢 Enter Composition")
         onDispose {
@@ -47,7 +54,7 @@ internal fun PhotoUploadScreenEffects(
         actions.capturedImageUriFlow.collect { uriString ->
             uriString?.let {
                 val uri = it.toUri()
-                currentTaskType?.let { taskType ->
+                latestTaskType?.let { taskType ->
                     viewModel.addImagesToProcess(
                         uris = listOf(uri),
                         taskType = taskType,
@@ -56,6 +63,14 @@ internal fun PhotoUploadScreenEffects(
                     )
                 }
                 actions.clearCapturedImageUri()
+            }
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is PhotoProcessingEvent.PhotoLimitReached -> latestOnPhotoLimitReached(event.maxCount)
             }
         }
     }

@@ -9,6 +9,7 @@ import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
+import com.ytone.longcare.domain.system.ServicePhotoConfigProvider
 import com.ytone.longcare.model.SystemConfigModel
 import com.ytone.longcare.model.ThirdKeyReturnModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -30,7 +31,7 @@ class SystemConfigManager @Inject constructor(
     @param:ApplicationScope private val applicationScope: CoroutineScope,
     private val moshi: Moshi,
     private val apiService: LongCareApiService,
-) : FaceVerificationConfigProvider {
+) : FaceVerificationConfigProvider, ServicePhotoConfigProvider {
     companion object {
         private const val PREFS_NAME = "system_config_prefs"
         private const val KEY_SYSTEM_CONFIG = "system_config"
@@ -221,9 +222,9 @@ class SystemConfigManager @Inject constructor(
     }
 
     /**
-     * 获取最大上传图片数量
+     * 获取每个服务照片分类的最大上传数量
      */
-    suspend fun getMaxImgNum(): Int {
+    override suspend fun getMaxServicePhotoCount(): Int {
         return getSystemConfigLazy()?.maxImgNum ?: 0
     }
 

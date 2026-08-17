@@ -41,6 +41,8 @@ fun PhotoUploadSectionPreview() {
         category = PhotoCategory.BEFORE_CARE,
         tasks = tasks,
         isUploading = false,
+        isPhotoLimitLoaded = true,
+        maxPhotosPerCategory = 9,
         onAddPhoto = {},
         onRetryTask = {},
         onRemoveTask = {}

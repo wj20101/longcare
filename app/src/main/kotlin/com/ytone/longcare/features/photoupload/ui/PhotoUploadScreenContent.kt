@@ -67,6 +67,8 @@ internal fun PhotoUploadScreenContent(
     centerCareTasks: List<ImageTask>,
     afterCareTasks: List<ImageTask>,
     isUploading: Boolean,
+    isPhotoLimitLoaded: Boolean,
+    maxPhotosPerCategory: Int?,
     onAddBeforeCarePhoto: () -> Unit,
     onAddCenterCarePhoto: () -> Unit,
     onAddAfterCarePhoto: () -> Unit,
@@ -97,6 +99,8 @@ internal fun PhotoUploadScreenContent(
                 category = PhotoCategory.BEFORE_CARE,
                 tasks = beforeCareTasks,
                 isUploading = isUploading,
+                isPhotoLimitLoaded = isPhotoLimitLoaded,
+                maxPhotosPerCategory = maxPhotosPerCategory,
                 onAddPhoto = onAddBeforeCarePhoto,
                 onRetryTask = onRetryTask,
                 onRemoveTask = onRemoveTask
@@ -109,6 +113,8 @@ internal fun PhotoUploadScreenContent(
                 category = PhotoCategory.CENTER_CARE,
                 tasks = centerCareTasks,
                 isUploading = isUploading,
+                isPhotoLimitLoaded = isPhotoLimitLoaded,
+                maxPhotosPerCategory = maxPhotosPerCategory,
                 onAddPhoto = onAddCenterCarePhoto,
                 onRetryTask = onRetryTask,
                 onRemoveTask = onRemoveTask
@@ -121,6 +127,8 @@ internal fun PhotoUploadScreenContent(
                 category = PhotoCategory.AFTER_CARE,
                 tasks = afterCareTasks,
                 isUploading = isUploading,
+                isPhotoLimitLoaded = isPhotoLimitLoaded,
+                maxPhotosPerCategory = maxPhotosPerCategory,
                 onAddPhoto = onAddAfterCarePhoto,
                 onRetryTask = onRetryTask,
                 onRemoveTask = onRemoveTask

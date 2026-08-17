@@ -91,6 +91,13 @@ class SystemConfigManagerTest {
     }
 
     @Test
+    fun `getMaxServicePhotoCount should return config value`() = runTest(testDispatcher) {
+        manager.saveSystemConfig(SystemConfigModel(maxImgNum = 9))
+
+        assertEquals(9, manager.getMaxServicePhotoCount())
+    }
+
+    @Test
     fun `getFaceVerificationConfig should return null when third key has blank fields`() = runTest(testDispatcher) {
         val third = ThirdKeyReturnModel(
             txFaceAppId = "",

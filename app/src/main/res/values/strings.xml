@@ -28,6 +28,9 @@
     <string name="photo_upload_description">护理执行阶段需要拍摄护理前照片、护理中照片、护理后照片。</string>
     <string name="photo_upload_add_photo">添加照片</string>
     <string name="photo_upload_add_photo_description">添加照片</string>
+    <string name="photo_upload_config_loading">正在加载照片配置，请稍候</string>
+    <string name="photo_upload_limit_reached">每类服务照片最多上传 %1$d 张</string>
+    <string name="photo_upload_limit_reached_short">已达上限</string>
     <string name="login_background_description">登录背景</string>
     <string name="login_small_logo_description">应用小图标</string>
     <string name="login_app_logo_description">应用图标</string>

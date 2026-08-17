@@ -15,7 +15,7 @@ data class SystemConfigModel(
     val companyName: String = "",
 
     /**
-     * 上传最大的数量
+     * 每个服务照片分类允许上传的最大数量
      */
     @param:Json(name = "maxImgNum")
     val maxImgNum: Int = 0,

@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
@@ -54,8 +55,10 @@ fun PhotoUploadScreen(
     val imageTasks by viewModel.imageTasks.collectAsStateWithLifecycle()
     val isUploading by viewModel.isUploading.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val currentTaskType by viewModel.currentTaskType.collectAsStateWithLifecycle()
+    val photoLimitState by viewModel.photoLimitState.collectAsStateWithLifecycle()
     var showCameraPurposeNotice by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val showMessage: (String) -> Unit = { message ->
@@ -67,7 +70,10 @@ fun PhotoUploadScreen(
         orderKey = orderKey,
         viewModel = viewModel,
         sharedViewModel = sharedViewModel,
-        currentTaskType = currentTaskType
+        currentTaskType = currentTaskType,
+        onPhotoLimitReached = { maxCount ->
+            showMessage(resources.getString(R.string.photo_upload_limit_reached, maxCount))
+        },
     )
     
     fun openCameraForTask(taskType: ImageTaskType) {
@@ -95,11 +101,23 @@ fun PhotoUploadScreen(
     )
 
     val requestCameraForTask: (ImageTaskType) -> Unit = { taskType ->
-        viewModel.setCurrentTaskType(taskType)
-        if (UnifiedPermissionHelper.isCameraPermissionGranted(context)) {
-            openCameraForTask(taskType)
-        } else {
-            showCameraPurposeNotice = true
+        when {
+            !photoLimitState.isLoaded -> {
+                showMessage(resources.getString(R.string.photo_upload_config_loading))
+            }
+            !viewModel.canAddPhoto(taskType) -> {
+                photoLimitState.maxPhotosPerCategory?.let { maxCount ->
+                    showMessage(resources.getString(R.string.photo_upload_limit_reached, maxCount))
+                }
+            }
+            else -> {
+                viewModel.setCurrentTaskType(taskType)
+                if (UnifiedPermissionHelper.isCameraPermissionGranted(context)) {
+                    openCameraForTask(taskType)
+                } else {
+                    showCameraPurposeNotice = true
+                }
+            }
         }
     }
 
@@ -137,6 +155,8 @@ fun PhotoUploadScreen(
                 centerCareTasks = centerCareTasks,
                 afterCareTasks = afterCareTasks,
                 isUploading = isUploading,
+                isPhotoLimitLoaded = photoLimitState.isLoaded,
+                maxPhotosPerCategory = photoLimitState.maxPhotosPerCategory,
                 onAddBeforeCarePhoto = {
                     requestCameraForTask(ImageTaskType.BEFORE_CARE)
                 },
