@@ -47,6 +47,9 @@ internal fun NavGraphBuilder.registerEntryNavGraphs(navController: NavController
                     },
                     onNavigateToHaveServiceUserList = { navController.navigateToHaveServiceUserList() },
                     onNavigateToNoServiceUserList = { navController.navigateToNoServiceUserList() },
+                    onOpenWebPage = { url, title ->
+                        navController.navigateToWebView(url, title)
+                    },
                     onOpenUserAgreement = {
                         navController.navigateToWebView(AgreementUrls.USER_AGREEMENT_URL, "用户协议")
                     },

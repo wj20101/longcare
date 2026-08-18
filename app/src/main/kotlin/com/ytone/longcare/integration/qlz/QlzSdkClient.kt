@@ -145,15 +145,6 @@ class QlzSdkClient @Inject constructor(
         }
     }
 
-    fun openReport(
-        activity: Activity,
-        reportUrl: String,
-    ) {
-        if (reportUrl.isNotBlank()) {
-            SDKCall.goResultAcitivty(activity, reportUrl)
-        }
-    }
-
     fun requiredRuntimePermissions(): Array<String> =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             arrayOf(

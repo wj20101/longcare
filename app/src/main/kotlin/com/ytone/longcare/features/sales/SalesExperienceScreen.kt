@@ -87,6 +87,8 @@ internal fun SalesExperienceScreen(
         stringResource(R.string.sales_error_evaluation_not_ready)
     val noReportMessage = stringResource(R.string.sales_error_no_report)
     val reportUrlEmptyMessage = stringResource(R.string.sales_error_report_url_empty)
+    val evaluationFormTitle = stringResource(R.string.sales_evaluation_form_title)
+    val evaluationReportTitle = stringResource(R.string.sales_evaluation_report_title)
     val cameraUnavailableMessage =
         stringResource(R.string.sales_error_camera_unavailable)
     val cameraPermissionMessage =
@@ -125,25 +127,22 @@ internal fun SalesExperienceScreen(
         )
     }
 
-    fun openReport(
-        reportUrl: String,
-        missingMessage: String,
-    ) {
-        val hostActivity = activity
-        when {
-            reportUrl.isBlank() -> showMessage(missingMessage)
-            hostActivity == null || hostActivity.isFinishing || hostActivity.isDestroyed ->
-                showMessage(openEvaluationErrorMessage)
-            else -> sdkUiController.openReport(hostActivity, reportUrl)
+    fun openFormEvaluation(formUrl: String) {
+        val normalizedFormUrl = formUrl.trim()
+        if (normalizedFormUrl.isBlank()) {
+            showMessage(reportUrlEmptyMessage)
+        } else {
+            actions.onOpenWebPage(normalizedFormUrl, evaluationFormTitle)
         }
     }
 
     fun openLatestReport() {
-        val reportUrl =
-            uiState.evaluationCompleted?.reportUrl
-                .orEmpty()
-                .ifBlank { uiState.selectedCustomer?.pgUrl.orEmpty() }
-        openReport(reportUrl, noReportMessage)
+        val reportUrl = uiState.selectedCustomer.serverAssessmentReportUrl()
+        if (reportUrl.isBlank()) {
+            showMessage(noReportMessage)
+        } else {
+            actions.onOpenWebPage(reportUrl, evaluationReportTitle)
+        }
     }
 
     fun goHome() {
@@ -583,7 +582,7 @@ internal fun SalesExperienceScreen(
                                     .ifBlank {
                                         uiState.selectedCustomer?.pgUrl.orEmpty()
                                     }
-                            openReport(formUrl, reportUrlEmptyMessage)
+                            openFormEvaluation(formUrl)
                         },
                     )
 
@@ -607,7 +606,7 @@ internal fun SalesExperienceScreen(
                 SalesPage.EVALUATION_COMPLETE ->
                     SalesEvaluationCompleteScreen(
                         hasReport =
-                            uiState.evaluationCompleted?.reportUrl?.isNotBlank() == true,
+                            uiState.selectedCustomer.serverAssessmentReportUrl().isNotBlank(),
                         onBack = ::goHome,
                         onDone = ::goHome,
                         onOpenReport = {

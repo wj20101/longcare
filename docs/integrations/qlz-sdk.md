@@ -65,6 +65,14 @@ Android 源码、资源、BuildConfig 或 APK。客户端通过
    （Android 11 及以下请求精确位置权限）。
 6. 调用 `SDKCall.openByToken(...)` 打开检测页面。
 7. 通过 `QlzSdkEvent` 接收进度、取消、关闭、错误和报告成功事件。
+8. 检测完成后重新查询 `/V1/Sale/GetUserLatentDetail?id=...`；“查看评估报告”只使用
+   接口返回的 `pgUrl`（Swagger 定义为“评估Web地址”），并通过应用内 `WebViewRoute`
+   加载，不再使用 SDK 回调 URL 打开厂商报告 Activity。
+
+表单评估同样只使用 `/V1/Sale/AddUserLatent` 或
+`/V1/Sale/GetUserLatentDetail` 返回的 `pgUrl`，通过标题为“表单评估”的应用内
+`WebViewRoute` 加载。只有设备自动评估进入 QLZ SDK 页面；应用不再调用
+`SDKCall.goResultAcitivty(...)` 打开表单或报告。
 
 SDK Token 当前有效期由服务端 `expireAt` 决定，客户端没有写死 20 分钟。
 

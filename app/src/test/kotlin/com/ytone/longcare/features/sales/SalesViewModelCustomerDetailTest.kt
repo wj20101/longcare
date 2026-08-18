@@ -6,14 +6,17 @@ import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.sale.SaleRepository
+import com.ytone.longcare.integration.qlz.QlzSdkEvent
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.platform.sales.SalesEvaluationDeviceGateway
 import com.ytone.longcare.platform.text.SalesTextResolver
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -117,6 +120,36 @@ class SalesViewModelCustomerDetailTest {
                 viewModel.uiState.value.customerDetailErrorMessage,
             )
             assertFalse(viewModel.uiState.value.isCustomerDetailLoading)
+        }
+
+    @Test
+    fun `completed SDK evaluation refreshes report URL from customer detail API`() =
+        runTest {
+            val serviceReportUrl = "https://care.example.com/assessment/report/7"
+            val repository =
+                repositoryWithDetail(
+                    ApiResult.Success(
+                        UserLatentDetailModel(
+                            id = 7,
+                            userName = "测试客户",
+                            pgUrl = serviceReportUrl,
+                        )
+                    )
+                )
+            val viewModel = createViewModel(repository)
+
+            viewModel.selectCustomer(7)
+            viewModel.onSdkEvent(
+                QlzSdkEvent.Completed(
+                    recordId = "sdk-record",
+                    reportUrl = "https://vendor.example.com/sdk-report",
+                    score = "80",
+                )
+            )
+            advanceUntilIdle()
+
+            assertEquals(serviceReportUrl, viewModel.uiState.value.selectedCustomer?.pgUrl)
+            coVerify(exactly = 1) { repository.getUserLatentDetail(7) }
         }
 
     private fun repositoryWithDetail(

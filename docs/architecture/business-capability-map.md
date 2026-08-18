@@ -154,6 +154,10 @@ Status: data, customer-facing sales UI, and SDK integration implemented
   - obtain a one-time assessment Token through the LongCare Sale API
   - initialize the QLZ SDK and open its built-in Bluetooth assessment UI
   - receive progress, completion, cancellation, and report callbacks
+  - open the server-provided form-assessment `pgUrl` through the app-owned `WebViewRoute`;
+    only device-based automatic assessment enters the QLZ SDK UI
+  - after completion, refresh `/V1/Sale/GetUserLatentDetail` and open its `pgUrl`
+    assessment report through the app-owned `WebViewRoute`
 - Key dependencies:
   - QLZ SDK AAR 1.3.0.2 and protobuf Lite runtime
   - `SaleRepository` (`core:domain`) and `SaleRepositoryImpl` (`core:data`)

@@ -687,3 +687,11 @@ private fun SalesCustomerDetailPlaceholder(
  */
 internal fun UserLatentDetailModel.hasCompletedEvaluation(): Boolean =
     pgId > 0 || pgResult.orEmpty().isNotBlank()
+
+/** The report URL is valid only after the service confirms an evaluation result. */
+internal fun UserLatentDetailModel?.serverAssessmentReportUrl(): String =
+    this
+        ?.takeIf { it.hasCompletedEvaluation() }
+        ?.pgUrl
+        .orEmpty()
+        .trim()

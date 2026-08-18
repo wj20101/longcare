@@ -21,10 +21,6 @@ internal class SalesSdkUiController(
     fun openEvaluation(activity: Activity, token: String, onEvent: (QlzSdkEvent) -> Unit) {
         qlzSdkClient.openByToken(activity, token, onEvent)
     }
-
-    fun openReport(activity: Activity, reportUrl: String) {
-        qlzSdkClient.openReport(activity, reportUrl)
-    }
 }
 
 @EntryPoint

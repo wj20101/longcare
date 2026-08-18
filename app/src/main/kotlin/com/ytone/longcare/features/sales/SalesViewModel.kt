@@ -730,7 +730,7 @@ class SalesViewModel @Inject constructor(
 
     private suspend fun reduceSdkEvent(event: QlzSdkEvent) {
         when (event) {
-            is QlzSdkEvent.Completed ->
+            is QlzSdkEvent.Completed -> {
                 _uiState.value =
                     _uiState.value.copy(
                         connectedDeviceName =
@@ -740,6 +740,8 @@ class SalesViewModel @Inject constructor(
                         sdkProgressText = text(R.string.sales_progress_detection_complete),
                         noticeMessage = text(R.string.sales_notice_evaluation_success),
                     )
+                loadCustomerDetail(_uiState.value.selectedCustomerId)
+            }
 
             is QlzSdkEvent.Progress ->
                 _uiState.value =

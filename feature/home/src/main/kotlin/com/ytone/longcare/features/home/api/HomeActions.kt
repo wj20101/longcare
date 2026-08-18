@@ -12,6 +12,7 @@ data class HomeActions(
     val onNavigateToServiceCountdown: (OrderKey, List<Int>) -> Unit,
     val onNavigateToHaveServiceUserList: () -> Unit,
     val onNavigateToNoServiceUserList: () -> Unit,
+    val onOpenWebPage: (url: String, title: String) -> Unit,
     val onOpenUserAgreement: () -> Unit,
     val onOpenPrivacyPolicy: () -> Unit,
     val onNavigateToCamera: (WatermarkData) -> Unit,

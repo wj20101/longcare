@@ -57,6 +57,7 @@
     <string name="sales_customer_no_evaluation_result">暂无结果</string>
     <string name="sales_customer_evaluate_now">立即评估</string>
     <string name="sales_customer_view_report">查看评估报告</string>
+    <string name="sales_evaluation_report_title">评估报告</string>
     <string name="sales_customer_loading_detail">正在加载客户信息…</string>
     <string name="sales_customer_detail_load_failed">客户信息加载失败</string>
     <string name="sales_customer_no_detail">暂无客户信息</string>
