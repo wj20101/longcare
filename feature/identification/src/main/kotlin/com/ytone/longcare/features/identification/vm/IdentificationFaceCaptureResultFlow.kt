@@ -1,6 +1,8 @@
 package com.ytone.longcare.features.identification.vm
 
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
+import com.ytone.longcare.feature.identification.R
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.model.User
 import kotlinx.coroutines.CancellationException
@@ -17,12 +19,13 @@ internal fun launchFaceCaptureResultHandling(
     setFaceSetupError: (String) -> Unit,
     showToast: (String) -> Unit,
     prepareSdkLaunch: suspend (FaceVerificationRequest, FaceSetupPreparation.Ready) -> Unit,
+    textResolver: ResourceTextResolver,
 ) {
     scope.launch {
         try {
             setFaceSetupState(FaceSetupState.Initial)
             setFaceVerificationState(FaceVerificationState.Idle)
-            showToast("开始处理人脸图片...")
+            showToast(textResolver.text(R.string.identification_face_image_processing_started))
 
             val preparation = prepareFaceSetupVerificationInput(
                 imagePath = imagePath,
@@ -30,17 +33,19 @@ internal fun launchFaceCaptureResultHandling(
                 currentUser = resolveCurrentUser()
             )
             if (preparation is FaceSetupPreparation.Error) {
-                setFaceSetupError(preparation.message)
+                setFaceSetupError(textResolver.resolve(preparation.failure))
                 return@launch
             }
             val ready = preparation as FaceSetupPreparation.Ready
 
-            showToast("开始人脸验证和设置...")
+            showToast(textResolver.text(R.string.identification_face_setup_starting))
             prepareSdkLaunch(ready.request, ready)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            setFaceSetupError("处理人脸图片时发生错误: ${e.message}")
+            setFaceSetupError(
+                textResolver.text(R.string.identification_face_image_processing_error),
+            )
         }
     }
 }

@@ -19,7 +19,8 @@ internal suspend fun executeEndOrderRequest(
     centerImgList: List<String>,
     longitude: String,
     latitude: String,
-    endType: Int
+    endType: Int,
+    userMessages: NfcUserMessages,
 ) {
     klogI(
         "executeEndOrder: Begin: ${beginImgList.size}, Center: ${centerImgList.size}, End: ${endImageList.size}",
@@ -46,7 +47,6 @@ internal suspend fun executeEndOrderRequest(
         }
 
         is ApiResult.Exception -> {
-            val message = result.exception.message ?: "网络错误，请检查网络连接"
             trackNfcException(
                 event = "end_order_submit_exception",
                 description = "NFC结束工单提交异常",
@@ -64,7 +64,7 @@ internal suspend fun executeEndOrderRequest(
                     endType = endType,
                 ),
             )
-            uiState.value = reportedNfcError(message)
+            uiState.value = reportedNfcError(userMessages.networkError)
         }
 
         is ApiResult.Failure -> {

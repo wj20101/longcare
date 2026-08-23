@@ -1,6 +1,7 @@
 package com.ytone.longcare.common.utils
 
 import android.content.Context
+import com.ytone.longcare.R
 import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.faceauth.FaceVerifyCallback
@@ -13,6 +14,7 @@ import com.ytone.longcare.model.TencentApiTicketResponse
 import com.ytone.longcare.model.TicketInfo
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
@@ -67,6 +69,8 @@ class FaceVerificationManagerInputValidationTest {
 
     @Test
     fun `startFaceVerification should hide getFaceId failure detail`() = runTest {
+        every { context.getString(R.string.tencent_face_prepare_failed) } returns
+            "人脸核验准备失败，请稍后重试"
         coEvery { repository.getAccessToken(any(), any()) } returns ApiResult.Success(
             TencentAccessTokenResponse(
                 code = "0",

@@ -9,7 +9,7 @@ import com.ytone.longcare.domain.sale.SaleRepository
 import com.ytone.longcare.integration.qlz.QlzSdkEvent
 import com.ytone.longcare.model.CheckTokenModel
 import com.ytone.longcare.platform.sales.SalesEvaluationDeviceGateway
-import com.ytone.longcare.platform.text.SalesTextResolver
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.every
@@ -103,7 +103,7 @@ class SalesViewModelSdkTokenRecoveryTest {
             imagePipeline = testImagePipeline(applicationContext),
             evaluationDeviceGateway = evaluationDeviceGateway,
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
-            textResolver = SalesTextResolver(applicationContext),
+            textResolver = ResourceTextResolver(applicationContext),
         )
     }
 }

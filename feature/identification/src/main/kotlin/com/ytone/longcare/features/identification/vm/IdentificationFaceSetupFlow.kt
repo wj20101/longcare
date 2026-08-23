@@ -1,6 +1,8 @@
 package com.ytone.longcare.features.identification.vm
 
 import com.ytone.longcare.common.faceauth.FaceSdkEvent
+import com.ytone.longcare.common.text.ResourceTextResolver
+import com.ytone.longcare.feature.identification.R
 import com.ytone.longcare.features.identification.domain.SetupFaceResult
 import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
 import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker
@@ -19,6 +21,7 @@ internal fun launchFaceSetupUpload(
     onUploading: () -> Unit,
     onSuccess: () -> Unit,
     onError: (String) -> Unit,
+    textResolver: ResourceTextResolver,
 ) {
     scope.launch {
         try {
@@ -31,12 +34,17 @@ internal fun launchFaceSetupUpload(
                 )
             ) {
                 SetupFaceResult.Success -> onSuccess()
-                is SetupFaceResult.Error -> onError(result.message)
+                is SetupFaceResult.Error -> onError(textResolver.resolve(result.failure))
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            onError("上传失败: ${e.message ?: "请稍后重试"}")
+            onError(
+                textResolver.text(
+                    R.string.identification_face_setup_upload_failed,
+                    textResolver.text(R.string.identification_retry_later),
+                ),
+            )
         }
     }
 }
@@ -51,6 +59,7 @@ internal fun handleStandardFaceSetupSdkEvent(
     setFaceSetupError: (String) -> Unit,
     showToast: (String) -> Unit,
     onServicePersonVerified: () -> Unit,
+    textResolver: ResourceTextResolver,
 ): Unit = when (event) {
         FaceSdkEvent.InitSuccess -> {
             FaceVerificationEventTracker.trackEvent(
@@ -60,14 +69,20 @@ internal fun handleStandardFaceSetupSdkEvent(
                     "flow" to "face_setup",
                 ),
             )
-            showToast("人脸验证初始化成功")
+            showToast(textResolver.text(R.string.identification_face_init_success))
             setFaceSetupState(FaceSetupState.Initial)
         }
         is FaceSdkEvent.InitFailed -> setFaceSetupError(
-            buildFaceVerifyErrorMessage("人脸验证初始化失败", event.error)
+            buildFaceVerifyErrorMessage(
+                textResolver,
+                R.string.identification_face_verification_init_failed,
+                event.error,
+            )
         )
         is FaceSdkEvent.VerifySuccess -> {
-            showToast("人脸验证成功，开始上传设置...")
+            showToast(
+                textResolver.text(R.string.identification_face_setup_verification_succeeded),
+            )
             launchFaceSetupUpload(
                 scope = scope,
                 setupFaceUseCase = setupFaceUseCase,
@@ -81,14 +96,21 @@ internal fun handleStandardFaceSetupSdkEvent(
                         eventType = EventType.FACE_SETUP_UPLOAD_SUCCESS,
                         extras = mapOf("flow" to "face_setup"),
                     )
-                    showToast("人脸信息设置成功")
+                    showToast(textResolver.text(R.string.identification_face_setup_succeeded))
                     onServicePersonVerified()
                 },
                 onError = setFaceSetupError,
+                textResolver = textResolver,
             )
         }
         is FaceSdkEvent.VerifyFailed -> setFaceSetupError(
-            buildFaceVerifyErrorMessage("人脸验证失败", event.error)
+            buildFaceVerifyErrorMessage(
+                textResolver,
+                R.string.identification_face_verification_failed,
+                event.error,
+            )
         )
-        FaceSdkEvent.Cancelled -> setFaceSetupError("用户取消了人脸验证")
+        FaceSdkEvent.Cancelled -> setFaceSetupError(
+            textResolver.text(R.string.identification_face_setup_cancelled),
+        )
     }

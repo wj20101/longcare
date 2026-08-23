@@ -2,6 +2,8 @@ package com.ytone.longcare.features.face.ui
 
 import android.graphics.Bitmap
 import android.graphics.Rect
+import androidx.annotation.StringRes
+import com.ytone.longcare.R
 
 /**
  * 手动人脸捕获UI状态
@@ -50,5 +52,14 @@ sealed class ManualFaceCaptureState {
 data class FaceQualityResult(
     val quality: Float,
     val isGoodQuality: Boolean,
-    val hints: List<String>
+    val hints: List<ManualFaceQualityHint>,
 )
+
+enum class ManualFaceQualityHint(@param:StringRes val messageRes: Int) {
+    POOR(R.string.manual_face_quality_poor),
+    AVERAGE(R.string.manual_face_quality_average),
+    GOOD(R.string.manual_face_quality_good),
+    EXCELLENT(R.string.manual_face_quality_excellent),
+    TOO_SMALL(R.string.manual_face_too_small),
+    TOO_LARGE(R.string.manual_face_too_large),
+}

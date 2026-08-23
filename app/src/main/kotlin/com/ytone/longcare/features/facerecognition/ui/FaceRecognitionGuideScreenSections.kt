@@ -114,7 +114,9 @@ internal fun FaceRecognitionGuideContent(paddingValues: PaddingValues) {
         ) {
             Image(
                 painter = painterResource(id = R.drawable.face_recognition_guide),
-                contentDescription = "人脸识别指导",
+                contentDescription = stringResource(
+                    R.string.face_recognition_guide_image_description,
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(582f / 589f)

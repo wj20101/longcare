@@ -16,6 +16,8 @@ import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.showShortToast
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
 import com.ytone.longcare.model.OrderKey
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 
 /**
  * 服务倒计时页面
@@ -56,6 +58,7 @@ fun ServiceCountdownScreen(
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val photoRequiredMessage = stringResource(R.string.service_countdown_photo_required)
     
     // 订单状态异常弹窗状态
     var showOrderStateErrorDialog by remember { mutableStateOf(false) }
@@ -66,15 +69,15 @@ fun ServiceCountdownScreen(
 
     // 权限相关状态
     var showPermissionDialog by remember { mutableStateOf(false) }
-    var permissionDialogMessage by remember { mutableStateOf("") }
+    var permissionIssue by remember { mutableStateOf<ServiceCountdownPermissionIssue?>(null) }
     
 
     val launchers = rememberServiceCountdownScreenLaunchers(
         countdownViewModel = countdownViewModel,
         locationTrackingViewModel = locationTrackingViewModel,
         orderKey = orderKey,
-        onPermissionDialogRequired = { message ->
-            permissionDialogMessage = message
+        onPermissionDialogRequired = { issue ->
+            permissionIssue = issue
             showPermissionDialog = true
         }
     )
@@ -92,8 +95,8 @@ fun ServiceCountdownScreen(
         notificationPermissionLauncher = launchers.notificationPermissionLauncher,
         exactAlarmPermissionLauncher = launchers.exactAlarmPermissionLauncher,
         permissionLauncher = launchers.locationPermissionLauncher,
-        onPermissionDialogRequired = { message ->
-            permissionDialogMessage = message
+        onPermissionDialogRequired = { issue ->
+            permissionIssue = issue
             showPermissionDialog = true
         },
         onOrderStateError = { message ->
@@ -117,6 +120,7 @@ fun ServiceCountdownScreen(
             handleServiceCountdownBottomAction(
                 countdownState = countdownState,
                 validatePhotosUploaded = countdownViewModel::validatePhotosUploaded,
+                photoRequiredMessage = photoRequiredMessage,
                 onShowToast = context::showShortToast,
                 onRequireConfirm = { showConfirmDialog = true },
                 onEndServiceDirectly = {
@@ -124,7 +128,6 @@ fun ServiceCountdownScreen(
                         orderKey = orderKey,
                         projectIdList = projectIdList,
                         countdownViewModel = countdownViewModel,
-                        locationTrackingViewModel = locationTrackingViewModel,
                         actions = actions,
                         endType = 1
                     )
@@ -135,8 +138,11 @@ fun ServiceCountdownScreen(
 
     ServiceCountdownDialogsHost(
         showPermissionDialog = showPermissionDialog,
-        permissionDialogMessage = permissionDialogMessage,
-        onDismissPermissionDialog = { showPermissionDialog = false },
+        permissionIssue = permissionIssue,
+        onDismissPermissionDialog = {
+            showPermissionDialog = false
+            permissionIssue = null
+        },
         showConfirmDialog = showConfirmDialog,
         onDismissConfirmDialog = { showConfirmDialog = false },
         showOrderStateErrorDialog = showOrderStateErrorDialog,

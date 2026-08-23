@@ -1,6 +1,7 @@
 package com.ytone.longcare.common.network
 
 import com.ytone.longcare.model.result.ApiResult
+import com.ytone.longcare.model.result.SessionInvalidationCode
 import com.squareup.moshi.Types
 import com.ytone.longcare.model.Response as ApiResponse
 import retrofit2.Call
@@ -8,8 +9,6 @@ import retrofit2.CallAdapter
 import retrofit2.Retrofit
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
-
-private val SESSION_INVALIDATION_CODES = setOf(1001, 3002)
 
 /**
  * 标记无需触发全局会话失效事件的静默接口，例如尽力上报的登录日志。
@@ -74,13 +73,10 @@ private class StandardApiResultCallAdapter<T>(
             if (response.isSuccess()) {
                 response.data
                     ?.let { ApiResult.Success(it) }
-                    ?: ApiResult.Failure(
-                        code = response.resultCode,
-                        message = "响应成功，但数据为空",
-                    )
+                    ?: ApiResult.Exception(ApiRequestErrorMapper.emptyData())
             } else {
                 if (
-                    response.resultCode in SESSION_INVALIDATION_CODES &&
+                    SessionInvalidationCode.requiresLogout(response.resultCode) &&
                     !suppressSessionInvalidation
                 ) {
                     sessionInvalidationHandler.invalidate(response.resultMsg)

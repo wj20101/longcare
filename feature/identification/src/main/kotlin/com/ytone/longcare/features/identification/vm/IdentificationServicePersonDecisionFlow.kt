@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.identification.vm
 
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.features.identification.domain.VerifyServicePersonDecision
@@ -16,6 +17,7 @@ internal fun handleServicePersonVerificationDecision(
     startVerificationWithRequest: suspend (FaceVerificationRequest) -> Unit,
     onRequireFaceSetup: () -> Unit,
     onVerificationFailure: (String, Throwable?) -> Unit,
+    textResolver: ResourceTextResolver,
 ) {
     when (decision) {
         is VerifyServicePersonDecision.UseCachedFace -> {
@@ -38,6 +40,7 @@ internal fun handleServicePersonVerificationDecision(
                 beginVerification = beginVerification,
                 startVerificationWithRequest = startVerificationWithRequest,
                 onFailure = onVerificationFailure,
+                textResolver = textResolver,
             )
         }
         is VerifyServicePersonDecision.DownloadAndCache -> {
@@ -61,12 +64,16 @@ internal fun handleServicePersonVerificationDecision(
                 beginVerification = beginVerification,
                 startVerificationWithRequest = startVerificationWithRequest,
                 onFailure = { message -> onVerificationFailure(message, null) },
+                textResolver = textResolver,
             )
         }
         VerifyServicePersonDecision.RequireFaceSetup -> {
             FaceVerificationEventTracker.trackEvent(EventType.SERVICE_FACE_SETUP_REQUIRED)
             onRequireFaceSetup()
         }
-        is VerifyServicePersonDecision.Error -> onVerificationFailure(decision.message, null)
+        is VerifyServicePersonDecision.Error -> onVerificationFailure(
+            textResolver.resolve(decision.failure),
+            null,
+        )
     }
 }

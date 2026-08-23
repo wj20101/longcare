@@ -9,6 +9,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
+import com.ytone.longcare.R
+import com.ytone.longcare.core.ui.R as CoreUiR
 import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.platform.update.ApkPackageVerifier
 import com.ytone.longcare.platform.update.ApkVerificationResult
@@ -56,14 +58,16 @@ class DownloadWorker @AssistedInject constructor(
         val rawUrl =
             inputData.getString(KEY_URL)
                 ?: return Result.failure(
-                    workDataOf(KEY_ERROR to "下载地址无效")
+                    workDataOf(KEY_ERROR to applicationContext.getString(R.string.update_invalid_url))
                 )
         val url = rawUrl.toHttpUrlOrNull()
             ?.takeIf { it.isHttps }
             ?.toString()
-            ?: return Result.failure(workDataOf(KEY_ERROR to "下载地址必须使用 HTTPS"))
+            ?: return Result.failure(
+                workDataOf(KEY_ERROR to applicationContext.getString(R.string.update_https_required)),
+            )
         val rawFileName = inputData.getString(KEY_FILE_NAME) ?: return Result.failure(
-            workDataOf(KEY_ERROR to "文件名不能为空")
+            workDataOf(KEY_ERROR to applicationContext.getString(R.string.update_file_name_required))
         )
         val fileName = sanitizeApkFileName(rawFileName)
         val expectedVersionCode = inputData.getLong(KEY_EXPECTED_VERSION_CODE, 0L)
@@ -98,7 +102,13 @@ class DownloadWorker @AssistedInject constructor(
                 return@withContext if (runAttemptCount < MAX_RETRY_COUNT) {
                     Result.retry()
                 } else {
-                    Result.failure(workDataOf(KEY_ERROR to "网络错误: ${e.message ?: "请检查网络后重试"}"))
+                    Result.failure(
+                        workDataOf(
+                            KEY_ERROR to applicationContext.getString(
+                                CoreUiR.string.common_network_error_retry,
+                            ),
+                        ),
+                    )
                 }
             } catch (e: Exception) {
                 DiagnosticEventTracker.trackError(
@@ -111,7 +121,9 @@ class DownloadWorker @AssistedInject constructor(
                     ),
                 )
                 return@withContext Result.failure(
-                    workDataOf(KEY_ERROR to "安装包下载失败: ${e.message ?: "请稍后重试"}")
+                    workDataOf(
+                        KEY_ERROR to applicationContext.getString(R.string.update_download_failed),
+                    )
                 )
             }
         }
@@ -136,7 +148,7 @@ class DownloadWorker @AssistedInject constructor(
                 ),
             )
             return Result.failure(
-                workDataOf(KEY_ERROR to "下载失败，请稍后重试")
+                workDataOf(KEY_ERROR to applicationContext.getString(R.string.update_download_failed))
             )
         }
 
@@ -150,7 +162,9 @@ class DownloadWorker @AssistedInject constructor(
                     "httpCode" to response.code(),
                 ),
             )
-            return Result.failure(workDataOf(KEY_ERROR to "响应体为空"))
+            return Result.failure(
+                workDataOf(KEY_ERROR to applicationContext.getString(R.string.update_empty_response)),
+            )
         }
 
         val finalFile = File(downloadDir, fileName)
@@ -192,7 +206,11 @@ class DownloadWorker @AssistedInject constructor(
             }
 
             if (contentLength > 0L && bytesRead != contentLength) {
-                return Result.failure(workDataOf(KEY_ERROR to "安装包下载不完整，请重新下载"))
+                return Result.failure(
+                    workDataOf(
+                        KEY_ERROR to applicationContext.getString(R.string.update_download_incomplete),
+                    ),
+                )
             }
 
             when (

@@ -44,6 +44,7 @@ internal class NfcOrderWorkflowDelegate(
     private val serviceCountdownSystemGateway: ServiceCountdownSystemGateway,
     private val scope: CoroutineScope,
     private val uiState: MutableStateFlow<NfcSignInUiState>,
+    private val userMessages: NfcUserMessages,
 ) {
     private val completionDelegate = NfcOrderCompletionDelegate(
         unifiedOrderRepository = unifiedOrderRepository,
@@ -63,7 +64,8 @@ internal class NfcOrderWorkflowDelegate(
         nfcDeviceId = nfcDeviceId,
         longitude = longitude,
         latitude = latitude,
-        uiState = uiState
+        uiState = uiState,
+        userMessages = userMessages,
     )
 
     suspend fun endOrder(
@@ -88,6 +90,7 @@ internal class NfcOrderWorkflowDelegate(
         latitude = latitude,
         endType = endType,
         uiState = uiState,
+        userMessages = userMessages,
         onCheckSuccess = {
             executeEndOrder(
                 orderKey = orderKey,
@@ -179,6 +182,7 @@ internal class NfcOrderWorkflowDelegate(
         centerImgList = centerImgList,
         longitude = longitude,
         latitude = latitude,
-        endType = endType
+        endType = endType,
+        userMessages = userMessages,
     )
 }

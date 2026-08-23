@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import com.ytone.longcare.R
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
@@ -49,8 +50,6 @@ internal fun resolveNfcWorkflowTitleRes(signInMode: SignInMode): Int {
     }
 }
 
-private const val LOCATION_UNAVAILABLE_MESSAGE = "无法获取当前定位，请确认定位权限和定位服务后重试"
-
 internal fun buildNfcWorkflowBackAction(
     signInMode: SignInMode,
     signInState: SignInState,
@@ -77,6 +76,8 @@ internal fun rememberNfcWorkflowLocationHandlers(
     var showLocationOnlyPurposeNotice by remember { mutableStateOf(false) }
     var pendingTrackingReadyAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var isLocationPreparing by remember { mutableStateOf(false) }
+    val locationUnavailableMessage = stringResource(R.string.nfc_location_unavailable)
+    val locationServiceDisabledMessage = stringResource(R.string.nfc_location_service_disabled)
 
     val getCurrentLocationCoordinates: suspend () -> LocationRequestResult = {
         try {
@@ -85,10 +86,14 @@ internal fun rememberNfcWorkflowLocationHandlers(
                 LocationRequestResult.PermissionRequired
             } else if (!UnifiedPermissionHelper.isLocationServiceEnabled(context)) {
                 openLocationSettings(context)
-                LocationRequestResult.Error("请开启定位服务以获取位置信息")
+                LocationRequestResult.Error(locationServiceDisabledMessage)
             } else {
                 val (longitude, latitude) = nfcViewModel.getCurrentLocationCoordinates()
-                toLocationRequestResult(longitude, latitude).let { result ->
+                toLocationRequestResult(
+                    longitude = longitude,
+                    latitude = latitude,
+                    unavailableMessage = locationUnavailableMessage,
+                ).let { result ->
                     if (result is LocationRequestResult.Error) {
                         DiagnosticEventTracker.trackError(
                             category = "nfc_workflow",
@@ -121,7 +126,7 @@ internal fun rememberNfcWorkflowLocationHandlers(
                 ),
             )
             LocationRequestResult.Error(
-                message = LOCATION_UNAVAILABLE_MESSAGE,
+                message = locationUnavailableMessage,
                 buglyReported = true,
             )
         }
@@ -142,7 +147,7 @@ internal fun rememberNfcWorkflowLocationHandlers(
 
     val trackingPermissionLauncher = rememberLocationPermissionLauncher(
         onPermissionGranted = {
-            locationTrackingViewModel.onPermissionGrantedAndStartTracking(orderKey)
+            locationTrackingViewModel.startTrackingAfterPermissionGrant(orderKey)
             pendingTrackingReadyAction?.invoke()
             pendingTrackingReadyAction = null
         },
@@ -184,7 +189,7 @@ internal fun rememberNfcWorkflowLocationHandlers(
         when {
             !UnifiedPermissionHelper.isLocationServiceEnabled(context) -> openLocationSettings(context)
             UnifiedPermissionHelper.hasLocationPermission(context) -> {
-                locationTrackingViewModel.onStartClicked(orderKey)
+                locationTrackingViewModel.startTracking(orderKey)
                 onReady()
             }
             else -> {
@@ -196,7 +201,9 @@ internal fun rememberNfcWorkflowLocationHandlers(
 
     if (showTrackingLocationPurposeNotice) {
         PermissionPurposeDialog(
-            notice = locationPermissionPurposeNotice("记录NFC签到后的服务位置"),
+            notice = locationPermissionPurposeNotice(
+                stringResource(R.string.nfc_tracking_location_permission_purpose),
+            ),
             onConfirm = {
                 showTrackingLocationPurposeNotice = false
                 trackingPermissionLauncher.launch(UnifiedPermissionHelper.getLocationRequiredPermissions())
@@ -210,7 +217,9 @@ internal fun rememberNfcWorkflowLocationHandlers(
 
     if (showLocationOnlyPurposeNotice) {
         PermissionPurposeDialog(
-            notice = locationPermissionPurposeNotice("获取NFC签到位置"),
+            notice = locationPermissionPurposeNotice(
+                stringResource(R.string.nfc_location_permission_purpose),
+            ),
             onConfirm = {
                 showLocationOnlyPurposeNotice = false
                 locationOnlyPermissionLauncher.launch(UnifiedPermissionHelper.getLocationRequiredPermissions())
@@ -232,10 +241,11 @@ internal fun rememberNfcWorkflowLocationHandlers(
 
 internal fun toLocationRequestResult(
     longitude: String,
-    latitude: String
+    latitude: String,
+    unavailableMessage: String,
 ): LocationRequestResult {
     return if (longitude.isBlank() || latitude.isBlank()) {
-        LocationRequestResult.Error(LOCATION_UNAVAILABLE_MESSAGE)
+        LocationRequestResult.Error(unavailableMessage)
     } else {
         LocationRequestResult.Coordinates(longitude, latitude)
     }
@@ -259,7 +269,7 @@ internal fun handleNfcSuccessAction(
         }
 
         SignInMode.END_ORDER -> {
-            locationTrackingViewModel.onStopClicked()
+            locationTrackingViewModel.stopTracking()
             val successState = uiState as? NfcSignInUiState.Success
             val trueServiceTime = successState?.endOrderSuccessData?.trueServiceTime ?: 0
             val serviceCompleteData = nfcViewModel.buildServiceCompleteDataFromCache(

@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.camera.view.LifecycleCameraController
 import androidx.core.content.ContextCompat
+import com.ytone.longcare.R
 import com.ytone.longcare.common.image.WatermarkedCaptureRequest
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -71,7 +72,11 @@ internal fun onShutterPressed(
 
     val view = watermarkView
     if (view == null || view.width <= 0 || view.height <= 0) {
-        Toast.makeText(context, "请稍候，正在准备中...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            context.getString(R.string.camera_preparing),
+            Toast.LENGTH_SHORT,
+        ).show()
         return
     }
 
@@ -87,7 +92,7 @@ internal fun onShutterPressed(
         isFrontCamera = isFrontCamera,
         scope = scope,
         processCapturedImage = processCapturedImage,
-        preparingMessage = "请稍候，正在准备中...",
+        preparingMessage = context.getString(R.string.camera_preparing),
         onCaptureStarted = {
             onCaptureStateChanged(true)
             onBeforeCapture()

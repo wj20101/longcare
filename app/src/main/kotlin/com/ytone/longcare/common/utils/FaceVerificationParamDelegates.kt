@@ -10,16 +10,16 @@ import kotlinx.coroutines.CancellationException
 
 internal sealed interface FaceApiStepResult<out T> {
     data class Success<T>(val value: T) : FaceApiStepResult<T>
-    data class Failure(val message: String) : FaceApiStepResult<Nothing>
+    data object Failure : FaceApiStepResult<Nothing>
 }
 
 internal suspend fun fetchFaceAccessToken(
     repository: TencentFaceRepository,
     config: FaceVerificationConfig
 ): FaceApiStepResult<String> {
-    return runFaceApiCall("获取访问令牌") {
+    return runFaceApiCall {
         val result = repository.getAccessToken(config.appId, config.secret)
-        result.requiredValue("获取访问令牌") { response ->
+        result.requiredValue { response ->
             response.accessToken?.trim()?.takeIf { it.isNotBlank() }
         }
     }
@@ -30,9 +30,9 @@ internal suspend fun fetchFaceSignTicket(
     config: FaceVerificationConfig,
     accessToken: String
 ): FaceApiStepResult<String> {
-    return runFaceApiCall("获取SIGN票据") {
+    return runFaceApiCall {
         val result = repository.getSignTicket(config.appId, accessToken)
-        result.requiredValue("获取SIGN票据") { response ->
+        result.requiredValue { response ->
             response.tickets?.firstOrNull { it.value.isNotBlank() }?.value
         }
     }
@@ -44,9 +44,9 @@ internal suspend fun fetchFaceNonceTicket(
     accessToken: String,
     userId: String
 ): FaceApiStepResult<String> {
-    return runFaceApiCall("获取NONCE票据") {
+    return runFaceApiCall {
         val result = repository.getApiTicket(config.appId, accessToken, userId)
-        result.requiredValue("获取NONCE票据") { response ->
+        result.requiredValue { response ->
             response.tickets?.firstOrNull { it.value.isNotBlank() }?.value
         }
     }
@@ -59,7 +59,7 @@ internal suspend fun fetchFaceId(
     signTicket: String,
     nonce: String
 ): FaceApiStepResult<String> {
-    return runFaceApiCall("获取faceId") {
+    return runFaceApiCall {
         val sign = buildFaceVerifySign(
             appId = config.appId,
             nonce = nonce,
@@ -81,7 +81,7 @@ internal suspend fun fetchFaceId(
                 null
             }
         )
-        result.requiredValue("获取faceId") { response ->
+        result.requiredValue { response ->
             response.result?.faceId?.trim()?.takeIf { it.isNotBlank() }
         }
     }
@@ -114,39 +114,28 @@ private fun String.sha1Hex(): String {
 }
 
 private inline fun <T, R> ApiResult<T>.requiredValue(
-    stepName: String,
     valueProvider: (T) -> R?
 ): FaceApiStepResult<R> {
     return when (this) {
         is ApiResult.Success -> {
             valueProvider(data)
                 ?.let { FaceApiStepResult.Success(it) }
-                ?: FaceApiStepResult.Failure("${stepName}失败：返回内容为空")
+                ?: FaceApiStepResult.Failure
         }
 
-        is ApiResult.Failure -> {
-            FaceApiStepResult.Failure("${stepName}失败：$message (错误码: $code)")
-        }
-
-        is ApiResult.Exception -> {
-            FaceApiStepResult.Failure("${stepName}失败：${exception.readableMessage()}")
-        }
+        is ApiResult.Failure -> FaceApiStepResult.Failure
+        is ApiResult.Exception -> FaceApiStepResult.Failure
     }
 }
 
 private suspend inline fun <T> runFaceApiCall(
-    stepName: String,
     block: suspend () -> FaceApiStepResult<T>
 ): FaceApiStepResult<T> {
     return try {
         block()
     } catch (e: CancellationException) {
         throw e
-    } catch (e: Exception) {
-        FaceApiStepResult.Failure("${stepName}失败：${e.readableMessage()}")
+    } catch (_: Exception) {
+        FaceApiStepResult.Failure
     }
-}
-
-private fun Throwable.readableMessage(): String {
-    return message?.takeIf { it.isNotBlank() } ?: javaClass.simpleName
 }

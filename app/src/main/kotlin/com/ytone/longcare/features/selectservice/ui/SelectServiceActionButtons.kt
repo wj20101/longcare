@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 
 @Composable
 fun NextStepButton(
@@ -72,14 +74,14 @@ fun SelectAllButton(
         if (isAllSelected) {
             Icon(
                 imageVector = Icons.Default.CheckCircle,
-                contentDescription = "All selected",
+                contentDescription = stringResource(R.string.common_all_selected_description),
                 tint = Color(0xFF34C759),
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
         }
         Text(
-            text = "全选",
+            text = stringResource(R.string.common_select_all),
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF2C85FE)

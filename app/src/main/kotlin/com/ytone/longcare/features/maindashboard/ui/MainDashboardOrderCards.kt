@@ -80,7 +80,7 @@ fun InOrderServiceItem(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "地址: ${order.liveAddress}",
+                    text = stringResource(R.string.common_address, order.liveAddress),
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
@@ -88,7 +88,7 @@ fun InOrderServiceItem(
 
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                contentDescription = "进入详情",
+                contentDescription = stringResource(R.string.common_open_details),
                 tint = Color.Gray,
                 modifier = Modifier.size(16.dp)
             )

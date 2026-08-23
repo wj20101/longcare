@@ -7,15 +7,16 @@ internal fun startAutoSignVerification(
     sourcePhotoBase64: String?,
     currentUserId: String?,
     viewModel: FaceVerificationViewModel,
-    onShowMessage: (String) -> Unit
+    copy: FaceAutoSignCopy,
+    onShowMessage: (String) -> Unit,
 ) {
     val sourcePhoto = sourcePhotoBase64
     if (sourcePhoto == null) {
-        onShowMessage("请先拍摄人脸照片")
+        onShowMessage(copy.photoRequired)
         return
     }
     if (currentUserId.isNullOrBlank()) {
-        onShowMessage("用户信息不可用，请重新登录后重试")
+        onShowMessage(copy.userUnavailable)
         return
     }
     viewModel.startFaceVerificationWithAutoSign(
@@ -25,21 +26,15 @@ internal fun startAutoSignVerification(
     )
 }
 
-internal fun resolveFaceCaptureErrorMessage(error: Exception): String {
-    return when (error.message) {
-        "图片文件不存在", "图片处理失败" -> error.message ?: "图片处理失败"
-        else -> "图片处理失败: ${error.message ?: "请重新拍摄后重试"}"
-    }
-}
-
 internal fun consumeFaceVerifyUiState(
     uiState: FaceVerificationViewModel.FaceVerifyUiState,
+    copy: FaceAutoSignCopy,
     onShowMessage: (String) -> Unit,
     onVerificationSuccess: (FaceVerifyResult) -> Unit
 ) {
     when (uiState) {
         is FaceVerificationViewModel.FaceVerifyUiState.Success -> {
-            onShowMessage("人脸验证成功！")
+            onShowMessage(copy.success)
             onVerificationSuccess(uiState.result)
         }
 
@@ -48,9 +43,16 @@ internal fun consumeFaceVerifyUiState(
         }
 
         is FaceVerificationViewModel.FaceVerifyUiState.Cancelled -> {
-            onShowMessage("用户取消了人脸验证")
+            onShowMessage(copy.cancelled)
         }
 
         else -> Unit
     }
 }
+
+internal data class FaceAutoSignCopy(
+    val photoRequired: String,
+    val userUnavailable: String,
+    val success: String,
+    val cancelled: String,
+)

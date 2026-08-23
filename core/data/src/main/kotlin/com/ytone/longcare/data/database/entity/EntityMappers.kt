@@ -4,7 +4,6 @@ import com.ytone.longcare.model.OrderElderInfoEntity
 import com.ytone.longcare.model.OrderEntity
 import com.ytone.longcare.model.OrderImageEntity
 import com.ytone.longcare.model.OrderLocalStateEntity
-import com.ytone.longcare.model.OrderLocationEntity
 import com.ytone.longcare.model.OrderProjectEntity
 
 fun OrderEntityDb.toModel(): OrderEntity = OrderEntity(
@@ -137,34 +136,4 @@ fun OrderImageEntity.toDb(): OrderImageEntityDb = OrderImageEntityDb(
     errorMessage = errorMessage,
     createdAt = createdAt,
     updatedAt = updatedAt
-)
-
-fun OrderLocationEntityDb.toModel(): OrderLocationEntity = OrderLocationEntity(
-    id = id,
-    orderId = orderId,
-    latitude = latitude,
-    longitude = longitude,
-    accuracy = accuracy,
-    provider = provider,
-    coordType = coordType,
-    locationType = locationType,
-    trustedLevel = trustedLevel,
-    locationTime = locationTime,
-    uploadStatus = uploadStatus,
-    timestamp = timestamp
-)
-
-fun OrderLocationEntity.toDb(): OrderLocationEntityDb = OrderLocationEntityDb(
-    id = id,
-    orderId = orderId,
-    latitude = latitude,
-    longitude = longitude,
-    accuracy = accuracy,
-    provider = provider,
-    coordType = coordType,
-    locationType = locationType,
-    trustedLevel = trustedLevel,
-    locationTime = locationTime,
-    uploadStatus = uploadStatus,
-    timestamp = timestamp
 )

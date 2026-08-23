@@ -23,12 +23,10 @@ class CheckFaceGatewayImpl @Inject constructor(
 
         return when (result) {
             is ApiResult.Success -> CheckFaceRemoteResult.Success
-            is ApiResult.Failure -> CheckFaceRemoteResult.Error(
-                result.message.ifBlank { "人脸验证未通过，请重新拍摄" },
+            is ApiResult.Failure -> CheckFaceRemoteResult.Rejected(
+                result.message.takeIf(String::isNotBlank),
             )
-            is ApiResult.Exception -> CheckFaceRemoteResult.Error(
-                result.exception.message ?: "网络连接异常，请稍后重试",
-            )
+            is ApiResult.Exception -> CheckFaceRemoteResult.NetworkError
         }
     }
 }

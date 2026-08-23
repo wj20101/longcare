@@ -13,8 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ytone.longcare.shared.vm.OrderDetailUiState
+import com.ytone.longcare.R
 
 @Composable
 internal fun SelectServiceScaffoldContent(
@@ -53,7 +55,9 @@ internal fun SelectServiceScaffoldContent(
                     CenterStateText(showProgress = true)
                 }
                 is OrderDetailUiState.Error -> {
-                    CenterStateText(text = "加载失败: ${currentState.message}")
+                    CenterStateText(
+                        text = stringResource(R.string.common_load_failed, currentState.message),
+                    )
                 }
                 is OrderDetailUiState.Success -> {
                     ServiceSelectionList(
@@ -62,7 +66,7 @@ internal fun SelectServiceScaffoldContent(
                     )
                 }
                 is OrderDetailUiState.Initial -> {
-                    CenterStateText(text = "正在初始化...")
+                    CenterStateText(text = stringResource(R.string.common_initializing))
                 }
             }
 

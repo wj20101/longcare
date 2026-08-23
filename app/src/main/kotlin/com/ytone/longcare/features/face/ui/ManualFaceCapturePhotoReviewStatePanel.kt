@@ -15,8 +15,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.ytone.longcare.R
 
 @Composable
 internal fun PhotoReviewStatePanel(
@@ -35,7 +37,7 @@ internal fun PhotoReviewStatePanel(
             when (currentState) {
                 is ManualFaceCaptureState.NoFacesDetected -> {
                     Text(
-                        text = "未检测到人脸",
+                        text = stringResource(R.string.face_capture_no_face),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.fillMaxWidth(),
@@ -43,7 +45,7 @@ internal fun PhotoReviewStatePanel(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "请确保光线充足，面部清晰可见",
+                        text = stringResource(R.string.face_capture_quality_hint),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
@@ -52,7 +54,10 @@ internal fun PhotoReviewStatePanel(
 
                 is ManualFaceCaptureState.FacesDetected -> {
                     Text(
-                        text = "检测到 ${detectedFaces.size} 张人脸，请选择一张",
+                        text = stringResource(
+                            R.string.face_capture_face_count,
+                            detectedFaces.size,
+                        ),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
@@ -77,7 +82,7 @@ internal fun PhotoReviewStatePanel(
                 else -> {
                     if (detectedFaces.size == 1) {
                         Text(
-                            text = "检测到人脸",
+                            text = stringResource(R.string.face_capture_face_detected),
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.fillMaxWidth(),
                             textAlign = TextAlign.Center

@@ -14,10 +14,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.common.utils.singleClick
+import com.ytone.longcare.R
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 
 @Composable
@@ -38,10 +40,14 @@ fun CountdownTimerCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 val (timeText, statusText) = when (countdownState) {
-                    ServiceCountdownState.RUNNING -> formattedTime to "服务倒计时"
-                    ServiceCountdownState.COMPLETED -> "00:00:00" to "服务倒计时"
-                    ServiceCountdownState.OVERTIME -> formattedTime to "服务超时"
-                    ServiceCountdownState.ENDED -> "00:00:00" to "服务已结束"
+                    ServiceCountdownState.RUNNING -> formattedTime to
+                        stringResource(R.string.service_countdown_status_running)
+                    ServiceCountdownState.COMPLETED -> "00:00:00" to
+                        stringResource(R.string.service_countdown_status_running)
+                    ServiceCountdownState.OVERTIME -> formattedTime to
+                        stringResource(R.string.service_countdown_status_overtime)
+                    ServiceCountdownState.ENDED -> "00:00:00" to
+                        stringResource(R.string.service_countdown_status_ended)
                 }
 
                 Text(
@@ -65,9 +71,8 @@ fun CountdownTimerCard(
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5A623))
             ) {
-                Text("护理相册", color = Color.White)
+                Text(stringResource(R.string.service_countdown_album), color = Color.White)
             }
         }
     }
 }
-

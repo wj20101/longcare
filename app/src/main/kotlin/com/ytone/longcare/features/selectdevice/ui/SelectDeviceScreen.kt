@@ -20,7 +20,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.theme.bgGradientBrush
-import com.ytone.longcare.theme.bgButtonGradientBrush
 import com.ytone.longcare.features.selectdevice.api.SelectDeviceActions
 import com.ytone.longcare.model.OrderKey
 
@@ -41,12 +40,6 @@ fun SelectDeviceScreen(
     actions: SelectDeviceActions,
     orderKey: OrderKey
 ) {
-    // 模拟设备数据
-    val devices = remember {
-        List(6) { index -> Device(id = "id_$index", name = "设备名称") }
-    }
-    var selectedDeviceIndex by remember { mutableStateOf<Int?>(null) }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -109,15 +102,6 @@ fun SelectDeviceScreen(
                     color = Color.White.copy(alpha = 0.9f),
                     textAlign = TextAlign.Center
                 )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                DeviceGrid(
-                    devices = devices,
-                    selectedDeviceIndex = selectedDeviceIndex,
-                    onDeviceSelected = { index ->
-                        selectedDeviceIndex = if (selectedDeviceIndex == index) null else index
-                    })
 
                 Spacer(modifier = Modifier.height(24.dp))
             }

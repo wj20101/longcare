@@ -5,7 +5,6 @@ import com.ytone.longcare.common.diagnostics.CrashReportGateway
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.model.LocationResult
-import java.util.Locale
 
 /**
  * 定位事件追踪器
@@ -48,19 +47,47 @@ object LocationEventTracker {
         LOCATION_SAMPLE_RECORDED("location_sample_recorded", "采集到定位样本"),
         LOCATION_JUMP_DETECTED("location_jump_detected", "检测到疑似定位跳点"),
         LOCATION_STALE_SKIPPED("location_stale_skipped", "跳过陈旧定位样本"),
+        LOCATION_INVALID_SKIPPED("location_invalid_skipped", "跳过无效定位样本"),
         REPORTING_TASK_ERROR("reporting_task_error", "位置上报任务异常终止"),
-        QUEUE_WRITE_ERROR("queue_write_error", "写入定位上报队列失败"),
         API_UPLOAD_BUSINESS_ERROR("api_upload_business_error", "位置上报业务失败"),
         API_UPLOAD_NETWORK_ERROR("api_upload_network_error", "位置上报异常"),
-        API_UPLOAD_FATAL_ERROR("api_upload_fatal_error", "上传位置过程发生严重错误"),
-        QUEUE_CLEANUP_ERROR("queue_cleanup_error", "清理历史成功定位记录失败")
+        API_UPLOAD_FATAL_ERROR("api_upload_fatal_error", "上传位置过程发生严重错误")
+    }
+
+    /** Bugly 额外字段协议，避免上报方各自拼写键名。 */
+    object Attribute {
+        const val ERROR_TYPE = "errorType"
+        const val ERROR_CODE = "errorCode"
+        const val ORDER_ID = "orderId"
+        const val GENERATION = "generation"
+        const val PROVIDER = "provider"
+        const val ACCURACY = "accuracy"
+        const val COORDINATE_TYPE = "coordType"
+        const val LOCATION_TYPE = "locationType"
+        const val TRUSTED_LEVEL = "trustedLevel"
+        const val LOCATION_TIME = "locationTime"
+        const val SAMPLE_REASON = "sampleReason"
+        const val DISTANCE_METERS = "distanceMeters"
+        const val ELAPSED_SECONDS = "elapsedSeconds"
+        const val SPEED_METERS_PER_SECOND = "speedMps"
+        const val CLEANUP_STAGE = "stage"
+
+        internal const val LATITUDE = "latitude"
+        internal const val LONGITUDE = "longitude"
+        internal const val PREVIOUS_LATITUDE = "previouslatitude"
+        internal const val PREVIOUS_LONGITUDE = "previouslongitude"
+    }
+
+    enum class SampleReason(val telemetryValue: String) {
+        FIRST("first"),
+        PERIODIC("periodic"),
     }
 
     fun trackEvent(
         eventType: EventType,
         extras: Map<String, Any?> = emptyMap()
     ) {
-        report(eventType, null, extras, "追踪事件失败")
+        report(eventType, null, extras, "追踪事件失败", reportToCrash = false)
     }
 
     fun trackError(
@@ -68,7 +95,7 @@ object LocationEventTracker {
         throwable: Throwable? = null,
         extras: Map<String, Any?> = emptyMap()
     ) {
-        report(eventType, throwable, extras, "追踪错误事件失败")
+        report(eventType, throwable, extras, "追踪错误事件失败", reportToCrash = true)
     }
 
     fun trackLocationSample(
@@ -87,7 +114,8 @@ object LocationEventTracker {
         eventType: EventType,
         throwable: Throwable?,
         extras: Map<String, Any?>,
-        failureMessage: String
+        failureMessage: String,
+        reportToCrash: Boolean,
     ) {
         try {
             val eventInfo = buildEventInfo(eventType, throwable, extras)
@@ -96,13 +124,15 @@ object LocationEventTracker {
             } else {
                 logE("$TAG: ${eventType.description} - $eventInfo", throwable = throwable)
             }
-            CrashReportGateway.postCaughtException(
-                LocationTrackingException(
-                    eventType = eventType.code,
-                    message = eventInfo,
-                    cause = throwable
+            if (reportToCrash) {
+                CrashReportGateway.postCaughtException(
+                    LocationTrackingException(
+                        eventType = eventType.code,
+                        message = eventInfo,
+                        cause = throwable,
+                    ),
                 )
-            )
+            }
         } catch (e: Exception) {
             logE("$TAG: $failureMessage - ${e.message}")
         }
@@ -114,25 +144,23 @@ object LocationEventTracker {
         extras: Map<String, Any?>
     ): Map<String, Any?> {
         val locationExtras = LinkedHashMap<String, Any?>()
-        locationExtras.putAll(extras)
+        locationExtras.putAll(
+            extras.filterKeys { key ->
+                key.lowercase() !in PRECISE_COORDINATE_KEYS
+            },
+        )
         locationExtras.putAll(
             linkedMapOf(
-            "orderId" to orderId,
-            "latitude" to location.latitude.formatCoordinate(),
-            "longitude" to location.longitude.formatCoordinate(),
-            "provider" to location.provider,
-            "accuracy" to location.accuracy,
-            "coordType" to location.coordType,
-            "locationType" to location.locationType,
-            "trustedLevel" to location.trustedLevel,
-            "locationTime" to location.locationTime
+            Attribute.ORDER_ID to orderId,
+            Attribute.PROVIDER to location.provider,
+            Attribute.ACCURACY to location.accuracy,
+            Attribute.COORDINATE_TYPE to location.coordType,
+            Attribute.LOCATION_TYPE to location.locationType,
+            Attribute.TRUSTED_LEVEL to location.trustedLevel,
+            Attribute.LOCATION_TIME to location.locationTime,
             )
         )
         return locationExtras
-    }
-
-    private fun Double.formatCoordinate(): String {
-        return String.format(Locale.US, "%.5f", this)
     }
 
     private fun buildEventInfo(
@@ -171,4 +199,11 @@ object LocationEventTracker {
         message: String,
         cause: Throwable? = null
     ) : Exception("[LocationTracking:$eventType] $message", cause)
+
+    private val PRECISE_COORDINATE_KEYS = setOf(
+        Attribute.LATITUDE,
+        Attribute.LONGITUDE,
+        Attribute.PREVIOUS_LATITUDE,
+        Attribute.PREVIOUS_LONGITUDE,
+    )
 }

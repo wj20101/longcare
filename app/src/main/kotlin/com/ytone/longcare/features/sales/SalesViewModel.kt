@@ -21,8 +21,8 @@ import com.ytone.longcare.model.ToDoResultModel
 import com.ytone.longcare.model.UserLatentCheckState
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.platform.sales.SalesEvaluationDeviceGateway
-import com.ytone.longcare.platform.text.SalesTextResolver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -40,7 +40,7 @@ class SalesViewModel @Inject constructor(
     private val imagePipeline: UnifiedImagePipeline,
     private val evaluationDeviceGateway: SalesEvaluationDeviceGateway,
     private val systemConfigManager: SystemConfigManager,
-    private val textResolver: SalesTextResolver,
+    private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SalesUiState())
     val uiState: StateFlow<SalesUiState> = _uiState.asStateFlow()

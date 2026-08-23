@@ -3,7 +3,7 @@ plugins {
     id("longcare.kotlin.common")
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.room)
+    alias(libs.plugins.androidx.room)
 }
 
 android {

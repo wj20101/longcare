@@ -22,7 +22,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.ytone.longcare.R
 
 @Composable
 internal fun PhotoReviewPreviewPane(
@@ -40,7 +42,7 @@ internal fun PhotoReviewPreviewPane(
         bitmap?.let { bmp ->
             Image(
                 bitmap = bmp.asImageBitmap(),
-                contentDescription = "拍摄的照片",
+                contentDescription = stringResource(R.string.face_verification_captured_photo_description),
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -80,7 +82,7 @@ internal fun PhotoReviewPreviewPane(
                     ) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("正在检测人脸...")
+                        Text(stringResource(R.string.face_verification_detecting_face))
                     }
                 }
             }

@@ -65,7 +65,7 @@ internal fun NfcWorkflowEffects(
 
     LaunchedEffect(uiState, signInMode) {
         if (signInMode == SignInMode.END_ORDER && uiState is NfcSignInUiState.Success) {
-            locationTrackingViewModel.onStopClicked()
+            locationTrackingViewModel.stopTracking()
         }
     }
 }

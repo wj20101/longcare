@@ -31,8 +31,11 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.features.profile.api.ProfileActions
 import com.ytone.longcare.model.NurseServiceTimeModel
 import com.ytone.longcare.model.User
-import com.ytone.longcare.model.userIdentityShow
+import com.ytone.longcare.model.userIdentityDisplay
+import com.ytone.longcare.platform.text.labelRes
 import com.ytone.longcare.ui.components.UserAvatar
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 
 private val StatsCardRowMinHeight = 88.dp
 
@@ -59,7 +62,7 @@ fun UserInfoSection(user: User) {
                 modifier = Modifier.testTag("profile_user_name")
             )
             Text(
-                text = user.userIdentityShow(),
+                text = stringResource(user.userIdentityDisplay().labelRes()),
                 color = Color.White.copy(alpha = 0.5f),
                 fontSize = 12.sp,
                 lineHeight = 12.sp,
@@ -97,7 +100,7 @@ fun StatsCard(actions: ProfileActions, stats: NurseServiceTimeModel) {
                     .weight(1f)
                     .fillMaxHeight(),
                 value = stats.haveServiceTime.toString(),
-                label = "已服务工时",
+                label = stringResource(R.string.profile_stat_served_hours),
                 onClick = actions.onNavigateToHaveServiceUserList
             )
             VerticalDivider(
@@ -112,7 +115,7 @@ fun StatsCard(actions: ProfileActions, stats: NurseServiceTimeModel) {
                     .weight(1f)
                     .fillMaxHeight(),
                 value = stats.haveServiceNum.toString(),
-                label = "服务次数"
+                label = stringResource(R.string.profile_stat_service_count)
             )
             VerticalDivider(
                 modifier = Modifier
@@ -126,7 +129,7 @@ fun StatsCard(actions: ProfileActions, stats: NurseServiceTimeModel) {
                     .weight(1f)
                     .fillMaxHeight(),
                 value = stats.noServiceTime.toString(),
-                label = "未服务工时",
+                label = stringResource(R.string.profile_stat_unserved_hours),
                 onClick = actions.onNavigateToNoServiceUserList
             )
         }

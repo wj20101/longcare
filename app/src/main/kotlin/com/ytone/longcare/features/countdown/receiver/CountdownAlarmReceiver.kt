@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.PowerManager
 import androidx.core.content.getSystemService
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
@@ -42,7 +43,11 @@ internal object CountdownAlarmReceiverDelegate {
         val orderKey = CountdownNotificationManager.extractOrderKey(intent)
 
         val orderId = orderKey.orderId
-        val serviceName = CountdownNotificationManager.extractServiceName(intent, "未知服务")
+        val serviceName =
+            CountdownNotificationManager.extractServiceName(
+                intent,
+                context.getString(R.string.countdown_alarm_default_service),
+            )
 
         if (orderId == -1L) {
             logE("❌ 倒计时闹钟广播缺少orderId")

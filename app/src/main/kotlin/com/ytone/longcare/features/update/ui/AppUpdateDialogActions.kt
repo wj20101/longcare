@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.model.AppVersionModel
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 
 @Composable
 internal fun AppUpdateDialogActions(
@@ -38,12 +40,12 @@ internal fun AppUpdateDialogActions(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "下载中...",
+                    text = stringResource(R.string.update_downloading),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "$downloadProgress%",
+                    text = stringResource(R.string.common_progress_percent, downloadProgress),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary
@@ -71,7 +73,7 @@ internal fun AppUpdateDialogActions(
                 )
             ) {
                 Text(
-                    text = "取消下载",
+                    text = stringResource(R.string.update_cancel_download),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -95,7 +97,7 @@ internal fun AppUpdateDialogActions(
                     )
                 ) {
                     Text(
-                        text = "稍后更新",
+                        text = stringResource(R.string.update_later),
                         fontSize = 16.sp
                     )
                 }
@@ -113,7 +115,13 @@ internal fun AppUpdateDialogActions(
                 )
             ) {
                 Text(
-                    text = if (appVersionModel.upType == 2) "立即更新" else "更新",
+                    text = stringResource(
+                        if (appVersionModel.upType == 2) {
+                            R.string.update_now
+                        } else {
+                            R.string.update_action
+                        },
+                    ),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color.White

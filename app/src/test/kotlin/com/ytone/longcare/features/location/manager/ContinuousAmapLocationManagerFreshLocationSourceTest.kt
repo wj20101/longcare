@@ -15,19 +15,28 @@ class ContinuousAmapLocationManagerFreshLocationSourceTest {
 
     @Test
     fun `fresh location uses isolated amap client and disables cached replay sources`() {
-        val method = source.section(
-            startMarker = "suspend fun getFreshLocation",
-            endMarker = "/**\n     * 权限授予后重启定位引擎"
+        val freshOption = source.section(
+            startMarker = "private fun buildFreshLocationOption",
+            endMarker = "private fun buildQuickLocationOption",
+        )
+        val isolatedMethod = source.section(
+            startMarker = "private suspend fun getIsolatedLocation",
+            endMarker = "/**\n     * 权限授予后重启定位引擎",
+        )
+        val currentMethod = source.section(
+            startMarker = "suspend fun getCurrentLocation",
+            endMarker = "suspend fun getFreshLocation",
         )
 
-        assertTrue(method.contains("AMapLocationClient(context)"))
-        assertTrue(method.contains("suspendCancellableCoroutine"))
-        assertTrue(method.contains("AMapLocationClientOption.AMapLocationPurpose.SignIn"))
-        assertTrue(method.contains("setOnceLocation(true)"))
-        assertTrue(method.contains("setOnceLocationLatest(true)"))
-        assertTrue(method.contains("setLocationCacheEnable(false)"))
-        assertFalse(method.contains("startContinuousLocation().first()"))
-        assertFalse(method.contains("getCurrentLocation(timeoutMs)"))
+        assertTrue(isolatedMethod.contains("AMapLocationClient(context)"))
+        assertTrue(isolatedMethod.contains("suspendCancellableCoroutine"))
+        assertTrue(freshOption.contains("AMapLocationClientOption.AMapLocationPurpose.SignIn"))
+        assertTrue(freshOption.contains("isOnceLocation = true"))
+        assertTrue(freshOption.contains("isOnceLocationLatest = true"))
+        assertTrue(freshOption.contains("isLocationCacheEnable = false"))
+        assertTrue(currentMethod.contains("getIsolatedLocation("))
+        assertFalse(currentMethod.contains("startContinuousLocation()"))
+        assertFalse(currentMethod.contains(".first()"))
     }
 
     @Test
@@ -36,13 +45,24 @@ class ContinuousAmapLocationManagerFreshLocationSourceTest {
             startMarker = "val result = LocationResult(",
             endMarker = "trySend(result)"
         )
-        val freshMapping = source.section(
-            startMarker = "finish(\n                                    LocationResult(",
-            endMarker = "\n                                )"
+        val isolatedMapping = source.section(
+            startMarker = "val isolatedClient = AMapLocationClient(context)",
+            endMarker = "isolatedClient.setLocationListener(listener)",
         )
 
         assertCarriesSdkMetadata(continuousMapping)
-        assertCarriesSdkMetadata(freshMapping)
+        assertCarriesSdkMetadata(isolatedMapping)
+    }
+
+    @Test
+    fun `transient sdk errors do not terminate the active order location stream`() {
+        val continuousListener = source.section(
+            startMarker = "val listener = AMapLocationListener",
+            endMarker = "client.setLocationListener(listener)",
+        )
+
+        assertTrue(continuousListener.contains("AMAP_CONTINUOUS_LOCATION_ERROR"))
+        assertFalse(continuousListener.contains("close("))
     }
 
     private fun assertCarriesSdkMetadata(section: String) {

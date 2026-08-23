@@ -2,14 +2,12 @@ plugins {
     id("longcare.android.application")
     id("longcare.kotlin.common")
     id("longcare.android.app.signing-txface")
-    alias(libs.plugins.kotlinCompose)
-    alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.baselineprofile)
+    alias(libs.plugins.androidx.baseline.profile)
 }
-
-apply(from = "$projectDir/dependencies.gradle.kts")
 
 private val BASE_URL = "https://careapi.ytone.cn"
 private val PUBLIC_KEY =
@@ -130,6 +128,10 @@ android {
         viewBinding = true
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     packaging {
         jniLibs {
             keepDebugSymbols +=
@@ -194,4 +196,81 @@ configurations.configureEach {
     if (name.startsWith("hiltAnnotationProcessor")) {
         exclude(group = "com.squareup.moshi", module = "moshi-kotlin-codegen")
     }
+}
+
+dependencies {
+    baselineProfile(project(":baselineprofile"))
+
+    implementation(project(":core:common"))
+    implementation(project(":core:data"))
+    implementation(project(":core:domain"))
+    implementation(project(":core:model"))
+    implementation(project(":core:ui"))
+    implementation(project(":feature:login"))
+    implementation(project(":feature:home"))
+    implementation(project(":feature:identification"))
+    implementation(project(":feature:location"))
+    implementation(project(":feature:photoupload"))
+    implementation(project(":feature:servicecountdown"))
+
+    implementation(platform(libs.compose.bom))
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.graphics)
+    implementation(libs.compose.material.icons.extended)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.material3.adaptive.navigation.suite)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.startup.runtime)
+    implementation(libs.androidx.profileinstaller)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.dagger.hilt.android)
+    implementation(libs.hilt.work)
+    implementation(libs.hilt.navigation.compose)
+    implementation(libs.retrofit.core)
+    implementation(libs.okhttp.core)
+    implementation(libs.okio.core)
+    implementation(libs.moshi.kotlin)
+    implementation(libs.gson)
+    // qlzsdk-1.3.0.2 was compiled against the legacy protobuf-lite runtime.
+    implementation(libs.protobuf.lite)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.work.runtime.ktx)
+    implementation(libs.bundles.coil)
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.face.detection)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.constraintlayout)
+    implementation(libs.kotlinx.datetime)
+    implementation(libs.crashreport)
+
+    ksp(libs.dagger.hilt.compiler)
+    ksp(libs.hilt.compiler)
+    ksp(libs.moshi.kotlin.codegen)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.work.testing)
+    testImplementation(libs.androidx.datastore.preferences)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.truth)
+
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+
+    debugImplementation(libs.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    implementation(files("libs/qlzsdk-1.3.0.2-protobufLiteRelease-ui.aar"))
 }

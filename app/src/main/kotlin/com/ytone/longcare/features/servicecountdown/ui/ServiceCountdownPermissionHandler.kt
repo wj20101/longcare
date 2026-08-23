@@ -11,12 +11,31 @@ import androidx.activity.result.ActivityResultLauncher
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import androidx.annotation.StringRes
+import com.ytone.longcare.R
 
-private const val FULL_SCREEN_PERMISSION_HINT = """
-    为了在服务时间结束时能准时提醒您，需要开启「全屏通知」权限。
-    
-    请在设置中找到「全屏通知」或「显示在其他应用上层」选项并开启。
-"""
+internal enum class ServiceCountdownPermissionIssue(
+    @param:StringRes val messageRes: Int,
+    val settingsDestination: SettingsDestination,
+) {
+    NOTIFICATION(
+        R.string.service_countdown_notification_permission_denied,
+        SettingsDestination.APP_DETAILS,
+    ),
+    EXACT_ALARM(
+        R.string.service_countdown_exact_alarm_permission_denied,
+        SettingsDestination.APP_DETAILS,
+    ),
+    FULL_SCREEN(
+        R.string.service_countdown_full_screen_permission_required,
+        SettingsDestination.FULL_SCREEN_NOTIFICATION,
+    ),
+}
+
+internal enum class SettingsDestination {
+    APP_DETAILS,
+    FULL_SCREEN_NOTIFICATION,
+}
 
 internal fun hasNotificationPermission(context: Context): Boolean {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -35,7 +54,7 @@ internal fun checkAndRequestRequiredPermissions(
     canUseFullScreenIntent: Boolean,
     requestNotificationPermission: () -> Unit,
     requestExactAlarmPermission: () -> Unit,
-    onPermissionDialogRequired: (String) -> Unit
+    onPermissionDialogRequired: (ServiceCountdownPermissionIssue) -> Unit
 ) {
     if (!hasNotificationPermission(context)) {
         requestNotificationPermission()
@@ -46,7 +65,7 @@ internal fun checkAndRequestRequiredPermissions(
         return
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !canUseFullScreenIntent) {
-        onPermissionDialogRequired(FULL_SCREEN_PERMISSION_HINT.trimIndent())
+        onPermissionDialogRequired(ServiceCountdownPermissionIssue.FULL_SCREEN)
     }
 }
 
@@ -56,7 +75,7 @@ internal fun checkAndRequestCountdownPermissions(
     canUseFullScreenIntent: Boolean,
     notificationPermissionLauncher: ActivityResultLauncher<String>,
     exactAlarmPermissionLauncher: ActivityResultLauncher<Intent>,
-    onPermissionDialogRequired: (String) -> Unit
+    onPermissionDialogRequired: (ServiceCountdownPermissionIssue) -> Unit
 ) {
     checkAndRequestRequiredPermissions(
         context = context,
@@ -115,11 +134,11 @@ internal fun checkLocationPermissionAndStart(
 
 internal fun buildPermissionSettingsIntent(
     context: Context,
-    permissionDialogMessage: String
+    issue: ServiceCountdownPermissionIssue,
 ): Intent {
     return if (
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
-        permissionDialogMessage.contains("全屏通知")
+        issue.settingsDestination == SettingsDestination.FULL_SCREEN_NOTIFICATION
     ) {
         Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
             data = "package:${context.packageName}".toUri()

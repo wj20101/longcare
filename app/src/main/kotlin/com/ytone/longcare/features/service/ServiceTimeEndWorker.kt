@@ -3,6 +3,7 @@ package com.ytone.longcare.features.service
 import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.*
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.service.storage.PendingOrdersStorage
@@ -19,7 +20,7 @@ class ServiceTimeEndWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val serviceTimeNotificationManager: ServiceTimeNotificationManager,
-    private val pendingOrdersStorage: PendingOrdersStorage
+    private val pendingOrdersStorage: PendingOrdersStorage,
 ) : CoroutineWorker(context, workerParams) {
 
     companion object {
@@ -32,7 +33,9 @@ class ServiceTimeEndWorker @AssistedInject constructor(
             
             // 获取输入数据
             val orderId = inputData.getLong(ServiceTimeNotificationManager.EXTRA_ORDER_ID, -1L)
-            val serviceName = inputData.getString(ServiceTimeNotificationManager.EXTRA_SERVICE_NAME) ?: "未知服务"
+            val serviceName =
+                inputData.getString(ServiceTimeNotificationManager.EXTRA_SERVICE_NAME)
+                    ?: applicationContext.getString(R.string.countdown_alarm_default_service)
             
             if (orderId == -1L) {
                 logE("Worker缺少订单ID，任务失败")

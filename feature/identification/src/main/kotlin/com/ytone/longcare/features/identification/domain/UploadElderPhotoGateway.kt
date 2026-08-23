@@ -5,13 +5,15 @@ import android.net.Uri
 sealed interface UploadElderPhotoSourceResult {
     data class Success(val uploadedKey: String) : UploadElderPhotoSourceResult
 
-    data class Error(val message: String) : UploadElderPhotoSourceResult
+    data class Error(val detail: String?) : UploadElderPhotoSourceResult
 }
 
 sealed interface UploadElderPhotoOrderResult {
     data object Success : UploadElderPhotoOrderResult
 
-    data class Error(val message: String) : UploadElderPhotoOrderResult
+    data class Rejected(val message: String?) : UploadElderPhotoOrderResult
+
+    data object NetworkError : UploadElderPhotoOrderResult
 }
 
 interface UploadElderPhotoGateway {

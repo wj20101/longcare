@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.ui.components.BottomSafeActionContainer
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 
 @Composable
 internal fun CenterStateText(
@@ -84,7 +86,13 @@ internal fun SelectServiceBottomActions(
             }
 
             NextStepButton(
-                text = if (!isStarOrderLoading) "开始服务" else "正在处理...",
+                text = stringResource(
+                    if (!isStarOrderLoading) {
+                        R.string.select_service_start
+                    } else {
+                        R.string.select_service_processing
+                    },
+                ),
                 enabled = serviceItems.any { it.isSelected } && !isStarOrderLoading,
                 onClick = onNextStep,
                 modifier = Modifier.weight(1f)

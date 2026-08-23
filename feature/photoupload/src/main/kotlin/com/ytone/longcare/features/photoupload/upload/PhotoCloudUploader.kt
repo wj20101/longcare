@@ -17,7 +17,7 @@ data class UploadedPhoto(
     val key: String,
 )
 
-class PhotoCloudUploadException(message: String) : Exception(message)
+class PhotoCloudUploadException(message: String?) : Exception(message)
 
 interface PhotoCloudUploader {
     suspend fun upload(
@@ -47,7 +47,6 @@ class DefaultPhotoCloudUploader @Inject constructor(
         if (!result.success || key.isNullOrBlank()) {
             throw PhotoCloudUploadException(
                 result.errorMessage?.takeIf(String::isNotBlank)
-                    ?: "图片上传未返回有效文件信息"
             )
         }
         return UploadedPhoto(key = key)

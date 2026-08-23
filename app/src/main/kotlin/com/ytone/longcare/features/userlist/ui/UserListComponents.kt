@@ -65,14 +65,14 @@ fun UserListContent(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "暂无用户数据",
+                    text = stringResource(R.string.user_list_empty),
                     fontSize = 16.sp,
                     color = Color.Gray,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "当前没有符合条件的用户",
+                    text = stringResource(R.string.user_list_empty_description),
                     fontSize = 14.sp,
                     color = Color.LightGray
                 )
@@ -124,8 +124,14 @@ fun UserListItem(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 val serviceTimeText = when (userListType) {
-                    UserListType.HAVE_SERVICE -> "本月已服务工时: ${user.monthServiceTime}"
-                    UserListType.NO_SERVICE -> "本月未服务工时: ${user.monthNoServiceTime}"
+                    UserListType.HAVE_SERVICE -> stringResource(
+                        R.string.user_list_month_served_hours,
+                        user.monthServiceTime,
+                    )
+                    UserListType.NO_SERVICE -> stringResource(
+                        R.string.user_list_month_unserved_hours,
+                        user.monthNoServiceTime,
+                    )
                 }
                 Text(
                     text = serviceTimeText,
@@ -135,7 +141,7 @@ fun UserListItem(
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "地址: ${user.address}",
+                text = stringResource(R.string.common_address, user.address),
                 color = Color.Gray,
                 fontSize = 14.sp,
                 lineHeight = 20.sp

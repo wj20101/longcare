@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -17,6 +18,7 @@ import com.ytone.longcare.debug.NfcTestConfig
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.launch
+import com.ytone.longcare.R
 
 @Singleton
 class NfcTestHelper @Inject constructor(
@@ -92,6 +94,7 @@ class NfcTestHelper @Inject constructor(
     @Composable
     fun NfcTagDialog() {
         val clipboard = LocalClipboard.current
+        val clipboardLabel = stringResource(R.string.nfc_clipboard_label)
         val coroutineScope = rememberCoroutineScope()
         RenderNfcTestTagDialog(
             showDialog = dialogState.showDialog,
@@ -103,11 +106,11 @@ class NfcTestHelper @Inject constructor(
                         writeClipboardEntry = { text ->
                             logD(NfcTestConfig.TEST_TAG, "复制Tag ID: $text")
                             clipboard.setClipEntry(
-                                ClipEntry(ClipData.newPlainText("NFC Tag ID", text))
+                                ClipEntry(ClipData.newPlainText(clipboardLabel, text))
                             )
                         },
-                        onCopySuccess = { toastHelper.showShort("已复制到剪贴板") },
-                        onCopyFailure = { toastHelper.showShort("复制失败") },
+                        onCopySuccess = { toastHelper.showShort(R.string.nfc_copy_success) },
+                        onCopyFailure = { toastHelper.showShort(R.string.nfc_copy_failed) },
                         dismissDialog = ::dismissDialog
                     )
                 }

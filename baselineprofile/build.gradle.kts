@@ -1,6 +1,6 @@
 plugins {
     alias(libs.plugins.android.test)
-    alias(libs.plugins.baselineprofile)
+    alias(libs.plugins.androidx.baseline.profile)
 }
 
 val appCompileSdkVersion = rootProject.extra["appCompileSdkVersion"] as Int

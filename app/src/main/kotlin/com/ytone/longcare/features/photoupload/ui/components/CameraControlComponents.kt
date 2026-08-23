@@ -23,7 +23,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.LifecycleOwner
+import com.ytone.longcare.R
 
 @Composable
 fun DelayTimerButton(
@@ -43,13 +45,13 @@ fun DelayTimerButton(
             if (currentMode == DelayMode.OFF) {
                 Icon(
                     imageVector = Icons.Filled.TimerOff,
-                    contentDescription = "延迟拍照: 关闭",
+                    contentDescription = stringResource(R.string.camera_delay_off_description),
                     tint = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
                     modifier = Modifier.size(24.dp),
                 )
             } else {
                 Text(
-                    text = "${currentMode.seconds}s",
+                    text = stringResource(R.string.camera_delay_seconds, currentMode.seconds),
                     color = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
                     style = TextStyle(
                         fontSize = 18.sp,
@@ -90,14 +92,14 @@ fun ShutterButton(
             if (isCountingDown) {
                 Icon(
                     imageVector = Icons.Filled.Circle,
-                    contentDescription = "取消倒计时",
+                    contentDescription = stringResource(R.string.camera_cancel_countdown_description),
                     modifier = Modifier.size(32.dp),
                     tint = Color.White,
                 )
             } else {
                 Icon(
                     imageVector = Icons.Filled.Circle,
-                    contentDescription = "拍照",
+                    contentDescription = stringResource(R.string.camera_shutter_description),
                     modifier = Modifier.size(56.dp),
                     tint = backgroundColor,
                 )
@@ -124,7 +126,7 @@ fun CameraSwitchButton(
     ) {
         Icon(
             imageVector = Icons.Filled.Cameraswitch,
-            contentDescription = "切换摄像头",
+            contentDescription = stringResource(R.string.camera_switch_description),
             tint = iconTint,
             modifier = Modifier.size(32.dp),
         )

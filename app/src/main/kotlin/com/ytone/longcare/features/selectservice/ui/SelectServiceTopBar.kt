@@ -21,7 +21,7 @@ internal fun SelectServiceTopBar(onNavigateBack: () -> Unit) {
     CenterAlignedTopAppBar(
         title = {
             Text(
-                "请选择服务项目",
+                stringResource(R.string.select_service_title),
                 fontWeight = FontWeight.Bold
             )
         },

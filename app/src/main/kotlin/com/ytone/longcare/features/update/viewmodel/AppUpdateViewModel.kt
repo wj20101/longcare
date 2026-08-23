@@ -14,7 +14,9 @@ import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.model.AppVersionModel
 import com.ytone.longcare.worker.DownloadWorker
 import com.ytone.longcare.common.utils.ApkInstallUtils
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.platform.update.ApkInstallGateway
+import com.ytone.longcare.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +32,7 @@ class AppUpdateViewModel @Inject constructor(
     private val workManager: WorkManager,
     private val apkInstallGateway: ApkInstallGateway,
     private val savedStateHandle: SavedStateHandle,
+    private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppUpdateUiState())
@@ -134,7 +137,7 @@ class AppUpdateViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(
                             isDownloading = false,
                             downloadProgress = 0,
-                            error = error ?: "安装包下载失败，请检查网络后重试"
+                            error = error ?: textResolver.text(R.string.update_download_failed)
                         )
                         clearCurrentWorkTracking(workId)
                     }
@@ -282,7 +285,10 @@ class AppUpdateViewModel @Inject constructor(
                 }
             } else {
                 pendingInstallFilePath = null
-                handleManualInstallFallback(filePath, "未获得安装未知来源应用权限")
+                handleManualInstallFallback(
+                    filePath,
+                    textResolver.text(R.string.update_unknown_sources_permission_missing),
+                )
             }
         }
     }
@@ -292,7 +298,7 @@ class AppUpdateViewModel @Inject constructor(
             ApkInstallUtils.LaunchResult.Launched -> {
                 _uiState.value = _uiState.value.copy(
                     hasPendingInstall = false,
-                    error = "已打开安装包，请在系统界面中手动完成安装"
+                    error = textResolver.text(R.string.update_manual_install_opened)
                 )
             }
             is ApkInstallUtils.LaunchResult.ManualFallback -> {
@@ -312,11 +318,19 @@ class AppUpdateViewModel @Inject constructor(
                     event = "apk_manual_install_failed",
                     description = "APK手动安装兜底失败",
                     filePath = filePath,
-                    message = "$failureMessage；${fallback.message}",
+                    message = textResolver.text(
+                        R.string.update_combined_error,
+                        failureMessage,
+                        fallback.message,
+                    ),
                 )
                 _uiState.value = _uiState.value.copy(
                     hasPendingInstall = false,
-                    error = "$failureMessage；${fallback.message}"
+                    error = textResolver.text(
+                        R.string.update_combined_error,
+                        failureMessage,
+                        fallback.message,
+                    )
                 )
             }
         }

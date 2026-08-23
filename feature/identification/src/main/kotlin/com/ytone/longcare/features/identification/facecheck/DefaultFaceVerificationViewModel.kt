@@ -4,8 +4,11 @@ import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
+import com.ytone.longcare.common.text.ResourceTextResolver
+import com.ytone.longcare.feature.identification.R
 import com.ytone.longcare.features.identification.domain.CheckFaceResult
 import com.ytone.longcare.features.identification.domain.CheckFaceUseCase
+import com.ytone.longcare.features.identification.vm.resolve
 import com.ytone.longcare.model.OrderKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -27,6 +30,7 @@ data class FaceImageMetrics(
 class DefaultFaceVerificationViewModel @Inject constructor(
     private val imageEncoder: FaceImageEncoder,
     private val checkFaceUseCase: CheckFaceUseCase,
+    private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<DefaultFaceVerificationUiState>(
         DefaultFaceVerificationUiState.Capturing(),
@@ -72,7 +76,9 @@ class DefaultFaceVerificationViewModel @Inject constructor(
                     )
                 ) {
                     CheckFaceResult.Success -> DefaultFaceVerificationUiState.Success
-                    is CheckFaceResult.Error -> DefaultFaceVerificationUiState.Error(result.message)
+                    is CheckFaceResult.Error -> DefaultFaceVerificationUiState.Error(
+                        textResolver.resolve(result.failure),
+                    )
                 }
             } catch (error: CancellationException) {
                 throw error
@@ -89,7 +95,7 @@ class DefaultFaceVerificationViewModel @Inject constructor(
                     ),
                 )
                 _uiState.value = DefaultFaceVerificationUiState.Error(
-                    "人脸照片处理失败，请重新拍摄",
+                    textResolver.text(R.string.face_capture_hint_photo_processing_failed),
                 )
             } finally {
                 if (!bitmap.isRecycled) {

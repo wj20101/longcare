@@ -21,7 +21,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.ytone.longcare.R
 
 @Composable
 internal fun ManualFaceCaptureErrorOverlay(
@@ -48,7 +50,7 @@ internal fun ManualFaceCaptureErrorOverlay(
                 IconButton(onClick = onClearError) {
                     Icon(
                         Icons.Default.Close,
-                        contentDescription = "关闭",
+                        contentDescription = stringResource(R.string.common_close),
                         tint = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
@@ -78,7 +80,7 @@ internal fun ManualFaceCaptureLoadingOverlay(
             ) {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("处理中...")
+                Text(stringResource(R.string.common_processing))
             }
         }
     }

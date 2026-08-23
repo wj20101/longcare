@@ -29,6 +29,7 @@ fun IdentificationScreen(
     identificationViewModel: IdentificationViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val cameraPermissionRequired = stringResource(R.string.camera_permission_required)
 
     // ==========================================================
     // 在这里调用函数，将此页面强制设置为竖屏
@@ -77,7 +78,11 @@ fun IdentificationScreen(
             if (isGranted) {
                 openElderCamera()
             } else {
-                Toast.makeText(context, "需要相机权限才能拍照", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    cameraPermissionRequired,
+                    Toast.LENGTH_SHORT,
+                ).show()
             }
         }
     )

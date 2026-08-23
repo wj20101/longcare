@@ -26,7 +26,8 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
 import com.ytone.longcare.model.User
-import com.ytone.longcare.model.userIdentityShow
+import com.ytone.longcare.model.userIdentityDisplay
+import com.ytone.longcare.platform.text.labelRes
 import com.ytone.longcare.ui.components.UserAvatar
 
 @Composable
@@ -135,7 +136,7 @@ private fun HeaderUserInfo(
                     .testTag("home_top_user_name"),
         )
         Text(
-            text = user.userIdentityShow(),
+            text = stringResource(user.userIdentityDisplay().labelRes()),
             fontSize = 12.sp,
             color = Color.White.copy(alpha = 0.5f),
             maxLines = 1,
@@ -186,8 +187,12 @@ fun DashboardGridWithImages(
                     .weight(1f)
                     .testTag("dashboard_pending_card"),
                 iconRes = R.drawable.main_ic_plan,
-                title = "待护理计划",
-                subtitle = if (pendingCarePlanCount > 0) "你有${pendingCarePlanCount}个护理待执行" else "",
+                title = stringResource(R.string.dashboard_pending_care_plans),
+                subtitle = if (pendingCarePlanCount > 0) {
+                    stringResource(R.string.dashboard_pending_count, pendingCarePlanCount)
+                } else {
+                    ""
+                },
                 badgeCount = pendingCarePlanCount,
                 onClick = actions.onNavigateToCarePlansList
             )
@@ -196,8 +201,8 @@ fun DashboardGridWithImages(
                     .weight(1f)
                     .testTag("dashboard_records_card"),
                 iconRes = R.drawable.main_ic_records,
-                title = "已服务记录",
-                subtitle = "查看过往服务记录",
+                title = stringResource(R.string.dashboard_service_records),
+                subtitle = stringResource(R.string.dashboard_service_records_description),
                 onClick = actions.onNavigateToServiceRecordsList
             )
         }

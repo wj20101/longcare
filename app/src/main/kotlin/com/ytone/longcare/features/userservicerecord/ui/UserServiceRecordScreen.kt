@@ -31,6 +31,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.core.ui.message.UiMessageSnackbarEffect
 import com.ytone.longcare.features.userservicerecord.vm.UserServiceRecordViewModel
 import com.ytone.longcare.theme.bgGradientBrush
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,7 +83,7 @@ fun UserServiceRecordScreen(
                             )
                             if (userAddress.isNotBlank()) {
                                 Text(
-                                    "地址: $userAddress",
+                                    stringResource(R.string.common_address, userAddress),
                                     fontSize = 12.sp,
                                     color = Color.White.copy(alpha = 0.85f)
                                 )
@@ -91,7 +93,7 @@ fun UserServiceRecordScreen(
                         IconButton(onClick = onBackClick) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
+                                contentDescription = stringResource(R.string.common_back),
                                 tint = Color.White
                             )
                         }

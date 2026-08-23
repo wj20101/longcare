@@ -21,9 +21,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.common.utils.KLogger
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.endservice.api.EndServiceSelectionActions
 import com.ytone.longcare.features.endservice.vm.EndServiceSelectionViewModel
@@ -64,7 +66,7 @@ internal fun BoxScope.EndServiceSelectionSuccessContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "请确认本次实际完成的服务项目",
+            text = stringResource(R.string.end_service_confirm_completed_projects),
             color = Color.White.copy(alpha = 0.8f),
             fontSize = 14.sp,
             modifier = Modifier
@@ -119,11 +121,15 @@ internal fun BoxScope.EndServiceSelectionSuccessContent(
             Spacer(modifier = Modifier.width(8.dp))
 
             NextStepButton(
-                text = "确认结束服务",
+                text = stringResource(R.string.end_service_confirm_action),
                 enabled = selectedProjectIds.isNotEmpty(),
                 onClick = singleClick {
                     if (selectedProjectIds.isEmpty()) {
-                        Toast.makeText(context, "请至少选择一个服务项目", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.end_service_selection_required),
+                            Toast.LENGTH_SHORT,
+                        ).show()
                         return@singleClick
                     }
 

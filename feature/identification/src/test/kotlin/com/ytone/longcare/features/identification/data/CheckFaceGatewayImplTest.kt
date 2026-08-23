@@ -36,7 +36,7 @@ class CheckFaceGatewayImplTest {
 
         val result = gateway.checkFace(orderId = 123, faceImageBase64 = "ZmFjZQ==")
 
-        assertThat(result).isEqualTo(CheckFaceRemoteResult.Error("人脸不匹配"))
+        assertThat(result).isEqualTo(CheckFaceRemoteResult.Rejected("人脸不匹配"))
     }
 
     private class FakeIdentificationRepository(

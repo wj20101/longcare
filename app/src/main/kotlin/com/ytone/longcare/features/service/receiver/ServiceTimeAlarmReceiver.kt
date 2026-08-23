@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.PowerManager
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.service.ServiceTimeNotificationManager
@@ -26,15 +27,14 @@ class ServiceTimeAlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         logI("收到服务时间结束闹钟广播")
-        
-        // 验证Intent Action
         if (intent.action != ServiceTimeNotificationManager.ACTION_SERVICE_TIME_END_ALARM) {
             logE("收到未知Action的广播: ${intent.action}")
             return
         }
-        
         val orderId = intent.getLongExtra(ServiceTimeNotificationManager.EXTRA_ORDER_ID, -1L)
-        val serviceName = intent.getStringExtra(ServiceTimeNotificationManager.EXTRA_SERVICE_NAME) ?: "未知服务"
+        val serviceName =
+            intent.getStringExtra(ServiceTimeNotificationManager.EXTRA_SERVICE_NAME)
+                ?: context.getString(R.string.countdown_alarm_default_service)
         val serviceEndTime = intent.getLongExtra(ServiceTimeNotificationManager.EXTRA_SERVICE_END_TIME, 0L)
         
         if (orderId == -1L) {

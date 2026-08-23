@@ -12,9 +12,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.R
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
@@ -35,7 +37,10 @@ fun OrderTabLayout(
     mainDashboardViewModel: MainDashboardViewModel
 ) {
     val selectedTabIndex by homeSharedViewModel.selectedTabIndex.collectAsStateWithLifecycle()
-    val tabs = listOf("待护理计划", "服务中")
+    val tabs = listOf(
+        stringResource(R.string.dashboard_pending_care_plans),
+        stringResource(R.string.dashboard_in_service),
+    )
     val coroutineScope = rememberCoroutineScope()
 
     Column {
@@ -81,7 +86,10 @@ fun OrderTabLayout(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 } else {
-                    EmptyView(modifier = Modifier.height(376.dp), message = "暂无待护理计划")
+                    EmptyView(
+                        modifier = Modifier.height(376.dp),
+                        message = stringResource(R.string.dashboard_empty_pending_care_plans),
+                    )
                 }
             }
 
@@ -113,7 +121,10 @@ fun OrderTabLayout(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 } else {
-                    EmptyView(modifier = Modifier.height(376.dp), message = "暂无服务中订单")
+                    EmptyView(
+                        modifier = Modifier.height(376.dp),
+                        message = stringResource(R.string.dashboard_empty_in_service),
+                    )
                 }
             }
         }

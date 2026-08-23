@@ -41,6 +41,10 @@ class ApiResultCallAdapterIntegrationTest {
         val api = createStandardApi(handler)
 
         assertEquals(ApiResult.Success("value"), api.success())
+        assertRequestError(
+            result = api.successWithoutData(),
+            kind = ApiRequestException.Kind.INVALID_RESPONSE,
+        )
         assertEquals(
             ApiResult.Failure(code = 4001, message = "业务失败"),
             api.businessFailure(),
@@ -206,6 +210,9 @@ private interface StandardAdapterTestApi {
     @GET("success")
     suspend fun success(): ApiResult<String>
 
+    @GET("success-without-data")
+    suspend fun successWithoutData(): ApiResult<String>
+
     @GET("nullable-customer-detail")
     suspend fun nullableCustomerDetail(): ApiResult<UserLatentDetailModel>
 
@@ -283,13 +290,17 @@ private class FakeResponseInterceptor : Interceptor {
                     200 to
                         """{"resultCode":1000,"resultMsg":"ok","data":"value"}"""
 
+                "success-without-data" ->
+                    200 to
+                        """{"resultCode":1000,"resultMsg":"ok","data":null}"""
+
                 "business-failure" ->
                     200 to
                         """{"resultCode":4001,"resultMsg":"业务失败","data":null}"""
 
                 "unit-success" ->
                     200 to
-                        """{"resultCode":1000,"resultMsg":"ok","data":{}}"""
+                        """{"resultCode":1000,"resultMsg":"ok","data":null}"""
 
                 "nullable-customer-detail" ->
                     200 to

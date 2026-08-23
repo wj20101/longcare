@@ -77,7 +77,7 @@ class MainActivity : AppCompatActivity() {
                 sessionInvalidationHandler.invalidations
                     .filterNotNull()
                     .collect { invalidation ->
-                        toastHelper.showLong("登录已失效，请重新登录")
+                        toastHelper.showLong(R.string.session_expired)
                         sessionInvalidationHandler.consume(invalidation.id)
                     }
             }

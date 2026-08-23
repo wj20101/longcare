@@ -14,6 +14,7 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.ServiceCompleteData
 import com.ytone.longcare.navigation.SignInMode
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.platform.nfc.NfcDeviceCapabilities
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,7 +36,10 @@ class NfcWorkflowViewModel @Inject constructor(
     private val imageRepository: OrderImageRepository,
     private val serviceCountdownSystemGateway: ServiceCountdownSystemGateway,
     private val nfcDeviceCapabilities: NfcDeviceCapabilities,
+    textResolver: ResourceTextResolver,
 ) : ViewModel() {
+
+    private val userMessages = textResolver.nfcUserMessages()
 
     private val _uiState = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
     val uiState: StateFlow<NfcSignInUiState> = _uiState.asStateFlow()
@@ -50,6 +54,7 @@ class NfcWorkflowViewModel @Inject constructor(
         serviceCountdownSystemGateway = serviceCountdownSystemGateway,
         scope = viewModelScope,
         uiState = _uiState,
+        userMessages = userMessages,
     )
 
     private val locationDelegate = NfcLocationDelegate(
@@ -78,6 +83,7 @@ class NfcWorkflowViewModel @Inject constructor(
         scanMode = _scanMode,
         readerUiState = _readerUiState,
         orderDelegate = orderDelegate,
+        userMessages = userMessages,
     )
     private val r65cSessionCollector = R65cWorkflowHidSessionCollector()
     private var r65cCompletionJob: kotlinx.coroutines.Job? = null

@@ -23,13 +23,13 @@ internal fun rememberServiceCountdownScreenLaunchers(
     countdownViewModel: ServiceCountdownViewModel,
     locationTrackingViewModel: LocationTrackingViewModel,
     orderKey: OrderKey,
-    onPermissionDialogRequired: (String) -> Unit
+    onPermissionDialogRequired: (ServiceCountdownPermissionIssue) -> Unit
 ): ServiceCountdownScreenLaunchers {
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (!isGranted) {
-            onPermissionDialogRequired("通知权限被拒绝，可能无法收到倒计时完成提醒。请到设置中手动开启通知权限。")
+            onPermissionDialogRequired(ServiceCountdownPermissionIssue.NOTIFICATION)
         }
     }
 
@@ -37,12 +37,12 @@ internal fun rememberServiceCountdownScreenLaunchers(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
         if (!countdownViewModel.canScheduleExactAlarms()) {
-            onPermissionDialogRequired("精确闹钟权限被拒绝，可能无法准时收到倒计时完成提醒。请到设置中手动开启精确闹钟权限。")
+            onPermissionDialogRequired(ServiceCountdownPermissionIssue.EXACT_ALARM)
         }
     }
 
     val locationPermissionLauncher = rememberLocationPermissionLauncher(
-        onPermissionGranted = { locationTrackingViewModel.onPermissionGrantedAndStartTracking(orderKey) }
+        onPermissionGranted = { locationTrackingViewModel.startTrackingAfterPermissionGrant(orderKey) }
     )
 
     return ServiceCountdownScreenLaunchers(
@@ -55,12 +55,13 @@ internal fun rememberServiceCountdownScreenLaunchers(
 internal fun handleServiceCountdownBottomAction(
     countdownState: ServiceCountdownState,
     validatePhotosUploaded: () -> Boolean,
+    photoRequiredMessage: String,
     onShowToast: (String) -> Unit,
     onRequireConfirm: () -> Unit,
     onEndServiceDirectly: () -> Unit
 ) {
     if (!validatePhotosUploaded()) {
-        onShowToast("请上传照片")
+        onShowToast(photoRequiredMessage)
         return
     }
 

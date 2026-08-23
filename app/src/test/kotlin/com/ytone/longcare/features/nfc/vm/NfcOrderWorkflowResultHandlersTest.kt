@@ -15,11 +15,12 @@ class NfcOrderWorkflowResultHandlersTest {
 
         applyOrderApiException(
             exception = ApiResult.Exception(IOException("网络断开")),
-            uiState = uiState
+            uiState = uiState,
+            userMessages = testMessages(),
         )
 
         val error = uiState.value as NfcSignInUiState.Error
-        assertEquals("网络断开", error.message)
+        assertEquals("网络异常", error.message)
         assertTrue(error.buglyReported)
     }
 
@@ -36,4 +37,10 @@ class NfcOrderWorkflowResultHandlersTest {
         assertEquals("NFC不匹配", error.message)
         assertTrue(error.buglyReported)
     }
+
+    private fun testMessages() = NfcUserMessages(
+        networkError = "网络异常",
+        orderDetailLoadFailed = "订单加载失败",
+        bindLocationFailed = "绑定定位失败",
+    )
 }

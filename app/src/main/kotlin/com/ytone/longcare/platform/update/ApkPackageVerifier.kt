@@ -7,6 +7,7 @@ import android.content.pm.Signature
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.core.content.pm.PackageInfoCompat
+import com.ytone.longcare.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.security.MessageDigest
@@ -30,7 +31,7 @@ class ApkPackageVerifier @Inject constructor(
         if (!apkFile.isFile || apkFile.length() <= 0L) {
             return ApkVerificationResult.Invalid(
                 reason = ApkVerificationFailure.FILE_MISSING,
-                message = "安装包不存在或内容为空",
+                message = context.getString(R.string.update_apk_missing),
             )
         }
 
@@ -38,12 +39,12 @@ class ApkPackageVerifier @Inject constructor(
         val archiveInfo = packageManager.readArchivePackageInfo(apkFile)
             ?: return ApkVerificationResult.Invalid(
                 reason = ApkVerificationFailure.INVALID_APK,
-                message = "下载文件不是有效的安装包",
+                message = context.getString(R.string.update_apk_invalid),
             )
         if (archiveInfo.packageName != context.packageName) {
             return ApkVerificationResult.Invalid(
                 reason = ApkVerificationFailure.PACKAGE_MISMATCH,
-                message = "安装包与当前应用不匹配",
+                message = context.getString(R.string.update_apk_package_mismatch),
             )
         }
 
@@ -51,20 +52,20 @@ class ApkPackageVerifier @Inject constructor(
         if (expectedVersionCode > 0L && archiveVersionCode != expectedVersionCode) {
             return ApkVerificationResult.Invalid(
                 reason = ApkVerificationFailure.VERSION_MISMATCH,
-                message = "安装包版本与更新信息不一致",
+                message = context.getString(R.string.update_apk_version_mismatch),
             )
         }
 
         val installedInfo = packageManager.readInstalledPackageInfo(context.packageName)
             ?: return ApkVerificationResult.Invalid(
                 reason = ApkVerificationFailure.CURRENT_PACKAGE_UNAVAILABLE,
-                message = "无法读取当前应用签名信息",
+                message = context.getString(R.string.update_current_signature_unavailable),
             )
         val installedVersionCode = PackageInfoCompat.getLongVersionCode(installedInfo)
         if (archiveVersionCode <= installedVersionCode) {
             return ApkVerificationResult.Invalid(
                 reason = ApkVerificationFailure.VERSION_NOT_NEWER,
-                message = "安装包版本不高于当前版本",
+                message = context.getString(R.string.update_apk_not_newer),
             )
         }
 
@@ -77,7 +78,7 @@ class ApkPackageVerifier @Inject constructor(
         ) {
             return ApkVerificationResult.Invalid(
                 reason = ApkVerificationFailure.SIGNATURE_MISMATCH,
-                message = "安装包签名校验失败",
+                message = context.getString(R.string.update_apk_signature_mismatch),
             )
         }
 

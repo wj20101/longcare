@@ -18,6 +18,7 @@ class CosStorageException(
     val kind: CosStorageFailureKind,
     val errorCode: String,
     val retryable: Boolean,
-    message: String,
+    val displayMessage: String? = null,
+    diagnosticMessage: String,
     cause: Throwable? = null,
-) : Exception(message, cause)
+) : Exception(diagnosticMessage, cause)

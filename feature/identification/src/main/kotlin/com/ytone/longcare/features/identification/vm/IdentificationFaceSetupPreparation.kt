@@ -12,7 +12,13 @@ internal sealed interface FaceSetupPreparation {
         val request: FaceVerificationRequest,
     ) : FaceSetupPreparation
 
-    data class Error(val message: String) : FaceSetupPreparation
+    data class Error(val failure: FaceSetupPreparationFailure) : FaceSetupPreparation
+}
+
+internal enum class FaceSetupPreparationFailure {
+    IMAGE_FILE_MISSING,
+    CURRENT_USER_UNAVAILABLE,
+    CURRENT_USER_INCOMPLETE,
 }
 
 internal suspend fun prepareFaceSetupVerificationInput(
@@ -22,16 +28,16 @@ internal suspend fun prepareFaceSetupVerificationInput(
 ): FaceSetupPreparation {
     val imageFile = File(imagePath)
     if (!imageFile.exists()) {
-        return FaceSetupPreparation.Error("图片文件不存在: $imagePath")
+        return FaceSetupPreparation.Error(FaceSetupPreparationFailure.IMAGE_FILE_MISSING)
     }
 
     val base64Image = faceDataSource.imageFileToBase64(imageFile)
     if (currentUser == null) {
-        return FaceSetupPreparation.Error("无法获取用户信息")
+        return FaceSetupPreparation.Error(FaceSetupPreparationFailure.CURRENT_USER_UNAVAILABLE)
     }
 
     if (currentUser.userName.isBlank() || currentUser.identityCardNumber.isBlank()) {
-        return FaceSetupPreparation.Error("用户信息不完整，无法进行人脸验证")
+        return FaceSetupPreparation.Error(FaceSetupPreparationFailure.CURRENT_USER_INCOMPLETE)
     }
 
     val request = createFaceVerificationRequest(

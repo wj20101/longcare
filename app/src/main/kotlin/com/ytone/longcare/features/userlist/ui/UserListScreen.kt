@@ -28,6 +28,8 @@ import com.ytone.longcare.core.ui.message.UiMessageSnackbarEffect
 import com.ytone.longcare.features.userlist.api.UserListActions
 import com.ytone.longcare.features.userlist.vm.UserListViewModel
 import com.ytone.longcare.theme.bgGradientBrush
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 
 /**
  * 用户列表类型枚举
@@ -56,10 +58,10 @@ fun UserListScreen(
         onConsumed = viewModel::consumeUiMessage,
     )
 
-    val title = when (userListType) {
-        UserListType.HAVE_SERVICE -> "已服务工时"
-        UserListType.NO_SERVICE -> "未服务工时"
-    }
+    val title = stringResource(when (userListType) {
+        UserListType.HAVE_SERVICE -> R.string.profile_stat_served_hours
+        UserListType.NO_SERVICE -> R.string.profile_stat_unserved_hours
+    })
 
     CustomBackHandler(customAction = actions.onNavigateBack)
 
@@ -84,7 +86,7 @@ fun UserListScreen(
                         IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
+                                contentDescription = stringResource(R.string.common_back),
                                 tint = Color.White
                             )
                         }

@@ -11,7 +11,10 @@ import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.features.shared.FaceVerificationPhotoProcessor
 import com.ytone.longcare.features.shared.ProcessedFacePhoto
-import com.ytone.longcare.features.shared.resolveFaceCaptureErrorMessage
+import com.ytone.longcare.features.shared.FacePhotoProcessingException
+import com.ytone.longcare.features.shared.FacePhotoProcessingFailure
+import com.ytone.longcare.common.text.ResourceTextResolver
+import com.ytone.longcare.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -25,6 +28,7 @@ import kotlinx.coroutines.launch
 class FaceVerificationViewModel @Inject constructor(
     private val systemConfigManager: SystemConfigManager,
     private val photoProcessor: FaceVerificationPhotoProcessor,
+    private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
 
     sealed class FaceVerifyUiState {
@@ -113,7 +117,7 @@ class FaceVerificationViewModel @Inject constructor(
                 } catch (exception: Exception) {
                     if (processingId == latestPhotoProcessingId) {
                         _photoProcessingState.value =
-                            PhotoProcessingState.Error(resolveFaceCaptureErrorMessage(exception))
+                            PhotoProcessingState.Error(resolvePhotoProcessingError(exception))
                     }
                 }
             }
@@ -143,7 +147,10 @@ class FaceVerificationViewModel @Inject constructor(
         when (event) {
             FaceSdkEvent.InitSuccess -> _uiState.value = FaceVerifyUiState.Verifying
             is FaceSdkEvent.InitFailed -> emitError(
-                message = "人脸验证初始化失败：${event.error.readableDescription()}",
+                message = textResolver.text(
+                    R.string.face_verification_initialization_failed,
+                    event.error.readableDescription(),
+                ),
                 error = event.error,
                 event = "shared_face_init_failed",
                 description = "共享人脸验证初始化失败",
@@ -151,7 +158,10 @@ class FaceVerificationViewModel @Inject constructor(
             )
             is FaceSdkEvent.VerifySuccess -> _uiState.value = FaceVerifyUiState.Success(event.result)
             is FaceSdkEvent.VerifyFailed -> emitError(
-                message = "人脸验证失败：${event.error.readableDescription()}",
+                message = textResolver.text(
+                    R.string.face_verification_failed_detail,
+                    event.error.readableDescription(),
+                ),
                 error = event.error,
                 event = "shared_face_verify_failed",
                 description = "共享人脸验证失败",
@@ -182,7 +192,7 @@ class FaceVerificationViewModel @Inject constructor(
             if (preparationId != latestPreparationId) return@launch
             if (config == null) {
                 emitError(
-                    message = "人脸验证配置不可用，请重新登录后重试",
+                    message = textResolver.text(R.string.face_verification_config_unavailable),
                     error = null,
                     event = "shared_face_config_missing",
                     description = "共享人脸验证配置缺失",
@@ -237,11 +247,24 @@ class FaceVerificationViewModel @Inject constructor(
     }
 
     private fun FaceVerifyError?.readableDescription(): String {
-        if (this == null) return "请稍后重试"
+        if (this == null) return textResolver.text(R.string.photo_upload_unexpected_error_fallback)
         return description
             ?.takeIf { it.isNotBlank() }
             ?: reason?.takeIf { it.isNotBlank() }
-            ?: "请稍后重试"
+            ?: textResolver.text(R.string.photo_upload_unexpected_error_fallback)
+    }
+
+    private fun resolvePhotoProcessingError(error: Exception): String {
+        val failure = error as? FacePhotoProcessingException
+        return when (failure?.failure) {
+            FacePhotoProcessingFailure.MISSING_FILE ->
+                textResolver.text(R.string.face_photo_missing)
+            FacePhotoProcessingFailure.INVALID_IMAGE ->
+                textResolver.text(R.string.face_photo_processing_failed)
+            FacePhotoProcessingFailure.UNEXPECTED,
+            null,
+            -> textResolver.text(R.string.face_photo_processing_failed)
+        }
     }
 
     private companion object {

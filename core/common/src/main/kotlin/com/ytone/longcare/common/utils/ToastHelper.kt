@@ -15,16 +15,16 @@ class ToastHelper @Inject constructor(@param:ApplicationContext private val cont
         showToastOnMainThread(message, Toast.LENGTH_SHORT)
     }
 
-    fun showShort(@StringRes resId: Int) {
-        showToastOnMainThread(context.getString(resId), Toast.LENGTH_SHORT)
+    fun showShort(@StringRes resId: Int, vararg formatArgs: Any) {
+        showToastOnMainThread(context.getString(resId, *formatArgs), Toast.LENGTH_SHORT)
     }
 
     fun showLong(message: CharSequence) {
         showToastOnMainThread(message, Toast.LENGTH_LONG)
     }
 
-    fun showLong(@StringRes resId: Int) {
-        showToastOnMainThread(context.getString(resId), Toast.LENGTH_LONG)
+    fun showLong(@StringRes resId: Int, vararg formatArgs: Any) {
+        showToastOnMainThread(context.getString(resId, *formatArgs), Toast.LENGTH_LONG)
     }
 
     private fun showToastOnMainThread(message: CharSequence, duration: Int) {

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="photo_watermark_before_service">服务前</string>
+    <string name="photo_watermark_during_service">服务中</string>
+    <string name="photo_watermark_after_service">服务后</string>
+    <string name="photo_watermark_unknown_caregiver">未知护工</string>
+    <string name="photo_watermark_unknown_elder">未知老人</string>
+    <string name="photo_cloud_upload_failed">图片上传失败，请稍后重试</string>
+    <string name="photo_image_processing_failed">图片处理失败，请重新拍摄</string>
+</resources>

@@ -24,8 +24,11 @@ class ServiceTimeNotificationManagerBasicTest {
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
-        sharedPreferences = context.getSharedPreferences("service_time_notification_prefs", Context.MODE_PRIVATE)
-        sharedPreferences.edit().clear().apply()
+        sharedPreferences = context.getSharedPreferences(
+            "service_time_notification_basic_test_prefs",
+            Context.MODE_PRIVATE,
+        )
+        check(sharedPreferences.edit().clear().commit())
     }
 
     @Test

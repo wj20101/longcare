@@ -1,5 +1,7 @@
 package com.ytone.longcare.common.utils
 
+import androidx.annotation.StringRes
+import com.ytone.longcare.R
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -9,10 +11,23 @@ import kotlin.time.Instant
 
 data class DisplayDate(
     val timestamp: Long,
-    val dayOfWeek: String,
+    val dayOfWeek: DisplayDayLabel,
     val dateLabel: String,
     val isToday: Boolean
 )
+
+enum class DisplayDayLabel(@param:StringRes val labelRes: Int) {
+    TODAY(R.string.date_today),
+    YESTERDAY(R.string.date_yesterday),
+    TOMORROW(R.string.date_tomorrow),
+    MONDAY(R.string.date_monday),
+    TUESDAY(R.string.date_tuesday),
+    WEDNESDAY(R.string.date_wednesday),
+    THURSDAY(R.string.date_thursday),
+    FRIDAY(R.string.date_friday),
+    SATURDAY(R.string.date_saturday),
+    SUNDAY(R.string.date_sunday),
+}
 
 object TimeUtils {
 

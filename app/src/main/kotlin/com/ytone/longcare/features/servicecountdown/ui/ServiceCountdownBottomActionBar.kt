@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 import com.ytone.longcare.ui.components.BottomSafeActionContainer
@@ -50,7 +52,7 @@ internal fun BoxScope.ServiceCountdownBottomActionBar(
             colors = ButtonDefaults.buttonColors(containerColor = countdownActionColor(countdownState))
         ) {
             Text(
-                text = countdownActionText(countdownState),
+                text = stringResource(countdownActionTextRes(countdownState)),
                 fontSize = 18.sp,
                 color = Color.White
             )
@@ -66,10 +68,10 @@ private fun countdownActionColor(state: ServiceCountdownState): Color {
     }
 }
 
-private fun countdownActionText(state: ServiceCountdownState): String {
+private fun countdownActionTextRes(state: ServiceCountdownState): Int {
     return when (state) {
-        ServiceCountdownState.RUNNING -> "提前结束服务"
-        ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> "结束服务"
-        ServiceCountdownState.ENDED -> "服务已结束"
+        ServiceCountdownState.RUNNING -> R.string.service_countdown_action_end_early
+        ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> R.string.service_countdown_action_end
+        ServiceCountdownState.ENDED -> R.string.service_countdown_action_ended
     }
 }

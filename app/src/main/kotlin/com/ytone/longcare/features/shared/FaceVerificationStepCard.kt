@@ -15,7 +15,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.ytone.longcare.R
 import com.ytone.longcare.features.shared.vm.FaceVerificationViewModel
 
 @Composable
@@ -37,14 +39,14 @@ internal fun FaceVerificationStepCard(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "第二步：开始人脸验证",
+                text = stringResource(R.string.face_verification_start_step),
                 style = MaterialTheme.typography.titleMedium
             )
 
             when (uiState) {
                 is FaceVerificationViewModel.FaceVerifyUiState.Idle -> {
                     Text(
-                        text = "准备开始人脸验证",
+                        text = stringResource(R.string.face_verification_ready),
                         style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -53,7 +55,7 @@ internal fun FaceVerificationStepCard(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !currentUserId.isNullOrBlank()
                     ) {
-                        Text("开始验证")
+                        Text(stringResource(R.string.face_verification_start))
                     }
                 }
 
@@ -62,11 +64,11 @@ internal fun FaceVerificationStepCard(
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         Column {
                             Text(
-                                text = "正在初始化...",
+                                text = stringResource(R.string.face_verification_initializing),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
-                                text = "获取签名参数中",
+                                text = stringResource(R.string.face_verification_fetching_signature),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -79,11 +81,11 @@ internal fun FaceVerificationStepCard(
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         Column {
                             Text(
-                                text = "正在进行人脸验证...",
+                                text = stringResource(R.string.face_verification_in_progress),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
-                                text = "请按照提示完成人脸验证",
+                                text = stringResource(R.string.face_verification_follow_prompts),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -93,7 +95,7 @@ internal fun FaceVerificationStepCard(
 
                 is FaceVerificationViewModel.FaceVerifyUiState.Success -> {
                     Text(
-                        text = "✓ 人脸验证成功",
+                        text = stringResource(R.string.face_verification_success),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -102,13 +104,13 @@ internal fun FaceVerificationStepCard(
                         onClick = onResetAll,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("重新验证")
+                        Text(stringResource(R.string.face_verification_retry))
                     }
                 }
 
                 is FaceVerificationViewModel.FaceVerifyUiState.Error -> {
                     Text(
-                        text = "✗ 验证失败",
+                        text = stringResource(R.string.face_verification_failed),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -127,7 +129,7 @@ internal fun FaceVerificationStepCard(
                             onClick = onClearError,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("取消")
+                            Text(stringResource(R.string.common_cancel))
                         }
 
                         Button(
@@ -135,14 +137,14 @@ internal fun FaceVerificationStepCard(
                             modifier = Modifier.weight(1f),
                             enabled = !currentUserId.isNullOrBlank()
                         ) {
-                            Text("重试")
+                            Text(stringResource(R.string.common_retry))
                         }
                     }
                 }
 
                 is FaceVerificationViewModel.FaceVerifyUiState.Cancelled -> {
                     Text(
-                        text = "✗ 验证已取消",
+                        text = stringResource(R.string.face_verification_cancelled),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -152,7 +154,7 @@ internal fun FaceVerificationStepCard(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !currentUserId.isNullOrBlank()
                     ) {
-                        Text("重新开始验证")
+                        Text(stringResource(R.string.face_verification_restart))
                     }
                 }
             }

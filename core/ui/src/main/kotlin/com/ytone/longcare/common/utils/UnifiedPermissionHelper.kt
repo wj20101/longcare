@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
+import com.ytone.longcare.core.ui.R
 
 /**
  * 统一权限管理工具类
@@ -75,15 +76,15 @@ object UnifiedPermissionHelper {
      */
     fun getCameraUnavailableReason(context: Context): String {
         if (!isCameraPermissionGranted(context)) {
-            return "相机权限未授予"
+            return context.getString(R.string.camera_permission_not_granted)
         }
         
         val packageManager = context.packageManager
         if (!packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-            return "设备不支持相机功能"
+            return context.getString(R.string.camera_feature_unsupported)
         }
         
-        return "相机功能正常"
+        return context.getString(R.string.camera_feature_available)
     }
 
     // ==================== 定位权限相关 ====================
@@ -124,7 +125,11 @@ object UnifiedPermissionHelper {
      * 引导用户开启定位服务
      */
     fun openLocationSettings(context: Context) {
-        Toast.makeText(context, "请先在系统设置中开启定位服务", Toast.LENGTH_LONG).show()
+        Toast.makeText(
+            context,
+            context.getString(R.string.location_service_open_settings),
+            Toast.LENGTH_LONG,
+        ).show()
         context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
     }
 
@@ -141,7 +146,11 @@ object UnifiedPermissionHelper {
             // 权限获取成功，执行回调
             onPermissionGranted()
         } else {
-            Toast.makeText(context, "需要定位权限才能开始服务", Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                context,
+                context.getString(R.string.location_permission_required_for_service),
+                Toast.LENGTH_LONG,
+            ).show()
             onPermissionDenied()
         }
     }
@@ -209,23 +218,41 @@ object UnifiedPermissionHelper {
 data class PermissionPurposeNotice(
     val title: String,
     val message: String,
-    val confirmLabel: String = "继续",
-    val cancelLabel: String = "取消"
+    val confirmLabel: String,
+    val cancelLabel: String,
 )
 
-fun cameraPermissionPurposeNotice(featureName: String): PermissionPurposeNotice {
+fun cameraPermissionPurposeNotice(
+    context: Context,
+    featureName: String,
+): PermissionPurposeNotice {
     return PermissionPurposeNotice(
-        title = "相机权限说明",
-        message = "需要相机权限用于$featureName。本权限仅在您主动使用拍照、上传或核验功能时申请。"
+        title = context.getString(R.string.permission_purpose_camera_title),
+        message = context.getString(R.string.permission_purpose_camera_message, featureName),
+        confirmLabel = context.getString(R.string.permission_purpose_continue),
+        cancelLabel = context.getString(R.string.permission_purpose_cancel),
     )
 }
 
-fun locationPermissionPurposeNotice(featureName: String): PermissionPurposeNotice {
+@Composable
+fun cameraPermissionPurposeNotice(featureName: String): PermissionPurposeNotice =
+    cameraPermissionPurposeNotice(LocalContext.current, featureName)
+
+fun locationPermissionPurposeNotice(
+    context: Context,
+    featureName: String,
+): PermissionPurposeNotice {
     return PermissionPurposeNotice(
-        title = "定位权限说明",
-        message = "需要定位权限用于$featureName。本权限仅在您主动使用NFC签到、开始服务或提交服务位置时申请。"
+        title = context.getString(R.string.permission_purpose_location_title),
+        message = context.getString(R.string.permission_purpose_location_message, featureName),
+        confirmLabel = context.getString(R.string.permission_purpose_continue),
+        cancelLabel = context.getString(R.string.permission_purpose_cancel),
     )
 }
+
+@Composable
+fun locationPermissionPurposeNotice(featureName: String): PermissionPurposeNotice =
+    locationPermissionPurposeNotice(LocalContext.current, featureName)
 
 @Composable
 fun PermissionPurposeDialog(

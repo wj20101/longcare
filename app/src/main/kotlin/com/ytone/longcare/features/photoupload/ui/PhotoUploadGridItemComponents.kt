@@ -96,7 +96,7 @@ private fun DeleteTaskButton(
     ) {
         Icon(
             imageVector = Icons.Default.Delete,
-            contentDescription = "删除照片",
+            contentDescription = stringResource(R.string.photo_upload_delete_photo),
             modifier = Modifier.size(12.dp),
             tint = Color.White,
         )
@@ -135,7 +135,7 @@ fun ImageTaskItem(
                 task.resultUri?.let { uri ->
                     Image(
                         painter = rememberAsyncImagePainter(uri),
-                        contentDescription = "处理完成的图片",
+                        contentDescription = stringResource(R.string.photo_upload_processed_photo),
                         modifier = Modifier
                             .fillMaxSize()
                             .clickable { showPreview = true },
@@ -160,14 +160,14 @@ fun ImageTaskItem(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "重试",
+                        contentDescription = stringResource(R.string.common_retry),
                         tint = Color.Red,
                         modifier = Modifier
                             .size(32.dp)
                             .clickable(onClick = onRetry)
                     )
                     Text(
-                        text = "点击重试",
+                        text = stringResource(R.string.photo_upload_tap_to_retry),
                         fontSize = 8.sp,
                         color = Color.Gray,
                         maxLines = 1

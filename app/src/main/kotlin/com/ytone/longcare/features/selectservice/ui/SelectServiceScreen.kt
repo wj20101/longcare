@@ -24,7 +24,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.DeviceCompatibilityHelper
 import com.ytone.longcare.common.utils.PermissionGuideItem
-import com.ytone.longcare.common.utils.PermissionGuideType
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.selectservice.api.SelectServiceActions
 import com.ytone.longcare.features.selectservice.vm.SelectServiceViewModel
@@ -158,24 +157,13 @@ fun SelectServiceScreen(
             UnifiedPermissionGuideDialog(
                 items = guideItems,
                 onItemAction = { item ->
-                    // 标记对应引导已展示
-                    DeviceCompatibilityHelper.markPermissionGuideShown(context, item.type)
-                    if (item.type == PermissionGuideType.BATTERY && !DeviceCompatibilityHelper.isIgnoringBatteryOptimizations(context)) {
-                        DeviceCompatibilityHelper.markIgnoreBatteryOptimizationRequestAttempted(context)
-                    }
-                    if (item.title == "开启自启动") {
-                        DeviceCompatibilityHelper.markAutoStartGuideShown(context)
-                    }
-                    DeviceCompatibilityHelper.safeStartActivity(context, item.settingsIntent)
+                    DeviceCompatibilityHelper.openGuide(context, item)
                 },
                 onDismiss = {
                     showUnifiedGuide = false
                     // 标记所有未处理的引导为已展示
                     guideItems.forEach { item ->
-                        DeviceCompatibilityHelper.markPermissionGuideShown(context, item.type)
-                        if (item.title == "开启自启动") {
-                            DeviceCompatibilityHelper.markAutoStartGuideShown(context)
-                        }
+                        DeviceCompatibilityHelper.markGuideHandled(context, item.id)
                     }
                     continuePendingStart()
                 }

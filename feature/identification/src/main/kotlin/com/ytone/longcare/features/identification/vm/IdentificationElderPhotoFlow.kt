@@ -2,7 +2,10 @@ package com.ytone.longcare.features.identification.vm
 
 import android.net.Uri
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
+import com.ytone.longcare.common.text.ResourceTextResolver
+import com.ytone.longcare.feature.identification.R
 import com.ytone.longcare.features.identification.domain.UploadElderPhotoResult
+import com.ytone.longcare.features.identification.domain.UploadElderPhotoFailure
 import com.ytone.longcare.features.identification.domain.UploadElderPhotoUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -17,8 +20,8 @@ internal fun launchElderPhotoUpload(
     onProcessing: () -> Unit,
     onUploading: () -> Unit,
     onUploadSuccess: () -> Unit,
-    onUploadError: (String) -> Unit,
-    onUnexpectedError: (String?) -> Unit,
+    onUploadError: (UploadElderPhotoFailure) -> Unit,
+    onUnexpectedError: () -> Unit,
 ) {
     scope.launch {
         try {
@@ -32,10 +35,10 @@ internal fun launchElderPhotoUpload(
                         event = "elder_photo_upload_failure",
                         description = "身份认证老人照片上传失败",
                         extras = photoUri.diagnosticExtras(orderId) + mapOf(
-                            "message" to result.message,
+                            "failureType" to result.failure::class.simpleName,
                         ),
                     )
-                    onUploadError(result.message)
+                    onUploadError(result.failure)
                 }
             }
         } catch (e: CancellationException) {
@@ -48,7 +51,7 @@ internal fun launchElderPhotoUpload(
                 throwable = e,
                 extras = photoUri.diagnosticExtras(orderId),
             )
-            onUnexpectedError(e.message)
+            onUnexpectedError()
         }
     }
 }
@@ -62,6 +65,7 @@ internal fun launchElderPhotoUploadWithBindings(
     showToast: (String) -> Unit,
     onElderVerified: () -> Unit,
     onSuccess: () -> Unit,
+    textResolver: ResourceTextResolver,
 ) {
     launchElderPhotoUpload(
         scope = scope,
@@ -72,18 +76,24 @@ internal fun launchElderPhotoUploadWithBindings(
         onUploading = { photoUploadState.value = PhotoUploadState.Uploading },
         onUploadSuccess = {
             photoUploadState.value = PhotoUploadState.Success
-            showToast("老人照片上传成功")
+            showToast(textResolver.text(R.string.identification_elder_photo_upload_succeeded))
             onElderVerified()
             onSuccess()
         },
-        onUploadError = { message ->
+        onUploadError = { failure ->
+            val message = textResolver.resolve(failure)
             photoUploadState.value = PhotoUploadState.Error(message)
             showToast(message)
         },
-        onUnexpectedError = { message ->
-            val displayMessage = message ?: "请稍后重试"
+        onUnexpectedError = {
+            val displayMessage = textResolver.text(R.string.identification_retry_later)
             photoUploadState.value = PhotoUploadState.Error(displayMessage)
-            showToast("老人照片处理失败: $displayMessage")
+            showToast(
+                textResolver.text(
+                    R.string.identification_elder_photo_processing_failed,
+                    displayMessage,
+                ),
+            )
         }
     )
 }

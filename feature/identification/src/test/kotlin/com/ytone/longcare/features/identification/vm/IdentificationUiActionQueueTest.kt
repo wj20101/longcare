@@ -10,10 +10,13 @@ class IdentificationUiActionQueueTest {
         val queue = IdentificationUiActionQueue()
 
         queue.enqueue(IdentificationUiEffect.ShowMessage("first"))
-        queue.enqueue(IdentificationUiEffect.NavigateToFaceCapture("second"))
+        queue.enqueue(IdentificationUiEffect.NavigateToFaceCapture(2))
 
         val queued = queue.actions.value
-        assertEquals(listOf("first", "second"), queued.map { it.effect.message })
+        assertEquals(
+            listOf("first", 2),
+            queued.map { it.effect.payload },
+        )
 
         queue.consume(queued.first().id)
 
@@ -30,9 +33,9 @@ class IdentificationUiActionQueueTest {
         assertTrue(queue.actions.value.isNotEmpty())
     }
 
-    private val IdentificationUiEffect.message: String
+    private val IdentificationUiEffect.payload: Any
         get() = when (this) {
-            is IdentificationUiEffect.NavigateToFaceCapture -> message
+            is IdentificationUiEffect.NavigateToFaceCapture -> messageRes
             is IdentificationUiEffect.ShowMessage -> message
         }
 }

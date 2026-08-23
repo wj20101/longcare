@@ -6,7 +6,19 @@ import javax.inject.Inject
 sealed interface SetupFaceResult {
     data object Success : SetupFaceResult
 
-    data class Error(val message: String) : SetupFaceResult
+    data class Error(val failure: SetupFaceFailure) : SetupFaceResult
+}
+
+sealed interface SetupFaceFailure {
+    data object CurrentUserUnavailable : SetupFaceFailure
+
+    data class ImageUpload(val detail: String?) : SetupFaceFailure
+
+    data class ServerRejected(val message: String?) : SetupFaceFailure
+
+    data object NetworkError : SetupFaceFailure
+
+    data object LocalCacheWrite : SetupFaceFailure
 }
 
 class SetupFaceUseCase @Inject constructor(
@@ -18,12 +30,12 @@ class SetupFaceUseCase @Inject constructor(
         currentUserId: Int?,
     ): SetupFaceResult {
         if (currentUserId == null) {
-            return SetupFaceResult.Error("更新本地用户数据失败：用户信息为空")
+            return SetupFaceResult.Error(SetupFaceFailure.CurrentUserUnavailable)
         }
 
         val uploadResult = gateway.uploadFaceImage(imageFile)
         if (uploadResult is SetupFaceUploadResult.Error) {
-            return SetupFaceResult.Error(uploadResult.message)
+            return SetupFaceResult.Error(SetupFaceFailure.ImageUpload(uploadResult.detail))
         }
         val uploadedKey = (uploadResult as SetupFaceUploadResult.Success).uploadedKey
 
@@ -31,13 +43,18 @@ class SetupFaceUseCase @Inject constructor(
             SetupFaceServerResult.Success -> {
                 // Cache only after the server accepts the face to keep local state behind server truth.
                 if (!gateway.cacheUserFace(currentUserId, base64Image)) {
-                    return SetupFaceResult.Error("本地人脸缓存失败，请重试")
+                    return SetupFaceResult.Error(SetupFaceFailure.LocalCacheWrite)
                 }
                 gateway.refreshCurrentUserSession()
                 SetupFaceResult.Success
             }
 
-            is SetupFaceServerResult.Error -> SetupFaceResult.Error(setFaceResult.message)
+            is SetupFaceServerResult.Rejected -> SetupFaceResult.Error(
+                SetupFaceFailure.ServerRejected(setFaceResult.message),
+            )
+            SetupFaceServerResult.NetworkError -> SetupFaceResult.Error(
+                SetupFaceFailure.NetworkError,
+            )
         }
     }
 }

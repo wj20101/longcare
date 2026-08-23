@@ -3,8 +3,9 @@ package com.ytone.longcare.shared.vm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
+import com.ytone.longcare.common.text.ResourceTextResolver
+import com.ytone.longcare.core.ui.R
 import com.ytone.longcare.model.result.ApiResult
-import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
@@ -20,10 +21,9 @@ import javax.inject.Inject
 class OrderDetailViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val unifiedOrderRepository: OrderDetailRepository,
-    private val locationFacade: LocationFacade
+    private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
     companion object {
-        private const val UI_SESSION_OWNER = "location_ui_session"
         private const val ORDER_DETAIL_DIAGNOSTIC_CATEGORY = "order_detail"
     }
 
@@ -61,7 +61,7 @@ class OrderDetailViewModel @Inject constructor(
                         ),
                     )
                     _uiState.value = OrderDetailUiState.Error(
-                        result.exception.message ?: "订单详情加载失败，请稍后重试"
+                        textResolver.text(R.string.order_detail_load_failed),
                     )
                 }
 
@@ -90,10 +90,6 @@ class OrderDetailViewModel @Inject constructor(
             unifiedOrderRepository.updateSelectedProjects(OrderKey(orderId), emptyList())
             _selectedProjectIds.value = emptyList()
         }
-    }
-
-    fun stopLocationSession() {
-        locationFacade.releaseKeepAlive(UI_SESSION_OWNER)
     }
 
 }

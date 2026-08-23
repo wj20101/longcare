@@ -12,7 +12,8 @@ internal suspend fun performStartOrderWorkflow(
     nfcDeviceId: String,
     longitude: String,
     latitude: String,
-    uiState: MutableStateFlow<NfcSignInUiState>
+    uiState: MutableStateFlow<NfcSignInUiState>,
+    userMessages: NfcUserMessages,
 ) {
     uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
 
@@ -33,7 +34,11 @@ internal suspend fun performStartOrderWorkflow(
                 nfcDeviceId = nfcDeviceId,
                 extras = locationExtras(longitude, latitude),
             )
-            applyOrderApiException(exception = result, uiState = uiState)
+            applyOrderApiException(
+                exception = result,
+                uiState = uiState,
+                userMessages = userMessages,
+            )
         }
         is ApiResult.Failure -> {
             trackNfcFailure(
@@ -62,7 +67,8 @@ internal suspend fun performEndOrderWorkflow(
     latitude: String,
     endType: Int,
     uiState: MutableStateFlow<NfcSignInUiState>,
-    onCheckSuccess: suspend () -> Unit
+    onCheckSuccess: suspend () -> Unit,
+    userMessages: NfcUserMessages,
 ) {
     uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
     val endOrderParams = createEndOrderParams(
@@ -98,7 +104,11 @@ internal suspend fun performEndOrderWorkflow(
                     "endType" to endType,
                 ),
             )
-            applyOrderApiException(exception = checkResult, uiState = uiState)
+            applyOrderApiException(
+                exception = checkResult,
+                uiState = uiState,
+                userMessages = userMessages,
+            )
         }
         is ApiResult.Failure -> {
             trackNfcFailure(

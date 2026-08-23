@@ -8,6 +8,7 @@ import com.tencent.cloud.huiyansdkface.facelight.api.listeners.WbCloudFaceVerify
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceError
 import com.tencent.cloud.huiyansdkface.facelight.api.result.WbFaceVerifyResult
 import com.tencent.cloud.huiyansdkface.facelight.process.FaceVerifyStatus
+import com.ytone.longcare.R
 import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.common.faceauth.FaceVerifyCallback
 import com.ytone.longcare.common.faceauth.FaceVerifier
@@ -44,9 +45,9 @@ class FaceVerificationManager @Inject constructor(
                 is FaceVerifyParamBuildResult.Success -> {
                     startSdkVerification(context, paramResult.params, callback)
                 }
-                is FaceVerifyParamBuildResult.Failure -> {
+                FaceVerifyParamBuildResult.Failure -> {
                     callback.onInitFailed(
-                        createError("人脸核验准备失败，请稍后重试")
+                        createError(context.getString(R.string.tencent_face_prepare_failed))
                     )
                 }
             }
@@ -54,7 +55,7 @@ class FaceVerificationManager @Inject constructor(
             throw e
         } catch (_: Exception) {
             callback.onInitFailed(
-                createError("人脸核验准备失败，请稍后重试")
+                createError(context.getString(R.string.tencent_face_prepare_failed))
             )
         }
     }
@@ -95,7 +96,7 @@ class FaceVerificationManager @Inject constructor(
             )
         } catch (_: Exception) {
             callback.onVerifyFailed(
-                createError("人脸核验启动失败，请稍后重试")
+                createError(context.getString(R.string.tencent_face_start_failed))
             )
         }
     }
@@ -113,7 +114,7 @@ class FaceVerificationManager @Inject constructor(
             override fun onLoginFailed(error: WbFaceError?) {
                 callback.onVerifyFailed(
                     error?.toDomainError()
-                        ?: createError("人脸核验启动失败，请稍后重试")
+                        ?: createError(context.getString(R.string.tencent_face_start_failed))
                 )
             }
         }
@@ -122,16 +123,17 @@ class FaceVerificationManager @Inject constructor(
     private fun startSdkFaceVerification(context: Context, callback: FaceVerifyCallback) {
         try {
             WbCloudFaceVerifySdk.getInstance().startWbFaceVerifySdk(context) { result ->
-                handleVerificationResult(result, callback)
+                handleVerificationResult(context, result, callback)
             }
         } catch (_: Exception) {
             callback.onVerifyFailed(
-                createError("人脸核验暂时无法继续，请稍后重试")
+                createError(context.getString(R.string.tencent_face_unavailable))
             )
         }
     }
 
     private fun handleVerificationResult(
+        context: Context,
         result: WbFaceVerifyResult,
         callback: FaceVerifyCallback
     ) {
@@ -139,13 +141,15 @@ class FaceVerificationManager @Inject constructor(
             result.isSuccess -> callback.onVerifySuccess(result.toDomainResult())
             else -> {
                 if (result.error?.code?.contains("cancel", ignoreCase = true) == true ||
-                    result.error?.desc?.contains("取消", ignoreCase = true) == true
+                    result.error?.desc?.contains(SDK_CANCEL_DESCRIPTION_TOKEN, ignoreCase = true) == true
                 ) {
                     callback.onVerifyCancel()
                 } else {
                     callback.onVerifyFailed(
                         result.error?.toDomainError()
-                            ?: createError("人脸核验失败，请稍后重试")
+                            ?: createError(
+                                context.getString(R.string.tencent_face_verification_failed),
+                            )
                     )
                 }
             }
@@ -183,5 +187,9 @@ class FaceVerificationManager @Inject constructor(
         } catch (exception: Exception) {
             logE("释放腾讯人脸 SDK 失败", throwable = exception)
         }
+    }
+
+    private companion object {
+        const val SDK_CANCEL_DESCRIPTION_TOKEN = "取消"
     }
 }

@@ -8,6 +8,7 @@ import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.debug.NfcTestConfig
 import kotlinx.coroutines.Job
+import com.ytone.longcare.R
 
 internal class NfcTestListeningDelegate(
     private val appEventBus: AppEventBus,
@@ -51,7 +52,7 @@ internal class NfcTestListeningDelegate(
             }
         } catch (e: Exception) {
             logD(NfcTestConfig.TEST_TAG, "启动NFC监听失败: ${e.message}")
-            toastHelper.showShort("启动NFC监听失败: ${e.message}")
+            toastHelper.showShort(R.string.nfc_listener_start_failed, e.message.orEmpty())
         }
     }
 

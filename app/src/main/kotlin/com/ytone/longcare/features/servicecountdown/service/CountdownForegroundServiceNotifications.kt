@@ -14,8 +14,8 @@ internal fun CountdownForegroundService.createCountdownNotification(
     orderId: Long,
     appLauncher: ServiceCountdownAppLauncher
 ): Notification {
-    val contentTitle = "服务进行中"
-    val contentText = "$serviceName - 正在为您提供服务"
+    val contentTitle = getString(R.string.service_countdown_notification_title)
+    val contentText = getString(R.string.service_countdown_notification_content, serviceName)
 
     // 点击通知跳转由 app 壳层实现，避免与 MainActivity 直接耦合。
     val pendingIntent = appLauncher.createCountdownContentIntent(this, orderId)
@@ -44,8 +44,8 @@ internal fun CountdownForegroundService.createForegroundNotificationChannel(chan
         channelId,
         NotificationManagerCompat.IMPORTANCE_LOW
     )
-        .setName("服务倒计时通知")
-        .setDescription("显示服务倒计时的实时进度")
+        .setName(getString(R.string.service_countdown_notification_channel_name))
+        .setDescription(getString(R.string.service_countdown_notification_channel_description))
         .setVibrationEnabled(false)
         .setLightsEnabled(false)
         .setShowBadge(false)

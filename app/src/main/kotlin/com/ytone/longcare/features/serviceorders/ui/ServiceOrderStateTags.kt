@@ -40,7 +40,7 @@ internal fun ServiceOrderStateTags(order: TodayServiceOrderModel) {
                 color = Color(0xFFE8F5E8)
             ) {
                 Text(
-                    text = "已完成",
+                    text = stringResource(R.string.service_order_completed),
                     color = Color(0xFF4CAF50),
                     fontSize = 12.sp,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)

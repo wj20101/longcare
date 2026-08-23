@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.shared.vm
 
 import android.graphics.Bitmap
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.faceauth.FaceSdkEvent
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
@@ -8,7 +9,10 @@ import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.features.shared.FaceVerificationPhotoProcessor
 import com.ytone.longcare.features.shared.ProcessedFacePhoto
+import com.ytone.longcare.features.shared.FacePhotoProcessingException
+import com.ytone.longcare.features.shared.FacePhotoProcessingFailure
 import com.ytone.longcare.util.MainDispatcherRule
+import androidx.test.core.app.ApplicationProvider
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,7 +23,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class FaceVerificationViewModelTest {
 
@@ -33,6 +40,7 @@ class FaceVerificationViewModelTest {
         return FaceVerificationViewModel(
             systemConfigManager = systemConfigManager,
             photoProcessor = photoProcessor,
+            textResolver = ResourceTextResolver(ApplicationProvider.getApplicationContext()),
         )
     }
 
@@ -62,7 +70,9 @@ class FaceVerificationViewModelTest {
 
     @Test
     fun `captured photo processing exposes formal error message`() = runTest {
-        coEvery { photoProcessor.process(any()) } throws IllegalStateException("图片文件不存在")
+        coEvery { photoProcessor.process(any()) } throws FacePhotoProcessingException(
+            FacePhotoProcessingFailure.MISSING_FILE,
+        )
         val viewModel = createViewModel()
 
         viewModel.processCapturedPhoto("/missing.jpg")

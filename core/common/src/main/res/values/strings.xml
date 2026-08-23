@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compatibility_battery_title_power_strategy">设置省电策略</string>
+    <string name="compatibility_auto_start_title">开启自启动</string>
+    <string name="compatibility_popup_permission_title">开启弹窗权限</string>
+    <string name="compatibility_popup_xiaomi">为保证服务结束时能弹出全屏提醒，请开启以下权限：\n\n1. 进入“设置 → 应用设置 → 应用管理”\n2. 找到本应用 → 点击“其他权限”\n3. 开启“后台弹出界面”\n4. 开启“锁屏显示”\n5. 开启“显示在其他应用上层”</string>
+    <string name="compatibility_popup_huawei">为保证服务结束时能弹出全屏提醒，请开启以下权限：\n\n1. 进入“设置 → 应用 → 应用管理”\n2. 找到本应用 → 点击“权限”\n3. 开启“后台弹窗”\n4. 开启“锁屏显示”\n5. 开启“悬浮窗”</string>
+    <string name="compatibility_popup_oppo">为保证服务结束时能弹出全屏提醒，请开启以下权限：\n\n1. 进入“设置 → 权限隐私 → 权限管理”\n2. 找到本应用\n3. 开启“后台弹出界面”\n4. 开启“锁屏界面显示”\n5. 开启“悬浮窗”</string>
+    <string name="compatibility_popup_vivo">为保证服务结束时能弹出全屏提醒，请开启以下权限：\n\n1. 进入“i管家 → 应用管理 → 权限管理”\n2. 找到本应用\n3. 开启“后台弹出界面”\n4. 开启“锁屏显示”\n5. 开启“悬浮窗”</string>
+    <string name="compatibility_battery_xiaomi">为保证服务倒计时不被系统中断，请设置省电策略：\n\n1. 进入“设置 → 应用设置 → 应用管理”\n2. 找到本应用 → 点击“省电策略”\n3. 选择“无限制”\n4. 返回 → 开启“自启动”</string>
+    <string name="compatibility_battery_huawei">为保证服务倒计时不被系统中断，请设置电池优化：\n\n1. 进入“设置 → 应用 → 应用启动管理”\n2. 找到本应用，关闭“自动管理”\n3. 开启“允许自启动”\n4. 开启“允许后台活动”\n5. 开启“允许关联启动”</string>
+    <string name="compatibility_battery_oppo">为保证服务倒计时不被系统中断，请设置电池优化：\n\n1. 进入“设置 → 电池 → 更多电池设置”\n2. 关闭“休眠时快速耗电检测”\n3. 进入“设置 → 电池 → 耗电管理”\n4. 找到本应用 → 设置为“不优化”</string>
+    <string name="compatibility_battery_vivo">为保证服务倒计时不被系统中断，请设置电池优化：\n\n1. 进入“设置 → 电池 → 后台耗电管理”\n2. 找到本应用 → 设置为“允许后台高耗电”\n3. 回到“设置 → 应用 → 自启动”\n4. 找到本应用 → 开启自启动</string>
+    <string name="compatibility_battery_default">为保证服务倒计时不被系统中断，请设置电池优化：\n\n1. 进入“设置 → 电池”或“设置 → 应用管理”\n2. 找到本应用的电池/耗电设置\n3. 关闭电池优化或设置为“不限制后台”\n4. 允许后台运行</string>
+    <string name="compatibility_auto_start_xiaomi">为保证后台定时通知和全屏弹窗稳定触发，请开启自启动：\n\n1. 进入“设置 → 应用设置 → 应用管理”\n2. 找到本应用 → 点击“自启动管理”\n3. 开启“允许自启动”</string>
+    <string name="compatibility_auto_start_huawei">为保证后台定时通知和全屏弹窗稳定触发，请开启应用启动管理：\n\n1. 进入“设置 → 应用 → 应用启动管理”\n2. 找到本应用，关闭“自动管理”\n3. 开启“允许自启动”\n4. 开启“允许后台活动”\n5. 开启“允许关联启动”</string>
+    <string name="compatibility_auto_start_oppo">为保证后台定时通知和全屏弹窗稳定触发，请开启自启动：\n\n1. 进入“设置 → 应用管理 → 自启动管理”\n2. 找到本应用\n3. 开启“允许自启动”\n4. 如有“后台运行”相关开关，也请一并开启</string>
+    <string name="compatibility_auto_start_vivo">为保证后台定时通知和全屏弹窗稳定触发，请开启自启动：\n\n1. 进入“设置 → 应用与权限 → 权限管理 → 自启动”\n2. 找到本应用\n3. 开启“允许自启动”\n4. 如有“后台高耗电”或“后台弹出界面”，也请允许</string>
+    <string name="compatibility_auto_start_default">为保证后台定时通知和全屏弹窗稳定触发，请允许本应用后台自启动和后台运行。</string>
+</resources>

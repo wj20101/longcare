@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.camera.core.ImageCapture
 import androidx.camera.view.LifecycleCameraController
+import com.ytone.longcare.R
 import com.ytone.longcare.common.image.WatermarkedCaptureRequest
 import com.ytone.longcare.features.photoupload.tracker.CameraEventTracker
 import java.io.File
@@ -32,7 +33,11 @@ internal fun takePhoto(
             e,
             mapOf("reason" to "水印视图捕获失败")
         )
-        Toast.makeText(context, "水印处理失败，请重试", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            context.getString(R.string.camera_watermark_failed),
+            Toast.LENGTH_SHORT,
+        ).show()
         onError()
         return
     }
@@ -43,7 +48,11 @@ internal fun takePhoto(
             null,
             mapOf("reason" to "水印Bitmap为null")
         )
-        Toast.makeText(context, "水印处理失败，请重试", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            context.getString(R.string.camera_watermark_failed),
+            Toast.LENGTH_SHORT,
+        ).show()
         onError()
         return
     }
@@ -74,7 +83,6 @@ internal fun takePhoto(
         )
     } catch (e: Exception) {
         cleanupCaptureArtifacts(tempFile, watermarkBitmap)
-        val detail = e.message ?: "请检查相机权限后重试"
         CameraEventTracker.trackError(
             CameraEventTracker.EventType.CAPTURE_ERROR,
             e,
@@ -83,7 +91,11 @@ internal fun takePhoto(
                 "elapsedTimeMs" to (System.currentTimeMillis() - captureStartTime)
             )
         )
-        Toast.makeText(context, "调用相机失败: $detail", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            context.getString(R.string.camera_capture_failed),
+            Toast.LENGTH_SHORT,
+        ).show()
         onError()
     }
 }

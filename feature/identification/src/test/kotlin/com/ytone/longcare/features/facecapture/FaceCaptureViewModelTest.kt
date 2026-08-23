@@ -134,12 +134,12 @@ class FaceCaptureViewModelTest {
             val viewModel = scanningViewModel()
 
             viewModel.onBlinkVerified(quality = 0.93f)
-            viewModel.onStillCaptureFailed("拍照失败，请重新尝试")
+            viewModel.onStillCaptureFailed(FaceCaptureHint.CAPTURE_FAILED)
 
             assertThat(viewModel.uiState.value.phase).isEqualTo(FaceCapturePhase.SCANNING)
             assertThat(viewModel.uiState.value.isDetectionEnabled).isTrue()
             assertThat(viewModel.uiState.value.confirmationProgress).isEqualTo(0f)
-            assertThat(viewModel.uiState.value.userHint).isEqualTo("拍照失败，请重新尝试")
+            assertThat(viewModel.uiState.value.userHint).isEqualTo(FaceCaptureHint.CAPTURE_FAILED)
         }
 
     private suspend fun TestScope.scanningViewModel(): FaceCaptureViewModel {

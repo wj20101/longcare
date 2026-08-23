@@ -8,6 +8,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
@@ -27,9 +29,9 @@ internal fun HomeScreenPagerContent(
     todayOrderViewModel: TodayOrderViewModel
 ) {
     val navigationItems = listOf(
-        AppNavigationItem("首页"),
-        AppNavigationItem("护理工作"),
-        AppNavigationItem("我的")
+        AppNavigationItem(stringResource(R.string.home_navigation_home)),
+        AppNavigationItem(stringResource(R.string.home_navigation_nursing)),
+        AppNavigationItem(stringResource(R.string.home_navigation_profile)),
     )
     val pagerState = rememberPagerState(pageCount = { navigationItems.size })
     val coroutineScope = rememberCoroutineScope()

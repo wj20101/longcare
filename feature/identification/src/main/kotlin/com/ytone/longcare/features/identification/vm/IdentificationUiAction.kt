@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.identification.vm
 
+import androidx.annotation.StringRes
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +19,9 @@ data class IdentificationUiAction(
 )
 
 sealed interface IdentificationUiEffect {
-    data class NavigateToFaceCapture(val message: String) : IdentificationUiEffect
+    data class NavigateToFaceCapture(
+        @param:StringRes val messageRes: Int,
+    ) : IdentificationUiEffect
 
     data class ShowMessage(
         val message: String,

@@ -13,7 +13,7 @@ data class CosUploadResult(
     val bucket: String? = null,
     val region: String? = null,
     val errorMessage: String? = null,
-    val errorCode: String? = null
+    val errorCode: String? = null,
 )
 
 /**

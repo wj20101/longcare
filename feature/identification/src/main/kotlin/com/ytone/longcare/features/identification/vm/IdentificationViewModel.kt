@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.faceauth.FaceSdkEvent
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
@@ -14,6 +15,7 @@ import com.ytone.longcare.features.identification.domain.VerifyServicePersonUseC
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker
 import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker.EventType
+import com.ytone.longcare.feature.identification.R
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
@@ -36,6 +38,7 @@ class IdentificationViewModel @Inject constructor(
     private val verifyServicePersonUseCase: VerifyServicePersonUseCase,
     private val uploadElderPhotoUseCase: UploadElderPhotoUseCase,
     private val setupFaceUseCase: SetupFaceUseCase,
+    private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL)
     val identificationState: StateFlow<IdentificationState> = _identificationState.asStateFlow()
@@ -57,14 +60,25 @@ class IdentificationViewModel @Inject constructor(
 
     private val faceSdkCoordinator = IdentificationFaceSdkCoordinator(
         configProvider = faceVerificationConfigProvider,
-        onStandardConfigMissing = { setFaceVerificationError("人脸配置不可用") },
-        onFaceSetupConfigMissing = { setFaceSetupError("人脸配置不可用") },
+        onStandardConfigMissing = {
+            setFaceVerificationError(
+                message = textResolver.text(R.string.identification_face_config_unavailable),
+                eventType = EventType.FACE_INIT_ERROR,
+            )
+        },
+        onFaceSetupConfigMissing = {
+            setFaceSetupError(textResolver.text(R.string.identification_face_config_unavailable))
+        },
     )
     val faceSdkLaunchRequest = faceSdkCoordinator.launchRequest
 
-    private fun setFaceVerificationError(message: String, error: FaceVerifyError? = null) {
+    private fun setFaceVerificationError(
+        message: String,
+        error: FaceVerifyError? = null,
+        eventType: EventType = EventType.FACE_VERIFY_ERROR,
+    ) {
         FaceVerificationEventTracker.trackError(
-            eventType = faceVerificationErrorEventType(message),
+            eventType = eventType,
             extras = FaceVerificationEventTracker.faceErrorExtras(
                 error = error,
                 extras = mapOf(
@@ -86,15 +100,6 @@ class IdentificationViewModel @Inject constructor(
         showLongMessage(message)
     }
 
-    private fun faceVerificationErrorEventType(message: String): EventType {
-        return when {
-            message.contains("初始化") -> EventType.FACE_INIT_ERROR
-            message.contains("获取人脸照片") || message.contains("人脸来源") -> EventType.SERVICE_FACE_SOURCE_ERROR
-            else -> EventType.FACE_VERIFY_ERROR
-        }
-    }
-    
-    /** 优先使用本地人脸，其次下载服务端人脸，均不可用时进入设置流程。 */
     fun verifyServicePerson() {
         launchServicePersonVerification(
             scope = viewModelScope,
@@ -106,21 +111,26 @@ class IdentificationViewModel @Inject constructor(
             startVerificationWithRequest = ::startFaceVerificationWithDefaultCallback,
             onRequireFaceSetup = ::navigateToFaceCaptureForSetup,
             onVerificationFailure = ::handleServicePersonVerificationFailure,
+            textResolver = textResolver,
         )
     }
 
     private fun handleServicePersonVerificationFailure(message: String, throwable: Throwable?) {
         logE(message, tag = "IdentificationVM", throwable = throwable)
-        setFaceVerificationError(message)
+        setFaceVerificationError(
+            message = message,
+            eventType = EventType.SERVICE_FACE_SOURCE_ERROR,
+        )
     }
 
     private fun navigateToFaceCaptureForSetup() {
-        uiActionQueue.enqueue(IdentificationUiEffect.NavigateToFaceCapture("请先设置人脸信息"))
+        uiActionQueue.enqueue(
+            IdentificationUiEffect.NavigateToFaceCapture(
+                com.ytone.longcare.feature.identification.R.string.face_capture_setup_required,
+            ),
+        )
     }
     
-    /**
-     * 验证老人
-     */
     fun verifyElder(orderKey: OrderKey) {
         launchElderVerification(
             scope = viewModelScope,
@@ -131,9 +141,6 @@ class IdentificationViewModel @Inject constructor(
         )
     }
 
-    /**
-     * 开始人脸验证
-     */
     private fun startFaceVerification(
         name: String,
         idNo: String,
@@ -175,10 +182,13 @@ class IdentificationViewModel @Inject constructor(
                     event = sdkEvent,
                     currentVerificationType = { _currentVerificationType.value },
                     setVerificationState = { state -> _faceVerificationState.value = state },
-                    onSetFaceVerificationError = ::setFaceVerificationError,
+                    onSetFaceVerificationError = { message, error, eventType ->
+                        setFaceVerificationError(message, error, eventType)
+                    },
                     onServicePersonVerified = ::setServicePersonVerified,
                     onElderVerified = ::setElderVerified,
                     showToast = ::showShortMessage,
+                    textResolver = textResolver,
                 )
             },
             onFaceSetup = { sdkEvent, ready ->
@@ -192,14 +202,12 @@ class IdentificationViewModel @Inject constructor(
                     setFaceSetupError = ::setFaceSetupError,
                     showToast = ::showShortMessage,
                     onServicePersonVerified = ::setServicePersonVerified,
+                    textResolver = textResolver,
                 )
             },
         )
     }
     
-    /**
-     * 获取当前登录用户
-     */
     private suspend fun getCurrentUser(): User? =
         (userSessionRepository.sessionState.value as? SessionState.LoggedIn)?.user
 
@@ -215,12 +223,6 @@ class IdentificationViewModel @Inject constructor(
         }
     }
     
-    /**
-     * 处理拍照并上传老人照片
-     * @param photoUri 拍照的图片URI
-     * @param orderKey 订单标识
-     * @param onSuccess 成功回调
-     */
     fun processElderPhoto(photoUri: Uri, orderKey: OrderKey, onSuccess: () -> Unit = {}) {
         launchElderPhotoUploadWithBindings(
             scope = viewModelScope,
@@ -231,30 +233,26 @@ class IdentificationViewModel @Inject constructor(
             showToast = ::showShortMessage,
             onElderVerified = ::setElderVerified,
             onSuccess = onSuccess,
+            textResolver = textResolver,
         )
     }
 
-    /**
-     * 生成用于相机屏幕的水印数据
-     * @param address 拍摄地址
-     * @param orderKey 订单标识
-     * @return WatermarkData
-     */
     suspend fun generateWatermarkData(address: String, orderKey: OrderKey): WatermarkData {
         return generateIdentificationWatermarkData(
             address = address,
             orderKey = orderKey,
             orderDetailRepository = unifiedOrderRepository,
             resolveCurrentUser = ::getCurrentUser,
+            unknownElderName = textResolver.text(R.string.identification_watermark_unknown_elder),
+            unknownCaregiverName = textResolver.text(
+                R.string.identification_watermark_unknown_caregiver,
+            ),
+            watermarkTitle = textResolver.text(R.string.identification_watermark_elder_photo),
         )
     }
 
     fun resetPhotoUploadState() { _photoUploadState.value = PhotoUploadState.Initial }
     
-    /**
-     * 处理人脸捕获结果 - 用于首次设置人脸信息
-     * @param imagePath 捕获的人脸图片路径
-     */
     fun handleFaceCaptureResult(imagePath: String) {
         launchFaceCaptureResultHandling(
             scope = viewModelScope,
@@ -266,6 +264,7 @@ class IdentificationViewModel @Inject constructor(
             setFaceSetupError = ::setFaceSetupError,
             showToast = ::showShortMessage,
             prepareSdkLaunch = faceSdkCoordinator::prepareFaceSetup,
+            textResolver = textResolver,
         )
     }
 

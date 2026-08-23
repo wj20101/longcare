@@ -8,7 +8,6 @@ import androidx.room.PrimaryKey
 import com.ytone.longcare.model.ImageUploadStatus
 import com.ytone.longcare.model.ImageType
 import com.ytone.longcare.model.LocalOrderStatus
-import com.ytone.longcare.model.LocationUploadStatus
 
 @Entity(
     tableName = "orders",
@@ -203,49 +202,4 @@ data class OrderImageEntityDb(
     fun getImageTypeEnum(): ImageType = ImageType.fromValue(imageType)
 
     fun getUploadStatusEnum(): ImageUploadStatus = ImageUploadStatus.fromValue(uploadStatus)
-}
-
-@Entity(
-    tableName = "order_locations",
-    foreignKeys = [
-        ForeignKey(
-            entity = OrderEntityDb::class,
-            parentColumns = ["order_id"],
-            childColumns = ["order_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [
-        Index(value = ["order_id"]),
-        Index(value = ["upload_status"])
-    ]
-)
-data class OrderLocationEntityDb(
-    @PrimaryKey(autoGenerate = true)
-    @ColumnInfo(name = "id")
-    val id: Long = 0L,
-    @ColumnInfo(name = "order_id")
-    val orderId: Long,
-    @ColumnInfo(name = "latitude")
-    val latitude: Double,
-    @ColumnInfo(name = "longitude")
-    val longitude: Double,
-    @ColumnInfo(name = "accuracy", defaultValue = "0")
-    val accuracy: Float = 0f,
-    @ColumnInfo(name = "provider", defaultValue = "")
-    val provider: String = "",
-    @ColumnInfo(name = "coord_type", defaultValue = "")
-    val coordType: String = "",
-    @ColumnInfo(name = "location_type", defaultValue = "0")
-    val locationType: Int = 0,
-    @ColumnInfo(name = "trusted_level", defaultValue = "0")
-    val trustedLevel: Int = 0,
-    @ColumnInfo(name = "location_time", defaultValue = "0")
-    val locationTime: Long = 0L,
-    @ColumnInfo(name = "upload_status", defaultValue = "0")
-    val uploadStatus: Int = LocationUploadStatus.PENDING.value,
-    @ColumnInfo(name = "timestamp", defaultValue = "0")
-    val timestamp: Long = System.currentTimeMillis()
-) {
-    fun getUploadStatusEnum(): LocationUploadStatus = LocationUploadStatus.fromValue(uploadStatus)
 }

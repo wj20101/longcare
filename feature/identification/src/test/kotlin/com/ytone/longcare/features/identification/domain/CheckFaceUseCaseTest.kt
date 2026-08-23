@@ -62,13 +62,15 @@ class CheckFaceUseCaseTest {
     @Test
     fun `remote error is preserved for presentation`() = runTest {
         val gateway = FakeCheckFaceGateway(
-            CheckFaceRemoteResult.Error("人脸相似度不足"),
+            CheckFaceRemoteResult.Rejected("人脸相似度不足"),
         )
         val useCase = CheckFaceUseCase(gateway)
 
         val result = useCase.execute(orderId = 123L, faceImageBase64 = "ZmFjZQ==")
 
-        assertThat(result).isEqualTo(CheckFaceResult.Error("人脸相似度不足"))
+        assertThat(result).isEqualTo(
+            CheckFaceResult.Error(CheckFaceFailure.Rejected("人脸相似度不足")),
+        )
     }
 
     private class FakeCheckFaceGateway(

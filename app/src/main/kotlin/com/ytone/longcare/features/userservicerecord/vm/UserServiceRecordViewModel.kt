@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 @HiltViewModel
 class UserServiceRecordViewModel @Inject constructor(
@@ -46,7 +47,7 @@ class UserServiceRecordViewModel @Inject constructor(
                     logE("获取用户服务记录失败: code=${result.code}, msg=${result.message}")
                 }
                 is ApiResult.Exception -> {
-                    messageQueue.enqueue(result.exception.message ?: "网络异常，请稍后重试")
+                    messageQueue.enqueue(CoreUiR.string.common_network_error_retry)
                     logE("获取用户服务记录异常", throwable = result.exception)
                 }
             }

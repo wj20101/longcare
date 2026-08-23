@@ -81,8 +81,10 @@ internal class CountdownNotificationUiDelegate(
         logI("全屏Intent权限: canUseFullScreenIntent=$canUseFullScreenIntent, SDK=${Build.VERSION.SDK_INT}")
 
         val builder = NotificationCompat.Builder(context, channelId)
-            .setContentTitle("⏰ 服务倒计时完成")
-            .setContentText("$serviceName 服务时间已到，请及时处理")
+            .setContentTitle(context.getString(R.string.countdown_notification_title))
+            .setContentText(
+                context.getString(R.string.countdown_notification_content, serviceName),
+            )
             .setSmallIcon(R.mipmap.app_logo_round)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -104,7 +106,7 @@ internal class CountdownNotificationUiDelegate(
         if (dismissPendingIntent != null) {
             builder.addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
-                "关闭响铃",
+                context.getString(R.string.countdown_notification_stop_ringing),
                 dismissPendingIntent
             )
         } else {
@@ -150,8 +152,10 @@ internal class CountdownNotificationUiDelegate(
             channelId,
             NotificationManagerCompat.IMPORTANCE_HIGH
         )
-            .setName("倒计时完成通知")
-            .setDescription("服务倒计时完成时的提醒通知")
+            .setName(context.getString(R.string.countdown_notification_channel_name))
+            .setDescription(
+                context.getString(R.string.countdown_notification_channel_description),
+            )
             .setVibrationEnabled(false)
             .setLightsEnabled(true)
             .setShowBadge(true)

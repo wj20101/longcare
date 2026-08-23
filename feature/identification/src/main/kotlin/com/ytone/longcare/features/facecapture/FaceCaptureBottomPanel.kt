@@ -77,7 +77,7 @@ internal fun FaceCaptureBottomPanel(
             label = "face_capture_hint",
         ) { hint ->
             Text(
-                text = hint,
+                text = stringResource(hint.messageRes),
                 color = Color.White,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center,

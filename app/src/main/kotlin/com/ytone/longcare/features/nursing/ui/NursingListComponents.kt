@@ -32,7 +32,8 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 import com.ytone.longcare.model.ServiceOrderModel
 import com.ytone.longcare.model.isServiceRecordState
-import com.ytone.longcare.model.toStateDisplayText
+import com.ytone.longcare.model.toOrderStateDisplay
+import com.ytone.longcare.platform.text.labelRes
 
 @Composable
 fun PlanList(
@@ -62,14 +63,14 @@ fun PlanList(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "暂无服务订单",
+                    text = stringResource(R.string.nursing_empty_orders),
                     fontSize = 16.sp,
                     color = Color.Gray,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "当前日期没有安排服务订单",
+                    text = stringResource(R.string.nursing_empty_orders_for_date),
                     fontSize = 14.sp,
                     color = Color.LightGray
                 )
@@ -123,7 +124,7 @@ fun OrderListItem(modifier: Modifier = Modifier, item: ServiceOrderModel) {
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "地址: ${item.liveAddress}",
+                text = stringResource(R.string.common_address, item.liveAddress),
                 color = Color.Gray,
                 fontSize = 14.sp,
                 lineHeight = 20.sp
@@ -131,7 +132,7 @@ fun OrderListItem(modifier: Modifier = Modifier, item: ServiceOrderModel) {
         }
 
         Text(
-            text = item.state.toStateDisplayText(),
+            text = stringResource(item.state.toOrderStateDisplay().labelRes()),
             color = if (item.state.isServiceRecordState()) Color.Green else Color.Red,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,

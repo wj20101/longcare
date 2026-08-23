@@ -6,7 +6,15 @@ import javax.inject.Inject
 sealed interface UploadElderPhotoResult {
     data object Success : UploadElderPhotoResult
 
-    data class Error(val message: String) : UploadElderPhotoResult
+    data class Error(val failure: UploadElderPhotoFailure) : UploadElderPhotoResult
+}
+
+sealed interface UploadElderPhotoFailure {
+    data class ImageUpload(val detail: String?) : UploadElderPhotoFailure
+
+    data class ServerRejected(val message: String?) : UploadElderPhotoFailure
+
+    data object NetworkError : UploadElderPhotoFailure
 }
 
 class UploadElderPhotoUseCase @Inject constructor(
@@ -17,11 +25,18 @@ class UploadElderPhotoUseCase @Inject constructor(
             is UploadElderPhotoSourceResult.Success -> {
                 when (val orderResult = gateway.uploadOrderStartImage(orderId, uploadResult.uploadedKey)) {
                     UploadElderPhotoOrderResult.Success -> UploadElderPhotoResult.Success
-                    is UploadElderPhotoOrderResult.Error -> UploadElderPhotoResult.Error(orderResult.message)
+                    is UploadElderPhotoOrderResult.Rejected -> UploadElderPhotoResult.Error(
+                        UploadElderPhotoFailure.ServerRejected(orderResult.message),
+                    )
+                    UploadElderPhotoOrderResult.NetworkError -> UploadElderPhotoResult.Error(
+                        UploadElderPhotoFailure.NetworkError,
+                    )
                 }
             }
 
-            is UploadElderPhotoSourceResult.Error -> UploadElderPhotoResult.Error(uploadResult.message)
+            is UploadElderPhotoSourceResult.Error -> UploadElderPhotoResult.Error(
+                UploadElderPhotoFailure.ImageUpload(uploadResult.detail),
+            )
         }
     }
 }

@@ -5,6 +5,7 @@ import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.core.ui.message.UiText
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.util.MainDispatcherRule
@@ -119,7 +120,10 @@ class MainDashboardViewModelTest {
             val result = viewModel.buildServiceCountdownNavigationData(orderId = orderId)
 
             assertNull(result)
-            assertEquals("server error", viewModel.uiMessages.value.single().text)
+            assertEquals(
+                UiText.Dynamic("server error"),
+                viewModel.uiMessages.value.single().content,
+            )
             viewModel.consumeUiMessage(viewModel.uiMessages.value.single().id)
             assertEquals(emptyList<Any>(), viewModel.uiMessages.value)
         } finally {

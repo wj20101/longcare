@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -43,6 +44,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
+import com.ytone.longcare.feature.identification.R
 import java.util.concurrent.Executors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.awaitCancellation
@@ -62,7 +64,7 @@ import kotlinx.coroutines.flow.first
 fun FaceCaptureScreen(
     onFaceCaptured: (Bitmap) -> Unit,
     onNavigateBack: () -> Unit = {},
-    title: String = "人脸捕获",
+    title: String? = null,
     resetToken: Int = 0,
     viewModel: FaceCaptureViewModel = hiltViewModel()
 ) {
@@ -70,6 +72,7 @@ fun FaceCaptureScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val hapticFeedback = LocalHapticFeedback.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val resolvedTitle = title ?: stringResource(R.string.face_capture_title)
     var showCameraPurposeNotice by remember { mutableStateOf(false) }
     var isPreviewStreaming by remember { mutableStateOf(false) }
     var cameraPermissionRequested by rememberSaveable { mutableStateOf(false) }
@@ -189,7 +192,7 @@ fun FaceCaptureScreen(
                                 description = "眨眼完成后相机拍照失败",
                                 throwable = exception,
                             )
-                            viewModel.onStillCaptureFailed("拍照失败，请重新尝试")
+                            viewModel.onStillCaptureFailed(FaceCaptureHint.CAPTURE_FAILED)
                         }
                     },
                 )
@@ -200,7 +203,7 @@ fun FaceCaptureScreen(
                     description = "眨眼完成后无法启动拍照",
                     throwable = error,
                 )
-                viewModel.onStillCaptureFailed("拍照失败，请重新尝试")
+                viewModel.onStillCaptureFailed(FaceCaptureHint.CAPTURE_FAILED)
             }
         }
 
@@ -312,7 +315,7 @@ fun FaceCaptureScreen(
             FaceCaptureCameraLayout(
                 uiState = uiState,
                 cameraController = cameraController,
-                title = title,
+                title = resolvedTitle,
                 onNavigateBack = onNavigateBack,
                 onPreviewStreamStateChanged = { streaming ->
                     isPreviewStreaming = streaming
@@ -348,7 +351,9 @@ fun FaceCaptureScreen(
 
     if (showCameraPurposeNotice) {
         PermissionPurposeDialog(
-            notice = cameraPermissionPurposeNotice("拍摄和识别人脸照片"),
+            notice = cameraPermissionPurposeNotice(
+                stringResource(R.string.face_capture_permission_purpose),
+            ),
             onConfirm = {
                 showCameraPurposeNotice = false
                 cameraPermissionRequested = true

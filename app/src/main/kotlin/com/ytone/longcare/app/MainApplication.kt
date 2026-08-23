@@ -15,6 +15,7 @@ import com.ytone.longcare.common.utils.LogFileConfig
 import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.integration.qlz.QlzSdkWindowInsetsCompat
+import com.ytone.longcare.features.location.session.LocationSessionLifecycleObserver
 import com.ytone.longcare.worker.StartupUpdateWorkObserver
 import dagger.hilt.android.HiltAndroidApp
 import java.io.File
@@ -36,6 +37,9 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
     @Inject
     lateinit var startupUpdateWorkObserver: StartupUpdateWorkObserver
 
+    @Inject
+    lateinit var locationSessionLifecycleObserver: LocationSessionLifecycleObserver
+
     private val postConsentInitDone = AtomicBoolean(false)
 
     override val workManagerConfiguration: Configuration
@@ -48,6 +52,7 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
 
         initLogger()
         QlzSdkWindowInsetsCompat.register(this)
+        locationSessionLifecycleObserver.start()
 
         // 只有用户已同意隐私政策才初始化 SDK 和调度 Worker
         if (privacyConsentManager.isPrivacyConsented) {

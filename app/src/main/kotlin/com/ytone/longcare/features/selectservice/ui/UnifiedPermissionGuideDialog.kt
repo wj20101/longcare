@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,12 +60,12 @@ fun UnifiedPermissionGuideDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = "权限设置",
+                    text = stringResource(R.string.service_permission_settings_title),
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "为保证服务正常运行，请完成以下设置",
+                    text = stringResource(R.string.service_permission_settings_description),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -90,7 +91,7 @@ fun UnifiedPermissionGuideDialog(
                     onClick = onDismiss,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
-                    Text("跳过，直接开始服务")
+                    Text(stringResource(R.string.service_countdown_skip_permission))
                 }
             }
         }
@@ -109,7 +110,7 @@ private fun PermissionGuideRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = item.title,
+                text = stringResource(item.titleRes),
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium),
                 modifier = Modifier.weight(1f)
             )
@@ -117,13 +118,14 @@ private fun PermissionGuideRow(
                 onClick = onAction,
                 modifier = Modifier.height(36.dp)
             ) {
-                Text("去设置", fontSize = 13.sp)
+                Text(stringResource(R.string.common_go_to_settings), fontSize = 13.sp)
             }
         }
-        if (item.message.isNotBlank()) {
+        val message = stringResource(item.messageRes)
+        if (message.isNotBlank()) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = item.message,
+                text = message,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 18.sp

@@ -43,7 +43,7 @@ class SetupFaceUseCaseTest {
 
         assertTrue(result is SetupFaceResult.Error)
         result as SetupFaceResult.Error
-        assertEquals("本地人脸缓存失败，请重试", result.message)
+        assertEquals(SetupFaceFailure.LocalCacheWrite, result.failure)
         assertEquals(listOf("uploadFaceImage", "setFaceOnServer", "cacheUserFace"), gateway.callOrder)
         assertFalse(gateway.sessionRefreshed)
     }
@@ -64,7 +64,7 @@ class SetupFaceUseCaseTest {
 
         assertTrue(result is SetupFaceResult.Error)
         result as SetupFaceResult.Error
-        assertEquals("图片上传失败", result.message)
+        assertEquals(SetupFaceFailure.ImageUpload("图片上传失败"), result.failure)
         assertEquals(listOf("uploadFaceImage"), gateway.callOrder)
         assertFalse(gateway.sessionRefreshed)
     }
@@ -72,7 +72,7 @@ class SetupFaceUseCaseTest {
     @Test
     fun `server failure returns error without cache or refresh`() = runBlocking {
         val gateway = FakeSetupFaceGateway(
-            serverResult = SetupFaceServerResult.Error("服务器更新失败"),
+            serverResult = SetupFaceServerResult.Rejected("服务器更新失败"),
             cacheResult = true,
         )
         val useCase = SetupFaceUseCase(gateway)
@@ -85,7 +85,7 @@ class SetupFaceUseCaseTest {
 
         assertTrue(result is SetupFaceResult.Error)
         result as SetupFaceResult.Error
-        assertEquals("服务器更新失败", result.message)
+        assertEquals(SetupFaceFailure.ServerRejected("服务器更新失败"), result.failure)
         assertEquals(listOf("uploadFaceImage", "setFaceOnServer"), gateway.callOrder)
         assertFalse(gateway.sessionRefreshed)
     }

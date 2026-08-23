@@ -15,7 +15,15 @@ sealed interface VerifyServicePersonDecision {
 
     data object RequireFaceSetup : VerifyServicePersonDecision
 
-    data class Error(val message: String) : VerifyServicePersonDecision
+    data class Error(val failure: ServicePersonVerificationFailure) : VerifyServicePersonDecision
+}
+
+sealed interface ServicePersonVerificationFailure {
+    data object CurrentUserUnavailable : ServicePersonVerificationFailure
+
+    data class FaceSourceRejected(val message: String?) : ServicePersonVerificationFailure
+
+    data object NetworkError : ServicePersonVerificationFailure
 }
 
 class VerifyServicePersonUseCase @Inject constructor(
@@ -23,7 +31,9 @@ class VerifyServicePersonUseCase @Inject constructor(
 ) {
     suspend fun execute(user: ServicePersonProfile?): VerifyServicePersonDecision {
         if (user == null) {
-            return VerifyServicePersonDecision.Error("无法获取用户信息")
+            return VerifyServicePersonDecision.Error(
+                ServicePersonVerificationFailure.CurrentUserUnavailable,
+            )
         }
 
         val cachedBase64 = dataGateway.readCachedFace(user.userId)
@@ -42,7 +52,12 @@ class VerifyServicePersonUseCase @Inject constructor(
 
             ServicePersonFaceSource.RequireFaceSetup -> VerifyServicePersonDecision.RequireFaceSetup
 
-            is ServicePersonFaceSource.Error -> VerifyServicePersonDecision.Error(source.message)
+            is ServicePersonFaceSource.Rejected -> VerifyServicePersonDecision.Error(
+                ServicePersonVerificationFailure.FaceSourceRejected(source.message),
+            )
+            ServicePersonFaceSource.NetworkError -> VerifyServicePersonDecision.Error(
+                ServicePersonVerificationFailure.NetworkError,
+            )
         }
     }
 }

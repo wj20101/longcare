@@ -1,5 +1,6 @@
 package com.ytone.longcare.presentation.countdown
 
+import com.ytone.longcare.R
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -92,7 +93,10 @@ class CountdownAlarmActivity : AppCompatActivity() {
         val orderKey = CountdownNotificationManager.extractOrderKey(intent)
         
         val orderId = orderKey.orderId.toString()
-        val serviceName = CountdownNotificationManager.extractServiceName(intent, "护理服务")
+        val serviceName = CountdownNotificationManager.extractServiceName(
+            intent,
+            getString(R.string.countdown_alarm_default_service),
+        )
         val autoCloseEnabled = intent.getBooleanExtra(EXTRA_AUTO_CLOSE_ENABLED, true)
         
         // 注册停止响铃广播接收器

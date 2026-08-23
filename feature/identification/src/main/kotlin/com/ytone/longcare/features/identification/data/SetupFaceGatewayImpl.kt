@@ -34,7 +34,7 @@ class SetupFaceGatewayImpl @Inject constructor(
         val uploadResult = cosRepository.uploadFile(uploadParams)
         val uploadedKey = uploadResult.key
         return if (!uploadResult.success || uploadedKey == null) {
-            SetupFaceUploadResult.Error(uploadResult.errorMessage ?: "人脸图片上传失败，请稍后重试")
+            SetupFaceUploadResult.Error(uploadResult.errorMessage)
         } else {
             SetupFaceUploadResult.Success(uploadedKey = uploadedKey)
         }
@@ -53,8 +53,10 @@ class SetupFaceGatewayImpl @Inject constructor(
 
         return when (setFaceResult) {
             is ApiResult.Success -> SetupFaceServerResult.Success
-            is ApiResult.Failure -> SetupFaceServerResult.Error("服务器更新失败: ${setFaceResult.message}")
-            is ApiResult.Exception -> SetupFaceServerResult.Error("网络请求异常: ${setFaceResult.exception.message}")
+            is ApiResult.Failure -> SetupFaceServerResult.Rejected(
+                setFaceResult.message.takeIf(String::isNotBlank),
+            )
+            is ApiResult.Exception -> SetupFaceServerResult.NetworkError
         }
     }
 

@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import com.ytone.longcare.core.common.di.DefaultDispatcher
 import com.ytone.longcare.features.face.detector.StaticImageFaceDetector
 import com.ytone.longcare.features.face.ui.DetectedFace
+import com.ytone.longcare.features.face.ui.ManualFaceQualityHint
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -21,7 +22,10 @@ class ManualFaceCaptureFacePipelineDelegate @Inject constructor(
     suspend fun saveFaceImage(face: DetectedFace): String =
         storageDelegate.saveBitmapToFile(face.croppedFace)
 
-    fun getFaceQualityHints(face: DetectedFace, capturedPhoto: Bitmap): List<String> =
+    fun getFaceQualityHints(
+        face: DetectedFace,
+        capturedPhoto: Bitmap,
+    ): List<ManualFaceQualityHint> =
         faceDetector.evaluateFaceQuality(face, capturedPhoto).hints
 
     fun release() {

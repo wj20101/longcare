@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.core.net.toUri
+import com.ytone.longcare.R
 import java.io.File
 
 /**
@@ -27,7 +28,7 @@ object ApkInstallUtils {
     fun installApk(context: Context, filePath: String): LaunchResult {
         val file = File(filePath)
         if (!file.exists() || !file.isFile) {
-            return LaunchResult.Failed("安装包不存在")
+            return LaunchResult.Failed(context.getString(R.string.update_apk_missing))
         }
 
         try {
@@ -49,22 +50,28 @@ object ApkInstallUtils {
     fun openApkForManualInstall(context: Context, filePath: String): LaunchResult {
         val file = File(filePath)
         if (!file.exists() || !file.isFile) {
-            return LaunchResult.Failed("安装包不存在")
+            return LaunchResult.Failed(context.getString(R.string.update_apk_missing))
         }
 
         return try {
             val uri = resolveInstallUri(context, file)
-            val chooserIntent = buildManualInstallChooser(uri, file.name)
+            val chooserIntent = buildManualInstallChooser(
+                uri = uri,
+                fileName = file.name,
+                chooserTitle = context.getString(R.string.update_open_apk_chooser),
+            )
 
             if (chooserIntent.resolveActivity(context.packageManager) == null) {
-                LaunchResult.Failed("未找到可用于打开安装包的系统应用")
+                LaunchResult.Failed(context.getString(R.string.update_no_apk_handler))
             } else {
                 context.startActivity(chooserIntent)
-                LaunchResult.ManualFallback("已打开安装包，请在系统界面中手动完成安装")
+                LaunchResult.ManualFallback(
+                    context.getString(R.string.update_manual_install_opened),
+                )
             }
         } catch (e: Exception) {
             logE("手动打开APK失败: ${e.message}", tag = "ApkInstallUtils", throwable = e)
-            LaunchResult.Failed("打开安装包失败: ${e.message ?: "系统未返回具体原因"}")
+            LaunchResult.Failed(context.getString(R.string.update_open_apk_failed))
         }
     }
 
@@ -102,14 +109,18 @@ object ApkInstallUtils {
 
         return try {
             if (intent.resolveActivity(context.packageManager) == null) {
-                LaunchResult.Failed("无法打开安装未知来源应用权限设置页")
+                LaunchResult.Failed(
+                    context.getString(R.string.update_install_permission_settings_unavailable),
+                )
             } else {
                 context.startActivity(intent)
                 LaunchResult.Launched
             }
         } catch (e: Exception) {
             logE("跳转未知来源安装权限页面失败: ${e.message}", tag = "ApkInstallUtils", throwable = e)
-            LaunchResult.Failed("打开安装权限设置失败: ${e.message ?: "系统未返回具体原因"}")
+            LaunchResult.Failed(
+                context.getString(R.string.update_install_permission_settings_failed),
+            )
         }
     }
 
@@ -136,7 +147,11 @@ object ApkInstallUtils {
         putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
     }
 
-    private fun buildManualInstallChooser(uri: Uri, fileName: String): Intent {
+    private fun buildManualInstallChooser(
+        uri: Uri,
+        fileName: String,
+        chooserTitle: String,
+    ): Intent {
         val openIntent = Intent(Intent.ACTION_VIEW).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -152,7 +167,7 @@ object ApkInstallUtils {
             type = APK_MIME_TYPE
         }
 
-        return Intent.createChooser(openIntent, "打开安装包").apply {
+        return Intent.createChooser(openIntent, chooserTitle).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(shareIntent))
         }

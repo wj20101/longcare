@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.ytone.longcare.model.AppVersionModel
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 
 @Composable
 internal fun AppUpdateDialogContent(
@@ -83,7 +85,7 @@ internal fun AppUpdateDialogContent(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "发现新版本",
+                            text = stringResource(R.string.new_version_found),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -97,7 +99,7 @@ internal fun AppUpdateDialogContent(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "关闭",
+                                contentDescription = stringResource(R.string.common_close),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -111,12 +113,12 @@ internal fun AppUpdateDialogContent(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "版本号：${appVersionModel.versionName}",
+                        text = stringResource(R.string.update_version, appVersionModel.versionName),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "平台：${appVersionModel.platform}",
+                        text = stringResource(R.string.update_platform, appVersionModel.platform),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -125,7 +127,7 @@ internal fun AppUpdateDialogContent(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "更新内容",
+                    text = stringResource(R.string.update_content),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface

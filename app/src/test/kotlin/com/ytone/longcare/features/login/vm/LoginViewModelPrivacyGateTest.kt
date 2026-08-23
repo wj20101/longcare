@@ -17,7 +17,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import androidx.test.core.app.ApplicationProvider
+import com.ytone.longcare.common.text.ResourceTextResolver
 
+@RunWith(RobolectricTestRunner::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelPrivacyGateTest {
 
@@ -110,7 +115,8 @@ class LoginViewModelPrivacyGateTest {
         return LoginViewModel(
             loginRepository = repository,
             userSessionRepository = mockk<UserSessionRepository>(relaxed = true),
-            loginPreferencesManager = preferences
+            loginPreferencesManager = preferences,
+            textResolver = ResourceTextResolver(ApplicationProvider.getApplicationContext()),
         )
     }
 }

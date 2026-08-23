@@ -76,6 +76,9 @@ fun PhotoUploadSection(
             }
         }
 
-        ServiceHoursTag(tagText = category.title, tagCategory = category.tagCategory)
+        ServiceHoursTag(
+            tagText = stringResource(category.titleRes),
+            tagCategory = category.tagCategory,
+        )
     }
 }

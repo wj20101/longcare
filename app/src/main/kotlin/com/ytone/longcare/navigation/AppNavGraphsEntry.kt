@@ -1,6 +1,7 @@
 package com.ytone.longcare.navigation
 
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
@@ -14,6 +15,7 @@ import com.ytone.longcare.features.home.ui.HomeScreen
 import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.privacy.AgreementUrls
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
+import com.ytone.longcare.R
 
 internal fun NavGraphBuilder.registerEntryNavGraphs(navController: NavController) {
     composable<LoginRoute> {
@@ -32,6 +34,8 @@ internal fun NavGraphBuilder.registerEntryNavGraphs(navController: NavController
                 navController.findBackStackEntryOrNull(HomeGraphRoute) ?: backStackEntry
             }
             val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
+            val userAgreementTitle = stringResource(R.string.profile_user_agreement)
+            val privacyPolicyTitle = stringResource(R.string.profile_privacy_policy)
             HomeScreen(
                 actions = HomeActions(
                     onNavigateToCarePlansList = { navController.navigateToCarePlansList() },
@@ -51,10 +55,16 @@ internal fun NavGraphBuilder.registerEntryNavGraphs(navController: NavController
                         navController.navigateToWebView(url, title)
                     },
                     onOpenUserAgreement = {
-                        navController.navigateToWebView(AgreementUrls.USER_AGREEMENT_URL, "用户协议")
+                        navController.navigateToWebView(
+                            AgreementUrls.USER_AGREEMENT_URL,
+                            userAgreementTitle,
+                        )
                     },
                     onOpenPrivacyPolicy = {
-                        navController.navigateToWebView(AgreementUrls.PRIVACY_POLICY_URL, "隐私政策")
+                        navController.navigateToWebView(
+                            AgreementUrls.PRIVACY_POLICY_URL,
+                            privacyPolicyTitle,
+                        )
                     },
                     onNavigateToCamera = { watermarkData ->
                         navController.navigateToCamera(watermarkData)

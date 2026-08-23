@@ -7,12 +7,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
@@ -34,15 +32,13 @@ internal fun ServiceCountdownLifecycleEffects(
     notificationPermissionLauncher: ActivityResultLauncher<String>,
     exactAlarmPermissionLauncher: ActivityResultLauncher<android.content.Intent>,
     permissionLauncher: ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>,
-    onPermissionDialogRequired: (String) -> Unit,
+    onPermissionDialogRequired: (ServiceCountdownPermissionIssue) -> Unit,
     onOrderStateError: (String) -> Unit
 ) {
     val orderStateError by countdownViewModel.orderStateError.collectAsStateWithLifecycle()
-    val latestCountdownState by rememberUpdatedState(countdownState)
-
     LaunchedEffect(orderStateError) {
         orderStateError?.let { stateModel ->
-            onOrderStateError(buildOrderStateErrorMessage(stateModel))
+            onOrderStateError(buildOrderStateErrorMessage(context, stateModel))
         }
     }
 
@@ -53,7 +49,7 @@ internal fun ServiceCountdownLifecycleEffects(
         checkLocationPermissionAndStart(
             context = context,
             permissionLauncher = permissionLauncher,
-            onPermissionGranted = { locationTrackingViewModel.onStartClicked(orderKey) }
+            onPermissionGranted = { locationTrackingViewModel.startTracking(orderKey) }
         )
 
         countdownViewModel.loadUploadedImagesFromRepository(orderKey)
@@ -98,23 +94,6 @@ internal fun ServiceCountdownLifecycleEffects(
     DisposableEffect(Unit) {
         onDispose {
             countdownViewModel.stopOrderStatePolling()
-
-            val disposeActions = resolveServiceCountdownDisposeActions()
-            if (disposeActions.cancelCountdownAlarm && latestCountdownState != ServiceCountdownState.ENDED) {
-                countdownViewModel.cancelCountdownAlarm()
-            }
-            if (disposeActions.stopAlarmRingtone && latestCountdownState != ServiceCountdownState.ENDED) {
-                AlarmRingtoneService.stopRingtone(context)
-            }
         }
     }
-}
-
-internal data class ServiceCountdownDisposeActions(
-    val cancelCountdownAlarm: Boolean = false,
-    val stopAlarmRingtone: Boolean = false,
-)
-
-internal fun resolveServiceCountdownDisposeActions(): ServiceCountdownDisposeActions {
-    return ServiceCountdownDisposeActions()
 }

@@ -42,7 +42,11 @@ fun UserServiceRecordContent(
                     .padding(32.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "暂无服务记录", color = Color.Gray, fontSize = 16.sp)
+                Text(
+                    text = stringResource(R.string.service_record_empty),
+                    color = Color.Gray,
+                    fontSize = 16.sp,
+                )
             }
         } else {
             Box {
@@ -78,7 +82,7 @@ fun UserServiceRecordContent(
 
                 ServiceHoursTag(
                     modifier = Modifier.align(Alignment.TopStart),
-                    tagText = "已服务工时",
+                    tagText = stringResource(R.string.service_hours_served),
                     tagCategory = TagCategory.DEFAULT
                 )
             }
@@ -98,7 +102,7 @@ fun ServiceRecordItem(
             .padding(vertical = 8.dp)
     ) {
         Text(
-            text = "服务记录${index + 1}",
+            text = stringResource(R.string.service_record_number, index + 1),
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
             color = Color.Black
@@ -129,7 +133,11 @@ fun ServiceRecordItem(
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "服务时间：${record.startTime} - ${record.endTime}",
+            text = stringResource(
+                R.string.service_record_time_range,
+                record.startTime,
+                record.endTime,
+            ),
             fontSize = 14.sp,
             color = Color.Gray
         )

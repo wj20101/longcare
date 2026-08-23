@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,7 +44,9 @@ fun ThankYouCard() {
         ) {
             Image(
                 painter = painterResource(id = R.drawable.service_complete_illustration),
-                contentDescription = "服务完成",
+                contentDescription = stringResource(
+                    R.string.service_complete_illustration_description,
+                ),
                 modifier = Modifier
                     .height(150.dp)
                     .fillMaxWidth(),
@@ -51,14 +54,14 @@ fun ThankYouCard() {
             )
             Spacer(modifier = Modifier.height(20.dp))
             Text(
-                text = "设备已断开",
+                text = stringResource(R.string.service_complete_device_disconnected),
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "感谢您真挚的服务，辛苦了。",
+                text = stringResource(R.string.service_complete_thanks),
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -94,18 +97,33 @@ fun ServiceChecklistSection(summary: ServiceSummary) {
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                ChecklistItem("姓名:", summary.clientName)
-                ChecklistItem("年龄:", summary.clientAge.toString())
-                ChecklistItem("身份证号:", summary.clientIdNumber)
-                ChecklistItem("地址:", summary.clientAddress)
-                ChecklistItem("服务内容:", summary.serviceContent)
-                ChecklistItem("用时:", summary.duration)
+                ChecklistItem(stringResource(R.string.service_complete_label_name), summary.clientName)
+                ChecklistItem(
+                    stringResource(R.string.service_complete_label_age),
+                    summary.clientAge.toString(),
+                )
+                ChecklistItem(
+                    stringResource(R.string.service_complete_label_id_number),
+                    summary.clientIdNumber,
+                )
+                ChecklistItem(
+                    stringResource(R.string.service_complete_label_address),
+                    summary.clientAddress,
+                )
+                ChecklistItem(
+                    stringResource(R.string.service_complete_label_content),
+                    summary.serviceContent,
+                )
+                ChecklistItem(
+                    stringResource(R.string.service_complete_label_duration),
+                    summary.duration,
+                )
             }
         }
 
         ServiceHoursTag(
             modifier = Modifier,
-            tagText = "服务清单",
+            tagText = stringResource(R.string.service_complete_checklist),
             tagCategory = TagCategory.DEFAULT
         )
     }

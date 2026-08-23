@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.ytone.longcare.R
 
 internal class ServiceTimeNotificationUiDelegate(
     private val context: Context,
@@ -17,8 +18,10 @@ internal class ServiceTimeNotificationUiDelegate(
             channelId,
             NotificationManagerCompat.IMPORTANCE_HIGH
         )
-            .setName("服务时间结束提醒")
-            .setDescription("服务时间结束时的重要提醒通知")
+            .setName(context.getString(R.string.service_time_notification_channel_name))
+            .setDescription(
+                context.getString(R.string.service_time_notification_channel_description),
+            )
             .setVibrationEnabled(true)
             .setLightsEnabled(true)
             .setShowBadge(true)
@@ -28,8 +31,10 @@ internal class ServiceTimeNotificationUiDelegate(
 
     fun showServiceTimeEndNotification(orderId: Long, serviceName: String) {
         val notification = NotificationCompat.Builder(context, channelId)
-            .setContentTitle("服务时间提醒")
-            .setContentText("$serviceName 服务时间即将结束，请及时处理")
+            .setContentTitle(context.getString(R.string.service_time_notification_title))
+            .setContentText(
+                context.getString(R.string.service_time_notification_content, serviceName),
+            )
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)

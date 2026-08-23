@@ -6,7 +6,9 @@ import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.model.result.ApiResult
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.domain.repository.OrderDetailRepository
+import com.ytone.longcare.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +21,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class EndServiceSelectionViewModel @Inject constructor(
-    private val unifiedOrderRepository: OrderDetailRepository
+    private val unifiedOrderRepository: OrderDetailRepository,
+    private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
 
     // 页面状态
@@ -79,7 +82,7 @@ class EndServiceSelectionViewModel @Inject constructor(
                             ),
                         )
                         _uiState.value = EndServiceSelectionUiState.Error(
-                            result.exception.message ?: "结束服务项目加载失败，请稍后重试"
+                            textResolver.text(R.string.end_service_project_load_failed),
                         )
                     }
                 }

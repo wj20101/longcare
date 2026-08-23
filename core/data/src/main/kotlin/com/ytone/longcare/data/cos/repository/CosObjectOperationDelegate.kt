@@ -178,7 +178,7 @@ internal class CosObjectOperationDelegate(
             CosUploadResult(
                 success = false,
                 key = resolvedKey,
-                errorMessage = failure.message,
+                errorMessage = failure.displayMessage,
                 errorCode = failure.errorCode,
             )
         }

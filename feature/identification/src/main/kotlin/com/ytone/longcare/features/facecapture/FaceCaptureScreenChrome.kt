@@ -24,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Observer
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.feature.identification.R
 
 @Composable
 internal fun FaceCaptureCameraPreview(
@@ -47,13 +49,14 @@ internal fun FaceCaptureCameraPreview(
         }
     }
 
+    val previewDescription = stringResource(R.string.face_capture_preview_description)
     AndroidView(
         factory = {
             previewView.apply { controller = cameraController }
         },
         update = { view -> view.controller = cameraController },
         modifier = modifier.semantics {
-            contentDescription = "相机预览，用于人脸采集"
+            contentDescription = previewDescription
         }
     )
 }
@@ -77,7 +80,7 @@ internal fun FaceCaptureTopBar(
             IconButton(onClick = onNavigateBack) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回",
+                    contentDescription = stringResource(R.string.default_face_verification_back),
                     tint = Color.White
                 )
             }

@@ -24,6 +24,7 @@ internal class NfcScanWorkflowDelegate(
     private val scanMode: MutableStateFlow<ScanMode>,
     private val readerUiState: MutableStateFlow<ReaderUiState>,
     private val orderDelegate: NfcOrderWorkflowDelegate,
+    private val userMessages: NfcUserMessages,
 ) {
     private var nfcEventJob: Job? = null
     private var pendingPermissionScan: PendingNfcScan? = null
@@ -81,7 +82,8 @@ internal class NfcScanWorkflowDelegate(
                                 latitude = latitude,
                                 pendingNfcData = pendingNfcData,
                                 scope = scope,
-                                orderDelegate = orderDelegate
+                                orderDelegate = orderDelegate,
+                                userMessages = userMessages,
                             )
                         },
                         onEndOrder = { tagId, longitude, latitude, info ->
@@ -142,7 +144,8 @@ internal class NfcScanWorkflowDelegate(
                         latitude = startLatitude,
                         pendingNfcData = pendingNfcData,
                         scope = scope,
-                        orderDelegate = orderDelegate
+                        orderDelegate = orderDelegate,
+                        userMessages = userMessages,
                     )
                 },
                 onEndOrder = { tagId, endLongitude, endLatitude, info ->
@@ -185,7 +188,6 @@ internal class NfcScanWorkflowDelegate(
                 }
 
                 is ApiResult.Exception -> {
-                    val message = result.exception.message ?: "绑定定位失败，请检查网络后重试"
                     trackNfcException(
                         event = "bind_location_exception",
                         description = "NFC绑定定位异常",
@@ -199,7 +201,7 @@ internal class NfcScanWorkflowDelegate(
                         ),
                     )
                     orderDelegate.showError(
-                        message = message,
+                        message = userMessages.bindLocationFailed,
                         source = "bind_location",
                         orderKey = data.orderKey,
                         signInMode = data.signInMode,
@@ -274,7 +276,8 @@ internal class NfcScanWorkflowDelegate(
                         latitude = latitude,
                         pendingNfcData = pendingNfcData,
                         scope = scope,
-                        orderDelegate = orderDelegate
+                        orderDelegate = orderDelegate,
+                        userMessages = userMessages,
                     )
                 },
                 onEndOrder = { tagId, longitude, latitude, info ->

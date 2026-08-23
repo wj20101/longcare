@@ -53,26 +53,6 @@ enum class ImageUploadStatus(val value: Int) {
     }
 }
 
-// ========== 位置上传状态 ==========
-
-/**
- * 位置上传状态枚举
- */
-enum class LocationUploadStatus(val value: Int) {
-    /** 待上传 */
-    PENDING(0),
-    /** 上传成功 */
-    SUCCESS(1),
-    /** 上传失败 */
-    FAILED(2);
-    
-    companion object {
-        fun fromValue(value: Int): LocationUploadStatus {
-            return entries.find { it.value == value } ?: PENDING
-        }
-    }
-}
-
 // ========== 图片类型 ==========
 
 /**

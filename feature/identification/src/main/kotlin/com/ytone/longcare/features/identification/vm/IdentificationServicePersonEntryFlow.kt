@@ -1,6 +1,8 @@
 package com.ytone.longcare.features.identification.vm
 
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
+import com.ytone.longcare.feature.identification.R
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.features.identification.domain.ServicePersonProfile
 import com.ytone.longcare.features.identification.domain.VerifyServicePersonUseCase
@@ -19,6 +21,7 @@ internal fun launchServicePersonVerification(
     startVerificationWithRequest: suspend (FaceVerificationRequest) -> Unit,
     onRequireFaceSetup: () -> Unit,
     onVerificationFailure: (String, Throwable?) -> Unit,
+    textResolver: ResourceTextResolver,
 ) {
     scope.launch {
         try {
@@ -32,11 +35,15 @@ internal fun launchServicePersonVerification(
                 startVerificationWithRequest = startVerificationWithRequest,
                 onRequireFaceSetup = onRequireFaceSetup,
                 onVerificationFailure = onVerificationFailure,
+                textResolver = textResolver,
             )
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            onVerificationFailure(e.message ?: "服务人员验证失败", e)
+            onVerificationFailure(
+                textResolver.text(R.string.identification_face_verification_failed),
+                e,
+            )
         }
     }
 }

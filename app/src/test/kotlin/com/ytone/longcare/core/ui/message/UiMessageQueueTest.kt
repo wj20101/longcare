@@ -13,7 +13,10 @@ class UiMessageQueueTest {
         val secondId = queue.enqueue("second")
 
         queue.consume(secondId)
-        assertEquals(listOf("first"), queue.messages.value.map(UiMessage::text))
+        assertEquals(
+            listOf(UiText.Dynamic("first")),
+            queue.messages.value.map(UiMessage::content),
+        )
 
         queue.consume(firstId)
         assertTrue(queue.messages.value.isEmpty())

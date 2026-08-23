@@ -15,8 +15,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 
 @Composable
@@ -24,6 +26,7 @@ internal fun CameraPermissionGate(
     onPermissionGranted: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
+    val cameraServicePhotoPurpose = stringResource(R.string.camera_service_photo_purpose)
     var hasPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
@@ -43,14 +46,16 @@ internal fun CameraPermissionGate(
     } else {
         Box(modifier = Modifier.fillMaxSize()) {
             Button(onClick = { showPurposeNotice = true }) {
-                Text("申请相机权限")
+                Text(stringResource(R.string.camera_request_permission))
             }
         }
     }
 
     if (showPurposeNotice) {
         PermissionPurposeDialog(
-            notice = cameraPermissionPurposeNotice("拍摄服务照片"),
+            notice = cameraPermissionPurposeNotice(
+                cameraServicePhotoPurpose,
+            ),
             onConfirm = {
                 showPurposeNotice = false
                 launcher.launch(Manifest.permission.CAMERA)

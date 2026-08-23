@@ -54,7 +54,7 @@ internal object TimeDisplayDateDelegate {
         today: LocalDate,
         timeZone: TimeZone
     ): DisplayDate {
-        val dayOfWeekString = formatDayOfWeek(currentDate, today)
+        val dayLabel = resolveDayLabel(currentDate, today)
         val monthStr = currentDate.month.number.toString().padStart(2, '0')
         val dayStr = currentDate.day.toString().padStart(2, '0')
         val dateLabelString = "$monthStr/$dayStr"
@@ -62,28 +62,28 @@ internal object TimeDisplayDateDelegate {
 
         return DisplayDate(
             timestamp = timestamp,
-            dayOfWeek = dayOfWeekString,
+            dayOfWeek = dayLabel,
             dateLabel = dateLabelString,
             isToday = currentDate == today
         )
     }
 
-    private fun formatDayOfWeek(date: LocalDate, today: LocalDate): String {
+    private fun resolveDayLabel(date: LocalDate, today: LocalDate): DisplayDayLabel {
         val yesterday = today.plus(DatePeriod(days = -1))
         val tomorrow = today.plus(DatePeriod(days = 1))
 
         return when (date) {
-            today -> "今天"
-            yesterday -> "昨天"
-            tomorrow -> "明天"
+            today -> DisplayDayLabel.TODAY
+            yesterday -> DisplayDayLabel.YESTERDAY
+            tomorrow -> DisplayDayLabel.TOMORROW
             else -> when (date.dayOfWeek) {
-                DayOfWeek.MONDAY -> "周一"
-                DayOfWeek.TUESDAY -> "周二"
-                DayOfWeek.WEDNESDAY -> "周三"
-                DayOfWeek.THURSDAY -> "周四"
-                DayOfWeek.FRIDAY -> "周五"
-                DayOfWeek.SATURDAY -> "周六"
-                DayOfWeek.SUNDAY -> "周日"
+                DayOfWeek.MONDAY -> DisplayDayLabel.MONDAY
+                DayOfWeek.TUESDAY -> DisplayDayLabel.TUESDAY
+                DayOfWeek.WEDNESDAY -> DisplayDayLabel.WEDNESDAY
+                DayOfWeek.THURSDAY -> DisplayDayLabel.THURSDAY
+                DayOfWeek.FRIDAY -> DisplayDayLabel.FRIDAY
+                DayOfWeek.SATURDAY -> DisplayDayLabel.SATURDAY
+                DayOfWeek.SUNDAY -> DisplayDayLabel.SUNDAY
             }
         }
     }

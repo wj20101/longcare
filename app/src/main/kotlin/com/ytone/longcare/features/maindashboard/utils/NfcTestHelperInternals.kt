@@ -13,6 +13,7 @@ import com.ytone.longcare.debug.NfcTestConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import com.ytone.longcare.R
 
 private fun nfcTestLog(message: String) {
     NfcTestConfig.logD(message, tag = NfcTestConfig.TEST_TAG)
@@ -25,12 +26,12 @@ internal fun ensureNfcAvailableForTest(
     return when {
         !NfcUtils.isNfcSupported(activity) -> {
             nfcTestLog("设备不支持NFC")
-            toastHelper.showShort("设备不支持NFC功能")
+            toastHelper.showShort(R.string.nfc_not_supported)
             false
         }
         !NfcUtils.isNfcEnabled(activity) -> {
             nfcTestLog("NFC未开启")
-            toastHelper.showShort("请先开启NFC功能")
+            toastHelper.showShort(R.string.nfc_enable_required)
             false
         }
         else -> true
@@ -72,15 +73,18 @@ internal fun handleNfcTestIntent(
             if (tagId.isNotEmpty()) {
                 onTagDetected(tagId)
             } else {
-                toastHelper.showShort("无法获取NFC标签ID")
+                toastHelper.showShort(R.string.nfc_tag_id_unavailable)
             }
         } else {
             nfcTestLog("无法从 Intent 中获取 Tag")
-            toastHelper.showShort("无法读取NFC标签")
+            toastHelper.showShort(R.string.nfc_tag_unreadable)
         }
     } catch (e: Exception) {
         nfcTestLog("处理NFC数据失败: ${e.message}")
-        toastHelper.showShort("处理NFC数据失败: ${e.message}")
+        toastHelper.showShort(
+            R.string.nfc_data_processing_failed,
+            e.message.orEmpty(),
+        )
     }
 }
 

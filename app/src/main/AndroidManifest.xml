@@ -41,7 +41,6 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
@@ -147,13 +146,6 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- 定位跟踪前台服务 -->
-        <service
-            android:name=".features.location.service.LocationTrackingService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="location" />
-            
         <!-- 倒计时前台服务 -->
         <service
             android:name=".features.servicecountdown.service.CountdownForegroundService"
@@ -173,11 +165,6 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
             
-        <!-- 高德地图定位服务 -->
-        <service 
-            android:name="com.amap.api.location.APSService"
-            android:foregroundServiceType="location" />
-        
         <!-- 倒计时闹钟广播接收器 -->
         <receiver
             android:name=".features.countdown.receiver.CountdownAlarmReceiver"

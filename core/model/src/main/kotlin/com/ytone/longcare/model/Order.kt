@@ -3,14 +3,23 @@ package com.ytone.longcare.model
 /**
  * 状态:0待执行 1执行中 2任务完成 3作废
  */
-fun Int.toStateDisplayText(): String {
+enum class OrderStateDisplay {
+    NOT_CREATED,
+    PENDING,
+    IN_PROGRESS,
+    COMPLETED,
+    CANCELLED,
+    UNKNOWN,
+}
+
+fun Int.toOrderStateDisplay(): OrderStateDisplay {
     return when (this) {
-        -1 -> "未开单"
-        0 -> "待执行"
-        1 -> "执行中"
-        2 -> "任务完成"
-        3 -> "作废"
-        else -> "其它"
+        -1 -> OrderStateDisplay.NOT_CREATED
+        0 -> OrderStateDisplay.PENDING
+        1 -> OrderStateDisplay.IN_PROGRESS
+        2 -> OrderStateDisplay.COMPLETED
+        3 -> OrderStateDisplay.CANCELLED
+        else -> OrderStateDisplay.UNKNOWN
     }
 }
 

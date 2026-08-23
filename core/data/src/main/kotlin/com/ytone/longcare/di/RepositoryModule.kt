@@ -6,7 +6,6 @@ import com.ytone.longcare.data.repository.DefaultUserSessionRepository
 import com.ytone.longcare.data.repository.IdentificationRepositoryImpl
 import com.ytone.longcare.data.repository.ImageRepository
 import com.ytone.longcare.data.repository.LocationRepositoryImpl
-import com.ytone.longcare.data.repository.LocationUploadQueueRepositoryImpl
 import com.ytone.longcare.data.repository.LoginRepositoryImpl
 import com.ytone.longcare.data.repository.OrderRepositoryImpl
 import com.ytone.longcare.data.repository.ProfileRepositoryImpl
@@ -19,7 +18,6 @@ import com.ytone.longcare.domain.faceauth.TencentFaceRepository
 import com.ytone.longcare.domain.identification.IdentificationRepository
 import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.location.LocationRepository
-import com.ytone.longcare.domain.location.LocationUploadQueueRepository
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.profile.ProfileRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
@@ -67,10 +65,6 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindLocationRepository(impl: LocationRepositoryImpl): LocationRepository
-
-    @Binds
-    @Singleton
-    abstract fun bindLocationUploadQueueRepository(impl: LocationUploadQueueRepositoryImpl): LocationUploadQueueRepository
 
     @Binds
     @Singleton

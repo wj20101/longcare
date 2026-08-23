@@ -67,9 +67,12 @@ internal object ManualFaceCaptureStateTransitions {
         )
     )
 
-    fun onNoFacesDetected(currentUiState: ManualFaceCaptureUiState): ManualFaceCaptureTransition =
+    fun onNoFacesDetected(
+        currentUiState: ManualFaceCaptureUiState,
+        message: String,
+    ): ManualFaceCaptureTransition =
         ManualFaceCaptureTransition(
-            uiState = currentUiState.copy(errorMessage = "未检测到人脸，请重新拍照"),
+            uiState = currentUiState.copy(errorMessage = message),
             state = ManualFaceCaptureState.NoFacesDetected
         )
 
@@ -85,9 +88,9 @@ internal object ManualFaceCaptureStateTransitions {
     ): ManualFaceCaptureTransition = ManualFaceCaptureTransition(
         uiState = currentUiState.copy(
             isProcessingFaces = false,
-            errorMessage = "人脸检测失败: $message"
+            errorMessage = message,
         ),
-        state = ManualFaceCaptureState.Error(message.ifBlank { "人脸检测异常" })
+        state = ManualFaceCaptureState.Error(message),
     )
 
     fun onFaceSelected(
@@ -130,9 +133,9 @@ internal object ManualFaceCaptureStateTransitions {
     ): ManualFaceCaptureTransition = ManualFaceCaptureTransition(
         uiState = currentUiState.copy(
             isLoading = false,
-            errorMessage = "保存人脸图片失败: $message"
+            errorMessage = message,
         ),
-        state = ManualFaceCaptureState.Error(message.ifBlank { "保存失败" })
+        state = ManualFaceCaptureState.Error(message),
     )
 
     fun onReset(currentUiState: ManualFaceCaptureUiState): ManualFaceCaptureTransition =

@@ -6,6 +6,7 @@ import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.core.ui.message.UiMessageQueue
+import com.ytone.longcare.core.ui.R as CoreUiR
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -60,9 +61,8 @@ class MainDashboardViewModel @Inject constructor(
         ) {
             is ApiResult.Success -> result.data
             is ApiResult.Exception -> {
-                val message = result.exception.message ?: "网络错误，请检查网络连接"
-                messageQueue.enqueue(message)
-                logE("获取订单详情异常: orderId=$orderId, message=$message", throwable = result.exception)
+                messageQueue.enqueue(CoreUiR.string.common_network_error_retry)
+                logE("获取订单详情异常: orderId=$orderId", throwable = result.exception)
                 return null
             }
             is ApiResult.Failure -> {

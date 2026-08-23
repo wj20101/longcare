@@ -19,20 +19,22 @@ internal class PhotoUploadDelegate(
     private val userSessionRepository: UserSessionRepository,
     private val orderDetailRepository: OrderDetailRepository,
     private val taskQueueDelegate: PhotoTaskQueueDelegate,
+    private val userMessages: PhotoUploadMessages,
 ) {
     val isUploading = MutableStateFlow(false)
 
     suspend fun generateWatermarkData(taskType: ImageTaskType, address: String, orderId: Long? = null): WatermarkData {
         val title = when (taskType) {
-            ImageTaskType.BEFORE_CARE -> "服务前"
-            ImageTaskType.CENTER_CARE -> "服务中"
-            ImageTaskType.AFTER_CARE -> "服务后"
+            ImageTaskType.BEFORE_CARE -> userMessages.beforeService
+            ImageTaskType.CENTER_CARE -> userMessages.duringService
+            ImageTaskType.AFTER_CARE -> userMessages.afterService
         }
-        val caregiverName = getCurrentUser()?.userName ?: "未知护工"
+        val caregiverName = getCurrentUser()?.userName ?: userMessages.unknownCaregiver
         val elderName = if (orderId != null) {
-            orderDetailRepository.getCachedOrderInfo(OrderKey(orderId))?.userInfo?.name ?: "未知老人"
+            orderDetailRepository.getCachedOrderInfo(OrderKey(orderId))?.userInfo?.name
+                ?: userMessages.unknownElder
         } else {
-            "未知老人"
+            userMessages.unknownElder
         }
         return WatermarkData(title = title, insuredPerson = elderName, caregiver = caregiverName, address = address)
     }
@@ -60,7 +62,7 @@ internal class PhotoUploadDelegate(
                     throw cancellation
                 } catch (uploadError: Exception) {
                     isUploading.value = false
-                    val errorMessage = uploadError.message ?: "COS未返回具体原因"
+                    val errorMessage = uploadError.message
                     DiagnosticEventTracker.trackError(
                         category = PHOTO_DIAGNOSTIC_CATEGORY,
                         event = "cloud_upload_failure",
@@ -75,7 +77,9 @@ internal class PhotoUploadDelegate(
                             "errorMessage" to errorMessage,
                         ),
                     )
-                    return Result.failure(Exception("上传失败: $errorMessage", uploadError))
+                    return Result.failure(
+                        Exception(userMessages.cloudUploadFailed, uploadError),
+                    )
                 }
             }
 

@@ -26,7 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.ytone.longcare.R
 
 @Composable
 internal fun AutoSignInstructionsCard() {
@@ -41,12 +43,12 @@ internal fun AutoSignInstructionsCard() {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "拍照人脸验证",
+                text = stringResource(R.string.face_verification_instructions_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Text(
-                text = "• 先拍摄一张清晰的人脸照片\n• 系统将使用此照片进行比对验证\n• 确保光线充足，面部清晰可见",
+                text = stringResource(R.string.face_verification_instructions),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
@@ -73,14 +75,16 @@ internal fun FacePhotoCaptureCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "第一步：拍摄人脸照片",
+                text = stringResource(R.string.face_verification_capture_step),
                 style = MaterialTheme.typography.titleMedium
             )
 
             if (capturedPhoto != null) {
                 Image(
                     bitmap = capturedPhoto.asImageBitmap(),
-                    contentDescription = "拍摄的人脸照片",
+                    contentDescription = stringResource(
+                        R.string.face_verification_captured_photo_description,
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
@@ -96,7 +100,7 @@ internal fun FacePhotoCaptureCard(
                         onClick = onRetakePhoto,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("重新拍照")
+                        Text(stringResource(R.string.common_retake_photo))
                     }
                 }
             } else {
@@ -118,7 +122,11 @@ internal fun FacePhotoCaptureCard(
                         )
                     }
                     Text(
-                        text = if (isProcessingPhoto) "处理中..." else "拍摄人脸照片",
+                        text = if (isProcessingPhoto) {
+                            stringResource(R.string.common_processing)
+                        } else {
+                            stringResource(R.string.face_verification_capture_photo)
+                        },
                         modifier = Modifier.padding(start = 8.dp)
                     )
                 }

@@ -1,8 +1,11 @@
 package com.ytone.longcare.features.nfc.vm
 
+import com.ytone.longcare.R
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 enum class ScanMode {
     SYSTEM_NFC,
@@ -84,3 +87,15 @@ sealed class LocationRequestResult {
     ) : LocationRequestResult()
     data object PermissionRequired : LocationRequestResult()
 }
+
+internal data class NfcUserMessages(
+    val networkError: String,
+    val orderDetailLoadFailed: String,
+    val bindLocationFailed: String,
+)
+
+internal fun ResourceTextResolver.nfcUserMessages(): NfcUserMessages = NfcUserMessages(
+    networkError = text(CoreUiR.string.common_network_error_retry),
+    orderDetailLoadFailed = text(R.string.nfc_order_detail_load_failed),
+    bindLocationFailed = text(R.string.nfc_bind_location_failed),
+)

@@ -39,7 +39,9 @@ class VerifyServicePersonDataGatewayImpl @Inject constructor(
                             "apiMessage" to faceResult.message,
                         ),
                     )
-                    ServicePersonFaceSource.Error(faceResult.message)
+                    ServicePersonFaceSource.Rejected(
+                        faceResult.message.takeIf(String::isNotBlank),
+                    )
                 }
             }
 
@@ -49,7 +51,7 @@ class VerifyServicePersonDataGatewayImpl @Inject constructor(
                     throwable = faceResult.exception,
                     extras = mapOf("message" to faceResult.exception.message),
                 )
-                ServicePersonFaceSource.Error("网络异常: ${faceResult.exception.message}")
+                ServicePersonFaceSource.NetworkError
             }
         }
     }

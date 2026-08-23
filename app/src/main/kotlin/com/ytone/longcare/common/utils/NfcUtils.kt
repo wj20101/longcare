@@ -12,6 +12,7 @@ import android.nfc.Tag
 import android.provider.Settings
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.PendingIntentCompat
+import com.ytone.longcare.R
 
 object NfcUtils {
 
@@ -37,13 +38,17 @@ object NfcUtils {
      */
     fun showEnableNfcDialog(
         activity: Activity,
-        title: String = "NFC Disabled",
-        message: String = "Please enable NFC in settings to use this feature."
+        title: String? = null,
+        message: String? = null,
     ): AlertDialog {
-        return AlertDialog.Builder(activity).setTitle(title).setMessage(message)
-            .setPositiveButton("Settings") { _, _ ->
+        return AlertDialog.Builder(activity)
+            .setTitle(title ?: activity.getString(R.string.nfc_disabled_title))
+            .setMessage(message ?: activity.getString(R.string.nfc_disabled_message))
+            .setPositiveButton(activity.getString(R.string.nfc_settings_action)) { _, _ ->
                 activity.startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
-            }.setNegativeButton("Cancel", null).show()
+            }
+            .setNegativeButton(activity.getString(R.string.nfc_settings_cancel), null)
+            .show()
     }
 
     /**

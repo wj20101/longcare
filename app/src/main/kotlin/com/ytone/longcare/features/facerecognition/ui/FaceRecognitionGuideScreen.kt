@@ -55,7 +55,7 @@ fun FaceRecognitionGuideScreen(
                         IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
+                                contentDescription = stringResource(R.string.common_back),
                             )
                         }
                     },

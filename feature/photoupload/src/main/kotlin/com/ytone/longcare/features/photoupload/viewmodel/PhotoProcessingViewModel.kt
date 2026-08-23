@@ -2,6 +2,7 @@ package com.ytone.longcare.features.photoupload.viewmodel
 
 import android.net.Uri
 import com.ytone.longcare.common.image.UnifiedImagePipeline
+import com.ytone.longcare.common.text.ResourceTextResolver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.domain.repository.OrderDetailRepository
@@ -37,12 +38,16 @@ class PhotoProcessingViewModel @Inject constructor(
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
     private val servicePhotoConfigProvider: ServicePhotoConfigProvider,
+    textResolver: ResourceTextResolver,
 ) : ViewModel() {
+
+    private val userMessages = textResolver.photoUploadMessages()
 
     private val taskQueueDelegate = PhotoTaskQueueDelegate(
         scope = viewModelScope,
         imageRepository = imageRepository,
         imagePipeline = imagePipeline,
+        userMessages = userMessages,
     )
 
     private val uploadDelegate = PhotoUploadDelegate(
@@ -50,6 +55,7 @@ class PhotoProcessingViewModel @Inject constructor(
         userSessionRepository = userSessionRepository,
         orderDetailRepository = unifiedOrderRepository,
         taskQueueDelegate = taskQueueDelegate,
+        userMessages = userMessages,
     )
 
     val currentOrderKey: StateFlow<OrderKey?> = taskQueueDelegate.currentOrderKey.asStateFlow()

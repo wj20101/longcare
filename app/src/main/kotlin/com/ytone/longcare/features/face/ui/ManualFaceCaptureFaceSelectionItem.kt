@@ -17,7 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.ytone.longcare.R
 import com.ytone.longcare.theme.PrimaryBlue
 
 @Composable
@@ -43,7 +45,7 @@ internal fun FaceSelectionItem(
     ) {
         Image(
             bitmap = face.croppedFace.asImageBitmap(),
-            contentDescription = "人脸",
+            contentDescription = stringResource(R.string.face_capture_face_description),
             modifier = Modifier.fillMaxSize()
         )
 
@@ -55,7 +57,7 @@ internal fun FaceSelectionItem(
             ) {
                 Icon(
                     Icons.Default.Check,
-                    contentDescription = "已选择",
+                    contentDescription = stringResource(R.string.face_capture_selected_description),
                     tint = Color.White,
                     modifier = Modifier
                         .align(Alignment.Center)

@@ -40,21 +40,21 @@ internal class FaceCaptureQualityEvaluator {
             (face.leftEyeOpenProbability ?: 0f) >= FaceBlinkGate.OPEN_EYE_THRESHOLD &&
             (face.rightEyeOpenProbability ?: 0f) >= FaceBlinkGate.OPEN_EYE_THRESHOLD
 
-    fun getPositionHint(face: Face): String? = when {
-        abs(face.headEulerAngleY) > MAX_YAW_DEGREES -> "请正对摄像头"
-        abs(face.headEulerAngleZ) > MAX_ROLL_DEGREES -> "请保持头部水平"
-        face.boundingBox.width() * face.boundingBox.height() < MINIMUM_FACE_AREA -> "请靠近一些"
+    fun getPositionHint(face: Face): FaceCaptureHint? = when {
+        abs(face.headEulerAngleY) > MAX_YAW_DEGREES -> FaceCaptureHint.FACE_FORWARD
+        abs(face.headEulerAngleZ) > MAX_ROLL_DEGREES -> FaceCaptureHint.HEAD_LEVEL
+        face.boundingBox.width() * face.boundingBox.height() < MINIMUM_FACE_AREA -> FaceCaptureHint.MOVE_CLOSER
         else -> null
     }
 
-    fun getCaptureHint(face: Face): String {
+    fun getCaptureHint(face: Face): FaceCaptureHint {
         val positionHint = getPositionHint(face)
         return when {
             positionHint != null -> positionHint
             (face.leftEyeOpenProbability ?: 0f) < FaceBlinkGate.OPEN_EYE_THRESHOLD ||
                 (face.rightEyeOpenProbability ?: 0f) < FaceBlinkGate.OPEN_EYE_THRESHOLD ->
-                "请睁开双眼后重试"
-            else -> "请保持当前姿势"
+                FaceCaptureHint.OPEN_EYES_RETRY
+            else -> FaceCaptureHint.HOLD_POSE
         }
     }
 

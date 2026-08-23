@@ -58,14 +58,14 @@ fun ServiceOrderItem(
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "地址: ${order.liveAddress}",
+                    text = stringResource(R.string.common_address, order.liveAddress),
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
                 if (order.callPhone.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "联系电话: ${order.callPhone}",
+                        text = stringResource(R.string.service_order_contact_phone, order.callPhone),
                         fontSize = 12.sp,
                         color = Color.Gray
                     )

@@ -5,7 +5,17 @@ import javax.inject.Inject
 sealed interface CheckFaceResult {
     data object Success : CheckFaceResult
 
-    data class Error(val message: String) : CheckFaceResult
+    data class Error(val failure: CheckFaceFailure) : CheckFaceResult
+}
+
+sealed interface CheckFaceFailure {
+    data object UnsupportedOrder : CheckFaceFailure
+
+    data object MissingImage : CheckFaceFailure
+
+    data class Rejected(val serverMessage: String?) : CheckFaceFailure
+
+    data object NetworkError : CheckFaceFailure
 }
 
 /** `/V1/User/CheckFace` documents orderId as a signed 32-bit integer. */
@@ -21,10 +31,10 @@ class CheckFaceUseCase @Inject constructor(
         faceImageBase64: String,
     ): CheckFaceResult {
         if (!CheckFaceOrderIdPolicy.isSupported(orderId)) {
-            return CheckFaceResult.Error("订单信息异常，请返回后重试")
+            return CheckFaceResult.Error(CheckFaceFailure.UnsupportedOrder)
         }
         if (faceImageBase64.isBlank()) {
-            return CheckFaceResult.Error("未获取到有效人脸照片，请重新拍摄")
+            return CheckFaceResult.Error(CheckFaceFailure.MissingImage)
         }
 
         return when (
@@ -34,7 +44,12 @@ class CheckFaceUseCase @Inject constructor(
             )
         ) {
             CheckFaceRemoteResult.Success -> CheckFaceResult.Success
-            is CheckFaceRemoteResult.Error -> CheckFaceResult.Error(result.message)
+            is CheckFaceRemoteResult.Rejected -> CheckFaceResult.Error(
+                CheckFaceFailure.Rejected(result.message),
+            )
+            CheckFaceRemoteResult.NetworkError -> CheckFaceResult.Error(
+                CheckFaceFailure.NetworkError,
+            )
         }
     }
 }

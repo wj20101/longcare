@@ -5,7 +5,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.common.utils.CustomBackHandler
-import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.nursingexecution.api.NursingExecutionActions
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.shared.vm.OrderDetailUiState
@@ -16,13 +15,7 @@ fun NursingExecutionScreen(
     actions: NursingExecutionActions,
     orderKey: OrderKey,
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
-    locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(orderKey.orderId) {
-        locationTrackingViewModel.ensureLocationSessionForOrder(orderKey.orderId)
-    }
-
-
     val uiState = sharedViewModel.uiState.collectAsStateWithLifecycle().value
 
     CustomBackHandler(customAction = actions.onNavigateBack)

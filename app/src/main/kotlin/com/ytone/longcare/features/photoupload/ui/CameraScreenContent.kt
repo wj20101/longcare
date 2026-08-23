@@ -16,12 +16,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.ytone.longcare.common.image.WatermarkedCaptureRequest
 import com.ytone.longcare.features.photoupload.vm.CameraViewModel
 import com.ytone.longcare.model.WatermarkData
 import java.io.File
+import com.ytone.longcare.R
+import com.ytone.longcare.features.photoupload.vm.CameraLocationState
 
 @Composable
 internal fun CameraContent(
@@ -33,7 +36,13 @@ internal fun CameraContent(
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraController = rememberCameraLifecycleController(context)
     var watermarkView by remember { mutableStateOf<View?>(null) }
-    val location by viewModel.location.collectAsStateWithLifecycle()
+    val locationState by viewModel.location.collectAsStateWithLifecycle()
+    val location = when (val state = locationState) {
+        CameraLocationState.Loading -> stringResource(R.string.camera_location_loading)
+        CameraLocationState.Unavailable -> stringResource(R.string.camera_location_unavailable)
+        CameraLocationState.Failed -> stringResource(R.string.camera_location_failed)
+        is CameraLocationState.Coordinates -> state.value
+    }
     val time by viewModel.time.collectAsStateWithLifecycle()
     val logoImg by viewModel.syLogoImg.collectAsStateWithLifecycle()
 
@@ -56,6 +65,7 @@ internal fun CameraContent(
     var delayMode by remember { mutableStateOf(DelayMode.OFF) }
     var countdownSeconds by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     val isCountingDown = countdownSeconds > 0
+    val watermarkPreparingMessage = stringResource(R.string.camera_watermark_preparing)
 
     val performCapture: () -> Unit = {
         startWatermarkCapture(
@@ -65,7 +75,7 @@ internal fun CameraContent(
             isFrontCamera = isFrontCamera,
             scope = scope,
             processCapturedImage = viewModel::processCapturedImage,
-            preparingMessage = "水印准备中，请稍后...",
+            preparingMessage = watermarkPreparingMessage,
             onCaptureStarted = {
                 isCapturing = true
                 viewModel.updateTime()

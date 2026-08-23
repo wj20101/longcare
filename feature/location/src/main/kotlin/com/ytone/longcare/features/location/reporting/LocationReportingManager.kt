@@ -1,28 +1,14 @@
 package com.ytone.longcare.features.location.reporting
 
-import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.logI
-import com.ytone.longcare.features.location.tracker.LocationEventTracker
-import com.ytone.longcare.model.LocationUploadStatus
-import com.ytone.longcare.model.LocationResult
-import com.ytone.longcare.model.OrderLocationEntity
 import com.ytone.longcare.core.common.di.IoDispatcher
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.location.LocationRepository
-import com.ytone.longcare.domain.location.LocationUploadQueueRepository
-import com.ytone.longcare.features.location.manager.LocationStateManager
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import com.ytone.longcare.features.location.manager.LocationSampleStore
+import com.ytone.longcare.features.location.tracker.LocationEventTracker
+import com.ytone.longcare.model.LocationResult
+import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.result.ApiResult
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,355 +17,324 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
- * 位置上报任务管理器。
- * 只关注“取定位并上报”这件事，不负责定位服务保活的具体实现。
+ * 订单进行期间的实时定位上报入口。
+ *
+ * 定位点只在当前进程、当前订单会话内上传：不落库、不排队、不跨进程补传。
+ * 单个点上传失败后直接丢弃，由下一次定位回调继续上报最新位置。
  */
 @Singleton
 class LocationReportingManager @Inject constructor(
     private val locationFacade: LocationFacade,
-    private val locationStateManager: LocationStateManager,
+    private val locationSampleStore: LocationSampleStore,
     private val locationRepository: LocationRepository,
-    private val locationUploadQueueRepository: LocationUploadQueueRepository,
-    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    private val clock: LocationClock,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
-    private val _isTracking = MutableStateFlow(false)
-    val isTracking: StateFlow<Boolean> = _isTracking.asStateFlow()
-
-    private val _currentTrackingOrderKey = MutableStateFlow<OrderKey?>(null)
-    val currentTrackingOrderKey: StateFlow<OrderKey?> = _currentTrackingOrderKey.asStateFlow()
-
     private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
+    private val lifecycleLock = Any()
     private var reportingJob: Job? = null
     private var currentOwner: String? = null
-    private val uploadMutex = Mutex()
+    private var currentOrderKey: OrderKey? = null
+    private var generation: Long = 0L
     private var lastObservedLocation: LocationResult? = null
     private var lastObservedLocationTimeMs: Long? = null
-    private var lastSampleBuglyReportTimeMs: Long = 0L
-    private var lastJumpBuglyReportTimeMs: Long = 0L
-
-    companion object {
-        private const val MAX_UPLOAD_BATCH = 30
-        private const val SUCCESS_RETENTION_MS = 24 * 60 * 60 * 1000L
-        private const val SAMPLE_BUGLY_REPORT_INTERVAL_MS = 5 * 60 * 1000L
-        private const val JUMP_BUGLY_REPORT_INTERVAL_MS = 60 * 1000L
-        private const val STALE_LOCATION_MAX_AGE_MS = 2 * 60 * 1000L
-        private const val SUSPICIOUS_JUMP_DISTANCE_M = 500.0
-        private const val FORCE_REPORT_JUMP_DISTANCE_M = 1_500.0
-        private const val SUSPICIOUS_SPEED_MPS = 30.0
-        private const val EARTH_RADIUS_M = 6_371_000.0
-    }
+    private var lastSampleDiagnosticTimeMs: Long = 0L
+    private var lastJumpDiagnosticTimeMs: Long = 0L
 
     fun startReporting(orderKey: OrderKey) {
-        val sameTaskRunning = _isTracking.value &&
-            _currentTrackingOrderKey.value?.orderId == orderKey.orderId &&
-            reportingJob?.isActive == true
-        if (sameTaskRunning) return
-
-        stopReporting()
-
-        _currentTrackingOrderKey.value = orderKey
-        _isTracking.value = true
-        locationStateManager.startTracking(orderKey)
-
-        val owner = buildOwner(orderKey)
-        currentOwner = owner
-        locationFacade.acquireKeepAlive(owner)
-        resetLocationDiagnostics()
-        LocationEventTracker.trackEvent(
-            LocationEventTracker.EventType.REPORTING_START,
-            extras = mapOf("orderId" to orderKey.orderId)
-        )
-
-        reportingJob = scope.launch {
-            try {
-                flushUploadQueue()
-                locationFacade.observeLocations().collect { location ->
-                    val now = System.currentTimeMillis()
-                    if (shouldSkipStaleLocation(orderKey.orderId, location, now)) {
-                        return@collect
-                    }
-                    trackLocationDiagnostics(orderKey.orderId, location, now)
-                    enqueueLocation(orderKey.orderId, location)
-                    flushUploadQueue()
-                }
-            } catch (_: CancellationException) {
-                logI("位置上报任务已取消")
-            } catch (e: Exception) {
-                LocationEventTracker.trackError(
-                    LocationEventTracker.EventType.REPORTING_TASK_ERROR,
-                    throwable = e,
-                    extras = mapOf("errorMsg" to e.message)
-                )
-            } finally {
-                logI("位置上报任务结束")
+        synchronized(lifecycleLock) {
+            if (
+                currentOrderKey?.orderId == orderKey.orderId &&
+                reportingJob?.isActive == true
+            ) {
+                currentOwner?.let(locationFacade::acquireKeepAlive)
+                return
             }
+
+            stopReportingLocked()
+            val owner = buildOwner(orderKey)
+            val startedAt = clock.currentTimeMillis()
+            generation += 1
+            val activeGeneration = generation
+            currentOwner = owner
+            currentOrderKey = orderKey
+            resetLocationDiagnostics()
+            locationFacade.acquireKeepAlive(owner)
+
+            val job = scope.launch(start = CoroutineStart.LAZY) {
+                try {
+                    locationSampleStore.continuousLocations.collect { location ->
+                        processSample(
+                            orderId = orderKey.orderId,
+                            sessionStart = startedAt,
+                            location = location,
+                        )
+                    }
+                } catch (_: CancellationException) {
+                    logI("位置采集任务已取消")
+                } catch (error: Exception) {
+                    LocationEventTracker.trackError(
+                        LocationEventTracker.EventType.REPORTING_TASK_ERROR,
+                        throwable = error,
+                        extras = mapOf(
+                            LocationEventTracker.Attribute.ERROR_TYPE to
+                                error.javaClass.simpleName,
+                        ),
+                    )
+                } finally {
+                    finishGeneration(activeGeneration, owner, orderKey.orderId)
+                }
+            }
+            reportingJob = job
+            LocationEventTracker.trackEvent(
+                LocationEventTracker.EventType.REPORTING_START,
+                extras = mapOf(
+                    LocationEventTracker.Attribute.ORDER_ID to orderKey.orderId,
+                    LocationEventTracker.Attribute.GENERATION to activeGeneration,
+                ),
+            )
+            job.start()
         }
     }
 
     fun stopReporting() {
-        val wasTracking = _isTracking.value || reportingJob?.isActive == true
-        val stoppedOrderId = _currentTrackingOrderKey.value?.orderId
-        reportingJob?.cancel()
-        reportingJob = null
+        synchronized(lifecycleLock) { stopReportingLocked() }
+    }
 
-        currentOwner?.let { owner ->
-            locationFacade.releaseKeepAlive(owner)
-        }
-        currentOwner = null
-
-        if (wasTracking) {
+    private suspend fun processSample(
+        orderId: Long,
+        sessionStart: Long,
+        location: LocationResult,
+    ) {
+        val receivedAt = clock.currentTimeMillis()
+        val validated = LocationSampleValidator.validate(location, sessionStart, receivedAt)
+        if (validated == null) {
             LocationEventTracker.trackEvent(
-                LocationEventTracker.EventType.REPORTING_STOP,
-                extras = mapOf("orderId" to stoppedOrderId)
+                LocationEventTracker.EventType.LOCATION_INVALID_SKIPPED,
+                extras = mapOf(
+                    LocationEventTracker.Attribute.ORDER_ID to orderId,
+                    LocationEventTracker.Attribute.PROVIDER to location.provider,
+                ),
             )
+            return
         }
-        resetLocationDiagnostics()
-        _isTracking.value = false
-        _currentTrackingOrderKey.value = null
-        locationStateManager.stopTracking()
-    }
 
-    fun forceStopReporting() {
-        stopReporting()
-    }
-
-    private fun shouldSkipStaleLocation(orderId: Long, location: LocationResult, now: Long): Boolean {
-        val locationTime = location.locationTime
-        if (locationTime <= 0L) return false
-
-        val ageMs = now - locationTime
-        if (ageMs < 0L || ageMs <= STALE_LOCATION_MAX_AGE_MS) return false
-
-        LocationEventTracker.trackLocationSample(
-            eventType = LocationEventTracker.EventType.LOCATION_STALE_SKIPPED,
+        trackLocationDiagnostics(
             orderId = orderId,
             location = location,
-            extras = mapOf(
-                "ageMs" to ageMs,
-                "staleThresholdMs" to STALE_LOCATION_MAX_AGE_MS
-            )
+            capturedAt = validated.capturedAt,
+            now = receivedAt,
         )
-        return true
+        uploadCurrentSample(orderId, location)
     }
 
-    private fun trackLocationDiagnostics(orderId: Long, location: LocationResult, now: Long) {
-        val currentLocationTimeMs = location.locationTime.takeIf { it > 0L } ?: now
+    private suspend fun uploadCurrentSample(orderId: Long, location: LocationResult) {
+        try {
+            when (
+                val result = locationRepository.addPosition(
+                    orderId = orderId,
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                )
+            ) {
+                is ApiResult.Success -> logI("位置实时上报成功 (orderId=$orderId)")
+                is ApiResult.Failure -> LocationEventTracker.trackError(
+                    LocationEventTracker.EventType.API_UPLOAD_BUSINESS_ERROR,
+                    extras = mapOf(
+                        LocationEventTracker.Attribute.ORDER_ID to orderId,
+                        LocationEventTracker.Attribute.ERROR_CODE to result.code,
+                    ),
+                )
+                is ApiResult.Exception -> LocationEventTracker.trackError(
+                    LocationEventTracker.EventType.API_UPLOAD_NETWORK_ERROR,
+                    throwable = result.exception,
+                    extras = mapOf(LocationEventTracker.Attribute.ORDER_ID to orderId),
+                )
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            LocationEventTracker.trackError(
+                LocationEventTracker.EventType.API_UPLOAD_FATAL_ERROR,
+                throwable = error,
+                extras = mapOf(
+                    LocationEventTracker.Attribute.ORDER_ID to orderId,
+                    LocationEventTracker.Attribute.ERROR_TYPE to error.javaClass.simpleName,
+                ),
+            )
+        }
+    }
+
+    private fun finishGeneration(expectedGeneration: Long, owner: String, orderId: Long) {
+        synchronized(lifecycleLock) {
+            if (generation != expectedGeneration || currentOwner != owner) return
+            reportingJob = null
+            currentOwner = null
+            currentOrderKey = null
+            resetLocationDiagnostics()
+            locationFacade.releaseKeepAlive(owner)
+            LocationEventTracker.trackEvent(
+                LocationEventTracker.EventType.REPORTING_STOP,
+                extras = mapOf(
+                    LocationEventTracker.Attribute.ORDER_ID to orderId,
+                    LocationEventTracker.Attribute.GENERATION to expectedGeneration,
+                ),
+            )
+        }
+    }
+
+    private fun stopReportingLocked() {
+        generation += 1
+        val job = reportingJob
+        val owner = currentOwner
+        val orderId = currentOrderKey?.orderId
+        val wasActive = owner != null || job?.isActive == true
+        reportingJob = null
+        currentOwner = null
+        currentOrderKey = null
+        resetLocationDiagnostics()
+        job?.cancel()
+        owner?.let(locationFacade::releaseKeepAlive)
+        if (wasActive) {
+            LocationEventTracker.trackEvent(
+                LocationEventTracker.EventType.REPORTING_STOP,
+                extras = mapOf(LocationEventTracker.Attribute.ORDER_ID to orderId),
+            )
+        }
+    }
+
+    private fun trackLocationDiagnostics(
+        orderId: Long,
+        location: LocationResult,
+        capturedAt: Long,
+        now: Long,
+    ) {
         maybeTrackSample(orderId, location, now)
-        maybeTrackJump(orderId, location, currentLocationTimeMs, now)
+        maybeTrackJump(orderId, location, capturedAt, now)
         lastObservedLocation = location
-        lastObservedLocationTimeMs = currentLocationTimeMs
+        lastObservedLocationTimeMs = capturedAt
     }
 
     private fun maybeTrackSample(orderId: Long, location: LocationResult, now: Long) {
-        val shouldReport = lastSampleBuglyReportTimeMs == 0L ||
-            now - lastSampleBuglyReportTimeMs >= SAMPLE_BUGLY_REPORT_INTERVAL_MS
-        if (!shouldReport) return
-
-        val reason = if (lastSampleBuglyReportTimeMs == 0L) "first" else "periodic"
+        if (
+            lastSampleDiagnosticTimeMs != 0L &&
+            now - lastSampleDiagnosticTimeMs < SAMPLE_DIAGNOSTIC_INTERVAL_MS
+        ) return
         LocationEventTracker.trackLocationSample(
-            eventType = LocationEventTracker.EventType.LOCATION_SAMPLE_RECORDED,
-            orderId = orderId,
-            location = location,
-            extras = mapOf("sampleReason" to reason)
+            LocationEventTracker.EventType.LOCATION_SAMPLE_RECORDED,
+            orderId,
+            location,
+            extras = mapOf(
+                LocationEventTracker.Attribute.SAMPLE_REASON to if (
+                    lastSampleDiagnosticTimeMs == 0L
+                ) {
+                    LocationEventTracker.SampleReason.FIRST.telemetryValue
+                } else {
+                    LocationEventTracker.SampleReason.PERIODIC.telemetryValue
+                },
+            ),
         )
-        lastSampleBuglyReportTimeMs = now
+        lastSampleDiagnosticTimeMs = now
     }
 
     private fun maybeTrackJump(
         orderId: Long,
         location: LocationResult,
-        currentLocationTimeMs: Long,
-        now: Long
+        capturedAt: Long,
+        now: Long,
     ) {
         val previous = lastObservedLocation ?: return
-        val previousTimeMs = lastObservedLocationTimeMs ?: return
-        val elapsedSeconds = (currentLocationTimeMs - previousTimeMs) / 1000.0
+        val previousTime = lastObservedLocationTimeMs ?: return
+        val elapsedSeconds = (capturedAt - previousTime) / 1_000.0
         if (elapsedSeconds <= 0.0) return
-
-        val distanceMeters = distanceMeters(
-            startLatitude = previous.latitude,
-            startLongitude = previous.longitude,
-            endLatitude = location.latitude,
-            endLongitude = location.longitude
-        )
-        val speedMps = distanceMeters / elapsedSeconds
-        val suspicious = distanceMeters >= FORCE_REPORT_JUMP_DISTANCE_M ||
-            (distanceMeters >= SUSPICIOUS_JUMP_DISTANCE_M && speedMps >= SUSPICIOUS_SPEED_MPS)
-        val throttled = now - lastJumpBuglyReportTimeMs < JUMP_BUGLY_REPORT_INTERVAL_MS
-        if (!suspicious || throttled) return
-
+        val distance = distanceMeters(previous, location)
+        val speed = distance / elapsedSeconds
+        val suspicious = distance >= FORCE_REPORT_JUMP_DISTANCE_M ||
+            (distance >= SUSPICIOUS_JUMP_DISTANCE_M && speed >= SUSPICIOUS_SPEED_MPS)
+        if (!suspicious || now - lastJumpDiagnosticTimeMs < JUMP_DIAGNOSTIC_INTERVAL_MS) return
         LocationEventTracker.trackLocationSample(
-            eventType = LocationEventTracker.EventType.LOCATION_JUMP_DETECTED,
-            orderId = orderId,
-            location = location,
+            LocationEventTracker.EventType.LOCATION_JUMP_DETECTED,
+            orderId,
+            location,
             extras = mapOf(
-                "previousLatitude" to previous.latitude.formatCoordinate(),
-                "previousLongitude" to previous.longitude.formatCoordinate(),
-                "previousProvider" to previous.provider,
-                "previousAccuracy" to previous.accuracy,
-                "previousCoordType" to previous.coordType,
-                "previousLocationType" to previous.locationType,
-                "previousTrustedLevel" to previous.trustedLevel,
-                "previousLocationTime" to previous.locationTime,
-                "distanceMeters" to distanceMeters.formatOneDecimal(),
-                "elapsedSeconds" to elapsedSeconds.formatOneDecimal(),
-                "speedMps" to speedMps.formatOneDecimal()
-            )
+                LocationEventTracker.Attribute.DISTANCE_METERS to distance.formatOneDecimal(),
+                LocationEventTracker.Attribute.ELAPSED_SECONDS to elapsedSeconds.formatOneDecimal(),
+                LocationEventTracker.Attribute.SPEED_METERS_PER_SECOND to speed.formatOneDecimal(),
+            ),
         )
-        lastJumpBuglyReportTimeMs = now
+        lastJumpDiagnosticTimeMs = now
     }
 
     private fun resetLocationDiagnostics() {
         lastObservedLocation = null
         lastObservedLocationTimeMs = null
-        lastSampleBuglyReportTimeMs = 0L
-        lastJumpBuglyReportTimeMs = 0L
+        lastSampleDiagnosticTimeMs = 0L
+        lastJumpDiagnosticTimeMs = 0L
     }
 
-    private suspend fun enqueueLocation(orderId: Long, location: LocationResult) {
-        try {
-            locationUploadQueueRepository.insert(
-                OrderLocationEntity(
-                    orderId = orderId,
-                    latitude = location.latitude,
-                    longitude = location.longitude,
-                    accuracy = location.accuracy,
-                    provider = location.provider,
-                    coordType = location.coordType,
-                    locationType = location.locationType,
-                    trustedLevel = location.trustedLevel,
-                    locationTime = location.locationTime,
-                    uploadStatus = LocationUploadStatus.PENDING.value,
-                    timestamp = System.currentTimeMillis()
-                )
-            )
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            LocationEventTracker.trackError(
-                LocationEventTracker.EventType.QUEUE_WRITE_ERROR,
-                throwable = e,
-                extras = mapOf("errorMsg" to e.message)
-            )
-        }
-    }
-
-    private suspend fun flushUploadQueue() {
-        uploadMutex.withLock {
-            val queue = locationUploadQueueRepository.getUploadQueue(
-                statuses = listOf(
-                    LocationUploadStatus.PENDING.value,
-                    LocationUploadStatus.FAILED.value
-                ),
-                limit = MAX_UPLOAD_BATCH
-            )
-
-            queue.forEach { pending ->
-                uploadSingle(pending)
-            }
-
-            cleanupOldSuccess()
-        }
-    }
-
-    private suspend fun uploadSingle(pending: OrderLocationEntity) {
-        try {
-            when (val apiResult = locationRepository.addPosition(
-                orderId = pending.orderId,
-                latitude = pending.latitude,
-                longitude = pending.longitude
-            )) {
-                is ApiResult.Success -> {
-                    locationUploadQueueRepository.updateStatus(pending.id, LocationUploadStatus.SUCCESS.value)
-                    logI("位置上报成功 (orderId=${pending.orderId}, id=${pending.id})")
-                }
-                is ApiResult.Failure -> {
-                    locationUploadQueueRepository.updateStatus(pending.id, LocationUploadStatus.FAILED.value)
-                    LocationEventTracker.trackError(
-                        LocationEventTracker.EventType.API_UPLOAD_BUSINESS_ERROR,
-                        extras = mapOf("pendingId" to pending.id, "errorMsg" to apiResult.message)
-                    )
-                }
-                is ApiResult.Exception -> {
-                    locationUploadQueueRepository.updateStatus(pending.id, LocationUploadStatus.FAILED.value)
-                    LocationEventTracker.trackError(
-                        LocationEventTracker.EventType.API_UPLOAD_NETWORK_ERROR,
-                        throwable = apiResult.exception,
-                        extras = mapOf("pendingId" to pending.id)
-                    )
-                }
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            LocationEventTracker.trackError(
-                LocationEventTracker.EventType.API_UPLOAD_FATAL_ERROR,
-                throwable = e,
-                extras = mapOf("errorMsg" to e.message)
-            )
-            try {
-                locationUploadQueueRepository.updateStatus(pending.id, LocationUploadStatus.FAILED.value)
-            } catch (statusException: CancellationException) {
-                throw statusException
-            } catch (statusException: Exception) {
-                LocationEventTracker.trackError(
-                    LocationEventTracker.EventType.API_UPLOAD_FATAL_ERROR,
-                    throwable = statusException,
-                    extras = mapOf(
-                        "pendingId" to pending.id,
-                        "phase" to "mark_failed",
-                    ),
-                )
-            }
-        }
-    }
-
-    private suspend fun cleanupOldSuccess() {
-        try {
-            val deleted = locationUploadQueueRepository.deleteByStatusBefore(
-                status = LocationUploadStatus.SUCCESS.value,
-                beforeTime = System.currentTimeMillis() - SUCCESS_RETENTION_MS
-            )
-            if (deleted > 0) {
-                logI("清理历史成功定位记录: $deleted 条")
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            LocationEventTracker.trackError(
-                LocationEventTracker.EventType.QUEUE_CLEANUP_ERROR,
-                throwable = e,
-                extras = mapOf("errorMsg" to e.message)
-            )
-        }
-    }
-
-    private fun buildOwner(orderKey: OrderKey): String {
-        return "location_report_${orderKey.orderId}"
-    }
-
-    private fun distanceMeters(
-        startLatitude: Double,
-        startLongitude: Double,
-        endLatitude: Double,
-        endLongitude: Double
-    ): Double {
-        val startLatRad = Math.toRadians(startLatitude)
-        val endLatRad = Math.toRadians(endLatitude)
-        val deltaLatRad = Math.toRadians(endLatitude - startLatitude)
-        val deltaLonRad = Math.toRadians(endLongitude - startLongitude)
-        val haversine = sin(deltaLatRad / 2).pow(2) +
-            cos(startLatRad) * cos(endLatRad) * sin(deltaLonRad / 2).pow(2)
+    private fun distanceMeters(start: LocationResult, end: LocationResult): Double {
+        val startLat = Math.toRadians(start.latitude)
+        val endLat = Math.toRadians(end.latitude)
+        val deltaLat = Math.toRadians(end.latitude - start.latitude)
+        val deltaLon = Math.toRadians(end.longitude - start.longitude)
+        val haversine = sin(deltaLat / 2).pow(2) +
+            cos(startLat) * cos(endLat) * sin(deltaLon / 2).pow(2)
         return 2 * EARTH_RADIUS_M * atan2(sqrt(haversine), sqrt(1 - haversine))
     }
 
-    private fun Double.formatCoordinate(): String {
-        return String.format(Locale.US, "%.5f", this)
-    }
+    private fun buildOwner(orderKey: OrderKey): String = "location_report_${orderKey.orderId}"
 
-    private fun Double.formatOneDecimal(): String {
-        return String.format(Locale.US, "%.1f", this)
+    private fun Double.formatOneDecimal(): String = String.format(Locale.US, "%.1f", this)
+
+    private companion object {
+        const val SAMPLE_DIAGNOSTIC_INTERVAL_MS = 5L * 60 * 1_000
+        const val JUMP_DIAGNOSTIC_INTERVAL_MS = 60_000L
+        const val SUSPICIOUS_JUMP_DISTANCE_M = 500.0
+        const val FORCE_REPORT_JUMP_DISTANCE_M = 1_500.0
+        const val SUSPICIOUS_SPEED_MPS = 30.0
+        const val EARTH_RADIUS_M = 6_371_000.0
+    }
+}
+
+@Singleton
+class LocationClock @Inject constructor() {
+    fun currentTimeMillis(): Long = System.currentTimeMillis()
+}
+
+internal object LocationSampleValidator {
+    private const val MAX_SAMPLE_AGE_MILLIS = 2L * 60 * 1_000
+    private const val MAX_FUTURE_SKEW_MILLIS = 2L * 60 * 1_000
+    private const val SESSION_CLOCK_SKEW_MILLIS = 5_000L
+    private const val MIN_LATITUDE_DEGREES = -90.0
+    private const val MAX_LATITUDE_DEGREES = 90.0
+    private const val MIN_LONGITUDE_DEGREES = -180.0
+    private const val MAX_LONGITUDE_DEGREES = 180.0
+
+    data class Validated(val capturedAt: Long)
+
+    fun validate(location: LocationResult, sessionStartedAt: Long, receivedAt: Long): Validated? {
+        if (
+            !location.latitude.isFinite() ||
+            location.latitude !in MIN_LATITUDE_DEGREES..MAX_LATITUDE_DEGREES
+        ) return null
+        if (
+            !location.longitude.isFinite() ||
+            location.longitude !in MIN_LONGITUDE_DEGREES..MAX_LONGITUDE_DEGREES
+        ) return null
+
+        val capturedAt = location.locationTime.takeIf { it > 0L } ?: receivedAt
+        if (capturedAt < sessionStartedAt - SESSION_CLOCK_SKEW_MILLIS) return null
+        if (capturedAt < receivedAt - MAX_SAMPLE_AGE_MILLIS) return null
+        if (capturedAt > receivedAt + MAX_FUTURE_SKEW_MILLIS) return null
+        return Validated(capturedAt)
     }
 }

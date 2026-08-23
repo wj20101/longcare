@@ -17,6 +17,13 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
+sealed interface CameraLocationState {
+    data object Loading : CameraLocationState
+    data object Unavailable : CameraLocationState
+    data object Failed : CameraLocationState
+    data class Coordinates(val value: String) : CameraLocationState
+}
+
 @HiltViewModel
 class CameraViewModel @Inject constructor(
     private val systemConfigManager: SystemConfigManager,
@@ -24,8 +31,8 @@ class CameraViewModel @Inject constructor(
     private val imagePipeline: UnifiedImagePipeline,
 ) : ViewModel() {
 
-    private val _location = MutableStateFlow("正在获取定位...")
-    val location: StateFlow<String> = _location
+    private val _location = MutableStateFlow<CameraLocationState>(CameraLocationState.Loading)
+    val location: StateFlow<CameraLocationState> = _location
 
     private val _time = MutableStateFlow("")
     val time: StateFlow<String> = _time
@@ -38,14 +45,16 @@ class CameraViewModel @Inject constructor(
             try {
                 val locationResult = locationFacade.getCurrentLocation()
                 _location.value = if (locationResult != null) {
-                    "${locationResult.longitude},${locationResult.latitude}"
+                    CameraLocationState.Coordinates(
+                        "${locationResult.longitude},${locationResult.latitude}",
+                    )
                 } else {
-                    "未获取到定位"
+                    CameraLocationState.Unavailable
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _location.value = "获取定位失败"
+                _location.value = CameraLocationState.Failed
             }
         }
     }

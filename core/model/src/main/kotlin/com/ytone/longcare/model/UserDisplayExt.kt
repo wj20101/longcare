@@ -1,9 +1,15 @@
 package com.ytone.longcare.model
 
-fun User.userIdentityShow(): String {
+enum class UserIdentityDisplay {
+    CAREGIVER,
+    SALES,
+    OTHER,
+}
+
+fun User.userIdentityDisplay(): UserIdentityDisplay {
     return when (userIdentity) {
-        1 -> "护理员"
-        2 -> "销售员"
-        else -> "其他"
+        1 -> UserIdentityDisplay.CAREGIVER
+        2 -> UserIdentityDisplay.SALES
+        else -> UserIdentityDisplay.OTHER
     }
 }

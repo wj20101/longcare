@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.service
 
+import android.app.Application
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationManager
@@ -16,8 +17,10 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
+@Config(application = Application::class)
 class ServiceTimeNotificationManagerTest {
 
     private lateinit var context: Context

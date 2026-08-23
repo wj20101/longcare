@@ -2,6 +2,7 @@ package com.ytone.longcare.features.identification.facecheck
 
 import android.graphics.Bitmap
 import com.google.common.truth.Truth.assertThat
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.features.identification.domain.CheckFaceGateway
 import com.ytone.longcare.features.identification.domain.CheckFaceRemoteResult
 import com.ytone.longcare.features.identification.domain.CheckFaceUseCase
@@ -19,6 +20,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -41,6 +43,7 @@ class DefaultFaceVerificationViewModelTest {
         val viewModel = DefaultFaceVerificationViewModel(
             imageEncoder = FaceImageEncoder(mainDispatcher),
             checkFaceUseCase = CheckFaceUseCase(gateway),
+            textResolver = ResourceTextResolver(RuntimeEnvironment.getApplication()),
         )
         val bitmap = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
 

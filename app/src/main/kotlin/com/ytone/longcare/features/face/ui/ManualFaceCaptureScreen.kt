@@ -25,9 +25,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 import com.ytone.longcare.features.face.viewmodel.ManualFaceCaptureViewModel
 import com.ytone.longcare.theme.PrimaryBlue
@@ -41,6 +43,7 @@ fun ManualFaceCaptureScreen(
     viewModel: ManualFaceCaptureViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val faceCapturePermissionPurpose = stringResource(R.string.face_capture_permission_purpose)
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currentState by viewModel.currentState.collectAsStateWithLifecycle()
@@ -70,10 +73,13 @@ fun ManualFaceCaptureScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("拍照") },
+                title = { Text(stringResource(R.string.face_capture_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -150,7 +156,9 @@ fun ManualFaceCaptureScreen(
 
     if (showCameraPurposeNotice) {
         PermissionPurposeDialog(
-            notice = cameraPermissionPurposeNotice("拍摄人脸核验照片"),
+            notice = cameraPermissionPurposeNotice(
+                faceCapturePermissionPurpose,
+            ),
             onConfirm = {
                 showCameraPurposeNotice = false
                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)

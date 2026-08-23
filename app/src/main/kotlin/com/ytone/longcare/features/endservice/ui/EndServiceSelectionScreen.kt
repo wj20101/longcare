@@ -53,7 +53,12 @@ fun EndServiceSelectionScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("确认服务项目", fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        stringResource(R.string.end_service_confirm_projects_title),
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                         Icon(

@@ -27,6 +27,7 @@ internal class PhotoTaskQueueDelegate(
     private val scope: CoroutineScope,
     private val imageRepository: OrderImageRepository,
     private val imagePipeline: UnifiedImagePipeline,
+    private val userMessages: PhotoUploadMessages,
 ) {
     val currentOrderKey = MutableStateFlow<OrderKey?>(null)
     val imageTasks = MutableStateFlow<List<ImageTask>>(emptyList())
@@ -216,7 +217,11 @@ internal class PhotoTaskQueueDelegate(
                         "taskIdLength" to task.id.length,
                     ),
                 )
-                updateTaskStatus(task.id, ImageTaskStatus.FAILED, errorMessage = e.message ?: "图片处理异常")
+                updateTaskStatus(
+                    task.id,
+                    ImageTaskStatus.FAILED,
+                    errorMessage = userMessages.imageProcessingFailed,
+                )
             } finally {
                 isProcessing.value = imageTasks.value.any { it.status == ImageTaskStatus.PROCESSING }
             }

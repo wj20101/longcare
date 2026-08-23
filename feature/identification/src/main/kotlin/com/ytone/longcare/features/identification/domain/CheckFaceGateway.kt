@@ -3,7 +3,9 @@ package com.ytone.longcare.features.identification.domain
 sealed interface CheckFaceRemoteResult {
     data object Success : CheckFaceRemoteResult
 
-    data class Error(val message: String) : CheckFaceRemoteResult
+    data class Rejected(val message: String?) : CheckFaceRemoteResult
+
+    data object NetworkError : CheckFaceRemoteResult
 }
 
 interface CheckFaceGateway {

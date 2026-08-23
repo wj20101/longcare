@@ -87,11 +87,15 @@ fun ServiceRecordItem(project: ServiceProjectM, orderInfo: ServiceOrderInfoModel
             }
             Spacer(modifier = Modifier.height(4.dp))
             val serviceTimeText = if (orderInfo.startTime.isNotBlank() && orderInfo.endTime.isNotBlank()) {
-                "服务时间: ${orderInfo.startTime} - ${orderInfo.endTime}"
+                stringResource(
+                    R.string.service_record_time_range,
+                    orderInfo.startTime,
+                    orderInfo.endTime,
+                )
             } else if (orderInfo.startTime.isNotBlank()) {
-                "开始时间: ${orderInfo.startTime}"
+                stringResource(R.string.service_record_start_time, orderInfo.startTime)
             } else {
-                "服务时间: 未设置"
+                stringResource(R.string.service_record_time_unset)
             }
             Text(
                 text = serviceTimeText,

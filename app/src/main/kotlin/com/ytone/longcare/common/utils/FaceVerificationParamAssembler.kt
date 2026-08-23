@@ -18,7 +18,7 @@ internal data class FaceVerifyParams(
 
 internal sealed interface FaceVerifyParamBuildResult {
     data class Success(val params: FaceVerifyParams) : FaceVerifyParamBuildResult
-    data class Failure(val message: String) : FaceVerifyParamBuildResult
+    data object Failure : FaceVerifyParamBuildResult
 }
 
 internal class FaceVerificationParamAssembler(
@@ -37,7 +37,7 @@ internal class FaceVerificationParamAssembler(
         )
         val accessToken = when (accessTokenResult) {
             is FaceApiStepResult.Success -> accessTokenResult.value
-            is FaceApiStepResult.Failure -> return FaceVerifyParamBuildResult.Failure(accessTokenResult.message)
+            FaceApiStepResult.Failure -> return FaceVerifyParamBuildResult.Failure
         }
 
         val signTicketResult = fetchFaceSignTicket(
@@ -47,7 +47,7 @@ internal class FaceVerificationParamAssembler(
         )
         val signTicket = when (signTicketResult) {
             is FaceApiStepResult.Success -> signTicketResult.value
-            is FaceApiStepResult.Failure -> return FaceVerifyParamBuildResult.Failure(signTicketResult.message)
+            FaceApiStepResult.Failure -> return FaceVerifyParamBuildResult.Failure
         }
 
         val faceIdResult = fetchFaceId(
@@ -59,7 +59,7 @@ internal class FaceVerificationParamAssembler(
         )
         val faceId = when (faceIdResult) {
             is FaceApiStepResult.Success -> faceIdResult.value
-            is FaceApiStepResult.Failure -> return FaceVerifyParamBuildResult.Failure(faceIdResult.message)
+            FaceApiStepResult.Failure -> return FaceVerifyParamBuildResult.Failure
         }
 
         val nonceTicketResult = fetchFaceNonceTicket(
@@ -70,7 +70,7 @@ internal class FaceVerificationParamAssembler(
         )
         val nonceTicket = when (nonceTicketResult) {
             is FaceApiStepResult.Success -> nonceTicketResult.value
-            is FaceApiStepResult.Failure -> return FaceVerifyParamBuildResult.Failure(nonceTicketResult.message)
+            FaceApiStepResult.Failure -> return FaceVerifyParamBuildResult.Failure
         }
 
         val params = createFaceVerifyParams(config, request, faceId, nonceTicket, nonce)

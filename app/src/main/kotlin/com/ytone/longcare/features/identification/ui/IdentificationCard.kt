@@ -15,6 +15,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
+import com.ytone.longcare.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.features.identification.vm.FaceSetupState
 import com.ytone.longcare.features.identification.vm.FaceVerificationState
@@ -23,14 +26,29 @@ import com.ytone.longcare.features.identification.vm.IdentificationViewModel
 import com.ytone.longcare.features.identification.vm.PhotoUploadState
 import com.ytone.longcare.features.identification.vm.VerificationType
 
-internal object IdentificationConstants {
-    const val SERVICE_PERSON = "服务人员"
-    const val ELDER = "老人"
+enum class IdentificationPersonType(
+    @param:StringRes val labelRes: Int,
+    @param:DrawableRes val avatarRes: Int,
+    @param:StringRes val avatarDescriptionRes: Int,
+    val verificationType: VerificationType,
+) {
+    SERVICE_PERSON(
+        labelRes = R.string.identification_service_person,
+        avatarRes = R.drawable.ic_service_person,
+        avatarDescriptionRes = R.string.identification_service_person_avatar,
+        verificationType = VerificationType.SERVICE_PERSON,
+    ),
+    ELDER(
+        labelRes = R.string.identification_elder,
+        avatarRes = R.drawable.ic_elder_person,
+        avatarDescriptionRes = R.string.identification_elder_avatar,
+        verificationType = VerificationType.ELDER,
+    ),
 }
 
 @Composable
 fun IdentificationCard(
-    personType: String,
+    personType: IdentificationPersonType,
     isVerified: Boolean,
     onVerifyClick: () -> Unit,
     viewModel: IdentificationViewModel,
@@ -41,11 +59,7 @@ fun IdentificationCard(
     val identificationState by viewModel.identificationState.collectAsStateWithLifecycle()
     val currentVerificationType by viewModel.currentVerificationType.collectAsStateWithLifecycle()
 
-    val isCurrentlyVerifying = when (personType) {
-        IdentificationConstants.SERVICE_PERSON -> currentVerificationType == VerificationType.SERVICE_PERSON
-        IdentificationConstants.ELDER -> currentVerificationType == VerificationType.ELDER
-        else -> false
-    }
+    val isCurrentlyVerifying = currentVerificationType == personType.verificationType
 
     Card(
         shape = RoundedCornerShape(16.dp),

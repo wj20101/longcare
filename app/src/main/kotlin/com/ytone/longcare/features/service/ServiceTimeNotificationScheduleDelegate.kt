@@ -65,7 +65,7 @@ internal class ServiceTimeNotificationScheduleDelegate(
         try {
             val data = workDataOf(
                 ServiceTimeNotificationManager.EXTRA_ORDER_ID to orderId,
-                ServiceTimeNotificationManager.EXTRA_SERVICE_NAME to serviceName
+                ServiceTimeNotificationManager.EXTRA_SERVICE_NAME to serviceName,
             )
             val workRequest = OneTimeWorkRequestBuilder<ServiceTimeEndWorker>()
                 .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)

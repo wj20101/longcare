@@ -2,6 +2,8 @@ package com.ytone.longcare.shared.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.text.ResourceTextResolver
+import com.ytone.longcare.core.ui.R
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.location.LocationRuntimeReadiness
@@ -28,6 +30,7 @@ class SharedOrderDetailViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val locationFacade: LocationFacade,
     private val locationRuntimeReadiness: LocationRuntimeReadiness,
+    private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<OrderDetailUiState>(OrderDetailUiState.Initial)
@@ -54,8 +57,9 @@ class SharedOrderDetailViewModel @Inject constructor(
                     _uiState.value = OrderDetailUiState.Success(result.data)
                 }
                 is ApiResult.Exception -> {
-                    val errorMessage = result.exception.message ?: "网络错误，请检查网络连接"
-                    _uiState.value = OrderDetailUiState.Error(errorMessage)
+                    _uiState.value = OrderDetailUiState.Error(
+                        textResolver.text(R.string.common_network_error_retry),
+                    )
                 }
                 is ApiResult.Failure -> {
                     _uiState.value = OrderDetailUiState.Error(result.message)
@@ -178,8 +182,9 @@ class SharedOrderDetailViewModel @Inject constructor(
                     onSuccess()
                 }
                 is ApiResult.Exception -> {
-                    val errorMessage = result.exception.message ?: "网络错误，请检查网络连接"
-                    _starOrderState.value = StarOrderUiState.Error(errorMessage)
+                    _starOrderState.value = StarOrderUiState.Error(
+                        textResolver.text(R.string.common_network_error_retry),
+                    )
                 }
                 is ApiResult.Failure -> {
                     _starOrderState.value = StarOrderUiState.Error(result.message)

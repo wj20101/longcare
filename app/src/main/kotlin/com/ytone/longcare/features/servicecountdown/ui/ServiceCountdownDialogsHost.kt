@@ -6,11 +6,12 @@ import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.model.OrderKey
+import androidx.compose.ui.res.stringResource
 
 @Composable
 internal fun ServiceCountdownDialogsHost(
     showPermissionDialog: Boolean,
-    permissionDialogMessage: String,
+    permissionIssue: ServiceCountdownPermissionIssue?,
     onDismissPermissionDialog: () -> Unit,
     showConfirmDialog: Boolean,
     onDismissConfirmDialog: () -> Unit,
@@ -24,13 +25,14 @@ internal fun ServiceCountdownDialogsHost(
     locationTrackingViewModel: LocationTrackingViewModel,
     actions: ServiceCountdownActions
 ) {
+    val permissionDialogMessage = permissionIssue?.let { stringResource(it.messageRes) }.orEmpty()
     PermissionAlertDialog(
-        visible = showPermissionDialog,
+        visible = showPermissionDialog && permissionIssue != null,
         message = permissionDialogMessage,
         onDismiss = onDismissPermissionDialog,
         onNavigateSettings = {
             context.startActivity(
-                buildPermissionSettingsIntent(context, permissionDialogMessage)
+                buildPermissionSettingsIntent(context, requireNotNull(permissionIssue))
             )
         }
     )
@@ -43,7 +45,6 @@ internal fun ServiceCountdownDialogsHost(
                 orderKey = orderKey,
                 projectIdList = projectIdList,
                 countdownViewModel = countdownViewModel,
-                locationTrackingViewModel = locationTrackingViewModel,
                 actions = actions,
                 endType = 2
             )

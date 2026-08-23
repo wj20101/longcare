@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 @HiltViewModel
 class NursingViewModel @Inject constructor(
@@ -46,7 +47,7 @@ class NursingViewModel @Inject constructor(
                 }
 
                 is ApiResult.Exception -> {
-                    messageQueue.enqueue(result.exception.message ?: "网络异常，请稍后重试")
+                    messageQueue.enqueue(CoreUiR.string.common_network_error_retry)
                     _orderListState.value = emptyList()
                 }
             }

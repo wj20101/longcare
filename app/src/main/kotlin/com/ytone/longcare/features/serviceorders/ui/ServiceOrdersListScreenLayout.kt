@@ -33,6 +33,8 @@ import com.ytone.longcare.features.serviceorders.api.ServiceOrdersListActions
 import com.ytone.longcare.model.TodayServiceOrderModel
 import com.ytone.longcare.model.handleOrderNavigation
 import com.ytone.longcare.theme.bgGradientBrush
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,7 +113,7 @@ private fun ServiceOrdersListTopBar(
             IconButton(onClick = singleClick { onNavigateBack() }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回",
+                    contentDescription = stringResource(R.string.common_back),
                     tint = Color.White
                 )
             }

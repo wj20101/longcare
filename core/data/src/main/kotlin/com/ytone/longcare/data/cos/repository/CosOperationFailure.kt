@@ -20,7 +20,7 @@ internal fun Throwable.toCosStorageException(): CosStorageException =
                         kind = CosStorageFailureKind.NOT_FOUND,
                         errorCode = "COS_HTTP_404",
                         retryable = false,
-                        message = "文件不存在",
+                        diagnosticMessage = "COS object was not found (HTTP 404)",
                         cause = this,
                     )
 
@@ -29,7 +29,7 @@ internal fun Throwable.toCosStorageException(): CosStorageException =
                         kind = CosStorageFailureKind.AUTHORIZATION,
                         errorCode = "COS_HTTP_$status",
                         retryable = true,
-                        message = "存储授权已失效，请稍后重试",
+                        diagnosticMessage = "COS authorization failed (HTTP $status)",
                         cause = this,
                     )
 
@@ -38,7 +38,7 @@ internal fun Throwable.toCosStorageException(): CosStorageException =
                         kind = CosStorageFailureKind.SERVICE,
                         errorCode = "COS_HTTP_$status",
                         retryable = true,
-                        message = "文件服务暂时不可用，请稍后重试",
+                        diagnosticMessage = "COS service is temporarily unavailable (HTTP $status)",
                         cause = this,
                     )
 
@@ -51,14 +51,13 @@ internal fun Throwable.toCosStorageException(): CosStorageException =
                                 ?.let { "COS_$it" }
                                 ?: "COS_HTTP_$status",
                         retryable = false,
-                        message = "文件服务请求失败，请稍后重试",
+                        diagnosticMessage = "COS service request failed (HTTP $status)",
                         cause = this,
                     )
             }
         }
 
         is CosXmlClientException -> {
-            val isUserCancelled = errorCode == ClientErrorCode.USER_CANCELLED.code
             val isRetryable =
                 errorCode in
                     setOf(
@@ -77,17 +76,7 @@ internal fun Throwable.toCosStorageException(): CosStorageException =
                     },
                 errorCode = "COS_CLIENT_$errorCode",
                 retryable = isRetryable,
-                message =
-                    when {
-                        isUserCancelled -> "操作已取消"
-                        errorCode == ClientErrorCode.SINK_SOURCE_NOT_FOUND.code ->
-                            "未找到需要上传的文件"
-
-                        errorCode == ClientErrorCode.POOR_NETWORK.code ->
-                            "网络连接异常，请检查您的网络"
-
-                        else -> "文件处理失败，请稍后重试"
-                    },
+                diagnosticMessage = "COS client request failed (code=$errorCode)",
                 cause = this,
             )
         }
@@ -115,7 +104,7 @@ internal fun Throwable.toCosStorageException(): CosStorageException =
                         httpCode == 408 ||
                         httpCode == 429 ||
                         httpCode in 500..599,
-                message = message ?: "文件服务请求失败，请稍后重试",
+                diagnosticMessage = "File API request failed (${kind.name})",
                 cause = this,
             )
 
@@ -124,7 +113,7 @@ internal fun Throwable.toCosStorageException(): CosStorageException =
                 kind = CosStorageFailureKind.UNKNOWN,
                 errorCode = "COS_UNKNOWN",
                 retryable = false,
-                message = "文件处理失败，请稍后重试",
+                diagnosticMessage = "Unknown COS operation failure",
                 cause = this,
             )
     }
@@ -138,7 +127,8 @@ internal fun cosBackendFailure(
         kind = CosStorageFailureKind.BACKEND,
         errorCode = "API_$code",
         retryable = false,
-        message = message.ifBlank { "${operation}失败，请稍后重试" },
+        displayMessage = message.takeIf(String::isNotBlank),
+        diagnosticMessage = "COS backend operation '$operation' failed (code=$code)",
     )
 
 internal fun cosBackendException(
@@ -150,7 +140,8 @@ internal fun cosBackendException(
         kind = mapped.kind,
         errorCode = mapped.errorCode,
         retryable = mapped.retryable,
-        message = mapped.message ?: "${operation}失败，请稍后重试",
+        displayMessage = mapped.displayMessage,
+        diagnosticMessage = "COS backend operation '$operation' failed: ${mapped.message}",
         cause = throwable,
     )
 }
@@ -163,19 +154,19 @@ internal fun ApiResult<String>.requirePrivateCosUrl(): String =
                     kind = CosStorageFailureKind.INVALID_RESPONSE,
                     errorCode = "API_EMPTY_FILE_URL",
                     retryable = false,
-                    message = "文件访问地址为空，请稍后重试",
+                    diagnosticMessage = "COS private file URL response was empty",
                 )
 
         is ApiResult.Failure ->
             throw cosBackendFailure(
-                operation = "获取文件访问地址",
+                operation = "get_file_url",
                 code = code,
                 message = message,
             )
 
         is ApiResult.Exception ->
             throw cosBackendException(
-                operation = "获取文件访问地址",
+                operation = "get_file_url",
                 throwable = exception,
             )
     }

@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.hardware.usb.UsbManager
 import androidx.core.content.ContextCompat
+import com.ytone.longcare.R
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.event.ScanSource
@@ -39,7 +40,9 @@ class UsbExternalRfidReaderManager @Inject constructor(
                 UsbManager.ACTION_USB_DEVICE_DETACHED -> publishConnectionState(false)
                 permissionAction -> {
                     val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
-                    if (!granted) publishReaderError("未授予读卡器访问权限")
+                    if (!granted) {
+                        publishReaderError(context.getString(R.string.rfid_permission_denied))
+                    }
                 }
             }
         }
@@ -101,7 +104,7 @@ class UsbExternalRfidReaderManager @Inject constructor(
             }
 
             is R65cBusinessFallbackResult.DeviceError -> {
-                publishReaderError("R65C读卡异常，请重试")
+                publishReaderError(context.getString(R.string.rfid_read_failed))
             }
 
             is R65cBusinessFallbackResult.Invalid,

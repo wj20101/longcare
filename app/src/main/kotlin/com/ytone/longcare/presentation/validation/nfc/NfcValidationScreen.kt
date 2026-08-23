@@ -69,6 +69,7 @@ internal fun NfcValidationScreen(
     val clipboard = LocalClipboard.current
     val coroutineScope = rememberCoroutineScope()
     val copySuccessMessage = stringResource(R.string.nfc_validation_copy_success)
+    val clipboardLabel = stringResource(R.string.nfc_validation_clipboard_label)
 
     DisposableEffect(activity, lifecycleOwner, nfcTestHelper, supportsNfc) {
         val observer = LifecycleEventObserver { _, event ->
@@ -125,7 +126,7 @@ internal fun NfcValidationScreen(
                             r65cState.lastNormalizedUid?.let { uid ->
                                 coroutineScope.launch {
                                     clipboard.setClipEntry(
-                                        ClipEntry(ClipData.newPlainText("R65C UID", uid)),
+                                        ClipEntry(ClipData.newPlainText(clipboardLabel, uid)),
                                     )
                                     context.showShortToast(copySuccessMessage)
                                 }

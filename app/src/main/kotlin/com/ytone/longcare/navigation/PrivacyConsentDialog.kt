@@ -1,6 +1,5 @@
 package com.ytone.longcare.navigation
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.os.Build
 import android.webkit.WebResourceRequest
@@ -61,6 +60,14 @@ fun PrivacyConsentDialog(
     val context = LocalContext.current
     val appName = stringResource(R.string.app_name)
     val linkColor = MaterialTheme.colorScheme.primary
+    val welcomeText = stringResource(R.string.privacy_consent_welcome, appName)
+    val introText = stringResource(R.string.privacy_consent_intro)
+    val userAgreementText = stringResource(R.string.privacy_consent_user_agreement)
+    val andText = stringResource(R.string.privacy_consent_and)
+    val privacyPolicyText = stringResource(R.string.privacy_consent_policy)
+    val explanationIntroText = stringResource(R.string.privacy_consent_explanation_intro)
+    val explanationItemsText = stringResource(R.string.privacy_consent_explanation_items)
+    val finalText = stringResource(R.string.privacy_consent_final)
 
     var webViewUrl by remember { mutableStateOf<String?>(null) }
 
@@ -77,7 +84,7 @@ fun PrivacyConsentDialog(
         shape = RoundedCornerShape(16.dp),
         title = {
             Text(
-                text = "用户协议与隐私政策",
+                text = stringResource(R.string.privacy_consent_title),
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
             )
@@ -89,31 +96,26 @@ fun PrivacyConsentDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 val annotatedString = buildAnnotatedString {
-                    append("欢迎使用${appName}！\n\n")
-                    append("我们非常重视您的个人信息和隐私保护。在您使用我们的服务前，请仔细阅读并了解")
+                    append(welcomeText)
+                    append(introText)
 
                     pushStringAnnotation(tag = "URL", annotation = AgreementUrls.USER_AGREEMENT_URL)
                     withStyle(SpanStyle(color = linkColor, fontWeight = FontWeight.Medium)) {
-                        append("《用户服务协议》")
+                        append(userAgreementText)
                     }
                     pop()
 
-                    append("和")
+                    append(andText)
 
                     pushStringAnnotation(tag = "URL", annotation = AgreementUrls.PRIVACY_POLICY_URL)
                     withStyle(SpanStyle(color = linkColor, fontWeight = FontWeight.Medium)) {
-                        append("《隐私政策》")
+                        append(privacyPolicyText)
                     }
                     pop()
 
-                    append("。\n\n")
-                    withStyle(SpanStyle(fontWeight = FontWeight.Medium)) {
-                        append("我们将通过上述协议向您说明：\n")
-                    }
-                    append("(1) 设备信息、Android ID、MAC地址、软件安装列表、应用安装实例ID、位置信息、相机/相册、剪贴板写入等个人信息的处理目的、方式和范围。\n")
-                    append("(2) 开机后服务提醒恢复、应用内更新安装等系统能力的使用场景。\n")
-                    append("(3) 高德定位、腾讯Bugly、腾讯云人脸核验、腾讯云COS等第三方服务的数据共享和信息处理说明。\n\n")
-                    append("如您同意以上协议内容，请点击\"同意并继续\"开始使用我们的服务。")
+                    append(explanationIntroText)
+                    append(explanationItemsText)
+                    append(finalText)
                 }
 
                 @Suppress("DEPRECATION")
@@ -139,7 +141,7 @@ fun PrivacyConsentDialog(
                 modifier = Modifier.padding(end = 8.dp)
             ) {
                 Text(
-                    text = "同意并继续",
+                    text = stringResource(R.string.privacy_consent_agree),
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
                 )
@@ -153,7 +155,7 @@ fun PrivacyConsentDialog(
                 }
             ) {
                 Text(
-                    text = "不同意",
+                    text = stringResource(R.string.privacy_consent_disagree),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -162,7 +164,6 @@ fun PrivacyConsentDialog(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun InAppWebViewDialog(
     url: String,
@@ -196,7 +197,7 @@ private fun InAppWebViewDialog(
                         IconButton(onClick = onDismiss) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回"
+                                contentDescription = stringResource(R.string.common_back)
                             )
                         }
                     }
@@ -225,7 +226,7 @@ private fun InAppWebViewDialog(
                                 }
                             }
                             settings.apply {
-                                javaScriptEnabled = true
+                                javaScriptEnabled = false
                                 domStorageEnabled = true
                                 javaScriptCanOpenWindowsAutomatically = false
                                 allowFileAccess = false

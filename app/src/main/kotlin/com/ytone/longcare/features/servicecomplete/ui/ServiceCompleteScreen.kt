@@ -10,11 +10,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.ytone.longcare.theme.bgGradientBrush
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicecomplete.api.ServiceCompleteActions
@@ -30,14 +33,10 @@ fun ServiceCompleteScreen(
     serviceCompleteData: ServiceCompleteData,
     viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     // 统一处理系统返回键，与导航按钮行为一致（返回首页并清空堆栈）
     CustomBackHandler(customAction = actions.onNavigateHomeAndClearStack)
     
-    // 进入服务完成页面时，停止定位会话 (Session Stop)
-    LaunchedEffect(Unit) {
-        viewModel.stopLocationSession()
-    }
-
     // 直接使用传入的数据创建 ServiceSummary
     val serviceSummary = ServiceSummary(
         clientName = serviceCompleteData.clientName,
@@ -45,7 +44,7 @@ fun ServiceCompleteScreen(
         clientIdNumber = serviceCompleteData.clientIdNumber,
         clientAddress = serviceCompleteData.clientAddress,
         serviceContent = serviceCompleteData.serviceContent,
-        duration = formatServiceDuration(serviceCompleteData.trueServiceTime)
+        duration = formatServiceDuration(context, serviceCompleteData.trueServiceTime)
     )
 
     Box(
@@ -55,7 +54,12 @@ fun ServiceCompleteScreen(
     ) {
         Scaffold(topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("服务完成", fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        stringResource(R.string.service_complete_title),
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = {
                         // 清除选中项目数据后再返回
@@ -64,7 +68,7 @@ fun ServiceCompleteScreen(
                     }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
+                            contentDescription = stringResource(R.string.common_back),
                             tint = Color.White
                         )
                     }
@@ -83,7 +87,7 @@ fun ServiceCompleteScreen(
                     extraBottomPadding = 16.dp
                 ) {
                     Box {
-                        ActionButton(text = "完成", onClick = {
+                        ActionButton(text = stringResource(R.string.common_complete), onClick = {
                             // 清除选中项目数据后再返回首页
                             viewModel.clearSelectedProjects(orderKey.orderId)
                             actions.onNavigateHomeAndClearStack()
@@ -101,7 +105,9 @@ fun ServiceCompleteScreen(
             ) {
                 item {
                     Text(
-                        text = "已完成服务，请确认服务内容", color = Color.White, fontSize = 14.sp
+                        text = stringResource(R.string.service_complete_confirm_content),
+                        color = Color.White,
+                        fontSize = 14.sp,
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                 }

@@ -3,4 +3,17 @@
     <string name="photo_preview_content_description">预览图片</string>
     <string name="photo_preview_close">关闭图片预览</string>
     <string name="photo_preview_hint">双击缩放 · 双指缩放 · 拖动查看</string>
+    <string name="camera_permission_not_granted">相机权限未授予</string>
+    <string name="camera_feature_unsupported">设备不支持相机功能</string>
+    <string name="camera_feature_available">相机功能正常</string>
+    <string name="location_service_open_settings">请先在系统设置中开启定位服务</string>
+    <string name="location_permission_required_for_service">需要定位权限才能开始服务</string>
+    <string name="common_network_error_retry">网络异常，请稍后重试</string>
+    <string name="order_detail_load_failed">订单详情加载失败，请稍后重试</string>
+    <string name="permission_purpose_continue">继续</string>
+    <string name="permission_purpose_cancel">取消</string>
+    <string name="permission_purpose_camera_title">相机权限说明</string>
+    <string name="permission_purpose_camera_message">需要相机权限用于%1$s。本权限仅在您主动使用拍照、上传或核验功能时申请。</string>
+    <string name="permission_purpose_location_title">定位权限说明</string>
+    <string name="permission_purpose_location_message">需要定位权限用于%1$s。本权限仅在您主动使用 NFC 签到、开始服务或提交服务位置时申请。</string>
 </resources>

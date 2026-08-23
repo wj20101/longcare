@@ -1,9 +1,12 @@
 package com.ytone.longcare.features.face.viewmodel
 
 import android.graphics.Bitmap
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.R
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.features.face.ui.DetectedFace
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureState
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureUiState
@@ -17,7 +20,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ManualFaceCaptureViewModel @Inject constructor(
-    private val facePipelineDelegate: ManualFaceCaptureFacePipelineDelegate
+    private val facePipelineDelegate: ManualFaceCaptureFacePipelineDelegate,
+    private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ManualFaceCaptureUiState())
@@ -39,22 +43,25 @@ class ManualFaceCaptureViewModel @Inject constructor(
         detectFaces(bitmap)
     }
 
-    fun onPhotoCaptureFailed(stage: String, messagePrefix: String, error: Throwable) {
-        val detail = error.message ?: "请重新拍摄后重试"
+    internal fun onPhotoCaptureFailed(
+        stage: ManualFaceCaptureFailureStage,
+        failure: ManualFaceCaptureFailure,
+        error: Throwable,
+    ) {
         DiagnosticEventTracker.trackError(
             category = FACE_CAPTURE_DIAGNOSTIC_CATEGORY,
             event = "manual_face_photo_capture_failed",
             description = "手动人脸采集拍照或图片处理失败",
             throwable = error,
             extras = mapOf(
-                "stage" to stage,
-                "messagePrefix" to messagePrefix,
+                "stage" to stage.diagnosticCode,
+                "failure" to failure.name,
             ),
         )
         applyTransition(
             ManualFaceCaptureStateTransitions.onPhotoCaptureError(
                 _uiState.value,
-                "$messagePrefix: $detail",
+                textResolver.text(failure.messageRes),
             ),
         )
     }
@@ -68,7 +75,12 @@ class ManualFaceCaptureViewModel @Inject constructor(
                 applyTransition(ManualFaceCaptureStateTransitions.onFacesDetected(_uiState.value, detectedFaces))
                 when {
                     detectedFaces.isEmpty() -> {
-                        applyTransition(ManualFaceCaptureStateTransitions.onNoFacesDetected(_uiState.value))
+                        applyTransition(
+                            ManualFaceCaptureStateTransitions.onNoFacesDetected(
+                                _uiState.value,
+                                textResolver.text(R.string.manual_face_not_detected),
+                            ),
+                        )
                     }
                     detectedFaces.size == 1 -> {
                         selectFace(0)
@@ -93,7 +105,7 @@ class ManualFaceCaptureViewModel @Inject constructor(
                 applyTransition(
                     ManualFaceCaptureStateTransitions.onDetectionError(
                         _uiState.value,
-                        e.message ?: "人脸检测异常",
+                        textResolver.text(R.string.manual_face_detection_failed),
                     ),
                 )
             }
@@ -154,7 +166,7 @@ class ManualFaceCaptureViewModel @Inject constructor(
                 applyTransition(
                     ManualFaceCaptureStateTransitions.onSaveError(
                         _uiState.value,
-                        e.message ?: "保存失败",
+                        textResolver.text(R.string.manual_face_save_failed),
                     ),
                 )
             }
@@ -175,7 +187,9 @@ class ManualFaceCaptureViewModel @Inject constructor(
 
         return if (faceIndex in faces.indices && capturedPhoto != null) {
             val face = faces[faceIndex]
-            facePipelineDelegate.getFaceQualityHints(face, capturedPhoto)
+            facePipelineDelegate.getFaceQualityHints(face, capturedPhoto).map { hint ->
+                textResolver.text(hint.messageRes)
+            }
         } else {
             emptyList()
         }
@@ -193,4 +207,14 @@ class ManualFaceCaptureViewModel @Inject constructor(
     private companion object {
         const val FACE_CAPTURE_DIAGNOSTIC_CATEGORY = "face_capture"
     }
+}
+
+internal enum class ManualFaceCaptureFailureStage(val diagnosticCode: String) {
+    IMAGE_PROCESSING("process_image"),
+    CAMERA_CAPTURE("capture"),
+}
+
+internal enum class ManualFaceCaptureFailure(@param:StringRes val messageRes: Int) {
+    IMAGE_PROCESSING(R.string.manual_face_image_processing_failed),
+    CAMERA_CAPTURE(R.string.manual_face_capture_failed),
 }

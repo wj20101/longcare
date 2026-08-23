@@ -10,13 +10,16 @@ internal suspend fun generateIdentificationWatermarkData(
     orderKey: OrderKey,
     orderDetailRepository: OrderDetailRepository,
     resolveCurrentUser: suspend () -> User?,
+    unknownElderName: String,
+    unknownCaregiverName: String,
+    watermarkTitle: String,
 ): WatermarkData {
     val orderInfo = orderDetailRepository.getCachedOrderInfo(orderKey)
-    val elderName = orderInfo?.userInfo?.name ?: "未知老人"
-    val caregiverName = resolveCurrentUser()?.userName ?: "未知护工"
+    val elderName = orderInfo?.userInfo?.name ?: unknownElderName
+    val caregiverName = resolveCurrentUser()?.userName ?: unknownCaregiverName
 
     return WatermarkData(
-        title = "老人照片",
+        title = watermarkTitle,
         insuredPerson = elderName,
         caregiver = caregiverName,
         address = address

@@ -48,7 +48,12 @@ internal fun ServiceCountdownScreenScaffold(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("服务时间倒计时", fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        stringResource(R.string.service_countdown_title),
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = singleClick(onClick = onNavigateBack)) {
                         Icon(
@@ -82,7 +87,7 @@ internal fun ServiceCountdownScreenScaffold(
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "请在服务倒计时结束后10分钟内结束服务",
+                    text = stringResource(R.string.service_countdown_end_window_hint),
                     color = Color.White.copy(alpha = 0.8f),
                     fontSize = 14.sp
                 )

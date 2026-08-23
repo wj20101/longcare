@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.location.core
 
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
-import com.ytone.longcare.features.location.manager.LocationStateManager
+import com.ytone.longcare.features.location.manager.LocationSampleStore
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.model.LocationResult
 import io.mockk.coEvery
@@ -21,7 +21,7 @@ class DefaultLocationFacadeCancellationTest {
     @Test
     fun `getCurrentLocation should return business cache before waiting for providers`() = runTest {
         val amap = mockk<ContinuousAmapLocationManager>()
-        val stateManager = mockk<LocationStateManager>()
+        val sampleStore = mockk<LocationSampleStore>()
         val keepAliveManager = mockk<LocationKeepAliveManager>()
         val cachedLocation = LocationResult(
             latitude = 30.0,
@@ -30,33 +30,33 @@ class DefaultLocationFacadeCancellationTest {
             accuracy = 10f
         )
 
-        every { stateManager.getValidLocation(LocationFacade.BUSINESS_LOCATION_CACHE_MAX_AGE_MS) } returns cachedLocation
+        every { sampleStore.getValidLocation(LocationFacade.BUSINESS_LOCATION_CACHE_MAX_AGE_MS) } returns cachedLocation
 
         val facade = DefaultLocationFacade(
             continuousAmapLocationManager = amap,
-            locationStateManager = stateManager,
+            locationSampleStore = sampleStore,
             locationKeepAliveManager = keepAliveManager
         )
 
         val result = facade.getCurrentLocation()
 
         assertSame(cachedLocation, result)
-        verify(exactly = 1) { stateManager.getValidLocation(LocationFacade.BUSINESS_LOCATION_CACHE_MAX_AGE_MS) }
+        verify(exactly = 1) { sampleStore.getValidLocation(LocationFacade.BUSINESS_LOCATION_CACHE_MAX_AGE_MS) }
         coVerify(exactly = 0) { amap.getCurrentLocation(any()) }
     }
 
     @Test
     fun `getCurrentLocation should return null when amap returns null`() = runTest {
         val amap = mockk<ContinuousAmapLocationManager>()
-        val stateManager = mockk<LocationStateManager>()
+        val sampleStore = mockk<LocationSampleStore>()
         val keepAliveManager = mockk<LocationKeepAliveManager>()
 
-        every { stateManager.getValidLocation(LocationFacade.BUSINESS_LOCATION_CACHE_MAX_AGE_MS) } returns null
+        every { sampleStore.getValidLocation(LocationFacade.BUSINESS_LOCATION_CACHE_MAX_AGE_MS) } returns null
         coEvery { amap.getCurrentLocation(any()) } returns null
 
         val facade = DefaultLocationFacade(
             continuousAmapLocationManager = amap,
-            locationStateManager = stateManager,
+            locationSampleStore = sampleStore,
             locationKeepAliveManager = keepAliveManager
         )
 
@@ -68,15 +68,15 @@ class DefaultLocationFacadeCancellationTest {
     @Test
     fun `getCurrentLocation should rethrow cancellation from amap source`() = runTest {
         val amap = mockk<ContinuousAmapLocationManager>()
-        val stateManager = mockk<LocationStateManager>()
+        val sampleStore = mockk<LocationSampleStore>()
         val keepAliveManager = mockk<LocationKeepAliveManager>()
 
-        every { stateManager.getValidLocation(any()) } returns null
+        every { sampleStore.getValidLocation(any()) } returns null
         coEvery { amap.getCurrentLocation(any()) } throws CancellationException("cancelled")
 
         val facade = DefaultLocationFacade(
             continuousAmapLocationManager = amap,
-            locationStateManager = stateManager,
+            locationSampleStore = sampleStore,
             locationKeepAliveManager = keepAliveManager
         )
 
@@ -93,7 +93,7 @@ class DefaultLocationFacadeCancellationTest {
     @Test
     fun `getFreshLocation should bypass business cache and request fresh amap location`() = runTest {
         val amap = mockk<ContinuousAmapLocationManager>()
-        val stateManager = mockk<LocationStateManager>(relaxed = true)
+        val sampleStore = mockk<LocationSampleStore>(relaxed = true)
         val keepAliveManager = mockk<LocationKeepAliveManager>()
         val cachedLocation = LocationResult(
             latitude = 30.0,
@@ -108,33 +108,33 @@ class DefaultLocationFacadeCancellationTest {
             accuracy = 8f
         )
 
-        every { stateManager.getValidLocation(any()) } returns cachedLocation
+        every { sampleStore.getValidLocation(any()) } returns cachedLocation
         coEvery { amap.getFreshLocation(any()) } returns freshLocation
 
         val facade = DefaultLocationFacade(
             continuousAmapLocationManager = amap,
-            locationStateManager = stateManager,
+            locationSampleStore = sampleStore,
             locationKeepAliveManager = keepAliveManager
         )
 
         val result = facade.getFreshLocation(timeoutMs = 4_000L)
 
         assertSame(freshLocation, result)
-        verify(exactly = 0) { stateManager.getValidLocation(any()) }
+        verify(exactly = 0) { sampleStore.getValidLocation(any()) }
         coVerify(exactly = 1) { amap.getFreshLocation(8_000L) }
     }
 
     @Test
     fun `getFreshLocation should rethrow cancellation from amap source`() = runTest {
         val amap = mockk<ContinuousAmapLocationManager>()
-        val stateManager = mockk<LocationStateManager>(relaxed = true)
+        val sampleStore = mockk<LocationSampleStore>(relaxed = true)
         val keepAliveManager = mockk<LocationKeepAliveManager>()
 
         coEvery { amap.getFreshLocation(any()) } throws CancellationException("fresh cancelled")
 
         val facade = DefaultLocationFacade(
             continuousAmapLocationManager = amap,
-            locationStateManager = stateManager,
+            locationSampleStore = sampleStore,
             locationKeepAliveManager = keepAliveManager
         )
 
@@ -146,6 +146,6 @@ class DefaultLocationFacadeCancellationTest {
         }
 
         assertNotNull(cancellation)
-        verify(exactly = 0) { stateManager.getValidLocation(any()) }
+        verify(exactly = 0) { sampleStore.getValidLocation(any()) }
     }
 }

@@ -15,6 +15,8 @@ import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.shared.vm.FaceVerificationViewModel
 import com.ytone.longcare.platform.face.rememberFaceSdkUiController
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 
 @Composable
 fun FaceVerificationWithAutoSignScreen(
@@ -37,6 +39,12 @@ fun FaceVerificationWithAutoSignScreen(
     val context = LocalContext.current
     val faceSdkUiController = rememberFaceSdkUiController()
     val currentUserId = user?.userId?.toString()
+    val copy = FaceAutoSignCopy(
+        photoRequired = stringResource(R.string.face_auto_sign_photo_required),
+        userUnavailable = stringResource(R.string.face_auto_sign_user_unavailable),
+        success = stringResource(R.string.face_auto_sign_success),
+        cancelled = stringResource(R.string.face_auto_sign_cancelled),
+    )
 
     val showMessage: (String) -> Unit = { message ->
         snackbarMessage = message
@@ -48,6 +56,7 @@ fun FaceVerificationWithAutoSignScreen(
             sourcePhotoBase64 = sourcePhotoBase64,
             currentUserId = currentUserId,
             viewModel = viewModel,
+            copy = copy,
             onShowMessage = showMessage
         )
     }
@@ -59,6 +68,7 @@ fun FaceVerificationWithAutoSignScreen(
     LaunchedEffect(uiState) {
         consumeFaceVerifyUiState(
             uiState = uiState,
+            copy = copy,
             onShowMessage = showMessage,
             onVerificationSuccess = onVerificationSuccess
         )

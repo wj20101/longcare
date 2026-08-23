@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
@@ -55,12 +57,19 @@ fun SelectedServicesCard(
                 if (selectedProjects.isNotEmpty()) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         selectedProjects.forEachIndexed { index, project ->
-                            Text("${index + 1}: ${project.projectName} (${project.serviceTime}分钟)")
+                            Text(
+                                stringResource(
+                                    R.string.service_countdown_selected_service_item,
+                                    index + 1,
+                                    project.projectName,
+                                    project.serviceTime,
+                                ),
+                            )
                         }
                     }
                 } else {
                     Text(
-                        text = "暂无选中的服务项目",
+                        text = stringResource(R.string.service_countdown_no_selected_services),
                         color = Color.Gray
                     )
                 }
@@ -68,7 +77,7 @@ fun SelectedServicesCard(
         }
         ServiceHoursTag(
             modifier = Modifier.align(Alignment.TopStart),
-            tagText = "所选服务",
+            tagText = stringResource(R.string.service_countdown_selected_services),
             tagCategory = TagCategory.DEFAULT
         )
     }
@@ -83,4 +92,3 @@ fun SelectedServicesCardPreview() {
         sharedViewModel = hiltViewModel()
     )
 }
-

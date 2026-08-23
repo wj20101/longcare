@@ -13,7 +13,7 @@ import com.ytone.longcare.features.photoupload.upload.UploadedPhoto
 import com.ytone.longcare.model.AddUserLatentParamModel
 import com.ytone.longcare.model.AddUserLatentResultModel
 import com.ytone.longcare.platform.sales.SalesEvaluationDeviceGateway
-import com.ytone.longcare.platform.text.SalesTextResolver
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -222,7 +222,7 @@ class SalesViewModelSubmissionTest {
             imagePipeline = testImagePipeline(applicationContext),
             evaluationDeviceGateway = mockk<SalesEvaluationDeviceGateway>(relaxed = true),
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
-            textResolver = SalesTextResolver(applicationContext),
+            textResolver = ResourceTextResolver(applicationContext),
         )
 
     private fun validDraft(): SalesCustomerDraft =

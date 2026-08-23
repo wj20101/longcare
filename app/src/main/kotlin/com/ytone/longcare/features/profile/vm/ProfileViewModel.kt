@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
@@ -40,7 +41,7 @@ class ProfileViewModel @Inject constructor(
                     logE("获取统计数据失败: code=${result.code}, msg=${result.message}")
                 }
                 is ApiResult.Exception -> {
-                    messageQueue.enqueue(result.exception.message ?: "网络异常，请稍后重试")
+                    messageQueue.enqueue(CoreUiR.string.common_network_error_retry)
                     logE("获取统计数据异常", throwable = result.exception)
                 }
             }

@@ -12,9 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.features.identification.vm.FaceSetupState
+import com.ytone.longcare.R
 import com.ytone.longcare.features.identification.vm.FaceVerificationState
 import com.ytone.longcare.features.identification.vm.IdentificationState
 import com.ytone.longcare.features.identification.vm.IdentificationViewModel
@@ -40,14 +42,14 @@ internal fun IdentificationBodyContent(
     ) {
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "请按照要求进行人脸识别",
+            text = stringResource(R.string.face_recognition_guide_subtitle),
             color = Color.White.copy(alpha = 0.8f),
             fontSize = 14.sp
         )
         Spacer(modifier = Modifier.height(20.dp))
 
         IdentificationCard(
-            personType = IdentificationConstants.SERVICE_PERSON,
+            personType = IdentificationPersonType.SERVICE_PERSON,
             isVerified = identificationState.ordinal >= IdentificationState.SERVICE_VERIFIED.ordinal,
             onVerifyClick = onVerifyServicePerson,
             viewModel = identificationViewModel,
@@ -58,7 +60,7 @@ internal fun IdentificationBodyContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         IdentificationCard(
-            personType = IdentificationConstants.ELDER,
+            personType = IdentificationPersonType.ELDER,
             isVerified = identificationState.ordinal >= IdentificationState.ELDER_VERIFIED.ordinal,
             onVerifyClick = onVerifyElder,
             viewModel = identificationViewModel,

@@ -26,11 +26,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.ytone.longcare.R
 import com.ytone.longcare.theme.PrimaryBlue
 
 @Composable
@@ -104,7 +106,7 @@ internal fun CameraPreviewContent(
             } else {
                 Icon(
                     Icons.Default.CameraAlt,
-                    contentDescription = "拍照",
+                    contentDescription = stringResource(R.string.face_capture_title),
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -119,7 +121,7 @@ internal fun CameraPreviewContent(
             )
         ) {
             Text(
-                text = "请正对相机，点击下方按钮拍照",
+                text = stringResource(R.string.face_capture_camera_instruction),
                 color = Color.White,
                 modifier = Modifier.padding(16.dp),
                 textAlign = TextAlign.Center

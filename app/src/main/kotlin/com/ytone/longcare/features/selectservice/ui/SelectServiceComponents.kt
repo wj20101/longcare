@@ -32,14 +32,14 @@ import com.ytone.longcare.R
 fun TotalDurationDisplay(totalDuration: Int) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            text = "${totalDuration}分钟",
+            text = stringResource(R.string.common_duration_minutes, totalDuration),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "本次服务总工时",
+            text = stringResource(R.string.service_total_duration),
             fontSize = 14.sp,
             color = Color.White.copy(alpha = 0.85f)
         )
@@ -86,7 +86,7 @@ fun ServiceSelectionItem(item: ServiceItem, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "${item.duration}分钟",
+                text = stringResource(R.string.common_duration_minutes, item.duration),
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

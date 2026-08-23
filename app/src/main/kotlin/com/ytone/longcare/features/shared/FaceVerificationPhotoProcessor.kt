@@ -18,6 +18,17 @@ data class ProcessedFacePhoto(
     val base64: String
 )
 
+enum class FacePhotoProcessingFailure {
+    MISSING_FILE,
+    INVALID_IMAGE,
+    UNEXPECTED,
+}
+
+class FacePhotoProcessingException(
+    val failure: FacePhotoProcessingFailure,
+    cause: Throwable? = null,
+) : Exception(cause)
+
 class FaceVerificationPhotoProcessor @Inject constructor(
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -27,7 +38,7 @@ class FaceVerificationPhotoProcessor @Inject constructor(
             try {
                 currentCoroutineContext().ensureActive()
                 if (!imageFile.isFile) {
-                    throw IllegalStateException("图片文件不存在")
+                    throw FacePhotoProcessingException(FacePhotoProcessingFailure.MISSING_FILE)
                 }
 
                 // ManualFaceCaptureStorageDelegate has already compressed this through UnifiedImagePipeline.
@@ -35,7 +46,7 @@ class FaceVerificationPhotoProcessor @Inject constructor(
                 currentCoroutineContext().ensureActive()
                 val bitmap =
                     BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-                        ?: throw IllegalStateException("图片处理失败")
+                        ?: throw FacePhotoProcessingException(FacePhotoProcessingFailure.INVALID_IMAGE)
                 val sourcePhotoBase64 = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
 
                 ProcessedFacePhoto(
@@ -52,7 +63,14 @@ class FaceVerificationPhotoProcessor @Inject constructor(
                     throwable = exception,
                     extras = imageFile.diagnosticExtras(),
                 )
-                throw exception
+                throw if (exception is FacePhotoProcessingException) {
+                    exception
+                } else {
+                    FacePhotoProcessingException(
+                        failure = FacePhotoProcessingFailure.UNEXPECTED,
+                        cause = exception,
+                    )
+                }
             }
         }
 }

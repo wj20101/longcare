@@ -11,7 +11,7 @@ import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal typealias CapturedFaceCallback = (bitmap: Bitmap, quality: Float) -> Unit
-internal typealias CapturedFaceFailureCallback = (message: String, error: Throwable?) -> Unit
+internal typealias CapturedFaceFailureCallback = (hint: FaceCaptureHint, error: Throwable?) -> Unit
 
 /** Performs a final ML Kit check and crop on the high-quality CameraX still image. */
 internal class CapturedFaceProcessor(
@@ -47,10 +47,10 @@ internal class CapturedFaceProcessor(
 
         val uprightBitmap = try {
             val source = imageProxyToBitmap(imageProxy)
-                ?: return failBeforeDetection("人脸照片处理失败，请重新拍摄")
+                ?: return failBeforeDetection(FaceCaptureHint.PHOTO_PROCESSING_FAILED)
             rotateFaceBitmap(source, imageProxy.imageInfo.rotationDegrees)
         } catch (error: Exception) {
-            failBeforeDetection("人脸照片处理失败，请重新拍摄", error)
+            failBeforeDetection(FaceCaptureHint.PHOTO_PROCESSING_FAILED, error)
             return
         } finally {
             closeImageProxy(imageProxy)
@@ -64,10 +64,10 @@ internal class CapturedFaceProcessor(
                     try {
                         when {
                             faces.isEmpty() -> notifyFailure(
-                                "拍摄照片中未检测到人脸，请重新拍摄",
+                                FaceCaptureHint.NO_FACE_IN_PHOTO,
                             )
                             faces.size > 1 -> notifyFailure(
-                                "检测到多人，请确保取景框内只有一人",
+                                FaceCaptureHint.MULTIPLE_FACES_IN_PHOTO,
                             )
                             else -> processDetectedFace(
                                 source = uprightBitmap,
@@ -75,12 +75,12 @@ internal class CapturedFaceProcessor(
                             )
                         }
                     } catch (error: Exception) {
-                        notifyFailure("人脸照片处理失败，请重新拍摄", error)
+                        notifyFailure(FaceCaptureHint.PHOTO_PROCESSING_FAILED, error)
                     }
                 }
                 .addOnFailureListener(callbackExecutor) { error ->
                     if (!isReleased.get()) {
-                        notifyFailure("人脸照片检测失败，请重新拍摄", error)
+                        notifyFailure(FaceCaptureHint.PHOTO_DETECTION_FAILED, error)
                     }
                 }
                 .addOnCompleteListener(callbackExecutor) {
@@ -93,7 +93,7 @@ internal class CapturedFaceProcessor(
             if (!uprightBitmap.isRecycled) {
                 uprightBitmap.recycle()
             }
-            notifyFailure("人脸照片检测失败，请重新拍摄", error)
+            notifyFailure(FaceCaptureHint.PHOTO_DETECTION_FAILED, error)
             finishProcessing()
         }
     }
@@ -116,7 +116,7 @@ internal class CapturedFaceProcessor(
 
         val croppedFace = imageExtractor.cropFaceFromBitmap(source, face.boundingBox)
         if (croppedFace == null) {
-            notifyFailure("人脸照片处理失败，请重新拍摄")
+            notifyFailure(FaceCaptureHint.PHOTO_PROCESSING_FAILED)
             return
         }
 
@@ -131,29 +131,29 @@ internal class CapturedFaceProcessor(
             if (!croppedFace.isRecycled) {
                 croppedFace.recycle()
             }
-            notifyFailure("人脸照片处理失败，请重新拍摄", error)
+            notifyFailure(FaceCaptureHint.PHOTO_PROCESSING_FAILED, error)
         }
     }
 
     private fun failBeforeDetection(
-        message: String,
+        hint: FaceCaptureHint,
         error: Throwable? = null,
     ) {
         if (!isReleased.get()) {
-            notifyFailure(message, error)
+            notifyFailure(hint, error)
         }
         finishProcessing()
     }
 
     private fun notifyFailure(
-        message: String,
+        hint: FaceCaptureHint,
         error: Throwable? = null,
     ) {
         if (isReleased.get()) return
         if (error != null) {
             logE("Captured face processing failed", tag = TAG, throwable = error)
         }
-        onFailure(message, error)
+        onFailure(hint, error)
     }
 
     private fun finishProcessing() {

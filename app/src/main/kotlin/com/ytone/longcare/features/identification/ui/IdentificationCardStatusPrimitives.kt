@@ -20,24 +20,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.R
 
 @Composable
-internal fun VerifiedStatusRow(personType: String) {
+internal fun VerifiedStatusRow(personType: IdentificationPersonType) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(
             imageVector = Icons.Default.CheckCircle,
-            contentDescription = "验证成功",
+            contentDescription = stringResource(R.string.identification_verified_description),
             tint = Color(0xFF34C759)
         )
         Text(
-            text = "${personType}识别成功",
+            text = stringResource(
+                R.string.identification_verified,
+                stringResource(personType.labelRes),
+            ),
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = Color(0xFF34C759)

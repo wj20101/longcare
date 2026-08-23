@@ -26,8 +26,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.R
 
 @Composable
 internal fun NursingDateTabsRow(
@@ -90,7 +92,7 @@ private fun NursingDateTabItem(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = dateInfo.displayInfo.dayOfWeek,
+                text = stringResource(dateInfo.displayInfo.dayOfWeek.labelRes),
                 fontWeight = FontWeight.Bold,
                 color = tabTextColor
             )
@@ -110,7 +112,7 @@ internal fun NursingTopBar() {
     CenterAlignedTopAppBar(
         title = {
             Text(
-                "护理工作",
+                stringResource(R.string.home_navigation_nursing),
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )

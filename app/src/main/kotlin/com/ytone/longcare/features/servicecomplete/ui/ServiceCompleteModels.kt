@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.servicecomplete.ui
 
-import com.ytone.longcare.model.ServiceProjectM
+import android.content.Context
+import com.ytone.longcare.R
 
 data class ServiceSummary(
     val clientName: String,
@@ -11,40 +12,16 @@ data class ServiceSummary(
     val duration: String
 )
 
-fun getSelectedProjectsContentByIds(
-    allProjects: List<ServiceProjectM>,
-    selectedProjectIds: List<Int>
-): String {
-    return if (selectedProjectIds.isNotEmpty()) {
-        allProjects
-            .filter { project -> selectedProjectIds.contains(project.projectId) }
-            .joinToString(", ") { it.projectName }
-    } else {
-        allProjects.joinToString(", ") { it.projectName }
-    }
-}
-
-fun formatSelectedProjectsDurationByIds(
-    allProjects: List<ServiceProjectM>,
-    selectedProjectIds: List<Int>
-): String {
-    val totalMinutes = if (selectedProjectIds.isNotEmpty()) {
-        allProjects
-            .filter { project -> selectedProjectIds.contains(project.projectId) }
-            .sumOf { it.serviceTime }
-    } else {
-        allProjects.sumOf { it.serviceTime }
-    }
-    return formatServiceDuration(totalMinutes)
-}
-
-fun formatServiceDuration(totalMinutes: Int): String {
+fun formatServiceDuration(context: Context, totalMinutes: Int): String {
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60
     return when {
-        hours > 0 && minutes > 0 -> "${hours}小时${minutes}分钟"
-        hours > 0 -> "${hours}小时"
-        minutes > 0 -> "${minutes}分钟"
-        else -> "0分钟"
+        hours > 0 && minutes > 0 -> context.getString(
+            R.string.duration_hours_minutes,
+            hours,
+            minutes,
+        )
+        hours > 0 -> context.getString(R.string.duration_hours, hours)
+        else -> context.getString(R.string.common_duration_minutes, minutes)
     }
 }

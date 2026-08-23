@@ -9,7 +9,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.core.ui.message.UiMessageSnackbarEffect
 import com.ytone.longcare.features.serviceorders.api.ServiceOrdersListActions
@@ -47,15 +49,15 @@ fun ServiceOrdersListScreen(
 
     val (title, emptyTitle, emptySubtitle) = when (orderType) {
         ServiceOrderType.PENDING_CARE_PLANS -> Triple(
-            "待护理计划",
-            "暂无待护理计划",
-            "当前没有需要执行的护理计划"
+            stringResource(R.string.dashboard_pending_care_plans),
+            stringResource(R.string.dashboard_empty_pending_care_plans),
+            stringResource(R.string.service_orders_pending_empty_subtitle),
         )
 
         ServiceOrderType.SERVICE_RECORDS -> Triple(
-            "已服务记录",
-            "暂无服务记录",
-            "当前没有已完成的服务记录"
+            stringResource(R.string.dashboard_service_records),
+            stringResource(R.string.service_record_empty),
+            stringResource(R.string.service_orders_records_empty_subtitle),
         )
     }
 

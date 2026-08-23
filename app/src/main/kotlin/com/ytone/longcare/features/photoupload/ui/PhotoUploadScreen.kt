@@ -28,15 +28,16 @@ import com.ytone.longcare.features.photoupload.viewmodel.PhotoProcessingViewMode
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.model.OrderKey
 import androidx.compose.ui.res.stringResource
+import androidx.annotation.StringRes
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 
 // --- 数据模型 ---
-enum class PhotoCategory(val title: String, val tagCategory: TagCategory) {
-    BEFORE_CARE("护理前照片", tagCategory = TagCategory.DEFAULT),
-    CENTER_CARE("护理中照片", tagCategory = TagCategory.ORANGE),
-    AFTER_CARE("护理后照片", tagCategory = TagCategory.BLUE)
+enum class PhotoCategory(@param:StringRes val titleRes: Int, val tagCategory: TagCategory) {
+    BEFORE_CARE(R.string.photo_upload_before_care, tagCategory = TagCategory.DEFAULT),
+    CENTER_CARE(R.string.photo_upload_during_care, tagCategory = TagCategory.ORANGE),
+    AFTER_CARE(R.string.photo_upload_after_care, tagCategory = TagCategory.BLUE)
 }
 
 // --- 主屏幕入口 ---
@@ -95,7 +96,7 @@ fun PhotoUploadScreen(
                     openCameraForTask(taskType)
                 }
             } else {
-                showMessage("需要相机权限才能拍照")
+                showMessage(resources.getString(R.string.camera_permission_required))
             }
         }
     )
@@ -139,7 +140,11 @@ fun PhotoUploadScreen(
             containerColor = Color.Transparent,
             bottomBar = {
             PhotoUploadBottomActionBar(
-                buttonText = if (isUploading) "上传中..." else stringResource(R.string.photo_upload_confirm_and_next),
+                buttonText = if (isUploading) {
+                    stringResource(R.string.photo_upload_uploading)
+                } else {
+                    stringResource(R.string.photo_upload_confirm_and_next)
+                },
                 isUploading = isUploading,
                 enabled = hasCategoriesHaveImages && !isUploading,
                 viewModel = viewModel,
@@ -174,7 +179,7 @@ fun PhotoUploadScreen(
 
     if (showCameraPurposeNotice) {
         PermissionPurposeDialog(
-            notice = cameraPermissionPurposeNotice("拍摄服务照片并上传护理记录"),
+            notice = cameraPermissionPurposeNotice(stringResource(R.string.photo_upload_camera_purpose)),
             onConfirm = {
                 showCameraPurposeNotice = false
                 cameraResultLauncher.launch(Manifest.permission.CAMERA)

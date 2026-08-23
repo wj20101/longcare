@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.ytone.longcare.core.ui.R
 
 @HiltViewModel
 class TodayOrderViewModel @Inject constructor(
@@ -47,7 +48,7 @@ class TodayOrderViewModel @Inject constructor(
                 }
 
                 is ApiResult.Exception -> {
-                    messageQueue.enqueue(result.exception.message ?: "网络异常，请稍后重试")
+                    messageQueue.enqueue(R.string.common_network_error_retry)
                     logE(message = "今日订单请求接口失败", throwable = result.exception)
                 }
             }
@@ -69,7 +70,7 @@ class TodayOrderViewModel @Inject constructor(
                 }
 
                 is ApiResult.Exception -> {
-                    messageQueue.enqueue(result.exception.message ?: "网络异常，请稍后重试")
+                    messageQueue.enqueue(R.string.common_network_error_retry)
                     logE(message = "服务中订单请求接口失败", throwable = result.exception)
                 }
             }

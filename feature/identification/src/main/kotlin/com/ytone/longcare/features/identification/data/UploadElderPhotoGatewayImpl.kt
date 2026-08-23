@@ -29,7 +29,7 @@ class UploadElderPhotoGatewayImpl @Inject constructor(
         val uploadedKey = uploadResult.key
 
         return if (!uploadResult.success || uploadedKey == null) {
-            UploadElderPhotoSourceResult.Error(uploadResult.errorMessage ?: "老人照片上传失败，请稍后重试")
+            UploadElderPhotoSourceResult.Error(uploadResult.errorMessage)
         } else {
             UploadElderPhotoSourceResult.Success(uploadedKey = uploadedKey)
         }
@@ -41,10 +41,10 @@ class UploadElderPhotoGatewayImpl @Inject constructor(
     ): UploadElderPhotoOrderResult {
         return when (val result = orderRepository.upUserStartImg(orderId, listOf(uploadedKey))) {
             is ApiResult.Success -> UploadElderPhotoOrderResult.Success
-            is ApiResult.Failure -> UploadElderPhotoOrderResult.Error(result.message)
-            is ApiResult.Exception -> UploadElderPhotoOrderResult.Error(
-                result.exception.message ?: "网络错误，请检查网络连接",
+            is ApiResult.Failure -> UploadElderPhotoOrderResult.Rejected(
+                result.message.takeIf(String::isNotBlank),
             )
+            is ApiResult.Exception -> UploadElderPhotoOrderResult.NetworkError
         }
     }
 }

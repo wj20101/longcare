@@ -20,13 +20,13 @@ internal suspend fun checkUserLocationAndProceed(
     latitude: String,
     pendingNfcData: MutableStateFlow<PendingNfcData?>,
     scope: CoroutineScope,
-    orderDelegate: NfcOrderWorkflowDelegate
+    orderDelegate: NfcOrderWorkflowDelegate,
+    userMessages: NfcUserMessages,
 ) {
     val orderInfo = unifiedOrderRepository.getCachedOrderInfo(orderKey)
         ?: when (val result = unifiedOrderRepository.getOrderInfo(orderKey)) {
             is ApiResult.Success -> result.data
             is ApiResult.Exception -> {
-                val message = "获取订单详情失败: ${result.exception.message ?: "网络异常"}"
                 trackNfcException(
                     event = "location_activation_order_detail_exception",
                     description = "NFC绑定定位前获取订单详情异常",
@@ -40,7 +40,7 @@ internal suspend fun checkUserLocationAndProceed(
                     ),
                 )
                 orderDelegate.showError(
-                    message = message,
+                    message = userMessages.orderDetailLoadFailed,
                     source = "location_activation_order_detail",
                     orderKey = orderKey,
                     signInMode = signInMode,
@@ -55,7 +55,6 @@ internal suspend fun checkUserLocationAndProceed(
             }
 
             is ApiResult.Failure -> {
-                val message = "获取订单详情失败: ${result.message}"
                 trackNfcFailure(
                     event = "location_activation_order_detail_failure",
                     description = "NFC绑定定位前获取订单详情业务失败",
@@ -69,7 +68,7 @@ internal suspend fun checkUserLocationAndProceed(
                     ),
                 )
                 orderDelegate.showError(
-                    message = message,
+                    message = result.message.ifBlank { userMessages.orderDetailLoadFailed },
                     source = "location_activation_order_detail",
                     orderKey = orderKey,
                     signInMode = signInMode,

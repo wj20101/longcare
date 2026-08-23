@@ -9,8 +9,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ytone.longcare.BuildConfig
+import com.ytone.longcare.R
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
@@ -42,7 +44,7 @@ internal fun NfcWorkflowDebugMockButton(
         colors = ButtonDefaults.buttonColors(containerColor = Color.Magenta),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text("Mock NFC Scan (Debug Only)")
+        Text(stringResource(R.string.nfc_debug_mock_scan))
     }
     Spacer(modifier = Modifier.height(24.dp))
 }

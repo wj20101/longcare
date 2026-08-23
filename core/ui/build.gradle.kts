@@ -1,7 +1,7 @@
 plugins {
     id("longcare.android.library")
     id("longcare.kotlin.common")
-    alias(libs.plugins.kotlinCompose)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.ksp)
 }

@@ -9,6 +9,7 @@ import android.os.Looper
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
@@ -115,7 +116,11 @@ class AlarmRingtoneService : Service() {
         }
 
         val orderKey = CountdownNotificationManager.extractOrderKey(intent)
-        val serviceName = CountdownNotificationManager.extractServiceName(intent, "未知服务")
+        val serviceName =
+            CountdownNotificationManager.extractServiceName(
+                intent,
+                getString(R.string.countdown_alarm_default_service),
+            )
 
         if (orderKey.orderId == -1L) {
             logE("AlarmRingtoneService: 启动参数缺少订单信息，停止响铃服务")

@@ -31,11 +31,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.features.profile.api.ProfileActions
+import com.ytone.longcare.R
 import com.ytone.longcare.theme.PrimaryBlue
 import com.ytone.longcare.theme.TextColorPrimary
 import com.ytone.longcare.theme.TextColorSecondary
@@ -52,8 +54,8 @@ fun OptionsCard(actions: ProfileActions) {
     ) {
         Column(modifier = Modifier.padding(vertical = 4.dp)) {
             ProfileOptionRow(
-                text = "用户协议",
-                description = "查看服务条款与使用约定",
+                text = stringResource(R.string.profile_user_agreement),
+                description = stringResource(R.string.profile_user_agreement_description),
                 icon = Icons.Outlined.Description,
                 onClick = actions.onOpenUserAgreement,
                 modifier = Modifier.testTag("profile_user_agreement_entry")
@@ -64,8 +66,8 @@ fun OptionsCard(actions: ProfileActions) {
                 color = Color(0xFFF0F3F8)
             )
             ProfileOptionRow(
-                text = "隐私政策",
-                description = "了解个人信息收集与保护方式",
+                text = stringResource(R.string.profile_privacy_policy),
+                description = stringResource(R.string.profile_privacy_policy_description),
                 icon = Icons.Outlined.PrivacyTip,
                 onClick = actions.onOpenPrivacyPolicy,
                 modifier = Modifier.testTag("profile_privacy_policy_entry")
@@ -146,6 +148,10 @@ fun LogoutButton(onClick: () -> Unit = {}) {
             contentColor = Color.Red
         )
     ) {
-        Text(text = "退出登录", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = stringResource(R.string.profile_logout),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }

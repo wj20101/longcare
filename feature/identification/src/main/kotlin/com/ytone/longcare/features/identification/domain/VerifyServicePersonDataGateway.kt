@@ -5,7 +5,9 @@ sealed interface ServicePersonFaceSource {
 
     data object RequireFaceSetup : ServicePersonFaceSource
 
-    data class Error(val message: String) : ServicePersonFaceSource
+    data class Rejected(val message: String?) : ServicePersonFaceSource
+
+    data object NetworkError : ServicePersonFaceSource
 }
 
 interface VerifyServicePersonDataGateway {

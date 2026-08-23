@@ -3,9 +3,7 @@ package com.ytone.longcare.features.location.viewmodel
 import androidx.lifecycle.ViewModel
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
-import com.ytone.longcare.common.utils.logI
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 
 @HiltViewModel
@@ -14,61 +12,25 @@ class LocationTrackingViewModel @Inject constructor(
 ) : ViewModel() {
 
     /**
-     * 直接将 Manager 的追踪状态暴露给UI层。
-     */
-    val isTracking: StateFlow<Boolean> = trackingManager.isTracking
-
-    /**
-     * 当前正在追踪的订单标识。
-     */
-    val currentTrackingOrderKey: StateFlow<OrderKey?> = trackingManager.currentTrackingOrderKey
-
-    /**
      * 当UI层的"开启"按钮被点击时调用。
      * 将操作委托给 Manager。
      */
-    fun onStartClicked(orderKey: OrderKey) {
+    fun startTracking(orderKey: OrderKey) {
         trackingManager.startTracking(orderKey)
     }
 
     /**
      * 定位权限刚被授予后调用，重启定位引擎再启动追踪。
      */
-    fun onPermissionGrantedAndStartTracking(orderKey: OrderKey) {
-        trackingManager.notifyPermissionGranted()
-        trackingManager.startTracking(orderKey)
-    }
-
-    /**
-     * 进入服务流程时，确保定位会话已开启。
-     * 若检测到已有其他订单的定位上报在运行，先停止旧上报再开启当前会话。
-     */
-    fun ensureLocationSessionForOrder(orderId: Long) {
-        val isTrackingNow = trackingManager.isTracking.value
-        val currentOrderKey = trackingManager.currentTrackingOrderKey.value
-
-        if (isTrackingNow && currentOrderKey != null && currentOrderKey.orderId != orderId) {
-            logI("检测到定位上报正在服务其他订单(orderId=${currentOrderKey.orderId})，先停止旧上报")
-            trackingManager.stopTracking()
-        }
-
-        trackingManager.startLocationSession()
+    fun startTrackingAfterPermissionGrant(orderKey: OrderKey) {
+        trackingManager.startTrackingAfterPermissionGrant(orderKey)
     }
 
     /**
      * 当UI层的"结束"按钮被点击时调用。
-     * 将操作委托给 Manager。
+     * 订单结束后清理上报任务与其前台定位 owner。
      */
-    fun onStopClicked() {
+    fun stopTracking() {
         trackingManager.stopTracking()
-    }
-    
-    /**
-     * 强制停止定位追踪服务。
-     * 无论当前状态如何，都会发送停止命令。
-     * 用于异常情况下确保服务被停止。
-     */
-    fun forceStop() {
-        trackingManager.forceStopTracking()
     }
 }

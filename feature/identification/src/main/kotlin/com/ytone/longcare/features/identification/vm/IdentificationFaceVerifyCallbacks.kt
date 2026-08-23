@@ -1,39 +1,56 @@
 package com.ytone.longcare.features.identification.vm
 
+import androidx.annotation.StringRes
 import com.ytone.longcare.common.faceauth.FaceSdkEvent
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
+import com.ytone.longcare.feature.identification.R
 import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker
 import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker.EventType
 
-internal fun buildFaceVerifyErrorMessage(prefix: String, error: FaceVerifyError?): String {
+internal fun buildFaceVerifyErrorMessage(
+    textResolver: ResourceTextResolver,
+    @StringRes prefixRes: Int,
+    error: FaceVerifyError?,
+): String {
     val reason =
         error?.description
             ?.takeIf { it.isNotBlank() }
             ?: error?.reason?.takeIf { it.isNotBlank() }
-            ?: "请稍后重试"
-    return "$prefix：$reason"
+            ?: textResolver.text(R.string.identification_retry_later)
+    return textResolver.text(
+        R.string.identification_face_error_with_reason,
+        textResolver.text(prefixRes),
+        reason,
+    )
 }
 
 internal fun handleIdentificationFlowFaceSdkEvent(
     event: FaceSdkEvent,
     currentVerificationType: () -> VerificationType?,
     setVerificationState: (FaceVerificationState) -> Unit,
-    onSetFaceVerificationError: (String, FaceVerifyError?) -> Unit,
+    onSetFaceVerificationError: (String, FaceVerifyError?, EventType) -> Unit,
     onServicePersonVerified: () -> Unit,
     onElderVerified: () -> Unit,
     showToast: (String) -> Unit,
+    textResolver: ResourceTextResolver,
 ): Unit = when (event) {
         FaceSdkEvent.InitSuccess -> {
             FaceVerificationEventTracker.trackEvent(
                 eventType = EventType.FACE_INIT_SUCCESS,
                 extras = mapOf("verificationType" to currentVerificationType()),
             )
-            showToast("人脸验证初始化成功")
+            showToast(textResolver.text(R.string.identification_face_init_success))
             setVerificationState(FaceVerificationState.Verifying)
         }
         is FaceSdkEvent.InitFailed -> onSetFaceVerificationError(
-            buildFaceVerifyErrorMessage("人脸识别初始化失败", event.error),
+            buildFaceVerifyErrorMessage(
+                textResolver,
+                R.string.identification_face_recognition_init_failed,
+                event.error,
+            ),
             event.error,
+            EventType.FACE_INIT_ERROR,
         )
         is FaceSdkEvent.VerifySuccess -> {
             FaceVerificationEventTracker.trackEvent(
@@ -43,35 +60,40 @@ internal fun handleIdentificationFlowFaceSdkEvent(
                     "isSuccess" to event.result.isSuccess,
                 ),
             )
-            showToast("人脸验证成功")
+            showToast(textResolver.text(R.string.identification_face_verification_success))
             setVerificationState(FaceVerificationState.Success(event.result))
 
             when (currentVerificationType()) {
                 VerificationType.SERVICE_PERSON -> {
                     onServicePersonVerified()
-                    showToast("服务人员身份验证成功")
+                    showToast(textResolver.text(R.string.identification_service_person_verified))
                 }
 
                 VerificationType.ELDER -> {
                     onElderVerified()
-                    showToast("老人身份验证成功")
+                    showToast(textResolver.text(R.string.identification_elder_verified))
                 }
 
                 null -> {
-                    showToast("验证类型未知，请重新操作")
+                    showToast(textResolver.text(R.string.identification_unknown_verification_type))
                 }
             }
         }
         is FaceSdkEvent.VerifyFailed -> onSetFaceVerificationError(
-            buildFaceVerifyErrorMessage("人脸验证失败", event.error),
+            buildFaceVerifyErrorMessage(
+                textResolver,
+                R.string.identification_face_verification_failed,
+                event.error,
+            ),
             event.error,
+            EventType.FACE_VERIFY_ERROR,
         )
         FaceSdkEvent.Cancelled -> {
             FaceVerificationEventTracker.trackEvent(
                 eventType = EventType.FACE_VERIFY_CANCELLED,
                 extras = mapOf("verificationType" to currentVerificationType()),
             )
-            showToast("人脸验证已取消")
+            showToast(textResolver.text(R.string.identification_face_verification_cancelled))
             setVerificationState(FaceVerificationState.Cancelled)
         }
     }

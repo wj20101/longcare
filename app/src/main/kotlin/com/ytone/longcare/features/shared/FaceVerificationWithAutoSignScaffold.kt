@@ -19,8 +19,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ytone.longcare.features.shared.vm.FaceVerificationViewModel
+import com.ytone.longcare.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,12 +45,12 @@ internal fun FaceVerificationWithAutoSignScaffold(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("智能人脸验证") },
+                title = { Text(stringResource(R.string.face_verification_smart_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = stringResource(R.string.common_back),
                         )
                     }
                 }
@@ -59,7 +61,7 @@ internal fun FaceVerificationWithAutoSignScaffold(
                 Snackbar(
                     action = {
                         TextButton(onClick = onDismissSnackbar) {
-                            Text("确定")
+                            Text(stringResource(R.string.common_confirm))
                         }
                     }
                 ) {

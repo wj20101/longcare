@@ -22,11 +22,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ytone.longcare.R
 
 @Composable
 fun CountdownAlarmScreen(
@@ -59,7 +61,7 @@ fun CountdownAlarmScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "⏰ 服务时间到！",
+                    text = stringResource(R.string.countdown_alarm_title),
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -91,7 +93,7 @@ fun CountdownAlarmScreen(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "订单号: $orderId",
+                            text = stringResource(R.string.countdown_alarm_order_id, orderId),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                             maxLines = 1,
@@ -101,7 +103,7 @@ fun CountdownAlarmScreen(
                 }
 
                 Text(
-                    text = "您的护理服务时间已到，请及时处理相关事务。",
+                    text = stringResource(R.string.countdown_alarm_message),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
@@ -119,7 +121,7 @@ fun CountdownAlarmScreen(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text = "我知道了",
+                        text = stringResource(R.string.common_acknowledge),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium
                     )

@@ -4,6 +4,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.singleClick
 
 @Composable
@@ -16,7 +18,7 @@ internal fun PermissionAlertDialog(
     if (!visible) return
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("权限提示") },
+        title = { Text(stringResource(R.string.service_countdown_permission_title)) },
         text = { Text(message) },
         confirmButton = {
             TextButton(
@@ -25,14 +27,14 @@ internal fun PermissionAlertDialog(
                     onNavigateSettings()
                 }
             ) {
-                Text("去设置")
+                Text(stringResource(R.string.common_go_to_settings))
             }
         },
         dismissButton = {
             TextButton(
                 onClick = singleClick { onDismiss() }
             ) {
-                Text("稍后")
+                Text(stringResource(R.string.common_later))
             }
         }
     )
@@ -47,8 +49,8 @@ internal fun ConfirmEarlyEndServiceDialog(
     if (!visible) return
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("确认提前结束服务") },
-        text = { Text("服务时间尚未结束，确定要提前结束服务吗？") },
+        title = { Text(stringResource(R.string.service_countdown_end_early_title)) },
+        text = { Text(stringResource(R.string.service_countdown_end_early_message)) },
         confirmButton = {
             TextButton(
                 onClick = singleClick {
@@ -56,14 +58,14 @@ internal fun ConfirmEarlyEndServiceDialog(
                     onConfirm()
                 }
             ) {
-                Text("确定")
+                Text(stringResource(R.string.common_confirm))
             }
         },
         dismissButton = {
             TextButton(
                 onClick = singleClick { onDismiss() }
             ) {
-                Text("取消")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -78,13 +80,13 @@ internal fun OrderStateErrorDialog(
     if (!visible) return
     AlertDialog(
         onDismissRequest = { /* 不允许点击外部关闭 */ },
-        title = { Text("订单状态异常") },
+        title = { Text(stringResource(R.string.service_countdown_order_state_error)) },
         text = { Text(message) },
         confirmButton = {
             TextButton(
                 onClick = singleClick { onConfirm() }
             ) {
-                Text("确定")
+                Text(stringResource(R.string.common_confirm))
             }
         }
     )

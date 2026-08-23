@@ -8,6 +8,7 @@ import androidx.camera.core.CameraInfoUnavailableException
 import androidx.camera.core.CameraSelector
 import androidx.camera.view.LifecycleCameraController
 import androidx.core.content.getSystemService
+import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.klogI
 import com.ytone.longcare.features.photoupload.tracker.CameraEventTracker
 import kotlinx.coroutines.CancellationException
@@ -74,7 +75,11 @@ internal suspend fun switchCameraWithFeedback(
     }
 
     if (!targetAvailable) {
-        Toast.makeText(context, "目标摄像头不可用", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            context.getString(R.string.camera_target_unavailable),
+            Toast.LENGTH_SHORT,
+        ).show()
         return
     }
 
@@ -134,7 +139,11 @@ internal fun onSwitchCameraPressed(
                 CameraEventTracker.EventType.CAMERA_SWITCH_ERROR,
                 e
             )
-            Toast.makeText(context, "切换摄像头失败", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                context.getString(R.string.camera_switch_failed),
+                Toast.LENGTH_SHORT,
+            ).show()
         } finally {
             onSwitchingStateChanged(false)
         }

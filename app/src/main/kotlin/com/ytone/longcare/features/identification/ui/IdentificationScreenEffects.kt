@@ -73,7 +73,11 @@ internal fun IdentificationScreenEffects(
         pendingAction?.let { action ->
             when (val effect = action.effect) {
                 is IdentificationUiEffect.NavigateToFaceCapture -> {
-                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(effect.messageRes),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                     actions.onNavigateToManualFaceCapture()
                 }
 

@@ -8,7 +8,7 @@ import com.ytone.longcare.domain.sale.SaleRepository
 import com.ytone.longcare.model.ToDoNumResultModel
 import com.ytone.longcare.model.ToDoResultModel
 import com.ytone.longcare.platform.sales.SalesEvaluationDeviceGateway
-import com.ytone.longcare.platform.text.SalesTextResolver
+import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -92,6 +92,6 @@ class SalesViewModelToDoTest {
             imagePipeline = testImagePipeline(mockk(relaxed = true)),
             evaluationDeviceGateway = mockk<SalesEvaluationDeviceGateway>(relaxed = true),
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
-            textResolver = SalesTextResolver(mockk<Context>(relaxed = true)),
+            textResolver = ResourceTextResolver(mockk<Context>(relaxed = true)),
         )
 }

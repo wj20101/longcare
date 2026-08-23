@@ -37,6 +37,8 @@ import com.ytone.longcare.core.ui.message.UiMessageSnackbarEffect
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.profile.api.ProfileActions
 import com.ytone.longcare.features.profile.vm.ProfileViewModel
+import androidx.compose.ui.res.stringResource
+import com.ytone.longcare.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +71,7 @@ fun ProfileScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "我的",
+                        stringResource(R.string.profile_title),
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
@@ -95,7 +97,11 @@ fun ProfileScreen(
                         LogoutButton(onClick = { viewModel.logout() })
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "版本号: ${BuildConfig.VERSION_NAME}.${BuildConfig.VERSION_CODE}",
+                            text = stringResource(
+                                R.string.profile_version,
+                                BuildConfig.VERSION_NAME,
+                                BuildConfig.VERSION_CODE,
+                            ),
                             color = Color.Black.copy(alpha = 0.5f)
                         )
                         Spacer(modifier = Modifier.height(8.dp))

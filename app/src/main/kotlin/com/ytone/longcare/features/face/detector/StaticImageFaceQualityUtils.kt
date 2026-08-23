@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Rect
 import androidx.core.graphics.scale
 import com.google.mlkit.vision.face.Face
+import com.ytone.longcare.features.face.ui.ManualFaceQualityHint
 import kotlin.math.max
 import kotlin.math.min
 
@@ -59,17 +60,17 @@ internal fun calculateFaceQuality(
 internal fun buildFaceQualityHints(
     quality: Float,
     faceRatio: Float
-): List<String> {
-    val hints = mutableListOf<String>()
+): List<ManualFaceQualityHint> {
+    val hints = mutableListOf<ManualFaceQualityHint>()
     when {
-        quality < 0.3f -> hints.add("人脸质量较差，请重新拍照")
-        quality < 0.5f -> hints.add("人脸质量一般，建议重新拍照")
-        quality < 0.7f -> hints.add("人脸质量良好")
-        else -> hints.add("人脸质量优秀")
+        quality < 0.3f -> hints.add(ManualFaceQualityHint.POOR)
+        quality < 0.5f -> hints.add(ManualFaceQualityHint.AVERAGE)
+        quality < 0.7f -> hints.add(ManualFaceQualityHint.GOOD)
+        else -> hints.add(ManualFaceQualityHint.EXCELLENT)
     }
     when {
-        faceRatio < 0.05f -> hints.add("人脸太小，请靠近一些")
-        faceRatio > 0.4f -> hints.add("人脸太大，请稍微远离")
+        faceRatio < 0.05f -> hints.add(ManualFaceQualityHint.TOO_SMALL)
+        faceRatio > 0.4f -> hints.add(ManualFaceQualityHint.TOO_LARGE)
     }
     return hints
 }

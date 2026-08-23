@@ -13,7 +13,7 @@ import com.ytone.longcare.features.identification.vm.PhotoUploadState
 
 @Composable
 internal fun IdentificationCardStatusArea(
-    personType: String,
+    personType: IdentificationPersonType,
     isVerified: Boolean,
     isCurrentlyVerifying: Boolean,
     identificationState: IdentificationState,
@@ -30,78 +30,91 @@ internal fun IdentificationCardStatusArea(
     }
 
     when {
-        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is FaceSetupState.UploadingImage -> {
-            LoadingStatusRow(text = "上传图片中...")
+        personType == IdentificationPersonType.SERVICE_PERSON &&
+            faceSetupState is FaceSetupState.UploadingImage -> {
+            LoadingStatusRow(text = stringResource(R.string.identification_uploading_image))
         }
 
-        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is FaceSetupState.UpdatingServer -> {
-            LoadingStatusRow(text = "更新服务器...")
+        personType == IdentificationPersonType.SERVICE_PERSON &&
+            faceSetupState is FaceSetupState.UpdatingServer -> {
+            LoadingStatusRow(text = stringResource(R.string.identification_updating_server))
         }
 
-        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is FaceSetupState.UpdatingLocal -> {
-            LoadingStatusRow(text = "更新本地数据...")
+        personType == IdentificationPersonType.SERVICE_PERSON &&
+            faceSetupState is FaceSetupState.UpdatingLocal -> {
+            LoadingStatusRow(text = stringResource(R.string.identification_updating_local))
         }
 
-        personType == IdentificationConstants.SERVICE_PERSON && faceSetupState is FaceSetupState.Error -> {
+        personType == IdentificationPersonType.SERVICE_PERSON &&
+            faceSetupState is FaceSetupState.Error -> {
             RetryStatusColumn(
-                statusText = "设置失败",
+                statusText = stringResource(R.string.identification_setup_failed),
                 statusColor = Color(0xFFFF3B30),
-                buttonText = "重试",
+                buttonText = stringResource(R.string.common_retry),
                 onClick = onRetryFaceSetup
             )
         }
 
         isCurrentlyVerifying && faceVerificationState is FaceVerificationState.Initializing -> {
-            LoadingStatusRow(text = "初始化中...")
+            LoadingStatusRow(text = stringResource(R.string.common_initializing))
         }
 
         isCurrentlyVerifying && faceVerificationState is FaceVerificationState.Verifying -> {
-            LoadingStatusRow(text = "${personType}识别中...")
+            LoadingStatusRow(
+                text = stringResource(
+                    R.string.identification_recognizing,
+                    stringResource(personType.labelRes),
+                ),
+            )
         }
 
         isCurrentlyVerifying && faceVerificationState is FaceVerificationState.Error -> {
             RetryStatusColumn(
-                statusText = "验证失败",
+                statusText = stringResource(R.string.identification_verification_failed),
                 statusColor = Color(0xFFFF3B30),
-                buttonText = "重试",
+                buttonText = stringResource(R.string.common_retry),
                 onClick = onRetryFaceVerification
             )
         }
 
         isCurrentlyVerifying && faceVerificationState is FaceVerificationState.Cancelled -> {
             RetryStatusColumn(
-                statusText = "已取消",
+                statusText = stringResource(R.string.identification_cancelled),
                 statusColor = Color(0xFF666666),
-                buttonText = "重新识别",
+                buttonText = stringResource(R.string.identification_retry),
                 onClick = onRetryFaceVerification
             )
         }
 
         else -> {
             val isButtonEnabled = when {
-                personType == IdentificationConstants.SERVICE_PERSON -> true
-                personType == IdentificationConstants.ELDER && identificationState == IdentificationState.SERVICE_VERIFIED -> true
+                personType == IdentificationPersonType.SERVICE_PERSON -> true
+                personType == IdentificationPersonType.ELDER &&
+                    identificationState == IdentificationState.SERVICE_VERIFIED -> true
                 else -> false
             }
 
-            val isProcessing = personType == IdentificationConstants.ELDER && (
+            val isProcessing = personType == IdentificationPersonType.ELDER && (
                 photoUploadState is PhotoUploadState.Processing ||
                     photoUploadState is PhotoUploadState.Uploading
                 )
 
             if (isProcessing) {
                 val statusText = if (photoUploadState is PhotoUploadState.Uploading) {
-                    "上传中..."
+                    stringResource(R.string.identification_uploading)
                 } else {
-                    "处理中..."
+                    stringResource(R.string.common_processing)
                 }
                 LoadingStatusRow(text = statusText)
             } else {
                 PrimaryActionButton(
-                    text = if (personType == IdentificationConstants.ELDER) {
+                    text = if (personType == IdentificationPersonType.ELDER) {
                         stringResource(R.string.identification_elder_photo_action)
                     } else {
-                        "进行${personType}识别"
+                        stringResource(
+                            R.string.identification_action,
+                            stringResource(personType.labelRes),
+                        )
                     },
                     enabled = isButtonEnabled,
                     textSize = 12.sp,

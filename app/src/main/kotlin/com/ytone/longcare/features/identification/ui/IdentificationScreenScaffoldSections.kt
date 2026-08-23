@@ -16,10 +16,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.common.utils.singleClick
+import com.ytone.longcare.R
 import com.ytone.longcare.features.identification.vm.IdentificationState
 import com.ytone.longcare.ui.components.BottomSafeActionContainer
 
@@ -27,12 +29,17 @@ import com.ytone.longcare.ui.components.BottomSafeActionContainer
 @Composable
 internal fun IdentificationTopBar(onNavigateBack: () -> Unit) {
     CenterAlignedTopAppBar(
-        title = { Text("身份认证", fontWeight = FontWeight.Bold) },
+        title = {
+            Text(
+                stringResource(R.string.face_recognition_guide_title),
+                fontWeight = FontWeight.Bold,
+            )
+        },
         navigationIcon = {
             IconButton(onClick = singleClick(onClick = onNavigateBack)) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回",
+                    contentDescription = stringResource(R.string.common_back),
                 )
             }
         },
@@ -66,7 +73,11 @@ internal fun IdentificationBottomBar(
             ),
             enabled = identificationState == IdentificationState.ELDER_VERIFIED
         ) {
-            Text("下一步", fontSize = 16.sp, color = Color.White)
+            Text(
+                stringResource(R.string.common_next_step),
+                fontSize = 16.sp,
+                color = Color.White,
+            )
         }
     }
 }

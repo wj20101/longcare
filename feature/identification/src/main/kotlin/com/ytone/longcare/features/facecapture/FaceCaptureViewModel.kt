@@ -33,7 +33,7 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
         _uiState.value = FaceCaptureUiState(
             phase = FaceCapturePhase.PREPARING,
             countdownSeconds = PREPARATION_COUNTDOWN_SECONDS,
-            userHint = "请正对摄像头，倒计时后按提示眨眼",
+            userHint = FaceCaptureHint.PREPARE,
         )
 
         preparationJob = viewModelScope.launch {
@@ -53,7 +53,7 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
                     current.copy(
                         phase = FaceCapturePhase.SCANNING,
                         countdownSeconds = 0,
-                        userHint = "请睁开双眼并正对摄像头",
+                        userHint = FaceCaptureHint.OPEN_EYES_FACING_CAMERA,
                     )
                 } else {
                     current
@@ -70,7 +70,7 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
         _uiState.value = current.copy(
             phase = FaceCapturePhase.CAPTURING,
             countdownSeconds = 0,
-            userHint = "眨眼验证完成，正在拍照…",
+            userHint = FaceCaptureHint.BLINK_CAPTURED,
             faceDetected = true,
             faceQuality = quality,
             confirmationProgress = 1f,
@@ -95,7 +95,7 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
                 phase = FaceCapturePhase.CAPTURED,
                 captureReady = true,
                 countdownSeconds = 0,
-                userHint = "人脸采集成功",
+                userHint = FaceCaptureHint.SUCCESS,
                 faceDetected = true,
                 faceQuality = quality,
                 confirmationProgress = 1f,
@@ -104,13 +104,13 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
     }
 
     @Synchronized
-    fun onStillCaptureFailed(message: String) {
+    fun onStillCaptureFailed(hint: FaceCaptureHint) {
         if (!_uiState.value.isStillCaptureRequested || captureAccepted.get()) return
 
         _uiState.value = FaceCaptureUiState(
             phase = FaceCapturePhase.SCANNING,
             countdownSeconds = 0,
-            userHint = message,
+            userHint = hint,
         )
     }
 
@@ -122,7 +122,7 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
         return bitmap
     }
 
-    fun updateUserHint(hint: String) {
+    fun updateUserHint(hint: FaceCaptureHint) {
         _uiState.update { current ->
             if (!captureAccepted.get() && current.isDetectionEnabled) {
                 current.copy(userHint = hint)

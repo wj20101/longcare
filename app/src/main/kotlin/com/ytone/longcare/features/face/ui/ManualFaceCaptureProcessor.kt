@@ -9,6 +9,8 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.features.face.viewmodel.ManualFaceCaptureViewModel
+import com.ytone.longcare.features.face.viewmodel.ManualFaceCaptureFailure
+import com.ytone.longcare.features.face.viewmodel.ManualFaceCaptureFailureStage
 import java.util.concurrent.Executor
 
 internal fun takeManualFacePhoto(
@@ -28,8 +30,8 @@ internal fun takeManualFacePhoto(
                 } catch (e: Exception) {
                     KLogger.e("CameraCapture", "图片处理失败", e)
                     viewModel.onPhotoCaptureFailed(
-                        stage = "process_image",
-                        messagePrefix = "人脸图片处理失败",
+                        stage = ManualFaceCaptureFailureStage.IMAGE_PROCESSING,
+                        failure = ManualFaceCaptureFailure.IMAGE_PROCESSING,
                         error = e,
                     )
                 } finally {
@@ -40,8 +42,8 @@ internal fun takeManualFacePhoto(
             override fun onError(exception: ImageCaptureException) {
                 KLogger.e("CameraCapture", "拍照失败", exception)
                 viewModel.onPhotoCaptureFailed(
-                    stage = "capture",
-                    messagePrefix = "拍照失败",
+                    stage = ManualFaceCaptureFailureStage.CAMERA_CAPTURE,
+                    failure = ManualFaceCaptureFailure.CAMERA_CAPTURE,
                     error = exception,
                 )
             }

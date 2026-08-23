@@ -11,7 +11,7 @@ import com.ytone.longcare.common.utils.logE
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
 
-typealias HintCallback = (hint: String) -> Unit
+typealias HintCallback = (hint: FaceCaptureHint) -> Unit
 typealias FaceDetectionCallback = (snapshot: FaceDetectionSnapshot) -> Unit
 typealias FaceCaptureRequestCallback = (quality: Float) -> Unit
 
@@ -77,12 +77,12 @@ class FaceCaptureAnalyzer(
         when {
             faces.isEmpty() -> {
                 resetDetectionState()
-                onHintChanged("未检测到人脸，请将面部置于取景框内")
+                onHintChanged(FaceCaptureHint.NO_FACE)
             }
 
             faces.size > 1 -> {
                 resetDetectionState()
-                onHintChanged("请确保取景框内只有一人")
+                onHintChanged(FaceCaptureHint.SINGLE_PERSON)
             }
 
             else -> processSingleFace(faces.single())
@@ -110,7 +110,7 @@ class FaceCaptureAnalyzer(
                 quality = positionQuality,
                 progress = 0f,
             )
-            onHintChanged("请保持面部不动，正在确认人脸")
+            onHintChanged(FaceCaptureHint.HOLD_FOR_CONFIRMATION)
             return
         }
 
@@ -133,7 +133,7 @@ class FaceCaptureAnalyzer(
             blinkResult.isReadyToCapture &&
             captureDispatched.compareAndSet(false, true)
         ) {
-            onHintChanged("眨眼验证完成，正在拍照…")
+            onHintChanged(FaceCaptureHint.BLINK_CAPTURED)
             onCaptureRequested(qualityEvaluator.calculate(face))
         } else {
             onHintChanged(blinkResult.stage.userHint)
@@ -174,7 +174,7 @@ class FaceCaptureAnalyzer(
             throwable = error,
         )
         resetDetectionState()
-        onHintChanged("人脸检测失败，请重试")
+        onHintChanged(FaceCaptureHint.DETECTION_FAILED)
     }
 
     private fun resetDetectionState() {
@@ -201,13 +201,13 @@ class FaceCaptureAnalyzer(
         )
     }
 
-    private val FaceBlinkStage.userHint: String
+    private val FaceBlinkStage.userHint: FaceCaptureHint
         get() = when (this) {
-            FaceBlinkStage.WAITING_FOR_OPEN_EYES -> "请睁开双眼并正对摄像头"
-            FaceBlinkStage.WAITING_FOR_BLINK -> "请自然眨一下眼睛"
-            FaceBlinkStage.WAITING_FOR_REOPEN -> "请睁开双眼"
-            FaceBlinkStage.VERIFYING_REOPEN -> "眨眼完成，请保持不动"
-            FaceBlinkStage.COMPLETE -> "眨眼验证完成，正在拍照…"
+            FaceBlinkStage.WAITING_FOR_OPEN_EYES -> FaceCaptureHint.OPEN_EYES_FACING_CAMERA
+            FaceBlinkStage.WAITING_FOR_BLINK -> FaceCaptureHint.BLINK
+            FaceBlinkStage.WAITING_FOR_REOPEN -> FaceCaptureHint.REOPEN_EYES
+            FaceBlinkStage.VERIFYING_REOPEN -> FaceCaptureHint.HOLD_AFTER_BLINK
+            FaceBlinkStage.COMPLETE -> FaceCaptureHint.BLINK_CAPTURED
         }
 
     private companion object {

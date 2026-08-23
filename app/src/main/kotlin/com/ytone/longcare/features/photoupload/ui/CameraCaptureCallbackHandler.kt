@@ -7,6 +7,7 @@ import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import com.ytone.longcare.common.image.WatermarkedCaptureRequest
 import com.ytone.longcare.features.photoupload.tracker.CameraEventTracker
+import com.ytone.longcare.R
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -46,8 +47,11 @@ internal fun createImageSavedCallback(
                         e,
                         mapOf("reason" to "图片处理异常: ${e.message ?: e.javaClass.simpleName}")
                     )
-                    val detail = e.message ?: "请重新拍摄后重试"
-                    Toast.makeText(context, "图片处理失败: $detail", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.camera_image_processing_failed),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                     onError()
                 }
             }
@@ -64,8 +68,11 @@ internal fun createImageSavedCallback(
             )
             cleanupCaptureArtifacts(tempFile, watermarkBitmap)
             scope.launch {
-                val detail = exc.message ?: "请重新拍摄后重试"
-                Toast.makeText(context, "拍照失败: $detail", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.camera_capture_save_failed),
+                    Toast.LENGTH_SHORT,
+                ).show()
                 onError()
             }
         }

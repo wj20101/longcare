@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="login_network_error">网络异常</string>
+    <string name="login_agreement_required">请先阅读并同意用户协议和隐私政策</string>
+    <string name="login_invalid_mobile">请输入有效的 11 位手机号</string>
+    <string name="login_sms_sent">验证码已发送</string>
+    <string name="login_sms_send_failed">发送失败：%1$s</string>
+    <string name="login_invalid_credentials">手机号或验证码格式不正确</string>
+    <string name="login_failed">登录失败：%1$s</string>
+</resources>

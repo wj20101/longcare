@@ -1,72 +1,49 @@
-# 定位模块说明（解耦版）
+# 定位模块说明
 
-## 目标
+## 业务边界
 
-- 定位能力独立：负责采集、缓存、保活。
-- 上报能力独立：负责从定位流取点并上报。
-- 业务模块只依赖统一门面，不直接耦合具体定位实现。
+- 只有订单进行中时采集并实时上报位置。
+- App 切到后台后，由 `location` 类型前台 Service 继续采集和上报。
+- 单个定位点上传失败后直接丢弃；不落库、不排队、不补传。
+- 订单结束成功、退出登录、Token 失效、账号切换、划掉任务或进程终止时停止。
+- App 重启、设备重启或重新登录后不自动恢复旧订单定位。
 
 ## 核心组件
 
 1. `LocationFacade`
-   - 统一定位入口：实时流、fresh 单次定位、缓存定位、保活 acquire/release。
+   - 统一提供快速定位、新鲜定位、缓存定位和前台保活控制。
 2. `LocationKeepAliveManager`
-   - 基于 owner 引用计数管理前台保活服务和定位缓存采集。
+   - 以进程内 owner 和 generation 管理前台 Service，不持久化 desired state。
 3. `LocationTrackingService`
-   - 纯保活服务，只处理前台通知和高德后台定位绑定。
-4. `LocationReportingManager`
-   - 上报任务管理器：跳过陈旧样本、入队、本地重试、调用 `addPosition`。
-5. `ContinuousAmapLocationManager`
-   - 高德持续定位引擎和 isolated fresh 定位实现。
+   - 持有前台通知、高德后台模式和唯一持续定位 collector。
+4. `LocationSampleStore`
+   - 保存短时缓存并发布实时样本；网络较慢时仅保留一个最新待处理点。
+5. `LocationReportingManager`
+   - 校验当前会话样本并直接调用 `AddPostion`，失败不重试。
+6. `LocationSessionLifecycleObserver`
+   - 登出或账号切换时强制停止；登录时绝不恢复定位。
 
-## 调用方式
-
-### 1. 业务取定位（推荐）
-
-```kotlin
-@Inject
-lateinit var locationFacade: LocationFacade
-
-val location = locationFacade.getCurrentLocation()
-```
-
-`getCurrentLocation()` 策略：
-- 先用有效缓存
-- 再尝试高德连续定位流
-- 不回退系统定位，避免坐标系混用
-
-`getFreshLocation()` 策略：
-- 不读取业务缓存
-- 使用独立高德单次定位客户端
-- 使用 SignIn purpose、once/latest、禁用 SDK 定位缓存
-
-### 2. 启停上报
-
-通过 `LocationTrackingManager`（兼容入口）或直接通过 `LocationReportingManager`：
+## 启停上报
 
 ```kotlin
 trackingManager.startTracking(orderKey)
 trackingManager.stopTracking()
 ```
 
-### 3. UI 会话保活
+订单结束必须在结束接口成功后调用 `stopTracking()`。接口失败时订单仍在进行中，定位继续。
+
+## 单次业务定位
 
 ```kotlin
-trackingManager.startLocationSession()
-trackingManager.stopLocationSession()
+val location = locationFacade.getCurrentLocation()
+val freshLocation = locationFacade.getFreshLocation()
 ```
 
-## 离线补偿
+单次定位使用独立高德客户端，不会创建第二个持续定位 collector，也不进入实时上报链路。
 
-- 上报前先写入 `order_locations`（`PENDING`）。
-- 本地记录经纬度、精度、provider、SDK location time、coord type、location type、trusted level。
-- 上传失败标记 `FAILED`，后续持续重试。
-- 上传成功标记 `SUCCESS`。
-- 定期清理历史成功记录。
+## Android 生命周期
 
-## 注意事项
-
-- 运行时仍需定位权限与系统定位开关。
-- `LocationTrackingService` 当前只支持：
-  - `ACTION_ACQUIRE_KEEP_ALIVE`
-  - `ACTION_RELEASE_KEEP_ALIVE`
+- 前台 Service 必须从用户可见的订单流程中启动，并声明 `foregroundServiceType="location"`。
+- Service 返回 `START_NOT_STICKY`，不要求系统在进程终止后重建。
+- Service 使用 `stopWithTask=true`，显式停止和 `onDestroy()` 共用幂等 SDK 清理路径。
+- 进程被硬终止时 Android 不保证调用 `onDestroy()`；不恢复的保证来自“没有任何持久队列或调度任务”。

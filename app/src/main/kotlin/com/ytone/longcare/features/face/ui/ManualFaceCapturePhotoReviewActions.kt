@@ -12,7 +12,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.ytone.longcare.R
 
 @Composable
 internal fun PhotoReviewRetakeButtonRow(
@@ -28,7 +30,7 @@ internal fun PhotoReviewRetakeButtonRow(
         ) {
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("重新拍照")
+            Text(stringResource(R.string.common_retake_photo))
         }
     }
 }

@@ -36,8 +36,8 @@ class LocationEventTrackerTest {
         val result = buildLocationExtras(orderId = 42L, location = location, extras = extras)
 
         assertEquals(42L, result["orderId"])
-        assertEquals("31.23041", result["latitude"])
-        assertEquals("121.47370", result["longitude"])
+        assertTrue("precise latitude must not enter diagnostics", "latitude" !in result)
+        assertTrue("precise longitude must not enter diagnostics", "longitude" !in result)
         assertEquals("amap_fresh", result["provider"])
         assertEquals(12.5f, result["accuracy"])
         assertEquals("gcj02", result["coordType"])

@@ -16,12 +16,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.ytone.longcare.common.text.ResourceTextResolver
+import com.ytone.longcare.feature.login.R
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val loginRepository: LoginRepository,
     private val userSessionRepository: UserSessionRepository,
-    private val loginPreferencesManager: LoginPreferencesManager
+    private val loginPreferencesManager: LoginPreferencesManager,
+    private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
 
     private val _loginState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
@@ -66,7 +69,9 @@ class LoginViewModel @Inject constructor(
                     _startConfigState.value = StartConfigUiState.Error(result.message)
                 }
                 is ApiResult.Exception -> {
-                    _startConfigState.value = StartConfigUiState.Error(result.exception.message ?: "网络异常")
+                    _startConfigState.value = StartConfigUiState.Error(
+                        textResolver.text(R.string.login_network_error),
+                    )
                 }
             }
         }
@@ -76,17 +81,16 @@ class LoginViewModel @Inject constructor(
      * 发送短信验证码
      */
     private fun isValidMobileNumber(mobile: String): Boolean {
-        val regex = "^1[3-9]\\d{9}$"
-        return mobile.matches(regex.toRegex())
+        return mobile.matches(MOBILE_NUMBER_REGEX)
     }
 
     fun sendSmsCode(mobile: String) {
         if (!privacyAgreementConfirmed) {
-            publishFeedback("请先阅读并同意用户协议和隐私政策")
+            publishFeedback(textResolver.text(R.string.login_agreement_required))
             return
         }
         if (!isValidMobileNumber(mobile)) {
-            publishFeedback("请输入有效的11位手机号")
+            publishFeedback(textResolver.text(R.string.login_invalid_mobile))
             return
         }
         viewModelScope.launch {
@@ -94,18 +98,21 @@ class LoginViewModel @Inject constructor(
             when (val result = loginRepository.sendSmsCode(mobile)) {
                 is ApiResult.Success -> {
                     _sendSmsCodeState.value = SendSmsCodeUiState.Success
-                    publishFeedback("验证码已发送")
+                    publishFeedback(textResolver.text(R.string.login_sms_sent))
                     startCountdown()
                 }
 
                 is ApiResult.Failure -> {
-                    val errorMessage = "发送失败: ${result.message}"
+                    val errorMessage = textResolver.text(
+                        R.string.login_sms_send_failed,
+                        result.message,
+                    )
                     _sendSmsCodeState.value = SendSmsCodeUiState.Error(errorMessage)
                     publishFeedback(errorMessage)
                 }
 
                 is ApiResult.Exception -> {
-                    val exceptionMessage = result.exception.message ?: "网络异常"
+                    val exceptionMessage = textResolver.text(R.string.login_network_error)
                     _sendSmsCodeState.value = SendSmsCodeUiState.Error(exceptionMessage)
                     publishFeedback(exceptionMessage)
                 }
@@ -118,11 +125,11 @@ class LoginViewModel @Inject constructor(
      */
     fun login(mobile: String, code: String) {
         if (!privacyAgreementConfirmed) {
-            publishFeedback("请先阅读并同意用户协议和隐私政策")
+            publishFeedback(textResolver.text(R.string.login_agreement_required))
             return
         }
         if (!isValidMobileNumber(mobile) || code.isBlank()) {
-            publishFeedback("手机号或验证码格式不正确")
+            publishFeedback(textResolver.text(R.string.login_invalid_credentials))
             return
         }
         viewModelScope.launch {
@@ -141,13 +148,16 @@ class LoginViewModel @Inject constructor(
                 }
 
                 is ApiResult.Failure -> {
-                    val errorMessage = "登录失败: ${result.message}"
+                    val errorMessage = textResolver.text(
+                        R.string.login_failed,
+                        result.message,
+                    )
                     _loginState.value = LoginUiState.Error(errorMessage)
                     publishFeedback(errorMessage)
                 }
 
                 is ApiResult.Exception -> {
-                    val exceptionMessage = result.exception.message ?: "网络异常"
+                    val exceptionMessage = textResolver.text(R.string.login_network_error)
                     _loginState.value = LoginUiState.Error(exceptionMessage)
                     publishFeedback(exceptionMessage)
                 }
@@ -194,6 +204,7 @@ class LoginViewModel @Inject constructor(
     companion object {
         // 短信倒计时长度
         private const val SMS_TIME_TOTAL = 60
+        private val MOBILE_NUMBER_REGEX = Regex("^1[3-9]\\d{9}$")
     }
 }
 

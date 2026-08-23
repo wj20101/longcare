@@ -69,7 +69,7 @@ fun ServiceHoursScreen(
                     modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "错误: ${state.message}",
+                        text = stringResource(R.string.service_hours_error, state.message),
                         color = MaterialTheme.colorScheme.error
                     )
                 }
@@ -89,7 +89,7 @@ fun ServiceHoursScreen(
                                     val address = state.orderInfo.userInfo?.address ?: ""
                                     if (address.isNotBlank()) {
                                         Text(
-                                            "地址: $address",
+                                            stringResource(R.string.common_address, address),
                                             fontSize = 12.sp,
                                             color = Color.White.copy(alpha = 0.85f)
                                         )
@@ -131,7 +131,8 @@ fun ServiceHoursScreen(
 
                         // "已服务工时"标签，通过 offset 和对齐方式进行叠加
                         ServiceHoursTag(
-                            modifier = Modifier.padding(start = 16.dp), tagText = "已服务工时"
+                            modifier = Modifier.padding(start = 16.dp),
+                            tagText = stringResource(R.string.profile_stat_served_hours),
                         )
                     }
                 }
@@ -142,7 +143,7 @@ fun ServiceHoursScreen(
                     modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "正在初始化...", color = Color.White
+                        text = stringResource(R.string.common_initializing), color = Color.White
                     )
                 }
             }
