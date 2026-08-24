@@ -19,8 +19,10 @@ class FaceBlinkGateTest {
             .isEqualTo(FaceBlinkStage.WAITING_FOR_BLINK)
         assertThat(gate.observe(400L, left = 0.21f, right = 0.22f).stage)
             .isEqualTo(FaceBlinkStage.WAITING_FOR_REOPEN)
-        assertThat(gate.observe(500L, left = 0.88f, right = 0.89f).stage)
+        val reopening = gate.observe(500L, left = 0.88f, right = 0.89f)
+        assertThat(reopening.stage)
             .isEqualTo(FaceBlinkStage.VERIFYING_REOPEN)
+        assertThat(reopening.progress).isEqualTo(0.25f)
         assertThat(gate.observe(650L, left = 0.89f, right = 0.88f).isReadyToCapture)
             .isFalse()
 
@@ -40,20 +42,24 @@ class FaceBlinkGateTest {
         assertThat(gate.observe(200L, left = 0.46f, right = 0.44f).stage)
             .isEqualTo(FaceBlinkStage.WAITING_FOR_BLINK)
         assertThat(gate.observe(300L, left = 0.10f, right = 0.09f).stage)
+            .isEqualTo(FaceBlinkStage.WAITING_FOR_BLINK)
+        assertThat(gate.observe(350L, left = 0.09f, right = 0.10f).stage)
             .isEqualTo(FaceBlinkStage.WAITING_FOR_REOPEN)
-        gate.observe(400L, left = 0.45f, right = 0.43f)
-        gate.observe(550L, left = 0.47f, right = 0.44f)
+        gate.observe(400L, left = 0.32f, right = 0.30f)
+        gate.observe(550L, left = 0.33f, right = 0.31f)
 
-        assertThat(gate.observe(700L, left = 0.48f, right = 0.45f).isReadyToCapture)
+        assertThat(gate.observe(700L, left = 0.32f, right = 0.30f).isReadyToCapture)
             .isTrue()
     }
 
     @Test
-    fun `one strongly closed low frame supports cameras that sample a short blink once`() {
+    fun `one strongly closed frame is noise while two consecutive frames confirm a blink`() {
         val gate = FaceBlinkGate()
         gate.establishBaseline()
 
         assertThat(gate.observe(300L, left = 0.08f, right = 0.09f).stage)
+            .isEqualTo(FaceBlinkStage.WAITING_FOR_BLINK)
+        assertThat(gate.observe(350L, left = 0.09f, right = 0.08f).stage)
             .isEqualTo(FaceBlinkStage.WAITING_FOR_REOPEN)
         gate.observe(400L, left = 0.89f, right = 0.90f)
         gate.observe(550L, left = 0.90f, right = 0.89f)
@@ -67,9 +73,10 @@ class FaceBlinkGateTest {
         val gate = FaceBlinkGate()
         gate.establishBaseline()
 
-        gate.observe(300L, left = 0.22f, right = 0.22f)
+        val noisyClosedFrame = gate.observe(300L, left = 0.22f, right = 0.22f)
         val reopened = gate.observe(400L, left = 0.90f, right = 0.90f)
 
+        assertThat(noisyClosedFrame.progress).isEqualTo(0f)
         assertThat(reopened.stage).isEqualTo(FaceBlinkStage.WAITING_FOR_BLINK)
         assertThat(reopened.isReadyToCapture).isFalse()
     }
@@ -83,7 +90,44 @@ class FaceBlinkGateTest {
         val result = gate.observe(400L, left = 0.07f, right = 0.89f)
 
         assertThat(result.stage).isEqualTo(FaceBlinkStage.WAITING_FOR_BLINK)
-        assertThat(result.progress).isEqualTo(0.3f)
+        assertThat(result.progress).isEqualTo(0f)
+    }
+
+    @Test
+    fun `short reopen probability gaps do not restart the blink flow`() {
+        val gate = FaceBlinkGate()
+        gate.establishBaseline()
+        gate.observe(300L, left = 0.20f, right = 0.19f)
+        gate.observe(350L, left = 0.19f, right = 0.20f)
+
+        val firstReopen = gate.observe(400L, left = 0.90f, right = 0.89f)
+        val firstGap = gate.observe(450L, left = 0.30f, right = 0.90f)
+        val secondReopen = gate.observe(500L, left = 0.89f, right = 0.90f)
+        val secondGap = gate.observe(550L, left = 0.90f, right = 0.30f)
+        val completed = gate.observe(650L, left = 0.91f, right = 0.90f)
+
+        assertThat(firstReopen.stage).isEqualTo(FaceBlinkStage.VERIFYING_REOPEN)
+        assertThat(firstGap.stage).isEqualTo(FaceBlinkStage.VERIFYING_REOPEN)
+        assertThat(secondGap.stage).isEqualTo(FaceBlinkStage.VERIFYING_REOPEN)
+        assertThat(firstGap.progress).isAtLeast(firstReopen.progress)
+        assertThat(secondGap.progress).isAtLeast(secondReopen.progress)
+        assertThat(completed.isReadyToCapture).isTrue()
+    }
+
+    @Test
+    fun `persistent reopen failure waits for new reopen evidence without requesting another blink`() {
+        val gate = FaceBlinkGate()
+        gate.establishBaseline()
+        gate.observe(300L, left = 0.20f, right = 0.19f)
+        gate.observe(350L, left = 0.19f, right = 0.20f)
+        gate.observe(400L, left = 0.90f, right = 0.89f)
+
+        gate.observe(450L, left = 0.20f, right = 0.20f)
+        gate.observe(500L, left = 0.20f, right = 0.20f)
+        val waitingForReopen = gate.observe(550L, left = 0.20f, right = 0.20f)
+
+        assertThat(waitingForReopen.stage).isEqualTo(FaceBlinkStage.WAITING_FOR_REOPEN)
+        assertThat(waitingForReopen.isReadyToCapture).isFalse()
     }
 
     @Test
@@ -116,23 +160,6 @@ class FaceBlinkGateTest {
     }
 
     @Test
-    fun `changed tracking id restarts the complete sequence`() {
-        val gate = FaceBlinkGate()
-        gate.establishBaseline(trackingId = 11)
-        gate.observe(300L, left = 0.08f, right = 0.08f, trackingId = 11)
-
-        val changedFace = gate.observe(
-            timestampMillis = 400L,
-            left = 0.08f,
-            right = 0.08f,
-            trackingId = 22,
-        )
-
-        assertThat(changedFace.stage).isEqualTo(FaceBlinkStage.WAITING_FOR_OPEN_EYES)
-        assertThat(changedFace.progress).isEqualTo(0f)
-    }
-
-    @Test
     fun `invalid position clears previous blink progress`() {
         val gate = FaceBlinkGate()
         gate.establishBaseline()
@@ -154,6 +181,7 @@ class FaceBlinkGateTest {
         val gate = FaceBlinkGate(maximumClosedDurationMillis = 1_000L)
         gate.establishBaseline()
         gate.observe(300L, left = 0.08f, right = 0.08f)
+        gate.observe(350L, left = 0.08f, right = 0.08f)
 
         val timedOut = gate.observe(1_401L, left = 0.90f, right = 0.90f)
 
@@ -161,21 +189,19 @@ class FaceBlinkGateTest {
         assertThat(timedOut.isReadyToCapture).isFalse()
     }
 
-    private fun FaceBlinkGate.establishBaseline(trackingId: Int = 11) {
-        observe(0L, left = 0.90f, right = 0.90f, trackingId = trackingId)
-        observe(100L, left = 0.91f, right = 0.89f, trackingId = trackingId)
-        observe(200L, left = 0.89f, right = 0.91f, trackingId = trackingId)
+    private fun FaceBlinkGate.establishBaseline() {
+        observe(0L, left = 0.90f, right = 0.90f)
+        observe(100L, left = 0.91f, right = 0.89f)
+        observe(200L, left = 0.89f, right = 0.91f)
     }
 
     private fun FaceBlinkGate.observe(
         timestampMillis: Long,
         left: Float,
         right: Float,
-        trackingId: Int? = 11,
         positionQualified: Boolean = true,
     ): FaceBlinkResult = evaluate(
         FaceBlinkObservation(
-            trackingId = trackingId,
             leftEyeOpenProbability = left,
             rightEyeOpenProbability = right,
             positionQualified = positionQualified,

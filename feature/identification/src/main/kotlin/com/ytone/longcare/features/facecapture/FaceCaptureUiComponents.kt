@@ -25,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -47,15 +46,11 @@ internal fun FaceDetectionGuide(
         FaceCapturePhase.PREPARING -> Color.White.copy(alpha = 0.75f)
         FaceCapturePhase.SCANNING -> when {
             !uiState.faceDetected -> Color.White.copy(alpha = 0.75f)
-            uiState.faceQuality > 0.6f -> Color(0xFFFFC107)
+            uiState.facePositionQualified -> Color(0xFFFFC107)
             else -> Color(0xFFFF6B6B)
         }
 
-        FaceCapturePhase.CONFIRMING -> lerp(
-            start = Color(0xFFFFC107),
-            stop = Color(0xFF34C759),
-            fraction = uiState.confirmationProgress,
-        )
+        FaceCapturePhase.CONFIRMING -> Color(0xFF34C759)
 
         FaceCapturePhase.CAPTURING,
         FaceCapturePhase.CAPTURED -> Color(0xFF34C759)

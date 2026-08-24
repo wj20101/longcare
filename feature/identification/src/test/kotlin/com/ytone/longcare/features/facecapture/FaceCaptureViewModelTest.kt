@@ -38,7 +38,7 @@ class FaceCaptureViewModelTest {
         val premature = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
 
         viewModel.startPreparationCountdown()
-        viewModel.onFaceCaptured(premature, quality = 0.95f)
+        viewModel.onFaceCaptured(premature)
 
         assertThat(viewModel.uiState.value.phase).isEqualTo(FaceCapturePhase.PREPARING)
         assertThat(viewModel.uiState.value.countdownSeconds).isEqualTo(3)
@@ -58,31 +58,32 @@ class FaceCaptureViewModelTest {
     }
 
     @Test
-    fun `stable progress enters confirming and loss of face resets it`() = runTest(mainDispatcher) {
-        val viewModel = scanningViewModel()
+    fun `reopen confirmation enters confirming and loss of face returns to scanning`() =
+        runTest(mainDispatcher) {
+            val viewModel = scanningViewModel()
 
-        viewModel.updateFaceDetectionState(
-            FaceDetectionSnapshot(
-                detected = true,
-                quality = 0.91f,
-                confirmationProgress = 0.45f,
-            ),
-        )
+            viewModel.updateFaceDetectionState(
+                FaceDetectionSnapshot(
+                    detected = true,
+                    positionQualified = true,
+                    confirmationProgress = 0.45f,
+                    hint = FaceCaptureHint.HOLD_AFTER_BLINK,
+                ),
+            )
 
-        assertThat(viewModel.uiState.value.phase).isEqualTo(FaceCapturePhase.CONFIRMING)
-        assertThat(viewModel.uiState.value.confirmationProgress).isEqualTo(0.45f)
+            assertThat(viewModel.uiState.value.phase).isEqualTo(FaceCapturePhase.CONFIRMING)
 
-        viewModel.updateFaceDetectionState(
-            FaceDetectionSnapshot(
-                detected = false,
-                quality = 0f,
-                confirmationProgress = 0f,
-            ),
-        )
+            viewModel.updateFaceDetectionState(
+                FaceDetectionSnapshot(
+                    detected = false,
+                    positionQualified = false,
+                    confirmationProgress = 0f,
+                    hint = FaceCaptureHint.NO_FACE,
+                ),
+            )
 
-        assertThat(viewModel.uiState.value.phase).isEqualTo(FaceCapturePhase.SCANNING)
-        assertThat(viewModel.uiState.value.confirmationProgress).isEqualTo(0f)
-    }
+            assertThat(viewModel.uiState.value.phase).isEqualTo(FaceCapturePhase.SCANNING)
+        }
 
     @Test
     fun `first still image after verified blink is accepted and later images are discarded`() =
@@ -91,15 +92,14 @@ class FaceCaptureViewModelTest {
             val first = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
             val later = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
 
-            viewModel.onBlinkVerified(quality = 0.91f)
+            viewModel.onBlinkVerified()
             assertThat(viewModel.uiState.value.phase).isEqualTo(FaceCapturePhase.CAPTURING)
 
-            viewModel.onFaceCaptured(first, quality = 0.91f)
-            viewModel.onFaceCaptured(later, quality = 0.96f)
+            viewModel.onFaceCaptured(first)
+            viewModel.onFaceCaptured(later)
 
             assertThat(viewModel.uiState.value.phase).isEqualTo(FaceCapturePhase.CAPTURED)
             assertThat(viewModel.uiState.value.captureReady).isTrue()
-            assertThat(viewModel.uiState.value.confirmationProgress).isEqualTo(1f)
             assertThat(later.isRecycled).isTrue()
 
             val transferred = viewModel.takeCapturedFace()
@@ -117,10 +117,10 @@ class FaceCaptureViewModelTest {
             val first = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
             val next = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
 
-            viewModel.onBlinkVerified(quality = 0.9f)
-            viewModel.onFaceCaptured(first, quality = 0.9f)
+            viewModel.onBlinkVerified()
+            viewModel.onFaceCaptured(first)
             viewModel.resetCapture()
-            viewModel.onFaceCaptured(next, quality = 0.92f)
+            viewModel.onFaceCaptured(next)
 
             assertThat(first.isRecycled).isTrue()
             assertThat(next.isRecycled).isTrue()
@@ -133,12 +133,11 @@ class FaceCaptureViewModelTest {
         runTest(mainDispatcher) {
             val viewModel = scanningViewModel()
 
-            viewModel.onBlinkVerified(quality = 0.93f)
+            viewModel.onBlinkVerified()
             viewModel.onStillCaptureFailed(FaceCaptureHint.CAPTURE_FAILED)
 
             assertThat(viewModel.uiState.value.phase).isEqualTo(FaceCapturePhase.SCANNING)
             assertThat(viewModel.uiState.value.isDetectionEnabled).isTrue()
-            assertThat(viewModel.uiState.value.confirmationProgress).isEqualTo(0f)
             assertThat(viewModel.uiState.value.userHint).isEqualTo(FaceCaptureHint.CAPTURE_FAILED)
         }
 

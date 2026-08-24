@@ -10,7 +10,7 @@ import com.ytone.longcare.common.utils.logW
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
 
-internal typealias CapturedFaceCallback = (bitmap: Bitmap, quality: Float) -> Unit
+internal typealias CapturedFaceCallback = (bitmap: Bitmap) -> Unit
 internal typealias CapturedFaceFailureCallback = (hint: FaceCaptureHint, error: Throwable?) -> Unit
 
 /**
@@ -24,7 +24,7 @@ internal class CapturedFaceProcessor(
 ) {
     private val detector = FaceDetection.getClient(
         FaceDetectorOptions.Builder()
-            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
+            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
             .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_NONE)
             .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
             .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
@@ -129,7 +129,7 @@ internal class CapturedFaceProcessor(
         }
 
         try {
-            onFaceProcessed(croppedFace, qualityEvaluator.calculate(face))
+            onFaceProcessed(croppedFace)
         } catch (error: Exception) {
             if (!croppedFace.isRecycled) {
                 croppedFace.recycle()

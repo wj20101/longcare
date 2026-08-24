@@ -7,19 +7,12 @@ import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
+import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
 
-typealias HintCallback = (hint: FaceCaptureHint) -> Unit
-typealias FaceDetectionCallback = (snapshot: FaceDetectionSnapshot) -> Unit
-typealias FaceCaptureRequestCallback = (quality: Float) -> Unit
-
-data class FaceDetectionSnapshot(
-    val detected: Boolean,
-    val quality: Float,
-    val confirmationProgress: Float,
-)
+typealias FaceCaptureRequestCallback = () -> Unit
 
 /**
  * CameraX/ML Kit analyzer that verifies one complete blink before requesting a still capture.
@@ -30,8 +23,7 @@ data class FaceDetectionSnapshot(
 class FaceCaptureAnalyzer(
     callbackExecutor: Executor,
     private val onCaptureRequested: FaceCaptureRequestCallback,
-    private val onHintChanged: HintCallback,
-    private val onFaceDetectionChanged: FaceDetectionCallback,
+    onFaceDetectionChanged: FaceDetectionCallback,
 ) {
     private val detector = FaceDetection.getClient(
         FaceDetectorOptions.Builder()
@@ -40,24 +32,28 @@ class FaceCaptureAnalyzer(
             .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
             .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
             .setMinFaceSize(0.2f)
-            .enableTracking()
             .build(),
     )
     private val qualityEvaluator = FaceCaptureQualityEvaluator()
     private val blinkGate = FaceBlinkGate()
+    private val statePublisher = FaceDetectionStatePublisher(onFaceDetectionChanged)
     private val captureDispatched = AtomicBoolean(false)
     private val isDetectionEnabled = AtomicBoolean(false)
     private val isReleased = AtomicBoolean(false)
+    private var lastDiagnosticState: String? = null
 
-    val imageAnalyzer: ImageAnalysis.Analyzer = MlKitAnalyzer(
-        listOf(detector),
-        ImageAnalysis.COORDINATE_SYSTEM_ORIGINAL,
-        callbackExecutor,
-    ) { result ->
-        if (!isReleased.get() && isDetectionEnabled.get()) {
-            handleResult(result)
-        }
-    }
+    val imageAnalyzer: ImageAnalysis.Analyzer = FrameRateLimitedAnalyzer(
+        delegate = MlKitAnalyzer(
+            listOf(detector),
+            ImageAnalysis.COORDINATE_SYSTEM_ORIGINAL,
+            callbackExecutor,
+        ) { result ->
+            if (!isReleased.get() && isDetectionEnabled.get()) {
+                handleResult(result)
+            }
+        },
+        targetFramesPerSecond = FACE_ANALYSIS_FRAMES_PER_SECOND,
+    )
 
     private fun handleResult(result: MlKitAnalyzer.Result) {
         val detectionFailure = result.getThrowable(detector)
@@ -76,13 +72,13 @@ class FaceCaptureAnalyzer(
     private fun processFaces(faces: List<Face>) {
         when {
             faces.isEmpty() -> {
-                resetDetectionState()
-                onHintChanged(FaceCaptureHint.NO_FACE)
+                logDetectionState("no_face")
+                resetDetectionState(FaceCaptureHint.NO_FACE)
             }
 
             faces.size > 1 -> {
-                resetDetectionState()
-                onHintChanged(FaceCaptureHint.SINGLE_PERSON)
+                logDetectionState("multiple_faces")
+                resetDetectionState(FaceCaptureHint.SINGLE_PERSON)
             }
 
             else -> processSingleFace(faces.single())
@@ -90,53 +86,40 @@ class FaceCaptureAnalyzer(
     }
 
     private fun processSingleFace(face: Face) {
-        val positionQuality = qualityEvaluator.calculatePositionQuality(face)
         val positionHint = qualityEvaluator.getPositionHint(face)
         if (positionHint != null) {
+            logDetectionState("position:${positionHint.name}")
             blinkGate.reset()
             publishDetection(
                 detected = true,
-                quality = positionQuality,
+                positionQualified = false,
                 progress = 0f,
+                hint = positionHint,
             )
-            onHintChanged(positionHint)
-            return
-        }
-
-        if (face.trackingId == null) {
-            blinkGate.reset()
-            publishDetection(
-                detected = true,
-                quality = positionQuality,
-                progress = 0f,
-            )
-            onHintChanged(FaceCaptureHint.HOLD_FOR_CONFIRMATION)
             return
         }
 
         val blinkResult = blinkGate.evaluate(
             FaceBlinkObservation(
-                trackingId = face.trackingId,
                 leftEyeOpenProbability = face.leftEyeOpenProbability,
                 rightEyeOpenProbability = face.rightEyeOpenProbability,
                 positionQualified = true,
                 timestampMillis = SystemClock.elapsedRealtime(),
             ),
         )
+        logBlinkState(face, blinkResult)
         publishDetection(
             detected = true,
-            quality = positionQuality,
+            positionQualified = true,
             progress = blinkResult.progress,
+            hint = blinkResult.stage.userHint,
         )
 
         if (
             blinkResult.isReadyToCapture &&
             captureDispatched.compareAndSet(false, true)
         ) {
-            onHintChanged(FaceCaptureHint.BLINK_CAPTURED)
-            onCaptureRequested(qualityEvaluator.calculate(face))
-        } else {
-            onHintChanged(blinkResult.stage.userHint)
+            onCaptureRequested()
         }
     }
 
@@ -145,8 +128,15 @@ class FaceCaptureAnalyzer(
 
         val wasEnabled = isDetectionEnabled.getAndSet(enabled)
         when {
-            enabled && !wasEnabled -> reset()
-            !enabled && wasEnabled -> blinkGate.reset()
+            enabled && !wasEnabled -> {
+                lastDiagnosticState = null
+                statePublisher.reset()
+                reset()
+            }
+            !enabled && wasEnabled -> {
+                blinkGate.reset()
+                statePublisher.reset()
+            }
         }
     }
 
@@ -154,7 +144,7 @@ class FaceCaptureAnalyzer(
         blinkGate.reset()
         captureDispatched.set(false)
         if (!isReleased.get() && isDetectionEnabled.get()) {
-            resetDetectionState()
+            resetDetectionState(FaceCaptureHint.OPEN_EYES_FACING_CAMERA)
         }
     }
 
@@ -173,32 +163,60 @@ class FaceCaptureAnalyzer(
             description = "人脸采集相机帧检测失败",
             throwable = error,
         )
-        resetDetectionState()
-        onHintChanged(FaceCaptureHint.DETECTION_FAILED)
+        resetDetectionState(FaceCaptureHint.DETECTION_FAILED)
     }
 
-    private fun resetDetectionState() {
+    private fun resetDetectionState(hint: FaceCaptureHint) {
         blinkGate.reset()
         publishDetection(
             detected = false,
-            quality = 0f,
+            positionQualified = false,
             progress = 0f,
+            hint = hint,
         )
     }
 
     private fun publishDetection(
         detected: Boolean,
-        quality: Float,
+        positionQualified: Boolean,
         progress: Float,
+        hint: FaceCaptureHint,
     ) {
         if (!isDetectionEnabled.get() || isReleased.get()) return
-        onFaceDetectionChanged(
-            FaceDetectionSnapshot(
-                detected = detected,
-                quality = quality,
-                confirmationProgress = progress,
-            ),
+        statePublisher.publish(
+            detected = detected,
+            positionQualified = positionQualified,
+            progress = progress,
+            hint = hint,
+            timestampMillis = SystemClock.elapsedRealtime(),
         )
+    }
+
+    private fun logBlinkState(face: Face, result: FaceBlinkResult) {
+        val state = "blink:${result.stage.name}"
+        if (state == lastDiagnosticState) return
+
+        lastDiagnosticState = state
+        logD(
+            message = buildString {
+                append("state=")
+                append(result.stage.name)
+                append(", leftEyeOpen=")
+                append(face.leftEyeOpenProbability)
+                append(", rightEyeOpen=")
+                append(face.rightEyeOpenProbability)
+                append(", progress=")
+                append(result.progress)
+            },
+            tag = "FaceCaptureAnalyzer",
+        )
+    }
+
+    private fun logDetectionState(state: String) {
+        if (state == lastDiagnosticState) return
+
+        lastDiagnosticState = state
+        logD("state=$state", tag = "FaceCaptureAnalyzer")
     }
 
     private val FaceBlinkStage.userHint: FaceCaptureHint
@@ -212,5 +230,6 @@ class FaceCaptureAnalyzer(
 
     private companion object {
         const val FACE_CAPTURE_DIAGNOSTIC_CATEGORY = "face_capture"
+        const val FACE_ANALYSIS_FRAMES_PER_SECOND = 20
     }
 }

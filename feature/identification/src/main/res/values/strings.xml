@@ -20,7 +20,7 @@
     <string name="face_capture_wait_for_countdown">倒计时结束后请按提示眨眼</string>
     <string name="face_capture_searching">寻找人脸中…</string>
     <string name="face_capture_checking_quality">检测到人脸，准备眨眼验证</string>
-    <string name="face_capture_confirming_progress">眨眼验证进度 %1$d%%</string>
+    <string name="face_capture_confirming">正在确认眨眼，请保持不动</string>
     <string name="face_capture_capturing">眨眼完成，正在拍照…</string>
     <string name="face_capture_success">采集成功</string>
     <string name="face_capture_camera_permission_title">需要相机权限</string>
@@ -42,7 +42,6 @@
     <string name="face_capture_hint_success">人脸采集成功</string>
     <string name="face_capture_hint_no_face">未检测到人脸，请将面部置于取景框内</string>
     <string name="face_capture_hint_single_person">请确保取景框内只有一人</string>
-    <string name="face_capture_hint_hold_for_confirmation">请保持面部不动，正在确认人脸</string>
     <string name="face_capture_hint_detection_failed">人脸检测失败，请重试</string>
     <string name="face_capture_hint_blink">请自然眨一下眼睛</string>
     <string name="face_capture_hint_reopen_eyes">请睁开双眼</string>

@@ -4,31 +4,6 @@ import com.google.mlkit.vision.face.Face
 import kotlin.math.abs
 
 internal class FaceCaptureQualityEvaluator {
-
-    fun calculate(face: Face): Float {
-        return calculatePositionQuality(face)
-    }
-
-    fun calculatePositionQuality(face: Face): Float {
-        val headAngleScore = when {
-            abs(face.headEulerAngleY) <= 8.0 && abs(face.headEulerAngleZ) <= 6.0 -> 1.0f
-            abs(face.headEulerAngleY) <= MAX_YAW_DEGREES &&
-                abs(face.headEulerAngleZ) <= MAX_ROLL_DEGREES -> 0.7f
-            else -> 0.2f
-        }
-
-        val faceSize = face.boundingBox.width() * face.boundingBox.height()
-        val sizeScore = when {
-            faceSize > 60_000 -> 1.0f
-            faceSize > 45_000 -> 0.8f
-            faceSize >= MINIMUM_FACE_AREA -> 0.6f
-            faceSize > 20_000 -> 0.4f
-            else -> 0.2f
-        }
-
-        return (headAngleScore * 0.65f + sizeScore * 0.35f).coerceIn(0f, 1f)
-    }
-
     fun isPositionQualified(face: Face): Boolean = getPositionHint(face) == null
 
     fun isCaptureReady(face: Face): Boolean = isPositionQualified(face)

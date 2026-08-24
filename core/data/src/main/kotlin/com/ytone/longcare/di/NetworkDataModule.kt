@@ -56,7 +56,9 @@ object NetworkDataModule {
     ): HttpLoggingInterceptor {
         val loggingInterceptor = HttpLoggingInterceptor()
         if (runtimeConfigProvider.isDebug) {
-            loggingInterceptor.level = HttpLoggingInterceptor.Level.BODY
+            // BODY logging serializes large Base64 photos and floods logcat during camera flows.
+            // Request/response lines and timing remain available without exposing payload data.
+            loggingInterceptor.level = HttpLoggingInterceptor.Level.BASIC
         } else {
             loggingInterceptor.level = HttpLoggingInterceptor.Level.NONE
         }

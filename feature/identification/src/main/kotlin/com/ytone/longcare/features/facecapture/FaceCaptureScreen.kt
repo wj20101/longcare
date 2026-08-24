@@ -55,6 +55,7 @@ import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import java.util.concurrent.Executor
 
 /**
  * 人脸捕获主界面
@@ -112,27 +113,21 @@ fun FaceCaptureScreen(
     }
 
     if (hasCamPermission) {
-        // Google Tasks and CameraX can deliver callbacks after this composable is disposed.
-        // Both executors are process-lifetime executors and are never shut down by this screen.
-        val analysisCallbackExecutor = remember(context) {
-            ContextCompat.getMainExecutor(context)
-        }
-        val imageCaptureExecutor = remember { Dispatchers.Default.asExecutor() }
-        val analyzer = remember(viewModel, analysisCallbackExecutor, cameraRetryToken) {
+        // CameraX and Google Tasks can complete after this composition is disposed. This serialized
+        // executor is backed by Dispatchers.Default, is process-lifetime, and is never shut down by
+        // an individual screen. It also keeps per-frame ML work off the main/UI thread.
+        val analyzer = remember(viewModel, cameraRetryToken) {
             FaceCaptureAnalyzer(
-                callbackExecutor = analysisCallbackExecutor,
+                callbackExecutor = FACE_CAPTURE_WORKER_EXECUTOR,
                 onCaptureRequested = viewModel::onBlinkVerified,
-                onHintChanged = { hint ->
-                    viewModel.updateUserHint(hint)
-                },
                 onFaceDetectionChanged = { snapshot ->
                     viewModel.updateFaceDetectionState(snapshot)
                 },
             )
         }
-        val capturedFaceProcessor = remember(viewModel, analysisCallbackExecutor, cameraRetryToken) {
+        val capturedFaceProcessor = remember(viewModel, cameraRetryToken) {
             CapturedFaceProcessor(
-                callbackExecutor = analysisCallbackExecutor,
+                callbackExecutor = FACE_CAPTURE_WORKER_EXECUTOR,
                 onFaceProcessed = viewModel::onFaceCaptured,
                 onFailure = { message, error ->
                     if (error != null) {
@@ -154,7 +149,6 @@ fun FaceCaptureScreen(
             context,
             cameraRetryToken,
             analyzer,
-            analysisCallbackExecutor,
         ) {
             LifecycleCameraController(context).apply {
                 imageAnalysisBackpressureStrategy = ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
@@ -163,7 +157,7 @@ fun FaceCaptureScreen(
                 setEnabledUseCases(
                     CameraController.IMAGE_ANALYSIS or CameraController.IMAGE_CAPTURE,
                 )
-                setImageAnalysisAnalyzer(analysisCallbackExecutor, analyzer.imageAnalyzer)
+                setImageAnalysisAnalyzer(FACE_CAPTURE_WORKER_EXECUTOR, analyzer.imageAnalyzer)
             }
         }
 
@@ -179,7 +173,6 @@ fun FaceCaptureScreen(
             isPreviewStreaming,
             cameraStartupFailed,
             cameraController,
-            imageCaptureExecutor,
             capturedFaceProcessor,
         ) {
             if (
@@ -192,7 +185,7 @@ fun FaceCaptureScreen(
 
             try {
                 cameraController.takePicture(
-                    imageCaptureExecutor,
+                    FACE_CAPTURE_WORKER_EXECUTOR,
                     object : ImageCapture.OnImageCapturedCallback() {
                         override fun onCaptureSuccess(image: ImageProxy) {
                             capturedFaceProcessor.process(image)
@@ -405,6 +398,8 @@ private fun Context.openApplicationSettings() {
 
 private const val CAPTURE_SUCCESS_FEEDBACK_MILLIS = 650L
 private const val FACE_CAPTURE_DIAGNOSTIC_CATEGORY = "face_capture"
+private val FACE_CAPTURE_WORKER_EXECUTOR: Executor =
+    Dispatchers.Default.limitedParallelism(1).asExecutor()
 private val FACE_CAPTURE_RESOLUTION_SELECTOR = ResolutionSelector.Builder()
     .setResolutionStrategy(
         ResolutionStrategy(

@@ -61,9 +61,13 @@ class RequestInterceptor @Inject constructor(
 
                 // KLogger 只对日志文本脱敏；requestBodyBytes 保持原始内容并直接用于后续加密。
                 if (runtimeConfigProvider.isDebug) {
-                    val originalRequestBody = String(requestBodyBytes, Charsets.UTF_8)
+                    val requestBodyLog = if (requestBodyBytes.size <= MAX_LOGGABLE_BODY_BYTES) {
+                        String(requestBodyBytes, Charsets.UTF_8)
+                    } else {
+                        "<omitted large request body: ${requestBodyBytes.size} bytes>"
+                    }
                     logI(
-                        "【请求加密前】URL: ${url}\n请求体（日志已脱敏）: $originalRequestBody",
+                        "【请求加密前】URL: ${url}\n请求体（日志已脱敏）: $requestBodyLog",
                         tag = "RequestInterceptor",
                     )
                 }
@@ -145,5 +149,9 @@ class RequestInterceptor @Inject constructor(
                 append(chars[random.nextInt(chars.length)])
             }
         }
+    }
+
+    private companion object {
+        const val MAX_LOGGABLE_BODY_BYTES = 16 * 1024
     }
 }

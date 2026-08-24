@@ -21,7 +21,6 @@ enum class FaceCaptureHint(@param:StringRes val messageRes: Int) {
     SUCCESS(R.string.face_capture_hint_success),
     NO_FACE(R.string.face_capture_hint_no_face),
     SINGLE_PERSON(R.string.face_capture_hint_single_person),
-    HOLD_FOR_CONFIRMATION(R.string.face_capture_hint_hold_for_confirmation),
     DETECTION_FAILED(R.string.face_capture_hint_detection_failed),
     BLINK(R.string.face_capture_hint_blink),
     REOPEN_EYES(R.string.face_capture_hint_reopen_eyes),
@@ -44,8 +43,7 @@ data class FaceCaptureUiState(
     val captureReady: Boolean = false,
     val userHint: FaceCaptureHint = FaceCaptureHint.CENTER_FACE,
     val faceDetected: Boolean = false,
-    val faceQuality: Float = 0f,
-    val confirmationProgress: Float = 0f,
+    val facePositionQualified: Boolean = false,
 ) {
     val isDetectionEnabled: Boolean
         get() = phase == FaceCapturePhase.SCANNING || phase == FaceCapturePhase.CONFIRMING

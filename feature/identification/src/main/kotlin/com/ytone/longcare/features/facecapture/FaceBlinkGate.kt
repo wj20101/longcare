@@ -12,7 +12,6 @@ internal enum class FaceBlinkStage {
 }
 
 internal data class FaceBlinkObservation(
-    val trackingId: Int?,
     val leftEyeOpenProbability: Float?,
     val rightEyeOpenProbability: Float?,
     val positionQualified: Boolean,
@@ -30,8 +29,10 @@ internal data class FaceBlinkResult(
  *
  * ML Kit eye probabilities vary significantly with eye shape, camera angle, and device. Relative
  * drops avoid rejecting users whose normal open-eye score never reaches a fixed high threshold.
- * A confidence floor, stable baseline, both-eye checks, tracking continuity, and stable reopening
- * still prevent a noisy frame or wink from completing the liveness sequence.
+ * A confidence floor, stable baseline, consecutive both-eye closure, and tolerant-but-bounded
+ * reopening confirmation prevent a noisy frame or wink from completing the liveness sequence.
+ * ML Kit tracking IDs are intentionally not a liveness requirement: the analyzer already enforces
+ * exactly one visible, positioned face, while tracking IDs may legitimately change during a blink.
  */
 internal class FaceBlinkGate(
     private val requiredBaselineSamples: Int = REQUIRED_BASELINE_SAMPLES,
@@ -39,16 +40,14 @@ internal class FaceBlinkGate(
     private val maximumBaselineRange: Float = MAXIMUM_BASELINE_RANGE,
     private val minimumClosedDrop: Float = MINIMUM_CLOSED_DROP,
     private val closedBaselineRatio: Float = CLOSED_BASELINE_RATIO,
-    private val strongClosedProbability: Float = STRONG_CLOSED_PROBABILITY,
-    private val strongClosedDrop: Float = STRONG_CLOSED_DROP,
-    private val strongClosedBaselineRatio: Float = STRONG_CLOSED_BASELINE_RATIO,
+    private val minimumReopenProbability: Float = MINIMUM_REOPEN_PROBABILITY,
     private val reopenBaselineRatio: Float = REOPEN_BASELINE_RATIO,
     private val requiredClosedSamples: Int = REQUIRED_CLOSED_SAMPLES,
     private val requiredReopenSamples: Int = REQUIRED_REOPEN_SAMPLES,
+    private val allowedConsecutiveReopenMisses: Int = ALLOWED_CONSECUTIVE_REOPEN_MISSES,
     private val requiredReopenDurationMillis: Long = REQUIRED_REOPEN_DURATION_MILLIS,
     private val maximumClosedDurationMillis: Long = MAXIMUM_CLOSED_DURATION_MILLIS,
 ) {
-    private var activeTrackingId: Int? = null
     private var stage = FaceBlinkStage.WAITING_FOR_OPEN_EYES
     private val leftBaselineSamples = mutableListOf<Float>()
     private val rightBaselineSamples = mutableListOf<Float>()
@@ -56,6 +55,8 @@ internal class FaceBlinkGate(
     private var rightOpenBaseline: Float? = null
     private var closedSampleCount = 0
     private var reopenSampleCount = 0
+    private var consecutiveReopenMisses = 0
+    private var reopenVerificationProgress = 0f
     private var closedConfirmedAtMillis: Long? = null
     private var reopenStartedAtMillis: Long? = null
     private var lastTimestampMillis: Long? = null
@@ -66,19 +67,17 @@ internal class FaceBlinkGate(
         require(maximumBaselineRange in 0f..1f)
         require(minimumClosedDrop in 0f..1f)
         require(closedBaselineRatio in 0f..1f)
-        require(strongClosedProbability in 0f..1f)
-        require(strongClosedDrop >= minimumClosedDrop)
-        require(strongClosedBaselineRatio in 0f..closedBaselineRatio)
+        require(minimumReopenProbability in 0f..minimumReliableOpenProbability)
         require(reopenBaselineRatio in closedBaselineRatio..1f)
         require(requiredClosedSamples > 0)
         require(requiredReopenSamples > 0)
+        require(allowedConsecutiveReopenMisses >= 0)
         require(requiredReopenDurationMillis > 0L)
         require(maximumClosedDurationMillis > requiredReopenDurationMillis)
     }
 
     @Synchronized
     fun evaluate(observation: FaceBlinkObservation): FaceBlinkResult {
-        val trackingId = observation.trackingId
         val leftEyeOpen = observation.leftEyeOpenProbability
         val rightEyeOpen = observation.rightEyeOpenProbability
         val probabilitiesAvailable = leftEyeOpen != null &&
@@ -88,7 +87,7 @@ internal class FaceBlinkGate(
             leftEyeOpen in 0f..1f &&
             rightEyeOpen in 0f..1f
 
-        if (trackingId == null || !observation.positionQualified || !probabilitiesAvailable) {
+        if (!observation.positionQualified || !probabilitiesAvailable) {
             resetLocked()
             return currentResult()
         }
@@ -98,10 +97,6 @@ internal class FaceBlinkGate(
             resetLocked()
         }
 
-        if (activeTrackingId != trackingId) {
-            resetLocked()
-            activeTrackingId = trackingId
-        }
         lastTimestampMillis = observation.timestampMillis
 
         if (stage == FaceBlinkStage.WAITING_FOR_OPEN_EYES) {
@@ -117,8 +112,6 @@ internal class FaceBlinkGate(
 
         val bothEyesClosed = isEyeClosed(leftEyeOpen, leftBaseline) &&
             isEyeClosed(rightEyeOpen, rightBaseline)
-        val bothEyesStronglyClosed = isEyeStronglyClosed(leftEyeOpen, leftBaseline) &&
-            isEyeStronglyClosed(rightEyeOpen, rightBaseline)
         val bothEyesReopened = isEyeReopened(leftEyeOpen, leftBaseline) &&
             isEyeReopened(rightEyeOpen, rightBaseline)
 
@@ -129,7 +122,6 @@ internal class FaceBlinkGate(
             )
             FaceBlinkStage.WAITING_FOR_BLINK -> observeBlink(
                 bothEyesClosed = bothEyesClosed,
-                bothEyesStronglyClosed = bothEyesStronglyClosed,
             )
             FaceBlinkStage.WAITING_FOR_REOPEN -> observeReopen(
                 bothEyesReopened = bothEyesReopened,
@@ -179,30 +171,19 @@ internal class FaceBlinkGate(
             return currentResult()
         }
 
-        return currentResult(
-            progress = INITIAL_OPEN_PROGRESS *
-                leftBaselineSamples.size.toFloat() / requiredBaselineSamples,
-        )
+        return currentResult()
     }
 
     private fun observeBlink(
         bothEyesClosed: Boolean,
-        bothEyesStronglyClosed: Boolean,
     ): FaceBlinkResult {
-        closedSampleCount = when {
-            bothEyesStronglyClosed -> requiredClosedSamples
-            bothEyesClosed -> closedSampleCount + 1
-            else -> 0
-        }
+        closedSampleCount = if (bothEyesClosed) closedSampleCount + 1 else 0
         if (closedSampleCount >= requiredClosedSamples) {
             stage = FaceBlinkStage.WAITING_FOR_REOPEN
             closedConfirmedAtMillis = requireNotNull(lastTimestampMillis)
             return currentResult()
         }
-        return currentResult(
-            progress = WAITING_FOR_BLINK_PROGRESS +
-                BLINK_PROGRESS_RANGE * closedSampleCount.toFloat() / requiredClosedSamples,
-        )
+        return currentResult()
     }
 
     private fun observeReopen(
@@ -220,6 +201,8 @@ internal class FaceBlinkGate(
             stage = FaceBlinkStage.VERIFYING_REOPEN
             reopenStartedAtMillis = timestampMillis
             reopenSampleCount = 1
+            consecutiveReopenMisses = 0
+            reopenVerificationProgress = 0f
         }
         return currentResult()
     }
@@ -235,19 +218,24 @@ internal class FaceBlinkGate(
             return observeInitialOpenEyes(leftEyeOpen, rightEyeOpen)
         }
 
-        if (!bothEyesReopened) {
-            stage = FaceBlinkStage.WAITING_FOR_REOPEN
-            reopenStartedAtMillis = null
-            reopenSampleCount = 0
-            return currentResult()
+        if (bothEyesReopened) {
+            reopenSampleCount += 1
+            consecutiveReopenMisses = 0
+        } else {
+            consecutiveReopenMisses += 1
+            if (consecutiveReopenMisses > allowedConsecutiveReopenMisses) {
+                resetReopenVerificationLocked()
+                return currentResult()
+            }
+            return currentResult(progress = currentReopenProgress())
         }
 
-        reopenSampleCount += 1
         val reopenStartedAt = requireNotNull(reopenStartedAtMillis)
         val elapsedMillis = timestampMillis - reopenStartedAt
         val sampleProgress = reopenSampleCount.toFloat() / requiredReopenSamples
         val durationProgress = elapsedMillis.toFloat() / requiredReopenDurationMillis
         val verificationProgress = min(sampleProgress, durationProgress).coerceIn(0f, 1f)
+        reopenVerificationProgress = max(reopenVerificationProgress, verificationProgress)
 
         if (
             reopenSampleCount >= requiredReopenSamples &&
@@ -258,7 +246,7 @@ internal class FaceBlinkGate(
         }
 
         return currentResult(
-            progress = REOPEN_PROGRESS_START + REOPEN_PROGRESS_RANGE * verificationProgress,
+            progress = currentReopenProgress(),
         )
     }
 
@@ -269,21 +257,16 @@ internal class FaceBlinkGate(
         baseline - probability >= minimumClosedDrop &&
             probability <= baseline * closedBaselineRatio
 
-    private fun isEyeStronglyClosed(
-        probability: Float,
-        baseline: Float,
-    ): Boolean =
-        probability <= strongClosedProbability &&
-            baseline - probability >= strongClosedDrop &&
-            probability <= baseline * strongClosedBaselineRatio
-
     private fun isEyeReopened(
         probability: Float,
         baseline: Float,
     ): Boolean = probability >= max(
-        minimumReliableOpenProbability,
+        minimumReopenProbability,
         baseline * reopenBaselineRatio,
     )
+
+    private fun currentReopenProgress(): Float =
+        REOPEN_PROGRESS_START + REOPEN_PROGRESS_RANGE * reopenVerificationProgress
 
     private fun baselineSamplesAreStable(): Boolean =
         leftBaselineSamples.range() <= maximumBaselineRange &&
@@ -302,7 +285,6 @@ internal class FaceBlinkGate(
         )
 
     private fun resetLocked() {
-        activeTrackingId = null
         lastTimestampMillis = null
         resetProgressLocked()
     }
@@ -314,8 +296,18 @@ internal class FaceBlinkGate(
         rightOpenBaseline = null
         closedSampleCount = 0
         reopenSampleCount = 0
+        consecutiveReopenMisses = 0
+        reopenVerificationProgress = 0f
         closedConfirmedAtMillis = null
         reopenStartedAtMillis = null
+    }
+
+    private fun resetReopenVerificationLocked() {
+        stage = FaceBlinkStage.WAITING_FOR_REOPEN
+        reopenStartedAtMillis = null
+        reopenSampleCount = 0
+        consecutiveReopenMisses = 0
+        reopenVerificationProgress = 0f
     }
 
     private fun clearBaselineSamples() {
@@ -331,8 +323,8 @@ internal class FaceBlinkGate(
     private val FaceBlinkStage.baseProgress: Float
         get() = when (this) {
             FaceBlinkStage.WAITING_FOR_OPEN_EYES -> 0f
-            FaceBlinkStage.WAITING_FOR_BLINK -> WAITING_FOR_BLINK_PROGRESS
-            FaceBlinkStage.WAITING_FOR_REOPEN -> REOPEN_PROGRESS_START
+            FaceBlinkStage.WAITING_FOR_BLINK -> 0f
+            FaceBlinkStage.WAITING_FOR_REOPEN -> 0f
             FaceBlinkStage.VERIFYING_REOPEN -> REOPEN_PROGRESS_START
             FaceBlinkStage.COMPLETE -> 1f
         }
@@ -343,19 +335,15 @@ internal class FaceBlinkGate(
         const val MAXIMUM_BASELINE_RANGE = 0.16f
         const val MINIMUM_CLOSED_DROP = 0.18f
         const val CLOSED_BASELINE_RATIO = 0.55f
-        const val STRONG_CLOSED_PROBABILITY = 0.18f
-        const val STRONG_CLOSED_DROP = 0.25f
-        const val STRONG_CLOSED_BASELINE_RATIO = 0.4f
-        const val REOPEN_BASELINE_RATIO = 0.78f
+        const val MINIMUM_REOPEN_PROBABILITY = 0.25f
+        const val REOPEN_BASELINE_RATIO = 0.65f
         const val REQUIRED_CLOSED_SAMPLES = 2
         const val REQUIRED_REOPEN_SAMPLES = 3
+        const val ALLOWED_CONSECUTIVE_REOPEN_MISSES = 2
         const val REQUIRED_REOPEN_DURATION_MILLIS = 250L
         const val MAXIMUM_CLOSED_DURATION_MILLIS = 1_500L
 
-        private const val INITIAL_OPEN_PROGRESS = 0.2f
-        private const val WAITING_FOR_BLINK_PROGRESS = 0.3f
-        private const val BLINK_PROGRESS_RANGE = 0.3f
-        private const val REOPEN_PROGRESS_START = 0.65f
-        private const val REOPEN_PROGRESS_RANGE = 0.35f
+        private const val REOPEN_PROGRESS_START = 0.25f
+        private const val REOPEN_PROGRESS_RANGE = 0.75f
     }
 }

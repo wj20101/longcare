@@ -63,7 +63,7 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
     }
 
     @Synchronized
-    fun onBlinkVerified(quality: Float) {
+    fun onBlinkVerified() {
         val current = _uiState.value
         if (!current.isDetectionEnabled || captureAccepted.get()) return
 
@@ -72,13 +72,12 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
             countdownSeconds = 0,
             userHint = FaceCaptureHint.BLINK_CAPTURED,
             faceDetected = true,
-            faceQuality = quality,
-            confirmationProgress = 1f,
+            facePositionQualified = true,
         )
     }
 
     @Synchronized
-    fun onFaceCaptured(faceBitmap: Bitmap, quality: Float) {
+    fun onFaceCaptured(faceBitmap: Bitmap) {
         if (!_uiState.value.isStillCaptureRequested) {
             faceBitmap.recycle()
             return
@@ -97,8 +96,7 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
                 countdownSeconds = 0,
                 userHint = FaceCaptureHint.SUCCESS,
                 faceDetected = true,
-                faceQuality = quality,
-                confirmationProgress = 1f,
+                facePositionQualified = true,
             )
         }
     }
@@ -122,28 +120,18 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
         return bitmap
     }
 
-    fun updateUserHint(hint: FaceCaptureHint) {
-        _uiState.update { current ->
-            if (!captureAccepted.get() && current.isDetectionEnabled) {
-                current.copy(userHint = hint)
-            } else {
-                current
-            }
-        }
-    }
-
     fun updateFaceDetectionState(snapshot: FaceDetectionSnapshot) {
         _uiState.update { current ->
             if (!captureAccepted.get() && current.isDetectionEnabled) {
                 current.copy(
-                    phase = if (snapshot.confirmationProgress > 0f) {
+                    phase = if (snapshot.isConfirmingBlink) {
                         FaceCapturePhase.CONFIRMING
                     } else {
                         FaceCapturePhase.SCANNING
                     },
                     faceDetected = snapshot.detected,
-                    faceQuality = snapshot.quality,
-                    confirmationProgress = snapshot.confirmationProgress,
+                    facePositionQualified = snapshot.positionQualified,
+                    userHint = snapshot.hint,
                 )
             } else {
                 current
@@ -170,3 +158,12 @@ class FaceCaptureViewModel @Inject constructor() : ViewModel() {
         const val COUNTDOWN_TICK_MILLIS = 1_000L
     }
 }
+
+private val FaceDetectionSnapshot.isConfirmingBlink: Boolean
+    get() = hint in CONFIRMING_BLINK_HINTS
+
+private val CONFIRMING_BLINK_HINTS = setOf(
+    FaceCaptureHint.REOPEN_EYES,
+    FaceCaptureHint.HOLD_AFTER_BLINK,
+    FaceCaptureHint.BLINK_CAPTURED,
+)
