@@ -16,14 +16,9 @@ object FaceVerificationEventTracker {
     private const val TAG = "FaceVerificationEventTracker"
 
     enum class EventType(val code: String, val description: String) {
-        SERVICE_FACE_CACHE_HIT("service_face_cache_hit", "服务人员本地人脸缓存命中"),
         SERVICE_REMOTE_FACE_SELECTED("service_remote_face_selected", "服务人员使用服务端人脸照片"),
         SERVICE_FACE_SETUP_REQUIRED("service_face_setup_required", "服务人员需要设置人脸"),
         SERVICE_FACE_SOURCE_ERROR("service_face_source_error", "服务人员人脸来源获取失败"),
-        FACE_CACHE_READ_SUCCESS("face_cache_read_success", "人脸缓存读取成功"),
-        FACE_CACHE_INVALID("face_cache_invalid", "人脸缓存无效"),
-        FACE_CACHE_WRITE_SUCCESS("face_cache_write_success", "人脸缓存写入成功"),
-        FACE_CACHE_WRITE_ERROR("face_cache_write_error", "人脸缓存写入失败"),
         REMOTE_FACE_DOWNLOAD_SUCCESS("remote_face_download_success", "服务端人脸照片下载成功"),
         REMOTE_FACE_DOWNLOAD_ERROR("remote_face_download_error", "服务端人脸照片下载失败"),
         FACE_INIT_SUCCESS("face_init_success", "人脸验证初始化成功"),

@@ -5,13 +5,12 @@ sealed interface ServicePersonFaceSource {
 
     data object RequireFaceSetup : ServicePersonFaceSource
 
-    data class Rejected(val message: String?) : ServicePersonFaceSource
-
-    data object NetworkError : ServicePersonFaceSource
+    /** 会话失效已经由全局网络层处理，业务页面不得再发起本地导航。 */
+    data object SessionInvalidated : ServicePersonFaceSource
 }
 
 interface VerifyServicePersonDataGateway {
-    suspend fun readCachedFace(userId: Int): String?
-
     suspend fun resolveFaceSource(): ServicePersonFaceSource
+
+    suspend fun clearLegacyFaceArtifacts(userId: Int)
 }

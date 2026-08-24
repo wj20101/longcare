@@ -9,12 +9,15 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.Settings
+import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,9 +48,10 @@ import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 import com.ytone.longcare.feature.identification.R
-import java.util.concurrent.Executors
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -108,12 +112,15 @@ fun FaceCaptureScreen(
     }
 
     if (hasCamPermission) {
-        val analysisExecutor = remember(cameraRetryToken) {
-            Executors.newSingleThreadExecutor()
+        // Google Tasks and CameraX can deliver callbacks after this composable is disposed.
+        // Both executors are process-lifetime executors and are never shut down by this screen.
+        val analysisCallbackExecutor = remember(context) {
+            ContextCompat.getMainExecutor(context)
         }
-        val analyzer = remember(viewModel, analysisExecutor, cameraRetryToken) {
+        val imageCaptureExecutor = remember { Dispatchers.Default.asExecutor() }
+        val analyzer = remember(viewModel, analysisCallbackExecutor, cameraRetryToken) {
             FaceCaptureAnalyzer(
-                callbackExecutor = analysisExecutor,
+                callbackExecutor = analysisCallbackExecutor,
                 onCaptureRequested = viewModel::onBlinkVerified,
                 onHintChanged = { hint ->
                     viewModel.updateUserHint(hint)
@@ -123,9 +130,9 @@ fun FaceCaptureScreen(
                 },
             )
         }
-        val capturedFaceProcessor = remember(viewModel, analysisExecutor, cameraRetryToken) {
+        val capturedFaceProcessor = remember(viewModel, analysisCallbackExecutor, cameraRetryToken) {
             CapturedFaceProcessor(
-                callbackExecutor = analysisExecutor,
+                callbackExecutor = analysisCallbackExecutor,
                 onFaceProcessed = viewModel::onFaceCaptured,
                 onFailure = { message, error ->
                     if (error != null) {
@@ -143,14 +150,20 @@ fun FaceCaptureScreen(
         var cameraStartupFailed by remember(cameraRetryToken) { mutableStateOf(false) }
 
         // 创建相机控制器
-        val cameraController = remember(context, cameraRetryToken, analyzer, analysisExecutor) {
+        val cameraController = remember(
+            context,
+            cameraRetryToken,
+            analyzer,
+            analysisCallbackExecutor,
+        ) {
             LifecycleCameraController(context).apply {
-                // 优化设置
                 imageAnalysisBackpressureStrategy = ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
+                imageCaptureMode = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+                setImageCaptureResolutionSelector(FACE_CAPTURE_RESOLUTION_SELECTOR)
                 setEnabledUseCases(
                     CameraController.IMAGE_ANALYSIS or CameraController.IMAGE_CAPTURE,
                 )
-                setImageAnalysisAnalyzer(analysisExecutor, analyzer.imageAnalyzer)
+                setImageAnalysisAnalyzer(analysisCallbackExecutor, analyzer.imageAnalyzer)
             }
         }
 
@@ -166,7 +179,7 @@ fun FaceCaptureScreen(
             isPreviewStreaming,
             cameraStartupFailed,
             cameraController,
-            analysisExecutor,
+            imageCaptureExecutor,
             capturedFaceProcessor,
         ) {
             if (
@@ -179,7 +192,7 @@ fun FaceCaptureScreen(
 
             try {
                 cameraController.takePicture(
-                    analysisExecutor,
+                    imageCaptureExecutor,
                     object : ImageCapture.OnImageCapturedCallback() {
                         override fun onCaptureSuccess(image: ImageProxy) {
                             capturedFaceProcessor.process(image)
@@ -215,13 +228,12 @@ fun FaceCaptureScreen(
             }
         }
 
-        DisposableEffect(cameraController, analyzer, capturedFaceProcessor, analysisExecutor) {
+        DisposableEffect(cameraController, analyzer, capturedFaceProcessor) {
             onDispose {
                 cameraController.clearImageAnalysisAnalyzer()
                 capturedFaceProcessor.release()
                 analyzer.release()
                 cameraController.unbind()
-                analysisExecutor.shutdown()
             }
         }
 
@@ -241,7 +253,6 @@ fun FaceCaptureScreen(
                     cameraController.clearImageAnalysisAnalyzer()
                     capturedFaceProcessor.release()
                     analyzer.release()
-                    analysisExecutor.shutdown()
                     cameraStartupFailed = true
                     isPreviewStreaming = false
                     return@LaunchedEffect
@@ -283,7 +294,6 @@ fun FaceCaptureScreen(
                 capturedFaceProcessor.release()
                 analyzer.release()
                 runCatching { cameraController.unbind() }
-                analysisExecutor.shutdown()
                 cameraStartupFailed = true
                 isPreviewStreaming = false
             }
@@ -395,3 +405,11 @@ private fun Context.openApplicationSettings() {
 
 private const val CAPTURE_SUCCESS_FEEDBACK_MILLIS = 650L
 private const val FACE_CAPTURE_DIAGNOSTIC_CATEGORY = "face_capture"
+private val FACE_CAPTURE_RESOLUTION_SELECTOR = ResolutionSelector.Builder()
+    .setResolutionStrategy(
+        ResolutionStrategy(
+            Size(1280, 960),
+            ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
+        ),
+    )
+    .build()

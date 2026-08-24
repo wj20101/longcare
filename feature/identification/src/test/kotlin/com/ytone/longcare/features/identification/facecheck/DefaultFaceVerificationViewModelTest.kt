@@ -2,7 +2,6 @@ package com.ytone.longcare.features.identification.facecheck
 
 import android.graphics.Bitmap
 import com.google.common.truth.Truth.assertThat
-import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.features.identification.domain.CheckFaceGateway
 import com.ytone.longcare.features.identification.domain.CheckFaceRemoteResult
 import com.ytone.longcare.features.identification.domain.CheckFaceUseCase
@@ -20,7 +19,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -39,11 +37,10 @@ class DefaultFaceVerificationViewModelTest {
 
     @Test
     fun `camera bitmap is recycled after successful verification`() = runTest(mainDispatcher) {
-        val gateway = SuccessGateway()
+        val gateway = ResultGateway(CheckFaceRemoteResult.Success)
         val viewModel = DefaultFaceVerificationViewModel(
             imageEncoder = FaceImageEncoder(mainDispatcher),
             checkFaceUseCase = CheckFaceUseCase(gateway),
-            textResolver = ResourceTextResolver(RuntimeEnvironment.getApplication()),
         )
         val bitmap = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
 
@@ -59,7 +56,43 @@ class DefaultFaceVerificationViewModelTest {
         assertThat(bitmap.isRecycled).isTrue()
     }
 
-    private class SuccessGateway : CheckFaceGateway {
+    @Test
+    fun `missing registered face is terminal and cannot be mistaken for retryable mismatch`() =
+        runTest(mainDispatcher) {
+            val viewModel = createViewModel(CheckFaceRemoteResult.MissingRegisteredFace)
+            val bitmap = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
+
+            viewModel.verifyFace(OrderKey(orderId = 123L), bitmap)
+            advanceUntilIdle()
+
+            assertThat(viewModel.uiState.value)
+                .isInstanceOf(DefaultFaceVerificationUiState.TerminalError::class.java)
+            assertThat(bitmap.isRecycled).isTrue()
+        }
+
+    @Test
+    fun `session invalidation waits for global logout navigation without retry`() =
+        runTest(mainDispatcher) {
+            val viewModel = createViewModel(CheckFaceRemoteResult.SessionInvalidated)
+            val bitmap = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
+
+            viewModel.verifyFace(OrderKey(orderId = 123L), bitmap)
+            advanceUntilIdle()
+
+            assertThat(viewModel.uiState.value)
+                .isEqualTo(DefaultFaceVerificationUiState.SessionInvalidated)
+            assertThat(bitmap.isRecycled).isTrue()
+        }
+
+    private fun createViewModel(result: CheckFaceRemoteResult) =
+        DefaultFaceVerificationViewModel(
+            imageEncoder = FaceImageEncoder(mainDispatcher),
+            checkFaceUseCase = CheckFaceUseCase(ResultGateway(result)),
+        )
+
+    private class ResultGateway(
+        private val result: CheckFaceRemoteResult,
+    ) : CheckFaceGateway {
         var callCount = 0
 
         override suspend fun checkFace(
@@ -67,7 +100,7 @@ class DefaultFaceVerificationViewModelTest {
             faceImageBase64: String,
         ): CheckFaceRemoteResult {
             callCount += 1
-            return CheckFaceRemoteResult.Success
+            return result
         }
     }
 }

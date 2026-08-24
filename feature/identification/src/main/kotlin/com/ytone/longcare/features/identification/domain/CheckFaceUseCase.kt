@@ -13,7 +13,14 @@ sealed interface CheckFaceFailure {
 
     data object MissingImage : CheckFaceFailure
 
-    data class Rejected(val serverMessage: String?) : CheckFaceFailure
+    data class Rejected(
+        val code: Int,
+        val serverMessage: String?,
+    ) : CheckFaceFailure
+
+    data object MissingRegisteredFace : CheckFaceFailure
+
+    data object SessionInvalidated : CheckFaceFailure
 
     data object NetworkError : CheckFaceFailure
 }
@@ -45,7 +52,16 @@ class CheckFaceUseCase @Inject constructor(
         ) {
             CheckFaceRemoteResult.Success -> CheckFaceResult.Success
             is CheckFaceRemoteResult.Rejected -> CheckFaceResult.Error(
-                CheckFaceFailure.Rejected(result.message),
+                CheckFaceFailure.Rejected(
+                    code = result.code,
+                    serverMessage = result.message,
+                ),
+            )
+            CheckFaceRemoteResult.MissingRegisteredFace -> CheckFaceResult.Error(
+                CheckFaceFailure.MissingRegisteredFace,
+            )
+            CheckFaceRemoteResult.SessionInvalidated -> CheckFaceResult.Error(
+                CheckFaceFailure.SessionInvalidated,
             )
             CheckFaceRemoteResult.NetworkError -> CheckFaceResult.Error(
                 CheckFaceFailure.NetworkError,

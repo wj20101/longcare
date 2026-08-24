@@ -13,7 +13,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 internal typealias CapturedFaceCallback = (bitmap: Bitmap, quality: Float) -> Unit
 internal typealias CapturedFaceFailureCallback = (hint: FaceCaptureHint, error: Throwable?) -> Unit
 
-/** Performs a final ML Kit check and crop on the high-quality CameraX still image. */
+/**
+ * Owns every submitted [ImageProxy], closes it after conversion, then performs the final ML Kit
+ * check and crop. Detector shutdown is deferred until any in-flight image finishes processing.
+ */
 internal class CapturedFaceProcessor(
     private val callbackExecutor: Executor,
     private val onFaceProcessed: CapturedFaceCallback,
@@ -22,8 +25,8 @@ internal class CapturedFaceProcessor(
     private val detector = FaceDetection.getClient(
         FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
-            .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
-            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+            .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_NONE)
+            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
             .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
             .setMinFaceSize(0.2f)
             .build(),

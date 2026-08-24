@@ -2,9 +2,7 @@ package com.ytone.longcare.features.identification.data
 
 import android.content.Context
 import androidx.core.net.toUri
-import com.ytone.longcare.model.SetFaceParamModel
 import com.ytone.longcare.common.constants.CosConstants
-import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.identification.IdentificationRepository
@@ -13,6 +11,8 @@ import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.identification.domain.SetupFaceGateway
 import com.ytone.longcare.features.identification.domain.SetupFaceServerResult
 import com.ytone.longcare.features.identification.domain.SetupFaceUploadResult
+import com.ytone.longcare.model.SetFaceParamModel
+import com.ytone.longcare.model.result.ApiResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
@@ -22,7 +22,6 @@ class SetupFaceGatewayImpl @Inject constructor(
     private val cosRepository: CosRepository,
     private val identificationRepository: IdentificationRepository,
     private val userSessionRepository: UserSessionRepository,
-    private val faceDataSource: IdentificationFaceDataSource,
 ) : SetupFaceGateway {
 
     override suspend fun uploadFaceImage(imageFile: File): SetupFaceUploadResult {
@@ -58,13 +57,6 @@ class SetupFaceGatewayImpl @Inject constructor(
             )
             is ApiResult.Exception -> SetupFaceServerResult.NetworkError
         }
-    }
-
-    override suspend fun cacheUserFace(
-        userId: Int,
-        base64Image: String,
-    ): Boolean {
-        return faceDataSource.writeUserFaceBase64(userId, base64Image)
     }
 
     override suspend fun refreshCurrentUserSession() {

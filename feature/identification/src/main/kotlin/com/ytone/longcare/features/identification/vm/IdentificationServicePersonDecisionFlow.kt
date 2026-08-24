@@ -20,30 +20,7 @@ internal fun handleServicePersonVerificationDecision(
     textResolver: ResourceTextResolver,
 ) {
     when (decision) {
-        is VerifyServicePersonDecision.UseCachedFace -> {
-            val orderNo = createOrderNo()
-            FaceVerificationEventTracker.trackEvent(
-                eventType = EventType.SERVICE_FACE_CACHE_HIT,
-                extras = mapOf(
-                    "userId" to decision.user.userId,
-                    "orderNo" to orderNo,
-                    "sourcePhotoBase64Length" to decision.sourcePhotoBase64.length,
-                ),
-            )
-            launchSelfProvidedFaceVerificationWithBase64(
-                scope = scope,
-                name = decision.user.userName,
-                idNo = decision.user.identityCardNumber,
-                orderNo = orderNo,
-                userId = decision.user.userId.toString(),
-                sourcePhotoBase64 = decision.sourcePhotoBase64,
-                beginVerification = beginVerification,
-                startVerificationWithRequest = startVerificationWithRequest,
-                onFailure = onVerificationFailure,
-                textResolver = textResolver,
-            )
-        }
-        is VerifyServicePersonDecision.DownloadAndCache -> {
+        is VerifyServicePersonDecision.DownloadRemoteFace -> {
             val orderNo = createOrderNo()
             FaceVerificationEventTracker.trackEvent(
                 eventType = EventType.SERVICE_REMOTE_FACE_SELECTED,
@@ -52,13 +29,13 @@ internal fun handleServicePersonVerificationDecision(
                     "orderNo" to orderNo,
                 ),
             )
-            launchSelfProvidedFaceVerificationAndCache(
+            launchSelfProvidedFaceVerificationWithRemoteSource(
                 scope = scope,
                 name = decision.user.userName,
                 idNo = decision.user.identityCardNumber,
                 orderNo = orderNo,
                 userId = decision.user.userId.toString(),
-                cacheUserId = decision.user.userId,
+                sourceUserId = decision.user.userId,
                 sourcePhotoUrl = decision.sourcePhotoUrl,
                 faceDataSource = faceDataSource,
                 beginVerification = beginVerification,
@@ -71,6 +48,7 @@ internal fun handleServicePersonVerificationDecision(
             FaceVerificationEventTracker.trackEvent(EventType.SERVICE_FACE_SETUP_REQUIRED)
             onRequireFaceSetup()
         }
+        VerifyServicePersonDecision.SessionInvalidated -> Unit
         is VerifyServicePersonDecision.Error -> onVerificationFailure(
             textResolver.resolve(decision.failure),
             null,

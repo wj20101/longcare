@@ -4,11 +4,9 @@ import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
-import com.ytone.longcare.common.text.ResourceTextResolver
-import com.ytone.longcare.feature.identification.R
+import com.ytone.longcare.features.identification.domain.CheckFaceFailure
 import com.ytone.longcare.features.identification.domain.CheckFaceResult
 import com.ytone.longcare.features.identification.domain.CheckFaceUseCase
-import com.ytone.longcare.features.identification.vm.resolve
 import com.ytone.longcare.model.OrderKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -30,7 +28,6 @@ data class FaceImageMetrics(
 class DefaultFaceVerificationViewModel @Inject constructor(
     private val imageEncoder: FaceImageEncoder,
     private val checkFaceUseCase: CheckFaceUseCase,
-    private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<DefaultFaceVerificationUiState>(
         DefaultFaceVerificationUiState.Capturing(),
@@ -76,9 +73,7 @@ class DefaultFaceVerificationViewModel @Inject constructor(
                     )
                 ) {
                     CheckFaceResult.Success -> DefaultFaceVerificationUiState.Success
-                    is CheckFaceResult.Error -> DefaultFaceVerificationUiState.Error(
-                        textResolver.resolve(result.failure),
-                    )
+                    is CheckFaceResult.Error -> result.failure.toUiState()
                 }
             } catch (error: CancellationException) {
                 throw error
@@ -94,9 +89,7 @@ class DefaultFaceVerificationViewModel @Inject constructor(
                         "imageHeight" to bitmap.height,
                     ),
                 )
-                _uiState.value = DefaultFaceVerificationUiState.Error(
-                    textResolver.text(R.string.face_capture_hint_photo_processing_failed),
-                )
+                _uiState.value = DefaultFaceVerificationUiState.RetryableError()
             } finally {
                 if (!bitmap.isRecycled) {
                     bitmap.recycle()
@@ -108,5 +101,18 @@ class DefaultFaceVerificationViewModel @Inject constructor(
     fun retryCapture() {
         captureAttempt += 1
         _uiState.value = DefaultFaceVerificationUiState.Capturing(attempt = captureAttempt)
+    }
+
+    private fun CheckFaceFailure.toUiState(): DefaultFaceVerificationUiState = when (this) {
+        CheckFaceFailure.UnsupportedOrder,
+        CheckFaceFailure.MissingRegisteredFace,
+        -> DefaultFaceVerificationUiState.TerminalError(this)
+
+        CheckFaceFailure.SessionInvalidated -> DefaultFaceVerificationUiState.SessionInvalidated
+
+        CheckFaceFailure.MissingImage,
+        is CheckFaceFailure.Rejected,
+        CheckFaceFailure.NetworkError,
+        -> DefaultFaceVerificationUiState.RetryableError(this)
     }
 }

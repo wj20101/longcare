@@ -62,14 +62,48 @@ class CheckFaceUseCaseTest {
     @Test
     fun `remote error is preserved for presentation`() = runTest {
         val gateway = FakeCheckFaceGateway(
-            CheckFaceRemoteResult.Rejected("人脸相似度不足"),
+            CheckFaceRemoteResult.Rejected(
+                code = 400,
+                message = "人脸相似度不足",
+            ),
         )
         val useCase = CheckFaceUseCase(gateway)
 
         val result = useCase.execute(orderId = 123L, faceImageBase64 = "ZmFjZQ==")
 
         assertThat(result).isEqualTo(
-            CheckFaceResult.Error(CheckFaceFailure.Rejected("人脸相似度不足")),
+            CheckFaceResult.Error(
+                CheckFaceFailure.Rejected(
+                    code = 400,
+                    serverMessage = "人脸相似度不足",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `missing registered face is preserved for terminal presentation`() = runTest {
+        val useCase = CheckFaceUseCase(
+            FakeCheckFaceGateway(CheckFaceRemoteResult.MissingRegisteredFace),
+        )
+
+        val result = useCase.execute(orderId = 123L, faceImageBase64 = "ZmFjZQ==")
+
+        assertThat(result).isEqualTo(
+            CheckFaceResult.Error(CheckFaceFailure.MissingRegisteredFace),
+        )
+    }
+
+    @Test
+    fun `session invalidation is preserved for global logout navigation`() = runTest {
+        val useCase = CheckFaceUseCase(
+            FakeCheckFaceGateway(CheckFaceRemoteResult.SessionInvalidated),
+        )
+
+        val result = useCase.execute(orderId = 123L, faceImageBase64 = "ZmFjZQ==")
+
+        assertThat(result).isEqualTo(
+            CheckFaceResult.Error(CheckFaceFailure.SessionInvalidated),
         )
     }
 

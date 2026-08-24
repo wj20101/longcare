@@ -2,20 +2,9 @@ package com.ytone.longcare.features.identification.vm
 
 import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.feature.identification.R
-import com.ytone.longcare.features.identification.domain.CheckFaceFailure
 import com.ytone.longcare.features.identification.domain.ServicePersonVerificationFailure
 import com.ytone.longcare.features.identification.domain.SetupFaceFailure
 import com.ytone.longcare.features.identification.domain.UploadElderPhotoFailure
-
-internal fun ResourceTextResolver.resolve(failure: CheckFaceFailure): String = when (failure) {
-    CheckFaceFailure.UnsupportedOrder -> text(R.string.identification_check_face_unsupported_order)
-    CheckFaceFailure.MissingImage -> text(R.string.identification_check_face_missing_image)
-    is CheckFaceFailure.Rejected -> resolveOrFallback(
-        failure.serverMessage,
-        R.string.identification_check_face_rejected,
-    )
-    CheckFaceFailure.NetworkError -> text(R.string.identification_network_error)
-}
 
 internal fun ResourceTextResolver.resolve(failure: SetupFaceFailure): String = when (failure) {
     SetupFaceFailure.CurrentUserUnavailable -> text(
@@ -30,7 +19,6 @@ internal fun ResourceTextResolver.resolve(failure: SetupFaceFailure): String = w
         R.string.identification_face_server_update_failed,
     )
     SetupFaceFailure.NetworkError -> text(R.string.identification_network_error)
-    SetupFaceFailure.LocalCacheWrite -> text(R.string.identification_face_cache_failed)
 }
 
 internal fun ResourceTextResolver.resolve(failure: UploadElderPhotoFailure): String = when (failure) {
@@ -50,11 +38,6 @@ internal fun ResourceTextResolver.resolve(failure: ServicePersonVerificationFail
         ServicePersonVerificationFailure.CurrentUserUnavailable -> text(
             R.string.identification_current_user_unavailable,
         )
-        is ServicePersonVerificationFailure.FaceSourceRejected -> resolveOrFallback(
-            failure.message,
-            R.string.identification_face_source_failed,
-        )
-        ServicePersonVerificationFailure.NetworkError -> text(R.string.identification_network_error)
     }
 
 internal fun ResourceTextResolver.resolve(failure: FaceSetupPreparationFailure): String =

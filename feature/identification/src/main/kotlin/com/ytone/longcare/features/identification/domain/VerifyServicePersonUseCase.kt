@@ -3,27 +3,21 @@ package com.ytone.longcare.features.identification.domain
 import javax.inject.Inject
 
 sealed interface VerifyServicePersonDecision {
-    data class UseCachedFace(
-        val user: ServicePersonProfile,
-        val sourcePhotoBase64: String,
-    ) : VerifyServicePersonDecision
-
-    data class DownloadAndCache(
+    data class DownloadRemoteFace(
         val user: ServicePersonProfile,
         val sourcePhotoUrl: String,
     ) : VerifyServicePersonDecision
 
     data object RequireFaceSetup : VerifyServicePersonDecision
 
+    /** 全局会话失效流程已经接管，当前业务页面不再执行导航。 */
+    data object SessionInvalidated : VerifyServicePersonDecision
+
     data class Error(val failure: ServicePersonVerificationFailure) : VerifyServicePersonDecision
 }
 
 sealed interface ServicePersonVerificationFailure {
     data object CurrentUserUnavailable : ServicePersonVerificationFailure
-
-    data class FaceSourceRejected(val message: String?) : ServicePersonVerificationFailure
-
-    data object NetworkError : ServicePersonVerificationFailure
 }
 
 class VerifyServicePersonUseCase @Inject constructor(
@@ -36,28 +30,19 @@ class VerifyServicePersonUseCase @Inject constructor(
             )
         }
 
-        val cachedBase64 = dataGateway.readCachedFace(user.userId)
-        if (!cachedBase64.isNullOrBlank()) {
-            return VerifyServicePersonDecision.UseCachedFace(
-                user = user,
-                sourcePhotoBase64 = cachedBase64,
-            )
-        }
-
         return when (val source = dataGateway.resolveFaceSource()) {
-            is ServicePersonFaceSource.RemoteFace -> VerifyServicePersonDecision.DownloadAndCache(
+            is ServicePersonFaceSource.RemoteFace -> VerifyServicePersonDecision.DownloadRemoteFace(
                 user = user,
                 sourcePhotoUrl = source.sourcePhotoUrl,
             )
 
-            ServicePersonFaceSource.RequireFaceSetup -> VerifyServicePersonDecision.RequireFaceSetup
+            ServicePersonFaceSource.RequireFaceSetup -> {
+                dataGateway.clearLegacyFaceArtifacts(user.userId)
+                VerifyServicePersonDecision.RequireFaceSetup
+            }
 
-            is ServicePersonFaceSource.Rejected -> VerifyServicePersonDecision.Error(
-                ServicePersonVerificationFailure.FaceSourceRejected(source.message),
-            )
-            ServicePersonFaceSource.NetworkError -> VerifyServicePersonDecision.Error(
-                ServicePersonVerificationFailure.NetworkError,
-            )
+            ServicePersonFaceSource.SessionInvalidated ->
+                VerifyServicePersonDecision.SessionInvalidated
         }
     }
 }

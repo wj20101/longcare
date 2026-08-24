@@ -6,11 +6,7 @@ import kotlin.math.abs
 internal class FaceCaptureQualityEvaluator {
 
     fun calculate(face: Face): Float {
-        val leftEyeOpen = face.leftEyeOpenProbability ?: 0f
-        val rightEyeOpen = face.rightEyeOpenProbability ?: 0f
-        val eyeScore = (leftEyeOpen + rightEyeOpen) / 2f
-        return (calculatePositionQuality(face) * 0.7f + eyeScore * 0.3f)
-            .coerceIn(0f, 1f)
+        return calculatePositionQuality(face)
     }
 
     fun calculatePositionQuality(face: Face): Float {
@@ -35,10 +31,7 @@ internal class FaceCaptureQualityEvaluator {
 
     fun isPositionQualified(face: Face): Boolean = getPositionHint(face) == null
 
-    fun isCaptureReady(face: Face): Boolean =
-        isPositionQualified(face) &&
-            (face.leftEyeOpenProbability ?: 0f) >= FaceBlinkGate.OPEN_EYE_THRESHOLD &&
-            (face.rightEyeOpenProbability ?: 0f) >= FaceBlinkGate.OPEN_EYE_THRESHOLD
+    fun isCaptureReady(face: Face): Boolean = isPositionQualified(face)
 
     fun getPositionHint(face: Face): FaceCaptureHint? = when {
         abs(face.headEulerAngleY) > MAX_YAW_DEGREES -> FaceCaptureHint.FACE_FORWARD
@@ -47,16 +40,8 @@ internal class FaceCaptureQualityEvaluator {
         else -> null
     }
 
-    fun getCaptureHint(face: Face): FaceCaptureHint {
-        val positionHint = getPositionHint(face)
-        return when {
-            positionHint != null -> positionHint
-            (face.leftEyeOpenProbability ?: 0f) < FaceBlinkGate.OPEN_EYE_THRESHOLD ||
-                (face.rightEyeOpenProbability ?: 0f) < FaceBlinkGate.OPEN_EYE_THRESHOLD ->
-                FaceCaptureHint.OPEN_EYES_RETRY
-            else -> FaceCaptureHint.HOLD_POSE
-        }
-    }
+    fun getCaptureHint(face: Face): FaceCaptureHint =
+        getPositionHint(face) ?: FaceCaptureHint.HOLD_POSE
 
     private companion object {
         const val MAX_YAW_DEGREES = 15.0

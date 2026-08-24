@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.identification.domain
 
-import kotlinx.coroutines.runBlocking
-import org.junit.Assert.*
+import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class VerifyServicePersonUseCaseTest {
@@ -12,67 +12,75 @@ class VerifyServicePersonUseCaseTest {
     )
 
     @Test
-    fun `cached face present returns UseCachedFace without resolving remote`() = runBlocking {
+    fun `remote face always uses the current server source`() = runTest {
         val gateway = FakeVerifyServicePersonDataGateway(
-            cachedFace = "cached-base64",
-            resolveFaceSourceProvider = { ServicePersonFaceSource.RequireFaceSetup },
+            source = ServicePersonFaceSource.RemoteFace("https://face.url"),
         )
-        val useCase = VerifyServicePersonUseCase(gateway)
 
-        val decision = useCase.execute(sampleUser)
+        val decision = VerifyServicePersonUseCase(gateway).execute(sampleUser)
 
-        assertTrue(decision is VerifyServicePersonDecision.UseCachedFace)
-        decision as VerifyServicePersonDecision.UseCachedFace
-        assertEquals(sampleUser, decision.user)
-        assertEquals("cached-base64", decision.sourcePhotoBase64)
-        assertEquals(listOf("readCachedFace"), gateway.callOrder)
+        assertThat(decision).isEqualTo(
+            VerifyServicePersonDecision.DownloadRemoteFace(
+                user = sampleUser,
+                sourcePhotoUrl = "https://face.url",
+            ),
+        )
+        assertThat(gateway.clearedUserIds).isEmpty()
     }
 
     @Test
-    fun `cached face missing and remote face exists returns DownloadAndCache after readCachedFace`() = runBlocking {
+    fun `missing remote face clears stale cache and requires setup`() = runTest {
         val gateway = FakeVerifyServicePersonDataGateway(
-            cachedFace = null,
-            resolveFaceSourceProvider = { ServicePersonFaceSource.RemoteFace("https://face.url") },
+            source = ServicePersonFaceSource.RequireFaceSetup,
         )
-        val useCase = VerifyServicePersonUseCase(gateway)
 
-        val decision = useCase.execute(sampleUser)
+        val decision = VerifyServicePersonUseCase(gateway).execute(sampleUser)
 
-        assertTrue(decision is VerifyServicePersonDecision.DownloadAndCache)
-        decision as VerifyServicePersonDecision.DownloadAndCache
-        assertEquals(sampleUser, decision.user)
-        assertEquals("https://face.url", decision.sourcePhotoUrl)
-        assertEquals(listOf("readCachedFace", "resolveFaceSource"), gateway.callOrder)
+        assertThat(decision).isEqualTo(VerifyServicePersonDecision.RequireFaceSetup)
+        assertThat(gateway.clearedUserIds).containsExactly(sampleUser.userId)
     }
 
     @Test
-    fun `cached face missing and remote face missing returns RequireFaceSetup after readCachedFace`() = runBlocking {
+    fun `session invalidation does not clear cache or start another flow`() = runTest {
         val gateway = FakeVerifyServicePersonDataGateway(
-            cachedFace = null,
-            resolveFaceSourceProvider = { ServicePersonFaceSource.RequireFaceSetup },
+            source = ServicePersonFaceSource.SessionInvalidated,
         )
-        val useCase = VerifyServicePersonUseCase(gateway)
 
-        val decision = useCase.execute(sampleUser)
+        val decision = VerifyServicePersonUseCase(gateway).execute(sampleUser)
 
-        assertTrue(decision is VerifyServicePersonDecision.RequireFaceSetup)
-        assertEquals(listOf("readCachedFace", "resolveFaceSource"), gateway.callOrder)
+        assertThat(decision).isEqualTo(VerifyServicePersonDecision.SessionInvalidated)
+        assertThat(gateway.clearedUserIds).isEmpty()
+    }
+
+    @Test
+    fun `missing current user stops before resolving face source`() = runTest {
+        val gateway = FakeVerifyServicePersonDataGateway(
+            source = ServicePersonFaceSource.RequireFaceSetup,
+        )
+
+        val decision = VerifyServicePersonUseCase(gateway).execute(null)
+
+        assertThat(decision).isEqualTo(
+            VerifyServicePersonDecision.Error(
+                ServicePersonVerificationFailure.CurrentUserUnavailable,
+            ),
+        )
+        assertThat(gateway.resolveCalls).isEqualTo(0)
     }
 
     private class FakeVerifyServicePersonDataGateway(
-        private val cachedFace: String?,
-        private val resolveFaceSourceProvider: suspend () -> ServicePersonFaceSource,
+        private val source: ServicePersonFaceSource,
     ) : VerifyServicePersonDataGateway {
-        val callOrder = mutableListOf<String>()
-
-        override suspend fun readCachedFace(userId: Int): String? {
-            callOrder.add("readCachedFace")
-            return cachedFace
-        }
+        var resolveCalls = 0
+        val clearedUserIds = mutableListOf<Int>()
 
         override suspend fun resolveFaceSource(): ServicePersonFaceSource {
-            callOrder.add("resolveFaceSource")
-            return resolveFaceSourceProvider()
+            resolveCalls += 1
+            return source
+        }
+
+        override suspend fun clearLegacyFaceArtifacts(userId: Int) {
+            clearedUserIds += userId
         }
     }
 }

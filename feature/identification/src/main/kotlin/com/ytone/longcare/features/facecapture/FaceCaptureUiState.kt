@@ -29,7 +29,6 @@ enum class FaceCaptureHint(@param:StringRes val messageRes: Int) {
     FACE_FORWARD(R.string.face_capture_hint_face_forward),
     HEAD_LEVEL(R.string.face_capture_hint_head_level),
     MOVE_CLOSER(R.string.face_capture_hint_move_closer),
-    OPEN_EYES_RETRY(R.string.face_capture_hint_open_eyes_retry),
     HOLD_POSE(R.string.face_capture_hint_hold_pose),
     PHOTO_PROCESSING_FAILED(R.string.face_capture_hint_photo_processing_failed),
     NO_FACE_IN_PHOTO(R.string.face_capture_hint_no_face_in_photo),

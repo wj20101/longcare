@@ -11,13 +11,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-internal fun launchSelfProvidedFaceVerificationAndCache(
+internal fun launchSelfProvidedFaceVerificationWithRemoteSource(
     scope: CoroutineScope,
     name: String,
     idNo: String,
     orderNo: String,
     userId: String,
-    cacheUserId: Int,
+    sourceUserId: Int,
     sourcePhotoUrl: String,
     faceDataSource: IdentificationFaceDataSource,
     beginVerification: (VerificationType) -> Unit,
@@ -29,9 +29,9 @@ internal fun launchSelfProvidedFaceVerificationAndCache(
         beginVerification(VerificationType.SERVICE_PERSON)
 
         try {
-            val sourcePhotoBase64 = faceDataSource.downloadCacheAndConvertToBase64(
+            val sourcePhotoBase64 = faceDataSource.downloadAndConvertToBase64(
                 url = sourcePhotoUrl,
-                userId = cacheUserId,
+                userId = sourceUserId,
             )
             executeSelfProvidedVerification(
                 name = name,
@@ -49,7 +49,7 @@ internal fun launchSelfProvidedFaceVerificationAndCache(
                 eventType = EventType.REMOTE_FACE_DOWNLOAD_ERROR,
                 throwable = e,
                 extras = FaceVerificationEventTracker.safeUrlExtras(sourcePhotoUrl) + mapOf(
-                    "userId" to cacheUserId,
+                    "userId" to sourceUserId,
                     "orderNo" to orderNo,
                 ),
             )
@@ -58,44 +58,6 @@ internal fun launchSelfProvidedFaceVerificationAndCache(
                     R.string.identification_face_download_failed,
                     textResolver.text(R.string.identification_retry_later),
                 ),
-            )
-        }
-    }
-}
-
-internal fun launchSelfProvidedFaceVerificationWithBase64(
-    scope: CoroutineScope,
-    name: String,
-    idNo: String,
-    orderNo: String,
-    userId: String,
-    sourcePhotoBase64: String,
-    beginVerification: (VerificationType) -> Unit,
-    startVerificationWithRequest: suspend (FaceVerificationRequest) -> Unit,
-    onFailure: (String, Throwable?) -> Unit,
-    textResolver: ResourceTextResolver,
-) {
-    scope.launch {
-        beginVerification(VerificationType.SERVICE_PERSON)
-
-        try {
-            executeSelfProvidedVerification(
-                name = name,
-                idNo = idNo,
-                orderNo = orderNo,
-                userId = userId,
-                sourcePhotoBase64 = sourcePhotoBase64,
-                startVerificationWithRequest = startVerificationWithRequest,
-            )
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            onFailure(
-                textResolver.text(
-                    R.string.identification_face_operation_failed,
-                    textResolver.text(R.string.identification_retry_later),
-                ),
-                e,
             )
         }
     }
@@ -114,7 +76,7 @@ private suspend fun executeSelfProvidedVerification(
         idNo = idNo,
         orderNo = orderNo,
         userId = userId,
-        sourcePhotoBase64 = sourcePhotoBase64
+        sourcePhotoBase64 = sourcePhotoBase64,
     )
     startVerificationWithRequest(request)
 }

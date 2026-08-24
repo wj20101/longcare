@@ -17,8 +17,6 @@ sealed interface SetupFaceFailure {
     data class ServerRejected(val message: String?) : SetupFaceFailure
 
     data object NetworkError : SetupFaceFailure
-
-    data object LocalCacheWrite : SetupFaceFailure
 }
 
 class SetupFaceUseCase @Inject constructor(
@@ -41,10 +39,6 @@ class SetupFaceUseCase @Inject constructor(
 
         return when (val setFaceResult = gateway.setFaceOnServer(base64Image, uploadedKey)) {
             SetupFaceServerResult.Success -> {
-                // Cache only after the server accepts the face to keep local state behind server truth.
-                if (!gateway.cacheUserFace(currentUserId, base64Image)) {
-                    return SetupFaceResult.Error(SetupFaceFailure.LocalCacheWrite)
-                }
                 gateway.refreshCurrentUserSession()
                 SetupFaceResult.Success
             }

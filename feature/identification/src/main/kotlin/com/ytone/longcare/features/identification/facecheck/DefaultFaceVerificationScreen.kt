@@ -45,6 +45,7 @@ import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.feature.identification.R
 import com.ytone.longcare.features.facecapture.FaceCaptureScreen
+import com.ytone.longcare.features.identification.domain.CheckFaceFailure
 import com.ytone.longcare.features.identification.domain.CheckFaceOrderIdPolicy
 import com.ytone.longcare.model.OrderKey
 
@@ -60,13 +61,12 @@ fun DefaultFaceVerificationScreen(
         val onUnsupportedOrderBack = rememberUpdatedState(onNavigateBack)
         CustomBackHandler(customAction = { onUnsupportedOrderBack.value() })
         DefaultFaceVerificationStatusScreen(
-            state = DefaultFaceVerificationUiState.Error(
-                stringResource(R.string.default_face_verification_order_id_unsupported),
+            state = DefaultFaceVerificationUiState.TerminalError(
+                CheckFaceFailure.UnsupportedOrder,
             ),
             onNavigateBack = onNavigateBack,
             onRetry = onNavigateBack,
             onContinue = onNavigateBack,
-            errorActionText = stringResource(R.string.default_face_verification_back),
         )
         return
     }
@@ -100,7 +100,9 @@ fun DefaultFaceVerificationScreen(
         DefaultFaceVerificationUiState.ProcessingImage,
         DefaultFaceVerificationUiState.Verifying,
         DefaultFaceVerificationUiState.Success,
-        is DefaultFaceVerificationUiState.Error,
+        is DefaultFaceVerificationUiState.RetryableError,
+        is DefaultFaceVerificationUiState.TerminalError,
+        DefaultFaceVerificationUiState.SessionInvalidated,
         -> {
             DefaultFaceVerificationStatusScreen(
                 state = uiState,
@@ -119,7 +121,6 @@ private fun DefaultFaceVerificationStatusScreen(
     onNavigateBack: () -> Unit,
     onRetry: () -> Unit,
     onContinue: () -> Unit,
-    errorActionText: String? = null,
 ) {
     val presentation = state.toStatusPresentation()
     val background = Brush.verticalGradient(
@@ -166,11 +167,17 @@ private fun DefaultFaceVerificationStatusScreen(
                         )
                     }
 
-                    is DefaultFaceVerificationUiState.Error -> {
+                    is DefaultFaceVerificationUiState.RetryableError -> {
                         DefaultFaceVerificationActionButton(
-                            text = errorActionText
-                                ?: stringResource(R.string.default_face_verification_retry),
+                            text = stringResource(R.string.default_face_verification_retry),
                             onClick = onRetry,
+                        )
+                    }
+
+                    is DefaultFaceVerificationUiState.TerminalError -> {
+                        DefaultFaceVerificationActionButton(
+                            text = stringResource(R.string.default_face_verification_back),
+                            onClick = onNavigateBack,
                         )
                     }
 
@@ -282,12 +289,48 @@ private fun DefaultFaceVerificationUiState.toStatusPresentation(): DefaultFaceSt
             iconColor = Color(0xFF34C759),
         )
 
-        is DefaultFaceVerificationUiState.Error -> DefaultFaceStatusPresentation(
+        is DefaultFaceVerificationUiState.RetryableError -> DefaultFaceStatusPresentation(
             title = stringResource(R.string.default_face_verification_error_title),
-            message = message,
+            message = failure?.displayMessage()
+                ?: stringResource(R.string.face_capture_hint_photo_processing_failed),
+            icon = Icons.Default.ErrorOutline,
+            iconColor = MaterialTheme.colorScheme.error,
+        )
+
+        is DefaultFaceVerificationUiState.TerminalError -> DefaultFaceStatusPresentation(
+            title = stringResource(R.string.default_face_verification_terminal_error_title),
+            message = failure.displayMessage(),
+            icon = Icons.Default.ErrorOutline,
+            iconColor = MaterialTheme.colorScheme.error,
+        )
+
+        DefaultFaceVerificationUiState.SessionInvalidated -> DefaultFaceStatusPresentation(
+            title = stringResource(R.string.default_face_verification_session_invalidated_title),
+            message = stringResource(
+                R.string.default_face_verification_session_invalidated_message,
+            ),
             icon = Icons.Default.ErrorOutline,
             iconColor = MaterialTheme.colorScheme.error,
         )
 
         is DefaultFaceVerificationUiState.Capturing -> error("Capturing has its own screen")
     }
+
+@Composable
+private fun CheckFaceFailure.displayMessage(): String = when (this) {
+    CheckFaceFailure.UnsupportedOrder -> stringResource(
+        R.string.default_face_verification_order_id_unsupported,
+    )
+    CheckFaceFailure.MissingImage -> stringResource(
+        R.string.identification_check_face_missing_image,
+    )
+    is CheckFaceFailure.Rejected -> serverMessage?.takeIf(String::isNotBlank)
+        ?: stringResource(R.string.identification_check_face_rejected)
+    CheckFaceFailure.MissingRegisteredFace -> stringResource(
+        R.string.identification_check_face_missing_registered_face,
+    )
+    CheckFaceFailure.SessionInvalidated -> stringResource(
+        R.string.default_face_verification_session_invalidated_message,
+    )
+    CheckFaceFailure.NetworkError -> stringResource(R.string.identification_network_error)
+}
