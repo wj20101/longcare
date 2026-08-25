@@ -45,6 +45,7 @@ import com.ytone.longcare.api.model.UserLatentDetailDto
 import com.ytone.longcare.api.model.UserLatentListDto
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Headers
 import retrofit2.http.POST
 import retrofit2.http.Query
 
@@ -240,6 +241,7 @@ interface LongCareApiService {
      *
      * @return FaceResultModel，包含人脸图片地址
      */
+    @Headers("Cache-Control: no-cache, no-store")
     @GET("/V1/User/GetFace")
     suspend fun getFace(): ApiResult<FaceResultModel>
 

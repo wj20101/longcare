@@ -9,6 +9,9 @@ import com.ytone.longcare.features.identification.tracker.FaceVerificationEventT
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.result.SessionInvalidationCode
 import javax.inject.Inject
+import kotlinx.coroutines.withTimeoutOrNull
+
+private const val FACE_STATE_LOOKUP_TIMEOUT_MS = 10_000L
 
 class VerifyServicePersonDataGatewayImpl @Inject constructor(
     private val faceCacheCleaner: FaceCacheCleaner,
@@ -16,13 +19,27 @@ class VerifyServicePersonDataGatewayImpl @Inject constructor(
 ) : VerifyServicePersonDataGateway {
 
     override suspend fun resolveFaceSource(): ServicePersonFaceSource {
-        return when (val faceResult = identificationRepository.getFace()) {
+        val faceResult = withTimeoutOrNull(FACE_STATE_LOOKUP_TIMEOUT_MS) {
+            identificationRepository.getFace()
+        }
+        return when (faceResult) {
+            null -> {
+                FaceVerificationEventTracker.trackError(
+                    eventType = EventType.SERVICE_FACE_SOURCE_ERROR,
+                    extras = mapOf(
+                        "reason" to "total_timeout",
+                        "timeoutMs" to FACE_STATE_LOOKUP_TIMEOUT_MS,
+                    ),
+                )
+                ServicePersonFaceSource.RequireFaceSetup
+            }
+
             is ApiResult.Success -> {
                 val url = faceResult.data.faceImgUrl
                 if (url.isBlank()) {
                     ServicePersonFaceSource.RequireFaceSetup
                 } else {
-                    ServicePersonFaceSource.RemoteFace(sourcePhotoUrl = url)
+                    ServicePersonFaceSource.RegisteredFaceAvailable
                 }
             }
 
@@ -52,7 +69,7 @@ class VerifyServicePersonDataGatewayImpl @Inject constructor(
         }
     }
 
-    override suspend fun clearLegacyFaceArtifacts(userId: Int) {
-        faceCacheCleaner.clearUserFaceBase64(userId)
+    override suspend fun clearLocalFaceArtifacts(userId: Int) {
+        faceCacheCleaner.clearUserFaceArtifacts(userId)
     }
 }

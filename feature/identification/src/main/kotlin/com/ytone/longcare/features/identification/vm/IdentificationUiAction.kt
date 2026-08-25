@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.identification.vm
 
 import androidx.annotation.StringRes
+import com.ytone.longcare.model.OrderKey
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,10 @@ data class IdentificationUiAction(
 )
 
 sealed interface IdentificationUiEffect {
+    data class NavigateToDefaultFaceVerification(
+        val orderKey: OrderKey,
+    ) : IdentificationUiEffect
+
     data class NavigateToFaceCapture(
         @param:StringRes val messageRes: Int,
     ) : IdentificationUiEffect

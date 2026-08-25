@@ -7,9 +7,26 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.Headers
 import retrofit2.http.POST
 
 class UserApiContractTest {
+
+    @Test
+    fun `getFace uses documented GET path and always checks server state`() {
+        val method = LongCareApiService::class.java.declaredMethods.single { it.name == "getFace" }
+
+        assertEquals(
+            "/V1/User/GetFace",
+            requireNotNull(method.getAnnotation(GET::class.java)).value,
+        )
+        assertTrue(
+            requireNotNull(method.getAnnotation(Headers::class.java)).value.contains(
+                "Cache-Control: no-cache, no-store",
+            ),
+        )
+    }
 
     @Test
     fun `checkFace uses documented POST path and request body`() {

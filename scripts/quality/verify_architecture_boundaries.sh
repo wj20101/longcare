@@ -736,9 +736,9 @@ check_file_line_threshold \
   120 \
   "IdentificationFaceSetupPreparation.kt"
 check_file_line_threshold \
-  "${IDENTIFICATION_VM_ROOT}/IdentificationServicePersonVerificationFlow.kt" \
-  120 \
-  "IdentificationServicePersonVerificationFlow.kt"
+  "${IDENTIFICATION_VM_ROOT}/IdentificationServicePersonDecisionFlow.kt" \
+  80 \
+  "IdentificationServicePersonDecisionFlow.kt"
 check_file_line_threshold \
   "${IDENTIFICATION_VM_ROOT}/IdentificationFaceCaptureResultFlow.kt" \
   120 \

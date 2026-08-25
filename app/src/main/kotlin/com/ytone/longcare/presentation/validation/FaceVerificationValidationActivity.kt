@@ -29,8 +29,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -40,14 +40,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import androidx.lifecycle.viewmodel.compose.rememberViewModelStoreOwner
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.ytone.longcare.R
-import com.ytone.longcare.features.identification.facecheck.DefaultFaceVerificationScreen
 import com.ytone.longcare.features.identification.domain.CheckFaceOrderIdPolicy
-import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.navigation.IdentificationRoute
+import com.ytone.longcare.navigation.LocalFaceImageMetricsReporter
+import com.ytone.longcare.navigation.OrderNavParams
+import com.ytone.longcare.navigation.registerAppNavGraphs
 import com.ytone.longcare.theme.LongCareTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.serialization.Serializable
 
 @AndroidEntryPoint
 class FaceVerificationValidationActivity : ComponentActivity() {
@@ -62,39 +66,48 @@ class FaceVerificationValidationActivity : ComponentActivity() {
 
         setContent {
             LongCareTheme {
-                var activeOrderId by rememberSaveable { mutableStateOf(initialOrderId) }
-                val orderId = activeOrderId
-                if (orderId == null) {
-                    FaceVerificationValidationEntryScreen(
-                        onClose = ::finish,
-                        onOpenFaceVerification = { activeOrderId = it },
+                val navController = rememberNavController()
+                var initialOrderHandled by rememberSaveable { mutableStateOf(false) }
+                val openValidation = { orderId: Long ->
+                    navController.navigate(
+                        IdentificationRoute(OrderNavParams(orderId = orderId)),
                     )
-                } else {
-                    key(orderId) {
-                        val verificationOwner = rememberViewModelStoreOwner()
-                        CompositionLocalProvider(
-                            LocalViewModelStoreOwner provides verificationOwner,
-                        ) {
-                            DefaultFaceVerificationScreen(
-                                orderKey = OrderKey(orderId = orderId),
-                                onNavigateBack = { activeOrderId = null },
-                                onVerificationSuccess = { activeOrderId = null },
-                                onPhotoPrepared = { metrics ->
-                                    val sizeKiB = metrics.byteCount / BYTES_PER_KIBIBYTE
-                                    Toast.makeText(
-                                        this@FaceVerificationValidationActivity,
-                                        getString(
-                                            R.string.face_validation_photo_metrics,
-                                            metrics.widthPx,
-                                            metrics.heightPx,
-                                            sizeKiB,
-                                            metrics.byteCount,
-                                        ),
-                                        Toast.LENGTH_LONG,
-                                    ).show()
-                                },
+                }
+
+                CompositionLocalProvider(
+                    LocalFaceImageMetricsReporter provides { metrics ->
+                        val sizeKiB = metrics.byteCount / BYTES_PER_KIBIBYTE
+                        Toast.makeText(
+                            this@FaceVerificationValidationActivity,
+                            getString(
+                                R.string.face_validation_photo_metrics,
+                                metrics.widthPx,
+                                metrics.heightPx,
+                                sizeKiB,
+                                metrics.byteCount,
+                            ),
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    },
+                ) {
+                    NavHost(
+                        navController = navController,
+                        startDestination = FaceVerificationValidationEntryRoute,
+                    ) {
+                        composable<FaceVerificationValidationEntryRoute> {
+                            FaceVerificationValidationEntryScreen(
+                                onClose = ::finish,
+                                onOpenFaceVerification = openValidation,
                             )
                         }
+                        registerAppNavGraphs(navController)
+                    }
+                }
+
+                LaunchedEffect(initialOrderId, initialOrderHandled) {
+                    if (initialOrderId != null && !initialOrderHandled) {
+                        initialOrderHandled = true
+                        openValidation(initialOrderId)
                     }
                 }
             }
@@ -107,6 +120,9 @@ class FaceVerificationValidationActivity : ComponentActivity() {
         private const val BYTES_PER_KIBIBYTE = 1024.0
     }
 }
+
+@Serializable
+private data object FaceVerificationValidationEntryRoute
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

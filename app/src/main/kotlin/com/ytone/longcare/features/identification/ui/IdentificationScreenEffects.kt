@@ -72,6 +72,10 @@ internal fun IdentificationScreenEffects(
     LaunchedEffect(pendingAction?.id) {
         pendingAction?.let { action ->
             when (val effect = action.effect) {
+                is IdentificationUiEffect.NavigateToDefaultFaceVerification -> {
+                    actions.onNavigateToDefaultFaceVerification(effect.orderKey)
+                }
+
                 is IdentificationUiEffect.NavigateToFaceCapture -> {
                     Toast.makeText(
                         context,

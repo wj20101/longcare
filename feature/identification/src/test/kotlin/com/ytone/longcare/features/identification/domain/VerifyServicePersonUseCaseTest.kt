@@ -5,39 +5,30 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class VerifyServicePersonUseCaseTest {
-    private val sampleUser = ServicePersonProfile(
-        userId = 1,
-        userName = "Test User",
-        identityCardNumber = "1111222233334444",
-    )
+    private val sampleUserId = 1
 
     @Test
-    fun `remote face always uses the current server source`() = runTest {
+    fun `registered face enables the current default verification flow`() = runTest {
         val gateway = FakeVerifyServicePersonDataGateway(
-            source = ServicePersonFaceSource.RemoteFace("https://face.url"),
+            source = ServicePersonFaceSource.RegisteredFaceAvailable,
         )
 
-        val decision = VerifyServicePersonUseCase(gateway).execute(sampleUser)
+        val decision = VerifyServicePersonUseCase(gateway).execute(sampleUserId)
 
-        assertThat(decision).isEqualTo(
-            VerifyServicePersonDecision.DownloadRemoteFace(
-                user = sampleUser,
-                sourcePhotoUrl = "https://face.url",
-            ),
-        )
+        assertThat(decision).isEqualTo(VerifyServicePersonDecision.VerifyRegisteredFace)
         assertThat(gateway.clearedUserIds).isEmpty()
     }
 
     @Test
-    fun `missing remote face clears stale cache and requires setup`() = runTest {
+    fun `missing server face clears local artifacts and requires setup`() = runTest {
         val gateway = FakeVerifyServicePersonDataGateway(
             source = ServicePersonFaceSource.RequireFaceSetup,
         )
 
-        val decision = VerifyServicePersonUseCase(gateway).execute(sampleUser)
+        val decision = VerifyServicePersonUseCase(gateway).execute(sampleUserId)
 
         assertThat(decision).isEqualTo(VerifyServicePersonDecision.RequireFaceSetup)
-        assertThat(gateway.clearedUserIds).containsExactly(sampleUser.userId)
+        assertThat(gateway.clearedUserIds).containsExactly(sampleUserId)
     }
 
     @Test
@@ -46,7 +37,7 @@ class VerifyServicePersonUseCaseTest {
             source = ServicePersonFaceSource.SessionInvalidated,
         )
 
-        val decision = VerifyServicePersonUseCase(gateway).execute(sampleUser)
+        val decision = VerifyServicePersonUseCase(gateway).execute(sampleUserId)
 
         assertThat(decision).isEqualTo(VerifyServicePersonDecision.SessionInvalidated)
         assertThat(gateway.clearedUserIds).isEmpty()
@@ -79,7 +70,7 @@ class VerifyServicePersonUseCaseTest {
             return source
         }
 
-        override suspend fun clearLegacyFaceArtifacts(userId: Int) {
+        override suspend fun clearLocalFaceArtifacts(userId: Int) {
             clearedUserIds += userId
         }
     }

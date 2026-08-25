@@ -60,7 +60,6 @@
     <string name="identification_face_config_unavailable">人脸配置不可用</string>
     <string name="identification_check_face_missing_image">未获取到有效人脸照片，请重新拍摄</string>
     <string name="identification_check_face_rejected">人脸验证未通过，请重新拍摄</string>
-    <string name="identification_check_face_missing_registered_face">未获取到已采集的人脸信息，请返回后先完成人脸采集</string>
     <string name="identification_current_user_unavailable">无法获取当前用户信息，请重新登录后重试</string>
     <string name="identification_face_image_upload_failed">人脸图片上传失败，请稍后重试</string>
     <string name="identification_face_server_update_failed">人脸信息更新失败，请稍后重试</string>
@@ -69,7 +68,6 @@
     <string name="identification_face_file_missing">拍摄的人脸照片不存在，请重新拍摄</string>
     <string name="identification_user_info_incomplete">用户信息不完整，无法进行人脸验证</string>
     <string name="identification_face_verification_failed">人脸验证失败，请稍后重试</string>
-    <string name="identification_face_download_failed">获取人脸照片失败：%1$s</string>
     <string name="identification_face_setup_upload_failed">上传失败：%1$s</string>
     <string name="identification_face_error_with_reason">%1$s：%2$s</string>
     <string name="identification_face_init_success">人脸验证初始化成功</string>

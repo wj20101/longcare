@@ -5,29 +5,30 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.faceauth.FaceSdkEvent
 import com.ytone.longcare.common.text.ResourceTextResolver
+import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.repository.OrderDetailRepository
+import com.ytone.longcare.domain.repository.SessionState
+import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.feature.identification.R
+import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.features.identification.domain.SetupFaceUseCase
 import com.ytone.longcare.features.identification.domain.UploadElderPhotoUseCase
 import com.ytone.longcare.features.identification.domain.VerifyServicePersonUseCase
-import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
 import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker
 import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker.EventType
-import com.ytone.longcare.feature.identification.R
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.domain.repository.SessionState
-import com.ytone.longcare.domain.repository.UserSessionRepository
-import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.model.User
+import com.ytone.longcare.model.WatermarkData
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import com.ytone.longcare.common.utils.logE
 
 @HiltViewModel
 class IdentificationViewModel @Inject constructor(
@@ -42,16 +43,15 @@ class IdentificationViewModel @Inject constructor(
 ) : ViewModel() {
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL)
     val identificationState: StateFlow<IdentificationState> = _identificationState.asStateFlow()
-    
     private val _faceVerificationState = MutableStateFlow<FaceVerificationState>(FaceVerificationState.Idle)
     val faceVerificationState: StateFlow<FaceVerificationState> = _faceVerificationState.asStateFlow()
-    
+
     private val _currentVerificationType = MutableStateFlow<VerificationType?>(null)
     val currentVerificationType: StateFlow<VerificationType?> = _currentVerificationType.asStateFlow()
 
     private val _photoUploadState = MutableStateFlow<PhotoUploadState>(PhotoUploadState.Initial)
     val photoUploadState: StateFlow<PhotoUploadState> = _photoUploadState.asStateFlow()
-    
+
     private val _faceSetupState = MutableStateFlow<FaceSetupState>(FaceSetupState.Initial)
     val faceSetupState: StateFlow<FaceSetupState> = _faceSetupState.asStateFlow()
 
@@ -71,6 +71,7 @@ class IdentificationViewModel @Inject constructor(
         },
     )
     val faceSdkLaunchRequest = faceSdkCoordinator.launchRequest
+    private var servicePersonEntryJob: Job? = null
 
     private fun setFaceVerificationError(
         message: String,
@@ -100,16 +101,17 @@ class IdentificationViewModel @Inject constructor(
         showLongMessage(message)
     }
 
-    fun verifyServicePerson() {
-        launchServicePersonVerification(
+    fun verifyServicePerson(orderKey: OrderKey) {
+        if (servicePersonEntryJob?.isActive == true) return
+
+        beginVerification(VerificationType.SERVICE_PERSON)
+        servicePersonEntryJob = launchServicePersonVerification(
             scope = viewModelScope,
-            resolveCurrentUser = ::getCurrentUser,
+            resolveCurrentUserId = { getCurrentUser()?.userId },
             verifyServicePersonUseCase = verifyServicePersonUseCase,
-            createOrderNo = ::createServiceOrderNo,
-            faceDataSource = faceDataSource,
-            beginVerification = ::beginVerification,
-            startVerificationWithRequest = ::startFaceVerificationWithDefaultCallback,
+            onRegisteredFaceAvailable = { enqueueDefaultFaceVerification(orderKey) },
             onRequireFaceSetup = ::navigateToFaceCaptureForSetup,
+            onSessionInvalidated = ::clearFaceVerificationState,
             onVerificationFailure = ::handleServicePersonVerificationFailure,
             textResolver = textResolver,
         )
@@ -124,13 +126,15 @@ class IdentificationViewModel @Inject constructor(
     }
 
     private fun navigateToFaceCaptureForSetup() {
-        uiActionQueue.enqueue(
-            IdentificationUiEffect.NavigateToFaceCapture(
-                com.ytone.longcare.feature.identification.R.string.face_capture_setup_required,
-            ),
-        )
+        clearFaceVerificationState()
+        _faceSetupState.value = FaceSetupState.Initial
+        uiActionQueue.enqueue(IdentificationUiEffect.NavigateToFaceCapture(R.string.face_capture_setup_required))
     }
-    
+
+    private fun enqueueDefaultFaceVerification(orderKey: OrderKey) = uiActionQueue.enqueue(
+        IdentificationUiEffect.NavigateToDefaultFaceVerification(orderKey),
+    )
+
     fun verifyElder(orderKey: OrderKey) {
         launchElderVerification(
             scope = viewModelScope,
@@ -207,22 +211,29 @@ class IdentificationViewModel @Inject constructor(
             },
         )
     }
-    
+
     private suspend fun getCurrentUser(): User? =
         (userSessionRepository.sessionState.value as? SessionState.LoggedIn)?.user
 
-    fun resetFaceVerificationState() { _faceVerificationState.value = FaceVerificationState.Idle; _currentVerificationType.value = null }
+    private fun clearFaceVerificationState() {
+        _faceVerificationState.value = FaceVerificationState.Idle
+        _currentVerificationType.value = null
+    }
+
+    fun resetFaceVerificationState() {
+        servicePersonEntryJob?.cancel()
+        servicePersonEntryJob = null
+        clearFaceVerificationState()
+    }
 
     fun setServicePersonVerified() { _identificationState.value = IdentificationState.SERVICE_VERIFIED }
 
     fun setElderVerified() { _identificationState.value = IdentificationState.ELDER_VERIFIED }
 
-    fun updateFaceVerificationStatus(orderKey: OrderKey, verified: Boolean) {
-        viewModelScope.launch {
-            unifiedOrderRepository.updateFaceVerification(orderKey, verified)
-        }
+    fun updateFaceVerificationStatus(orderKey: OrderKey, verified: Boolean) = viewModelScope.launch {
+        unifiedOrderRepository.updateFaceVerification(orderKey, verified)
     }
-    
+
     fun processElderPhoto(photoUri: Uri, orderKey: OrderKey, onSuccess: () -> Unit = {}) {
         launchElderPhotoUploadWithBindings(
             scope = viewModelScope,
@@ -237,8 +248,8 @@ class IdentificationViewModel @Inject constructor(
         )
     }
 
-    suspend fun generateWatermarkData(address: String, orderKey: OrderKey): WatermarkData {
-        return generateIdentificationWatermarkData(
+    suspend fun generateWatermarkData(address: String, orderKey: OrderKey): WatermarkData =
+        generateIdentificationWatermarkData(
             address = address,
             orderKey = orderKey,
             orderDetailRepository = unifiedOrderRepository,
@@ -249,10 +260,9 @@ class IdentificationViewModel @Inject constructor(
             ),
             watermarkTitle = textResolver.text(R.string.identification_watermark_elder_photo),
         )
-    }
 
     fun resetPhotoUploadState() { _photoUploadState.value = PhotoUploadState.Initial }
-    
+
     fun handleFaceCaptureResult(imagePath: String) {
         launchFaceCaptureResultHandling(
             scope = viewModelScope,
@@ -268,17 +278,13 @@ class IdentificationViewModel @Inject constructor(
         )
     }
 
-    fun consumeUiAction(actionId: Long) {
-        uiActionQueue.consume(actionId)
-    }
+    fun consumeUiAction(actionId: Long) = uiActionQueue.consume(actionId)
 
-    private fun showShortMessage(message: String) {
-        uiActionQueue.enqueue(IdentificationUiEffect.ShowMessage(message))
-    }
+    private fun showShortMessage(message: String) = uiActionQueue.enqueue(IdentificationUiEffect.ShowMessage(message))
 
-    private fun showLongMessage(message: String) {
-        uiActionQueue.enqueue(IdentificationUiEffect.ShowMessage(message = message, long = true))
-    }
+    private fun showLongMessage(message: String) = uiActionQueue.enqueue(
+        IdentificationUiEffect.ShowMessage(message = message, long = true),
+    )
 
     fun resetFaceSetupState() { _faceSetupState.value = FaceSetupState.Initial }
 }

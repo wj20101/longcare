@@ -3,10 +3,7 @@ package com.ytone.longcare.features.identification.domain
 import javax.inject.Inject
 
 sealed interface VerifyServicePersonDecision {
-    data class DownloadRemoteFace(
-        val user: ServicePersonProfile,
-        val sourcePhotoUrl: String,
-    ) : VerifyServicePersonDecision
+    data object VerifyRegisteredFace : VerifyServicePersonDecision
 
     data object RequireFaceSetup : VerifyServicePersonDecision
 
@@ -23,21 +20,19 @@ sealed interface ServicePersonVerificationFailure {
 class VerifyServicePersonUseCase @Inject constructor(
     private val dataGateway: VerifyServicePersonDataGateway,
 ) {
-    suspend fun execute(user: ServicePersonProfile?): VerifyServicePersonDecision {
-        if (user == null) {
+    suspend fun execute(userId: Int?): VerifyServicePersonDecision {
+        if (userId == null) {
             return VerifyServicePersonDecision.Error(
                 ServicePersonVerificationFailure.CurrentUserUnavailable,
             )
         }
 
         return when (val source = dataGateway.resolveFaceSource()) {
-            is ServicePersonFaceSource.RemoteFace -> VerifyServicePersonDecision.DownloadRemoteFace(
-                user = user,
-                sourcePhotoUrl = source.sourcePhotoUrl,
-            )
+            ServicePersonFaceSource.RegisteredFaceAvailable ->
+                VerifyServicePersonDecision.VerifyRegisteredFace
 
             ServicePersonFaceSource.RequireFaceSetup -> {
-                dataGateway.clearLegacyFaceArtifacts(user.userId)
+                dataGateway.clearLocalFaceArtifacts(userId)
                 VerifyServicePersonDecision.RequireFaceSetup
             }
 

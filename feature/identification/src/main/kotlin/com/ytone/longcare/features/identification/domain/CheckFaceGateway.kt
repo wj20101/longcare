@@ -8,8 +8,6 @@ sealed interface CheckFaceRemoteResult {
         val message: String?,
     ) : CheckFaceRemoteResult
 
-    data object MissingRegisteredFace : CheckFaceRemoteResult
-
     data object SessionInvalidated : CheckFaceRemoteResult
 
     data object NetworkError : CheckFaceRemoteResult

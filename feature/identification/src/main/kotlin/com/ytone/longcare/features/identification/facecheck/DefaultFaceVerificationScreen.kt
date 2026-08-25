@@ -326,9 +326,6 @@ private fun CheckFaceFailure.displayMessage(): String = when (this) {
     )
     is CheckFaceFailure.Rejected -> serverMessage?.takeIf(String::isNotBlank)
         ?: stringResource(R.string.identification_check_face_rejected)
-    CheckFaceFailure.MissingRegisteredFace -> stringResource(
-        R.string.identification_check_face_missing_registered_face,
-    )
     CheckFaceFailure.SessionInvalidated -> stringResource(
         R.string.default_face_verification_session_invalidated_message,
     )

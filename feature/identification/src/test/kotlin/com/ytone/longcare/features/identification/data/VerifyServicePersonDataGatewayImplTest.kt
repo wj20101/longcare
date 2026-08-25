@@ -10,6 +10,7 @@ import com.ytone.longcare.model.SetFaceParamModel
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.result.SessionInvalidationCode
 import java.io.IOException
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,9 +22,8 @@ class VerifyServicePersonDataGatewayImplTest {
     fun `nonblank server face url is available`() = runTest {
         val gateway = gateway(ApiResult.Success(FaceResultModel("https://face.url")))
 
-        assertThat(gateway.resolveFaceSource()).isEqualTo(
-            ServicePersonFaceSource.RemoteFace("https://face.url"),
-        )
+        assertThat(gateway.resolveFaceSource())
+            .isEqualTo(ServicePersonFaceSource.RegisteredFaceAvailable)
     }
 
     @Test
@@ -51,6 +51,47 @@ class VerifyServicePersonDataGatewayImplTest {
     }
 
     @Test
+    fun `face-state lookup timeout falls back to setup within a bounded time`() = runTest {
+        val repository = object : IdentificationRepository {
+            override suspend fun setFace(setFaceParamModel: SetFaceParamModel): ApiResult<Unit> =
+                error("Unexpected call")
+
+            override suspend fun getFace(): ApiResult<FaceResultModel> = awaitCancellation()
+
+            override suspend fun checkFace(
+                checkFaceParamModel: CheckFaceParamModel,
+            ): ApiResult<Unit> = error("Unexpected call")
+        }
+        val gateway = VerifyServicePersonDataGatewayImpl(
+            faceCacheCleaner = RecordingFaceCacheCleaner(),
+            identificationRepository = repository,
+        )
+
+        assertThat(gateway.resolveFaceSource())
+            .isEqualTo(ServicePersonFaceSource.RequireFaceSetup)
+    }
+
+    @Test
+    fun `every entry resolves the latest server face state`() = runTest {
+        val repository = SequencedIdentificationRepository(
+            listOf(
+                ApiResult.Success(FaceResultModel("https://face.url")),
+                ApiResult.Success(FaceResultModel("")),
+            ),
+        )
+        val gateway = VerifyServicePersonDataGatewayImpl(
+            faceCacheCleaner = RecordingFaceCacheCleaner(),
+            identificationRepository = repository,
+        )
+
+        assertThat(gateway.resolveFaceSource())
+            .isEqualTo(ServicePersonFaceSource.RegisteredFaceAvailable)
+        assertThat(gateway.resolveFaceSource())
+            .isEqualTo(ServicePersonFaceSource.RequireFaceSetup)
+        assertThat(repository.getFaceCallCount).isEqualTo(2)
+    }
+
+    @Test
     fun `session failure is not converted into face setup navigation`() = runTest {
         val gateway = gateway(
             ApiResult.Failure(
@@ -64,14 +105,14 @@ class VerifyServicePersonDataGatewayImplTest {
     }
 
     @Test
-    fun `legacy face cleanup delegates to the shared cleaner`() = runTest {
+    fun `local face cleanup delegates to the shared cleaner`() = runTest {
         val cleaner = RecordingFaceCacheCleaner()
         val gateway = gateway(
             faceResult = ApiResult.Success(FaceResultModel("https://face.url")),
             cleaner = cleaner,
         )
 
-        gateway.clearLegacyFaceArtifacts(123)
+        gateway.clearLocalFaceArtifacts(123)
 
         assertThat(cleaner.clearedUserIds).containsExactly(123)
     }
@@ -87,7 +128,7 @@ class VerifyServicePersonDataGatewayImplTest {
     private class RecordingFaceCacheCleaner : FaceCacheCleaner {
         val clearedUserIds = mutableListOf<Int>()
 
-        override suspend fun clearUserFaceBase64(userId: Int) {
+        override suspend fun clearUserFaceArtifacts(userId: Int) {
             clearedUserIds += userId
         }
     }
@@ -99,6 +140,22 @@ class VerifyServicePersonDataGatewayImplTest {
             error("Unexpected call")
 
         override suspend fun getFace(): ApiResult<FaceResultModel> = faceResult
+
+        override suspend fun checkFace(
+            checkFaceParamModel: CheckFaceParamModel,
+        ): ApiResult<Unit> = error("Unexpected call")
+    }
+
+    private class SequencedIdentificationRepository(
+        private val results: List<ApiResult<FaceResultModel>>,
+    ) : IdentificationRepository {
+        var getFaceCallCount = 0
+
+        override suspend fun setFace(setFaceParamModel: SetFaceParamModel): ApiResult<Unit> =
+            error("Unexpected call")
+
+        override suspend fun getFace(): ApiResult<FaceResultModel> =
+            results.getOrElse(getFaceCallCount++) { error("Unexpected GetFace call") }
 
         override suspend fun checkFace(
             checkFaceParamModel: CheckFaceParamModel,

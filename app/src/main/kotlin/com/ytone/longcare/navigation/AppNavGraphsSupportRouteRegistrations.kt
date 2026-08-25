@@ -1,5 +1,6 @@
 package com.ytone.longcare.navigation
 
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
@@ -9,6 +10,7 @@ import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.facerecognition.api.FaceRecognitionGuideActions
 import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
 import com.ytone.longcare.features.identification.facecheck.DefaultFaceVerificationScreen
+import com.ytone.longcare.features.identification.facecheck.FaceImageMetrics
 import com.ytone.longcare.features.identification.api.IdentificationActions
 import com.ytone.longcare.features.identification.ui.IdentificationScreen
 import com.ytone.longcare.features.photoupload.api.CameraActions
@@ -24,6 +26,9 @@ import com.ytone.longcare.features.webview.api.WebViewActions
 import com.ytone.longcare.features.webview.ui.WebViewScreen
 import com.ytone.longcare.model.WatermarkData
 import kotlin.reflect.typeOf
+
+internal val LocalFaceImageMetricsReporter =
+    staticCompositionLocalOf<(FaceImageMetrics) -> Unit> { { _ -> } }
 
 internal fun NavGraphBuilder.registerTxFaceRoute(navController: NavController) {
     composable<TxFaceRoute> {
@@ -152,9 +157,16 @@ internal fun NavGraphBuilder.registerDefaultFaceVerificationRoute(navController:
         typeMap = mapOf(typeOf<OrderNavParams>() to OrderNavParamsNavType),
     ) { backStackEntry ->
         val route = backStackEntry.toRoute<DefaultFaceVerificationRoute>()
+        val reportPhotoMetrics = LocalFaceImageMetricsReporter.current
         DefaultFaceVerificationScreen(
             orderKey = route.orderParams.toOrderKey(),
-            onNavigateBack = { navController.popBackStack() },
+            onNavigateBack = {
+                navController.previousBackStackEntry?.savedStateHandle?.set(
+                    NavigationConstants.DEFAULT_FACE_VERIFICATION_RESULT_KEY,
+                    false,
+                )
+                navController.popBackStack()
+            },
             onVerificationSuccess = {
                 navController.previousBackStackEntry?.savedStateHandle?.set(
                     NavigationConstants.DEFAULT_FACE_VERIFICATION_RESULT_KEY,
@@ -162,6 +174,7 @@ internal fun NavGraphBuilder.registerDefaultFaceVerificationRoute(navController:
                 )
                 navController.popBackStack()
             },
+            onPhotoPrepared = reportPhotoMetrics,
         )
     }
 }

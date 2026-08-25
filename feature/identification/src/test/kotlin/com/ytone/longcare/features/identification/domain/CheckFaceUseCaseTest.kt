@@ -82,19 +82,6 @@ class CheckFaceUseCaseTest {
     }
 
     @Test
-    fun `missing registered face is preserved for terminal presentation`() = runTest {
-        val useCase = CheckFaceUseCase(
-            FakeCheckFaceGateway(CheckFaceRemoteResult.MissingRegisteredFace),
-        )
-
-        val result = useCase.execute(orderId = 123L, faceImageBase64 = "ZmFjZQ==")
-
-        assertThat(result).isEqualTo(
-            CheckFaceResult.Error(CheckFaceFailure.MissingRegisteredFace),
-        )
-    }
-
-    @Test
     fun `session invalidation is preserved for global logout navigation`() = runTest {
         val useCase = CheckFaceUseCase(
             FakeCheckFaceGateway(CheckFaceRemoteResult.SessionInvalidated),

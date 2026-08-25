@@ -18,8 +18,6 @@ sealed interface CheckFaceFailure {
         val serverMessage: String?,
     ) : CheckFaceFailure
 
-    data object MissingRegisteredFace : CheckFaceFailure
-
     data object SessionInvalidated : CheckFaceFailure
 
     data object NetworkError : CheckFaceFailure
@@ -56,9 +54,6 @@ class CheckFaceUseCase @Inject constructor(
                     code = result.code,
                     serverMessage = result.message,
                 ),
-            )
-            CheckFaceRemoteResult.MissingRegisteredFace -> CheckFaceResult.Error(
-                CheckFaceFailure.MissingRegisteredFace,
             )
             CheckFaceRemoteResult.SessionInvalidated -> CheckFaceResult.Error(
                 CheckFaceFailure.SessionInvalidated,

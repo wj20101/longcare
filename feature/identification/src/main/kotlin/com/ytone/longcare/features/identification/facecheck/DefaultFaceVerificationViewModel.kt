@@ -80,8 +80,8 @@ class DefaultFaceVerificationViewModel @Inject constructor(
             } catch (error: Exception) {
                 DiagnosticEventTracker.trackError(
                     category = "default_face_verification",
-                    event = "face_image_processing_failure",
-                    description = "默认人脸验证图片处理失败",
+                    event = "face_verification_failure",
+                    description = "默认人脸验证失败",
                     throwable = error,
                     extras = mapOf(
                         "orderId" to orderKey.orderId,
@@ -104,9 +104,7 @@ class DefaultFaceVerificationViewModel @Inject constructor(
     }
 
     private fun CheckFaceFailure.toUiState(): DefaultFaceVerificationUiState = when (this) {
-        CheckFaceFailure.UnsupportedOrder,
-        CheckFaceFailure.MissingRegisteredFace,
-        -> DefaultFaceVerificationUiState.TerminalError(this)
+        CheckFaceFailure.UnsupportedOrder -> DefaultFaceVerificationUiState.TerminalError(this)
 
         CheckFaceFailure.SessionInvalidated -> DefaultFaceVerificationUiState.SessionInvalidated
 

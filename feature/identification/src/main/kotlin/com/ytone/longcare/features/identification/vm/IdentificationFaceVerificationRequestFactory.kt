@@ -18,10 +18,6 @@ internal fun createFaceVerificationRequest(
     )
 }
 
-internal fun createServiceOrderNo(now: Long = System.currentTimeMillis()): String {
-    return "service_$now"
-}
-
 internal fun createElderOrderNo(orderId: Long, now: Long = System.currentTimeMillis()): String {
     return "elder_${orderId}_$now"
 }

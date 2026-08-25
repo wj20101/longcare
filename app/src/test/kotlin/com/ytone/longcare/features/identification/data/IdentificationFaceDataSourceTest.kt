@@ -43,7 +43,7 @@ class IdentificationFaceDataSourceTest {
     }
 
     @Test
-    fun `legacy cleanup removes only current user cache plus captured face files`() =
+    fun `local cleanup removes current user cache and every local face file`() =
         runTest(testDispatcher) {
             val userId = 13_579
             val otherUserId = 24_680
@@ -67,14 +67,22 @@ class IdentificationFaceDataSourceTest {
                 parentFile?.mkdirs()
                 writeText("app")
             }
+            val remoteFaceTempFile = File(
+                context.cacheDir,
+                "face_temp/remote_face_stale.img",
+            ).apply {
+                parentFile?.mkdirs()
+                writeText("stale")
+            }
 
-            dataSource.clearUserFaceBase64(userId)
+            dataSource.clearUserFaceArtifacts(userId)
 
             assertNull(dataStore.data.first()[recordKey])
             assertFalse(currentUserFile.exists())
             assertTrue(otherUserFile.exists())
             assertFalse(currentFaceFile.exists())
             assertFalse(appFaceFile.exists())
+            assertFalse(remoteFaceTempFile.exists())
         }
 
     @Test
@@ -102,6 +110,7 @@ class IdentificationFaceDataSourceTest {
         File(context.filesDir, "face_captures").deleteRecursively()
         File(context.filesDir, "face_capture").deleteRecursively()
         File(context.filesDir, "face_store").deleteRecursively()
+        File(context.cacheDir, "face_temp").deleteRecursively()
         File(context.cacheDir, "face-input.img").delete()
     }
 

@@ -57,16 +57,18 @@ class DefaultFaceVerificationViewModelTest {
     }
 
     @Test
-    fun `missing registered face is terminal and cannot be mistaken for retryable mismatch`() =
+    fun `failed comparison remains retryable`() =
         runTest(mainDispatcher) {
-            val viewModel = createViewModel(CheckFaceRemoteResult.MissingRegisteredFace)
+            val viewModel = createViewModel(
+                CheckFaceRemoteResult.Rejected(code = 400, message = "人脸不匹配"),
+            )
             val bitmap = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
 
             viewModel.verifyFace(OrderKey(orderId = 123L), bitmap)
             advanceUntilIdle()
 
             assertThat(viewModel.uiState.value)
-                .isInstanceOf(DefaultFaceVerificationUiState.TerminalError::class.java)
+                .isInstanceOf(DefaultFaceVerificationUiState.RetryableError::class.java)
             assertThat(bitmap.isRecycled).isTrue()
         }
 

@@ -88,7 +88,7 @@ class LocationLogoutIntegrationRegressionTest {
         val api = mockk<LongCareApiService>()
         coEvery { api.logout() } returns ApiResult.Success(Unit)
         val cleaner = mockk<FaceCacheCleaner>()
-        coEvery { cleaner.clearUserFaceBase64(any()) } just runs
+        coEvery { cleaner.clearUserFaceArtifacts(any()) } just runs
         ProfileRepositoryImpl(api, sessionRepository, cleaner).logout()
         runCurrent()
 

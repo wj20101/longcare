@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.identification.domain
 
 sealed interface ServicePersonFaceSource {
-    data class RemoteFace(val sourcePhotoUrl: String) : ServicePersonFaceSource
+    data object RegisteredFaceAvailable : ServicePersonFaceSource
 
     data object RequireFaceSetup : ServicePersonFaceSource
 
@@ -12,5 +12,5 @@ sealed interface ServicePersonFaceSource {
 interface VerifyServicePersonDataGateway {
     suspend fun resolveFaceSource(): ServicePersonFaceSource
 
-    suspend fun clearLegacyFaceArtifacts(userId: Int)
+    suspend fun clearLocalFaceArtifacts(userId: Int)
 }

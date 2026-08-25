@@ -7,6 +7,9 @@ import com.ytone.longcare.model.CheckFaceParamModel
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.result.SessionInvalidationCode
 import javax.inject.Inject
+import kotlinx.coroutines.withTimeoutOrNull
+
+private const val FACE_COMPARISON_TIMEOUT_MS = 20_000L
 
 class CheckFaceGatewayImpl @Inject constructor(
     private val identificationRepository: IdentificationRepository,
@@ -15,12 +18,14 @@ class CheckFaceGatewayImpl @Inject constructor(
         orderId: Int,
         faceImageBase64: String,
     ): CheckFaceRemoteResult {
-        val result = identificationRepository.checkFace(
-            CheckFaceParamModel(
-                orderId = orderId,
-                faceImg = faceImageBase64,
-            ),
-        )
+        val result = withTimeoutOrNull(FACE_COMPARISON_TIMEOUT_MS) {
+            identificationRepository.checkFace(
+                CheckFaceParamModel(
+                    orderId = orderId,
+                    faceImg = faceImageBase64,
+                ),
+            )
+        } ?: return CheckFaceRemoteResult.NetworkError
 
         return when (result) {
             is ApiResult.Success -> CheckFaceRemoteResult.Success
@@ -28,45 +33,14 @@ class CheckFaceGatewayImpl @Inject constructor(
                 if (SessionInvalidationCode.requiresLogout(result.code)) {
                     CheckFaceRemoteResult.SessionInvalidated
                 } else {
-                    resolveFailedVerification(
-                        fallback = CheckFaceRemoteResult.Rejected(
-                            code = result.code,
-                            message = result.message.takeIf(String::isNotBlank),
-                        ),
+                    CheckFaceRemoteResult.Rejected(
+                        code = result.code,
+                        message = result.message.takeIf(String::isNotBlank),
                     )
                 }
             }
 
-            is ApiResult.Exception -> resolveFailedVerification(
-                fallback = CheckFaceRemoteResult.NetworkError,
-            )
+            is ApiResult.Exception -> CheckFaceRemoteResult.NetworkError
         }
-    }
-
-    /**
-     * The CheckFace contract does not identify whether a failure means that the current account
-     * has no registered face. Re-querying GetFace gives the UI an explicit, stable decision and
-     * avoids inferring business state from mutable server messages.
-     */
-    private suspend fun resolveFailedVerification(
-        fallback: CheckFaceRemoteResult,
-    ): CheckFaceRemoteResult = when (val faceResult = identificationRepository.getFace()) {
-        is ApiResult.Success -> {
-            if (faceResult.data.faceImgUrl.isBlank()) {
-                CheckFaceRemoteResult.MissingRegisteredFace
-            } else {
-                fallback
-            }
-        }
-
-        is ApiResult.Failure -> {
-            if (SessionInvalidationCode.requiresLogout(faceResult.code)) {
-                CheckFaceRemoteResult.SessionInvalidated
-            } else {
-                CheckFaceRemoteResult.MissingRegisteredFace
-            }
-        }
-
-        is ApiResult.Exception -> CheckFaceRemoteResult.MissingRegisteredFace
     }
 }

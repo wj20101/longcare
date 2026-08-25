@@ -96,10 +96,20 @@ fun IdentificationScreen(
     }
 
     LaunchedEffect(defaultFaceVerificationResult) {
-        if (defaultFaceVerificationResult == true) {
-            actions.clearDefaultFaceVerificationResult()
-            identificationViewModel.setServicePersonVerified()
-            identificationViewModel.updateFaceVerificationStatus(orderKey, verified = true)
+        when (defaultFaceVerificationResult) {
+            true -> {
+                identificationViewModel.setServicePersonVerified()
+                identificationViewModel.updateFaceVerificationStatus(orderKey, verified = true)
+                identificationViewModel.resetFaceVerificationState()
+                actions.clearDefaultFaceVerificationResult()
+            }
+
+            false -> {
+                identificationViewModel.resetFaceVerificationState()
+                actions.clearDefaultFaceVerificationResult()
+            }
+
+            null -> Unit
         }
     }
 
@@ -126,7 +136,7 @@ fun IdentificationScreen(
         identificationViewModel = identificationViewModel,
         onNavigateBack = actions.onNavigateBack,
         onNavigateToSelectService = { actions.onNavigateToSelectService(orderKey) },
-        onVerifyServicePerson = { actions.onNavigateToDefaultFaceVerification(orderKey) },
+        onVerifyServicePerson = { identificationViewModel.verifyServicePerson(orderKey) },
         onVerifyElder = ::requestElderRecordPhoto,
     )
 

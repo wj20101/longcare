@@ -9,6 +9,7 @@ import com.ytone.longcare.model.SetFaceParamModel
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.result.SessionInvalidationCode
 import java.io.IOException
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -33,7 +34,7 @@ class CheckFaceGatewayImplTest {
     }
 
     @Test
-    fun `failed comparison is preserved when registered face is available`() = runTest {
+    fun `failed comparison is returned without a second face lookup`() = runTest {
         val repository = FakeIdentificationRepository(
             checkResult = ApiResult.Failure(code = 400, message = "人脸不匹配"),
         )
@@ -44,33 +45,7 @@ class CheckFaceGatewayImplTest {
         assertThat(result).isEqualTo(
             CheckFaceRemoteResult.Rejected(code = 400, message = "人脸不匹配"),
         )
-        assertThat(repository.getFaceCallCount).isEqualTo(1)
-    }
-
-    @Test
-    fun `blank registered face after failed comparison means face is missing`() = runTest {
-        val repository = FakeIdentificationRepository(
-            checkResult = ApiResult.Failure(code = 400, message = "校验失败"),
-            getFaceResult = ApiResult.Success(FaceResultModel(faceImgUrl = "")),
-        )
-        val gateway = CheckFaceGatewayImpl(repository)
-
-        val result = gateway.checkFace(orderId = 123, faceImageBase64 = "ZmFjZQ==")
-
-        assertThat(result).isEqualTo(CheckFaceRemoteResult.MissingRegisteredFace)
-    }
-
-    @Test
-    fun `unavailable registered face means face is missing by business policy`() = runTest {
-        val repository = FakeIdentificationRepository(
-            checkResult = ApiResult.Failure(code = 400, message = "校验失败"),
-            getFaceResult = ApiResult.Exception(IOException("offline")),
-        )
-        val gateway = CheckFaceGatewayImpl(repository)
-
-        val result = gateway.checkFace(orderId = 123, faceImageBase64 = "ZmFjZQ==")
-
-        assertThat(result).isEqualTo(CheckFaceRemoteResult.MissingRegisteredFace)
+        assertThat(repository.getFaceCallCount).isEqualTo(0)
     }
 
     @Test
@@ -90,23 +65,7 @@ class CheckFaceGatewayImplTest {
     }
 
     @Test
-    fun `registered face session failure remains session invalidation`() = runTest {
-        val repository = FakeIdentificationRepository(
-            checkResult = ApiResult.Failure(code = 400, message = "校验失败"),
-            getFaceResult = ApiResult.Failure(
-                code = SessionInvalidationCode.SESSION_EXPIRED,
-                message = "登录已过期",
-            ),
-        )
-        val gateway = CheckFaceGatewayImpl(repository)
-
-        val result = gateway.checkFace(orderId = 123, faceImageBase64 = "ZmFjZQ==")
-
-        assertThat(result).isEqualTo(CheckFaceRemoteResult.SessionInvalidated)
-    }
-
-    @Test
-    fun `network failure remains retryable when registered face is available`() = runTest {
+    fun `network failure remains retryable without a second face lookup`() = runTest {
         val repository = FakeIdentificationRepository(
             checkResult = ApiResult.Exception(IOException("offline")),
         )
@@ -115,13 +74,33 @@ class CheckFaceGatewayImplTest {
         val result = gateway.checkFace(orderId = 123, faceImageBase64 = "ZmFjZQ==")
 
         assertThat(result).isEqualTo(CheckFaceRemoteResult.NetworkError)
+        assertThat(repository.getFaceCallCount).isEqualTo(0)
+    }
+
+    @Test
+    fun `comparison has a bounded total timeout`() = runTest {
+        val repository = object : IdentificationRepository {
+            override suspend fun setFace(setFaceParamModel: SetFaceParamModel): ApiResult<Unit> =
+                error("Unexpected call")
+
+            override suspend fun getFace(): ApiResult<FaceResultModel> =
+                error("Unexpected call")
+
+            override suspend fun checkFace(
+                checkFaceParamModel: CheckFaceParamModel,
+            ): ApiResult<Unit> = awaitCancellation()
+        }
+
+        val result = CheckFaceGatewayImpl(repository).checkFace(
+            orderId = 123,
+            faceImageBase64 = "ZmFjZQ==",
+        )
+
+        assertThat(result).isEqualTo(CheckFaceRemoteResult.NetworkError)
     }
 
     private class FakeIdentificationRepository(
         private val checkResult: ApiResult<Unit>,
-        private val getFaceResult: ApiResult<FaceResultModel> = ApiResult.Success(
-            FaceResultModel(faceImgUrl = "https://face.url"),
-        ),
     ) : IdentificationRepository {
         var receivedRequest: CheckFaceParamModel? = null
         var getFaceCallCount = 0
@@ -131,7 +110,7 @@ class CheckFaceGatewayImplTest {
 
         override suspend fun getFace(): ApiResult<FaceResultModel> {
             getFaceCallCount += 1
-            return getFaceResult
+            error("CheckFace must not re-query GetFace")
         }
 
         override suspend fun checkFace(

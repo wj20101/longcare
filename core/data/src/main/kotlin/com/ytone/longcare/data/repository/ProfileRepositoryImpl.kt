@@ -23,7 +23,7 @@ class ProfileRepositoryImpl @Inject constructor(
         val result = apiService.logout()
         if (userId != null) {
             try {
-                faceCacheCleaner.clearUserFaceBase64(userId)
+                faceCacheCleaner.clearUserFaceArtifacts(userId)
             } catch (exception: CancellationException) {
                 throw exception
             } catch (throwable: Throwable) {
