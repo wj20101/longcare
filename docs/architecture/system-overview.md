@@ -1,166 +1,165 @@
-# System Overview
+# 系统架构概览
 
-Last verified: 2026-08-14
+最后核对：2026-08-27
 
-This document describes the current runtime architecture as implemented today.
+本文描述当前代码实际运行形态，不把目标架构写成已经完成的事实。版本和依赖见[技术栈与构建基线](tech-stack.md)，产品行为见[产品概览](../product/overview.md)。
 
-## 1) Runtime shape
+## 总体形态
 
-LongCare is an Android app with a shell-first architecture:
+LongCare 是单 APK、多模块的 Compose Android 应用。当前采用“壳层 + Core + 部分 Feature 下沉”的过渡架构：
 
-- `:app` is still the runtime host for:
-  - app startup and `MainApplication`
-  - `MainActivity`
-  - typed route registration and navigation graph composition
-  - many current feature screens under `app/src/main/kotlin/com/ytone/longcare/features/**`
-- `:core:*` modules hold shared model/domain/data/common/ui capabilities.
-- `:feature:*` modules are partially migrated business slices (not all own UI routes yet).
+- `:app` 负责 Application/Activity、隐私和会话入口、类型安全导航、Manifest 组件、平台/厂商 SDK 适配，以及仍未迁出的多数 route-bound UI。
+- `:core:*` 提供模型、领域契约、数据实现、通用 UI 和基础设施。
+- `:feature:*` 已承接部分业务状态、用例、平台能力或 UI，但模块迁移尚未完成。
+- `:baselineprofile` 生成启动和关键旅程的 Baseline Profile。
 
-## 2) Module topology and current ownership
+```mermaid
+flowchart LR
+    APP[":app<br/>启动·导航·平台组装·遗留 UI"] --> FEATURES[":feature:*"]
+    APP --> DATA[":core:data"]
+    APP --> UI[":core:ui"]
+    APP --> COMMON[":core:common"]
+    APP --> DOMAIN[":core:domain"]
+    APP --> MODEL[":core:model"]
 
-### App shell
+    FEATURES --> UI
+    FEATURES --> COMMON
+    FEATURES --> DOMAIN
+    FEATURES --> MODEL
+    DATA --> COMMON
+    DATA --> DOMAIN
+    DATA --> MODEL
+    UI --> COMMON
+    UI --> DOMAIN
+    UI --> MODEL
+    COMMON --> MODEL
+    DOMAIN --> MODEL
+```
 
-- `:app`
-  - owns `MainViewModel` session gating (`Unknown -> Splash`, `LoggedIn -> Home`, `LoggedOut -> Login`)
-  - owns `NavHost` and route registration (`registerEntryNavGraphs`, `registerServiceFlowNavGraphs`, `registerSupportNavGraphs`)
-  - owns Android manifest components (services, receivers, provider, activities)
-  - still contains most route-bound Compose screens
+箭头表示允许出现的项目模块依赖；每个模块的精确白名单以 `scripts/quality/module_dependency_allowlist.txt` 为准。
 
-### Core modules
+## 模块职责与现实归属
 
-- `:core:model`
-  - shared data models, value objects, and transport-neutral `ApiResult`
-  - compiled as a pure Kotlin/JVM module
-- `:core:domain`
-  - repository/use-case contracts, intended pure Kotlin boundary
-  - compiled as a pure Kotlin/JVM module so Android dependencies fail at build time
-- `:core:data`
-  - repository implementations, network/database/COS implementations, DI bindings
-- `:core:ui`
-  - shared UI helpers/components and UI support code
-  - owns the single full-screen image preview implementation (`PhotoPreviewDialog`)
-- `:core:common`
-  - logging, runtime config, utility abstractions, common helpers
-  - owns the unified image output pipeline, JPEG policies, managed storage, and cleanup
+| 模块 | 当前职责 | 当前现实/迁移状态 |
+|---|---|---|
+| `:app` | 运行时壳、导航、Manifest、平台网关、厂商 UI 控制器、更新任务 | 仍包含护理、销售、NFC、相机、倒计时等大量业务 UI；legacy feature 目录已冻结新增 |
+| `:baselineprofile` | Macrobenchmark 旅程与 Baseline Profile 生成 | 使用 Pixel 6 API 33 managed device，目标为 `:app` |
+| `:core:model` | 跨层模型、值对象、`ApiResult`、序列化模型 | Kotlin/JVM 模块，不依赖 Android framework |
+| `:core:domain` | Repository/网关契约和领域规则 | Kotlin/JVM 模块，不依赖 Android framework 或数据实现 |
+| `:core:data` | Retrofit、Room、DataStore/COS 相关实现、Repository 实现和 Hilt 绑定 | 数据实现集中地；不得依赖 feature/UI |
+| `:core:common` | 日志、诊断、运行配置、调度器、图片输出/受管文件、通用 Android 能力 | Android library；不是纯 Kotlin 模块 |
+| `:core:ui` | 共用 Compose/UI 支撑、共享 ViewModel、统一图片预览 | 可依赖 Core 契约，不得访问数据实现 |
+| `:feature:login` | 登录 ViewModel、动作接口、DI 和 feature entry | `LoginScreen` 仍在 `:app` |
+| `:feature:home` | 首页共享状态、上报能力、动作接口和 feature entry | 护理/销售首页 route UI 仍在 `:app` |
+| `:feature:identification` | 身份用例/网关、状态编排、CameraX + ML Kit 人脸采集和默认比对页 | 已拥有默认人脸核验 UI；`IdentificationScreen` 主页面仍在 `:app` |
+| `:feature:location` | 定位 Service、管理器、会话、上报、诊断 | 作为服务流程内嵌能力，没有独立路由 |
+| `:feature:photoupload` | 上传门面、任务队列和照片处理状态 | `PhotoUploadScreen`、`CameraScreen` 仍在 `:app` |
+| `:feature:servicecountdown` | 倒计时状态、轮询和平台网关契约 | route UI、Service、闹钟实现仍在 `:app` |
 
-### Feature modules (current reality)
+## 启动与会话
 
-- `:feature:login`
-  - has feature entry constant, actions, ViewModel/DI support
-  - route screen is currently in `:app` (`features/login/ui/LoginScreen.kt`)
-- `:feature:home`
-  - has feature entry constant, actions, shared ViewModel/DI support
-  - route screen is currently in `:app` (`features/home/ui/HomeScreen.kt`)
-- `:feature:identification`
-  - has feature entry constant, domain/data/use-case/ViewModel/DI support
-  - owns the default CameraX/ML Kit face-verification page and `CheckFace` orchestration
-  - identification host screen is currently in `:app`
-    (`features/identification/ui/IdentificationScreen.kt`)
-- `:feature:location`
-  - owns location service/managers/reporting; tracking is embedded in service flows rather than exposed as a standalone route
-- `:feature:photoupload`
-  - currently provides APIs, domain support, ViewModel/delegates, trackers
-  - owns the validated `PhotoCloudUploader` boundary used by photo-task and sales flows
-  - route-bound UI still in `:app` (`PhotoUploadScreen`, `CameraScreen`)
-- `:feature:servicecountdown`
-  - currently provides APIs, domain support, ViewModel/delegates
-  - route-bound UI still in `:app` (`ServiceCountdownScreen`)
+1. `MainActivity` 使用 Hilt，启用 edge-to-edge，并把 UI 交给 `MainApp`。
+2. 未同意隐私政策时只显示同意弹窗；同意后执行需要用户授权的后置初始化。
+3. `MainViewModel` 暴露持久会话：
+   - `Unknown` → 启动进度页
+   - `LoggedOut` → `LoginRoute`
+   - `LoggedIn` → `HomeGraphRoute`
+4. 全局 `SessionInvalidationHandler` 负责失效提示与退出；业务页面不各自实现一套登出导航。
+5. WorkManager 启动任务检查新版本；UI 只观察最新一次启动请求，避免历史成功任务重新弹出旧更新。
 
-## 3) Navigation shell and route registration
+## 导航组装
 
-Navigation is typed (`@Serializable` route objects/data classes) and assembled in `:app`.
+导航使用 Navigation Compose 2 的 Kotlin Serialization 类型安全路由，并在 `:app/navigation` 统一注册：
 
-- Root route resolution:
-  - `SessionState.Unknown -> SplashRoute`
-  - `SessionState.LoggedIn -> HomeRoute`
-  - `SessionState.LoggedOut -> LoginRoute`
-- Route groups:
-  - entry graph: login/home
-  - service-flow graph: service/nursing/NFC/select-service/photo-upload/countdown/complete/end-selection
-  - support graph: face-guide/identification/device/user lists/camera/webview
-- Feature route registry guard currently validates exactly 3 feature route constants:
-  - `feature_login`
-  - `feature_home`
-  - `feature_identification`
+- Entry：登录、Home 子图和订单列表。
+- Service flow：服务详情、护理执行、NFC、选择服务、照片上传、倒计时、结束选择、完成摘要。
+- Support：用户列表/记录、人脸引导与核验、设备选择、相机、手动人脸采集和 WebView。
 
-## 4) Layer boundaries in practice
+订单相关路由传递轻量 `OrderNavParams(orderId, planId)`，页面再通过 Repository/共享状态加载业务数据。跨页面结果使用上一层 `SavedStateHandle`，例如相机 URI、人脸文件路径和默认人脸核验结果。
 
-Project rules currently enforced by docs/scripts:
+当前只有 login、home、identification 三个 feature entry 常量进入运行时 registry；registry 的数量校验不是完整路由清单。完整页面映射见[页面与路由地图](ui-and-screen-map.md)。
 
-- domain should remain Android-free and contract-first
-- feature/presentation should not directly depend on data implementations
-- ViewModel handles state orchestration; durable UI state and user-visible actions use `StateFlow`
-- user-visible actions remain queued until the UI acknowledges them; replay-zero flows are limited to loss-tolerant live signals
-- Android services, alarms, installers, NFC sources, and SDK entry points are accessed through app-owned platform gateways/controllers
-- Sale Retrofit methods and network-only DTOs are locked by method/path/annotation/JSON-key contract tests
-- session mutations are suspend operations; login/logout callers cannot report completion before DataStore persistence finishes
+## 状态与异步约定
 
-Current codebase reality:
+- 可持续渲染状态使用 `StateFlow`，Compose 使用 `collectAsStateWithLifecycle()`。
+- 会触发导航或用户可见结果的重要动作必须可确认消费，避免用 `SharedFlow(replay = 0)` 承载不能丢失的事件。
+- replay-zero 流只用于允许观察者缺席时丢失的实时输入或诊断信号，例如 NFC/RFID 瞬时事件。
+- 协程取消必须继续抛出 `CancellationException`；敏感流程由质量脚本扫描。
+- ViewModel 不持有 Activity；需要 Activity、Context、Service、闹钟、安装器或厂商 SDK UI 时通过 app-owned gateway/controller。
+- Repository 会话写入为 suspend 操作，调用者不能在 DataStore 持久化完成前报告登录/退出成功。
 
-- architecture direction is enforced by quality scripts
-- runtime UI ownership is still mixed between `:app` and feature modules
+## 数据与持久化
 
-## 5) Android platform boundary
+- Retrofit + Moshi 承载 LongCare API；API 方法、路径、参数注解和关键 JSON 字段由契约测试保护。
+- Room 当前 schema 版本为 3，schema JSON 保存在 `app/schemas`；升级必须提供显式 Migration 和迁移测试，不允许异常时删库重建。
+- DataStore 保存会话、偏好和少量兼容记录。
+- WorkManager 用于启动更新检查、APK 下载等需要跨重建继续或恢复结果的任务。
+- 腾讯 COS 负责业务图片/文件上传，Feature 通过 `PhotoCloudUploader` 等受校验门面使用。
+- Debug 可选的本地 mock 只存在于 debug source set，不进入 Release。
 
-The Android component surface is defined in `app/src/main/AndroidManifest.xml`:
+## 图片与人脸链路
 
-- activities:
+- 标准业务照片统一进入 `CameraRoute`，由 `UnifiedImagePipeline` 完成 EXIF 方向修正、水印、JPEG 压缩、原子写入、大小校验和受管文件生命周期。
+- `ImageProcessingPolicies` 集中维护图片参数；业务页面不得各自硬编码压缩策略。
+- `PhotoPreviewDialog` 是通用全屏预览实现。
+- 订单图片行删除与受管文件删除在数据层耦合，单张删除、整单清理和完成流程使用同一生命周期。
+- 默认服务人员核验由 `:feature:identification` 的 CameraX/ML Kit 流程完成：单人/姿态检查 → 建立睁眼基线 → 闭眼 → 稳定睁开 → 拍摄 → 编码 → `/V1/User/CheckFace`。
+- 服务端登记照只作为“是否需要补录”的权威状态，不重新下载为客户端本地缓存；旧版遗留文件在需要补录时清理。
+- 腾讯人脸 SDK 和手动采集仍保留兼容/验证路径，但不是默认订单核验入口。
+
+## Android 组件边界
+
+最终组件来自 app、feature Manifest 和 AAR 合并：
+
+- Activity：
   - `MainActivity`
   - `CountdownAlarmActivity`
-- services:
-  - location tracking foreground service
-  - countdown foreground service
-  - alarm ringtone foreground service
-  - AMap `APSService`
-- receivers:
-  - countdown alarm/dismiss
-  - service-time alarm
-  - boot completed
-- providers:
-  - custom `FileProvider` restricted to update APK directories
-  - WorkManager startup initializer override/removal
+  - `FaceVerificationValidationActivity`
+  - `NfcValidationActivity`
+  - QLZ SDK 的内部 `MainLoadingActivity`
+- Service：
+  - 订单定位 `LocationTrackingService` 和 AMap `APSService`（`location` 类型）
+  - 倒计时前台 Service（`specialUse`）
+  - 响铃 Service（`mediaPlayback`）
+- Receiver：倒计时、关闭响铃、服务结束提醒和设备启动恢复。
+- Provider：受限 `FileProvider`；WorkManager 默认 initializer 被移除，改为应用自定义配置。
 
-## 6) External integrations currently in use
+除 `MainActivity` 和 Debug 验证 launcher 外，业务/验证组件保持不可导出。Release 的隐藏验证 Activity 可从登录 Logo 长按面板打开，但 `exported=false`。
 
-- AMap Location SDK (`com.amap.api:location`) for foreground/background location flows
-- Tencent COS SDK (`com.qcloud.cos:cos-android`) via `core/data` COS repository layer
-- CameraX + ML Kit face detection (`com.google.mlkit:face-detection`) provide the default
-  service-person capture page; verification uses the documented `/V1/User/CheckFace` contract
-- Tencent face verification SDK (`WbCloudFaceVerifySdk`) remains behind an app-owned UI controller
-  for legacy compatibility routes and is not the default order-identification entry
-- Bugly crash reporting (`com.tencent.bugly:crashreport`) behind `CrashReportGateway`; local diagnostics
-  remain available in Debug, while remote reporting is enabled only after consent and successful SDK initialization
-- QLZ assessment SDK 1.3.0.2 through app-owned UI/device controllers; Sale domain contracts remain
-  in `core:domain`, while exact network DTOs and implementations remain in `core:data`
-- WorkManager for startup update checks and background jobs; the UI observes only the exact latest startup request ID, so historical succeeded work cannot revive a withdrawn update
+## 权限与平台约束
 
-## 7) Current-state architecture summary
+- 相机、人脸、NFC、蓝牙、定位、通知、精确闹钟、全屏提醒和应用安装均按业务入口请求，不应在 Application 无条件触发。
+- Android 14+ 的前台服务类型及对应权限在 Manifest 中显式声明；定位 Service 只能在满足位置服务和运行时权限的用户可见流程中启动。
+- 应用自有 Activity 当前锁定竖屏。targetSdk 36 在 sw600dp+ 默认忽略方向/可调整大小限制，项目用 Activity 级 `PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY` 暂时退出该行为。
+- Android API 37 会取消上述大屏退出能力；在升级 targetSdk 37 前必须完成旋转、多窗口、相机预览和状态恢复验证。
+- 顶层护理/销售导航已经使用 Material 3 Adaptive Navigation Suite，根据窗口尺寸选择底栏或导航轨。
 
-The codebase is in a transitional but stable state:
+## 外部集成
 
-- stable shell + typed navigation are in place
-- domain/data/core boundaries are established and script-guarded
-- `:core:model` and `:core:domain` are Android-free JVM modules
-- Room upgrades use explicit migrations and never delete the production database as an exception fallback
-- WorkManager-backed update checks and downloads can reconnect after Activity/ViewModel recreation
-- boot notification recovery resolves persisted session state inside `goAsync()` instead of reading the initial `Unknown` value
-- app-owned routes hosted by `MainActivity` are portrait-only; the Android 16 restricted-resizability
-  compatibility opt-out is scoped to that Activity for targetSdk 36, while SDK-owned Activities retain
-  their own orientation policies
-- top-level destinations use Material 3 `NavigationSuiteScaffold`, selecting bottom navigation or a rail from current window size/posture
-- service execution chain is implemented end-to-end
-- UI/module ownership migration is still in progress, with significant route-bound UI remaining in `:app`
+| 集成 | 用途 | 代码边界 |
+|---|---|---|
+| AMap Location | 服务中定位和单次业务定位 | `:feature:location`；平台 Service 在模块 Manifest 中声明 |
+| Tencent COS | 图片/文件对象存储 | `:core:data` 实现，Feature 使用领域契约/上传门面 |
+| CameraX + ML Kit | 标准相机、人脸检测和眨眼活体 | 相机 UI 分布在 `:app` 与 `:feature:identification` |
+| Tencent Face | 旧版/兼容人脸验证 | app-owned face controller，默认订单核验不进入该 SDK |
+| QLZ | 销售蓝牙设备自动评估 | app-owned SDK controller；Sale API 分层在 Core |
+| Bugly | 同意后的崩溃上报 | `CrashReportGateway`；Debug/未初始化路径不调用远端 runtime |
+| WorkManager | 更新检查、下载与可恢复后台任务 | 自定义初始化，Worker 位于 `:app` |
 
-## 8) Unified image lifecycle
+## 构建与发布现实
 
-- Standard business photos use one CameraX route (`CameraRoute`) for capture and watermark rendering.
-- The app converts every persistent JPEG through `UnifiedImagePipeline` / `UnifiedJpegEncoder`; policy values are centralized in `ImageProcessingPolicies`.
-- Watermarked output is written atomically into the app-specific Pictures directory. Face output uses app-internal managed directories.
-- Temporary captures are removed after processing, including failure and cancellation paths. Registration/task-owned files are removed when the user deletes or abandons them and after successful completion.
-- `core:data` couples order-image row deletion with managed-file deletion, so every service-completion and order-cleanup caller gets the same local-file lifecycle automatically.
-- All image thumbnails open the shared `PhotoPreviewDialog`; the former upload, sales, automatic-face, and manual-face preview implementations have been removed.
-- ML-driven face capture retains specialized lifecycle-bound CameraX analysis because it has a
-  different runtime contract. The default verification path keeps the captured face in memory,
-  compresses it under the shared 500 KiB face-comparison policy, and sends raw Base64 without a
-  gallery or persistent-preview step.
-- Face-verification preview/Base64 loading reads the already-compressed managed JPEG on an injected IO dispatcher; Compose only renders ViewModel state and does not decode or recompress on the main thread.
+- Debug、Release、nonMinifiedRelease 和 benchmarkRelease 变体由 Android CLI/Gradle 识别。
+- Android CI 的正常阻断路径以构建、Lint、架构和治理为主，不把业务单测作为合并阻断条件；本地 `--full` 和专项验证仍应运行相关测试。
+- 验收 Release 必须显式设置 `release.production=false` 和 `release.acceptance=true`。
+- 当前生产 Release 是 fail-closed：临时 QLZ key/test mode、QLZ 弱 TLS 检查和腾讯人脸 ARM64 16 KB 对齐问题未解决前，生产门禁必须失败。
+
+## 已接受的技术债
+
+- 大多数 route-bound UI 仍位于 `:app/features/**`。
+- `:app` 同时承担壳层、平台适配和较多业务组装；新增 legacy feature 文件受 allowlist/freeze guard 约束。
+- 销售体验仍由 `:app` 持有，`SalesViewModel` 体量较大。
+- Navigation Compose 2 路由和三个 feature entry 常量还不是统一的 feature-owned 导航模型。
+- Manifest 组件面较广，源于定位、计时、闹钟、NFC、更新和厂商 SDK 的现实需求。
+- Jetifier 与生产发布阻断依赖厂商提供兼容的新 AAR，不能用忽略 Lint 或放宽门禁替代。
+
+后续优先级见[路线图与开放问题](roadmap-and-open-gaps.md)，强制边界见[依赖规则](dependency-rules.md)。

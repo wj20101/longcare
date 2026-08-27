@@ -2,7 +2,7 @@
 set -u -o pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-OUTPUT_FILE="${1:-$ROOT_DIR/docs/archive/refactor/baseline-metrics.md}"
+OUTPUT_FILE="${1:-$ROOT_DIR/build/reports/baseline/build-baseline.md}"
 LOG_DIR="${2:-/tmp/longcare_baseline_logs}"
 CLEAN_BEFORE_RUN="${BASELINE_CLEAN_BEFORE_RUN:-false}"
 DISABLE_BUILD_CACHE="${BASELINE_DISABLE_BUILD_CACHE:-true}"

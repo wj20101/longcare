@@ -1,6 +1,8 @@
 # QLZ SDK 1.3.0.2 接入说明
 
-Last verified: 2026-08-14
+最后核对：2026-08-27
+
+> 当前状态：Debug 和显式 Acceptance Release 可用于联调；Production Release 会因固定测试配置、QLZ 弱 TLS finding 和当前腾讯人脸二进制兼容问题 fail closed。不得把验收产物作为生产包。
 
 ## 接入范围
 

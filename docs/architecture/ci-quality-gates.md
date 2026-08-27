@@ -1,165 +1,167 @@
-# CI Quality Gates
+# CI、质量门禁与发布
 
-## Purpose
+最后核对：2026-08-27
 
-This document is the source of truth for local and CI quality gate layering.
-It defines the execution tiers, the `preflight_local.sh` modes, and the default
-ownership of each quality script.
+本文描述当前脚本和 GitHub Actions 的实际行为。门禁名称/Owner 元数据以 `scripts/quality/quality_gate_registry.json` 为准；是否真正执行则以对应 workflow 和 runner 脚本为准。
 
-## Tier Definitions
+## 分层
 
-- `local-fast`: fast local developer checks that should run before push.
-- `ci-required`: checks that must pass in normal CI validation.
-- `release-required`: checks required for release confidence/sign-off.
-- `observability-only`: reporting, metrics, and monitoring; does not block merge by itself.
+| 层级 | 目的 | 是否阻断 |
+|---|---|---|
+| `local-fast` | 提交前快速发现新增 legacy 文件和架构/模块边界回退 | 本地命令失败 |
+| `ci-required` | 普通 PR/Push 的构建、Lint、架构和 workflow 治理 | Android CI 阻断 |
+| `release-required` | 导出组件、厂商 SDK、签名、生产配置和发布产物安全 | Release 阻断 |
+| `observability-only` | 构建基线、质量快照、CI 健康趋势 | 报告本身不直接定义合并策略 |
 
-## Gate Registry
+## 本地入口
 
-The canonical descriptive metadata for high-value gates lives in:
+`scripts/quality/preflight_local.sh` 是开发者入口：
 
-- `scripts/quality/quality_gate_registry.json`
-
-The registry is the canonical governance metadata contract for high-value gates. Blocking CI and
-release workflows explicitly execute their matching checks; generated lint checks run after Lint has
-created its report.
-
-Within the registry:
-
-- `id` is the unique stable machine/integration key
-- `name` is display text and may be presented to humans
-
-Current schema contract:
-
-- `version`: schema revision for compatibility-aware consumers.
-- `gates`: list of high-value gate metadata entries.
-- `id`: unique stable machine/integration key for a gate.
-- `name`: human-facing gate label.
-- `layer`: governance tier target (`local-fast`, `ci-required`, `release-required`, `observability-only`).
-- `blocking`: whether the gate is intended to block at its target layer.
-- `owner`: accountable team for policy and remediation direction.
-- `source_of_truth`: canonical file/script/policy location for the rule.
-- `likely_fix`: concise default remediation guidance for diagnostics.
-
-High-value inclusion rule:
-
-- Include gates that are merge/release meaningful, show recurring governance drift risk, or materially benefit from explicit ownership and remediation metadata.
-
-The registry defines:
-
-- gate ownership
-- gate layer
-- source of truth
-- likely remediation path
-
-Runner scripts and workflows should emit diagnostics that align with this registry.
-
-## Local Preflight Modes
-
-`scripts/quality/preflight_local.sh` is the local entrypoint.
-
-| Mode | What runs |
+| 命令 | 实际执行 |
 |---|---|
-| `local-fast` (default) | `check_new_files_guard.sh`, `verify_architecture_boundaries.sh`, `verify_module_dependency_whitelist.sh`, `verify_module_api_visibility.sh` |
-| `--changed-only` | same baseline intent, but skips non-relevant checks when changed paths do not require them |
-| `--full` | `local-fast` + `./gradlew :app:compileDebugKotlin` + `./gradlew :app:testDebugUnitTest` |
-| `--release` | `--full` + `scripts/quality/run_quality_gate.sh` |
+| `bash scripts/quality/preflight_local.sh` | `local-fast` |
+| `... --changed-only` | 使用可靠 base ref 缩小检查；无法解析时安全回退到完整 `local-fast` |
+| `... --full` | `local-fast` + `:app:compileDebugKotlin` + `:app:testDebugUnitTest` |
+| `... --release` | `--full` + `run_quality_gate.sh` 质量快照 |
 
-## Local Preflight Assumptions
+`local-fast` 当前包含：
 
-### Required tooling
+- `check_new_files_guard.sh`
+- `verify_architecture_boundaries.sh`
+- `verify_module_dependency_whitelist.sh`
+- `verify_module_api_visibility.sh`
 
-- Shell: `bash`
-- SCM: `git` (used by changed-scope detection)
-- Pattern scan: `rg` is preferred; `preflight_local.sh` falls back to `grep` for changed-path matching when `rg` is unavailable
-- Build toolchain: `./gradlew` and a working local Gradle/Android setup for `--full` and `--release`
-- Snapshot dependencies for release mode: `jq` (required by `collect_quality_snapshot.sh`)
+`--changed-only` 按 `BASE_REF`、`origin/$GITHUB_BASE_REF`、`origin/master`、`origin/main` 的顺序寻找强基线。找不到时不会相信局部 diff，而是扩大扫描，避免 false green。
 
-### `--changed-only` base-ref behavior
+### 质量快照
 
-- Changed-only mode tries to use a strong branch base in this order:
-  1. `BASE_REF` (if valid)
-  2. `origin/$GITHUB_BASE_REF` (if available)
-  3. `origin/master`
-  4. `origin/main`
-- If a strong base cannot be resolved, changed-only mode does not trust partial diffs.
-  It falls back to a broader safe behavior:
-  - `check_new_files_guard.sh` switches to a full frozen-directory scan
-  - `preflight_local.sh` runs full `local-fast` baseline checks instead of skip-based filtering
-- This fallback avoids false-green outcomes on multi-commit branches or shallow/limited git history.
+`run_quality_gate.sh` 调用 `collect_quality_snapshot.sh`，需要 `jq`。Lint 报告缺失时默认先运行 `:app:lintDebug`，结果写入 `build/quality-snapshot/`。
 
-### Lint stale-waiver enforcement split
+质量快照包含 production-oriented 厂商 SDK readiness 检查。当前已知 QLZ/腾讯人脸问题仍存在时，该命令失败是预期的 fail-closed 结果，不应通过放宽规则让它变绿。
 
-- `scripts/lint/verify_lint_warning_allowlist.sh` defaults `LINT_ENFORCE_UNUSED_WAIVERS=auto`.
-- In local runs (non-`GITHUB_ACTIONS`), `auto` enforces stale-waiver failures as blocking.
-- In CI (`GITHUB_ACTIONS=true`), `auto` keeps stale-waiver findings advisory (non-blocking) to reduce post-merge noise-driven flakes.
-- CI can still run strict stale-waiver enforcement by setting `LINT_ENFORCE_UNUSED_WAIVERS=true`.
+共享 Release 隐藏验证入口的专用守卫目前由 Android CI/Release 直接执行；本地需要单独运行：
 
-## Script Catalog
+```bash
+bash scripts/quality/verify_release_validation_entry.sh .
+```
 
-The table below reflects current runner defaults and execution behavior today.
-Until follow-up alignment tasks land, treat the registry as target-state metadata contract,
-not as an automatic execution override.
+## Android CI
 
-## Workflow Responsibilities
+`.github/workflows/android-ci.yml` 的正常阻断策略是 build-only：
 
-### Blocking policy split
+1. 计算 affected scope 和 Gradle tasks。
+2. 执行 ci-required shell guards。
+3. 执行 `:app:lintDebug :app:assembleDebug`；full scope 额外执行 `:app:bundleDebug`。
+4. 对生成的 Lint 文本报告执行 warning allowlist。
+5. 上传 Debug APK；full scope 上传 AAB 和可用的 Baseline Profile APK。
+6. 总是上传报告，失败时上传额外诊断产物。
 
-- Blocking CI/CD is build-only.
-- Blocking workflows must not fail solely because of unit tests, UI assertions, business regression checks, or business journey checks.
-- Those broader correctness checks may still run in dedicated workflows or release validation, but they are not part of the blocking compile/build gate set.
-- Quality snapshot collection remains available for local or observability-oriented use, but it is no longer part of the blocking Android CI or Android Release workflow path.
+普通 Android CI **不执行业务单元测试、UI assertion 或完整用户旅程**。这是当前明确的流水线策略，不代表测试不重要：相关改动应在本地 `--full`、专项验证或发布验收中运行对应测试。
 
-### Android CI
+当前 ci-required guards：
 
-- `Android CI` is the primary blocking merge workflow for build validation.
-- It owns compile/build confidence, lint, module policy, architecture policy, and CI governance checks needed for normal pull-request validation.
-- It should not be redefined as the owner of business journey coverage or product-level regression sign-off.
+| 守卫 | 保护内容 |
+|---|---|
+| `verify_no_tracked_keystore_files.sh` | 禁止 keystore 进入 Git |
+| `verify_ci_workflow_quality.sh` | workflow action 版本、timeout、retention、触发和治理约束 |
+| `verify_release_validation_entry.sh` | Debug/Release 共享隐藏验证入口与不可导出契约 |
+| `verify_lint_ignore_policy.sh` | 禁止不受控 Lint ignore |
+| `verify_jetpack_compat_apis.sh` | 受保护 Jetpack API 使用 |
+| `verify_baselineprofile_journeys.sh` | Baseline Profile 旅程存在且无 TODO |
+| `verify_cancellation_guards.sh` | 敏感协程取消处理 |
+| `verify_no_empty_catch_blocks.sh` | 禁止空 catch |
+| `verify_target_sdk_upgrade.sh` | targetSdk 与 workflow smoke 约束同步 |
+| `verify_exact_alarm_permission_config.sh` | 精确闹钟 Manifest 策略 |
+| `verify_architecture_boundaries.sh` | 分层、legacy freeze、ViewModel 和代码规模规则 |
+| `verify_module_dependency_whitelist.sh` | Gradle 项目模块依赖边 |
+| `verify_module_api_visibility.sh` | 跨模块公共 API 边界 |
+| `verify_lint_warning_allowlist.sh` | Lint 报告新增 warning 和 waiver 漂移 |
 
-### Android Release
+## Android Release
 
-- `Android Release` is the release-sign-off workflow.
-- It owns release packaging confidence, release-only policy checks, and any higher-cost validation required before shipping.
-- It may depend on `Android CI` being green first, but it is responsible for release readiness rather than day-to-day merge blocking.
-- Manual runs require an explicit release mode. Acceptance mode permits only the documented, time-bounded vendor waivers and labels every published artifact as acceptance; production mode remains fail-closed on the vendor SDK readiness gate.
+`.github/workflows/android-release.yml` 先要求目标 commit 的 Android CI 成功，再执行发布校验。手动触发必须选择模式：
 
-### Face SDK Migration Check
+### Acceptance
 
-- `Face SDK Migration Check` is a specialized blocking build-only workflow for Tencent face SDK source switching.
-- Its responsibility is limited to verifying that the app still builds from the Maven-published face SDK path using the required build task set: `:app:compileDebugKotlin`, `:app:lintDebug`, `:app:processReleaseMainManifest`, and `:app:assembleDebug`.
-- It no longer blocks on unit tests, UI assertions, business regression checks, or business journey checks.
-- It may still enforce `scripts/quality/verify_release_exported_components.sh` because exported-component manifest safety remains a release/build safety invariant for the produced app package and release manifest path.
+- 只允许 `workflow_dispatch`。
+- 工作流传入 `release.production=false`、`release.acceptance=true`。
+- 临时 QLZ key/test mode 和已知厂商包只在明确验收模式下允许。
+- APK、AAB 和 GitHub Release 名称必须标记为验收用途。
 
-| Script | Purpose | Default Execution Layer | Common Failure Modes | Likely Remediation |
-|---|---|---|---|---|
-| `scripts/quality/preflight_local.sh` | Unified local preflight orchestration | `local-fast` | One or more child gates fail | Fix failing child gate first, then rerun the same mode |
-| `scripts/quality/check_new_files_guard.sh` | Block new Kotlin files in frozen legacy directories using allowlists | `local-fast` | New file added under `app/.../features/**` not in allowlist | Move code to `feature/*`, or inline into an allowlisted file path |
-| `scripts/quality/verify_architecture_boundaries.sh` | Enforce layered architecture, freeze rules, size thresholds | `local-fast` | Cross-layer imports, frozen legacy violations, oversized files | Remove forbidden imports, migrate code to proper module, split large files |
-| `scripts/quality/verify_module_dependency_whitelist.sh` | Enforce Gradle module dependency allowlist | `local-fast` | New module edge not in allowlist, stale allowlist module entry | Update module dependencies to allowed edges or clean allowlist drift |
-| `scripts/quality/verify_module_api_visibility.sh` | Enforce API visibility boundaries and contract ownership | `local-fast` | Internal package imports, repository contracts outside domain | Move contracts to `core/domain`, stop importing internal symbols directly |
-| `scripts/quality/verify_no_tracked_keystore_files.sh` | Block tracked keystore artifacts | `ci-required` | Keystore file tracked by git | Remove file from index/history and use secret distribution |
-| `scripts/quality/verify_release_exported_components.sh` | Validate exported component allowlist for release | `ci-required` | AndroidManifest exported mismatch | Fix manifest export settings or allowlist policy |
-| `scripts/quality/verify_vendor_sdk_release_readiness.sh` | Block production on known vendor TLS/16 KB/R8 findings | `release-required` | QLZ weak TLS or Tencent face binary warnings remain | Replace the vendor artifacts and rerun Lint/SDK regression |
-| `scripts/lint/verify_lint_warning_allowlist.sh` | Enforce lint waiver policy from lint report | `ci-required` | New lint warning not allowlisted | Fix lint issue or formally manage waiver policy |
-| `scripts/lint/verify_lint_ignore_policy.sh` | Enforce lint ignore policy integrity | `ci-required` | Disallowed lint ignore entry | Remove forbidden ignore and fix root warning |
-| `scripts/quality/verify_jetpack_compat_apis.sh` | Guard Jetpack API compatibility baselines | `ci-required` | Regression in guarded API usage | Revert incompatible API usage or update compatible implementation |
-| `scripts/quality/verify_baselineprofile_journeys.sh` | Validate baseline profile journey coverage | `ci-required` | Missing expected profile journey definition | Update baseline profile journeys/tests |
-| `scripts/quality/verify_cancellation_guards.sh` | Guard coroutine cancellation patterns | `ci-required` | Missing cancellation checks in sensitive flows | Add structured cancellation handling and rerun |
-| `scripts/quality/verify_no_empty_catch_blocks.sh` | Block empty catch blocks | `ci-required` | Empty catch found in Kotlin sources | Handle exception with explicit logic/logging or rethrow |
-| `scripts/quality/verify_target_sdk_upgrade.sh` | Guard target SDK upgrade workflow alignment | `ci-required` | SDK version/workflow mismatch | Align constants and workflow upgrade procedure |
-| `scripts/quality/verify_exact_alarm_permission_config.sh` | Guard exact alarm permission manifest policy | `ci-required` | Missing/wrong permission declaration | Correct manifest permissions and related runtime flow |
-| `scripts/quality/verify_ci_workflow_quality.sh` | Enforce CI workflow governance rules | `ci-required` | Unpinned actions, timeout/retention policy drift | Pin action versions and restore workflow governance settings |
-| `scripts/quality/affected-modules.sh` | Compute affected scope for CI task targeting | `ci-required` | Wrong base/head or diff scope assumptions | Provide explicit base ref or fix module path mapping |
-| `scripts/quality/run_target_sdk_local_smoke.sh` | Local target-SDK emulator smoke verification | `ci-required` | Missing emulator/SDK target, smoke test failure | Provision matching AVD, fix smoke test failures |
-| `scripts/quality/run_quality_gate.sh` | Unified quality snapshot entrypoint | `release-required` | Any required check fails in snapshot chain | Fix failed child check, rerun after lint/bootstrap fixes |
-| `scripts/quality/verify_gradle_stability.sh` | Guard Gradle stability constraints | `release-required` | Wrapper/dependency stability violations | Restore approved Gradle config or dependency constraints |
-| `scripts/quality/collect_quality_snapshot.sh` | Execute checks and emit machine/human-readable snapshot | `observability-only` | Missing tooling, child check failures in report | Install required tooling and resolve failing child checks |
-| `scripts/quality/collect_ci_run_metrics.sh` | Collect CI duration/health metrics | `observability-only` | Missing run metadata or parse failures | Fix metric source path/format and retry collection |
-| `scripts/quality/collect_build_baseline.sh` | Produce build baseline timing artifacts | `observability-only` | Build command failure or missing output | Fix build stability first, then recollect baseline |
-| `scripts/quality/monitor_ci_health.sh` | Evaluate CI health trends against thresholds | `observability-only` | Threshold breach or missing metrics inputs | Reduce failure rate/duration regressions or tune data feed |
-| `scripts/quality/free_runner_disk_space.sh` | CI runner disk cleanup helper | `observability-only` | Cleanup not enough, path assumptions outdated | Update cleanup targets or increase runner capacity |
+### Production
 
-## Governance Files Used By Freeze Rules
+- tag 触发和显式 production 模式均按生产要求处理。
+- 执行 `verify_vendor_sdk_release_readiness.sh`。
+- `assembleRelease` / `bundleRelease` 依赖 `verifyProductionReleaseConfiguration`。
+- 要求真实 Release keystore、密码和 alias；禁止 debug keystore fallback。
+- 生成压缩 Release APK/AAB，并执行产物、签名、Manifest 和发布元数据检查。
 
-- `scripts/quality/legacy_feature_files_allowlist.txt`
-- `scripts/quality/architecture_legacy_imports_allowlist.txt`
-- `scripts/quality/architecture_legacy_import_budget.txt`
+当前 production 必须失败，直到以下问题全部消失：
+
+- Android 内仍有固定 QLZ 测试 key 和 `QLZ_TEST_MODE=true`。
+- QLZ 1.3.0.2 可达代码存在弱 TLS trust manager。
+- 当前腾讯人脸 ARM64 native library 不满足 16 KB 对齐。
+- 人脸 AAR 的 consumer rules 含生产阻断的全局选项。
+
+详见 [QLZ SDK 接入](../integrations/qlz-sdk.md)和[路线图](roadmap-and-open-gaps.md)。
+
+## 其他 workflows
+
+| Workflow | 作用 |
+|---|---|
+| `Baseline Profile` | 手动/定时生成并校验 Baseline Profile，清理缓存 |
+| `Face SDK Migration Check` | 验证本地 AAR 与私有 Maven 来源切换后的 compile/lint/manifest/assemble |
+| `CI Health Monitor` | 收集运行健康指标并按阈值报告 |
+| `Actions Runs Cleanup` | 定时/手动清理旧 Actions run |
+
+`Face SDK Migration Check` 同样采用 build-only 策略，不把业务测试作为切源阻断项。
+
+## Release-only 关键门禁
+
+| 门禁 | 事实来源 | 常见修复方向 |
+|---|---|---|
+| Release exported components | `verify_release_exported_components.sh` | 收紧 Manifest 或有依据地更新 allowlist |
+| Vendor SDK readiness | `verify_vendor_sdk_release_readiness.sh` | 替换厂商二进制并回归，不加 ignore |
+| Production config | `verify_production_release_config.sh` | 删除临时 QLZ 配置、升级厂商 SDK |
+| Signing safety | build-logic + Release workflow | 配置真实 keystore，不使用 debug 签名 |
+| Baseline profile source | Release workflow | 生成/提交受支持的 profile 或明确 warning |
+
+## Lint waiver 规则
+
+`verify_lint_warning_allowlist.sh` 默认 `LINT_ENFORCE_UNUSED_WAIVERS=auto`：
+
+- 本地：未使用 waiver 作为阻断，推动及时清理。
+- GitHub Actions：未使用 waiver 默认仅提示，降低环境差异导致的 post-merge 噪声。
+- CI 仍可通过 `LINT_ENFORCE_UNUSED_WAIVERS=true` 强制严格模式。
+
+新增 warning 应优先修复根因。只有有 Owner、范围和退出条件的已知厂商问题才可进入 waiver；production-blocking finding 不能靠 waiver 解除。
+
+## 生成报告的位置
+
+- 质量快照：`build/quality-snapshot/`
+- 构建基线：`build/reports/baseline/build-baseline.md`
+- Lint：`app/build/reports/`
+- 单测：各模块 `build/reports/tests/` 和 `build/test-results/`
+- CI 运行指标：调用脚本指定的 `build/` 输出目录或 CI artifact
+
+报告是一次性证据，不提交到 `docs/`。
+
+## 推荐命令
+
+```bash
+# 文档/轻量架构改动
+bash scripts/quality/preflight_local.sh --local-fast
+
+# Kotlin/业务改动
+bash scripts/quality/preflight_local.sh --full
+
+# 与普通 Android CI 对齐
+bash scripts/quality/verify_release_validation_entry.sh .
+./gradlew --no-daemon :app:lintDebug :app:assembleDebug
+bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
+
+# 查看完整 release-oriented 快照；当前厂商 blocker 会使其 fail closed
+bash scripts/quality/preflight_local.sh --release
+```
+
+只运行与改动风险相称的最小集合，但不能用“普通 CI 不跑测试”作为跳过相关单元测试或真机回归的理由。
