@@ -188,8 +188,68 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  instrumentation-smoke:
+    needs:
+      - detect-affected
+      - verify-build
+    if: needs.detect-affected.outputs.run_instrumentation == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      SMOKE_TEST_CLASSES: ${{ needs.detect-affected.outputs.smoke_test_classes }}
+      SMOKE_POST_BOOT_STABILIZATION_SECS: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v6
+      - name: Set up Android instrumentation environment
+        uses: ./.github/actions/android-build-env
+        with:
+          setup-android-sdk: 'true'
+          run-gradle-stability-check: 'false'
+          run-workflow-quality-check: 'false'
+          run-lint-ignore-policy-check: 'false'
+          run-jetpack-compat-check: 'false'
+          run-baselineprofile-journey-check: 'false'
+          run-module-dependency-check: 'false'
+      - name: Build app and instrumentation APKs
+        run: |
+          ./gradlew --no-daemon \
+            :app:assembleDebug \
+            :app:assembleDebugAndroidTest \
+            -Pbaseline.enableX86_64=true
+      - name: Run selected instrumentation smoke tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+            -camera-back none -camera-front none
+          script: bash .github/scripts/run-instrumentation-smoke.sh
+      - name: Upload instrumentation smoke reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: instrumentation-smoke-reports
+          path: |
+            app/build/reports/androidTests/smoke/**
+            app/build/outputs/androidTest-results/**
+            app/build/reports/androidTests/connected/**
+          if-no-files-found: warn
+          retention-days: 7
+
   cleanup-caches:
-    needs: verify-build
+    needs:
+      - verify-build
+      - instrumentation-smoke
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 15
