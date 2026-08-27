@@ -70,6 +70,30 @@ add_smoke_class_unique() {
   smoke_classes+=("${value}")
 }
 
+add_changed_android_test_class() {
+  local file="$1"
+  local relative
+
+  case "${file}" in
+    app/src/androidTest/kotlin/*)
+      relative="${file#app/src/androidTest/kotlin/}"
+      ;;
+    app/src/androidTest/java/*)
+      relative="${file#app/src/androidTest/java/}"
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+
+  if ! git cat-file -e "${HEAD_REF}:${file}" 2>/dev/null; then
+    return 0
+  fi
+
+  relative="${relative%.*}"
+  add_smoke_class_unique "${relative//\//.}"
+}
+
 resolve_base_ref() {
   if [[ -n "${BASE_REF}" ]]; then
     echo "${BASE_REF}"
@@ -140,8 +164,12 @@ for file in "${changed_files[@]:-}"; do
   esac
 
   case "${file}" in
-    app/src/main/*|app/src/androidTest/*|baselineprofile/*)
+    app/src/main/*|baselineprofile/*)
       run_instrumentation="true"
+      ;;
+    app/src/androidTest/*)
+      run_instrumentation="true"
+      add_changed_android_test_class "${file}"
       ;;
   esac
 
