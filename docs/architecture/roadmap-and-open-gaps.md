@@ -38,7 +38,7 @@ Owner 涉及移动端、服务端和厂商，完成条件必须全部满足：
 
 完成条件：
 
-- `:app` instrumentation 当前 51 个用例全部通过，`:core:data` 迁移用例继续通过。
+- `:app` 当前发现的 instrumentation 用例全部通过，新增的布局断点 JVM 用例通过，`:core:data` 迁移用例继续通过。
 - 空 Library 模块不再启动无测试的 instrumentation APK。
 - 普通 Android CI 的 build-only 基线保持不变；受影响范围要求 smoke 时才增加业务验证。
 - 不修改任何生产 Composable 文案、布局断点或业务分支，只修复测试表达和执行编排。
