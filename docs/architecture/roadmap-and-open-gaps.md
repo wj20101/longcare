@@ -25,6 +25,72 @@ Owner 涉及移动端、服务端和厂商，完成条件必须全部满足：
 
 验收 Release 只用于联调/验收，必须显式标记，不得作为生产包分发。
 
+## P1：低风险优化批次
+
+目标是在不改变用户可见行为、route contract、数据契约和厂商 SDK 接入方式的前提下，先提高回归可信度，再修正性能产物，最后清理确定无效的项目 R8 规则。三个批次必须独立实现、独立验证和独立提交；前一批稳定后才能开始下一批。
+
+### 批次 A：测试与 CI 可信度
+
+- 修复 `DashboardGridCompactModeTest` 的陈旧硬编码文案，改为从当前 string resource 生成期望值。
+- 将 `TopHeaderAdaptationTest` 拆为断点纯逻辑测试和与设备宽度匹配的 UI 测试，避免在 compact 模拟器中伪造不可满足的 645dp 根布局。
+- 聚合 instrumentation 只运行实际拥有 `androidTest` 的模块，避免空 Library 测试 APK 因 runner 缺失而在执行前失败。
+- 让 Android CI 真正消费 `run_instrumentation` 和 `smoke_test_classes`，复用现有 instrumentation smoke 脚本；仅在 affected scope 要求时执行。
+
+完成条件：
+
+- `:app` instrumentation 当前 51 个用例全部通过，`:core:data` 迁移用例继续通过。
+- 空 Library 模块不再启动无测试的 instrumentation APK。
+- 普通 Android CI 的 build-only 基线保持不变；受影响范围要求 smoke 时才增加业务验证。
+- 不修改任何生产 Composable 文案、布局断点或业务分支，只修复测试表达和执行编排。
+
+### 批次 B：Baseline 与 Startup Profile 语义
+
+- 将首次启动、已同意隐私协议的典型启动和登录后关键业务旅程拆成明确场景，共用稳定的 journey helper。
+- `includeInStartupProfile=true` 只覆盖初始显示必需路径；滚动、导航和异步业务加载只进入 Baseline Profile。
+- 每个场景断言准确页面和关键节点，不再以 package root、盲滑或 `pressBack` 作为旅程成功证据。
+- 在真实业务内容可交互时报告 fully drawn，同时保留 TTID，并增加 TTFD 验证。
+- 加强 `verify_baselineprofile_journeys.sh`，要求隐私/会话前置条件、目标页面断言和 Startup/Profile 场景边界，而不只检查任意手势与等待调用。
+
+完成条件：
+
+- `startup-prof.txt` 只包含初始显示相关路径，`baseline-prof.txt` 作为其包含关键业务旅程的超集，不再近似完全相同。
+- Benchmark 的 Profile/None 使用同一预置状态和同一旅程；模拟器用于稳定性与依赖链诊断，最终收益在多核真实设备确认。
+- 生成、安装和 minified acceptance Release 均能识别并使用打包后的 `baseline.prof` / `baseline.profm`。
+- 不改变隐私协议、登录态、页面路由或业务数据，仅修正测试预置状态、旅程和性能标记。
+
+### 批次 C：项目 R8 确定性清理
+
+- 先删除当前 Release 全程序分析中匹配 0 items 的项目规则。
+- 删除确定被更宽项目规则覆盖的重复项，包括 `com.autonavi.aps.amapapi.model.**`、`com.comm.*`、`com.falth.data.*` 和 `**$$serializer` 的重复 member 规则。
+- `@Keep` methods 的异常覆盖结果不纳入自动清理，必须先人工确认实际匹配关系。
+- 不修改 COS、高德、Bugly、QLZ、腾讯人脸等厂商 consumer rules，不拆包或重写 AAR。
+- 不在本批次收窄仍有实际匹配的 package-wide 规则；这类工作需要单独的 SDK 业务回归方案。
+
+完成条件：
+
+- `analyzeReleaseR8Config` 中对应 unused/subsumed 项消失，Optimization、Shrinking 和 Obfuscation 分数不得下降。
+- minified acceptance Release 构建通过，并覆盖登录、导航参数恢复、定位、身份核验、照片上传、倒计时、视频呼叫和应用更新 smoke。
+- mapping、资源 shrinking、Baseline Profile 打包和 APK 签名/Manifest 检查保持正常。
+- 任一反射、序列化、JNI 或厂商流程回归时，立即回滚当前单条规则，不用新增整包 `-keep` 掩盖问题。
+
+### 首期统一门禁与排除范围
+
+每个批次至少执行：
+
+```bash
+bash scripts/quality/preflight_local.sh --full
+bash scripts/quality/verify_release_validation_entry.sh .
+./gradlew --no-daemon :app:lintDebug :app:assembleDebug
+bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
+./gradlew --no-daemon :app:assembleRelease \
+  -Prelease.production=false \
+  -Prelease.acceptance=true
+```
+
+再按批次补充 focused unit test、instrumentation、Baseline Profile Benchmark 或 R8 analyzer。每个批次使用独立提交；发现行为差异时只回滚该批次，不跨批次追加兼容分支。
+
+首期明确不包含：厂商 SDK 替换或二进制修补、厂商 consumer rules 收窄、Jetifier 关闭、Navigation 迁移、Compose UI 重构，以及 WorkManager、定位、Bugly、DataStore 等启动初始化时序调整。这些事项分别保留在 P0、既有架构路线或后续受控性能实验中。
+
 ## P1：`:app` 壳层收敛
 
 建议按可独立验证的小切片推进：
@@ -77,7 +143,7 @@ Owner 涉及移动端、服务端和厂商，完成条件必须全部满足：
 
 ## P2：工程与可观测性
 
-- 定期生成 Baseline Profile 并验证关键旅程未退化。
+- 完成低风险优化批次 B 后，定期生成 Baseline Profile，并确保 Startup/Profile 场景边界和关键旅程不退化。
 - 构建耗时、质量快照和 CI 健康报告只输出到 `build/reports/` 或 CI artifact，不回写长期 Markdown。
 - 保持 Gradle/AGP/Kotlin 升级可单独回滚，并运行 wrapper、workflow、Lint 和架构守卫。
 - 第三方 SDK 升级需要记录 AAR 校验和、权限变化、Manifest merge、consumer rules 和 native ABI 结果。
