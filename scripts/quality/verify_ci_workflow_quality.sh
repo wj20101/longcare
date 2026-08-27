@@ -276,6 +276,25 @@ check_job_step_contains_pattern() {
   fi
 }
 
+check_affected_modules_rejects_invalid_base() {
+  local script_path="$1"
+  local invalid_ref="0000000000000000000000000000000000000000"
+  local output=""
+
+  if output="$(bash "${script_path}" --format text --base "${invalid_ref}" --head HEAD 2>&1)"; then
+    echo "[ci-workflow-quality][FAIL] affected modules rejects invalid base ref (command unexpectedly succeeded)"
+    EXIT_CODE=1
+    return
+  fi
+
+  if [[ "${output}" == *"Invalid base ref '${invalid_ref}': expected a commit"* ]]; then
+    echo "[ci-workflow-quality][PASS] affected modules rejects invalid base ref"
+  else
+    echo "[ci-workflow-quality][FAIL] affected modules rejects invalid base ref (unclear error: ${output})"
+    EXIT_CODE=1
+  fi
+}
+
 check_upload_artifact_step_policies() {
   local file_path="$1"
   local message="$2"
@@ -406,6 +425,7 @@ WORKFLOWS=(
 )
 SHARED_ANDROID_BUILD_ENV_ACTION="${ROOT_DIR}/.github/actions/android-build-env/action.yml"
 GRADLE_WRAPPER_PROPERTIES="${ROOT_DIR}/gradle/wrapper/gradle-wrapper.properties"
+AFFECTED_MODULES_SCRIPT="${ROOT_DIR}/scripts/quality/affected-modules.sh"
 
 for workflow in "${WORKFLOWS[@]}"; do
   if [[ ! -f "${workflow}" ]]; then
@@ -427,6 +447,8 @@ for workflow in "${WORKFLOWS[@]}"; do
   require_any_pattern "${workflow}" "uses:[[:space:]]*gradle/actions/setup-gradle@v5" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "uses setup-gradle action (direct or shared)"
   require_any_pattern "${workflow}" "bash scripts/quality/verify_gradle_stability\\.sh" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "runs Gradle stability gate (direct or shared)"
 done
+
+check_affected_modules_rejects_invalid_base "${AFFECTED_MODULES_SCRIPT}"
 
 require_pattern \
   "${GRADLE_WRAPPER_PROPERTIES}" \
