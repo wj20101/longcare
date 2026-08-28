@@ -79,6 +79,32 @@ android run --apks=app/build/outputs/apk/debug/app-debug.apk
 android layout --pretty
 ```
 
+## OpenSpec 维护流程
+
+本项目使用 OpenSpec 管理需要先对齐行为与方案的改动。OpenSpec 采用存量项目的 delta-first 方式：只为当前真实改动描述增量，不预先回填整个代码库。
+
+以下改动在写业务代码前先建立 OpenSpec change：
+
+- 新增或修改用户可见行为、业务规则、route/network/data contract。
+- 跨模块重构、模块迁移、Room schema 或构建/依赖基线变化。
+- 权限、组件导出、前台服务、厂商 SDK、隐私、安全或生产发布相关变化。
+- 范围较大、验收标准不明确，或需要先比较多种方案的缺陷修复。
+
+纯拼写/格式修正等无行为影响的小改动可以直接处理。不要为了“补全规格”给未触及的旧代码批量建 spec。
+
+在 Codex 对话中使用项目生成的技能：
+
+```text
+$openspec-explore          调研代码与方案，不创建或修改实现
+$openspec-propose          创建 proposal/specs/design/tasks，完成后等待评审
+$openspec-apply-change     用户确认后按 tasks 实现并验证
+$openspec-update-change    实现中发现新事实时更新 change 产物
+$openspec-sync-specs       需要时提前把 delta 同步到主 specs
+$openspec-archive-change   实现与验证完成后归档并更新主 specs
+```
+
+OpenSpec 产物统一使用简体中文并提交到 `openspec/`；结构关键字保留英文。归档前运行 `openspec validate --all --strict --no-interactive`。不要在 `openspec/` 之外再创建平行的 task plan、progress、findings 或执行日志文档。
+
 ## 最小验证
 
 ```bash

@@ -1,0 +1,71 @@
+schema: spec-driven
+
+context: |
+  Language: zh-CN
+  All artifacts must be written in zh-CN.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+
+  项目：LongCare，面向长期护理服务执行和客户评估的单 APK、多模块 Android 应用。
+  主要用户链路包括护理端的登录、服务单、身份/NFC 核验、定位、拍照上传、倒计时与完成，以及销售端的客户登记、QLZ 设备评估和报告查看。
+
+  技术基线：Kotlin、Jetpack Compose、Navigation Compose 2、Hilt、Coroutines/Flow、Room、DataStore、WorkManager、Retrofit/OkHttp、CameraX/ML Kit；JDK 21、Gradle 9.7.1、AGP 9.3.2。具体版本始终以 Gradle 文件和 version catalog 为准。
+
+  模块边界：
+  - :app 仅作为启动、根导航、DI/Manifest 组装、平台与厂商 SDK 适配的壳层；现有 route-bound UI 尚未全部迁出，但不得继续扩大 legacy 区域。
+  - :core:model 与 :core:domain 必须保持 Android-free；Domain 只保存契约和领域规则。
+  - :core:data 实现数据契约，不得依赖 Feature/UI。
+  - :core:common 与 :core:ui 只保存真正跨业务复用的 Android/UI 能力。
+  - :feature:* 依赖 Core 抽象，不得直接依赖 Data 实现或其他 Feature 的 internal 实现。
+  - 新业务能力优先进入对应 :feature:*；修改模块依赖时同步核对 scripts/quality/module_dependency_allowlist.txt。
+
+  工程约束：
+  - 保持现有用户行为、类型安全 route contract、SavedStateHandle 返回 key、网络契约和持久化兼容性。
+  - 持久 UI 状态使用 StateFlow；不可丢失动作必须保留到 UI 明确消费。
+  - ViewModel 不持有 Activity，也不直接操作 Service、闹钟、安装器或厂商 SDK UI；协程捕获异常时重新抛出 CancellationException。
+  - Room schema 变更必须包含 schema JSON、显式 Migration 和迁移测试，禁止破坏性 fallback。
+  - 权限、NFC、相机、定位和 Service 改动覆盖拒绝/恢复、前后台、退出/换号和资源释放。
+  - 新导出组件、secret、Lint ignore、全局 ProGuard ignore 或 debug 签名 fallback 必须进行安全审查，不得用于绕过门禁。
+  - 当前 production Release 因 QLZ 固定测试配置/弱 TLS、腾讯人脸 16 KB 对齐和 consumer rules 问题而 fail-closed；验收构建不得视为生产可发布。
+  - 涉及 Android 平台行为、targetSdk、权限、前台服务、大屏或推荐 API 时，先用 android docs search/fetch 核对官方最新资料。
+
+  事实来源与维护：
+  - 开始工作先读 AGENT.md，再按任务阅读 docs/README.md 指向的产品、架构、路由、集成与质量文档。
+  - 代码、Gradle、Manifest、workflow 和测试优先于可能过时的说明；冲突时先查明并修正文档。
+  - 产品、模块、路由、版本、门禁或 SDK 行为变化时，按 docs/README.md 的维护矩阵同步长期文档。
+  - OpenSpec 产物仅存放在 openspec/；不要在其他目录新增并行的 task plan、progress、findings 或执行日志文档。
+
+  验证基线：
+  - 文档、边界或小改动：bash scripts/quality/preflight_local.sh --local-fast
+  - Kotlin/业务逻辑：bash scripts/quality/preflight_local.sh --full，并运行受影响模块的 focused tests。
+  - 普通 Android CI 主路径：release validation guard、:app:lintDebug、:app:assembleDebug 和 lint warning allowlist。
+  - 按风险补充 instrumentation、模拟器或真机验证；不得把普通 CI 的 build-only 绿色当作业务回归证据。
+
+rules:
+  proposal:
+    - 明确用户/业务价值、受影响能力、兼容性边界和非目标；避免把无关重构塞入同一 change。
+    - 存量项目采用 delta-first，只描述本次真实改动，不回填整个代码库。
+    - 涉及厂商 SDK、生产发布、隐私权限或数据迁移时，单独列出风险与外部依赖。
+  specs:
+    - Requirement 聚焦可观察的产品行为和稳定契约；实现机制放在 design.md 或 tasks.md。
+    - Scenario 至少覆盖主成功路径；涉及状态、权限、网络、生命周期或持久化时补充相应失败与恢复路径。
+    - 保留 SHALL/MUST、GIVEN/WHEN/THEN 等结构关键字为英文，其余内容使用简体中文。
+  design:
+    - 基于当前代码、Gradle、Manifest、测试和长期文档给出方案，并列出涉及模块与边界。
+    - 记录关键取舍、兼容/迁移策略、安全与隐私影响、测试策略，以及明确不采用的替代方案。
+    - 平台 API 或依赖版本相关结论必须引用已核对的当前事实，不能依赖记忆猜测。
+  tasks:
+    - 将工作拆为小而可独立验证、可独立回滚的步骤；不要混合无关重构或大规模搬迁。
+    - 每组实现任务都配套 focused tests 和风险相称的质量门禁，并包含必要的长期文档同步。
+    - 不创建执行日志或报告型 Markdown；运行证据留在终端、CI artifact、PR 或 Issue。
+
+operations:
+  apply:
+    guidance:
+      - 实现前重新读取 AGENT.md、本 change 的全部产物及相关专项文档，并检查现有 git diff，保护用户已有改动。
+      - 严格按 tasks.md 的边界实现；发现会改变范围、外部行为、兼容性或验收标准的新信息时，先更新产物再继续。
+      - 优先运行最小 focused test，再执行与风险相称的 LongCare 质量门禁；如实说明未运行或预期 fail-closed 的检查。
+      - 不通过放宽架构、安全、Lint、签名或发布守卫来制造绿色结果。
+  archive:
+    guidance:
+      - 仅在实现、相关测试和文档同步完成后归档；确认 delta spec 与最终可观察行为一致。
+      - 归档前运行 openspec validate，并确认没有把临时报告、凭据、本机路径或 build 产物纳入版本控制。
