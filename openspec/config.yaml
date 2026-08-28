@@ -25,7 +25,7 @@ context: |
   - Room schema 变更必须包含 schema JSON、显式 Migration 和迁移测试，禁止破坏性 fallback。
   - 权限、NFC、相机、定位和 Service 改动覆盖拒绝/恢复、前后台、退出/换号和资源释放。
   - 新导出组件、secret、Lint ignore、全局 ProGuard ignore 或 debug 签名 fallback 必须进行安全审查，不得用于绕过门禁。
-  - 当前 production Release 因 QLZ 固定测试配置/弱 TLS、腾讯人脸 16 KB 对齐和 consumer rules 问题而 fail-closed；验收构建不得视为生产可发布。
+  - 当前批准的 QLZ AAR 是正式销售评估必需依赖；其内部 TLS finding 属厂商负责、已接受且非阻断的外部风险，不得写成已修复。production Release 仍对 QLZ 正式 key、测试模式、AAR 完整性以及腾讯人脸 16 KB/consumer rules、签名等独立条件 fail-closed；验收构建不得视为生产可发布。
   - 涉及 Android 平台行为、targetSdk、权限、前台服务、大屏或推荐 API 时，先用 android docs search/fetch 核对官方最新资料。
 
   事实来源与维护：

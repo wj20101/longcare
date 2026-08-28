@@ -107,6 +107,7 @@ jobs:
             echo "- coroutine cancellation and empty catch guards"
             echo "- target SDK and exact alarm policy"
             echo "- tracked keystore guard"
+            echo "- approved QLZ AAR integrity"
             echo "- Release validation entry contract"
             echo "- workflow quality guard"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -114,6 +115,11 @@ jobs:
       - name: Run ci-required quality gates
         run: |
           bash scripts/quality/verify_no_tracked_keystore_files.sh .
+          bash scripts/quality/verify_qlz_sdk_artifact.sh
+          bash scripts/quality/test_qlz_sdk_artifact.sh
+          bash scripts/quality/test_production_release_config.sh
+          bash scripts/quality/test_vendor_sdk_release_readiness.sh
+          bash scripts/lint/test_lint_warning_allowlist.sh
           bash scripts/quality/verify_ci_workflow_quality.sh
           bash scripts/quality/verify_release_validation_entry.sh .
           bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml

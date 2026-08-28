@@ -611,6 +611,15 @@ run_rule \
   "${CORE_ROOT}" \
   "${FEATURE_ROOT}"
 
+echo "[architecture] rule-4r: QLZ vendor APIs must stay inside the app-owned adapter"
+run_filtered_rule \
+  "source outside integration/qlz imports QLZ vendor APIs" \
+  '^\s*import\s+(com\.evenmed|com\.comm|com\.falth|com\.qiaolz)\.' \
+  '/integration/qlz/' \
+  "${APP_ROOT}" \
+  "${CORE_ROOT}" \
+  "${FEATURE_ROOT}"
+
 echo "[architecture] rule-4q: app/model package must remain empty after model extraction"
 if [[ -d "${APP_ROOT}/model" ]]; then
   if find "${APP_ROOT}/model" -type f -name '*.kt' -print | grep -q .; then

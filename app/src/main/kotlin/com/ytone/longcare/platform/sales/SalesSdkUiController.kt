@@ -16,11 +16,50 @@ import dagger.hilt.components.SingletonComponent
 internal class SalesSdkUiController(
     private val qlzSdkClient: QlzSdkClient,
 ) {
+    @Volatile
+    private var sdkPageActive = false
+
     fun requiredRuntimePermissions(): Array<String> = qlzSdkClient.requiredRuntimePermissions()
 
-    fun openEvaluation(activity: Activity, token: String, onEvent: (QlzSdkEvent) -> Unit) {
-        qlzSdkClient.openByToken(activity, token, onEvent)
+    fun openEvaluation(
+        activity: Activity,
+        token: String,
+        onEvent: (QlzSdkEvent) -> Unit,
+    ): SalesSdkOpenResult {
+        if (activity.isFinishing || activity.isDestroyed) {
+            return SalesSdkOpenResult.InvalidActivity
+        }
+        synchronized(this) {
+            if (sdkPageActive) {
+                return SalesSdkOpenResult.AlreadyOpen
+            }
+            sdkPageActive = true
+        }
+
+        return try {
+            qlzSdkClient.openByToken(activity, token) { event ->
+                if (event !is QlzSdkEvent.Progress) {
+                    synchronized(this) {
+                        sdkPageActive = false
+                    }
+                }
+                onEvent(event)
+            }
+            SalesSdkOpenResult.Opened
+        } catch (_: Throwable) {
+            synchronized(this) {
+                sdkPageActive = false
+            }
+            SalesSdkOpenResult.Failed
+        }
     }
+}
+
+internal sealed interface SalesSdkOpenResult {
+    data object Opened : SalesSdkOpenResult
+    data object AlreadyOpen : SalesSdkOpenResult
+    data object InvalidActivity : SalesSdkOpenResult
+    data object Failed : SalesSdkOpenResult
 }
 
 @EntryPoint

@@ -74,6 +74,15 @@
       "likely_fix": "Restore the shared hidden validation entry sources and Release-safe navigation contract."
     },
     {
+      "id": "qlz_sdk_artifact_integrity",
+      "name": "Approved QLZ SDK Artifact Integrity",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/verify_qlz_sdk_artifact.sh",
+      "likely_fix": "Restore the approved vendor AAR byte-for-byte; do not patch, repackage, rename, or duplicate it."
+    },
+    {
       "id": "release_exported_components",
       "name": "Release Exported Component Allowlist",
       "layer": "release-required",
@@ -89,7 +98,16 @@
       "blocking": true,
       "owner": "mobile-platform",
       "source_of_truth": "scripts/quality/verify_vendor_sdk_release_readiness.sh",
-      "likely_fix": "Replace vendor SDK binaries that still contain weak TLS validation, non-16KB ELF libraries, or invalid consumer rules."
+      "likely_fix": "Resolve production-blocking Tencent or unknown vendor findings; keep the approved QLZ vendor-owned risk documented as non-blocking."
+    },
+    {
+      "id": "production_release_configuration",
+      "name": "Production Release Configuration",
+      "layer": "release-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "app/build.gradle.kts,scripts/quality/verify_production_release_config.sh",
+      "likely_fix": "Provide the mode-specific QLZ key, enforce the correct test mode, and restore the approved AAR input."
     }
   ]
 }

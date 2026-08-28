@@ -2,6 +2,18 @@
   "version": 1,
   "waivers": [
     {
+      "id": "GradleDependency",
+      "owner": "mobile-platform",
+      "review_by": "2026-09-30",
+      "reason": "Navigation, CameraX, Baseline Profile, and Benchmark versions are intentionally pinned pending a separate compatibility-tested dependency update; this waiver is limited to the currently observed coordinates and versions.",
+      "allowed_sources": [
+        "regex:androidx\\.navigation:navigation-compose than 2\\.9\\.8",
+        "regex:androidx\\.camera:camera-(camera2|core|lifecycle|mlkit-vision|view) than 1\\.6\\.1",
+        "regex:androidx\\.baselineprofile than 1\\.5\\.0-rc01",
+        "regex:androidx\\.benchmark(:benchmark-macro-junit4)? than 1\\.5\\.0-rc01"
+      ]
+    },
+    {
       "id": "Aligned16KB",
       "owner": "mobile-platform",
       "review_by": "2026-11-09",
@@ -29,11 +41,11 @@
       "id": "TrustAllX509TrustManager",
       "owner": "mobile-platform",
       "review_by": "2026-11-09",
-      "reason": "COS contains a dormant trust-manager branch and QLZ 1.3.0.2 contains a reachable weak implementation. Production is blocked separately until QLZ is replaced.",
+      "reason": "COS contains a dormant vendor branch. The approved QLZ 1.3.0.2 AAR is mandatory for the sales workflow; its vendor-internal TLS finding is an accepted external risk and is not claimed as fixed. Re-review on a new vendor artifact or statement, regulatory change, or observed business impact.",
       "allowed_sources": [
         "regex:qcloud-foundation-[0-9]+\\.[0-9]+\\.[0-9]+",
         "regex:com\\.qcloud:qcloud-foundation:[0-9]+\\.[0-9]+\\.[0-9]+",
-        "regex:qlzsdk-[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"
+        "regex:(^|[/\\\\])(jetified-)?qlzsdk-1\\.3\\.0\\.2-protobufLiteRelease-ui(\\.aar)?([/\\\\]|:)"
       ]
     }
   ]

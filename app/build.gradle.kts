@@ -1,3 +1,5 @@
+import java.security.MessageDigest
+
 plugins {
     id("longcare.android.application")
     id("longcare.kotlin.common")
@@ -12,9 +14,18 @@ plugins {
 private val BASE_URL = "https://careapi.ytone.cn"
 private val PUBLIC_KEY =
     "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk45Er/DSjJwRNhReRT+4lINV6GanR3FwNutADNBwVoNQgY33bM/adLN5ZDmb8CwCeRJ4iBdcIX0co+2cm169HSHtJvOHUm864UbT63BrxKtnJCR+GkmsB3dj7YMwDbYArg7ymGP3EhWsiqMPdnR15+4LYIfK3l74nOZqPIPp8XkUKbbvJeieyslBIVSux2eytUGQjY8EPTE7nOHbAh8boWhiekFKevmx24dQBLoOrKrpTIv4pNiFSPxWCdBayCXjyr3Vq6Eg+vEDYN1+sxXWAj4bo/91TIbGQzdPCcCiZUQ1d7EgBp1JJKAsTTzkd+CusSTVpmmz/uVwjOaEHNzqWwIDAQAB"
-// TODO(QLZ): Remove this fixed test configuration after the Sale API returns the SDK key.
-private val TEMPORARY_QLZ_SDK_KEY = "qlz235624a5adc96ccb"
-private val TEMPORARY_QLZ_TEST_MODE = true
+private val APPROVED_QLZ_AAR_NAME = "qlzsdk-1.3.0.2-protobufLiteRelease-ui.aar"
+private val APPROVED_QLZ_AAR_SHA256 =
+    "572294bb71c513a685aa4a62aea6a2589a2da4979c80cf4b658a32d09467c688"
+private val KNOWN_QLZ_TEST_KEY_SHA256 =
+    "688c98159c9dca2281dabb096d717a0b075ba0ce40911c65cbb0f3490a4b5906"
+
+fun String.toStrictBuildFlag(name: String): Boolean =
+    when (trim().lowercase()) {
+        "true" -> true
+        "false" -> false
+        else -> throw GradleException("$name must be either true or false.")
+    }
 
 val appCompileSdkVersion = rootProject.extra["appCompileSdkVersion"] as Int
 val appTargetSdkVersion = rootProject.extra["appTargetSdkVersion"] as Int
@@ -39,12 +50,28 @@ val productionReleaseRequested =
     providers
         .gradleProperty("release.production")
         .orElse("true")
-        .map { it.equals("true", ignoreCase = true) }
+        .map { it.toStrictBuildFlag("release.production") }
 val acceptanceReleaseRequested =
     providers
         .gradleProperty("release.acceptance")
         .orElse("false")
-        .map { it.equals("true", ignoreCase = true) }
+        .map { it.toStrictBuildFlag("release.acceptance") }
+val qlzSdkKey =
+    providers
+        .gradleProperty("QLZ_SDK_KEY")
+        .orElse(providers.environmentVariable("QLZ_SDK_KEY"))
+        .orElse("")
+        .map { it.trim() }
+val qlzTestModeRequested =
+    providers
+        .gradleProperty("QLZ_TEST_MODE")
+        .orElse(providers.environmentVariable("QLZ_TEST_MODE"))
+        .orElse("false")
+        .map { it.toStrictBuildFlag("QLZ_TEST_MODE") }
+val releaseQlzTestMode =
+    providers.provider {
+        if (productionReleaseRequested.get()) false else qlzTestModeRequested.get()
+    }
 val txFaceSdkSource =
     providers
         .gradleProperty("TX_FACE_SDK_SOURCE")
@@ -61,13 +88,44 @@ val knownUnsafeFaceSdkPresent =
         txFaceSdkSource.get() == "local" ||
             txFaceLiveCoordinate.get().contains("6.6.2-8e4718fc", ignoreCase = true)
     }
-val knownUnsafeQlzSdkPresent =
+val approvedQlzAar = file("libs/$APPROVED_QLZ_AAR_NAME")
+val approvedQlzAarPresent =
     providers.provider {
-        file("libs/qlzsdk-1.3.0.2-protobufLiteRelease-ui.aar").exists()
+        approvedQlzAar.isFile
+    }
+val approvedQlzAarHashMatches =
+    providers.provider {
+        approvedQlzAar.isFile && approvedQlzAar.sha256() == APPROVED_QLZ_AAR_SHA256
+    }
+val knownQlzTestKeyRequested =
+    qlzSdkKey.map { sdkKey ->
+        sdkKey.isNotEmpty() && sdkKey.sha256() == KNOWN_QLZ_TEST_KEY_SHA256
     }
 
 fun String.asBuildConfigString(): String =
     "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
+fun String.sha256(): String =
+    MessageDigest
+        .getInstance("SHA-256")
+        .digest(toByteArray(Charsets.UTF_8))
+        .toHexString()
+
+fun java.io.File.sha256(): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    inputStream().buffered().use { input ->
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            digest.update(buffer, 0, count)
+        }
+    }
+    return digest.digest().toHexString()
+}
+
+fun ByteArray.toHexString(): String =
+    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
 
 android {
     namespace = "com.ytone.longcare"
@@ -81,12 +139,6 @@ android {
         versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "PUBLIC_KEY", "\"$PUBLIC_KEY\"")
-        buildConfigField(
-            "String",
-            "QLZ_SDK_KEY",
-            TEMPORARY_QLZ_SDK_KEY.asBuildConfigString(),
-        )
-        buildConfigField("boolean", "QLZ_TEST_MODE", TEMPORARY_QLZ_TEST_MODE.toString())
         ndk {
             val enabledAbis = mutableListOf("arm64-v8a")
             if (baselineEnableX86_64) {
@@ -114,11 +166,15 @@ android {
             )
             buildConfigField("String", "BASE_URL", "\"$BASE_URL\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
+            buildConfigField("String", "QLZ_SDK_KEY", qlzSdkKey.get().asBuildConfigString())
+            buildConfigField("boolean", "QLZ_TEST_MODE", releaseQlzTestMode.get().toString())
         }
 
         debug {
             buildConfigField("String", "BASE_URL", "\"$BASE_URL\"")
             buildConfigField("boolean", "USE_MOCK_DATA", debugUseMockData.toString())
+            buildConfigField("String", "QLZ_SDK_KEY", qlzSdkKey.get().asBuildConfigString())
+            buildConfigField("boolean", "QLZ_TEST_MODE", qlzTestModeRequested.get().toString())
         }
     }
 
@@ -168,7 +224,7 @@ val verifyProductionReleaseConfiguration =
     tasks.register<Exec>("verifyProductionReleaseConfiguration") {
         group = "verification"
         description =
-            "Prevents the temporary QLZ test configuration from being published as production."
+            "Validates project-controlled QLZ and vendor inputs for a Release build."
         commandLine(
             "bash",
             rootProject.file("scripts/quality/verify_production_release_config.sh").absolutePath,
@@ -176,12 +232,16 @@ val verifyProductionReleaseConfiguration =
             productionReleaseRequested.get().toString(),
             "--acceptance-requested",
             acceptanceReleaseRequested.get().toString(),
-            "--temporary-qlz-key-present",
-            TEMPORARY_QLZ_SDK_KEY.isNotBlank().toString(),
+            "--qlz-key-present",
+            qlzSdkKey.get().isNotEmpty().toString(),
+            "--known-test-qlz-key-requested",
+            knownQlzTestKeyRequested.get().toString(),
             "--qlz-test-mode",
-            TEMPORARY_QLZ_TEST_MODE.toString(),
-            "--known-unsafe-qlz-sdk-present",
-            knownUnsafeQlzSdkPresent.get().toString(),
+            qlzTestModeRequested.get().toString(),
+            "--approved-qlz-aar-present",
+            approvedQlzAarPresent.get().toString(),
+            "--approved-qlz-aar-hash-matches",
+            approvedQlzAarHashMatches.get().toString(),
             "--known-unsafe-face-sdk-present",
             knownUnsafeFaceSdkPresent.get().toString(),
         )
@@ -272,5 +332,5 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    implementation(files("libs/qlzsdk-1.3.0.2-protobufLiteRelease-ui.aar"))
+    implementation(files("libs/$APPROVED_QLZ_AAR_NAME"))
 }

@@ -152,6 +152,23 @@ class SalesViewModelCustomerDetailTest {
             coVerify(exactly = 1) { repository.getUserLatentDetail(7) }
         }
 
+    @Test
+    fun `cancelled SDK evaluation preserves customer context and never reports completion`() =
+        runTest {
+            val repository = repositoryWithDetail(
+                ApiResult.Success(UserLatentDetailModel(id = 7))
+            )
+            val viewModel = createViewModel(repository)
+            viewModel.selectCustomer(7)
+
+            viewModel.onSdkEvent(QlzSdkEvent.Cancelled)
+            advanceUntilIdle()
+
+            assertEquals(7, viewModel.uiState.value.selectedCustomerId)
+            assertNull(viewModel.uiState.value.evaluationCompleted)
+            coVerify(exactly = 0) { repository.getUserLatentDetail(any()) }
+        }
+
     private fun repositoryWithDetail(
         result: ApiResult<UserLatentDetailModel>,
     ): SaleRepository =

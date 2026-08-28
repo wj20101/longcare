@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       release_mode:
-        description: "Release mode (acceptance allows the temporary test vendor configuration)"
+        description: "Release mode (acceptance requires its explicit QLZ test credential and test mode)"
         required: true
         type: choice
         options:
@@ -107,6 +107,19 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
           echo "Resolved release mode: ${RELEASE_MODE}"
 
+      - name: Validate QLZ release configuration input
+        env:
+          QLZ_PRODUCTION_SDK_KEY: ${{ secrets.QLZ_PRODUCTION_SDK_KEY || '' }}
+          QLZ_ACCEPTANCE_SDK_KEY: ${{ secrets.QLZ_ACCEPTANCE_SDK_KEY || '' }}
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.release_mode.outputs.production }}" = "true" ]; then
+            [ -n "${QLZ_PRODUCTION_SDK_KEY}" ] || { echo "::error::Missing secret: QLZ_PRODUCTION_SDK_KEY"; exit 1; }
+          else
+            [ -n "${QLZ_ACCEPTANCE_SDK_KEY}" ] || { echo "::error::Missing secret: QLZ_ACCEPTANCE_SDK_KEY"; exit 1; }
+          fi
+          echo "QLZ credential presence validated for ${RELEASE_MODE}; the value was not printed."
+
       - name: Verify Android CI success for target commit
         env:
           GH_TOKEN: ${{ github.token }}
@@ -157,6 +170,11 @@ jobs:
       - name: Run ci-required quality gates
         run: |
           bash scripts/quality/verify_no_tracked_keystore_files.sh .
+          bash scripts/quality/verify_qlz_sdk_artifact.sh
+          bash scripts/quality/test_qlz_sdk_artifact.sh
+          bash scripts/quality/test_production_release_config.sh
+          bash scripts/quality/test_vendor_sdk_release_readiness.sh
+          bash scripts/lint/test_lint_warning_allowlist.sh
           bash scripts/quality/verify_ci_workflow_quality.sh
           bash scripts/quality/verify_release_validation_entry.sh .
           bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
@@ -241,7 +259,16 @@ jobs:
         env:
           TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
           TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
+          QLZ_PRODUCTION_SDK_KEY: ${{ secrets.QLZ_PRODUCTION_SDK_KEY || '' }}
+          QLZ_ACCEPTANCE_SDK_KEY: ${{ secrets.QLZ_ACCEPTANCE_SDK_KEY || '' }}
         run: |
+          if [ "${{ steps.release_mode.outputs.production }}" = "true" ]; then
+            export QLZ_SDK_KEY="${QLZ_PRODUCTION_SDK_KEY}"
+            export QLZ_TEST_MODE="false"
+          else
+            export QLZ_SDK_KEY="${QLZ_ACCEPTANCE_SDK_KEY}"
+            export QLZ_TEST_MODE="true"
+          fi
           ./gradlew --no-daemon :app:generateReleaseBaselineProfile \
             -Pbaseline.enableX86_64=true \
             -Prelease.production=${{ steps.release_mode.outputs.production }} \
@@ -399,7 +426,16 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          QLZ_PRODUCTION_SDK_KEY: ${{ secrets.QLZ_PRODUCTION_SDK_KEY || '' }}
+          QLZ_ACCEPTANCE_SDK_KEY: ${{ secrets.QLZ_ACCEPTANCE_SDK_KEY || '' }}
         run: |
+          if [ "${{ steps.release_mode.outputs.production }}" = "true" ]; then
+            export QLZ_SDK_KEY="${QLZ_PRODUCTION_SDK_KEY}"
+            export QLZ_TEST_MODE="false"
+          else
+            export QLZ_SDK_KEY="${QLZ_ACCEPTANCE_SDK_KEY}"
+            export QLZ_TEST_MODE="true"
+          fi
           ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease \
             -Prelease.production=${{ steps.release_mode.outputs.production }} \
             -Prelease.acceptance=${{ steps.release_mode.outputs.acceptance }}
@@ -452,6 +488,13 @@ jobs:
           echo "aab_path=${AAB_TARGET}" >> "$GITHUB_OUTPUT"
           echo "Final AAB name: ${AAB_TARGET}"
           ls -lah app/build/outputs/bundle/release
+
+      - name: Verify packaged QLZ SDK artifacts
+        run: |
+          bash scripts/quality/verify_qlz_sdk_artifact.sh \
+            --archive-path "${{ steps.release_apk.outputs.apk_path }}"
+          bash scripts/quality/verify_qlz_sdk_artifact.sh \
+            --archive-path "${{ steps.release_aab.outputs.aab_path }}"
 
       - name: Generate release checksums
         run: |

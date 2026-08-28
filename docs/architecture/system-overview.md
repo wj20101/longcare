@@ -1,6 +1,6 @@
 # 系统架构概览
 
-最后核对：2026-08-27
+最后核对：2026-08-28
 
 本文描述当前代码实际运行形态，不把目标架构写成已经完成的事实。版本和依赖见[技术栈与构建基线](tech-stack.md)，产品行为见[产品概览](../product/overview.md)。
 
@@ -91,11 +91,12 @@ flowchart LR
 ## 数据与持久化
 
 - Retrofit + Moshi 承载 LongCare API；API 方法、路径、参数注解和关键 JSON 字段由契约测试保护。
-- Room 当前 schema 版本为 3，schema JSON 保存在 `app/schemas`；升级必须提供显式 Migration 和迁移测试，不允许异常时删库重建。
+- Room 当前 schema 版本为 3，schema JSON 保存在 `app/schemas`。目标规则仍是显式 Migration 且禁止删库重建；但生产 `DatabaseModule` 目前实际启用 `fallbackToDestructiveMigration(dropAllTables = true)`，v1/v2 device tests 也固定了清空重建语义，这是待整改的 P1，而不是合规实现。
 - DataStore 保存会话、偏好和少量兼容记录。
 - WorkManager 用于启动更新检查、APK 下载等需要跨重建继续或恢复结果的任务。
 - 腾讯 COS 负责业务图片/文件上传，Feature 通过 `PhotoCloudUploader` 等受校验门面使用。
 - Debug 可选的本地 mock 只存在于 debug source set，不进入 Release。
+- Room 记录、pending order/通知/闹钟/Work 与受管文件目前没有统一的账号 owner；手动退出和会话失效也没有一条完整清理链。多账号/换号前必须先完成 owner 隔离与幂等清理，不能只清 session token。
 
 ## 图片与人脸链路
 
@@ -142,7 +143,7 @@ flowchart LR
 | Tencent COS | 图片/文件对象存储 | `:core:data` 实现，Feature 使用领域契约/上传门面 |
 | CameraX + ML Kit | 标准相机、人脸检测和眨眼活体 | 相机 UI 分布在 `:app` 与 `:feature:identification` |
 | Tencent Face | 旧版/兼容人脸验证 | app-owned face controller，默认订单核验不进入该 SDK |
-| QLZ | 销售蓝牙设备自动评估 | app-owned SDK controller；Sale API 分层在 Core |
+| QLZ | 销售蓝牙设备自动评估 | 厂商 AAR 只在 `integration/qlz` 窄 facade 内可见；销售 gateway/controller 对外，Sale API 分层在 Core |
 | Bugly | 同意后的崩溃上报 | `CrashReportGateway`；Debug/未初始化路径不调用远端 runtime |
 | WorkManager | 更新检查、下载与可恢复后台任务 | 自定义初始化，Worker 位于 `:app` |
 
@@ -151,7 +152,8 @@ flowchart LR
 - Debug、Release、nonMinifiedRelease 和 benchmarkRelease 变体由 Android CLI/Gradle 识别。
 - Android CI 的正常阻断路径以构建、Lint、架构和治理为主，不把业务单测作为合并阻断条件；本地 `--full` 和专项验证仍应运行相关测试。
 - 验收 Release 必须显式设置 `release.production=false` 和 `release.acceptance=true`。
-- 当前生产 Release 是 fail-closed：临时 QLZ key/test mode、QLZ 弱 TLS 检查和腾讯人脸 ARM64 16 KB 对齐问题未解决前，生产门禁必须失败。
+- QLZ Production 必须从 Gradle property/CI environment 取得非空正式 key、强制测试模式关闭，并原字节包含批准 AAR；Debug 无 key 仍可编译，Acceptance 必须使用分离配置和明确标识。
+- QLZ AAR 内部 TLS finding 是已登记、厂商负责、非阻断的接受风险，并未被项目修复。整体 Production 仍会被腾讯人脸 ARM64 16 KB/consumer rules、签名或其他独立门禁阻断。
 
 ## 已接受的技术债
 
@@ -160,6 +162,6 @@ flowchart LR
 - 销售体验仍由 `:app` 持有，`SalesViewModel` 体量较大。
 - Navigation Compose 2 路由和三个 feature entry 常量还不是统一的 feature-owned 导航模型。
 - Manifest 组件面较广，源于定位、计时、闹钟、NFC、更新和厂商 SDK 的现实需求。
-- Jetifier 与生产发布阻断依赖厂商提供兼容的新 AAR，不能用忽略 Lint 或放宽门禁替代。
+- Jetifier 退出仍依赖相关厂商提供 AndroidX-only 输入。批准的 QLZ AAR 当前必须保留；其内部风险通过精确记录和复核触发管理，不通过修改/移除 AAR 或扩大 Lint waiver 处理。
 
 后续优先级见[路线图与开放问题](roadmap-and-open-gaps.md)，强制边界见[依赖规则](dependency-rules.md)。

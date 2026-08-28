@@ -5,12 +5,7 @@ import android.app.Activity
 import android.content.Context
 import android.os.Build
 import com.evenmed.mode.CheckRecordIdMode
-import com.evenmed.sdk.call.CheckConfig
-import com.evenmed.sdk.call.CheckIml
-import com.evenmed.sdk.call.CheckResult
-import com.evenmed.sdk.call.CheckStateData
 import com.evenmed.sdk.call.ErrorCodeConfig
-import com.evenmed.sdk.call.SDKCall
 import com.google.gson.Gson
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.R
@@ -19,40 +14,58 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class QlzSdkClient @Inject constructor(
-    @param:ApplicationContext private val appContext: Context,
+class QlzSdkClient internal constructor(
+    private val appContext: Context,
+    runtimeConfig: QlzSdkRuntimeConfig,
+    private val vendorApi: QlzVendorApi,
 ) {
+    @Inject
+    constructor(
+        @ApplicationContext appContext: Context,
+    ) : this(
+        appContext = appContext,
+        runtimeConfig =
+            QlzSdkRuntimeConfig(
+                sdkKey = BuildConfig.QLZ_SDK_KEY,
+                testMode = BuildConfig.QLZ_TEST_MODE,
+            ),
+        vendorApi = AndroidQlzVendorApi,
+    )
+
+    private val runtimeConfig = runtimeConfig.copy(sdkKey = runtimeConfig.sdkKey.trim())
+
     @Volatile
-    private var initializedSdkKey: String? = null
+    private var initializedRuntimeConfig: QlzSdkRuntimeConfig? = null
 
     val isTestMode: Boolean
-        get() = BuildConfig.QLZ_TEST_MODE
+        get() = runtimeConfig.testMode
 
     @Synchronized
     fun initialize(): QlzSdkInitialization {
-        val sdkKey = BuildConfig.QLZ_SDK_KEY.trim()
-        if (sdkKey.isEmpty()) {
+        if (runtimeConfig.sdkKey.isEmpty()) {
             return QlzSdkInitialization.MissingSdkKey
         }
-        if (initializedSdkKey == sdkKey) {
+        if (initializedRuntimeConfig == runtimeConfig) {
             return QlzSdkInitialization.Ready
         }
 
         return try {
-            CheckIml.setTestMode(isTestMode)
-            val config =
-                CheckConfig.Builder()
-                    .setSdkKey(sdkKey)
-                    .setHttpConfig(HTTP_TIMEOUT_SECONDS, HTTP_MAX_RETRY)
-                    .setHorizontalMode(false)
-                    .setBlueScanTime(BLUETOOTH_SCAN_TIMEOUT_MILLIS)
-                    .setAutoConnectLastDevice(true)
-                    .setConnectDeviceOutTime(DEVICE_CONNECT_TIMEOUT_SECONDS)
-                    .setCheckNullOutTime(CHECK_IDLE_TIMEOUT_SECONDS)
-                    .setAutoOpenRes(false)
-                    .build()
-            CheckIml.init(appContext, config)
-            initializedSdkKey = sdkKey
+            vendorApi.setTestMode(runtimeConfig.testMode)
+            vendorApi.initialize(
+                appContext,
+                QlzVendorInitializationConfig(
+                    sdkKey = runtimeConfig.sdkKey,
+                    httpTimeoutSeconds = HTTP_TIMEOUT_SECONDS,
+                    httpMaxRetry = HTTP_MAX_RETRY,
+                    horizontalMode = false,
+                    bluetoothScanTimeoutMillis = BLUETOOTH_SCAN_TIMEOUT_MILLIS,
+                    autoConnectLastDevice = true,
+                    deviceConnectTimeoutSeconds = DEVICE_CONNECT_TIMEOUT_SECONDS,
+                    checkIdleTimeoutSeconds = CHECK_IDLE_TIMEOUT_SECONDS,
+                    autoOpenResult = false,
+                ),
+            )
+            initializedRuntimeConfig = runtimeConfig
             QlzSdkInitialization.Ready
         } catch (_: Throwable) {
             QlzSdkInitialization.Failed(
@@ -67,7 +80,7 @@ class QlzSdkClient @Inject constructor(
             check(initialization is QlzSdkInitialization.Ready) {
                 initializationMessage(initialization)
             }
-            CheckIml.getDeviceId(appContext).orEmpty().also {
+            vendorApi.getDeviceId(appContext).orEmpty().also {
                 check(it.isNotBlank()) {
                     appContext.getString(
                         R.string.sales_error_evaluation_device_prepare_short
@@ -89,7 +102,7 @@ class QlzSdkClient @Inject constructor(
             check(initialization is QlzSdkInitialization.Ready) {
                 initializationMessage(initialization)
             }
-            CheckIml.getBlueDeviceName()
+            vendorApi.getConnectedDeviceName()
                 ?.trim()
                 ?.takeIf { it.isNotEmpty() }
         }.getOrNull()
@@ -122,14 +135,9 @@ class QlzSdkClient @Inject constructor(
         }
 
         try {
-            SDKCall.openByToken(
-                activity,
-                token,
-                null,
-                { result: CheckResult<String> ->
-                    onEvent(result.toQlzSdkEvent())
-                },
-            )
+            vendorApi.openByToken(activity, token) { result ->
+                onEvent(result.toQlzSdkEvent())
+            }
         } catch (throwable: Throwable) {
             onEvent(
                 QlzSdkEvent.Error(
@@ -155,13 +163,13 @@ class QlzSdkClient @Inject constructor(
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
         }
 
-    private fun CheckResult<String>.toQlzSdkEvent(): QlzSdkEvent =
-        when (errorcode) {
+    private fun QlzVendorResult.toQlzSdkEvent(): QlzSdkEvent =
+        when (errorCode) {
             ErrorCodeConfig.code_res_success -> parseCompletedEvent(data)
             ErrorCodeConfig.code_check_state ->
                 QlzSdkEvent.Progress(
-                    successCount = CheckStateData.successCount,
-                    totalCount = CheckStateData.allCount,
+                    successCount = successCount,
+                    totalCount = totalCount,
                 )
 
             ErrorCodeConfig.code_finish_check -> QlzSdkEvent.DetectionPageClosed
@@ -169,11 +177,11 @@ class QlzSdkClient @Inject constructor(
             ErrorCodeConfig.code_check_cancel -> QlzSdkEvent.Cancelled
             else ->
                 QlzSdkEvent.Error(
-                    code = errorcode,
+                    code = errorCode,
                     message =
                         (
-                            errorMsg?.takeIf { it.isNotBlank() }
-                                ?: ErrorCodeConfig.getErrMsg(errorcode)
+                            errorMessage?.takeIf { it.isNotBlank() }
+                                ?: ErrorCodeConfig.getErrMsg(errorCode)
                         ).toUserFacingEvaluationError(
                             fallbackMessage =
                                 appContext.getString(
@@ -222,6 +230,11 @@ class QlzSdkClient @Inject constructor(
         const val CHECK_IDLE_TIMEOUT_SECONDS = 180
     }
 }
+
+internal data class QlzSdkRuntimeConfig(
+    val sdkKey: String,
+    val testMode: Boolean,
+)
 
 sealed interface QlzSdkInitialization {
     data object Ready : QlzSdkInitialization

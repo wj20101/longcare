@@ -120,6 +120,7 @@ fi
 
 CHECK_NAMES=(
   "No Tracked Keystore Files"
+  "Approved QLZ SDK Artifact Integrity"
   "Release Exported Component Allowlist"
   "Vendor SDK Release Readiness"
   "Lint Warning Allowlist"
@@ -138,6 +139,7 @@ CHECK_NAMES=(
 
 CHECK_IDS=(
   "no_tracked_keystore_files"
+  "qlz_sdk_artifact_integrity"
   "release_exported_components"
   "vendor_sdk_release_readiness"
   "lint_warning_allowlist"
@@ -156,6 +158,7 @@ CHECK_IDS=(
 
 CHECK_CMDS=(
   "bash scripts/quality/verify_no_tracked_keystore_files.sh ."
+  "bash scripts/quality/verify_qlz_sdk_artifact.sh"
   "bash scripts/quality/verify_release_exported_components.sh"
   "bash scripts/quality/verify_vendor_sdk_release_readiness.sh \"${LINT_REPORT_PATH}\""
   "bash scripts/lint/verify_lint_warning_allowlist.sh \"${LINT_REPORT_PATH}\""
@@ -173,6 +176,7 @@ CHECK_CMDS=(
 )
 
 CHECK_TIERS=(
+  "ci-required"
   "ci-required"
   "release-required"
   "release-required"
@@ -192,6 +196,7 @@ CHECK_TIERS=(
 
 CHECK_CATEGORIES=(
   "secrets"
+  "vendor-integrity"
   "release-safety"
   "vendor-security"
   "lint-policy"
@@ -210,8 +215,9 @@ CHECK_CATEGORIES=(
 
 CHECK_LIKELY_FIXES=(
   "remove-tracked-keystore-and-use-secret-distribution"
+  "restore-the-approved-qlz-aar-without-repackaging"
   "align-exported-components-with-release-allowlist"
-  "replace-production-blocking-vendor-sdk-binaries"
+  "resolve-production-blocking-unknown-or-tencent-vendor-findings"
   "fix-lint-warning-or-add-approved-waiver-entry"
   "remove-forbidden-lint-ignore-and-fix-root-warning"
   "align-jetpack-usage-with-compat-guardrails"
@@ -228,6 +234,7 @@ CHECK_LIKELY_FIXES=(
 
 CHECK_SOURCE_OF_TRUTH=(
   "scripts/quality/verify_no_tracked_keystore_files.sh"
+  "scripts/quality/verify_qlz_sdk_artifact.sh"
   "scripts/quality/verify_release_exported_components.sh"
   "scripts/quality/verify_vendor_sdk_release_readiness.sh"
   "scripts/lint/lint_warning_waivers.json"

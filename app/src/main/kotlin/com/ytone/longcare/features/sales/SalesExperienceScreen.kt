@@ -42,6 +42,7 @@ import com.ytone.longcare.features.profile.api.ProfileActions
 import com.ytone.longcare.features.profile.ui.ProfileScreen
 import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.platform.sales.rememberSalesSdkUiController
+import com.ytone.longcare.platform.sales.SalesSdkOpenResult
 import com.ytone.longcare.presentation.sales.SalesNavigationState
 import com.ytone.longcare.presentation.sales.SalesPage
 import com.ytone.longcare.presentation.sales.evaluationBackTarget
@@ -120,11 +121,21 @@ internal fun SalesExperienceScreen(
             showMessage(evaluationNotReadyMessage)
             return
         }
-        sdkUiController.openEvaluation(
-            activity = hostActivity,
-            token = token,
-            onEvent = viewModel::onSdkEvent,
-        )
+        when (
+            sdkUiController.openEvaluation(
+                activity = hostActivity,
+                token = token,
+                onEvent = viewModel::onSdkEvent,
+            )
+        ) {
+            SalesSdkOpenResult.InvalidActivity,
+            SalesSdkOpenResult.Failed,
+            -> showMessage(openEvaluationErrorMessage)
+
+            SalesSdkOpenResult.AlreadyOpen,
+            SalesSdkOpenResult.Opened,
+            -> Unit
+        }
     }
 
     fun openFormEvaluation(formUrl: String) {
@@ -332,8 +343,8 @@ internal fun SalesExperienceScreen(
         }
         navigate(SalesPage.EVALUATION_GUIDE)
         val missing =
-            sdkPermissions.filter { permission ->
-                ContextCompat.checkSelfPermission(context, permission) !=
+            missingSalesSdkPermissions(sdkPermissions) { permission ->
+                ContextCompat.checkSelfPermission(context, permission) ==
                     PackageManager.PERMISSION_GRANTED
             }
         if (missing.isEmpty()) {
@@ -392,11 +403,21 @@ internal fun SalesExperienceScreen(
             viewModel.rejectSdkLaunchRequest(request.id)
         } else {
             viewModel.consumeSdkLaunchRequest(request.id)
-            sdkUiController.openEvaluation(
-                activity = hostActivity,
-                token = request.token,
-                onEvent = viewModel::onSdkEvent,
-            )
+            when (
+                sdkUiController.openEvaluation(
+                    activity = hostActivity,
+                    token = request.token,
+                    onEvent = viewModel::onSdkEvent,
+                )
+            ) {
+                SalesSdkOpenResult.InvalidActivity,
+                SalesSdkOpenResult.Failed,
+                -> showMessage(openEvaluationErrorMessage)
+
+                SalesSdkOpenResult.AlreadyOpen,
+                SalesSdkOpenResult.Opened,
+                -> Unit
+            }
         }
     }
 
@@ -641,6 +662,11 @@ internal fun SalesExperienceScreen(
         )
     }
 }
+
+internal fun missingSalesSdkPermissions(
+    requiredPermissions: Array<String>,
+    isGranted: (String) -> Boolean,
+): List<String> = requiredPermissions.filterNot(isGranted)
 
 private val salesCustomerDraftSaver =
     listSaver<SalesCustomerDraft, String>(

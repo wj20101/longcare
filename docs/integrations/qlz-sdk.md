@@ -1,8 +1,8 @@
 # QLZ SDK 1.3.0.2 接入说明
 
-最后核对：2026-08-27
+最后核对：2026-08-28
 
-> 当前状态：Debug 和显式 Acceptance Release 可用于联调；Production Release 会因固定测试配置、QLZ 弱 TLS finding 和当前腾讯人脸二进制兼容问题 fail closed。不得把验收产物作为生产包。
+> 当前状态：QLZ 1.3.0.2 AAR 是销售设备评估在 Debug、Acceptance 和 Production 中都必须保留的厂商依赖。项目侧 QLZ production readiness 只检查正式配置、批准制品、接入边界和业务回归；AAR 内部已登记的 TLS finding 属厂商责任和已接受外部风险，不伪称已修复，也不单独阻断 QLZ 正式打包。腾讯人脸、签名等独立发布门禁仍可阻断整体 Production。
 
 ## 接入范围
 
@@ -16,24 +16,40 @@
 `com.google.protobuf:protobuf-lite:3.0.1`。工程已有的 OkHttp 和 AppCompat 版本继续统一
 由版本目录管理，未额外引入厂商文档中的旧版本。
 
-## 临时联调配置
+## 受控构建配置
 
-测试阶段在 `app/build.gradle.kts` 中统一固化测试 appKey：
+QLZ SDK key 和测试模式只从同名 Gradle property 或 CI environment 读取；Gradle property
+优先于环境变量，字符串会先 `trim`。仓库没有固定测试 key，也没有 production fallback：
 
-`debug` 与验收用途的 `release` 构建当前都会将该 appKey 写入 `BuildConfig.QLZ_SDK_KEY`，并设置
-`BuildConfig.QLZ_TEST_MODE=true`，保证线上打包环境不依赖本机 `local.properties` 或 CI
-环境变量。测试完成、Sale 接口提供 SDK key 后，应删除这段固定配置，改为使用接口返回值
-初始化 `QlzSdkClient`。
+| 用途 | `QLZ_SDK_KEY` | `QLZ_TEST_MODE` | Release 模式 |
+|---|---|---|---|
+| Debug | 可不提供；不影响编译，进入真实 QLZ 能力时返回配置错误 | 默认 `false`，联调时可显式设为 `true` | 不适用 |
+| Acceptance | 必须提供独立验收 key | 必须显式为 `true` | `release.production=false`、`release.acceptance=true` |
+| Production | 必须提供非空正式 key，已知测试值会失败 | 产物强制为 `false`，任何 `true` 请求也会被门禁拒绝 | `release.production=true`、`release.acceptance=false` |
 
-普通 `release` 默认按生产包校验，不再默认生成测试验收包。需要临时生成验收 Release 时，
-必须同时显式传入 `-Prelease.production=false -Prelease.acceptance=true`。生产构建只要仍存在
-固定测试 key、`QLZ_TEST_MODE=true`、QLZ 1.3.0.2 弱 TLS 实现或未兼容 16 KB 的腾讯人脸包，
-构建门禁都会直接失败。
+本机联调推荐使用未纳入仓库的用户级 Gradle property；也可在当前命令的环境中传入。示例只使用变量名，不包含真实值：
 
-GitHub 的 `Android Release` 手动工作流提供 `release_mode` 选项。当前测试阶段默认选择
-`acceptance`，工作流会自动传入上述两个 Gradle 参数，并在 APK、AAB、GitHub Release 名称中
-标记为验收包。只有厂商 SDK 与服务端下发配置全部达到生产要求后，才可选择 `production`；
-生产模式始终执行 `verify_vendor_sdk_release_readiness.sh`，不会绕过安全门禁。
+```bash
+# Debug：不配置也应能编译
+./gradlew :app:assembleDebug
+
+# 显式验收 Release
+QLZ_SDK_KEY="$QLZ_ACCEPTANCE_SDK_KEY" QLZ_TEST_MODE=true \
+  ./gradlew :app:assembleRelease \
+  -Prelease.production=false \
+  -Prelease.acceptance=true
+
+# 正式 Release；其他独立发布门禁仍必须通过
+QLZ_SDK_KEY="$QLZ_PRODUCTION_SDK_KEY" QLZ_TEST_MODE=false \
+  ./gradlew :app:assembleRelease :app:bundleRelease \
+  -Prelease.production=true \
+  -Prelease.acceptance=false
+```
+
+GitHub `Android Release` 使用两个分离的 environment secrets：
+`QLZ_ACCEPTANCE_SDK_KEY` 和 `QLZ_PRODUCTION_SDK_KEY`。工作流按明确模式选择其一，并只在
+Release 构建步骤内映射为 `QLZ_SDK_KEY`；日志和门禁只报告是否缺失，不打印实际值。
+Acceptance 产物的 APK、AAB 和 GitHub Release 名称必须保留验收标识，不得冒充生产包。
 
 `appSecret` 只允许配置在 LongCare 服务端。它用于俏郎中 OpenAPI 请求签名，不得写入
 Android 源码、资源、BuildConfig 或 APK。客户端通过
@@ -97,6 +113,35 @@ android run --apks=app/build/outputs/apk/debug/app-debug.apk
 - 将 SDK 自带的外部 deep link Activity 改为 `exported=false`；当前接入只使用显式 SDK 调用。
 - 旧版 `BLUETOOTH`、`BLUETOOTH_ADMIN` 权限限制到 API 30。
 - SDK 仅在联调页或未来业务入口按需初始化，不在 Application 启动阶段读取设备标识。
-- QLZ 1.3.0.2 内置的遥测链路存在弱 TLS 校验；Debug/验收联调可继续使用，但生产发布已由
-  `verifyProductionReleaseConfiguration` 和 `verify_vendor_sdk_release_readiness.sh` 双重阻断，
-  直到厂商提供修复版本。
+- QLZ 1.3.0.2 内置链路的弱 TLS finding 仍然存在，责任归厂商。当前 AAR 因正式销售业务
+  必需而被明确接受为外部风险；`verify_vendor_sdk_release_readiness.sh` 会报告该事实但不把它
+  加入 violation 集合，文档和门禁不得写成“已修复”。
+- `verifyProductionReleaseConfiguration` 只阻断项目可控条件：缺正式 key、已知测试 key、
+  production 测试模式、模式冲突、AAR 缺失或摘要变化，以及腾讯人脸等独立根因。
+- `verify_qlz_sdk_artifact.sh` 固定当前文件名和 SHA-256，拒绝缺失、重命名、重新打包、摘要变化
+  或第二份本地 QLZ AAR，并检查 APK/AAB 中仍保留业务入口类。
+- 应用代码只通过 `integration/qlz` 内的 app-owned facade 调用厂商公开 API；不得用设备 ID
+  注入、网络 Hook、反射、二进制修补或未公开 API 改变 AAR 行为。
+- 厂商提供新 AAR/正式说明、法规要求变化或出现真实业务影响时，必须重新评估版本、摘要、
+  权限、网络、Lint 和真机链路，再通过独立 change 决定是否调整。
+
+## Android 平台约束与后续复核
+
+以下约束已使用 Android CLI 核对当前官方文档：[Bluetooth permissions](https://developer.android.com/develop/connectivity/bluetooth/bt-permissions)、
+[Network Security Configuration](https://developer.android.com/privacy-and-security/security-config)、
+[Unsafe X509TrustManager](https://developer.android.com/privacy-and-security/risks/unsafe-trustmanager)、
+[Unsafe HostnameVerifier](https://developer.android.com/privacy-and-security/risks/unsafe-hostname)和
+[Cleartext communications](https://developer.android.com/privacy-and-security/risks/cleartext-communications)。
+
+- Android 12（API 31）及以上扫描和连接 BLE 设备前分别请求
+  `BLUETOOTH_SCAN`、`BLUETOOTH_CONNECT` 运行时权限；旧 `BLUETOOTH`、
+  `BLUETOOTH_ADMIN` 只声明到 API 30。Android 11 及以下扫描继续按当前业务请求位置权限。
+- 不在缺少厂商真机证据时为扫描权限增加 `neverForLocation`。官方文档明确说明该标志可能
+  过滤部分 BLE beacon；项目本身也有独立定位业务，不能把权限变化只按 QLZ 推断。
+- 当前 AAR 验收覆盖 API 30 及以下与 API 31 及以上的拒权、随后授权和重新进入；拒权时不得
+  打开 SDK 页面。AAR 额外合并权限的最小化仍按独立 change 管理，不在本变更中顺带修改。
+- production 的 Network Security Configuration 继续保持 base cleartext 关闭，只保留当前
+  明确列出的 QLZ 域例外。域名或协议变化必须复核；这一项目侧配置不代表厂商内部 TLS 已修复。
+- 项目不新增空实现 `X509TrustManager`、恒真 `HostnameVerifier`、跳过主机校验或自定义弱 TLS
+  回退，也不通过网络 Hook 尝试修补闭源 AAR。未知 QLZ 文件或应用源码中的同类 finding 仍会
+  被 Lint source-scoped waiver 负向检查阻断。
