@@ -40,13 +40,20 @@ declare -a ALL_MODULES=(
   ":feature:login"
   ":feature:home"
   ":feature:identification"
+  ":feature:location"
+  ":feature:photoupload"
+  ":feature:servicecountdown"
 )
 
 declare -a selected_modules=()
 declare -a changed_files=()
 full_scope="false"
 run_instrumentation="false"
-declare -a smoke_classes=("com.ytone.longcare.ExampleInstrumentedTest")
+MATRIX_FILE="${ROOT_DIR}/scripts/quality/target_platform_test_matrix.properties"
+# shellcheck source=scripts/quality/target_readiness_values.sh
+source "${ROOT_DIR}/scripts/quality/target_readiness_values.sh"
+current_smoke_classes="$(read_target_readiness_value "${MATRIX_FILE}" current_target_smoke_classes)"
+IFS=',' read -r -a smoke_classes <<< "${current_smoke_classes}"
 
 add_unique() {
   local value="$1"
@@ -137,6 +144,9 @@ for file in "${changed_files[@]:-}"; do
     feature/login/*) add_unique ":feature:login" ;;
     feature/home/*) add_unique ":feature:home" ;;
     feature/identification/*) add_unique ":feature:identification" ;;
+    feature/location/*) add_unique ":feature:location" ;;
+    feature/photoupload/*) add_unique ":feature:photoupload" ;;
+    feature/servicecountdown/*) add_unique ":feature:servicecountdown" ;;
   esac
 
   case "${file}" in
@@ -148,7 +158,7 @@ for file in "${changed_files[@]:-}"; do
   case "${file}" in
     app/src/main/kotlin/com/ytone/longcare/features/service/*|app/src/main/kotlin/com/ytone/longcare/features/servicecountdown/*)
       run_instrumentation="true"
-      add_smoke_class_unique "com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest"
+      add_smoke_class_unique "com.ytone.longcare.features.countdown.manager.CountdownAlarmPermissionFallbackIntegrationTest"
       ;;
   esac
 

@@ -65,6 +65,69 @@
       "likely_fix": "Restore workflow governance requirements such as retention, pinning, or trigger policy."
     },
     {
+      "id": "android_build_baseline",
+      "name": "Android Build Baseline",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "settings.gradle.kts,constants.gradle.kts,gradle/libs.versions.toml",
+      "likely_fix": "Restore the settings-owned SDK baseline, JDK/application constants, and matching AGP settings plugin."
+    },
+    {
+      "id": "dependency_policy",
+      "name": "Dependency Stability Policy",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/dependency_preview_allowlist.txt",
+      "likely_fix": "Use a stable exact version or add a complete, exact, temporary preview waiver."
+    },
+    {
+      "id": "target_sdk_upgrade_gate",
+      "name": "Target SDK Upgrade Gate",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "settings.gradle.kts,scripts/quality/target_sdk_readiness.properties",
+      "likely_fix": "Keep target 36 or complete every independently reviewed candidate promotion requirement."
+    },
+    {
+      "id": "target_sdk_readiness",
+      "name": "Target SDK Readiness Policy",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/target_sdk_readiness.properties",
+      "likely_fix": "Restore strict readiness fields and keep unsupported evidence states blocked or unverified."
+    },
+    {
+      "id": "target_platform_test_matrix",
+      "name": "Target Platform Test Matrix",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/target_platform_test_matrix.properties",
+      "likely_fix": "Restore distinct API 33 Profile, API 36 blocking smoke, and API 37 readiness lanes."
+    },
+    {
+      "id": "instrumentation_smoke_classes",
+      "name": "Instrumentation Smoke Class Integrity",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/verify_instrumentation_smoke_classes.sh",
+      "likely_fix": "Replace stale class selectors with real app/src/androidTest class declarations."
+    },
+    {
+      "id": "tech_stack_baseline",
+      "name": "Tech Stack Documentation Baseline",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "docs/architecture/tech-stack.md",
+      "likely_fix": "Synchronize the managed technical baseline fields with executable configuration."
+    },
+    {
       "id": "release_validation_entry",
       "name": "Release Validation Entry Contract",
       "layer": "ci-required",

@@ -1,18 +1,18 @@
 # 技术栈与构建基线
 
-最后核对：2026-08-27
+最后核对：2026-08-29
 
-本文是便于阅读的快照。版本发生冲突时，以 `constants.gradle.kts`、`gradle/libs.versions.toml`、`gradle-wrapper.properties` 和各模块 `build.gradle.kts` 为准。
+本文是便于阅读的快照。版本发生冲突时，SDK 以 `settings.gradle.kts` 为准，JDK/应用版本以 `constants.gradle.kts` 为准，依赖与插件以 `gradle/libs.versions.toml` 为准，Gradle 以 `gradle-wrapper.properties` 为准。
 
 ## Android 与工具链
 
 | 项目 | 当前值 | 事实来源 |
 |---|---:|---|
 | Application ID | `com.ytone.longcare` | `app/build.gradle.kts` |
-| 版本 | `1.0.6 (57)` | `constants.gradle.kts` |
-| `compileSdk` | 37 | `constants.gradle.kts` |
-| `targetSdk` | 36 | `constants.gradle.kts` |
-| `minSdk` | 24 | `constants.gradle.kts` |
+| 版本 | `1.0.6 (58)` | `constants.gradle.kts` |
+| `compileSdk` | 37 | `settings.gradle.kts` |
+| `targetSdk` | 36 | `settings.gradle.kts` |
+| `minSdk` | 24 | `settings.gradle.kts` |
 | JDK / JVM toolchain | 21 | `constants.gradle.kts`、约定插件 |
 | Gradle Wrapper | 9.7.1 | `gradle/wrapper/gradle-wrapper.properties` |
 | Android Gradle Plugin | 9.3.2 | `gradle/libs.versions.toml` |
@@ -25,22 +25,23 @@
 |---|---|---:|
 | UI | Jetpack Compose BOM | 2026.08.00 |
 | UI | Material 3 / Adaptive Navigation Suite | 由 Compose BOM 管理 |
-| Navigation | Navigation Compose | 2.9.8 |
+| Navigation | Navigation Compose | 2.10.0 |
 | Lifecycle | AndroidX Lifecycle | 2.11.0 |
 | DI | Dagger Hilt / AndroidX Hilt | 2.60.1 / 1.4.0 |
 | Persistence | Room | 2.8.4 |
 | Preferences | DataStore | 1.2.1 |
 | Background | WorkManager | 2.11.2 |
-| Camera | CameraX | 1.6.1 |
+| Camera | CameraX | 1.6.2 |
 | Face detection | ML Kit Face Detection | 16.1.7 |
 | Network | Retrofit / OkHttp | 3.0.0 / 5.5.0 |
 | Serialization | Moshi / kotlinx.serialization | 1.15.2 / 1.11.0 |
-| Images | Coil | 3.5.0 |
+| Images | Coil | 3.6.0 |
+| Date/time | kotlinx-datetime | 0.8.0 |
 | Async | kotlinx.coroutines | 1.11.0 |
 | Location | AMap Location | 11.2.100 |
 | Object storage | Tencent COS Android | 5.9.52 |
 | Diagnostics | Tencent Bugly CrashReport | 4.1.9.3 |
-| Performance | Baseline Profile / Macrobenchmark | 1.5.0-rc01 |
+| Performance | Baseline Profile / Macrobenchmark | 1.5.0-rc02 / 1.5.0-rc02 |
 
 ## 本地 AAR 与兼容配置
 
@@ -68,6 +69,10 @@ QLZ、腾讯人脸和腾讯 COS 仍引用旧 support library 类，因此 `andro
 - Feature：`:feature:login`、`:feature:home`、`:feature:identification`、`:feature:location`、`:feature:photoupload`、`:feature:servicecountdown`
 
 `build-logic` 是 included build，提供 application、library、Kotlin 公共配置，以及 Release 签名和腾讯人脸依赖来源约定。版本目录统一管理 Maven 依赖；业务模块不应自行声明版本号。
+
+三个 Android SDK 值由 `com.android.settings` 统一下发，插件版本必须与 AGP `9.3.2` 相同；模块和 convention plugin 不得再次覆盖 SDK。JDK 21 与应用版本继续由 `constants.gradle.kts` 单独管理。
+
+平台验证按目的分离：`pixel6Api33` 只生成 Baseline Profile，`pixel6Api36` 执行正式 target 的阻断式 smoke，`pixelTabletApi37` 只用于 Android 17 Beta readiness。API 33 或 API 36 成功不能授权 target 37。
 
 ## App 构建变体
 

@@ -79,6 +79,14 @@
 - Debug-only mock、launcher 或诊断能力必须放在 debug source set；共享验证入口进入 main source set 时仍需在 Release 保持不可导出。
 - 权限请求要有用途说明、拒绝恢复和从设置页返回后的重新检查，不能在 Application 无上下文地批量申请。
 
+## 构建与第三方依赖基线
+
+- `settings.gradle.kts` 的 `com.android.settings` 是 `minSdk 24`、`targetSdk 36`、`compileSdk 37` 的唯一来源；模块和 convention plugin 不得覆盖。JDK 21 与应用版本继续由 `constants.gradle.kts` 管理。
+- 版本目录优先使用稳定、精确版本，禁止动态版本。alpha、beta、RC、snapshot、dev 和 compat 只能进入 `dependency_preview_allowlist.txt` 的精确别名/精确版本豁免，并必须填写 Owner、原因、验证范围和稳定退出版本。
+- 当前唯一预览豁免是 `androidxBaselineProfile` 与 `androidxBenchmark` 的 `1.5.0-rc02`，分别受管。稳定且经 AGP 9.3 验证的 `1.5.x` 可用后，两项豁免及 `maxAgpVersion=false` 必须一起退出。
+- 厂商 AAR 仍依赖 Jetifier，因此 `android.enableJetifier=true` 暂时保留。该事实直接阻断 AGP 10+；不得通过 suppression、修改 AAR、关闭生产能力或删除 Jetifier 来制造升级成功。
+- Coil 与 kotlinx-datetime 当前稳定基线分别为 `3.6.0` 和 `0.8.0`。升级依赖时按单一依赖族独立解析、测试和回滚，不夹带业务重构。
+
 ## 数据、网络和文件
 
 - Room schema 变更默认必须提交 schema JSON、显式 Migration 和迁移测试；[ADR-002](adr/ADR-002-user-storage-cold-cutover.md) 是已确认的限定例外，只允许 schema 不兼容时破坏性重建当前用户的独立数据库，不得删除其他用户文件。
@@ -98,7 +106,8 @@
 - 跨页面优先传稳定 ID/轻量 key；当前订单路由使用 `OrderNavParams(orderId, planId)`，不要传完整订单对象。
 - 相机、人脸等结果通过 `SavedStateHandle` 返回，并由接收页消费后清除。
 - 路由行为变更必须同步[页面与路由地图](ui-and-screen-map.md)并增加对应导航/状态测试。
-- Navigation 3 迁移必须作为独立的路由等价项目进行，不能与业务 API 或大规模模块搬迁混在同一改动中。
+- 当前保持 Navigation Compose `2.10.0`，version catalog 不引入 Navigation 3 制品。Navigation 3 迁移必须作为使用稳定 Nav3 的独立原子 change，不能与业务 API、targetSdk 或大规模模块搬迁混在同一改动中。
+- 提出 Nav3 change 前，必须先覆盖动态 Login/Home 起点、隐私 gate、`popUpTo`/清栈/替换当前 route、结果返回并消费清除、HomeGraph 共享 ViewModel scope、重复导航保护、配置变化和进程恢复；同时把可避免的大对象 route 参数收敛为稳定 ID。
 
 ## 自动守卫
 
@@ -113,6 +122,12 @@
 | `check_new_files_guard.sh` | 在 changed-files 场景快速提示冻结 legacy feature 目录不得新增文件；完整快照由 rule-10 校验 |
 | `verify_cancellation_guards.sh` | 敏感协程取消处理 |
 | `verify_no_empty_catch_blocks.sh` | 禁止吞异常 |
+| `verify_android_build_baseline.sh` | Settings Plugin SDK 单一来源、JDK/应用版本与 AGP/plugin 一致性 |
+| `verify_dependency_policy.sh` | 稳定版优先、精确预览豁免、`maxAgpVersion=false` 关联和 Jetifier/AGP 10 阻断 |
+| `verify_target_sdk_readiness.sh` | target 36/37 双状态政策及 Manifest adaptive 一致性 |
+| `verify_target_platform_test_matrix.sh` | API 33 Profile、API 36 blocking smoke 与 API 37 readiness 分离 |
+| `verify_instrumentation_smoke_classes.sh` | 所有 smoke 选择器都指向真实 `androidTest` 类 |
+| `verify_tech_stack_baseline.sh` | 长期技术栈字段与可执行配置同步 |
 
 本地快速检查：
 

@@ -8,6 +8,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.ytone.longcare.R
 import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
 import com.ytone.longcare.theme.LongCareTheme
 import org.junit.Assert.assertEquals
@@ -23,6 +25,12 @@ class DashboardGridCompactModeTest {
 
     @Test
     fun narrow_width_keeps_cards_in_one_row_and_shows_subtitles() {
+        val pendingSubtitle =
+            InstrumentationRegistry.getInstrumentation().targetContext.getString(
+                R.string.dashboard_pending_count,
+                1,
+            )
+
         composeRule.setContent {
             LongCareTheme {
                 Box(modifier = Modifier.width(328.dp)) {
@@ -42,7 +50,7 @@ class DashboardGridCompactModeTest {
 
         composeRule.onNodeWithText("待护理计划").assertExists()
         composeRule.onNodeWithText("已服务记录").assertExists()
-        composeRule.onNodeWithText("你有1个护理待执行").assertExists()
+        composeRule.onNodeWithText(pendingSubtitle).assertExists()
         composeRule.onNodeWithText("查看过往服务记录").assertExists()
 
         val pendingBounds = composeRule.onNodeWithTag("dashboard_pending_card").fetchSemanticsNode().boundsInRoot

@@ -1,6 +1,3 @@
-extra.set("appCompileSdkVersion", 37)
-extra.set("appTargetSdkVersion", 36)
-extra.set("appMinSdkVersion", 24)
 extra.set("appJdkVersion", 21)
 extra.set("appVersionCode", 58)
 extra.set("appVersionName", "1.0.6")

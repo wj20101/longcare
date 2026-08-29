@@ -12,6 +12,12 @@ on:
       - "**/*.md"
   pull_request:
   workflow_dispatch:
+    inputs:
+      run_api37_readiness:
+        description: Run the non-blocking Android 17 Beta readiness lane
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: android-ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event.pull_request.head.sha || 'stable' }}
@@ -106,6 +112,8 @@ jobs:
             echo "- module API visibility"
             echo "- coroutine cancellation and empty catch guards"
             echo "- target SDK and exact alarm policy"
+            echo "- Android build/dependency/readiness governance"
+            echo "- instrumentation smoke class integrity"
             echo "- tracked keystore guard"
             echo "- Release validation entry contract"
             echo "- workflow quality guard"
@@ -121,7 +129,12 @@ jobs:
           bash scripts/quality/verify_baselineprofile_journeys.sh
           bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
           bash scripts/quality/verify_no_empty_catch_blocks.sh .
-          bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
+          bash scripts/quality/verify_target_sdk_upgrade.sh settings.gradle.kts .github/workflows/android-ci.yml
+          bash scripts/quality/verify_android_build_baseline.sh --project-root .
+          bash scripts/quality/verify_dependency_policy.sh --project-root .
+          bash scripts/quality/verify_target_sdk_readiness.sh --project-root .
+          bash scripts/quality/verify_target_platform_test_matrix.sh --project-root .
+          bash scripts/quality/verify_instrumentation_smoke_classes.sh --project-root .
           bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml
           bash scripts/quality/verify_architecture_boundaries.sh .
           bash scripts/quality/verify_module_dependency_whitelist.sh .
@@ -188,8 +201,132 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  current-target-api36-smoke:
+    needs: detect-affected
+    if: needs.detect-affected.outputs.run_instrumentation == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Enable KVM for Gradle Managed Devices
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Set up shared Android build environment
+        uses: ./.github/actions/android-build-env
+        with:
+          setup-android-sdk: 'true'
+          run-workflow-quality-check: 'false'
+          run-lint-ignore-policy-check: 'false'
+          run-jetpack-compat-check: 'false'
+          run-baselineprofile-journey-check: 'false'
+          run-module-dependency-check: 'false'
+
+      - name: Run blocking API 36 current-target smoke
+        run: |
+          ./gradlew --no-daemon :app:pixel6Api36DebugAndroidTest \
+            -Pbaseline.enableX86_64=true \
+            -Pandroid.testInstrumentationRunnerArguments.class="${{ needs.detect-affected.outputs.smoke_test_classes }}"
+
+      - name: Publish API 36 smoke summary
+        if: always()
+        run: |
+          {
+            echo "## API 36 current-target smoke"
+            echo ""
+            echo "- blocking: true"
+            echo "- device: pixel6Api36"
+            echo "- classes: `${{ needs.detect-affected.outputs.smoke_test_classes }}`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload API 36 smoke reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: api36-current-target-smoke
+          path: |
+            app/build/reports/androidTests/managedDevice/**
+            app/build/outputs/androidTest-results/managedDevice/**
+          if-no-files-found: warn
+          retention-days: 7
+
+  api37-beta-readiness:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_api37_readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Enable KVM for Gradle Managed Devices
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Set up shared Android build environment
+        uses: ./.github/actions/android-build-env
+        with:
+          setup-android-sdk: 'true'
+          run-workflow-quality-check: 'false'
+          run-lint-ignore-policy-check: 'false'
+          run-jetpack-compat-check: 'false'
+          run-baselineprofile-journey-check: 'false'
+          run-module-dependency-check: 'false'
+
+      - name: Evaluate API 37 policy and static scope
+        id: policy
+        continue-on-error: true
+        run: bash scripts/quality/evaluate_api37_readiness.sh --project-root .
+
+      - name: Run API 37 Beta readiness smoke
+        id: emulator
+        continue-on-error: true
+        env:
+          API37_SMOKE_CLASSES: com.ytone.longcare.smoke.MainActivitySmokeTest,com.ytone.longcare.features.login.ui.LoginAgreementConsentRowTest,com.ytone.longcare.features.service.UserScopedBackgroundLifecycleIntegrationTest,com.ytone.longcare.core.ui.image.PhotoPreviewDialogTest,com.ytone.longcare.platform.webview.WebViewEntryInstrumentationTest,com.ytone.longcare.features.countdown.manager.CountdownAlarmPermissionFallbackIntegrationTest,com.ytone.longcare.features.maindashboard.ui.DashboardGridCompactModeTest,com.ytone.longcare.features.maindashboard.ui.TopHeaderAdaptationTest,com.ytone.longcare.features.profile.ui.ProfileScreenComponentsAdaptationTest,com.ytone.longcare.features.photoupload.ui.CameraWatermarkOverlayTest,com.ytone.longcare.presentation.validation.NfcValidationActivityTest,com.ytone.longcare.features.sales.SalesLargeFontLayoutTest
+        run: |
+          ./gradlew --no-daemon :app:pixelTabletApi37DebugAndroidTest \
+            -Pbaseline.enableX86_64=true \
+            -Pandroid.testInstrumentationRunnerArguments.class="${API37_SMOKE_CLASSES}"
+
+      - name: Publish API 37 readiness summary
+        if: always()
+        run: |
+          {
+            echo "## Android 17 Beta / API 37 readiness"
+            echo ""
+            echo "- blocking for target 36: false"
+            echo "- candidate promotion remains controlled by target_sdk_readiness.properties"
+            echo "- policy evaluation: `${{ steps.policy.outcome }}`"
+            echo "- emulator readiness: `${{ steps.emulator.outcome }}`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload API 37 readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: api37-beta-readiness
+          path: |
+            build/reports/api37-readiness/**
+            app/build/reports/androidTests/managedDevice/**
+            app/build/outputs/androidTest-results/managedDevice/**
+          if-no-files-found: warn
+          retention-days: 7
+
   cleanup-caches:
-    needs: verify-build
+    needs: [verify-build, current-target-api36-smoke, api37-beta-readiness]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 15

@@ -8,7 +8,7 @@
 
 | 层级 | 目的 | 是否阻断 |
 |---|---|---|
-| `local-fast` | 提交前快速发现新增 legacy 文件和架构/模块边界回退 | 本地命令失败 |
+| `local-fast` | 提交前快速发现构建/依赖/文档漂移、失效 smoke 类、新增 legacy 文件和架构/模块边界回退 | 本地命令失败 |
 | `ci-required` | 普通 PR/Push 的构建、Lint、架构和 workflow 治理 | Android CI 阻断 |
 | `release-required` | 导出组件、厂商 SDK、签名、生产配置和发布产物安全 | Release 阻断 |
 | `observability-only` | 构建基线、质量快照、CI 健康趋势 | 报告本身不直接定义合并策略 |
@@ -27,6 +27,7 @@
 `local-fast` 当前包含：
 
 - `check_new_files_guard.sh`
+- `test_android_build_governance.sh` 及 build baseline、dependency policy、target readiness/matrix、smoke class、tech-stack 正向守卫
 - `test_legacy_feature_file_allowlist.sh` 与 `test_user_storage_boundaries.sh` 的正反 fixture
 - `verify_architecture_boundaries.sh`（内部执行 legacy 精确快照、用户存储/后台身份和 WebView 原生 bridge 守卫）
 - `verify_module_dependency_whitelist.sh`
@@ -48,16 +49,17 @@ bash scripts/quality/verify_release_validation_entry.sh .
 
 ## Android CI
 
-`.github/workflows/android-ci.yml` 的正常阻断策略是 build-only：
+`.github/workflows/android-ci.yml` 以构建门禁为基础，并按 affected scope 选择性追加 API 36 smoke：
 
 1. 计算 affected scope 和 Gradle tasks。
 2. 执行 ci-required shell guards。
 3. 执行 `:app:lintDebug :app:assembleDebug`；full scope 额外执行 `:app:bundleDebug`。
 4. 对生成的 Lint 文本报告执行 warning allowlist。
 5. 上传 Debug APK；full scope 上传 AAB 和可用的 Baseline Profile APK。
-6. 总是上传报告，失败时上传额外诊断产物。
+6. 当 `run_instrumentation=true` 时，在 `pixel6Api36` 上运行选择出的 blocking smoke 并上传报告。
+7. 总是上传报告，失败时上传额外诊断产物。
 
-普通 Android CI **不执行业务单元测试、UI assertion 或完整用户旅程**。这是当前明确的流水线策略，不代表测试不重要：相关改动应在本地 `--full`、专项验证或发布验收中运行对应测试。
+普通 Android CI **不执行全部业务单元测试或完整用户旅程**；受影响变更会执行受管的 API 36 UI/平台 smoke。相关改动仍应在本地 `--full`、专项验证或发布验收中运行更完整的 focused tests 和真机链路。
 
 当前 ci-required guards：
 
@@ -72,6 +74,12 @@ bash scripts/quality/verify_release_validation_entry.sh .
 | `verify_cancellation_guards.sh` | 敏感协程取消处理 |
 | `verify_no_empty_catch_blocks.sh` | 禁止空 catch |
 | `verify_target_sdk_upgrade.sh` | targetSdk 与 workflow smoke 约束同步 |
+| `verify_android_build_baseline.sh` | Settings Plugin SDK 唯一来源、JDK/应用版本和 AGP/plugin 一致性 |
+| `verify_dependency_policy.sh` | 稳定依赖、精确预览豁免与 Jetifier/AGP 10 边界 |
+| `verify_target_sdk_readiness.sh` | 正式 target 与候选 readiness 状态组合、Manifest adaptive 一致性 |
+| `verify_target_platform_test_matrix.sh` | API 33/36/37 验证目标和设备严格分离 |
+| `verify_instrumentation_smoke_classes.sh` | workflow/脚本/matrix 引用的 `androidTest` 类真实存在 |
+| `verify_tech_stack_baseline.sh` | 技术栈长期字段与 Settings/constants/catalog/wrapper 一致 |
 | `verify_exact_alarm_permission_config.sh` | 精确闹钟 Manifest 策略 |
 | `verify_architecture_boundaries.sh` | 分层、legacy freeze、用户存储/任务身份、WebView bridge、ViewModel 和代码规模规则 |
 | `verify_module_dependency_whitelist.sh` | Gradle 项目模块依赖边 |
@@ -114,6 +122,8 @@ bash scripts/quality/verify_release_validation_entry.sh .
 | `Face SDK Migration Check` | 验证本地 AAR 与私有 Maven 来源切换后的 compile/lint/manifest/assemble |
 | `CI Health Monitor` | 收集运行健康指标并按阈值报告 |
 | `Actions Runs Cleanup` | 定时/手动清理旧 Actions run |
+
+Android CI 还提供显式 `run_api37_readiness` 手动输入：在 `pixelTabletApi37` 的 16 KB image 上运行 Android 17 Beta readiness，并总是上传 policy 与测试报告。该 job 的 policy/emulator 步骤可容错，失败只保持 candidate blocked，不会把正式 target 36 的构建误判为失败。Baseline Profile workflow 则继续使用 API 33；三类结果在名称、summary 和 artifact 中互不替代。
 
 `Face SDK Migration Check` 同样采用 build-only 策略，不把业务测试作为切源阻断项。
 

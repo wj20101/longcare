@@ -12,6 +12,7 @@
 - 架构演进重点是缩小 `:app`、稳定平台生命周期和提高关键业务回归信心。
 - `app/features` 冻结边界当前是 231 个 Kotlin 文件的精确快照；architecture rule-10 已执行实际文件与 allowlist 双向一致性，后续只允许受控收缩，不允许静默扩张或积累陈旧条目。
 - 文档当前真相集已经收敛；后续应随实现更新，不再累积 design/plan/progress 副本。
+- 正式 `targetSdk` 保持 36；API 37 是 Android 17 Beta 候选且机器政策为 blocked，不因 `compileSdk 37` 或普通构建成功而自动提升。
 
 ## P0：恢复生产发布条件
 
@@ -35,7 +36,7 @@ Owner 涉及移动端、服务端和厂商，完成条件必须全部满足：
 - 修复 `DashboardGridCompactModeTest` 的陈旧硬编码文案，改为从当前 string resource 生成期望值。
 - 将 `TopHeaderAdaptationTest` 拆为断点纯逻辑测试和与设备宽度匹配的 UI 测试，避免在 compact 模拟器中伪造不可满足的 645dp 根布局。
 - 聚合 instrumentation 只运行实际拥有 `androidTest` 的模块，避免空 Library 测试 APK 因 runner 缺失而在执行前失败。
-- 让 Android CI 真正消费 `run_instrumentation` 和 `smoke_test_classes`，复用现有 instrumentation smoke 脚本；仅在 affected scope 要求时执行。
+- 继续观察 Android CI 已接入的 `run_instrumentation`/`smoke_test_classes` 和 API 36 Managed Device 稳定性；只在 affected scope 要求时执行，避免无关变更承担模拟器成本。
 
 完成条件：
 
@@ -121,11 +122,11 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 - 销售登记草稿、三张照片上限、QLZ 权限/Token 恢复、表单/报告 WebView。
 - Room 迁移、WorkManager 重建和 app 更新下载恢复。
 
-正常 Android CI 当前是 build-only 阻断策略；这些业务验证应在本地 `--full`、专项 workflow、发布验收或真实设备矩阵中明确承担，而不是被误认为已由普通 CI 覆盖。
+正常 Android CI 仍以 compile/lint/assemble 为基础，只在 affected detector 要求时追加 API 36 blocking smoke；它不自动运行全部单元测试、完整用户旅程或厂商真机链路。其余业务验证仍应在本地 `--full`、专项 workflow、发布验收或真实设备矩阵中明确承担。
 
 ## P1：Android API 37 与自适应
 
-当前 targetSdk 36 通过 Activity 级兼容属性暂时保留 sw600dp+ 的竖屏限制。API 37 不再允许该 opt-out，因此升级前需要：
+当前批准 target 为 36，候选 37 对应 Android 17 Beta，`candidate_promotion=blocked`。平台行为、厂商兼容与测试矩阵均为 unverified，adaptive 因正式 Manifest 仍有固定方向和 `PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY` 而为 blocked。API 37 不再允许该大屏 opt-out，因此升级前需要：
 
 - 清点所有 app-owned 和 vendor Activity 的方向策略。
 - 验证护理/销售页面在横屏、折叠、展开、多窗口和桌面窗口中的可达性与状态恢复。
@@ -133,12 +134,18 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 - 将固定宽度内容改为有最大宽度的响应式布局，并保证低高度窗口可滚动。
 - 在 tablet/foldable emulator 和至少一台真机上增加回归证据。
 
+候选提升必须一次性满足：Android 17 stable；平台行为、厂商、大屏 adaptive、API 36/37 测试矩阵四类状态均为 verified；候选值与实际 target 一致；并由独立 OpenSpec target change 承担评审和回滚。API 33 Baseline Profile、API 36 smoke 或 API 37 Beta 单次成功均不能替代这些条件。
+
+API 37 手动 CI lane 目前覆盖 adaptive window、MessageQueue/反射/native、局域网、Certificate Transparency/网络栈、后台闹钟音频和厂商启动范围；失败会上传 evidence 并保持 blocked，但不阻断 target 36 的正常构建。
+
 不要用新的兼容绕过代替适配。
 
 ## P2：导航与模块 API
 
 - 统一 feature entry、route key 和 app navigation registry 的所有权；当前 registry 只含 login/home/identification 三项。
-- 评估 Navigation 3，但必须先建立 route/payload/back-stack 等价测试。
+- 当前保持 Navigation Compose `2.10.0`，不引入 Navigation 3 artifact。Nav3 后续 change 必须使用稳定版本并原子替换，不建立长期双栈。
+- 迁移前先建立动态 Login/Home 起点、隐私 gate、返回键、`popUpTo`/清栈、结果返回与消费、HomeGraph 共享 ViewModel scope、重复导航、配置变化和进程恢复的 route/back-stack 等价测试。
+- 将可避免的 `OrderNavParams`、`ServiceCompleteData`、`WatermarkData` 等大对象 route payload 收敛为稳定 ID，再设计 Nav3 entry decorator、结果通道和 scope。
 - Navigation 3 迁移不与业务接口变化、模块大搬迁或 targetSdk 升级合并。
 - 继续缩小公共 API，优先 `implementation` 和 `internal`，避免跨模块访问实现包。
 

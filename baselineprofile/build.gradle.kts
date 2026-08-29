@@ -3,14 +3,10 @@ plugins {
     alias(libs.plugins.androidx.baseline.profile)
 }
 
-val appCompileSdkVersion = rootProject.extra["appCompileSdkVersion"] as Int
-val appTargetSdkVersion = rootProject.extra["appTargetSdkVersion"] as Int
-val appMinSdkVersion = rootProject.extra["appMinSdkVersion"] as Int
 val appJdkVersion = rootProject.extra["appJdkVersion"] as Int
 
 android {
     namespace = "com.ytone.longcare.baselineprofile"
-    compileSdk = appCompileSdkVersion
 
     kotlin {
         // 根据您的 constants.gradle.kts 文件，您使用的是 Java 21
@@ -19,9 +15,6 @@ android {
     }
 
     defaultConfig {
-        minSdk = appMinSdkVersion
-        targetSdk = appTargetSdkVersion
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

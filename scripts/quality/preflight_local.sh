@@ -205,6 +205,21 @@ run_architecture_checks() {
   bash "${ROOT_DIR}/scripts/quality/verify_architecture_boundaries.sh" "${project_root}"
 }
 
+run_android_build_governance() {
+  local project_root="$1"
+
+  bash "${ROOT_DIR}/scripts/quality/test_android_build_governance.sh" || return $?
+  bash "${ROOT_DIR}/scripts/quality/verify_android_build_baseline.sh" --project-root "${project_root}" || return $?
+  bash "${ROOT_DIR}/scripts/quality/verify_dependency_policy.sh" --project-root "${project_root}" || return $?
+  bash "${ROOT_DIR}/scripts/quality/verify_target_sdk_readiness.sh" --project-root "${project_root}" || return $?
+  bash "${ROOT_DIR}/scripts/quality/verify_target_platform_test_matrix.sh" --project-root "${project_root}" || return $?
+  bash "${ROOT_DIR}/scripts/quality/verify_instrumentation_smoke_classes.sh" --project-root "${project_root}" || return $?
+  bash "${ROOT_DIR}/scripts/quality/verify_tech_stack_baseline.sh" --project-root "${project_root}" || return $?
+  bash "${ROOT_DIR}/scripts/quality/verify_target_sdk_upgrade.sh" \
+    "${project_root}/settings.gradle.kts" \
+    "${project_root}/.github/workflows/android-ci.yml"
+}
+
 run_local_fast() {
   local new_files_guard_mode=""
   if [[ "${MODE}" == "changed-only" && "${CHANGED_ONLY_FALLBACK_ALL}" != "true" ]]; then
@@ -214,6 +229,10 @@ run_local_fast() {
   run_step \
     "new-files-guard" \
     bash scripts/quality/check_new_files_guard.sh --project-root "${ROOT_DIR}" ${new_files_guard_mode}
+
+  run_step \
+    "android-build-governance" \
+    run_android_build_governance "${ROOT_DIR}"
 
   if [[ "${MODE}" == "changed-only" ]]; then
     if [[ "${CHANGED_ONLY_FALLBACK_ALL}" == "true" ]]; then

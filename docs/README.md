@@ -44,7 +44,7 @@
 3. 本索引与根目录入口说明。
 4. Git 历史、PR、Issue 和旧提交中的计划或报告。
 
-版本号以 `constants.gradle.kts` 为准，依赖版本以 `gradle/libs.versions.toml` 为准，模块清单以 `settings.gradle.kts` 为准，质量门禁以 workflow、脚本和 `quality_gate_registry.json` 为准。
+应用版本/JDK 以 `constants.gradle.kts` 为准，Android SDK 与模块清单以 `settings.gradle.kts` 为准，依赖版本以 `gradle/libs.versions.toml` 为准，质量门禁以 workflow、脚本和 `quality_gate_registry.json` 为准。
 
 ## 文档维护规则
 

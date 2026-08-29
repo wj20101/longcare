@@ -16,9 +16,6 @@ private val PUBLIC_KEY =
 private val TEMPORARY_QLZ_SDK_KEY = "qlz235624a5adc96ccb"
 private val TEMPORARY_QLZ_TEST_MODE = true
 
-val appCompileSdkVersion = rootProject.extra["appCompileSdkVersion"] as Int
-val appTargetSdkVersion = rootProject.extra["appTargetSdkVersion"] as Int
-val appMinSdkVersion = rootProject.extra["appMinSdkVersion"] as Int
 val appJdkVersion = rootProject.extra["appJdkVersion"] as Int
 val appVersionCode = rootProject.extra["appVersionCode"] as Int
 val appVersionName = rootProject.extra["appVersionName"] as String
@@ -71,12 +68,9 @@ fun String.asBuildConfigString(): String =
 
 android {
     namespace = "com.ytone.longcare"
-    compileSdk = appCompileSdkVersion
 
     defaultConfig {
         applicationId = "com.ytone.longcare"
-        minSdk = appMinSdkVersion
-        targetSdk = appTargetSdkVersion
         versionCode = appVersionCode
         versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -130,6 +124,20 @@ android {
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        managedDevices.localDevices {
+            create("pixel6Api36") {
+                device = "Pixel 6"
+                apiLevel = 36
+                systemImageSource = "aosp"
+            }
+            create("pixelTabletApi37") {
+                device = "Pixel Tablet"
+                apiLevel = 37
+                systemImageSource = "aosp"
+                pageAlignment =
+                    com.android.build.api.dsl.ManagedVirtualDevice.PageAlignment.FORCE_16KB_PAGES
+            }
+        }
     }
 
     packaging {

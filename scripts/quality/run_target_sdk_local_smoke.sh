@@ -2,17 +2,54 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-CONSTANTS_FILE="${1:-${ROOT_DIR}/constants.gradle.kts}"
+SETTINGS_FILE="${ROOT_DIR}/settings.gradle.kts"
+PLATFORM_API=""
 READY_TIMEOUT_SECS="${TARGET_SDK_SMOKE_READY_TIMEOUT_SECS:-360}"
 EMULATOR_BOOT_TIMEOUT_SECS="${TARGET_SDK_SMOKE_BOOT_TIMEOUT_SECS:-240}"
-SMOKE_CLASSES="${SMOKE_TEST_CLASSES:-com.ytone.longcare.smoke.MainActivitySmokeTest,com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest}"
+MATRIX_FILE="${TARGET_PLATFORM_MATRIX_FILE:-${ROOT_DIR}/scripts/quality/target_platform_test_matrix.properties}"
 AVD_NAME="${TARGET_SDK_AVD:-}"
 ADB_BIN="${ADB_BIN:-}"
 EMULATOR_BIN="${EMULATOR_BIN:-}"
 STARTED_EMULATOR="false"
 
-# shellcheck source=scripts/quality/gradle_constants.sh
-source "${ROOT_DIR}/scripts/quality/gradle_constants.sh"
+# shellcheck source=scripts/quality/android_build_values.sh
+source "${ROOT_DIR}/scripts/quality/android_build_values.sh"
+# shellcheck source=scripts/quality/target_readiness_values.sh
+source "${ROOT_DIR}/scripts/quality/target_readiness_values.sh"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --settings)
+      SETTINGS_FILE="${2:-}"
+      shift 2
+      ;;
+    --platform-api)
+      PLATFORM_API="${2:-}"
+      shift 2
+      ;;
+    -h|--help)
+      echo "Usage: run_target_sdk_local_smoke.sh [--settings <path>] [--platform-api <api>]"
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -n "${SMOKE_TEST_CLASSES:-}" ]]; then
+  SMOKE_CLASSES="${SMOKE_TEST_CLASSES}"
+elif [[ -n "${PLATFORM_API}" && "${PLATFORM_API}" != "$(read_target_readiness_value "${MATRIX_FILE}" current_target_api)" ]]; then
+  SMOKE_CLASSES="$(read_target_readiness_value "${MATRIX_FILE}" candidate_smoke_classes)"
+else
+  SMOKE_CLASSES="$(read_target_readiness_value "${MATRIX_FILE}" current_target_smoke_classes)"
+fi
+
+if [[ -z "${SMOKE_CLASSES}" ]]; then
+  echo "Failed to resolve smoke classes from ${MATRIX_FILE}" >&2
+  exit 1
+fi
 
 resolve_bin() {
   local explicit="$1"
@@ -34,7 +71,7 @@ resolve_bin() {
 }
 
 extract_target_sdk() {
-  read_gradle_extra_value "${CONSTANTS_FILE}" "appTargetSdkVersion"
+  read_android_settings_release "${SETTINGS_FILE}" "targetSdk"
 }
 
 list_emulator_serials() {
@@ -49,7 +86,7 @@ find_ready_target_serial() {
     local boot
     sdk="$("${ADB_BIN}" -s "${serial}" shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')"
     boot="$("${ADB_BIN}" -s "${serial}" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
-    if [ "${sdk}" = "${TARGET_SDK}" ] && [ "${boot}" = "1" ]; then
+    if [ "${sdk}" = "${EMULATOR_API}" ] && [ "${boot}" = "1" ]; then
       echo "${serial}"
       return 0
     fi
@@ -72,9 +109,9 @@ resolve_avd_name() {
     exit 1
   fi
 
-  AVD_NAME="$(echo "${listed}" | grep -E "API_${TARGET_SDK}(\.|_|$)" | head -n1 || true)"
+  AVD_NAME="$(echo "${listed}" | grep -E "API_${EMULATOR_API}(\.|_|$)" | head -n1 || true)"
   if [ -z "${AVD_NAME}" ]; then
-    echo "No AVD matched targetSdk=${TARGET_SDK}. Set TARGET_SDK_AVD explicitly." >&2
+    echo "No AVD matched platform API ${EMULATOR_API}. Set TARGET_SDK_AVD explicitly." >&2
     echo "Available AVDs:" >&2
     echo "${listed}" >&2
     exit 1
@@ -83,7 +120,7 @@ resolve_avd_name() {
 
 start_target_emulator() {
   resolve_avd_name
-  echo "Starting emulator AVD=${AVD_NAME} for targetSdk=${TARGET_SDK}..."
+  echo "Starting emulator AVD=${AVD_NAME} for platform API ${EMULATOR_API}..."
   nohup "${EMULATOR_BIN}" -avd "${AVD_NAME}" \
     -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-load -no-snapshot-save \
     > /tmp/target_sdk_local_smoke_emulator.log 2>&1 &
@@ -102,30 +139,36 @@ cleanup() {
 
 trap cleanup EXIT
 
-if [ ! -f "${CONSTANTS_FILE}" ]; then
-  echo "Constants file not found: ${CONSTANTS_FILE}" >&2
+if [ ! -f "${SETTINGS_FILE}" ]; then
+  echo "Settings file not found: ${SETTINGS_FILE}" >&2
   exit 1
 fi
 
 ADB_BIN="$(resolve_bin "${ADB_BIN}" "$(command -v adb || true)" "${ANDROID_SDK_ROOT:-}/platform-tools/adb" "${ANDROID_HOME:-}/platform-tools/adb" "${HOME}/Library/Android/sdk/platform-tools/adb")"
 EMULATOR_BIN="$(resolve_bin "${EMULATOR_BIN}" "$(command -v emulator || true)" "${ANDROID_SDK_ROOT:-}/emulator/emulator" "${ANDROID_HOME:-}/emulator/emulator" "${HOME}/Library/Android/sdk/emulator/emulator")"
 TARGET_SDK="$(extract_target_sdk)"
+EMULATOR_API="${PLATFORM_API:-${TARGET_SDK}}"
 
 if [ -z "${TARGET_SDK}" ]; then
-  echo "Failed to parse targetSdk from ${CONSTANTS_FILE}" >&2
+  echo "Failed to parse targetSdk from ${SETTINGS_FILE}" >&2
+  exit 1
+fi
+if [[ ! "${EMULATOR_API}" =~ ^[0-9]+$ ]]; then
+  echo "Invalid platform API: ${EMULATOR_API}" >&2
   exit 1
 fi
 
 echo "Using adb: ${ADB_BIN}"
 echo "Using emulator: ${EMULATOR_BIN}"
 echo "Target SDK: ${TARGET_SDK}"
+echo "Emulator API: ${EMULATOR_API}"
 
 "${ADB_BIN}" start-server >/dev/null
 
 TARGET_SERIAL="$(find_ready_target_serial || true)"
 if [ -z "${TARGET_SERIAL}" ]; then
   if [ -n "$(list_emulator_serials)" ]; then
-    echo "No ready emulator with API ${TARGET_SDK} found among running emulators:" >&2
+    echo "No ready emulator with API ${EMULATOR_API} found among running emulators:" >&2
     while IFS= read -r serial; do
       [ -n "${serial}" ] || continue
       sdk="$("${ADB_BIN}" -s "${serial}" shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')"
@@ -149,7 +192,7 @@ if [ -z "${TARGET_SERIAL}" ]; then
   done
 
   if [ -z "${TARGET_SERIAL}" ]; then
-    echo "Timed out waiting for API ${TARGET_SDK} emulator to boot." >&2
+    echo "Timed out waiting for API ${EMULATOR_API} emulator to boot." >&2
     echo "Recent emulator log:" >&2
     tail -n 80 /tmp/target_sdk_local_smoke_emulator.log >&2 || true
     exit 1

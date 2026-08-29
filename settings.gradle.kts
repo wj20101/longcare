@@ -1,5 +1,8 @@
 pluginManagement {
     includeBuild("build-logic")
+    plugins {
+        id("com.android.settings") version "9.3.2" apply false
+    }
     repositories {
         google()
         mavenCentral()
@@ -7,8 +10,22 @@ pluginManagement {
     }
 }
 plugins {
+    id("com.android.settings")
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
+
+android {
+    compileSdk {
+        version = release(37)
+    }
+    minSdk {
+        version = release(24)
+    }
+    targetSdk {
+        version = release(36)
+    }
+}
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {

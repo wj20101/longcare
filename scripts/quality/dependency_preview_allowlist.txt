@@ -1,0 +1,3 @@
+# alias|exact-version|owner|reason|validation-scope|exit-version
+androidxBaselineProfile|1.5.0-rc02|mobile-platform|AGP 9.3 compatibility while AndroidX 1.5 stabilizes|baseline profile generation and release configuration|1.5.0
+androidxBenchmark|1.5.0-rc02|mobile-platform|Keep macrobenchmark aligned with the Baseline Profile plugin|API 33 journeys and macrobenchmark configuration|1.5.0

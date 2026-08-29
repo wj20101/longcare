@@ -4,8 +4,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ytone.longcare.features.profile.api.ProfileActions
@@ -66,12 +69,15 @@ class ProfileScreenComponentsAdaptationTest {
         val userIdentityBounds = composeRule.onNodeWithTag("profile_user_identity").fetchSemanticsNode().boundsInRoot
         val avatarBounds = composeRule.onNodeWithTag("profile_user_avatar").fetchSemanticsNode().boundsInRoot
         val statsBounds = composeRule.onNodeWithTag("profile_stats_card_row").fetchSemanticsNode().boundsInRoot
-        val maxSingleLineNameHeightPx = with(composeRule.density) { 24.dp.toPx() }
         val minStatsHeightPx = with(composeRule.density) { 88.dp.toPx() }
+        val userNameLayoutResults = mutableListOf<TextLayoutResult>()
+        composeRule.onNodeWithTag("profile_user_name").performSemanticsAction(
+            SemanticsActions.GetTextLayoutResult,
+        ) { action -> action(userNameLayoutResults) }
 
         assertTrue(userNameBounds.left >= avatarBounds.right)
         assertTrue(userIdentityBounds.left >= avatarBounds.right)
-        assertTrue(userNameBounds.height <= maxSingleLineNameHeightPx)
+        assertTrue(userNameLayoutResults.single().lineCount == 1)
         assertTrue(statsBounds.height >= minStatsHeightPx)
     }
 }

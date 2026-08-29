@@ -6,7 +6,7 @@ ksp = "2.3.11"
 
 # KotlinX
 kotlinxCoroutines = "1.11.0"
-kotlinxDatetime = "0.8.0-0.6.x-compat"
+kotlinxDatetime = "0.8.0"
 kotlinxSerialization = "1.11.0"
 
 # AndroidX foundation
@@ -47,7 +47,7 @@ protobufLite = "3.0.1"
 retrofit = "3.0.0"
 
 # Image loading
-coil = "3.5.0"
+coil = "3.6.0"
 
 # Vendor SDKs and diagnostics
 amapLocation = "11.2.100"
