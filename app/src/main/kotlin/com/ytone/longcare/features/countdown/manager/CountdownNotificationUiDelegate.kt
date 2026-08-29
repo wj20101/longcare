@@ -14,7 +14,7 @@ import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.receiver.DismissAlarmReceiver
 import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
-import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.domain.userstorage.UserTaskIdentity
 
 internal enum class CountdownAlarmLaunchSource {
     FULL_SCREEN_NOTIFICATION,
@@ -34,23 +34,22 @@ internal class CountdownNotificationUiDelegate(
     private val context: Context,
     private val notificationManager: NotificationManager,
     private val channelId: String,
-    private val notificationId: Int,
-    private val dismissAlarmRequestCode: Int,
-    private val countdownAlarmActivityRequestCode: Int,
+    private val codec: CountdownTaskCodec,
 ) {
     fun buildCountdownCompletionNotification(
-        orderKey: OrderKey,
-        serviceName: String
+        payload: CountdownTaskPayload,
     ): android.app.Notification {
-        logI("构建倒计时完成通知: orderId=${orderKey.orderId}, serviceName=$serviceName")
+        val identity = payload.execution.taskIdentity
+        logI("构建用户隔离倒计时完成通知: task=${identity.encode()}")
 
-        val dismissIntent = Intent(context, DismissAlarmReceiver::class.java).apply {
-            putExtra(CountdownNotificationManager.EXTRA_ORDER_KEY, orderKey)
-            putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, serviceName)
-        }
+        val dismissIntent = codec.writeToIntent(
+            Intent(context, DismissAlarmReceiver::class.java),
+            payload,
+            CountdownIntentPurpose.DISMISS,
+        )
         val dismissPendingIntent = PendingIntentCompat.getBroadcast(
             context,
-            dismissAlarmRequestCode,
+            codec.requestCode(identity, CountdownIntentPurpose.DISMISS),
             dismissIntent,
             PendingIntent.FLAG_UPDATE_CURRENT,
             false
@@ -58,19 +57,21 @@ internal class CountdownNotificationUiDelegate(
 
         val alarmActivityIntent = CountdownAlarmActivity.createIntent(
             context,
-            orderKey,
-            serviceName,
+            payload.orderKey,
+            payload.serviceName,
             autoCloseEnabled = CountdownAlarmPresentationPolicy.autoCloseEnabled(
                 launchSource = CountdownAlarmLaunchSource.FULL_SCREEN_NOTIFICATION
             )
-        ).apply {
+        ).let {
+            codec.writeToIntent(it, payload, CountdownIntentPurpose.ALARM_ACTIVITY)
+        }.apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
         val alarmActivityPendingIntent = PendingIntentCompat.getActivity(
             context,
-            countdownAlarmActivityRequestCode,
+            codec.requestCode(identity, CountdownIntentPurpose.ALARM_ACTIVITY),
             alarmActivityIntent,
             PendingIntent.FLAG_UPDATE_CURRENT,
             false
@@ -83,7 +84,7 @@ internal class CountdownNotificationUiDelegate(
         val builder = NotificationCompat.Builder(context, channelId)
             .setContentTitle(context.getString(R.string.countdown_notification_title))
             .setContentText(
-                context.getString(R.string.countdown_notification_content, serviceName),
+                context.getString(R.string.countdown_notification_content, payload.serviceName),
             )
             .setSmallIcon(R.mipmap.app_logo_round)
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -130,12 +131,20 @@ internal class CountdownNotificationUiDelegate(
         return notification
     }
 
-    fun cancelCountdownCompletionNotification() {
+    fun cancelCountdownCompletionNotification(identity: UserTaskIdentity) {
         try {
-            notificationManager.cancel(notificationId)
-            logI("倒计时完成通知已取消")
+            notificationManager.cancel(codec.completionNotificationId(identity))
+            logI("用户隔离倒计时完成通知已取消")
         } catch (e: Exception) {
             logE("取消倒计时完成通知失败: ${e.message}")
+        }
+    }
+
+    fun cancelForegroundNotification(identity: UserTaskIdentity) {
+        try {
+            notificationManager.cancel(codec.foregroundNotificationId(identity))
+        } catch (e: Exception) {
+            logE("取消倒计时前台通知失败: ${e.message}")
         }
     }
 

@@ -2,6 +2,7 @@ package com.ytone.longcare.di
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.ytone.longcare.common.utils.DeviceRuntimeState
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,6 +18,9 @@ object StorageModule {
     @Singleton
     @DeviceIdStorage
     fun provideDeviceIdSharedPreferences(@ApplicationContext context: Context): SharedPreferences {
-        return context.getSharedPreferences("device_instance_id_store", Context.MODE_PRIVATE)
+        return context.getSharedPreferences(
+            DeviceRuntimeState.PREFERENCES_NAME,
+            Context.MODE_PRIVATE,
+        )
     }
 }

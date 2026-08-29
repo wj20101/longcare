@@ -25,13 +25,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
 import com.ytone.longcare.model.userIdentityDisplay
 import com.ytone.longcare.platform.text.labelRes
 import com.ytone.longcare.ui.components.UserAvatar
 
 @Composable
-fun TopHeader(user: User, companyName: String) {
+fun TopHeader(user: CurrentUser, companyName: String) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val useCompactLargeTextLayout =
             maxWidth < 340.dp && LocalDensity.current.fontScale >= 1.3f
@@ -114,7 +114,7 @@ private fun HeaderCompanyName(
 
 @Composable
 private fun HeaderUserInfo(
-    user: User,
+    user: CurrentUser,
     modifier: Modifier,
     userNameMaxLines: Int,
 ) {
@@ -151,7 +151,7 @@ private fun HeaderUserInfo(
 }
 
 @Composable
-private fun HeaderAvatar(user: User) {
+private fun HeaderAvatar(user: CurrentUser) {
     UserAvatar(
         modifier = Modifier.testTag("home_top_avatar"),
         avatarUrl = user.headUrl,

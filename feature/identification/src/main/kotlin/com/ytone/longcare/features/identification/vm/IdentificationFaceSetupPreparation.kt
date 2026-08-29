@@ -1,8 +1,9 @@
 package com.ytone.longcare.features.identification.vm
 
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
+import com.ytone.longcare.domain.faceauth.FaceSetupRequestRepository
+import com.ytone.longcare.domain.faceauth.FaceSetupRequestResult
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
-import com.ytone.longcare.model.User
 import java.io.File
 
 internal sealed interface FaceSetupPreparation {
@@ -24,7 +25,7 @@ internal enum class FaceSetupPreparationFailure {
 internal suspend fun prepareFaceSetupVerificationInput(
     imagePath: String,
     faceDataSource: IdentificationFaceDataSource,
-    currentUser: User?,
+    faceSetupRequestRepository: FaceSetupRequestRepository,
 ): FaceSetupPreparation {
     val imageFile = File(imagePath)
     if (!imageFile.exists()) {
@@ -32,21 +33,18 @@ internal suspend fun prepareFaceSetupVerificationInput(
     }
 
     val base64Image = faceDataSource.imageFileToBase64(imageFile)
-    if (currentUser == null) {
-        return FaceSetupPreparation.Error(FaceSetupPreparationFailure.CURRENT_USER_UNAVAILABLE)
-    }
-
-    if (currentUser.userName.isBlank() || currentUser.identityCardNumber.isBlank()) {
-        return FaceSetupPreparation.Error(FaceSetupPreparationFailure.CURRENT_USER_INCOMPLETE)
-    }
-
-    val request = createFaceVerificationRequest(
-        name = currentUser.userName,
-        idNo = currentUser.identityCardNumber,
+    val request = when (val result = faceSetupRequestRepository.createFaceSetupRequest(
         orderNo = createFaceSetupOrderNo(),
-        userId = currentUser.userId.toString(),
-        sourcePhotoBase64 = base64Image
-    )
+        sourcePhotoBase64 = base64Image,
+    )) {
+        is FaceSetupRequestResult.Ready -> result.request
+        FaceSetupRequestResult.SessionUnavailable -> return FaceSetupPreparation.Error(
+            FaceSetupPreparationFailure.CURRENT_USER_UNAVAILABLE
+        )
+        FaceSetupRequestResult.IdentityIncomplete -> return FaceSetupPreparation.Error(
+            FaceSetupPreparationFailure.CURRENT_USER_INCOMPLETE
+        )
+    }
     return FaceSetupPreparation.Ready(
         imageFile = imageFile,
         base64Image = base64Image,

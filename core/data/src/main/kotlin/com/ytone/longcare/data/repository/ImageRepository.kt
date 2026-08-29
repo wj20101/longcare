@@ -1,258 +1,218 @@
 package com.ytone.longcare.data.repository
 
 import android.net.Uri
-import com.ytone.longcare.common.image.UnifiedImagePipeline
-import com.ytone.longcare.data.database.dao.OrderImageDao
+import com.ytone.longcare.data.database.entity.OrderImageEntityDb
 import com.ytone.longcare.data.database.entity.toDb
 import com.ytone.longcare.data.database.entity.toModel
+import com.ytone.longcare.data.userstorage.UserDatabaseAccess
+import com.ytone.longcare.data.userstorage.UserManagedFiles
+import com.ytone.longcare.domain.repository.OrderImageRepository
+import com.ytone.longcare.domain.userstorage.UserStorageLease
 import com.ytone.longcare.model.ImageType
 import com.ytone.longcare.model.ImageUploadStatus
 import com.ytone.longcare.model.OrderImageEntity
-import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.model.OrderKey
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import java.io.File
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
-/**
- * 图片仓库
- * 
- * 统一管理订单图片的操作：
- * 1. 图片添加和删除
- * 2. 上传状态管理
- * 3. 查询和观察
- */
+/** User-scoped order image records backed by relative managed-file handles. */
 @Singleton
 class ImageRepository @Inject constructor(
-    private val orderImageDao: OrderImageDao,
-    private val imagePipeline: UnifiedImagePipeline,
+    private val databaseAccess: UserDatabaseAccess,
+    private val managedFiles: UserManagedFiles,
 ) : OrderImageRepository {
-    
-    // ========== 查询操作 ==========
-    
-    /**
-     * 获取订单所有图片
-     * @param orderKey 订单标识符
-     */
-    override suspend fun getImagesByOrderId(orderKey: OrderKey): List<OrderImageEntity> {
-        return orderImageDao.getImagesByOrderId(orderKey.orderId).map { it.toModel() }
-    }
-    
-    /**
-     * 观察订单所有图片
-     * @param orderKey 订单标识符
-     */
-    fun observeImagesByOrderId(orderKey: OrderKey): Flow<List<OrderImageEntity>> {
-        return orderImageDao.observeImagesByOrderId(orderKey.orderId).map { list ->
-            list.map { it.toModel() }
+    override suspend fun getImagesByOrderId(orderKey: OrderKey): List<OrderImageEntity> =
+        databaseAccess.withCurrentLease { database, lease ->
+            database.orderImageDao().getImagesByOrderId(orderKey.orderId).map { it.toModel(lease) }
         }
-    }
-    
-    /**
-     * 获取指定类型的图片
-     * @param orderKey 订单标识符
-     * @param imageType 图片类型
-     */
-    suspend fun getImagesByType(orderKey: OrderKey, imageType: ImageType): List<OrderImageEntity> {
-        return orderImageDao.getImagesByType(orderKey.orderId, imageType.value).map { it.toModel() }
-    }
-    
-    /**
-     * 观察指定类型的图片
-     * @param orderKey 订单标识符
-     * @param imageType 图片类型
-     */
-    fun observeImagesByType(orderKey: OrderKey, imageType: ImageType): Flow<List<OrderImageEntity>> {
-        return orderImageDao.observeImagesByType(orderKey.orderId, imageType.value).map { list ->
-            list.map { it.toModel() }
+
+    fun observeImagesByOrderId(orderKey: OrderKey): Flow<List<OrderImageEntity>> =
+        databaseAccess.observeCurrent { database, lease ->
+            database.orderImageDao().observeImagesByOrderId(orderKey.orderId).map { records ->
+                records.map { it.toModel(lease) }
+            }
         }
-    }
-    
-    /**
-     * 获取待上传的图片
-     * @param orderKey 订单标识符
-     */
-    suspend fun getPendingImages(orderKey: OrderKey): List<OrderImageEntity> {
-        return orderImageDao
-            .getImagesByStatus(orderKey.orderId, ImageUploadStatus.PENDING.value)
-            .map { it.toModel() }
-    }
-    
-    /**
-     * 获取所有待上传的图片（跨订单）
-     */
-    suspend fun getAllPendingImages(): List<OrderImageEntity> {
-        return orderImageDao.getAllImagesByStatus(ImageUploadStatus.PENDING.value).map { it.toModel() }
-    }
-    
-    /**
-     * 获取失败的图片
-     * @param orderKey 订单标识符
-     */
-    suspend fun getFailedImages(orderKey: OrderKey): List<OrderImageEntity> {
-        return orderImageDao
-            .getImagesByStatus(orderKey.orderId, ImageUploadStatus.FAILED.value)
-            .map { it.toModel() }
-    }
-    
-    // ========== 写入操作 ==========
-    
-    /**
-     * 添加图片
-     * @param orderKey 订单标识符
-     * @param imageType 图片类型
-     * @param localUri 本地URI
-     * @param localPath 本地路径
-     */
+
+    suspend fun getImagesByType(orderKey: OrderKey, imageType: ImageType): List<OrderImageEntity> =
+        databaseAccess.withCurrentLease { database, lease ->
+            database.orderImageDao().getImagesByType(orderKey.orderId, imageType.value).map { it.toModel(lease) }
+        }
+
+    fun observeImagesByType(orderKey: OrderKey, imageType: ImageType): Flow<List<OrderImageEntity>> =
+        databaseAccess.observeCurrent { database, lease ->
+            database.orderImageDao().observeImagesByType(orderKey.orderId, imageType.value).map { records ->
+                records.map { it.toModel(lease) }
+            }
+        }
+
+    suspend fun getPendingImages(orderKey: OrderKey): List<OrderImageEntity> =
+        databaseAccess.withCurrentLease { database, lease ->
+            database.orderImageDao()
+                .getImagesByStatus(orderKey.orderId, ImageUploadStatus.PENDING.value)
+                .map { it.toModel(lease) }
+        }
+
+    suspend fun getAllPendingImages(): List<OrderImageEntity> =
+        databaseAccess.withCurrentLease { database, lease ->
+            database.orderImageDao().getAllImagesByStatus(ImageUploadStatus.PENDING.value).map { it.toModel(lease) }
+        }
+
+    suspend fun getFailedImages(orderKey: OrderKey): List<OrderImageEntity> =
+        databaseAccess.withCurrentLease { database, lease ->
+            database.orderImageDao()
+                .getImagesByStatus(orderKey.orderId, ImageUploadStatus.FAILED.value)
+                .map { it.toModel(lease) }
+        }
+
     override suspend fun addImage(
         orderKey: OrderKey,
         imageType: ImageType,
         localUri: String,
-        localPath: String?
-    ): Long {
-        val entity = OrderImageEntity(
-            orderId = orderKey.orderId,
-            imageType = imageType.value,
-            localUri = localUri,
-            localPath = localPath,
-            uploadStatus = ImageUploadStatus.PENDING.value
+        localPath: String?,
+    ): OrderImageEntity {
+        val lease = databaseAccess.currentLease()
+        val sourceFile = localPath
+            ?.let(::File)
+            ?.takeIf(File::isFile)
+            ?: Uri.parse(localUri).path
+                ?.takeIf { path -> Uri.parse(localUri).scheme in setOf(null, "file") }
+                ?.let(::File)
+            ?: throw IllegalArgumentException("Order image source must be a managed file")
+        val source = Uri.fromFile(managedFiles.requireCurrentSessionFile(lease, sourceFile))
+        val handle = managedFiles.importPersistentFile(
+            lease = lease,
+            purpose = IMAGE_PURPOSE,
+            relativePath = "orders/${orderKey.orderId}/${UUID.randomUUID()}${source.safeExtension()}",
+            source = source,
         )
-        return orderImageDao.insert(entity.toDb())
+        var stored = false
+        return try {
+            val result = databaseAccess.withLease(lease) { database, activeLease ->
+                val record = OrderImageEntity(
+                    orderId = orderKey.orderId,
+                    imageType = imageType.value,
+                    localUri = handle.value,
+                    localPath = handle.value,
+                    uploadStatus = ImageUploadStatus.PENDING.value,
+                )
+                val id = database.orderImageDao().insert(record.toDb())
+                val file = managedFiles.resolvePersistentFile(activeLease, handle)
+                record.copy(
+                    id = id,
+                    localUri = Uri.fromFile(file).toString(),
+                    localPath = file.path,
+                )
+            }
+            stored = true
+            result
+        } finally {
+            if (!stored) {
+                withContext(NonCancellable) { managedFiles.rollbackImportedFile(lease, handle) }
+            }
+        }
     }
-    
-    /**
-     * 批量添加图片
-     * @param orderKey 订单标识符
-     * @param imageType 图片类型
-     * @param localUris 本地URI列表
-     */
+
     suspend fun addImages(
         orderKey: OrderKey,
         imageType: ImageType,
-        localUris: List<String>
+        localUris: List<String>,
     ) {
-        val entities = localUris.map { uri ->
-            OrderImageEntity(
-                orderId = orderKey.orderId,
-                imageType = imageType.value,
-                localUri = uri,
-                uploadStatus = ImageUploadStatus.PENDING.value
+        localUris.forEach { uri -> addImage(orderKey, imageType, uri) }
+    }
+
+    suspend fun markAsUploading(imageId: Long) = updateStatus(imageId, ImageUploadStatus.UPLOADING)
+
+    override suspend fun markAsSuccess(imageId: Long, cloudKey: String) {
+        databaseAccess.withCurrentLease { database, _ ->
+            database.orderImageDao().updateUploadSuccess(
+                id = imageId,
+                status = ImageUploadStatus.SUCCESS.value,
+                cloudKey = cloudKey,
             )
         }
-        orderImageDao.insertAll(entities.map { it.toDb() })
     }
-    
-    // ========== 状态更新 ==========
-    
-    /**
-     * 标记为上传中
-     */
-    suspend fun markAsUploading(imageId: Long) {
-        orderImageDao.updateStatus(imageId, ImageUploadStatus.UPLOADING.value)
-    }
-    
-    /**
-     * 标记上传成功
-     */
-    override suspend fun markAsSuccess(imageId: Long, cloudKey: String) {
-        orderImageDao.updateUploadSuccess(
-            id = imageId,
-            status = ImageUploadStatus.SUCCESS.value,
-            cloudKey = cloudKey,
-        )
-    }
-    
-    /**
-     * 标记上传失败
-     */
+
     suspend fun markAsFailed(imageId: Long, errorMessage: String) {
-        orderImageDao.updateUploadFailed(
-            id = imageId,
-            status = ImageUploadStatus.FAILED.value,
-            errorMessage = errorMessage
-        )
-    }
-    
-    /**
-     * 重置为待上传（用于重试）
-     */
-    suspend fun resetToPending(imageId: Long) {
-        orderImageDao.updateStatus(imageId, ImageUploadStatus.PENDING.value)
+        databaseAccess.withCurrentLease { database, _ ->
+            database.orderImageDao().updateUploadFailed(
+                id = imageId,
+                status = ImageUploadStatus.FAILED.value,
+                errorMessage = errorMessage,
+            )
+        }
     }
 
-    /**
-     * 更新状态（通用）
-     */
+    suspend fun resetToPending(imageId: Long) = updateStatus(imageId, ImageUploadStatus.PENDING)
+
     suspend fun updateStatus(imageId: Long, status: ImageUploadStatus) {
-        orderImageDao.updateStatus(imageId, status.value)
-    }
-    
-    // ========== 删除操作 ==========
-    
-    /**
-     * 删除单张图片
-     */
-    override suspend fun deleteImage(imageId: Long) {
-        val image = orderImageDao.getById(imageId)?.toModel()
-        orderImageDao.deleteById(imageId)
-        image?.let { deleteManagedFiles(listOf(it)) }
-    }
-    
-    /**
-     * 删除订单所有图片
-     * @param orderKey 订单标识符
-     */
-    override suspend fun deleteImagesByOrderId(orderKey: OrderKey) {
-        val images = getImagesByOrderId(orderKey)
-        orderImageDao.deleteByOrderId(orderKey.orderId)
-        deleteManagedFiles(images)
-    }
-    
-    /**
-     * 删除指定类型的图片
-     * @param orderKey 订单标识符
-     * @param imageType 图片类型
-     */
-    suspend fun deleteImagesByType(orderKey: OrderKey, imageType: ImageType) {
-        val images = getImagesByType(orderKey, imageType)
-        orderImageDao.deleteByType(orderKey.orderId, imageType.value)
-        deleteManagedFiles(images)
+        databaseAccess.withCurrentLease { database, _ ->
+            database.orderImageDao().updateStatus(imageId, status.value)
+        }
     }
 
-    private suspend fun deleteManagedFiles(images: Iterable<OrderImageEntity>) {
-        imagePipeline.deleteManagedImages(
-            images
-                .map { image -> image.localPath ?: image.localUri }
-                .distinct()
-                .map(Uri::parse)
+    override suspend fun deleteImage(imageId: Long) {
+        databaseAccess.withCurrentLease { database, lease ->
+            val record = database.orderImageDao().getById(imageId)
+            database.orderImageDao().deleteById(imageId)
+            record?.let { managedFiles.deletePersistentFiles(lease, listOf(it.persistentHandle())) }
+        }
+    }
+
+    override suspend fun deleteImagesByOrderId(orderKey: OrderKey) {
+        databaseAccess.withCurrentLease { database, lease ->
+            val records = database.orderImageDao().getImagesByOrderId(orderKey.orderId)
+            database.orderImageDao().deleteByOrderId(orderKey.orderId)
+            managedFiles.deletePersistentFiles(lease, records.map { it.persistentHandle() })
+        }
+    }
+
+    suspend fun deleteImagesByType(orderKey: OrderKey, imageType: ImageType) {
+        databaseAccess.withCurrentLease { database, lease ->
+            val records = database.orderImageDao().getImagesByType(orderKey.orderId, imageType.value)
+            database.orderImageDao().deleteByType(orderKey.orderId, imageType.value)
+            managedFiles.deletePersistentFiles(lease, records.map { it.persistentHandle() })
+        }
+    }
+
+    suspend fun countPendingImages(orderKey: OrderKey): Int =
+        countByStatus(orderKey, ImageUploadStatus.PENDING)
+
+    suspend fun countSuccessImages(orderKey: OrderKey): Int =
+        countByStatus(orderKey, ImageUploadStatus.SUCCESS)
+
+    suspend fun countFailedImages(orderKey: OrderKey): Int =
+        countByStatus(orderKey, ImageUploadStatus.FAILED)
+
+    private suspend fun countByStatus(orderKey: OrderKey, status: ImageUploadStatus): Int =
+        databaseAccess.withCurrentLease { database, _ ->
+            database.orderImageDao().countByStatus(orderKey.orderId, status.value)
+        }
+
+    private fun OrderImageEntityDb.toModel(lease: UserStorageLease): OrderImageEntity {
+        val file = managedFiles.resolvePersistentFile(lease, persistentHandle())
+        return toModel().copy(
+            localUri = Uri.fromFile(file).toString(),
+            localPath = file.path,
         )
     }
-    
-    // ========== 统计操作 ==========
-    
-    /**
-     * 获取待上传图片数量
-     * @param orderKey 订单标识符
-     */
-    suspend fun countPendingImages(orderKey: OrderKey): Int {
-        return orderImageDao.countByStatus(orderKey.orderId, ImageUploadStatus.PENDING.value)
+
+    private fun OrderImageEntityDb.persistentHandle() =
+        UserManagedFiles.PersistentHandle(localPath ?: localUri)
+
+    private fun Uri.safeExtension(): String {
+        val extension = path.orEmpty().substringAfterLast('.', missingDelimiterValue = "")
+            .lowercase()
+            .takeIf { it.matches(Regex("[a-z0-9]{1,10}")) }
+        return extension?.let { ".$it" }.orEmpty()
     }
-    
-    /**
-     * 获取上传成功图片数量
-     * @param orderKey 订单标识符
-     */
-    suspend fun countSuccessImages(orderKey: OrderKey): Int {
-        return orderImageDao.countByStatus(orderKey.orderId, ImageUploadStatus.SUCCESS.value)
+
+    private companion object {
+        const val IMAGE_PURPOSE = "order_images"
     }
-    
-    /**
-     * 获取上传失败图片数量
-     * @param orderKey 订单标识符
-     */
-    suspend fun countFailedImages(orderKey: OrderKey): Int {
-        return orderImageDao.countByStatus(orderKey.orderId, ImageUploadStatus.FAILED.value)
-    }
-    
 }

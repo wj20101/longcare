@@ -4,7 +4,7 @@ import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
-import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.data.session.SessionSecretProvider
 import okhttp3.Interceptor
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
@@ -14,7 +14,7 @@ import java.security.SecureRandom
 import javax.inject.Inject
 
 class RequestInterceptor @Inject constructor(
-    private val userSessionRepository: UserSessionRepository,
+    private val sessionSecretProvider: SessionSecretProvider,
     private val runtimeConfigProvider: RuntimeConfigProvider,
     private val requestDeviceInfoProvider: RequestDeviceInfoProvider,
     private val requestCryptoProvider: RequestCryptoProvider,
@@ -94,12 +94,13 @@ class RequestInterceptor @Inject constructor(
     }
 
     private fun iniHttpHeader(randomString: String): Map<String, String> {
+        val auth = sessionSecretProvider.requestAuthSnapshot()
         val baseMap = mutableMapOf<String, Any>(
-            "userId" to (userSessionRepository.sessionState.value.user?.userId ?: 0),
-            "token" to userSessionRepository.sessionState.value.user?.token.orEmpty(),
-            "accountId" to (userSessionRepository.sessionState.value.user?.accountId ?: 0),
-            "companyId" to (userSessionRepository.sessionState.value.user?.companyId ?: 0),
-            "userIdentity" to (userSessionRepository.sessionState.value.user?.userIdentity ?: 0),
+            "userId" to (auth?.scopeKey?.userId ?: 0),
+            "token" to auth?.token.orEmpty(),
+            "accountId" to (auth?.scopeKey?.accountId ?: 0),
+            "companyId" to (auth?.scopeKey?.companyId ?: 0),
+            "userIdentity" to (auth?.userIdentity ?: 0),
             "nonce" to randomString,
             "timeSpan" to System.currentTimeMillis(),
             "platform" to "android",

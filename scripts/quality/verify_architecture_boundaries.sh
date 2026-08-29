@@ -17,7 +17,8 @@ FEATURE_ROOT="${PROJECT_ROOT}/feature"
 LEGACY_APP_FEATURE_ROOT="${APP_ROOT}/features"
 LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST="${PROJECT_ROOT}/scripts/quality/architecture_legacy_imports_allowlist.txt"
 LEGACY_APP_INTERNAL_IMPORT_BUDGET_FILE="${PROJECT_ROOT}/scripts/quality/architecture_legacy_import_budget.txt"
-LEGACY_APP_FEATURE_FILE_ALLOWLIST="${PROJECT_ROOT}/scripts/quality/legacy_feature_files_allowlist.txt"
+LEGACY_APP_FEATURE_FILE_GUARD="${PROJECT_ROOT}/scripts/quality/verify_legacy_feature_file_allowlist.sh"
+USER_STORAGE_BOUNDARY_GUARD="${PROJECT_ROOT}/scripts/quality/verify_user_storage_boundaries.sh"
 
 echo "[architecture] checking layer boundaries under: ${PROJECT_ROOT}"
 
@@ -370,57 +371,32 @@ check_file_line_threshold() {
   fi
 }
 
-check_kotlin_file_allowlist() {
-  local rule_label="$1"
-  local scan_dir="$2"
-  local allowlist_file="$3"
-
-  if [[ ! -d "${scan_dir}" ]]; then
-    echo "[architecture] ${rule_label} skipped (directory missing: ${scan_dir})"
-    return 0
-  fi
-
-  if [[ ! -f "${allowlist_file}" ]]; then
-    echo "[architecture][FAIL] ${rule_label} allowlist missing: ${allowlist_file}"
+run_legacy_feature_file_allowlist_guard() {
+  if [[ ! -f "${LEGACY_APP_FEATURE_FILE_GUARD}" ]]; then
+    echo "[architecture][FAIL] legacy app/features file guard missing: ${LEGACY_APP_FEATURE_FILE_GUARD}"
     EXIT_CODE=1
     return 0
   fi
 
-  local current_files
-  current_files="$(find "${scan_dir}" -type f -name '*.kt' | awk -v root="${PROJECT_ROOT%/}/" '
-      {
-        line = $0
-        gsub("^" root, "", line)
-        sub(/^.\//, "", line)
-        print line
-      }
-    ' | sort -u)"
-
-  local unexpected_files=()
-  while IFS= read -r file_path; do
-    [[ -z "${file_path}" ]] && continue
-    if ! grep -Fqx -- "${file_path}" "${allowlist_file}"; then
-      unexpected_files+=("${file_path}")
-    fi
-  done <<<"${current_files}"
-
-  if [[ "${#unexpected_files[@]}" -gt 0 ]]; then
-    echo "[architecture][FAIL] ${rule_label} found new files outside allowlist"
-    printf "%s\n" "${unexpected_files[@]}"
-    local allowlist_rel
-    allowlist_rel="${allowlist_file#${PROJECT_ROOT%/}/}"
-    if [[ "${allowlist_rel}" == "${allowlist_file}" ]]; then
-      allowlist_rel="${allowlist_file}"
-    fi
-    local import_allowlist_rel
-    import_allowlist_rel="${LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST#${PROJECT_ROOT%/}/}"
-    if [[ "${import_allowlist_rel}" == "${LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST}" ]]; then
-      import_allowlist_rel="${LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST}"
-    fi
+  if ! bash "${LEGACY_APP_FEATURE_FILE_GUARD}" --project-root "${PROJECT_ROOT}"; then
+    echo "[architecture][FAIL] legacy app/features kotlin files do not match the frozen allowlist"
     echo "[architecture][HINT] app/features is frozen for new Kotlin files"
-    echo "[architecture][HINT] see ${allowlist_rel}"
-    echo "[architecture][HINT] see ${import_allowlist_rel}"
+    echo "[architecture][HINT] see scripts/quality/legacy_feature_files_allowlist.txt"
+    echo "[architecture][HINT] see scripts/quality/architecture_legacy_imports_allowlist.txt"
     echo "[architecture][HINT] preferred fix: move code to feature/* or inline into an allowlisted file"
+    EXIT_CODE=1
+  fi
+}
+
+run_user_storage_boundary_guard() {
+  if [[ ! -f "${USER_STORAGE_BOUNDARY_GUARD}" ]]; then
+    echo "[architecture][FAIL] user storage boundary guard missing: ${USER_STORAGE_BOUNDARY_GUARD}"
+    EXIT_CODE=1
+    return 0
+  fi
+
+  if ! bash "${USER_STORAGE_BOUNDARY_GUARD}" --project-root "${PROJECT_ROOT}"; then
+    echo "[architecture][FAIL] user storage and background identity boundaries were violated"
     EXIT_CODE=1
   fi
 }
@@ -690,10 +666,7 @@ check_file_line_threshold "${APP_ROOT}/navigation/AppNavGraphsServiceFlow.kt" 30
 check_file_line_threshold "${APP_ROOT}/navigation/AppNavGraphsSupport.kt" 250 "AppNavGraphsSupport.kt"
 
 echo "[architecture] rule-10: legacy app/features kotlin files are frozen by allowlist"
-check_kotlin_file_allowlist \
-  "legacy app/features kotlin files" \
-  "${LEGACY_APP_FEATURE_ROOT}" \
-  "${LEGACY_APP_FEATURE_FILE_ALLOWLIST}"
+run_legacy_feature_file_allowlist_guard
 
 echo "[architecture] rule-11: identification UI split files must stay within threshold"
 check_file_line_threshold \
@@ -763,6 +736,39 @@ check_file_line_threshold \
   "${IDENTIFICATION_VM_ROOT}/IdentificationWatermarkFlow.kt" \
   80 \
   "IdentificationWatermarkFlow.kt"
+
+echo "[architecture] rule-13a: presentation must not import the full persisted session User"
+run_rule \
+  "presentation imports full session User" \
+  '^\s*import\s+com\.ytone\.longcare\.model\.User\s*$' \
+  "${APP_ROOT}" \
+  "${FEATURE_ROOT}"
+
+echo "[architecture] rule-13b: write-only SessionLoginPayload is restricted to the login boundary"
+run_filtered_rule \
+  "presentation references SessionLoginPayload outside feature/login" \
+  '\bSessionLoginPayload\b' \
+  '/feature/login/' \
+  "${APP_ROOT}" \
+  "${FEATURE_ROOT}"
+
+echo "[architecture] rule-13c: session secret providers must remain inside core/data"
+run_rule \
+  "presentation imports data-layer session secrets" \
+  '^\s*import\s+com\.ytone\.longcare\.data\.session\.' \
+  "${APP_ROOT}" \
+  "${FEATURE_ROOT}"
+
+echo "[architecture] rule-14: user storage creation, DAO access, filenames, preferences and background identities are scoped"
+run_user_storage_boundary_guard
+
+echo "[architecture] rule-15: production WebViews must not expose a native JavaScript bridge"
+run_rule \
+  "production WebViews expose a native JavaScript bridge" \
+  '\baddJavascriptInterface[[:space:]]*\(' \
+  "${APP_ROOT}" \
+  "${CORE_ROOT}" \
+  "${FEATURE_ROOT}"
 
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[architecture] boundary verification failed."

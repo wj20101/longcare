@@ -1,6 +1,6 @@
 # 依赖与架构规则
 
-最后核对：2026-08-27
+最后核对：2026-08-29
 
 本文同时记录“当前允许的依赖”和“继续迁移的目标”。两者不能混写：当前 `:app` 仍有业务实现，但新代码不得因此扩大 legacy 边界。
 
@@ -59,7 +59,7 @@
 
 - 目标职责是启动、根导航、DI 组装、Manifest 和 Android/厂商平台适配。
 - 当前仍有大量 route-bound UI 和流程代码，因此 `:app` 对 Core/Data/Feature 的依赖是现实允许边，而不是鼓励新业务继续堆入壳层。
-- `app/src/main/.../features/**` 受冻结目录和文件 allowlist 保护；优先在现有允许文件内做小修复，新增能力迁往 Feature。
+- `app/src/main/.../features/**` 受冻结目录和文件 allowlist 保护；当前精确快照为 231 个 Kotlin 文件。`verify_legacy_feature_file_allowlist.sh` 同时拒绝“实际文件不在 allowlist”和“allowlist 路径已不存在”，优先在现有允许文件内做小修复，新增能力迁往 Feature。
 
 ## UI、状态与生命周期
 
@@ -81,8 +81,11 @@
 
 ## 数据、网络和文件
 
-- Room schema 变更必须提交 schema JSON、显式 Migration 和迁移测试；禁止破坏性 fallback 或异常后删库。
+- Room schema 变更默认必须提交 schema JSON、显式 Migration 和迁移测试；[ADR-002](adr/ADR-002-user-storage-cold-cutover.md) 是已确认的限定例外，只允许 schema 不兼容时破坏性重建当前用户的独立数据库，不得删除其他用户文件。
+- 复合身份 `companyId + accountId + userId` 通过 v1 摘要命名空间隔离 Room、DataStore 和文件；业务层只能使用当前 `scope + sessionEpoch + generation` lease，禁止裸 `user_<userId>` 文件名和全局用户业务 SharedPreferences。
+- 设备级、用户级和会话级状态必须明确分类；冷切换不兼容任何 legacy 值，正常退出则保留当前用户 Room/DataStore/persistent 文件并清理秘密、session 文件和该 epoch 后台任务。
 - 需要跨进程/重建恢复的任务使用 WorkManager 或持久状态，不能只依赖进程内事件。
+- 用户相关 Worker、Alarm、PendingIntent 和通知身份必须包含 namespace、epoch、任务类型和业务 ID；仅用 `orderId` 作为 unique name、requestCode、data URI 或通知 ID 属于架构违规。
 - Retrofit 接口只使用稳定的网络契约；方法、路径、注解和关键 JSON key 变更必须同步契约测试。
 - 会话写入必须等待持久化完成，不能先报告登录/退出成功。
 - 应用自有持久 JPEG 统一经过 `UnifiedImagePipeline` 和 `ImageProcessingPolicies`。
@@ -101,10 +104,13 @@
 
 | 守卫 | 保护内容 |
 |---|---|
-| `verify_architecture_boundaries.sh` | Android-free Domain、禁止 Feature/Data 反向依赖、ViewModel/调度器/文件规模等规则 |
+| `verify_architecture_boundaries.sh` | Android-free Domain、禁止 Feature/Data 反向依赖、ViewModel/调度器/文件规模等规则；rule-10 调用 legacy 文件精确快照守卫 |
+| `verify_legacy_feature_file_allowlist.sh` | 保证 `app/src/main/.../features/**` 实际 Kotlin 文件与 `legacy_feature_files_allowlist.txt` 双向一致，拒绝新增未允许文件和陈旧条目 |
+| `verify_user_storage_boundaries.sh` | 限制用户 Room/DataStore 创建位置，禁止全局 DAO/数据库句柄、裸用户文件名、无 scope 业务偏好和 orderId-only 后台身份 |
+| `test_user_storage_boundaries.sh` | 用 7 组 shell fixture 验证上述门禁既允许 registry/factory，也会拒绝每类回退 |
 | `verify_module_dependency_whitelist.sh` | Gradle 项目模块边 |
 | `verify_module_api_visibility.sh` | 跨模块 API 和 internal 实现边界 |
-| `check_new_files_guard.sh` | 冻结 legacy feature 目录不新增文件 |
+| `check_new_files_guard.sh` | 在 changed-files 场景快速提示冻结 legacy feature 目录不得新增文件；完整快照由 rule-10 校验 |
 | `verify_cancellation_guards.sh` | 敏感协程取消处理 |
 | `verify_no_empty_catch_blocks.sh` | 禁止吞异常 |
 

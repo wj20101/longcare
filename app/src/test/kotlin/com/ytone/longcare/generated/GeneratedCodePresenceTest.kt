@@ -13,7 +13,7 @@ class GeneratedCodePresenceTest {
         val expectedClasses = listOf(
             // Moshi generated adapters
             "com.ytone.longcare.model.ThirdKeyReturnModelJsonAdapter",
-            "com.ytone.longcare.features.service.storage.PendingOrderJsonAdapter",
+            "com.ytone.longcare.model.LoginResultModelJsonAdapter",
 
             // Hilt generated entry points / modules
             "com.ytone.longcare.Hilt_MainActivity",

@@ -1,6 +1,7 @@
 package com.ytone.longcare.domain.repository
 
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
+import com.ytone.longcare.model.SessionLoginPayload
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -12,26 +13,26 @@ sealed class SessionState {
      * 当前的用户对象。
      * 仅在 [LoggedIn] 状态下为非空，在 [Unknown] 和 [LoggedOut] 状态下为 null。
      */
-    abstract val user: User?
+    abstract val user: CurrentUser?
 
     /**
      * 初始状态，正在从持久化存储中读取用户状态。
      */
     data object Unknown : SessionState() {
-        override val user: User? = null
+        override val user: CurrentUser? = null
     }
 
     /**
      * 用户已登录状态，包含用户信息。
      * @param user 当前登录的 User 对象，不能为空。
      */
-    data class LoggedIn(override val user: User) : SessionState()
+    data class LoggedIn(override val user: CurrentUser) : SessionState()
 
     /**
      * 用户已登出状态。
      */
     data object LoggedOut : SessionState() {
-        override val user: User? = null
+        override val user: CurrentUser? = null
     }
 }
 
@@ -48,12 +49,7 @@ interface UserSessionRepository {
     /**
      * 登录用户，并持久化用户信息。
      */
-    suspend fun login(user: User)
-
-    /**
-     * 更新当前登录的用户信息。
-     */
-    suspend fun updateUser(user: User)
+    suspend fun login(payload: SessionLoginPayload)
 
     /**
      * 退出登录，并清除持久化的用户信息。

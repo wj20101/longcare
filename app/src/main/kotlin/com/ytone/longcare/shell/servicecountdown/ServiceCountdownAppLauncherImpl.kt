@@ -14,14 +14,17 @@ class ServiceCountdownAppLauncherImpl @Inject constructor() : ServiceCountdownAp
     override fun createCountdownContentIntent(
         context: Context,
         orderId: Long,
+        requestCode: Int,
+        dataUri: android.net.Uri,
     ): PendingIntent? {
         val intent = Intent(context, MainActivity::class.java).apply {
+            data = dataUri
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("orderId", orderId)
         }
         return PendingIntentCompat.getActivity(
             context,
-            0,
+            requestCode,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT,
             false,

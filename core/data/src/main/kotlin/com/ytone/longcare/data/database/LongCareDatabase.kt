@@ -7,11 +7,19 @@ import com.ytone.longcare.data.database.dao.OrderElderInfoDao
 import com.ytone.longcare.data.database.dao.OrderImageDao
 import com.ytone.longcare.data.database.dao.OrderLocalStateDao
 import com.ytone.longcare.data.database.dao.OrderProjectDao
+import com.ytone.longcare.data.database.dao.InitialOrderSnapshotDao
+import com.ytone.longcare.data.database.dao.PendingServiceReminderDao
+import com.ytone.longcare.data.database.dao.ProcessedServiceNotificationDao
+import com.ytone.longcare.data.database.dao.UserNamespaceMetadataDao
 import com.ytone.longcare.data.database.entity.OrderElderInfoEntityDb
 import com.ytone.longcare.data.database.entity.OrderEntityDb
 import com.ytone.longcare.data.database.entity.OrderImageEntityDb
 import com.ytone.longcare.data.database.entity.OrderLocalStateEntityDb
 import com.ytone.longcare.data.database.entity.OrderProjectEntityDb
+import com.ytone.longcare.data.database.entity.InitialOrderSnapshotEntityDb
+import com.ytone.longcare.data.database.entity.PendingServiceReminderEntityDb
+import com.ytone.longcare.data.database.entity.ProcessedServiceNotificationEntityDb
+import com.ytone.longcare.data.database.entity.UserNamespaceMetadataEntityDb
 
 /**
  * LongCare应用数据库
@@ -31,9 +39,13 @@ import com.ytone.longcare.data.database.entity.OrderProjectEntityDb
         OrderElderInfoEntityDb::class,
         OrderLocalStateEntityDb::class,
         OrderProjectEntityDb::class,
-        OrderImageEntityDb::class
+        OrderImageEntityDb::class,
+        UserNamespaceMetadataEntityDb::class,
+        PendingServiceReminderEntityDb::class,
+        InitialOrderSnapshotEntityDb::class,
+        ProcessedServiceNotificationEntityDb::class,
     ],
-    version = 3,
+    version = 7,
     exportSchema = true
 )
 abstract class LongCareDatabase : RoomDatabase() {
@@ -43,9 +55,13 @@ abstract class LongCareDatabase : RoomDatabase() {
     abstract fun orderLocalStateDao(): OrderLocalStateDao
     abstract fun orderProjectDao(): OrderProjectDao
     abstract fun orderImageDao(): OrderImageDao
+    abstract fun userNamespaceMetadataDao(): UserNamespaceMetadataDao
+    abstract fun pendingServiceReminderDao(): PendingServiceReminderDao
+    abstract fun initialOrderSnapshotDao(): InitialOrderSnapshotDao
+    abstract fun processedServiceNotificationDao(): ProcessedServiceNotificationDao
     
     companion object {
         const val DATABASE_NAME = "longcare_database"
-        const val DATABASE_VERSION = 3
+        const val DATABASE_VERSION = 7
     }
 }

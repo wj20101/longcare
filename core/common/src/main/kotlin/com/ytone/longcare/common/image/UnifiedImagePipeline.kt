@@ -7,14 +7,12 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.net.Uri
-import android.os.Environment
 import androidx.exifinterface.media.ExifInterface
 import com.ytone.longcare.core.common.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
@@ -23,10 +21,10 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
-private const val LEGACY_FACE_CAPTURE_DIRECTORY = "face_capture"
+private const val CAMERA_CAPTURE_PURPOSE = "camera_capture"
 
 data class WatermarkedCaptureRequest(
-    val temporaryCaptureFile: File,
+    val temporaryCaptureFile: ManagedImageFile,
     val watermarkBitmap: Bitmap,
     val watermarkStartPx: Float,
     val watermarkBottomPx: Float,
@@ -40,7 +38,16 @@ data class WatermarkedCaptureRequest(
 class UnifiedImagePipeline @Inject constructor(
     @param:ApplicationContext private val context: Context,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val fileStore: ManagedImageFileStore,
 ) {
+    fun createTemporaryCaptureFile(): ManagedImageFile =
+        fileStore.createSessionFile(
+            purpose = CAMERA_CAPTURE_PURPOSE,
+            filePrefix = "camera_capture",
+        )
+
+    fun requireCurrentUserFile(uri: Uri): File = fileStore.requireCurrentUserFile(uri)
+
     suspend fun processWatermarkedCapture(
         request: WatermarkedCaptureRequest,
         policy: ImageProcessingPolicy = ImageProcessingPolicies.WATERMARKED_PHOTO,
@@ -65,8 +72,7 @@ class UnifiedImagePipeline @Inject constructor(
     suspend fun deleteManagedImage(uri: Uri): Boolean =
         withContext(ioDispatcher) {
             runCatching {
-                val file = uri.toManagedFileOrNull() ?: return@runCatching false
-                file.exists() && file.delete()
+                fileStore.deleteCurrentSessionFile(uri, managedImagePurposes)
             }.getOrDefault(false)
         }
 
@@ -74,21 +80,19 @@ class UnifiedImagePipeline @Inject constructor(
         withContext(ioDispatcher) {
             uris.forEach { uri ->
                 runCatching {
-                    val file = uri.toManagedFileOrNull()
-                    if (file?.exists() == true) {
-                        file.delete()
-                    }
+                    fileStore.deleteCurrentSessionFile(uri, managedImagePurposes)
                 }
             }
         }
     }
 
     fun listManagedImages(purpose: ManagedImagePurpose): List<String> =
-        purposeDirectory(purpose)
-            .listFiles { file -> file.isFile && file.extension.equals("jpg", ignoreCase = true) }
-            ?.sortedByDescending(File::lastModified)
-            ?.map(File::getAbsolutePath)
-            .orEmpty()
+        runCatching {
+            fileStore.listCurrentSessionFiles(purpose.storagePurpose)
+                .filter { file -> file.extension.equals("jpg", ignoreCase = true) }
+                .sortedByDescending(File::lastModified)
+                .map(File::getAbsolutePath)
+        }.getOrDefault(emptyList())
 
     private suspend fun processWatermarkedCaptureOnWorker(
         request: WatermarkedCaptureRequest,
@@ -100,9 +104,10 @@ class UnifiedImagePipeline @Inject constructor(
         var outputBitmap: Bitmap? = null
 
         try {
+            fileStore.requireCurrent(request.temporaryCaptureFile)
             currentCoroutineContext().ensureActive()
-            decodedBitmap = decodeSampled(request.temporaryCaptureFile, policy)
-            orientedBitmap = applyExifOrientation(decodedBitmap, request.temporaryCaptureFile)
+            decodedBitmap = decodeSampled(request.temporaryCaptureFile.file, policy)
+            orientedBitmap = applyExifOrientation(decodedBitmap, request.temporaryCaptureFile.file)
             if (orientedBitmap !== decodedBitmap) {
                 decodedBitmap.recycleSafely()
                 decodedBitmap = null
@@ -150,9 +155,7 @@ class UnifiedImagePipeline @Inject constructor(
             mirroredBitmap.recycleSafely()
             outputBitmap.recycleSafely()
             request.watermarkBitmap.recycleSafely()
-            if (request.temporaryCaptureFile.exists()) {
-                request.temporaryCaptureFile.delete()
-            }
+            fileStore.deleteOwned(request.temporaryCaptureFile)
         }
     }
 
@@ -257,40 +260,45 @@ class UnifiedImagePipeline @Inject constructor(
 
     private fun writeJpegAtomically(
         bitmap: Bitmap,
-        target: File,
+        target: ManagedImageFile,
         policy: ImageProcessingPolicy,
     ): File {
+        fileStore.requireCurrent(target)
         val encoded = UnifiedJpegEncoder.encode(bitmap = bitmap, policy = policy)
-        val parent = target.parentFile ?: throw IOException("Image output directory is unavailable.")
+        fileStore.requireCurrent(target)
+        val targetFile = target.file
+        val parent = targetFile.parentFile ?: throw IOException("Image output directory is unavailable.")
         if (!parent.exists() && !parent.mkdirs()) {
             throw IOException("Image output directory could not be created.")
         }
-        val temporary = File.createTempFile(".${target.nameWithoutExtension}_", ".tmp", parent)
+        val temporary = File.createTempFile(".${targetFile.nameWithoutExtension}_", ".tmp", parent)
         try {
             FileOutputStream(temporary).use { output ->
                 output.write(encoded.bytes)
                 output.fd.sync()
             }
+            fileStore.requireCurrent(target)
             if (temporary.length() <= 0L) {
                 throw IOException("Image output file is empty.")
             }
-            if (target.exists() && !target.delete()) {
+            if (targetFile.exists() && !targetFile.delete()) {
                 throw IOException("Existing image output could not be replaced.")
             }
-            if (!temporary.renameTo(target)) {
-                temporary.copyTo(target = target, overwrite = true)
+            if (!temporary.renameTo(targetFile)) {
+                temporary.copyTo(target = targetFile, overwrite = true)
                 if (!temporary.delete()) {
                     temporary.deleteOnExit()
                 }
             }
-            if (target.length() <= 0L || target.length() > policy.maxOutputBytes) {
-                target.delete()
+            fileStore.requireCurrent(target)
+            if (targetFile.length() <= 0L || targetFile.length() > policy.maxOutputBytes) {
+                targetFile.delete()
                 throw IOException("Image output failed size validation.")
             }
-            return target
+            return targetFile
         } catch (error: Throwable) {
             temporary.delete()
-            target.delete()
+            fileStore.deleteOwned(target)
             throw error
         }
     }
@@ -298,49 +306,11 @@ class UnifiedImagePipeline @Inject constructor(
     private fun createOutputFile(
         purpose: ManagedImagePurpose,
         filePrefix: String,
-    ): File {
-        val directory = purposeDirectory(purpose)
-        if (!directory.exists() && !directory.mkdirs()) {
-            throw IOException("Managed image directory could not be created.")
-        }
-        return File(
-            directory,
-            "${filePrefix}_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(8)}.jpg",
+    ): ManagedImageFile =
+        fileStore.createSessionFile(
+            purpose = purpose.storagePurpose,
+            filePrefix = filePrefix,
         )
-    }
-
-    private fun purposeDirectory(purpose: ManagedImagePurpose): File {
-        val root =
-            if (purpose.useExternalPicturesDirectory) {
-                context.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: context.filesDir
-            } else {
-                context.filesDir
-            }
-        return File(root, purpose.directoryName)
-    }
-
-    private fun Uri.toManagedFileOrNull(): File? {
-        if (scheme != null && scheme != "file") return null
-        val candidatePath = path ?: return null
-        val candidate = File(candidatePath).canonicalFile
-        val managedRoots =
-            ManagedImagePurpose.entries.map { purposeDirectory(it).canonicalFile } +
-                File(context.filesDir, LEGACY_FACE_CAPTURE_DIRECTORY).canonicalFile
-        if (managedRoots.any { root -> candidate.isInside(root) }) {
-            return candidate
-        }
-
-        // Support cleanup of images created before the unified subdirectory was introduced.
-        val legacyPicturesRoot =
-            (context.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: context.filesDir)
-                .canonicalFile
-        return candidate.takeIf { file ->
-            file.parentFile == legacyPicturesRoot && file.name.startsWith("captured_image_")
-        }
-    }
-
-    private fun File.isInside(root: File): Boolean =
-        path == root.path || path.startsWith(root.path + File.separator)
 
     private fun processingTimeoutMillis(): Long {
         val memoryClass =
@@ -370,5 +340,9 @@ class UnifiedImagePipeline @Inject constructor(
 
     private fun Bitmap?.recycleSafely() {
         if (this != null && !isRecycled) recycle()
+    }
+
+    private companion object {
+        val managedImagePurposes = ManagedImagePurpose.entries.mapTo(mutableSetOf()) { it.storagePurpose }
     }
 }

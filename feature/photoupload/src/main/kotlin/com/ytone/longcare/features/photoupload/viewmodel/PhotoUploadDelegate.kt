@@ -8,7 +8,7 @@ import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.model.ImageTaskStatus
 import com.ytone.longcare.model.ImageTaskType
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
 import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.features.photoupload.upload.PhotoCloudUploader
 import kotlinx.coroutines.CancellationException
@@ -112,7 +112,7 @@ internal class PhotoUploadDelegate(
             .mapValues { entry -> entry.value.mapNotNull { it.key } }
     }
 
-    private suspend fun getCurrentUser(): User? {
+    private suspend fun getCurrentUser(): CurrentUser? {
         return when (val sessionState = userSessionRepository.sessionState.value) {
             is SessionState.LoggedIn -> sessionState.user
             else -> null

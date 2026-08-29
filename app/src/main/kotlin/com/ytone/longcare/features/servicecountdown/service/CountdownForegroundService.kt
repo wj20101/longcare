@@ -12,6 +12,10 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownAppLauncher
+import com.ytone.longcare.features.countdown.manager.CountdownIntentPurpose
+import com.ytone.longcare.features.countdown.manager.CountdownTaskCodec
+import com.ytone.longcare.features.countdown.manager.CountdownTaskExecutionGate
+import com.ytone.longcare.features.countdown.manager.CountdownTaskPayload
 import com.ytone.longcare.model.OrderKey
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -26,13 +30,14 @@ class CountdownForegroundService : Service() {
     @Inject
     lateinit var appLauncher: ServiceCountdownAppLauncher
 
+    @Inject
+    lateinit var taskCodec: CountdownTaskCodec
+
+    @Inject
+    lateinit var executionGate: CountdownTaskExecutionGate
+
     companion object {
         private const val FOREGROUND_NOTIFICATION_CHANNEL_ID = "countdown_foreground_channel"
-        private const val FOREGROUND_NOTIFICATION_ID = 2002
-
-        // Intent extras
-        const val EXTRA_ORDER_ID = "extra_order_id"
-        const val EXTRA_SERVICE_NAME = "extra_service_name"
         const val EXTRA_TOTAL_SECONDS = "extra_total_seconds"
 
         // Actions
@@ -44,16 +49,18 @@ class CountdownForegroundService : Service() {
          */
         fun startCountdown(
             context: Context,
-            orderKey: OrderKey,
-            serviceName: String,
-            totalSeconds: Long
+            payload: CountdownTaskPayload,
+            totalSeconds: Long,
+            codec: CountdownTaskCodec,
         ) {
-            val intent = Intent(context, CountdownForegroundService::class.java).apply {
-                action = ACTION_START_COUNTDOWN
-                putExtra(EXTRA_ORDER_ID, orderKey.orderId)
-                putExtra(EXTRA_SERVICE_NAME, serviceName)
-                putExtra(EXTRA_TOTAL_SECONDS, totalSeconds)
-            }
+            val intent = codec.writeToIntent(
+                Intent(context, CountdownForegroundService::class.java).apply {
+                    action = ACTION_START_COUNTDOWN
+                    putExtra(EXTRA_TOTAL_SECONDS, totalSeconds)
+                },
+                payload,
+                CountdownIntentPurpose.COUNTDOWN_SERVICE,
+            )
             ContextCompat.startForegroundService(context, intent)
         }
 
@@ -69,8 +76,7 @@ class CountdownForegroundService : Service() {
     private val binder = Binder()
 
     // 倒计时状态
-    private var orderId: Long = 0
-    private var serviceName: String = ""
+    private var activePayload: CountdownTaskPayload? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -83,16 +89,23 @@ class CountdownForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START_COUNTDOWN -> {
-                orderId = intent.getLongExtra(EXTRA_ORDER_ID, 0)
-                serviceName = intent.getStringExtra(EXTRA_SERVICE_NAME) ?: ""
+                val payload = taskCodec.fromIntent(
+                    intent,
+                    CountdownIntentPurpose.COUNTDOWN_SERVICE,
+                )
+                if (payload == null || !executionGate.isCurrent(payload)) {
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+                activePayload = payload
                 val totalSeconds = intent.getLongExtra(EXTRA_TOTAL_SECONDS, 0)
                 
                 // 立即启动前台服务，避免超时异常
                 val notification = createCountdownNotification(
                     channelId = FOREGROUND_NOTIFICATION_CHANNEL_ID,
-                    serviceName = serviceName,
-                    orderId = orderId,
-                    appLauncher = appLauncher
+                    payload = payload,
+                    appLauncher = appLauncher,
+                    taskCodec = taskCodec,
                 )
                 val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
@@ -101,11 +114,14 @@ class CountdownForegroundService : Service() {
                 }
                 ServiceCompat.startForeground(
                     this,
-                    FOREGROUND_NOTIFICATION_ID,
+                    taskCodec.foregroundNotificationId(payload.execution.taskIdentity),
                     notification,
                     type
                 )
-                logI("倒计时前台服务已启动: orderId=$orderId, serviceName=$serviceName, totalSeconds=$totalSeconds")
+                logI(
+                    "倒计时前台服务已启动: orderId=${payload.orderKey.orderId}, " +
+                        "serviceName=${payload.serviceName}, totalSeconds=$totalSeconds",
+                )
             }
 
             ACTION_STOP_COUNTDOWN -> {

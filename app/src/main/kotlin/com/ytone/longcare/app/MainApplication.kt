@@ -13,15 +13,18 @@ import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.common.utils.LogConfig
 import com.ytone.longcare.common.utils.LogFileConfig
 import com.ytone.longcare.common.utils.PrivacyConsentManager
+import com.ytone.longcare.common.utils.DeviceUtils
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.integration.qlz.QlzSdkWindowInsetsCompat
 import com.ytone.longcare.features.location.session.LocationSessionLifecycleObserver
 import com.ytone.longcare.worker.StartupUpdateWorkObserver
+import com.ytone.longcare.domain.startup.UserStorageNamespaceCutoverGate
 import dagger.hilt.android.HiltAndroidApp
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Provider
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.runBlocking
 
 @HiltAndroidApp
 class MainApplication : Application(), SingletonImageLoader.Factory, Configuration.Provider {
@@ -33,6 +36,12 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
 
     @Inject
     lateinit var privacyConsentManager: PrivacyConsentManager
+
+    @Inject
+    lateinit var deviceUtils: DeviceUtils
+
+    @Inject
+    lateinit var userStorageNamespaceCutoverGate: UserStorageNamespaceCutoverGate
 
     @Inject
     lateinit var startupUpdateWorkObserver: StartupUpdateWorkObserver
@@ -50,6 +59,9 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
     override fun onCreate() {
         super.onCreate()
 
+        // This is the process-wide entry gate. No logger, SDK, session restore, user namespace,
+        // device identity, or background recovery may run before the destructive cutover commits.
+        runBlocking { userStorageNamespaceCutoverGate.ensureCompleted() }
         initLogger()
         QlzSdkWindowInsetsCompat.register(this)
         locationSessionLifecycleObserver.start()
@@ -66,6 +78,7 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
      */
     fun performPostConsentInit() {
         if (!postConsentInitDone.compareAndSet(false, true)) return
+        deviceUtils.getAppInstanceId()
         initCrashReportingIfNeeded()
         scheduleStartupWorkers()
     }

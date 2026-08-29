@@ -2,10 +2,12 @@ package com.ytone.longcare.di
 
 import com.ytone.longcare.data.cos.repository.CosRepositoryImpl
 import com.ytone.longcare.domain.cos.repository.CosRepository
+import com.ytone.longcare.domain.userstorage.SessionRuntimeCleanupHook
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
 import javax.inject.Singleton
 
 /**
@@ -23,4 +25,10 @@ abstract class CosModule {
     abstract fun bindCosRepository(
         cosRepositoryImpl: CosRepositoryImpl
     ): CosRepository
+
+    @Binds
+    @IntoSet
+    abstract fun bindCosRuntimeCleanupHook(
+        cosRepositoryImpl: CosRepositoryImpl,
+    ): SessionRuntimeCleanupHook
 }

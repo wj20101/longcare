@@ -11,91 +11,29 @@ import org.robolectric.RobolectricTestRunner
 class CountdownNotificationManagerIntentExtrasTest {
 
     @Test
-    fun extractOrderKey_shouldUseNewKeyWhenPresent() {
+    fun `canonical activity extras round trip`() {
         val expected = OrderKey(orderId = 1001L, planId = 11)
         val intent = Intent().apply {
             putExtra(CountdownNotificationManager.EXTRA_ORDER_KEY, expected)
-        }
-
-        assertEquals(expected, CountdownNotificationManager.extractOrderKey(intent))
-    }
-
-    @Test
-    fun extractOrderKey_shouldFallbackToLegacyKey() {
-        val expected = OrderKey(orderId = 1002L, planId = 22)
-        val intent = Intent().apply {
-            putExtra("extra_request", expected)
-        }
-
-        assertEquals(expected, CountdownNotificationManager.extractOrderKey(intent))
-    }
-
-    @Test
-    fun extractOrderKey_shouldPreferNewKeyOverLegacyKey() {
-        val expected = OrderKey(orderId = 1003L, planId = 33)
-        val legacy = OrderKey(orderId = 9999L, planId = 99)
-        val intent = Intent().apply {
-            putExtra(CountdownNotificationManager.EXTRA_ORDER_KEY, expected)
-            putExtra("extra_request", legacy)
-        }
-
-        assertEquals(expected, CountdownNotificationManager.extractOrderKey(intent))
-    }
-
-    @Test
-    fun extractOrderKey_shouldReturnDefaultWhenMissing() {
-        val defaultValue = OrderKey(orderId = 2001L, planId = 1)
-
-        assertEquals(defaultValue, CountdownNotificationManager.extractOrderKey(Intent(), defaultValue))
-        assertEquals(defaultValue, CountdownNotificationManager.extractOrderKey(null, defaultValue))
-    }
-
-    @Test
-    fun extractServiceName_shouldUseNewKeyWhenPresent() {
-        val intent = Intent().apply {
             putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, "新服务名")
         }
 
+        assertEquals(expected, CountdownNotificationManager.extractOrderKey(intent))
         assertEquals(
             "新服务名",
-            CountdownNotificationManager.extractServiceName(intent, "默认服务")
+            CountdownNotificationManager.extractServiceName(intent, "默认服务"),
         )
     }
 
     @Test
-    fun extractServiceName_shouldFallbackToLegacyKey() {
+    fun `legacy extras are not restored`() {
+        val defaultOrder = OrderKey(orderId = 2001L, planId = 1)
         val intent = Intent().apply {
+            putExtra("extra_request", OrderKey(9999, 99))
             putExtra("service_name", "旧服务名")
         }
 
-        assertEquals(
-            "旧服务名",
-            CountdownNotificationManager.extractServiceName(intent, "默认服务")
-        )
-    }
-
-    @Test
-    fun extractServiceName_shouldPreferNewKeyOverLegacyKey() {
-        val intent = Intent().apply {
-            putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, "新服务名")
-            putExtra("service_name", "旧服务名")
-        }
-
-        assertEquals(
-            "新服务名",
-            CountdownNotificationManager.extractServiceName(intent, "默认服务")
-        )
-    }
-
-    @Test
-    fun extractServiceName_shouldReturnDefaultWhenMissing() {
-        assertEquals(
-            "默认服务",
-            CountdownNotificationManager.extractServiceName(Intent(), "默认服务")
-        )
-        assertEquals(
-            "默认服务",
-            CountdownNotificationManager.extractServiceName(null, "默认服务")
-        )
+        assertEquals(defaultOrder, CountdownNotificationManager.extractOrderKey(intent, defaultOrder))
+        assertEquals("默认服务", CountdownNotificationManager.extractServiceName(intent, "默认服务"))
     }
 }

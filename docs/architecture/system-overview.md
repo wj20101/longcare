@@ -1,6 +1,6 @@
 # 系统架构概览
 
-最后核对：2026-08-27
+最后核对：2026-08-29
 
 本文描述当前代码实际运行形态，不把目标架构写成已经完成的事实。版本和依赖见[技术栈与构建基线](tech-stack.md)，产品行为见[产品概览](../product/overview.md)。
 
@@ -58,14 +58,16 @@ flowchart LR
 
 ## 启动与会话
 
-1. `MainActivity` 使用 Hilt，启用 edge-to-edge，并把 UI 交给 `MainApp`。
-2. 未同意隐私政策时只显示同意弹窗；同意后执行需要用户授权的后置初始化。
-3. `MainViewModel` 暴露持久会话：
+1. `MainApplication` 首先等待 `user_storage_namespace_cutover_v1` marker；首次升级会幂等取消并删除全部已知 legacy 本地状态，marker 未提交时会话、设备标识和用户命名空间均不可用。
+2. `MainActivity` 使用 Hilt，启用 edge-to-edge，并把 UI 交给 `MainApp`。
+3. 未同意隐私政策时只显示同意弹窗；同意后生成应用私有 GUID，再执行需要授权的 SDK 与 Worker 后置初始化。
+4. `MainViewModel` 暴露加密持久会话；只有 `ACTIVE` envelope 对应命名空间通过 metadata 核对并 Ready 后才发布：
    - `Unknown` → 启动进度页
    - `LoggedOut` → `LoginRoute`
    - `LoggedIn` → `HomeGraphRoute`
-4. 全局 `SessionInvalidationHandler` 负责失效提示与退出；业务页面不各自实现一套登出导航。
-5. WorkManager 启动任务检查新版本；UI 只观察最新一次启动请求，避免历史成功任务重新弹出旧更新。
+5. 全局 `SessionInvalidationHandler` 负责失效提示与统一租约撤销；手动退出、Token 失效和换号走同一清理/关闭顺序。
+6. 命名空间 Ready 后，`DefaultUserRehydrationCoordinator` 并发拉取系统配置、今日订单和进行中订单，只在当前 lease 仍有效时写入该用户；网络失败进入可重试/空态，不回退 legacy、全局值或另一用户快照。
+7. WorkManager 启动任务检查新版本；UI 只观察最新一次启动请求，避免历史成功任务重新弹出旧更新。
 
 ## 导航组装
 
@@ -90,9 +92,28 @@ flowchart LR
 
 ## 数据与持久化
 
+存储按设备、用户和会话分层：
+
+| 层级 | 物理位置/代表数据 | 生命周期 |
+|---|---|---|
+| 设备级 | `shared_prefs/longcare_device_state_v1.xml`；切换 marker、隐私状态、安装 GUID，以及独立的登录手机号/兼容性/更新运行状态 | 正常换号保留；首次冷切换明确重置 legacy 值 |
+| 当前会话 | `no_backup/session/longcare_session_v1.preferences_pb` 的 AES-GCM envelope、临时凭据和内存缓存 | 仅一个 ACTIVE/PENDING；退出、失效或换号撤销并清理 |
+| 每用户 | 下列 SHA-256 摘要命名空间中的 Room、DataStore、持久文件和 session purpose 文件 | 正常退出保留可复用业务数据；只清当前会话临时内容 |
+
+```text
+databases/longcare_user_v1_<sha256>.db
+files/datastore/user_v1_<sha256>.preferences_pb
+files/user_scopes/v1/<sha256>/namespace.json
+files/user_scopes/v1/<sha256>/persistent/<purpose>/...
+cache/user_scopes/v1/<sha256>/session/<purpose>/...
+```
+
 - Retrofit + Moshi 承载 LongCare API；API 方法、路径、参数注解和关键 JSON 字段由契约测试保护。
-- Room 当前 schema 版本为 3，schema JSON 保存在 `app/schemas`；升级必须提供显式 Migration 和迁移测试，不允许异常时删库重建。
-- DataStore 保存会话、偏好和少量兼容记录。
+- Room 当前 schema 版本为 7，schema JSON 1–7 保存在 `app/schemas`。每个复合用户使用独立 `longcare_user_v1_<digest>.db`；用户已确认本地垃圾数据可丢弃，因此 schema 不兼容时只对目标用户文件执行 `fallbackToDestructiveMigration(dropAllTables = true)`，这是 [ADR-002](adr/ADR-002-user-storage-cold-cutover.md) 记录的限定例外。
+- 小型用户业务配置使用同摘要用户 DataStore；有关联数据继续使用 Room。完整会话只保存在 `noBackupFilesDir` 的 AES-GCM 整体密文中，不读取旧 `app_prefs/app_user`。
+- 用户持久文件和会话临时文件分别位于摘要命名空间的 `persistent` 与 `session` purpose 目录；Room 只保存受验证的相对句柄。
+- 订单内存缓存、COS/腾讯临时凭据、提醒、Worker、Alarm、PendingIntent 和通知均绑定当前 namespace/epoch（内存/提交路径还绑定 generation），旧回调在副作用前 fail closed。
+- 平台协调器只通过 Android-free 的 `UserStorageLeaseAccess` 校验当前 lease；业务代码不能获取全局 Room/DAO/DataStore 句柄。后台唯一名、tag、data URI、requestCode 和通知 ID 都从 `UserTaskIdentity` 派生，不能只使用 `orderId`。
 - WorkManager 用于启动更新检查、APK 下载等需要跨重建继续或恢复结果的任务。
 - 腾讯 COS 负责业务图片/文件上传，Feature 通过 `PhotoCloudUploader` 等受校验门面使用。
 - Debug 可选的本地 mock 只存在于 debug source set，不进入 Release。
@@ -133,6 +154,13 @@ flowchart LR
 - 应用自有 Activity 当前锁定竖屏。targetSdk 36 在 sw600dp+ 默认忽略方向/可调整大小限制，项目用 Activity 级 `PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY` 暂时退出该行为。
 - Android API 37 会取消上述大屏退出能力；在升级 targetSdk 37 前必须完成旋转、多窗口、相机预览和状态恢复验证。
 - 顶层护理/销售导航已经使用 Material 3 Adaptive Navigation Suite，根据窗口尺寸选择底栏或导航轨。
+
+## WebView 安全边界
+
+- 全屏 `WebViewScreen` 与首次隐私弹窗共用 `WebUrlPolicy`，只接受格式合法且有 host 的 HTTP(S) URL；不比较初始 host，也不维护业务域名白名单，允许 HTTPS 子域、IP、端口和跨域重定向。
+- `file:`、`content:`、`javascript:`、`intent:`、`data:`、未知 scheme、空 host 和畸形 URL 均阻断；导航回调让 WebView 自身处理允许 URL，不重复调用 `loadUrl`。
+- 两入口关闭 file/content/file-URL 跨域访问、混合内容和多窗口，保持 Safe Browsing，SSL 错误只执行 cancel；隐私页关闭 JavaScript，业务页虽启用必要 JavaScript但不暴露原生 bridge。
+- `network_security_config.xml` 的全局明文默认仍为关闭。WebView policy 不按 host 拦截 HTTP，但未被应用级配置明确允许的 HTTP host 会由平台拒绝并进入失败/重试状态；不会静默改写 HTTPS 或扩大全局明文权限。
 
 ## 外部集成
 

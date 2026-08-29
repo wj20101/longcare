@@ -16,7 +16,7 @@ androidxConstraintLayout = "2.2.2"
 androidxCore = "1.19.0"
 androidxExifInterface = "1.4.2"
 androidxLifecycle = "2.11.0"
-androidxNavigation = "2.9.8"
+androidxNavigation = "2.10.0"
 androidxProfileInstaller = "1.4.1"
 androidxStartup = "1.2.0"
 androidxWindow = "1.5.1"
@@ -25,7 +25,7 @@ androidxWindow = "1.5.1"
 composeBom = "2026.08.00"
 
 # Camera and machine learning
-androidxCamera = "1.6.1"
+androidxCamera = "1.6.2"
 mlKitFaceDetection = "16.1.7"
 
 # Persistence and background work
@@ -55,8 +55,8 @@ buglyCrashReport = "4.1.9.3"
 tencentCos = "5.9.52"
 
 # Build quality
-androidxBaselineProfile = "1.5.0-rc01"
-androidxBenchmark = "1.5.0-rc01"
+androidxBaselineProfile = "1.5.0-rc02"
+androidxBenchmark = "1.5.0-rc02"
 
 # Testing
 androidxTest = "1.7.0"

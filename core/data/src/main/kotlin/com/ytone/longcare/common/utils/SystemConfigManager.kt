@@ -1,259 +1,197 @@
 package com.ytone.longcare.common.utils
 
-import android.content.Context
-import android.content.SharedPreferences
-import androidx.core.content.edit
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.squareup.moshi.Moshi
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.core.common.di.ApplicationScope
+import com.ytone.longcare.data.userstorage.UserStorageRegistry
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.domain.system.ServicePhotoConfigProvider
+import com.ytone.longcare.domain.userstorage.SessionRuntimeCleanupHook
+import com.ytone.longcare.domain.userstorage.SessionRuntimeIdentity
+import com.ytone.longcare.domain.userstorage.UserStorageLease
+import com.ytone.longcare.model.NamespaceId
 import com.ytone.longcare.model.SystemConfigModel
 import com.ytone.longcare.model.ThirdKeyReturnModel
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.ytone.longcare.model.result.ApiResult
+import java.util.concurrent.atomic.AtomicReference
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import javax.inject.Inject
-import javax.inject.Singleton
 
-/**
- * 系统配置管理器
- * 负责系统配置数据的存储和获取，支持内存缓存优化
- */
+private val systemConfigKey = stringPreferencesKey("user_system_config_v1")
+
+/** Current-user system configuration; no legacy/global storage fallback is permitted. */
 @Singleton
 class SystemConfigManager @Inject constructor(
-    @param:ApplicationContext private val context: Context,
     @param:ApplicationScope private val applicationScope: CoroutineScope,
     private val moshi: Moshi,
     private val apiService: LongCareApiService,
-) : FaceVerificationConfigProvider, ServicePhotoConfigProvider {
-    companion object {
-        private const val PREFS_NAME = "system_config_prefs"
-        private const val KEY_SYSTEM_CONFIG = "system_config"
-    }
+    private val storageRegistry: UserStorageRegistry,
+) : FaceVerificationConfigProvider, ServicePhotoConfigProvider, SessionRuntimeCleanupHook {
+    private data class CacheIdentity(
+        val namespaceId: NamespaceId,
+        val generation: Long,
+    )
 
-    private val sharedPreferences: SharedPreferences = 
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private data class CacheSnapshot(
+        val identity: CacheIdentity,
+        val initialized: Boolean,
+        val config: SystemConfigModel?,
+    )
 
     private val systemConfigAdapter = moshi.adapter(SystemConfigModel::class.java)
     private val thirdKeyAdapter = moshi.adapter(ThirdKeyReturnModel::class.java)
-    
-    // 内存缓存，使用volatile确保线程安全
-    @Volatile
-    private var cachedConfig: SystemConfigModel? = null
-    
-    // 缓存是否已初始化
-    @Volatile
-    private var cacheInitialized = false
-    
-    // 用于同步网络请求的互斥锁
+    private val cache = AtomicReference<CacheSnapshot?>(null)
     private val loadMutex = Mutex()
 
-    /**
-     * 保存系统配置
-     */
-    fun saveSystemConfig(config: SystemConfigModel) {
-        val configJson = systemConfigAdapter.toJson(config)
-        sharedPreferences.edit {
-            putString(KEY_SYSTEM_CONFIG, configJson)
-        }
-        // 更新内存缓存
-        cachedConfig = config
-        cacheInitialized = true
+    /** Persists only to the currently leased user DataStore. */
+    suspend fun saveSystemConfig(config: SystemConfigModel) {
+        saveSystemConfig(storageRegistry.requireCurrentLease(), config)
     }
 
-    /**
-     * 获取系统配置
-     * 优先从内存缓存读取，缓存未命中时从SharedPreferences读取
-     */
+    /** Synchronous consumers may use only the current generation's already-loaded snapshot. */
     fun getSystemConfig(): SystemConfigModel? {
-        // 如果缓存已初始化，直接返回缓存数据
-        if (cacheInitialized) {
-            return cachedConfig
-        }
-        
-        // 从SharedPreferences读取并缓存
-        val configJson = sharedPreferences.getString(KEY_SYSTEM_CONFIG, null)
-        val config = configJson?.let { 
-            try {
-                systemConfigAdapter.fromJson(it)
-            } catch (e: Exception) {
-                null
+        val lease = runCatching { storageRegistry.requireCurrentLease() }.getOrNull() ?: return null
+        return cache.get()
+            ?.takeIf { it.identity == lease.cacheIdentity() && it.initialized }
+            ?.config
+    }
+
+    suspend fun clearSystemConfig() {
+        val lease = storageRegistry.requireCurrentLease()
+        clearSystemConfig(lease)
+    }
+
+    /** Clears any same-user snapshot and forces a network-only refresh for the exact lease. */
+    internal suspend fun forceRehydrate(lease: UserStorageLease): Boolean {
+        clearSystemConfig(lease)
+        return fetchAndPersist(lease) != null
+    }
+
+    suspend fun hasSystemConfig(): Boolean {
+        val lease = storageRegistry.requireCurrentLease()
+        val exists = storageRegistry.dataStore(lease).data.first()[systemConfigKey] != null
+        storageRegistry.requireValid(lease)
+        return exists
+    }
+
+    fun refreshCache() {
+        cache.set(null)
+        applicationScope.launch { getSystemConfigLazy() }
+    }
+
+    private suspend fun getSystemConfigLazy(): SystemConfigModel? {
+        val initialLease = runCatching { storageRegistry.requireCurrentLease() }.getOrNull() ?: return null
+        cache.get()
+            ?.takeIf { it.identity == initialLease.cacheIdentity() && it.initialized }
+            ?.let { return it.config }
+
+        return loadMutex.withLock {
+            val lease = runCatching { storageRegistry.requireCurrentLease() }.getOrNull() ?: return@withLock null
+            cache.get()
+                ?.takeIf { it.identity == lease.cacheIdentity() && it.initialized }
+                ?.let { return@withLock it.config }
+
+            val localConfig = readPersistedConfig(lease)
+            if (localConfig != null) {
+                cache.set(CacheSnapshot(lease.cacheIdentity(), initialized = true, config = localConfig))
+                refreshSystemConfigInBackground(lease)
+                return@withLock localConfig
             }
+
+            fetchAndPersist(lease)
         }
-        
-        // 更新缓存
-        cachedConfig = config
-        cacheInitialized = true
-        
+    }
+
+    private suspend fun readPersistedConfig(lease: UserStorageLease): SystemConfigModel? {
+        val json = storageRegistry.dataStore(lease).data.first()[systemConfigKey] ?: return null
+        val config = try {
+            systemConfigAdapter.fromJson(json)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            null
+        }
+        storageRegistry.requireValid(lease)
         return config
     }
 
-    /**
-     * 清除系统配置
-     */
-    fun clearSystemConfig() {
-        sharedPreferences.edit {
-            remove(KEY_SYSTEM_CONFIG)
-        }
-        // 清除内存缓存
-        cachedConfig = null
-        cacheInitialized = false
-    }
-
-    /**
-     * 检查是否有系统配置
-     */
-    fun hasSystemConfig(): Boolean {
-        return sharedPreferences.contains(KEY_SYSTEM_CONFIG)
-    }
-
-    /**
-     * 强制刷新缓存
-     * 从SharedPreferences重新加载配置数据
-     */
-    fun refreshCache() {
-        cacheInitialized = false
-        getSystemConfig() // 触发重新加载
-    }
-    
-    /**
-     * 获取系统配置（懒加载）
-     * 优先从内存缓存获取，如果不存在则通过网络加载并缓存
-     */
-    private suspend fun getSystemConfigLazy(): SystemConfigModel? {
-        // 如果缓存已初始化，直接返回缓存数据
-        if (cacheInitialized) {
-            return cachedConfig
-        }
-        
-        // 使用互斥锁确保只有一个协程执行网络请求
-        return loadMutex.withLock {
-            // 双重检查，防止多个协程同时进入
-            if (cacheInitialized) {
-                return@withLock cachedConfig
+    private suspend fun fetchAndPersist(lease: UserStorageLease): SystemConfigModel? = try {
+        when (val result = apiService.getSystemConfig()) {
+            is ApiResult.Success -> {
+                storageRegistry.requireValid(lease)
+                saveSystemConfig(lease, result.data)
+                result.data
             }
-            
-            // 先尝试从SharedPreferences读取
-            val configJson = sharedPreferences.getString(KEY_SYSTEM_CONFIG, null)
-            val localConfig = configJson?.let { 
-                try {
-                    systemConfigAdapter.fromJson(it)
-                } catch (e: Exception) {
-                    null
-                }
+            is ApiResult.Exception -> {
+                if (result.exception is CancellationException) throw result.exception
+                storageRegistry.requireValid(lease)
+                cache.set(CacheSnapshot(lease.cacheIdentity(), initialized = true, config = null))
+                null
             }
-            
-            if (localConfig != null) {
-                // 如果本地有缓存，先使用本地缓存
-                cachedConfig = localConfig
-                cacheInitialized = true
-
-                // 在后台刷新缓存，避免阻塞首次读取。
-                refreshSystemConfigInBackground()
-                return@withLock localConfig
-            } else {
-                // 本地没有缓存，从网络加载
-                try {
-                    val result = apiService.getSystemConfig()
-                    if (result is ApiResult.Success) {
-                        cachedConfig = result.data
-                        saveSystemConfig(result.data)
-                        return@withLock result.data
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logE("加载系统配置失败", throwable = e)
-                }
+            is ApiResult.Failure -> {
+                storageRegistry.requireValid(lease)
+                cache.set(CacheSnapshot(lease.cacheIdentity(), initialized = true, config = null))
                 null
             }
         }
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (error: Exception) {
+        logE("加载系统配置失败", throwable = error)
+        storageRegistry.requireValid(lease)
+        cache.set(CacheSnapshot(lease.cacheIdentity(), initialized = true, config = null))
+        null
     }
 
-    private fun refreshSystemConfigInBackground() {
+    private suspend fun saveSystemConfig(lease: UserStorageLease, config: SystemConfigModel) {
+        storageRegistry.dataStore(lease).edit { it[systemConfigKey] = systemConfigAdapter.toJson(config) }
+        storageRegistry.requireValid(lease)
+        cache.set(CacheSnapshot(lease.cacheIdentity(), initialized = true, config = config))
+    }
+
+    private suspend fun clearSystemConfig(lease: UserStorageLease) {
+        storageRegistry.requireValid(lease)
+        storageRegistry.dataStore(lease).edit { it.remove(systemConfigKey) }
+        storageRegistry.requireValid(lease)
+        cache.set(CacheSnapshot(lease.cacheIdentity(), initialized = true, config = null))
+    }
+
+    private fun refreshSystemConfigInBackground(lease: UserStorageLease) {
         applicationScope.launch {
             try {
-                val result = apiService.getSystemConfig()
-                if (result is ApiResult.Success) {
-                    saveSystemConfig(result.data)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logE("后台刷新系统配置失败", throwable = e)
+                fetchAndPersist(lease)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                logE("后台刷新系统配置失败", throwable = error)
             }
         }
     }
-    
-    /**
-     * 获取公司名称
-     */
-    suspend fun getCompanyName(): String {
-        return getSystemConfigLazy()?.companyName ?: ""
-    }
 
-    /**
-     * 从接口刷新系统配置并返回最新公司名称。
-     *
-     * 该方法用于首页入口这类需要即时刷新 UI 的场景。刷新成功时会同步更新
-     * SharedPreferences 与内存缓存；失败时返回 null，调用方可继续展示旧值。
-     */
+    suspend fun getCompanyName(): String = getSystemConfigLazy()?.companyName ?: ""
+
+    /** Fetches a current-session value; failure never falls back to another generation. */
     suspend fun refreshCompanyName(): String? {
-        return try {
-            when (val result = apiService.getSystemConfig()) {
-                is ApiResult.Success -> {
-                    saveSystemConfig(result.data)
-                    result.data.companyName
-                }
-                is ApiResult.Exception,
-                is ApiResult.Failure -> null
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            null
-        }
+        val lease = runCatching { storageRegistry.requireCurrentLease() }.getOrNull() ?: return null
+        return fetchAndPersist(lease)?.companyName
     }
 
-    /**
-     * 获取每个服务照片分类的最大上传数量
-     */
-    override suspend fun getMaxServicePhotoCount(): Int {
-        return getSystemConfigLazy()?.maxImgNum ?: 0
-    }
+    override suspend fun getMaxServicePhotoCount(): Int = getSystemConfigLazy()?.maxImgNum ?: 0
 
-    /**
-     * 获取水印logo图片
-     */
-    suspend fun getSyLogoImg(): String {
-        return getSystemConfigLazy()?.syLogoImg ?: ""
-    }
+    suspend fun getSyLogoImg(): String = getSystemConfigLazy()?.syLogoImg ?: ""
 
-    /**
-     * 获取全选状态配置
-     */
-    suspend fun getSelectServiceType(): Int {
-        return getSystemConfigLazy()?.selectServiceType ?: 0
-    }
+    suspend fun getSelectServiceType(): Int = getSystemConfigLazy()?.selectServiceType ?: 0
 
-    suspend fun getThirdKey(): ThirdKeyReturnModel? {
-        val config = getSystemConfigLazy() ?: return null
-        val str = config.thirdKeyStr
-        if (str.isBlank()) return null
-        return try {
-            thirdKeyAdapter.fromJson(str)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            null
-        }
-    }
+    suspend fun getThirdKey(): ThirdKeyReturnModel? = parseThirdKey(getSystemConfigLazy())
 
     override suspend fun getFaceVerificationConfig(): FaceVerificationConfig? {
         val third = getThirdKey() ?: return null
@@ -263,14 +201,27 @@ class SystemConfigManager @Inject constructor(
         return FaceVerificationConfig(
             appId = third.txFaceAppId,
             secret = third.txFaceAppSecret,
-            licence = third.txFaceAppLicence
+            licence = third.txFaceAppLicence,
         )
     }
-    
-    fun getThirdKeySync(): ThirdKeyReturnModel? {
-        val config = getSystemConfig() ?: return null
-        val str = config.thirdKeyStr
-        if (str.isBlank()) return null
-        return try { thirdKeyAdapter.fromJson(str) } catch (_: Exception) { null }
+
+    fun getThirdKeySync(): ThirdKeyReturnModel? = parseThirdKey(getSystemConfig())
+
+    override suspend fun cleanup(identity: SessionRuntimeIdentity) {
+        cache.set(null)
     }
+
+    private fun parseThirdKey(config: SystemConfigModel?): ThirdKeyReturnModel? {
+        val json = config?.thirdKeyStr?.takeIf(String::isNotBlank) ?: return null
+        return try {
+            thirdKeyAdapter.fromJson(json)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun UserStorageLease.cacheIdentity() = CacheIdentity(
+        namespaceId = scopeKey.namespaceId(),
+        generation = generation.value,
+    )
 }

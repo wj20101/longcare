@@ -1,11 +1,15 @@
 package com.ytone.longcare.common.utils
 
-import android.content.Context
-import androidx.test.core.app.ApplicationProvider
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.ytone.longcare.api.LongCareApiService
+import com.ytone.longcare.data.userstorage.UserStorageRegistry
+import com.ytone.longcare.domain.userstorage.SessionEpoch
+import com.ytone.longcare.domain.userstorage.StorageGeneration
+import com.ytone.longcare.domain.userstorage.UserStorageLease
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.SystemConfigModel
 import com.ytone.longcare.model.ThirdKeyReturnModel
+import com.ytone.longcare.model.UserScopeKey
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -22,6 +26,7 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
@@ -32,32 +37,41 @@ class SystemConfigManagerTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
+    @get:Rule
+    val temporaryFolder = TemporaryFolder()
+
     private val apiService = mockk<LongCareApiService>()
     private val testDispatcher = StandardTestDispatcher()
     private val appScope = CoroutineScope(SupervisorJob() + testDispatcher)
 
-    private lateinit var context: Context
     private lateinit var manager: SystemConfigManager
 
     @Before
     fun setup() {
-        context = ApplicationProvider.getApplicationContext()
         coEvery { apiService.getSystemConfig() } returns
             ApiResult.Success(SystemConfigModel())
+        val lease = UserStorageLease(
+            scopeKey = UserScopeKey(companyId = 1, accountId = 2, userId = 3),
+            sessionEpoch = SessionEpoch(10),
+            generation = StorageGeneration(1),
+        )
+        val dataStore = PreferenceDataStoreFactory.create(scope = appScope) {
+            temporaryFolder.root.resolve("system-config.preferences_pb")
+        }
+        val storageRegistry = mockk<UserStorageRegistry>()
+        io.mockk.every { storageRegistry.requireCurrentLease() } returns lease
+        io.mockk.every { storageRegistry.dataStore(lease) } returns dataStore
+        io.mockk.every { storageRegistry.requireValid(lease) } returns Unit
         manager = SystemConfigManager(
-            context = context,
             applicationScope = appScope,
             moshi = DefaultMoshi,
             apiService = apiService,
+            storageRegistry = storageRegistry,
         )
-        manager.clearSystemConfig()
     }
 
     @After
     fun tearDown() {
-        if (this::manager.isInitialized) {
-            manager.clearSystemConfig()
-        }
         appScope.cancel()
     }
 

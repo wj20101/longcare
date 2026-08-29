@@ -5,10 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.os.PowerManager
 import androidx.core.content.getSystemService
-import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
-import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.features.countdown.manager.CountdownIntentPurpose
+import com.ytone.longcare.features.countdown.manager.CountdownTaskCodec
+import com.ytone.longcare.features.countdown.manager.CountdownTaskExecutionGate
+import com.ytone.longcare.features.countdown.manager.CountdownTaskPayload
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
 import com.ytone.longcare.features.servicecountdown.service.CountdownForegroundService
@@ -18,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * 倒计时闹钟广播接收器
@@ -26,8 +29,16 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class CountdownAlarmReceiver : BroadcastReceiver() {
 
+    @Inject
+    lateinit var taskCodec: CountdownTaskCodec
+
+    @Inject
+    lateinit var executionGate: CountdownTaskExecutionGate
+
     override fun onReceive(context: Context, intent: Intent) {
-        CountdownAlarmReceiverDelegate.handle(context, intent)
+        val payload = taskCodec.fromIntent(intent, CountdownIntentPurpose.ALARM) ?: return
+        if (!executionGate.isCurrent(payload)) return
+        CountdownAlarmReceiverDelegate.handle(context, payload, taskCodec, executionGate)
     }
 }
 
@@ -35,24 +46,20 @@ internal object CountdownAlarmReceiverDelegate {
     private const val WAKE_LOCK_RELEASE_DELAY_MS = 5_000L
     private val wakeLockReleaseScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    fun handle(context: Context, intent: Intent) {
+    fun handle(
+        context: Context,
+        payload: CountdownTaskPayload,
+        taskCodec: CountdownTaskCodec,
+        executionGate: CountdownTaskExecutionGate,
+    ) {
+        if (!executionGate.isCurrent(payload)) return
         logI("========================================")
         logI("🔔 收到倒计时闹钟广播")
         logI("========================================")
 
-        val orderKey = CountdownNotificationManager.extractOrderKey(intent)
-
+        val orderKey = payload.orderKey
         val orderId = orderKey.orderId
-        val serviceName =
-            CountdownNotificationManager.extractServiceName(
-                intent,
-                context.getString(R.string.countdown_alarm_default_service),
-            )
-
-        if (orderId == -1L) {
-            logE("❌ 倒计时闹钟广播缺少orderId")
-            return
-        }
+        val serviceName = payload.serviceName
 
         logI("📋 订单信息: orderId=$orderId, serviceName=$serviceName")
 
@@ -73,13 +80,15 @@ internal object CountdownAlarmReceiverDelegate {
             logI("✅ WakeLock已获取")
 
             // 1. 先停止前台服务，清除进行中的通知
+            if (!executionGate.isCurrent(payload)) return
             CountdownForegroundService.stopCountdown(context)
             logI("✅ 倒计时前台服务已停止")
 
             // 2. 启动响铃服务（持续播放声音和震动，并负责显示全屏通知和启动Activity）
             // 注意：我们将显示UI和播放声音的逻辑全部移交给了AlarmRingtoneService
             // 这样可以通过前台服务获得更高的优先级，解决华为/三星等设备后台无法启动Activity的问题
-            AlarmRingtoneService.startRingtone(context, orderKey, serviceName)
+            if (!executionGate.isCurrent(payload)) return
+            AlarmRingtoneService.startRingtone(context, payload, taskCodec)
             logI("✅ 响铃服务已启动")
 
             logI("========================================")

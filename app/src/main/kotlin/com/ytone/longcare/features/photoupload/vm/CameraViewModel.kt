@@ -2,6 +2,7 @@ package com.ytone.longcare.features.photoupload.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.image.ManagedImageFile
 import com.ytone.longcare.common.image.UnifiedImagePipeline
 import com.ytone.longcare.common.image.WatermarkedCaptureRequest
 import com.ytone.longcare.common.utils.SystemConfigManager
@@ -68,6 +69,8 @@ class CameraViewModel @Inject constructor(
             _syLogoImg.value = systemConfigManager.getSyLogoImg()
         }
     }
+
+    fun createTemporaryCaptureFile(): ManagedImageFile = imagePipeline.createTemporaryCaptureFile()
 
     suspend fun processCapturedImage(request: WatermarkedCaptureRequest) =
         imagePipeline.processWatermarkedCapture(request)

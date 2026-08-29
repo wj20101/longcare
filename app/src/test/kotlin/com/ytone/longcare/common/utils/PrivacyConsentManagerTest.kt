@@ -19,7 +19,7 @@ class PrivacyConsentManagerTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         // 每次测试前清除 SharedPreferences
-        context.getSharedPreferences("privacy_consent", Context.MODE_PRIVATE)
+        context.getSharedPreferences(DeviceRuntimeState.PREFERENCES_NAME, Context.MODE_PRIVATE)
             .edit().clear().commit()
         manager = PrivacyConsentManager(context)
     }

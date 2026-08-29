@@ -7,18 +7,30 @@ import androidx.core.app.NotificationManagerCompat
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownAppLauncher
+import com.ytone.longcare.features.countdown.manager.CountdownIntentPurpose
+import com.ytone.longcare.features.countdown.manager.CountdownTaskCodec
+import com.ytone.longcare.features.countdown.manager.CountdownTaskPayload
 
 internal fun CountdownForegroundService.createCountdownNotification(
     channelId: String,
-    serviceName: String,
-    orderId: Long,
-    appLauncher: ServiceCountdownAppLauncher
+    payload: CountdownTaskPayload,
+    appLauncher: ServiceCountdownAppLauncher,
+    taskCodec: CountdownTaskCodec,
 ): Notification {
     val contentTitle = getString(R.string.service_countdown_notification_title)
-    val contentText = getString(R.string.service_countdown_notification_content, serviceName)
+    val contentText = getString(
+        R.string.service_countdown_notification_content,
+        payload.serviceName,
+    )
 
     // 点击通知跳转由 app 壳层实现，避免与 MainActivity 直接耦合。
-    val pendingIntent = appLauncher.createCountdownContentIntent(this, orderId)
+    val identity = payload.execution.taskIdentity
+    val pendingIntent = appLauncher.createCountdownContentIntent(
+        context = this,
+        orderId = payload.orderKey.orderId,
+        requestCode = taskCodec.requestCode(identity, CountdownIntentPurpose.COUNTDOWN_CONTENT),
+        dataUri = taskCodec.dataUri(identity, CountdownIntentPurpose.COUNTDOWN_CONTENT),
+    )
 
     val builder = NotificationCompat.Builder(this, channelId)
         .setContentTitle(contentTitle)

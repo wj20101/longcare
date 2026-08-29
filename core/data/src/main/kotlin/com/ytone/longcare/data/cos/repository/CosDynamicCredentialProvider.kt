@@ -9,6 +9,7 @@ import com.ytone.longcare.model.CosConfig
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logW
+import kotlinx.coroutines.CancellationException
 
 internal class CosDynamicCredentialProvider(
     private val defaultFolderType: Int = CosConstants.DEFAULT_FOLDER_TYPE,
@@ -56,6 +57,8 @@ internal class CosDynamicCredentialProvider(
                     config.expiredTime
                 )
             }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
         } catch (e: Exception) {
             logE("Failed to get credentials", tag = logTag, throwable = e)
             null

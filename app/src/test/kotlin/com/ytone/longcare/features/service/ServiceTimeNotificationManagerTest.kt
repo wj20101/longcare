@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.service
 
-import android.app.Application
 import android.app.AlarmManager
+import android.app.Application
 import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
@@ -9,11 +9,21 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
-import com.ytone.longcare.features.service.storage.PendingOrdersStorage
-import io.mockk.clearMocks
+import com.ytone.longcare.data.userstorage.UserStorageRegistry
+import com.ytone.longcare.domain.userstorage.PendingServiceReminder
+import com.ytone.longcare.domain.userstorage.SessionEpoch
+import com.ytone.longcare.domain.userstorage.StorageGeneration
+import com.ytone.longcare.domain.userstorage.UserServiceReminderRepository
+import com.ytone.longcare.domain.userstorage.UserStorageLease
+import com.ytone.longcare.model.UserScopeKey
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.test.runTest
 import org.junit.Before
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -22,103 +32,113 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(application = Application::class)
 class ServiceTimeNotificationManagerTest {
-
     private lateinit var context: Context
     private lateinit var notificationManager: NotificationManager
-    private lateinit var alarmManager: AlarmManager
     private lateinit var workManager: WorkManager
-    private lateinit var pendingOrdersStorage: PendingOrdersStorage
+    private lateinit var reminderRepository: UserServiceReminderRepository
+    private lateinit var storageRegistry: UserStorageRegistry
     private lateinit var manager: ServiceTimeNotificationManager
+    private val codec = ServiceTimeTaskCodec()
+    private val lease = UserStorageLease(
+        scopeKey = UserScopeKey(1, 2, 3),
+        sessionEpoch = SessionEpoch(10),
+        generation = StorageGeneration(20),
+    )
 
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
         notificationManager = mockk(relaxed = true)
-        alarmManager = mockk(relaxed = true)
         workManager = mockk(relaxed = true)
-        pendingOrdersStorage = mockk(relaxed = true)
+        reminderRepository = mockk(relaxed = true)
+        storageRegistry = mockk()
+        every { storageRegistry.requireCurrentLease() } returns lease
+        coEvery { reminderRepository.wasProcessedSince(any(), any()) } returns false
 
         manager = ServiceTimeNotificationManager(
             context = context,
             notificationManager = notificationManager,
-            alarmManager = alarmManager,
+            alarmManager = mockk<AlarmManager>(relaxed = true),
             workManager = workManager,
-            pendingOrdersStorage = pendingOrdersStorage
+            reminderRepository = reminderRepository,
+            storageRegistry = storageRegistry,
+            taskCodec = codec,
         )
     }
 
     @Test
-    fun scheduleFuture_shouldPersistOrder_andScheduleWork() {
-        val orderId = 12345L
-        val serviceName = "测试服务"
+    fun `future reminder persists scoped identity and schedules scoped work`() = runTest {
+        val orderId = 12_345L
         val endTime = System.currentTimeMillis() + 60_000L
+        val identity = codec.currentExecution(lease, orderId).taskIdentity
 
-        manager.scheduleServiceTimeEndNotification(orderId, serviceName, endTime)
+        manager.scheduleServiceTimeEndNotification(orderId, "测试服务", endTime)
 
-        verify(exactly = 1) {
-            pendingOrdersStorage.addPendingOrder(orderId, serviceName, endTime)
+        coVerify(exactly = 1) {
+            reminderRepository.upsert(
+                match<PendingServiceReminder> {
+                    it.taskIdentity == identity && it.orderId == orderId && it.triggerAtMillis == endTime
+                }
+            )
         }
         verify(exactly = 1) {
             workManager.enqueueUniqueWork(
-                "service_time_end_unique_work$orderId",
+                codec.workUniqueName(identity),
                 ExistingWorkPolicy.REPLACE,
-                any<OneTimeWorkRequest>()
+                any<OneTimeWorkRequest>(),
             )
         }
         verify(exactly = 0) { notificationManager.notify(any(), any<Notification>()) }
     }
 
     @Test
-    fun schedulePast_shouldNotifyImmediately_withoutPersistingOrScheduling() {
-        val orderId = 23456L
-        val serviceName = "过期服务"
-        val endTime = System.currentTimeMillis() - 1_000L
+    fun `past reminder notifies and records only current session`() = runTest {
+        val orderId = 23_456L
+        val identity = codec.currentExecution(lease, orderId).taskIdentity
 
-        manager.scheduleServiceTimeEndNotification(orderId, serviceName, endTime)
+        manager.scheduleServiceTimeEndNotification(
+            orderId,
+            "过期服务",
+            System.currentTimeMillis() - 1_000L,
+        )
 
-        verify(exactly = 1) { notificationManager.notify(any(), any<Notification>()) }
-        verify(exactly = 0) { pendingOrdersStorage.addPendingOrder(any(), any(), any()) }
-        verify(exactly = 0) {
-            workManager.enqueueUniqueWork(any(), any<ExistingWorkPolicy>(), any<OneTimeWorkRequest>())
-        }
+        verify(exactly = 1) { notificationManager.notify(codec.notificationId(identity), any()) }
+        coVerify(exactly = 1) { reminderRepository.markProcessed(identity, any()) }
+        coVerify(exactly = 1) { reminderRepository.delete(identity) }
+        coVerify(exactly = 0) { reminderRepository.upsert(any()) }
     }
 
     @Test
-    fun showNotification_shouldBeDeduplicatedWithinWindow() {
-        val orderId = 34567L
-        val serviceName = "去重服务"
+    fun `stale callback is silent before notification or room mutation`() = runTest {
+        val staleLease = lease.copy(generation = StorageGeneration(19))
+        val payload = ServiceTimeTaskPayload(
+            execution = codec.currentExecution(staleLease, 34_567L),
+            serviceName = "旧任务",
+            triggerAtMillis = 1,
+        )
 
-        manager.showServiceTimeEndNotification(orderId, serviceName)
-        manager.showServiceTimeEndNotification(orderId, serviceName)
+        val shown = manager.handleTriggered(payload)
 
-        verify(exactly = 1) { notificationManager.notify(any(), any<Notification>()) }
+        assertFalse(shown)
+        verify(exactly = 0) { notificationManager.notify(any(), any<Notification>()) }
+        coVerify(exactly = 0) { reminderRepository.markProcessed(any(), any()) }
+        coVerify(exactly = 0) { reminderRepository.delete(any()) }
     }
 
     @Test
-    fun cancel_shouldRemovePending_andCancelUniqueWork() {
-        val orderId = 45678L
+    fun `deduplication and cancellation use full task identity`() = runTest {
+        val orderId = 45_678L
+        val identity = codec.currentExecution(lease, orderId).taskIdentity
+        coEvery { reminderRepository.wasProcessedSince(identity, any()) } returnsMany listOf(false, true)
+
+        manager.showServiceTimeEndNotification(orderId, "服务")
+        manager.showServiceTimeEndNotification(orderId, "服务")
+        verify(exactly = 1) { notificationManager.notify(codec.notificationId(identity), any()) }
 
         manager.cancelServiceTimeEndNotification(orderId)
 
-        verify(exactly = 1) { pendingOrdersStorage.removePendingOrder(orderId) }
-        verify(exactly = 1) { workManager.cancelUniqueWork("service_time_end_unique_work$orderId") }
-    }
-
-    @Test
-    fun scheduleProcessedOrder_shouldSkipScheduling() {
-        val orderId = 56789L
-        val serviceName = "已处理服务"
-        val endTime = System.currentTimeMillis() + 60_000L
-
-        manager.showServiceTimeEndNotification(orderId, serviceName)
-        clearMocks(notificationManager, pendingOrdersStorage, workManager)
-
-        manager.scheduleServiceTimeEndNotification(orderId, serviceName, endTime)
-
-        verify(exactly = 0) { pendingOrdersStorage.addPendingOrder(any(), any(), any()) }
-        verify(exactly = 0) {
-            workManager.enqueueUniqueWork(any(), any<ExistingWorkPolicy>(), any<OneTimeWorkRequest>())
-        }
-        verify(exactly = 0) { notificationManager.notify(any(), any<Notification>()) }
+        coVerify(exactly = 1) { reminderRepository.clearProcessed(identity) }
+        verify(exactly = 1) { workManager.cancelUniqueWork(codec.workUniqueName(identity)) }
+        verify(exactly = 1) { notificationManager.cancel(codec.notificationId(identity)) }
     }
 }

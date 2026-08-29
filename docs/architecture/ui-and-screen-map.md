@@ -1,6 +1,6 @@
 # 页面与路由地图
 
-最后核对：2026-08-27
+最后核对：2026-08-29
 
 本文列出当前可运行的 Compose 路由、嵌套页面和现实模块归属。导航代码的机器真相位于 `app/src/main/kotlin/com/ytone/longcare/navigation/`。
 
@@ -58,9 +58,11 @@
 | `CameraRoute` | `CameraScreen` | `:app` | 护理和销售共用的水印相机 |
 | `UserListRoute` | `UserListScreen` | `:app` | 已服务/未服务用户列表 |
 | `UserServiceRecordRoute` | `UserServiceRecordScreen` | `:app` | 用户服务记录 |
-| `WebViewRoute` | `WebViewScreen` | `:app` | 协议、隐私政策、销售表单/报告页面 |
+| `WebViewRoute` | `WebViewScreen` | `:app` | 协议、隐私政策、销售表单/报告；合法 HTTP(S) 跨 host 导航由 WebView 内部处理 |
 
 默认服务人员核验结果通过上一层 `SavedStateHandle` 的 `DEFAULT_FACE_VERIFICATION_RESULT_KEY` 返回；长者照片和销售登记照片通过 `CAPTURED_IMAGE_URI_KEY` 返回；手动人脸补录通过 `FACE_IMAGE_PATH_KEY` 返回。接收页消费后负责清除 key。
+
+首次隐私同意弹窗中的内嵌 WebView 与 `WebViewRoute` 使用同一 URL policy 和失败/重试语义；隐私入口额外保持 JavaScript 关闭。两者均不使用 host 白名单，也不绕过 Android 的 HTTP 明文与 TLS 安全策略。
 
 ## 销售端嵌套页面
 

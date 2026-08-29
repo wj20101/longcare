@@ -2,13 +2,14 @@ package com.ytone.longcare.network.interceptor
 
 import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.common.utils.PrivacyConsentManager
-import com.ytone.longcare.domain.repository.SessionState
-import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.data.session.RequestAuthSnapshot
+import com.ytone.longcare.data.session.SessionSecretProvider
+import com.ytone.longcare.domain.userstorage.SessionEpoch
+import com.ytone.longcare.model.UserScopeKey
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import kotlinx.coroutines.flow.MutableStateFlow
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Protocol
@@ -29,7 +30,7 @@ class RequestInterceptorDeviceIdTest {
     private lateinit var consentManager: PrivacyConsentManager
     private lateinit var deviceInfoProvider: RequestDeviceInfoProvider
     private lateinit var cryptoProvider: RequestCryptoProvider
-    private lateinit var userSessionRepository: UserSessionRepository
+    private lateinit var sessionSecretProvider: SessionSecretProvider
     private lateinit var runtimeConfigProvider: RuntimeConfigProvider
     private lateinit var interceptor: RequestInterceptor
 
@@ -41,15 +42,14 @@ class RequestInterceptorDeviceIdTest {
         consentManager = mockk()
         deviceInfoProvider = mockk()
         cryptoProvider = mockk()
-        userSessionRepository = mockk()
+        sessionSecretProvider = mockk()
         runtimeConfigProvider = mockk()
 
         every { runtimeConfigProvider.baseUrl } returns "https://api.example.com/"
         every { runtimeConfigProvider.isDebug } returns false
         every { runtimeConfigProvider.publicKey } returns "testPublicKey"
 
-        val sessionState = MutableStateFlow<SessionState>(SessionState.LoggedOut)
-        every { userSessionRepository.sessionState } returns sessionState
+        every { sessionSecretProvider.requestAuthSnapshot() } returns null
 
         every { deviceInfoProvider.getAppVersionCode() } returns 1
         every { deviceInfoProvider.getAppVersionName() } returns "1.0.0"
@@ -59,7 +59,7 @@ class RequestInterceptorDeviceIdTest {
         every { cryptoProvider.encryptAesToHex(capture(capturedHeaderJson), any()) } returns "encrypted-header"
 
         interceptor = RequestInterceptor(
-            userSessionRepository = userSessionRepository,
+            sessionSecretProvider = sessionSecretProvider,
             runtimeConfigProvider = runtimeConfigProvider,
             requestDeviceInfoProvider = deviceInfoProvider,
             requestCryptoProvider = cryptoProvider,
@@ -115,6 +115,25 @@ class RequestInterceptorDeviceIdTest {
         val encryptedInput = String(capturedRequestBody.captured, Charsets.UTF_8)
         assertEquals(originalBody, encryptedInput)
         assertFalse(encryptedInput.contains("136****5555"))
+    }
+
+    @Test
+    fun `authentication headers come from purpose limited request snapshot`() {
+        every { consentManager.isPrivacyConsented } returns false
+        every { sessionSecretProvider.requestAuthSnapshot() } returns RequestAuthSnapshot(
+            scopeKey = UserScopeKey(companyId = 10, accountId = 20, userId = 30),
+            userIdentity = 4,
+            token = "request-only-token",
+            sessionEpoch = SessionEpoch(5),
+        )
+
+        executeRequest()
+
+        val headerJson = String(capturedHeaderJson.captured)
+        assertTrue(headerJson.contains("request-only-token"))
+        assertTrue(headerJson.contains("\"companyId\":10"))
+        assertTrue(headerJson.contains("\"accountId\":20"))
+        assertTrue(headerJson.contains("\"userId\":30"))
     }
 
     private fun executeRequest(

@@ -52,6 +52,7 @@ class UnifiedImagePipelineTest {
                 UnifiedImagePipeline(
                     context = context,
                     ioDispatcher = StandardTestDispatcher(testScheduler),
+                    fileStore = testFileStore(),
                 )
             val bitmap = solidBitmap(width = 640, height = 480, color = Color.GREEN)
 
@@ -66,7 +67,7 @@ class UnifiedImagePipelineTest {
             assertThat(output.length()).isGreaterThan(0L)
             assertThat(output.length())
                 .isAtMost(ImageProcessingPolicies.FACE_PHOTO.maxOutputBytes)
-            assertThat(output.parentFile?.name).isEqualTo("face_captures")
+            assertThat(output.parentFile?.name).isEqualTo("face")
             assertThat(pipeline.deleteManagedImage(Uri.fromFile(output))).isTrue()
             assertThat(output.exists()).isFalse()
             bitmap.recycle()
@@ -75,17 +76,19 @@ class UnifiedImagePipelineTest {
     @Test
     fun `watermarked capture applies EXIF orientation compression and cleanup`() =
         runTest {
+            val fileStore = testFileStore()
             val pipeline =
                 UnifiedImagePipeline(
                     context = context,
                     ioDispatcher = StandardTestDispatcher(testScheduler),
+                    fileStore = fileStore,
                 )
             val sourceBitmap = solidBitmap(width = 1200, height = 800, color = Color.WHITE)
-            val temporaryFile = File(context.cacheDir, "pipeline_source_${System.nanoTime()}.jpg")
-            FileOutputStream(temporaryFile).use { output ->
+            val temporaryCapture = pipeline.createTemporaryCaptureFile()
+            FileOutputStream(temporaryCapture.file).use { output ->
                 assertThat(sourceBitmap.compress(Bitmap.CompressFormat.JPEG, 95, output)).isTrue()
             }
-            ExifInterface(temporaryFile.absolutePath).apply {
+            ExifInterface(temporaryCapture.file.absolutePath).apply {
                 setAttribute(
                     ExifInterface.TAG_ORIENTATION,
                     ExifInterface.ORIENTATION_ROTATE_90.toString(),
@@ -97,7 +100,7 @@ class UnifiedImagePipelineTest {
             val output =
                 pipeline.processWatermarkedCapture(
                     WatermarkedCaptureRequest(
-                        temporaryCaptureFile = temporaryFile,
+                        temporaryCaptureFile = temporaryCapture,
                         watermarkBitmap = watermark,
                         watermarkStartPx = 20f,
                         watermarkBottomPx = 20f,
@@ -110,7 +113,7 @@ class UnifiedImagePipelineTest {
             assertThat(decoded.height).isEqualTo(1200)
             assertThat(output.length())
                 .isAtMost(ImageProcessingPolicies.WATERMARKED_PHOTO.maxOutputBytes)
-            assertThat(temporaryFile.exists()).isFalse()
+            assertThat(temporaryCapture.file.exists()).isFalse()
             assertThat(watermark.isRecycled).isTrue()
             val watermarkPixel = decoded.getPixel(70, decoded.height - 50)
             assertThat(Color.red(watermarkPixel)).isGreaterThan(Color.green(watermarkPixel))
@@ -124,15 +127,16 @@ class UnifiedImagePipelineTest {
     @Test
     fun `watermarked capture failure still releases temporary artifacts`() =
         runTest {
+            val fileStore = testFileStore()
             val pipeline =
                 UnifiedImagePipeline(
                     context = context,
                     ioDispatcher = StandardTestDispatcher(testScheduler),
+                    fileStore = fileStore,
                 )
-            val invalidCapture =
-                File(context.cacheDir, "failed_capture_${System.nanoTime()}.jpg")
+            val invalidCapture = pipeline.createTemporaryCaptureFile()
             val source = solidBitmap(width = 200, height = 200, color = Color.WHITE)
-            FileOutputStream(invalidCapture).use { output ->
+            FileOutputStream(invalidCapture.file).use { output ->
                 assertThat(source.compress(Bitmap.CompressFormat.JPEG, 95, output)).isTrue()
             }
             val watermark = solidBitmap(width = 120, height = 60, color = Color.RED)
@@ -161,10 +165,68 @@ class UnifiedImagePipelineTest {
                 }.exceptionOrNull()
 
             assertThat(failure).isInstanceOf(IOException::class.java)
-            assertThat(invalidCapture.exists()).isFalse()
+            assertThat(invalidCapture.file.exists()).isFalse()
             assertThat(watermark.isRecycled).isTrue()
             source.recycle()
         }
+
+    @Test
+    fun `logged out storage rejects image creation`() = runTest {
+        val fileStore = testFileStore().apply { loggedIn = false }
+        val pipeline = UnifiedImagePipeline(
+            context = context,
+            ioDispatcher = StandardTestDispatcher(testScheduler),
+            fileStore = fileStore,
+        )
+        val bitmap = solidBitmap(width = 64, height = 64, color = Color.BLUE)
+
+        val failure = runCatching {
+            pipeline.saveBitmap(
+                bitmap = bitmap,
+                purpose = ManagedImagePurpose.MANUAL_FACE_CAPTURE,
+                filePrefix = "logged_out",
+            )
+        }.exceptionOrNull()
+
+        assertThat(failure).isInstanceOf(IllegalStateException::class.java)
+        bitmap.recycle()
+    }
+
+    @Test
+    fun `generation change during commit removes only revoked capture artifacts`() = runTest {
+        val fileStore = testFileStore().apply { invalidateOnValidationCall = 4 }
+        val pipeline = UnifiedImagePipeline(
+            context = context,
+            ioDispatcher = StandardTestDispatcher(testScheduler),
+            fileStore = fileStore,
+        )
+        val capture = pipeline.createTemporaryCaptureFile()
+        val oldGenerationRoot = capture.file.parentFile!!.parentFile!!
+        val source = solidBitmap(width = 200, height = 200, color = Color.WHITE)
+        FileOutputStream(capture.file).use { output ->
+            assertThat(source.compress(Bitmap.CompressFormat.JPEG, 95, output)).isTrue()
+        }
+        val watermark = solidBitmap(width = 20, height = 20, color = Color.RED)
+
+        val failure = runCatching {
+            pipeline.processWatermarkedCapture(
+                WatermarkedCaptureRequest(
+                    temporaryCaptureFile = capture,
+                    watermarkBitmap = watermark,
+                    watermarkStartPx = 0f,
+                    watermarkBottomPx = 0f,
+                    mirrorHorizontally = false,
+                )
+            )
+        }.exceptionOrNull()
+
+        assertThat(failure).isInstanceOf(IllegalStateException::class.java)
+        assertThat(oldGenerationRoot.walkTopDown().filter(File::isFile).toList()).isEmpty()
+        val current = fileStore.createSessionFile("camera_capture", "new_user").file
+        current.writeText("new-user")
+        assertThat(current.readText()).isEqualTo("new-user")
+        source.recycle()
+    }
 
     private fun solidBitmap(
         width: Int,
@@ -172,4 +234,8 @@ class UnifiedImagePipelineTest {
         color: Int,
     ): Bitmap =
         createBitmap(width, height).apply { eraseColor(color) }
+
+    private fun testFileStore() = TestManagedImageFileStore(
+        File(context.cacheDir, "managed_pipeline_test_${System.nanoTime()}"),
+    )
 }

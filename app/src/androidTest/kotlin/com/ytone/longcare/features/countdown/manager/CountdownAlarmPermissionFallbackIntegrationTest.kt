@@ -5,6 +5,10 @@ import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.UserScopeKey
+import com.ytone.longcare.domain.userstorage.SessionEpoch
+import com.ytone.longcare.domain.userstorage.StorageGeneration
+import com.ytone.longcare.domain.userstorage.UserStorageLease
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -17,6 +21,19 @@ import java.util.concurrent.TimeUnit
 class CountdownAlarmPermissionFallbackIntegrationTest {
     private lateinit var context: Context
     private lateinit var alarmManager: AlarmManager
+    private val codec = CountdownTaskCodec()
+    private val payload by lazy {
+        codec.currentPayload(
+            UserStorageLease(
+                UserScopeKey(901, 902, 903),
+                SessionEpoch(904),
+                StorageGeneration(905),
+            ),
+            OrderKey(orderId = ORDER_ID, planId = 1),
+            "精确闹钟权限降级测试",
+            System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10),
+        )
+    }
 
     @Before
     fun setUp() {
@@ -26,12 +43,11 @@ class CountdownAlarmPermissionFallbackIntegrationTest {
 
     @After
     fun tearDown() {
-        cancelCountdownAlarmForOrderId(
+        cancelCountdownAlarmForIdentity(
             context = context,
             alarmManager = alarmManager,
-            countdownAlarmRequestCode = ALARM_REQUEST_CODE,
-            actionCountdownAlarmPrefix = ACTION_PREFIX,
-            orderId = ORDER_ID,
+            codec = codec,
+            identity = payload.execution.taskIdentity,
         )
     }
 
@@ -41,13 +57,8 @@ class CountdownAlarmPermissionFallbackIntegrationTest {
             scheduleCountdownAlarmInSystem(
                 context = context,
                 alarmManager = alarmManager,
-                countdownAlarmRequestCode = ALARM_REQUEST_CODE,
-                countdownAlarmActivityRequestCode = ALARM_ACTIVITY_REQUEST_CODE,
-                actionCountdownAlarmPrefix = ACTION_PREFIX,
-                orderKey = OrderKey(orderId = ORDER_ID),
-                serviceName = "精确闹钟权限降级测试",
-                triggerTimeMillis =
-                    System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10),
+                codec = codec,
+                payload = payload,
                 canUseExactAlarm = false,
             )
 
@@ -57,8 +68,5 @@ class CountdownAlarmPermissionFallbackIntegrationTest {
 
     private companion object {
         const val ORDER_ID = 987_654_321L
-        const val ALARM_REQUEST_CODE = 31_001
-        const val ALARM_ACTIVITY_REQUEST_CODE = 31_002
-        const val ACTION_PREFIX = "com.ytone.longcare.test.COUNTDOWN_ALARM_"
     }
 }

@@ -1,12 +1,7 @@
 package com.ytone.longcare.navigation
 
 import android.app.Activity
-import android.os.Build
-import android.webkit.WebResourceRequest
-import android.webkit.WebSettings
 import android.webkit.WebView
-import android.webkit.WebViewClient
-import androidx.core.net.toUri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -47,6 +42,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.ytone.longcare.R
+import com.ytone.longcare.platform.webview.SecureWebViewClient
+import com.ytone.longcare.platform.webview.WebPageState
+import com.ytone.longcare.platform.webview.applySecureSettings
+import com.ytone.longcare.platform.webview.loadOriginalWebUrl
 import com.ytone.longcare.privacy.AgreementUrls
 
 /**
@@ -165,12 +164,13 @@ fun PrivacyConsentDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun InAppWebViewDialog(
+internal fun InAppWebViewDialog(
     url: String,
     onDismiss: () -> Unit
 ) {
-    var isLoading by remember { mutableStateOf(true) }
+    var pageState by remember(url) { mutableStateOf<WebPageState>(WebPageState.Loading) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
+    var loadedOriginalUrl by remember { mutableStateOf<String?>(null) }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -213,57 +213,46 @@ private fun InAppWebViewDialog(
                     factory = { context ->
                         WebView(context).apply {
                             webViewRef = this
-                            webViewClient = object : WebViewClient() {
-                                override fun shouldOverrideUrlLoading(
-                                    view: WebView?, request: WebResourceRequest?
-                                ): Boolean {
-                                    return !isSafeHttpUrl(request?.url?.toString())
-                                }
-
-                                override fun onPageFinished(view: WebView?, url: String?) {
-                                    super.onPageFinished(view, url)
-                                    isLoading = false
-                                }
-                            }
-                            settings.apply {
-                                javaScriptEnabled = false
-                                domStorageEnabled = true
-                                javaScriptCanOpenWindowsAutomatically = false
-                                allowFileAccess = false
-                                allowContentAccess = false
-                                mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                    safeBrowsingEnabled = true
-                                }
-                                setSupportZoom(true)
-                                builtInZoomControls = true
-                                displayZoomControls = false
-                            }
-                            if (isSafeHttpUrl(url)) {
-                                loadUrl(url)
-                            } else {
-                                isLoading = false
-                            }
+                            webViewClient = SecureWebViewClient(onStateChanged = { pageState = it })
+                            applySecureSettings(javaScriptRequired = false)
+                            loadedOriginalUrl = url
+                            loadOriginalWebUrl(this, url) { pageState = it }
+                        }
+                    },
+                    update = { webView ->
+                        if (loadedOriginalUrl != url) {
+                            loadedOriginalUrl = url
+                            loadOriginalWebUrl(webView, url) { pageState = it }
                         }
                     },
                     modifier = Modifier.fillMaxSize()
                 )
 
-                if (isLoading) {
+                if (pageState is WebPageState.Loading) {
                     CircularProgressIndicator(
                         modifier = Modifier
                             .fillMaxSize()
-                            .wrapContentSize()
+                        .wrapContentSize()
                     )
+                }
+                if (pageState is WebPageState.Failed) {
+                    Column(
+                        modifier = Modifier.fillMaxSize().wrapContentSize(),
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                    ) {
+                        Text(text = stringResource(R.string.webview_load_failed))
+                        TextButton(
+                            onClick = {
+                                webViewRef?.let { webView ->
+                                    loadOriginalWebUrl(webView, url) { pageState = it }
+                                }
+                            },
+                        ) {
+                            Text(text = stringResource(R.string.webview_retry))
+                        }
+                    }
                 }
             }
         }
     }
-}
-
-private fun isSafeHttpUrl(url: String?): Boolean {
-    if (url.isNullOrBlank()) return false
-    val uri = runCatching { url.toUri() }.getOrNull() ?: return false
-    val scheme = uri.scheme?.lowercase()
-    return scheme == "http" || scheme == "https"
 }

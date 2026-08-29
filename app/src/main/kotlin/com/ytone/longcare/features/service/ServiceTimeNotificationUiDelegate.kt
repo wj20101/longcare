@@ -11,7 +11,7 @@ internal class ServiceTimeNotificationUiDelegate(
     private val context: Context,
     private val notificationManager: NotificationManager,
     private val channelId: String,
-    private val notificationIdSeed: Int,
+    private val taskCodec: ServiceTimeTaskCodec,
 ) {
     fun createNotificationChannel() {
         val channel = NotificationChannelCompat.Builder(
@@ -29,7 +29,10 @@ internal class ServiceTimeNotificationUiDelegate(
         NotificationManagerCompat.from(context).createNotificationChannel(channel)
     }
 
-    fun showServiceTimeEndNotification(orderId: Long, serviceName: String) {
+    fun showServiceTimeEndNotification(
+        taskIdentity: com.ytone.longcare.domain.userstorage.UserTaskIdentity,
+        serviceName: String,
+    ) {
         val notification = NotificationCompat.Builder(context, channelId)
             .setContentTitle(context.getString(R.string.service_time_notification_title))
             .setContentText(
@@ -42,16 +45,10 @@ internal class ServiceTimeNotificationUiDelegate(
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .build()
 
-        notificationManager.notify(buildNotificationId(orderId), notification)
+        notificationManager.notify(taskCodec.notificationId(taskIdentity), notification)
     }
 
-    private fun buildNotificationId(orderId: Long): Int {
-        val positiveHash = ((orderId xor (orderId ushr 32)).toInt() and INT_POSITIVE_MASK)
-        val range = Int.MAX_VALUE - notificationIdSeed
-        return notificationIdSeed + (positiveHash % range)
-    }
-
-    private companion object {
-        private const val INT_POSITIVE_MASK = 0x7fffffff
+    fun cancel(taskIdentity: com.ytone.longcare.domain.userstorage.UserTaskIdentity) {
+        notificationManager.cancel(taskCodec.notificationId(taskIdentity))
     }
 }

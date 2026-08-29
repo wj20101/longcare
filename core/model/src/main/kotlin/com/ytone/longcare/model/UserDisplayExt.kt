@@ -13,3 +13,11 @@ fun User.userIdentityDisplay(): UserIdentityDisplay {
         else -> UserIdentityDisplay.OTHER
     }
 }
+
+fun CurrentUser.userIdentityDisplay(): UserIdentityDisplay {
+    return when (userIdentity) {
+        1 -> UserIdentityDisplay.CAREGIVER
+        2 -> UserIdentityDisplay.SALES
+        else -> UserIdentityDisplay.OTHER
+    }
+}

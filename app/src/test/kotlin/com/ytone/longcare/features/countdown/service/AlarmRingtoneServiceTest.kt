@@ -5,7 +5,13 @@ import android.content.ComponentName
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.features.countdown.manager.CountdownIntentPurpose
+import com.ytone.longcare.features.countdown.manager.CountdownTaskCodec
+import com.ytone.longcare.domain.userstorage.SessionEpoch
+import com.ytone.longcare.domain.userstorage.StorageGeneration
+import com.ytone.longcare.domain.userstorage.UserStorageLease
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.UserScopeKey
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -23,6 +29,7 @@ class AlarmRingtoneServiceTest {
 
     private lateinit var context: Context
     private lateinit var serviceComponent: ComponentName
+    private val codec = CountdownTaskCodec()
 
     @Before
     fun setUp() {
@@ -39,17 +46,19 @@ class AlarmRingtoneServiceTest {
     @Test
     fun startRingtone_shouldStartExplicitRingtoneServiceIntent() {
         val orderKey = OrderKey(orderId = 12345L, planId = 12)
+        val payload = codec.currentPayload(
+            UserStorageLease(UserScopeKey(1, 2, 3), SessionEpoch(4), StorageGeneration(5)),
+            orderKey,
+            "护理服务",
+            6_000,
+        )
 
-        AlarmRingtoneService.startRingtone(context, orderKey, "护理服务")
+        AlarmRingtoneService.startRingtone(context, payload, codec)
 
         val startedIntent = shadowOf(context as Application).nextStartedService
         assertEquals(serviceComponent, startedIntent.component)
         assertEquals(AlarmRingtoneService.ACTION_START_RINGTONE, startedIntent.action)
-        assertEquals(orderKey, CountdownNotificationManager.extractOrderKey(startedIntent))
-        assertEquals(
-            "护理服务",
-            CountdownNotificationManager.extractServiceName(startedIntent, "")
-        )
+        assertEquals(payload, codec.fromIntent(startedIntent, CountdownIntentPurpose.RINGTONE_SERVICE))
     }
 
     @Test

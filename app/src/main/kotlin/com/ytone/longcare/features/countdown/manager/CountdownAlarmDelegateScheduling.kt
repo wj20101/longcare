@@ -21,23 +21,20 @@ internal data class CountdownScheduleMetadata(
 internal fun scheduleCountdownAlarmInSystem(
     context: Context,
     alarmManager: AlarmManager,
-    countdownAlarmRequestCode: Int,
-    countdownAlarmActivityRequestCode: Int,
-    actionCountdownAlarmPrefix: String,
-    orderKey: OrderKey,
-    serviceName: String,
-    triggerTimeMillis: Long,
+    codec: CountdownTaskCodec,
+    payload: CountdownTaskPayload,
     canUseExactAlarm: Boolean
 ): CountdownScheduleMetadata? {
-    val intent = Intent(context, CountdownAlarmReceiver::class.java).apply {
-        putExtra(CountdownNotificationManager.EXTRA_ORDER_KEY, orderKey)
-        putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, serviceName)
-        action = "$actionCountdownAlarmPrefix${orderKey.orderId}"
-    }
+    val identity = payload.execution.taskIdentity
+    val intent = codec.writeToIntent(
+        Intent(context, CountdownAlarmReceiver::class.java),
+        payload,
+        CountdownIntentPurpose.ALARM,
+    )
 
     val pendingIntent = PendingIntentCompat.getBroadcast(
         context,
-        countdownAlarmRequestCode,
+        codec.requestCode(identity, CountdownIntentPurpose.ALARM),
         intent,
         PendingIntent.FLAG_UPDATE_CURRENT,
         false
@@ -48,13 +45,15 @@ internal fun scheduleCountdownAlarmInSystem(
 
     val alarmActivityIntent = CountdownAlarmActivity.createIntent(
         context,
-        orderKey,
-        serviceName,
-        autoCloseEnabled = false
-    )
+        payload.orderKey,
+        payload.serviceName,
+        autoCloseEnabled = false,
+    ).let {
+        codec.writeToIntent(it, payload, CountdownIntentPurpose.ALARM_ACTIVITY)
+    }
     val alarmActivityPendingIntent = PendingIntentCompat.getActivity(
         context,
-        countdownAlarmActivityRequestCode,
+        codec.requestCode(identity, CountdownIntentPurpose.ALARM_ACTIVITY),
         alarmActivityIntent,
         PendingIntent.FLAG_UPDATE_CURRENT,
         false
@@ -68,17 +67,17 @@ internal fun scheduleCountdownAlarmInSystem(
     if (useAlarmClock) {
         try {
             val alarmClockInfo = AlarmManager.AlarmClockInfo(
-                triggerTimeMillis,
+                payload.triggerAtMillis,
                 alarmActivityPendingIntent
             )
             alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
-            klogI("✅ 通过AlarmClock设置倒计时闹钟(确保锁屏提醒): orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+            klogI("✅ 通过AlarmClock设置用户隔离倒计时闹钟: task=${identity.encode()}")
         } catch (exception: SecurityException) {
             useAlarmClock = false
             klogE("⚠️ 精确闹钟权限在调度时不可用，降级为 setAndAllowWhileIdle: ${exception.message}")
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
-                triggerTimeMillis,
+                payload.triggerAtMillis,
                 pendingIntent
             )
         }
@@ -90,22 +89,22 @@ internal fun scheduleCountdownAlarmInSystem(
         }
         alarmManager.setAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
-            triggerTimeMillis,
+            payload.triggerAtMillis,
             pendingIntent
         )
-        klogI("✅ 无精确闹钟能力，降级为 setAndAllowWhileIdle: orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+        klogI("✅ 无精确闹钟能力，降级为 setAndAllowWhileIdle: task=${identity.encode()}")
     } else {
         AlarmManagerCompat.setExactAndAllowWhileIdle(
             alarmManager,
             AlarmManager.RTC_WAKEUP,
-            triggerTimeMillis,
+            payload.triggerAtMillis,
             pendingIntent
         )
-        klogI("✅ 通过ExactAndAllowWhileIdle设置倒计时闹钟: orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
+        klogI("✅ 通过ExactAndAllowWhileIdle设置倒计时闹钟: task=${identity.encode()}")
     }
 
     return CountdownScheduleMetadata(
         useAlarmClock = useAlarmClock,
-        nextAlarmTime = alarmManager.nextAlarmClock?.triggerTime
+        nextAlarmTime = runCatching { alarmManager.nextAlarmClock?.triggerTime }.getOrNull(),
     )
 }

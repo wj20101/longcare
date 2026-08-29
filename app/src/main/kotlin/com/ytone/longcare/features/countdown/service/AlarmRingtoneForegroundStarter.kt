@@ -10,18 +10,17 @@ import androidx.core.content.ContextCompat
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
-import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.features.countdown.manager.CountdownTaskPayload
 
 internal class AlarmRingtoneForegroundStarter(
     private val service: AlarmRingtoneService,
     private val countdownNotificationManager: CountdownNotificationManager,
-    private val notificationId: Int
 ) {
-    fun startAsForeground(orderKey: OrderKey, serviceName: String) {
+    fun startAsForeground(payload: CountdownTaskPayload): Boolean {
         val notification = countdownNotificationManager.buildCountdownCompletionNotification(
-            orderKey,
-            serviceName
-        )
+            payload,
+        ) ?: return false
+        val notificationId = countdownNotificationManager.completionNotificationId(payload)
 
         val notificationManagerCompat = NotificationManagerCompat.from(service)
         val hasNotificationPermission = notificationManagerCompat.areNotificationsEnabled()
@@ -66,5 +65,6 @@ internal class AlarmRingtoneForegroundStarter(
         }
 
         logI("AlarmRingtoneService: ✅ 已升级为前台服务并刷新通知 (ID=$notificationId)")
+        return true
     }
 }

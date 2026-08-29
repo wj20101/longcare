@@ -10,7 +10,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
+import com.ytone.longcare.model.UserScopeKey
 import com.ytone.longcare.theme.LongCareTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -37,7 +38,7 @@ class TopHeaderAdaptationTest {
                 LongCareTheme {
                     Box(modifier = Modifier.width(328.dp)) {
                         TopHeader(
-                            user = User(userName = "Mock用户", userIdentity = 1),
+                            user = currentUser("Mock用户"),
                             companyName = "浙江省杭州市长护智慧养老服务科技有限公司"
                         )
                     }
@@ -76,7 +77,7 @@ class TopHeaderAdaptationTest {
                 LongCareTheme {
                     Box(modifier = Modifier.width(324.dp)) {
                         TopHeader(
-                            user = User(userName = "Android销售", userIdentity = 1),
+                            user = currentUser("Android销售"),
                             companyName = "庆平智慧养老测试",
                         )
                     }
@@ -111,7 +112,7 @@ class TopHeaderAdaptationTest {
                 LongCareTheme {
                     Box(modifier = Modifier.width(645.dp)) {
                         TopHeader(
-                            user = User(userName = "Android销售", userIdentity = 1),
+                            user = currentUser("Android销售"),
                             companyName = "庆平智慧养老测试",
                         )
                     }
@@ -133,4 +134,12 @@ class TopHeaderAdaptationTest {
         assertTrue(userNameBounds.right < avatarBounds.left)
         assertTrue(companyBounds.right < userNameBounds.left)
     }
+
+    private fun currentUser(name: String) = CurrentUser(
+        scopeKey = UserScopeKey(1, 2, 3),
+        userName = name,
+        headUrl = "",
+        userIdentity = 1,
+        gender = 0,
+    )
 }

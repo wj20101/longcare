@@ -9,4 +9,5 @@ dependencies {
     implementation(libs.moshi.kotlin)
     implementation(libs.kotlinx.serialization.json)
     ksp(libs.moshi.kotlin.codegen)
+    testImplementation(libs.junit)
 }

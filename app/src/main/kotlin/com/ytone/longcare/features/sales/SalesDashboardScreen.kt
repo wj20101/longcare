@@ -36,12 +36,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 import com.ytone.longcare.features.maindashboard.ui.TopHeader
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
 import com.ytone.longcare.model.UserLatentListModel
 
 @Composable
 internal fun SalesDashboardScreen(
-    user: User,
+    user: CurrentUser,
     companyName: String,
     customers: List<UserLatentListModel>,
     toDoCount: Int?,

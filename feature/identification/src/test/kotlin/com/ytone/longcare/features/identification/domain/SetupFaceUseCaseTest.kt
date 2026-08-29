@@ -3,7 +3,6 @@ package com.ytone.longcare.features.identification.domain
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -15,7 +14,7 @@ class SetupFaceUseCaseTest {
     val temporaryFolder = TemporaryFolder()
 
     @Test
-    fun `server success returns success and refreshes session`() = runBlocking {
+    fun `server success returns success without retaining a mutable session payload`() = runBlocking {
         val gateway = FakeSetupFaceGateway()
         val useCase = SetupFaceUseCase(gateway)
 
@@ -27,10 +26,9 @@ class SetupFaceUseCaseTest {
 
         assertTrue(result is SetupFaceResult.Success)
         assertEquals(
-            listOf("uploadFaceImage", "setFaceOnServer", "refreshCurrentUserSession"),
+            listOf("uploadFaceImage", "setFaceOnServer"),
             gateway.callOrder,
         )
-        assertTrue(gateway.sessionRefreshed)
     }
 
     @Test
@@ -50,7 +48,6 @@ class SetupFaceUseCaseTest {
         result as SetupFaceResult.Error
         assertEquals(SetupFaceFailure.ImageUpload("图片上传失败"), result.failure)
         assertEquals(listOf("uploadFaceImage"), gateway.callOrder)
-        assertFalse(gateway.sessionRefreshed)
     }
 
     @Test
@@ -70,7 +67,6 @@ class SetupFaceUseCaseTest {
         result as SetupFaceResult.Error
         assertEquals(SetupFaceFailure.ServerRejected("服务器更新失败"), result.failure)
         assertEquals(listOf("uploadFaceImage", "setFaceOnServer"), gateway.callOrder)
-        assertFalse(gateway.sessionRefreshed)
     }
 
     private class FakeSetupFaceGateway(
@@ -80,8 +76,6 @@ class SetupFaceUseCaseTest {
         private val serverResult: SetupFaceServerResult = SetupFaceServerResult.Success,
     ) : SetupFaceGateway {
         val callOrder = mutableListOf<String>()
-        var sessionRefreshed = false
-
         override suspend fun uploadFaceImage(imageFile: File): SetupFaceUploadResult {
             callOrder.add("uploadFaceImage")
             return uploadResult
@@ -93,11 +87,6 @@ class SetupFaceUseCaseTest {
         ): SetupFaceServerResult {
             callOrder.add("setFaceOnServer")
             return serverResult
-        }
-
-        override suspend fun refreshCurrentUserSession() {
-            callOrder.add("refreshCurrentUserSession")
-            sessionRefreshed = true
         }
     }
 }

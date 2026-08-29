@@ -10,7 +10,8 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ytone.longcare.features.profile.api.ProfileActions
 import com.ytone.longcare.model.NurseServiceTimeModel
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
+import com.ytone.longcare.model.UserScopeKey
 import com.ytone.longcare.theme.LongCareTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -30,9 +31,12 @@ class ProfileScreenComponentsAdaptationTest {
                 Box(modifier = Modifier.width(328.dp)) {
                     Column {
                         UserInfoSection(
-                            user = User(
+                            user = CurrentUser(
+                                scopeKey = UserScopeKey(1, 2, 3),
                                 userName = "Mock用户-这是一个用于窄屏适配验证的超长用户名",
-                                userIdentity = 1
+                                headUrl = "",
+                                userIdentity = 1,
+                                gender = 0,
                             )
                         )
                         StatsCard(

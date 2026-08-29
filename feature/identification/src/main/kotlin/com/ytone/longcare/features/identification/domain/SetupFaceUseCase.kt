@@ -39,7 +39,6 @@ class SetupFaceUseCase @Inject constructor(
 
         return when (val setFaceResult = gateway.setFaceOnServer(base64Image, uploadedKey)) {
             SetupFaceServerResult.Success -> {
-                gateway.refreshCurrentUserSession()
                 SetupFaceResult.Success
             }
 

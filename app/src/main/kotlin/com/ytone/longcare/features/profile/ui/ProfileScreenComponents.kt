@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.features.profile.api.ProfileActions
 import com.ytone.longcare.model.NurseServiceTimeModel
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
 import com.ytone.longcare.model.userIdentityDisplay
 import com.ytone.longcare.platform.text.labelRes
 import com.ytone.longcare.ui.components.UserAvatar
@@ -40,7 +40,7 @@ import com.ytone.longcare.R
 private val StatsCardRowMinHeight = 88.dp
 
 @Composable
-fun UserInfoSection(user: User) {
+fun UserInfoSection(user: CurrentUser) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically

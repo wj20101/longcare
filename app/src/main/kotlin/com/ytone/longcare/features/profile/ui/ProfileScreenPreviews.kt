@@ -5,22 +5,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.ytone.longcare.features.profile.api.ProfileActions
 import com.ytone.longcare.model.NurseServiceTimeModel
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
+import com.ytone.longcare.model.UserScopeKey
 import com.ytone.longcare.theme.LongCareTheme
 
 @Preview
 @Composable
 fun UserInfoSectionPreview() {
-    val user = User(
-        companyId = 1,
-        accountId = 1,
-        userId = 1,
+    val user = CurrentUser(
+        scopeKey = UserScopeKey(companyId = 1, accountId = 1, userId = 1),
         userName = "张三",
         headUrl = "https://example.com/avatar.jpg",
         userIdentity = 1,
-        identityCardNumber = "123456789012345678",
         gender = 1,
-        token = "test_token"
     )
     LongCareTheme {
         Surface {

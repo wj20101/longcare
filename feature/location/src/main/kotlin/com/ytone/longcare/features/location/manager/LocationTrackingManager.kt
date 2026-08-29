@@ -3,6 +3,8 @@ package com.ytone.longcare.features.location.manager
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.repository.SessionState
+import com.ytone.longcare.domain.userstorage.SessionRuntimeCleanupHook
+import com.ytone.longcare.domain.userstorage.SessionRuntimeIdentity
 import com.ytone.longcare.features.location.reporting.LocationReportingManager
 import com.ytone.longcare.model.OrderKey
 import javax.inject.Inject
@@ -17,7 +19,7 @@ import javax.inject.Singleton
 class LocationTrackingManager @Inject constructor(
     private val locationFacade: LocationFacade,
     private val locationReportingManager: LocationReportingManager,
-) {
+) : SessionRuntimeCleanupHook {
     private val lifecycleLock = Any()
     private var sessionIdentity: SessionIdentity? = null
 
@@ -65,6 +67,10 @@ class LocationTrackingManager @Inject constructor(
                 }
             }
         }
+    }
+
+    override suspend fun cleanup(identity: SessionRuntimeIdentity) {
+        onSessionStateChanged(SessionState.LoggedOut)
     }
 
     private fun startTrackingLocked(orderKey: OrderKey) {

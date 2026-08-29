@@ -11,7 +11,7 @@ interface OrderImageRepository {
         imageType: ImageType,
         localUri: String,
         localPath: String? = null
-    ): Long
+    ): OrderImageEntity
     suspend fun markAsSuccess(imageId: Long, cloudKey: String)
     suspend fun deleteImage(imageId: Long)
     suspend fun deleteImagesByOrderId(orderKey: OrderKey)

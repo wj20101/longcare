@@ -16,7 +16,7 @@ class PrivacyConsentManager @Inject constructor(
     @param:ApplicationContext private val context: Context
 ) {
     private val prefs: SharedPreferences = context.getSharedPreferences(
-        PREFS_NAME, Context.MODE_PRIVATE
+        DeviceRuntimeState.PREFERENCES_NAME, Context.MODE_PRIVATE
     )
 
     @Volatile
@@ -28,7 +28,7 @@ class PrivacyConsentManager @Inject constructor(
     val isPrivacyConsented: Boolean
         get() {
             cachedConsent?.let { return it }
-            return prefs.getBoolean(KEY_PRIVACY_CONSENTED, false).also {
+            return prefs.getBoolean(DeviceRuntimeState.PRIVACY_CONSENT_KEY, false).also {
                 cachedConsent = it
             }
         }
@@ -39,7 +39,9 @@ class PrivacyConsentManager @Inject constructor(
      */
     fun markConsented() {
         cachedConsent = true
-        prefs.edit(commit = true) { putBoolean(KEY_PRIVACY_CONSENTED, true) }
+        prefs.edit(commit = true) {
+            putBoolean(DeviceRuntimeState.PRIVACY_CONSENT_KEY, true)
+        }
     }
 
     /**
@@ -47,11 +49,6 @@ class PrivacyConsentManager @Inject constructor(
      */
     fun resetConsent() {
         cachedConsent = null
-        prefs.edit(commit = true) { remove(KEY_PRIVACY_CONSENTED) }
-    }
-
-    private companion object {
-        const val PREFS_NAME = "privacy_consent"
-        const val KEY_PRIVACY_CONSENTED = "is_consented"
+        prefs.edit(commit = true) { remove(DeviceRuntimeState.PRIVACY_CONSENT_KEY) }
     }
 }

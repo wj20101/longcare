@@ -14,6 +14,10 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.features.countdown.manager.CountdownIntentPurpose
+import com.ytone.longcare.features.countdown.manager.CountdownTaskCodec
+import com.ytone.longcare.features.countdown.manager.CountdownTaskExecutionGate
+import com.ytone.longcare.features.countdown.manager.CountdownTaskPayload
 import com.ytone.longcare.features.countdown.receiver.DismissAlarmReceiver
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneActivityVisibilityTracker
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
@@ -31,10 +35,17 @@ class CountdownAlarmActivity : AppCompatActivity() {
     
     @Inject
     lateinit var countdownNotificationManager: CountdownNotificationManager
+
+    @Inject
+    lateinit var countdownTaskCodec: CountdownTaskCodec
+
+    @Inject
+    lateinit var countdownTaskExecutionGate: CountdownTaskExecutionGate
     
     private var autoCloseJob: Job? = null
     private var stopAlarmReceiverRegistered = false
     private var alarmCleanedUp = false
+    private var activePayload: CountdownTaskPayload? = null
     
     companion object {
         private const val TAG = "CountdownAlarmActivity"
@@ -56,12 +67,26 @@ class CountdownAlarmActivity : AppCompatActivity() {
     
     private val stopAlarmReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
+            val payload = countdownTaskCodec.fromIntent(intent, CountdownIntentPurpose.DISMISS)
+                ?: return
+            if (payload.execution != activePayload?.execution) return
+            if (!countdownTaskExecutionGate.isCurrent(payload)) return
             stopAlarmAndFinish()
         }
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val payload = countdownTaskCodec.fromIntent(
+            intent,
+            CountdownIntentPurpose.ALARM_ACTIVITY,
+        )
+        if (payload == null || !countdownTaskExecutionGate.isCurrent(payload)) {
+            finish()
+            return
+        }
+        activePayload = payload
         
         logI("========================================")
         logI("✅ CountdownAlarmActivity onCreate 被调用")
@@ -90,13 +115,8 @@ class CountdownAlarmActivity : AppCompatActivity() {
         
         logI("Window flags 已设置")
         
-        val orderKey = CountdownNotificationManager.extractOrderKey(intent)
-        
-        val orderId = orderKey.orderId.toString()
-        val serviceName = CountdownNotificationManager.extractServiceName(
-            intent,
-            getString(R.string.countdown_alarm_default_service),
-        )
+        val orderId = payload.orderKey.orderId.toString()
+        val serviceName = payload.serviceName
         val autoCloseEnabled = intent.getBooleanExtra(EXTRA_AUTO_CLOSE_ENABLED, true)
         
         // 注册停止响铃广播接收器
@@ -160,7 +180,7 @@ class CountdownAlarmActivity : AppCompatActivity() {
 
         // 停止响铃服务并清理通知
         AlarmRingtoneService.stopRingtone(this)
-        countdownNotificationManager.cancelCountdownCompletionNotification()
+        activePayload?.let(countdownNotificationManager::dismiss)
     }
     
     override fun onDestroy() {

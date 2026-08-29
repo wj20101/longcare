@@ -197,6 +197,14 @@ run_step() {
   echo
 }
 
+run_architecture_checks() {
+  local project_root="$1"
+
+  bash "${ROOT_DIR}/scripts/quality/test_legacy_feature_file_allowlist.sh" || return $?
+  bash "${ROOT_DIR}/scripts/quality/test_user_storage_boundaries.sh" || return $?
+  bash "${ROOT_DIR}/scripts/quality/verify_architecture_boundaries.sh" "${project_root}"
+}
+
 run_local_fast() {
   local new_files_guard_mode=""
   if [[ "${MODE}" == "changed-only" && "${CHANGED_ONLY_FALLBACK_ALL}" != "true" ]]; then
@@ -214,7 +222,7 @@ run_local_fast() {
 
       run_step \
         "architecture-boundaries" \
-        bash scripts/quality/verify_architecture_boundaries.sh "${ROOT_DIR}"
+        run_architecture_checks "${ROOT_DIR}"
 
       run_step \
         "module-dependency-whitelist" \
@@ -226,10 +234,10 @@ run_local_fast() {
       return 0
     fi
 
-    if has_changed_paths '^(app/src/(main|debug|test)/kotlin/com/ytone/longcare/|core/|feature/|scripts/quality/(verify_architecture_boundaries\.sh|legacy_feature_files_allowlist\.txt|architecture_legacy_imports_allowlist\.txt|architecture_legacy_import_budget\.txt))'; then
+    if has_changed_paths '^(app/src/(main|debug|test)/kotlin/com/ytone/longcare/|core/|feature/|scripts/quality/(preflight_local\.sh|verify_architecture_boundaries\.sh|verify_legacy_feature_file_allowlist\.sh|test_legacy_feature_file_allowlist\.sh|verify_user_storage_boundaries\.sh|test_user_storage_boundaries\.sh|legacy_feature_files_allowlist\.txt|architecture_legacy_imports_allowlist\.txt|architecture_legacy_import_budget\.txt))'; then
       run_step \
         "architecture-boundaries" \
-        bash scripts/quality/verify_architecture_boundaries.sh "${ROOT_DIR}"
+        run_architecture_checks "${ROOT_DIR}"
     else
       local detect_status=$?
       if [[ "${detect_status}" -eq 1 ]]; then
@@ -278,7 +286,7 @@ run_local_fast() {
 
   run_step \
     "architecture-boundaries" \
-    bash scripts/quality/verify_architecture_boundaries.sh "${ROOT_DIR}"
+    run_architecture_checks "${ROOT_DIR}"
 
   run_step \
     "module-dependency-whitelist" \

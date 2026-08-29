@@ -3,13 +3,13 @@ package com.ytone.longcare.features.identification.vm
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
 
 internal suspend fun generateIdentificationWatermarkData(
     address: String,
     orderKey: OrderKey,
     orderDetailRepository: OrderDetailRepository,
-    resolveCurrentUser: suspend () -> User?,
+    resolveCurrentUser: suspend () -> CurrentUser?,
     unknownElderName: String,
     unknownCaregiverName: String,
     watermarkTitle: String,

@@ -7,6 +7,7 @@ import com.ytone.longcare.common.faceauth.FaceSdkEvent
 import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
+import com.ytone.longcare.domain.faceauth.FaceSetupRequestRepository
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.repository.OrderDetailRepository
@@ -20,7 +21,7 @@ import com.ytone.longcare.features.identification.domain.VerifyServicePersonUseC
 import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker
 import com.ytone.longcare.features.identification.tracker.FaceVerificationEventTracker.EventType
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
 import com.ytone.longcare.model.WatermarkData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -33,6 +34,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class IdentificationViewModel @Inject constructor(
     private val faceVerificationConfigProvider: FaceVerificationConfigProvider,
+    private val faceSetupRequestRepository: FaceSetupRequestRepository,
     private val userSessionRepository: UserSessionRepository,
     private val unifiedOrderRepository: OrderDetailRepository,
     private val faceDataSource: IdentificationFaceDataSource,
@@ -45,10 +47,8 @@ class IdentificationViewModel @Inject constructor(
     val identificationState: StateFlow<IdentificationState> = _identificationState.asStateFlow()
     private val _faceVerificationState = MutableStateFlow<FaceVerificationState>(FaceVerificationState.Idle)
     val faceVerificationState: StateFlow<FaceVerificationState> = _faceVerificationState.asStateFlow()
-
     private val _currentVerificationType = MutableStateFlow<VerificationType?>(null)
     val currentVerificationType: StateFlow<VerificationType?> = _currentVerificationType.asStateFlow()
-
     private val _photoUploadState = MutableStateFlow<PhotoUploadState>(PhotoUploadState.Initial)
     val photoUploadState: StateFlow<PhotoUploadState> = _photoUploadState.asStateFlow()
 
@@ -212,7 +212,7 @@ class IdentificationViewModel @Inject constructor(
         )
     }
 
-    private suspend fun getCurrentUser(): User? =
+    private suspend fun getCurrentUser(): CurrentUser? =
         (userSessionRepository.sessionState.value as? SessionState.LoggedIn)?.user
 
     private fun clearFaceVerificationState() {
@@ -268,7 +268,7 @@ class IdentificationViewModel @Inject constructor(
             scope = viewModelScope,
             imagePath = imagePath,
             faceDataSource = faceDataSource,
-            resolveCurrentUser = ::getCurrentUser,
+            faceSetupRequestRepository = faceSetupRequestRepository,
             setFaceSetupState = { state -> _faceSetupState.value = state },
             setFaceVerificationState = { state -> _faceVerificationState.value = state },
             setFaceSetupError = ::setFaceSetupError,

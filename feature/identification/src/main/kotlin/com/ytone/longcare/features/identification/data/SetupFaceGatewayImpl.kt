@@ -6,8 +6,6 @@ import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.domain.identification.IdentificationRepository
-import com.ytone.longcare.domain.repository.SessionState
-import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.identification.domain.SetupFaceGateway
 import com.ytone.longcare.features.identification.domain.SetupFaceServerResult
 import com.ytone.longcare.features.identification.domain.SetupFaceUploadResult
@@ -21,7 +19,6 @@ class SetupFaceGatewayImpl @Inject constructor(
     @param:ApplicationContext private val applicationContext: Context,
     private val cosRepository: CosRepository,
     private val identificationRepository: IdentificationRepository,
-    private val userSessionRepository: UserSessionRepository,
 ) : SetupFaceGateway {
 
     override suspend fun uploadFaceImage(imageFile: File): SetupFaceUploadResult {
@@ -56,13 +53,6 @@ class SetupFaceGatewayImpl @Inject constructor(
                 setFaceResult.message.takeIf(String::isNotBlank),
             )
             is ApiResult.Exception -> SetupFaceServerResult.NetworkError
-        }
-    }
-
-    override suspend fun refreshCurrentUserSession() {
-        val sessionState = userSessionRepository.sessionState.value
-        if (sessionState is SessionState.LoggedIn) {
-            userSessionRepository.updateUser(sessionState.user)
         }
     }
 }

@@ -5,10 +5,13 @@ import android.content.Context
 import android.content.Intent
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.features.countdown.manager.CountdownIntentPurpose
+import com.ytone.longcare.features.countdown.manager.CountdownTaskCodec
+import com.ytone.longcare.features.countdown.manager.CountdownTaskExecutionGate
+import com.ytone.longcare.features.countdown.manager.CountdownTaskPayload
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import com.ytone.longcare.model.OrderKey
 
 /**
  * 关闭响铃广播接收器
@@ -19,9 +22,23 @@ class DismissAlarmReceiver : BroadcastReceiver() {
     
     @Inject
     lateinit var countdownNotificationManager: CountdownNotificationManager
+
+    @Inject
+    lateinit var taskCodec: CountdownTaskCodec
+
+    @Inject
+    lateinit var executionGate: CountdownTaskExecutionGate
     
     override fun onReceive(context: Context, intent: Intent) {
-        DismissAlarmReceiverDelegate.handle(context, intent, countdownNotificationManager)
+        val payload = taskCodec.fromIntent(intent, CountdownIntentPurpose.DISMISS) ?: return
+        if (!executionGate.isCurrent(payload)) return
+        DismissAlarmReceiverDelegate.handle(
+            context,
+            payload,
+            countdownNotificationManager,
+            taskCodec,
+            executionGate,
+        )
     }
     
     companion object {
@@ -33,32 +50,30 @@ internal object DismissAlarmReceiverDelegate {
 
     fun handle(
         context: Context,
-        intent: Intent,
-        countdownNotificationManager: CountdownNotificationManager
+        payload: CountdownTaskPayload,
+        countdownNotificationManager: CountdownNotificationManager,
+        taskCodec: CountdownTaskCodec,
+        executionGate: CountdownTaskExecutionGate,
     ) {
+        if (!executionGate.isCurrent(payload)) return
         logI("DismissAlarmReceiver: 收到关闭响铃广播")
 
-        val orderKey =
-            CountdownNotificationManager.extractOrderKey(
-                intent,
-                defaultValue = OrderKey(orderId = 0L, planId = 0)
-            )
-
+        val orderKey = payload.orderKey
         val orderId = orderKey.orderId
-        val serviceName = CountdownNotificationManager.extractServiceName(intent, "")
+        val serviceName = payload.serviceName
 
         // 停止响铃服务
         AlarmRingtoneService.stopRingtone(context)
 
         // 取消通知
-        countdownNotificationManager.cancelCountdownCompletionNotification()
+        countdownNotificationManager.dismiss(payload)
 
         // 发送广播通知其他组件停止响铃
-        val stopAlarmIntent = Intent(DismissAlarmReceiver.ACTION_STOP_ALARM).apply {
-            setPackage(context.packageName)
-            putExtra(CountdownNotificationManager.EXTRA_ORDER_KEY, orderKey)
-            putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, serviceName)
-        }
+        val stopAlarmIntent = taskCodec.writeToIntent(
+            Intent(DismissAlarmReceiver.ACTION_STOP_ALARM).setPackage(context.packageName),
+            payload,
+            CountdownIntentPurpose.DISMISS,
+        )
         context.sendBroadcast(stopAlarmIntent)
 
         logI("DismissAlarmReceiver: 响铃已关闭，orderId=$orderId, serviceName=$serviceName")

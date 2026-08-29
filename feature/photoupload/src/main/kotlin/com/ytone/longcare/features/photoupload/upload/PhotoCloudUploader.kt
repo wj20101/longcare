@@ -3,6 +3,7 @@ package com.ytone.longcare.features.photoupload.upload
 import android.content.Context
 import android.net.Uri
 import com.ytone.longcare.common.constants.CosConstants
+import com.ytone.longcare.common.image.ManagedImageFileStore
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.domain.cos.repository.CosRepository
 import dagger.Binds
@@ -30,16 +31,18 @@ interface PhotoCloudUploader {
 class DefaultPhotoCloudUploader @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val cosRepository: CosRepository,
+    private val managedImageFileStore: ManagedImageFileStore,
 ) : PhotoCloudUploader {
     override suspend fun upload(
         uri: Uri,
         folderType: Int,
     ): UploadedPhoto {
+        val currentFile = managedImageFileStore.requireCurrentUserFile(uri)
         val result =
             cosRepository.uploadFile(
                 CosUtils.createUploadParams(
                     context = context,
-                    fileUri = uri,
+                    fileUri = Uri.fromFile(currentFile),
                     folderType = folderType,
                 )
             )

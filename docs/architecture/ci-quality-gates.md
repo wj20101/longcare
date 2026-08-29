@@ -1,6 +1,6 @@
 # CI、质量门禁与发布
 
-最后核对：2026-08-27
+最后核对：2026-08-29
 
 本文描述当前脚本和 GitHub Actions 的实际行为。门禁名称/Owner 元数据以 `scripts/quality/quality_gate_registry.json` 为准；是否真正执行则以对应 workflow 和 runner 脚本为准。
 
@@ -27,7 +27,8 @@
 `local-fast` 当前包含：
 
 - `check_new_files_guard.sh`
-- `verify_architecture_boundaries.sh`
+- `test_legacy_feature_file_allowlist.sh` 与 `test_user_storage_boundaries.sh` 的正反 fixture
+- `verify_architecture_boundaries.sh`（内部执行 legacy 精确快照、用户存储/后台身份和 WebView 原生 bridge 守卫）
 - `verify_module_dependency_whitelist.sh`
 - `verify_module_api_visibility.sh`
 
@@ -72,7 +73,7 @@ bash scripts/quality/verify_release_validation_entry.sh .
 | `verify_no_empty_catch_blocks.sh` | 禁止空 catch |
 | `verify_target_sdk_upgrade.sh` | targetSdk 与 workflow smoke 约束同步 |
 | `verify_exact_alarm_permission_config.sh` | 精确闹钟 Manifest 策略 |
-| `verify_architecture_boundaries.sh` | 分层、legacy freeze、ViewModel 和代码规模规则 |
+| `verify_architecture_boundaries.sh` | 分层、legacy freeze、用户存储/任务身份、WebView bridge、ViewModel 和代码规模规则 |
 | `verify_module_dependency_whitelist.sh` | Gradle 项目模块依赖边 |
 | `verify_module_api_visibility.sh` | 跨模块公共 API 边界 |
 | `verify_lint_warning_allowlist.sh` | Lint 报告新增 warning 和 waiver 漂移 |

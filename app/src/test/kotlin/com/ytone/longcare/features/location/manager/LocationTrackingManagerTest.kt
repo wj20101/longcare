@@ -3,9 +3,12 @@ package com.ytone.longcare.features.location.manager
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.repository.SessionState
+import com.ytone.longcare.domain.userstorage.SessionEpoch
+import com.ytone.longcare.domain.userstorage.SessionRuntimeIdentity
 import com.ytone.longcare.features.location.reporting.LocationReportingManager
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
+import com.ytone.longcare.model.UserScopeKey
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -14,6 +17,7 @@ import io.mockk.verify
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -92,6 +96,25 @@ class LocationTrackingManagerTest {
     }
 
     @Test
+    fun `runtime cleanup stops location and prevents an expired session restart`() = runTest {
+        val manager = createManager()
+        val order = OrderKey(100L)
+        manager.onSessionStateChanged(loggedIn(accountId = 2))
+        manager.startTracking(order)
+
+        manager.cleanup(
+            SessionRuntimeIdentity(
+                scopeKey = UserScopeKey(companyId = 1, accountId = 2, userId = 2),
+                sessionEpoch = SessionEpoch(10),
+            )
+        )
+        manager.startTracking(OrderKey(200L))
+
+        verify(exactly = 1) { reportingManager.startReporting(order) }
+        verify(exactly = 1) { reportingManager.stopReporting() }
+    }
+
+    @Test
     fun `logout is serialized after an in progress start and wins final state`() {
         val startEntered = CountDownLatch(1)
         val allowStartToFinish = CountDownLatch(1)
@@ -126,6 +149,12 @@ class LocationTrackingManagerTest {
     )
 
     private fun loggedIn(accountId: Int) = SessionState.LoggedIn(
-        User(companyId = 1, accountId = accountId, userId = accountId),
+        CurrentUser(
+            scopeKey = UserScopeKey(companyId = 1, accountId = accountId, userId = accountId),
+            userName = "user-$accountId",
+            headUrl = "",
+            userIdentity = 1,
+            gender = 0,
+        ),
     )
 }

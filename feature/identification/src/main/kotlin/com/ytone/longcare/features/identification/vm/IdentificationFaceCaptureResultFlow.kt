@@ -2,9 +2,9 @@ package com.ytone.longcare.features.identification.vm
 
 import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
+import com.ytone.longcare.domain.faceauth.FaceSetupRequestRepository
 import com.ytone.longcare.feature.identification.R
 import com.ytone.longcare.features.identification.data.IdentificationFaceDataSource
-import com.ytone.longcare.model.User
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -13,7 +13,7 @@ internal fun launchFaceCaptureResultHandling(
     scope: CoroutineScope,
     imagePath: String,
     faceDataSource: IdentificationFaceDataSource,
-    resolveCurrentUser: suspend () -> User?,
+    faceSetupRequestRepository: FaceSetupRequestRepository,
     setFaceSetupState: (FaceSetupState) -> Unit,
     setFaceVerificationState: (FaceVerificationState) -> Unit,
     setFaceSetupError: (String) -> Unit,
@@ -30,7 +30,7 @@ internal fun launchFaceCaptureResultHandling(
             val preparation = prepareFaceSetupVerificationInput(
                 imagePath = imagePath,
                 faceDataSource = faceDataSource,
-                currentUser = resolveCurrentUser()
+                faceSetupRequestRepository = faceSetupRequestRepository,
             )
             if (preparation is FaceSetupPreparation.Error) {
                 setFaceSetupError(textResolver.resolve(preparation.failure))

@@ -8,4 +8,5 @@ fun projectDependency(path: String) = dependencies.project(path)
 dependencies {
     implementation(projectDependency(":core:model"))
     implementation(libs.kotlinx.coroutines.core)
+    testImplementation(libs.junit)
 }

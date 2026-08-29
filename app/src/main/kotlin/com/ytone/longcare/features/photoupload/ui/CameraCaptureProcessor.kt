@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.camera.core.ImageCapture
 import androidx.camera.view.LifecycleCameraController
 import com.ytone.longcare.R
+import com.ytone.longcare.common.image.ManagedImageFile
 import com.ytone.longcare.common.image.WatermarkedCaptureRequest
 import com.ytone.longcare.features.photoupload.tracker.CameraEventTracker
 import java.io.File
@@ -19,6 +20,7 @@ internal fun takePhoto(
     watermarkView: View,
     isFrontCamera: Boolean,
     scope: CoroutineScope,
+    createTemporaryCaptureFile: () -> ManagedImageFile,
     processCapturedImage: suspend (WatermarkedCaptureRequest) -> File,
     onImageCaptured: (File) -> Unit,
     onError: () -> Unit
@@ -61,8 +63,24 @@ internal fun takePhoto(
     val startPx = (13 * density)
     val bottomPx = (14 * density)
 
-    val tempFile = File(context.cacheDir, "temp_capture_${System.currentTimeMillis()}.jpg")
-    val outputOptions = ImageCapture.OutputFileOptions.Builder(tempFile).build()
+    val temporaryCapture = try {
+        createTemporaryCaptureFile()
+    } catch (error: Exception) {
+        if (!watermarkBitmap.isRecycled) watermarkBitmap.recycle()
+        CameraEventTracker.trackError(
+            CameraEventTracker.EventType.CAPTURE_ERROR,
+            error,
+            mapOf("reason" to "当前用户受管拍摄目录不可用"),
+        )
+        Toast.makeText(
+            context,
+            context.getString(R.string.camera_capture_failed),
+            Toast.LENGTH_SHORT,
+        ).show()
+        onError()
+        return
+    }
+    val outputOptions = ImageCapture.OutputFileOptions.Builder(temporaryCapture.file).build()
 
     try {
         cameraController.takePicture(
@@ -71,7 +89,7 @@ internal fun takePhoto(
             createImageSavedCallback(
                 context = context,
                 scope = scope,
-                tempFile = tempFile,
+                temporaryCapture = temporaryCapture,
                 watermarkBitmap = watermarkBitmap,
                 startPx = startPx,
                 bottomPx = bottomPx,
@@ -82,7 +100,7 @@ internal fun takePhoto(
             )
         )
     } catch (e: Exception) {
-        cleanupCaptureArtifacts(tempFile, watermarkBitmap)
+        cleanupCaptureArtifacts(temporaryCapture, watermarkBitmap)
         CameraEventTracker.trackError(
             CameraEventTracker.EventType.CAPTURE_ERROR,
             e,

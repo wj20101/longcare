@@ -8,6 +8,8 @@ import com.ytone.longcare.domain.profile.ProfileRepository
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.model.NurseServiceTimeModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class ProfileRepositoryImpl @Inject constructor(
@@ -20,17 +22,32 @@ class ProfileRepositoryImpl @Inject constructor(
 
     override suspend fun logout(): ApiResult<Unit> {
         val userId = userSessionRepository.sessionState.value.user?.userId
-        val result = apiService.logout()
-        if (userId != null) {
-            try {
-                faceCacheCleaner.clearUserFaceArtifacts(userId)
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (throwable: Throwable) {
-                logE("Failed to clear face cache for user $userId", throwable = throwable)
+        return try {
+            apiService.logout()
+        } finally {
+            withContext(NonCancellable) {
+                var cancellation: CancellationException? = null
+                if (userId != null) {
+                    try {
+                        faceCacheCleaner.clearUserFaceArtifacts(userId)
+                    } catch (error: CancellationException) {
+                        cancellation = error
+                    } catch (error: Exception) {
+                        logE("Failed to clear face cache for current user", throwable = error)
+                    }
+                }
+                try {
+                    userSessionRepository.logout()
+                } catch (error: CancellationException) {
+                    cancellation?.addSuppressed(error)
+                    if (cancellation == null) {
+                        cancellation = error
+                    }
+                } catch (error: Exception) {
+                    logE("Failed to complete local session logout", throwable = error)
+                }
+                cancellation?.let { throw it }
             }
         }
-        userSessionRepository.logout()
-        return result
     }
 }

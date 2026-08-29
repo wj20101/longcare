@@ -55,16 +55,7 @@ object ImageProcessingPolicies {
         )
 }
 
-enum class ManagedImagePurpose(
-    internal val directoryName: String,
-    internal val useExternalPicturesDirectory: Boolean,
-) {
-    WATERMARKED_PHOTO(
-        directoryName = "captured_photos",
-        useExternalPicturesDirectory = true,
-    ),
-    MANUAL_FACE_CAPTURE(
-        directoryName = "face_captures",
-        useExternalPicturesDirectory = false,
-    ),
+enum class ManagedImagePurpose(internal val storagePurpose: String) {
+    WATERMARKED_PHOTO(storagePurpose = "photo_upload"),
+    MANUAL_FACE_CAPTURE(storagePurpose = "face"),
 }

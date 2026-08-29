@@ -58,7 +58,7 @@ class DefaultSessionInvalidationHandler @Inject constructor(
     override fun invalidate(reason: String) {
         val invalidation = synchronized(lock) {
             val user = userSessionRepository.sessionState.value.user ?: return
-            val sessionKey = "${user.userId}:${user.token}"
+            val sessionKey = user.scopeKey.namespaceId().value
             if (invalidatedSessionKey == sessionKey) {
                 return
             }

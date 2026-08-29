@@ -3,13 +3,14 @@ package com.ytone.longcare.features.service
 import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.*
-import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
-import com.ytone.longcare.features.service.storage.PendingOrdersStorage
+import com.ytone.longcare.domain.userstorage.UserStorageLeaseAccess
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * 服务时间结束通知Worker
@@ -20,7 +21,8 @@ class ServiceTimeEndWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val serviceTimeNotificationManager: ServiceTimeNotificationManager,
-    private val pendingOrdersStorage: PendingOrdersStorage,
+    private val taskCodec: ServiceTimeTaskCodec,
+    private val executionGate: ServiceTimeTaskExecutionGate,
 ) : CoroutineWorker(context, workerParams) {
 
     companion object {
@@ -31,26 +33,20 @@ class ServiceTimeEndWorker @AssistedInject constructor(
         return try {
             logI("服务时间结束Worker开始执行")
             
-            // 获取输入数据
-            val orderId = inputData.getLong(ServiceTimeNotificationManager.EXTRA_ORDER_ID, -1L)
-            val serviceName =
-                inputData.getString(ServiceTimeNotificationManager.EXTRA_SERVICE_NAME)
-                    ?: applicationContext.getString(R.string.countdown_alarm_default_service)
-            
-            if (orderId == -1L) {
-                logE("Worker缺少订单ID，任务失败")
+            val payload = taskCodec.fromWorkData(inputData)
+            if (payload == null) {
+                logE("Worker缺少或携带无效的用户任务身份，任务失败")
                 return Result.failure()
             }
 
-            logI("执行服务时间结束通知: orderId=$orderId, serviceName=$serviceName")
-            
-            // 显示通知
-            serviceTimeNotificationManager.showServiceTimeEndNotification(orderId, serviceName)
-            
-            // 通知已触发，从存储中移除待处理订单
-            pendingOrdersStorage.removePendingOrder(orderId)
-            
-            logI("服务时间结束Worker执行成功: orderId=$orderId")
+            if (!executionGate.isCurrent(payload)) {
+                logI("Worker用户任务身份已过期，静默结束: task=${payload.execution.taskIdentity.encode()}")
+                return Result.success()
+            }
+
+            logI("执行服务时间结束通知: orderId=${payload.orderId}")
+            dispatchServiceTimeWorkerPayload(payload, executionGate, serviceTimeNotificationManager)
+            logI("服务时间结束Worker执行完成: orderId=${payload.orderId}")
             Result.success()
             
         } catch (e: CancellationException) {
@@ -69,4 +65,24 @@ class ServiceTimeEndWorker @AssistedInject constructor(
             }
         }
     }
+}
+
+@Singleton
+class ServiceTimeTaskExecutionGate @Inject constructor(
+    private val storageRegistry: UserStorageLeaseAccess,
+    private val taskCodec: ServiceTimeTaskCodec,
+) {
+    fun isCurrent(payload: ServiceTimeTaskPayload): Boolean {
+        val lease = storageRegistry.currentLeaseOrNull() ?: return false
+        return taskCodec.matchesCurrent(payload.execution, lease)
+    }
+}
+
+internal suspend fun dispatchServiceTimeWorkerPayload(
+    payload: ServiceTimeTaskPayload?,
+    executionGate: ServiceTimeTaskExecutionGate,
+    manager: ServiceTimeNotificationManager,
+): Boolean {
+    if (payload == null || !executionGate.isCurrent(payload)) return false
+    return manager.handleTriggered(payload)
 }

@@ -21,5 +21,4 @@ interface SetupFaceGateway {
 
     suspend fun setFaceOnServer(base64Image: String, uploadedKey: String): SetupFaceServerResult
 
-    suspend fun refreshCurrentUserSession()
 }

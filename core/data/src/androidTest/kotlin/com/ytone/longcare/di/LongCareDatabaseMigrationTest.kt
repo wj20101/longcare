@@ -33,19 +33,27 @@ class LongCareDatabaseMigrationTest {
 
     @Test
     @Throws(IOException::class)
-    fun oldVersionsAreCompletelyRebuiltAsVersion3() {
-        (1..2).forEach { version ->
+    fun confirmedPerUserDestructiveExceptionRebuildsOnlyTargetNamespaceAsVersion7() = runBlocking {
+        val untouched = openDatabase(UNTOUCHED_CURRENT_USER_DATABASE)
+        untouched.orderDao().insertOrUpdate(OrderEntityDb(orderId = UNTOUCHED_ORDER_ID))
+        untouched.close()
+
+        (1 until LongCareDatabase.DATABASE_VERSION).forEach { version ->
             assertDestructiveRebuild(version, "longcare-destructive-v$version")
         }
+
+        val reopenedUntouched = openDatabase(UNTOUCHED_CURRENT_USER_DATABASE)
+        assertTrue(reopenedUntouched.orderDao().exists(UNTOUCHED_ORDER_ID))
+        reopenedUntouched.close()
     }
 
     @Test
-    fun version3DataSurvivesOrdinaryReopen() = runBlocking {
-        val first = openDatabase(DATABASE_V3)
+    fun currentUserDatabaseDataSurvivesOrdinaryReopen() = runBlocking {
+        val first = openDatabase(CURRENT_USER_DATABASE)
         first.orderDao().insertOrUpdate(OrderEntityDb(orderId = 99L))
         first.close()
 
-        val reopened = openDatabase(DATABASE_V3)
+        val reopened = openDatabase(CURRENT_USER_DATABASE)
         assertTrue(reopened.orderDao().exists(99L))
         reopened.close()
     }
@@ -84,7 +92,12 @@ class LongCareDatabaseMigrationTest {
             .build()
 
     private companion object {
-        const val DATABASE_V3 = "longcare-destructive-v3"
-        val DATABASE_NAMES = (1..3).map { "longcare-destructive-v$it" }
+        const val CURRENT_USER_DATABASE = "longcare-current-user-v7"
+        const val UNTOUCHED_CURRENT_USER_DATABASE = "longcare-untouched-user-v7"
+        const val UNTOUCHED_ORDER_ID = 777L
+        val DATABASE_NAMES =
+            (1 until LongCareDatabase.DATABASE_VERSION).map { "longcare-destructive-v$it" } +
+                CURRENT_USER_DATABASE +
+                UNTOUCHED_CURRENT_USER_DATABASE
     }
 }

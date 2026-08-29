@@ -2,7 +2,9 @@ package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
+import com.ytone.longcare.model.SessionLoginPayload
+import com.ytone.longcare.model.UserScopeKey
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -93,12 +95,8 @@ private class FakeUserSessionRepository(
     var logoutCalls: Int = 0
         private set
 
-    override suspend fun login(user: User) {
-        mutableSessionState.value = SessionState.LoggedIn(user)
-    }
-
-    override suspend fun updateUser(user: User) {
-        mutableSessionState.value = SessionState.LoggedIn(user)
+    override suspend fun login(payload: SessionLoginPayload) {
+        mutableSessionState.value = SessionState.LoggedIn(payload.toCurrentUser())
     }
 
     override suspend fun logout() {
@@ -112,8 +110,11 @@ private class FakeUserSessionRepository(
 
 private fun loggedInUser(token: String): SessionState =
     SessionState.LoggedIn(
-        User(
-            userId = 7,
-            token = token,
+        CurrentUser(
+            scopeKey = UserScopeKey(companyId = 1, accountId = 2, userId = 7),
+            userName = token,
+            headUrl = "",
+            userIdentity = 1,
+            gender = 0,
         )
     )

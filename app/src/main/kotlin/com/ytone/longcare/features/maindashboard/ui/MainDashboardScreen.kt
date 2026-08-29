@@ -31,7 +31,7 @@ import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
 import com.ytone.longcare.model.ServiceOrderModel
 import com.ytone.longcare.model.TodayServiceOrderModel
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
 import com.ytone.longcare.model.isPendingCareState
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 
@@ -104,7 +104,7 @@ fun MainDashboardScreen(
 
 @Composable
 private fun MainDashboardContent(
-    user: User,
+    user: CurrentUser,
     todayOrderList: List<TodayServiceOrderModel>,
     inOrderList: List<ServiceOrderModel>,
     actions: MainDashboardActions,

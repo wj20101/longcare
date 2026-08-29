@@ -21,7 +21,8 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ytone.longcare.model.ToDoResultModel
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
+import com.ytone.longcare.model.UserScopeKey
 import com.ytone.longcare.model.UserLatentCheckState
 import com.ytone.longcare.model.UserLatentDetailModel
 import org.junit.Assert.assertEquals
@@ -168,9 +169,12 @@ class SalesLargeFontLayoutTest {
         setLargeFontContent {
             SalesDashboardScreen(
                 user =
-                    User(
+                    CurrentUser(
+                        scopeKey = UserScopeKey(1, 2, 3),
                         userName = "Android销售负责人",
+                        headUrl = "",
                         userIdentity = 1,
+                        gender = 0,
                     ),
                 companyName = "庆平智慧养老测试",
                 customers = emptyList(),

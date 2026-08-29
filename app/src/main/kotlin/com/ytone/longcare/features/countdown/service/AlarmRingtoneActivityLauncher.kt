@@ -8,12 +8,14 @@ import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownAlarmLaunchSource
 import com.ytone.longcare.features.countdown.manager.CountdownAlarmPresentationPolicy
-import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.features.countdown.manager.CountdownIntentPurpose
+import com.ytone.longcare.features.countdown.manager.CountdownTaskCodec
+import com.ytone.longcare.features.countdown.manager.CountdownTaskPayload
 import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
 
 internal fun AlarmRingtoneService.launchAlarmActivityIfPossible(
-    orderKey: OrderKey,
-    serviceName: String
+    payload: CountdownTaskPayload,
+    codec: CountdownTaskCodec,
 ) {
     try {
         logI("AlarmRingtoneService: 尝试启动全屏 Activity (SDK=${Build.VERSION.SDK_INT})")
@@ -25,12 +27,14 @@ internal fun AlarmRingtoneService.launchAlarmActivityIfPossible(
 
         val alarmIntent = CountdownAlarmActivity.createIntent(
             this,
-            orderKey,
-            serviceName,
+            payload.orderKey,
+            payload.serviceName,
             autoCloseEnabled = CountdownAlarmPresentationPolicy.autoCloseEnabled(
                 launchSource = CountdownAlarmLaunchSource.DIRECT_SERVICE_LAUNCH
             )
-        ).apply {
+        ).let {
+            codec.writeToIntent(it, payload, CountdownIntentPurpose.ALARM_ACTIVITY)
+        }.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TOP or
                 Intent.FLAG_ACTIVITY_NO_USER_ACTION or
@@ -39,7 +43,7 @@ internal fun AlarmRingtoneService.launchAlarmActivityIfPossible(
 
         val pendingIntent = PendingIntentCompat.getActivity(
             this,
-            0,
+            codec.requestCode(payload.execution.taskIdentity, CountdownIntentPurpose.ALARM_ACTIVITY),
             alarmIntent,
             PendingIntent.FLAG_UPDATE_CURRENT,
             false

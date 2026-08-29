@@ -13,6 +13,10 @@ import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.features.countdown.manager.CountdownIntentPurpose
+import com.ytone.longcare.features.countdown.manager.CountdownTaskCodec
+import com.ytone.longcare.features.countdown.manager.CountdownTaskExecutionGate
+import com.ytone.longcare.features.countdown.manager.CountdownTaskPayload
 import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
 import com.ytone.longcare.model.OrderKey
 import dagger.hilt.android.AndroidEntryPoint
@@ -40,18 +44,22 @@ class AlarmRingtoneService : Service() {
     @Inject
     lateinit var countdownNotificationManager: CountdownNotificationManager
 
+    @Inject
+    lateinit var countdownTaskCodec: CountdownTaskCodec
+
+    @Inject
+    lateinit var countdownTaskExecutionGate: CountdownTaskExecutionGate
+
     private lateinit var playbackController: AlarmRingtonePlaybackController
     private lateinit var foregroundStarter: AlarmRingtoneForegroundStarter
     private var wakeLock: PowerManager.WakeLock? = null
-    private var lastOrderKey: OrderKey? = null
+    private var lastPayload: CountdownTaskPayload? = null
     private var lastServiceName: String = ""
     private var resourcesCleanedUp = false
     private val fallbackHandler = Handler(Looper.getMainLooper())
     private var noVisibleActivityFallback: Runnable? = null
     
     companion object {
-        // 通知ID，与CountdownNotificationManager中保持一致
-        private const val NOTIFICATION_ID = 2001
         internal const val NO_VISIBLE_ACTIVITY_TIMEOUT_MS = 30_000L
         internal const val ACTION_START_RINGTONE = "com.ytone.longcare.action.START_RINGTONE"
         internal const val ACTION_STOP_RINGTONE = "com.ytone.longcare.action.STOP_RINGTONE"
@@ -59,12 +67,18 @@ class AlarmRingtoneService : Service() {
         /**
          * 启动响铃服务
          */
-        fun startRingtone(context: Context, orderKey: OrderKey, serviceName: String) {
-            val intent = Intent(context, AlarmRingtoneService::class.java).apply {
+        fun startRingtone(
+            context: Context,
+            payload: CountdownTaskPayload,
+            codec: CountdownTaskCodec,
+        ) {
+            val intent = codec.writeToIntent(
+                Intent(context, AlarmRingtoneService::class.java).apply {
                 action = ACTION_START_RINGTONE
-                putExtra(CountdownNotificationManager.EXTRA_ORDER_KEY, orderKey)
-                putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, serviceName)
-            }
+                },
+                payload,
+                CountdownIntentPurpose.RINGTONE_SERVICE,
+            )
             // 使用Compat库确保兼容性，自动处理Android 8.0+的前台服务启动
             ContextCompat.startForegroundService(context, intent)
         }
@@ -92,7 +106,6 @@ class AlarmRingtoneService : Service() {
         foregroundStarter = AlarmRingtoneForegroundStarter(
             service = this,
             countdownNotificationManager = countdownNotificationManager,
-            notificationId = NOTIFICATION_ID
         )
         
         // 初始化WakeLock
@@ -115,20 +128,16 @@ class AlarmRingtoneService : Service() {
             return START_NOT_STICKY
         }
 
-        val orderKey = CountdownNotificationManager.extractOrderKey(intent)
-        val serviceName =
-            CountdownNotificationManager.extractServiceName(
-                intent,
-                getString(R.string.countdown_alarm_default_service),
-            )
-
-        if (orderKey.orderId == -1L) {
-            logE("AlarmRingtoneService: 启动参数缺少订单信息，停止响铃服务")
+        val payload = countdownTaskCodec.fromIntent(intent, CountdownIntentPurpose.RINGTONE_SERVICE)
+        if (payload == null || !countdownTaskExecutionGate.isCurrent(payload)) {
+            logE("AlarmRingtoneService: 启动任务无效或已过期，停止响铃服务")
             stopAlarmAndSelf("invalid_start_intent")
             return START_NOT_STICKY
         }
+        val orderKey = payload.orderKey
+        val serviceName = payload.serviceName
 
-        lastOrderKey = orderKey
+        lastPayload = payload
         lastServiceName = serviceName
         resourcesCleanedUp = false
 
@@ -142,7 +151,10 @@ class AlarmRingtoneService : Service() {
         )
 
         // 立即升级为前台服务，显示高优先级通知
-        startForegroundWithNotification(orderKey, serviceName)
+        if (!startForegroundWithNotification(payload)) {
+            stopAlarmAndSelf("stale_before_foreground")
+            return START_NOT_STICKY
+        }
         
         // 启动响铃和震动
         if (!playbackController.isPlaying && !playbackController.start()) {
@@ -152,7 +164,11 @@ class AlarmRingtoneService : Service() {
         }
         
         // fullScreenIntent 是锁屏提醒的主路径；直接启动仅作为系统允许时的兼容补充。
-        launchAlarmActivityIfPossible(orderKey, serviceName)
+        if (!countdownTaskExecutionGate.isCurrent(payload)) {
+            stopAlarmAndSelf("stale_before_activity")
+            return START_NOT_STICKY
+        }
+        launchAlarmActivityIfPossible(payload, countdownTaskCodec)
         scheduleNoVisibleActivityFallback(orderKey, serviceName)
         
         return START_NOT_STICKY
@@ -161,19 +177,20 @@ class AlarmRingtoneService : Service() {
     /**
      * 启动前台服务通知
      */
-    private fun startForegroundWithNotification(orderKey: OrderKey, serviceName: String) {
+    private fun startForegroundWithNotification(payload: CountdownTaskPayload): Boolean {
         try {
-            foregroundStarter.startAsForeground(orderKey, serviceName)
+            return foregroundStarter.startAsForeground(payload)
         } catch (e: Exception) {
             logE("AlarmRingtoneService: ❌ 启动前台服务失败 - ${e.message}", throwable = e)
             
             // 追踪响铃服务错误事件
             CountdownEventTracker.trackError(
                 eventType = CountdownEventTracker.EventType.RINGTONE_SERVICE_ERROR,
-                orderId = orderKey.orderId,
+                orderId = payload.orderKey.orderId,
                 throwable = e,
-                extras = mapOf("serviceName" to serviceName, "stage" to "startForeground")
+                extras = mapOf("serviceName" to payload.serviceName, "stage" to "startForeground")
             )
+            return false
         }
     }
     
@@ -203,7 +220,7 @@ class AlarmRingtoneService : Service() {
 
         CountdownEventTracker.trackEvent(
             eventType = CountdownEventTracker.EventType.RINGTONE_SERVICE_STOP,
-            orderId = lastOrderKey?.orderId,
+            orderId = lastPayload?.orderKey?.orderId,
             extras = mapOf(
                 "serviceName" to lastServiceName,
                 "reason" to reason
@@ -242,7 +259,7 @@ class AlarmRingtoneService : Service() {
         }
 
         try {
-            countdownNotificationManager.cancelCountdownCompletionNotification()
+            lastPayload?.let(countdownNotificationManager::cancelCompletionNotificationIfCurrent)
         } catch (e: Exception) {
             logE("AlarmRingtoneService: 取消响铃通知失败 - ${e.message}", throwable = e)
         }

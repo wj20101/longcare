@@ -10,8 +10,7 @@ import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.service.ServiceTimeNotificationManager
-import com.ytone.longcare.features.service.storage.PendingOrder
-import com.ytone.longcare.features.service.storage.PendingOrdersStorage
+import com.ytone.longcare.domain.userstorage.UserServiceReminderRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +20,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 private const val SESSION_RESOLUTION_TIMEOUT_MS = 5_000L
+private object BootCompletedRecoveryLogger
 
 /**
  * 设备重启完成广播接收器
@@ -33,7 +33,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
     lateinit var serviceTimeNotificationManager: ServiceTimeNotificationManager
 
     @Inject
-    lateinit var pendingOrdersStorage: PendingOrdersStorage
+    lateinit var reminderRepository: UserServiceReminderRepository
 
     @Inject
     @ApplicationScope
@@ -78,14 +78,13 @@ class BootCompletedReceiver : BroadcastReceiver() {
                     return@launch
                 }
 
-                val pendingOrders = pendingOrdersStorage.getAllPendingOrders()
-                if (pendingOrders.isEmpty()) {
-                    logI("无待处理订单，跳过通知恢复")
-                    return@launch
-                }
-
-                recoverServiceTimeNotifications(pendingOrders)
-                logI("设备重启后通知恢复任务已完成")
+                val recovered = recoverCurrentSessionNotifications(
+                    sessionState = sessionState,
+                    reminderRepository = reminderRepository,
+                    notificationManager = serviceTimeNotificationManager,
+                    nowMillis = System.currentTimeMillis(),
+                )
+                logI("设备重启后通知恢复任务已完成: recovered=$recovered")
             } catch (exception: CancellationException) {
                 throw exception
             } catch (e: Exception) {
@@ -96,38 +95,35 @@ class BootCompletedReceiver : BroadcastReceiver() {
         }
     }
 
-    /**
-     * 恢复服务时间通知
-     * 从持久化存储中读取未完成的通知任务并重新调度
-     */
-    private fun recoverServiceTimeNotifications(pendingOrders: List<PendingOrder>) {
-        logI("开始恢复服务时间通知任务，共 ${pendingOrders.size} 个订单")
-        
-        var recoveredCount = 0
-        val currentTime = System.currentTimeMillis()
-        
-        pendingOrders.forEach { order ->
-            try {
-                if (order.serviceEndTime > currentTime) {
-                    serviceTimeNotificationManager.scheduleServiceTimeEndNotification(
-                        order.orderId,
-                        order.serviceName,
-                        order.serviceEndTime
-                    )
-                    recoveredCount++
-                    logI("恢复通知成功: orderId=${order.orderId}, serviceName=${order.serviceName}, endTime=${order.serviceEndTime}")
-                } else {
-                    pendingOrdersStorage.removePendingOrder(order.orderId)
-                    logI("移除过期订单: orderId=${order.orderId}")
-                }
-            } catch (e: Exception) {
-                logE("恢复订单通知失败: orderId=${order.orderId}, error=${e.message}")
-            }
-        }
-        
-        logI("服务时间通知任务恢复完成，成功恢复 $recoveredCount 个通知")
-    }
 }
 
 internal suspend fun UserSessionRepository.awaitResolvedSessionState(): SessionState =
     sessionState.first { it !is SessionState.Unknown }
+
+internal suspend fun recoverCurrentSessionNotifications(
+    sessionState: SessionState,
+    reminderRepository: UserServiceReminderRepository,
+    notificationManager: ServiceTimeNotificationManager,
+    nowMillis: Long,
+): Int {
+    if (sessionState !is SessionState.LoggedIn) return 0
+    val pendingOrders = reminderRepository.getAllForCurrentSession()
+    var recoveredCount = 0
+    pendingOrders.forEach { order ->
+        try {
+            if (order.triggerAtMillis > nowMillis) {
+                notificationManager.reschedule(order)
+                recoveredCount++
+            } else {
+                reminderRepository.delete(order.taskIdentity)
+            }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            BootCompletedRecoveryLogger.logE(
+                "恢复订单通知失败: orderId=${order.orderId}, error=${error.message}",
+            )
+        }
+    }
+    return recoveredCount
+}

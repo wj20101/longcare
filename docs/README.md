@@ -1,6 +1,6 @@
 # LongCare 文档索引
 
-最后核对：2026-08-27
+最后核对：2026-08-29
 
 本目录只保存能够长期维护的当前说明、架构决策和仍有现实用途的专项资料。任务计划、执行日志、临时审计记录和生成报告不再作为仓库文档维护。
 
@@ -27,6 +27,7 @@
 - [CI 与质量门禁](architecture/ci-quality-gates.md)：本地、CI、验收与生产发布校验。
 - [路线图与开放问题](architecture/roadmap-and-open-gaps.md)：仍需处理的产品、架构和发布风险。
 - [ADR-001 分层边界](architecture/adr/ADR-001-layer-boundary.md)：分层方向的已接受决策。
+- [ADR-002 用户存储冷切换](architecture/adr/ADR-002-user-storage-cold-cutover.md)：复合用户物理隔离、零 legacy 兼容、会话/GUID 边界和已确认的每用户破坏性数据库例外。
 
 ### 专项资料
 

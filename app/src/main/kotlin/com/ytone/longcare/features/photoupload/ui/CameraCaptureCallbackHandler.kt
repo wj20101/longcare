@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
+import com.ytone.longcare.common.image.ManagedImageFile
 import com.ytone.longcare.common.image.WatermarkedCaptureRequest
 import com.ytone.longcare.features.photoupload.tracker.CameraEventTracker
 import com.ytone.longcare.R
@@ -16,7 +17,7 @@ import kotlinx.coroutines.launch
 internal fun createImageSavedCallback(
     context: Context,
     scope: CoroutineScope,
-    tempFile: File,
+    temporaryCapture: ManagedImageFile,
     watermarkBitmap: Bitmap,
     startPx: Float,
     bottomPx: Float,
@@ -31,7 +32,7 @@ internal fun createImageSavedCallback(
                 try {
                     val finalFile = processCapturedImage(
                         WatermarkedCaptureRequest(
-                            temporaryCaptureFile = tempFile,
+                            temporaryCaptureFile = temporaryCapture,
                             watermarkBitmap = watermarkBitmap,
                             watermarkStartPx = startPx,
                             watermarkBottomPx = bottomPx,
@@ -56,7 +57,7 @@ internal fun createImageSavedCallback(
                 }
             }
             processingJob.invokeOnCompletion {
-                cleanupCaptureArtifacts(tempFile, watermarkBitmap)
+                cleanupCaptureArtifacts(temporaryCapture, watermarkBitmap)
             }
         }
 
@@ -66,7 +67,7 @@ internal fun createImageSavedCallback(
                 exc,
                 mapOf("reason" to "拍照保存失败: ${exc.message ?: exc.javaClass.simpleName}")
             )
-            cleanupCaptureArtifacts(tempFile, watermarkBitmap)
+            cleanupCaptureArtifacts(temporaryCapture, watermarkBitmap)
             scope.launch {
                 Toast.makeText(
                     context,
@@ -80,9 +81,9 @@ internal fun createImageSavedCallback(
 }
 
 internal fun cleanupCaptureArtifacts(
-    temporaryFile: File,
+    temporaryFile: ManagedImageFile,
     watermarkBitmap: Bitmap,
 ) {
-    if (temporaryFile.exists()) temporaryFile.delete()
+    if (temporaryFile.file.exists()) temporaryFile.file.delete()
     if (!watermarkBitmap.isRecycled) watermarkBitmap.recycle()
 }

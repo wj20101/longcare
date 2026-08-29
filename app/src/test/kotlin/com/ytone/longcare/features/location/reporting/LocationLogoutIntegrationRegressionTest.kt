@@ -7,7 +7,8 @@ import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import com.ytone.longcare.features.location.session.LocationSessionLifecycleObserver
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
+import com.ytone.longcare.model.UserScopeKey
 import com.ytone.longcare.model.result.ApiResult
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -26,7 +27,7 @@ import org.junit.Test
 class LocationLogoutIntegrationRegressionTest {
     @Test
     fun `restored login state is delegated but never resumes a location session`() = runTest {
-        val restored = SessionState.LoggedIn(User(companyId = 1, accountId = 2, userId = 7))
+        val restored = loggedIn(accountId = 2, userId = 7)
         val sessionFlow = MutableStateFlow<SessionState>(restored)
         val sessionRepository = mockk<UserSessionRepository>()
         every { sessionRepository.sessionState } returns sessionFlow
@@ -46,7 +47,7 @@ class LocationLogoutIntegrationRegressionTest {
     @Test
     fun `switching account stops active process location`() = runTest {
         val sessionFlow = MutableStateFlow<SessionState>(
-            SessionState.LoggedIn(User(companyId = 1, accountId = 2, userId = 7)),
+            loggedIn(accountId = 2, userId = 7),
         )
         val sessionRepository = mockk<UserSessionRepository>()
         every { sessionRepository.sessionState } returns sessionFlow
@@ -58,9 +59,7 @@ class LocationLogoutIntegrationRegressionTest {
         ).start()
         runCurrent()
 
-        val switched = SessionState.LoggedIn(
-            User(companyId = 1, accountId = 3, userId = 8),
-        )
+        val switched = loggedIn(accountId = 3, userId = 8)
         sessionFlow.value = switched
         runCurrent()
 
@@ -70,8 +69,7 @@ class LocationLogoutIntegrationRegressionTest {
 
     @Test
     fun `manual logout stops process location without scheduling recovery work`() = runTest {
-        val user = User(companyId = 1, accountId = 2, userId = 7, token = "token")
-        val sessionFlow = MutableStateFlow<SessionState>(SessionState.LoggedIn(user))
+        val sessionFlow = MutableStateFlow<SessionState>(loggedIn(accountId = 2, userId = 7))
         val sessionRepository = mockk<UserSessionRepository>()
         every { sessionRepository.sessionState } returns sessionFlow
         coEvery { sessionRepository.logout() } coAnswers { sessionFlow.value = SessionState.LoggedOut }
@@ -95,4 +93,14 @@ class LocationLogoutIntegrationRegressionTest {
         verify(exactly = 1) { locationManager.onSessionStateChanged(SessionState.LoggedOut) }
         coVerify(exactly = 1) { sessionRepository.logout() }
     }
+
+    private fun loggedIn(accountId: Int, userId: Int) = SessionState.LoggedIn(
+        CurrentUser(
+            scopeKey = UserScopeKey(companyId = 1, accountId = accountId, userId = userId),
+            userName = "user-$userId",
+            headUrl = "",
+            userIdentity = 1,
+            gender = 0,
+        ),
+    )
 }

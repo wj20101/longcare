@@ -24,11 +24,11 @@ class TencentCredentialCacheTest {
             ApiResult.Success(accessToken("token-$loads", expireIn = "100"))
         }
 
-        val first = cache.getAccessToken("app-id", loader)
+        val first = cache.getAccessToken("session-a", "app-id", loader)
         now += 89_000L
-        val cached = cache.getAccessToken("app-id", loader)
+        val cached = cache.getAccessToken("session-a", "app-id", loader)
         now += 1_000L
-        val refreshed = cache.getAccessToken("app-id", loader)
+        val refreshed = cache.getAccessToken("session-a", "app-id", loader)
 
         assertEquals("token-1", first.successData().accessToken)
         assertEquals("token-1", cached.successData().accessToken)
@@ -46,7 +46,7 @@ class TencentCredentialCacheTest {
         val requests =
             List(8) {
                 async {
-                    cache.getAccessToken("app-id") {
+                    cache.getAccessToken("session-a", "app-id") {
                         loads += 1
                         loaderStarted.complete(Unit)
                         releaseLoader.await()
@@ -76,12 +76,58 @@ class TencentCredentialCacheTest {
             ApiResult.Success(signTicket("sign-$loads", expireIn = "3600"))
         }
 
-        val first = cache.getSignTicket("app-id", loader)
-        val second = cache.getSignTicket("app-id", loader)
+        val first = cache.getSignTicket("session-a", "app-id", loader)
+        val second = cache.getSignTicket("session-a", "app-id", loader)
 
         assertEquals("sign-1", first.successData().tickets?.single()?.value)
         assertEquals("sign-1", second.successData().tickets?.single()?.value)
         assertEquals(1, loads)
+    }
+
+    @Test
+    fun `same app id is never reused by another session epoch`() = runTest {
+        var loads = 0
+        val cache = TencentCredentialCache()
+
+        val a = cache.getAccessToken("namespace:epoch-a", "same-app") {
+            loads += 1
+            ApiResult.Success(accessToken("token-a", expireIn = "3600"))
+        }
+        val b = cache.getAccessToken("namespace:epoch-b", "same-app") {
+            loads += 1
+            ApiResult.Success(accessToken("token-b", expireIn = "3600"))
+        }
+
+        assertEquals("token-a", a.successData().accessToken)
+        assertEquals("token-b", b.successData().accessToken)
+        assertEquals(2, loads)
+    }
+
+    @Test
+    fun `revoked in flight load cannot repopulate credential cache`() = runTest {
+        val cache = TencentCredentialCache()
+        val started = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        var loads = 0
+        val oldLoad = async {
+            cache.getAccessToken("session-a", "app-id") {
+                loads += 1
+                started.complete(Unit)
+                release.await()
+                ApiResult.Success(accessToken("old", expireIn = "3600"))
+            }
+        }
+        started.await()
+
+        cache.clear()
+        release.complete(Unit)
+        oldLoad.await()
+        cache.getAccessToken("session-a", "app-id") {
+            loads += 1
+            ApiResult.Success(accessToken("fresh", expireIn = "3600"))
+        }
+
+        assertEquals(2, loads)
     }
 
     private fun accessToken(

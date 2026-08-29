@@ -74,6 +74,7 @@ internal fun CameraContent(
             watermarkView = watermarkView,
             isFrontCamera = isFrontCamera,
             scope = scope,
+            createTemporaryCaptureFile = viewModel::createTemporaryCaptureFile,
             processCapturedImage = viewModel::processCapturedImage,
             preparingMessage = watermarkPreparingMessage,
             onCaptureStarted = {
@@ -127,6 +128,7 @@ internal fun CameraContent(
                         isCapturing = isCapturing,
                         isFrontCamera = isFrontCamera,
                         scope = scope,
+                        createTemporaryCaptureFile = viewModel::createTemporaryCaptureFile,
                         processCapturedImage = viewModel::processCapturedImage,
                         onCountdownUpdate = { countdownSeconds = it },
                         onCaptureStateChanged = { isCapturing = it },

@@ -5,12 +5,12 @@ import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
-import com.ytone.longcare.data.database.dao.OrderDao
-import com.ytone.longcare.data.database.dao.OrderElderInfoDao
-import com.ytone.longcare.data.database.dao.OrderLocalStateDao
-import com.ytone.longcare.data.database.dao.OrderProjectDao
 import com.ytone.longcare.data.database.entity.toDb
 import com.ytone.longcare.data.database.entity.toModel
+import com.ytone.longcare.data.userstorage.UserDatabaseAccess
+import com.ytone.longcare.domain.userstorage.UserStorageLease
+import com.ytone.longcare.domain.userstorage.SessionRuntimeCleanupHook
+import com.ytone.longcare.domain.userstorage.SessionRuntimeIdentity
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderElderInfoEntity
 import com.ytone.longcare.model.OrderEntity
@@ -29,26 +29,20 @@ import kotlinx.coroutines.flow.map
 class UnifiedOrderRepository @Inject constructor(
     private val apiService: LongCareApiService,
     private val runtimeConfigProvider: RuntimeConfigProvider,
-    private val orderDao: OrderDao,
-    private val orderElderInfoDao: OrderElderInfoDao,
-    private val orderLocalStateDao: OrderLocalStateDao,
-    private val orderProjectDao: OrderProjectDao
-) : OrderDetailRepository {
+    private val databaseAccess: UserDatabaseAccess,
+) : OrderDetailRepository, SessionRuntimeCleanupHook {
     private val memoryCache = OrderInfoMemoryCache()
-    private val roomSyncDelegate = OrderRoomSyncDelegate(
-        orderDao = orderDao,
-        orderElderInfoDao = orderElderInfoDao,
-        orderLocalStateDao = orderLocalStateDao,
-        orderProjectDao = orderProjectDao
-    )
+    private val roomSyncDelegate = OrderRoomSyncDelegate(databaseAccess)
 
     override suspend fun getOrderInfo(orderKey: OrderKey, forceRefresh: Boolean): ApiResult<ServiceOrderInfoModel> {
+        val lease = databaseAccess.currentLease()
         if (!forceRefresh) {
-            memoryCache.get(orderKey)?.let { return ApiResult.Success(it) }
+            memoryCache.get(lease, orderKey)?.let { return ApiResult.Success(it) }
         }
-        return memoryCache.withOrderLock(orderKey) {
+        return memoryCache.withOrderLock(lease, orderKey) {
+            databaseAccess.requireValid(lease)
             if (!forceRefresh) {
-                memoryCache.get(orderKey)?.let { return@withOrderLock ApiResult.Success(it) }
+                memoryCache.get(lease, orderKey)?.let { return@withOrderLock ApiResult.Success(it) }
             }
             val apiResult =
                 apiService.getOrderInfo(OrderInfoParamModel(orderKey.orderId))
@@ -58,66 +52,87 @@ class UnifiedOrderRepository @Inject constructor(
                     requestOrderId = orderKey.orderId,
                     payloadOrderId = apiResult.data.orderId
                 )
-                memoryCache.put(orderKey, apiResult.data)
-                roomSyncDelegate.syncOrderInfoToRoom(orderKey.orderId, apiResult.data)
+                databaseAccess.requireValid(lease)
+                memoryCache.put(lease, orderKey, apiResult.data)
+                roomSyncDelegate.syncOrderInfoToRoom(lease, orderKey.orderId, apiResult.data)
             }
             apiResult
         }
     }
 
-    override fun getCachedOrderInfo(orderKey: OrderKey): ServiceOrderInfoModel? = memoryCache.get(orderKey)
+    override fun getCachedOrderInfo(orderKey: OrderKey): ServiceOrderInfoModel? =
+        runCatching { memoryCache.get(databaseAccess.currentLease(), orderKey) }.getOrNull()
 
     fun updateCachedOrderInfo(orderKey: OrderKey, orderInfo: ServiceOrderInfoModel) {
-        memoryCache.put(orderKey, orderInfo)
+        val lease = databaseAccess.currentLease()
+        databaseAccess.requireValid(lease)
+        memoryCache.put(lease, orderKey, orderInfo)
     }
 
     override fun clearOrderInfoCache(orderKey: OrderKey) {
-        memoryCache.remove(orderKey)
+        runCatching { memoryCache.remove(databaseAccess.currentLease(), orderKey) }
     }
 
     fun clearAllOrderInfoCache() {
         memoryCache.clear()
     }
 
+    override suspend fun cleanup(identity: SessionRuntimeIdentity) {
+        memoryCache.clear()
+    }
+
     override suspend fun preloadOrderInfo(orderKey: OrderKey) {
-        if (memoryCache.get(orderKey) == null) {
+        val lease = databaseAccess.currentLease()
+        if (memoryCache.get(lease, orderKey) == null) {
             getOrderInfo(orderKey, forceRefresh = false)
         }
     }
 
     fun observeOrderWithDetails(orderKey: OrderKey): Flow<OrderWithDetails?> {
         val orderId = orderKey.orderId
-        return combine(
-            orderDao.observeOrderById(orderId),
-            orderElderInfoDao.observeByOrderId(orderId),
-            orderLocalStateDao.observeByOrderId(orderId),
-            orderProjectDao.observeProjectsByOrderId(orderId)
-        ) { order, elderInfo, localState, projects ->
-            order?.let {
-                OrderWithDetails(
-                    order = it.toModel(),
-                    elderInfo = elderInfo?.toModel(),
-                    localState = localState?.toModel(),
-                    projects = projects.map { item -> item.toModel() }
-                )
+        return databaseAccess.observeCurrent { database, _ ->
+            combine(
+                database.orderDao().observeOrderById(orderId),
+                database.orderElderInfoDao().observeByOrderId(orderId),
+                database.orderLocalStateDao().observeByOrderId(orderId),
+                database.orderProjectDao().observeProjectsByOrderId(orderId),
+            ) { order, elderInfo, localState, projects ->
+                order?.let {
+                    OrderWithDetails(
+                        order = it.toModel(),
+                        elderInfo = elderInfo?.toModel(),
+                        localState = localState?.toModel(),
+                        projects = projects.map { item -> item.toModel() },
+                    )
+                }
             }
         }
     }
 
     fun observeSelectedProjects(orderKey: OrderKey): Flow<List<OrderProjectEntity>> {
-        return orderProjectDao.observeSelectedProjects(orderKey.orderId).map { list ->
-            list.map { it.toModel() }
+        return databaseAccess.observeCurrent { database, _ ->
+            database.orderProjectDao().observeSelectedProjects(orderKey.orderId).map { list ->
+                list.map { it.toModel() }
+            }
         }
     }
 
     suspend fun getOrderDetails(orderKey: OrderKey, forceRefresh: Boolean = false): ApiResult<OrderWithDetails> {
+        val lease = databaseAccess.currentLease()
         if (!forceRefresh) {
-            roomSyncDelegate.loadOrderWithDetails(orderKey.orderId)?.let { return ApiResult.Success(it) }
+            roomSyncDelegate.loadOrderWithDetails(lease, orderKey.orderId)?.let { return ApiResult.Success(it) }
         }
-        return refreshOrderFromApi(orderKey)
+        return refreshOrderFromApi(lease, orderKey)
     }
 
     suspend fun refreshOrderFromApi(orderKey: OrderKey): ApiResult<OrderWithDetails> {
+        return refreshOrderFromApi(databaseAccess.currentLease(), orderKey)
+    }
+
+    private suspend fun refreshOrderFromApi(
+        lease: UserStorageLease,
+        orderKey: OrderKey,
+    ): ApiResult<OrderWithDetails> {
         val orderId = orderKey.orderId
         val apiResult = apiService.getOrderInfo(OrderInfoParamModel(orderId))
         return when (apiResult) {
@@ -128,7 +143,7 @@ class UnifiedOrderRepository @Inject constructor(
                     payloadOrderId = apiResult.data.orderId
                 )
                 ApiResult.Success(
-                    roomSyncDelegate.persistOrderInfoAndBuildDetails(orderId, apiResult.data)
+                    roomSyncDelegate.persistOrderInfoAndBuildDetails(lease, orderId, apiResult.data)
                 )
             }
             is ApiResult.Failure -> apiResult
@@ -138,46 +153,62 @@ class UnifiedOrderRepository @Inject constructor(
 
     suspend fun updateProjectSelection(orderKey: OrderKey, projectId: Int, isSelected: Boolean) {
         val orderId = orderKey.orderId
-        orderProjectDao.updateSelection(orderId, projectId, isSelected)
-        orderLocalStateDao.updateNeedsSync(orderId, true)
+        databaseAccess.withCurrentLease { database, _ ->
+            database.orderProjectDao().updateSelection(orderId, projectId, isSelected)
+            database.orderLocalStateDao().updateNeedsSync(orderId, true)
+        }
     }
 
     override suspend fun updateSelectedProjects(orderKey: OrderKey, selectedProjectIds: List<Int>) {
         val orderId = orderKey.orderId
-        orderProjectDao.updateSelectedProjects(orderId, selectedProjectIds)
-        orderLocalStateDao.updateNeedsSync(orderId, true)
+        databaseAccess.withCurrentLease { database, _ ->
+            database.orderProjectDao().updateSelectedProjects(orderId, selectedProjectIds)
+            database.orderLocalStateDao().updateNeedsSync(orderId, true)
+        }
     }
 
     override suspend fun getSelectedProjectIds(orderKey: OrderKey): List<Int> {
-        return orderProjectDao.getSelectedProjectIds(orderKey.orderId)
+        return databaseAccess.withCurrentLease { database, _ ->
+            database.orderProjectDao().getSelectedProjectIds(orderKey.orderId)
+        }
     }
 
     override suspend fun startLocalService(orderKey: OrderKey) {
         val orderId = orderKey.orderId
-        if (orderLocalStateDao.getByOrderId(orderId) == null) {
-            orderLocalStateDao.insertOrUpdate(OrderLocalStateEntity(orderId = orderId).toDb())
+        databaseAccess.withCurrentLease { database, _ ->
+            if (database.orderLocalStateDao().getByOrderId(orderId) == null) {
+                database.orderLocalStateDao().insertOrUpdate(OrderLocalStateEntity(orderId = orderId).toDb())
+            }
+            database.orderLocalStateDao().startService(orderId, System.currentTimeMillis())
         }
-        orderLocalStateDao.startService(orderId, System.currentTimeMillis())
     }
 
     override suspend fun endLocalService(orderKey: OrderKey) {
-        orderLocalStateDao.endService(orderKey.orderId, System.currentTimeMillis())
+        databaseAccess.withCurrentLease { database, _ ->
+            database.orderLocalStateDao().endService(orderKey.orderId, System.currentTimeMillis())
+        }
     }
 
     override suspend fun updateFaceVerification(orderKey: OrderKey, completed: Boolean) {
-        orderLocalStateDao.updateFaceVerification(orderKey.orderId, completed)
+        databaseAccess.withCurrentLease { database, _ ->
+            database.orderLocalStateDao().updateFaceVerification(orderKey.orderId, completed)
+        }
     }
 
     override suspend fun getLocalState(orderKey: OrderKey): OrderLocalStateEntity? {
-        return orderLocalStateDao.getByOrderId(orderKey.orderId)?.toModel()
+        return databaseAccess.withCurrentLease { database, _ ->
+            database.orderLocalStateDao().getByOrderId(orderKey.orderId)?.toModel()
+        }
     }
 
     suspend fun deleteOrder(orderKey: OrderKey) {
-        orderDao.deleteById(orderKey.orderId)
+        databaseAccess.withCurrentLease { database, _ ->
+            database.orderDao().deleteById(orderKey.orderId)
+        }
     }
 
     suspend fun clearAllOrders() {
-        orderDao.deleteAll()
+        databaseAccess.withCurrentLease { database, _ -> database.orderDao().deleteAll() }
     }
 
     private fun logOrderIdConsistencyIfDebug(

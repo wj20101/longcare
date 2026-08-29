@@ -6,7 +6,7 @@ import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.home.reporting.HomeLoginLogInfoProvider
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.CurrentUser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +34,7 @@ class HomeSharedViewModel @Inject constructor(
      * 当用户未登录时，它会是 null。
      * UI 层可以直接收集此状态。
      */
-    val userState: StateFlow<User?> = userSessionRepository.sessionState.map {
+    val userState: StateFlow<CurrentUser?> = userSessionRepository.sessionState.map {
         // 从 SessionState 中提取 User 对象
         when (it) {
             is SessionState.LoggedIn -> it.user

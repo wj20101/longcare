@@ -8,7 +8,7 @@ import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.LoginPreferencesManager
 import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.repository.UserSessionRepository
-import com.ytone.longcare.model.User
+import com.ytone.longcare.model.SessionLoginPayload
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -138,13 +138,13 @@ class LoginViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     val loginResult = result.data
                     // 登录成功，转换并保存User对象
-                    val user = loginResult.toUser()
-                    userSessionRepository.login(user)
+                    val payload = loginResult.toSessionLoginPayload()
+                    userSessionRepository.login(payload)
                     
                     // 保存登录成功的手机号码
                     loginPreferencesManager.saveLastLoginPhoneNumber(mobile)
 
-                    _loginState.value = LoginUiState.Success(user)
+                    _loginState.value = LoginUiState.Success
                 }
 
                 is ApiResult.Failure -> {
@@ -213,8 +213,8 @@ data class LoginFeedback(
     val message: String
 )
 
-private fun LoginResultModel.toUser(): User {
-    return User(
+private fun LoginResultModel.toSessionLoginPayload(): SessionLoginPayload {
+    return SessionLoginPayload(
         userId = userId,
         userName = userName,
         headUrl = headUrl,
@@ -231,7 +231,7 @@ private fun LoginResultModel.toUser(): User {
 sealed class LoginUiState {
     data object Idle : LoginUiState()
     data object Loading : LoginUiState()
-    data class Success(val user: User) : LoginUiState()
+    data object Success : LoginUiState()
     data class Error(val message: String) : LoginUiState()
 }
 

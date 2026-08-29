@@ -4,69 +4,66 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.PowerManager
-import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.features.service.ServiceTimeNotificationManager
-import com.ytone.longcare.features.service.storage.PendingOrdersStorage
+import com.ytone.longcare.features.service.ServiceTimeTaskCodec
+import com.ytone.longcare.features.service.ServiceTimeTaskExecutionGate
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
-/**
- * 服务时间结束闹钟广播接收器
- * 作为服务结束通知的准时触发通道（AlarmManager）。
- */
 @AndroidEntryPoint
 class ServiceTimeAlarmReceiver : BroadcastReceiver() {
-
     @Inject
     lateinit var serviceTimeNotificationManager: ServiceTimeNotificationManager
 
     @Inject
-    lateinit var pendingOrdersStorage: PendingOrdersStorage
+    lateinit var taskCodec: ServiceTimeTaskCodec
+
+    @Inject
+    lateinit var executionGate: ServiceTimeTaskExecutionGate
+
+    @Inject
+    @ApplicationScope
+    lateinit var applicationScope: CoroutineScope
 
     override fun onReceive(context: Context, intent: Intent) {
-        logI("收到服务时间结束闹钟广播")
         if (intent.action != ServiceTimeNotificationManager.ACTION_SERVICE_TIME_END_ALARM) {
             logE("收到未知Action的广播: ${intent.action}")
             return
         }
-        val orderId = intent.getLongExtra(ServiceTimeNotificationManager.EXTRA_ORDER_ID, -1L)
-        val serviceName =
-            intent.getStringExtra(ServiceTimeNotificationManager.EXTRA_SERVICE_NAME)
-                ?: context.getString(R.string.countdown_alarm_default_service)
-        val serviceEndTime = intent.getLongExtra(ServiceTimeNotificationManager.EXTRA_SERVICE_END_TIME, 0L)
-        
-        if (orderId == -1L) {
-            logE("服务时间结束闹钟广播缺少orderId")
+        val payload = taskCodec.fromAlarmIntent(intent)
+        if (payload == null) {
+            logE("服务时间结束闹钟缺少或携带无效的用户任务身份")
+            return
+        }
+        if (!executionGate.isCurrent(payload)) {
+            logI("服务时间结束闹钟用户任务身份已过期，静默结束")
             return
         }
 
-        // 获取WakeLock确保设备唤醒
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
         val wakeLock = powerManager.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
-            "LongCare:ServiceTimeEndAlarm"
+            "LongCare:ServiceTimeEndAlarm",
         )
-        
-        try {
-            wakeLock.acquire(10000) // 持有10秒，足够处理通知
-            
-            logI("处理服务时间结束通知: orderId=$orderId, serviceName=$serviceName, endTime=$serviceEndTime")
-            
-            // 显示通知
-            serviceTimeNotificationManager.showServiceTimeEndNotification(orderId, serviceName)
-            
-            // 通知已触发，从存储中移除待处理订单
-            pendingOrdersStorage.removePendingOrder(orderId)
-            
-            logI("服务时间结束通知处理完毕: orderId=$orderId")
-            
-        } catch (e: Exception) {
-            logE("处理服务时间结束闹钟失败: ${e::class.java.simpleName}: ${e.message}")
-        } finally {
-            if (wakeLock.isHeld) {
-                wakeLock.release()
+        wakeLock.acquire(10_000)
+        val pendingResult = goAsync()
+        applicationScope.launch {
+            try {
+                val shown = serviceTimeNotificationManager.handleTriggered(payload)
+                logI("服务时间结束闹钟处理完成: orderId=${payload.orderId}, shown=$shown")
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                logE("处理服务时间结束闹钟失败: ${error.message}", throwable = error)
+            } finally {
+                if (wakeLock.isHeld) wakeLock.release()
+                pendingResult.finish()
             }
         }
     }

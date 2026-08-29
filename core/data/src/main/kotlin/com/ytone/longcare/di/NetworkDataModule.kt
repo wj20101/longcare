@@ -15,6 +15,7 @@ import com.ytone.longcare.common.network.SessionInvalidationHandler
 import com.ytone.longcare.common.network.TencentApiResultCallAdapterFactory
 import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.data.session.SessionSecretProvider
 import com.ytone.longcare.network.interceptor.RequestCryptoProvider
 import com.ytone.longcare.network.interceptor.RequestDeviceInfoProvider
 import com.ytone.longcare.network.interceptor.RequestInterceptor
@@ -68,14 +69,14 @@ object NetworkDataModule {
     @Provides
     @Singleton
     fun provideRequestInterceptor(
-        userSessionRepository: UserSessionRepository,
+        sessionSecretProvider: SessionSecretProvider,
         runtimeConfigProvider: RuntimeConfigProvider,
         requestDeviceInfoProvider: RequestDeviceInfoProvider,
         requestCryptoProvider: RequestCryptoProvider,
         privacyConsentManager: PrivacyConsentManager,
     ): RequestInterceptor {
         return RequestInterceptor(
-            userSessionRepository = userSessionRepository,
+            sessionSecretProvider = sessionSecretProvider,
             runtimeConfigProvider = runtimeConfigProvider,
             requestDeviceInfoProvider = requestDeviceInfoProvider,
             requestCryptoProvider = requestCryptoProvider,

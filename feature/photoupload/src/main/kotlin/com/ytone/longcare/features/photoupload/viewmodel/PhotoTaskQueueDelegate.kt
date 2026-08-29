@@ -17,11 +17,13 @@ import com.ytone.longcare.common.utils.logW
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 internal class PhotoTaskQueueDelegate(
     private val scope: CoroutineScope,
@@ -69,15 +71,18 @@ internal class PhotoTaskQueueDelegate(
         val newTasks = mutableListOf<ImageTask>()
 
         for (uri in acceptedUris) {
-            val dbId = if (effectiveOrderKey != null) {
+            val storedImage = if (effectiveOrderKey != null) {
                 try {
                     imageRepository.addImage(
                         orderKey = effectiveOrderKey,
                         imageType = taskType.toImageType(),
                         localUri = uri.toString(),
                         localPath = uri.path
-                    ).also { logD("Saved to DB: id=$it, type=$taskType", tag = "PhotoVM") }
+                    ).also { stored ->
+                        logD("Saved to DB: id=${stored.id}, type=$taskType", tag = "PhotoVM")
+                    }
                 } catch (e: CancellationException) {
+                    withContext(NonCancellable) { imagePipeline.deleteManagedImage(uri) }
                     throw e
                 } catch (e: Exception) {
                     logE("Failed to save image to DB", tag = "PhotoVM", throwable = e)
@@ -92,16 +97,32 @@ internal class PhotoTaskQueueDelegate(
                             "taskType" to taskType.name,
                         ),
                     )
-                    null
+                    imagePipeline.deleteManagedImage(uri)
+                    continue
                 }
             } else {
                 logW("No effectiveOrderKey, using UUID", tag = "PhotoVM")
                 null
             }
 
+            val taskUri = storedImage?.localUri?.let(Uri::parse) ?: uri
+            try {
+                imagePipeline.requireCurrentUserFile(taskUri)
+            } catch (e: CancellationException) {
+                withContext(NonCancellable) { imagePipeline.deleteManagedImage(uri) }
+                throw e
+            } catch (e: Exception) {
+                logW("Discarding image from an expired user storage lease", tag = "PhotoVM")
+                imagePipeline.deleteManagedImage(uri)
+                continue
+            }
+            if (storedImage != null) {
+                imagePipeline.deleteManagedImage(uri)
+            }
+
             newTasks += ImageTask(
-                id = dbId?.toString() ?: UUID.randomUUID().toString(),
-                originalUri = uri.toString(),
+                id = storedImage?.id?.toString() ?: UUID.randomUUID().toString(),
+                originalUri = taskUri.toString(),
                 taskType = taskType,
                 status = ImageTaskStatus.PROCESSING
             )
