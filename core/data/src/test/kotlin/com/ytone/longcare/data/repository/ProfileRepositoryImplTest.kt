@@ -64,8 +64,8 @@ class ProfileRepositoryImplTest {
         try {
             fixture.repository.logout()
             fail("Expected cancellation")
-        } catch (_: CancellationException) {
-            // Expected: the caller still owns cancellation after non-cancellable local cleanup.
+        } catch (actual: CancellationException) {
+            assertEquals("cancelled", actual.message)
         }
 
         fixture.verifyLocalCleanup()
@@ -81,8 +81,8 @@ class ProfileRepositoryImplTest {
         try {
             fixture.repository.logout()
             fail("Expected cleanup cancellation")
-        } catch (_: CancellationException) {
-            // Expected after every local cleanup step has had a chance to run.
+        } catch (actual: CancellationException) {
+            assertEquals("cleanup cancelled", actual.message)
         }
 
         fixture.verifyLocalCleanup()

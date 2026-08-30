@@ -26,7 +26,7 @@ fun BottomSafeActionContainer(
     gradientBackground: Brush? = null,
     applyHorizontalNavigationInsets: Boolean = true,
     applyBottomNavigationInset: Boolean = true,
-    content: @Composable BoxScope.() -> Unit
+    content: @Composable BoxScope.() -> Unit,
 ) {
     val navigationBarPadding = WindowInsets.navigationBars.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
@@ -54,13 +54,13 @@ fun BottomSafeActionContainer(
                 Modifier.background(gradientBackground)
             } else {
                 Modifier
-            }
+            },
         )
         .padding(
             start = horizontalInsetStart + horizontalPadding,
             top = topPadding,
             end = horizontalInsetEnd + horizontalPadding,
-            bottom = bottomInset + extraBottomPadding
+            bottom = bottomInset + extraBottomPadding,
         )
 
     Box(modifier = decoratedModifier, content = content)

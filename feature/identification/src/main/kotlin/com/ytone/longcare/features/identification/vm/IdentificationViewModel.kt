@@ -28,7 +28,6 @@ import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -44,20 +43,11 @@ class IdentificationViewModel @Inject constructor(
     private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
     private val _identificationState = MutableStateFlow(IdentificationState.INITIAL)
-    val identificationState: StateFlow<IdentificationState> = _identificationState.asStateFlow()
     private val _faceVerificationState = MutableStateFlow<FaceVerificationState>(FaceVerificationState.Idle)
-    val faceVerificationState: StateFlow<FaceVerificationState> = _faceVerificationState.asStateFlow()
     private val _currentVerificationType = MutableStateFlow<VerificationType?>(null)
-    val currentVerificationType: StateFlow<VerificationType?> = _currentVerificationType.asStateFlow()
     private val _photoUploadState = MutableStateFlow<PhotoUploadState>(PhotoUploadState.Initial)
-    val photoUploadState: StateFlow<PhotoUploadState> = _photoUploadState.asStateFlow()
-
     private val _faceSetupState = MutableStateFlow<FaceSetupState>(FaceSetupState.Initial)
-    val faceSetupState: StateFlow<FaceSetupState> = _faceSetupState.asStateFlow()
-
     private val uiActionQueue = IdentificationUiActionQueue()
-    val pendingUiActions: StateFlow<List<IdentificationUiAction>> = uiActionQueue.actions
-
     private val faceSdkCoordinator = IdentificationFaceSdkCoordinator(
         configProvider = faceVerificationConfigProvider,
         onStandardConfigMissing = {
@@ -70,7 +60,16 @@ class IdentificationViewModel @Inject constructor(
             setFaceSetupError(textResolver.text(R.string.identification_face_config_unavailable))
         },
     )
-    val faceSdkLaunchRequest = faceSdkCoordinator.launchRequest
+    val screenUiState: StateFlow<IdentificationScreenUiState> = createIdentificationScreenUiState(
+        scope = viewModelScope,
+        identificationState = _identificationState,
+        currentVerificationType = _currentVerificationType,
+        faceVerificationState = _faceVerificationState,
+        photoUploadState = _photoUploadState,
+        faceSetupState = _faceSetupState,
+        pendingUiActions = uiActionQueue.actions,
+        faceSdkLaunchRequest = faceSdkCoordinator.launchRequest,
+    )
     private var servicePersonEntryJob: Job? = null
 
     private fun setFaceVerificationError(

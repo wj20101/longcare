@@ -1,6 +1,6 @@
 # 路线图与开放问题
 
-最后核对：2026-08-29
+最后核对：2026-08-30
 
 本文只记录仍然成立的后续工作。已完成的任务、逐次 CI 结果和历史方案通过 Git/PR/Issue 追溯，不在主文档中保留执行日志。
 
@@ -10,7 +10,7 @@
 - Debug 和显式验收构建可用。
 - 生产发布被已知且可验证的厂商 SDK/配置问题主动阻断。
 - 架构演进重点是缩小 `:app`、稳定平台生命周期和提高关键业务回归信心。
-- `app/features` 冻结边界当前是 231 个 Kotlin 文件的精确快照；architecture rule-10 已执行实际文件与 allowlist 双向一致性，后续只允许受控收缩，不允许静默扩张或积累陈旧条目。
+- `app/features` 冻结边界当前是 222 个 Kotlin 文件的精确快照；architecture rule-10 已执行实际文件与 allowlist 双向一致性，后续只允许受控收缩，不允许静默扩张或积累陈旧条目。
 - 文档当前真相集已经收敛；后续应随实现更新，不再累积 design/plan/progress 副本。
 - 正式 `targetSdk` 保持 36；API 37 是 Android 17 Beta 候选且机器政策为 blocked，不因 `compileSdk 37` 或普通构建成功而自动提升。
 
@@ -91,20 +91,17 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 
 再按批次补充 focused unit test、instrumentation、Baseline Profile Benchmark 或 R8 analyzer。每个批次使用独立提交；发现行为差异时只回滚该批次，不跨批次追加兼容分支。
 
-首期明确不包含：厂商 SDK 替换或二进制修补、厂商 consumer rules 收窄、Jetifier 关闭、Navigation 迁移、Compose UI 重构，以及 WorkManager、定位、Bugly、DataStore 等启动初始化时序调整。这些事项分别保留在 P0、既有架构路线或后续受控性能实验中。
+上述低风险优化批次明确不包含：厂商 SDK 替换或二进制修补、厂商 consumer rules 收窄、Jetifier 关闭、Navigation 迁移、其他 Compose UI 重构，以及 WorkManager、定位、Bugly、DataStore 等启动初始化时序调整。身份主页面所有权迁移由独立 OpenSpec change 完成，不改变这些批次的范围。
 
 ## P1：`:app` 壳层收敛
 
-建议按可独立验证的小切片推进：
+`:feature:identification` 已完成主页面、专属资源、聚合状态和 effect 下沉，并以公开 screen/launcher 合约隔离 app-owned Navigation 2 与腾讯人脸控制器；它是后续切片的边界参考。剩余工作按可独立验证的小切片推进：
 
-1. `:feature:identification`
-   - 已拥有默认人脸核验页面和大部分用例/状态。
-   - 下一步评估迁移 `IdentificationScreen` 和 route-facing UI，保持结果 key 与补录兼容路径不变。
-2. `:feature:login`、`:feature:home`
-   - 迁移 route UI 前先固定 Home 子图 ViewModel owner、角色分流、隐私/协议和销售页返回行为。
-3. `:feature:photoupload`、`:feature:servicecountdown`
+1. `:feature:login`、`:feature:home`
+   - 认证根协调、隐私 gate、Home 子图 ViewModel owner、角色分流和销售页返回/恢复契约已固定；下一切片可迁移 route UI，但必须保持入口导航 focused suite 全绿，不把 app-owned NavHost/route 实现暴露为 feature API。
+2. `:feature:photoupload`、`:feature:servicecountdown`
    - UI 下沉时保持 app-owned 相机/Service/闹钟平台网关，不让 Feature 直接依赖 Activity 或实现类。
-4. 销售能力
+3. 销售能力
    - 建立独立 feature slice，拆分 oversized `SalesViewModel`，同时保持内部 `SalesNavigationState` 和应用级 Camera/WebView 返回行为。
 
 所有迁移都受 legacy 新文件冻结、模块依赖白名单和 API visibility 门禁约束。
@@ -144,7 +141,8 @@ API 37 手动 CI lane 目前覆盖 adaptive window、MessageQueue/反射/native�
 
 - 统一 feature entry、route key 和 app navigation registry 的所有权；当前 registry 只含 login/home/identification 三项。
 - 当前保持 Navigation Compose `2.10.0`，不引入 Navigation 3 artifact。Nav3 后续 change 必须使用稳定版本并原子替换，不建立长期双栈。
-- 迁移前先建立动态 Login/Home 起点、隐私 gate、返回键、`popUpTo`/清栈、结果返回与消费、HomeGraph 共享 ViewModel scope、重复导航、配置变化和进程恢复的 route/back-stack 等价测试。
+- identification 当前有意保留 app-owned `IdentificationRoute` 注册和三个结果 key；不要把已完成的 UI 所有权迁移误写成 Nav3 或 feature-owned route 已完成。
+- 动态 Login/Home 起点、隐私 gate、认证根 `popUpTo`/清栈、重复导航、配置变化、HomeGraph owner、Home 角色分流以及销售返回/保存恢复已建立 focused JVM 与 API 36 等价测试；任何 Login/Home UI 或 Nav3 迁移都必须复用或等价替换这些契约，并继续覆盖结果返回与消费。
 - 将可避免的 `OrderNavParams`、`ServiceCompleteData`、`WatermarkData` 等大对象 route payload 收敛为稳定 ID，再设计 Nav3 entry decorator、结果通道和 scope。
 - Navigation 3 迁移不与业务接口变化、模块大搬迁或 targetSdk 升级合并。
 - 继续缩小公共 API，优先 `implementation` 和 `internal`，避免跨模块访问实现包。

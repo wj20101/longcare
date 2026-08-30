@@ -2,6 +2,7 @@ package com.ytone.longcare.features.identification.vm
 
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
+import com.ytone.longcare.features.identification.api.IdentificationFaceSdkLaunchRequest
 
 /**
  * 身份认证状态枚举
@@ -56,3 +57,13 @@ sealed class FaceSetupState {
 
     data class Error(val message: String) : FaceSetupState()
 }
+
+data class IdentificationScreenUiState(
+    val identificationState: IdentificationState = IdentificationState.INITIAL,
+    val currentVerificationType: VerificationType? = null,
+    val faceVerificationState: FaceVerificationState = FaceVerificationState.Idle,
+    val photoUploadState: PhotoUploadState = PhotoUploadState.Initial,
+    val faceSetupState: FaceSetupState = FaceSetupState.Initial,
+    val pendingUiActions: List<IdentificationUiAction> = emptyList(),
+    val faceSdkLaunchRequest: IdentificationFaceSdkLaunchRequest? = null,
+)

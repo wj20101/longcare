@@ -43,8 +43,9 @@ import com.ytone.longcare.features.profile.ui.ProfileScreen
 import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.platform.sales.rememberSalesSdkUiController
 import com.ytone.longcare.presentation.sales.SalesNavigationState
+import com.ytone.longcare.presentation.sales.SalesBackEffect
 import com.ytone.longcare.presentation.sales.SalesPage
-import com.ytone.longcare.presentation.sales.evaluationBackTarget
+import com.ytone.longcare.presentation.sales.reduceSalesBack
 import com.ytone.longcare.presentation.sales.rememberSalesNavigationState
 import kotlinx.coroutines.launch
 
@@ -156,10 +157,7 @@ internal fun SalesExperienceScreen(
         }
     }
 
-    fun finishSubmissionFlow() {
-        // Leave the result page before clearing its state so a state emission
-        // cannot re-enter or visually pin the completed submission route.
-        goHome()
+    fun clearRegistrationFlow() {
         registrationDraft = SalesCustomerDraft()
         discardRegistrationPhotos()
         viewModel.resetSubmission()
@@ -183,37 +181,13 @@ internal fun SalesExperienceScreen(
     }
 
     fun back() {
-        when (currentPage) {
-            SalesPage.HOME -> {
-                if (navigationState.rootTab != 0) navigationState.selectRootTab(0)
-            }
-
-            SalesPage.REMINDERS -> goHome()
-            SalesPage.REMINDER_DETAIL -> navigate(SalesPage.REMINDERS)
-            SalesPage.CUSTOMERS -> goHome()
-            SalesPage.CUSTOMER_DETAIL ->
-                navigate(navigationState.detailReturnPage)
-
-            SalesPage.REGISTRATION -> {
-                discardRegistrationPhotos()
-                registrationDraft = SalesCustomerDraft()
-                viewModel.resetSubmission()
-                goHome()
-            }
-            SalesPage.REGISTRATION_CONFIRM -> navigate(SalesPage.REGISTRATION)
-            SalesPage.SUBMIT_SUCCESS -> finishSubmissionFlow()
-            SalesPage.EVALUATION_CHOICE,
-            SalesPage.DEVICE_STATUS,
-            SalesPage.EVALUATION_GUIDE,
-            ->
-                navigate(
-                    evaluationBackTarget(
-                        currentPage = currentPage,
-                        choiceReturnPage = navigationState.evaluationChoiceReturnPage,
-                    )
-                )
-
-            SalesPage.EVALUATION_COMPLETE -> goHome()
+        val result = reduceSalesBack(navigationState.snapshot())
+        // Apply navigation first so submission state emissions cannot visually
+        // re-enter a page that the user has already left.
+        navigationState.apply(result.snapshot)
+        when (result.effect) {
+            SalesBackEffect.None -> Unit
+            SalesBackEffect.ClearRegistration -> clearRegistrationFlow()
         }
     }
 
@@ -560,7 +534,7 @@ internal fun SalesExperienceScreen(
 
                 SalesPage.SUBMIT_SUCCESS ->
                     SalesSubmitSuccessScreen(
-                        onBack = ::finishSubmissionFlow,
+                        onBack = ::back,
                         onEvaluation = {
                             navigationState.rememberEvaluationChoiceReturnPage(
                                 SalesPage.SUBMIT_SUCCESS
@@ -607,7 +581,7 @@ internal fun SalesExperienceScreen(
                     SalesEvaluationCompleteScreen(
                         hasReport =
                             uiState.selectedCustomer.serverAssessmentReportUrl().isNotBlank(),
-                        onBack = ::goHome,
+                        onBack = ::back,
                         onDone = ::goHome,
                         onOpenReport = {
                             openLatestReport()

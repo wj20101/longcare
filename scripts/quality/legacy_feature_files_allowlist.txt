@@ -48,15 +48,6 @@ app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreen.kt
 app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreenContentSections.kt
 app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreenPreview.kt
 app/src/main/kotlin/com/ytone/longcare/features/home/ui/NavigationScreen.kt
-app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationCard.kt
-app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationCardComponents.kt
-app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationCardStatusComponents.kt
-app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationCardStatusPrimitives.kt
-app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationScreen.kt
-app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationScreenBodyContent.kt
-app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationScreenEffects.kt
-app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationScreenScaffoldContent.kt
-app/src/main/kotlin/com/ytone/longcare/features/identification/ui/IdentificationScreenScaffoldSections.kt
 app/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreen.kt
 app/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreenComponents.kt
 app/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreenContentSections.kt

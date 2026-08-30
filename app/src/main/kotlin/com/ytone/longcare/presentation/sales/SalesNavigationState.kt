@@ -11,21 +11,17 @@ import androidx.compose.runtime.setValue
 
 @Stable
 internal class SalesNavigationState(
-    initialPage: SalesPage = SalesPage.HOME,
-    initialRootTab: Int = SALES_HOME_TAB,
-    initialDetailReturnPage: SalesPage = SalesPage.HOME,
-    initialEvaluationChoiceReturnPage: SalesPage = SalesPage.HOME,
-    initialReminderIndex: Int = NO_REMINDER_SELECTED,
+    initialSnapshot: SalesNavigationSnapshot = SalesNavigationSnapshot(),
 ) {
-    var currentPage by mutableStateOf(initialPage)
+    var currentPage by mutableStateOf(initialSnapshot.currentPage)
         private set
-    var rootTab by mutableIntStateOf(initialRootTab)
+    var rootTab by mutableIntStateOf(initialSnapshot.rootTab)
         private set
-    var detailReturnPage by mutableStateOf(initialDetailReturnPage)
+    var detailReturnPage by mutableStateOf(initialSnapshot.detailReturnPage)
         private set
-    var evaluationChoiceReturnPage by mutableStateOf(initialEvaluationChoiceReturnPage)
+    var evaluationChoiceReturnPage by mutableStateOf(initialSnapshot.evaluationChoiceReturnPage)
         private set
-    var reminderIndex by mutableIntStateOf(initialReminderIndex)
+    var reminderIndex by mutableIntStateOf(initialSnapshot.reminderIndex)
         private set
 
     val canHandleBack: Boolean get() = currentPage != SalesPage.HOME || rootTab != SALES_HOME_TAB
@@ -41,35 +37,79 @@ internal class SalesNavigationState(
         evaluationChoiceReturnPage = returnPage
     }
     fun selectReminder(index: Int) { reminderIndex = index; currentPage = SalesPage.REMINDER_DETAIL }
+
+    fun snapshot(): SalesNavigationSnapshot = SalesNavigationSnapshot(
+        currentPage = currentPage,
+        rootTab = rootTab,
+        detailReturnPage = detailReturnPage,
+        evaluationChoiceReturnPage = evaluationChoiceReturnPage,
+        reminderIndex = reminderIndex,
+    )
+
+    fun apply(snapshot: SalesNavigationSnapshot) {
+        currentPage = snapshot.currentPage
+        rootTab = snapshot.rootTab
+        detailReturnPage = snapshot.detailReturnPage
+        evaluationChoiceReturnPage = snapshot.evaluationChoiceReturnPage
+        reminderIndex = snapshot.reminderIndex
+    }
 }
+
+internal data class SalesNavigationSnapshot(
+    val currentPage: SalesPage = SalesPage.HOME,
+    val rootTab: Int = SALES_HOME_TAB,
+    val detailReturnPage: SalesPage = SalesPage.HOME,
+    val evaluationChoiceReturnPage: SalesPage = SalesPage.HOME,
+    val reminderIndex: Int = NO_REMINDER_SELECTED,
+)
+
+internal enum class SalesBackEffect {
+    None,
+    ClearRegistration,
+}
+
+internal data class SalesBackResult(
+    val snapshot: SalesNavigationSnapshot,
+    val effect: SalesBackEffect = SalesBackEffect.None,
+)
 
 @Composable
 internal fun rememberSalesNavigationState(): SalesNavigationState =
     rememberSaveable(saver = SalesNavigationStateSaver) { SalesNavigationState() }
 
 private val SalesNavigationStateSaver = listSaver<SalesNavigationState, Any>(
-    save = { state ->
-        listOf(
-            state.currentPage.name,
-            state.rootTab,
-            state.detailReturnPage.name,
-            state.evaluationChoiceReturnPage.name,
-            state.reminderIndex,
-        )
-    },
-    restore = { values ->
-        SalesNavigationState(
-            initialPage = values[0].toString().toSalesPageOrDefault(SalesPage.HOME),
-            initialRootTab = values[1] as Int,
-            initialDetailReturnPage = values[2].toString().toSalesPageOrDefault(SalesPage.HOME),
-            initialEvaluationChoiceReturnPage = values[3].toString().toSalesPageOrDefault(SalesPage.HOME),
-            initialReminderIndex = values[4] as Int,
-        )
-    },
+    save = { state -> state.snapshot().toSaveableValues() },
+    restore = { values -> SalesNavigationState(restoreSalesNavigationSnapshot(values)) },
 )
 
-private fun String.toSalesPageOrDefault(default: SalesPage): SalesPage =
-    runCatching { SalesPage.valueOf(this) }.getOrDefault(default)
+internal fun SalesNavigationSnapshot.toSaveableValues(): List<Any> = listOf(
+    currentPage.name,
+    rootTab,
+    detailReturnPage.name,
+    evaluationChoiceReturnPage.name,
+    reminderIndex,
+)
+
+internal fun restoreSalesNavigationSnapshot(values: List<Any?>): SalesNavigationSnapshot =
+    SalesNavigationSnapshot(
+        currentPage = values.pageAt(CURRENT_PAGE_INDEX, SalesPage.HOME),
+        rootTab = values.intAt(ROOT_TAB_INDEX)
+            ?.takeIf { it in SAVABLE_ROOT_TABS }
+            ?: SALES_HOME_TAB,
+        detailReturnPage = values.pageAt(DETAIL_RETURN_PAGE_INDEX, SalesPage.HOME),
+        evaluationChoiceReturnPage =
+            values.pageAt(EVALUATION_RETURN_PAGE_INDEX, SalesPage.HOME),
+        reminderIndex = values.intAt(REMINDER_INDEX)
+            ?.takeIf { it >= NO_REMINDER_SELECTED }
+            ?: NO_REMINDER_SELECTED,
+    )
+
+private fun List<Any?>.pageAt(index: Int, default: SalesPage): SalesPage =
+    (getOrNull(index) as? String)
+        ?.let { value -> runCatching { SalesPage.valueOf(value) }.getOrNull() }
+        ?: default
+
+private fun List<Any?>.intAt(index: Int): Int? = getOrNull(index) as? Int
 
 internal enum class SalesPage {
     HOME,
@@ -101,5 +141,69 @@ internal fun evaluationBackTarget(
     else -> currentPage
 }
 
+internal fun reduceSalesBack(snapshot: SalesNavigationSnapshot): SalesBackResult = when (snapshot.currentPage) {
+    SalesPage.HOME -> SalesBackResult(
+        snapshot = if (snapshot.rootTab == SALES_HOME_TAB) {
+            snapshot
+        } else {
+            snapshot.copy(rootTab = SALES_HOME_TAB)
+        },
+    )
+
+    SalesPage.REMINDERS,
+    SalesPage.CUSTOMERS,
+    SalesPage.EVALUATION_COMPLETE,
+    -> SalesBackResult(snapshot.goHome())
+
+    SalesPage.REMINDER_DETAIL -> SalesBackResult(
+        snapshot.copy(currentPage = SalesPage.REMINDERS),
+    )
+
+    SalesPage.CUSTOMER_DETAIL -> SalesBackResult(
+        snapshot.copy(currentPage = snapshot.safeDetailReturnPage()),
+    )
+
+    SalesPage.REGISTRATION -> SalesBackResult(
+        snapshot = snapshot.goHome(),
+        effect = SalesBackEffect.ClearRegistration,
+    )
+
+    SalesPage.REGISTRATION_CONFIRM -> SalesBackResult(
+        snapshot.copy(currentPage = SalesPage.REGISTRATION),
+    )
+
+    SalesPage.SUBMIT_SUCCESS -> SalesBackResult(
+        snapshot = snapshot.goHome(),
+        effect = SalesBackEffect.ClearRegistration,
+    )
+
+    SalesPage.EVALUATION_CHOICE,
+    SalesPage.DEVICE_STATUS,
+    SalesPage.EVALUATION_GUIDE,
+    -> SalesBackResult(
+        snapshot.copy(
+            currentPage = evaluationBackTarget(
+                currentPage = snapshot.currentPage,
+                choiceReturnPage = snapshot.evaluationChoiceReturnPage,
+            ),
+        ),
+    )
+}
+
+private fun SalesNavigationSnapshot.goHome(): SalesNavigationSnapshot = copy(
+    currentPage = SalesPage.HOME,
+    rootTab = SALES_HOME_TAB,
+)
+
+private fun SalesNavigationSnapshot.safeDetailReturnPage(): SalesPage =
+    detailReturnPage.takeIf { it == SalesPage.HOME || it == SalesPage.CUSTOMERS }
+        ?: SalesPage.HOME
+
 private const val SALES_HOME_TAB = 0
 private const val NO_REMINDER_SELECTED = -1
+private const val CURRENT_PAGE_INDEX = 0
+private const val ROOT_TAB_INDEX = 1
+private const val DETAIL_RETURN_PAGE_INDEX = 2
+private const val EVALUATION_RETURN_PAGE_INDEX = 3
+private const val REMINDER_INDEX = 4
+private val SAVABLE_ROOT_TABS = setOf(SALES_HOME_TAB, 2)

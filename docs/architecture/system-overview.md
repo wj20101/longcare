@@ -1,6 +1,6 @@
 # 系统架构概览
 
-最后核对：2026-08-29
+最后核对：2026-08-30
 
 本文描述当前代码实际运行形态，不把目标架构写成已经完成的事实。版本和依赖见[技术栈与构建基线](tech-stack.md)，产品行为见[产品概览](../product/overview.md)。
 
@@ -51,7 +51,7 @@ flowchart LR
 | `:core:ui` | 共用 Compose/UI 支撑、共享 ViewModel、统一图片预览 | 可依赖 Core 契约，不得访问数据实现 |
 | `:feature:login` | 登录 ViewModel、动作接口、DI 和 feature entry | `LoginScreen` 仍在 `:app` |
 | `:feature:home` | 首页共享状态、上报能力、动作接口和 feature entry | 护理/销售首页 route UI 仍在 `:app` |
-| `:feature:identification` | 身份用例/网关、状态编排、CameraX + ML Kit 人脸采集和默认比对页 | 已拥有默认人脸核验 UI；`IdentificationScreen` 主页面仍在 `:app` |
+| `:feature:identification` | 身份主页面/资源、聚合屏幕状态、用例/网关、CameraX + ML Kit 人脸采集和默认比对页 | `IdentificationFeatureScreen` 是唯一公开页面入口；内部渲染 UI/VM 不向 `:app` 暴露 |
 | `:feature:location` | 定位 Service、管理器、会话、上报、诊断 | 作为服务流程内嵌能力，没有独立路由 |
 | `:feature:photoupload` | 上传门面、任务队列和照片处理状态 | `PhotoUploadScreen`、`CameraScreen` 仍在 `:app` |
 | `:feature:servicecountdown` | 倒计时状态、轮询和平台网关契约 | route UI、Service、闹钟实现仍在 `:app` |
@@ -62,7 +62,7 @@ flowchart LR
 2. `MainActivity` 使用 Hilt，启用 edge-to-edge，并把 UI 交给 `MainApp`。
 3. 未同意隐私政策时只显示同意弹窗；同意后生成应用私有 GUID，再执行需要授权的 SDK 与 Worker 后置初始化。
 4. `MainViewModel` 暴露加密持久会话；只有 `ACTIVE` envelope 对应命名空间通过 metadata 核对并 Ready 后才发布：
-   - `Unknown` → 启动进度页
+   - `Unknown` → 首次解析时只显示启动进度页；认证 NavHost 已建立后则用不透明、拦截输入的进度层覆盖并保留原 back stack
    - `LoggedOut` → `LoginRoute`
    - `LoggedIn` → `HomeGraphRoute`
 5. 全局 `SessionInvalidationHandler` 负责失效提示与统一租约撤销；手动退出、Token 失效和换号走同一清理/关闭顺序。
@@ -77,7 +77,11 @@ flowchart LR
 - Service flow：服务详情、护理执行、NFC、选择服务、照片上传、倒计时、结束选择、完成摘要。
 - Support：用户列表/记录、人脸引导与核验、设备选择、相机、手动人脸采集和 WebView。
 
+认证入口由 app-owned 协调器把会话状态映射为 `LoginRoute` 或 `HomeGraphRoute`。同一目标的重复信号是 `NoOp`；Login/Home 切换使用类型安全 `popUpTo(inclusive = true)` 删除另一认证根，保证 back stack 不同时保留两个账号边界。`AppNavHost` 和 `EntryDestinationRenderers` 仅作为 `internal` 测试 seam，不是跨模块 API；首次根状态解析完成后 NavController 不因短暂 `Unknown` 或配置变化而重建。
+
 订单相关路由传递轻量 `OrderNavParams(orderId, planId)`，页面再通过 Repository/共享状态加载业务数据。跨页面结果使用上一层 `SavedStateHandle`，例如相机 URI、人脸文件路径和默认人脸核验结果。
+
+`IdentificationRoute` 仍由 `:app` 的 Navigation Compose 2 图注册：壳层解析 route、提供五个导航回调和三个结果流，并使用当前 UI Context 把 app-owned 腾讯人脸控制器适配为 `IdentificationFaceSdkLauncher`；feature 不引用 `NavController`、app 平台实现或 app `R`。三个结果确认后显式写入 `null`，保证既有 `StateFlow` 同步进入已消费状态。
 
 当前只有 login、home、identification 三个 feature entry 常量进入运行时 registry；registry 的数量校验不是完整路由清单。完整页面映射见[页面与路由地图](ui-and-screen-map.md)。
 
@@ -88,6 +92,10 @@ flowchart LR
 - replay-zero 流只用于允许观察者缺席时丢失的实时输入或诊断信号，例如 NFC/RFID 瞬时事件。
 - 协程取消必须继续抛出 `CancellationException`；敏感流程由质量脚本扫描。
 - ViewModel 不持有 Activity；需要 Activity、Context、Service、闹钟、安装器或厂商 SDK UI 时通过 app-owned gateway/controller。
+- 身份主页面只收集一个不可变 `IdentificationScreenUiState`；导航/提示动作和厂商启动请求按 id 保留到 UI 明确确认，普通重组不会重复执行。
+- `HomeSharedViewModel` 由 `HomeRoute` 持有；`TodayOrderViewModel` 由 `HomeGraphRoute` 显式持有并供首页、服务计划和服务记录复用。缺少 HomeGraph owner 时立即失败，不回退为目的页面 owner。
+- Home 角色分流先把空身份映射为 Loading，再确定护理或销售体验；不会在身份尚未恢复时默认进入护理端。
+- 销售嵌套导航保存页面、根页签、详情/评估返回目标和提醒索引的完整快照；系统返回键与页面返回按钮经过同一个纯 reducer，非法或旧快照按安全默认值恢复。
 - Repository 会话写入为 suspend 操作，调用者不能在 DataStore 持久化完成前报告登录/退出成功。
 
 ## 数据与持久化
@@ -127,6 +135,7 @@ cache/user_scopes/v1/<sha256>/session/<purpose>/...
 - 默认服务人员核验由 `:feature:identification` 的 CameraX/ML Kit 流程完成：单人/姿态检查 → 建立睁眼基线 → 闭眼 → 稳定睁开 → 拍摄 → 编码 → `/V1/User/CheckFace`。
 - 服务端登记照只作为“是否需要补录”的权威状态，不重新下载为客户端本地缓存；旧版遗留文件在需要补录时清理。
 - 腾讯人脸 SDK 和手动采集仍保留兼容/验证路径，但不是默认订单核验入口。
+- 身份 feature 只发布带 id 的腾讯人脸启动请求并接收对应事件；实际 SDK UI 继续由 `:app/platform/face` 执行，迟到或不匹配 id 的事件在协调器处忽略。
 
 ## Android 组件边界
 
@@ -169,7 +178,7 @@ cache/user_scopes/v1/<sha256>/session/<purpose>/...
 | AMap Location | 服务中定位和单次业务定位 | `:feature:location`；平台 Service 在模块 Manifest 中声明 |
 | Tencent COS | 图片/文件对象存储 | `:core:data` 实现，Feature 使用领域契约/上传门面 |
 | CameraX + ML Kit | 标准相机、人脸检测和眨眼活体 | 相机 UI 分布在 `:app` 与 `:feature:identification` |
-| Tencent Face | 旧版/兼容人脸验证 | app-owned face controller，默认订单核验不进入该 SDK |
+| Tencent Face | 旧版/兼容人脸验证 | app-owned face controller；身份 feature 仅通过公开 launcher 合约请求启动，默认订单核验不进入该 SDK |
 | QLZ | 销售蓝牙设备自动评估 | app-owned SDK controller；Sale API 分层在 Core |
 | Bugly | 同意后的崩溃上报 | `CrashReportGateway`；Debug/未初始化路径不调用远端 runtime |
 | WorkManager | 更新检查、下载与可恢复后台任务 | 自定义初始化，Worker 位于 `:app` |

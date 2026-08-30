@@ -1,5 +1,6 @@
 package com.ytone.longcare.data.repository
 
+import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.data.session.EncryptedSessionEnvelopeStore
 import com.ytone.longcare.data.session.FaceSetupIdentitySecret
@@ -200,7 +201,10 @@ class DefaultUserSessionRepository internal constructor(
                     publishLoggedOut()
                     throw cancellation
                 } catch (_: Exception) {
-                    // The unreadable record remains fail closed even when its best-effort deletion fails.
+                    KLogger.w(
+                        tag = "UserSession",
+                        message = "Unreadable session cleanup failed; session remains logged out.",
+                    )
                 }
                 publishLoggedOut()
             }

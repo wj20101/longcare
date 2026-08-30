@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -33,9 +32,6 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var sessionInvalidationHandler: SessionInvalidationHandler
 
-    // 获取 MainViewModel，它持有 UserSessionRepository
-    private val viewModel: MainViewModel by viewModels()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -53,7 +49,7 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             LongCareTheme {
-                MainApp(viewModel)
+                MainApp()
             }
         }
     }

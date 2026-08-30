@@ -23,7 +23,6 @@ import dagger.hilt.android.HiltAndroidApp
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Provider
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.runBlocking
 
 @HiltAndroidApp
@@ -49,7 +48,12 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
     @Inject
     lateinit var locationSessionLifecycleObserver: LocationSessionLifecycleObserver
 
-    private val postConsentInitDone = AtomicBoolean(false)
+    private val privacyConsentProcessCoordinator by lazy(LazyThreadSafetyMode.NONE) {
+        PrivacyConsentProcessCoordinator(
+            persistConsent = privacyConsentManager::markConsented,
+            initializeAfterConsent = ::performPostConsentInit,
+        )
+    }
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
@@ -67,17 +71,20 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
         locationSessionLifecycleObserver.start()
 
         // 只有用户已同意隐私政策才初始化 SDK 和调度 Worker
-        if (privacyConsentManager.isPrivacyConsented) {
-            performPostConsentInit()
-        }
+        privacyConsentProcessCoordinator.initializeForExistingConsent(
+            privacyConsentManager.isPrivacyConsented,
+        )
     }
 
     /**
      * 隐私同意后调用，初始化需要设备标识符的 SDK 和 Worker。
      * 首次同意时由 UI 层调用，后续启动由 onCreate 直接调用。
      */
-    fun performPostConsentInit() {
-        if (!postConsentInitDone.compareAndSet(false, true)) return
+    fun onPrivacyConsentGranted() {
+        privacyConsentProcessCoordinator.grantConsent()
+    }
+
+    private fun performPostConsentInit() {
         deviceUtils.getAppInstanceId()
         initCrashReportingIfNeeded()
         scheduleStartupWorkers()

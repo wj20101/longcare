@@ -1,18 +1,12 @@
 package com.ytone.longcare.features.identification.vm
 
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
-import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.common.faceauth.FaceSdkEvent
+import com.ytone.longcare.features.identification.api.IdentificationFaceSdkLaunchRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
-data class IdentificationFaceSdkLaunchRequest(
-    val id: Long,
-    val config: FaceVerificationConfig,
-    val request: FaceVerificationRequest,
-)
 
 internal sealed interface IdentificationFaceSdkPurpose {
     data object Standard : IdentificationFaceSdkPurpose

@@ -17,6 +17,32 @@ import com.ytone.longcare.features.sales.SalesExperienceScreen
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 
+internal enum class HomeExperience {
+    Loading,
+    Care,
+    Sales,
+}
+
+internal fun resolveHomeExperience(userIdentity: Int?): HomeExperience = when (userIdentity) {
+    null -> HomeExperience.Loading
+    2 -> HomeExperience.Sales
+    else -> HomeExperience.Care
+}
+
+@Composable
+internal fun HomeExperienceContent(
+    experience: HomeExperience,
+    loadingContent: @Composable () -> Unit,
+    careContent: @Composable () -> Unit,
+    salesContent: @Composable () -> Unit,
+) {
+    when (experience) {
+        HomeExperience.Loading -> loadingContent()
+        HomeExperience.Care -> careContent()
+        HomeExperience.Sales -> salesContent()
+    }
+}
+
 @Composable
 fun HomeScreen(
     actions: HomeActions,
@@ -29,14 +55,15 @@ fun HomeScreen(
         homeSharedViewModel.reportHomeEntry()
     }
 
-    when (user?.userIdentity) {
-        2 ->
+    HomeExperienceContent(
+        experience = resolveHomeExperience(user?.userIdentity),
+        salesContent = {
             SalesExperienceScreen(
                 actions = actions,
                 homeSharedViewModel = homeSharedViewModel,
             )
-
-        null ->
+        },
+        loadingContent = {
             Box(
                 modifier =
                     Modifier
@@ -46,12 +73,13 @@ fun HomeScreen(
             ) {
                 CircularProgressIndicator()
             }
-
-        else ->
+        },
+        careContent = {
             HomeScreenPagerContent(
                 actions = actions,
                 homeSharedViewModel = homeSharedViewModel,
                 todayOrderViewModel = todayOrderViewModel
             )
-    }
+        },
+    )
 }

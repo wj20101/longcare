@@ -34,8 +34,8 @@
       "layer": "ci-required",
       "blocking": true,
       "owner": "mobile-platform",
-      "source_of_truth": "scripts/quality/verify_architecture_boundaries.sh",
-      "likely_fix": "Move code to the allowed layer or update the explicit architecture allowlist."
+      "source_of_truth": "scripts/quality/verify_architecture_boundaries.sh,scripts/quality/verify_identification_feature_boundary.sh",
+      "likely_fix": "Move code to the allowed layer, use the identification public API boundary, or update an explicit architecture allowlist deliberately."
     },
     {
       "id": "module_dependency_whitelist",
@@ -117,6 +117,15 @@
       "owner": "mobile-platform",
       "source_of_truth": "scripts/quality/verify_instrumentation_smoke_classes.sh",
       "likely_fix": "Replace stale class selectors with real app/src/androidTest class declarations."
+    },
+    {
+      "id": "entry_navigation_contracts",
+      "name": "Entry Navigation Contract Guard",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/verify_entry_navigation_contracts.sh,scripts/quality/test_entry_navigation_contracts.sh,scripts/quality/run_entry_navigation_focused.sh",
+      "likely_fix": "Keep navigation-testing test-only, preserve the internal renderer seam, and restore the focused JVM/API 36 navigation tests."
     },
     {
       "id": "tech_stack_baseline",

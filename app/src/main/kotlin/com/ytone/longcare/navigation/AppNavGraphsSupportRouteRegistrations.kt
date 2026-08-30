@@ -1,6 +1,7 @@
 package com.ytone.longcare.navigation
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
@@ -9,10 +10,10 @@ import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
 import com.ytone.longcare.features.facerecognition.api.FaceRecognitionGuideActions
 import com.ytone.longcare.features.facerecognition.ui.FaceRecognitionGuideScreen
+import com.ytone.longcare.features.identification.api.IdentificationFaceSdkLauncher
+import com.ytone.longcare.features.identification.api.IdentificationFeatureScreen
 import com.ytone.longcare.features.identification.facecheck.DefaultFaceVerificationScreen
 import com.ytone.longcare.features.identification.facecheck.FaceImageMetrics
-import com.ytone.longcare.features.identification.api.IdentificationActions
-import com.ytone.longcare.features.identification.ui.IdentificationScreen
 import com.ytone.longcare.features.photoupload.api.CameraActions
 import com.ytone.longcare.features.photoupload.ui.CameraScreen
 import com.ytone.longcare.features.selectdevice.api.SelectDeviceActions
@@ -25,6 +26,7 @@ import com.ytone.longcare.features.userservicerecord.ui.UserServiceRecordScreen
 import com.ytone.longcare.features.webview.api.WebViewActions
 import com.ytone.longcare.features.webview.ui.WebViewScreen
 import com.ytone.longcare.model.WatermarkData
+import com.ytone.longcare.platform.face.rememberFaceSdkUiController
 import kotlin.reflect.typeOf
 
 internal val LocalFaceImageMetricsReporter =
@@ -110,8 +112,11 @@ internal fun NavGraphBuilder.registerIdentificationRoute(navController: NavContr
         typeMap = mapOf(typeOf<OrderNavParams>() to OrderNavParamsNavType)
     ) { backStackEntry ->
         val route = backStackEntry.toRoute<IdentificationRoute>()
-        IdentificationScreen(
-            actions = IdentificationActions(
+        val context = LocalContext.current
+        val faceSdkUiController = rememberFaceSdkUiController()
+        IdentificationFeatureScreen(
+            actions = createIdentificationRouteActions(
+                savedStateHandle = backStackEntry.savedStateHandle,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToCamera = { watermarkData ->
                     navController.navigateToCamera(watermarkData)
@@ -123,31 +128,16 @@ internal fun NavGraphBuilder.registerIdentificationRoute(navController: NavContr
                 onNavigateToSelectService = { orderKey ->
                     navController.navigateToSelectService(orderKey)
                 },
-                capturedImageUriFlow = backStackEntry.savedStateHandle.getStateFlow(
-                    NavigationConstants.CAPTURED_IMAGE_URI_KEY,
-                    null
-                ),
-                clearCapturedImageUri = {
-                    backStackEntry.savedStateHandle.remove<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY)
-                },
-                faceImagePathFlow = backStackEntry.savedStateHandle.getStateFlow(
-                    NavigationConstants.FACE_IMAGE_PATH_KEY,
-                    null
-                ),
-                clearFaceImagePath = {
-                    backStackEntry.savedStateHandle.remove<String>(NavigationConstants.FACE_IMAGE_PATH_KEY)
-                },
-                defaultFaceVerificationResultFlow = backStackEntry.savedStateHandle.getStateFlow(
-                    NavigationConstants.DEFAULT_FACE_VERIFICATION_RESULT_KEY,
-                    null,
-                ),
-                clearDefaultFaceVerificationResult = {
-                    backStackEntry.savedStateHandle.remove<Boolean>(
-                        NavigationConstants.DEFAULT_FACE_VERIFICATION_RESULT_KEY,
-                    )
-                }
             ),
-            orderKey = route.orderParams.toOrderKey()
+            orderKey = route.orderParams.toOrderKey(),
+            faceSdkLauncher = IdentificationFaceSdkLauncher { request, onEvent ->
+                faceSdkUiController.start(
+                    context = context,
+                    config = request.config,
+                    request = request.request,
+                    onEvent = onEvent,
+                )
+            },
         )
     }
 }

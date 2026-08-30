@@ -168,6 +168,16 @@ for file in "${changed_files[@]:-}"; do
       add_smoke_class_unique "com.ytone.longcare.smoke.MainActivitySmokeTest"
       ;;
   esac
+
+  case "${file}" in
+    app/src/main/kotlin/com/ytone/longcare/navigation/*|app/src/main/kotlin/com/ytone/longcare/features/home/ui/Home*|app/src/main/kotlin/com/ytone/longcare/features/sales/SalesExperienceScreen.kt|app/src/main/kotlin/com/ytone/longcare/presentation/sales/SalesNavigationState.kt|app/src/androidTest/kotlin/com/ytone/longcare/navigation/*|app/src/androidTest/kotlin/com/ytone/longcare/features/home/ui/HomeExperienceContentTest.kt|app/src/androidTest/kotlin/com/ytone/longcare/features/sales/SalesNavigationStateRestorationTest.kt)
+      run_instrumentation="true"
+      add_smoke_class_unique "com.ytone.longcare.navigation.EntryNavigationInstrumentationTest"
+      add_smoke_class_unique "com.ytone.longcare.navigation.HomeGraphOwnerInstrumentationTest"
+      add_smoke_class_unique "com.ytone.longcare.features.home.ui.HomeExperienceContentTest"
+      add_smoke_class_unique "com.ytone.longcare.features.sales.SalesNavigationStateRestorationTest"
+      ;;
+  esac
 done
 
 if [[ "${full_scope}" == "true" ]]; then

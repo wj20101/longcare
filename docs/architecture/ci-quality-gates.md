@@ -1,6 +1,6 @@
 # CI、质量门禁与发布
 
-最后核对：2026-08-29
+最后核对：2026-08-30
 
 本文描述当前脚本和 GitHub Actions 的实际行为。门禁名称/Owner 元数据以 `scripts/quality/quality_gate_registry.json` 为准；是否真正执行则以对应 workflow 和 runner 脚本为准。
 
@@ -28,8 +28,9 @@
 
 - `check_new_files_guard.sh`
 - `test_android_build_governance.sh` 及 build baseline、dependency policy、target readiness/matrix、smoke class、tech-stack 正向守卫
-- `test_legacy_feature_file_allowlist.sh` 与 `test_user_storage_boundaries.sh` 的正反 fixture
-- `verify_architecture_boundaries.sh`（内部执行 legacy 精确快照、用户存储/后台身份和 WebView 原生 bridge 守卫）
+- `test_legacy_feature_file_allowlist.sh`、`test_user_storage_boundaries.sh`、`test_identification_feature_boundary.sh` 与 `test_entry_navigation_contracts.sh` 的正反 fixture
+- `verify_entry_navigation_contracts.sh`（Navigation Testing 仅限 androidTest、入口 renderer/host 保持 `internal`、focused 测试类完整）
+- `verify_architecture_boundaries.sh`（内部执行 legacy 精确快照、身份 feature 所有权、用户存储/后台身份和 WebView 原生 bridge 守卫）
 - `verify_module_dependency_whitelist.sh`
 - `verify_module_api_visibility.sh`
 
@@ -56,7 +57,7 @@ bash scripts/quality/verify_release_validation_entry.sh .
 3. 执行 `:app:lintDebug :app:assembleDebug`；full scope 额外执行 `:app:bundleDebug`。
 4. 对生成的 Lint 文本报告执行 warning allowlist。
 5. 上传 Debug APK；full scope 上传 AAB 和可用的 Baseline Profile APK。
-6. 当 `run_instrumentation=true` 时，在 `pixel6Api36` 上运行选择出的 blocking smoke 并上传报告。
+6. 当 `run_instrumentation=true` 时，在 `pixel6Api36` 上运行选择出的 blocking smoke 并上传报告；入口导航、HomeGraph owner、Home 角色渲染和 Sales 状态恢复属于相关路径变更时的受管选择器。
 7. 总是上传报告，失败时上传额外诊断产物。
 
 普通 Android CI **不执行全部业务单元测试或完整用户旅程**；受影响变更会执行受管的 API 36 UI/平台 smoke。相关改动仍应在本地 `--full`、专项验证或发布验收中运行更完整的 focused tests 和真机链路。
@@ -79,9 +80,11 @@ bash scripts/quality/verify_release_validation_entry.sh .
 | `verify_target_sdk_readiness.sh` | 正式 target 与候选 readiness 状态组合、Manifest adaptive 一致性 |
 | `verify_target_platform_test_matrix.sh` | API 33/36/37 验证目标和设备严格分离 |
 | `verify_instrumentation_smoke_classes.sh` | workflow/脚本/matrix 引用的 `androidTest` 类真实存在 |
+| `verify_entry_navigation_contracts.sh` | Navigation Testing 不进入生产依赖、入口 renderer/host 保持 `internal`，且入口/Home/Sales focused 测试契约完整；正反 fixture 验证守卫本身 |
 | `verify_tech_stack_baseline.sh` | 技术栈长期字段与 Settings/constants/catalog/wrapper 一致 |
 | `verify_exact_alarm_permission_config.sh` | 精确闹钟 Manifest 策略 |
-| `verify_architecture_boundaries.sh` | 分层、legacy freeze、用户存储/任务身份、WebView bridge、ViewModel 和代码规模规则 |
+| `verify_architecture_boundaries.sh` | 分层、legacy freeze、身份 feature 所有权、用户存储/任务身份、WebView bridge、ViewModel 和代码规模规则 |
+| `verify_identification_feature_boundary.sh` | 禁止身份 UI 回流 app、feature 反向引用 app 壳层及 app 绕过公开 API；由架构总守卫调用 |
 | `verify_module_dependency_whitelist.sh` | Gradle 项目模块依赖边 |
 | `verify_module_api_visibility.sh` | 跨模块公共 API 边界 |
 | `verify_lint_warning_allowlist.sh` | Lint 报告新增 warning 和 waiver 漂移 |
@@ -165,6 +168,9 @@ bash scripts/quality/preflight_local.sh --local-fast
 
 # Kotlin/业务改动
 bash scripts/quality/preflight_local.sh --full
+
+# 入口认证、Home owner/角色或 Sales 内部导航改动；设备必须为 API 36
+bash scripts/quality/run_entry_navigation_focused.sh --device <api-36-serial>
 
 # 与普通 Android CI 对齐
 bash scripts/quality/verify_release_validation_entry.sh .

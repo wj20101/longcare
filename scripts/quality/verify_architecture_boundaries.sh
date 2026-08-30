@@ -19,6 +19,7 @@ LEGACY_APP_INTERNAL_IMPORT_ALLOWLIST="${PROJECT_ROOT}/scripts/quality/architectu
 LEGACY_APP_INTERNAL_IMPORT_BUDGET_FILE="${PROJECT_ROOT}/scripts/quality/architecture_legacy_import_budget.txt"
 LEGACY_APP_FEATURE_FILE_GUARD="${PROJECT_ROOT}/scripts/quality/verify_legacy_feature_file_allowlist.sh"
 USER_STORAGE_BOUNDARY_GUARD="${PROJECT_ROOT}/scripts/quality/verify_user_storage_boundaries.sh"
+IDENTIFICATION_FEATURE_BOUNDARY_GUARD="${PROJECT_ROOT}/scripts/quality/verify_identification_feature_boundary.sh"
 
 echo "[architecture] checking layer boundaries under: ${PROJECT_ROOT}"
 
@@ -401,6 +402,19 @@ run_user_storage_boundary_guard() {
   fi
 }
 
+run_identification_feature_boundary_guard() {
+  if [[ ! -f "${IDENTIFICATION_FEATURE_BOUNDARY_GUARD}" ]]; then
+    echo "[architecture][FAIL] identification feature boundary guard missing: ${IDENTIFICATION_FEATURE_BOUNDARY_GUARD}"
+    EXIT_CODE=1
+    return 0
+  fi
+
+  if ! bash "${IDENTIFICATION_FEATURE_BOUNDARY_GUARD}" --project-root "${PROJECT_ROOT}"; then
+    echo "[architecture][FAIL] identification screen ownership or public API boundary was violated"
+    EXIT_CODE=1
+  fi
+}
+
 count_allowlist_entries() {
   local allowlist_file="$1"
   awk 'NF && $1 !~ /^#/' "${allowlist_file}" | wc -l | tr -d ' '
@@ -668,13 +682,17 @@ check_file_line_threshold "${APP_ROOT}/navigation/AppNavGraphsSupport.kt" 250 "A
 echo "[architecture] rule-10: legacy app/features kotlin files are frozen by allowlist"
 run_legacy_feature_file_allowlist_guard
 
+echo "[architecture] rule-10b: identification screen ownership stays in feature public boundary"
+run_identification_feature_boundary_guard
+
 echo "[architecture] rule-11: identification UI split files must stay within threshold"
+IDENTIFICATION_UI_ROOT="${FEATURE_ROOT}/identification/src/main/kotlin/com/ytone/longcare/features/identification/ui"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/ui/IdentificationScreen.kt" \
+  "${IDENTIFICATION_UI_ROOT}/IdentificationScreen.kt" \
   320 \
   "IdentificationScreen.kt"
 check_file_line_threshold \
-  "${APP_ROOT}/features/identification/ui/IdentificationCard.kt" \
+  "${IDENTIFICATION_UI_ROOT}/IdentificationCard.kt" \
   400 \
   "IdentificationCard.kt"
 
