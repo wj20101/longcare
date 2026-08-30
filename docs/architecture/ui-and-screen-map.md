@@ -20,7 +20,7 @@
 
 | 路由 | 页面 | 现实归属 | 说明 |
 |---|---|---|---|
-| `LoginRoute` | `LoginScreen` | `:app` | 登录、协议、隐私/协议 WebView、内部验证入口 |
+| `LoginRoute` | `LoginFeatureScreen` | `:feature:login` | feature 拥有登录 UI/协议/内部验证面板；app 拥有 route、WebView 与平台动作适配 |
 | `HomeRoute` | `HomeScreen` | `:app` | 身份为空时显示 Loading，恢复后选择护理端或销售端 |
 | `CarePlansListRoute` | `ServiceOrdersListScreen` | `:app` | 服务计划列表 |
 | `ServiceRecordsListRoute` | `ServiceOrdersListScreen` | `:app` | 服务记录列表 |
@@ -103,9 +103,10 @@
   - 同时验证原生 NFC foreground dispatch 和 R65C 外接读卡输入。
   - Debug/Release 均 `exported=false`，从隐藏面板进入。
 - 面板还提供标准相机、腾讯兼容人脸和手动人脸采集快捷入口。
+- 五个入口严格映射为正式人脸、NFC、标准相机、备用腾讯人脸和手动人脸采集；选择后先关闭面板，再只触发对应的 app-owned action。
 - Release 不包含 debug mock interceptor 或 debug DI。
 
-`scripts/quality/verify_release_validation_entry.sh` 锁定共享入口文件、Manifest 声明和 Release-safe 导航契约。
+`scripts/quality/verify_release_validation_entry.sh` 锁定 feature main 源集中的共享入口、五动作 app 适配、Manifest 声明和 Release-safe 导航契约。登录纯 UI/URL/effect tests 归属 `feature/login/src/{test,androidTest}`，认证根栈和平台动作 tests 继续归属 `:app`。
 
 ## 路由类型清单
 
@@ -142,7 +143,7 @@
 
 ## 模块迁移判断
 
-“legacy UI”在本文中只表示页面仍位于 `:app/features/**`，不表示功能已废弃。身份主页面与默认人脸核验 UI 已归属 `:feature:identification`；绝大多数其他 route-bound 页面仍由 `:app` 持有。`:feature:location` 没有独立页面，另外几个 Feature 主要持有动作接口、状态、用例或 delegate。
+“legacy UI”在本文中只表示页面仍位于 `:app/features/**`，不表示功能已废弃。登录页已归属 `:feature:login`，身份主页面与默认人脸核验 UI 已归属 `:feature:identification`；绝大多数其他 route-bound 页面仍由 `:app` 持有。`:feature:location` 没有独立页面，另外几个 Feature 主要持有动作接口、状态、用例或 delegate。
 
 迁移 route 时必须保持：
 

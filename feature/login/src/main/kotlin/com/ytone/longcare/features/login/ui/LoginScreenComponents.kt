@@ -22,7 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ytone.longcare.R
+import com.ytone.longcare.feature.login.R
 import com.ytone.longcare.features.login.vm.SendSmsCodeUiState
 import com.ytone.longcare.theme.LinkColor
 import com.ytone.longcare.theme.PrimaryBlue
@@ -30,7 +30,7 @@ import com.ytone.longcare.theme.TextColorHint
 import com.ytone.longcare.theme.TextColorSecondary
 
 @Composable
-fun SendVerificationCodeButton(
+internal fun SendVerificationCodeButton(
     modifier: Modifier = Modifier,
     countdownSeconds: Int,
     sendSmsState: SendSmsCodeUiState,
@@ -65,7 +65,7 @@ fun SendVerificationCodeButton(
 }
 
 @Composable
-fun AgreementText(
+internal fun AgreementText(
     modifier: Modifier = Modifier,
     onUserAgreementClick: () -> Unit,
     onPrivacyPolicyClick: () -> Unit
@@ -110,7 +110,7 @@ fun AgreementText(
 }
 
 @Composable
-fun AgreementConsentSection(
+internal fun AgreementConsentSection(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     onUserAgreementClick: () -> Unit,

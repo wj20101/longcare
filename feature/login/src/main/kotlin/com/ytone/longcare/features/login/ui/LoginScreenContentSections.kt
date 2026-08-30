@@ -39,7 +39,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ytone.longcare.R
+import com.ytone.longcare.feature.login.R
 import com.ytone.longcare.feature.login.ext.maxPhoneLength
 import com.ytone.longcare.features.login.vm.LoginUiState
 import com.ytone.longcare.features.login.vm.SendSmsCodeUiState

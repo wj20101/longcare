@@ -1,6 +1,5 @@
-package com.ytone.longcare.presentation.validation
+package com.ytone.longcare.features.login.ui
 
-import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,11 +15,10 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.ytone.longcare.R
+import com.ytone.longcare.feature.login.R
 import com.ytone.longcare.feature.login.api.LoginValidationEntryActions
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,7 +30,6 @@ internal fun LoginValidationEntrySheet(
 ) {
     if (!visible) return
 
-    val context = LocalContext.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("login_test_entry_sheet"),
@@ -73,9 +70,7 @@ internal fun LoginValidationEntrySheet(
                         .testTag("login_face_verification_test_entry")
                         .clickable {
                             onDismiss()
-                            context.startActivity(
-                                Intent(context, FaceVerificationValidationActivity::class.java),
-                            )
+                            validationEntryActions.onOpenFaceVerificationValidation()
                         },
             )
             HorizontalDivider()
@@ -85,7 +80,7 @@ internal fun LoginValidationEntrySheet(
                 testTag = "login_nfc_test_entry",
                 onClick = {
                     onDismiss()
-                    context.startActivity(Intent(context, NfcValidationActivity::class.java))
+                    validationEntryActions.onOpenNfcValidation()
                 },
             )
             HorizontalDivider()

@@ -33,15 +33,17 @@ source "${SCRIPT_DIR}/android_build_values.sh"
 ERRORS=()
 fail() { ERRORS+=("$1"); }
 
-for required in "${MATRIX_FILE}" "${POLICY_FILE}" "${PROJECT_ROOT}/settings.gradle.kts" "${PROJECT_ROOT}/baselineprofile/build.gradle.kts"; do
+for required in "${MATRIX_FILE}" "${POLICY_FILE}" "${PROJECT_ROOT}/settings.gradle.kts" "${PROJECT_ROOT}/baselineprofile/build.gradle.kts" "${PROJECT_ROOT}/feature/login/build.gradle.kts"; do
   [[ -f "${required}" ]] || fail "required file is missing: ${required#"${PROJECT_ROOT}/"}"
 done
 
 REQUIRED_KEYS=(
   baseline_profile_api baseline_profile_device current_target_api current_target_blocking
-  current_target_device current_target_smoke_classes current_target_contract_tests
+  current_target_device current_target_smoke_classes current_target_login_feature_smoke_classes
+  current_target_contract_tests
   release_device_evidence_required candidate_target_api candidate_target_blocking
-  candidate_target_device candidate_smoke_classes candidate_readiness_checks
+  candidate_target_device candidate_smoke_classes candidate_target_login_feature_smoke_classes
+  candidate_readiness_checks
 )
 
 if [[ -f "${MATRIX_FILE}" ]]; then
@@ -56,12 +58,14 @@ if [[ -f "${MATRIX_FILE}" ]]; then
   current_blocking="$(read_target_readiness_value "${MATRIX_FILE}" current_target_blocking)"
   current_device="$(read_target_readiness_value "${MATRIX_FILE}" current_target_device)"
   smoke_classes="$(read_target_readiness_value "${MATRIX_FILE}" current_target_smoke_classes)"
+  login_feature_classes="$(read_target_readiness_value "${MATRIX_FILE}" current_target_login_feature_smoke_classes)"
   contract_tests="$(read_target_readiness_value "${MATRIX_FILE}" current_target_contract_tests)"
   release_evidence="$(read_target_readiness_value "${MATRIX_FILE}" release_device_evidence_required)"
   candidate_api="$(read_target_readiness_value "${MATRIX_FILE}" candidate_target_api)"
   candidate_blocking="$(read_target_readiness_value "${MATRIX_FILE}" candidate_target_blocking)"
   candidate_device="$(read_target_readiness_value "${MATRIX_FILE}" candidate_target_device)"
   candidate_classes="$(read_target_readiness_value "${MATRIX_FILE}" candidate_smoke_classes)"
+  candidate_login_feature_classes="$(read_target_readiness_value "${MATRIX_FILE}" candidate_target_login_feature_smoke_classes)"
   candidate_checks="$(read_target_readiness_value "${MATRIX_FILE}" candidate_readiness_checks)"
 
   settings_target="$(read_android_settings_release "${PROJECT_ROOT}/settings.gradle.kts" targetSdk)"
@@ -72,13 +76,39 @@ if [[ -f "${MATRIX_FILE}" ]]; then
   [[ "${baseline_api}" == "33" ]] || fail "baseline_profile_api must remain 33"
   grep -Fq "create(\"${baseline_device}\")" "${PROJECT_ROOT}/baselineprofile/build.gradle.kts" || fail "baseline profile device ${baseline_device} is not configured"
   grep -Eq "apiLevel[[:space:]]*=[[:space:]]*${baseline_api}([^0-9]|$)" "${PROJECT_ROOT}/baselineprofile/build.gradle.kts" || fail "baseline profile API ${baseline_api} is not configured"
+  grep -Fq "create(\"${current_device}\")" "${PROJECT_ROOT}/feature/login/build.gradle.kts" || fail "login feature current-target device ${current_device} is not configured"
+  grep -Fq "create(\"${candidate_device}\")" "${PROJECT_ROOT}/feature/login/build.gradle.kts" || fail "login feature candidate device ${candidate_device} is not configured"
+  grep -Eq "apiLevel[[:space:]]*=[[:space:]]*${current_api}([^0-9]|$)" "${PROJECT_ROOT}/feature/login/build.gradle.kts" || fail "login feature current-target API ${current_api} is not configured"
+  grep -Eq "apiLevel[[:space:]]*=[[:space:]]*${candidate_api}([^0-9]|$)" "${PROJECT_ROOT}/feature/login/build.gradle.kts" || fail "login feature candidate API ${candidate_api} is not configured"
   [[ "${current_api}" == "${settings_target}" && "${current_api}" == "${approved_target}" ]] || fail "current target matrix API ${current_api} must match settings/approved target ${settings_target}/${approved_target}"
   [[ "${candidate_api}" == "${policy_candidate}" ]] || fail "candidate matrix API ${candidate_api} must match policy candidate ${policy_candidate}"
   [[ "${current_blocking}" == "true" ]] || fail "current_target_blocking must be true"
   [[ "${candidate_blocking}" == "false" ]] || fail "candidate_target_blocking must be false while target 37 is a readiness lane"
   [[ "${policy_promotion}" == "blocked" ]] || fail "candidate readiness lane requires candidate_promotion=blocked until evidence is complete"
   [[ "${current_device}" != "${candidate_device}" && "${current_device}" != "${baseline_device}" && "${candidate_device}" != "${baseline_device}" ]] || fail "API 33/36/37 devices must be separately named"
-  [[ -n "${smoke_classes}" && -n "${candidate_classes}" ]] || fail "current and candidate smoke class sets must not be empty"
+  [[ -n "${smoke_classes}" && -n "${candidate_classes}" ]] || fail "current and candidate app smoke class sets must not be empty"
+  [[ -n "${login_feature_classes}" && -n "${candidate_login_feature_classes}" ]] || fail "current and candidate login feature smoke class sets must not be empty"
+
+  verify_owned_classes() {
+    local field_name="$1"
+    local class_list="$2"
+    local source_root="$3"
+    local fqcn
+    IFS=',' read -r -a owned_classes <<< "${class_list}"
+    for fqcn in "${owned_classes[@]}"; do
+      local relative_class_path="${fqcn//.//}.kt"
+      local java_path="${source_root}/java/${relative_class_path}"
+      local kotlin_path="${source_root}/kotlin/${relative_class_path}"
+      if [[ ! -f "${java_path}" && ! -f "${kotlin_path}" ]]; then
+        fail "${field_name} class ${fqcn} is not owned by ${source_root#"${PROJECT_ROOT}/"}"
+      fi
+    done
+  }
+
+  verify_owned_classes "current_target_smoke_classes" "${smoke_classes}" "${PROJECT_ROOT}/app/src/androidTest"
+  verify_owned_classes "candidate_smoke_classes" "${candidate_classes}" "${PROJECT_ROOT}/app/src/androidTest"
+  verify_owned_classes "current_target_login_feature_smoke_classes" "${login_feature_classes}" "${PROJECT_ROOT}/feature/login/src/androidTest"
+  verify_owned_classes "candidate_target_login_feature_smoke_classes" "${candidate_login_feature_classes}" "${PROJECT_ROOT}/feature/login/src/androidTest"
 
   for required_check in adaptive-window message-queue-reflection-native local-network certificate-transparency-network background-alarm-audio vendor-sdk-startup; do
     case ",${candidate_checks}," in

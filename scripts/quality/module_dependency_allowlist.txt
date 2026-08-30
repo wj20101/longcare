@@ -13,6 +13,6 @@
 :feature:home=:core:domain :core:model
 :feature:identification=:core:common :core:domain :core:model :core:ui
 :feature:location=:core:common :core:domain :core:model
-:feature:login=:core:common :core:domain :core:model
+:feature:login=:core:common :core:domain :core:model :core:ui
 :feature:photoupload=:core:common :core:domain :core:model
 :feature:servicecountdown=:core:common :core:domain :core:model

@@ -37,24 +37,23 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ytone.longcare.R
+import com.ytone.longcare.feature.login.R
+import com.ytone.longcare.feature.login.api.LoginAgreementLinks
 import com.ytone.longcare.feature.login.api.LoginFeatureActions
 import com.ytone.longcare.feature.login.ext.maxPhoneLength
 import com.ytone.longcare.features.login.vm.LoginUiState
 import com.ytone.longcare.features.login.vm.LoginViewModel
 import com.ytone.longcare.features.login.vm.SendSmsCodeUiState
 import com.ytone.longcare.features.login.vm.StartConfigUiState
-import com.ytone.longcare.presentation.validation.LoginValidationEntrySheet
-import com.ytone.longcare.privacy.AgreementUrls
 import com.ytone.longcare.theme.LongCareTheme
 
 @Composable
-fun LoginScreen(
+internal fun LoginRouteScreen(
     actions: LoginFeatureActions,
-    viewModel: LoginViewModel = hiltViewModel(),
-    initialAgreementChecked: Boolean = false
+    agreementLinks: LoginAgreementLinks,
+    viewModel: LoginViewModel,
+    initialAgreementChecked: Boolean = false,
 ) {
 
     val loginState by viewModel.loginState.collectAsStateWithLifecycle()
@@ -67,6 +66,7 @@ fun LoginScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         LoginScreenContent(
             actions = actions,
+            agreementLinks = agreementLinks,
             loginState = loginState,
             sendSmsState = sendSmsState,
             startConfigState = startConfigState,
@@ -75,7 +75,7 @@ fun LoginScreen(
             initialAgreementChecked = initialAgreementChecked,
             onPrivacyAgreementConfirmed = viewModel::onPrivacyAgreementConfirmed,
             onSendCodeClick = { phoneNumber -> viewModel.sendSmsCode(phoneNumber) },
-            onLoginClick = { phoneNumber, code -> viewModel.login(phoneNumber, code) }
+            onLoginClick = { phoneNumber, code -> viewModel.login(phoneNumber, code) },
         )
 
         SnackbarHost(
@@ -87,11 +87,10 @@ fun LoginScreen(
         )
     }
 
-    LaunchedEffect(loginState) {
-        if (loginState is LoginUiState.Success) {
-            actions.onLoginSuccess()
-        }
-    }
+    LoginSuccessEffect(
+        loginState = loginState,
+        onLoginSuccess = actions.onLoginSuccess,
+    )
 
     LaunchedEffect(feedback?.id) {
         val currentFeedback = feedback ?: return@LaunchedEffect
@@ -101,8 +100,21 @@ fun LoginScreen(
 }
 
 @Composable
-fun LoginScreenContent(
+internal fun LoginSuccessEffect(
+    loginState: LoginUiState,
+    onLoginSuccess: () -> Unit,
+) {
+    LaunchedEffect(loginState) {
+        if (loginState is LoginUiState.Success) {
+            onLoginSuccess()
+        }
+    }
+}
+
+@Composable
+internal fun LoginScreenContent(
     actions: LoginFeatureActions,
+    agreementLinks: LoginAgreementLinks,
     loginState: LoginUiState,
     sendSmsState: SendSmsCodeUiState,
     startConfigState: StartConfigUiState,
@@ -111,7 +123,7 @@ fun LoginScreenContent(
     initialAgreementChecked: Boolean = false,
     onPrivacyAgreementConfirmed: () -> Unit = {},
     onSendCodeClick: (String) -> Unit,
-    onLoginClick: (String, String) -> Unit
+    onLoginClick: (String, String) -> Unit,
 ) {
     val agreementConfirmMessage = stringResource(R.string.login_agreement_confirm_message)
     val agreementConfirmAction = stringResource(R.string.login_agreement_confirm_action)
@@ -134,14 +146,12 @@ fun LoginScreenContent(
     }
 
     val openUserAgreement = {
-        val url = (startConfigState as? StartConfigUiState.Success)
-            ?.data?.userXieYiUrl?.takeIf { it.isNotEmpty() }
-            ?: AgreementUrls.USER_AGREEMENT_URL
+        val url = resolveUserAgreementUrl(startConfigState, agreementLinks)
         actions.onOpenWebPage(url, "")
     }
 
     val openPrivacyPolicy = {
-        actions.onOpenWebPage(AgreementUrls.PRIVACY_POLICY_URL, "")
+        actions.onOpenWebPage(resolvePrivacyPolicyUrl(agreementLinks), "")
     }
 
     val proceedLogin = {
@@ -277,12 +287,16 @@ fun LoginScreenContent(
 
 @Preview(showBackground = true)
 @Composable
-fun LoginScreenMainPreview() {
+private fun LoginScreenMainPreview() {
     LongCareTheme {
         LoginScreenContent(
             actions = LoginFeatureActions(
                 onLoginSuccess = {},
                 onOpenWebPage = { _, _ -> }
+            ),
+            agreementLinks = LoginAgreementLinks(
+                userAgreementUrl = "https://example.test/user-agreement",
+                privacyPolicyUrl = "https://example.test/privacy-policy",
             ),
             loginState = LoginUiState.Idle,
             sendSmsState = SendSmsCodeUiState.Idle,

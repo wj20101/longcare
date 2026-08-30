@@ -10,7 +10,9 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
@@ -107,16 +109,88 @@ class LoginViewModelPrivacyGateTest {
         assertNull(viewModel.feedback.value)
     }
 
-    private fun createViewModel(repository: LoginRepository): LoginViewModel {
+    @Test
+    fun `last successful login phone is read from login preferences`() = runTest {
+        val repository = startupRepository()
+        val preferences = mockk<LoginPreferencesManager>()
+        every { preferences.getLastLoginPhoneNumber() } returns "13900139000"
+        every { preferences.saveLastLoginPhoneNumber(any()) } returns Unit
+
+        val viewModel = createViewModel(
+            repository = repository,
+            preferences = preferences,
+        )
+
+        assertEquals("13900139000", viewModel.getLastLoginPhoneNumber())
+        verify(exactly = 1) { preferences.getLastLoginPhoneNumber() }
+    }
+
+    @Test
+    fun `successful login persists session before phone and success state`() = runTest {
+        val repository = startupRepository()
+        val sessionRepository = mockk<UserSessionRepository>(relaxed = true)
         val preferences = mockk<LoginPreferencesManager>()
         every { preferences.getLastLoginPhoneNumber() } returns ""
         every { preferences.saveLastLoginPhoneNumber(any()) } returns Unit
+        coEvery { repository.login("13800138000", "123456") } returns ApiResult.Success(
+            com.ytone.longcare.model.LoginResultModel(
+                companyId = 10,
+                accountId = 20,
+                userId = 30,
+                userName = "测试用户",
+                token = "session-token",
+            )
+        )
+        val viewModel = createViewModel(
+            repository = repository,
+            sessionRepository = sessionRepository,
+            preferences = preferences,
+        )
 
+        viewModel.onPrivacyAgreementConfirmed()
+        viewModel.login("13800138000", "123456")
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            sessionRepository.login(
+                match {
+                    it.companyId == 10 &&
+                        it.accountId == 20 &&
+                        it.userId == 30 &&
+                        it.token == "session-token"
+                }
+            )
+        }
+        verify(exactly = 1) { preferences.saveLastLoginPhoneNumber("13800138000") }
+        assertTrue(viewModel.loginState.value is LoginUiState.Success)
+    }
+
+    private fun startupRepository(): LoginRepository =
+        mockk<LoginRepository>(relaxed = true).also { repository ->
+            coEvery { repository.getStartConfig() } returns ApiResult.Success(
+                StartConfigResultModel(
+                    userXieYiUrl = "https://example.com/user",
+                    yinSiXieYiUrl = "https://example.com/privacy",
+                )
+            )
+        }
+
+    private fun createViewModel(
+        repository: LoginRepository,
+        sessionRepository: UserSessionRepository = mockk(relaxed = true),
+        preferences: LoginPreferencesManager = defaultPreferences(),
+    ): LoginViewModel {
         return LoginViewModel(
             loginRepository = repository,
-            userSessionRepository = mockk<UserSessionRepository>(relaxed = true),
+            userSessionRepository = sessionRepository,
             loginPreferencesManager = preferences,
             textResolver = ResourceTextResolver(ApplicationProvider.getApplicationContext()),
         )
     }
+
+    private fun defaultPreferences(): LoginPreferencesManager =
+        mockk<LoginPreferencesManager>().also { preferences ->
+            every { preferences.getLastLoginPhoneNumber() } returns ""
+            every { preferences.saveLastLoginPhoneNumber(any()) } returns Unit
+        }
 }

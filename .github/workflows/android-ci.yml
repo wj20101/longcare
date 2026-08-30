@@ -40,6 +40,8 @@ jobs:
       verify_tasks: ${{ steps.detect.outputs.verify_tasks }}
       run_instrumentation: ${{ steps.detect.outputs.run_instrumentation }}
       smoke_test_classes: ${{ steps.detect.outputs.smoke_test_classes }}
+      run_login_feature_instrumentation: ${{ steps.detect.outputs.run_login_feature_instrumentation }}
+      login_feature_smoke_test_classes: ${{ steps.detect.outputs.login_feature_smoke_test_classes }}
       changed_files_count: ${{ steps.detect.outputs.changed_files_count }}
 
     steps:
@@ -61,6 +63,8 @@ jobs:
           echo "verify_tasks=${{ steps.detect.outputs.verify_tasks }}"
           echo "run_instrumentation=${{ steps.detect.outputs.run_instrumentation }}"
           echo "smoke_test_classes=${{ steps.detect.outputs.smoke_test_classes }}"
+          echo "run_login_feature_instrumentation=${{ steps.detect.outputs.run_login_feature_instrumentation }}"
+          echo "login_feature_smoke_test_classes=${{ steps.detect.outputs.login_feature_smoke_test_classes }}"
           echo "changed_files_count=${{ steps.detect.outputs.changed_files_count }}"
 
       - name: Publish affected plan summary
@@ -74,6 +78,8 @@ jobs:
             echo "- verify tasks: \`${{ steps.detect.outputs.verify_tasks }}\`"
             echo "- run instrumentation: \`${{ steps.detect.outputs.run_instrumentation }}\`"
             echo "- smoke test classes: \`${{ steps.detect.outputs.smoke_test_classes }}\`"
+            echo "- run login feature instrumentation: \`${{ steps.detect.outputs.run_login_feature_instrumentation }}\`"
+            echo "- login feature smoke test classes: \`${{ steps.detect.outputs.login_feature_smoke_test_classes }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   verify-build:
@@ -123,6 +129,7 @@ jobs:
         run: |
           bash scripts/quality/verify_no_tracked_keystore_files.sh .
           bash scripts/quality/verify_ci_workflow_quality.sh
+          bash scripts/quality/test_release_validation_entry.sh
           bash scripts/quality/verify_release_validation_entry.sh .
           bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
           bash scripts/quality/verify_jetpack_compat_apis.sh
@@ -180,6 +187,8 @@ jobs:
           path: |
             app/build/reports/**
             app/build/test-results/**
+            feature/login/build/reports/**
+            feature/login/build/test-results/**
             build/reports/problems/**
           if-no-files-found: warn
           retention-days: 7
@@ -193,6 +202,9 @@ jobs:
             app/build/reports/**
             app/build/test-results/**
             app/build/outputs/**
+            feature/login/build/reports/**
+            feature/login/build/test-results/**
+            feature/login/build/outputs/**
             baselineprofile/build/reports/**
             baselineprofile/build/outputs/**
             build/reports/problems/**
@@ -203,7 +215,7 @@ jobs:
 
   current-target-api36-smoke:
     needs: detect-affected
-    if: needs.detect-affected.outputs.run_instrumentation == 'true'
+    if: needs.detect-affected.outputs.run_instrumentation == 'true' || needs.detect-affected.outputs.run_login_feature_instrumentation == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -231,10 +243,18 @@ jobs:
           run-module-dependency-check: 'false'
 
       - name: Run blocking API 36 current-target smoke
+        if: needs.detect-affected.outputs.run_instrumentation == 'true'
         run: |
           ./gradlew --no-daemon :app:pixel6Api36DebugAndroidTest \
             -Pbaseline.enableX86_64=true \
             -Pandroid.testInstrumentationRunnerArguments.class="${{ needs.detect-affected.outputs.smoke_test_classes }}"
+
+      - name: Run blocking API 36 login feature smoke
+        if: needs.detect-affected.outputs.run_login_feature_instrumentation == 'true'
+        run: |
+          ./gradlew --no-daemon :feature:login:pixel6Api36DebugAndroidTest \
+            -Pbaseline.enableX86_64=true \
+            -Pandroid.testInstrumentationRunnerArguments.class="${{ needs.detect-affected.outputs.login_feature_smoke_test_classes }}"
 
       - name: Publish API 36 smoke summary
         if: always()
@@ -244,7 +264,8 @@ jobs:
             echo ""
             echo "- blocking: true"
             echo "- device: pixel6Api36"
-            echo "- classes: `${{ needs.detect-affected.outputs.smoke_test_classes }}`"
+            echo "- app classes: `${{ needs.detect-affected.outputs.smoke_test_classes }}`"
+            echo "- login feature classes: `${{ needs.detect-affected.outputs.login_feature_smoke_test_classes }}`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload API 36 smoke reports
@@ -255,6 +276,8 @@ jobs:
           path: |
             app/build/reports/androidTests/managedDevice/**
             app/build/outputs/androidTest-results/managedDevice/**
+            feature/login/build/reports/androidTests/managedDevice/**
+            feature/login/build/outputs/androidTest-results/managedDevice/**
           if-no-files-found: warn
           retention-days: 7
 
@@ -294,12 +317,16 @@ jobs:
       - name: Run API 37 Beta readiness smoke
         id: emulator
         continue-on-error: true
-        env:
-          API37_SMOKE_CLASSES: com.ytone.longcare.smoke.MainActivitySmokeTest,com.ytone.longcare.features.login.ui.LoginAgreementConsentRowTest,com.ytone.longcare.features.service.UserScopedBackgroundLifecycleIntegrationTest,com.ytone.longcare.core.ui.image.PhotoPreviewDialogTest,com.ytone.longcare.platform.webview.WebViewEntryInstrumentationTest,com.ytone.longcare.features.countdown.manager.CountdownAlarmPermissionFallbackIntegrationTest,com.ytone.longcare.features.maindashboard.ui.DashboardGridCompactModeTest,com.ytone.longcare.features.maindashboard.ui.TopHeaderAdaptationTest,com.ytone.longcare.features.profile.ui.ProfileScreenComponentsAdaptationTest,com.ytone.longcare.features.photoupload.ui.CameraWatermarkOverlayTest,com.ytone.longcare.presentation.validation.NfcValidationActivityTest,com.ytone.longcare.features.sales.SalesLargeFontLayoutTest
         run: |
+          source scripts/quality/target_readiness_values.sh
+          API37_SMOKE_CLASSES="$(read_target_readiness_value scripts/quality/target_platform_test_matrix.properties candidate_smoke_classes)"
+          API37_LOGIN_FEATURE_SMOKE_CLASSES="$(read_target_readiness_value scripts/quality/target_platform_test_matrix.properties candidate_target_login_feature_smoke_classes)"
           ./gradlew --no-daemon :app:pixelTabletApi37DebugAndroidTest \
             -Pbaseline.enableX86_64=true \
             -Pandroid.testInstrumentationRunnerArguments.class="${API37_SMOKE_CLASSES}"
+          ./gradlew --no-daemon :feature:login:pixelTabletApi37DebugAndroidTest \
+            -Pbaseline.enableX86_64=true \
+            -Pandroid.testInstrumentationRunnerArguments.class="${API37_LOGIN_FEATURE_SMOKE_CLASSES}"
 
       - name: Publish API 37 readiness summary
         if: always()
@@ -322,6 +349,8 @@ jobs:
             build/reports/api37-readiness/**
             app/build/reports/androidTests/managedDevice/**
             app/build/outputs/androidTest-results/managedDevice/**
+            feature/login/build/reports/androidTests/managedDevice/**
+            feature/login/build/outputs/androidTest-results/managedDevice/**
           if-no-files-found: warn
           retention-days: 7
 

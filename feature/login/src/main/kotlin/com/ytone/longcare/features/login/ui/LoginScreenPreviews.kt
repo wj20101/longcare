@@ -6,7 +6,7 @@ import com.ytone.longcare.theme.LongCareTheme
 
 @Preview
 @Composable
-fun AgreementTextPreview() {
+private fun AgreementTextPreview() {
     LongCareTheme {
         AgreementText(
             onUserAgreementClick = {},

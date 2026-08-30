@@ -54,13 +54,15 @@
 - Feature 只能使用允许的 Core 抽象，禁止直接依赖 Data 实现或另一个 Feature 的 internal 实现。
 - 公共入口保持最小；非契约声明使用 `internal` / `private`。
 - 新业务 UI 应优先进入 `:feature:*`，不要继续扩大 `:app/features/**`。
+- `:feature:login` 拥有登录 Compose UI、独占资源、ViewModel 和状态 effect；`:app` 只能使用 `feature.login.api` 下的 `LoginFeatureScreen`、`LoginFeatureActions`、`LoginAgreementLinks` 与五动作契约，不得 import login `ui`/`vm`。feature 不得引用 app `R`、navigation/platform/presentation、Activity、Intent 或厂商类型。
 - `:feature:identification` 拥有身份主页面、页面资源、聚合屏幕状态和 effect；`:app` 只能使用 `features.identification.api` 下的 `IdentificationFeatureScreen`、`IdentificationActions` 与人脸 launcher 合约，不得 import feature 的 `ui`/`vm`。
 
 ### App
 
 - 目标职责是启动、根导航、DI 组装、Manifest 和 Android/厂商平台适配。
 - 当前仍有大量 route-bound UI 和流程代码，因此 `:app` 对 Core/Data/Feature 的依赖是现实允许边，而不是鼓励新业务继续堆入壳层。
-- `app/src/main/.../features/**` 受冻结目录和文件 allowlist 保护；当前精确快照为 222 个 Kotlin 文件。`verify_legacy_feature_file_allowlist.sh` 同时拒绝“实际文件不在 allowlist”和“allowlist 路径已不存在”，优先在现有允许文件内做小修复，新增能力迁往 Feature。
+- `app/src/main/.../features/**` 受冻结目录和文件 allowlist 保护；当前精确快照为 218 个 Kotlin 文件。`verify_legacy_feature_file_allowlist.sh` 同时拒绝“实际文件不在 allowlist”和“allowlist 路径已不存在”，优先在现有允许文件内做小修复，新增能力迁往 Feature。
+- `LoginRoute`、协议兜底、WebView 导航和五个验证入口的平台实现仍属于壳层；app adapter 负责启动现有不可导出 Activity，不能把 `Context`/`Intent` 或厂商类型传回 feature。
 - `IdentificationRoute` 的类型安全注册、`SavedStateHandle` 结果桥接和 app-owned 厂商适配仍属于壳层；业务渲染、结果处理和状态机不得回流 route lambda。
 
 ## UI、状态与生命周期
@@ -119,10 +121,12 @@
 
 | 守卫 | 保护内容 |
 |---|---|
-| `verify_architecture_boundaries.sh` | Android-free Domain、禁止 Feature/Data 反向依赖、ViewModel/调度器/文件规模等规则；rule-10 调用 legacy 快照，rule-10b 调用身份页面所有权守卫 |
+| `verify_architecture_boundaries.sh` | Android-free Domain、禁止 Feature/Data 反向依赖、ViewModel/调度器/文件规模等规则；rule-10 调用 legacy 快照，rule-10b/10c 调用身份/登录页面所有权守卫 |
 | `verify_legacy_feature_file_allowlist.sh` | 保证 `app/src/main/.../features/**` 实际 Kotlin 文件与 `legacy_feature_files_allowlist.txt` 双向一致，拒绝新增未允许文件和陈旧条目 |
 | `verify_identification_feature_boundary.sh` | 禁止 app 身份 UI 回流、feature 引用 app navigation/platform/R，以及 app 绕过 identification 公开 API |
 | `test_identification_feature_boundary.sh` | 用正向和三类负向 fixture 验证身份边界守卫输出规则、文件与修复方向 |
+| `verify_login_feature_boundary.sh` | 禁止 app 登录 UI/校验面板回流、feature 引用 app 壳层/平台组件，以及 app 绕过 login 公开 API |
+| `test_login_feature_boundary.sh` | 用正向和四类负向 fixture 验证登录边界守卫输出规则、文件与修复方向 |
 | `verify_user_storage_boundaries.sh` | 限制用户 Room/DataStore 创建位置，禁止全局 DAO/数据库句柄、裸用户文件名、无 scope 业务偏好和 orderId-only 后台身份 |
 | `test_user_storage_boundaries.sh` | 用 7 组 shell fixture 验证上述门禁既允许 registry/factory，也会拒绝每类回退 |
 | `verify_module_dependency_whitelist.sh` | Gradle 项目模块边 |
@@ -133,8 +137,8 @@
 | `verify_android_build_baseline.sh` | Settings Plugin SDK 单一来源、JDK/应用版本与 AGP/plugin 一致性 |
 | `verify_dependency_policy.sh` | 稳定版优先、精确预览豁免、`maxAgpVersion=false` 关联和 Jetifier/AGP 10 阻断 |
 | `verify_target_sdk_readiness.sh` | target 36/37 双状态政策及 Manifest adaptive 一致性 |
-| `verify_target_platform_test_matrix.sh` | API 33 Profile、API 36 blocking smoke 与 API 37 readiness 分离 |
-| `verify_instrumentation_smoke_classes.sh` | 所有 smoke 选择器都指向真实 `androidTest` 类 |
+| `verify_target_platform_test_matrix.sh` | API 33 Profile、API 36 blocking smoke 与 API 37 readiness 分离，并校验 app/login feature 选择器各归属正确 test APK |
+| `verify_instrumentation_smoke_classes.sh` | app 与 feature 的所有 smoke 选择器都指向真实 `androidTest` 类 |
 | `verify_entry_navigation_contracts.sh` | Navigation Testing 仅测试可见、入口测试 seam 保持 `internal`、入口/Home/Sales focused 测试类完整 |
 | `test_entry_navigation_contracts.sh` | 用正向和依赖泄漏、renderer 公开、测试类缺失负向 fixture 验证入口导航守卫 |
 | `verify_tech_stack_baseline.sh` | 长期技术栈字段与可执行配置同步 |

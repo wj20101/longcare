@@ -10,10 +10,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.ytone.longcare.core.navigation.NavigationConstants
+import com.ytone.longcare.feature.login.api.LoginAgreementLinks
 import com.ytone.longcare.feature.login.api.LoginFeatureActions
+import com.ytone.longcare.feature.login.api.LoginFeatureScreen
 import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.features.home.ui.HomeScreen
-import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.privacy.AgreementUrls
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.R
@@ -61,12 +62,16 @@ private fun LoginDestination(
     navController: NavController,
     onLoginSuccess: () -> Unit,
 ) {
-    LoginScreen(
+    LoginFeatureScreen(
         actions = LoginFeatureActions(
             onLoginSuccess = onLoginSuccess,
             onOpenWebPage = { url, title -> navController.navigateToWebView(url, title) },
             validationEntryActions = navController.createLoginValidationEntryActions(),
-        )
+        ),
+        agreementLinks = LoginAgreementLinks(
+            userAgreementUrl = AgreementUrls.USER_AGREEMENT_URL,
+            privacyPolicyUrl = AgreementUrls.PRIVACY_POLICY_URL,
+        ),
     )
 }
 

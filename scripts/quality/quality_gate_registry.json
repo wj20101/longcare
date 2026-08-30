@@ -34,8 +34,8 @@
       "layer": "ci-required",
       "blocking": true,
       "owner": "mobile-platform",
-      "source_of_truth": "scripts/quality/verify_architecture_boundaries.sh,scripts/quality/verify_identification_feature_boundary.sh",
-      "likely_fix": "Move code to the allowed layer, use the identification public API boundary, or update an explicit architecture allowlist deliberately."
+      "source_of_truth": "scripts/quality/verify_architecture_boundaries.sh,scripts/quality/verify_identification_feature_boundary.sh,scripts/quality/verify_login_feature_boundary.sh",
+      "likely_fix": "Move code to the allowed layer, use the feature public API boundary, or update an explicit architecture allowlist deliberately."
     },
     {
       "id": "module_dependency_whitelist",
@@ -142,7 +142,7 @@
       "layer": "ci-required",
       "blocking": true,
       "owner": "mobile-platform",
-      "source_of_truth": "scripts/quality/verify_release_validation_entry.sh",
+      "source_of_truth": "scripts/quality/verify_release_validation_entry.sh,scripts/quality/test_release_validation_entry.sh",
       "likely_fix": "Restore the shared hidden validation entry sources and Release-safe navigation contract."
     },
     {

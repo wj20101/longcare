@@ -51,12 +51,18 @@ for source in "${SOURCES[@]}"; do
     [[ -n "${fqcn}" ]] || continue
     CHECKED=$((CHECKED + 1))
     relative_class_path="${fqcn//.//}.kt"
-    java_path="${PROJECT_ROOT}/app/src/androidTest/java/${relative_class_path}"
-    kotlin_path="${PROJECT_ROOT}/app/src/androidTest/kotlin/${relative_class_path}"
     class_name="${fqcn##*.}"
     resolved_path=""
-    [[ -f "${java_path}" ]] && resolved_path="${java_path}"
-    [[ -f "${kotlin_path}" ]] && resolved_path="${kotlin_path}"
+    candidate_roots=("${PROJECT_ROOT}/app/src/androidTest")
+    while IFS= read -r feature_android_test_root; do
+      [[ -n "${feature_android_test_root}" ]] && candidate_roots+=("${feature_android_test_root}")
+    done < <(find "${PROJECT_ROOT}/feature" -mindepth 3 -maxdepth 3 -type d -path '*/src/androidTest' -print 2>/dev/null | sort)
+    for candidate_root in "${candidate_roots[@]}"; do
+      java_path="${candidate_root}/java/${relative_class_path}"
+      kotlin_path="${candidate_root}/kotlin/${relative_class_path}"
+      [[ -f "${java_path}" ]] && resolved_path="${java_path}"
+      [[ -f "${kotlin_path}" ]] && resolved_path="${kotlin_path}"
+    done
 
     if [[ -z "${resolved_path}" ]]; then
       ERRORS+=("missing instrumentation class ${fqcn} referenced by ${source_label}")

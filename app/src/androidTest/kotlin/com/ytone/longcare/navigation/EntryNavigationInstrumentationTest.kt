@@ -86,6 +86,27 @@ class EntryNavigationInstrumentationTest {
     }
 
     @Test
+    fun unresolvedOrLoggedOutSessionDoesNotLeaveLoginRoot() {
+        val targetRoot = setEntryHost(AuthenticationRoot.Login)
+
+        composeRule.runOnIdle { targetRoot.value = null }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(LOGIN_TAG).assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertTrue(navController.hasEntry(LoginRoute))
+            assertFalse(navController.hasEntry(HomeGraphRoute))
+        }
+
+        composeRule.runOnIdle { targetRoot.value = AuthenticationRoot.Login }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(LOGIN_TAG).assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertTrue(navController.hasEntry(LoginRoute))
+            assertFalse(navController.hasEntry(HomeGraphRoute))
+        }
+    }
+
+    @Test
     fun logoutClearsProtectedHistoryAndBackCannotCrossBoundary() {
         val targetRoot = setEntryHost(AuthenticationRoot.Home)
         val oldHomeEntry = composeRule.runOnIdle {

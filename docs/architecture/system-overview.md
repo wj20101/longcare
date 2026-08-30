@@ -49,7 +49,7 @@ flowchart LR
 | `:core:data` | Retrofit、Room、DataStore/COS 相关实现、Repository 实现和 Hilt 绑定 | 数据实现集中地；不得依赖 feature/UI |
 | `:core:common` | 日志、诊断、运行配置、调度器、图片输出/受管文件、通用 Android 能力 | Android library；不是纯 Kotlin 模块 |
 | `:core:ui` | 共用 Compose/UI 支撑、共享 ViewModel、统一图片预览 | 可依赖 Core 契约，不得访问数据实现 |
-| `:feature:login` | 登录 ViewModel、动作接口、DI 和 feature entry | `LoginScreen` 仍在 `:app` |
+| `:feature:login` | 登录公开入口、内部 Compose UI/资源、ViewModel、协议链接选择、动作接口和 DI | `LoginFeatureScreen` 是唯一公开页面入口；app 只持有 route、协议兜底和平台动作适配 |
 | `:feature:home` | 首页共享状态、上报能力、动作接口和 feature entry | 护理/销售首页 route UI 仍在 `:app` |
 | `:feature:identification` | 身份主页面/资源、聚合屏幕状态、用例/网关、CameraX + ML Kit 人脸采集和默认比对页 | `IdentificationFeatureScreen` 是唯一公开页面入口；内部渲染 UI/VM 不向 `:app` 暴露 |
 | `:feature:location` | 定位 Service、管理器、会话、上报、诊断 | 作为服务流程内嵌能力，没有独立路由 |
@@ -82,6 +82,8 @@ flowchart LR
 订单相关路由传递轻量 `OrderNavParams(orderId, planId)`，页面再通过 Repository/共享状态加载业务数据。跨页面结果使用上一层 `SavedStateHandle`，例如相机 URI、人脸文件路径和默认人脸核验结果。
 
 `IdentificationRoute` 仍由 `:app` 的 Navigation Compose 2 图注册：壳层解析 route、提供五个导航回调和三个结果流，并使用当前 UI Context 把 app-owned 腾讯人脸控制器适配为 `IdentificationFaceSdkLauncher`；feature 不引用 `NavController`、app 平台实现或 app `R`。三个结果确认后显式写入 `null`，保证既有 `StateFlow` 同步进入已消费状态。
+
+`LoginRoute` 同样保留 app-owned Navigation Compose 2 注册，但只调用 `LoginFeatureScreen`。`:app` 注入 `LoginAgreementLinks`、开放 WebView 回调及相机、备用人脸、手动人脸、正式人脸和 NFC 五个验证动作；`:feature:login` 拥有渲染、资源、协议确认、动态 URL 选择和状态 effect，不接收 `NavController`、`Context`、`Activity`、`Intent` 或厂商类型。服务端非空用户协议地址原样优先，空值/加载失败与隐私政策使用 app 兜底，不增加 host 白名单。
 
 当前只有 login、home、identification 三个 feature entry 常量进入运行时 registry；registry 的数量校验不是完整路由清单。完整页面映射见[页面与路由地图](ui-and-screen-map.md)。
 
@@ -154,7 +156,7 @@ cache/user_scopes/v1/<sha256>/session/<purpose>/...
 - Receiver：倒计时、关闭响铃、服务结束提醒和设备启动恢复。
 - Provider：受限 `FileProvider`；WorkManager 默认 initializer 被移除，改为应用自定义配置。
 
-除 `MainActivity` 和 Debug 验证 launcher 外，业务/验证组件保持不可导出。Release 的隐藏验证 Activity 可从登录 Logo 长按面板打开，但 `exported=false`。
+除 `MainActivity` 和 Debug 验证 launcher 外，业务/验证组件保持不可导出。Release 的隐藏验证 Activity 可从 feature-owned 登录 Logo 长按面板打开，但 `exported=false`；正式人脸和 NFC 仍由 app adapter 启动现有 Activity，feature 不直接接触厂商或平台组件。
 
 ## 权限与平台约束
 
@@ -186,13 +188,13 @@ cache/user_scopes/v1/<sha256>/session/<purpose>/...
 ## 构建与发布现实
 
 - Debug、Release、nonMinifiedRelease 和 benchmarkRelease 变体由 Android CLI/Gradle 识别。
-- Android CI 的正常阻断路径以构建、Lint、架构和治理为主，不把业务单测作为合并阻断条件；本地 `--full` 和专项验证仍应运行相关测试。
+- Android CI 的正常阻断路径以构建、Lint、架构和治理为主；affected login feature 变更会额外执行 feature compile/unit/lint，并让 app 与 feature-owned instrumentation 分别使用自己的 test APK。其他完整业务测试仍由本地 `--full` 和专项验证承担。
 - 验收 Release 必须显式设置 `release.production=false` 和 `release.acceptance=true`。
 - 当前生产 Release 是 fail-closed：临时 QLZ key/test mode、QLZ 弱 TLS 检查和腾讯人脸 ARM64 16 KB 对齐问题未解决前，生产门禁必须失败。
 
 ## 已接受的技术债
 
-- 大多数 route-bound UI 仍位于 `:app/features/**`。
+- 大多数 route-bound UI 仍位于 `:app/features/**`；登录与身份主页面已经下沉到各自 feature。
 - `:app` 同时承担壳层、平台适配和较多业务组装；新增 legacy feature 文件受 allowlist/freeze guard 约束。
 - 销售体验仍由 `:app` 持有，`SalesViewModel` 体量较大。
 - Navigation Compose 2 路由和三个 feature entry 常量还不是统一的 feature-owned 导航模型。

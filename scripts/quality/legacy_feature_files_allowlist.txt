@@ -48,10 +48,6 @@ app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreen.kt
 app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreenContentSections.kt
 app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreenPreview.kt
 app/src/main/kotlin/com/ytone/longcare/features/home/ui/NavigationScreen.kt
-app/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreen.kt
-app/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreenComponents.kt
-app/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreenContentSections.kt
-app/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreenPreviews.kt
 app/src/main/kotlin/com/ytone/longcare/features/maindashboard/api/MainDashboardActions.kt
 app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/BannerIndicators.kt
 app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/BannerScreen.kt

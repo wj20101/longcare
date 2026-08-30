@@ -49,11 +49,16 @@ declare -a selected_modules=()
 declare -a changed_files=()
 full_scope="false"
 run_instrumentation="false"
+run_login_feature_instrumentation="false"
 MATRIX_FILE="${ROOT_DIR}/scripts/quality/target_platform_test_matrix.properties"
 # shellcheck source=scripts/quality/target_readiness_values.sh
 source "${ROOT_DIR}/scripts/quality/target_readiness_values.sh"
 current_smoke_classes="$(read_target_readiness_value "${MATRIX_FILE}" current_target_smoke_classes)"
+current_login_feature_smoke_classes="$(
+  read_target_readiness_value "${MATRIX_FILE}" current_target_login_feature_smoke_classes
+)"
 IFS=',' read -r -a smoke_classes <<< "${current_smoke_classes}"
+IFS=',' read -r -a login_feature_smoke_classes <<< "${current_login_feature_smoke_classes}"
 
 add_unique() {
   local value="$1"
@@ -119,9 +124,14 @@ read_changed_files() {
 }
 
 read_changed_files "${DIFF_RANGE}"
-if [[ "${#changed_files[@]}" -eq 0 ]] && ! git diff --quiet "${DIFF_RANGE}" 2>/dev/null; then
-  DIFF_RANGE="${BASE_REF}..${HEAD_REF}"
-  read_changed_files "${DIFF_RANGE}"
+if [[ -n "${AFFECTED_MODULES_CHANGED_FILES:-}" ]]; then
+  changed_files=()
+  while IFS= read -r line; do
+    [[ -n "${line}" ]] && changed_files+=("${line}")
+  done <<< "${AFFECTED_MODULES_CHANGED_FILES}"
+elif [[ "${#changed_files[@]}" -eq 0 ]] && ! git diff --quiet "${DIFF_RANGE}" 2>/dev/null; then
+    DIFF_RANGE="${BASE_REF}..${HEAD_REF}"
+    read_changed_files "${DIFF_RANGE}"
 fi
 
 for file in "${changed_files[@]:-}"; do
@@ -152,6 +162,12 @@ for file in "${changed_files[@]:-}"; do
   case "${file}" in
     app/src/main/*|app/src/androidTest/*|baselineprofile/*)
       run_instrumentation="true"
+      ;;
+  esac
+
+  case "${file}" in
+    feature/login/src/*)
+      run_login_feature_instrumentation="true"
       ;;
   esac
 
@@ -195,12 +211,23 @@ if [[ "${full_scope}" == "true" ]]; then
   verify_tasks=":app:lintDebug :app:assembleDebug :app:bundleDebug"
 fi
 
+for module in "${selected_modules[@]}"; do
+  if [[ "${module}" == ":feature:login" ]]; then
+    verify_tasks+=" :feature:login:compileDebugKotlin :feature:login:testDebugUnitTest :feature:login:lintDebug :feature:login:compileDebugAndroidTestKotlin"
+    break
+  fi
+done
+
 if [[ "${run_instrumentation}" != "true" ]]; then
   run_instrumentation="false"
+fi
+if [[ "${run_login_feature_instrumentation}" != "true" ]]; then
+  run_login_feature_instrumentation="false"
 fi
 
 modules_csv="$(IFS=,; echo "${selected_modules[*]}")"
 smoke_classes_csv="$(IFS=,; echo "${smoke_classes[*]}")"
+login_feature_smoke_classes_csv="$(IFS=,; echo "${login_feature_smoke_classes[*]}")"
 changed_files_count="${#changed_files[@]}"
 
 case "${FORMAT}" in
@@ -210,6 +237,8 @@ case "${FORMAT}" in
     echo "verify_tasks=${verify_tasks}"
     echo "run_instrumentation=${run_instrumentation}"
     echo "smoke_test_classes=${smoke_classes_csv}"
+    echo "run_login_feature_instrumentation=${run_login_feature_instrumentation}"
+    echo "login_feature_smoke_test_classes=${login_feature_smoke_classes_csv}"
     echo "changed_files_count=${changed_files_count}"
     ;;
   text)
@@ -218,6 +247,8 @@ case "${FORMAT}" in
     echo "verify_tasks=${verify_tasks}"
     echo "run_instrumentation=${run_instrumentation}"
     echo "smoke_test_classes=${smoke_classes_csv}"
+    echo "run_login_feature_instrumentation=${run_login_feature_instrumentation}"
+    echo "login_feature_smoke_test_classes=${login_feature_smoke_classes_csv}"
     echo "changed_files_count=${changed_files_count}"
     ;;
   *)

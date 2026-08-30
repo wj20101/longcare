@@ -28,9 +28,9 @@
 
 - `check_new_files_guard.sh`
 - `test_android_build_governance.sh` 及 build baseline、dependency policy、target readiness/matrix、smoke class、tech-stack 正向守卫
-- `test_legacy_feature_file_allowlist.sh`、`test_user_storage_boundaries.sh`、`test_identification_feature_boundary.sh` 与 `test_entry_navigation_contracts.sh` 的正反 fixture
+- `test_legacy_feature_file_allowlist.sh`、`test_user_storage_boundaries.sh`、`test_identification_feature_boundary.sh`、`test_login_feature_boundary.sh` 与 `test_entry_navigation_contracts.sh` 的正反 fixture
 - `verify_entry_navigation_contracts.sh`（Navigation Testing 仅限 androidTest、入口 renderer/host 保持 `internal`、focused 测试类完整）
-- `verify_architecture_boundaries.sh`（内部执行 legacy 精确快照、身份 feature 所有权、用户存储/后台身份和 WebView 原生 bridge 守卫）
+- `verify_architecture_boundaries.sh`（内部执行 legacy 精确快照、身份/登录 feature 所有权、用户存储/后台身份和 WebView 原生 bridge 守卫）
 - `verify_module_dependency_whitelist.sh`
 - `verify_module_api_visibility.sh`
 
@@ -46,6 +46,7 @@
 
 ```bash
 bash scripts/quality/verify_release_validation_entry.sh .
+bash scripts/quality/test_release_validation_entry.sh
 ```
 
 ## Android CI
@@ -54,10 +55,10 @@ bash scripts/quality/verify_release_validation_entry.sh .
 
 1. 计算 affected scope 和 Gradle tasks。
 2. 执行 ci-required shell guards。
-3. 执行 `:app:lintDebug :app:assembleDebug`；full scope 额外执行 `:app:bundleDebug`。
+3. 执行 `:app:lintDebug :app:assembleDebug`；full scope 额外执行 `:app:bundleDebug`。当 `:feature:login` 受影响时追加 feature compile/unit/lint/androidTest compile。
 4. 对生成的 Lint 文本报告执行 warning allowlist。
 5. 上传 Debug APK；full scope 上传 AAB 和可用的 Baseline Profile APK。
-6. 当 `run_instrumentation=true` 时，在 `pixel6Api36` 上运行选择出的 blocking smoke 并上传报告；入口导航、HomeGraph owner、Home 角色渲染和 Sales 状态恢复属于相关路径变更时的受管选择器。
+6. 当 app 或 login feature 的 instrumentation 标志为 true 时，在各自 `pixel6Api36` test APK 上运行分离的 blocking smoke 并上传报告；feature-owned 登录 UI class 不得进入 app test APK。
 7. 总是上传报告，失败时上传额外诊断产物。
 
 普通 Android CI **不执行全部业务单元测试或完整用户旅程**；受影响变更会执行受管的 API 36 UI/平台 smoke。相关改动仍应在本地 `--full`、专项验证或发布验收中运行更完整的 focused tests 和真机链路。
@@ -68,7 +69,7 @@ bash scripts/quality/verify_release_validation_entry.sh .
 |---|---|
 | `verify_no_tracked_keystore_files.sh` | 禁止 keystore 进入 Git |
 | `verify_ci_workflow_quality.sh` | workflow action 版本、timeout、retention、触发和治理约束 |
-| `verify_release_validation_entry.sh` | Debug/Release 共享隐藏验证入口与不可导出契约 |
+| `verify_release_validation_entry.sh` / `test_release_validation_entry.sh` | Debug/Release 共享隐藏验证入口、五动作 app 适配、不可导出契约及守卫自验证 |
 | `verify_lint_ignore_policy.sh` | 禁止不受控 Lint ignore |
 | `verify_jetpack_compat_apis.sh` | 受保护 Jetpack API 使用 |
 | `verify_baselineprofile_journeys.sh` | Baseline Profile 旅程存在且无 TODO |
@@ -78,13 +79,14 @@ bash scripts/quality/verify_release_validation_entry.sh .
 | `verify_android_build_baseline.sh` | Settings Plugin SDK 唯一来源、JDK/应用版本和 AGP/plugin 一致性 |
 | `verify_dependency_policy.sh` | 稳定依赖、精确预览豁免与 Jetifier/AGP 10 边界 |
 | `verify_target_sdk_readiness.sh` | 正式 target 与候选 readiness 状态组合、Manifest adaptive 一致性 |
-| `verify_target_platform_test_matrix.sh` | API 33/36/37 验证目标和设备严格分离 |
-| `verify_instrumentation_smoke_classes.sh` | workflow/脚本/matrix 引用的 `androidTest` 类真实存在 |
+| `verify_target_platform_test_matrix.sh` | API 33/36/37 验证目标和设备严格分离，app/login feature class 归属正确 test APK |
+| `verify_instrumentation_smoke_classes.sh` | workflow/脚本/matrix 引用的 app/feature `androidTest` 类真实存在 |
 | `verify_entry_navigation_contracts.sh` | Navigation Testing 不进入生产依赖、入口 renderer/host 保持 `internal`，且入口/Home/Sales focused 测试契约完整；正反 fixture 验证守卫本身 |
 | `verify_tech_stack_baseline.sh` | 技术栈长期字段与 Settings/constants/catalog/wrapper 一致 |
 | `verify_exact_alarm_permission_config.sh` | 精确闹钟 Manifest 策略 |
-| `verify_architecture_boundaries.sh` | 分层、legacy freeze、身份 feature 所有权、用户存储/任务身份、WebView bridge、ViewModel 和代码规模规则 |
+| `verify_architecture_boundaries.sh` | 分层、legacy freeze、身份/登录 feature 所有权、用户存储/任务身份、WebView bridge、ViewModel 和代码规模规则 |
 | `verify_identification_feature_boundary.sh` | 禁止身份 UI 回流 app、feature 反向引用 app 壳层及 app 绕过公开 API；由架构总守卫调用 |
+| `verify_login_feature_boundary.sh` | 禁止登录 UI/校验面板回流 app、feature 反向引用 app 壳层/Activity 及 app 绕过公开 API；由架构总守卫调用 |
 | `verify_module_dependency_whitelist.sh` | Gradle 项目模块依赖边 |
 | `verify_module_api_visibility.sh` | 跨模块公共 API 边界 |
 | `verify_lint_warning_allowlist.sh` | Lint 报告新增 warning 和 waiver 漂移 |
@@ -126,7 +128,7 @@ bash scripts/quality/verify_release_validation_entry.sh .
 | `CI Health Monitor` | 收集运行健康指标并按阈值报告 |
 | `Actions Runs Cleanup` | 定时/手动清理旧 Actions run |
 
-Android CI 还提供显式 `run_api37_readiness` 手动输入：在 `pixelTabletApi37` 的 16 KB image 上运行 Android 17 Beta readiness，并总是上传 policy 与测试报告。该 job 的 policy/emulator 步骤可容错，失败只保持 candidate blocked，不会把正式 target 36 的构建误判为失败。Baseline Profile workflow 则继续使用 API 33；三类结果在名称、summary 和 artifact 中互不替代。
+Android CI 还提供显式 `run_api37_readiness` 手动输入：在 app 与 login feature 各自的 `pixelTabletApi37` 16 KB image/test APK 上运行 Android 17 Beta readiness，并总是上传 policy 与测试报告。该 job 的 policy/emulator 步骤可容错，失败只保持 candidate blocked，不会把正式 target 36 的构建误判为失败。Baseline Profile workflow 则继续使用 API 33；三类结果在名称、summary 和 artifact 中互不替代。
 
 `Face SDK Migration Check` 同样采用 build-only 策略，不把业务测试作为切源阻断项。
 
@@ -154,7 +156,7 @@ Android CI 还提供显式 `run_api37_readiness` 手动输入：在 `pixelTablet
 
 - 质量快照：`build/quality-snapshot/`
 - 构建基线：`build/reports/baseline/build-baseline.md`
-- Lint：`app/build/reports/`
+- Lint：`app/build/reports/` 与受影响 feature 的 `build/reports/`
 - 单测：各模块 `build/reports/tests/` 和 `build/test-results/`
 - CI 运行指标：调用脚本指定的 `build/` 输出目录或 CI artifact
 

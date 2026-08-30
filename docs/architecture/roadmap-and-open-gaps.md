@@ -91,14 +91,14 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 
 再按批次补充 focused unit test、instrumentation、Baseline Profile Benchmark 或 R8 analyzer。每个批次使用独立提交；发现行为差异时只回滚该批次，不跨批次追加兼容分支。
 
-上述低风险优化批次明确不包含：厂商 SDK 替换或二进制修补、厂商 consumer rules 收窄、Jetifier 关闭、Navigation 迁移、其他 Compose UI 重构，以及 WorkManager、定位、Bugly、DataStore 等启动初始化时序调整。身份主页面所有权迁移由独立 OpenSpec change 完成，不改变这些批次的范围。
+上述低风险优化批次明确不包含：厂商 SDK 替换或二进制修补、厂商 consumer rules 收窄、Jetifier 关闭、Navigation 迁移、其他 Compose UI 重构，以及 WorkManager、定位、Bugly、DataStore 等启动初始化时序调整。身份与登录页面所有权迁移均由独立 OpenSpec change 完成，不改变这些批次的范围。
 
 ## P1：`:app` 壳层收敛
 
-`:feature:identification` 已完成主页面、专属资源、聚合状态和 effect 下沉，并以公开 screen/launcher 合约隔离 app-owned Navigation 2 与腾讯人脸控制器；它是后续切片的边界参考。剩余工作按可独立验证的小切片推进：
+`:feature:identification` 已完成主页面下沉；`:feature:login` 也已完成页面、独占资源、ViewModel tests、协议链接选择和五动作面板下沉，并以唯一公开 screen/action 合约隔离 app-owned Navigation 2、WebView 与验证 Activity。两者是后续切片的边界参考。剩余工作按可独立验证的小切片推进：
 
-1. `:feature:login`、`:feature:home`
-   - 认证根协调、隐私 gate、Home 子图 ViewModel owner、角色分流和销售页返回/恢复契约已固定；下一切片可迁移 route UI，但必须保持入口导航 focused suite 全绿，不把 app-owned NavHost/route 实现暴露为 feature API。
+1. `:feature:home`
+   - 认证根协调、隐私 gate、Home 子图 ViewModel owner、角色分流和销售页返回/恢复契约已固定；下一切片可迁移 Home route UI，但必须保持入口导航 focused suite 全绿，不把 app-owned NavHost/route 实现暴露为 feature API。
 2. `:feature:photoupload`、`:feature:servicecountdown`
    - UI 下沉时保持 app-owned 相机/Service/闹钟平台网关，不让 Feature 直接依赖 Activity 或实现类。
 3. 销售能力
@@ -119,7 +119,7 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 - 销售登记草稿、三张照片上限、QLZ 权限/Token 恢复、表单/报告 WebView。
 - Room 迁移、WorkManager 重建和 app 更新下载恢复。
 
-正常 Android CI 仍以 compile/lint/assemble 为基础，只在 affected detector 要求时追加 API 36 blocking smoke；它不自动运行全部单元测试、完整用户旅程或厂商真机链路。其余业务验证仍应在本地 `--full`、专项 workflow、发布验收或真实设备矩阵中明确承担。
+正常 Android CI 仍以 compile/lint/assemble 为基础，只在 affected detector 要求时追加 API 36 blocking smoke；login feature 变更会执行 feature compile/unit/lint，并让 app/feature UI tests 进入各自 test APK。CI 仍不自动运行全部项目单元测试、完整用户旅程或厂商真机链路，其余验证由本地 `--full`、专项 workflow、发布验收或真实设备矩阵承担。
 
 ## P1：Android API 37 与自适应
 
@@ -133,7 +133,7 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 
 候选提升必须一次性满足：Android 17 stable；平台行为、厂商、大屏 adaptive、API 36/37 测试矩阵四类状态均为 verified；候选值与实际 target 一致；并由独立 OpenSpec target change 承担评审和回滚。API 33 Baseline Profile、API 36 smoke 或 API 37 Beta 单次成功均不能替代这些条件。
 
-API 37 手动 CI lane 目前覆盖 adaptive window、MessageQueue/反射/native、局域网、Certificate Transparency/网络栈、后台闹钟音频和厂商启动范围；失败会上传 evidence 并保持 blocked，但不阻断 target 36 的正常构建。
+API 37 手动 CI lane 目前用 app 与 login feature 各自的 test APK 覆盖 adaptive window、登录 UI、MessageQueue/反射/native、局域网、Certificate Transparency/网络栈、后台闹钟音频和厂商启动范围；失败会上传 evidence 并保持 blocked，但不阻断 target 36 的正常构建。
 
 不要用新的兼容绕过代替适配。
 
@@ -142,7 +142,7 @@ API 37 手动 CI lane 目前覆盖 adaptive window、MessageQueue/反射/native�
 - 统一 feature entry、route key 和 app navigation registry 的所有权；当前 registry 只含 login/home/identification 三项。
 - 当前保持 Navigation Compose `2.10.0`，不引入 Navigation 3 artifact。Nav3 后续 change 必须使用稳定版本并原子替换，不建立长期双栈。
 - identification 当前有意保留 app-owned `IdentificationRoute` 注册和三个结果 key；不要把已完成的 UI 所有权迁移误写成 Nav3 或 feature-owned route 已完成。
-- 动态 Login/Home 起点、隐私 gate、认证根 `popUpTo`/清栈、重复导航、配置变化、HomeGraph owner、Home 角色分流以及销售返回/保存恢复已建立 focused JVM 与 API 36 等价测试；任何 Login/Home UI 或 Nav3 迁移都必须复用或等价替换这些契约，并继续覆盖结果返回与消费。
+- 动态 Login/Home 起点、隐私 gate、认证根 `popUpTo`/清栈、重复导航、配置变化、HomeGraph owner、Home 角色分流以及销售返回/保存恢复已建立 focused JVM 与 API 36 等价测试；登录 UI 已迁入 feature，后续 Login/Home 行为修改或 Nav3 迁移必须复用或等价替换这些契约，并继续覆盖结果返回与消费。
 - 将可避免的 `OrderNavParams`、`ServiceCompleteData`、`WatermarkData` 等大对象 route payload 收敛为稳定 ID，再设计 Nav3 entry decorator、结果通道和 scope。
 - Navigation 3 迁移不与业务接口变化、模块大搬迁或 targetSdk 升级合并。
 - 继续缩小公共 API，优先 `implementation` 和 `internal`，避免跨模块访问实现包。

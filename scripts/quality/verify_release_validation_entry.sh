@@ -34,7 +34,9 @@ reject_text() {
   fi
 }
 
-require_file "app/src/main/kotlin/com/ytone/longcare/presentation/validation/LoginValidationEntrySheet.kt"
+require_file "feature/login/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginValidationEntrySheet.kt"
+require_file "feature/login/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreen.kt"
+require_file "feature/login/src/main/kotlin/com/ytone/longcare/feature/login/api/LoginFeatureActions.kt"
 require_file "app/src/main/kotlin/com/ytone/longcare/navigation/LoginValidationEntryNavigationActions.kt"
 require_file "app/src/main/kotlin/com/ytone/longcare/presentation/validation/FaceVerificationValidationActivity.kt"
 require_file "app/src/main/kotlin/com/ytone/longcare/presentation/validation/NfcValidationActivity.kt"
@@ -52,11 +54,41 @@ require_text \
   "app/src/main/AndroidManifest.xml" \
   'android:name=".presentation.validation.NfcValidationActivity"'
 require_text \
-  "app/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreen.kt" \
+  "feature/login/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreen.kt" \
   'onMainLogoLongPress = { showValidationEntrySheet = true }'
 reject_text \
-  "app/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreen.kt" \
+  "feature/login/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginScreen.kt" \
   'if (BuildConfig.DEBUG)'
+
+for action_name in \
+  onOpenCameraValidation \
+  onOpenBackupFaceVerification \
+  onOpenManualFaceCapture \
+  onOpenFaceVerificationValidation \
+  onOpenNfcValidation; do
+  require_text \
+    "feature/login/src/main/kotlin/com/ytone/longcare/features/login/ui/LoginValidationEntrySheet.kt" \
+    "validationEntryActions.${action_name}()"
+  require_text \
+    "app/src/main/kotlin/com/ytone/longcare/navigation/LoginValidationEntryNavigationActions.kt" \
+    "${action_name} = {"
+done
+
+require_text \
+  "app/src/main/kotlin/com/ytone/longcare/navigation/LoginValidationEntryNavigationActions.kt" \
+  'navigateToCamera('
+require_text \
+  "app/src/main/kotlin/com/ytone/longcare/navigation/LoginValidationEntryNavigationActions.kt" \
+  'navigateToFaceVerificationWithAutoSign()'
+require_text \
+  "app/src/main/kotlin/com/ytone/longcare/navigation/LoginValidationEntryNavigationActions.kt" \
+  'navigateToManualFaceCapture()'
+require_text \
+  "app/src/main/kotlin/com/ytone/longcare/navigation/LoginValidationEntryNavigationActions.kt" \
+  'Intent(context, FaceVerificationValidationActivity::class.java)'
+require_text \
+  "app/src/main/kotlin/com/ytone/longcare/navigation/LoginValidationEntryNavigationActions.kt" \
+  'Intent(context, NfcValidationActivity::class.java)'
 
 if [[ ${#FAILURES[@]} -gt 0 ]]; then
   echo "[release-validation-entry][FAIL] Release validation entry contract is not satisfied:" >&2
