@@ -1,0 +1,7 @@
+{
+  "resultCode": 1000,
+  "resultMsg": "成功 (来自本地 Mock 数据)",
+  "data": {
+    "faceImgUrl": "mock/user/registered-face.jpg"
+  }
+}

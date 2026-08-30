@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "rule": "-keep public class com.tencent.bugly.**{*;}",
+      "owner": "mobile-platform/bugly",
+      "reason": "Bugly crash reporting uses reflective SDK entry points; narrowing requires an isolated crash-reporting regression batch."
+    },
+    {
+      "rule": "-keep class com.amap.api.location.** { *; }",
+      "owner": "mobile-platform/location",
+      "reason": "AMap location callbacks cross JNI with fixed class and member names."
+    },
+    {
+      "rule": "-keep class com.amap.api.fence.** { *; }",
+      "owner": "mobile-platform/location",
+      "reason": "AMap geofence callbacks are vendor-owned and require dedicated location regression before narrowing."
+    },
+    {
+      "rule": "-keep class com.loc.** { *; }",
+      "owner": "mobile-platform/location",
+      "reason": "AMap internal location implementation is reached from vendor native code."
+    },
+    {
+      "rule": "-keep class com.autonavi.** { *; }",
+      "owner": "mobile-platform/location",
+      "reason": "AMap Autonavi models and support code are vendor-reflective and remain a separate SDK hardening scope."
+    },
+    {
+      "rule": "-keep class com.amap.location.** { *; }",
+      "owner": "mobile-platform/location",
+      "reason": "AMap support and logging classes are invoked from native code by fixed names."
+    },
+    {
+      "rule": "-keep class com.google.mlkit.vision.face.bundled.internal.** { *; }",
+      "owner": "mobile-platform/identification",
+      "reason": "Bundled ML Kit face model and native glue are initialized through provider and registrar discovery."
+    },
+    {
+      "rule": "-keep class com.comm.** { *; }",
+      "owner": "mobile-platform/sales-qlz",
+      "reason": "QLZ 1.3.0.2 reflectively discovers vendor communication models."
+    },
+    {
+      "rule": "-keep class com.qiaolz.eco.app.protobuf.** { *; }",
+      "owner": "mobile-platform/sales-qlz",
+      "reason": "QLZ protobuf-lite payloads require their generated vendor APIs during device assessment."
+    },
+    {
+      "rule": "-keep class com.evenmed.mode.** { *; }",
+      "owner": "mobile-platform/sales-qlz",
+      "reason": "QLZ assessment mode classes are loaded by the vendor SDK."
+    },
+    {
+      "rule": "-keep class com.falth.data.** { *; }",
+      "owner": "mobile-platform/sales-qlz",
+      "reason": "QLZ vendor data classes participate in reflective payload and page flows."
+    },
+    {
+      "rule": "-keep class com.evenmed.sdk.call.** { *; }",
+      "owner": "mobile-platform/sales-qlz",
+      "reason": "QLZ SDK call entry points are vendor-owned and accessed reflectively."
+    }
+  ]
+}

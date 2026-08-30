@@ -36,6 +36,16 @@ android run --apks=app/build/outputs/apk/debug/app-debug.apk
 ./gradlew :app:assembleDebug -Pdebug.useMockData=true
 ```
 
+显式 Mock 只接管与 `BASE_URL` 同源、已登记的第一方 `method + encoded path`；未知第一方 method/path 会在本地 fail-closed，不会回退真实网络。AMap 等第三方客户端不被第一方拦截器接管；照片上传在该模式绑定不初始化 COS 的 Debug fake。WebView 仍允许任意格式合法且有 host 的 HTTP(S) 业务地址，不因 Mock 增加 host 白名单。
+
+```bash
+# 查看并校验本次 Debug 的最终 Mock 模式
+./gradlew :app:reportDebugMockMode \
+  :app:verifyDebugMockMode \
+  -Pdebug.useMockData=true \
+  -Pdebug.expectedUseMockData=true
+```
+
 ## 验证
 
 ```bash
@@ -44,6 +54,9 @@ bash scripts/quality/preflight_local.sh --local-fast
 
 # 快速检查 + Kotlin 编译 + app 单测
 bash scripts/quality/preflight_local.sh --full
+
+# Debug Mock 路由、fixture、上传边界和模式契约
+bash scripts/quality/run_debug_mock_network_contracts.sh
 
 # 与普通 Android CI 的主要构建任务对齐
 ./gradlew --no-daemon :app:lintDebug :app:assembleDebug

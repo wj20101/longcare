@@ -1,6 +1,6 @@
 # 系统架构概览
 
-最后核对：2026-08-30
+最后核对：2026-08-31
 
 本文描述当前代码实际运行形态，不把目标架构写成已经完成的事实。版本和依赖见[技术栈与构建基线](tech-stack.md)，产品行为见[产品概览](../product/overview.md)。
 
@@ -43,14 +43,14 @@ flowchart LR
 | 模块 | 当前职责 | 当前现实/迁移状态 |
 |---|---|---|
 | `:app` | 运行时壳、导航、Manifest、平台网关、厂商 UI 控制器、更新任务 | 仍包含护理、销售、NFC、相机、倒计时等大量业务 UI；legacy feature 目录已冻结新增 |
-| `:baselineprofile` | Macrobenchmark 旅程与 Baseline Profile 生成 | 使用 Pixel 6 API 33 managed device，目标为 `:app` |
+| `:baselineprofile` | 六场景 Profile 生成、对称 Startup Macrobenchmark 与报告 | 使用 Pixel 6 API 33 managed device 验证旅程/依赖/报告格式，目标为 `:app`；性能收益仍由受控 ARM64 真机验收 |
 | `:core:model` | 跨层模型、值对象、`ApiResult`、序列化模型 | Kotlin/JVM 模块，不依赖 Android framework |
 | `:core:domain` | Repository/网关契约和领域规则 | Kotlin/JVM 模块，不依赖 Android framework 或数据实现 |
 | `:core:data` | Retrofit、Room、DataStore/COS 相关实现、Repository 实现和 Hilt 绑定 | 数据实现集中地；不得依赖 feature/UI |
 | `:core:common` | 日志、诊断、运行配置、调度器、图片输出/受管文件、通用 Android 能力 | Android library；不是纯 Kotlin 模块 |
 | `:core:ui` | 共用 Compose/UI 支撑、共享 ViewModel、统一图片预览 | 可依赖 Core 契约，不得访问数据实现 |
 | `:feature:login` | 登录公开入口、内部 Compose UI/资源、ViewModel、协议链接选择、动作接口和 DI | `LoginFeatureScreen` 是唯一公开页面入口；app 只持有 route、协议兜底和平台动作适配 |
-| `:feature:home` | 首页共享状态、上报能力、动作接口和 feature entry | 护理/销售首页 route UI 仍在 `:app` |
+| `:feature:home` | 首页共享状态、上报能力和动作接口 | 护理/销售首页 route UI 仍在 `:app` |
 | `:feature:identification` | 身份主页面/资源、聚合屏幕状态、用例/网关、CameraX + ML Kit 人脸采集和默认比对页 | `IdentificationFeatureScreen` 是唯一公开页面入口；内部渲染 UI/VM 不向 `:app` 暴露 |
 | `:feature:location` | 定位 Service、管理器、会话、上报、诊断 | 作为服务流程内嵌能力，没有独立路由 |
 | `:feature:photoupload` | 上传门面、任务队列和照片处理状态 | `PhotoUploadScreen`、`CameraScreen` 仍在 `:app` |
@@ -69,23 +69,27 @@ flowchart LR
 6. 命名空间 Ready 后，`DefaultUserRehydrationCoordinator` 并发拉取系统配置、今日订单和进行中订单，只在当前 lease 仍有效时写入该用户；网络失败进入可重试/空态，不回退 legacy、全局值或另一用户快照。
 7. WorkManager 启动任务检查新版本；UI 只观察最新一次启动请求，避免历史成功任务重新弹出旧更新。
 
+启动完成语义按互斥根页面管理：会话仍为 `Unknown` 时 Splash 持有 Activity fully-drawn 条件；隐私协议、Login、护理 Home 或销售 Home 的真实根内容完成首帧且可交互后，当前根页面才释放 `ReportDrawnWhen`。系统继续自动记录 TTID，Macrobenchmark 同时要求 TTFD；更新检查、首屏后网络结果、列表滚动和后续业务导航不延迟 TTFD。Activity 重建会得到新的 reporter，同一 Activity 内的状态变化不会重复报告。
+
+Profile 场景固定为六个：首次隐私、已同意隐私且未登录、护理 Home、销售 Home 属于 Startup；护理 Home → 服务记录 → Home 与销售 Home → 客户列表 → Sales Home 属于 Baseline-only。后两条旅程只扩充 `baseline-prof.txt`，不得进入 `startup-prof.txt`。状态由仅绑定 `nonMinifiedRelease`/`benchmarkRelease` 的 `src/profile` 控制器通过正式隐私、加密会话和用户命名空间 API 建立；组件受 signature permission 保护，准备后强停再冷启动，且 Release Manifest/DEX/assets 必须证明该控制能力和虚构身份不存在。性能变体还在 OkHttp 最前端 fail-fast，确保虚构 token 不接触生产网络；常规 Debug/Release 的该开关恒为关闭。
+
 ## 导航组装
 
 导航使用 Navigation Compose 2 的 Kotlin Serialization 类型安全路由，并在 `:app/navigation` 统一注册：
 
 - Entry：登录、Home 子图和订单列表。
 - Service flow：服务详情、护理执行、NFC、选择服务、照片上传、倒计时、结束选择、完成摘要。
-- Support：用户列表/记录、人脸引导与核验、设备选择、相机、手动人脸采集和 WebView。
+- Support：用户列表/记录、人脸引导与核验、相机、手动人脸采集和 WebView。
 
 认证入口由 app-owned 协调器把会话状态映射为 `LoginRoute` 或 `HomeGraphRoute`。同一目标的重复信号是 `NoOp`；Login/Home 切换使用类型安全 `popUpTo(inclusive = true)` 删除另一认证根，保证 back stack 不同时保留两个账号边界。`AppNavHost` 和 `EntryDestinationRenderers` 仅作为 `internal` 测试 seam，不是跨模块 API；首次根状态解析完成后 NavController 不因短暂 `Unknown` 或配置变化而重建。
 
-订单相关路由传递轻量 `OrderNavParams(orderId, planId)`，页面再通过 Repository/共享状态加载业务数据。跨页面结果使用上一层 `SavedStateHandle`，例如相机 URI、人脸文件路径和默认人脸核验结果。
+订单相关路由传递轻量 `OrderNavParams(orderId, planId)`，页面再通过 Repository/共享状态加载业务数据。开始服务从护理执行页直接构造 `NfcSignInRoute(SignInMode.START_ORDER)`，返回栈不再包含无行为价值的设备选择目的地。跨页面结果使用上一层 `SavedStateHandle`，例如相机 URI、人脸文件路径和默认人脸核验结果。
 
 `IdentificationRoute` 仍由 `:app` 的 Navigation Compose 2 图注册：壳层解析 route、提供五个导航回调和三个结果流，并使用当前 UI Context 把 app-owned 腾讯人脸控制器适配为 `IdentificationFaceSdkLauncher`；feature 不引用 `NavController`、app 平台实现或 app `R`。三个结果确认后显式写入 `null`，保证既有 `StateFlow` 同步进入已消费状态。
 
 `LoginRoute` 同样保留 app-owned Navigation Compose 2 注册，但只调用 `LoginFeatureScreen`。`:app` 注入 `LoginAgreementLinks`、开放 WebView 回调及相机、备用人脸、手动人脸、正式人脸和 NFC 五个验证动作；`:feature:login` 拥有渲染、资源、协议确认、动态 URL 选择和状态 effect，不接收 `NavController`、`Context`、`Activity`、`Intent` 或厂商类型。服务端非空用户协议地址原样优先，空值/加载失败与隐私政策使用 app 兜底，不增加 host 白名单。
 
-当前只有 login、home、identification 三个 feature entry 常量进入运行时 registry；registry 的数量校验不是完整路由清单。完整页面映射见[页面与路由地图](ui-and-screen-map.md)。
+工程不维护与真实导航图平行的 feature entry 字符串 registry；可达页面只以 `:app/navigation` 的 typed route 注册和对应 feature 公共 screen/action 合约为准。完整页面映射见[页面与路由地图](ui-and-screen-map.md)。
 
 ## 状态与异步约定
 
@@ -126,7 +130,9 @@ cache/user_scopes/v1/<sha256>/session/<purpose>/...
 - 平台协调器只通过 Android-free 的 `UserStorageLeaseAccess` 校验当前 lease；业务代码不能获取全局 Room/DAO/DataStore 句柄。后台唯一名、tag、data URI、requestCode 和通知 ID 都从 `UserTaskIdentity` 派生，不能只使用 `orderId`。
 - WorkManager 用于启动更新检查、APK 下载等需要跨重建继续或恢复结果的任务。
 - 腾讯 COS 负责业务图片/文件上传，Feature 通过 `PhotoCloudUploader` 等受校验门面使用。
-- Debug 可选的本地 mock 只存在于 debug source set，不进入 Release。
+- Debug 可选的第一方本地 mock 只存在于 debug source set，不进入 Release。仅当显式 `debug.useMockData=true` 时，它才按 HTTP method 与规范化 encoded path 查询登记表；与 `BASE_URL` 同源的未知请求立即抛出可分类且脱敏的本地异常，不回退真实网络。
+- 第一方 Mock 不接管 AMap、腾讯人脸、QLZ 或其他第三方 SDK/client。显式 Mock 下照片上传单独绑定不初始化 COS 的 `DebugPhotoCloudUploader` 并返回明显不可用于生产的确定性 key；普通 Debug 与 Release 使用真实上传实现。第三方离线失败保持可恢复失败，不能记作真实 SDK 成功。
+- 身份“已验证”状态只由 `androidTest` 自有 seam 驱动，正式源码与 Release 产物不存在可调用绕过；更新测试止于下载边界，不访问 fixture URL 或创建真实下载任务。
 
 ## 图片与人脸链路
 
@@ -168,6 +174,7 @@ cache/user_scopes/v1/<sha256>/session/<purpose>/...
 
 ## WebView 安全边界
 
+- 第一方 Debug Mock 不限制 WebView host，也不接管 WebView 的任意跨域业务导航；WebView 始终遵循本节独立 URL policy。
 - 全屏 `WebViewScreen` 与首次隐私弹窗共用 `WebUrlPolicy`，只接受格式合法且有 host 的 HTTP(S) URL；不比较初始 host，也不维护业务域名白名单，允许 HTTPS 子域、IP、端口和跨域重定向。
 - `file:`、`content:`、`javascript:`、`intent:`、`data:`、未知 scheme、空 host 和畸形 URL 均阻断；导航回调让 WebView 自身处理允许 URL，不重复调用 `loadUrl`。
 - 两入口关闭 file/content/file-URL 跨域访问、混合内容和多窗口，保持 Safe Browsing，SSL 错误只执行 cancel；隐私页关闭 JavaScript，业务页虽启用必要 JavaScript但不暴露原生 bridge。
@@ -192,13 +199,15 @@ cache/user_scopes/v1/<sha256>/session/<purpose>/...
 - Android CI 的正常阻断路径以构建、Lint、架构和治理为主；affected app/login 变化只在各自 API 36 Managed Device test APK 上执行 focused smoke，摘要区分 build-only、app focused 和 login feature focused。其他完整业务测试仍由本地 `--full` 和显式 connected 专项入口承担。
 - 验收 Release 必须显式设置 `release.production=false` 和 `release.acceptance=true`。
 - 当前生产 Release 是 fail-closed：临时 QLZ key/test mode、QLZ 弱 TLS 检查和腾讯人脸 ARM64 16 KB 对齐问题未解决前，生产门禁必须失败。
+- Profile 证据分四层：源码/负向 fixture 约束场景与隔离；生成文本证明 Startup 是 Baseline 的严格规则子集；显式 acceptance APK/AAB 证明 ART Profile、R8 Startup DEX 与实际 DEX checksum 一致且无测试能力泄漏；设备报告证明 TTID/TTFD、模式和构建身份。API 33 模拟器结果只覆盖旅程、依赖链和报告格式，不构成性能收益。
+- Profile/None 的真实收益状态仍为 `unverified`；只有同一台受控多核 ARM64 真机连续两轮完成四场景、双模式、各 10 次冷启动并满足预设抗噪预算后，才能改为已验证。
 
 ## 已接受的技术债
 
 - 大多数 route-bound UI 仍位于 `:app/features/**`；登录与身份主页面已经下沉到各自 feature。
 - `:app` 同时承担壳层、平台适配和较多业务组装；新增 legacy feature 文件受 allowlist/freeze guard 约束。
 - 销售体验仍由 `:app` 持有，`SalesViewModel` 体量较大。
-- Navigation Compose 2 路由和三个 feature entry 常量还不是统一的 feature-owned 导航模型。
+- Navigation Compose 2 的 route 注册仍主要由 `:app` 持有，尚未形成统一的 feature-owned 导航模型。
 - Manifest 组件面较广，源于定位、计时、闹钟、NFC、更新和厂商 SDK 的现实需求。
 - Jetifier 与生产发布阻断依赖厂商提供兼容的新 AAR，不能用忽略 Lint 或放宽门禁替代。
 

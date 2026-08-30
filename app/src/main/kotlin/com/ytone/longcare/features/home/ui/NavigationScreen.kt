@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
@@ -51,6 +52,7 @@ fun AdaptiveAppNavigationScaffold(
                 item(
                     selected = isSelected,
                     onClick = { onItemSelected(index) },
+                    modifier = item.testTag?.let { Modifier.testTag(it) } ?: Modifier,
                     icon = {
                         CustomNavItem(
                             text = item.text,
@@ -90,6 +92,7 @@ fun AdaptiveAppNavigationPreview() {
 
 data class AppNavigationItem(
     val text: String,
+    val testTag: String? = null,
 )
 
 /**

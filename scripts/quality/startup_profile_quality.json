@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "benefitStatus": "unverified",
+  "compilationModes": [
+    "none",
+    "baseline-profile-required"
+  ],
+  "scenarios": [
+    {
+      "id": "first_run_privacy",
+      "classification": "startup",
+      "setupState": "clean-install",
+      "requiredTags": [
+        "profile_privacy_root",
+        "profile_privacy_title",
+        "profile_privacy_reject",
+        "profile_privacy_accept"
+      ]
+    },
+    {
+      "id": "logged_out",
+      "classification": "startup",
+      "setupState": "privacy-consented-logged-out",
+      "requiredTags": [
+        "profile_login_root",
+        "login_phone_input",
+        "login_verification_code_input",
+        "login_submit_button"
+      ]
+    },
+    {
+      "id": "care_home",
+      "classification": "startup",
+      "setupState": "care-session",
+      "requiredTags": [
+        "profile_care_home_root",
+        "home_top_user_name",
+        "dashboard_records_card"
+      ]
+    },
+    {
+      "id": "sales_home",
+      "classification": "startup",
+      "setupState": "sales-session",
+      "requiredTags": [
+        "profile_sales_home_root",
+        "profile_sales_customers_entry"
+      ]
+    },
+    {
+      "id": "care_service_records",
+      "classification": "baseline-only",
+      "setupState": "care-session",
+      "requiredTags": [
+        "profile_care_home_root",
+        "dashboard_records_card",
+        "profile_service_records_root",
+        "profile_service_records_back"
+      ]
+    },
+    {
+      "id": "sales_customers",
+      "classification": "baseline-only",
+      "setupState": "sales-session",
+      "requiredTags": [
+        "profile_sales_home_root",
+        "profile_sales_customers_entry",
+        "profile_sales_customers_root",
+        "profile_sales_customers_back"
+      ]
+    }
+  ],
+  "benchmarkPolicy": {
+    "startupMode": "cold",
+    "iterationsPerMode": 10,
+    "requiredMetrics": [
+      "timeToInitialDisplayMs",
+      "timeToFullDisplayMs"
+    ],
+    "requiredMetadata": [
+      "device",
+      "apiLevel",
+      "abi",
+      "buildSha"
+    ]
+  },
+  "benefitAcceptance": {
+    "deviceType": "physical",
+    "requiredAbi": "arm64-v8a",
+    "minimumCpuCores": 2,
+    "requiredRounds": 2,
+    "iterationsPerMode": 10,
+    "maxMedianRegressionPercent": {
+      "timeToInitialDisplayMs": 5.0,
+      "timeToFullDisplayMs": 5.0
+    },
+    "minimumConsistentlyImprovedMetrics": 1,
+    "emulatorEvidence": "journey-and-report-format-only"
+  }
+}

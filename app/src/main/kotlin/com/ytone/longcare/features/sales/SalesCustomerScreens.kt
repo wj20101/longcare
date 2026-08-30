@@ -49,8 +49,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -143,12 +143,14 @@ internal fun SalesCustomerListScreen(
         modifier =
             Modifier
                 .fillMaxSize()
+                .testTag("profile_sales_customers_root")
                 .statusBarsPadding()
                 .navigationBarsPadding(),
     ) {
         SalesTopBar(
             title = stringResource(R.string.sales_customer_list_title),
             onBack = onBack,
+            backButtonModifier = Modifier.testTag("profile_sales_customers_back"),
         )
         OutlinedTextField(
             value = keyword,

@@ -16,14 +16,11 @@ dependencies {
     implementation(projectDependency(":core:domain"))
     implementation(projectDependency(":core:model"))
 
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel)
+    implementation(libs.kotlinx.coroutines.core)
 
     implementation(libs.dagger.hilt.android)
     ksp(libs.dagger.hilt.compiler)
-
-    implementation(libs.bundles.coil)
-    implementation(libs.crashreport)
 
     testImplementation(libs.junit)
 }

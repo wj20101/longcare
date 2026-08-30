@@ -11,6 +11,15 @@
       "likely_fix": "Remove tracked keystore artifacts and rotate secrets."
     },
     {
+      "id": "debug_mock_network_safety",
+      "name": "Debug Mock Network Safety",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "app/build.gradle.kts,app/src/debug,scripts/quality/verify_debug_mock_network.py,scripts/quality/test_debug_mock_network.sh,scripts/quality/run_debug_mock_network_contracts.sh",
+      "likely_fix": "Restore default-off fail-closed first-party Mock routing, Debug-only fixtures/fakes, and Release source/artifact isolation."
+    },
+    {
       "id": "lint_warning_allowlist",
       "name": "Lint Warning Allowlist",
       "layer": "ci-required",
@@ -35,7 +44,7 @@
       "blocking": true,
       "owner": "mobile-platform",
       "source_of_truth": "scripts/quality/verify_architecture_boundaries.sh,scripts/quality/verify_identification_feature_boundary.sh,scripts/quality/verify_login_feature_boundary.sh",
-      "likely_fix": "Move code to the allowed layer, use the feature public API boundary, or update an explicit architecture allowlist deliberately."
+      "likely_fix": "Move code to the allowed layer, remove a retired redundancy, use the feature public API boundary, or update an explicit architecture allowlist deliberately."
     },
     {
       "id": "module_dependency_whitelist",
@@ -70,8 +79,17 @@
       "layer": "ci-required",
       "blocking": true,
       "owner": "mobile-platform",
-      "source_of_truth": "settings.gradle.kts,constants.gradle.kts,gradle/libs.versions.toml",
-      "likely_fix": "Restore the settings-owned SDK baseline, JDK/application constants, and matching AGP settings plugin."
+      "source_of_truth": "settings.gradle.kts,constants.gradle.kts,gradle/libs.versions.toml,scripts/quality/verify_android_build_baseline.sh,scripts/quality/test_android_build_governance.sh,scripts/quality/test_affected_modules.sh",
+      "likely_fix": "Restore the settings-owned SDK baseline, toolchain constants, matching AGP settings plugin, or the narrow build capabilities and direct dependencies enforced for each module."
+    },
+    {
+      "id": "project_r8_rules",
+      "name": "Project R8 Rule Governance",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "app/proguard-rules.pro,scripts/quality/project_r8_package_keep_allowlist.json,scripts/quality/verify_project_r8_rules.py,scripts/quality/test_project_r8_rules.sh",
+      "likely_fix": "Restore optimized Release wiring, remove forbidden or redundant project rules, or review an exact package-wide keep with an owner and reason."
     },
     {
       "id": "dependency_policy",
@@ -135,6 +153,15 @@
       "owner": "mobile-platform",
       "source_of_truth": "scripts/quality/verify_entry_navigation_contracts.sh,scripts/quality/test_entry_navigation_contracts.sh,scripts/quality/run_entry_navigation_focused.sh",
       "likely_fix": "Keep navigation-testing test-only, preserve the internal renderer seam, and restore the focused JVM/API 36 navigation tests."
+    },
+    {
+      "id": "startup_profile_semantics",
+      "name": "Startup and Baseline Profile Semantics",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/startup_profile_quality.json,scripts/quality/verify_baselineprofile_journeys.sh,scripts/quality/test_baselineprofile_journeys.sh",
+      "likely_fix": "Restore the six deterministic scenarios, exact page readiness, symmetric benchmark modes, or performance-only isolation contract."
     },
     {
       "id": "tech_stack_baseline",

@@ -27,17 +27,8 @@ import com.ytone.longcare.MainViewModel
 import com.ytone.longcare.app.MainApplication
 import com.ytone.longcare.common.utils.findBackStackEntryOrNull
 import com.ytone.longcare.common.utils.PrivacyConsentManager
-import com.ytone.longcare.feature.home.FeatureEntry as HomeFeatureEntry
-import com.ytone.longcare.feature.identification.FeatureEntry as IdentificationFeatureEntry
-import com.ytone.longcare.feature.login.FeatureEntry as LoginFeatureEntry
 import com.ytone.longcare.features.update.ui.AppUpdateDialog
 import com.ytone.longcare.features.update.viewmodel.AppUpdateViewModel
-
-private val featureRouteRegistry = setOf(
-    LoginFeatureEntry.ROUTE,
-    HomeFeatureEntry.ROUTE,
-    IdentificationFeatureEntry.ROUTE
-)
 
 // ========== 主要Composable ==========
 
@@ -90,6 +81,13 @@ fun MainApp(
 
 @Composable
 fun SplashScreen(modifier: Modifier = Modifier) {
+    ReportStartupRootDrawn(
+        expectedRoot = StartupRoot.ResolvingSession,
+        actualReadiness = resolveStartupRootReadiness(
+            entryState = AppEntryState.ResolvingSession,
+            userIdentity = null,
+        ),
+    )
     val backgroundColor = MaterialTheme.colorScheme.background
     Box(
         modifier = modifier
@@ -110,10 +108,6 @@ fun SplashScreen(modifier: Modifier = Modifier) {
 
 @Composable
 internal fun AppNavigation(entryState: AppEntryState) {
-    check(featureRouteRegistry.size == 3) {
-        "Feature route registry is incomplete."
-    }
-
     val targetRoot = entryState.authenticationRootOrNull()
     var initialRootName by rememberSaveable { mutableStateOf(targetRoot?.name) }
     if (initialRootName == null && targetRoot != null) {

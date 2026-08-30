@@ -2,6 +2,7 @@
 set -euo pipefail
 
 PROJECT_ROOT="${1:-.}"
+ARCHITECTURE_MODE="${2:-full}"
 EXIT_CODE=0
 RG_LAST_OUTPUT=""
 RG_LAST_STATUS=1
@@ -24,6 +25,11 @@ LOGIN_FEATURE_BOUNDARY_GUARD="${PROJECT_ROOT}/scripts/quality/verify_login_featu
 INSTRUMENTATION_TEST_OWNERSHIP_GUARD="${PROJECT_ROOT}/scripts/quality/verify_instrumentation_test_ownership.sh"
 
 echo "[architecture] checking layer boundaries under: ${PROJECT_ROOT}"
+
+if [[ "${ARCHITECTURE_MODE}" != "full" && "${ARCHITECTURE_MODE}" != "--retired-only" ]]; then
+  echo "[architecture][FAIL] unsupported mode: ${ARCHITECTURE_MODE}"
+  exit 2
+fi
 
 resolve_arch_scanner() {
   if [[ -n "${ARCH_SCANNER}" ]]; then
@@ -443,6 +449,45 @@ run_instrumentation_test_ownership_guard() {
   fi
 }
 
+run_retired_redundancy_guard() {
+  local retired_paths=(
+    "core/common/src/main/kotlin/com/ytone/longcare/core/common/Placeholder.kt"
+    "core/domain/src/main/kotlin/com/ytone/longcare/core/domain/Placeholder.kt"
+    "core/model/src/main/kotlin/com/ytone/longcare/core/model/Placeholder.kt"
+    "core/ui/src/main/kotlin/com/ytone/longcare/core/ui/Placeholder.kt"
+    "feature/home/src/main/kotlin/com/ytone/longcare/feature/home/FeatureEntry.kt"
+    "feature/identification/src/main/kotlin/com/ytone/longcare/feature/identification/FeatureEntry.kt"
+    "feature/login/src/main/kotlin/com/ytone/longcare/feature/login/FeatureEntry.kt"
+    "app/src/main/kotlin/com/ytone/longcare/ui/components/UpdateDialog.kt"
+  )
+  local relative_path
+  for relative_path in "${retired_paths[@]}"; do
+    if [[ -e "${PROJECT_ROOT}/${relative_path}" ]]; then
+      echo "[architecture][FAIL] retired-redundancy path=${relative_path}"
+      EXIT_CODE=1
+    fi
+  done
+
+  local select_device_root="${PROJECT_ROOT}/app/src/main/kotlin/com/ytone/longcare/features/selectdevice"
+  if [[ -d "${select_device_root}" ]] && find "${select_device_root}" -type f -name '*.kt' -print -quit | grep -q .; then
+    echo "[architecture][FAIL] retired-redundancy category=select-device-package path=app/src/main/kotlin/com/ytone/longcare/features/selectdevice"
+    EXIT_CODE=1
+  fi
+
+  local navigation_root="${PROJECT_ROOT}/app/src/main/kotlin/com/ytone/longcare/navigation"
+  if [[ -d "${navigation_root}" ]]; then
+    run_rg_scan \
+      "retired navigation scaffolding" \
+      '\b(SelectDeviceRoute|navigateToSelectDevice|registerSelectDeviceRoute|featureRouteRegistry)\b' \
+      "${navigation_root}"
+    if [[ "${RG_LAST_STATUS}" -eq 0 ]]; then
+      printf "%s\n" "${RG_LAST_OUTPUT}"
+      echo "[architecture][FAIL] retired-redundancy category=navigation-scaffolding"
+      EXIT_CODE=1
+    fi
+  fi
+}
+
 count_allowlist_entries() {
   local allowlist_file="$1"
   awk 'NF && $1 !~ /^#/' "${allowlist_file}" | wc -l | tr -d ' '
@@ -484,6 +529,18 @@ check_allowlist_budget() {
 
   echo "[architecture] ${rule_label} current=${current_count}, budget=${budget}"
 }
+
+echo "[architecture] rule-0: retired redundancy must not return"
+run_retired_redundancy_guard
+
+if [[ "${ARCHITECTURE_MODE}" == "--retired-only" ]]; then
+  if [[ "${EXIT_CODE}" -ne 0 ]]; then
+    echo "[architecture] retired redundancy verification failed."
+    exit "${EXIT_CODE}"
+  fi
+  echo "[architecture] retired redundancy verification passed."
+  exit 0
+fi
 
 echo "[architecture] rule-1: domain must not depend on android.*"
 run_rule \

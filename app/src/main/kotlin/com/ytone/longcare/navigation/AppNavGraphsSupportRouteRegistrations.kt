@@ -16,8 +16,6 @@ import com.ytone.longcare.features.identification.facecheck.DefaultFaceVerificat
 import com.ytone.longcare.features.identification.facecheck.FaceImageMetrics
 import com.ytone.longcare.features.photoupload.api.CameraActions
 import com.ytone.longcare.features.photoupload.ui.CameraScreen
-import com.ytone.longcare.features.selectdevice.api.SelectDeviceActions
-import com.ytone.longcare.features.selectdevice.ui.SelectDeviceScreen
 import com.ytone.longcare.features.shared.FaceVerificationWithAutoSignScreen
 import com.ytone.longcare.features.userlist.api.UserListActions
 import com.ytone.longcare.features.userlist.ui.UserListScreen
@@ -83,23 +81,6 @@ internal fun NavGraphBuilder.registerFaceRecognitionGuideRoute(navController: Na
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToSelectService = { orderKey ->
                     navController.navigateToSelectService(orderKey)
-                }
-            ),
-            orderKey = route.orderParams.toOrderKey()
-        )
-    }
-}
-
-internal fun NavGraphBuilder.registerSelectDeviceRoute(navController: NavController) {
-    composable<SelectDeviceRoute>(
-        typeMap = mapOf(typeOf<OrderNavParams>() to OrderNavParamsNavType)
-    ) { backStackEntry ->
-        val route = backStackEntry.toRoute<SelectDeviceRoute>()
-        SelectDeviceScreen(
-            actions = SelectDeviceActions(
-                onNavigateBack = { navController.popBackStack() },
-                onStartOrderNfcSignIn = { orderKey ->
-                    navController.navigateToNfcSignInForStartOrder(orderKey)
                 }
             ),
             orderKey = route.orderParams.toOrderKey()

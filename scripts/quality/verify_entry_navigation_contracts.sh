@@ -110,6 +110,7 @@ while IFS='|' read -r relative class_name; do
 done <<'TEST_CONTRACTS'
 app/src/test/kotlin/com/ytone/longcare/navigation/AppEntryStateTest.kt|AppEntryStateTest
 app/src/test/kotlin/com/ytone/longcare/navigation/AuthenticationNavigationCoordinatorTest.kt|AuthenticationNavigationCoordinatorTest
+app/src/test/kotlin/com/ytone/longcare/navigation/StartOrderNavigationContractTest.kt|StartOrderNavigationContractTest
 app/src/test/kotlin/com/ytone/longcare/features/home/ui/HomeExperienceTest.kt|HomeExperienceTest
 app/src/test/kotlin/com/ytone/longcare/features/sales/SalesNavigationSnapshotTest.kt|SalesNavigationSnapshotTest
 app/src/test/kotlin/com/ytone/longcare/features/sales/SalesBackReducerTest.kt|SalesBackReducerTest

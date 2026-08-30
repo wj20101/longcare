@@ -120,6 +120,7 @@ fi
 
 CHECK_NAMES=(
   "No Tracked Keystore Files"
+  "Debug Mock Network Safety"
   "Release Exported Component Allowlist"
   "Vendor SDK Release Readiness"
   "Lint Warning Allowlist"
@@ -144,12 +145,13 @@ CHECK_NAMES=(
 
 CHECK_IDS=(
   "no_tracked_keystore_files"
+  "debug_mock_network_safety"
   "release_exported_components"
   "vendor_sdk_release_readiness"
   "lint_warning_allowlist"
   "lint_ignore_policy"
   "jetpack_compat_api_guard"
-  "baseline_profile_journey_guard"
+  "startup_profile_semantics"
   "coroutine_cancellation_guards"
   "no_empty_catch_blocks"
   "target_sdk_upgrade_gate"
@@ -168,6 +170,7 @@ CHECK_IDS=(
 
 CHECK_CMDS=(
   "bash scripts/quality/verify_no_tracked_keystore_files.sh ."
+  "python3 scripts/quality/verify_debug_mock_network.py --project-root \"${PROJECT_ROOT}\""
   "bash scripts/quality/verify_release_exported_components.sh"
   "bash scripts/quality/verify_vendor_sdk_release_readiness.sh \"${LINT_REPORT_PATH}\""
   "bash scripts/lint/verify_lint_warning_allowlist.sh \"${LINT_REPORT_PATH}\""
@@ -191,6 +194,7 @@ CHECK_CMDS=(
 )
 
 CHECK_TIERS=(
+  "ci-required"
   "ci-required"
   "release-required"
   "release-required"
@@ -216,6 +220,7 @@ CHECK_TIERS=(
 
 CHECK_CATEGORIES=(
   "secrets"
+  "network-safety"
   "release-safety"
   "vendor-security"
   "lint-policy"
@@ -240,6 +245,7 @@ CHECK_CATEGORIES=(
 
 CHECK_LIKELY_FIXES=(
   "remove-tracked-keystore-and-use-secret-distribution"
+  "restore-default-off-fail-closed-debug-mock-and-release-isolation"
   "align-exported-components-with-release-allowlist"
   "replace-production-blocking-vendor-sdk-binaries"
   "fix-lint-warning-or-add-approved-waiver-entry"
@@ -264,6 +270,7 @@ CHECK_LIKELY_FIXES=(
 
 CHECK_SOURCE_OF_TRUTH=(
   "scripts/quality/verify_no_tracked_keystore_files.sh"
+  "app/build.gradle.kts,app/src/debug,scripts/quality/verify_debug_mock_network.py"
   "scripts/quality/verify_release_exported_components.sh"
   "scripts/quality/verify_vendor_sdk_release_readiness.sh"
   "scripts/lint/lint_warning_waivers.json"

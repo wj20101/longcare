@@ -27,6 +27,7 @@ bash scripts/quality/verify_entry_navigation_contracts.sh --project-root "${ROOT
   --tests '*AppEntryStateTest*' \
   --tests '*PrivacyConsentProcessCoordinatorTest*' \
   --tests '*AuthenticationNavigationCoordinatorTest*' \
+  --tests '*StartOrderNavigationContractTest*' \
   --tests '*HomeExperienceTest*' \
   --tests '*SalesNavigationSnapshotTest*' \
   --tests '*SalesBackReducerTest*'

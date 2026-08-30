@@ -29,9 +29,10 @@ val baselineEnableX86_64 =
 val debugUseMockData =
     providers
         .gradleProperty("debug.useMockData")
-        .orElse("true")
+        .orElse("false")
         .map { it.equals("true", ignoreCase = true) }
         .get()
+val debugUseMockDataIsExplicit = providers.gradleProperty("debug.useMockData").isPresent
 val productionReleaseRequested =
     providers
         .gradleProperty("release.production")
@@ -81,6 +82,7 @@ android {
             TEMPORARY_QLZ_SDK_KEY.asBuildConfigString(),
         )
         buildConfigField("boolean", "QLZ_TEST_MODE", TEMPORARY_QLZ_TEST_MODE.toString())
+        buildConfigField("boolean", "PROFILE_OFFLINE_MODE", "false")
         ndk {
             val enabledAbis = mutableListOf("arm64-v8a")
             if (baselineEnableX86_64) {
@@ -114,6 +116,7 @@ android {
             buildConfigField("String", "BASE_URL", "\"$BASE_URL\"")
             buildConfigField("boolean", "USE_MOCK_DATA", debugUseMockData.toString())
         }
+
     }
 
     buildFeatures {
@@ -162,6 +165,27 @@ android {
     }
 }
 
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        if (variant.buildType in setOf("nonMinifiedRelease", "benchmarkRelease")) {
+            variant.buildConfigFields?.put(
+                "PROFILE_OFFLINE_MODE",
+                com.android.build.api.variant.BuildConfigField(
+                    type = "boolean",
+                    value = "true",
+                    comment = "Isolates deterministic Baseline Profile and Macrobenchmark fixtures from production APIs.",
+                ),
+            ) ?: error("BuildConfig fields are unavailable for ${variant.name}")
+            variant.signingConfig.setConfig(
+                android.signingConfigs.getByName("localPerformance"),
+            )
+            variant.sources.kotlin?.addStaticSourceDirectory("src/profile/kotlin")
+                ?: error("Kotlin sources are unavailable for ${variant.name}")
+            variant.sources.manifests.addStaticManifestFile("src/profile/AndroidManifest.xml")
+        }
+    }
+}
+
 extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension>("kotlin") {
     jvmToolchain(appJdkVersion)
 }
@@ -170,6 +194,45 @@ baselineProfile {
     warnings {
         maxAgpVersion = false
     }
+}
+
+val debugMockModeSource =
+    if (debugUseMockDataIsExplicit) "explicit-property" else "repository-default"
+val reportDebugMockMode =
+    tasks.register<Exec>("reportDebugMockMode") {
+        group = "verification"
+        description = "Reports the effective non-sensitive Debug first-party network mode."
+        inputs.property("useMockData", debugUseMockData)
+        inputs.property("explicitOverride", debugUseMockDataIsExplicit)
+        commandLine(
+            "sh",
+            "-c",
+            "printf '%s\\n' '[debug-mock-mode] USE_MOCK_DATA=$debugUseMockData source=$debugMockModeSource'",
+        )
+    }
+
+val expectedDebugUseMockData =
+    providers
+        .gradleProperty("debug.expectedUseMockData")
+        .orElse("false")
+        .map { it.equals("true", ignoreCase = true) }
+        .get()
+tasks.register<Exec>("verifyDebugMockMode") {
+    group = "verification"
+    description = "Fails unless Debug USE_MOCK_DATA matches debug.expectedUseMockData."
+    inputs.property("actual", debugUseMockData)
+    inputs.property("expected", expectedDebugUseMockData)
+    val message =
+        if (debugUseMockData == expectedDebugUseMockData) {
+            "printf '%s\\n' '[debug-mock-mode] verified USE_MOCK_DATA=$debugUseMockData'"
+        } else {
+            "printf '%s\\n' 'Debug USE_MOCK_DATA mismatch: actual=$debugUseMockData expected=$expectedDebugUseMockData' >&2; exit 1"
+        }
+    commandLine("sh", "-c", message)
+}
+
+tasks.matching { it.name == "preDebugBuild" }.configureEach {
+    dependsOn(reportDebugMockMode)
 }
 
 val verifyProductionReleaseConfiguration =

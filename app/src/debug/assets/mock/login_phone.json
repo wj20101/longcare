@@ -6,7 +6,7 @@
     "accountId": 101,
     "userId": 1001,
     "userName": "Mock用户",
-    "headUrl": "https://example.com/avatar.png",
+    "headUrl": "https://avatar.mock.invalid/avatar.png",
     "userIdentity": 1,
     "identityCardNumber": "33010020000101100X",
     "gender": 1,

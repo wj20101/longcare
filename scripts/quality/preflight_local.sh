@@ -215,9 +215,13 @@ run_android_build_governance() {
   local project_root="$1"
 
   bash "${ROOT_DIR}/scripts/quality/test_android_build_governance.sh" || return $?
+  bash "${ROOT_DIR}/scripts/quality/test_debug_mock_network.sh" || return $?
+  python3 "${ROOT_DIR}/scripts/quality/verify_debug_mock_network.py" \
+    --project-root "${project_root}" || return $?
   bash "${ROOT_DIR}/scripts/quality/test_ci_workflow_quality.sh" || return $?
   bash "${ROOT_DIR}/scripts/quality/verify_ci_workflow_quality.sh" || return $?
   bash "${ROOT_DIR}/scripts/quality/verify_android_build_baseline.sh" --project-root "${project_root}" || return $?
+  python3 "${ROOT_DIR}/scripts/quality/verify_project_r8_rules.py" --project-root "${project_root}" || return $?
   bash "${ROOT_DIR}/scripts/quality/verify_dependency_policy.sh" --project-root "${project_root}" || return $?
   bash "${ROOT_DIR}/scripts/quality/verify_target_sdk_readiness.sh" --project-root "${project_root}" || return $?
   bash "${ROOT_DIR}/scripts/quality/verify_target_platform_test_matrix.sh" --project-root "${project_root}" || return $?
@@ -226,6 +230,18 @@ run_android_build_governance() {
   bash "${ROOT_DIR}/scripts/quality/verify_target_sdk_upgrade.sh" \
     "${project_root}/settings.gradle.kts" \
     "${project_root}/.github/workflows/android-ci.yml"
+}
+
+run_startup_profile_semantics() {
+  bash "${ROOT_DIR}/scripts/quality/test_startup_profile_quality_config.sh" || return $?
+  bash "${ROOT_DIR}/scripts/quality/test_baselineprofile_journeys.sh" || return $?
+  bash "${ROOT_DIR}/scripts/quality/test_startup_benchmark_results.sh" || return $?
+  bash "${ROOT_DIR}/scripts/quality/test_text_profiles.sh" || return $?
+  bash "${ROOT_DIR}/scripts/quality/test_release_profile_artifacts.sh" || return $?
+  bash "${ROOT_DIR}/scripts/quality/test_fully_drawn_contract.sh" || return $?
+  python3 "${ROOT_DIR}/scripts/quality/verify_fully_drawn_contract.py" \
+    --project-root "${ROOT_DIR}" || return $?
+  bash "${ROOT_DIR}/scripts/quality/verify_baselineprofile_journeys.sh" || return $?
 }
 
 run_local_fast() {
@@ -241,6 +257,10 @@ run_local_fast() {
   run_step \
     "android-build-governance" \
     run_android_build_governance "${ROOT_DIR}"
+
+  run_step \
+    "startup-profile-semantics" \
+    run_startup_profile_semantics
 
   if [[ "${MODE}" == "changed-only" ]]; then
     if [[ "${CHANGED_ONLY_FALLBACK_ALL}" == "true" ]]; then
@@ -347,6 +367,9 @@ run_local_fast
 if [[ "${MODE}" == "full" || "${MODE}" == "release" ]]; then
   run_step "compile-debug-kotlin" ./gradlew --no-daemon :app:compileDebugKotlin
   run_step "test-debug-unit" ./gradlew --no-daemon :app:testDebugUnitTest
+  run_step \
+    "debug-mock-network-contracts" \
+    bash scripts/quality/run_debug_mock_network_contracts.sh
 fi
 
 if [[ "${MODE}" == "release" ]]; then

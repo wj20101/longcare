@@ -2,6 +2,7 @@ package com.ytone.longcare.navigation
 
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -15,6 +16,9 @@ import androidx.compose.ui.test.performClick
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.ComposeNavigator
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import androidx.navigation.testing.TestNavHostController
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -25,6 +29,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.reflect.typeOf
 
 @RunWith(AndroidJUnit4::class)
 class EntryNavigationInstrumentationTest {
@@ -139,6 +144,38 @@ class EntryNavigationInstrumentationTest {
         }
     }
 
+    @Test
+    fun startOrderNavigatesDirectlyToNfcAndBackToOrigin() {
+        val orderParams = OrderNavParams(orderId = 987654321L, planId = 42)
+        val expectedRoute = startOrderNfcSignInRoute(orderParams)
+        setStartOrderHost(orderParams)
+
+        composeRule.onNodeWithTag(START_ORDER_TAG).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(NFC_START_TAG).assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(
+                navController.getBackStackEntry(HomeRoute).destination,
+                navController.previousBackStackEntry?.destination,
+            )
+            assertEquals(
+                expectedRoute,
+                navController.currentBackStackEntry?.toRoute<NfcSignInRoute>(),
+            )
+        }
+
+        composeRule.onNodeWithTag(NFC_BACK_TAG).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(START_ORDER_TAG).assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(
+                navController.getBackStackEntry(HomeRoute).destination,
+                navController.currentDestination,
+            )
+            assertFalse(runCatching { navController.getBackStackEntry(expectedRoute) }.isSuccess)
+        }
+    }
+
     private fun setEntryHost(
         startRoot: AuthenticationRoot,
     ): MutableState<AuthenticationRoot?> {
@@ -162,6 +199,51 @@ class EntryNavigationInstrumentationTest {
         return targetRoot
     }
 
+    private fun setStartOrderHost(orderParams: OrderNavParams) {
+        composeRule.setContent {
+            val context = LocalContext.current
+            val controller = remember {
+                TestNavHostController(context).apply {
+                    navigatorProvider.addNavigator(ComposeNavigator())
+                }
+            }
+            navController = controller
+            NavHost(
+                navController = controller,
+                startDestination = HomeRoute,
+            ) {
+                composable<HomeRoute> {
+                    Button(
+                        modifier = Modifier.testTag(START_ORDER_TAG),
+                        onClick = { controller.navigateToNfcSignInForStartOrder(orderParams) },
+                    ) {
+                        Text("Start order")
+                    }
+                }
+                composable<NfcSignInRoute>(
+                    typeMap = mapOf(
+                        typeOf<EndOderInfo?>() to EndOderInfoNavType,
+                        typeOf<OrderNavParams>() to OrderNavParamsNavType,
+                    ),
+                ) {
+                    Column {
+                        Text(
+                            modifier = Modifier.testTag(NFC_START_TAG),
+                            text = "NFC start",
+                        )
+                        Button(
+                            modifier = Modifier.testTag(NFC_BACK_TAG),
+                            onClick = { controller.popBackStack() },
+                        ) {
+                            Text("Back")
+                        }
+                    }
+                }
+            }
+        }
+        composeRule.waitForIdle()
+    }
+
     private fun TestNavHostController.hasEntry(route: Any): Boolean = when (route) {
         LoginRoute -> runCatching { getBackStackEntry(LoginRoute) }.isSuccess
         HomeRoute -> runCatching { getBackStackEntry(HomeRoute) }.isSuccess
@@ -172,6 +254,9 @@ class EntryNavigationInstrumentationTest {
     private companion object {
         const val LOGIN_TAG = "entry-login"
         const val HOME_TAG = "entry-home"
+        const val START_ORDER_TAG = "entry-start-order"
+        const val NFC_START_TAG = "entry-nfc-start"
+        const val NFC_BACK_TAG = "entry-nfc-back"
         const val OWNER_ACCOUNT_KEY = "owner-account"
 
         val markerRenderers = EntryDestinationRenderers(

@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.squareup.moshi.Moshi
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.core.common.di.ApplicationScope
+import com.ytone.longcare.data.userstorage.UserStorageUnavailableException
 import com.ytone.longcare.data.userstorage.UserStorageRegistry
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
@@ -147,7 +148,13 @@ class SystemConfigManager @Inject constructor(
         throw cancellation
     } catch (error: Exception) {
         logE("加载系统配置失败", throwable = error)
-        storageRegistry.requireValid(lease)
+        try {
+            storageRegistry.requireValid(lease)
+        } catch (_: UserStorageUnavailableException) {
+            // The request completed after logout/account switch. The revoked generation must not
+            // update the next user's cache, and a normal lifecycle race must not crash the app.
+            return null
+        }
         cache.set(CacheSnapshot(lease.cacheIdentity(), initialized = true, config = null))
         null
     }

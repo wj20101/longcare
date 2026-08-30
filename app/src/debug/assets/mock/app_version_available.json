@@ -1,0 +1,12 @@
+{
+  "resultCode": 1000,
+  "resultMsg": "Success (local Mock)",
+  "data": {
+    "versionCode": 999,
+    "versionName": "999.0.0-mock",
+    "upType": 1,
+    "remarks": "仅用于本地更新提示验证",
+    "platform": "android",
+    "downUrl": "https://download.mock.invalid/longcare.apk"
+  }
+}

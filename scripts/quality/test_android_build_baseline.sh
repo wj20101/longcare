@@ -9,7 +9,14 @@ trap 'rm -rf "${FIXTURE_ROOT}"' EXIT
 write_fixture() {
   local root="$1"
   local scenario="$2"
-  mkdir -p "${root}/gradle" "${root}/app" "${root}/build-logic/convention/src/main/kotlin"
+  mkdir -p \
+    "${root}/gradle" \
+    "${root}/app" \
+    "${root}/build-logic/convention/src/main/kotlin" \
+    "${root}/feature/location" \
+    "${root}/feature/photoupload" \
+    "${root}/feature/servicecountdown" \
+    "${root}/feature/identification"
 
   local compile_sdk=37
   local target_sdk=36
@@ -20,6 +27,11 @@ write_fixture() {
   local constants_extra=""
   local app_override=""
   local jdk_usage='JavaVersion.toVersion(appJdkVersion)'
+  local location_extra=""
+  local location_viewmodel='    implementation(libs.androidx.lifecycle.viewmodel)'
+  local photo_upload_extra=""
+  local service_countdown_extra=""
+  local identification_extra=""
 
   case "${scenario}" in
     success) ;;
@@ -30,6 +42,11 @@ write_fixture() {
     module-override) app_override='    compileSdk = 37' ;;
     legacy-sdk-extra) constants_extra='extra.set("appTargetSdkVersion", 36)' ;;
     jdk-drift) jdk_usage='JavaVersion.toVersion(17)' ;;
+    location-compose) location_extra='alias(libs.plugins.kotlin.compose)' ;;
+    location-missing-viewmodel) location_viewmodel='' ;;
+    photo-upload-coil) photo_upload_extra='    implementation(libs.bundles.coil)' ;;
+    service-countdown-android) service_countdown_extra='    implementation(libs.kotlinx.coroutines.android)' ;;
+    identification-bugly) identification_extra='    implementation(libs.crashreport)' ;;
     *) echo "unknown fixture scenario: ${scenario}" >&2; exit 2 ;;
   esac
 
@@ -79,6 +96,43 @@ EOF
   cat > "${root}/build-logic/convention/src/main/kotlin/Convention.kt" <<'EOF'
 class Convention
 EOF
+
+  cat > "${root}/feature/location/build.gradle.kts" <<EOF
+plugins {}
+${location_extra}
+dependencies {
+    implementation(libs.androidx.core.ktx)
+${location_viewmodel}
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.amap.location)
+}
+EOF
+
+  cat > "${root}/feature/photoupload/build.gradle.kts" <<EOF
+plugins {}
+dependencies {
+    implementation(libs.androidx.lifecycle.viewmodel)
+    implementation(libs.kotlinx.coroutines.core)
+${photo_upload_extra}
+}
+EOF
+
+  cat > "${root}/feature/servicecountdown/build.gradle.kts" <<EOF
+plugins {}
+dependencies {
+    implementation(libs.androidx.lifecycle.viewmodel)
+    implementation(libs.kotlinx.coroutines.core)
+${service_countdown_extra}
+}
+EOF
+
+  cat > "${root}/feature/identification/build.gradle.kts" <<EOF
+plugins {}
+dependencies {
+    implementation(libs.kotlinx.coroutines.core)
+${identification_extra}
+}
+EOF
 }
 
 expect_success() {
@@ -116,5 +170,10 @@ expect_failure plugin-not-applied "is not applied"
 expect_failure module-override "module-level SDK override"
 expect_failure legacy-sdk-extra "legacy SDK extra"
 expect_failure jdk-drift "numeric JDK override"
+expect_failure location-compose "location build capability/dependency"
+expect_failure location-missing-viewmodel "location ViewModel dependency"
+expect_failure photo-upload-coil "photo-upload dependency"
+expect_failure service-countdown-android "service-countdown Coroutines Android dependency"
+expect_failure identification-bugly "identification Bugly dependency"
 
 echo "[android-build-baseline-test][PASS] all build baseline fixtures passed."

@@ -4,9 +4,9 @@
   "data": {
     "versionCode": 1,
     "versionName": "1.0.0",
-    "upType": 2,
-    "remarks": "1. 修复已知bug\n2. 优化用户体验",
+    "upType": 1,
+    "remarks": "本地 Mock：当前已是最新版本",
     "platform": "android",
-    "downUrl": "https://9a887152dd885efcd300f83c314cb83aa425b099b9f2c7cf.dlied1.cdntips.net/dldir1v6.qq.com/weixin/android/weixin8061android2880_0x28003d34_arm64.apk"
+    "downUrl": ""
   }
 }

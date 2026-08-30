@@ -2,14 +2,15 @@
   "resultCode": 1000,
   "resultMsg": "成功",
   "data": {
-    "tmpSecretId": "mock-secret-id",
-    "tmpSecretKey": "mock-secret-key",
-    "sessionToken": "mock-session-token",
-    "startTime": "1672531200",
+    "tmpSecretId": "mock-not-valid-secret-id",
+    "tmpSecretKey": "mock-not-valid-secret-key",
+    "sessionToken": "mock-not-valid-session-token",
+    "startTime": "0",
     "requestId": "mock-request-id",
-    "expiration": "2025-01-01T00:00:00Z",
-    "expiredTime": 1735689600,
-    "bucket": "mock-bucket-1250000000",
-    "region": "ap-beijing"
+    "expiration": "2100-01-01T00:00:00Z",
+    "expiredTime": "4102444800",
+    "bucket": "mock-not-valid-bucket",
+    "region": "mock-region",
+    "fileKeyPre": "mock/"
   }
 }

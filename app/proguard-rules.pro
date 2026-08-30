@@ -46,52 +46,19 @@
 -keepattributes EnclosingMethod # 保留匿名内部类指向外部方法的信息
 -keepattributes *Annotation* # 保留注解信息，很多现代库依赖注解
 
-# 保留 native 方法
--keepclasseswithmembernames class * {
-    native <methods>;
-}
-
-# 保留枚举类的 values() 和 valueOf() 方法
--keepclassmembers enum * {
-    public static **[] values();
-    public static ** valueOf(java.lang.String);
-}
-
-#===============================================================================
-# Kotlin 相关规则 (部分可能由 kotlin-reflect 或 kotlinx.coroutines 自动处理)
-#===============================================================================
-# 保留所有被 @Keep 注解的类、方法和字段
--keep @androidx.annotation.Keep class * {*;}
--keepclasseswithmembers class * {
-    @androidx.annotation.Keep <fields>;
-}
--keepclasseswithmembers class * {
-    @androidx.annotation.Keep <methods>;
-}
+# 通用 native/enum 规则由 proguard-android-optimize.txt 提供；@Keep 规则由
+# AndroidX Annotation 的 consumer rules 提供，项目文件不重复声明。
 
 #===============================================================================
 # 第三方库规则
 #===============================================================================
 
-# --- Kotlinx Serialization ---
-# (您在 app/build.gradle.kts 中使用了 libs.plugins.kotlinSerialization 和 libs.kotlinx.serialization.json)
--keepattributes Signature
--keepclassmembers class kotlinx.serialization.internal.* {
-    *;
-}
--keepclassmembers class **$$serializer { # 注意这里的 $$
-    *;
-}
--keep class **$$serializer { # 注意这里的 $$
-    *;
-}
--keepclassmembers class * { # 保留被 @Serializable 注解的类的成员
-    @kotlinx.serialization.Serializable <fields>;
-    @kotlinx.serialization.Transient <fields>;
-}
--keepnames class * { # 保留被 @Serializable 注解的类名
-    @kotlinx.serialization.Serializable <methods>;
-}
+# Kotlinx Serialization 的 conditional keep rules 由运行库随依赖提供。
+
+# Retrofit 的 suspend 适配会反射 Continuation<? super ApiResult<T>>。Retrofit 自带规则会
+# 保留 Continuation，但 R8 full mode 仍可能把项目自定义包装类型的嵌套泛型退化为 ApiResult，
+# 导致 ApiResultCallAdapterFactory 在 Release 启动时无法取得 T。
+-keep,allowoptimization,allowshrinking,allowobfuscation class com.ytone.longcare.model.result.ApiResult
 
 # --- Tencent Bugly ---
 -dontwarn com.tencent.bugly.**
@@ -104,7 +71,6 @@
 -keep class com.amap.api.location.** { *; }
 -keep class com.amap.api.fence.** { *; }
 -keep class com.loc.** { *; }
--keep class com.autonavi.aps.amapapi.model.** { *; }
 -keep class com.autonavi.** { *; }
 -keep class com.amap.location.** { *; }
 # Optional classes referenced by bundled third-party SDK code. App code does not
@@ -130,15 +96,11 @@
 # --- QLZ device assessment SDK 1.3.0.2 ---
 # Vendor-required rules. The SDK discovers several model and Activity classes
 # reflectively, and its protobuf payload types must retain their generated APIs.
--keep class com.comm.* { *; }
 -keep class com.comm.** { *; }
 -keep class com.qiaolz.eco.app.protobuf.** { *; }
 -keep class com.evenmed.mode.** { *; }
--keep class com.evenmed.util.** { *; }
--keep class com.falth.data.* { *; }
 -keep class com.falth.data.** { *; }
 -keep class com.evenmed.sdk.call.** { *; }
--keep class com.evenmed.sdk.chekpage.TreatmentBaseAct { *; }
 
 #===============================================================================
 # 应用特定规则 (请根据您的代码添加)

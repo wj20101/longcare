@@ -7,72 +7,67 @@ import androidx.benchmark.macro.StartupTimingMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
-import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.uiautomator.By
-import androidx.test.uiautomator.UiDevice
-import androidx.test.uiautomator.Until
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/**
- * This test class benchmarks the speed of app startup.
- * Run this benchmark to verify how effective a Baseline Profile is.
- * It does this by comparing [CompilationMode.None], which represents the app with no Baseline
- * Profiles optimizations, and [CompilationMode.Partial], which uses Baseline Profiles.
- *
- * Run this benchmark to see startup measurements and captured system traces for verifying
- * the effectiveness of your Baseline Profiles. You can run it directly from Android
- * Studio as an instrumentation test, or run all benchmarks for a variant, for example benchmarkRelease,
- * with this Gradle task:
- * ```
- * ./gradlew :baselineprofile:connectedBenchmarkReleaseAndroidTest
- * ```
- *
- * You should run the benchmarks on a physical device, not an Android emulator, because the
- * emulator doesn't represent real world performance and shares system resources with its host.
- *
- * For more information, see the [Macrobenchmark documentation](https://d.android.com/macrobenchmark#create-macrobenchmark)
- * and the [instrumentation arguments documentation](https://d.android.com/topic/performance/benchmarking/macrobenchmark-instrumentation-args).
- **/
 @RunWith(AndroidJUnit4::class)
 @LargeTest
 class StartupBenchmarks {
-    companion object {
-        private const val APP_READY_TIMEOUT_MS = 5_000L
-    }
-
     @get:Rule
-    val rule = MacrobenchmarkRule()
+    val macrobenchmarkRule = MacrobenchmarkRule()
 
     @Test
-    fun startupCompilationNone() =
-        benchmark(CompilationMode.None())
+    fun firstRunPrivacyNone() =
+        benchmark(ProfileScenario.FIRST_RUN_PRIVACY, CompilationMode.None())
 
     @Test
-    fun startupCompilationBaselineProfiles() =
-        benchmark(CompilationMode.Partial(BaselineProfileMode.Require))
+    fun firstRunPrivacyProfile() =
+        benchmark(ProfileScenario.FIRST_RUN_PRIVACY, requiredBaselineProfile())
 
-    private fun benchmark(compilationMode: CompilationMode) {
-        // The application id for the running build variant is read from the instrumentation arguments.
-        val targetAppId = InstrumentationRegistry.getArguments().getString("targetAppId")
-            ?: throw Exception("targetAppId not passed as instrumentation runner arg")
-        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        rule.measureRepeated(
-            packageName = targetAppId,
+    @Test
+    fun loggedOutNone() =
+        benchmark(ProfileScenario.LOGGED_OUT, CompilationMode.None())
+
+    @Test
+    fun loggedOutProfile() =
+        benchmark(ProfileScenario.LOGGED_OUT, requiredBaselineProfile())
+
+    @Test
+    fun careHomeNone() =
+        benchmark(ProfileScenario.CARE_HOME, CompilationMode.None())
+
+    @Test
+    fun careHomeProfile() =
+        benchmark(ProfileScenario.CARE_HOME, requiredBaselineProfile())
+
+    @Test
+    fun salesHomeNone() =
+        benchmark(ProfileScenario.SALES_HOME, CompilationMode.None())
+
+    @Test
+    fun salesHomeProfile() =
+        benchmark(ProfileScenario.SALES_HOME, requiredBaselineProfile())
+
+    private fun requiredBaselineProfile(): CompilationMode =
+        CompilationMode.Partial(BaselineProfileMode.Require)
+
+    private fun benchmark(scenario: ProfileScenario, compilationMode: CompilationMode) {
+        check(scenario.isStartup) { "Only Startup scenarios can be benchmarked: ${scenario.wireId}" }
+        val scenarioDriver = ProfileScenarioDriver.create()
+        scenarioDriver.prepare(scenario)
+        macrobenchmarkRule.measureRepeated(
+            packageName = scenarioDriver.targetAppId,
             metrics = listOf(StartupTimingMetric()),
             compilationMode = compilationMode,
             startupMode = StartupMode.COLD,
             iterations = 10,
             setupBlock = {
                 pressHome()
-                device.waitForIdle()
             },
             measureBlock = {
-                startActivityAndWait()
-                device.wait(Until.hasObject(By.pkg(targetAppId).depth(0)), APP_READY_TIMEOUT_MS)
-                device.waitForIdle()
-            }
+                with(scenarioDriver) { startAndAssert(scenario) }
+            },
         )
     }
 }

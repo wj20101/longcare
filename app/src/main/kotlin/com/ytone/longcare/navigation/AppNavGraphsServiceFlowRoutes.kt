@@ -43,8 +43,8 @@ internal fun NavGraphBuilder.registerNursingExecutionRoute(navController: NavCon
                 onNavigateToServiceCountdown = { orderKey, projectIdList ->
                     navController.navigateToServiceCountdown(orderKey, projectIdList)
                 },
-                onNavigateToSelectDevice = { orderKey ->
-                    navController.navigateToSelectDevice(orderKey)
+                onNavigateToStartOrderNfcSignIn = { orderKey ->
+                    navController.navigateToNfcSignInForStartOrder(orderKey)
                 }
             ),
             orderKey = route.orderParams.toOrderKey()

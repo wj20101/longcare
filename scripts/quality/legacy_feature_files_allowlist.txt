@@ -131,9 +131,6 @@ app/src/main/kotlin/com/ytone/longcare/features/profile/ui/ProfileScreen.kt
 app/src/main/kotlin/com/ytone/longcare/features/profile/ui/ProfileScreenComponents.kt
 app/src/main/kotlin/com/ytone/longcare/features/profile/ui/ProfileScreenPreviews.kt
 app/src/main/kotlin/com/ytone/longcare/features/profile/vm/ProfileViewModel.kt
-app/src/main/kotlin/com/ytone/longcare/features/selectdevice/api/SelectDeviceActions.kt
-app/src/main/kotlin/com/ytone/longcare/features/selectdevice/ui/SelectDeviceComponents.kt
-app/src/main/kotlin/com/ytone/longcare/features/selectdevice/ui/SelectDeviceScreen.kt
 app/src/main/kotlin/com/ytone/longcare/features/selectservice/api/SelectServiceActions.kt
 app/src/main/kotlin/com/ytone/longcare/features/selectservice/ui/SelectServiceActionButtons.kt
 app/src/main/kotlin/com/ytone/longcare/features/selectservice/ui/SelectServiceComponents.kt

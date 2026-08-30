@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <permission
+        android:name="com.ytone.longcare.permission.PROFILE_SCENARIO_SETUP"
+        android:protectionLevel="signature" />
+
+    <application>
+        <activity
+            android:name=".performance.ProfileScenarioSetupActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:permission="com.ytone.longcare.permission.PROFILE_SCENARIO_SETUP"
+            android:theme="@style/Theme.LongCare" />
+    </application>
+
+</manifest>

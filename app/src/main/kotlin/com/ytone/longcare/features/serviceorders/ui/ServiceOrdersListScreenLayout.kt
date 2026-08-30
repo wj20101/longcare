@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,10 +44,19 @@ internal fun ServiceOrdersListScreenLayout(
     emptyTitle: String,
     emptySubtitle: String,
     filteredOrders: List<TodayServiceOrderModel>,
-    actions: ServiceOrdersListActions
+    actions: ServiceOrdersListActions,
+    modifier: Modifier = Modifier,
+    profileTagsEnabled: Boolean = false,
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
+            .then(
+                if (profileTagsEnabled) {
+                    Modifier.testTag("profile_service_records_root")
+                } else {
+                    Modifier
+                },
+            )
             .fillMaxSize()
             .background(bgGradientBrush)
     ) {
@@ -54,7 +64,8 @@ internal fun ServiceOrdersListScreenLayout(
             topBar = {
                 ServiceOrdersListTopBar(
                     title = title,
-                    onNavigateBack = actions.onNavigateBack
+                    onNavigateBack = actions.onNavigateBack,
+                    profileTagsEnabled = profileTagsEnabled,
                 )
             },
             containerColor = Color.Transparent
@@ -100,7 +111,8 @@ internal fun ServiceOrdersListScreenLayout(
 @Composable
 private fun ServiceOrdersListTopBar(
     title: String,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    profileTagsEnabled: Boolean,
 ) {
     CenterAlignedTopAppBar(
         title = {
@@ -110,7 +122,14 @@ private fun ServiceOrdersListTopBar(
             )
         },
         navigationIcon = {
-            IconButton(onClick = singleClick { onNavigateBack() }) {
+            IconButton(
+                onClick = singleClick { onNavigateBack() },
+                modifier = if (profileTagsEnabled) {
+                    Modifier.testTag("profile_service_records_back")
+                } else {
+                    Modifier
+                },
+            ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.common_back),

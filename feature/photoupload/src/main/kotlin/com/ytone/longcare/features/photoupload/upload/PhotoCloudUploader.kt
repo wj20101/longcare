@@ -6,11 +6,7 @@ import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.image.ManagedImageFileStore
 import com.ytone.longcare.common.utils.CosUtils
 import com.ytone.longcare.domain.cos.repository.CosRepository
-import dagger.Binds
-import dagger.Module
-import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dagger.hilt.components.SingletonComponent
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -54,13 +50,4 @@ class DefaultPhotoCloudUploader @Inject constructor(
         }
         return UploadedPhoto(key = key)
     }
-}
-
-@Module
-@InstallIn(SingletonComponent::class)
-internal abstract class PhotoCloudUploadModule {
-    @Binds
-    abstract fun bindPhotoCloudUploader(
-        implementation: DefaultPhotoCloudUploader,
-    ): PhotoCloudUploader
 }

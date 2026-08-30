@@ -12,6 +12,39 @@ internal sealed interface AppEntryState {
     data object LoggedIn : AppEntryState
 }
 
+internal enum class StartupRoot {
+    Privacy,
+    ResolvingSession,
+    Login,
+    CareHome,
+    SalesHome,
+}
+
+internal data class StartupRootReadiness(
+    val root: StartupRoot,
+    val isReady: Boolean,
+)
+
+internal fun resolveStartupRootReadiness(
+    entryState: AppEntryState,
+    userIdentity: Int?,
+): StartupRootReadiness = when (entryState) {
+    AppEntryState.ConsentRequired -> StartupRootReadiness(StartupRoot.Privacy, isReady = true)
+    AppEntryState.ResolvingSession ->
+        StartupRootReadiness(StartupRoot.ResolvingSession, isReady = false)
+    AppEntryState.LoggedOut -> StartupRootReadiness(StartupRoot.Login, isReady = true)
+    AppEntryState.LoggedIn -> when (userIdentity) {
+        null -> StartupRootReadiness(StartupRoot.ResolvingSession, isReady = false)
+        2 -> StartupRootReadiness(StartupRoot.SalesHome, isReady = true)
+        else -> StartupRootReadiness(StartupRoot.CareHome, isReady = true)
+    }
+}
+
+internal fun isExpectedStartupRootReady(
+    expected: StartupRoot,
+    actual: StartupRootReadiness,
+): Boolean = actual.isReady && actual.root == expected
+
 internal fun resolveAppEntryState(
     isPrivacyConsented: Boolean,
     sessionState: SessionState?,

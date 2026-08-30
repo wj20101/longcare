@@ -8,6 +8,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.ytone.longcare.R
 import com.ytone.longcare.features.home.api.HomeActions
@@ -39,6 +40,7 @@ internal fun HomeScreenPagerContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .testTag("profile_care_home_root")
             .background(brush = bgGradientBrush)
     ) {
         AdaptiveAppNavigationScaffold(

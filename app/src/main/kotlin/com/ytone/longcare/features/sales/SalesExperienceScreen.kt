@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -101,7 +102,10 @@ internal fun SalesExperienceScreen(
     val navigationItems =
         listOf(
             AppNavigationItem(stringResource(R.string.sales_nav_home)),
-            AppNavigationItem(stringResource(R.string.sales_nav_customers)),
+            AppNavigationItem(
+                text = stringResource(R.string.sales_nav_customers),
+                testTag = "profile_sales_customers_entry",
+            ),
             AppNavigationItem(stringResource(R.string.sales_nav_profile)),
         )
 
@@ -379,7 +383,9 @@ internal fun SalesExperienceScreen(
             when (currentPage) {
                 SalesPage.HOME -> {
                     AdaptiveAppNavigationScaffold(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .testTag("profile_sales_home_root"),
                         items = navigationItems,
                         selectedItemIndex = navigationState.rootTab,
                         onItemSelected = { selected ->

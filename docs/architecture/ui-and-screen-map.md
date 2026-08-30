@@ -46,7 +46,7 @@
 | `EndServiceSelectionRoute` | `EndServiceSelectionScreen` | `:app` |
 | `ServiceCompleteRoute` | `ServiceCompleteScreen` | `:app` |
 
-`NfcSignInRoute` 通过 `SignInMode.START_ORDER` / `END_ORDER` 复用同一页面。倒计时、结束选择和完成页通过类型安全 payload 传递项目 ID、图片列表和完成摘要。
+`NfcSignInRoute` 通过 `SignInMode.START_ORDER` / `END_ORDER` 复用同一页面。开始服务从护理执行页直接构造 `START_ORDER` route 并进入 NFC，返回后直接回到原护理执行页，不经过中间设备选择页面。倒计时、结束选择和完成页通过类型安全 payload 传递项目 ID、图片列表和完成摘要。
 
 ## 身份、相机与支持路由
 
@@ -57,7 +57,6 @@
 | `ManualFaceCaptureRoute` | `ManualFaceCaptureScreen` | `:app` | 缺少登记照时的兼容补录路径 |
 | `TxFaceRoute` | `FaceVerificationWithAutoSignScreen` | `:app` | 腾讯 SDK 兼容/验证路径，不是默认订单入口 |
 | `FaceRecognitionGuideRoute` | `FaceRecognitionGuideScreen` | `:app` | 人脸相关引导 |
-| `SelectDeviceRoute` | `SelectDeviceScreen` | `:app` | 路由仍存在；当前开始服务动作直接转入 NFC，实际跳过该页 |
 | `CameraRoute` | `CameraScreen` | `:app` | 护理和销售共用的水印相机 |
 | `UserListRoute` | `UserListScreen` | `:app` | 已服务/未服务用户列表 |
 | `UserServiceRecordRoute` | `UserServiceRecordScreen` | `:app` | 用户服务记录 |
@@ -128,7 +127,6 @@
 - `SelectServiceRoute`
 - `PhotoUploadRoute`
 - `FaceRecognitionGuideRoute`
-- `SelectDeviceRoute`
 - `IdentificationRoute`
 - `DefaultFaceVerificationRoute`
 - `UserListRoute`

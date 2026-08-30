@@ -14,6 +14,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.sales.SalesExperienceScreen
+import com.ytone.longcare.navigation.AppEntryState
+import com.ytone.longcare.navigation.ReportStartupRootDrawn
+import com.ytone.longcare.navigation.StartupRoot
+import com.ytone.longcare.navigation.resolveStartupRootReadiness
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 
@@ -58,12 +62,26 @@ fun HomeScreen(
     HomeExperienceContent(
         experience = resolveHomeExperience(user?.userIdentity),
         salesContent = {
+            ReportStartupRootDrawn(
+                expectedRoot = StartupRoot.SalesHome,
+                actualReadiness = resolveStartupRootReadiness(
+                    entryState = AppEntryState.LoggedIn,
+                    userIdentity = user?.userIdentity,
+                ),
+            )
             SalesExperienceScreen(
                 actions = actions,
                 homeSharedViewModel = homeSharedViewModel,
             )
         },
         loadingContent = {
+            ReportStartupRootDrawn(
+                expectedRoot = StartupRoot.ResolvingSession,
+                actualReadiness = resolveStartupRootReadiness(
+                    entryState = AppEntryState.LoggedIn,
+                    userIdentity = null,
+                ),
+            )
             Box(
                 modifier =
                     Modifier
@@ -75,6 +93,13 @@ fun HomeScreen(
             }
         },
         careContent = {
+            ReportStartupRootDrawn(
+                expectedRoot = StartupRoot.CareHome,
+                actualReadiness = resolveStartupRootReadiness(
+                    entryState = AppEntryState.LoggedIn,
+                    userIdentity = user?.userIdentity,
+                ),
+            )
             HomeScreenPagerContent(
                 actions = actions,
                 homeSharedViewModel = homeSharedViewModel,

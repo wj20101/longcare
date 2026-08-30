@@ -43,10 +43,6 @@ fun NavController.navigateToFaceRecognitionGuide(orderKey: OrderKey) {
     navigateToFaceRecognitionGuide(orderKey.toOrderNavParams())
 }
 
-fun NavController.navigateToSelectDevice(orderKey: OrderKey) {
-    navigateToSelectDevice(orderKey.toOrderNavParams())
-}
-
 fun NavController.navigateToIdentification(orderKey: OrderKey) {
     navigateToIdentification(orderKey.toOrderNavParams())
 }

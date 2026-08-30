@@ -2,6 +2,7 @@ package com.ytone.longcare.common.utils
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.ytone.longcare.api.LongCareApiService
+import com.ytone.longcare.data.userstorage.UserStorageUnavailableException
 import com.ytone.longcare.data.userstorage.UserStorageRegistry
 import com.ytone.longcare.domain.userstorage.SessionEpoch
 import com.ytone.longcare.domain.userstorage.StorageGeneration
@@ -45,6 +46,7 @@ class SystemConfigManagerTest {
     private val appScope = CoroutineScope(SupervisorJob() + testDispatcher)
 
     private lateinit var manager: SystemConfigManager
+    private lateinit var storageRegistry: UserStorageRegistry
 
     @Before
     fun setup() {
@@ -58,7 +60,7 @@ class SystemConfigManagerTest {
         val dataStore = PreferenceDataStoreFactory.create(scope = appScope) {
             temporaryFolder.root.resolve("system-config.preferences_pb")
         }
-        val storageRegistry = mockk<UserStorageRegistry>()
+        storageRegistry = mockk<UserStorageRegistry>()
         io.mockk.every { storageRegistry.requireCurrentLease() } returns lease
         io.mockk.every { storageRegistry.dataStore(lease) } returns dataStore
         io.mockk.every { storageRegistry.requireValid(lease) } returns Unit
@@ -103,6 +105,21 @@ class SystemConfigManagerTest {
         assertEquals("LongCare Updated", manager.getSystemConfig()?.companyName)
         coVerify(exactly = 1) { apiService.getSystemConfig() }
     }
+
+    @Test
+    fun `refreshCompanyName abandons response when lease was revoked during request`() =
+        runTest(testDispatcher) {
+            coEvery { apiService.getSystemConfig() } returns
+                ApiResult.Failure(401, "expired")
+            io.mockk.every { storageRegistry.requireValid(any()) } throws
+                UserStorageUnavailableException("logged out")
+
+            val companyName = manager.refreshCompanyName()
+
+            assertNull(companyName)
+            assertNull(manager.getSystemConfig())
+            coVerify(exactly = 1) { apiService.getSystemConfig() }
+        }
 
     @Test
     fun `getMaxServicePhotoCount should return config value`() = runTest(testDispatcher) {

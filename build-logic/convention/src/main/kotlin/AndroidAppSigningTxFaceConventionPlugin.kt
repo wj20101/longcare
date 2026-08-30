@@ -43,6 +43,17 @@ class AndroidAppSigningTxFaceConventionPlugin : Plugin<Project> {
             target.extensions.configure<ApplicationExtension> {
                 val releaseBuildType = buildTypes.getByName("release")
                 val debugBuildType = buildTypes.getByName("debug")
+                val originalDebugSigningConfig =
+                    requireNotNull(signingConfigs.findByName("debug")) {
+                        "Android debug signing config is required for local performance variants."
+                    }
+                signingConfigs.findByName("localPerformance")
+                    ?: signingConfigs.create("localPerformance").apply {
+                        // Macrobenchmark targets and their separate com.android.test APK must use
+                        // the same local key. Preserve it before this plugin applies the production
+                        // certificate to the normal debug/release app variants.
+                        initWith(originalDebugSigningConfig)
+                    }
                 if (releaseSigning != null) {
                     val releaseSigningConfig = signingConfigs.findByName("release") ?: signingConfigs.create("release")
                     releaseSigningConfig.applyReleaseSigning(releaseSigning)

@@ -108,14 +108,6 @@ object TxFaceRoute
 data class FaceRecognitionGuideRoute(val orderParams: OrderNavParams)
 
 /**
- * 选择设备页面路由
- * @param orderParams 订单导航参数
- */
-@Keep
-@Serializable
-data class SelectDeviceRoute(val orderParams: OrderNavParams)
-
-/**
  * 身份认证页面路由
  * @param orderParams 订单导航参数
  */

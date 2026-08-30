@@ -19,8 +19,13 @@ fun NavController.navigateToNursingExecution(orderParams: OrderNavParams) {
     navigate(NursingExecutionRoute(orderParams))
 }
 
+internal fun startOrderNfcSignInRoute(orderParams: OrderNavParams) = NfcSignInRoute(
+    orderParams = orderParams,
+    signInMode = SignInMode.START_ORDER,
+)
+
 fun NavController.navigateToNfcSignInForStartOrder(orderParams: OrderNavParams) {
-    navigate(NfcSignInRoute(orderParams = orderParams, signInMode = SignInMode.START_ORDER))
+    navigate(startOrderNfcSignInRoute(orderParams))
 }
 
 fun NavController.navigateToNfcSignInForEndOrder(orderParams: OrderNavParams, params: EndOderInfo) {
@@ -79,10 +84,6 @@ fun NavController.navigateToServiceComplete(
 
 fun NavController.navigateToFaceRecognitionGuide(orderParams: OrderNavParams) {
     navigate(FaceRecognitionGuideRoute(orderParams = orderParams))
-}
-
-fun NavController.navigateToSelectDevice(orderParams: OrderNavParams) {
-    navigateToNfcSignInForStartOrder(orderParams)
 }
 
 fun NavController.navigateToIdentification(orderParams: OrderNavParams) {

@@ -61,7 +61,7 @@
 
 - 目标职责是启动、根导航、DI 组装、Manifest 和 Android/厂商平台适配。
 - 当前仍有大量 route-bound UI 和流程代码，因此 `:app` 对 Core/Data/Feature 的依赖是现实允许边，而不是鼓励新业务继续堆入壳层。
-- `app/src/main/.../features/**` 受冻结目录和文件 allowlist 保护；当前精确快照为 218 个 Kotlin 文件。`verify_legacy_feature_file_allowlist.sh` 同时拒绝“实际文件不在 allowlist”和“allowlist 路径已不存在”，优先在现有允许文件内做小修复，新增能力迁往 Feature。
+- `app/src/main/.../features/**` 受冻结目录和文件 allowlist 保护；当前精确快照为 215 个 Kotlin 文件。`verify_legacy_feature_file_allowlist.sh` 同时拒绝“实际文件不在 allowlist”和“allowlist 路径已不存在”，优先在现有允许文件内做小修复，新增能力迁往 Feature。
 - `LoginRoute`、协议兜底、WebView 导航和五个验证入口的平台实现仍属于壳层；app adapter 负责启动现有不可导出 Activity，不能把 `Context`/`Intent` 或厂商类型传回 feature。
 - `IdentificationRoute` 的类型安全注册、`SavedStateHandle` 结果桥接和 app-owned 厂商适配仍属于壳层；业务渲染、结果处理和状态机不得回流 route lambda。
 
@@ -87,6 +87,7 @@
 ## 构建与第三方依赖基线
 
 - `settings.gradle.kts` 的 `com.android.settings` 是 `minSdk 24`、`targetSdk 36`、`compileSdk 37` 的唯一来源；模块和 convention plugin 不得覆盖。JDK 21 与应用版本继续由 `constants.gradle.kts` 管理。
+- 模块只启用源码实际需要的构建能力并声明直接使用的 API：`:feature:location` 不启用 Compose，只直接依赖 Core KTX、Lifecycle ViewModel、Coroutines Core、Hilt 与 AMap；`:feature:photoupload` 和 `:feature:servicecountdown` 只直接保留 ViewModel、Coroutines Core 与 Hilt；`:feature:identification` 保留真实使用的 Compose、CameraX、ML Kit、DataStore、OkHttp、Hilt 与 Coroutines Core。不得以整套 bundle、直接 Bugly、偶然传递依赖或另一个 Feature 的导出掩盖缺失依赖。
 - 版本目录优先使用稳定、精确版本，禁止动态版本。alpha、beta、RC、snapshot、dev 和 compat 只能进入 `dependency_preview_allowlist.txt` 的精确别名/精确版本豁免，并必须填写 Owner、原因、验证范围和稳定退出版本。
 - 当前唯一预览豁免是 `androidxBaselineProfile` 与 `androidxBenchmark` 的 `1.5.0-rc02`，分别受管。稳定且经 AGP 9.3 验证的 `1.5.x` 可用后，两项豁免及 `maxAgpVersion=false` 必须一起退出。
 - 厂商 AAR 仍依赖 Jetifier，因此 `android.enableJetifier=true` 暂时保留。该事实直接阻断 AGP 10+；不得通过 suppression、修改 AAR、关闭生产能力或删除 Jetifier 来制造升级成功。
@@ -121,7 +122,7 @@
 
 | 守卫 | 保护内容 |
 |---|---|
-| `verify_architecture_boundaries.sh` | Android-free Domain、禁止 Feature/Data 反向依赖、ViewModel/调度器/文件规模等规则；rule-10 调用 legacy 快照，rule-10b/10c 调用身份/登录页面所有权守卫，rule-16 调用 instrumentation test APK 所有权守卫 |
+| `verify_architecture_boundaries.sh` | rule-0 拒绝已退役 Placeholder、伪 FeatureEntry、SelectDevice 导航/UI 和旧更新弹窗回流；其余规则保护 Android-free Domain、Feature/Data 方向、ViewModel/调度器/文件规模、legacy 快照、身份/登录页面所有权及 instrumentation test APK 所有权 |
 | `verify_legacy_feature_file_allowlist.sh` | 保证 `app/src/main/.../features/**` 实际 Kotlin 文件与 `legacy_feature_files_allowlist.txt` 双向一致，拒绝新增未允许文件和陈旧条目 |
 | `verify_identification_feature_boundary.sh` | 禁止 app 身份 UI 回流、feature 引用 app navigation/platform/R，以及 app 绕过 identification 公开 API |
 | `test_identification_feature_boundary.sh` | 用正向和三类负向 fixture 验证身份边界守卫输出规则、文件与修复方向 |
@@ -134,7 +135,8 @@
 | `check_new_files_guard.sh` | 在 changed-files 场景快速提示冻结 legacy feature 目录不得新增文件；完整快照由 rule-10 校验 |
 | `verify_cancellation_guards.sh` | 敏感协程取消处理 |
 | `verify_no_empty_catch_blocks.sh` | 禁止吞异常 |
-| `verify_android_build_baseline.sh` | Settings Plugin SDK 单一来源、JDK/应用版本与 AGP/plugin 一致性 |
+| `verify_android_build_baseline.sh` | Settings Plugin SDK 单一来源、JDK/应用版本与 AGP/plugin 一致性，以及目标 Feature 的最小构建能力/直接依赖边界 |
+| `test_android_build_governance.sh` | 构建治理的单一 fixture 入口；同时执行模块最小化负例、`test_affected_modules.sh` 的 changed-path 映射自测及其他既有构建治理 fixtures |
 | `verify_dependency_policy.sh` | 稳定版优先、精确预览豁免、`maxAgpVersion=false` 关联和 Jetifier/AGP 10 阻断 |
 | `verify_target_sdk_readiness.sh` | target 36/37 双状态政策及 Manifest adaptive 一致性 |
 | `verify_target_platform_test_matrix.sh` | API 33 Profile、API 36 blocking smoke 与 API 37 readiness 分离，并校验 app/login feature 选择器各归属正确 test APK |

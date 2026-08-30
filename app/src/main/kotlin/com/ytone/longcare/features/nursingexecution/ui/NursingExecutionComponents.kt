@@ -143,7 +143,7 @@ internal fun NursingExecutionContent(
                                     }
                                 }
                                 orderInfo.state.isPendingExecutionState() -> {
-                                    actions.onNavigateToSelectDevice(orderKey)
+                                    actions.onNavigateToStartOrderNfcSignIn(orderKey)
                                 }
                                 else -> actions.onNavigateBack()
                             }

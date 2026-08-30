@@ -131,6 +131,7 @@ jobs:
             echo "- instrumentation smoke class integrity"
             echo "- instrumentation test APK ownership"
             echo "- tracked keystore guard"
+            echo "- Debug Mock network safety and Release isolation"
             echo "- Release validation entry contract"
             echo "- workflow quality guard"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -138,16 +139,22 @@ jobs:
       - name: Run ci-required quality gates
         run: |
           bash scripts/quality/verify_no_tracked_keystore_files.sh .
+          bash scripts/quality/test_debug_mock_network.sh
+          python3 scripts/quality/verify_debug_mock_network.py --project-root .
           bash scripts/quality/verify_ci_workflow_quality.sh
           bash scripts/quality/test_release_validation_entry.sh
           bash scripts/quality/verify_release_validation_entry.sh .
           bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
           bash scripts/quality/verify_jetpack_compat_apis.sh
+          bash scripts/quality/test_startup_profile_quality_config.sh
+          bash scripts/quality/test_baselineprofile_journeys.sh
           bash scripts/quality/verify_baselineprofile_journeys.sh
           bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
           bash scripts/quality/verify_no_empty_catch_blocks.sh .
           bash scripts/quality/verify_target_sdk_upgrade.sh settings.gradle.kts .github/workflows/android-ci.yml
           bash scripts/quality/verify_android_build_baseline.sh --project-root .
+          bash scripts/quality/test_project_r8_rules.sh
+          python3 scripts/quality/verify_project_r8_rules.py --project-root .
           bash scripts/quality/verify_dependency_policy.sh --project-root .
           bash scripts/quality/verify_target_sdk_readiness.sh --project-root .
           bash scripts/quality/verify_target_platform_test_matrix.sh --project-root .
@@ -156,6 +163,9 @@ jobs:
           bash scripts/quality/verify_architecture_boundaries.sh .
           bash scripts/quality/verify_module_dependency_whitelist.sh .
           bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare .
+
+      - name: Run Debug Mock network contracts
+        run: bash scripts/quality/run_debug_mock_network_contracts.sh
 
       - name: Run affected compile/lint/assemble verification
         run: ./gradlew --no-daemon ${{ needs.detect-affected.outputs.verify_tasks }}

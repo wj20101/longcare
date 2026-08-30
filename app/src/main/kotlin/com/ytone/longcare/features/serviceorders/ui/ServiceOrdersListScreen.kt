@@ -67,7 +67,8 @@ fun ServiceOrdersListScreen(
             emptyTitle = emptyTitle,
             emptySubtitle = emptySubtitle,
             filteredOrders = filteredOrders,
-            actions = actions
+            actions = actions,
+            profileTagsEnabled = orderType == ServiceOrderType.SERVICE_RECORDS,
         )
         SnackbarHost(
             hostState = snackbarHostState,

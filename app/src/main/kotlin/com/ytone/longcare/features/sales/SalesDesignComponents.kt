@@ -89,6 +89,7 @@ internal fun SalesTopBar(
     title: String,
     onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    backButtonModifier: Modifier = Modifier,
 ) {
     Box(
         modifier =
@@ -103,7 +104,8 @@ internal fun SalesTopBar(
                 modifier =
                     Modifier
                         .align(Alignment.CenterStart)
-                        .size(50.dp),
+                        .size(50.dp)
+                        .then(backButtonModifier),
             ) {
                 Icon(
                     imageVector = Icons.Rounded.ArrowBackIosNew,

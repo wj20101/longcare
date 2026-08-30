@@ -1,10 +1,16 @@
 package com.ytone.longcare.features.login.ui
 
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -41,6 +47,24 @@ class LoginScreenAgreementDialogTest {
         userAgreementUrl = "https://fallback.example.test/user-agreement",
         privacyPolicyUrl = "https://fallback.example.test/privacy-policy",
     )
+
+    @Test
+    fun startupProfileTagsAreUniqueVisibleAndInteractive() {
+        setLoginScreenContent()
+
+        listOf(
+            "profile_login_root",
+            "login_phone_input",
+            "login_verification_code_input",
+            "login_submit_button",
+        ).forEach { tag ->
+            composeRule.onAllNodesWithTag(tag).assertCountEquals(1)
+            composeRule.onNodeWithTag(tag).assertIsDisplayed()
+        }
+        composeRule.onNodeWithTag("login_phone_input").assert(hasSetTextAction())
+        composeRule.onNodeWithTag("login_verification_code_input").assert(hasSetTextAction())
+        composeRule.onNodeWithTag("login_submit_button").assert(hasClickAction())
+    }
 
     @Test
     fun login_without_agreement_shows_confirmation_dialog_and_does_not_submit() {

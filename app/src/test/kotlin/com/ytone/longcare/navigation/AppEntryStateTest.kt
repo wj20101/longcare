@@ -52,6 +52,45 @@ class AppEntryStateTest {
         )
     }
 
+    @Test
+    fun `startup roots only become ready for the resolved matching destination`() {
+        val resolving = resolveStartupRootReadiness(
+            entryState = AppEntryState.ResolvingSession,
+            userIdentity = null,
+        )
+        val login = resolveStartupRootReadiness(
+            entryState = AppEntryState.LoggedOut,
+            userIdentity = null,
+        )
+        val care = resolveStartupRootReadiness(
+            entryState = AppEntryState.LoggedIn,
+            userIdentity = 1,
+        )
+        val sales = resolveStartupRootReadiness(
+            entryState = AppEntryState.LoggedIn,
+            userIdentity = 2,
+        )
+
+        assertEquals(false, resolving.isReady)
+        assertEquals(true, isExpectedStartupRootReady(StartupRoot.Login, login))
+        assertEquals(true, isExpectedStartupRootReady(StartupRoot.CareHome, care))
+        assertEquals(true, isExpectedStartupRootReady(StartupRoot.SalesHome, sales))
+        assertEquals(false, isExpectedStartupRootReady(StartupRoot.SalesHome, care))
+        assertEquals(false, isExpectedStartupRootReady(StartupRoot.CareHome, sales))
+    }
+
+    @Test
+    fun `privacy is interactive while logged in without a restored role remains unresolved`() {
+        assertEquals(
+            StartupRootReadiness(StartupRoot.Privacy, isReady = true),
+            resolveStartupRootReadiness(AppEntryState.ConsentRequired, userIdentity = null),
+        )
+        assertEquals(
+            StartupRootReadiness(StartupRoot.ResolvingSession, isReady = false),
+            resolveStartupRootReadiness(AppEntryState.LoggedIn, userIdentity = null),
+        )
+    }
+
     private fun currentUser(userId: Int) = CurrentUser(
         scopeKey = UserScopeKey(companyId = 1, accountId = 2, userId = userId),
         userName = "User $userId",

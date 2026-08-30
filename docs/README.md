@@ -1,6 +1,6 @@
 # LongCare 文档索引
 
-最后核对：2026-08-29
+最后核对：2026-08-31
 
 本目录只保存能够长期维护的当前说明、架构决策和仍有现实用途的专项资料。任务计划、执行日志、临时审计记录和生成报告不再作为仓库文档维护。
 
@@ -56,6 +56,7 @@
 | SDK、工具链、依赖或构建变体 | `tech-stack.md` |
 | 模块依赖或架构守卫 | `dependency-rules.md` |
 | CI、发布流程或质量脚本 | `ci-quality-gates.md` |
+| Debug Mock 路由、fixture、第三方/WebView 边界或构建开关 | 根 `README.md`、`tech-stack.md`、`system-overview.md`、`ci-quality-gates.md`、`roadmap-and-open-gaps.md` |
 | 已确认且长期有效的架构决策 | 新增或更新 ADR |
 | 第三方 SDK 行为、权限或安全状态 | 对应 `integrations/` / `compliance/` 文档 |
 

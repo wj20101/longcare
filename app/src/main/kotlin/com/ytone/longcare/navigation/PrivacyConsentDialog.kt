@@ -31,7 +31,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -56,6 +59,13 @@ fun PrivacyConsentDialog(
     onAgree: () -> Unit,
     onDisagree: () -> Unit
 ) {
+    ReportStartupRootDrawn(
+        expectedRoot = StartupRoot.Privacy,
+        actualReadiness = resolveStartupRootReadiness(
+            entryState = AppEntryState.ConsentRequired,
+            userIdentity = null,
+        ),
+    )
     val context = LocalContext.current
     val appName = stringResource(R.string.app_name)
     val linkColor = MaterialTheme.colorScheme.primary
@@ -79,11 +89,15 @@ fun PrivacyConsentDialog(
     }
 
     AlertDialog(
+        modifier = Modifier
+            .semantics { testTagsAsResourceId = true }
+            .testTag("profile_privacy_root"),
         onDismissRequest = { /* 不允许点击外部关闭 */ },
         shape = RoundedCornerShape(16.dp),
         title = {
             Text(
                 text = stringResource(R.string.privacy_consent_title),
+                modifier = Modifier.testTag("profile_privacy_title"),
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
             )
@@ -137,7 +151,9 @@ fun PrivacyConsentDialog(
         confirmButton = {
             TextButton(
                 onClick = onAgree,
-                modifier = Modifier.padding(end = 8.dp)
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .testTag("profile_privacy_accept"),
             ) {
                 Text(
                     text = stringResource(R.string.privacy_consent_agree),
@@ -151,7 +167,8 @@ fun PrivacyConsentDialog(
                 onClick = {
                     onDisagree()
                     (context as? Activity)?.finish()
-                }
+                },
+                modifier = Modifier.testTag("profile_privacy_reject"),
             ) {
                 Text(
                     text = stringResource(R.string.privacy_consent_disagree),

@@ -54,6 +54,26 @@ require_file() {
   fi
 }
 
+require_module_token() {
+  local build_file="$1"
+  local token="$2"
+  local label="$3"
+  [[ -f "${build_file}" ]] || return 0
+  if ! grep -Fq -- "${token}" "${build_file}"; then
+    fail "${build_file#"${PROJECT_ROOT}/"} missing required ${label}: ${token}"
+  fi
+}
+
+forbid_module_token() {
+  local build_file="$1"
+  local token="$2"
+  local label="$3"
+  [[ -f "${build_file}" ]] || return 0
+  if grep -Fq -- "${token}" "${build_file}"; then
+    fail "${build_file#"${PROJECT_ROOT}/"} contains redundant ${label}: ${token}"
+  fi
+}
+
 require_file "${SETTINGS_FILE}" || true
 require_file "${CONSTANTS_FILE}" || true
 require_file "${CATALOG_FILE}" || true
@@ -132,6 +152,45 @@ done < <(
     \( -path "${PROJECT_ROOT}/.git" -o -path "${PROJECT_ROOT}/.gradle" -o -path "${PROJECT_ROOT}/.worktrees" -o -path '*/build' -o -path "${PROJECT_ROOT}/openspec" \) -prune -o \
     -type f -name 'build.gradle.kts' -print
 )
+
+LOCATION_BUILD="${PROJECT_ROOT}/feature/location/build.gradle.kts"
+for token in \
+  'alias(libs.plugins.kotlin.compose)' \
+  'compose = true' \
+  'implementation(platform(libs.compose.bom))' \
+  'implementation(libs.compose.ui)' \
+  'implementation(libs.compose.material3)' \
+  'implementation(libs.androidx.activity.compose)' \
+  'implementation(libs.androidx.lifecycle.runtime.compose)' \
+  'implementation(libs.hilt.navigation.compose)' \
+  'implementation(libs.crashreport)'; do
+  forbid_module_token "${LOCATION_BUILD}" "${token}" "location build capability/dependency"
+done
+require_module_token "${LOCATION_BUILD}" 'implementation(libs.androidx.core.ktx)' "location AndroidX Core dependency"
+require_module_token "${LOCATION_BUILD}" 'implementation(libs.androidx.lifecycle.viewmodel)' "location ViewModel dependency"
+require_module_token "${LOCATION_BUILD}" 'implementation(libs.kotlinx.coroutines.core)' "location Coroutines Core dependency"
+require_module_token "${LOCATION_BUILD}" 'implementation(libs.amap.location)' "location AMap dependency"
+
+PHOTO_UPLOAD_BUILD="${PROJECT_ROOT}/feature/photoupload/build.gradle.kts"
+for token in \
+  'implementation(libs.androidx.core.ktx)' \
+  'implementation(libs.androidx.lifecycle.runtime.ktx)' \
+  'implementation(libs.bundles.coil)' \
+  'implementation(libs.crashreport)'; do
+  forbid_module_token "${PHOTO_UPLOAD_BUILD}" "${token}" "photo-upload dependency"
+done
+require_module_token "${PHOTO_UPLOAD_BUILD}" 'implementation(libs.androidx.lifecycle.viewmodel)' "photo-upload ViewModel dependency"
+require_module_token "${PHOTO_UPLOAD_BUILD}" 'implementation(libs.kotlinx.coroutines.core)' "photo-upload Coroutines Core dependency"
+
+SERVICE_COUNTDOWN_BUILD="${PROJECT_ROOT}/feature/servicecountdown/build.gradle.kts"
+forbid_module_token "${SERVICE_COUNTDOWN_BUILD}" 'implementation(libs.androidx.core.ktx)' "service-countdown Core KTX dependency"
+forbid_module_token "${SERVICE_COUNTDOWN_BUILD}" 'implementation(libs.kotlinx.coroutines.android)' "service-countdown Coroutines Android dependency"
+require_module_token "${SERVICE_COUNTDOWN_BUILD}" 'implementation(libs.androidx.lifecycle.viewmodel)' "service-countdown ViewModel dependency"
+require_module_token "${SERVICE_COUNTDOWN_BUILD}" 'implementation(libs.kotlinx.coroutines.core)' "service-countdown Coroutines Core dependency"
+
+IDENTIFICATION_BUILD="${PROJECT_ROOT}/feature/identification/build.gradle.kts"
+forbid_module_token "${IDENTIFICATION_BUILD}" 'implementation(libs.crashreport)' "identification Bugly dependency"
+require_module_token "${IDENTIFICATION_BUILD}" 'implementation(libs.kotlinx.coroutines.core)' "identification Coroutines Core dependency"
 
 if [[ -d "${PROJECT_ROOT}/build-logic/convention/src" ]]; then
   while IFS= read -r source_file; do

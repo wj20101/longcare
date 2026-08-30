@@ -74,6 +74,10 @@ class ApiServiceResultContractTest {
                     annotation.annotationClass.java == DefaultOkHttpClient::class.java
                 },
         )
+        assertTrue(
+            "The vendor client must not inherit first-party or Debug Mock interceptors",
+            NetworkDataModule.provideDefaultOkHttpClient().interceptors.isEmpty(),
+        )
     }
 }
 

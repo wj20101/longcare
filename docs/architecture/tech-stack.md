@@ -1,6 +1,6 @@
 # 技术栈与构建基线
 
-最后核对：2026-08-29
+最后核对：2026-08-31
 
 本文是便于阅读的快照。版本发生冲突时，SDK 以 `settings.gradle.kts` 为准，JDK/应用版本以 `constants.gradle.kts` 为准，依赖与插件以 `gradle/libs.versions.toml` 为准，Gradle 以 `gradle-wrapper.properties` 为准。
 
@@ -72,7 +72,7 @@ QLZ、腾讯人脸和腾讯 COS 仍引用旧 support library 类，因此 `andro
 
 三个 Android SDK 值由 `com.android.settings` 统一下发，插件版本必须与 AGP `9.3.2` 相同；模块和 convention plugin 不得再次覆盖 SDK。JDK 21 与应用版本继续由 `constants.gradle.kts` 单独管理。
 
-平台验证按目的分离：`pixel6Api33` 只生成 Baseline Profile，`pixel6Api36` 执行正式 target 的阻断式 smoke，`pixelTabletApi37` 只用于 Android 17 Beta readiness。API 33 或 API 36 成功不能授权 target 37。
+平台验证按目的分离：`pixel6Api33` 生成 Baseline/Startup Profile，并验证六场景旅程、依赖链和 Macrobenchmark 报告格式；其模拟器耗时不得用于收益结论。`pixel6Api36` 执行正式 target 的阻断式 smoke，`pixelTabletApi37` 只用于 Android 17 Beta readiness。API 33 或 API 36 成功不能授权 target 37。
 
 ## App 构建变体
 
@@ -80,10 +80,10 @@ Android CLI 当前识别以下 app 变体：
 
 | 变体 | 用途 | 关键差异 |
 |---|---|---|
-| `debug` | 日常开发与联调 | 可用 `debug.useMockData` 切换本地 mock；默认仓库配置为 `false` |
+| `debug` | 日常开发与联调 | 可用 `debug.useMockData` 显式切换第一方本地 mock；默认仓库配置与代码 fallback 均为 `false` |
 | `release` | 签名、压缩和资源收缩的发布包 | 默认按生产模式校验；当前已知厂商问题会阻断生产构建 |
-| `nonMinifiedRelease` | Baseline Profile 目标变体 | 由 Baseline Profile 插件创建 |
-| `benchmarkRelease` | Macrobenchmark/Profile 验证 | 由性能插件创建 |
+| `nonMinifiedRelease` | Baseline/Startup Profile 生成目标 | 由 Baseline Profile 插件创建；绑定仅性能变体可见的确定性状态控制器 |
+| `benchmarkRelease` | Macrobenchmark/Profile 验证 | 由性能插件创建；与 `nonMinifiedRelease` 共用 `src/profile` 状态边界和本地性能签名 |
 
 默认仅打包 `arm64-v8a`。运行 Baseline Profile 的 x86_64 环境可显式传入 `-Pbaseline.enableX86_64=true`。
 
@@ -91,12 +91,23 @@ Android CLI 当前识别以下 app 变体：
 
 | 配置 | 默认值/行为 |
 |---|---|
-| `debug.useMockData` | 仓库中为 `false`；传 `true` 使用 `app/src/debug/assets/mock` |
+| `debug.useMockData` | 仓库与代码 fallback 均为 `false`；传 `true` 使用 `app/src/debug/assets/mock`，未知第一方路由抛出 `MissingMockRouteException` 而不访问网络 |
 | `release.production` | 默认为 `true` |
 | `release.acceptance` | 默认为 `false`；非生产 Release 必须显式设为 `true` |
 | `baseline.enableX86_64` | 默认为 `false` |
 
 生产 Release 需要 LongCare Release 签名配置。缺少签名时不会静默使用 debug keystore；只有明确的受控环境可以通过专用开关允许 unsigned/debug fallback。
+
+Debug Mock 的最终值由一个 Gradle Provider 解析并生成 `BuildConfig.USE_MOCK_DATA`。`:app:reportDebugMockMode` 输出最终布尔值及属性来源，`:app:verifyDebugMockMode` 可配合 `-Pdebug.expectedUseMockData=<true|false>` 阻止命令行意图与产物不一致。Mock 路由表、fixture、场景 provider 与上传 fake 只存在于 Debug source set；Release 将该字段硬编码为 `false` 并绑定真实上传器。
+
+## Profile 与启动指标基线
+
+- 四个 Startup 场景：首次隐私协议、已同意隐私且未登录、护理 Home、销售 Home。
+- 两个 Baseline-only 场景：护理服务记录往返、销售客户列表往返。
+- `startup-prof.txt` 必须是 `baseline-prof.txt` 的严格规则子集；规则身份比较忽略 ART 的 `H/S/P` 使用标志差异，但不忽略类/方法身份。
+- Macrobenchmark 对每个 Startup 场景以相同 helper 对称运行 `CompilationMode.None` 和 `Partial(BaselineProfileMode.Require)`，固定 `StartupMode.COLD`、每模式 10 次，并要求 `timeToInitialDisplayMs` 与 `timeToFullDisplayMs` 都存在。
+- 性能状态控制器和离线保护只编译进 `nonMinifiedRelease`、`benchmarkRelease`，正式 Release 产物守卫检查组件、permission、fixture token 和离线标记均不存在。
+- API 33 managed device 是旅程/依赖/报告格式证据；真实收益必须来自同一台受控多核 `arm64-v8a` 真机的至少两轮完整比较，当前收益状态为 `unverified`。
 
 ## 常用命令
 

@@ -62,6 +62,13 @@ private fun LoginDestination(
     navController: NavController,
     onLoginSuccess: () -> Unit,
 ) {
+    ReportStartupRootDrawn(
+        expectedRoot = StartupRoot.Login,
+        actualReadiness = resolveStartupRootReadiness(
+            entryState = AppEntryState.LoggedOut,
+            userIdentity = null,
+        ),
+    )
     LoginFeatureScreen(
         actions = LoginFeatureActions(
             onLoginSuccess = onLoginSuccess,
