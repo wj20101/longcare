@@ -1,0 +1,6 @@
+# Modules that own a non-empty src/androidTest and a runnable connected test APK.
+# Managed Device names and class selectors remain owned by target_platform_test_matrix.properties.
+:app
+:core:data
+:feature:identification
+:feature:login

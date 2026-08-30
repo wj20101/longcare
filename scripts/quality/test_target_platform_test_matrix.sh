@@ -52,10 +52,18 @@ managedDevices.localDevices {
   create("pixelTabletApi37") { apiLevel = 37 }
 }
 EOF
-  cat > "${root}/app/src/androidTest/kotlin/com/ytone/longcare/smoke/RealSmokeTest.kt" <<'EOF'
+  if [[ "${scenario}" == "cross-owner" ]]; then
+    mkdir -p "${root}/feature/login/src/androidTest/kotlin/com/ytone/longcare/smoke"
+    cat > "${root}/feature/login/src/androidTest/kotlin/com/ytone/longcare/smoke/RealSmokeTest.kt" <<'EOF'
 package com.ytone.longcare.smoke
 class RealSmokeTest
 EOF
+  else
+    cat > "${root}/app/src/androidTest/kotlin/com/ytone/longcare/smoke/RealSmokeTest.kt" <<'EOF'
+package com.ytone.longcare.smoke
+class RealSmokeTest
+EOF
+  fi
   cat > "${root}/feature/login/src/androidTest/kotlin/com/ytone/longcare/features/login/ui/RealLoginSmokeTest.kt" <<'EOF'
 package com.ytone.longcare.features.login.ui
 class RealLoginSmokeTest
@@ -69,7 +77,7 @@ valid="${FIXTURE_ROOT}/valid"
 write_fixture "${valid}" valid
 bash "${VERIFY_SCRIPT}" --project-root "${valid}" >/dev/null
 
-for case_data in "api-mismatch:current target matrix API" "missing-check:message-queue-reflection-native" "missing-contract:MissingTest.kt"; do
+for case_data in "api-mismatch:current target matrix API" "missing-check:message-queue-reflection-native" "missing-contract:MissingTest.kt" "cross-owner:current_target_smoke_classes"; do
   scenario="${case_data%%:*}"
   expected="${case_data#*:}"
   root="${FIXTURE_ROOT}/${scenario}"

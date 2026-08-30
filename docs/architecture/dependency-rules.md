@@ -121,7 +121,7 @@
 
 | 守卫 | 保护内容 |
 |---|---|
-| `verify_architecture_boundaries.sh` | Android-free Domain、禁止 Feature/Data 反向依赖、ViewModel/调度器/文件规模等规则；rule-10 调用 legacy 快照，rule-10b/10c 调用身份/登录页面所有权守卫 |
+| `verify_architecture_boundaries.sh` | Android-free Domain、禁止 Feature/Data 反向依赖、ViewModel/调度器/文件规模等规则；rule-10 调用 legacy 快照，rule-10b/10c 调用身份/登录页面所有权守卫，rule-16 调用 instrumentation test APK 所有权守卫 |
 | `verify_legacy_feature_file_allowlist.sh` | 保证 `app/src/main/.../features/**` 实际 Kotlin 文件与 `legacy_feature_files_allowlist.txt` 双向一致，拒绝新增未允许文件和陈旧条目 |
 | `verify_identification_feature_boundary.sh` | 禁止 app 身份 UI 回流、feature 引用 app navigation/platform/R，以及 app 绕过 identification 公开 API |
 | `test_identification_feature_boundary.sh` | 用正向和三类负向 fixture 验证身份边界守卫输出规则、文件与修复方向 |
@@ -138,7 +138,10 @@
 | `verify_dependency_policy.sh` | 稳定版优先、精确预览豁免、`maxAgpVersion=false` 关联和 Jetifier/AGP 10 阻断 |
 | `verify_target_sdk_readiness.sh` | target 36/37 双状态政策及 Manifest adaptive 一致性 |
 | `verify_target_platform_test_matrix.sh` | API 33 Profile、API 36 blocking smoke 与 API 37 readiness 分离，并校验 app/login feature 选择器各归属正确 test APK |
-| `verify_instrumentation_smoke_classes.sh` | app 与 feature 的所有 smoke 选择器都指向真实 `androidTest` 类 |
+| `verify_instrumentation_smoke_classes.sh` | smoke 选择器指向真实 `androidTest` 类；target matrix 的 app/login 字段必须分别属于自己的 test APK source root |
+| `verify_instrumentation_test_ownership.sh` | `instrumentation_test_modules.txt` 与实际非空 `src/androidTest` 双向一致，并要求每个 owner 显式配置 runner、runner 依赖和模块限定聚合 task |
+| `test_instrumentation_test_ownership.sh` | 用 fake Gradle 和正负 fixtures 验证稳定顺序、遗漏/陈旧/重复/未知 owner、runner 契约及禁止根级 connected task |
+| `run_connected_instrumentation_suite.sh` | 只从所有权清单生成 `:app`、`:core:data`、`:feature:identification`、`:feature:login` 的 connected task；不复制 Managed Device/选择器矩阵 |
 | `verify_entry_navigation_contracts.sh` | Navigation Testing 仅测试可见、入口测试 seam 保持 `internal`、入口/Home/Sales focused 测试类完整 |
 | `test_entry_navigation_contracts.sh` | 用正向和依赖泄漏、renderer 公开、测试类缺失负向 fixture 验证入口导航守卫 |
 | `verify_tech_stack_baseline.sh` | 长期技术栈字段与可执行配置同步 |

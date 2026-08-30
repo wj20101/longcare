@@ -119,6 +119,15 @@
       "likely_fix": "Replace stale class selectors with real app/src/androidTest class declarations."
     },
     {
+      "id": "instrumentation_test_ownership",
+      "name": "Instrumentation Test APK Ownership",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/instrumentation_test_modules.txt,scripts/quality/verify_instrumentation_test_ownership.sh,scripts/quality/run_connected_instrumentation_suite.sh",
+      "likely_fix": "Align non-empty androidTest source roots, runner contracts, and module-qualified connected tasks with the reviewed owner list."
+    },
+    {
       "id": "entry_navigation_contracts",
       "name": "Entry Navigation Contract Guard",
       "layer": "ci-required",

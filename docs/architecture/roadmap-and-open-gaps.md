@@ -10,7 +10,7 @@
 - Debug 和显式验收构建可用。
 - 生产发布被已知且可验证的厂商 SDK/配置问题主动阻断。
 - 架构演进重点是缩小 `:app`、稳定平台生命周期和提高关键业务回归信心。
-- `app/features` 冻结边界当前是 222 个 Kotlin 文件的精确快照；architecture rule-10 已执行实际文件与 allowlist 双向一致性，后续只允许受控收缩，不允许静默扩张或积累陈旧条目。
+- `app/features` 冻结边界当前是 218 个 Kotlin 文件的精确快照；architecture rule-10 已执行实际文件、allowlist 与本路线图计数的一致性，后续只允许受控收缩，不允许静默扩张或积累陈旧条目。
 - 文档当前真相集已经收敛；后续应随实现更新，不再累积 design/plan/progress 副本。
 - 正式 `targetSdk` 保持 36；API 37 是 Android 17 Beta 候选且机器政策为 blocked，不因 `compileSdk 37` 或普通构建成功而自动提升。
 
@@ -27,25 +27,11 @@ Owner 涉及移动端、服务端和厂商，完成条件必须全部满足：
 
 验收 Release 只用于联调/验收，必须显式标记，不得作为生产包分发。
 
-## P1：低风险优化批次
+## P1：后续低风险优化批次
 
-目标是在不改变用户可见行为、route contract、数据契约和厂商 SDK 接入方式的前提下，先提高回归可信度，再修正性能产物，最后清理确定无效的项目 R8 规则。三个批次必须独立实现、独立验证和独立提交；前一批稳定后才能开始下一批。
+剩余低风险工作是在不改变用户可见行为、route contract、数据契约和厂商 SDK 接入方式的前提下，先修正性能产物，再清理确定无效的项目 R8 规则。两个后续批次必须独立实现、独立验证和独立提交；Instrumentation 的当前所有权与执行入口以[CI 与质量门禁](ci-quality-gates.md)为准，不再作为路线图执行项重复维护。
 
-### 批次 A：测试与 CI 可信度
-
-- 修复 `DashboardGridCompactModeTest` 的陈旧硬编码文案，改为从当前 string resource 生成期望值。
-- 将 `TopHeaderAdaptationTest` 拆为断点纯逻辑测试和与设备宽度匹配的 UI 测试，避免在 compact 模拟器中伪造不可满足的 645dp 根布局。
-- 聚合 instrumentation 只运行实际拥有 `androidTest` 的模块，避免空 Library 测试 APK 因 runner 缺失而在执行前失败。
-- 继续观察 Android CI 已接入的 `run_instrumentation`/`smoke_test_classes` 和 API 36 Managed Device 稳定性；只在 affected scope 要求时执行，避免无关变更承担模拟器成本。
-
-完成条件：
-
-- `:app` 当前发现的 instrumentation 用例全部通过，新增的布局断点 JVM 用例通过，`:core:data` 迁移用例继续通过。
-- 空 Library 模块不再启动无测试的 instrumentation APK。
-- 普通 Android CI 的 build-only 基线保持不变；受影响范围要求 smoke 时才增加业务验证。
-- 不修改任何生产 Composable 文案、布局断点或业务分支，只修复测试表达和执行编排。
-
-### 批次 B：Baseline 与 Startup Profile 语义
+### 下一独立批次：Baseline 与 Startup Profile 语义
 
 - 将首次启动、已同意隐私协议的典型启动和登录后关键业务旅程拆成明确场景，共用稳定的 journey helper。
 - `includeInStartupProfile=true` 只覆盖初始显示必需路径；滚动、导航和异步业务加载只进入 Baseline Profile。
@@ -60,7 +46,7 @@ Owner 涉及移动端、服务端和厂商，完成条件必须全部满足：
 - 生成、安装和 minified acceptance Release 均能识别并使用打包后的 `baseline.prof` / `baseline.profm`。
 - 不改变隐私协议、登录态、页面路由或业务数据，仅修正测试预置状态、旅程和性能标记。
 
-### 批次 C：项目 R8 确定性清理
+### 后续独立批次：项目 R8 确定性清理
 
 - 先删除当前 Release 全程序分析中匹配 0 items 的项目规则。
 - 删除确定被更宽项目规则覆盖的重复项，包括 `com.autonavi.aps.amapapi.model.**`、`com.comm.*`、`com.falth.data.*` 和 `**$$serializer` 的重复 member 规则。
@@ -75,7 +61,7 @@ Owner 涉及移动端、服务端和厂商，完成条件必须全部满足：
 - mapping、资源 shrinking、Baseline Profile 打包和 APK 签名/Manifest 检查保持正常。
 - 任一反射、序列化、JNI 或厂商流程回归时，立即回滚当前单条规则，不用新增整包 `-keep` 掩盖问题。
 
-### 首期统一门禁与排除范围
+### 后续批次统一门禁与排除范围
 
 每个批次至少执行：
 
@@ -149,7 +135,7 @@ API 37 手动 CI lane 目前用 app 与 login feature 各自的 test APK 覆盖 
 
 ## P2：工程与可观测性
 
-- 完成低风险优化批次 B 后，定期生成 Baseline Profile，并确保 Startup/Profile 场景边界和关键旅程不退化。
+- 完成下一独立 Baseline/Startup Profile 批次后，定期生成 Baseline Profile，并确保 Startup/Profile 场景边界和关键旅程不退化。
 - 构建耗时、质量快照和 CI 健康报告只输出到 `build/reports/` 或 CI artifact，不回写长期 Markdown。
 - 保持 Gradle/AGP/Kotlin 升级可单独回滚，并运行 wrapper、workflow、Lint 和架构守卫。
 - 第三方 SDK 升级需要记录 AAR 校验和、权限变化、Manifest merge、consumer rules 和 native ABI 结果。

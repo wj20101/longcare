@@ -130,4 +130,34 @@ fi
 
 ACTUAL_COUNT="$(printf '%s\n' "${ACTUAL_FILES}" | awk 'NF' | wc -l | tr -d ' ')"
 ALLOWLIST_COUNT="$(printf '%s\n' "${ALLOWLIST_FILES}" | awk 'NF' | wc -l | tr -d ' ')"
+
+ROADMAP_REL="docs/architecture/roadmap-and-open-gaps.md"
+ROADMAP_FILE="${PROJECT_ROOT}/${ROADMAP_REL}"
+if [[ -d "${PROJECT_ROOT}/docs" ]]; then
+  if [[ ! -f "${ROADMAP_FILE}" ]]; then
+    echo "[legacy-file-allowlist][FAIL] roadmap missing while docs are present"
+    echo "rule_file=${ROADMAP_REL}"
+    echo "recommended_fix=restore-roadmap-and-sync-legacy-count"
+    exit 1
+  fi
+
+  DOCUMENTED_COUNTS="$(
+    sed -nE 's/.*app\/features.*当前是 ([0-9]+) 个 Kotlin 文件.*/\1/p' "${ROADMAP_FILE}"
+  )"
+  DOCUMENTED_COUNT_LINES="$(printf '%s\n' "${DOCUMENTED_COUNTS}" | awk 'NF' | wc -l | tr -d ' ')"
+  if [[ "${DOCUMENTED_COUNT_LINES}" -ne 1 ]]; then
+    echo "[legacy-file-allowlist][FAIL] roadmap must state the current app/features Kotlin count exactly once"
+    echo "rule_file=${ROADMAP_REL}"
+    echo "recommended_fix=keep-one-current-count-statement"
+    exit 1
+  fi
+  if [[ "${DOCUMENTED_COUNTS}" != "${ACTUAL_COUNT}" ]]; then
+    echo "[legacy-file-allowlist][FAIL] roadmap legacy snapshot drifted"
+    echo "documented_count=${DOCUMENTED_COUNTS} actual_count=${ACTUAL_COUNT}"
+    echo "rule_file=${ROADMAP_REL}"
+    echo "recommended_fix=update-roadmap-count-with-the-allowlist-change"
+    exit 1
+  fi
+fi
+
 echo "[legacy-file-allowlist] actual=${ACTUAL_COUNT} allowlist=${ALLOWLIST_COUNT} sets match."

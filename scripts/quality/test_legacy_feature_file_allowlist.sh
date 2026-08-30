@@ -130,4 +130,15 @@ create_scan_dir "${MISSING_ALLOWLIST_ROOT}"
 create_kotlin_file "${MISSING_ALLOWLIST_ROOT}" "${MISSING_ALLOWLIST_PATH}"
 expect_failure "missing allowlist" "${MISSING_ALLOWLIST_ROOT}" "rule_file=${ALLOWLIST_REL}"
 
+DOCUMENT_DRIFT_ROOT="$(fixture_root document-drift)"
+DOCUMENT_DRIFT_PATH="${LEGACY_FEATURE_DIR_REL}/Existing.kt"
+create_scan_dir "${DOCUMENT_DRIFT_ROOT}"
+create_kotlin_file "${DOCUMENT_DRIFT_ROOT}" "${DOCUMENT_DRIFT_PATH}"
+write_allowlist "${DOCUMENT_DRIFT_ROOT}" "${DOCUMENT_DRIFT_PATH}"
+mkdir -p "${DOCUMENT_DRIFT_ROOT}/docs/architecture"
+cat > "${DOCUMENT_DRIFT_ROOT}/docs/architecture/roadmap-and-open-gaps.md" <<'EOF'
+`app/features` 冻结边界当前是 222 个 Kotlin 文件。
+EOF
+expect_failure "roadmap count drift" "${DOCUMENT_DRIFT_ROOT}" "documented_count=222 actual_count=1"
+
 echo "[legacy-file-allowlist-test] all ${PASS_COUNT} fixtures passed."

@@ -53,10 +53,41 @@ assert_plan_contains \
   "com.ytone.longcare.features.login.ui.LoginScreenAgreementDialogTest"
 
 assert_plan_contains \
+  "dashboard production UI" \
+  "app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardHeaderCards.kt" \
+  "affected_modules=:app" \
+  "run_instrumentation=true" \
+  "run_login_feature_instrumentation=false" \
+  "com.ytone.longcare.features.maindashboard.ui.DashboardGridCompactModeTest" \
+  "com.ytone.longcare.features.maindashboard.ui.TopHeaderAdaptationTest"
+
+assert_plan_contains \
+  "dashboard instrumentation test" \
+  "app/src/androidTest/kotlin/com/ytone/longcare/features/maindashboard/ui/TopHeaderAdaptationTest.kt" \
+  "affected_modules=:app" \
+  "run_instrumentation=true" \
+  "run_login_feature_instrumentation=false"
+
+assert_plan_contains \
+  "dashboard JVM resolver" \
+  "app/src/test/kotlin/com/ytone/longcare/features/maindashboard/ui/TopHeaderLayoutSpecResolverTest.kt" \
+  "affected_modules=:app" \
+  "run_instrumentation=false" \
+  "run_login_feature_instrumentation=false"
+
+assert_plan_contains \
+  "architecture documentation" \
+  "docs/architecture/ci-quality-gates.md" \
+  "affected_modules=:app" \
+  "run_instrumentation=false" \
+  "run_login_feature_instrumentation=false"
+
+assert_plan_contains \
   "quality script" \
   "scripts/quality/verify_login_feature_boundary.sh" \
   "affected_scope=full" \
   ":feature:login:compileDebugKotlin" \
+  "run_instrumentation=false" \
   "run_login_feature_instrumentation=false"
 
 echo "[affected-modules-test] all ${PASS_COUNT} changed-path fixtures passed."

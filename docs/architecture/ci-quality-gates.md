@@ -27,10 +27,10 @@
 `local-fast` 当前包含：
 
 - `check_new_files_guard.sh`
-- `test_android_build_governance.sh` 及 build baseline、dependency policy、target readiness/matrix、smoke class、tech-stack 正向守卫
-- `test_legacy_feature_file_allowlist.sh`、`test_user_storage_boundaries.sh`、`test_identification_feature_boundary.sh`、`test_login_feature_boundary.sh` 与 `test_entry_navigation_contracts.sh` 的正反 fixture
+- `test_android_build_governance.sh`、`test_ci_workflow_quality.sh` 及 build baseline、dependency policy、target readiness/matrix、smoke class、workflow、tech-stack 正向守卫
+- `test_legacy_feature_file_allowlist.sh`、`test_user_storage_boundaries.sh`、`test_identification_feature_boundary.sh`、`test_login_feature_boundary.sh`、`test_entry_navigation_contracts.sh` 与 `test_instrumentation_test_ownership.sh` 的正反 fixture
 - `verify_entry_navigation_contracts.sh`（Navigation Testing 仅限 androidTest、入口 renderer/host 保持 `internal`、focused 测试类完整）
-- `verify_architecture_boundaries.sh`（内部执行 legacy 精确快照、身份/登录 feature 所有权、用户存储/后台身份和 WebView 原生 bridge 守卫）
+- `verify_architecture_boundaries.sh`（内部执行 legacy 精确快照、身份/登录 feature 所有权、用户存储/后台身份、WebView 原生 bridge 和 instrumentation test APK 所有权守卫）
 - `verify_module_dependency_whitelist.sh`
 - `verify_module_api_visibility.sh`
 
@@ -49,9 +49,21 @@ bash scripts/quality/verify_release_validation_entry.sh .
 bash scripts/quality/test_release_validation_entry.sh
 ```
 
+### Connected instrumentation 专项入口
+
+完整连接设备回归使用受支持入口：
+
+```bash
+ANDROID_SERIAL=<device-serial> bash scripts/quality/run_connected_instrumentation_suite.sh
+```
+
+`scripts/quality/instrumentation_test_modules.txt` 当前只登记四个非空 test APK owner：`:app`、`:core:data`、`:feature:identification`、`:feature:login`。入口据此生成四个模块限定的 `connectedDebugAndroidTest` task，并分别保留模块报告；它不会调用根级 task，也不会为无测试 Library 增加 runner。Managed Device 名称和类选择器仍只由 `target_platform_test_matrix.properties` 管理。
+
 ## Android CI
 
 `.github/workflows/android-ci.yml` 以构建门禁为基础，并按 affected scope 选择性追加 API 36 smoke：
+
+摘要明确区分 `build-only`、`app-focused` 和 `login-feature-focused`；两类 focused 同时受影响时组合显示。构建成功但设备测试未请求时只表示 build-only，不能作为业务 instrumentation 通过证据。
 
 1. 计算 affected scope 和 Gradle tasks。
 2. 执行 ci-required shell guards。
@@ -80,7 +92,8 @@ bash scripts/quality/test_release_validation_entry.sh
 | `verify_dependency_policy.sh` | 稳定依赖、精确预览豁免与 Jetifier/AGP 10 边界 |
 | `verify_target_sdk_readiness.sh` | 正式 target 与候选 readiness 状态组合、Manifest adaptive 一致性 |
 | `verify_target_platform_test_matrix.sh` | API 33/36/37 验证目标和设备严格分离，app/login feature class 归属正确 test APK |
-| `verify_instrumentation_smoke_classes.sh` | workflow/脚本/matrix 引用的 app/feature `androidTest` 类真实存在 |
+| `verify_instrumentation_smoke_classes.sh` | workflow/脚本/matrix 引用的 instrumentation 类真实存在；matrix 的 app/login 字段只能解析到各自 test APK |
+| `verify_instrumentation_test_ownership.sh` / `test_instrumentation_test_ownership.sh` | 四模块清单与非空 `src/androidTest` 双向一致，runner/依赖/聚合 task 完整，遗漏、陈旧、未知和根级聚合稳定失败 |
 | `verify_entry_navigation_contracts.sh` | Navigation Testing 不进入生产依赖、入口 renderer/host 保持 `internal`，且入口/Home/Sales focused 测试契约完整；正反 fixture 验证守卫本身 |
 | `verify_tech_stack_baseline.sh` | 技术栈长期字段与 Settings/constants/catalog/wrapper 一致 |
 | `verify_exact_alarm_permission_config.sh` | 精确闹钟 Manifest 策略 |

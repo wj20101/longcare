@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT_DIR="${CI_WORKFLOW_QUALITY_ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+ROOT_DIR="$(cd "${ROOT_DIR}" && pwd)"
 EXIT_CODE=0
 
 require_pattern() {
@@ -435,6 +436,21 @@ require_pattern "${ROOT_DIR}/scripts/quality/cleanup_github_actions_storage.sh" 
 require_pattern "${ROOT_DIR}/scripts/quality/cleanup_github_actions_caches.sh" "reason=\"over_capacity\"" "cache cleanup script can trim recent caches when still over capacity"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "name:[[:space:]]*Publish affected plan summary" "android-ci publishes affected plan summary step"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "GITHUB_STEP_SUMMARY" "android-ci writes affected plan into GITHUB_STEP_SUMMARY"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation test APK ownership" "android-ci required-gate summary names instrumentation test APK ownership"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" ":app:pixel6Api36DebugAndroidTest" "android-ci keeps app API 36 smoke scoped to the app test APK"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" ":feature:login:pixel6Api36DebugAndroidTest" "android-ci keeps login API 36 smoke scoped to the login feature test APK"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "needs\.detect-affected\.outputs\.run_instrumentation == 'true'" "android-ci app instrumentation remains affected-gated"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "needs\.detect-affected\.outputs\.run_login_feature_instrumentation == 'true'" "android-ci login instrumentation remains affected-gated"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "if:[[:space:]]*needs\.detect-affected\.outputs\.run_instrumentation == 'true' \|\| needs\.detect-affected\.outputs\.run_login_feature_instrumentation == 'true'" "android-ci current-target emulator job remains affected-gated"
+require_absent_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "[[:space:]]connectedDebugAndroidTest([[:space:]]|$)" "android-ci does not invoke the unscoped root connected task"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" 'validation_mode="build-only"' "android-ci summary distinguishes build-only validation"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" 'validation_mode="app-focused"' "android-ci summary distinguishes app-focused validation"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" 'validation_mode="login-feature-focused"' "android-ci summary distinguishes login-feature-focused validation"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "app focused result" "android-ci API 36 report records app focused execution separately"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "login feature focused result" "android-ci API 36 report records login feature focused execution separately"
+require_pattern "${ROOT_DIR}/scripts/quality/verify_architecture_boundaries.sh" "verify_instrumentation_test_ownership\.sh" "architecture entry runs instrumentation ownership verification"
+require_pattern "${ROOT_DIR}/scripts/quality/preflight_local.sh" "test_instrumentation_test_ownership\.sh" "local preflight runs instrumentation ownership fixtures once"
+require_pattern "${ROOT_DIR}/scripts/quality/quality_gate_registry.json" '"id":[[:space:]]*"instrumentation_test_ownership"' "quality gate registry declares instrumentation ownership"
 require_absent_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "uses:[[:space:]]*reactivecircus/android-emulator-runner@v([013-9]|[1-9][0-9]+)" "android-ci does not use unexpected emulator runner version"
 require_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "uses:[[:space:]]*peter-evans/create-pull-request@v8" "baseline-profile pins create-pull-request action"
 require_absent_pattern "${ROOT_DIR}/.github/workflows/baseline-profile.yml" "uses:[[:space:]]*peter-evans/create-pull-request@v([0-79]|[1-9][0-9]+)" "baseline-profile does not use unexpected create-pull-request version"

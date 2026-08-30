@@ -8,6 +8,10 @@ plugins {
 
 android {
     namespace = "com.ytone.longcare.core.data"
+
+    defaultConfig {
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
 }
 
 androidComponents {

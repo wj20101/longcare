@@ -69,9 +69,18 @@ jobs:
 
       - name: Publish affected plan summary
         run: |
+          validation_mode="build-only"
+          if [[ "${{ steps.detect.outputs.run_instrumentation }}" == "true" && "${{ steps.detect.outputs.run_login_feature_instrumentation }}" == "true" ]]; then
+            validation_mode="app-focused+login-feature-focused"
+          elif [[ "${{ steps.detect.outputs.run_instrumentation }}" == "true" ]]; then
+            validation_mode="app-focused"
+          elif [[ "${{ steps.detect.outputs.run_login_feature_instrumentation }}" == "true" ]]; then
+            validation_mode="login-feature-focused"
+          fi
           {
             echo "## Android CI affected plan"
             echo ""
+            echo "- validation mode: ${validation_mode}"
             echo "- scope: \`${{ steps.detect.outputs.affected_scope }}\`"
             echo "- changed files: \`${{ steps.detect.outputs.changed_files_count }}\`"
             echo "- modules: \`${{ steps.detect.outputs.affected_modules }}\`"
@@ -120,6 +129,7 @@ jobs:
             echo "- target SDK and exact alarm policy"
             echo "- Android build/dependency/readiness governance"
             echo "- instrumentation smoke class integrity"
+            echo "- instrumentation test APK ownership"
             echo "- tracked keystore guard"
             echo "- Release validation entry contract"
             echo "- workflow quality guard"
@@ -259,13 +269,19 @@ jobs:
       - name: Publish API 36 smoke summary
         if: always()
         run: |
+          app_result="not-requested"
+          login_feature_result="not-requested"
+          [[ "${{ needs.detect-affected.outputs.run_instrumentation }}" == "true" ]] && app_result="focused-executed"
+          [[ "${{ needs.detect-affected.outputs.run_login_feature_instrumentation }}" == "true" ]] && login_feature_result="focused-executed"
           {
             echo "## API 36 current-target smoke"
             echo ""
             echo "- blocking: true"
             echo "- device: pixel6Api36"
-            echo "- app classes: `${{ needs.detect-affected.outputs.smoke_test_classes }}`"
-            echo "- login feature classes: `${{ needs.detect-affected.outputs.login_feature_smoke_test_classes }}`"
+            echo "- app focused result: ${app_result}"
+            echo "- login feature focused result: ${login_feature_result}"
+            echo "- app classes: ${{ needs.detect-affected.outputs.smoke_test_classes }}"
+            echo "- login feature classes: ${{ needs.detect-affected.outputs.login_feature_smoke_test_classes }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload API 36 smoke reports

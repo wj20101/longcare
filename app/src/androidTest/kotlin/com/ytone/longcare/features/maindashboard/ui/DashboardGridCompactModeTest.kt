@@ -25,11 +25,18 @@ class DashboardGridCompactModeTest {
 
     @Test
     fun narrow_width_keeps_cards_in_one_row_and_shows_subtitles() {
+        val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val pendingTitle =
+            targetContext.getString(R.string.dashboard_pending_care_plans)
         val pendingSubtitle =
-            InstrumentationRegistry.getInstrumentation().targetContext.getString(
+            targetContext.getString(
                 R.string.dashboard_pending_count,
                 1,
             )
+        val recordsTitle =
+            targetContext.getString(R.string.dashboard_service_records)
+        val recordsDescription =
+            targetContext.getString(R.string.dashboard_service_records_description)
 
         composeRule.setContent {
             LongCareTheme {
@@ -48,10 +55,10 @@ class DashboardGridCompactModeTest {
             }
         }
 
-        composeRule.onNodeWithText("待护理计划").assertExists()
-        composeRule.onNodeWithText("已服务记录").assertExists()
+        composeRule.onNodeWithText(pendingTitle).assertExists()
+        composeRule.onNodeWithText(recordsTitle).assertExists()
         composeRule.onNodeWithText(pendingSubtitle).assertExists()
-        composeRule.onNodeWithText("查看过往服务记录").assertExists()
+        composeRule.onNodeWithText(recordsDescription).assertExists()
 
         val pendingBounds = composeRule.onNodeWithTag("dashboard_pending_card").fetchSemanticsNode().boundsInRoot
         val recordBounds = composeRule.onNodeWithTag("dashboard_records_card").fetchSemanticsNode().boundsInRoot

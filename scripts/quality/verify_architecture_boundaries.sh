@@ -21,6 +21,7 @@ LEGACY_APP_FEATURE_FILE_GUARD="${PROJECT_ROOT}/scripts/quality/verify_legacy_fea
 USER_STORAGE_BOUNDARY_GUARD="${PROJECT_ROOT}/scripts/quality/verify_user_storage_boundaries.sh"
 IDENTIFICATION_FEATURE_BOUNDARY_GUARD="${PROJECT_ROOT}/scripts/quality/verify_identification_feature_boundary.sh"
 LOGIN_FEATURE_BOUNDARY_GUARD="${PROJECT_ROOT}/scripts/quality/verify_login_feature_boundary.sh"
+INSTRUMENTATION_TEST_OWNERSHIP_GUARD="${PROJECT_ROOT}/scripts/quality/verify_instrumentation_test_ownership.sh"
 
 echo "[architecture] checking layer boundaries under: ${PROJECT_ROOT}"
 
@@ -429,6 +430,19 @@ run_login_feature_boundary_guard() {
   fi
 }
 
+run_instrumentation_test_ownership_guard() {
+  if [[ ! -f "${INSTRUMENTATION_TEST_OWNERSHIP_GUARD}" ]]; then
+    echo "[architecture][FAIL] instrumentation test ownership guard missing: ${INSTRUMENTATION_TEST_OWNERSHIP_GUARD}"
+    EXIT_CODE=1
+    return 0
+  fi
+
+  if ! bash "${INSTRUMENTATION_TEST_OWNERSHIP_GUARD}" --project-root "${PROJECT_ROOT}"; then
+    echo "[architecture][FAIL] instrumentation source, runner, or connected test APK ownership drifted"
+    EXIT_CODE=1
+  fi
+}
+
 count_allowlist_entries() {
   local allowlist_file="$1"
   awk 'NF && $1 !~ /^#/' "${allowlist_file}" | wc -l | tr -d ' '
@@ -804,6 +818,9 @@ run_rule \
   "${APP_ROOT}" \
   "${CORE_ROOT}" \
   "${FEATURE_ROOT}"
+
+echo "[architecture] rule-16: instrumentation sources and connected test APK owners stay aligned"
+run_instrumentation_test_ownership_guard
 
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[architecture] boundary verification failed."

@@ -205,6 +205,7 @@ run_architecture_checks() {
   bash "${ROOT_DIR}/scripts/quality/test_identification_feature_boundary.sh" || return $?
   bash "${ROOT_DIR}/scripts/quality/test_login_feature_boundary.sh" || return $?
   bash "${ROOT_DIR}/scripts/quality/test_entry_navigation_contracts.sh" || return $?
+  bash "${ROOT_DIR}/scripts/quality/test_instrumentation_test_ownership.sh" || return $?
   bash "${ROOT_DIR}/scripts/quality/verify_entry_navigation_contracts.sh" \
     --project-root "${project_root}" || return $?
   bash "${ROOT_DIR}/scripts/quality/verify_architecture_boundaries.sh" "${project_root}"
@@ -214,6 +215,8 @@ run_android_build_governance() {
   local project_root="$1"
 
   bash "${ROOT_DIR}/scripts/quality/test_android_build_governance.sh" || return $?
+  bash "${ROOT_DIR}/scripts/quality/test_ci_workflow_quality.sh" || return $?
+  bash "${ROOT_DIR}/scripts/quality/verify_ci_workflow_quality.sh" || return $?
   bash "${ROOT_DIR}/scripts/quality/verify_android_build_baseline.sh" --project-root "${project_root}" || return $?
   bash "${ROOT_DIR}/scripts/quality/verify_dependency_policy.sh" --project-root "${project_root}" || return $?
   bash "${ROOT_DIR}/scripts/quality/verify_target_sdk_readiness.sh" --project-root "${project_root}" || return $?
@@ -258,7 +261,7 @@ run_local_fast() {
       return 0
     fi
 
-    if has_changed_paths '^(app/src/(main|debug|test|androidTest)/kotlin/com/ytone/longcare/|core/|feature/|gradle/libs\.versions\.toml|scripts/quality/(preflight_local\.sh|verify_architecture_boundaries\.sh|verify_legacy_feature_file_allowlist\.sh|test_legacy_feature_file_allowlist\.sh|verify_user_storage_boundaries\.sh|test_user_storage_boundaries\.sh|verify_identification_feature_boundary\.sh|test_identification_feature_boundary\.sh|verify_login_feature_boundary\.sh|test_login_feature_boundary\.sh|verify_entry_navigation_contracts\.sh|test_entry_navigation_contracts\.sh|run_entry_navigation_focused\.sh|legacy_feature_files_allowlist\.txt|architecture_legacy_imports_allowlist\.txt|architecture_legacy_import_budget\.txt))'; then
+    if has_changed_paths '^(app/src/(main|debug|test|androidTest)/kotlin/com/ytone/longcare/|core/|feature/|gradle/libs\.versions\.toml|scripts/quality/(preflight_local\.sh|verify_architecture_boundaries\.sh|verify_legacy_feature_file_allowlist\.sh|test_legacy_feature_file_allowlist\.sh|verify_user_storage_boundaries\.sh|test_user_storage_boundaries\.sh|verify_identification_feature_boundary\.sh|test_identification_feature_boundary\.sh|verify_login_feature_boundary\.sh|test_login_feature_boundary\.sh|verify_entry_navigation_contracts\.sh|test_entry_navigation_contracts\.sh|run_entry_navigation_focused\.sh|verify_instrumentation_test_ownership\.sh|test_instrumentation_test_ownership\.sh|run_connected_instrumentation_suite\.sh|instrumentation_test_modules\.txt|legacy_feature_files_allowlist\.txt|architecture_legacy_imports_allowlist\.txt|architecture_legacy_import_budget\.txt))'; then
       run_step \
         "architecture-boundaries" \
         run_architecture_checks "${ROOT_DIR}"

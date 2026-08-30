@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
@@ -33,10 +34,12 @@ import com.ytone.longcare.ui.components.UserAvatar
 @Composable
 fun TopHeader(user: CurrentUser, companyName: String) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val useCompactLargeTextLayout =
-            maxWidth < 340.dp && LocalDensity.current.fontScale >= 1.3f
-        val regularUserBlockWidth = if (maxWidth >= 480.dp) 160.dp else 120.dp
-        if (useCompactLargeTextLayout) {
+        val layoutSpec =
+            resolveTopHeaderLayoutSpec(
+                availableWidth = maxWidth,
+                fontScale = LocalDensity.current.fontScale,
+            )
+        if (layoutSpec.useCompactLargeTextLayout) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -72,7 +75,7 @@ fun TopHeader(user: CurrentUser, companyName: String) {
                 }
                 HeaderUserInfo(
                     user = user,
-                    modifier = Modifier.width(regularUserBlockWidth),
+                    modifier = Modifier.width(layoutSpec.regularUserBlockWidth),
                     userNameMaxLines = 1,
                 )
                 HeaderAvatar(user)
@@ -80,6 +83,20 @@ fun TopHeader(user: CurrentUser, companyName: String) {
         }
     }
 }
+
+internal data class TopHeaderLayoutSpec(
+    val useCompactLargeTextLayout: Boolean,
+    val regularUserBlockWidth: Dp,
+)
+
+internal fun resolveTopHeaderLayoutSpec(
+    availableWidth: Dp,
+    fontScale: Float,
+): TopHeaderLayoutSpec =
+    TopHeaderLayoutSpec(
+        useCompactLargeTextLayout = availableWidth < 340.dp && fontScale >= 1.3f,
+        regularUserBlockWidth = if (availableWidth >= 480.dp) 160.dp else 120.dp,
+    )
 
 @Composable
 private fun HeaderLogo() {

@@ -188,7 +188,8 @@ cache/user_scopes/v1/<sha256>/session/<purpose>/...
 ## 构建与发布现实
 
 - Debug、Release、nonMinifiedRelease 和 benchmarkRelease 变体由 Android CLI/Gradle 识别。
-- Android CI 的正常阻断路径以构建、Lint、架构和治理为主；affected login feature 变更会额外执行 feature compile/unit/lint，并让 app 与 feature-owned instrumentation 分别使用自己的 test APK。其他完整业务测试仍由本地 `--full` 和专项验证承担。
+- Connected instrumentation 的真实 test APK owner 只有 `:app`、`:core:data`、`:feature:identification`、`:feature:login`；`run_connected_instrumentation_suite.sh` 只执行这四个模块限定 task，空 Library 不参与。
+- Android CI 的正常阻断路径以构建、Lint、架构和治理为主；affected app/login 变化只在各自 API 36 Managed Device test APK 上执行 focused smoke，摘要区分 build-only、app focused 和 login feature focused。其他完整业务测试仍由本地 `--full` 和显式 connected 专项入口承担。
 - 验收 Release 必须显式设置 `release.production=false` 和 `release.acceptance=true`。
 - 当前生产 Release 是 fail-closed：临时 QLZ key/test mode、QLZ 弱 TLS 检查和腾讯人脸 ARM64 16 KB 对齐问题未解决前，生产门禁必须失败。
 

@@ -89,27 +89,6 @@ if [[ -f "${MATRIX_FILE}" ]]; then
   [[ -n "${smoke_classes}" && -n "${candidate_classes}" ]] || fail "current and candidate app smoke class sets must not be empty"
   [[ -n "${login_feature_classes}" && -n "${candidate_login_feature_classes}" ]] || fail "current and candidate login feature smoke class sets must not be empty"
 
-  verify_owned_classes() {
-    local field_name="$1"
-    local class_list="$2"
-    local source_root="$3"
-    local fqcn
-    IFS=',' read -r -a owned_classes <<< "${class_list}"
-    for fqcn in "${owned_classes[@]}"; do
-      local relative_class_path="${fqcn//.//}.kt"
-      local java_path="${source_root}/java/${relative_class_path}"
-      local kotlin_path="${source_root}/kotlin/${relative_class_path}"
-      if [[ ! -f "${java_path}" && ! -f "${kotlin_path}" ]]; then
-        fail "${field_name} class ${fqcn} is not owned by ${source_root#"${PROJECT_ROOT}/"}"
-      fi
-    done
-  }
-
-  verify_owned_classes "current_target_smoke_classes" "${smoke_classes}" "${PROJECT_ROOT}/app/src/androidTest"
-  verify_owned_classes "candidate_smoke_classes" "${candidate_classes}" "${PROJECT_ROOT}/app/src/androidTest"
-  verify_owned_classes "current_target_login_feature_smoke_classes" "${login_feature_classes}" "${PROJECT_ROOT}/feature/login/src/androidTest"
-  verify_owned_classes "candidate_target_login_feature_smoke_classes" "${candidate_login_feature_classes}" "${PROJECT_ROOT}/feature/login/src/androidTest"
-
   for required_check in adaptive-window message-queue-reflection-native local-network certificate-transparency-network background-alarm-audio vendor-sdk-startup; do
     case ",${candidate_checks}," in
       *",${required_check},"*) ;;
@@ -132,7 +111,10 @@ if [[ -f "${MATRIX_FILE}" ]]; then
   class_status=0
   bash "${SCRIPT_DIR}/verify_instrumentation_smoke_classes.sh" \
     --project-root "${PROJECT_ROOT}" \
-    --source "${MATRIX_FILE}" || class_status=$?
+    --owned-field "${MATRIX_FILE}" current_target_smoke_classes app/src/androidTest \
+    --owned-field "${MATRIX_FILE}" candidate_smoke_classes app/src/androidTest \
+    --owned-field "${MATRIX_FILE}" current_target_login_feature_smoke_classes feature/login/src/androidTest \
+    --owned-field "${MATRIX_FILE}" candidate_target_login_feature_smoke_classes feature/login/src/androidTest || class_status=$?
   [[ "${class_status}" -eq 0 ]] || fail "one or more matrix instrumentation classes do not resolve"
 fi
 

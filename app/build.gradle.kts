@@ -133,7 +133,7 @@ android {
             create("pixelTabletApi37") {
                 device = "Pixel Tablet"
                 apiLevel = 37
-                systemImageSource = "aosp"
+                systemImageSource = "google"
                 pageAlignment =
                     com.android.build.api.dsl.ManagedVirtualDevice.PageAlignment.FORCE_16KB_PAGES
             }
@@ -274,6 +274,7 @@ dependencies {
 
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.androidx.navigation.testing)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
