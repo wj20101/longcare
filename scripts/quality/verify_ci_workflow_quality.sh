@@ -449,6 +449,9 @@ for workflow in "${WORKFLOWS[@]}"; do
 done
 
 check_affected_modules_rejects_invalid_base "${AFFECTED_MODULES_SCRIPT}"
+require_pattern "${AFFECTED_MODULES_SCRIPT}" "\\.github/workflows/android-ci\\.yml" "affected modules runs instrumentation for Android CI workflow changes"
+require_pattern "${AFFECTED_MODULES_SCRIPT}" "\\.github/scripts/run-instrumentation-smoke\\.sh" "affected modules runs instrumentation for smoke runner changes"
+require_pattern "${AFFECTED_MODULES_SCRIPT}" "scripts/quality/affected-modules\\.sh" "affected modules runs instrumentation for detector changes"
 
 require_pattern \
   "${GRADLE_WRAPPER_PROPERTIES}" \

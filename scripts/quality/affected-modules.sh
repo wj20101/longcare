@@ -206,6 +206,12 @@ for file in "${changed_files[@]:-}"; do
   esac
 
   case "${file}" in
+    .github/workflows/android-ci.yml|.github/scripts/run-instrumentation-smoke.sh|scripts/quality/affected-modules.sh)
+      run_instrumentation="true"
+      ;;
+  esac
+
+  case "${file}" in
     app/src/main/kotlin/com/ytone/longcare/features/service/*|app/src/main/kotlin/com/ytone/longcare/features/servicecountdown/*)
       run_instrumentation="true"
       add_smoke_class_unique "com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest"
