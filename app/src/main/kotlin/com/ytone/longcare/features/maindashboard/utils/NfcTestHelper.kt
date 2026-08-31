@@ -131,11 +131,10 @@ class NfcTestHelper @Inject constructor(
     
     override fun onPause(owner: LifecycleOwner) {
         super.onPause(owner)
-        onNfcTestHelperPause(
-            isListening = listeningDelegate.isListening,
-            currentActivity = currentActivity,
-            stopListening = ::stopNfcListening
-        )
+        // A resumed singleTop Activity is paused before Android delivers onNewIntent.
+        // Keep the logical listener active across that boundary so the NFC intent is not dropped.
+        // NfcManager still disables foreground dispatch from its own onPause callback.
+        logD(NfcTestConfig.TEST_TAG, "页面暂停，保留NFC事件监听等待onNewIntent")
     }
     
     override fun onDestroy(owner: LifecycleOwner) {

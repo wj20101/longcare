@@ -139,17 +139,6 @@ internal fun onNfcTestHelperResume(
     }
 }
 
-internal fun onNfcTestHelperPause(
-    isListening: Boolean,
-    currentActivity: Activity?,
-    stopListening: (Activity) -> Unit
-) {
-    if (isListening) {
-        nfcTestLog("页面暂停，关闭NFC监听")
-        currentActivity?.let(stopListening)
-    }
-}
-
 internal fun onNfcTestHelperDestroy(
     currentActivity: Activity?,
     disable: (Activity) -> Unit
