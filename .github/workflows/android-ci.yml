@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: android-ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event.pull_request.head.sha || 'stable' }}
+  group: android-ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
