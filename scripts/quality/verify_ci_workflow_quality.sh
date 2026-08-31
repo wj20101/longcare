@@ -449,6 +449,9 @@ for workflow in "${WORKFLOWS[@]}"; do
 done
 
 check_affected_modules_rejects_invalid_base "${AFFECTED_MODULES_SCRIPT}"
+require_pattern "${AFFECTED_MODULES_SCRIPT}" "\\.github/workflows/android-ci\\.yml" "affected modules runs instrumentation for Android CI workflow changes"
+require_pattern "${AFFECTED_MODULES_SCRIPT}" "\\.github/scripts/run-instrumentation-smoke\\.sh" "affected modules runs instrumentation for smoke runner changes"
+require_pattern "${AFFECTED_MODULES_SCRIPT}" "scripts/quality/affected-modules\\.sh" "affected modules runs instrumentation for detector changes"
 
 require_pattern \
   "${GRADLE_WRAPPER_PROPERTIES}" \
@@ -480,6 +483,7 @@ fi
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "paths-ignore:" "android-ci has paths-ignore optimization"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "^[[:space:]]{2}push:" "android-ci keeps push trigger"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "^[[:space:]]{2}pull_request:" "android-ci keeps pull_request trigger"
+require_absent_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "pull_request\.head\.sha" "android-ci PR concurrency group stays stable across commits"
 check_job_timeout "${ROOT_DIR}/.github/workflows/android-ci.yml" "detect-affected" "10" "android-ci detect-affected keeps timeout budget 10"
 check_job_timeout "${ROOT_DIR}/.github/workflows/android-ci.yml" "verify-build" "45" "android-ci verify-build keeps timeout budget 45"
 check_job_timeout "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "45" "android-ci instrumentation smoke keeps timeout budget 45"
@@ -492,6 +496,10 @@ check_job_absent_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrum
 check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "^[[:space:]]{4}if:[[:space:]]*needs\.detect-affected\.outputs\.run_instrumentation[[:space:]]*==[[:space:]]*'true'[[:space:]]*$" "android-ci gates instrumentation by affected output"
 check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "^[[:space:]]{4}env:[[:space:]]*$" "android-ci instrumentation smoke declares environment"
 check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "^[[:space:]]{6}SMOKE_TEST_CLASSES:[[:space:]]*\\$\\{\\{ needs\.detect-affected\.outputs\.smoke_test_classes \\}\\}$" "android-ci passes selected smoke classes"
+check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Enable KVM acceleration" "MODE=\\\"0666\\\"" "android-ci enables KVM device permissions"
+check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Enable KVM acceleration" "sudo[[:space:]]+udevadm[[:space:]]+trigger[[:space:]]+--name-match=kvm" "android-ci applies KVM udev permissions"
+check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Enable KVM acceleration" "test[[:space:]]+-r[[:space:]]+/dev/kvm" "android-ci verifies KVM read access"
+check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Enable KVM acceleration" "test[[:space:]]+-w[[:space:]]+/dev/kvm" "android-ci verifies KVM write access"
 check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Run selected instrumentation smoke tests" "^[[:space:]]{8}uses:[[:space:]]*reactivecircus/android-emulator-runner@v2$" "android-ci pins emulator runner v2"
 check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Build app and instrumentation APKs" "^[[:space:]]{12}:app:assembleDebug[[:space:]]" "android-ci instrumentation smoke builds the debug app"
 check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Build app and instrumentation APKs" "^[[:space:]]{12}:app:assembleDebugAndroidTest[[:space:]]" "android-ci instrumentation smoke builds the test APK"
