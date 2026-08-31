@@ -25,7 +25,7 @@ androidxWindow = "1.5.1"
 composeBom = "2026.08.00"
 
 # Camera and machine learning
-androidxCamera = "1.6.1"
+androidxCamera = "1.6.2"
 mlKitFaceDetection = "16.1.7"
 
 # Persistence and background work
