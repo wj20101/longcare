@@ -145,6 +145,156 @@ check_job_timeout() {
   fi
 }
 
+extract_job_content() {
+  local file_path="$1"
+  local job_name="$2"
+
+  awk -v target_job="${job_name}" '
+    $0 ~ "^  " target_job ":$" {
+      in_target_job = 1
+      next
+    }
+    in_target_job && $0 ~ "^  [A-Za-z0-9_-]+:$" {
+      exit
+    }
+    in_target_job {
+      print
+    }
+  ' "${file_path}"
+}
+
+check_job_contains_pattern() {
+  local file_path="$1"
+  local job_name="$2"
+  local pattern="$3"
+  local message="$4"
+  local job_content=""
+  local matched="false"
+
+  job_content="$(extract_job_content "${file_path}" "${job_name}")"
+
+  if [[ -z "${job_content}" ]]; then
+    echo "[ci-workflow-quality][FAIL] ${message} (job '${job_name}' not found in ${file_path})"
+    EXIT_CODE=1
+    return
+  fi
+
+  if command -v rg >/dev/null 2>&1; then
+    if printf '%s\n' "${job_content}" | rg -q -- "${pattern}"; then
+      matched="true"
+    fi
+  elif printf '%s\n' "${job_content}" | grep -Eq -- "${pattern}"; then
+    matched="true"
+  fi
+
+  if [[ "${matched}" == "true" ]]; then
+    echo "[ci-workflow-quality][PASS] ${message}"
+  else
+    echo "[ci-workflow-quality][FAIL] ${message} (missing pattern '${pattern}' in job '${job_name}' of ${file_path})"
+    EXIT_CODE=1
+  fi
+}
+
+check_job_absent_pattern() {
+  local file_path="$1"
+  local job_name="$2"
+  local pattern="$3"
+  local message="$4"
+  local job_content=""
+
+  job_content="$(extract_job_content "${file_path}" "${job_name}")"
+  if [[ -z "${job_content}" ]]; then
+    echo "[ci-workflow-quality][FAIL] ${message} (job '${job_name}' not found in ${file_path})"
+    EXIT_CODE=1
+    return
+  fi
+
+  if command -v rg >/dev/null 2>&1; then
+    if printf '%s\n' "${job_content}" | rg -q -- "${pattern}"; then
+      echo "[ci-workflow-quality][FAIL] ${message} (unexpected pattern '${pattern}' in job '${job_name}' of ${file_path})"
+      EXIT_CODE=1
+      return
+    fi
+  elif printf '%s\n' "${job_content}" | grep -Eq -- "${pattern}"; then
+    echo "[ci-workflow-quality][FAIL] ${message} (unexpected pattern '${pattern}' in job '${job_name}' of ${file_path})"
+    EXIT_CODE=1
+    return
+  fi
+
+  echo "[ci-workflow-quality][PASS] ${message}"
+}
+
+check_job_step_contains_pattern() {
+  local file_path="$1"
+  local job_name="$2"
+  local step_name="$3"
+  local pattern="$4"
+  local message="$5"
+  local step_content=""
+  local matched="false"
+
+  step_content="$(
+    awk -v target_job="${job_name}" -v target_step="${step_name}" '
+      $0 ~ "^  " target_job ":$" {
+        in_target_job = 1
+        next
+      }
+      in_target_job && $0 ~ "^  [A-Za-z0-9_-]+:$" {
+        exit
+      }
+      in_target_job && $0 ~ "^      - name:[[:space:]]*" {
+        current_step = $0
+        sub(/^      - name:[[:space:]]*/, "", current_step)
+        in_target_step = (current_step == target_step)
+        next
+      }
+      in_target_job && in_target_step {
+        print
+      }
+    ' "${file_path}"
+  )"
+
+  if [[ -z "${step_content}" ]]; then
+    echo "[ci-workflow-quality][FAIL] ${message} (step '${step_name}' not found in job '${job_name}' of ${file_path})"
+    EXIT_CODE=1
+    return
+  fi
+
+  if command -v rg >/dev/null 2>&1; then
+    if printf '%s\n' "${step_content}" | rg -q -- "${pattern}"; then
+      matched="true"
+    fi
+  elif printf '%s\n' "${step_content}" | grep -Eq -- "${pattern}"; then
+    matched="true"
+  fi
+
+  if [[ "${matched}" == "true" ]]; then
+    echo "[ci-workflow-quality][PASS] ${message}"
+  else
+    echo "[ci-workflow-quality][FAIL] ${message} (missing pattern '${pattern}' in step '${step_name}' of job '${job_name}' in ${file_path})"
+    EXIT_CODE=1
+  fi
+}
+
+check_affected_modules_rejects_invalid_base() {
+  local script_path="$1"
+  local invalid_ref="0000000000000000000000000000000000000000"
+  local output=""
+
+  if output="$(bash "${script_path}" --format text --base "${invalid_ref}" --head HEAD 2>&1)"; then
+    echo "[ci-workflow-quality][FAIL] affected modules rejects invalid base ref (command unexpectedly succeeded)"
+    EXIT_CODE=1
+    return
+  fi
+
+  if [[ "${output}" == *"Invalid base ref '${invalid_ref}': expected a commit"* ]]; then
+    echo "[ci-workflow-quality][PASS] affected modules rejects invalid base ref"
+  else
+    echo "[ci-workflow-quality][FAIL] affected modules rejects invalid base ref (unclear error: ${output})"
+    EXIT_CODE=1
+  fi
+}
+
 check_upload_artifact_step_policies() {
   local file_path="$1"
   local message="$2"
@@ -275,6 +425,7 @@ WORKFLOWS=(
 )
 SHARED_ANDROID_BUILD_ENV_ACTION="${ROOT_DIR}/.github/actions/android-build-env/action.yml"
 GRADLE_WRAPPER_PROPERTIES="${ROOT_DIR}/gradle/wrapper/gradle-wrapper.properties"
+AFFECTED_MODULES_SCRIPT="${ROOT_DIR}/scripts/quality/affected-modules.sh"
 
 for workflow in "${WORKFLOWS[@]}"; do
   if [[ ! -f "${workflow}" ]]; then
@@ -296,6 +447,8 @@ for workflow in "${WORKFLOWS[@]}"; do
   require_any_pattern "${workflow}" "uses:[[:space:]]*gradle/actions/setup-gradle@v5" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "uses setup-gradle action (direct or shared)"
   require_any_pattern "${workflow}" "bash scripts/quality/verify_gradle_stability\\.sh" "uses:[[:space:]]*\\./\\.github/actions/android-build-env" "runs Gradle stability gate (direct or shared)"
 done
+
+check_affected_modules_rejects_invalid_base "${AFFECTED_MODULES_SCRIPT}"
 
 require_pattern \
   "${GRADLE_WRAPPER_PROPERTIES}" \
@@ -329,6 +482,29 @@ require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "^[[:space:]]{2}p
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "^[[:space:]]{2}pull_request:" "android-ci keeps pull_request trigger"
 check_job_timeout "${ROOT_DIR}/.github/workflows/android-ci.yml" "detect-affected" "10" "android-ci detect-affected keeps timeout budget 10"
 check_job_timeout "${ROOT_DIR}/.github/workflows/android-ci.yml" "verify-build" "45" "android-ci verify-build keeps timeout budget 45"
+check_job_timeout "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "45" "android-ci instrumentation smoke keeps timeout budget 45"
+require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "^[[:space:]]{2}instrumentation-smoke:" "android-ci defines instrumentation smoke job"
+check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "^[[:space:]]{4}permissions:[[:space:]]*$" "android-ci instrumentation smoke declares job permissions"
+check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "^[[:space:]]{6}-[[:space:]]*detect-affected$" "android-ci instrumentation smoke needs detect-affected"
+check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "^[[:space:]]{6}-[[:space:]]*verify-build$" "android-ci instrumentation smoke needs verify-build"
+check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "^[[:space:]]{6}contents:[[:space:]]*read$" "android-ci instrumentation smoke limits permissions to contents read"
+check_job_absent_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "^[[:space:]]{6}actions:[[:space:]]*write$" "android-ci instrumentation smoke does not grant actions write"
+check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "^[[:space:]]{4}if:[[:space:]]*needs\.detect-affected\.outputs\.run_instrumentation[[:space:]]*==[[:space:]]*'true'[[:space:]]*$" "android-ci gates instrumentation by affected output"
+check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "^[[:space:]]{4}env:[[:space:]]*$" "android-ci instrumentation smoke declares environment"
+check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "^[[:space:]]{6}SMOKE_TEST_CLASSES:[[:space:]]*\\$\\{\\{ needs\.detect-affected\.outputs\.smoke_test_classes \\}\\}$" "android-ci passes selected smoke classes"
+check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Run selected instrumentation smoke tests" "^[[:space:]]{8}uses:[[:space:]]*reactivecircus/android-emulator-runner@v2$" "android-ci pins emulator runner v2"
+check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Build app and instrumentation APKs" "^[[:space:]]{12}:app:assembleDebug[[:space:]]" "android-ci instrumentation smoke builds the debug app"
+check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Build app and instrumentation APKs" "^[[:space:]]{12}:app:assembleDebugAndroidTest[[:space:]]" "android-ci instrumentation smoke builds the test APK"
+check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Build app and instrumentation APKs" "^[[:space:]]{12}-Pbaseline\.enableX86_64=true$" "android-ci instrumentation smoke enables x86_64 baseline build"
+check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Run selected instrumentation smoke tests" "^[[:space:]]{10}api-level:[[:space:]]*36$" "android-ci instrumentation smoke uses API 36"
+check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Run selected instrumentation smoke tests" "^[[:space:]]{10}arch:[[:space:]]*x86_64$" "android-ci instrumentation smoke uses x86_64 emulator"
+check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Run selected instrumentation smoke tests" "^[[:space:]]{10}script:[[:space:]]+bash[[:space:]]+\.github/scripts/run-instrumentation-smoke\.sh$" "android-ci reuses instrumentation smoke script"
+check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Upload instrumentation smoke reports" "^[[:space:]]{8}if:[[:space:]]*always\(\)$" "android-ci instrumentation smoke uploads reports on failure"
+check_job_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "instrumentation-smoke" "Upload instrumentation smoke reports" "^[[:space:]]{8}uses:[[:space:]]*actions/upload-artifact@v7$" "android-ci instrumentation smoke uses pinned artifact upload"
+check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "cleanup-caches" "^[[:space:]]{6}-[[:space:]]*instrumentation-smoke$" "android-ci cleanup waits for instrumentation smoke"
+check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "cleanup-caches" "^[[:space:]]{4}if:[[:space:]]*always\(\)$" "android-ci cleanup runs after smoke success failure or skip"
+check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "cleanup-caches" "^[[:space:]]{6}actions:[[:space:]]*write$" "android-ci cleanup retains actions write permission"
+check_job_contains_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "cleanup-caches" "^[[:space:]]{6}contents:[[:space:]]*read$" "android-ci cleanup retains contents read permission"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "-[[:space:]]*\"docs/\\*\\*\"" "android-ci paths-ignore includes docs directory"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "-[[:space:]]*\"\\*\\.md\"" "android-ci paths-ignore includes root markdown files"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "-[[:space:]]*\"\\*\\*/\\*\\.md\"" "android-ci paths-ignore includes markdown files"

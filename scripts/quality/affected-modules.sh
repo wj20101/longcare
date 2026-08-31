@@ -70,28 +70,52 @@ add_smoke_class_unique() {
   smoke_classes+=("${value}")
 }
 
+add_changed_android_test_class() {
+  local file="$1"
+  local relative
+
+  case "${file}" in
+    app/src/androidTest/kotlin/*)
+      relative="${file#app/src/androidTest/kotlin/}"
+      ;;
+    app/src/androidTest/java/*)
+      relative="${file#app/src/androidTest/java/}"
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+
+  if ! git cat-file -e "${HEAD_REF}:${file}" 2>/dev/null; then
+    return 0
+  fi
+
+  relative="${relative%.*}"
+  add_smoke_class_unique "${relative//\//.}"
+}
+
 resolve_base_ref() {
   if [[ -n "${BASE_REF}" ]]; then
     echo "${BASE_REF}"
     return 0
   fi
 
-  if [[ -n "${GITHUB_BASE_REF:-}" ]] && git rev-parse --verify "origin/${GITHUB_BASE_REF}" >/dev/null 2>&1; then
+  if [[ -n "${GITHUB_BASE_REF:-}" ]] && git rev-parse --verify "origin/${GITHUB_BASE_REF}^{commit}" >/dev/null 2>&1; then
     echo "origin/${GITHUB_BASE_REF}"
     return 0
   fi
 
-  if git rev-parse --verify origin/master >/dev/null 2>&1; then
+  if git rev-parse --verify "origin/master^{commit}" >/dev/null 2>&1; then
     echo "origin/master"
     return 0
   fi
 
-  if git rev-parse --verify origin/main >/dev/null 2>&1; then
+  if git rev-parse --verify "origin/main^{commit}" >/dev/null 2>&1; then
     echo "origin/main"
     return 0
   fi
 
-  if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+  if git rev-parse --verify "HEAD~1^{commit}" >/dev/null 2>&1; then
     echo "HEAD~1"
     return 0
   fi
@@ -100,21 +124,53 @@ resolve_base_ref() {
 }
 
 BASE_REF="$(resolve_base_ref)"
-DIFF_RANGE="${BASE_REF}...${HEAD_REF}"
+
+validate_commit_ref() {
+  local label="$1"
+  local ref="$2"
+
+  if [[ -z "${ref}" ]] || ! git rev-parse --verify "${ref}^{commit}" >/dev/null 2>&1; then
+    echo "Invalid ${label} ref '${ref}': expected a commit" >&2
+    exit 1
+  fi
+}
+
+validate_commit_ref "base" "${BASE_REF}"
+validate_commit_ref "head" "${HEAD_REF}"
 
 read_changed_files() {
   local range="$1"
+  local output=""
   local line
+
+  if ! output="$(git diff --name-only "${range}" 2>&1)"; then
+    DIFF_ERROR="${output}"
+    changed_files=()
+    return 1
+  fi
+
   changed_files=()
-  while IFS= read -r line; do
-    changed_files+=("${line}")
-  done < <(git diff --name-only "${range}" 2>/dev/null || true)
+  if [[ -n "${output}" ]]; then
+    while IFS= read -r line; do
+      changed_files+=("${line}")
+    done <<< "${output}"
+  fi
+  DIFF_ERROR=""
+  return 0
 }
 
-read_changed_files "${DIFF_RANGE}"
-if [[ "${#changed_files[@]}" -eq 0 ]] && ! git diff --quiet "${DIFF_RANGE}" 2>/dev/null; then
+DIFF_ERROR=""
+DIFF_RANGE="${BASE_REF}...${HEAD_REF}"
+if ! read_changed_files "${DIFF_RANGE}"; then
+  three_dot_error="${DIFF_ERROR}"
   DIFF_RANGE="${BASE_REF}..${HEAD_REF}"
-  read_changed_files "${DIFF_RANGE}"
+  if ! read_changed_files "${DIFF_RANGE}"; then
+    two_dot_error="${DIFF_ERROR}"
+    echo "Unable to diff valid affected refs '${BASE_REF}' and '${HEAD_REF}'." >&2
+    echo "Three-dot diff failed: ${three_dot_error}" >&2
+    echo "Two-dot diff failed: ${two_dot_error}" >&2
+    exit 1
+  fi
 fi
 
 for file in "${changed_files[@]:-}"; do
@@ -140,8 +196,12 @@ for file in "${changed_files[@]:-}"; do
   esac
 
   case "${file}" in
-    app/src/main/*|app/src/androidTest/*|baselineprofile/*)
+    app/src/main/*|baselineprofile/*)
       run_instrumentation="true"
+      ;;
+    app/src/androidTest/*)
+      run_instrumentation="true"
+      add_changed_android_test_class "${file}"
       ;;
   esac
 

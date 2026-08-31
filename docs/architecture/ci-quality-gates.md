@@ -47,16 +47,14 @@ bash scripts/quality/verify_release_validation_entry.sh .
 
 ## Android CI
 
-`.github/workflows/android-ci.yml` 的正常阻断策略是 build-only：
+`.github/workflows/android-ci.yml` 保留普通 PR/Push 的 build-only 主阻断路径，并在 affected scope 明确要求时追加独立 instrumentation smoke job：
 
-1. 计算 affected scope 和 Gradle tasks。
-2. 执行 ci-required shell guards。
-3. 执行 `:app:lintDebug :app:assembleDebug`；full scope 额外执行 `:app:bundleDebug`。
-4. 对生成的 Lint 文本报告执行 warning allowlist。
-5. 上传 Debug APK；full scope 上传 AAB 和可用的 Baseline Profile APK。
-6. 总是上传报告，失败时上传额外诊断产物。
+1. `detect-affected` 计算 Gradle tasks、`run_instrumentation` 和 smoke test classes。
+2. `verify-build` 执行 ci-required guards、Lint 和 Debug 构建，不启动模拟器；full scope 额外构建 Debug AAB。
+3. 仅当 `run_instrumentation=true` 时，`instrumentation-smoke` 在 API 36 x86_64 emulator 上构建 App/androidTest APK，并通过 `.github/scripts/run-instrumentation-smoke.sh` 逐个执行选中的 App test class。
+4. Debug APK、构建报告和诊断产物按既有策略上传；smoke 报告和失败 logcat 作为 7 天 artifact 上传，未受影响的改动不承担 emulator 成本。
 
-普通 Android CI **不执行业务单元测试、UI assertion 或完整用户旅程**。这是当前明确的流水线策略，不代表测试不重要：相关改动应在本地 `--full`、专项验证或发布验收中运行对应测试。
+该条件 job 仍不是完整业务回归矩阵。普通主阻断路径本身不执行业务单元测试或完整用户旅程，条件 smoke 也只执行 affected scope 选中的 App instrumentation class。完整 `:app` 与 `:core:data` connected tests 通过 `scripts/quality/run_connected_android_tests.sh` 在本地或发布验收环境执行。
 
 当前 ci-required guards：
 
@@ -155,6 +153,9 @@ bash scripts/quality/preflight_local.sh --local-fast
 
 # Kotlin/业务改动
 bash scripts/quality/preflight_local.sh --full
+
+# 完整 App 与 core:data connected tests
+ANDROID_SERIAL=emulator-5554 bash scripts/quality/run_connected_android_tests.sh --continue
 
 # 与普通 Android CI 对齐
 bash scripts/quality/verify_release_validation_entry.sh .

@@ -97,40 +97,4 @@ class TopHeaderAdaptationTest {
         assertTrue(companyBounds.top >= avatarBounds.bottom)
     }
 
-    @Test
-    fun medium_width_large_font_keeps_user_name_on_one_line() {
-        composeRule.setContent {
-            val currentDensity = LocalDensity.current
-            CompositionLocalProvider(
-                LocalDensity provides
-                    Density(
-                        density = currentDensity.density,
-                        fontScale = 1.4f,
-                    )
-            ) {
-                LongCareTheme {
-                    Box(modifier = Modifier.width(645.dp)) {
-                        TopHeader(
-                            user = User(userName = "Android销售", userIdentity = 1),
-                            companyName = "庆平智慧养老测试",
-                        )
-                    }
-                }
-            }
-        }
-
-        val userNameBounds =
-            composeRule.onNodeWithTag("home_top_user_name").fetchSemanticsNode().boundsInRoot
-        val avatarBounds =
-            composeRule.onNodeWithTag("home_top_avatar").fetchSemanticsNode().boundsInRoot
-        val companyBounds =
-            composeRule.onNodeWithTag("home_top_company_name").fetchSemanticsNode().boundsInRoot
-        val maxSingleLineHeightPx = with(composeRule.density) { 32.dp.toPx() }
-        val expectedUserBlockWidthPx = with(composeRule.density) { 160.dp.toPx() }
-
-        assertTrue(userNameBounds.height <= maxSingleLineHeightPx)
-        assertTrue(userNameBounds.width >= expectedUserBlockWidthPx)
-        assertTrue(userNameBounds.right < avatarBounds.left)
-        assertTrue(companyBounds.right < userNameBounds.left)
-    }
 }

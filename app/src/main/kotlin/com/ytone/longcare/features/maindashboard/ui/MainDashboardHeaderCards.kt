@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
@@ -30,12 +31,15 @@ import com.ytone.longcare.model.userIdentityDisplay
 import com.ytone.longcare.platform.text.labelRes
 import com.ytone.longcare.ui.components.UserAvatar
 
+internal fun topHeaderUserBlockWidth(maxWidth: Dp): Dp =
+    if (maxWidth >= 480.dp) 160.dp else 120.dp
+
 @Composable
 fun TopHeader(user: User, companyName: String) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val useCompactLargeTextLayout =
             maxWidth < 340.dp && LocalDensity.current.fontScale >= 1.3f
-        val regularUserBlockWidth = if (maxWidth >= 480.dp) 160.dp else 120.dp
+        val regularUserBlockWidth = topHeaderUserBlockWidth(maxWidth)
         if (useCompactLargeTextLayout) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(
