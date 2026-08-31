@@ -4480,6 +4480,7 @@ Landroidx/compose/ui/MotionDurationScale$Key;
 HSPLandroidx/compose/ui/MotionDurationScale$Key;-><clinit>()V
 HSPLandroidx/compose/ui/MotionDurationScale$Key;-><init>()V
 Landroidx/compose/ui/R$id;
+Landroidx/compose/ui/R$string;
 Landroidx/compose/ui/R$style;
 Landroidx/compose/ui/SessionMutex;
 HSPLandroidx/compose/ui/SessionMutex;->constructor-impl()Ljava/util/concurrent/atomic/AtomicReference;
@@ -7583,11 +7584,14 @@ HSPLandroidx/compose/ui/semantics/CoreSemanticsModifierNode;-><init>(ZZLkotlin/j
 HSPLandroidx/compose/ui/semantics/CoreSemanticsModifierNode;->applySemantics(Landroidx/compose/ui/semantics/SemanticsPropertyReceiver;)V
 HSPLandroidx/compose/ui/semantics/CoreSemanticsModifierNode;->getShouldClearDescendantSemantics()Z
 HSPLandroidx/compose/ui/semantics/CoreSemanticsModifierNode;->getShouldMergeDescendantSemantics()Z
+Landroidx/compose/ui/semantics/CustomAccessibilityAction;
 Landroidx/compose/ui/semantics/EmptySemanticsModifier;
 HSPLandroidx/compose/ui/semantics/EmptySemanticsModifier;-><clinit>()V
 HSPLandroidx/compose/ui/semantics/EmptySemanticsModifier;-><init>()V
 Landroidx/compose/ui/semantics/LiveRegionMode;
+Landroidx/compose/ui/semantics/LiveRegionMode$Companion;
 Landroidx/compose/ui/semantics/ProgressBarRangeInfo;
+Landroidx/compose/ui/semantics/ProgressBarRangeInfo$Companion;
 Landroidx/compose/ui/semantics/Role;
 HSPLandroidx/compose/ui/semantics/Role;-><clinit>()V
 HSPLandroidx/compose/ui/semantics/Role;-><init>(I)V
@@ -9764,6 +9768,7 @@ HSPLandroidx/core/view/accessibility/AccessibilityNodeInfoCompat$AccessibilityAc
 HSPLandroidx/core/view/accessibility/AccessibilityNodeInfoCompat$AccessibilityActionCompat;-><init>(Ljava/lang/Object;ILjava/lang/CharSequence;Landroidx/core/view/accessibility/AccessibilityViewCommand;Ljava/lang/Class;)V
 Landroidx/core/view/accessibility/AccessibilityNodeInfoCompat$Api30Impl;
 HSPLandroidx/core/view/accessibility/AccessibilityNodeInfoCompat$Api30Impl;->setStateDescription(Landroid/view/accessibility/AccessibilityNodeInfo;Ljava/lang/CharSequence;)V
+Landroidx/core/view/accessibility/AccessibilityNodeInfoCompat$RangeInfoCompat;
 Landroidx/core/view/accessibility/AccessibilityNodeProviderCompat;
 HSPLandroidx/core/view/accessibility/AccessibilityNodeProviderCompat;-><init>()V
 HSPLandroidx/core/view/accessibility/AccessibilityNodeProviderCompat;->getProvider()Ljava/lang/Object;
@@ -13961,6 +13966,8 @@ Lkotlin/random/Random$Default;
 HSPLkotlin/random/Random$Default;-><init>()V
 HSPLkotlin/random/Random$Default;-><init>(Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 HSPLkotlin/random/Random$Default;->nextInt(I)I
+Lkotlin/ranges/ClosedFloatingPointRange;
+Lkotlin/ranges/ClosedRange;
 Lkotlin/ranges/RangesKt;
 Lkotlin/ranges/RangesKt__RangesKt;
 Lkotlin/ranges/RangesKt___RangesKt;
@@ -15533,6 +15540,7 @@ HSPLkotlinx/coroutines/scheduling/CoroutineScheduler;->getControlState$volatile$
 HSPLkotlinx/coroutines/scheduling/CoroutineScheduler;->getParkedWorkersStack$volatile$FU()Ljava/util/concurrent/atomic/AtomicLongFieldUpdater;
 HSPLkotlinx/coroutines/scheduling/CoroutineScheduler;->get_isTerminated$volatile$FU()Ljava/util/concurrent/atomic/AtomicIntegerFieldUpdater;
 HSPLkotlinx/coroutines/scheduling/CoroutineScheduler;->isTerminated()Z
+HSPLkotlinx/coroutines/scheduling/CoroutineScheduler;->parkedWorkersStackNextIndex(Lkotlinx/coroutines/scheduling/CoroutineScheduler$Worker;)I
 HSPLkotlinx/coroutines/scheduling/CoroutineScheduler;->parkedWorkersStackPop()Lkotlinx/coroutines/scheduling/CoroutineScheduler$Worker;
 HSPLkotlinx/coroutines/scheduling/CoroutineScheduler;->parkedWorkersStackPush(Lkotlinx/coroutines/scheduling/CoroutineScheduler$Worker;)Z
 HSPLkotlinx/coroutines/scheduling/CoroutineScheduler;->runSafely(Lkotlinx/coroutines/scheduling/Task;)V
