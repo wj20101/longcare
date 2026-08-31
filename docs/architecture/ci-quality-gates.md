@@ -133,6 +133,7 @@ bash scripts/quality/verify_release_validation_entry.sh .
 - 本地：未使用 waiver 作为阻断，推动及时清理。
 - GitHub Actions：未使用 waiver 默认仅提示，降低环境差异导致的 post-merge 噪声。
 - CI 仍可通过 `LINT_ENFORCE_UNUSED_WAIVERS=true` 强制严格模式。
+- 版本目录产生的 `GradleDependency` 与 `NewerVersionAvailable` 仅作为 advisory 输出，不阻断 CI；依赖升级由每周 Dependabot PR 承载，并单独执行兼容性回归。
 
 新增 warning 应优先修复根因。只有有 Owner、范围和退出条件的已知厂商问题才可进入 waiver；production-blocking finding 不能靠 waiver 解除。
 

@@ -139,14 +139,45 @@ warning_line_matches_source_pattern() {
   [[ "${warning_line}" == *"${source_pattern}"* ]]
 }
 
+is_advisory_version_warning() {
+  local issue_id="$1"
+  local warning_line="$2"
+
+  # Version freshness is tracked by Dependabot and should not block unrelated
+  # changes. Keep this exception narrowly scoped to the version catalog so the
+  # same lint IDs from any other source still go through the blocking gate.
+  case "${issue_id}" in
+    GradleDependency|NewerVersionAvailable)
+      [[ "${warning_line}" == *"gradle/libs.versions.toml"* ]]
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 ENFORCE_UNUSED_WAIVERS="$(resolve_enforce_unused_waivers "${ENFORCE_UNUSED_WAIVERS_MODE}")"
 
 TMP_WARNINGS="$(mktemp)"
-trap 'rm -f "${TMP_WARNINGS}"' EXIT
+TMP_GATED_WARNINGS="$(mktemp)"
+TMP_ADVISORY_WARNINGS="$(mktemp)"
+trap 'rm -f "${TMP_WARNINGS}" "${TMP_GATED_WARNINGS}" "${TMP_ADVISORY_WARNINGS}"' EXIT
 
 grep ': Warning: ' "${REPORT_PATH}" > "${TMP_WARNINGS}" || true
 
-WARNING_IDS="$(sed -nE 's/.*\[([A-Za-z0-9_]+)([[:space:]]+from[[:space:]]+[^]]+)?\]$/\1/p' "${TMP_WARNINGS}" | sort -u)"
+while IFS= read -r warning_line; do
+  [[ -z "${warning_line}" ]] && continue
+  issue_id="$(printf '%s\n' "${warning_line}" | sed -nE 's/.*\[([A-Za-z0-9_]+)([[:space:]]+from[[:space:]]+[^]]+)?\]$/\1/p')"
+
+  if [[ -n "${issue_id}" ]] && is_advisory_version_warning "${issue_id}" "${warning_line}"; then
+    printf '%s\n' "${warning_line}" >> "${TMP_ADVISORY_WARNINGS}"
+  else
+    printf '%s\n' "${warning_line}" >> "${TMP_GATED_WARNINGS}"
+  fi
+done < "${TMP_WARNINGS}"
+
+WARNING_IDS="$(sed -nE 's/.*\[([A-Za-z0-9_]+)([[:space:]]+from[[:space:]]+[^]]+)?\]$/\1/p' "${TMP_GATED_WARNINGS}" | sort -u)"
+ADVISORY_WARNING_IDS="$(sed -nE 's/.*\[([A-Za-z0-9_]+)([[:space:]]+from[[:space:]]+[^]]+)?\]$/\1/p' "${TMP_ADVISORY_WARNINGS}" | sort -u)"
 
 if ! jq -e '.waivers | type == "array"' "${WAIVER_PATH}" >/dev/null; then
   echo "Invalid waiver format: missing waivers array (${WAIVER_PATH})" >&2
@@ -192,7 +223,7 @@ if [[ -n "${UNKNOWN_IDS}" ]]; then
   echo "Found lint warning IDs outside waiver allowlist:" >&2
   printf '%s' "${UNKNOWN_IDS}" | sed 's/^/  - /' >&2
   print_lint_gate_diagnostics
-  echo "Observed warning IDs in report:" >&2
+  echo "Observed gated warning IDs in report:" >&2
   printf '%s\n' "${WARNING_IDS}" | sed 's/^/  - /' >&2
   exit 1
 fi
@@ -213,16 +244,20 @@ fi
 if [[ -z "${WARNING_IDS}" ]]; then
   if [[ -n "${WAIVER_IDS}" ]]; then
     if [[ "${ENFORCE_UNUSED_WAIVERS}" == "true" ]]; then
-      echo "Lint report has no warnings, but waiver entries still exist. Remove stale waivers:" >&2
+      echo "Lint report has no gated warnings, but waiver entries still exist. Remove stale waivers:" >&2
       printf '%s\n' "${WAIVER_IDS}" | sed 's/^/  - /' >&2
       print_lint_gate_diagnostics
       exit 1
     fi
 
-    echo "Lint report has no warnings; existing waiver entries are treated as non-blocking in current mode:" >&2
+    echo "Lint report has no gated warnings; existing waiver entries are treated as non-blocking in current mode:" >&2
     printf '%s\n' "${WAIVER_IDS}" | sed 's/^/  - /' >&2
   fi
-  echo "No lint warnings found in ${REPORT_PATH}."
+  echo "No gated lint warnings found in ${REPORT_PATH}."
+  if [[ -n "${ADVISORY_WARNING_IDS}" ]]; then
+    echo "Observed advisory version warning IDs (non-blocking):"
+    printf '%s\n' "${ADVISORY_WARNING_IDS}" | sed 's/^/  - /'
+  fi
   exit 0
 fi
 
@@ -254,7 +289,7 @@ while IFS= read -r warning_line; do
   if [[ "${matched}" != "true" ]]; then
     SOURCE_VIOLATIONS+="${issue_id}: ${warning_line}"$'\n'
   fi
-done < "${TMP_WARNINGS}"
+done < "${TMP_GATED_WARNINGS}"
 
 if [[ -n "${SOURCE_VIOLATIONS}" ]]; then
   echo "Found allowlisted lint IDs from unexpected sources:" >&2
@@ -284,5 +319,9 @@ if [[ -n "${UNUSED_WAIVERS}" ]]; then
 fi
 
 echo "Lint warning waiver check passed."
-echo "Observed warning IDs:"
+echo "Observed gated warning IDs:"
 printf '%s\n' "${WARNING_IDS}" | sed 's/^/  - /'
+if [[ -n "${ADVISORY_WARNING_IDS}" ]]; then
+  echo "Observed advisory version warning IDs (non-blocking):"
+  printf '%s\n' "${ADVISORY_WARNING_IDS}" | sed 's/^/  - /'
+fi
