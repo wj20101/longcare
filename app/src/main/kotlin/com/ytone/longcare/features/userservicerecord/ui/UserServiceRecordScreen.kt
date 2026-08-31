@@ -33,6 +33,7 @@ import com.ytone.longcare.features.userservicerecord.vm.UserServiceRecordViewMod
 import com.ytone.longcare.theme.bgGradientBrush
 import androidx.compose.ui.res.stringResource
 import com.ytone.longcare.R
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,7 +84,7 @@ fun UserServiceRecordScreen(
                             )
                             if (userAddress.isNotBlank()) {
                                 Text(
-                                    stringResource(R.string.common_address, userAddress),
+                                    stringResource(CoreUiR.string.common_address, userAddress),
                                     fontSize = 12.sp,
                                     color = Color.White.copy(alpha = 0.85f)
                                 )

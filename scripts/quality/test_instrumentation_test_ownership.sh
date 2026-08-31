@@ -39,6 +39,8 @@ write_owner_list() {
 # Connected test APK owners; selectors remain in the target matrix.
 :app
 :core:data
+:core:ui
+:feature:home
 :feature:identification
 :feature:login
 EOF
@@ -50,16 +52,22 @@ write_valid_fixture() {
   cat > "${root}/settings.gradle.kts" <<'EOF'
 include(":app")
 include(":core:data")
+include(":core:ui")
+include(":feature:home")
 include(":feature:identification")
 include(":feature:login")
 EOF
   write_owner_list "${root}"
   write_build_file "${root}/app"
   write_build_file "${root}/core/data"
+  write_build_file "${root}/core/ui"
+  write_build_file "${root}/feature/home"
   write_build_file "${root}/feature/identification"
   write_build_file "${root}/feature/login"
   write_test_source "${root}/app" AppInstrumentedTest
   write_test_source "${root}/core/data" DataInstrumentedTest
+  write_test_source "${root}/core/ui" CoreUiInstrumentedTest
+  write_test_source "${root}/feature/home" HomeInstrumentedTest
   write_test_source "${root}/feature/identification" IdentificationInstrumentedTest
   write_test_source "${root}/feature/login" LoginInstrumentedTest
 }
@@ -109,6 +117,8 @@ cat > "${FIXTURE_ROOT}/expected-gradle-args.txt" <<'EOF'
 --no-daemon
 :app:connectedDebugAndroidTest
 :core:data:connectedDebugAndroidTest
+:core:ui:connectedDebugAndroidTest
+:feature:home:connectedDebugAndroidTest
 :feature:identification:connectedDebugAndroidTest
 :feature:login:connectedDebugAndroidTest
 --dry-run
@@ -136,17 +146,19 @@ expect_failure missing-owner ':core:data has instrumentation source' \
 stale_root="${FIXTURE_ROOT}/stale-empty-owner"
 cp -R "${valid_root}" "${stale_root}"
 cat >> "${stale_root}/settings.gradle.kts" <<'EOF'
-include(":feature:home")
+include(":feature:location")
 EOF
-write_build_file "${stale_root}/feature/home"
+write_build_file "${stale_root}/feature/location"
 cat > "${stale_root}/scripts/quality/instrumentation_test_modules.txt" <<'EOF'
 :app
 :core:data
+:core:ui
 :feature:home
 :feature:identification
 :feature:login
+:feature:location
 EOF
-expect_failure stale-empty-owner ':feature:home has no Kotlin/Java source below feature/home/src/androidTest' \
+expect_failure stale-empty-owner ':feature:location has no Kotlin/Java source below feature/location/src/androidTest' \
   bash "${VERIFY_SCRIPT}" --project-root "${stale_root}" --aggregate-script "${RUN_SCRIPT}"
 
 missing_runner_root="${FIXTURE_ROOT}/missing-runner"
@@ -176,6 +188,8 @@ cp -R "${valid_root}" "${unknown_root}"
 cat > "${unknown_root}/scripts/quality/instrumentation_test_modules.txt" <<'EOF'
 :app
 :core:data
+:core:ui
+:feature:home
 :feature:ghost
 :feature:identification
 :feature:login
@@ -188,7 +202,9 @@ cp -R "${valid_root}" "${unsorted_root}"
 cat > "${unsorted_root}/scripts/quality/instrumentation_test_modules.txt" <<'EOF'
 :app
 :core:data
+:core:ui
 :feature:login
+:feature:home
 :feature:identification
 EOF
 expect_failure unstable-order 'is not in stable lexical order' \

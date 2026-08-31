@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.ServiceProjectM
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 @Composable
 fun ServiceRecordList(
@@ -80,7 +81,7 @@ fun ServiceRecordItem(project: ServiceProjectM, orderInfo: ServiceOrderInfoModel
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = stringResource(id = R.string.service_order_work_hours, project.serviceTime),
+                    text = stringResource(id = CoreUiR.string.service_order_work_hours, project.serviceTime),
                     color = Color.Gray,
                     fontSize = 14.sp
                 )

@@ -24,6 +24,7 @@ import com.ytone.longcare.shared.vm.OrderDetailUiState
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.ui.screen.ServiceHoursTag
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +90,7 @@ fun ServiceHoursScreen(
                                     val address = state.orderInfo.userInfo?.address ?: ""
                                     if (address.isNotBlank()) {
                                         Text(
-                                            stringResource(R.string.common_address, address),
+                                            stringResource(CoreUiR.string.common_address, address),
                                             fontSize = 12.sp,
                                             color = Color.White.copy(alpha = 0.85f)
                                         )
@@ -132,7 +133,7 @@ fun ServiceHoursScreen(
                         // "已服务工时"标签，通过 offset 和对齐方式进行叠加
                         ServiceHoursTag(
                             modifier = Modifier.padding(start = 16.dp),
-                            tagText = stringResource(R.string.profile_stat_served_hours),
+                            tagText = stringResource(CoreUiR.string.profile_stat_served_hours),
                         )
                     }
                 }

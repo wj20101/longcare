@@ -43,7 +43,7 @@
       "layer": "ci-required",
       "blocking": true,
       "owner": "mobile-platform",
-      "source_of_truth": "scripts/quality/verify_architecture_boundaries.sh,scripts/quality/verify_identification_feature_boundary.sh,scripts/quality/verify_login_feature_boundary.sh",
+      "source_of_truth": "scripts/quality/verify_architecture_boundaries.sh,scripts/quality/verify_identification_feature_boundary.sh,scripts/quality/verify_login_feature_boundary.sh,scripts/quality/verify_home_feature_boundary.sh,scripts/quality/test_home_feature_boundary.sh",
       "likely_fix": "Move code to the allowed layer, remove a retired redundancy, use the feature public API boundary, or update an explicit architecture allowlist deliberately."
     },
     {
@@ -162,6 +162,15 @@
       "owner": "mobile-platform",
       "source_of_truth": "scripts/quality/startup_profile_quality.json,scripts/quality/verify_baselineprofile_journeys.sh,scripts/quality/test_baselineprofile_journeys.sh",
       "likely_fix": "Restore the six deterministic scenarios, exact page readiness, symmetric benchmark modes, or performance-only isolation contract."
+    },
+    {
+      "id": "real_device_acceptance_evidence",
+      "name": "Real Device Acceptance Evidence Contract",
+      "layer": "ci-required",
+      "blocking": true,
+      "owner": "mobile-platform",
+      "source_of_truth": "scripts/quality/real_device_acceptance.json,scripts/quality/test_real_device_acceptance_evidence.sh,scripts/quality/preflight_real_device.py,scripts/quality/real_device_acceptance_manifest.py,scripts/quality/run_real_device_acceptance.sh,scripts/quality/compare_startup_benchmark_rounds.py,scripts/quality/verify_real_device_acceptance_reports.py",
+      "likely_fix": "Restore API 36 physical-device eligibility, the ten-scenario Release smoke catalog, independent R8/Profile verdicts, report privacy rules, and aligned Startup budgets."
     },
     {
       "id": "tech_stack_baseline",

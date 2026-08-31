@@ -101,5 +101,6 @@ bash "${ROOT_DIR}/scripts/quality/test_tech_stack_baseline.sh"
 bash "${ROOT_DIR}/scripts/quality/test_target_sdk_upgrade.sh"
 bash "${ROOT_DIR}/scripts/quality/test_target_sdk_readiness.sh"
 bash "${ROOT_DIR}/scripts/quality/test_target_platform_test_matrix.sh"
+bash "${ROOT_DIR}/scripts/quality/test_real_device_acceptance_evidence.sh"
 
 echo "[android-build-governance-test][PASS] syntax and focused fixtures passed."

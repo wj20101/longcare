@@ -18,6 +18,7 @@ import com.ytone.longcare.features.serviceorders.api.ServiceOrdersListActions
 import com.ytone.longcare.model.isPendingCareState
 import com.ytone.longcare.model.isServiceRecordState
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 enum class ServiceOrderType {
     PENDING_CARE_PLANS,
@@ -49,13 +50,13 @@ fun ServiceOrdersListScreen(
 
     val (title, emptyTitle, emptySubtitle) = when (orderType) {
         ServiceOrderType.PENDING_CARE_PLANS -> Triple(
-            stringResource(R.string.dashboard_pending_care_plans),
-            stringResource(R.string.dashboard_empty_pending_care_plans),
+            stringResource(CoreUiR.string.dashboard_pending_care_plans),
+            stringResource(CoreUiR.string.dashboard_empty_pending_care_plans),
             stringResource(R.string.service_orders_pending_empty_subtitle),
         )
 
         ServiceOrderType.SERVICE_RECORDS -> Triple(
-            stringResource(R.string.dashboard_service_records),
+            stringResource(CoreUiR.string.dashboard_service_records),
             stringResource(R.string.service_record_empty),
             stringResource(R.string.service_orders_records_empty_subtitle),
         )

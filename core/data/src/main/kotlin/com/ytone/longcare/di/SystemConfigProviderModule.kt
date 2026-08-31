@@ -2,6 +2,7 @@ package com.ytone.longcare.di
 
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
+import com.ytone.longcare.domain.system.CompanyNameProvider
 import com.ytone.longcare.domain.system.ServicePhotoConfigProvider
 import com.ytone.longcare.domain.userstorage.SessionRuntimeCleanupHook
 import dagger.Binds
@@ -13,6 +14,11 @@ import dagger.multibindings.IntoSet
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class SystemConfigProviderModule {
+
+    @Binds
+    abstract fun bindCompanyNameProvider(
+        impl: SystemConfigManager,
+    ): CompanyNameProvider
 
     @Binds
     abstract fun bindFaceVerificationConfigProvider(

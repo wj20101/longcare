@@ -8,7 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.debug.NfcTestEntrySession
-import com.ytone.longcare.features.maindashboard.utils.NfcTestHelper
+import com.ytone.longcare.presentation.validation.nfc.NfcTestHelper
 import com.ytone.longcare.presentation.validation.nfc.NfcValidationScreen
 import com.ytone.longcare.theme.LongCareTheme
 import dagger.hilt.android.AndroidEntryPoint

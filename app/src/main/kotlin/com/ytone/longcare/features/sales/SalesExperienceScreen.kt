@@ -36,11 +36,9 @@ import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
 import com.ytone.longcare.features.home.api.HomeActions
-import com.ytone.longcare.features.home.ui.AdaptiveAppNavigationScaffold
-import com.ytone.longcare.features.home.ui.AppNavigationItem
-import com.ytone.longcare.features.home.vm.HomeSharedViewModel
-import com.ytone.longcare.features.profile.api.ProfileActions
-import com.ytone.longcare.features.profile.ui.ProfileScreen
+import com.ytone.longcare.core.ui.navigation.AdaptiveAppNavigationScaffold
+import com.ytone.longcare.core.ui.navigation.AppNavigationItem
+import com.ytone.longcare.model.CurrentUser
 import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.platform.sales.rememberSalesSdkUiController
 import com.ytone.longcare.presentation.sales.SalesNavigationState
@@ -53,11 +51,11 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun SalesExperienceScreen(
     actions: HomeActions,
-    homeSharedViewModel: HomeSharedViewModel,
+    user: CurrentUser,
+    profileContent: @Composable () -> Unit,
     viewModel: SalesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
     val capturedImageUri by actions.capturedImageUriFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context.findActivity()
@@ -273,7 +271,7 @@ internal fun SalesExperienceScreen(
         actions.onNavigateToCamera(
             createSalesCustomerWatermarkData(
                 title = salesWatermarkTitle,
-                advisorName = user?.userName.orEmpty(),
+                advisorName = user.userName,
                 unknownAdvisorName = unknownAdvisorName,
             )
         )
@@ -397,27 +395,11 @@ internal fun SalesExperienceScreen(
                         },
                     ) {
                         when (navigationState.rootTab) {
-                            2 ->
-                                ProfileScreen(
-                                    actions =
-                                        ProfileActions(
-                                            onNavigateToHaveServiceUserList =
-                                                actions.onNavigateToHaveServiceUserList,
-                                            onNavigateToNoServiceUserList =
-                                                actions.onNavigateToNoServiceUserList,
-                                            onOpenUserAgreement =
-                                                actions.onOpenUserAgreement,
-                                            onOpenPrivacyPolicy =
-                                                actions.onOpenPrivacyPolicy,
-                                        ),
-                                    homeSharedViewModel = homeSharedViewModel,
-                                )
+                            2 -> profileContent()
 
                             else -> {
-                                val loggedInUser = user
-                                if (loggedInUser != null) {
                                     SalesDashboardScreen(
-                                        user = loggedInUser,
+                                        user = user,
                                         companyName = uiState.companyName,
                                         customers = uiState.recentCustomers,
                                         toDoCount = uiState.toDoCount,
@@ -440,7 +422,6 @@ internal fun SalesExperienceScreen(
                                         },
                                         modifier = Modifier,
                                     )
-                                }
                             }
                         }
                     }

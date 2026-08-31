@@ -35,7 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
-import com.ytone.longcare.features.maindashboard.ui.TopHeader
+import com.ytone.longcare.core.ui.header.TopHeader
 import com.ytone.longcare.model.CurrentUser
 import com.ytone.longcare.model.UserLatentListModel
 

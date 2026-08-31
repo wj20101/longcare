@@ -11,7 +11,7 @@ FILES=(
   app/src/main/kotlin/com/ytone/longcare/navigation/PrivacyConsentDialog.kt
   app/src/main/kotlin/com/ytone/longcare/navigation/AppNavGraphsEntry.kt
   app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt
-  app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreen.kt
+  feature/home/src/main/kotlin/com/ytone/longcare/features/home/api/HomeFeatureContract.kt
   app/src/androidTest/kotlin/com/ytone/longcare/navigation/StartupFullyDrawnInstrumentationTest.kt
 )
 
@@ -74,11 +74,28 @@ expect_missing_root \
   'expectedRoot = StartupRoot.Login'
 expect_missing_root \
   care_home \
-  app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreen.kt \
-  'expectedRoot = StartupRoot.CareHome'
+  app/src/main/kotlin/com/ytone/longcare/navigation/AppNavGraphsEntry.kt \
+  'HomeExperience.Care -> StartupRoot.CareHome'
 expect_missing_root \
   sales_home \
-  app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreen.kt \
-  'expectedRoot = StartupRoot.SalesHome'
+  app/src/main/kotlin/com/ytone/longcare/navigation/AppNavGraphsEntry.kt \
+  'HomeExperience.Sales -> StartupRoot.SalesHome'
 
-echo "[fully-drawn-test][PASS] all four Startup roots have scenario-specific negative fixtures."
+HOME_BRIDGE_FIXTURE="${FIXTURE_ROOT}/home_experience_bridge"
+make_fixture "${HOME_BRIDGE_FIXTURE}"
+remove_marker \
+  "${HOME_BRIDGE_FIXTURE}/feature/home/src/main/kotlin/com/ytone/longcare/features/home/api/HomeFeatureContract.kt" \
+  'startupReporter(uiState.experience)'
+HOME_BRIDGE_OUTPUT="${FIXTURE_ROOT}/home_experience_bridge.log"
+if python3 "${VERIFIER}" --project-root "${HOME_BRIDGE_FIXTURE}" >"${HOME_BRIDGE_OUTPUT}" 2>&1; then
+  echo "[fully-drawn-test][FAIL] missing Home experience callback unexpectedly passed" >&2
+  exit 1
+fi
+grep -Fq -- "Home feature must report each resolved experience" "${HOME_BRIDGE_OUTPUT}" || {
+  echo "[fully-drawn-test][FAIL] Home experience callback failure was not specific" >&2
+  sed -n '1,120p' "${HOME_BRIDGE_OUTPUT}" >&2
+  exit 1
+}
+echo "[fully-drawn-test][PASS] missing Home experience callback rejected"
+
+echo "[fully-drawn-test][PASS] all four Startup roots and the Home callback bridge have negative fixtures."

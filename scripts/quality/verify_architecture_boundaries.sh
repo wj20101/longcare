@@ -22,6 +22,7 @@ LEGACY_APP_FEATURE_FILE_GUARD="${PROJECT_ROOT}/scripts/quality/verify_legacy_fea
 USER_STORAGE_BOUNDARY_GUARD="${PROJECT_ROOT}/scripts/quality/verify_user_storage_boundaries.sh"
 IDENTIFICATION_FEATURE_BOUNDARY_GUARD="${PROJECT_ROOT}/scripts/quality/verify_identification_feature_boundary.sh"
 LOGIN_FEATURE_BOUNDARY_GUARD="${PROJECT_ROOT}/scripts/quality/verify_login_feature_boundary.sh"
+HOME_FEATURE_BOUNDARY_GUARD="${PROJECT_ROOT}/scripts/quality/verify_home_feature_boundary.sh"
 INSTRUMENTATION_TEST_OWNERSHIP_GUARD="${PROJECT_ROOT}/scripts/quality/verify_instrumentation_test_ownership.sh"
 
 echo "[architecture] checking layer boundaries under: ${PROJECT_ROOT}"
@@ -436,6 +437,18 @@ run_login_feature_boundary_guard() {
   fi
 }
 
+run_home_feature_boundary_guard() {
+  if [[ ! -f "${HOME_FEATURE_BOUNDARY_GUARD}" ]]; then
+    echo "[architecture][FAIL] Home feature boundary guard missing: ${HOME_FEATURE_BOUNDARY_GUARD}"
+    EXIT_CODE=1
+    return 0
+  fi
+
+  if ! bash "${HOME_FEATURE_BOUNDARY_GUARD}" --project-root "${PROJECT_ROOT}"; then
+    EXIT_CODE=1
+  fi
+}
+
 run_instrumentation_test_ownership_guard() {
   if [[ ! -f "${INSTRUMENTATION_TEST_OWNERSHIP_GUARD}" ]]; then
     echo "[architecture][FAIL] instrumentation test ownership guard missing: ${INSTRUMENTATION_TEST_OWNERSHIP_GUARD}"
@@ -772,6 +785,9 @@ run_identification_feature_boundary_guard
 
 echo "[architecture] rule-10c: login screen ownership stays in feature public boundary"
 run_login_feature_boundary_guard
+
+echo "[architecture] rule-10d: Home screen ownership stays in its reviewed feature boundary"
+run_home_feature_boundary_guard
 
 echo "[architecture] rule-11: identification UI split files must stay within threshold"
 IDENTIFICATION_UI_ROOT="${FEATURE_ROOT}/identification/src/main/kotlin/com/ytone/longcare/features/identification/ui"

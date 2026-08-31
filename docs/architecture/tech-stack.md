@@ -108,6 +108,9 @@ Debug Mock 的最终值由一个 Gradle Provider 解析并生成 `BuildConfig.US
 - Macrobenchmark 对每个 Startup 场景以相同 helper 对称运行 `CompilationMode.None` 和 `Partial(BaselineProfileMode.Require)`，固定 `StartupMode.COLD`、每模式 10 次，并要求 `timeToInitialDisplayMs` 与 `timeToFullDisplayMs` 都存在。
 - 性能状态控制器和离线保护只编译进 `nonMinifiedRelease`、`benchmarkRelease`，正式 Release 产物守卫检查组件、permission、fixture token 和离线标记均不存在。
 - API 33 managed device 是旅程/依赖/报告格式证据；真实收益必须来自同一台受控多核 `arm64-v8a` 真机的至少两轮完整比较，当前收益状态为 `unverified`。
+- 统一验收配置为 `scripts/quality/real_device_acceptance.json`：真实结论只接受 API 36 physical、`arm64-v8a`、至少 2 核、电量至少 50%、未充电且热状态不高于 light 的显式设备；API 28 与模拟器只允许诊断。
+- `run_real_device_acceptance.sh` 绑定一次 execution 的 minified acceptance APK/AAB、R8 mapping、benchmark 目标/测试 APK 与 Profile 文本哈希。`r8RuntimeAcceptance` 和 `startupProfileBenefit` 独立聚合，前者不代表 Profile 收益，后者不代表 production readiness。
+- 报告 schema、脱敏日志、每轮原始/归一化 JSON、中位数和 comparator 结果只写入 `build/reports/real-device-acceptance/`；账号、验证码、Token、手机号、身份证、照片、原始 serial、本机绝对路径和完整 URL query 均禁止进入报告。
 
 ## 常用命令
 
@@ -117,6 +120,8 @@ android describe --project_dir=.
 ./gradlew :app:lintDebug :app:testDebugUnitTest
 bash scripts/quality/preflight_local.sh --full
 android run --apks=app/build/outputs/apk/debug/app-debug.apk
+# 真机长任务的子命令和必要显式参数
+bash scripts/quality/run_real_device_acceptance.sh benchmark-round --help
 ```
 
 生产/验收包的具体门禁和已知阻断见 [CI 与质量门禁](ci-quality-gates.md)；QLZ 专项配置见 [QLZ SDK 接入](../integrations/qlz-sdk.md)。

@@ -1,6 +1,6 @@
 # 页面与路由地图
 
-最后核对：2026-08-30
+最后核对：2026-08-31
 
 本文列出当前可运行的 Compose 路由、嵌套页面和现实模块归属。导航代码的机器真相位于 `app/src/main/kotlin/com/ytone/longcare/navigation/`。
 
@@ -14,24 +14,26 @@
 
 认证协调器保证 `LoginRoute` 与 `HomeGraphRoute` 只保留一个根：相同会话信号不重复导航，登录成功、退出、Token 失效和换号使用类型安全 `popUpTo(inclusive = true)` 清除另一根，不能通过系统返回跨越账号边界。
 
-`HomeGraphRoute` 承载 `TodayOrderViewModel` 和服务计划/记录列表，保证子页面复用同一份首页订单状态；找不到该 graph owner 时直接失败，不回退到目的页面 owner。`HomeSharedViewModel` 仍由 `HomeRoute` 持有，退出并重新登录会创建新的 HomeGraph owner，不复用旧账号保存状态。
+`HomeGraphRoute` 承载 `TodayOrderViewModel` 和服务计划/记录列表，保证子页面复用同一份首页订单状态；找不到该 graph owner 时直接失败，不回退到目的页面 owner。app 把该实例包装成 remembered `HomeOrderStateSource` 后传给 feature，不创建第二份缓存。`HomeSharedViewModel` 只由 `HomeFeatureScreen` 内部创建并随 `HomeRoute` owner 生存；退出并重新登录会创建新的 HomeGraph/HomeRoute owner，不复用旧账号保存状态。
 
 ## Entry / Home
 
 | 路由 | 页面 | 现实归属 | 说明 |
 |---|---|---|---|
 | `LoginRoute` | `LoginFeatureScreen` | `:feature:login` | feature 拥有登录 UI/协议/内部验证面板；app 拥有 route、WebView 与平台动作适配 |
-| `HomeRoute` | `HomeScreen` | `:app` | 身份为空时显示 Loading，恢复后选择护理端或销售端 |
+| `HomeRoute` | `HomeFeatureScreen` | `:feature:home` | feature 在身份为空时显示 Loading，恢复后选择护理端或调用 app-owned Sales renderer；app 保留 route、订单图适配和平台动作 |
 | `CarePlansListRoute` | `ServiceOrdersListScreen` | `:app` | 服务计划列表 |
 | `ServiceRecordsListRoute` | `ServiceOrdersListScreen` | `:app` | 服务记录列表 |
 
-护理账号的 `HomeScreen` 内有三个非 NavHost 页签：
+护理账号的 `HomeFeatureScreen` 内有三个由 `:feature:home` 持有的非 NavHost 页签：
 
 - 首页：`MainDashboardScreen`
 - 护理：`NursingScreen`
 - 我的：`ProfileScreen`
 
-顶层使用 `AdaptiveAppNavigationScaffold`，根据窗口尺寸选择底部导航或导航轨；三个页面由不可手势滑动的 `HorizontalPager` 保存页签状态。
+顶层使用 `:core:ui` 的 `AdaptiveAppNavigationScaffold`，根据窗口尺寸选择底部导航或导航轨；三个页面由不可手势滑动的 `HorizontalPager` 保存页签状态。共享 TopHeader、Avatar、订单卡片与 model 文案也归 `:core:ui`，Home 独占空态与日期工具留在 `:feature:home`。
+
+`HomeActions` 把服务计划/记录、订单、协议、隐私、退出和其他 route 请求交还 app。合法 WebView URL 原样进入现有开放导航策略，Camera/服务结果继续使用现有 `SavedStateHandle` key；feature 不接触 `NavController`、app `R`、Activity/Context/Intent 或厂商 SDK。
 
 ## 服务执行路由
 
@@ -70,7 +72,7 @@
 
 ## 销售端嵌套页面
 
-销售账号仍停留在 `HomeRoute` 内，`SalesExperienceScreen` 使用可保存的 `SalesNavigationState` 管理内部页面，不为每个页面注册 NavHost route：
+销售账号仍停留在 `HomeRoute` 内。`:feature:home` 只识别销售角色并调用 app 注入的 renderer；app-owned `SalesExperienceScreen` 使用可保存的 `SalesNavigationState` 管理内部页面，不为每个页面注册 NavHost route：
 
 - `HOME`：销售首页
 - `REMINDERS` / `REMINDER_DETAIL`：待办列表和详情
@@ -79,7 +81,7 @@
 - `EVALUATION_CHOICE`：表单/设备评估选择
 - `DEVICE_STATUS` / `EVALUATION_GUIDE` / `EVALUATION_COMPLETE`：QLZ 设备评估链路
 
-销售端的根页签为首页、我的客户和我的；个人中心复用护理端 `ProfileScreen`。表单和报告跳到应用级 `WebViewRoute`，登记照片跳到应用级 `CameraRoute`，返回结果后恢复原销售页面状态。
+销售端的根页签为首页、我的客户和我的；个人中心通过 renderer slot 复用 `:feature:home` 的无状态 Profile 内容。表单和报告跳到应用级 `WebViewRoute`，登记照片跳到应用级 `CameraRoute`，返回结果后恢复原销售页面状态。
 
 `SalesNavigationState` 保存当前页面、根页签、详情返回页、评估返回页和提醒索引；未知枚举、非法页签或缺失字段恢复为安全默认值。系统返回键、页面返回按钮、提交成功和评估完成返回都进入同一 `reduceSalesBack` 规则，先更新导航快照，再执行登记草稿清理等一次性副作用。
 
@@ -141,7 +143,9 @@
 
 ## 模块迁移判断
 
-“legacy UI”在本文中只表示页面仍位于 `:app/features/**`，不表示功能已废弃。登录页已归属 `:feature:login`，身份主页面与默认人脸核验 UI 已归属 `:feature:identification`；绝大多数其他 route-bound 页面仍由 `:app` 持有。`:feature:location` 没有独立页面，另外几个 Feature 主要持有动作接口、状态、用例或 delegate。
+“legacy UI”在本文中只表示页面仍位于 `:app/features/**`，不表示功能已废弃。登录页已归属 `:feature:login`，身份主页面与默认人脸核验 UI 已归属 `:feature:identification`，Home loading/角色 split 与护理 Dashboard/Nursing/Profile 已归属 `:feature:home`；销售 renderer、服务执行及多数其他 route-bound 页面仍由 `:app` 持有。`:feature:location` 没有独立页面，另外几个 Feature 主要持有动作接口、状态、用例或 delegate。
+
+Home 下沉没有改变 Navigation Compose 2 route、target/compile SDK、依赖版本、用户存储/Room 策略、WebView host 开放策略或厂商 AAR；这些事项必须由各自独立 change 处理。
 
 迁移 route 时必须保持：
 

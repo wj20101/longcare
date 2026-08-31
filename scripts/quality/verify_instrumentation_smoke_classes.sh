@@ -50,16 +50,22 @@ if [[ ${#SOURCES[@]} -eq 0 && ${#OWNED_FIELD_SOURCES[@]} -eq 0 ]]; then
     "${MATRIX_SOURCE}"
     "${MATRIX_SOURCE}"
     "${MATRIX_SOURCE}"
+    "${MATRIX_SOURCE}"
+    "${MATRIX_SOURCE}"
   )
   OWNED_FIELD_KEYS=(
     "current_target_smoke_classes"
     "candidate_smoke_classes"
+    "current_target_home_feature_smoke_classes"
+    "candidate_target_home_feature_smoke_classes"
     "current_target_login_feature_smoke_classes"
     "candidate_target_login_feature_smoke_classes"
   )
   OWNED_FIELD_ROOTS=(
     "app/src/androidTest"
     "app/src/androidTest"
+    "feature/home/src/androidTest"
+    "feature/home/src/androidTest"
     "feature/login/src/androidTest"
     "feature/login/src/androidTest"
   )

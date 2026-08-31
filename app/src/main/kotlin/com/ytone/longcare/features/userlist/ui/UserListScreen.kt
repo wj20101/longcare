@@ -30,6 +30,7 @@ import com.ytone.longcare.features.userlist.vm.UserListViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import androidx.compose.ui.res.stringResource
 import com.ytone.longcare.R
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 /**
  * 用户列表类型枚举
@@ -59,8 +60,8 @@ fun UserListScreen(
     )
 
     val title = stringResource(when (userListType) {
-        UserListType.HAVE_SERVICE -> R.string.profile_stat_served_hours
-        UserListType.NO_SERVICE -> R.string.profile_stat_unserved_hours
+        UserListType.HAVE_SERVICE -> CoreUiR.string.profile_stat_served_hours
+        UserListType.NO_SERVICE -> CoreUiR.string.profile_stat_unserved_hours
     })
 
     CustomBackHandler(customAction = actions.onNavigateBack)

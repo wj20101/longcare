@@ -1,6 +1,6 @@
 # 依赖与架构规则
 
-最后核对：2026-08-30
+最后核对：2026-08-31
 
 本文同时记录“当前允许的依赖”和“继续迁移的目标”。两者不能混写：当前 `:app` 仍有业务实现，但新代码不得因此扩大 legacy 边界。
 
@@ -17,7 +17,7 @@
 | `:core:common` | `:core:model` |
 | `:core:data` | `:core:common`、`:core:domain`、`:core:model` |
 | `:core:ui` | `:core:common`、`:core:domain`、`:core:model` |
-| `:feature:home` | `:core:domain`、`:core:model` |
+| `:feature:home` | `:core:common`、`:core:domain`、`:core:model`、`:core:ui` |
 | 其他现有 `:feature:*` | `:core:common`、`:core:domain`、`:core:model`；identification 额外允许 `:core:ui` |
 
 新增或修改 Gradle 项目依赖时，必须同步检查实际 build 文件和 allowlist；不能只更新本文。
@@ -56,14 +56,17 @@
 - 新业务 UI 应优先进入 `:feature:*`，不要继续扩大 `:app/features/**`。
 - `:feature:login` 拥有登录 Compose UI、独占资源、ViewModel 和状态 effect；`:app` 只能使用 `feature.login.api` 下的 `LoginFeatureScreen`、`LoginFeatureActions`、`LoginAgreementLinks` 与五动作契约，不得 import login `ui`/`vm`。feature 不得引用 app `R`、navigation/platform/presentation、Activity、Intent 或厂商类型。
 - `:feature:identification` 拥有身份主页面、页面资源、聚合屏幕状态和 effect；`:app` 只能使用 `features.identification.api` 下的 `IdentificationFeatureScreen`、`IdentificationActions` 与人脸 launcher 合约，不得 import feature 的 `ui`/`vm`。
+- `:feature:home` 拥有 `HomeFeatureScreen`、内部 `HomeSharedViewModel`、loading/角色 split、护理三页以及 Dashboard/Nursing/Profile UI/VM/资源/tests；`:app` 只能从 `features.home.api` 使用 screen、不可变 config/actions、Sales/startup renderer 和 `HomeOrderStateSource`，不得 import Home internal UI/VM。Home 不得引用 app `R`、navigation/platform/presentation、Data 实现、Activity/Context/Intent 或厂商类型。
+- Dashboard 的公司名称通过 `:core:domain` `CompanyNameProvider` 读取；`:core:data` `SystemConfigManager` 实现/绑定该契约。Feature 不得读取具体 preference/DataStore key 或直接依赖实现。
 
 ### App
 
 - 目标职责是启动、根导航、DI 组装、Manifest 和 Android/厂商平台适配。
 - 当前仍有大量 route-bound UI 和流程代码，因此 `:app` 对 Core/Data/Feature 的依赖是现实允许边，而不是鼓励新业务继续堆入壳层。
-- `app/src/main/.../features/**` 受冻结目录和文件 allowlist 保护；当前精确快照为 215 个 Kotlin 文件。`verify_legacy_feature_file_allowlist.sh` 同时拒绝“实际文件不在 allowlist”和“allowlist 路径已不存在”，优先在现有允许文件内做小修复，新增能力迁往 Feature。
+- `app/src/main/.../features/**` 受冻结目录和文件 allowlist 保护；当前精确快照为 181 个 Kotlin 文件。`verify_legacy_feature_file_allowlist.sh` 同时拒绝“实际文件不在 allowlist”和“allowlist 路径已不存在”，优先在现有允许文件内做小修复，新增能力迁往 Feature。
 - `LoginRoute`、协议兜底、WebView 导航和五个验证入口的平台实现仍属于壳层；app adapter 负责启动现有不可导出 Activity，不能把 `Context`/`Intent` 或厂商类型传回 feature。
 - `IdentificationRoute` 的类型安全注册、`SavedStateHandle` 结果桥接和 app-owned 厂商适配仍属于壳层；业务渲染、结果处理和状态机不得回流 route lambda。
+- `HomeRoute`/`HomeGraphRoute`、`TodayOrderViewModel` owner、服务/Camera/WebView 导航、Sales renderer 和 startup reporting 仍属于壳层；app 只能把同一图级订单实例经 remembered `HomeOrderStateSource` 窄适配器交给 `HomeFeatureScreen`，不得创建第二份 Home 订单缓存。
 
 ## UI、状态与生命周期
 
@@ -113,7 +116,7 @@
 - 相机、人脸等结果通过 `SavedStateHandle` 返回，并由接收页消费后清除。
 - 路由行为变更必须同步[页面与路由地图](ui-and-screen-map.md)并增加对应导航/状态测试。
 - Login/Home 认证根由 app-owned 协调器管理，切换时必须清除另一根，重复目标必须幂等；`AppNavHost` 与入口 renderer 测试 seam 保持 `internal`，不得升级为 feature 或生产公共 API。
-- `TodayOrderViewModel` 只以 `HomeGraphRoute` 为 owner，缺少 graph 时立即失败；不得回退到当前目的页面 owner。`HomeSharedViewModel` 继续由 `HomeRoute` 持有。
+- `TodayOrderViewModel` 只以 `HomeGraphRoute` 为 owner，缺少 graph 时立即失败；不得回退到当前目的页面 owner。`HomeSharedViewModel` 仅由 `:feature:home` 的公开 screen 内部创建，不得由 app route 查找或跨页面传递。
 - `androidx.navigation:navigation-testing` 只允许通过 `androidTestImplementation` 引入，并与生产 Navigation Compose 使用同一 version catalog 版本。
 - 当前保持 Navigation Compose `2.10.0`，version catalog 不引入 Navigation 3 制品。Navigation 3 迁移必须作为使用稳定 Nav3 的独立原子 change，不能与业务 API、targetSdk 或大规模模块搬迁混在同一改动中。
 - Nav3 change 必须保持现有 focused suite 对动态 Login/Home 起点、隐私 gate、`popUpTo`/清栈、HomeGraph scope、重复导航、配置变化和进程恢复的等价覆盖，并补齐结果返回/消费及大对象 route 参数收敛后才能实施。
@@ -122,12 +125,14 @@
 
 | 守卫 | 保护内容 |
 |---|---|
-| `verify_architecture_boundaries.sh` | rule-0 拒绝已退役 Placeholder、伪 FeatureEntry、SelectDevice 导航/UI 和旧更新弹窗回流；其余规则保护 Android-free Domain、Feature/Data 方向、ViewModel/调度器/文件规模、legacy 快照、身份/登录页面所有权及 instrumentation test APK 所有权 |
+| `verify_architecture_boundaries.sh` | rule-0 拒绝已退役 Placeholder、伪 FeatureEntry、SelectDevice 导航/UI 和旧更新弹窗回流；其余规则保护 Android-free Domain、Feature/Data 方向、ViewModel/调度器/文件规模、legacy 快照、身份/登录/Home 页面所有权及 instrumentation test APK 所有权 |
 | `verify_legacy_feature_file_allowlist.sh` | 保证 `app/src/main/.../features/**` 实际 Kotlin 文件与 `legacy_feature_files_allowlist.txt` 双向一致，拒绝新增未允许文件和陈旧条目 |
 | `verify_identification_feature_boundary.sh` | 禁止 app 身份 UI 回流、feature 引用 app navigation/platform/R，以及 app 绕过 identification 公开 API |
 | `test_identification_feature_boundary.sh` | 用正向和三类负向 fixture 验证身份边界守卫输出规则、文件与修复方向 |
 | `verify_login_feature_boundary.sh` | 禁止 app 登录 UI/校验面板回流、feature 引用 app 壳层/平台组件，以及 app 绕过 login 公开 API |
 | `test_login_feature_boundary.sh` | 用正向和四类负向 fixture 验证登录边界守卫输出规则、文件与修复方向 |
+| `verify_home_feature_boundary.sh` | 禁止 Home/Dashboard/Nursing/Profile UI/VM 回流 app、app 绕过 Home 公开 API，以及 Home 反向引用 app/Data/平台/导航/厂商实现 |
+| `test_home_feature_boundary.sh` | 用真实工程和八组正负 fixture 验证 Home 边界，并要求失败输出包含文件、规则、允许 API 与修复方向 |
 | `verify_user_storage_boundaries.sh` | 限制用户 Room/DataStore 创建位置，禁止全局 DAO/数据库句柄、裸用户文件名、无 scope 业务偏好和 orderId-only 后台身份 |
 | `test_user_storage_boundaries.sh` | 用 7 组 shell fixture 验证上述门禁既允许 registry/factory，也会拒绝每类回退 |
 | `verify_module_dependency_whitelist.sh` | Gradle 项目模块边 |
@@ -139,11 +144,11 @@
 | `test_android_build_governance.sh` | 构建治理的单一 fixture 入口；同时执行模块最小化负例、`test_affected_modules.sh` 的 changed-path 映射自测及其他既有构建治理 fixtures |
 | `verify_dependency_policy.sh` | 稳定版优先、精确预览豁免、`maxAgpVersion=false` 关联和 Jetifier/AGP 10 阻断 |
 | `verify_target_sdk_readiness.sh` | target 36/37 双状态政策及 Manifest adaptive 一致性 |
-| `verify_target_platform_test_matrix.sh` | API 33 Profile、API 36 blocking smoke 与 API 37 readiness 分离，并校验 app/login feature 选择器各归属正确 test APK |
-| `verify_instrumentation_smoke_classes.sh` | smoke 选择器指向真实 `androidTest` 类；target matrix 的 app/login 字段必须分别属于自己的 test APK source root |
+| `verify_target_platform_test_matrix.sh` | API 33 Profile、API 36 blocking smoke 与 API 37 readiness 分离，并校验 app/Home/login feature 选择器各归属正确 test APK |
+| `verify_instrumentation_smoke_classes.sh` | smoke 选择器指向真实 `androidTest` 类；target matrix 的 app/Home/login 字段必须分别属于自己的 test APK source root |
 | `verify_instrumentation_test_ownership.sh` | `instrumentation_test_modules.txt` 与实际非空 `src/androidTest` 双向一致，并要求每个 owner 显式配置 runner、runner 依赖和模块限定聚合 task |
 | `test_instrumentation_test_ownership.sh` | 用 fake Gradle 和正负 fixtures 验证稳定顺序、遗漏/陈旧/重复/未知 owner、runner 契约及禁止根级 connected task |
-| `run_connected_instrumentation_suite.sh` | 只从所有权清单生成 `:app`、`:core:data`、`:feature:identification`、`:feature:login` 的 connected task；不复制 Managed Device/选择器矩阵 |
+| `run_connected_instrumentation_suite.sh` | 只从所有权清单生成 `:app`、`:core:data`、`:core:ui`、`:feature:home`、`:feature:identification`、`:feature:login` 的 connected task；不复制 Managed Device/选择器矩阵 |
 | `verify_entry_navigation_contracts.sh` | Navigation Testing 仅测试可见、入口测试 seam 保持 `internal`、入口/Home/Sales focused 测试类完整 |
 | `test_entry_navigation_contracts.sh` | 用正向和依赖泄漏、renderer 公开、测试类缺失负向 fixture 验证入口导航守卫 |
 | `verify_tech_stack_baseline.sh` | 长期技术栈字段与可执行配置同步 |

@@ -49,7 +49,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.NfcUtils
 import com.ytone.longcare.common.utils.showShortToast
-import com.ytone.longcare.features.maindashboard.utils.NfcTestHelper
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

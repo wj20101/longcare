@@ -23,7 +23,7 @@ CI_WORKFLOW_QUALITY_ROOT_DIR="${FIXTURE_ROOT}/valid" \
 
 workflow="${FIXTURE_ROOT}/valid/.github/workflows/android-ci.yml"
 awk '
-  /^    if: needs\.detect-affected\.outputs\.run_instrumentation == '\''true'\'' \|\| needs\.detect-affected\.outputs\.run_login_feature_instrumentation == '\''true'\''$/ {
+  /^    if: needs\.detect-affected\.outputs\.run_instrumentation == '\''true'\'' \|\| needs\.detect-affected\.outputs\.run_home_feature_instrumentation == '\''true'\'' \|\| needs\.detect-affected\.outputs\.run_login_feature_instrumentation == '\''true'\''$/ {
     print "    if: always()"
     next
   }
@@ -140,4 +140,30 @@ if ! grep -Fq "android build governance runs affected-module fixtures once" "${F
   exit 1
 fi
 
-echo "[ci-workflow-quality-test][PASS] valid workflow plus emulator, Profile, artifact, project R8, and affected-module negative fixtures passed."
+create_fixture "missing-real-device-acceptance-fixture"
+python3 - "${FIXTURE_ROOT}/missing-real-device-acceptance-fixture/.github/workflows/android-ci.yml" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+lines = [
+    line
+    for line in path.read_text(encoding="utf-8").splitlines()
+    if "test_real_device_acceptance_evidence.sh" not in line
+]
+path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+
+if CI_WORKFLOW_QUALITY_ROOT_DIR="${FIXTURE_ROOT}/missing-real-device-acceptance-fixture" \
+  bash "${VERIFY_SCRIPT}" >"${FIXTURE_ROOT}/missing-real-device-acceptance-fixture.log" 2>&1; then
+  echo "[ci-workflow-quality-test][FAIL] missing real-device acceptance fixture unexpectedly passed." >&2
+  exit 1
+fi
+
+if ! grep -Fq "android-ci runs real-device acceptance fixtures once" "${FIXTURE_ROOT}/missing-real-device-acceptance-fixture.log"; then
+  echo "[ci-workflow-quality-test][FAIL] missing real-device acceptance fixture did not report the single-entry violation." >&2
+  sed 's/^/[fixture-output] /' "${FIXTURE_ROOT}/missing-real-device-acceptance-fixture.log" >&2
+  exit 1
+fi
+
+echo "[ci-workflow-quality-test][PASS] valid workflow plus emulator, Profile, artifact, project R8, affected-module, and real-device contract negative fixtures passed."

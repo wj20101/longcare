@@ -42,7 +42,7 @@ flowchart LR
 
 | 模块 | 当前职责 | 当前现实/迁移状态 |
 |---|---|---|
-| `:app` | 运行时壳、导航、Manifest、平台网关、厂商 UI 控制器、更新任务 | 仍包含护理、销售、NFC、相机、倒计时等大量业务 UI；legacy feature 目录已冻结新增 |
+| `:app` | 运行时壳、导航、Manifest、平台网关、厂商 UI 控制器、更新任务 | 仍包含销售、服务执行、NFC、相机、倒计时等业务 UI；legacy feature 目录已冻结新增 |
 | `:baselineprofile` | 六场景 Profile 生成、对称 Startup Macrobenchmark 与报告 | 使用 Pixel 6 API 33 managed device 验证旅程/依赖/报告格式，目标为 `:app`；性能收益仍由受控 ARM64 真机验收 |
 | `:core:model` | 跨层模型、值对象、`ApiResult`、序列化模型 | Kotlin/JVM 模块，不依赖 Android framework |
 | `:core:domain` | Repository/网关契约和领域规则 | Kotlin/JVM 模块，不依赖 Android framework 或数据实现 |
@@ -50,11 +50,13 @@ flowchart LR
 | `:core:common` | 日志、诊断、运行配置、调度器、图片输出/受管文件、通用 Android 能力 | Android library；不是纯 Kotlin 模块 |
 | `:core:ui` | 共用 Compose/UI 支撑、共享 ViewModel、统一图片预览 | 可依赖 Core 契约，不得访问数据实现 |
 | `:feature:login` | 登录公开入口、内部 Compose UI/资源、ViewModel、协议链接选择、动作接口和 DI | `LoginFeatureScreen` 是唯一公开页面入口；app 只持有 route、协议兜底和平台动作适配 |
-| `:feature:home` | 首页共享状态、上报能力和动作接口 | 护理/销售首页 route UI 仍在 `:app` |
+| `:feature:home` | Home 唯一公开入口、角色/loading 状态、护理三页、Dashboard/Nursing/Profile UI/VM/资源/tests | `HomeFeatureScreen` 隔离内部实现；销售内容仍由 app renderer 注入，导航与订单图 owner 仍属于 `:app` |
 | `:feature:identification` | 身份主页面/资源、聚合屏幕状态、用例/网关、CameraX + ML Kit 人脸采集和默认比对页 | `IdentificationFeatureScreen` 是唯一公开页面入口；内部渲染 UI/VM 不向 `:app` 暴露 |
 | `:feature:location` | 定位 Service、管理器、会话、上报、诊断 | 作为服务流程内嵌能力，没有独立路由 |
 | `:feature:photoupload` | 上传门面、任务队列和照片处理状态 | `PhotoUploadScreen`、`CameraScreen` 仍在 `:app` |
 | `:feature:servicecountdown` | 倒计时状态、轮询和平台网关契约 | route UI、Service、闹钟实现仍在 `:app` |
+
+Dashboard 读取公司名称只依赖 `:core:domain` 的 `CompanyNameProvider`；`:core:data` 的 `SystemConfigManager` 实现并绑定该契约，保持现有用户命名空间、空值和重新拉取语义。Feature 不读取 DataStore key，也不依赖 `:core:data`。
 
 ## 启动与会话
 
@@ -89,6 +91,10 @@ Profile 场景固定为六个：首次隐私、已同意隐私且未登录、护
 
 `LoginRoute` 同样保留 app-owned Navigation Compose 2 注册，但只调用 `LoginFeatureScreen`。`:app` 注入 `LoginAgreementLinks`、开放 WebView 回调及相机、备用人脸、手动人脸、正式人脸和 NFC 五个验证动作；`:feature:login` 拥有渲染、资源、协议确认、动态 URL 选择和状态 effect，不接收 `NavController`、`Context`、`Activity`、`Intent` 或厂商类型。服务端非空用户协议地址原样优先，空值/加载失败与隐私政策使用 app 兜底，不增加 host 白名单。
 
+`HomeRoute` 也保留 app-owned Navigation Compose 2 注册，但只调用 `HomeFeatureScreen`。`:app` 从 `HomeGraphRoute` 取得唯一 `TodayOrderViewModel`，以 remembered `HomeOrderStateSource` 窄适配器向 feature 转发订单状态/刷新/反馈确认，并注入 app version、类型安全导航动作、开放 WebView、Camera、Sales renderer 和 fully-drawn reporter。`:feature:home` 内部创建 `HomeSharedViewModel`，拥有 loading/角色分流、护理三页及 Dashboard/Nursing/Profile；Sales UI、`SalesNavigationState` 和厂商/平台实现仍留在 app。共享的 adaptive navigation、TopHeader、Avatar、订单卡片与 model 文案归 `:core:ui`，Home 独占的空态和日期工具留在 feature。
+
+本次 Home 边界调整不迁移 Navigation 2、不升级 target/compile SDK 或依赖、不改变用户存储/Room 冷切换、不增加 WebView host 限制，也不修改厂商 AAR/consumer rules。
+
 工程不维护与真实导航图平行的 feature entry 字符串 registry；可达页面只以 `:app/navigation` 的 typed route 注册和对应 feature 公共 screen/action 合约为准。完整页面映射见[页面与路由地图](ui-and-screen-map.md)。
 
 ## 状态与异步约定
@@ -99,7 +105,7 @@ Profile 场景固定为六个：首次隐私、已同意隐私且未登录、护
 - 协程取消必须继续抛出 `CancellationException`；敏感流程由质量脚本扫描。
 - ViewModel 不持有 Activity；需要 Activity、Context、Service、闹钟、安装器或厂商 SDK UI 时通过 app-owned gateway/controller。
 - 身份主页面只收集一个不可变 `IdentificationScreenUiState`；导航/提示动作和厂商启动请求按 id 保留到 UI 明确确认，普通重组不会重复执行。
-- `HomeSharedViewModel` 由 `HomeRoute` 持有；`TodayOrderViewModel` 由 `HomeGraphRoute` 显式持有并供首页、服务计划和服务记录复用。缺少 HomeGraph owner 时立即失败，不回退为目的页面 owner。
+- `HomeSharedViewModel` 是 `:feature:home` 内部屏幕状态持有者，只由 `HomeFeatureScreen` 创建；`TodayOrderViewModel` 由 `HomeGraphRoute` 显式持有并经同一窄适配器供首页、服务计划和服务记录复用。缺少 HomeGraph owner 时立即失败，不回退为目的页面 owner。
 - Home 角色分流先把空身份映射为 Loading，再确定护理或销售体验；不会在身份尚未恢复时默认进入护理端。
 - 销售嵌套导航保存页面、根页签、详情/评估返回目标和提醒索引的完整快照；系统返回键与页面返回按钮经过同一个纯 reducer，非法或旧快照按安全默认值恢复。
 - Repository 会话写入为 suspend 操作，调用者不能在 DataStore 持久化完成前报告登录/退出成功。
@@ -195,16 +201,19 @@ cache/user_scopes/v1/<sha256>/session/<purpose>/...
 ## 构建与发布现实
 
 - Debug、Release、nonMinifiedRelease 和 benchmarkRelease 变体由 Android CLI/Gradle 识别。
-- Connected instrumentation 的真实 test APK owner 只有 `:app`、`:core:data`、`:feature:identification`、`:feature:login`；`run_connected_instrumentation_suite.sh` 只执行这四个模块限定 task，空 Library 不参与。
-- Android CI 的正常阻断路径以构建、Lint、架构和治理为主；affected app/login 变化只在各自 API 36 Managed Device test APK 上执行 focused smoke，摘要区分 build-only、app focused 和 login feature focused。其他完整业务测试仍由本地 `--full` 和显式 connected 专项入口承担。
+- Connected instrumentation 的真实 test APK owner 有 `:app`、`:core:data`、`:core:ui`、`:feature:home`、`:feature:identification`、`:feature:login`；`run_connected_instrumentation_suite.sh` 只执行这六个模块限定 task，空 Library 不参与。
+- Android CI 的正常阻断路径以构建、Lint、架构和治理为主；affected app/home/login 变化只在各自 API 36 Managed Device test APK 上执行 focused smoke，摘要区分 build-only、app focused、Home feature focused 和 login feature focused。其他完整业务测试仍由本地 `--full` 和显式 connected 专项入口承担。
 - 验收 Release 必须显式设置 `release.production=false` 和 `release.acceptance=true`。
 - 当前生产 Release 是 fail-closed：临时 QLZ key/test mode、QLZ 弱 TLS 检查和腾讯人脸 ARM64 16 KB 对齐问题未解决前，生产门禁必须失败。
 - Profile 证据分四层：源码/负向 fixture 约束场景与隔离；生成文本证明 Startup 是 Baseline 的严格规则子集；显式 acceptance APK/AAB 证明 ART Profile、R8 Startup DEX 与实际 DEX checksum 一致且无测试能力泄漏；设备报告证明 TTID/TTFD、模式和构建身份。API 33 模拟器结果只覆盖旅程、依赖链和报告格式，不构成性能收益。
 - Profile/None 的真实收益状态仍为 `unverified`；只有同一台受控多核 ARM64 真机连续两轮完成四场景、双模式、各 10 次冷启动并满足预设抗噪预算后，才能改为已验证。
+- `real_device_acceptance.json` 与 `run_real_device_acceptance.sh` 统一承载 minified acceptance smoke 和两轮 Startup 证据：设备必须为 API 36 physical、主 ABI `arm64-v8a`、至少 2 核，并通过电量/充电/热状态预检；API 28 真机和任意模拟器都只能提供诊断，不能替代验收。
+- 每次真机执行只产生两个独立结论：`r8RuntimeAcceptance` 对应项目 R8 change 的任务 5.1，`startupProfileBenefit` 对应 Profile change 的任务 7.5。不得生成单一总体绿色状态，也不得用一个 verdict 关闭另一个任务；production readiness 继续由原生产配置和厂商门禁独立 fail-closed。
+- 十类 Release smoke 使用真实账号、订单、NFC/R65C、相机/定位、腾讯环境、QLZ BLE/Token、视频对端和更新源。缺少条件时只记录类型化 `blocked`，不切换 Debug Mock；账本、脱敏日志、原始/归一化 benchmark 和比较结果只进入 `build/reports/real-device-acceptance/` 或受控短期 artifact。
 
 ## 已接受的技术债
 
-- 大多数 route-bound UI 仍位于 `:app/features/**`；登录与身份主页面已经下沉到各自 feature。
+- 大多数服务执行和销售 route-bound UI 仍位于 `:app/features/**`；登录、身份主页面及 Home 护理三页已经下沉到各自 feature。
 - `:app` 同时承担壳层、平台适配和较多业务组装；新增 legacy feature 文件受 allowlist/freeze guard 约束。
 - 销售体验仍由 `:app` 持有，`SalesViewModel` 体量较大。
 - Navigation Compose 2 的 route 注册仍主要由 `:app` 持有，尚未形成统一的 feature-owned 导航模型。

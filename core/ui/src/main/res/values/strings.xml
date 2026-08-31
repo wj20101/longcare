@@ -16,4 +16,27 @@
     <string name="permission_purpose_camera_message">需要相机权限用于%1$s。本权限仅在您主动使用拍照、上传或核验功能时申请。</string>
     <string name="permission_purpose_location_title">定位权限说明</string>
     <string name="permission_purpose_location_message">需要定位权限用于%1$s。本权限仅在您主动使用 NFC 签到、开始服务或提交服务位置时申请。</string>
+    <string name="main_dashboard_logo">标志</string>
+    <string name="user_avatar_description">头像</string>
+    <string name="order_state_not_created">未开单</string>
+    <string name="order_state_pending">待执行</string>
+    <string name="order_state_in_progress">执行中</string>
+    <string name="order_state_completed">任务完成</string>
+    <string name="order_state_cancelled">作废</string>
+    <string name="order_state_unknown">其他</string>
+    <string name="user_identity_caregiver">护理员</string>
+    <string name="user_identity_sales">销售员</string>
+    <string name="user_identity_other">其他</string>
+    <string name="common_address">地址：%1$s</string>
+    <string name="common_details">详情</string>
+    <string name="service_order_contact_phone">联系电话：%1$s</string>
+    <string name="service_order_completed">已完成</string>
+    <string name="service_order_work_hours">工时: %1$s 分钟</string>
+    <string name="dashboard_pending_care_plans">待护理计划</string>
+    <string name="dashboard_empty_pending_care_plans">暂无待护理计划</string>
+    <string name="dashboard_service_records">已服务记录</string>
+    <string name="profile_stat_served_hours">已服务工时</string>
+    <string name="profile_stat_unserved_hours">未服务工时</string>
+    <string name="profile_user_agreement">用户协议</string>
+    <string name="profile_privacy_policy">隐私政策</string>
 </resources>

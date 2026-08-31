@@ -92,6 +92,8 @@ def main() -> None:
     parser.add_argument("--build-sha", required=True)
     parser.add_argument("--abi", required=True)
     parser.add_argument("--device")
+    parser.add_argument("--device-id-hash")
+    parser.add_argument("--cpu-cores", type=int)
     parser.add_argument("--api-level", type=int)
     parser.add_argument(
         "--device-type",
@@ -104,6 +106,15 @@ def main() -> None:
     if not re.fullmatch(r"[0-9a-fA-F]{7,64}", build_sha):
         fail("--build-sha must be a Git SHA")
     abi = require_string(args.abi, "--abi")
+    device_id_hash: str | None = None
+    cpu_cores: int | None = None
+    if args.device_type == "physical":
+        device_id_hash = require_string(args.device_id_hash, "--device-id-hash")
+        if not re.fullmatch(r"[0-9a-f]{64}", device_id_hash):
+            fail("--device-id-hash must be a lowercase SHA-256 value for physical evidence")
+        if args.cpu_cores is None or args.cpu_cores < 2:
+            fail("--cpu-cores must be >= 2 for physical evidence")
+        cpu_cores = args.cpu_cores
 
     config = load_object(args.config, "quality config")
     raw_report = load_object(args.raw_results, "AndroidX benchmark report")
@@ -171,6 +182,14 @@ def main() -> None:
                     "apiLevel": api_level,
                     "abi": abi,
                     "buildSha": build_sha.lower(),
+                    **(
+                        {
+                            "deviceIdHash": device_id_hash,
+                            "cpuCores": cpu_cores,
+                        }
+                        if args.device_type == "physical"
+                        else {}
+                    ),
                 },
                 "metrics": metrics,
             }

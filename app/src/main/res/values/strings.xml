@@ -87,7 +87,6 @@
     <string name="nfc_tag_detected">检测到 NFC 标签</string>
     <string name="nfc_tag_id">标签 ID：%1$s</string>
     <string name="common_copy">复制</string>
-    <string name="profile_logout">退出登录</string>
     <string name="camera_request_permission">申请相机权限</string>
     <string name="camera_service_photo_purpose">拍摄服务照片</string>
     <string name="camera_preparing">请稍候，正在准备中…</string>
@@ -111,20 +110,6 @@
     <string name="service_total_duration">本次服务总工时</string>
     <string name="common_select_all">全选</string>
     <string name="common_all_selected_description">已全选</string>
-    <string name="common_address">地址：%1$s</string>
-    <string name="common_open_details">进入详情</string>
-    <string name="home_navigation_home">首页</string>
-    <string name="home_navigation_nursing">护理工作</string>
-    <string name="home_navigation_profile">我的</string>
-    <string name="dashboard_pending_care_plans">待护理计划</string>
-    <string name="dashboard_in_service">服务中</string>
-    <string name="dashboard_empty_pending_care_plans">暂无待护理计划</string>
-    <string name="dashboard_empty_in_service">暂无服务中订单</string>
-    <string name="dashboard_pending_count">您有 %1$d 个护理计划待执行</string>
-    <string name="dashboard_service_records">已服务记录</string>
-    <string name="dashboard_service_records_description">查看过往服务记录</string>
-    <string name="nursing_empty_orders">暂无服务订单</string>
-    <string name="nursing_empty_orders_for_date">当前日期没有安排服务订单</string>
     <string name="common_initializing">正在初始化…</string>
     <string name="service_countdown_title">服务时间倒计时</string>
     <string name="service_countdown_end_window_hint">请在服务倒计时结束后 10 分钟内结束服务</string>
@@ -235,25 +220,6 @@
     <string name="nfc_location_service_disabled">请开启定位服务以获取位置信息</string>
     <string name="nfc_tracking_location_permission_purpose">记录 NFC 签到后的服务位置</string>
     <string name="nfc_location_permission_purpose">获取 NFC 签到位置</string>
-    <string name="date_today">今天</string>
-    <string name="date_yesterday">昨天</string>
-    <string name="date_tomorrow">明天</string>
-    <string name="date_monday">周一</string>
-    <string name="date_tuesday">周二</string>
-    <string name="date_wednesday">周三</string>
-    <string name="date_thursday">周四</string>
-    <string name="date_friday">周五</string>
-    <string name="date_saturday">周六</string>
-    <string name="date_sunday">周日</string>
-    <string name="order_state_not_created">未开单</string>
-    <string name="order_state_pending">待执行</string>
-    <string name="order_state_in_progress">执行中</string>
-    <string name="order_state_completed">任务完成</string>
-    <string name="order_state_cancelled">作废</string>
-    <string name="order_state_unknown">其他</string>
-    <string name="user_identity_caregiver">护理员</string>
-    <string name="user_identity_sales">销售员</string>
-    <string name="user_identity_other">其他</string>
     <string name="rfid_permission_denied">未授予读卡器访问权限</string>
     <string name="rfid_read_failed">R65C 读卡异常，请重试</string>
     <string name="tencent_face_prepare_failed">人脸核验准备失败，请稍后重试</string>
@@ -262,9 +228,6 @@
     <string name="tencent_face_verification_failed">人脸核验失败，请稍后重试</string>
     <string name="common_selected">已选择</string>
     <string name="common_unselected">未选择</string>
-    <string name="common_details">详情</string>
-    <string name="main_dashboard_logo">标志</string>
-    <string name="user_avatar_description">头像</string>
     <string name="nfc_sign_out_complete_service">服务完成，结束签到</string>
 
     <!-- 人脸识别指导页面 -->
@@ -282,15 +245,6 @@
     <string name="update_version">版本号：%1$s</string>
     <string name="update_platform">平台：%1$s</string>
     <string name="update_content">更新内容</string>
-    <string name="profile_title">我的</string>
-    <string name="profile_version">版本号：%1$s.%2$d</string>
-    <string name="profile_stat_served_hours">已服务工时</string>
-    <string name="profile_stat_service_count">服务次数</string>
-    <string name="profile_stat_unserved_hours">未服务工时</string>
-    <string name="profile_user_agreement">用户协议</string>
-    <string name="profile_user_agreement_description">查看服务条款与使用约定</string>
-    <string name="profile_privacy_policy">隐私政策</string>
-    <string name="profile_privacy_policy_description">了解个人信息收集与保护方式</string>
     <string name="service_record_number">服务记录 %1$d</string>
     <string name="service_record_time_range">服务时间：%1$s - %2$s</string>
     <string name="service_record_start_time">开始时间：%1$s</string>
@@ -309,8 +263,6 @@
     <string name="privacy_consent_disagree">不同意</string>
     <string name="webview_load_failed">网页加载失败，请检查网络后重试</string>
     <string name="webview_retry">重新加载</string>
-    <string name="service_order_completed">已完成</string>
-    <string name="service_order_contact_phone">联系电话：%1$s</string>
     <string name="user_list_empty">暂无用户数据</string>
     <string name="user_list_empty_description">当前没有符合条件的用户</string>
     <string name="user_list_month_served_hours">本月已服务工时：%1$s</string>
@@ -356,7 +308,6 @@
     <string name="update_file_name_required">下载文件名不能为空</string>
     <string name="update_empty_response">下载服务响应为空，请稍后重试</string>
     <string name="update_download_incomplete">安装包下载不完整，请重新下载</string>
-    <string name="service_order_work_hours">工时: %1$s 分钟</string>
     <string name="service_order_work_hours_total">计划服务工时: %1$s 分钟</string>
     <string name="service_order_work_hours_true">实际服务工时: %1$s 分钟</string>
 

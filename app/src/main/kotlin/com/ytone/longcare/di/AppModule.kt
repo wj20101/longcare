@@ -20,7 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
-import com.ytone.longcare.features.maindashboard.utils.NfcTestHelper
+import com.ytone.longcare.presentation.validation.nfc.NfcTestHelper
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.utils.ToastHelper
 import com.ytone.longcare.common.utils.NfcManager

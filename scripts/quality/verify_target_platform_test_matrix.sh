@@ -33,16 +33,18 @@ source "${SCRIPT_DIR}/android_build_values.sh"
 ERRORS=()
 fail() { ERRORS+=("$1"); }
 
-for required in "${MATRIX_FILE}" "${POLICY_FILE}" "${PROJECT_ROOT}/settings.gradle.kts" "${PROJECT_ROOT}/baselineprofile/build.gradle.kts" "${PROJECT_ROOT}/feature/login/build.gradle.kts"; do
+for required in "${MATRIX_FILE}" "${POLICY_FILE}" "${PROJECT_ROOT}/settings.gradle.kts" "${PROJECT_ROOT}/baselineprofile/build.gradle.kts" "${PROJECT_ROOT}/feature/home/build.gradle.kts" "${PROJECT_ROOT}/feature/login/build.gradle.kts"; do
   [[ -f "${required}" ]] || fail "required file is missing: ${required#"${PROJECT_ROOT}/"}"
 done
 
 REQUIRED_KEYS=(
   baseline_profile_api baseline_profile_device current_target_api current_target_blocking
-  current_target_device current_target_smoke_classes current_target_login_feature_smoke_classes
+  current_target_device current_target_smoke_classes current_target_home_feature_smoke_classes
+  current_target_login_feature_smoke_classes
   current_target_contract_tests
   release_device_evidence_required candidate_target_api candidate_target_blocking
-  candidate_target_device candidate_smoke_classes candidate_target_login_feature_smoke_classes
+  candidate_target_device candidate_smoke_classes candidate_target_home_feature_smoke_classes
+  candidate_target_login_feature_smoke_classes
   candidate_readiness_checks
 )
 
@@ -58,6 +60,7 @@ if [[ -f "${MATRIX_FILE}" ]]; then
   current_blocking="$(read_target_readiness_value "${MATRIX_FILE}" current_target_blocking)"
   current_device="$(read_target_readiness_value "${MATRIX_FILE}" current_target_device)"
   smoke_classes="$(read_target_readiness_value "${MATRIX_FILE}" current_target_smoke_classes)"
+  home_feature_classes="$(read_target_readiness_value "${MATRIX_FILE}" current_target_home_feature_smoke_classes)"
   login_feature_classes="$(read_target_readiness_value "${MATRIX_FILE}" current_target_login_feature_smoke_classes)"
   contract_tests="$(read_target_readiness_value "${MATRIX_FILE}" current_target_contract_tests)"
   release_evidence="$(read_target_readiness_value "${MATRIX_FILE}" release_device_evidence_required)"
@@ -65,6 +68,7 @@ if [[ -f "${MATRIX_FILE}" ]]; then
   candidate_blocking="$(read_target_readiness_value "${MATRIX_FILE}" candidate_target_blocking)"
   candidate_device="$(read_target_readiness_value "${MATRIX_FILE}" candidate_target_device)"
   candidate_classes="$(read_target_readiness_value "${MATRIX_FILE}" candidate_smoke_classes)"
+  candidate_home_feature_classes="$(read_target_readiness_value "${MATRIX_FILE}" candidate_target_home_feature_smoke_classes)"
   candidate_login_feature_classes="$(read_target_readiness_value "${MATRIX_FILE}" candidate_target_login_feature_smoke_classes)"
   candidate_checks="$(read_target_readiness_value "${MATRIX_FILE}" candidate_readiness_checks)"
 
@@ -78,8 +82,12 @@ if [[ -f "${MATRIX_FILE}" ]]; then
   grep -Eq "apiLevel[[:space:]]*=[[:space:]]*${baseline_api}([^0-9]|$)" "${PROJECT_ROOT}/baselineprofile/build.gradle.kts" || fail "baseline profile API ${baseline_api} is not configured"
   grep -Fq "create(\"${current_device}\")" "${PROJECT_ROOT}/feature/login/build.gradle.kts" || fail "login feature current-target device ${current_device} is not configured"
   grep -Fq "create(\"${candidate_device}\")" "${PROJECT_ROOT}/feature/login/build.gradle.kts" || fail "login feature candidate device ${candidate_device} is not configured"
+  grep -Fq "create(\"${current_device}\")" "${PROJECT_ROOT}/feature/home/build.gradle.kts" || fail "Home feature current-target device ${current_device} is not configured"
+  grep -Fq "create(\"${candidate_device}\")" "${PROJECT_ROOT}/feature/home/build.gradle.kts" || fail "Home feature candidate device ${candidate_device} is not configured"
   grep -Eq "apiLevel[[:space:]]*=[[:space:]]*${current_api}([^0-9]|$)" "${PROJECT_ROOT}/feature/login/build.gradle.kts" || fail "login feature current-target API ${current_api} is not configured"
   grep -Eq "apiLevel[[:space:]]*=[[:space:]]*${candidate_api}([^0-9]|$)" "${PROJECT_ROOT}/feature/login/build.gradle.kts" || fail "login feature candidate API ${candidate_api} is not configured"
+  grep -Eq "apiLevel[[:space:]]*=[[:space:]]*${current_api}([^0-9]|$)" "${PROJECT_ROOT}/feature/home/build.gradle.kts" || fail "Home feature current-target API ${current_api} is not configured"
+  grep -Eq "apiLevel[[:space:]]*=[[:space:]]*${candidate_api}([^0-9]|$)" "${PROJECT_ROOT}/feature/home/build.gradle.kts" || fail "Home feature candidate API ${candidate_api} is not configured"
   [[ "${current_api}" == "${settings_target}" && "${current_api}" == "${approved_target}" ]] || fail "current target matrix API ${current_api} must match settings/approved target ${settings_target}/${approved_target}"
   [[ "${candidate_api}" == "${policy_candidate}" ]] || fail "candidate matrix API ${candidate_api} must match policy candidate ${policy_candidate}"
   [[ "${current_blocking}" == "true" ]] || fail "current_target_blocking must be true"
@@ -87,6 +95,7 @@ if [[ -f "${MATRIX_FILE}" ]]; then
   [[ "${policy_promotion}" == "blocked" ]] || fail "candidate readiness lane requires candidate_promotion=blocked until evidence is complete"
   [[ "${current_device}" != "${candidate_device}" && "${current_device}" != "${baseline_device}" && "${candidate_device}" != "${baseline_device}" ]] || fail "API 33/36/37 devices must be separately named"
   [[ -n "${smoke_classes}" && -n "${candidate_classes}" ]] || fail "current and candidate app smoke class sets must not be empty"
+  [[ -n "${home_feature_classes}" && -n "${candidate_home_feature_classes}" ]] || fail "current and candidate Home feature smoke class sets must not be empty"
   [[ -n "${login_feature_classes}" && -n "${candidate_login_feature_classes}" ]] || fail "current and candidate login feature smoke class sets must not be empty"
 
   for required_check in adaptive-window message-queue-reflection-native local-network certificate-transparency-network background-alarm-audio vendor-sdk-startup; do
@@ -113,6 +122,8 @@ if [[ -f "${MATRIX_FILE}" ]]; then
     --project-root "${PROJECT_ROOT}" \
     --owned-field "${MATRIX_FILE}" current_target_smoke_classes app/src/androidTest \
     --owned-field "${MATRIX_FILE}" candidate_smoke_classes app/src/androidTest \
+    --owned-field "${MATRIX_FILE}" current_target_home_feature_smoke_classes feature/home/src/androidTest \
+    --owned-field "${MATRIX_FILE}" candidate_target_home_feature_smoke_classes feature/home/src/androidTest \
     --owned-field "${MATRIX_FILE}" current_target_login_feature_smoke_classes feature/login/src/androidTest \
     --owned-field "${MATRIX_FILE}" candidate_target_login_feature_smoke_classes feature/login/src/androidTest || class_status=$?
   [[ "${class_status}" -eq 0 ]] || fail "one or more matrix instrumentation classes do not resolve"

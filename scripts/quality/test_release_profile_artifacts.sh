@@ -102,7 +102,23 @@ verify() {
   python3 "${VERIFIER}" --apk "$1" --aab "$2"
 }
 
-verify "${FIXTURE_ROOT}/valid.apk" "${FIXTURE_ROOT}/valid.aab"
+python3 "${VERIFIER}" \
+  --apk "${FIXTURE_ROOT}/valid.apk" \
+  --aab "${FIXTURE_ROOT}/valid.aab" \
+  --result-json "${FIXTURE_ROOT}/valid-verification.json"
+python3 - "${FIXTURE_ROOT}/valid.apk" "${FIXTURE_ROOT}/valid.aab" "${FIXTURE_ROOT}/valid-verification.json" <<'PY'
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+apk, aab, result_path = map(Path, sys.argv[1:])
+result = json.loads(result_path.read_text(encoding="utf-8"))
+assert result["status"] == "passed"
+assert result["verifier"] == "release-profile-artifacts-v1"
+assert result["artifacts"]["acceptanceApk"]["sha256"] == hashlib.sha256(apk.read_bytes()).hexdigest()
+assert result["artifacts"]["acceptanceAab"]["sha256"] == hashlib.sha256(aab.read_bytes()).hexdigest()
+PY
 
 expect_failure() {
   local name="$1"

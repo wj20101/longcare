@@ -40,6 +40,8 @@ jobs:
       verify_tasks: ${{ steps.detect.outputs.verify_tasks }}
       run_instrumentation: ${{ steps.detect.outputs.run_instrumentation }}
       smoke_test_classes: ${{ steps.detect.outputs.smoke_test_classes }}
+      run_home_feature_instrumentation: ${{ steps.detect.outputs.run_home_feature_instrumentation }}
+      home_feature_smoke_test_classes: ${{ steps.detect.outputs.home_feature_smoke_test_classes }}
       run_login_feature_instrumentation: ${{ steps.detect.outputs.run_login_feature_instrumentation }}
       login_feature_smoke_test_classes: ${{ steps.detect.outputs.login_feature_smoke_test_classes }}
       changed_files_count: ${{ steps.detect.outputs.changed_files_count }}
@@ -63,6 +65,8 @@ jobs:
           echo "verify_tasks=${{ steps.detect.outputs.verify_tasks }}"
           echo "run_instrumentation=${{ steps.detect.outputs.run_instrumentation }}"
           echo "smoke_test_classes=${{ steps.detect.outputs.smoke_test_classes }}"
+          echo "run_home_feature_instrumentation=${{ steps.detect.outputs.run_home_feature_instrumentation }}"
+          echo "home_feature_smoke_test_classes=${{ steps.detect.outputs.home_feature_smoke_test_classes }}"
           echo "run_login_feature_instrumentation=${{ steps.detect.outputs.run_login_feature_instrumentation }}"
           echo "login_feature_smoke_test_classes=${{ steps.detect.outputs.login_feature_smoke_test_classes }}"
           echo "changed_files_count=${{ steps.detect.outputs.changed_files_count }}"
@@ -70,12 +74,12 @@ jobs:
       - name: Publish affected plan summary
         run: |
           validation_mode="build-only"
-          if [[ "${{ steps.detect.outputs.run_instrumentation }}" == "true" && "${{ steps.detect.outputs.run_login_feature_instrumentation }}" == "true" ]]; then
-            validation_mode="app-focused+login-feature-focused"
-          elif [[ "${{ steps.detect.outputs.run_instrumentation }}" == "true" ]]; then
-            validation_mode="app-focused"
-          elif [[ "${{ steps.detect.outputs.run_login_feature_instrumentation }}" == "true" ]]; then
-            validation_mode="login-feature-focused"
+          validation_scopes=()
+          [[ "${{ steps.detect.outputs.run_instrumentation }}" == "true" ]] && validation_scopes+=("app-focused")
+          [[ "${{ steps.detect.outputs.run_home_feature_instrumentation }}" == "true" ]] && validation_scopes+=("home-feature-focused")
+          [[ "${{ steps.detect.outputs.run_login_feature_instrumentation }}" == "true" ]] && validation_scopes+=("login-feature-focused")
+          if [[ "${#validation_scopes[@]}" -gt 0 ]]; then
+            validation_mode="$(IFS=+; echo "${validation_scopes[*]}")"
           fi
           {
             echo "## Android CI affected plan"
@@ -87,6 +91,8 @@ jobs:
             echo "- verify tasks: \`${{ steps.detect.outputs.verify_tasks }}\`"
             echo "- run instrumentation: \`${{ steps.detect.outputs.run_instrumentation }}\`"
             echo "- smoke test classes: \`${{ steps.detect.outputs.smoke_test_classes }}\`"
+            echo "- run Home feature instrumentation: \`${{ steps.detect.outputs.run_home_feature_instrumentation }}\`"
+            echo "- Home feature smoke test classes: \`${{ steps.detect.outputs.home_feature_smoke_test_classes }}\`"
             echo "- run login feature instrumentation: \`${{ steps.detect.outputs.run_login_feature_instrumentation }}\`"
             echo "- login feature smoke test classes: \`${{ steps.detect.outputs.login_feature_smoke_test_classes }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -147,6 +153,7 @@ jobs:
           bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
           bash scripts/quality/verify_jetpack_compat_apis.sh
           bash scripts/quality/test_startup_profile_quality_config.sh
+          bash scripts/quality/test_real_device_acceptance_evidence.sh
           bash scripts/quality/test_baselineprofile_journeys.sh
           bash scripts/quality/verify_baselineprofile_journeys.sh
           bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
@@ -207,6 +214,8 @@ jobs:
           path: |
             app/build/reports/**
             app/build/test-results/**
+            feature/home/build/reports/**
+            feature/home/build/test-results/**
             feature/login/build/reports/**
             feature/login/build/test-results/**
             build/reports/problems/**
@@ -222,6 +231,9 @@ jobs:
             app/build/reports/**
             app/build/test-results/**
             app/build/outputs/**
+            feature/home/build/reports/**
+            feature/home/build/test-results/**
+            feature/home/build/outputs/**
             feature/login/build/reports/**
             feature/login/build/test-results/**
             feature/login/build/outputs/**
@@ -235,7 +247,7 @@ jobs:
 
   current-target-api36-smoke:
     needs: detect-affected
-    if: needs.detect-affected.outputs.run_instrumentation == 'true' || needs.detect-affected.outputs.run_login_feature_instrumentation == 'true'
+    if: needs.detect-affected.outputs.run_instrumentation == 'true' || needs.detect-affected.outputs.run_home_feature_instrumentation == 'true' || needs.detect-affected.outputs.run_login_feature_instrumentation == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -276,12 +288,21 @@ jobs:
             -Pbaseline.enableX86_64=true \
             -Pandroid.testInstrumentationRunnerArguments.class="${{ needs.detect-affected.outputs.login_feature_smoke_test_classes }}"
 
+      - name: Run blocking API 36 Home feature smoke
+        if: needs.detect-affected.outputs.run_home_feature_instrumentation == 'true'
+        run: |
+          ./gradlew --no-daemon :feature:home:pixel6Api36DebugAndroidTest \
+            -Pbaseline.enableX86_64=true \
+            -Pandroid.testInstrumentationRunnerArguments.class="${{ needs.detect-affected.outputs.home_feature_smoke_test_classes }}"
+
       - name: Publish API 36 smoke summary
         if: always()
         run: |
           app_result="not-requested"
+          home_feature_result="not-requested"
           login_feature_result="not-requested"
           [[ "${{ needs.detect-affected.outputs.run_instrumentation }}" == "true" ]] && app_result="focused-executed"
+          [[ "${{ needs.detect-affected.outputs.run_home_feature_instrumentation }}" == "true" ]] && home_feature_result="focused-executed"
           [[ "${{ needs.detect-affected.outputs.run_login_feature_instrumentation }}" == "true" ]] && login_feature_result="focused-executed"
           {
             echo "## API 36 current-target smoke"
@@ -289,8 +310,10 @@ jobs:
             echo "- blocking: true"
             echo "- device: pixel6Api36"
             echo "- app focused result: ${app_result}"
+            echo "- Home feature focused result: ${home_feature_result}"
             echo "- login feature focused result: ${login_feature_result}"
             echo "- app classes: ${{ needs.detect-affected.outputs.smoke_test_classes }}"
+            echo "- Home feature classes: ${{ needs.detect-affected.outputs.home_feature_smoke_test_classes }}"
             echo "- login feature classes: ${{ needs.detect-affected.outputs.login_feature_smoke_test_classes }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -302,6 +325,8 @@ jobs:
           path: |
             app/build/reports/androidTests/managedDevice/**
             app/build/outputs/androidTest-results/managedDevice/**
+            feature/home/build/reports/androidTests/managedDevice/**
+            feature/home/build/outputs/androidTest-results/managedDevice/**
             feature/login/build/reports/androidTests/managedDevice/**
             feature/login/build/outputs/androidTest-results/managedDevice/**
           if-no-files-found: warn
@@ -346,6 +371,7 @@ jobs:
         run: |
           source scripts/quality/target_readiness_values.sh
           API37_SMOKE_CLASSES="$(read_target_readiness_value scripts/quality/target_platform_test_matrix.properties candidate_smoke_classes)"
+          API37_HOME_FEATURE_SMOKE_CLASSES="$(read_target_readiness_value scripts/quality/target_platform_test_matrix.properties candidate_target_home_feature_smoke_classes)"
           API37_LOGIN_FEATURE_SMOKE_CLASSES="$(read_target_readiness_value scripts/quality/target_platform_test_matrix.properties candidate_target_login_feature_smoke_classes)"
           ./gradlew --no-daemon :app:pixelTabletApi37DebugAndroidTest \
             -Pbaseline.enableX86_64=true \
@@ -353,6 +379,9 @@ jobs:
           ./gradlew --no-daemon :feature:login:pixelTabletApi37DebugAndroidTest \
             -Pbaseline.enableX86_64=true \
             -Pandroid.testInstrumentationRunnerArguments.class="${API37_LOGIN_FEATURE_SMOKE_CLASSES}"
+          ./gradlew --no-daemon :feature:home:pixelTabletApi37DebugAndroidTest \
+            -Pbaseline.enableX86_64=true \
+            -Pandroid.testInstrumentationRunnerArguments.class="${API37_HOME_FEATURE_SMOKE_CLASSES}"
 
       - name: Publish API 37 readiness summary
         if: always()
@@ -375,6 +404,8 @@ jobs:
             build/reports/api37-readiness/**
             app/build/reports/androidTests/managedDevice/**
             app/build/outputs/androidTest-results/managedDevice/**
+            feature/home/build/reports/androidTests/managedDevice/**
+            feature/home/build/outputs/androidTest-results/managedDevice/**
             feature/login/build/reports/androidTests/managedDevice/**
             feature/login/build/outputs/androidTest-results/managedDevice/**
           if-no-files-found: warn

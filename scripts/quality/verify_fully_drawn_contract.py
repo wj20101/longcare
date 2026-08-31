@@ -21,14 +21,18 @@ ROOT_CONTRACTS = (
     ),
     (
         "care_home",
-        "app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreen.kt",
-        "expectedRoot = StartupRoot.CareHome",
+        "app/src/main/kotlin/com/ytone/longcare/navigation/AppNavGraphsEntry.kt",
+        "HomeExperience.Care -> StartupRoot.CareHome",
     ),
     (
         "sales_home",
-        "app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreen.kt",
-        "expectedRoot = StartupRoot.SalesHome",
+        "app/src/main/kotlin/com/ytone/longcare/navigation/AppNavGraphsEntry.kt",
+        "HomeExperience.Sales -> StartupRoot.SalesHome",
     ),
+)
+HOME_ENTRY = (
+    "feature/home/src/main/kotlin/com/ytone/longcare/features/home/api/"
+    "HomeFeatureContract.kt"
 )
 HELPER = "app/src/main/kotlin/com/ytone/longcare/navigation/StartupFullyDrawn.kt"
 SPLASH = "app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt"
@@ -66,12 +70,17 @@ def main() -> None:
         if source.count(marker) != 1:
             fail(f"missing fully-drawn root for scenario {scenario}: {marker}")
 
+    home_entry = read(root, HOME_ENTRY)
+    reporter_marker = "startupReporter(uiState.experience)"
+    if home_entry.count(reporter_marker) != 1:
+        fail("Home feature must report each resolved experience through the app-owned startup callback")
+
     splash = read(root, SPLASH)
     resolving_marker = "expectedRoot = StartupRoot.ResolvingSession"
     if splash.count(resolving_marker) != 1:
         fail("session resolving Splash must hold fully-drawn reporting")
 
-    relevant_files = {relative for _, relative, _ in ROOT_CONTRACTS} | {SPLASH}
+    relevant_files = {relative for _, relative, _ in ROOT_CONTRACTS} | {HOME_ENTRY, SPLASH}
     for relative in relevant_files:
         if "ReportDrawn()" in read(root, relative):
             fail(f"direct unconditional ReportDrawn is forbidden outside the readiness helper: {relative}")

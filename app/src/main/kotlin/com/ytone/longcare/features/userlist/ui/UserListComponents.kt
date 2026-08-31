@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.model.UserInfoModel
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 @Composable
 fun UserListContent(
@@ -141,7 +142,7 @@ fun UserListItem(
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = stringResource(R.string.common_address, user.address),
+                text = stringResource(CoreUiR.string.common_address, user.address),
                 color = Color.Gray,
                 fontSize = 14.sp,
                 lineHeight = 20.sp
@@ -150,7 +151,7 @@ fun UserListItem(
 
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = stringResource(R.string.common_details),
+            contentDescription = stringResource(CoreUiR.string.common_details),
             tint = Color.LightGray
         )
     }

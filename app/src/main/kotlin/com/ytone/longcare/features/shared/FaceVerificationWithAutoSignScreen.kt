@@ -12,7 +12,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
-import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.shared.vm.FaceVerificationViewModel
 import com.ytone.longcare.platform.face.rememberFaceSdkUiController
 import androidx.compose.ui.res.stringResource
@@ -24,11 +23,10 @@ fun FaceVerificationWithAutoSignScreen(
     onVerificationSuccess: (FaceVerifyResult) -> Unit,
     viewModel: FaceVerificationViewModel = hiltViewModel()
 ) {
-    val homeSharedViewModel: HomeSharedViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val sdkLaunchRequest by viewModel.sdkLaunchRequest.collectAsStateWithLifecycle()
     val photoProcessingState by viewModel.photoProcessingState.collectAsStateWithLifecycle()
-    val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
+    val user by viewModel.currentUser.collectAsStateWithLifecycle()
 
     var showSnackbar by remember { mutableStateOf(false) }
     var snackbarMessage by remember { mutableStateOf("") }

@@ -164,6 +164,7 @@ jobs:
           bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
           bash scripts/quality/verify_jetpack_compat_apis.sh
           bash scripts/quality/test_startup_profile_quality_config.sh
+          bash scripts/quality/test_real_device_acceptance_evidence.sh
           bash scripts/quality/test_baselineprofile_journeys.sh
           bash scripts/quality/test_text_profiles.sh
           bash scripts/quality/test_release_profile_artifacts.sh

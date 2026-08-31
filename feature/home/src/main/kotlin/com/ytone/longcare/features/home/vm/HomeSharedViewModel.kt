@@ -2,77 +2,97 @@ package com.ytone.longcare.features.home.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.diagnostics.CrashReportGateway
 import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.features.home.api.HomeExperience
+import com.ytone.longcare.features.home.api.resolveHomeExperience
 import com.ytone.longcare.features.home.reporting.HomeLoginLogInfoProvider
 import com.ytone.longcare.model.CurrentUser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * 在 HomeScreen 作用域下共享的 ViewModel。
- * 负责提供用户状态并处理相关操作，如登出。
- */
+internal data class HomeUiState(
+    val user: CurrentUser? = null,
+    val experience: HomeExperience = HomeExperience.Loading,
+    val selectedDashboardTab: Int = 0,
+)
+
+/** Home-screen state holder. Child screens receive values and events, never this ViewModel. */
 @HiltViewModel
-class HomeSharedViewModel @Inject constructor(
+internal class HomeSharedViewModel @Inject constructor(
     private val userSessionRepository: UserSessionRepository,
     private val loginRepository: LoginRepository,
     private val homeLoginLogInfoProvider: HomeLoginLogInfoProvider,
 ) : ViewModel() {
-
-    /**
-     * 向 UI 暴露一个只包含 User 对象的状态流。
-     * 当用户未登录时，它会是 null。
-     * UI 层可以直接收集此状态。
-     */
-    val userState: StateFlow<CurrentUser?> = userSessionRepository.sessionState.map {
-        // 从 SessionState 中提取 User 对象
-        when (it) {
-            is SessionState.LoggedIn -> it.user
-            else -> null
-        }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = null // 初始值为 null
-    )
-
-    // 主仪表盘Tab状态管理
-    private val _selectedTabIndex = MutableStateFlow(0)
-    val selectedTabIndex: StateFlow<Int> = _selectedTabIndex.asStateFlow()
+    private val mutableUiState = MutableStateFlow(HomeUiState())
+    val uiState: StateFlow<HomeUiState> = mutableUiState.asStateFlow()
     private var reportHomeEntryJob: Job? = null
+    private var hasReportedHomeEntry = false
 
-    /**
-     * 更新选中的Tab索引
-     */
-    fun updateSelectedTabIndex(index: Int) {
-        _selectedTabIndex.value = index
+    init {
+        viewModelScope.launch {
+            userSessionRepository.sessionState.collect { session ->
+                val nextUser = when (session) {
+                    is SessionState.LoggedIn -> session.user
+                    SessionState.LoggedOut,
+                    SessionState.Unknown,
+                    -> null
+                }
+                mutableUiState.update { previous ->
+                    val isSameUser = previous.user?.scopeKey == nextUser?.scopeKey
+                    HomeUiState(
+                        user = nextUser,
+                        experience = resolveHomeExperience(nextUser?.userIdentity),
+                        selectedDashboardTab = if (isSameUser) {
+                            previous.selectedDashboardTab
+                        } else {
+                            0
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    fun selectDashboardTab(index: Int) {
+        mutableUiState.update { it.copy(selectedDashboardTab = index) }
     }
 
     fun reportHomeEntry() {
-        if (reportHomeEntryJob?.isActive == true) {
+        if (hasReportedHomeEntry || reportHomeEntryJob?.isActive == true) {
             return
         }
 
+        hasReportedHomeEntry = true
         reportHomeEntryJob = viewModelScope.launch {
-            runCatching {
-                val payload = homeLoginLogInfoProvider.build()
-                loginRepository.recordLoginLog(
-                    phoneSystem = payload.phoneSystem,
-                    phoneVersion = payload.phoneVersion,
-                    networkType = payload.networkType,
-                    networkOperator = payload.networkOperator,
-                )
-            }
+            recordHomeEntry()
+        }
+    }
+
+    internal suspend fun recordHomeEntry() {
+        try {
+            val payload = homeLoginLogInfoProvider.build()
+            loginRepository.recordLoginLog(
+                phoneSystem = payload.phoneSystem,
+                phoneVersion = payload.phoneVersion,
+                networkType = payload.networkType,
+                networkOperator = payload.networkOperator,
+            )
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            // 登录日志不得阻断 Home；记录失败以便诊断，同一 ViewModel 生命周期内也不重复发送。
+            CrashReportGateway.postCaughtException(error)
         }
     }
 }

@@ -111,6 +111,21 @@ if [[ -d "${APP_DOMAIN_DIR}" ]]; then
   fi
 fi
 
+echo "[module-api] rule-5: Home implementation declarations must remain module-internal"
+HOME_MAIN_DIR="${PROJECT_ROOT}/feature/home/src/main/kotlin"
+if [[ -d "${HOME_MAIN_DIR}" ]]; then
+  scan_kotlin \
+    '^(data class|enum class|sealed (class|interface)|class|interface|object|fun|typealias)\s+' \
+    '^(data class|enum class|sealed (class|interface)|class|interface|object|fun|typealias)[[:space:]]+' \
+    "${HOME_MAIN_DIR}"
+  grep -Ev '/features/home/(api|reporting)/' "${SCAN_RESULTS}" > "${FILTERED_RESULTS}" || true
+  if [[ -s "${FILTERED_RESULTS}" ]]; then
+    cat "${FILTERED_RESULTS}"
+    echo "[module-api][FAIL] Home implementation exports declarations outside its reviewed API/reporting packages"
+    EXIT_CODE=1
+  fi
+fi
+
 if [[ "${EXIT_CODE}" -ne 0 ]]; then
   echo "[module-api] visibility verification failed."
   exit "${EXIT_CODE}"

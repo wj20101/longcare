@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.serviceorders.ui
 
+import com.ytone.longcare.core.ui.order.ServiceOrderItem
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box

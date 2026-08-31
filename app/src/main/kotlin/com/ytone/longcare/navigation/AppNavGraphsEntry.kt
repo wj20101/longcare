@@ -14,10 +14,15 @@ import com.ytone.longcare.feature.login.api.LoginAgreementLinks
 import com.ytone.longcare.feature.login.api.LoginFeatureActions
 import com.ytone.longcare.feature.login.api.LoginFeatureScreen
 import com.ytone.longcare.features.home.api.HomeActions
-import com.ytone.longcare.features.home.ui.HomeScreen
+import com.ytone.longcare.features.home.api.HomeExperience
+import com.ytone.longcare.features.home.api.HomeFeatureConfig
+import com.ytone.longcare.features.home.api.HomeFeatureScreen
+import com.ytone.longcare.features.sales.SalesExperienceScreen
 import com.ytone.longcare.privacy.AgreementUrls
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.R
+import com.ytone.longcare.BuildConfig
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 internal class EntryDestinationRenderers(
     val login: @Composable (NavController, onLoginSuccess: () -> Unit) -> Unit,
@@ -91,52 +96,91 @@ private fun HomeDestination(
         navController.requireHomeGraphBackStackEntry()
     }
     val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
-    val userAgreementTitle = stringResource(R.string.profile_user_agreement)
-    val privacyPolicyTitle = stringResource(R.string.profile_privacy_policy)
-    HomeScreen(
-        actions = HomeActions(
-            onNavigateToCarePlansList = { navController.navigateToCarePlansList() },
-            onNavigateToServiceRecordsList = { navController.navigateToServiceRecordsList() },
-            onNavigateToNursingExecution = { orderKey ->
-                navController.navigateToNursingExecution(orderKey)
-            },
-            onNavigateToService = { orderKey ->
-                navController.navigateToService(orderKey)
-            },
-            onNavigateToServiceCountdown = { orderKey, projectIdList ->
-                navController.navigateToServiceCountdown(orderKey, projectIdList)
-            },
-            onNavigateToHaveServiceUserList = { navController.navigateToHaveServiceUserList() },
-            onNavigateToNoServiceUserList = { navController.navigateToNoServiceUserList() },
-            onOpenWebPage = { url, title ->
-                navController.navigateToWebView(url, title)
-            },
-            onOpenUserAgreement = {
-                navController.navigateToWebView(
-                    AgreementUrls.USER_AGREEMENT_URL,
-                    userAgreementTitle,
-                )
-            },
-            onOpenPrivacyPolicy = {
-                navController.navigateToWebView(
-                    AgreementUrls.PRIVACY_POLICY_URL,
-                    privacyPolicyTitle,
-                )
-            },
-            onNavigateToCamera = { watermarkData ->
-                navController.navigateToCamera(watermarkData)
-            },
-            capturedImageUriFlow =
-                backStackEntry.savedStateHandle.getStateFlow(
-                    NavigationConstants.CAPTURED_IMAGE_URI_KEY,
-                    null,
-                ),
-            clearCapturedImageUri = {
-                backStackEntry.savedStateHandle.remove<String>(
-                    NavigationConstants.CAPTURED_IMAGE_URI_KEY
-                )
-            },
+    val orderStateSource = remember(todayOrderViewModel) {
+        todayOrderViewModel.asHomeOrderStateSource()
+    }
+    val userAgreementTitle = stringResource(CoreUiR.string.profile_user_agreement)
+    val privacyPolicyTitle = stringResource(CoreUiR.string.profile_privacy_policy)
+    val homeActions = HomeActions(
+        onNavigateToCarePlansList = { navController.navigateToCarePlansList() },
+        onNavigateToServiceRecordsList = { navController.navigateToServiceRecordsList() },
+        onNavigateToNursingExecution = { orderKey ->
+            navController.navigateToNursingExecution(orderKey)
+        },
+        onNavigateToService = { orderKey ->
+            navController.navigateToService(orderKey)
+        },
+        onNavigateToServiceCountdown = { orderKey, projectIdList ->
+            navController.navigateToServiceCountdown(orderKey, projectIdList)
+        },
+        onNavigateToHaveServiceUserList = { navController.navigateToHaveServiceUserList() },
+        onNavigateToNoServiceUserList = { navController.navigateToNoServiceUserList() },
+        onOpenWebPage = { url, title ->
+            navController.navigateToWebView(url, title)
+        },
+        onOpenUserAgreement = {
+            navController.navigateToWebView(
+                AgreementUrls.USER_AGREEMENT_URL,
+                userAgreementTitle,
+            )
+        },
+        onOpenPrivacyPolicy = {
+            navController.navigateToWebView(
+                AgreementUrls.PRIVACY_POLICY_URL,
+                privacyPolicyTitle,
+            )
+        },
+        onNavigateToCamera = { watermarkData ->
+            navController.navigateToCamera(watermarkData)
+        },
+        capturedImageUriFlow =
+            backStackEntry.savedStateHandle.getStateFlow(
+                NavigationConstants.CAPTURED_IMAGE_URI_KEY,
+                null,
+            ),
+        clearCapturedImageUri = {
+            backStackEntry.savedStateHandle.remove<String>(
+                NavigationConstants.CAPTURED_IMAGE_URI_KEY,
+            )
+        },
+    )
+    HomeFeatureScreen(
+        actions = homeActions,
+        config = HomeFeatureConfig(
+            versionName = BuildConfig.VERSION_NAME,
+            versionCode = BuildConfig.VERSION_CODE.toLong(),
         ),
-        todayOrderViewModel = todayOrderViewModel
+        orderStateSource = orderStateSource,
+        salesRenderer = { user, profileContent ->
+            SalesExperienceScreen(
+                actions = homeActions,
+                user = user,
+                profileContent = profileContent,
+            )
+        },
+        startupReporter = { experience ->
+            ReportHomeStartupRootDrawn(experience)
+        },
+    )
+}
+
+@Composable
+private fun ReportHomeStartupRootDrawn(experience: HomeExperience) {
+    val expectedRoot = when (experience) {
+        HomeExperience.Loading -> StartupRoot.ResolvingSession
+        HomeExperience.Care -> StartupRoot.CareHome
+        HomeExperience.Sales -> StartupRoot.SalesHome
+    }
+    val userIdentity = when (experience) {
+        HomeExperience.Loading -> null
+        HomeExperience.Care -> 1
+        HomeExperience.Sales -> 2
+    }
+    ReportStartupRootDrawn(
+        expectedRoot = expectedRoot,
+        actualReadiness = resolveStartupRootReadiness(
+            entryState = AppEntryState.LoggedIn,
+            userIdentity = userIdentity,
+        ),
     )
 }

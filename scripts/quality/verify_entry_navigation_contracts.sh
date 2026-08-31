@@ -111,12 +111,12 @@ done <<'TEST_CONTRACTS'
 app/src/test/kotlin/com/ytone/longcare/navigation/AppEntryStateTest.kt|AppEntryStateTest
 app/src/test/kotlin/com/ytone/longcare/navigation/AuthenticationNavigationCoordinatorTest.kt|AuthenticationNavigationCoordinatorTest
 app/src/test/kotlin/com/ytone/longcare/navigation/StartOrderNavigationContractTest.kt|StartOrderNavigationContractTest
-app/src/test/kotlin/com/ytone/longcare/features/home/ui/HomeExperienceTest.kt|HomeExperienceTest
+feature/home/src/test/kotlin/com/ytone/longcare/features/home/ui/HomeExperienceTest.kt|HomeExperienceTest
 app/src/test/kotlin/com/ytone/longcare/features/sales/SalesNavigationSnapshotTest.kt|SalesNavigationSnapshotTest
 app/src/test/kotlin/com/ytone/longcare/features/sales/SalesBackReducerTest.kt|SalesBackReducerTest
 app/src/androidTest/kotlin/com/ytone/longcare/navigation/EntryNavigationInstrumentationTest.kt|EntryNavigationInstrumentationTest
 app/src/androidTest/kotlin/com/ytone/longcare/navigation/HomeGraphOwnerInstrumentationTest.kt|HomeGraphOwnerInstrumentationTest
-app/src/androidTest/kotlin/com/ytone/longcare/features/home/ui/HomeExperienceContentTest.kt|HomeExperienceContentTest
+feature/home/src/androidTest/kotlin/com/ytone/longcare/features/home/ui/HomeExperienceContentTest.kt|HomeExperienceContentTest
 app/src/androidTest/kotlin/com/ytone/longcare/features/sales/SalesNavigationStateRestorationTest.kt|SalesNavigationStateRestorationTest
 TEST_CONTRACTS
 

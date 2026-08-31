@@ -28,11 +28,17 @@ bash scripts/quality/verify_entry_navigation_contracts.sh --project-root "${ROOT
   --tests '*PrivacyConsentProcessCoordinatorTest*' \
   --tests '*AuthenticationNavigationCoordinatorTest*' \
   --tests '*StartOrderNavigationContractTest*' \
-  --tests '*HomeExperienceTest*' \
+  --tests '*HomeDestinationContractTest*' \
+  --tests '*HomeCareNavigationContractTest*' \
   --tests '*SalesNavigationSnapshotTest*' \
   --tests '*SalesBackReducerTest*'
 
-INSTRUMENTATION_CLASSES="com.ytone.longcare.navigation.EntryNavigationInstrumentationTest,com.ytone.longcare.navigation.HomeGraphOwnerInstrumentationTest,com.ytone.longcare.features.home.ui.HomeExperienceContentTest,com.ytone.longcare.features.sales.SalesNavigationStateRestorationTest"
+./gradlew --no-daemon :feature:home:testDebugUnitTest \
+  --tests '*HomeExperienceTest*' \
+  --tests '*HomeFeatureContractTest*'
+
+APP_INSTRUMENTATION_CLASSES="com.ytone.longcare.navigation.EntryNavigationInstrumentationTest,com.ytone.longcare.navigation.HomeGraphOwnerInstrumentationTest,com.ytone.longcare.features.sales.SalesNavigationStateRestorationTest"
+HOME_INSTRUMENTATION_CLASSES="com.ytone.longcare.features.home.ui.HomeExperienceContentTest"
 
 if [[ -n "${DEVICE_SERIAL}" ]]; then
   ADB_BIN="$(command -v adb || true)"
@@ -46,10 +52,14 @@ if [[ -n "${DEVICE_SERIAL}" ]]; then
     exit 1
   fi
   env ANDROID_SERIAL="${DEVICE_SERIAL}" ./gradlew --no-daemon :app:connectedDebugAndroidTest \
-    "-Pandroid.testInstrumentationRunnerArguments.class=${INSTRUMENTATION_CLASSES}"
+    "-Pandroid.testInstrumentationRunnerArguments.class=${APP_INSTRUMENTATION_CLASSES}"
+  env ANDROID_SERIAL="${DEVICE_SERIAL}" ./gradlew --no-daemon :feature:home:connectedDebugAndroidTest \
+    "-Pandroid.testInstrumentationRunnerArguments.class=${HOME_INSTRUMENTATION_CLASSES}"
 else
   ./gradlew --no-daemon :app:pixel6Api36DebugAndroidTest \
-    "-Pandroid.testInstrumentationRunnerArguments.class=${INSTRUMENTATION_CLASSES}"
+    "-Pandroid.testInstrumentationRunnerArguments.class=${APP_INSTRUMENTATION_CLASSES}"
+  ./gradlew --no-daemon :feature:home:pixel6Api36DebugAndroidTest \
+    "-Pandroid.testInstrumentationRunnerArguments.class=${HOME_INSTRUMENTATION_CLASSES}"
 fi
 
-echo "[entry-navigation-focused][PASS] JVM and API 36 instrumentation contracts passed."
+echo "[entry-navigation-focused][PASS] app/Home JVM and API 36 test-APK contracts passed."

@@ -53,6 +53,7 @@ jobs:
       - name: Run Startup and Baseline Profile source fixtures
         run: |
           bash scripts/quality/test_startup_profile_quality_config.sh
+          bash scripts/quality/test_real_device_acceptance_evidence.sh
           bash scripts/quality/test_baselineprofile_journeys.sh
           bash scripts/quality/test_text_profiles.sh
           bash scripts/quality/verify_baselineprofile_journeys.sh

@@ -142,10 +142,19 @@ def verify_no_test_capability(archive: zipfile.ZipFile, artifact: Path) -> None:
                 )
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--apk", required=True, type=Path)
     parser.add_argument("--aab", required=True, type=Path)
+    parser.add_argument("--result-json", type=Path)
     args = parser.parse_args()
 
     with open_archive(args.apk, ".apk") as apk:
@@ -158,6 +167,34 @@ def main() -> None:
             verify_profile_payload(read_required(aab, entry, args.aab), magic, entry)
         verify_r8_and_dex(aab, args.aab)
         verify_no_test_capability(aab, args.aab)
+
+    if args.result_json is not None:
+        result = {
+            "schemaVersion": 1,
+            "status": "passed",
+            "verifier": "release-profile-artifacts-v1",
+            "artifacts": {
+                "acceptanceApk": {
+                    "sha256": sha256_file(args.apk),
+                    "sizeBytes": args.apk.stat().st_size,
+                },
+                "acceptanceAab": {
+                    "sha256": sha256_file(args.aab),
+                    "sizeBytes": args.aab.stat().st_size,
+                },
+            },
+            "checks": [
+                "art-profile-payloads",
+                "r8-startup-dex-metadata",
+                "dex-checksums",
+                "production-capability-isolation",
+            ],
+        }
+        try:
+            args.result_json.parent.mkdir(parents=True, exist_ok=True)
+            args.result_json.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        except OSError as error:
+            fail(f"cannot write verification result {args.result_json}: {error}")
 
     print(
         "[release-profile-artifact][PASS] explicit APK/AAB contain parseable ART Profiles, "

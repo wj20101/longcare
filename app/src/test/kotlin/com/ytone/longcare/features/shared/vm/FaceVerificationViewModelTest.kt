@@ -7,6 +7,8 @@ import com.ytone.longcare.common.faceauth.FaceSdkEvent
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
+import com.ytone.longcare.domain.repository.SessionState
+import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.shared.FaceVerificationPhotoProcessor
 import com.ytone.longcare.features.shared.ProcessedFacePhoto
 import com.ytone.longcare.features.shared.FacePhotoProcessingException
@@ -16,6 +18,7 @@ import androidx.test.core.app.ApplicationProvider
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -35,12 +38,16 @@ class FaceVerificationViewModelTest {
 
     private val systemConfigManager = mockk<SystemConfigManager>(relaxed = true)
     private val photoProcessor = mockk<FaceVerificationPhotoProcessor>()
+    private val userSessionRepository = mockk<UserSessionRepository> {
+        io.mockk.every { sessionState } returns MutableStateFlow(SessionState.LoggedOut)
+    }
 
     private fun createViewModel(): FaceVerificationViewModel {
         return FaceVerificationViewModel(
             systemConfigManager = systemConfigManager,
             photoProcessor = photoProcessor,
             textResolver = ResourceTextResolver(ApplicationProvider.getApplicationContext()),
+            userSessionRepository = userSessionRepository,
         )
     }
 

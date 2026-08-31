@@ -225,15 +225,17 @@ if [[ -d "${ROOT_DIR}/app/src/release" ]] && rg -n --glob '*.{kt,xml,json}' 'PRO
   fail "Profile setup capability or fixture identity leaked into app/src/release"
 fi
 
-APP_UI_ROOTS=(
+PRODUCTION_UI_ROOTS=(
   "${ROOT_DIR}/app/src/main/kotlin"
+  "${ROOT_DIR}/core/ui/src/main/kotlin"
+  "${ROOT_DIR}/feature/home/src/main/kotlin"
   "${ROOT_DIR}/feature/login/src/main/kotlin"
 )
 if [[ -f "${CONFIG_FILE}" ]]; then
   while IFS= read -r required_tag; do
     [[ -n "${required_tag}" ]] || continue
     found="false"
-    for search_root in "${APP_UI_ROOTS[@]}"; do
+    for search_root in "${PRODUCTION_UI_ROOTS[@]}"; do
       [[ -d "${search_root}" ]] || continue
       if rg -Fq -- "${required_tag}" "${search_root}"; then
         found="true"

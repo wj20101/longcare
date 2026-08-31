@@ -58,12 +58,28 @@ else
   )"
 fi
 
+if [[ -n "${HOME_FEATURE_SMOKE_TEST_CLASSES:-}" ]]; then
+  HOME_FEATURE_SMOKE_CLASSES="${HOME_FEATURE_SMOKE_TEST_CLASSES}"
+elif [[ -n "${PLATFORM_API}" && "${PLATFORM_API}" != "$(read_target_readiness_value "${MATRIX_FILE}" current_target_api)" ]]; then
+  HOME_FEATURE_SMOKE_CLASSES="$(
+    read_target_readiness_value "${MATRIX_FILE}" candidate_target_home_feature_smoke_classes
+  )"
+else
+  HOME_FEATURE_SMOKE_CLASSES="$(
+    read_target_readiness_value "${MATRIX_FILE}" current_target_home_feature_smoke_classes
+  )"
+fi
+
 if [[ -z "${SMOKE_CLASSES}" ]]; then
   echo "Failed to resolve smoke classes from ${MATRIX_FILE}" >&2
   exit 1
 fi
 if [[ -z "${LOGIN_FEATURE_SMOKE_CLASSES}" ]]; then
   echo "Failed to resolve login feature smoke classes from ${MATRIX_FILE}" >&2
+  exit 1
+fi
+if [[ -z "${HOME_FEATURE_SMOKE_CLASSES}" ]]; then
+  echo "Failed to resolve Home feature smoke classes from ${MATRIX_FILE}" >&2
   exit 1
 fi
 
@@ -221,6 +237,7 @@ cd "${ROOT_DIR}"
 ./gradlew --no-daemon \
   :app:assembleDebug \
   :app:assembleDebugAndroidTest \
+  :feature:home:assembleDebugAndroidTest \
   :feature:login:assembleDebugAndroidTest \
   -Pbaseline.enableX86_64=true
 
@@ -229,6 +246,11 @@ SMOKE_DEVICE_SERIAL="${TARGET_SERIAL}" \
 SMOKE_READY_TIMEOUT_SECS="${READY_TIMEOUT_SECS}" \
 SMOKE_TEST_CLASSES="${SMOKE_CLASSES}" \
 bash .github/scripts/run-instrumentation-smoke.sh
+
+ANDROID_SERIAL="${TARGET_SERIAL}" \
+./gradlew --no-daemon :feature:home:connectedDebugAndroidTest \
+  -Pbaseline.enableX86_64=true \
+  -Pandroid.testInstrumentationRunnerArguments.class="${HOME_FEATURE_SMOKE_CLASSES}"
 
 ANDROID_SERIAL="${TARGET_SERIAL}" \
 ./gradlew --no-daemon :feature:login:connectedDebugAndroidTest \

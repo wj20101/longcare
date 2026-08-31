@@ -2,5 +2,7 @@
 # Managed Device names and class selectors remain owned by target_platform_test_matrix.properties.
 :app
 :core:data
+:core:ui
+:feature:home
 :feature:identification
 :feature:login

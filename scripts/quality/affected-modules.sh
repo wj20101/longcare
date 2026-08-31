@@ -49,15 +49,20 @@ declare -a selected_modules=()
 declare -a changed_files=()
 full_scope="false"
 run_instrumentation="false"
+run_home_feature_instrumentation="false"
 run_login_feature_instrumentation="false"
 MATRIX_FILE="${ROOT_DIR}/scripts/quality/target_platform_test_matrix.properties"
 # shellcheck source=scripts/quality/target_readiness_values.sh
 source "${ROOT_DIR}/scripts/quality/target_readiness_values.sh"
 current_smoke_classes="$(read_target_readiness_value "${MATRIX_FILE}" current_target_smoke_classes)"
+current_home_feature_smoke_classes="$(
+  read_target_readiness_value "${MATRIX_FILE}" current_target_home_feature_smoke_classes
+)"
 current_login_feature_smoke_classes="$(
   read_target_readiness_value "${MATRIX_FILE}" current_target_login_feature_smoke_classes
 )"
 IFS=',' read -r -a smoke_classes <<< "${current_smoke_classes}"
+IFS=',' read -r -a home_feature_smoke_classes <<< "${current_home_feature_smoke_classes}"
 IFS=',' read -r -a login_feature_smoke_classes <<< "${current_login_feature_smoke_classes}"
 
 add_unique() {
@@ -160,6 +165,14 @@ for file in "${changed_files[@]:-}"; do
   esac
 
   case "${file}" in
+    core/domain/src/main/kotlin/com/ytone/longcare/domain/system/CompanyNameProvider.kt|core/data/src/main/kotlin/com/ytone/longcare/common/utils/SystemConfigManager.kt|core/data/src/main/kotlin/com/ytone/longcare/di/SystemConfigProviderModule.kt|core/data/src/test/kotlin/com/ytone/longcare/common/utils/SystemConfigManagerUserScopeTest.kt)
+      add_unique ":core:domain"
+      add_unique ":core:data"
+      add_unique ":feature:home"
+      ;;
+  esac
+
+  case "${file}" in
     app/src/main/*|app/src/androidTest/*|baselineprofile/*)
       run_instrumentation="true"
       ;;
@@ -168,6 +181,12 @@ for file in "${changed_files[@]:-}"; do
   case "${file}" in
     feature/login/src/*)
       run_login_feature_instrumentation="true"
+      ;;
+  esac
+
+  case "${file}" in
+    feature/home/src/main/*|feature/home/src/androidTest/*)
+      run_home_feature_instrumentation="true"
       ;;
   esac
 
@@ -186,11 +205,10 @@ for file in "${changed_files[@]:-}"; do
   esac
 
   case "${file}" in
-    app/src/main/kotlin/com/ytone/longcare/navigation/*|app/src/main/kotlin/com/ytone/longcare/features/home/ui/Home*|app/src/main/kotlin/com/ytone/longcare/features/sales/SalesExperienceScreen.kt|app/src/main/kotlin/com/ytone/longcare/presentation/sales/SalesNavigationState.kt|app/src/androidTest/kotlin/com/ytone/longcare/navigation/*|app/src/androidTest/kotlin/com/ytone/longcare/features/home/ui/HomeExperienceContentTest.kt|app/src/androidTest/kotlin/com/ytone/longcare/features/sales/SalesNavigationStateRestorationTest.kt)
+    app/src/main/kotlin/com/ytone/longcare/navigation/*|app/src/main/kotlin/com/ytone/longcare/features/sales/SalesExperienceScreen.kt|app/src/main/kotlin/com/ytone/longcare/presentation/sales/SalesNavigationState.kt|app/src/androidTest/kotlin/com/ytone/longcare/navigation/*|app/src/androidTest/kotlin/com/ytone/longcare/features/sales/SalesNavigationStateRestorationTest.kt)
       run_instrumentation="true"
       add_smoke_class_unique "com.ytone.longcare.navigation.EntryNavigationInstrumentationTest"
       add_smoke_class_unique "com.ytone.longcare.navigation.HomeGraphOwnerInstrumentationTest"
-      add_smoke_class_unique "com.ytone.longcare.features.home.ui.HomeExperienceContentTest"
       add_smoke_class_unique "com.ytone.longcare.features.sales.SalesNavigationStateRestorationTest"
       ;;
   esac
@@ -212,14 +230,19 @@ if [[ "${full_scope}" == "true" ]]; then
 fi
 
 for module in "${selected_modules[@]}"; do
+  if [[ "${module}" == ":feature:home" ]]; then
+    verify_tasks+=" :feature:home:compileDebugKotlin :feature:home:testDebugUnitTest :feature:home:lintDebug :feature:home:compileDebugAndroidTestKotlin"
+  fi
   if [[ "${module}" == ":feature:login" ]]; then
     verify_tasks+=" :feature:login:compileDebugKotlin :feature:login:testDebugUnitTest :feature:login:lintDebug :feature:login:compileDebugAndroidTestKotlin"
-    break
   fi
 done
 
 if [[ "${run_instrumentation}" != "true" ]]; then
   run_instrumentation="false"
+fi
+if [[ "${run_home_feature_instrumentation}" != "true" ]]; then
+  run_home_feature_instrumentation="false"
 fi
 if [[ "${run_login_feature_instrumentation}" != "true" ]]; then
   run_login_feature_instrumentation="false"
@@ -227,6 +250,7 @@ fi
 
 modules_csv="$(IFS=,; echo "${selected_modules[*]}")"
 smoke_classes_csv="$(IFS=,; echo "${smoke_classes[*]}")"
+home_feature_smoke_classes_csv="$(IFS=,; echo "${home_feature_smoke_classes[*]}")"
 login_feature_smoke_classes_csv="$(IFS=,; echo "${login_feature_smoke_classes[*]}")"
 changed_files_count="${#changed_files[@]}"
 
@@ -237,6 +261,8 @@ case "${FORMAT}" in
     echo "verify_tasks=${verify_tasks}"
     echo "run_instrumentation=${run_instrumentation}"
     echo "smoke_test_classes=${smoke_classes_csv}"
+    echo "run_home_feature_instrumentation=${run_home_feature_instrumentation}"
+    echo "home_feature_smoke_test_classes=${home_feature_smoke_classes_csv}"
     echo "run_login_feature_instrumentation=${run_login_feature_instrumentation}"
     echo "login_feature_smoke_test_classes=${login_feature_smoke_classes_csv}"
     echo "changed_files_count=${changed_files_count}"
@@ -247,6 +273,8 @@ case "${FORMAT}" in
     echo "verify_tasks=${verify_tasks}"
     echo "run_instrumentation=${run_instrumentation}"
     echo "smoke_test_classes=${smoke_classes_csv}"
+    echo "run_home_feature_instrumentation=${run_home_feature_instrumentation}"
+    echo "home_feature_smoke_test_classes=${home_feature_smoke_classes_csv}"
     echo "run_login_feature_instrumentation=${run_login_feature_instrumentation}"
     echo "login_feature_smoke_test_classes=${login_feature_smoke_classes_csv}"
     echo "changed_files_count=${changed_files_count}"

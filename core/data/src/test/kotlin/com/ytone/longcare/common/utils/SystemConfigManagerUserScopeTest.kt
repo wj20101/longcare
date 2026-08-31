@@ -9,6 +9,7 @@ import com.ytone.longcare.data.userstorage.UserDatabaseFactory
 import com.ytone.longcare.data.userstorage.UserNamespaceMetadataStore
 import com.ytone.longcare.data.userstorage.UserNamespacePathsFactory
 import com.ytone.longcare.data.userstorage.UserStorageRegistry
+import com.ytone.longcare.domain.system.CompanyNameProvider
 import com.ytone.longcare.domain.userstorage.SessionEpoch
 import com.ytone.longcare.model.SystemConfigModel
 import com.ytone.longcare.model.UserScopeKey
@@ -95,6 +96,34 @@ class SystemConfigManagerUserScopeTest {
         coEvery { api.getSystemConfig() } returns ApiResult.Failure(503, "offline")
 
         assertEquals("rehydrated", fixture.manager.getCompanyName())
+    }
+
+    @Test
+    fun `company name contract clears and refreshes only the active user`() = runTest {
+        val api = mockk<LongCareApiService>()
+        coEvery { api.getSystemConfig() } returns ApiResult.Failure(503, "offline")
+        val fixture = fixture(backgroundScope, api)
+        val provider: CompanyNameProvider = fixture.manager
+        val scopeA = scope(31, 32, 33)
+        val scopeB = scope(31, 32, 34)
+
+        fixture.registry.open(scopeA, SessionEpoch(40))
+        fixture.manager.saveSystemConfig(SystemConfigModel(companyName = "private-a"))
+        fixture.manager.clearSystemConfig()
+        assertEquals("", provider.getCompanyName())
+        assertFalse(fixture.manager.hasSystemConfig())
+
+        coEvery { api.getSystemConfig() } returns ApiResult.Success(
+            SystemConfigModel(companyName = "rehydrated-a")
+        )
+        assertEquals("rehydrated-a", provider.refreshCompanyName())
+
+        fixture.registry.open(scopeB, SessionEpoch(41))
+        coEvery { api.getSystemConfig() } returns ApiResult.Failure(503, "offline")
+        assertEquals("", provider.getCompanyName())
+
+        fixture.registry.open(scopeA, SessionEpoch(42))
+        assertEquals("rehydrated-a", provider.getCompanyName())
     }
 
     private fun fixture(

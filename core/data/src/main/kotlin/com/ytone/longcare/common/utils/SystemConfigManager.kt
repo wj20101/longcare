@@ -9,6 +9,7 @@ import com.ytone.longcare.data.userstorage.UserStorageUnavailableException
 import com.ytone.longcare.data.userstorage.UserStorageRegistry
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
+import com.ytone.longcare.domain.system.CompanyNameProvider
 import com.ytone.longcare.domain.system.ServicePhotoConfigProvider
 import com.ytone.longcare.domain.userstorage.SessionRuntimeCleanupHook
 import com.ytone.longcare.domain.userstorage.SessionRuntimeIdentity
@@ -36,7 +37,10 @@ class SystemConfigManager @Inject constructor(
     private val moshi: Moshi,
     private val apiService: LongCareApiService,
     private val storageRegistry: UserStorageRegistry,
-) : FaceVerificationConfigProvider, ServicePhotoConfigProvider, SessionRuntimeCleanupHook {
+) : CompanyNameProvider,
+    FaceVerificationConfigProvider,
+    ServicePhotoConfigProvider,
+    SessionRuntimeCleanupHook {
     private data class CacheIdentity(
         val namespaceId: NamespaceId,
         val generation: Long,
@@ -184,10 +188,10 @@ class SystemConfigManager @Inject constructor(
         }
     }
 
-    suspend fun getCompanyName(): String = getSystemConfigLazy()?.companyName ?: ""
+    override suspend fun getCompanyName(): String = getSystemConfigLazy()?.companyName ?: ""
 
     /** Fetches a current-session value; failure never falls back to another generation. */
-    suspend fun refreshCompanyName(): String? {
+    override suspend fun refreshCompanyName(): String? {
         val lease = runCatching { storageRegistry.requireCurrentLease() }.getOrNull() ?: return null
         return fetchAndPersist(lease)?.companyName
     }

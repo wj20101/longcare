@@ -9,6 +9,7 @@ import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyError
 import com.ytone.longcare.domain.faceauth.model.FaceVerifyResult
+import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.shared.FaceVerificationPhotoProcessor
 import com.ytone.longcare.features.shared.ProcessedFacePhoto
 import com.ytone.longcare.features.shared.FacePhotoProcessingException
@@ -22,6 +23,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -29,7 +33,16 @@ class FaceVerificationViewModel @Inject constructor(
     private val systemConfigManager: SystemConfigManager,
     private val photoProcessor: FaceVerificationPhotoProcessor,
     private val textResolver: ResourceTextResolver,
+    userSessionRepository: UserSessionRepository,
 ) : ViewModel() {
+
+    val currentUser = userSessionRepository.sessionState
+        .map { it.user }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = userSessionRepository.sessionState.value.user,
+        )
 
     sealed class FaceVerifyUiState {
         object Idle : FaceVerifyUiState()

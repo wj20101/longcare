@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "deviceEligibility": {
+    "deviceType": "physical",
+    "requiredApiLevel": 36,
+    "requiredPrimaryAbi": "arm64-v8a",
+    "minimumCpuCores": 2,
+    "minimumBatteryPercent": 50,
+    "maximumThermalStatus": 1,
+    "requireNotCharging": true,
+    "requireTimeToFullDisplay": true,
+    "anonymousDeviceIdAlgorithm": "sha256",
+    "requiredProperties": [
+      "ro.kernel.qemu",
+      "ro.build.version.sdk",
+      "ro.product.cpu.abi",
+      "ro.build.fingerprint",
+      "ro.product.model"
+    ]
+  },
+  "allowedExternalConditions": [
+    "care-account",
+    "sales-account",
+    "active-order",
+    "nfc-card-or-r65c-reader",
+    "location-signal",
+    "consenting-camera-subject",
+    "tencent-face-service",
+    "cloud-upload-service",
+    "qlz-ble-device",
+    "qlz-runtime-token",
+    "video-call-peer",
+    "update-package-source"
+  ],
+  "releaseSmoke": {
+    "requiredCount": 10,
+    "requiredEvidenceDomains": [
+      "nfc",
+      "location",
+      "camera",
+      "sales",
+      "qlz",
+      "tencent-face"
+    ],
+    "allowedResultStatuses": [
+      "passed",
+      "failed",
+      "blocked"
+    ],
+    "scenarios": [
+      {
+        "id": "login",
+        "evidenceDomains": ["sales"],
+        "prerequisites": ["care-account"],
+        "actions": ["launch minified acceptance APK", "submit a real care account", "wait for authenticated root"],
+        "targetNode": "authenticated_home_root",
+        "executionMethods": ["adb-assisted", "manual-physical"],
+        "mockSuccessAllowed": false
+      },
+      {
+        "id": "typed_navigation_state_restoration",
+        "evidenceDomains": ["nfc"],
+        "prerequisites": ["care-account", "active-order", "nfc-card-or-r65c-reader"],
+        "actions": ["open active order through typed route", "enter NFC sign-in", "recreate activity", "complete NFC read"],
+        "targetNode": "nfc_sign_in_restored_and_read",
+        "executionMethods": ["connected-instrumentation", "manual-physical"],
+        "mockSuccessAllowed": false
+      },
+      {
+        "id": "location",
+        "evidenceDomains": ["location"],
+        "prerequisites": ["care-account", "active-order", "location-signal"],
+        "actions": ["start order location flow", "grant required runtime permissions", "observe a real location update"],
+        "targetNode": "location_update_observed",
+        "executionMethods": ["manual-physical"],
+        "mockSuccessAllowed": false
+      },
+      {
+        "id": "identification_mlkit",
+        "evidenceDomains": ["camera"],
+        "prerequisites": ["care-account", "active-order", "consenting-camera-subject"],
+        "actions": ["open default identity flow", "complete ML Kit blink sequence", "submit captured face"],
+        "targetNode": "mlkit_identity_result_received",
+        "executionMethods": ["manual-physical"],
+        "mockSuccessAllowed": false
+      },
+      {
+        "id": "tencent_face",
+        "evidenceDomains": ["camera", "tencent-face"],
+        "prerequisites": ["care-account", "consenting-camera-subject", "tencent-face-service"],
+        "actions": ["open Tencent validation entry", "launch vendor UI", "receive matching vendor result"],
+        "targetNode": "tencent_face_result_received",
+        "executionMethods": ["manual-physical"],
+        "mockSuccessAllowed": false
+      },
+      {
+        "id": "photo_upload",
+        "evidenceDomains": ["camera"],
+        "prerequisites": ["care-account", "active-order", "consenting-camera-subject", "cloud-upload-service"],
+        "actions": ["capture a business photo", "confirm watermarked preview", "upload through production data path"],
+        "targetNode": "photo_upload_completed",
+        "executionMethods": ["manual-physical"],
+        "mockSuccessAllowed": false
+      },
+      {
+        "id": "service_countdown",
+        "evidenceDomains": [],
+        "prerequisites": ["care-account", "active-order"],
+        "actions": ["start service countdown", "recreate activity", "observe restored countdown and notification state"],
+        "targetNode": "countdown_state_restored",
+        "executionMethods": ["connected-instrumentation", "manual-physical"],
+        "mockSuccessAllowed": false
+      },
+      {
+        "id": "qlz_evaluation",
+        "evidenceDomains": ["sales", "qlz"],
+        "prerequisites": ["sales-account", "qlz-ble-device", "qlz-runtime-token"],
+        "actions": ["open sales evaluation", "connect the real QLZ BLE device", "complete vendor measurement"],
+        "targetNode": "qlz_evaluation_result_received",
+        "executionMethods": ["manual-physical"],
+        "mockSuccessAllowed": false
+      },
+      {
+        "id": "video_call",
+        "evidenceDomains": [],
+        "prerequisites": ["care-account", "video-call-peer"],
+        "actions": ["open video call entry", "establish a real peer session", "end the call normally"],
+        "targetNode": "video_call_connected",
+        "executionMethods": ["manual-physical"],
+        "mockSuccessAllowed": false
+      },
+      {
+        "id": "app_update",
+        "evidenceDomains": [],
+        "prerequisites": ["care-account", "update-package-source"],
+        "actions": ["request update check", "reach the real update prompt", "stop before destructive installation"],
+        "targetNode": "app_update_prompt_visible",
+        "executionMethods": ["adb-assisted", "manual-physical"],
+        "mockSuccessAllowed": false
+      }
+    ]
+  },
+  "forbiddenLogSignatures": [
+    "ClassNotFoundException",
+    "NoSuchMethodException",
+    "NoSuchMethodError",
+    "UnsatisfiedLinkError",
+    "serialization restoration error",
+    "FATAL EXCEPTION",
+    "ANR in com.ytone.longcare",
+    "Process com.ytone.longcare has died",
+    "REAL_DEVICE_ACCEPTANCE_TIMEOUT"
+  ],
+  "benchmarkEvidence": {
+    "qualityConfig": "scripts/quality/startup_profile_quality.json",
+    "scenarioIds": ["first_run_privacy", "logged_out", "care_home", "sales_home"],
+    "compilationModes": ["none", "baseline-profile-required"],
+    "requiredRounds": 2,
+    "iterationsPerMode": 10,
+    "requiredMetrics": ["timeToInitialDisplayMs", "timeToFullDisplayMs"],
+    "maxMedianRegressionPercent": {
+      "timeToInitialDisplayMs": 5.0,
+      "timeToFullDisplayMs": 5.0
+    },
+    "minimumConsistentlyImprovedMetrics": 1
+  },
+  "verdicts": [
+    {
+      "id": "r8RuntimeAcceptance",
+      "passValue": "passed",
+      "otherwiseValue": "unverified",
+      "change": "prune-deterministic-project-r8-rules",
+      "task": "5.1"
+    },
+    {
+      "id": "startupProfileBenefit",
+      "passValue": "verified",
+      "otherwiseValue": "unverified",
+      "change": "separate-startup-and-baseline-profile-semantics",
+      "task": "7.5"
+    }
+  ],
+  "reportPolicy": {
+    "schemaVersion": 1,
+    "defaultRoot": "build/reports/real-device-acceptance",
+    "allowedRoots": ["build/reports/real-device-acceptance"],
+    "rawLogRetention": "sanitized-target-window-only",
+    "serialPolicy": "sha256-only",
+    "localAbsolutePathsAllowed": false,
+    "urlQueryAllowed": false,
+    "photosAllowed": false,
+    "secretClasses": ["account", "verification-code", "token", "phone", "identity-card", "photo", "raw-serial", "url-query"]
+  }
+}

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_navigation_home">首页</string>
+    <string name="home_navigation_nursing">护理工作</string>
+    <string name="home_navigation_profile">我的</string>
+    <string name="dashboard_in_service">服务中</string>
+    <string name="dashboard_empty_in_service">暂无服务中订单</string>
+    <string name="dashboard_pending_count">您有 %1$d 个护理计划待执行</string>
+    <string name="dashboard_service_records_description">查看过往服务记录</string>
+    <string name="common_open_details">进入详情</string>
+    <string name="nursing_empty_orders">暂无服务订单</string>
+    <string name="nursing_empty_orders_for_date">当前日期没有安排服务订单</string>
+    <string name="date_today">今天</string>
+    <string name="date_yesterday">昨天</string>
+    <string name="date_tomorrow">明天</string>
+    <string name="date_monday">周一</string>
+    <string name="date_tuesday">周二</string>
+    <string name="date_wednesday">周三</string>
+    <string name="date_thursday">周四</string>
+    <string name="date_friday">周五</string>
+    <string name="date_saturday">周六</string>
+    <string name="date_sunday">周日</string>
+    <string name="profile_logout">退出登录</string>
+    <string name="profile_title">我的</string>
+    <string name="profile_version">版本号：%1$s.%2$d</string>
+    <string name="profile_stat_service_count">服务次数</string>
+    <string name="profile_user_agreement_description">查看服务条款与使用约定</string>
+    <string name="profile_privacy_policy_description">了解个人信息收集与保护方式</string>
+</resources>

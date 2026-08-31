@@ -28,12 +28,13 @@
 
 - `check_new_files_guard.sh`
 - `test_android_build_governance.sh`、`test_ci_workflow_quality.sh`、项目 R8 规则 verifier/fixtures，以及 build baseline、dependency policy、target readiness/matrix、smoke class、workflow、tech-stack 正向守卫；affected changed-path fixture 只由 Android build governance 入口执行一次
-- `test_legacy_feature_file_allowlist.sh`、`test_user_storage_boundaries.sh`、`test_identification_feature_boundary.sh`、`test_login_feature_boundary.sh`、`test_entry_navigation_contracts.sh` 与 `test_instrumentation_test_ownership.sh` 的正反 fixture
+- `test_legacy_feature_file_allowlist.sh`、`test_user_storage_boundaries.sh`、`test_identification_feature_boundary.sh`、`test_login_feature_boundary.sh`、`test_home_feature_boundary.sh`、`test_entry_navigation_contracts.sh` 与 `test_instrumentation_test_ownership.sh` 的正反 fixture
 - `verify_entry_navigation_contracts.sh`（Navigation Testing 仅限 androidTest、入口 renderer/host 保持 `internal`、focused 测试类完整）
-- `verify_architecture_boundaries.sh`（内部执行 legacy 精确快照、身份/登录 feature 所有权、用户存储/后台身份、WebView 原生 bridge 和 instrumentation test APK 所有权守卫）
+- `verify_architecture_boundaries.sh`（内部执行 legacy 精确快照、身份/登录/Home feature 所有权、用户存储/后台身份、WebView 原生 bridge 和 instrumentation test APK 所有权守卫）
 - `verify_module_dependency_whitelist.sh`
 - `verify_module_api_visibility.sh`
 - Startup/Baseline Profile 场景配置、确定性旅程、fully-drawn、AndroidX benchmark JSON 归一化、文本规则和 Release artifact 的正反 fixture；这些检查不启动模拟器
+- 真机验收配置、设备/账本合成 fixture、Release smoke dry-run/fake ADB、日志脱敏、双轮 comparator、报告隐私和路径/哈希守卫；`local-fast` 只运行静态/合成自检，不连接设备、不构建 Release
 - `test_debug_mock_network.sh` / `verify_debug_mock_network.py`：默认关闭、Debug-only source set、Release 真实上传绑定、测试身份隔离和长期文档一致性；`--full` 另执行 `run_debug_mock_network_contracts.sh` 的路由、fixture、上传、更新、第三方与 performance/offline focused tests
 
 `--changed-only` 按 `BASE_REF`、`origin/$GITHUB_BASE_REF`、`origin/master`、`origin/main` 的顺序寻找强基线。找不到时不会相信局部 diff，而是扩大扫描，避免 false green。
@@ -59,20 +60,46 @@ bash scripts/quality/test_release_validation_entry.sh
 ANDROID_SERIAL=<device-serial> bash scripts/quality/run_connected_instrumentation_suite.sh
 ```
 
-`scripts/quality/instrumentation_test_modules.txt` 当前只登记四个非空 test APK owner：`:app`、`:core:data`、`:feature:identification`、`:feature:login`。入口据此生成四个模块限定的 `connectedDebugAndroidTest` task，并分别保留模块报告；它不会调用根级 task，也不会为无测试 Library 增加 runner。Managed Device 名称和类选择器仍只由 `target_platform_test_matrix.properties` 管理。
+`scripts/quality/instrumentation_test_modules.txt` 当前登记六个非空 test APK owner：`:app`、`:core:data`、`:core:ui`、`:feature:home`、`:feature:identification`、`:feature:login`。入口据此生成六个模块限定的 `connectedDebugAndroidTest` task，并分别保留模块报告；它不会调用根级 task，也不会为无测试 Library 增加 runner。Managed Device 名称和类选择器仍只由 `target_platform_test_matrix.properties` 管理。
+
+### 统一真机验收入口
+
+`scripts/quality/real_device_acceptance.json` 是真机资格、十类 Release smoke、禁止异常、外部条件、5% TTID/TTFD 预算、报告隐私和 verdict 映射的机器事实源；显式长任务入口为：
+
+```bash
+# 先生成 artifact verifier 结果、合格设备报告和 execution manifest；完整参数见 --help
+python3 scripts/quality/preflight_real_device.py --serial <api-36-physical-serial> --output <controlled-report.json>
+python3 scripts/quality/real_device_acceptance_manifest.py init --help
+
+# 每个 Release smoke 分别准备、完成或记录外部阻断
+bash scripts/quality/run_real_device_acceptance.sh prepare --manifest <manifest> --scenario <id> --serial <serial>
+bash scripts/quality/run_real_device_acceptance.sh finish --manifest <manifest> --scenario <id> --serial <serial> --status <passed|failed> <evidence-args>
+bash scripts/quality/run_real_device_acceptance.sh block --manifest <manifest> --scenario <id> --blocker <typed-condition>
+
+# 同一设备/构建输入的两个完整 benchmark round；raw report 必须为本次 Gradle 调用的显式输出
+bash scripts/quality/run_real_device_acceptance.sh benchmark-round --manifest <manifest> --round 1 --serial <serial> --raw-report <project-relative-json>
+bash scripts/quality/run_real_device_acceptance.sh benchmark-round --manifest <manifest> --round 2 --serial <serial> --raw-report <project-relative-json>
+bash scripts/quality/run_real_device_acceptance.sh benchmark-compare --manifest <manifest> --serial <serial>
+```
+
+设备资格固定为 API 36 physical、`arm64-v8a`、至少 2 核、电量至少 50%、未充电且热状态不高于 light；必须显式指定 `ANDROID_SERIAL`，报告只保留其 SHA-256。API 28 真机因当前 target/TTFD 条件不合格，API 37 或其他模拟器因非真实硬件不合格，两者都在安装前 fail-closed。
+
+`r8RuntimeAcceptance` 只在十类 minified acceptance 场景全部 `passed` 且目标进程日志没有反射/JNI/恢复/FATAL/ANR/死亡/超时时通过；它只映射 R8 change 任务 5.1。`startupProfileBenefit` 只在同一设备/构建的两轮四场景 None/Profile、各 10 次冷启动均满足 5% 预算且至少一个“场景 × 指标”两轮持续改善时为 `verified`；它只映射 Profile change 任务 7.5。两个结论相互独立，没有 overall verdict。
+
+需要真实账号、有效订单、NFC/R65C、相机/定位、腾讯服务、QLZ BLE/运行时 Token、视频对端或更新源的场景，条件缺失时记录登记表允许的 `blocked`，不能写成通过或改用 mock。目标包日志只保留脱敏时间窗；账号、验证码、Token、手机号、身份证、照片、原始 serial、主机绝对路径和 URL query 不进入 artifact。
 
 ## Android CI
 
 `.github/workflows/android-ci.yml` 以构建门禁为基础，并按 affected scope 选择性追加 API 36 smoke：
 
-摘要明确区分 `build-only`、`app-focused` 和 `login-feature-focused`；两类 focused 同时受影响时组合显示。构建成功但设备测试未请求时只表示 build-only，不能作为业务 instrumentation 通过证据。
+摘要明确区分 `build-only`、`app-focused`、`home-feature-focused` 和 `login-feature-focused`；多类 focused 同时受影响时组合显示。构建成功但设备测试未请求时只表示 build-only，不能作为业务 instrumentation 通过证据。
 
 1. 计算 affected scope 和 Gradle tasks。
 2. 执行 ci-required shell guards。
-3. 执行 `:app:lintDebug :app:assembleDebug`；full scope 额外执行 `:app:bundleDebug`。当 `:feature:login` 受影响时追加 feature compile/unit/lint/androidTest compile。
+3. 执行 `:app:lintDebug :app:assembleDebug`；full scope 额外执行 `:app:bundleDebug`。当 `:feature:home` 或 `:feature:login` 受影响时，分别追加对应 feature compile/unit/lint/androidTest compile。
 4. 对生成的 Lint 文本报告执行 warning allowlist。
 5. 上传 Debug APK；full scope 上传 AAB 和可用的 Baseline Profile APK。
-6. 当 app 或 login feature 的 instrumentation 标志为 true 时，在各自 `pixel6Api36` test APK 上运行分离的 blocking smoke 并上传报告；feature-owned 登录 UI class 不得进入 app test APK。
+6. 当 app、Home feature 或 Login feature 的 instrumentation 标志为 true 时，在各自 `pixel6Api36` test APK 上运行分离的 blocking smoke 并上传报告；feature-owned Home/Login UI class 不得进入 app test APK。
 7. 总是上传报告，失败时上传额外诊断产物。
 
 普通 Android CI **不执行全部业务单元测试或完整用户旅程**；受影响变更会执行受管的 API 36 UI/平台 smoke。相关改动仍应在本地 `--full`、专项验证或发布验收中运行更完整的 focused tests 和真机链路。
@@ -87,6 +114,7 @@ ANDROID_SERIAL=<device-serial> bash scripts/quality/run_connected_instrumentatio
 | `verify_lint_ignore_policy.sh` | 禁止不受控 Lint ignore |
 | `verify_jetpack_compat_apis.sh` | 受保护 Jetpack API 使用 |
 | `verify_baselineprofile_journeys.sh` | 六个确定场景、准确节点、四 Startup/两 Baseline-only 分层、双 compilation mode 对称、fully-drawn 与性能 source-set 隔离 |
+| `test_real_device_acceptance_evidence.sh` | API 36 physical 合同、十类 Release smoke、匿名设备/构建账本、日志脱敏、双轮 comparator、独立 verdict 和报告隐私的纯静态/合成自检；不运行真实设备长任务 |
 | `verify_cancellation_guards.sh` | 敏感协程取消处理 |
 | `verify_no_empty_catch_blocks.sh` | 禁止空 catch |
 | `verify_target_sdk_upgrade.sh` | targetSdk 与 workflow smoke 约束同步 |
@@ -94,9 +122,9 @@ ANDROID_SERIAL=<device-serial> bash scripts/quality/run_connected_instrumentatio
 | `verify_project_r8_rules.py` / `test_project_r8_rules.sh` | Release 优化默认文件/项目规则/腾讯规则接线、危险或已删除规则、package-wide allowlist，以及 Retrofit `ApiResult<T>` 精确泛型签名约束 |
 | `verify_dependency_policy.sh` | 稳定依赖、精确预览豁免与 Jetifier/AGP 10 边界 |
 | `verify_target_sdk_readiness.sh` | 正式 target 与候选 readiness 状态组合、Manifest adaptive 一致性 |
-| `verify_target_platform_test_matrix.sh` | API 33/36/37 验证目标和设备严格分离，app/login feature class 归属正确 test APK |
-| `verify_instrumentation_smoke_classes.sh` | workflow/脚本/matrix 引用的 instrumentation 类真实存在；matrix 的 app/login 字段只能解析到各自 test APK |
-| `verify_instrumentation_test_ownership.sh` / `test_instrumentation_test_ownership.sh` | 四模块清单与非空 `src/androidTest` 双向一致，runner/依赖/聚合 task 完整，遗漏、陈旧、未知和根级聚合稳定失败 |
+| `verify_target_platform_test_matrix.sh` | API 33/36/37 验证目标和设备严格分离，app/Home/Login feature class 归属正确 test APK |
+| `verify_instrumentation_smoke_classes.sh` | workflow/脚本/matrix 引用的 instrumentation 类真实存在；matrix 的 app/Home/Login 字段只能解析到各自 test APK |
+| `verify_instrumentation_test_ownership.sh` / `test_instrumentation_test_ownership.sh` | 六模块清单与非空 `src/androidTest` 双向一致，runner/依赖/聚合 task 完整，遗漏、陈旧、未知和根级聚合稳定失败 |
 | `verify_entry_navigation_contracts.sh` | Navigation Testing 不进入生产依赖、入口 renderer/host 保持 `internal`，且入口/Home/Sales focused 测试契约完整；正反 fixture 验证守卫本身 |
 | `verify_debug_mock_network.py` / `test_debug_mock_network.sh` | Debug Mock 默认关闭、第一方 fail-closed 路由、Debug-only fixture/上传 fake、Release/测试身份隔离与文档一致性；负例证明默认开启和 Release 泄漏会失败 |
 | `run_debug_mock_network_contracts.sh` | 第一方路由/fixture、上传选择器、更新 Worker、第三方客户端与 performance/offline 优先级的 focused JVM 契约 |
@@ -105,6 +133,7 @@ ANDROID_SERIAL=<device-serial> bash scripts/quality/run_connected_instrumentatio
 | `verify_architecture_boundaries.sh` | 退役冗余指纹、分层、legacy freeze、身份/登录 feature 所有权、用户存储/任务身份、WebView bridge、ViewModel 和代码规模规则 |
 | `verify_identification_feature_boundary.sh` | 禁止身份 UI 回流 app、feature 反向引用 app 壳层及 app 绕过公开 API；由架构总守卫调用 |
 | `verify_login_feature_boundary.sh` | 禁止登录 UI/校验面板回流 app、feature 反向引用 app 壳层/Activity 及 app 绕过公开 API；由架构总守卫调用 |
+| `verify_home_feature_boundary.sh` / `test_home_feature_boundary.sh` | 禁止 Home/Dashboard/Nursing/Profile UI/VM 回流 app、app 绕过公开 API 及 feature 反向依赖 app/Data/平台/厂商；八组 fixtures 验证失败诊断 |
 | `verify_module_dependency_whitelist.sh` | Gradle 项目模块依赖边 |
 | `verify_module_api_visibility.sh` | 跨模块公共 API 边界 |
 | `verify_lint_warning_allowlist.sh` | Lint 报告新增 warning 和 waiver 漂移 |
@@ -147,7 +176,7 @@ ANDROID_SERIAL=<device-serial> bash scripts/quality/run_connected_instrumentatio
 | `CI Health Monitor` | 收集运行健康指标并按阈值报告 |
 | `Actions Runs Cleanup` | 定时/手动清理旧 Actions run |
 
-Android CI 还提供显式 `run_api37_readiness` 手动输入：在 app 与 login feature 各自的 `pixelTabletApi37` 16 KB image/test APK 上运行 Android 17 Beta readiness，并总是上传 policy 与测试报告。该 job 的 policy/emulator 步骤可容错，失败只保持 candidate blocked，不会把正式 target 36 的构建误判为失败。Baseline Profile workflow 则继续使用 API 33 生成规则和验证报告格式；三类结果在名称、summary 和 artifact 中互不替代。
+Android CI 还提供显式 `run_api37_readiness` 手动输入：在 app、Home feature 与 Login feature 各自的 `pixelTabletApi37` 16 KB image/test APK 上运行 Android 17 Beta readiness，并总是上传 policy 与测试报告。该 job 的 policy/emulator 步骤可容错，失败只保持 candidate blocked，不会把正式 target 36 的构建误判为失败。Baseline Profile workflow 则继续使用 API 33 生成规则和验证报告格式；三类结果在名称、summary 和 artifact 中互不替代。
 
 `Face SDK Migration Check` 同样采用 build-only 策略，不把业务测试作为切源阻断项。
 
@@ -200,6 +229,7 @@ TTID 由系统记录；TTFD 由隐私、Login、护理 Home 或销售 Home 的�
 - 单测：各模块 `build/reports/tests/` 和 `build/test-results/`
 - CI 健康指标：`build/ci-health/` 或 CI artifact
 - Startup/Profile 一次性报告：`build/reports/startup-profile/`、`:baselineprofile` 的 managed-device additional output 或 CI artifact
+- 统一真机验收账本：`build/reports/real-device-acceptance/<execution-id>/` 或受控短期 CI artifact；不得提交 Git
 
 报告是一次性证据，不提交到 `docs/`。
 
