@@ -630,6 +630,16 @@ internal fun SalesExperienceScreen(
         }
     }
 
+    uiState.evaluationPrepareErrorMessage?.let { message ->
+        SalesEvaluationPrepareErrorDialog(
+            message = message,
+            onExit = {
+                viewModel.clearEvaluationPrepareError()
+                back()
+            },
+        )
+    }
+
     if (showCameraPurposeNotice) {
         PermissionPurposeDialog(
             notice = cameraPermissionPurposeNotice(cameraPermissionPurpose),

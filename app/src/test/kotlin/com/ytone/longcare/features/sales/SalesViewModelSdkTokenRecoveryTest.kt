@@ -18,6 +18,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -87,6 +88,62 @@ class SalesViewModelSdkTokenRecoveryTest {
             )
         }
 
+    @Test
+    fun `GetCheckToken business failure uses exit dialog instead of snackbar`() =
+        runTest {
+            val repository =
+                mockk<SaleRepository>(relaxed = true) {
+                    coEvery { getRecentUserLatentList() } returns
+                        ApiResult.Success(emptyList())
+                    coEvery { getCheckToken(7, "device-1") } returns
+                        ApiResult.Failure(code = 4001, message = "")
+                }
+            val evaluationDeviceGateway =
+                mockk<SalesEvaluationDeviceGateway>(relaxed = true) {
+                    every { getDeviceId() } returns Result.success("device-1")
+                }
+            val viewModel = createViewModel(repository, evaluationDeviceGateway)
+
+            viewModel.prepareEvaluation(7)
+            advanceUntilIdle()
+
+            assertEquals(
+                "评估准备失败，请稍后重试",
+                viewModel.uiState.value.evaluationPrepareErrorMessage,
+            )
+            assertNull(viewModel.uiState.value.errorMessage)
+
+            viewModel.clearEvaluationPrepareError()
+
+            assertNull(viewModel.uiState.value.evaluationPrepareErrorMessage)
+        }
+
+    @Test
+    fun `GetCheckToken success without a token uses exit dialog`() =
+        runTest {
+            val repository =
+                mockk<SaleRepository>(relaxed = true) {
+                    coEvery { getRecentUserLatentList() } returns
+                        ApiResult.Success(emptyList())
+                    coEvery { getCheckToken(7, "device-1") } returns
+                        ApiResult.Success(CheckTokenModel(token = ""))
+                }
+            val evaluationDeviceGateway =
+                mockk<SalesEvaluationDeviceGateway>(relaxed = true) {
+                    every { getDeviceId() } returns Result.success("device-1")
+                }
+            val viewModel = createViewModel(repository, evaluationDeviceGateway)
+
+            viewModel.prepareEvaluation(7)
+            advanceUntilIdle()
+
+            assertEquals(
+                "评估准备失败，请重新进入评估页面",
+                viewModel.uiState.value.evaluationPrepareErrorMessage,
+            )
+            assertNull(viewModel.uiState.value.checkToken)
+        }
+
     private fun createViewModel(
         repository: SaleRepository,
         evaluationDeviceGateway: SalesEvaluationDeviceGateway,
@@ -95,6 +152,10 @@ class SalesViewModelSdkTokenRecoveryTest {
             mockk<Context>(relaxed = true) {
                 every { getString(R.string.sales_error_evaluation_expired) } returns
                     "本次评估已失效，请重新进入评估页面"
+                every { getString(R.string.sales_error_evaluation_prepare) } returns
+                    "评估准备失败，请稍后重试"
+                every { getString(R.string.sales_error_evaluation_credential) } returns
+                    "评估准备失败，请重新进入评估页面"
             }
         return SalesViewModel(
             saleRepository = repository,

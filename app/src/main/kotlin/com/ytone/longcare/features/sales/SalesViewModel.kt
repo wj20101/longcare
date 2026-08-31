@@ -578,6 +578,7 @@ class SalesViewModel @Inject constructor(
                     sdkProgressText = "",
                     checkToken = null,
                     sdkLaunchRequest = null,
+                    evaluationPrepareErrorMessage = null,
                 )
             try {
                 val sdkDeviceId =
@@ -600,17 +601,29 @@ class SalesViewModel @Inject constructor(
                             checkDeviceId = sdkDeviceId,
                         )
                 ) {
-                    is ApiResult.Success ->
-                        _uiState.value =
-                            _uiState.value.copy(
-                                checkToken = result.data,
-                                connectedDeviceName =
-                                    evaluationDeviceGateway.getConnectedDeviceName(),
+                    is ApiResult.Success -> {
+                        val token = result.data.token.trim()
+                        if (token.isBlank()) {
+                            showEvaluationPrepareError(
+                                text(R.string.sales_error_evaluation_credential)
                             )
+                        } else {
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    checkToken = result.data.copy(token = token),
+                                    connectedDeviceName =
+                                        evaluationDeviceGateway.getConnectedDeviceName(),
+                                )
+                        }
+                    }
 
-                    is ApiResult.Failure -> showError(result.message)
+                    is ApiResult.Failure ->
+                        showEvaluationPrepareError(result.message)
+
                     is ApiResult.Exception ->
-                        showError(text(R.string.sales_error_evaluation_prepare))
+                        showEvaluationPrepareError(
+                            text(R.string.sales_error_evaluation_prepare)
+                        )
                 }
             } catch (cancellation: CancellationException) {
                 throw cancellation
@@ -655,6 +668,13 @@ class SalesViewModel @Inject constructor(
             _uiState.value.copy(
                 errorMessage = null,
                 noticeMessage = null,
+            )
+    }
+
+    fun clearEvaluationPrepareError() {
+        _uiState.value =
+            _uiState.value.copy(
+                evaluationPrepareErrorMessage = null,
             )
     }
 
@@ -806,6 +826,7 @@ class SalesViewModel @Inject constructor(
                 operation = text(R.string.sales_loading_reprepare_evaluation),
                 errorMessage = null,
                 checkToken = null,
+                evaluationPrepareErrorMessage = null,
             )
         try {
             val deviceId =
@@ -827,7 +848,9 @@ class SalesViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     val refreshedToken = result.data.token.trim()
                     if (refreshedToken.isBlank()) {
-                        showError(text(R.string.sales_error_evaluation_credential))
+                        showEvaluationPrepareError(
+                            text(R.string.sales_error_evaluation_credential)
+                        )
                         return
                     }
                     sdkLaunchRequestId += 1
@@ -845,9 +868,11 @@ class SalesViewModel @Inject constructor(
                         )
                 }
 
-                is ApiResult.Failure -> showError(result.message)
+                is ApiResult.Failure ->
+                    showEvaluationPrepareError(result.message)
+
                 is ApiResult.Exception ->
-                    showError(
+                    showEvaluationPrepareError(
                         text(R.string.sales_error_evaluation_credential_refresh)
                     )
             }
@@ -901,6 +926,16 @@ class SalesViewModel @Inject constructor(
             )
     }
 
+    private fun showEvaluationPrepareError(message: String) {
+        _uiState.value =
+            _uiState.value.copy(
+                evaluationPrepareErrorMessage =
+                    message.ifBlank {
+                        text(R.string.sales_error_evaluation_prepare)
+                    },
+            )
+    }
+
     private fun text(
         resId: Int,
         vararg formatArgs: Any,
@@ -945,6 +980,7 @@ data class SalesUiState(
     val sdkDeviceId: String = "",
     val connectedDeviceName: String? = null,
     val checkToken: CheckTokenModel? = null,
+    val evaluationPrepareErrorMessage: String? = null,
     val sdkProgressText: String = "",
     val evaluationCompleted: QlzSdkEvent.Completed? = null,
     val sdkLaunchRequest: SalesSdkLaunchRequest? = null,

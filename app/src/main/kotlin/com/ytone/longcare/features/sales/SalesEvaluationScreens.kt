@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +30,26 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.singleClick
+
+@Composable
+internal fun SalesEvaluationPrepareErrorDialog(
+    message: String,
+    onExit: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = {},
+        title = {
+            Text(text = stringResource(R.string.sales_evaluation_prepare_error_title))
+        },
+        text = { Text(text = message) },
+        confirmButton = {
+            TextButton(onClick = singleClick(onClick = onExit)) {
+                Text(text = stringResource(R.string.sales_evaluation_prepare_error_action))
+            }
+        },
+    )
+}
 
 @Composable
 internal fun SalesDeviceStatusScreen(

@@ -10,6 +10,9 @@ import com.ytone.longcare.api.model.ToDoCountDto
 import com.ytone.longcare.api.model.ToDoItemDto
 import com.ytone.longcare.api.model.UserLatentDetailDto
 import com.ytone.longcare.api.model.UserLatentListDto
+import com.ytone.longcare.common.network.ApiRequestException
+import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.sale.SaleRepository
 import com.ytone.longcare.model.AddUserLatentParamModel
@@ -31,13 +34,65 @@ class SaleRepositoryImpl @Inject constructor(
     override suspend fun getCheckToken(
         customerId: Int,
         checkDeviceId: String,
-    ): ApiResult<CheckTokenModel> =
-        apiService.getCheckToken(
-            GetCheckTokenRequestDto(
-                id = customerId,
-                checkDeviceId = checkDeviceId,
+    ): ApiResult<CheckTokenModel> {
+        val startedAtNanos = System.nanoTime()
+        logI(
+            message =
+                "request_started customerId=$customerId " +
+                    "deviceIdPresent=${checkDeviceId.isNotBlank()}",
+            tag = GET_CHECK_TOKEN_LOG_TAG,
+        )
+
+        val result =
+            apiService.getCheckToken(
+                GetCheckTokenRequestDto(
+                    id = customerId,
+                    checkDeviceId = checkDeviceId,
+                )
             )
-        ).mapData(CheckTokenDto::toModel)
+        val durationMillis = (System.nanoTime() - startedAtNanos) / NANOS_PER_MILLISECOND
+
+        return when (result) {
+            is ApiResult.Success -> {
+                val token = result.data.toModel()
+                logI(
+                    message =
+                        "request_succeeded customerId=$customerId " +
+                            "durationMs=$durationMillis " +
+                            "credentialPresent=${token.token.isNotBlank()} " +
+                            "tokenType=${token.tokenType} expireAt=${token.expireAt} " +
+                            "bizType=${token.bizType}",
+                    tag = GET_CHECK_TOKEN_LOG_TAG,
+                )
+                ApiResult.Success(token)
+            }
+
+            is ApiResult.Failure -> {
+                logE(
+                    message =
+                        "business_failure customerId=$customerId " +
+                            "durationMs=$durationMillis code=${result.code} " +
+                            "message=${result.message.ifBlank { EMPTY_MESSAGE_LOG_VALUE }}",
+                    tag = GET_CHECK_TOKEN_LOG_TAG,
+                )
+                result
+            }
+
+            is ApiResult.Exception -> {
+                val requestException = result.exception as? ApiRequestException
+                logE(
+                    message =
+                        "request_exception customerId=$customerId " +
+                            "durationMs=$durationMillis " +
+                            "kind=${requestException?.kind ?: UNKNOWN_ERROR_KIND} " +
+                            "httpCode=${requestException?.httpCode ?: NO_HTTP_CODE}",
+                    tag = GET_CHECK_TOKEN_LOG_TAG,
+                    throwable = result.exception,
+                )
+                result
+            }
+        }
+    }
 
     override suspend fun addUserLatent(
         request: AddUserLatentParamModel,
@@ -142,3 +197,9 @@ private fun UserLatentDetailDto.toModel(): UserLatentDetailModel =
         pgScore = pgScore,
         pgUrl = pgUrl,
     )
+
+private const val GET_CHECK_TOKEN_LOG_TAG = "GetCheckToken"
+private const val NANOS_PER_MILLISECOND = 1_000_000L
+private const val EMPTY_MESSAGE_LOG_VALUE = "<empty>"
+private const val UNKNOWN_ERROR_KIND = "UNKNOWN"
+private const val NO_HTTP_CODE = "none"

@@ -10,6 +10,7 @@ import com.ytone.longcare.api.model.ToDoCountDto
 import com.ytone.longcare.api.model.ToDoItemDto
 import com.ytone.longcare.api.model.UserLatentDetailDto
 import com.ytone.longcare.api.model.UserLatentListDto
+import com.ytone.longcare.common.utils.KLogger
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.ytone.longcare.model.result.ApiResult
@@ -23,6 +24,7 @@ import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Test
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -31,6 +33,11 @@ import retrofit2.http.Query
 import java.lang.reflect.Proxy
 
 class SaleRepositoryImplTest {
+
+    @Before
+    fun disableAndroidLogging() {
+        KLogger.updateConfig { enabled = false }
+    }
 
     @Test
     fun `all Sale operations delegate to documented API contracts`() = runTest {
