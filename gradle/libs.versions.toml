@@ -56,7 +56,7 @@ tencentCos = "5.9.52"
 
 # Build quality
 androidxBaselineProfile = "1.5.0-rc01"
-androidxBenchmark = "1.5.0-rc01"
+androidxBenchmark = "1.5.0-rc02"
 
 # Testing
 androidxTest = "1.7.0"
