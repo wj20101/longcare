@@ -55,7 +55,7 @@ buglyCrashReport = "4.1.9.3"
 tencentCos = "5.9.52"
 
 # Build quality
-androidxBaselineProfile = "1.5.0-rc01"
+androidxBaselineProfile = "1.5.0-rc02"
 androidxBenchmark = "1.5.0-rc02"
 
 # Testing
