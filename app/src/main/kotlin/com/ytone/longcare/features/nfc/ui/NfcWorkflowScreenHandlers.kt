@@ -15,7 +15,6 @@ import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSettings
 import com.ytone.longcare.common.utils.locationPermissionPurposeNotice
 import com.ytone.longcare.common.utils.rememberLocationPermissionLauncher
-import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.nfc.api.NfcWorkflowActions
 import com.ytone.longcare.features.nfc.vm.LocationRequestResult
 import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
@@ -27,7 +26,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 internal data class NfcWorkflowLocationHandlers(
-    val startTrackingWithPermission: (onReady: () -> Unit) -> Unit,
     val getCurrentLocationCoordinates: suspend () -> LocationRequestResult,
     val prepareLocationOnEntry: () -> Unit,
     val isLocationPreparing: Boolean
@@ -69,12 +67,9 @@ internal fun rememberNfcWorkflowLocationHandlers(
     context: Context,
     orderKey: OrderKey,
     nfcViewModel: NfcWorkflowViewModel,
-    locationTrackingViewModel: LocationTrackingViewModel
 ): NfcWorkflowLocationHandlers {
     val coroutineScope = rememberCoroutineScope()
-    var showTrackingLocationPurposeNotice by remember { mutableStateOf(false) }
     var showLocationOnlyPurposeNotice by remember { mutableStateOf(false) }
-    var pendingTrackingReadyAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var isLocationPreparing by remember { mutableStateOf(false) }
     val locationUnavailableMessage = stringResource(R.string.nfc_location_unavailable)
     val locationServiceDisabledMessage = stringResource(R.string.nfc_location_service_disabled)
@@ -145,17 +140,6 @@ internal fun rememberNfcWorkflowLocationHandlers(
         }
     }
 
-    val trackingPermissionLauncher = rememberLocationPermissionLauncher(
-        onPermissionGranted = {
-            locationTrackingViewModel.startTrackingAfterPermissionGrant(orderKey)
-            pendingTrackingReadyAction?.invoke()
-            pendingTrackingReadyAction = null
-        },
-        onPermissionDenied = {
-            pendingTrackingReadyAction = null
-        }
-    )
-
     val locationOnlyPermissionLauncher = rememberLocationPermissionLauncher(
         onPermissionGranted = {
             nfcViewModel.notifyLocationPermissionGranted()
@@ -185,36 +169,6 @@ internal fun rememberNfcWorkflowLocationHandlers(
         }
     }
 
-    val startTrackingWithPermission: (onReady: () -> Unit) -> Unit = { onReady ->
-        when {
-            !UnifiedPermissionHelper.isLocationServiceEnabled(context) -> openLocationSettings(context)
-            UnifiedPermissionHelper.hasLocationPermission(context) -> {
-                locationTrackingViewModel.startTracking(orderKey)
-                onReady()
-            }
-            else -> {
-                pendingTrackingReadyAction = onReady
-                showTrackingLocationPurposeNotice = true
-            }
-        }
-    }
-
-    if (showTrackingLocationPurposeNotice) {
-        PermissionPurposeDialog(
-            notice = locationPermissionPurposeNotice(
-                stringResource(R.string.nfc_tracking_location_permission_purpose),
-            ),
-            onConfirm = {
-                showTrackingLocationPurposeNotice = false
-                trackingPermissionLauncher.launch(UnifiedPermissionHelper.getLocationRequiredPermissions())
-            },
-            onDismiss = {
-                pendingTrackingReadyAction = null
-                showTrackingLocationPurposeNotice = false
-            }
-        )
-    }
-
     if (showLocationOnlyPurposeNotice) {
         PermissionPurposeDialog(
             notice = locationPermissionPurposeNotice(
@@ -232,7 +186,6 @@ internal fun rememberNfcWorkflowLocationHandlers(
     }
 
     return NfcWorkflowLocationHandlers(
-        startTrackingWithPermission = startTrackingWithPermission,
         getCurrentLocationCoordinates = getCurrentLocationCoordinates,
         prepareLocationOnEntry = prepareLocationOnEntry,
         isLocationPreparing = isLocationPreparing
@@ -257,19 +210,14 @@ internal fun handleNfcSuccessAction(
     endOderInfo: EndOderInfo?,
     uiState: NfcSignInUiState,
     nfcViewModel: NfcWorkflowViewModel,
-    locationTrackingViewModel: LocationTrackingViewModel,
     actions: NfcWorkflowActions,
-    startTrackingWithPermission: (onReady: () -> Unit) -> Unit
 ) {
     when (signInMode) {
         SignInMode.START_ORDER -> {
-            startTrackingWithPermission {
-                actions.onNavigateToIdentification(orderKey)
-            }
+            actions.onNavigateToIdentification(orderKey)
         }
 
         SignInMode.END_ORDER -> {
-            locationTrackingViewModel.stopTracking()
             val successState = uiState as? NfcSignInUiState.Success
             val trueServiceTime = successState?.endOrderSuccessData?.trueServiceTime ?: 0
             val serviceCompleteData = nfcViewModel.buildServiceCompleteDataFromCache(

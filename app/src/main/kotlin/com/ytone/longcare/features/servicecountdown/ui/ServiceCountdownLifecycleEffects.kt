@@ -16,6 +16,7 @@ import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 
 @Composable
@@ -78,6 +79,13 @@ internal fun ServiceCountdownLifecycleEffects(
 
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            // A previous confirmation may have completed after Android disallowed an FGS start.
+            // Retry only from this visible business screen, never from a background scheduler.
+            if (UnifiedPermissionHelper.hasLocationPermission(context) &&
+                UnifiedPermissionHelper.isLocationServiceEnabled(context)
+            ) {
+                locationTrackingViewModel.startTracking(orderKey)
+            }
             if (countdownViewModel.isInitialized() && countdownState != ServiceCountdownState.ENDED) {
                 val orderInfo = sharedViewModel.getCachedOrderInfo(orderKey)
                 orderInfo?.let {

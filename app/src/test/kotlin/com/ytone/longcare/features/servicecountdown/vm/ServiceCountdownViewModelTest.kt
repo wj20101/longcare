@@ -8,7 +8,7 @@ import com.ytone.longcare.model.OrderLocalStateEntity
 import com.ytone.longcare.model.OrderProjectEntity
 import com.ytone.longcare.data.repository.ImageRepository
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
-import com.ytone.longcare.domain.order.OrderRepository
+import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.util.MainDispatcherRule
@@ -19,7 +19,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -35,7 +35,7 @@ class ServiceCountdownViewModelTest {
 
     private lateinit var unifiedOrderRepository: UnifiedOrderRepository
     private lateinit var imageRepository: ImageRepository
-    private lateinit var orderRepository: OrderRepository
+    private lateinit var serviceOrderLifecycle: ServiceOrderLifecycle
     private lateinit var systemGateway: ServiceCountdownSystemGateway
     private lateinit var viewModel: ServiceCountdownViewModel
 
@@ -44,7 +44,8 @@ class ServiceCountdownViewModelTest {
         KLogger.updateConfig { enabled = false }
         unifiedOrderRepository = mockk(relaxed = true)
         imageRepository = mockk(relaxed = true)
-        orderRepository = mockk(relaxed = true)
+        serviceOrderLifecycle = mockk(relaxed = true)
+        every { serviceOrderLifecycle.orderState } returns MutableStateFlow(null)
         systemGateway = mockk(relaxed = true)
         
         // Mock default flows
@@ -53,7 +54,7 @@ class ServiceCountdownViewModelTest {
         viewModel = ServiceCountdownViewModel(
             unifiedOrderRepository,
             imageRepository,
-            orderRepository,
+            serviceOrderLifecycle,
             systemGateway
         )
     }
@@ -72,18 +73,17 @@ class ServiceCountdownViewModelTest {
     }
 
     @Test
-    fun `startOrderStatePolling should call repository`() = runTest {
+    fun `startOrderStatePolling observes the shared business session`() = runTest {
         // Given
         val orderKey = OrderKey(orderId = 12345L, planId = 1)
         
         // When
         viewModel.startOrderStatePolling(orderKey)
         
-        // Polling starts with a delay (5s). Advance time to trigger loop body.
-        advanceTimeBy(5100L)
+        runCurrent()
         
-        // This confirms the method runs without crashing and uses OrderKey
-        coVerify(atLeast = 1) { orderRepository.getOrderState(12345L) }
+        // The screen subscribes to one business-owned monitor, rather than querying independently.
+        verify(exactly = 1) { serviceOrderLifecycle.monitorOrder(12345L) }
         
         viewModel.stopOrderStatePolling()
     }

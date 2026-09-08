@@ -4,8 +4,6 @@ import android.app.Activity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
-import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
 import com.ytone.longcare.features.nfc.vm.LocationRequestResult
 import com.ytone.longcare.features.nfc.vm.ScanMode
@@ -20,10 +18,8 @@ internal fun NfcWorkflowEffects(
     orderKey: OrderKey,
     signInMode: SignInMode,
     endOderInfo: EndOderInfo?,
-    uiState: NfcSignInUiState,
     scanMode: ScanMode,
     nfcViewModel: NfcWorkflowViewModel,
-    locationTrackingViewModel: LocationTrackingViewModel,
     onLocationRequest: suspend () -> LocationRequestResult,
     onEntryLocationPrepare: () -> Unit
 ) {
@@ -63,9 +59,4 @@ internal fun NfcWorkflowEffects(
         }
     }
 
-    LaunchedEffect(uiState, signInMode) {
-        if (signInMode == SignInMode.END_ORDER && uiState is NfcSignInUiState.Success) {
-            locationTrackingViewModel.stopTracking()
-        }
-    }
 }

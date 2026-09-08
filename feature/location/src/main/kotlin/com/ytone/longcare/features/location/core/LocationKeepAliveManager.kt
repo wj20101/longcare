@@ -28,6 +28,16 @@ class LocationKeepAliveManager @Inject constructor(
     internal val state: StateFlow<LocationKeepAliveState> = _state.asStateFlow()
 
     fun acquire(owner: String) {
+        acquire(owner = owner, orderId = null)
+    }
+
+    /** Starts the foreground service for one active service-order reporting session. */
+    fun acquireOrderTracking(owner: String, orderId: Long) {
+        if (orderId <= 0L) return
+        acquire(owner = owner, orderId = orderId)
+    }
+
+    private fun acquire(owner: String, orderId: Long?) {
         if (owner.isBlank()) return
 
         synchronized(lock) {
@@ -41,7 +51,7 @@ class LocationKeepAliveManager @Inject constructor(
                     generation += 1
                     val startGeneration = generation
                     _state.value = LocationKeepAliveState.Starting(generation, activeOwners.size)
-                    val started = startForegroundKeepAlive(owner, startGeneration)
+                    val started = startForegroundKeepAlive(owner, orderId, startGeneration)
                     if (!started) {
                         activeOwners.remove(owner)
                         if (generation == startGeneration) {
@@ -66,19 +76,19 @@ class LocationKeepAliveManager @Inject constructor(
         if (owner.isBlank()) return
 
         synchronized(lock) {
-            if (activeOwners.remove(owner)) {
-                logI("定位保活 -1: $owner, active=${activeOwners.size}")
-                val shouldStop = activeOwners.isEmpty()
-                _state.value = if (shouldStop) {
-                    LocationKeepAliveState.Stopping(generation)
-                } else {
-                    updateOwnerCountLocked()
-                    _state.value
-                }
-                if (shouldStop) {
-                    stopForegroundKeepAlive()
-                }
-            }
+            releaseLocked(owner)
+        }
+    }
+
+    /**
+     * Lets the running Service close only the generation that detected an inactive order.
+     * A delayed response from an older Service must never stop a newer reporting session.
+     */
+    internal fun releaseFromService(owner: String, serviceGeneration: Long) {
+        if (owner.isBlank()) return
+        synchronized(lock) {
+            if (serviceGeneration != generation) return
+            releaseLocked(owner)
         }
     }
 
@@ -115,9 +125,28 @@ class LocationKeepAliveManager @Inject constructor(
         }
     }
 
-    private fun startForegroundKeepAlive(owner: String, serviceGeneration: Long): Boolean {
+    private fun releaseLocked(owner: String) {
+        if (!activeOwners.remove(owner)) return
+        logI("定位保活 -1: $owner, active=${activeOwners.size}")
+        val shouldStop = activeOwners.isEmpty()
+        _state.value = if (shouldStop) {
+            LocationKeepAliveState.Stopping(generation)
+        } else {
+            updateOwnerCountLocked()
+            _state.value
+        }
+        if (shouldStop) {
+            stopForegroundKeepAlive()
+        }
+    }
+
+    private fun startForegroundKeepAlive(
+        owner: String,
+        orderId: Long?,
+        serviceGeneration: Long,
+    ): Boolean {
         return try {
-            serviceController.start(owner, serviceGeneration)
+            serviceController.start(owner, serviceGeneration, orderId)
             true
         } catch (e: Exception) {
             LocationEventTracker.trackError(
@@ -149,11 +178,12 @@ class LocationKeepAliveManager @Inject constructor(
 class LocationForegroundServiceController @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
-    fun start(owner: String, generation: Long) {
+    fun start(owner: String, generation: Long, orderId: Long? = null) {
         val intent = Intent(context, LocationTrackingService::class.java).apply {
             action = LocationTrackingService.ACTION_ACQUIRE_KEEP_ALIVE
             putExtra(LocationTrackingService.EXTRA_OWNER, owner)
             putExtra(LocationTrackingService.EXTRA_GENERATION, generation)
+            orderId?.let { putExtra(LocationTrackingService.EXTRA_ORDER_ID, it) }
         }
         ContextCompat.startForegroundService(context, intent)
     }

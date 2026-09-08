@@ -30,6 +30,11 @@ class LocationTrackingManager @Inject constructor(
         }
     }
 
+    /** The formal start API succeeded; NFC success or button clicks are not confirmation. */
+    fun onOrderStarted(orderId: Long) = synchronized(lifecycleLock) {
+        if (hasActiveSession()) locationReportingManager.onOrderStarted(orderId)
+    }
+
     /** 权限授予与订单启动共享登录态锁，避免登出后重新启动定位引擎。 */
     fun startTrackingAfterPermissionGrant(orderKey: OrderKey) {
         synchronized(lifecycleLock) {
@@ -64,6 +69,7 @@ class LocationTrackingManager @Inject constructor(
                     sessionIdentity = nextIdentity
                 }
             }
+            locationReportingManager.setMonitoringAllowed(sessionIdentity != null)
         }
     }
 
