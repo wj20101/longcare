@@ -97,7 +97,7 @@ bash scripts/quality/verify_release_validation_entry.sh .
 当前 production 必须失败，直到以下问题全部消失：
 
 - Android 内仍有固定 QLZ 测试 key 和 `QLZ_TEST_MODE=true`。
-- QLZ 1.3.0.2 可达代码存在弱 TLS trust manager。
+- QLZ 1.3.0.5 可达代码存在弱 TLS trust manager。
 - 当前腾讯人脸 ARM64 native library 不满足 16 KB 对齐。
 - 人脸 AAR 的 consumer rules 含生产阻断的全局选项。
 

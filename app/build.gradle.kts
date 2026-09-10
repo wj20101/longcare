@@ -15,6 +15,8 @@ private val PUBLIC_KEY =
 // TODO(QLZ): Remove this fixed test configuration after the Sale API returns the SDK key.
 private val TEMPORARY_QLZ_SDK_KEY = "qlz235624a5adc96ccb"
 private val TEMPORARY_QLZ_TEST_MODE = true
+private val QLZ_SDK_AAR_FILE_NAME =
+    "qlzsdk-1.3.0.5-protobufLiteRelease-ui.aar"
 
 val appCompileSdkVersion = rootProject.extra["appCompileSdkVersion"] as Int
 val appTargetSdkVersion = rootProject.extra["appTargetSdkVersion"] as Int
@@ -63,7 +65,7 @@ val knownUnsafeFaceSdkPresent =
     }
 val knownUnsafeQlzSdkPresent =
     providers.provider {
-        file("libs/qlzsdk-1.3.0.2-protobufLiteRelease-ui.aar").exists()
+        file("libs/$QLZ_SDK_AAR_FILE_NAME").exists()
     }
 
 fun String.asBuildConfigString(): String =
@@ -235,8 +237,8 @@ dependencies {
     implementation(libs.okio.core)
     implementation(libs.moshi.kotlin)
     implementation(libs.gson)
-    // qlzsdk-1.3.0.2 was compiled against the legacy protobuf-lite runtime.
-    implementation(libs.protobuf.lite)
+    // The bundled protobuf Lite SDK is generated against protobuf-javalite 4.28.3.
+    implementation(libs.protobuf.javalite)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.work.runtime.ktx)
     implementation(libs.bundles.coil)
@@ -272,5 +274,5 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    implementation(files("libs/qlzsdk-1.3.0.2-protobufLiteRelease-ui.aar"))
+    implementation(files("libs/$QLZ_SDK_AAR_FILE_NAME"))
 }

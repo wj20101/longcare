@@ -1,20 +1,28 @@
-# QLZ SDK 1.3.0.2 接入说明
+# QLZ SDK 1.3.0.5 接入说明
 
-最后核对：2026-08-27
+最后核对：2026-09-10
 
 > 当前状态：Debug 和显式 Acceptance Release 可用于联调；Production Release 会因固定测试配置、QLZ 弱 TLS finding 和当前腾讯人脸二进制兼容问题 fail closed。不得把验收产物作为生产包。
 
 ## 接入范围
 
-- 客户端 SDK：`app/libs/qlzsdk-1.3.0.2-protobufLiteRelease-ui.aar`
+- 客户端 SDK：`app/libs/qlzsdk-1.3.0.5-protobufLiteRelease-ui.aar`
 - SDK 封装：`QlzSdkClient`
 - Sale 数据链路：`:core:model` → `:core:domain` → `:core:data`
 - SDK AAR SHA-256：
-  `572294bb71c513a685aa4a62aea6a2589a2da4979c80cf4b658a32d09467c688`
+  `5a0a5d647ceaf23d8660e4def556b6eb2caa73e3a0e2a0aa204bce69eb77b3ab`
 
 选用厂商建议的 protobuf Lite 包，并按接入文档使用
-`com.google.protobuf:protobuf-lite:3.0.1`。工程已有的 OkHttp 和 AppCompat 版本继续统一
+`com.google.protobuf:protobuf-javalite:4.28.3`。工程已有的 OkHttp 和 AppCompat 版本继续统一
 由版本目录管理，未额外引入厂商文档中的旧版本。
+
+## 1.3.0.5 升级约定
+
+- 保留现有 `SDKCall.openByToken(...)` 内置 UI 接入，不复制 Demo 的 Activity、布局或测试 Token。
+- 初始化显式设置正常模式、竖屏、关闭断线续检，并启用实时检测数据回调；报告仍由业务接口返回的地址在应用内打开。
+- Demo 同时提供 protobuf Java/Lite 两种 AAR；本项目只引入 Lite 版本，避免两套生成代码和运行时并存。
+- Demo 的 `bugly_crash_release.jar` 不再复制；应用继续使用版本目录中的 Bugly Maven 依赖，避免重复类。
+- 1.3.0.5 新增的生理数据 protobuf 字段由 SDK 内部处理，不改变当前应用侧回调模型。
 
 ## 临时联调配置
 
@@ -27,7 +35,7 @@
 
 普通 `release` 默认按生产包校验，不再默认生成测试验收包。需要临时生成验收 Release 时，
 必须同时显式传入 `-Prelease.production=false -Prelease.acceptance=true`。生产构建只要仍存在
-固定测试 key、`QLZ_TEST_MODE=true`、QLZ 1.3.0.2 弱 TLS 实现或未兼容 16 KB 的腾讯人脸包，
+固定测试 key、`QLZ_TEST_MODE=true`、QLZ 1.3.0.5 弱 TLS 实现或未兼容 16 KB 的腾讯人脸包，
 构建门禁都会直接失败。
 
 GitHub 的 `Android Release` 手动工作流提供 `release_mode` 选项。当前测试阶段默认选择
@@ -97,6 +105,6 @@ android run --apks=app/build/outputs/apk/debug/app-debug.apk
 - 将 SDK 自带的外部 deep link Activity 改为 `exported=false`；当前接入只使用显式 SDK 调用。
 - 旧版 `BLUETOOTH`、`BLUETOOTH_ADMIN` 权限限制到 API 30。
 - SDK 仅在联调页或未来业务入口按需初始化，不在 Application 启动阶段读取设备标识。
-- QLZ 1.3.0.2 内置的遥测链路存在弱 TLS 校验；Debug/验收联调可继续使用，但生产发布已由
+- QLZ 1.3.0.5 内置的遥测链路仍存在弱 TLS 校验；Debug/验收联调可继续使用，但生产发布已由
   `verifyProductionReleaseConfiguration` 和 `verify_vendor_sdk_release_readiness.sh` 双重阻断，
   直到厂商提供修复版本。

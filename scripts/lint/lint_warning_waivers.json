@@ -29,7 +29,7 @@
       "id": "TrustAllX509TrustManager",
       "owner": "mobile-platform",
       "review_by": "2026-11-09",
-      "reason": "COS contains a dormant trust-manager branch and QLZ 1.3.0.2 contains a reachable weak implementation. Production is blocked separately until QLZ is replaced.",
+      "reason": "COS contains a dormant trust-manager branch and QLZ 1.3.0.5 contains a reachable weak implementation. Production is blocked separately until QLZ is replaced.",
       "allowed_sources": [
         "regex:qcloud-foundation-[0-9]+\\.[0-9]+\\.[0-9]+",
         "regex:com\\.qcloud:qcloud-foundation:[0-9]+\\.[0-9]+\\.[0-9]+",

@@ -46,7 +46,7 @@
 
 | 组件 | 当前来源 | 说明 |
 |---|---|---|
-| QLZ | `app/libs/qlzsdk-1.3.0.2-protobufLiteRelease-ui.aar` | 依赖旧版 `protobuf-lite:3.0.1`；当前只允许 Debug/验收用途 |
+| QLZ | `app/libs/qlzsdk-1.3.0.5-protobufLiteRelease-ui.aar` | 依赖 `protobuf-javalite:4.28.3`；当前只允许 Debug/验收用途 |
 | 腾讯人脸 Live | `WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc.aar` | 默认本地 AAR，可通过 Gradle 属性切到私有 Maven |
 | 腾讯人脸 Normal | `WbCloudNormal-v5.1.10-4e3e198.aar` | 与 Live SDK 一起由约定插件装配 |
 
