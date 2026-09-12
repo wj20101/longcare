@@ -107,7 +107,7 @@ jobs:
             echo "- coroutine cancellation and empty catch guards"
             echo "- target SDK and exact alarm policy"
             echo "- tracked keystore guard"
-            echo "- Release validation entry contract"
+            echo "- Formal/assistant isolation contract"
             echo "- workflow quality guard"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -115,7 +115,7 @@ jobs:
         run: |
           bash scripts/quality/verify_no_tracked_keystore_files.sh .
           bash scripts/quality/verify_ci_workflow_quality.sh
-          bash scripts/quality/verify_release_validation_entry.sh .
+          bash scripts/quality/verify_validation_app_isolation.sh .
           bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
           bash scripts/quality/verify_jetpack_compat_apis.sh
           bash scripts/quality/verify_baselineprofile_journeys.sh
@@ -138,6 +138,14 @@ jobs:
         with:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload assistant APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: assistant-debug-apk
+          path: assistant/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -167,6 +175,8 @@ jobs:
           path: |
             app/build/reports/**
             app/build/test-results/**
+            assistant/build/reports/**
+            assistant/build/test-results/**
             build/reports/problems/**
           if-no-files-found: warn
           retention-days: 7

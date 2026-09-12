@@ -1,6 +1,10 @@
 package com.ytone.longcare.navigation
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
@@ -32,7 +36,10 @@ internal val LocalFaceImageMetricsReporter =
 
 internal fun NavGraphBuilder.registerTxFaceRoute(navController: NavController) {
     composable<TxFaceRoute> {
+        val homeViewModel: HomeSharedViewModel = hiltViewModel()
+        val user by homeViewModel.userState.collectAsStateWithLifecycle()
         FaceVerificationWithAutoSignScreen(
+            currentUserId = user?.userId?.toString(),
             onNavigateBack = { navController.popBackStack() },
             onVerificationSuccess = {},
         )

@@ -31,6 +31,13 @@ done
 
 declare -a ALL_MODULES=(
   ":app"
+  ":assistant"
+  ":integration:txface"
+  ":integration:txface-live"
+  ":integration:txface-normal"
+  ":feature:location"
+  ":feature:photoupload"
+  ":feature:servicecountdown"
   ":baselineprofile"
   ":core:model"
   ":core:domain"
@@ -177,13 +184,20 @@ for file in "${changed_files[@]:-}"; do
   [[ -z "${file}" ]] && continue
 
   case "${file}" in
-    settings.gradle.kts|build.gradle.kts|constants.gradle.kts|gradle.properties|gradle/*|build-logic/*|.github/workflows/*|scripts/quality/*)
+    settings.gradle.kts|build.gradle.kts|constants.gradle.kts|gradle.properties|gradle/*|build-logic/*|.github/workflows/*|scripts/quality/*|scripts/release/*)
       full_scope="true"
       ;;
   esac
 
   case "${file}" in
     app/*) add_unique ":app" ;;
+    assistant/*) add_unique ":assistant" ;;
+    integration/txface/*) add_unique ":integration:txface" ;;
+    integration/txface-live/*) add_unique ":integration:txface-live" ;;
+    integration/txface-normal/*) add_unique ":integration:txface-normal" ;;
+    feature/location/*) add_unique ":feature:location" ;;
+    feature/photoupload/*) add_unique ":feature:photoupload" ;;
+    feature/servicecountdown/*) add_unique ":feature:servicecountdown" ;;
     baselineprofile/*) add_unique ":baselineprofile" ;;
     core/model/*) add_unique ":core:model" ;;
     core/domain/*) add_unique ":core:domain" ;;
@@ -229,10 +243,10 @@ if [[ "${#selected_modules[@]}" -eq 0 ]]; then
 fi
 
 affected_scope="partial"
-verify_tasks=":app:lintDebug :app:assembleDebug"
+verify_tasks=":assistant:testDebugUnitTest :assistant:lintDebug :assistant:assembleDebug :app:lintDebug :app:assembleDebug"
 if [[ "${full_scope}" == "true" ]]; then
   affected_scope="full"
-  verify_tasks=":app:lintDebug :app:assembleDebug :app:bundleDebug"
+  verify_tasks=":assistant:testDebugUnitTest :assistant:lintDebug :assistant:assembleDebug :app:lintDebug :app:assembleDebug :app:bundleDebug"
 fi
 
 if [[ "${run_instrumentation}" != "true" ]]; then

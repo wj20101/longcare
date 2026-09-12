@@ -112,7 +112,7 @@ android {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
-                "txkyc-face-consumer-proguard-rules.pro"
+                // Tencent consumer rules are supplied by :integration:txface.
             )
             buildConfigField("String", "BASE_URL", "\"$BASE_URL\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
@@ -203,6 +203,7 @@ configurations.configureEach {
 dependencies {
     baselineProfile(project(":baselineprofile"))
 
+    implementation(project(":integration:txface"))
     implementation(project(":core:common"))
     implementation(project(":core:data"))
     implementation(project(":core:domain"))

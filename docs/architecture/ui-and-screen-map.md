@@ -1,6 +1,6 @@
 # 页面与路由地图
 
-最后核对：2026-08-27
+最后核对：2026-09-12
 
 本文列出当前可运行的 Compose 路由、嵌套页面和现实模块归属。导航代码的机器真相位于 `app/src/main/kotlin/com/ytone/longcare/navigation/`。
 
@@ -17,7 +17,7 @@
 
 | 路由 | 页面 | 现实归属 | 说明 |
 |---|---|---|---|
-| `LoginRoute` | `LoginScreen` | `:app` | 登录、协议、隐私/协议 WebView、内部验证入口 |
+| `LoginRoute` | `LoginScreen` | `:app` | 登录、协议、隐私/协议 WebView；Logo 无测试行为 |
 | `HomeRoute` | `HomeScreen` | `:app` | 按 `userIdentity` 选择护理端或销售端 |
 | `CarePlansListRoute` | `ServiceOrdersListScreen` | `:app` | 服务计划列表 |
 | `ServiceRecordsListRoute` | `ServiceOrdersListScreen` | `:app` | 服务记录列表 |
@@ -51,11 +51,11 @@
 |---|---|---|---|
 | `IdentificationRoute` | `IdentificationScreen` | `:app` | 订单身份核验主页面 |
 | `DefaultFaceVerificationRoute` | `DefaultFaceVerificationScreen` | `:feature:identification` | 默认服务人员眨眼活体采集 + 服务端比对 |
-| `ManualFaceCaptureRoute` | `ManualFaceCaptureScreen` | `:app` | 缺少登记照时的兼容补录路径 |
-| `TxFaceRoute` | `FaceVerificationWithAutoSignScreen` | `:app` | 腾讯 SDK 兼容/验证路径，不是默认订单入口 |
+| `ManualFaceCaptureRoute` | `ManualFaceCaptureScreen` | `:feature:identification` | 缺少登记照时的兼容补录路径 |
+| `TxFaceRoute` | `FaceVerificationWithAutoSignScreen` | `:feature:identification` | 腾讯 SDK 兼容/验证路径，不是默认订单入口 |
 | `FaceRecognitionGuideRoute` | `FaceRecognitionGuideScreen` | `:app` | 人脸相关引导 |
 | `SelectDeviceRoute` | `SelectDeviceScreen` | `:app` | 路由仍存在；当前开始服务动作直接转入 NFC，实际跳过该页 |
-| `CameraRoute` | `CameraScreen` | `:app` | 护理和销售共用的水印相机 |
+| `CameraRoute` | `CameraScreen` | `:feature:photoupload` | 护理和销售共用的水印相机 |
 | `UserListRoute` | `UserListScreen` | `:app` | 已服务/未服务用户列表 |
 | `UserServiceRecordRoute` | `UserServiceRecordScreen` | `:app` | 用户服务记录 |
 | `WebViewRoute` | `WebViewScreen` | `:app` | 协议、隐私政策、销售表单/报告页面 |
@@ -82,21 +82,26 @@
 - `PhotoPreviewDialog`：`:core:ui` 的统一全屏预览。
 - `CountdownAlarmActivity`：锁屏/全屏提醒 Activity，不属于 Compose NavHost。
 
-## 内部验证入口
+## 独立验证助手
 
-登录页长按 Logo 会在 Debug 和 Release 打开“功能验证”面板。它用于真实设备回归，不是普通产品入口：
+正式登录页不提供长按 Logo 面板；验证只在独立包 `com.ytone.longcare.assistant` 中进行。助手不注册正式 App 导航图。
 
-- `FaceVerificationValidationActivity`
-  - 使用生产 `DefaultFaceVerificationScreen` 和真实 API 路径。
-  - 显示最终 JPEG 尺寸和字节数。
-  - main Manifest 中 `exported=false`；Debug Manifest 叠加独立 launcher 并设为 `exported=true`。
-- `NfcValidationActivity`
-  - 同时验证原生 NFC foreground dispatch 和 R65C 外接读卡输入。
-  - Debug/Release 均 `exported=false`，从隐藏面板进入。
-- 面板还提供标准相机、腾讯兼容人脸和手动人脸采集快捷入口。
-- Release 不包含 debug mock interceptor 或 debug DI。
+| 助手路由 | 能力 | 鉴权 |
+|---|---|---|
+| `AssistantHome` | 五项入口与最近结果/照片预览 | 隐私同意 |
+| `AssistantLogin` | 独立短信登录，取消返回首页 | 复用 LoginViewModel；无 mock |
+| `AssistantToolRoute(DEFAULT_FACE, orderId)` | 订单 ID 输入、默认人脸验证、JPEG 尺寸/字节数 | 需登录，ID 限 1..Int.MAX_VALUE |
+| `AssistantToolRoute(NFC)` | 原生 NFC 或无 NFC 设备上的 R65C HID | 无需登录；页面前台才监听 |
+| `AssistantToolRoute(CAMERA)` | 标准水印相机、压缩、照片预览 | 无需登录；按需相机权限 |
+| `AssistantToolRoute(TENCENT_FACE)` | 共享备用腾讯人脸页面 | 需助手 userId |
+| `AssistantToolRoute(MANUAL_FACE)` | 共享手动采集页面和文件结果 | 无需登录 |
 
-`scripts/quality/verify_release_validation_entry.sh` 锁定共享入口文件、Manifest 声明和 Release-safe 导航契约。
+助手隐私状态、照片与会话在自己的沙箱；登录中断目标通过 SavedStateHandle 保存且消费一次。系统返回/取消登录返回助手首页，不进入正式 Home 或订单流程。同账号仍可能受后端单会话规则影响。
+
+助手首页照片由共享图片管线保存在私有受管文件目录，清空结果、替换照片及退出账号时删除旧照片，不扫描其他文件。备用腾讯人脸成功后记录结果并返回首页。水印定位支持精确和近似授权；拒绝权限时显示不可用，从设置返回后重新检查。
+
+订单 ID 无效时显示范围错误并禁止发起验证，不截断超长输入为另一个有效订单。标准相机在页面恢复时重新检查相机权限，支持从系统设置授权后返回原页面继续拍照。
+
 
 ## 路由类型清单
 

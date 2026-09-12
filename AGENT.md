@@ -4,7 +4,7 @@
 
 ## 项目一句话
 
-LongCare 是单 APK、多模块的 Android 客户端，服务两类主要流程：
+LongCare 是双 APK、多模块的 Android 客户端，服务两类主要流程：
 
 - 护理执行：登录 → 服务单 → NFC/读卡与身份核验 → 服务项目 → 定位/照片/倒计时 → 签退与完成。
 - 销售评估：客户/待办 → 登记照片 → 表单或 QLZ 蓝牙设备评估 → 应用内报告。
@@ -32,8 +32,13 @@ LongCare 是单 APK、多模块的 Android 客户端，服务两类主要流程�
 - `:app`
   - `MainApplication`、`MainActivity`、隐私/会话入口和 App 更新弹窗。
   - Navigation Compose 2 类型安全路由和根 NavHost。
-  - Android 组件、Service/闹钟/安装器，以及 NFC、腾讯人脸、QLZ 等 app-owned controller。
+  - Android 组件、Service/闹钟/安装器，以及护理 NFC、QLZ 等 app-owned controller。
   - 仍持有大多数 route-bound UI；legacy feature 目录冻结新增。
+- `:assistant`
+  - 独立包名/沙箱的内部验证助手；无正式业务导航、QLZ、更新 Worker 或持续定位。
+  - 默认人脸、NFC/R65C、标准相机、备用腾讯人脸、手动采集五项入口；登录与隐私单独管理。
+- `:integration:txface`
+  - 共享腾讯 SDK adapter、Hilt 绑定、AAR/Maven 依赖和 consumer rules。
 - `:core:model` / `:core:domain`
   - Kotlin/JVM 模块，保持 Android-free。
 - `:core:data`
@@ -42,7 +47,8 @@ LongCare 是单 APK、多模块的 Android 客户端，服务两类主要流程�
   - 日志/诊断/图片/通用 Android 能力，以及共享 Compose/UI 支撑。
 - `:feature:*`
   - 已承接部分动作、ViewModel、用例、Service 或页面。
-  - `:feature:identification` 已拥有默认 CameraX/ML Kit 眨眼核验页面。
+  - `:feature:identification` 已拥有默认 CameraX/ML Kit、手动采集与备用腾讯人脸页面。
+  - `:feature:photoupload` 已拥有标准相机/水印页面。
   - `:feature:location` 已拥有持续定位 Service 和上报链路。
 
 ## 开发守则
@@ -115,12 +121,12 @@ bash scripts/quality/preflight_local.sh --local-fast
 bash scripts/quality/preflight_local.sh --full
 
 # 普通 Android CI 主路径
-bash scripts/quality/verify_release_validation_entry.sh .
-./gradlew --no-daemon :app:lintDebug :app:assembleDebug
+bash scripts/quality/verify_validation_app_isolation.sh .
+./gradlew --no-daemon :app:lintDebug :app:assembleDebug :assistant:lintDebug :assistant:assembleDebug
 bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
 ```
 
-按风险补充 focused test、instrumentation、模拟器或真机验证。普通 Android CI 当前不跑业务单测；不要把“CI 绿色”误解为业务流程已完整回归。
+按风险补充 focused test、instrumentation、模拟器或真机验证。普通 Android CI 包含助手单测，但不覆盖正式应用完整业务单测；不要把“CI 绿色”误解为业务流程已完整回归。
 
 ## 发布现实
 

@@ -1,17 +1,35 @@
 plugins {
     id("longcare.android.library")
     id("longcare.kotlin.common")
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "com.ytone.longcare.feature.photoupload"
+    defaultConfig { testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
+    buildFeatures { compose = true; viewBinding = true }
 }
 
 fun projectDependency(path: String) = dependencies.project(path)
 
 dependencies {
+    implementation(projectDependency(":core:ui"))
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.graphics)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.hilt.navigation.compose)
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.constraintlayout)
     implementation(projectDependency(":core:common"))
     implementation(projectDependency(":core:domain"))
     implementation(projectDependency(":core:model"))
@@ -26,4 +44,8 @@ dependencies {
     implementation(libs.crashreport)
 
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.core)
 }

@@ -6,6 +6,10 @@ import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.assertHasNoClickAction
+import org.junit.Assert.assertEquals
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ytone.longcare.feature.login.api.LoginFeatureActions
 import com.ytone.longcare.features.login.vm.LoginUiState
@@ -34,8 +38,9 @@ class LoginHiddenTestEntryTest {
     }
 
     @Test
-    fun long_pressing_logo_opens_all_validation_entries() {
-        setLoginContent()
+    fun long_pressing_logo_has_no_validation_action_and_login_still_submits() {
+        var submitted: Pair<String, String>? = null
+        setLoginContent(onLogin = { phone, code -> submitted = phone to code })
 
         composeRule.onNodeWithText("功能验证").assertDoesNotExist()
 
@@ -43,15 +48,16 @@ class LoginHiddenTestEntryTest {
             longClick()
         }
 
-        composeRule.onNodeWithText("功能验证").assertExists()
-        composeRule.onNodeWithText("人脸验证").assertExists()
-        composeRule.onNodeWithText("碰一碰 / R65C 验证").assertExists()
-        composeRule.onNodeWithText("拍照验证").assertExists()
-        composeRule.onNodeWithText("备用人脸验证").assertExists()
-        composeRule.onNodeWithText("人脸采集验证").assertExists()
+        composeRule.onNodeWithTag("login_main_logo").assertHasNoClickAction()
+        composeRule.onNodeWithText("功能验证").assertDoesNotExist()
+        composeRule.onNodeWithTag("login_phone_input").performTextInput("13800138000")
+        composeRule.onNodeWithTag("login_verification_code_input").performTextInput("123456")
+        composeRule.onNodeWithTag("login_agreement_checkbox").performClick()
+        composeRule.onNodeWithTag("login_submit_button").performClick()
+        composeRule.runOnIdle { assertEquals("13800138000" to "123456", submitted) }
     }
 
-    private fun setLoginContent() {
+    private fun setLoginContent(onLogin: (String, String) -> Unit = { _, _ -> }) {
         composeRule.setContent {
             LongCareTheme {
                 LoginScreenContent(
@@ -64,7 +70,7 @@ class LoginHiddenTestEntryTest {
                     startConfigState = StartConfigUiState.Idle,
                     countdownSeconds = 0,
                     onSendCodeClick = {},
-                    onLoginClick = { _, _ -> }
+                    onLoginClick = onLogin
                 )
             }
         }

@@ -2,6 +2,7 @@ package com.ytone.longcare.di
 
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
+import com.ytone.longcare.domain.system.WatermarkConfigProvider
 import com.ytone.longcare.domain.system.ServicePhotoConfigProvider
 import dagger.Binds
 import dagger.Module
@@ -11,6 +12,9 @@ import dagger.hilt.components.SingletonComponent
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class SystemConfigProviderModule {
+
+    @Binds
+    abstract fun bindWatermarkConfigProvider(impl: SystemConfigManager): WatermarkConfigProvider
 
     @Binds
     abstract fun bindFaceVerificationConfigProvider(

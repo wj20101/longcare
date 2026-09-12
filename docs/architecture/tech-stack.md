@@ -1,6 +1,6 @@
 # 技术栈与构建基线
 
-最后核对：2026-08-27
+最后核对：2026-09-10
 
 本文是便于阅读的快照。版本发生冲突时，以 `constants.gradle.kts`、`gradle/libs.versions.toml`、`gradle-wrapper.properties` 和各模块 `build.gradle.kts` 为准。
 
@@ -8,14 +8,14 @@
 
 | 项目 | 当前值 | 事实来源 |
 |---|---:|---|
-| Application ID | `com.ytone.longcare` | `app/build.gradle.kts` |
-| 版本 | `1.0.6 (57)` | `constants.gradle.kts` |
+| Application ID | 正式 `com.ytone.longcare`；助手 `com.ytone.longcare.assistant` | 两个 application module 的 build.gradle.kts |
+| 版本 | `1.0.6 (59)` | `constants.gradle.kts` |
 | `compileSdk` | 37 | `constants.gradle.kts` |
 | `targetSdk` | 36 | `constants.gradle.kts` |
 | `minSdk` | 24 | `constants.gradle.kts` |
 | JDK / JVM toolchain | 21 | `constants.gradle.kts`、约定插件 |
 | Gradle Wrapper | 9.7.1 | `gradle/wrapper/gradle-wrapper.properties` |
-| Android Gradle Plugin | 9.3.2 | `gradle/libs.versions.toml` |
+| Android Gradle Plugin | 9.4.0 | `gradle/libs.versions.toml` |
 | Kotlin | 2.4.10 | `gradle/libs.versions.toml` |
 | KSP | 2.3.11 | `gradle/libs.versions.toml` |
 
@@ -35,7 +35,7 @@
 | Face detection | ML Kit Face Detection | 16.1.7 |
 | Network | Retrofit / OkHttp | 3.0.0 / 5.5.0 |
 | Serialization | Moshi / kotlinx.serialization | 1.15.2 / 1.11.0 |
-| Images | Coil | 3.5.0 |
+| Images | Coil | 3.6.0 |
 | Async | kotlinx.coroutines | 1.11.0 |
 | Location | AMap Location | 11.2.100 |
 | Object storage | Tencent COS Android | 5.9.52 |
@@ -61,13 +61,17 @@ QLZ、腾讯人脸和腾讯 COS 仍引用旧 support library 类，因此 `andro
 
 ## 模块与构建逻辑
 
-项目包含 13 个 Gradle 模块：
+项目包含 17 个 Gradle 模块：
 
-- 应用/测试：`:app`、`:baselineprofile`
+- 应用/测试：`:app`、`:assistant`、`:baselineprofile`
 - Core：`:core:model`、`:core:domain`、`:core:data`、`:core:ui`、`:core:common`
 - Feature：`:feature:login`、`:feature:home`、`:feature:identification`、`:feature:location`、`:feature:photoupload`、`:feature:servicecountdown`
 
-`build-logic` 是 included build，提供 application、library、Kotlin 公共配置，以及 Release 签名和腾讯人脸依赖来源约定。版本目录统一管理 Maven 依赖；业务模块不应自行声明版本号。
+- Integration：`:integration:txface`；`:integration:txface-live` / `:integration:txface-normal` 为本地 AAR 的纯 artifact wrapper（不产 APK）。AAR 二进制仍在 `app/libs`，依赖只由集成模块拥有，避免 AGP 禁止 Android library 直接打包本地 AAR 的限制。
+
+`build-logic` 是 included build，提供 application、library、Kotlin 公共配置，以及 Release 签名和腾讯人脸依赖来源约定。签名兼容插件与 `longcare.tencent-face` 职责分离，后者只用于集成 library。版本目录统一管理 Maven 依赖；业务模块不应自行声明版本号。
+
+约定插件自身也固定使用 JDK 21 toolchain，确保单独执行 `./gradlew -p build-logic test` 时不会因 Android Studio 的更高版本 JDK 生成主构建无法加载的字节码。
 
 ## App 构建变体
 
@@ -82,6 +86,8 @@ Android CLI 当前识别以下 app 变体：
 
 默认仅打包 `arm64-v8a`。运行 Baseline Profile 的 x86_64 环境可显式传入 `-Pbaseline.enableX86_64=true`。
 
+助手只提供 Debug/Release，始终关闭 mock，与正式 App 共享基础版本、versionCode 及签名校验，助手 versionName 追加 `-assistant`；不应用 Baseline Profile 插件。统一命令为 `bash scripts/release/build-dual-apks.sh --debug|--acceptance`（选择其一），输出 `build/outputs/dual-apk/<mode>/` 中两份版本化 APK、校验和和元数据。
+
 ## 重要构建开关
 
 | 配置 | 默认值/行为 |
@@ -91,7 +97,7 @@ Android CLI 当前识别以下 app 变体：
 | `release.acceptance` | 默认为 `false`；非生产 Release 必须显式设为 `true` |
 | `baseline.enableX86_64` | 默认为 `false` |
 
-生产 Release 需要 LongCare Release 签名配置。缺少签名时不会静默使用 debug keystore；只有明确的受控环境可以通过专用开关允许 unsigned/debug fallback。
+生产 Release 需要 LongCare Release 签名配置。缺少签名时不会静默使用 debug keystore；双 APK 验收脚本还显式禁用 unsigned/debug fallback。
 
 ## 常用命令
 
