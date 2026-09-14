@@ -42,7 +42,7 @@ javaxInject = "1"
 gson = "2.14.0"
 moshi = "1.15.2"
 okhttp = "5.5.0"
-okio = "3.18.1"
+okio = "3.18.2"
 protobufJavalite = "4.28.3"
 retrofit = "3.0.0"
 
