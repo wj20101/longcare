@@ -30,7 +30,7 @@ mlKitFaceDetection = "16.1.7"
 
 # Persistence and background work
 androidxDataStore = "1.2.1"
-androidxRoom = "2.8.4"
+androidxRoom = "2.8.5"
 androidxWork = "2.11.2"
 
 # Dependency injection
