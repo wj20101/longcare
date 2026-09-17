@@ -89,12 +89,13 @@ internal fun SalesTopBar(
     title: String,
     onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     Box(
         modifier =
             modifier
                 .fillMaxWidth()
-                .heightIn(min = 58.dp),
+                .heightIn(min = if (compact) 46.dp else 58.dp),
         contentAlignment = Alignment.Center,
     ) {
         if (onBack != null) {
@@ -103,20 +104,20 @@ internal fun SalesTopBar(
                 modifier =
                     Modifier
                         .align(Alignment.CenterStart)
-                        .size(50.dp),
+                        .size(if (compact) 48.dp else 50.dp),
             ) {
                 Icon(
                     imageVector = Icons.Rounded.ArrowBackIosNew,
                     contentDescription = stringResource(R.string.common_back),
                     tint = Color.White,
-                    modifier = Modifier.size(25.dp),
+                    modifier = Modifier.size(if (compact) 16.dp else 25.dp),
                 )
             }
         }
         Text(
             text = title,
             color = Color.White,
-            fontSize = 22.sp,
+            fontSize = if (compact) 18.sp else 22.sp,
             lineHeight = 28.sp,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,

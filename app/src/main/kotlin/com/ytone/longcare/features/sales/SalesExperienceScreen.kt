@@ -10,8 +10,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,7 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
@@ -40,8 +46,12 @@ import com.ytone.longcare.features.home.ui.AppNavigationItem
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.profile.api.ProfileActions
 import com.ytone.longcare.features.profile.ui.ProfileScreen
+import com.ytone.longcare.integration.qlz.QlzEvaluationRecoveryAction
+import com.ytone.longcare.integration.qlz.QlzEvaluationStage
+import com.ytone.longcare.integration.qlz.QlzEvaluationUploadContext
 import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.platform.sales.rememberSalesSdkUiController
+import com.ytone.longcare.platform.sales.SalesEvaluationFormEffect
 import com.ytone.longcare.presentation.sales.SalesNavigationState
 import com.ytone.longcare.presentation.sales.SalesPage
 import com.ytone.longcare.presentation.sales.evaluationBackTarget
@@ -60,6 +70,7 @@ internal fun SalesExperienceScreen(
     val context = LocalContext.current
     val activity = context.findActivity()
     val sdkUiController = rememberSalesSdkUiController()
+    val evaluationState by sdkUiController.uiState.collectAsStateWithLifecycle()
     val sdkPermissions = remember(sdkUiController) {
         sdkUiController.requiredRuntimePermissions()
     }
@@ -114,17 +125,35 @@ internal fun SalesExperienceScreen(
         navigationState.navigate(page)
     }
 
-    fun launchEvaluationSdk(hostActivity: android.app.Activity) {
-        val token = uiState.checkToken?.token.orEmpty()
+    fun evaluationUploadContext(): QlzEvaluationUploadContext {
+        return uiState.toQlzEvaluationUploadContext(registrationDraft.liveAddress)
+    }
+
+    fun launchCustomEvaluation(
+        hostActivity: android.app.Activity,
+        token: String = uiState.checkToken?.token.orEmpty(),
+        restart: Boolean = false,
+    ) {
+        if (!currentPage.ownsQlzEvaluationSession()) return
         if (token.isBlank()) {
             showMessage(evaluationNotReadyMessage)
             return
         }
-        sdkUiController.openEvaluation(
-            activity = hostActivity,
-            token = token,
-            onEvent = viewModel::onSdkEvent,
-        )
+        if (restart) {
+            sdkUiController.restartEvaluation(
+                activity = hostActivity,
+                token = token,
+                uploadContext = evaluationUploadContext(),
+                onEvent = viewModel::onSdkEvent,
+            )
+        } else {
+            sdkUiController.startEvaluation(
+                activity = hostActivity,
+                token = token,
+                uploadContext = evaluationUploadContext(),
+                onEvent = viewModel::onSdkEvent,
+            )
+        }
     }
 
     fun openFormEvaluation(formUrl: String) {
@@ -132,7 +161,7 @@ internal fun SalesExperienceScreen(
         if (normalizedFormUrl.isBlank()) {
             showMessage(reportUrlEmptyMessage)
         } else {
-            actions.onOpenWebPage(normalizedFormUrl, evaluationFormTitle)
+            actions.onOpenEvaluationPage(normalizedFormUrl, evaluationFormTitle)
         }
     }
 
@@ -146,6 +175,7 @@ internal fun SalesExperienceScreen(
     }
 
     fun goHome() {
+        viewModel.resetEvaluationResult()
         navigationState.goHome()
     }
 
@@ -205,13 +235,18 @@ internal fun SalesExperienceScreen(
             SalesPage.EVALUATION_CHOICE,
             SalesPage.DEVICE_STATUS,
             SalesPage.EVALUATION_GUIDE,
-            ->
+            -> {
+                uiState.evaluationFormRequest?.let { viewModel.consumeEvaluationForm(it.recordId) }
+                if (currentPage.ownsQlzEvaluationSession()) {
+                    sdkUiController.cancel()
+                }
                 navigate(
                     evaluationBackTarget(
                         currentPage = currentPage,
                         choiceReturnPage = navigationState.evaluationChoiceReturnPage,
                     )
                 )
+            }
 
             SalesPage.EVALUATION_COMPLETE -> goHome()
         }
@@ -263,8 +298,9 @@ internal fun SalesExperienceScreen(
                         PackageManager.PERMISSION_GRANTED
                 }
             if (allGranted && activity != null) {
-                launchEvaluationSdk(activity)
+                launchCustomEvaluation(activity)
             } else {
+                sdkUiController.showPermissionRequired()
                 showMessage(evaluationPermissionMessage)
             }
         }
@@ -324,20 +360,19 @@ internal fun SalesExperienceScreen(
         }
     }
 
-    fun openSdkWithPermission() {
+    fun openEvaluationWithPermission() {
         val hostActivity = activity
         if (hostActivity == null) {
             showMessage(openEvaluationErrorMessage)
             return
         }
-        navigate(SalesPage.EVALUATION_GUIDE)
         val missing =
             sdkPermissions.filter { permission ->
                 ContextCompat.checkSelfPermission(context, permission) !=
                     PackageManager.PERMISSION_GRANTED
             }
         if (missing.isEmpty()) {
-            launchEvaluationSdk(hostActivity)
+            launchCustomEvaluation(hostActivity)
         } else {
             sdkPermissionLauncher.launch(missing.toTypedArray())
         }
@@ -379,25 +414,70 @@ internal fun SalesExperienceScreen(
         }
     }
 
+    SalesEvaluationFormEffect(
+        request = uiState.evaluationFormRequest,
+        onLeaveDevice = {
+            sdkUiController.close()
+            navigate(SalesPage.EVALUATION_CHOICE)
+        },
+        onOpenForm = { url ->
+            if (viewModel.uiState.value.evaluationFormRequest == uiState.evaluationFormRequest) {
+                actions.onOpenEvaluationPage(url, evaluationFormTitle)
+            }
+        },
+        onConsumed = viewModel::consumeEvaluationForm,
+    )
+
     LaunchedEffect(uiState.evaluationCompleted) {
-        if (uiState.evaluationCompleted != null) {
-            navigate(SalesPage.EVALUATION_COMPLETE)
+        if (uiState.evaluationCompleted) navigate(SalesPage.EVALUATION_COMPLETE)
+    }
+
+    LaunchedEffect(currentPage) {
+        if (currentPage == SalesPage.EVALUATION_COMPLETE) viewModel.loadEvaluationResult()
+    }
+
+    LaunchedEffect(evaluationState.stage, currentPage) {
+        if (
+            currentPage == SalesPage.DEVICE_STATUS &&
+            evaluationState.stage.opensMeasurementPage()
+        ) {
+            navigate(SalesPage.EVALUATION_GUIDE)
+        } else if (
+            currentPage == SalesPage.EVALUATION_GUIDE &&
+            evaluationState.stage.opensDevicePage()
+        ) {
+            navigate(SalesPage.DEVICE_STATUS)
         }
     }
 
-    LaunchedEffect(uiState.sdkLaunchRequest?.id) {
+    LaunchedEffect(uiState.sdkLaunchRequest?.id, currentPage) {
         val request = uiState.sdkLaunchRequest ?: return@LaunchedEffect
+        if (!currentPage.ownsQlzEvaluationSession()) {
+            viewModel.consumeSdkLaunchRequest(request.id)
+            return@LaunchedEffect
+        }
         val hostActivity = activity
         if (hostActivity == null || hostActivity.isFinishing || hostActivity.isDestroyed) {
             viewModel.rejectSdkLaunchRequest(request.id)
         } else {
             viewModel.consumeSdkLaunchRequest(request.id)
-            sdkUiController.openEvaluation(
+            sdkUiController.restartEvaluation(
                 activity = hostActivity,
                 token = request.token,
+                uploadContext = evaluationUploadContext(),
                 onEvent = viewModel::onSdkEvent,
             )
         }
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_START) {
+        sdkUiController.onHostStarted()
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        sdkUiController.onHostStopped()
+    }
+    DisposableEffect(sdkUiController) {
+        onDispose { sdkUiController.close() }
     }
 
     SalesPageBackground {
@@ -576,41 +656,56 @@ internal fun SalesExperienceScreen(
                             startAutomaticEvaluation(uiState.selectedCustomerId)
                         },
                         onFormEvaluation = {
-                            val formUrl =
-                                uiState.submissionResult?.pgUrl
-                                    .orEmpty()
-                                    .ifBlank {
-                                        uiState.selectedCustomer?.pgUrl.orEmpty()
-                                    }
-                            openFormEvaluation(formUrl)
+                            if (uiState.evaluationFormRequest != null) {
+                                viewModel.retryEvaluationForm()
+                            } else {
+                                val formUrl =
+                                    uiState.submissionResult?.pgUrl
+                                        .orEmpty()
+                                        .ifBlank {
+                                            uiState.selectedCustomer?.pgUrl.orEmpty()
+                                        }
+                                openFormEvaluation(formUrl)
+                            }
                         },
                     )
 
                 SalesPage.DEVICE_STATUS ->
                     SalesDeviceStatusScreen(
-                        connectedDeviceName = uiState.connectedDeviceName,
+                        evaluationState = evaluationState,
                         tokenReady = uiState.checkToken?.token?.isNotBlank() == true,
-                        progressText = uiState.sdkProgressText,
                         onBack = ::back,
-                        onStartEvaluation = ::openSdkWithPermission,
+                        onStartScan = ::openEvaluationWithPermission,
+                        onSelectDevice = sdkUiController::selectDevice,
+                        onRetry = sdkUiController::retryCurrentStep,
+                        onRecheckEnvironment = ::openEvaluationWithPermission,
                     )
 
                 SalesPage.EVALUATION_GUIDE ->
                     SalesEvaluationGuideScreen(
-                        connectedDeviceName = uiState.connectedDeviceName,
-                        progressText = uiState.sdkProgressText,
+                        evaluationState = evaluationState,
                         onBack = ::back,
-                        onOpenSdk = ::openSdkWithPermission,
+                        onRetry = {
+                            if (evaluationState.recoveryAction.returnsToDeviceScan()) {
+                                navigate(SalesPage.DEVICE_STATUS)
+                            }
+                            sdkUiController.retryCurrentStep()
+                        },
                     )
 
                 SalesPage.EVALUATION_COMPLETE ->
                     SalesEvaluationCompleteScreen(
-                        hasReport =
-                            uiState.selectedCustomer.serverAssessmentReportUrl().isNotBlank(),
+                        hasReport = !uiState.evaluationResult?.pgUrl.isNullOrBlank(),
+                        grade = uiState.evaluationResult?.pgResult,
+                        isLoading = uiState.isEvaluationResultLoading,
+                        resultError = uiState.evaluationResultError,
+                        onRefresh = viewModel::loadEvaluationResult,
                         onBack = ::goHome,
                         onDone = ::goHome,
                         onOpenReport = {
-                            openLatestReport()
+                            uiState.evaluationResult?.pgUrl?.takeIf { it.isNotBlank() }?.let {
+                                actions.onOpenWebPage(it, evaluationReportTitle)
+                            }
                         },
                     )
             }
@@ -624,8 +719,27 @@ internal fun SalesExperienceScreen(
                         .padding(16.dp),
             )
             SalesLoadingOverlay(
-                isVisible = uiState.isLoading,
-                message = uiState.operation,
+                isVisible = uiState.isLoading || (uiState.evaluationFormRequest?.consumed == false && uiState.isCustomerDetailLoading),
+                message = if (uiState.evaluationFormRequest?.consumed == false && uiState.isCustomerDetailLoading)
+                    stringResource(R.string.sales_loading_evaluation_form) else uiState.operation,
+            )
+        }
+    }
+
+    uiState.evaluationFormRequest?.takeUnless { it.consumed }?.let { form ->
+        form.errorMessage?.let { message ->
+            val dismiss = { viewModel.consumeEvaluationForm(form.recordId) }
+            AlertDialog(
+                onDismissRequest = dismiss,
+                text = { Text(message) },
+                confirmButton = {
+                    TextButton(onClick = viewModel::retryEvaluationForm) {
+                        Text(stringResource(R.string.common_retry))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = dismiss) { Text(stringResource(R.string.common_back)) }
+                },
             )
         }
     }
@@ -675,3 +789,53 @@ private val salesCustomerDraftSaver =
             )
         },
     )
+
+internal fun SalesUiState.toQlzEvaluationUploadContext(
+    registrationAddress: String,
+): QlzEvaluationUploadContext {
+    val matchingCustomer =
+        selectedCustomer?.takeIf { customer ->
+            customer.id == selectedCustomerId
+        }
+    return QlzEvaluationUploadContext(
+        latitude =
+            matchingCustomer?.liveLat.orEmpty().ifBlank {
+                currentLocation?.latitude?.toString().orEmpty()
+            },
+        longitude =
+            matchingCustomer?.liveLng.orEmpty().ifBlank {
+                currentLocation?.longitude?.toString().orEmpty()
+            },
+        address =
+            matchingCustomer?.liveAddress.orEmpty().ifBlank {
+                registrationAddress
+            },
+    ).normalized()
+}
+
+internal fun QlzEvaluationStage.opensMeasurementPage(): Boolean =
+    this in
+        setOf(
+            QlzEvaluationStage.CONNECTING,
+            QlzEvaluationStage.CONNECTED,
+            QlzEvaluationStage.MEASURING,
+            QlzEvaluationStage.POWER_PAUSED,
+            QlzEvaluationStage.UPLOADING,
+            QlzEvaluationStage.COMPLETED,
+        )
+
+internal fun SalesPage.ownsQlzEvaluationSession(): Boolean =
+    this == SalesPage.DEVICE_STATUS || this == SalesPage.EVALUATION_GUIDE
+
+internal fun QlzEvaluationStage.opensDevicePage(): Boolean =
+    this in setOf(
+        QlzEvaluationStage.IDLE,
+        QlzEvaluationStage.AUTHORIZING,
+        QlzEvaluationStage.READY_TO_SCAN,
+        QlzEvaluationStage.SCANNING,
+        QlzEvaluationStage.SCAN_RESULTS,
+        QlzEvaluationStage.SCAN_EMPTY,
+    )
+
+internal fun QlzEvaluationRecoveryAction?.returnsToDeviceScan(): Boolean =
+    this == QlzEvaluationRecoveryAction.RETRY_SCAN

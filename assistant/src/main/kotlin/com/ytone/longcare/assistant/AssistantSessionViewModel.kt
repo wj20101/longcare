@@ -16,9 +16,9 @@ enum class AssistantTool(val requiresLogin: Boolean) {
     DEFAULT_FACE(true), NFC(false), CAMERA(false), TENCENT_FACE(true), MANUAL_FACE(false),
 }
 
-@Serializable data object AssistantHome
-@Serializable data object AssistantLogin
-@Serializable data class AssistantToolRoute(val tool: AssistantTool, val orderId: Long = 0)
+@Serializable data object AssistantHome : AssistantRoute
+@Serializable data object AssistantLogin : AssistantRoute
+@Serializable data class AssistantToolRoute(val tool: AssistantTool, val orderId: Long = 0) : AssistantRoute
 
 @HiltViewModel
 class AssistantSessionViewModel @Inject constructor(

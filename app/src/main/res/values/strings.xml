@@ -1,4 +1,5 @@
 <resources>
+    <string name="webview_renderer_unavailable">网页已停止运行，请返回后重新打开</string>
     <string name="app_name">长护盾</string>
     <string name="nfc_sign_in_title">进门碰一碰</string>
     <string name="nfc_sign_out_title">出门碰一碰</string>
@@ -169,8 +170,6 @@
     <string name="select_service_title">请选择服务项目</string>
     <string name="select_service_start">开始服务</string>
     <string name="select_service_processing">正在处理…</string>
-    <string name="select_device_title">准备碰一碰</string>
-    <string name="select_device_instruction">请准备手机 NFC 或外接读卡器，系统将自动识别可用设备</string>
     <string name="service_orders_pending_empty_subtitle">当前没有需要执行的护理计划</string>
     <string name="service_orders_records_empty_subtitle">当前没有已完成的服务记录</string>
     <string name="end_service_project_load_failed">结束服务项目加载失败，请稍后重试</string>
@@ -210,9 +209,6 @@
     <!-- 人脸识别指导页面 -->
     <string name="face_recognition_guide_title">身份认证</string>
     <string name="face_recognition_guide_subtitle">请按照要求进行人脸识别</string>
-    <string name="face_recognition_guide_image_description">人脸识别指导</string>
-    <string name="face_recognition_guide_start_button">开始人脸识别</string>
-    <string name="face_recognition_guide_privacy_agreement">提通科技将手机并提供您身份验证过程中产生的图像、视频、数据信息以确认您的本人身份避免的身份信息被盗用，勾选即表示您同意人脸信息的手机、使用、保存和删除</string>
     <string name="identification_elder_photo_action">拍摄老人照片</string>
     <string name="identification_elder_photo_purpose">拍摄老人核验照片</string>
     <string name="identification_service_person">服务人员</string>
@@ -299,6 +295,7 @@
     <string name="service_order_work_hours_true">实际服务工时: %1$s 分钟</string>
 
     <string name="back_button_description">返回</string>
+    <string name="webview_load_failed">网页加载失败，请返回后重新打开。</string>
 
     <!-- 隐藏功能验证入口（Debug 与 Release 共用） -->
 

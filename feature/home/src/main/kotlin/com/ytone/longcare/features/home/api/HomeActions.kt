@@ -18,4 +18,5 @@ data class HomeActions(
     val onNavigateToCamera: (WatermarkData) -> Unit,
     val capturedImageUriFlow: StateFlow<String?>,
     val clearCapturedImageUri: () -> Unit,
+    val onOpenEvaluationPage: (url: String, title: String) -> Unit = onOpenWebPage,
 )

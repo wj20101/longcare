@@ -1,17 +1,10 @@
 package com.ytone.longcare.integration.qlz
 
-import android.Manifest
 import android.app.Activity
 import android.content.Context
-import android.os.Build
-import com.evenmed.mode.CheckRecordIdMode
 import com.evenmed.sdk.call.CheckConfig
 import com.evenmed.sdk.call.CheckIml
-import com.evenmed.sdk.call.CheckResult
-import com.evenmed.sdk.call.CheckStateData
 import com.evenmed.sdk.call.ErrorCodeConfig
-import com.evenmed.sdk.call.SDKCall
-import com.google.gson.Gson
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.R
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -24,6 +17,7 @@ class QlzSdkClient @Inject constructor(
 ) {
     @Volatile
     private var initializedSdkKey: String? = null
+    private val sessionLeases = QlzSessionLeaseRegistry()
 
     val isTestMode: Boolean
         get() = BuildConfig.QLZ_TEST_MODE
@@ -82,9 +76,8 @@ class QlzSdkClient @Inject constructor(
     /**
      * Returns the Bluetooth device currently held by the SDK.
      *
-     * The vendor SDK does not expose a standalone connection listener. Its public
-     * connection signal is the remembered/active Bluetooth device name, so the
-     * production UI refreshes this value when the SDK page is entered or closed.
+     * This legacy snapshot remains available to the Sales ViewModel for summary state. The active
+     * custom screen uses the session's connection callbacks instead of polling this value.
      */
     fun getConnectedDeviceName(): String? =
         runCatching {
@@ -97,110 +90,52 @@ class QlzSdkClient @Inject constructor(
                 ?.takeIf { it.isNotEmpty() }
         }.getOrNull()
 
-    fun openByToken(
+    internal fun createEvaluationSession(
         activity: Activity,
-        token: String,
+        uploadContext: QlzEvaluationUploadContext,
         onEvent: (QlzSdkEvent) -> Unit,
-    ) {
-        if (token.isBlank()) {
-            onEvent(
-                QlzSdkEvent.Error(
-                    ErrorCodeConfig.error_no_token,
-                    appContext.getString(
-                        R.string.sales_error_evaluation_expired_short
-                    ),
-                )
+        onStateChanged: (QlzEvaluationUiState) -> Unit,
+    ): QlzEvaluationSessionCreation {
+        if (activity.isFinishing || activity.isDestroyed) {
+            return QlzEvaluationSessionCreation.Blocked(
+                issue = QlzEvaluationIssue.SDK_UNAVAILABLE,
+                recoveryAction = QlzEvaluationRecoveryAction.EXIT,
             )
-            return
         }
         val initialization = initialize()
         if (initialization !is QlzSdkInitialization.Ready) {
-            onEvent(
-                QlzSdkEvent.Error(
-                    ErrorCodeConfig.error_no_key,
-                    initializationMessage(initialization),
-                )
-            )
-            return
-        }
-
-        try {
-            SDKCall.openByToken(
-                activity,
-                token,
-                null,
-                { result: CheckResult<String> ->
-                    onEvent(result.toQlzSdkEvent())
-                },
-            )
-        } catch (throwable: Throwable) {
-            onEvent(
-                QlzSdkEvent.Error(
-                    ErrorCodeConfig.code_othererror,
-                    throwable.message.toUserFacingEvaluationError(
-                        fallbackMessage =
-                            appContext.getString(
-                                R.string.sales_error_evaluation_continue
-                            )
-                    ),
-                )
+            return QlzEvaluationSessionCreation.Blocked(
+                issue = QlzEvaluationIssue.SDK_UNAVAILABLE,
+                recoveryAction = QlzEvaluationRecoveryAction.EXIT,
             )
         }
+        activity.qlzBluetoothEnvironmentIssue(requiredRuntimePermissions())?.let { issue ->
+            return QlzEvaluationSessionCreation.Blocked(
+                issue = issue,
+                recoveryAction = issue.environmentRecoveryAction(),
+            )
+        }
+        val leaseId =
+            sessionLeases.acquire()
+                ?: return QlzEvaluationSessionCreation.Blocked(
+                    issue = QlzEvaluationIssue.SESSION_BUSY,
+                    recoveryAction = QlzEvaluationRecoveryAction.EXIT,
+                )
+        return QlzEvaluationSessionCreation.Ready(
+            QlzEvaluationSession(
+                driverFactory =
+                    QlzEvaluationDriverFactory {
+                        QlzVendorEvaluationDriver(activity)
+                    },
+                uploadContext = uploadContext,
+                onEvent = onEvent,
+                onStateChanged = onStateChanged,
+                releaseLease = { sessionLeases.release(leaseId) },
+            )
+        )
     }
 
-    fun requiredRuntimePermissions(): Array<String> =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            arrayOf(
-                Manifest.permission.BLUETOOTH_SCAN,
-                Manifest.permission.BLUETOOTH_CONNECT,
-            )
-        } else {
-            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-
-    private fun CheckResult<String>.toQlzSdkEvent(): QlzSdkEvent =
-        when (errorcode) {
-            ErrorCodeConfig.code_res_success -> parseCompletedEvent(data)
-            ErrorCodeConfig.code_check_state ->
-                QlzSdkEvent.Progress(
-                    successCount = CheckStateData.successCount,
-                    totalCount = CheckStateData.allCount,
-                )
-
-            ErrorCodeConfig.code_finish_check -> QlzSdkEvent.DetectionPageClosed
-            ErrorCodeConfig.code_finish_res -> QlzSdkEvent.ReportPageClosed
-            ErrorCodeConfig.code_check_cancel -> QlzSdkEvent.Cancelled
-            else ->
-                QlzSdkEvent.Error(
-                    code = errorcode,
-                    message =
-                        (
-                            errorMsg?.takeIf { it.isNotBlank() }
-                                ?: ErrorCodeConfig.getErrMsg(errorcode)
-                        ).toUserFacingEvaluationError(
-                            fallbackMessage =
-                                appContext.getString(
-                                    R.string.sales_error_evaluation_continue
-                                )
-                        ),
-                )
-        }
-
-    private fun parseCompletedEvent(rawData: String?): QlzSdkEvent =
-        try {
-            val record = Gson().fromJson(rawData, CheckRecordIdMode::class.java)
-            QlzSdkEvent.Completed(
-                recordId = record?.recordid.orEmpty(),
-                reportUrl = record?.url.orEmpty(),
-                score = record?.score1.orEmpty(),
-            )
-        } catch (_: Throwable) {
-            QlzSdkEvent.Error(
-                code = ErrorCodeConfig.error_server_gson,
-                message =
-                    appContext.getString(R.string.sales_error_evaluation_result_read),
-            )
-        }
+    fun requiredRuntimePermissions(): Array<String> = qlzRequiredRuntimePermissions()
 
     private fun initializationMessage(
         initialization: QlzSdkInitialization,
@@ -248,8 +183,6 @@ sealed interface QlzSdkEvent {
         val totalCount: Int,
     ) : QlzSdkEvent
 
-    data object DetectionPageClosed : QlzSdkEvent
-    data object ReportPageClosed : QlzSdkEvent
     data object Cancelled : QlzSdkEvent
 
     data class Error(

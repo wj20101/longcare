@@ -31,7 +31,7 @@ LongCare 是双 APK、多模块的 Android 客户端，服务两类主要流程�
 
 - `:app`
   - `MainApplication`、`MainActivity`、隐私/会话入口和 App 更新弹窗。
-  - Navigation Compose 2 类型安全路由和根 NavHost。
+  - Navigation 3 可保存类型安全单栈、entry 结果邮箱和根 NavDisplay。
   - Android 组件、Service/闹钟/安装器，以及护理 NFC、QLZ 等 app-owned controller。
   - 仍持有大多数 route-bound UI；legacy feature 目录冻结新增。
 - `:assistant`

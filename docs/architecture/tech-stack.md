@@ -25,7 +25,9 @@
 |---|---|---:|
 | UI | Jetpack Compose BOM | 2026.08.00 |
 | UI | Material 3 / Adaptive Navigation Suite | 由 Compose BOM 管理 |
-| Navigation | Navigation Compose | 2.9.8 |
+| Navigation | Navigation 3 runtime / ui | 1.1.7 |
+| Navigation state | Lifecycle ViewModel Navigation 3 decorator | 2.11.0 |
+| Compose DI | Hilt lifecycle-viewmodel-compose（无 Navigation 2 依赖） | 1.4.0 |
 | Lifecycle | AndroidX Lifecycle | 2.11.0 |
 | DI | Dagger Hilt / AndroidX Hilt | 2.60.1 / 1.4.0 |
 | Persistence | Room | 2.8.4 |
@@ -34,6 +36,7 @@
 | Camera | CameraX | 1.6.1 |
 | Face detection | ML Kit Face Detection | 16.1.7 |
 | Network | Retrofit / OkHttp | 3.0.0 / 5.5.0 |
+| WebView | AndroidX WebKit（来源限定消息桥、文档起始脚本） | 1.17.0 |
 | Serialization | Moshi / kotlinx.serialization | 1.15.2 / 1.11.0 |
 | Images | Coil | 3.6.0 |
 | Async | kotlinx.coroutines | 1.11.0 |
@@ -51,6 +54,10 @@
 | 腾讯人脸 Normal | `WbCloudNormal-v5.1.10-4e3e198.aar` | 与 Live SDK 一起由约定插件装配 |
 
 QLZ、腾讯人脸和腾讯 COS 仍引用旧 support library 类，因此 `android.enableJetifier=true` 暂时不能删除。切换到 AndroidX-only 厂商包后应重新跑 Lint、SDK 回归和生产发布门禁，再移除 Jetifier。
+
+WebKit 1.17.0 的渲染退出检查器会误报已实现回调的父类构造调用；经审查及确认，仅
+`ManagedWebViewClient` 使用带原因说明的局部 `MissingOnRenderProcessGone` 豁免。
+两个网页容器的异常释放与原生返回已有测试；全局 Lint allowlist 不变，检查器修复后删除该注解。
 
 腾讯人脸依赖来源由以下配置控制：
 

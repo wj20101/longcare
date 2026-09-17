@@ -41,7 +41,7 @@ dependencies {
     implementation(libs.okhttp.core)
     implementation(libs.crashreport)
     implementation(libs.dagger.hilt.android)
-    implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
     ksp(libs.dagger.hilt.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

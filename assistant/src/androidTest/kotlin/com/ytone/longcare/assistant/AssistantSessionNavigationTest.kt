@@ -48,6 +48,12 @@ class AssistantSessionNavigationTest {
             compose.waitUntil(10_000) { compose.onAllNodesWithText("开始验证").fetchSemanticsNodes().isNotEmpty() }
             compose.runOnIdle { assertNull(vm.takePending()) }
             compose.onNodeWithText("服务订单 ID（1–2147483647）").assertExists()
+            // Invalidate a protected page: its owner must go away and the target resumes once.
+            compose.runOnIdle { repository.sessionState.value = SessionState.LoggedOut }
+            compose.onNodeWithText("手机号码").assertExists()
+            compose.runOnIdle { repository.sessionState.value = SessionState.LoggedIn(User(userId = 42)) }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("开始验证").fetchSemanticsNodes().isNotEmpty() }
+            compose.runOnIdle { assertNull(vm.takePending()) }
             compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
             compose.onNodeWithText("NFC / R65C 读卡验证").assertExists()
             compose.runOnIdle { repository.sessionState.value = SessionState.LoggedOut }

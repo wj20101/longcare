@@ -15,10 +15,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.NavDisplay
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
@@ -56,17 +57,27 @@ internal fun AssistantNavigation(
     val invalidation by viewModel.invalidation.collectAsStateWithLifecycle()
     val result by viewModel.result.collectAsStateWithLifecycle()
     val photo by viewModel.photoUri.collectAsStateWithLifecycle()
-    val nav = rememberNavController()
     val resources = LocalResources.current
-    val back: () -> Unit = { nav.popBackStack() }
-    val home: () -> Unit = { nav.popBackStack(AssistantHome, false) }
-    val login: (AssistantToolRoute) -> Unit = { route ->
-        viewModel.requireLogin(route)
-        nav.navigate(AssistantLogin) { popUpTo(AssistantHome); launchSingleTop = true }
-    }
     if (session is SessionState.Unknown) {
         AssistantPage(stringResource(R.string.app_name)) { CircularProgressIndicator() }
         return
+    }
+    val stack = rememberNavBackStack(AssistantEntry(AssistantHome))
+    val navigator = remember(stack) { AssistantNavigator(stack) }
+    val identity = session.user?.userId?.toString() ?: "anonymous"
+    var savedIdentity by rememberSaveable { mutableStateOf(identity) }
+    if (savedIdentity != identity) {
+        if (savedIdentity != "anonymous") {
+            val pending = (stack.lastOrNull() as? AssistantEntry)?.route as? AssistantToolRoute
+            navigator.reset()
+            viewModel.clearResult()
+            viewModel.cancelPending()
+            if (identity == "anonymous" && pending?.tool?.requiresLogin == true) {
+                viewModel.requireLogin(pending)
+                navigator.login()
+            }
+        }
+        savedIdentity = identity
     }
     LaunchedEffect(invalidation?.id) {
         invalidation?.let {
@@ -75,90 +86,108 @@ internal fun AssistantNavigation(
             viewModel.consumeInvalidation(it.id)
         }
     }
-    NavHost(navController = nav, startDestination = AssistantHome) {
-        composable<AssistantHome> {
-            AssistantHomeScreen(
-                loggedIn = session is SessionState.LoggedIn,
-                result = result,
-                photoUri = photo,
-                onClear = viewModel::clearResult,
-                onLogout = viewModel::logout,
-                onLogin = { viewModel.cancelPending(); nav.navigate(AssistantLogin) },
-                onOpen = { tool ->
-                    viewModel.clearResult()
-                    val route = AssistantToolRoute(tool)
-                    if (tool.requiresLogin && session !is SessionState.LoggedIn) login(route)
-                    else nav.navigate(route)
-                },
-            )
-        }
-        composable<AssistantLogin> {
-            AssistantLoginScreen(onBack = { viewModel.cancelPending(); home() })
-            LaunchedEffect(session) {
-                if (session is SessionState.LoggedIn) {
-                    val pending = viewModel.takePending()
-                    home()
-                    if (pending != null) nav.navigate(pending)
-                }
-            }
-        }
-        composable<AssistantToolRoute> { entry ->
-            val route = entry.toRoute<AssistantToolRoute>()
-            if (route.tool.requiresLogin && session !is SessionState.LoggedIn) {
-                LaunchedEffect(route) { login(route) }
-                return@composable
-            }
-            when (route.tool) {
-                AssistantTool.NFC -> NfcValidationScreen(
-                    activity = activity, nfcTestHelper = nfc, onNavigateBack = back,
-                    onOpenNfcSettings = { activity.startActivity(Intent(Settings.ACTION_NFC_SETTINGS)) },
-                )
-                AssistantTool.CAMERA -> CameraScreen(
-                    actions = CameraActions { uri -> viewModel.showPhoto(uri); home() },
-                    watermarkData = WatermarkData(
-                        title = stringResource(R.string.assistant_camera_watermark),
-                        insuredPerson = "", caregiver = "", address = "",
-                    ),
-                )
-                AssistantTool.MANUAL_FACE -> ManualFaceCaptureScreen(
-                    onNavigateBack = back,
-                    onFaceCaptured = { path -> viewModel.showPhoto(Uri.fromFile(File(path)).toString()); home() },
-                )
-                AssistantTool.TENCENT_FACE -> FaceVerificationWithAutoSignScreen(
-                    currentUserId = session.user?.userId?.toString(),
-                    onNavigateBack = back,
-                    onVerificationSuccess = {
-                        completeAssistantFaceVerification(
-                            message = resources.getString(R.string.assistant_face_success),
-                            report = viewModel::report,
-                            returnHome = home,
-                        )
-                    },
-                )
-                AssistantTool.DEFAULT_FACE -> {
-                    if (route.orderId == 0L) {
-                        AssistantOrderScreen(onBack = back, onStart = { orderId ->
-                            viewModel.clearResult()
-                            nav.navigate(AssistantToolRoute(AssistantTool.DEFAULT_FACE, orderId))
-                        })
-                    } else {
-                        AssistantDefaultFaceScreen(
-                            orderId = route.orderId,
-                            onNavigateBack = home,
-                            onPhotoPrepared = { metrics ->
-                                viewModel.report(resources.getString(
-                                    R.string.assistant_face_metrics, metrics.widthPx, metrics.heightPx, metrics.byteCount,
-                                ))
-                            },
-                            onOutcome = { outcome ->
-                                viewModel.report(resources.getString(outcome.messageRes) + "\n" + viewModel.result.value)
+    NavDisplay(
+        backStack = stack,
+        onBack = {
+            if ((stack.lastOrNull() as? AssistantEntry)?.route == AssistantLogin) viewModel.cancelPending()
+            navigator.back()
+        },
+        entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
+        entryProvider = entryProvider {
+            entry<AssistantEntry>(clazzContentKey = { it.id }) { entry ->
+                val nav = navigator.forEntry(entry.id)
+                val back: () -> Unit = nav::back
+                val home: () -> Unit = nav::home
+                val login: (AssistantToolRoute) -> Unit = { route -> viewModel.requireLogin(route); nav.login() }
+                when (val route = entry.route) {
+                    AssistantHome -> {
+                        AssistantHomeScreen(
+                            loggedIn = session is SessionState.LoggedIn,
+                            result = result,
+                            photoUri = photo,
+                            onClear = viewModel::clearResult,
+                            onLogout = viewModel::logout,
+                            onLogin = { viewModel.cancelPending(); nav.navigate(AssistantLogin) },
+                            onOpen = { tool ->
+                                viewModel.clearResult()
+                                val route = AssistantToolRoute(tool)
+                                if (tool.requiresLogin && session !is SessionState.LoggedIn) login(route)
+                                else nav.navigate(route)
                             },
                         )
                     }
+                    AssistantLogin -> {
+                        AssistantLoginScreen(onBack = { viewModel.cancelPending(); home() })
+                        LaunchedEffect(session) {
+                            if (session is SessionState.LoggedIn) {
+                                val pending = viewModel.takePending()
+                                nav.resume(pending)
+                            }
+                        }
+                    }
+                    is AssistantToolRoute -> {
+                        if (route.tool.requiresLogin && session !is SessionState.LoggedIn) {
+                            LaunchedEffect(route) { login(route) }
+                            return@entry
+                        }
+                        when (route.tool) {
+                            AssistantTool.NFC -> NfcValidationScreen(
+                                activity = activity, nfcTestHelper = nfc, onNavigateBack = back,
+                                onOpenNfcSettings = { activity.startActivity(Intent(Settings.ACTION_NFC_SETTINGS)) },
+                            )
+                            AssistantTool.CAMERA -> CameraScreen(
+                                actions = CameraActions { uri -> nav.ifCurrent { viewModel.showPhoto(uri); home() } },
+                                watermarkData = WatermarkData(
+                                    title = stringResource(R.string.assistant_camera_watermark),
+                                    insuredPerson = "", caregiver = "", address = "",
+                                ),
+                            )
+                            AssistantTool.MANUAL_FACE -> ManualFaceCaptureScreen(
+                                onNavigateBack = back,
+                                onFaceCaptured = { path -> nav.ifCurrent { viewModel.showPhoto(Uri.fromFile(File(path)).toString()); home() } },
+                            )
+                            AssistantTool.TENCENT_FACE -> FaceVerificationWithAutoSignScreen(
+                                currentUserId = session.user?.userId?.toString(),
+                                onNavigateBack = back,
+                                onVerificationSuccess = {
+                                    nav.ifCurrent {
+                                        completeAssistantFaceVerification(
+                                            message = resources.getString(R.string.assistant_face_success),
+                                            report = viewModel::report,
+                                            returnHome = home,
+                                        )
+                                    }
+                                },
+                            )
+                            AssistantTool.DEFAULT_FACE -> {
+                                if (route.orderId == 0L) {
+                                    AssistantOrderScreen(onBack = back, onStart = { orderId ->
+                                            viewModel.clearResult()
+                                            nav.navigate(AssistantToolRoute(AssistantTool.DEFAULT_FACE, orderId))
+                                    })
+                                } else {
+                                    AssistantDefaultFaceScreen(
+                                        orderId = route.orderId,
+                                        onNavigateBack = home,
+                                        onPhotoPrepared = { metrics ->
+                                            nav.ifCurrent {
+                                                viewModel.report(resources.getString(
+                                                        R.string.assistant_face_metrics, metrics.widthPx, metrics.heightPx, metrics.byteCount,
+                                                ))
+                                            }
+                                        },
+                                        onOutcome = { outcome ->
+                                            nav.ifCurrent { viewModel.report(resources.getString(outcome.messageRes) + "\n" + viewModel.result.value) }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
-        }
-    }
+        },
+    )
 }
 
 internal fun completeAssistantFaceVerification(
@@ -174,9 +203,9 @@ internal fun completeAssistantFaceVerification(
 @Composable
 internal fun AssistantPage(title: String, onBack: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Scaffold(topBar = {
-        TopAppBar(title = { Text(title) }, navigationIcon = {
-            if (onBack != null) TextButton(onClick = onBack) { Text(stringResource(R.string.assistant_back)) }
-        })
+            TopAppBar(title = { Text(title) }, navigationIcon = {
+                    if (onBack != null) TextButton(onClick = onBack) { Text(stringResource(R.string.assistant_back)) }
+            })
     }) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(20.dp),
@@ -197,7 +226,7 @@ internal fun AssistantOrderScreen(onBack: () -> Unit, onStart: (Long) -> Unit) {
             isError = edited && id == null,
             supportingText = {
                 if (edited && id == null) Text(stringResource(R.string.assistant_invalid_order_id))
-            })
+        })
         Button(onClick = { id?.let(onStart) }, enabled = id != null) {
             Text(stringResource(R.string.assistant_start))
         }
@@ -205,4 +234,4 @@ internal fun AssistantOrderScreen(onBack: () -> Unit, onStart: (Long) -> Unit) {
 }
 
 internal fun validAssistantOrderId(value: String): Long? =
-    value.toLongOrNull()?.takeIf { it in 1L..Int.MAX_VALUE.toLong() }
+value.toLongOrNull()?.takeIf { it in 1L..Int.MAX_VALUE.toLong() }
