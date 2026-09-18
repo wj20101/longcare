@@ -1,6 +1,6 @@
 # 技术栈与构建基线
 
-最后核对：2026-09-18
+最后核对：2026-09-19
 
 本文是便于阅读的快照。版本发生冲突时，以 `constants.gradle.kts`、`gradle/libs.versions.toml`、`gradle-wrapper.properties` 和各模块 `build.gradle.kts` 为准。
 
@@ -38,7 +38,7 @@
 | Network | Retrofit / OkHttp | 3.0.0 / 5.5.0 |
 | WebView | AndroidX WebKit（渲染进程异常保护；关闭接口直接注册 NativeBridge） | 1.17.0 |
 | Serialization | Moshi / kotlinx.serialization | 1.15.2 / 1.11.0 |
-| Images | Coil | 3.6.0 |
+| Images | Coil | 3.6.3 |
 | Async | kotlinx.coroutines | 1.11.0 |
 | Location | AMap Location | 11.2.100 |
 | Object storage | Tencent COS Android | 5.9.52 |
