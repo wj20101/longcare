@@ -15,7 +15,7 @@ import java.util.WeakHashMap
 /**
  * Host-side edge-to-edge compatibility for the vendor SDK activities.
  *
- * The QLZ SDK 1.3.0.2 activities target a classic decor layout and do not
+ * The QLZ SDK 1.3.0.5 activities target a classic decor layout and do not
  * consume system-bar insets. Android 15+ enforces edge-to-edge for modern
  * target SDK levels, and Android 16+ no longer supports the theme opt-out.
  * Keep this workaround scoped to vendor activities until the SDK handles

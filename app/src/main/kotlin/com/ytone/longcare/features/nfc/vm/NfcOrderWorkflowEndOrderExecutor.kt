@@ -3,11 +3,13 @@ package com.ytone.longcare.features.nfc.vm
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.klogI
 import com.ytone.longcare.domain.order.OrderRepository
+import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.flow.MutableStateFlow
 
 internal suspend fun executeEndOrderRequest(
+    serviceOrderLifecycle: ServiceOrderLifecycle,
     orderRepository: OrderRepository,
     completionDelegate: NfcOrderCompletionDelegate,
     uiState: MutableStateFlow<NfcSignInUiState>,
@@ -38,6 +40,7 @@ internal suspend fun executeEndOrderRequest(
         endType = endType
     )) {
         is ApiResult.Success -> {
+            serviceOrderLifecycle.onOrderEnded(orderKey.orderId)
             completionDelegate.cleanupResources(orderKey)
             uiState.value = NfcSignInUiState.Success(
                 endOrderSuccessData = EndOrderSuccessData(

@@ -26,6 +26,7 @@ import com.ytone.longcare.common.utils.DeviceCompatibilityHelper
 import com.ytone.longcare.common.utils.PermissionGuideItem
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.selectservice.api.SelectServiceActions
+import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.selectservice.vm.SelectServiceViewModel
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
@@ -46,7 +47,8 @@ fun SelectServiceScreen(
     actions: SelectServiceActions,
     orderKey: OrderKey,
     selectServiceViewModel: SelectServiceViewModel = hiltViewModel(),
-    sharedViewModel: SharedOrderDetailViewModel = hiltViewModel()
+    sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
+    locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -87,6 +89,7 @@ fun SelectServiceScreen(
 
     fun startService(selectedIds: List<Int>) {
         sharedViewModel.starOrder(orderKey.orderId, selectedIds.map(Int::toLong)) {
+            locationTrackingViewModel.onOrderStarted(orderKey.orderId)
             coroutineScope.launch {
                 selectServiceViewModel.updateSelectedProjects(
                     orderKey = orderKey,

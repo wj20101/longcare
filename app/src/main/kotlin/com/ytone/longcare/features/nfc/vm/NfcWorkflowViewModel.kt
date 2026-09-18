@@ -6,6 +6,7 @@ import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.utils.ExternalRfidReaderManager
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.order.OrderRepository
+import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
@@ -29,6 +30,7 @@ import javax.inject.Inject
 @HiltViewModel
 class NfcWorkflowViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
+    private val serviceOrderLifecycle: ServiceOrderLifecycle,
     private val appEventBus: AppEventBus,
     private val externalRfidReaderManager: ExternalRfidReaderManager,
     private val locationFacade: LocationFacade,
@@ -48,6 +50,7 @@ class NfcWorkflowViewModel @Inject constructor(
     val pendingNfcData: StateFlow<PendingNfcData?> = _pendingNfcData.asStateFlow()
 
     private val orderDelegate = NfcOrderWorkflowDelegate(
+        serviceOrderLifecycle = serviceOrderLifecycle,
         orderRepository = orderRepository,
         unifiedOrderRepository = unifiedOrderRepository,
         imageRepository = imageRepository,

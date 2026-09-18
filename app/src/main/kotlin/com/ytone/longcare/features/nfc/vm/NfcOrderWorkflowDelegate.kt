@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.nfc.vm
 
 import com.ytone.longcare.domain.order.OrderRepository
+import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
@@ -38,6 +39,7 @@ internal fun applyUserVisibleNfcError(
 }
 
 internal class NfcOrderWorkflowDelegate(
+    private val serviceOrderLifecycle: ServiceOrderLifecycle,
     private val orderRepository: OrderRepository,
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
@@ -171,6 +173,7 @@ internal class NfcOrderWorkflowDelegate(
         latitude: String,
         endType: Int
     ) = executeEndOrderRequest(
+        serviceOrderLifecycle = serviceOrderLifecycle,
         orderRepository = orderRepository,
         completionDelegate = completionDelegate,
         uiState = uiState,

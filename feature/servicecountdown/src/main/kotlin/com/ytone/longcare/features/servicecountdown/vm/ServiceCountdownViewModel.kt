@@ -2,7 +2,7 @@ package com.ytone.longcare.features.servicecountdown.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ytone.longcare.domain.order.OrderRepository
+import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
@@ -23,7 +23,7 @@ import javax.inject.Inject
 class ServiceCountdownViewModel @Inject constructor(
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
-    private val orderRepository: OrderRepository,
+    private val serviceOrderLifecycle: ServiceOrderLifecycle,
     private val systemGateway: ServiceCountdownSystemGateway,
 ) : ViewModel() {
 
@@ -56,7 +56,7 @@ class ServiceCountdownViewModel @Inject constructor(
     )
     private val orderStatePollingDelegate = ServiceCountdownOrderStatePollingDelegate(
         stateHolder = stateHolder,
-        orderRepository = orderRepository,
+        serviceOrderLifecycle = serviceOrderLifecycle,
         viewModelScope = viewModelScope
     )
 

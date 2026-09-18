@@ -15,7 +15,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.singleClick
-import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.nfc.api.NfcWorkflowActions
 import com.ytone.longcare.features.nfc.vm.NfcSignInUiState
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
@@ -32,7 +31,6 @@ fun NfcWorkflowScreen(
     signInMode: SignInMode,
     endOderInfo: EndOderInfo? = null,
     nfcViewModel: NfcWorkflowViewModel = hiltViewModel(),
-    locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
 ) {
     val uiState by nfcViewModel.uiState.collectAsStateWithLifecycle()
     val pendingNfcData by nfcViewModel.pendingNfcData.collectAsStateWithLifecycle()
@@ -54,7 +52,6 @@ fun NfcWorkflowScreen(
         context = context,
         orderKey = orderKey,
         nfcViewModel = nfcViewModel,
-        locationTrackingViewModel = locationTrackingViewModel
     )
 
     NfcWorkflowEffects(
@@ -62,10 +59,8 @@ fun NfcWorkflowScreen(
         orderKey = orderKey,
         signInMode = signInMode,
         endOderInfo = endOderInfo,
-        uiState = uiState,
         scanMode = scanMode,
         nfcViewModel = nfcViewModel,
-        locationTrackingViewModel = locationTrackingViewModel,
         onLocationRequest = { locationHandlers.getCurrentLocationCoordinates() },
         onEntryLocationPrepare = locationHandlers.prepareLocationOnEntry
     )
@@ -99,9 +94,7 @@ fun NfcWorkflowScreen(
                             endOderInfo = endOderInfo,
                             uiState = uiState,
                             nfcViewModel = nfcViewModel,
-                            locationTrackingViewModel = locationTrackingViewModel,
                             actions = actions,
-                            startTrackingWithPermission = locationHandlers.startTrackingWithPermission
                         )
                     },
                     onRetryClick = {

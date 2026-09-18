@@ -92,6 +92,7 @@ class SalesViewModelToDoTest {
             imagePipeline = testImagePipeline(mockk(relaxed = true)),
             evaluationDeviceGateway = mockk<SalesEvaluationDeviceGateway>(relaxed = true),
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
+            savedStateHandle = androidx.lifecycle.SavedStateHandle(),
             textResolver = ResourceTextResolver(mockk<Context>(relaxed = true)),
         )
 }

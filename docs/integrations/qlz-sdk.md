@@ -1,20 +1,28 @@
-# QLZ SDK 1.3.0.2 接入说明
+# QLZ SDK 1.3.0.5 接入说明
 
-最后核对：2026-08-27
+最后核对：2026-09-12
 
 > 当前状态：Debug 和显式 Acceptance Release 可用于联调；Production Release 会因固定测试配置、QLZ 弱 TLS finding 和当前腾讯人脸二进制兼容问题 fail closed。不得把验收产物作为生产包。
 
 ## 接入范围
 
-- 客户端 SDK：`app/libs/qlzsdk-1.3.0.2-protobufLiteRelease-ui.aar`
+- 客户端 SDK：`app/libs/qlzsdk-1.3.0.5-protobufLiteRelease-ui.aar`
 - SDK 封装：`QlzSdkClient`
 - Sale 数据链路：`:core:model` → `:core:domain` → `:core:data`
 - SDK AAR SHA-256：
-  `572294bb71c513a685aa4a62aea6a2589a2da4979c80cf4b658a32d09467c688`
+  `5a0a5d647ceaf23d8660e4def556b6eb2caa73e3a0e2a0aa204bce69eb77b3ab`
 
 选用厂商建议的 protobuf Lite 包，并按接入文档使用
-`com.google.protobuf:protobuf-lite:3.0.1`。工程已有的 OkHttp 和 AppCompat 版本继续统一
+`com.google.protobuf:protobuf-javalite:4.28.3`。工程已有的 OkHttp 和 AppCompat 版本继续统一
 由版本目录管理，未额外引入厂商文档中的旧版本。
+
+## 1.3.0.5 升级约定
+
+- 不再调用 `SDKCall.openByToken(...)`。应用参考 Demo 的直接控制链路，以 Compose 实现扫描、连接、五指状态、进度、充电暂停、上传和错误恢复 UI。
+- 初始化显式设置正常模式、竖屏、关闭自动断线续检，并启用实时检测数据回调；手动重连由当前 UI 会话触发，报告仍只使用业务接口返回的地址在应用内打开。
+- Demo 同时提供 protobuf Java/Lite 两种 AAR；本项目只引入 Lite 版本，避免两套生成代码和运行时并存。
+- Demo 的 `bugly_crash_release.jar` 不再复制；应用继续使用版本目录中的 Bugly Maven 依赖，避免重复类。
+- 1.3.0.5 新增的生理数据 protobuf 字段由 SDK 内部处理，不改变当前应用侧回调模型。
 
 ## 临时联调配置
 
@@ -27,7 +35,7 @@
 
 普通 `release` 默认按生产包校验，不再默认生成测试验收包。需要临时生成验收 Release 时，
 必须同时显式传入 `-Prelease.production=false -Prelease.acceptance=true`。生产构建只要仍存在
-固定测试 key、`QLZ_TEST_MODE=true`、QLZ 1.3.0.2 弱 TLS 实现或未兼容 16 KB 的腾讯人脸包，
+固定测试 key、`QLZ_TEST_MODE=true`、QLZ 1.3.0.5 弱 TLS 实现或未兼容 16 KB 的腾讯人脸包，
 构建门禁都会直接失败。
 
 GitHub 的 `Android Release` 手动工作流提供 `release_mode` 选项。当前测试阶段默认选择
@@ -44,12 +52,15 @@ Android 源码、资源、BuildConfig 或 APK。客户端通过
 | 方法 | 路径 | 客户端方法 |
 |---|---|---|
 | POST | `/V1/Sale/GetCheckToken` | `SaleRepository.getCheckToken` |
+| POST | `/V1/Sale/GetCheckResult` | `SaleRepository.getCheckResult` |
 | POST | `/V1/Sale/AddUserLatent` | `SaleRepository.addUserLatent` |
 | GET | `/V1/Sale/GetRecentUserLatentList` | `SaleRepository.getRecentUserLatentList` |
 | GET | `/V1/Sale/ToDoNum` | `SaleRepository.getToDoCount` |
 | GET | `/V1/Sale/ToDoList` | `SaleRepository.getToDoList` |
 | POST | `/V1/Sale/SearchUserLatentList` | `SaleRepository.searchUserLatentList` |
 | GET | `/V1/Sale/GetUserLatentDetail?id=...` | `SaleRepository.getUserLatentDetail` |
+
+2026-09-19 纯表单真机联调发现契约差异：Swagger 虽将 `GetCheckResult.recordId` 标为可空，但没有设备记录时，省略该字段或显式传 null 均返回业务码 2001“参数错误”。同一已完成问卷的最新客户详情可返回 `pgResult` 和 `pgUrl`。按用户确认，完成页有非空设备记录时使用 GetCheckResult，纯表单直接重新请求 GetUserLatentDetail；不使用缓存旧值、不在失败后切换接口兜底。
 
 当前 Swagger 对 `liveLng` 的说明写作“纬度”、`liveLat` 写作“经度”，与通用命名习惯相反。
 客户端不擅自互换字段，按接口字段名原样传递；服务端确认含义后再统一修订。
@@ -63,24 +74,54 @@ Android 源码、资源、BuildConfig 或 APK。客户端通过
 2. 查询或新增潜在客户，获得客户 ID。
 3. 初始化 SDK 并读取 `CheckIml.getDeviceId()`。
 4. 调用 `/V1/Sale/GetCheckToken`，传入客户 ID 和检测设备 ID。
-5. 请求 Android 12+ 的 `BLUETOOTH_SCAN`、`BLUETOOTH_CONNECT` 运行时权限
-   （Android 11 及以下请求精确位置权限）。
-6. 调用 `SDKCall.openByToken(...)` 打开检测页面。
-7. 通过 `QlzSdkEvent` 接收进度、取消、关闭、错误和报告成功事件。
-8. 检测完成后重新查询 `/V1/Sale/GetUserLatentDetail?id=...`；“查看评估报告”只使用
-   接口返回的 `pgUrl`（Swagger 定义为“评估Web地址”），并通过应用内 `WebViewRoute`
-   加载，不再使用 SDK 回调 URL 打开厂商报告 Activity。
+5. 用户点击搜索时，请求 Android 12+ 的 `BLUETOOTH_SCAN`、`BLUETOOTH_CONNECT` 及前台 `ACCESS_FINE_LOCATION`、`ACCESS_COARSE_LOCATION` 权限
+   （Android 11 及以下请求精确位置权限）。Manifest 未声明 `neverForLocation`，因此不能只授予附近设备权限；仅粗略定位也不能开始扫描。精确/粗略定位始终成对申请，拒绝后显示提示并允许重试。所有支持版本均检查系统定位服务开关，开启后重试重新检查；不新增后台定位或启动位置采集。
+6. 创建 UI 作用域的 `QlzEvaluationSession`，调用 `CheckIml.startCheck(...)` 校验 Token；成功后使用 `ScanDeviceIml` 执行 30 秒有界扫描。
+7. 页面只接收不可变的 `QlzEvaluationUiState`。蓝牙地址在 integration 边界内换成会话级不透明 ID，界面仅显示掩码；用户点选后由 `ConnectDeviceHelp` 连接，并映射五指、进度、电量、超时和掉线回调。
+8. `onCheckEnd` 只触发一次 `sendData(...)`。纬度、经度和地址取自当前客户或本次登记的可靠字段，缺失时传空字符串；上传失败仅在内存中保留本次 `RecordInputData` 供重试。
+9. 上传成功后关闭设备会话，重新查询 `/V1/Sale/GetUserLatentDetail?id=...`，取 `pgUrl` 自动进入应用内“表单评估” H5，不直接显示业务完成页。待打开请求绑定客户与 recordId，通过 SavedStateHandle 保存；页面恢复前台后消费一次。URL 为空或查询失败可只重试客户查询，不重新上传。SDK 回调中的 URL 会被忽略，不打开厂商报告 Activity。
+10. 评估 H5 左上角返回调用 `window.NativeBridge.closeWebView()` 后关闭并显示完成页，沿用已确认业务约定，不另行核实是否提交完成。设备完成页请求 `POST /V1/Sale/GetCheckResult`（id=当前客户、recordId=已有 SDK 记录）；纯表单完成页重新请求 `GET /V1/Sale/GetUserLatentDetail`。直接展示本次响应的 `pgResult`，报告使用其 `pgUrl`。结果失败/为空可手动刷新同一接口，不重新上传、不读缓存旧值、不增加兜底链。系统返回只回评估入口；报告/协议/隐私网页只关闭自身，所有网页都不使用返回结果邮箱或关联协议。成功弹窗确认仅刷新 H5，不要求调用关闭。
 
 表单评估同样只使用 `/V1/Sale/AddUserLatent` 或
-`/V1/Sale/GetUserLatentDetail` 返回的 `pgUrl`，通过标题为“表单评估”的应用内
-`WebViewRoute` 加载。只有设备自动评估进入 QLZ SDK 页面；应用不再调用
-`SDKCall.goResultAcitivty(...)` 打开表单或报告。
+`/V1/Sale/GetUserLatentDetail` 返回的 `pgUrl`，通过应用内 `WebViewRoute` 加载。
+表单和报告显式隐藏原生标题栏，仅保留 H5 自带标题/返回，填满系统安全内容区并避让键盘；协议和隐私页面保持原布局。表单、报告与协议共用统一关闭接口，展示开关不改变关闭用途。
+设备自动评估也始终停留在应用自有页面；应用不调用
+`SDKCall.openByToken(...)` 或 `SDKCall.goResultAcitivty(...)` 打开检测、表单或报告。
 
 SDK Token 当前有效期由服务端 `expireAt` 决定，客户端没有写死 20 分钟。
 
+### 检测展示与 H5 关闭契约
+
+检测页按蓝湖三态显示单张白卡：手握线稿与五指接触灯、五指全绿的准备提示、沙漏与真实检测百分比。
+五指全部接触且未收到有效进度时，`QlzGripPreparation` 以单调时钟展示 5 秒准备倒计时；
+计时不会调用采集、上传或成功接口。`onCheckPro` 的有效总数到达后立即显示真实进度，优先于倒计时；
+接触丢失、后台、断连、充电、错误和退出会取消准备，重组不会重新计时。
+准备结束但尚无采样时显示等待进度，不虚构百分比。异常说明、重试与返回保持可用。
+进度条为完整浅色底轨加比例填充，无分段间隙；0% 无绿色、100% 全覆盖，文字由整数采样数计算。
+
+所有应用内 H5（包括表单、报告、协议及隐私网页弹窗）**主动调用**以下唯一公开方法，通知客户端关闭当前 H5：
+
+```javascript
+window.NativeBridge.closeWebView();
+```
+
+客户端接收后通过当前 Navigation 3 entry 返回来源原生页面，保留首页和来源状态。
+该调用无参数，由 H5 调用客户端；普通网页只关闭自身，评估 H5 按业务约定以该调用通知评估完成。
+客户端不代替 H5 提交评估数据，完成页按有无设备记录分别查询 GetCheckResult 或最新客户详情获取文案，不增加网页返回结果关联或二次完成确认。
+容器在首次加载前通过 `addJavascriptInterface` 注册 `NativeBridge` 对象，
+仅以 `@JavascriptInterface` 暴露无参数 `closeWebView()`。客户端不注入 JS 包装、不检查现代消息桥能力，
+不要求 H5 传凭证或协议字段；H5 自行决定按钮、弹窗、提交与关闭时机。
+回调切回主线程后检查前台生命周期、当前 entry 和容器状态，成功关闭最多一次。释放时先使对象失效，
+再移除接口并清理待执行回调。页面重组不重载当前网页，隐私网页只 dismiss 自身、不代表同意协议。
+内部 H5 不设置额外 URL 白名单或导航/请求拦截，跨域跳转保留接口，普通加载失败不禁用关闭。
+新增方法直接在 NativeBridge 中声明并添加注解，不使用独立关闭 Policy、注册表或分发器。
+接口对所有页面及其 frame 可见，不认证调用来源；当前仅能关闭，未来敏感方法须独立设计授权。
+加载失败仍可系统返回（有原生栏的页面也保留原生返回），不放宽 TLS、文件访问或混合内容限制。
+渲染进程退出时桥同步失效，销毁网页并显示原生异常提示，用户可返回后重新打开，不自动循环重载。
+
 ## 联调运行
 
-使用销售账号登录后，从客户详情或评估入口进入 SDK。为了避免测试入口影响正式业务流程，
+使用销售账号登录后，从客户详情或评估入口进入自定义检测页面。为了避免测试入口影响正式业务流程，
 工程不再提供独立 Launcher 联调 Activity：
 
 ```bash
@@ -91,12 +132,53 @@ android run --apks=app/build/outputs/apk/debug/app-debug.apk
 联调前必须先完成主应用登录。真机还需要支持 BLE 的俏郎中
 检测设备。模拟器只能验证页面、接口与错误回调，不能完成真实蓝牙检测。
 
+### 服务端不可用时的 mock 验证
+
+可直接运行测试源集中的 mock，无需登录或加载真实客户详情，也无需开启全局
+`debug.useMockData`。`SalesMockEvaluationFlowTest` 使用内存中的客户详情、Token 和厂商
+回调替身，串联真实 `SalesViewModel` 与 `QlzEvaluationSession`，覆盖完成后刷新业务报告、
+报告未就绪、详情失败重试和上传去重。测试 URL 使用 `.invalid` 域名且不会发起网络请求。
+
+`SalesEvaluationMockFlowTest` 使用真实会话状态机和 Compose 扫描/检测/完成组件，注入
+厂商回调验证逐项接触状态、空扫描重试、后台停止扫描、连接异常重试、充电暂停、上传重试、
+支付退出及退出后的迟到回调。测试宿主仅负责连接组件与会话，不替代正式入口导航、系统权限
+弹窗、AAR 协议、真实上传和 WebView 报告验收；mock 不进入正式源码或 Release 包。
+
+```bash
+./gradlew :app:testDebugUnitTest \
+  --tests 'com.ytone.longcare.features.sales.SalesMockEvaluationFlowTest'
+
+# 先启动隔离模拟器；ANDROID_SERIAL 改为该模拟器的实际序列号。
+ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.ytone.longcare.features.sales.SalesEvaluationMockFlowTest
+```
+
+测试结果输出至 `app/build/test-results/` 和 `app/build/outputs/androidTest-results/`；
+这些 mock 验证不会把 OpenSpec 中的真实 BLE 验收项标记为完成。
+
+`SalesEvaluationLiveResultTest` 是显式启用的只读联调测试：仅对已提交问卷的授权测试客户，使用真实登录态、SalesViewModel 和接口验证纯表单等级及完成页文案；不创建客户、不提交问卷、不打印报告 URL。须同时传入 `liveEvaluationCustomerId` 与 `liveEvaluationExpectedGrade`，默认跳过。该测试验证结果查询分支，不替代登记、H5 提交与返回的完整 UI 旅程。
+
+`SalesEvaluationDesignTest` 提供三态确定性截图，`QlzGripPreparationTest` 用虚拟时间验证计时与取消。
+`NativeWebViewCloseBridgeTest` 使用不启动 Activity 的真实 WebView 验证首次脚本可调用、重复/后台/失效回调、刷新与 frame 可见性；
+`WebViewCloseBridgeTest` 验证统一容器、隐私同意不变、跨域加载及错误后关闭、重组不重载及 Navigation 3 返回，
+测试均提供受控 HTTPS 内容，不关闭 TLS 校验，
+不访问真实客户服务。真实 BLE 采样及服务端 H5 的域名、重定向、运行时兼容性仍需单独验收。
+
+## 会话与错误处理
+
+- `SalesSdkUiController` 在 `DEVICE_STATUS` 与 `EVALUATION_GUIDE` 之间持有同一会话；普通页面状态和 ViewModel 不保存 `Activity`、`BluetoothDevice`、MAC 全值或厂商可变回调对象。
+- 每个进程最多持有一个活动检测租约。重复点击、迟到回调和旧 generation 不会创建第二条连接或覆盖新状态。
+- 离开活动评估页面、宿主销毁、取消或完成时，先使当前 generation 失效，再停止扫描、终止检测、调用 `ConnectDeviceHelp.onDestroy()` 并释放租约；即使 `stopScan()` 同步触发回调，也无法改写关闭后的状态。宿主进入后台时至少停止正在进行的扫描，Token 校验的迟到成功也不会在后台启动扫描。
+- Token 过期仍复用现有业务规则：最多向 LongCare 服务端刷新一次，再重建当前自定义 driver；第二次过期直接终止。
+- 支付回调只显示阻断提示并中止本次检测，不自动打开 SDK 返回的支付 URL。厂商错误文本不会直接显示，所有错误按应用内固定分类映射。
+
 ## 安全与清单处理
 
 - 覆盖 SDK 自带的全局明文网络配置，只对白名单中的俏郎中测试/报告域名允许 HTTP。
 - 将 SDK 自带的外部 deep link Activity 改为 `exported=false`；当前接入只使用显式 SDK 调用。
 - 旧版 `BLUETOOTH`、`BLUETOOTH_ADMIN` 权限限制到 API 30。
 - SDK 仅在联调页或未来业务入口按需初始化，不在 Application 启动阶段读取设备标识。
-- QLZ 1.3.0.2 内置的遥测链路存在弱 TLS 校验；Debug/验收联调可继续使用，但生产发布已由
+- 自定义页面不再注册厂商 Activity 的全局 WindowInsets 兼容回调；AAR 中的 Activity 仍由 manifest merge 保留为不可导出组件，但业务路径不会启动它们。
+- QLZ 1.3.0.5 内置的遥测链路仍存在弱 TLS 校验；Debug/验收联调可继续使用，但生产发布已由
   `verifyProductionReleaseConfiguration` 和 `verify_vendor_sdk_release_readiness.sh` 双重阻断，
   直到厂商提供修复版本。

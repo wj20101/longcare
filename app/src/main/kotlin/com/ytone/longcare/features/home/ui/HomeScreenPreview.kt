@@ -19,7 +19,7 @@ fun HomeScreenPreview() {
                 onNavigateToServiceCountdown = { _, _ -> },
                 onNavigateToHaveServiceUserList = {},
                 onNavigateToNoServiceUserList = {},
-                onOpenWebPage = { _, _ -> },
+                onOpenEvaluationReport = { _, _ -> },
                 onOpenUserAgreement = {},
                 onOpenPrivacyPolicy = {},
                 onNavigateToCamera = {},

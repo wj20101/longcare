@@ -12,11 +12,14 @@ class LocationTrackingViewModel @Inject constructor(
 ) : ViewModel() {
 
     /**
-     * 当UI层的"开启"按钮被点击时调用。
-     * 将操作委托给 Manager。
+     * 进入服务订单且定位权限就绪时调用；业务层确认状态后才允许上报。
      */
     fun startTracking(orderKey: OrderKey) {
         trackingManager.startTracking(orderKey)
+    }
+
+    fun onOrderStarted(orderId: Long) {
+        trackingManager.onOrderStarted(orderId)
     }
 
     /**
@@ -27,8 +30,7 @@ class LocationTrackingViewModel @Inject constructor(
     }
 
     /**
-     * 当UI层的"结束"按钮被点击时调用。
-     * 订单结束后清理上报任务与其前台定位 owner。
+     * 用于已确认的业务停止/退出；不能在仅点击“结束”进入确认流程时调用。
      */
     fun stopTracking() {
         trackingManager.stopTracking()

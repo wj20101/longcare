@@ -15,6 +15,8 @@ private val PUBLIC_KEY =
 // TODO(QLZ): Remove this fixed test configuration after the Sale API returns the SDK key.
 private val TEMPORARY_QLZ_SDK_KEY = "qlz235624a5adc96ccb"
 private val TEMPORARY_QLZ_TEST_MODE = true
+private val QLZ_SDK_AAR_FILE_NAME =
+    "qlzsdk-1.3.0.5-protobufLiteRelease-ui.aar"
 
 val appCompileSdkVersion = rootProject.extra["appCompileSdkVersion"] as Int
 val appTargetSdkVersion = rootProject.extra["appTargetSdkVersion"] as Int
@@ -63,7 +65,7 @@ val knownUnsafeFaceSdkPresent =
     }
 val knownUnsafeQlzSdkPresent =
     providers.provider {
-        file("libs/qlzsdk-1.3.0.2-protobufLiteRelease-ui.aar").exists()
+        file("libs/$QLZ_SDK_AAR_FILE_NAME").exists()
     }
 
 fun String.asBuildConfigString(): String =
@@ -110,7 +112,7 @@ android {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
-                "txkyc-face-consumer-proguard-rules.pro"
+                // Tencent consumer rules are supplied by :integration:txface.
             )
             buildConfigField("String", "BASE_URL", "\"$BASE_URL\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
@@ -201,6 +203,7 @@ configurations.configureEach {
 dependencies {
     baselineProfile(project(":baselineprofile"))
 
+    implementation(project(":integration:txface"))
     implementation(project(":core:common"))
     implementation(project(":core:data"))
     implementation(project(":core:domain"))
@@ -215,6 +218,7 @@ dependencies {
 
     implementation(platform(libs.compose.bom))
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.webkit)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -226,17 +230,19 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.startup.runtime)
     implementation(libs.androidx.profileinstaller)
-    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.dagger.hilt.android)
     implementation(libs.hilt.work)
-    implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
     implementation(libs.retrofit.core)
     implementation(libs.okhttp.core)
     implementation(libs.okio.core)
     implementation(libs.moshi.kotlin)
     implementation(libs.gson)
-    // qlzsdk-1.3.0.2 was compiled against the legacy protobuf-lite runtime.
-    implementation(libs.protobuf.lite)
+    // The bundled protobuf Lite SDK is generated against protobuf-javalite 4.28.3.
+    implementation(libs.protobuf.javalite)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.work.runtime.ktx)
     implementation(libs.bundles.coil)
@@ -272,5 +278,5 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    implementation(files("libs/qlzsdk-1.3.0.2-protobufLiteRelease-ui.aar"))
+    implementation(files("libs/$QLZ_SDK_AAR_FILE_NAME"))
 }

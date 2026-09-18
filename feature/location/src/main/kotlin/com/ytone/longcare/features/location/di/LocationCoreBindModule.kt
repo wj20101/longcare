@@ -2,6 +2,8 @@ package com.ytone.longcare.features.location.di
 
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.location.LocationRuntimeReadiness
+import com.ytone.longcare.domain.order.ServiceOrderLifecycle
+import com.ytone.longcare.features.location.reporting.LocationReportingManager
 import com.ytone.longcare.features.location.core.AndroidLocationRuntimeReadiness
 import com.ytone.longcare.features.location.core.DefaultLocationFacade
 import dagger.Binds
@@ -13,6 +15,10 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class LocationCoreBindModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindServiceOrderLifecycle(impl: LocationReportingManager): ServiceOrderLifecycle
 
     @Binds
     @Singleton

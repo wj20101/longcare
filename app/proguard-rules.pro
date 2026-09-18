@@ -127,7 +127,7 @@
 }
 -dontwarn dalvik.system.VMStack
 
-# --- QLZ device assessment SDK 1.3.0.2 ---
+# --- QLZ device assessment SDK 1.3.0.5 ---
 # Vendor-required rules. The SDK discovers several model and Activity classes
 # reflectively, and its protobuf payload types must retain their generated APIs.
 -keep class com.comm.* { *; }

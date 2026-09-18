@@ -1,6 +1,6 @@
 # 路线图与开放问题
 
-最后核对：2026-08-27
+最后核对：2026-09-08
 
 本文只记录仍然成立的后续工作。已完成的任务、逐次 CI 结果和历史方案通过 Git/PR/Issue 追溯，不在主文档中保留执行日志。
 
@@ -17,7 +17,7 @@
 Owner 涉及移动端、服务端和厂商，完成条件必须全部满足：
 
 1. 服务端下发 QLZ 初始化所需配置，移除 Android 中固定测试 key 和 `QLZ_TEST_MODE=true`。
-2. 替换 QLZ 1.3.0.2，确保可达网络链路不再触发弱 TLS trust manager finding。
+2. 替换或修复 QLZ 1.3.0.5，确保可达网络链路不再触发弱 TLS trust manager finding。
 3. 替换腾讯人脸 AAR，确保 ARM64 native library 满足 16 KB ELF/page alignment，并移除危险的全局 consumer ProGuard 规则。
 4. 新厂商包通过真实设备的登录、身份核验、QLZ 蓝牙评估、报告、COS 上传和 Release shrink 回归。
 5. `verify_vendor_sdk_release_readiness.sh`、生产配置门禁、Lint 和 production Release 全部通过。
@@ -79,7 +79,7 @@ Owner 涉及移动端、服务端和厂商，完成条件必须全部满足：
 
 ```bash
 bash scripts/quality/preflight_local.sh --full
-bash scripts/quality/verify_release_validation_entry.sh .
+bash scripts/quality/verify_validation_app_isolation.sh .
 ./gradlew --no-daemon :app:lintDebug :app:assembleDebug
 bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
 ./gradlew --no-daemon :app:assembleRelease \
@@ -153,7 +153,7 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 - 不因为模块目录名称不理想而一次性搬迁所有页面。
 - 不通过关闭 Lint、增加全局 `-ignorewarnings`、放宽 exported component 或复用 debug 签名绕过生产发布问题。
 - 不恢复相册选图、跨重启定位自动恢复或离线定位补传，除非产品明确改变现有规则。
-- 不把内部功能验证入口升级为普通用户导航。
+- 内部功能验证已独立到 `:assistant`，正式 App 不再保留隐藏入口；不把助手验证路由引入普通用户导航。
 
 ## 更新触发
 

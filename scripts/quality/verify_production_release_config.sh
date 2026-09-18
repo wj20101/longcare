@@ -63,7 +63,7 @@ if [[ "${qlz_test_mode}" == "true" ]]; then
   violations+=("QLZ SDK test mode is still enabled")
 fi
 if [[ "${known_unsafe_qlz_sdk_present}" == "true" ]]; then
-  violations+=("QLZ SDK 1.3.0.2 contains a reachable weakened TLS trust manager")
+  violations+=("QLZ SDK 1.3.0.5 contains a reachable weakened TLS trust manager")
 fi
 if [[ "${known_unsafe_face_sdk_present}" == "true" ]]; then
   violations+=("Tencent face SDK 6.6.2 contains ARM64 libraries without 16 KB ELF alignment")

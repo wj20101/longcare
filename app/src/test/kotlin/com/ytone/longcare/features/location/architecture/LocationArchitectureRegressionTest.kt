@@ -27,7 +27,7 @@ class LocationArchitectureRegressionTest {
     }
 
     @Test
-    fun `only current order reporting manager calls location API`() {
+    fun `only foreground location service calls location API`() {
         val callers = mainKotlinSources()
             .filter { it.readText().contains("locationRepository.addPosition(") }
             .map { it.relativeTo(repositoryRoot).invariantSeparatorsPath }
@@ -35,10 +35,16 @@ class LocationArchitectureRegressionTest {
 
         assertEquals(
             listOf(
-                "feature/location/src/main/kotlin/com/ytone/longcare/features/location/reporting/LocationReportingManager.kt",
+                "feature/location/src/main/kotlin/com/ytone/longcare/features/location/service/LocationTrackingService.kt",
             ),
             callers,
         )
+        val service = source(
+            "feature/location/src/main/kotlin/com/ytone/longcare/features/location/service/LocationTrackingService.kt",
+        )
+        assertFalse(service.contains("orderRepository"))
+        assertTrue(service.contains("reportingManager.sessionFor(owner, it)"))
+        assertTrue(service.contains("const val EXTRA_ORDER_ID"))
     }
 
     @Test
@@ -50,6 +56,12 @@ class LocationArchitectureRegressionTest {
         assertTrue(sampleStore.contains("replay = 0"))
         assertTrue(sampleStore.contains("extraBufferCapacity = LATEST_SAMPLE_BUFFER_SIZE"))
         assertTrue(sampleStore.contains("BufferOverflow.DROP_OLDEST"))
+        val executor = source(
+            "feature/location/src/main/kotlin/com/ytone/longcare/features/location/service/ServiceLocationSession.kt",
+        )
+        assertTrue(executor.contains("locations.conflate()"))
+        assertFalse(executor.contains("getOrderState"))
+        assertFalse(executor.contains("Toast."))
     }
 
     @Test
@@ -85,6 +97,19 @@ class LocationArchitectureRegressionTest {
         assertTrue(manager.contains("SessionState.LoggedOut"))
         assertTrue(manager.contains("locationReportingManager.stopReporting()"))
         assertTrue(manager.contains("if (!hasActiveSession()) return"))
+    }
+
+    @Test
+    fun `NFC success never starts reporting before formal service start`() {
+        val handler = source(
+            "app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowScreenHandlers.kt",
+        )
+        val startSuccessBranch = handler.substringAfter("internal fun handleNfcSuccessAction")
+            .substringAfter("SignInMode.START_ORDER ->")
+            .substringBefore("SignInMode.END_ORDER ->")
+
+        assertFalse(startSuccessBranch.contains("startTracking"))
+        assertTrue(startSuccessBranch.contains("onNavigateToIdentification(orderKey)"))
     }
 
     @Test

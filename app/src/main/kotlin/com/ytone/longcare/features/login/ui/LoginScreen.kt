@@ -46,7 +46,6 @@ import com.ytone.longcare.features.login.vm.LoginUiState
 import com.ytone.longcare.features.login.vm.LoginViewModel
 import com.ytone.longcare.features.login.vm.SendSmsCodeUiState
 import com.ytone.longcare.features.login.vm.StartConfigUiState
-import com.ytone.longcare.presentation.validation.LoginValidationEntrySheet
 import com.ytone.longcare.privacy.AgreementUrls
 import com.ytone.longcare.theme.LongCareTheme
 
@@ -121,7 +120,6 @@ fun LoginScreenContent(
     var verificationCode by remember { mutableStateOf("") }
     var agreementChecked by rememberSaveable { mutableStateOf(initialAgreementChecked) }
     var showAgreementDialog by rememberSaveable { mutableStateOf(false) }
-    var showValidationEntrySheet by rememberSaveable { mutableStateOf(false) }
     val verificationCodeFocusRequester = remember { FocusRequester() }
     val updateAgreementChecked: (Boolean) -> Unit = { checked ->
         agreementChecked = checked
@@ -186,7 +184,6 @@ fun LoginScreenContent(
 
                 LoginBrandingHeader(
                     isCompactLayout = compactHeight,
-                    onMainLogoLongPress = { showValidationEntrySheet = true },
                 )
 
                 Column(
@@ -261,12 +258,6 @@ fun LoginScreenContent(
             }
         )
     }
-
-    LoginValidationEntrySheet(
-        visible = showValidationEntrySheet,
-        validationEntryActions = actions.validationEntryActions,
-        onDismiss = { showValidationEntrySheet = false },
-    )
 
     LaunchedEffect(sendSmsState) {
         if (sendSmsState is SendSmsCodeUiState.Success) {

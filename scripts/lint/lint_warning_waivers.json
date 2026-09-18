@@ -15,21 +15,10 @@
       ]
     },
     {
-      "id": "GlobalOptionInConsumerRules",
-      "owner": "mobile-platform",
-      "review_by": "2026-11-09",
-      "reason": "Tencent face SDK local AAR ships consumer ProGuard rules with global options. Remove waiver when vendor fixes packaging.",
-      "allowed_sources": [
-        "regex:WbCloudFaceLiveSdk-face-v[0-9]+\\.[0-9]+\\.[0-9]+-[A-Za-z0-9]+",
-        "regex:WbCloudFaceLiveSdk-face-v[0-9]+\\.[0-9]+\\.[0-9]+-[A-Za-z0-9]+\\.aar",
-        "regex:com\\.tencent\\.cloud\\.huiyansdkface:wbcloudface-live:[0-9]+\\.[0-9]+\\.[0-9]+"
-      ]
-    },
-    {
       "id": "TrustAllX509TrustManager",
       "owner": "mobile-platform",
       "review_by": "2026-11-09",
-      "reason": "COS contains a dormant trust-manager branch and QLZ 1.3.0.2 contains a reachable weak implementation. Production is blocked separately until QLZ is replaced.",
+      "reason": "COS contains a dormant trust-manager branch and QLZ 1.3.0.5 contains a reachable weak implementation. Production is blocked separately until QLZ is replaced.",
       "allowed_sources": [
         "regex:qcloud-foundation-[0-9]+\\.[0-9]+\\.[0-9]+",
         "regex:com\\.qcloud:qcloud-foundation:[0-9]+\\.[0-9]+\\.[0-9]+",
