@@ -113,29 +113,6 @@
                 android:resource="@xml/nfc_tech_filter" />
         </activity>
 
-        <activity
-            android:name=".presentation.validation.FaceVerificationValidationActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.LongCare"
-            tools:ignore="DiscouragedApi,LockedOrientationActivity">
-            <property
-                android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
-                android:value="true" />
-        </activity>
-
-        <activity
-            android:name=".presentation.validation.NfcValidationActivity"
-            android:exported="false"
-            android:launchMode="singleTop"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.LongCare"
-            tools:ignore="DiscouragedApi,LockedOrientationActivity">
-            <property
-                android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
-                android:value="true" />
-        </activity>
-
         <provider
             android:name="com.ytone.longcare.common.provider.CustomFileProvider"
             android:authorities="${applicationId}.fileprovider"

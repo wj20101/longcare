@@ -1,0 +1,6 @@
+<resources>
+    <string name="tencent_face_prepare_failed">人脸核验准备失败，请稍后重试</string>
+    <string name="tencent_face_start_failed">人脸核验启动失败，请稍后重试</string>
+    <string name="tencent_face_unavailable">人脸核验暂时无法继续，请稍后重试</string>
+    <string name="tencent_face_verification_failed">人脸核验失败，请稍后重试</string>
+</resources>

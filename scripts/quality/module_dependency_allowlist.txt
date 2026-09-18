@@ -3,7 +3,7 @@
 #   <source-module>=<space separated allowed target modules>
 # Empty right side means the module must not depend on other project modules.
 
-:app=:baselineprofile :core:common :core:data :core:domain :core:model :core:ui :feature:login :feature:home :feature:identification :feature:location :feature:photoupload :feature:servicecountdown
+:app=:integration:txface :baselineprofile :core:common :core:data :core:domain :core:model :core:ui :feature:login :feature:home :feature:identification :feature:location :feature:photoupload :feature:servicecountdown
 :baselineprofile=
 :core:common=:core:model
 :core:data=:core:common :core:domain :core:model
@@ -14,5 +14,10 @@
 :feature:identification=:core:common :core:domain :core:model :core:ui
 :feature:location=:core:common :core:domain :core:model
 :feature:login=:core:common :core:domain :core:model
-:feature:photoupload=:core:common :core:domain :core:model
+:feature:photoupload=:core:common :core:domain :core:model :core:ui
 :feature:servicecountdown=:core:common :core:domain :core:model
+
+:assistant=:core:common :core:data :core:domain :core:model :core:ui :feature:login :feature:identification :feature:photoupload :integration:txface
+:integration:txface=:core:common :core:domain :core:model :integration:txface-live :integration:txface-normal
+:integration:txface-live=
+:integration:txface-normal=

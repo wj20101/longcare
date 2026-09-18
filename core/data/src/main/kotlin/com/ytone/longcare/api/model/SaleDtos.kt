@@ -2,6 +2,18 @@ package com.ytone.longcare.api.model
 
 import com.squareup.moshi.JsonClass
 
+@JsonClass(generateAdapter = true)
+data class GetCheckResultRequestDto(
+    val id: Int,
+    val recordId: String?,
+)
+
+@JsonClass(generateAdapter = true)
+data class CheckResultDto(
+    val pgResult: String? = null,
+    val pgUrl: String? = null,
+)
+
 /** Network-only request/response types for /V1/Sale. */
 @JsonClass(generateAdapter = true)
 data class GetCheckTokenRequestDto(

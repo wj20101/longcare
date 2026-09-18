@@ -43,6 +43,8 @@ fi
 
 BUILD_FILES="$({
   find "${PROJECT_ROOT}/app" -maxdepth 2 -type f -name 'build.gradle.kts' 2>/dev/null
+  find "${PROJECT_ROOT}/assistant" -maxdepth 2 -type f -name 'build.gradle.kts' 2>/dev/null
+  find "${PROJECT_ROOT}/integration" -maxdepth 2 -type f -name 'build.gradle.kts' 2>/dev/null
   find "${PROJECT_ROOT}/baselineprofile" -maxdepth 2 -type f -name 'build.gradle.kts' 2>/dev/null
   find "${PROJECT_ROOT}/core" -maxdepth 2 -type f -name 'build.gradle.kts' 2>/dev/null
   find "${PROJECT_ROOT}/feature" -maxdepth 2 -type f -name 'build.gradle.kts' 2>/dev/null

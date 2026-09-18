@@ -5,33 +5,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FaceSdkBoundaryTest {
-
     @Test
-    fun `tencent face sdk imports should stay inside manager adapter`() {
-        val sourceRoot = File("src/main/kotlin")
-        assertTrue("Source root not found: ${sourceRoot.path}", sourceRoot.exists())
-
-        val allowedFiles = setOf(
-            "com/ytone/longcare/common/utils/FaceVerificationManager.kt"
-        )
-
-        val violations = mutableListOf<String>()
-        sourceRoot
-            .walkTopDown()
-            .filter { it.isFile && it.extension == "kt" }
-            .forEach { file ->
-                val relativePath = file.relativeTo(sourceRoot).invariantSeparatorsPath
-                val hasTencentFaceImport = file.useLines { lines ->
-                    lines.any { it.trim().startsWith("import com.tencent.cloud.huiyansdkface") }
-                }
-                if (hasTencentFaceImport && relativePath !in allowedFiles) {
-                    violations += relativePath
-                }
+    fun `tencent SDK imports stay inside the integration adapter`() {
+        val root = File("..").canonicalFile
+        val allowed = "integration/txface/src/main/kotlin/com/ytone/longcare/common/utils/FaceVerificationManager.kt"
+        assertTrue(File(root, allowed).isFile)
+        val violations = listOf("app", "assistant", "core", "feature", "integration")
+            .flatMap { File(root, it).walkTopDown().onEnter { dir -> dir.name != "build" }.filter { file ->
+                file.isFile && file.extension == "kt" && "/src/main/" in file.invariantSeparatorsPath
+            }.toList() }
+            .filter { file ->
+                file.readLines().any { it.trim().startsWith("import com.tencent.cloud.huiyansdkface") } &&
+                    file.relativeTo(root).invariantSeparatorsPath != allowed
             }
-
-        assertTrue(
-            "Tencent face SDK imports found outside adapter boundary: ${violations.joinToString()}",
-            violations.isEmpty()
-        )
+        assertTrue("Tencent imports outside integration: $violations", violations.isEmpty())
     }
 }
