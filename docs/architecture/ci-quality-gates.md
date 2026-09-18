@@ -1,6 +1,6 @@
 # CI、质量门禁与发布
 
-最后核对：2026-09-10
+最后核对：2026-09-19
 
 本文描述当前脚本和 GitHub Actions 的实际行为。门禁名称/Owner 元数据以 `scripts/quality/quality_gate_registry.json` 为准；是否真正执行则以对应 workflow 和 runner 脚本为准。
 
