@@ -1,35 +1,17 @@
 package com.ytone.longcare.navigation
 
 import android.app.Activity
-import android.os.Build
-import android.webkit.WebResourceRequest
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import androidx.core.net.toUri
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,10 +25,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.ytone.longcare.R
+import com.ytone.longcare.features.webview.api.WebViewActions
+import com.ytone.longcare.features.webview.ui.WebViewScreen
 import com.ytone.longcare.privacy.AgreementUrls
 
 /**
@@ -163,107 +146,16 @@ fun PrivacyConsentDialog(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun InAppWebViewDialog(
+internal fun InAppWebViewDialog(
     url: String,
     onDismiss: () -> Unit
 ) {
-    var isLoading by remember { mutableStateOf(true) }
-    var webViewRef by remember { mutableStateOf<WebView?>(null) }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            webViewRef?.run {
-                stopLoading()
-                loadUrl("about:blank")
-                clearHistory()
-                removeAllViews()
-                destroy()
-            }
-            webViewRef = null
-        }
-    }
-
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text(text = "") },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.common_back)
-                            )
-                        }
-                    }
-                )
-            }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                AndroidView(
-                    factory = { context ->
-                        WebView(context).apply {
-                            webViewRef = this
-                            webViewClient = object : WebViewClient() {
-                                override fun shouldOverrideUrlLoading(
-                                    view: WebView?, request: WebResourceRequest?
-                                ): Boolean {
-                                    return !isSafeHttpUrl(request?.url?.toString())
-                                }
-
-                                override fun onPageFinished(view: WebView?, url: String?) {
-                                    super.onPageFinished(view, url)
-                                    isLoading = false
-                                }
-                            }
-                            settings.apply {
-                                javaScriptEnabled = false
-                                domStorageEnabled = true
-                                javaScriptCanOpenWindowsAutomatically = false
-                                allowFileAccess = false
-                                allowContentAccess = false
-                                mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                    safeBrowsingEnabled = true
-                                }
-                                setSupportZoom(true)
-                                builtInZoomControls = true
-                                displayZoomControls = false
-                            }
-                            if (isSafeHttpUrl(url)) {
-                                loadUrl(url)
-                            } else {
-                                isLoading = false
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .wrapContentSize()
-                    )
-                }
-            }
-        }
+        // Dismissing this reader never agrees to or rejects the privacy policy.
+        WebViewScreen(actions = WebViewActions(onNavigateBack = onDismiss), url = url, title = "")
     }
-}
-
-private fun isSafeHttpUrl(url: String?): Boolean {
-    if (url.isNullOrBlank()) return false
-    val uri = runCatching { url.toUri() }.getOrNull() ?: return false
-    val scheme = uri.scheme?.lowercase()
-    return scheme == "http" || scheme == "https"
 }

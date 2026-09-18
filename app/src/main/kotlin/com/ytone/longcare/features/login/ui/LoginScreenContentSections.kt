@@ -1,7 +1,5 @@
 package com.ytone.longcare.features.login.ui
 
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -28,8 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -52,10 +48,7 @@ import com.ytone.longcare.theme.TextColorPrimary
 @Composable
 internal fun BoxScope.LoginBrandingHeader(
     isCompactLayout: Boolean = false,
-    onMainLogoLongPress: (() -> Unit)? = null,
 ) {
-    val hapticFeedback = LocalHapticFeedback.current
-    val mainLogoInteractionSource = remember { MutableInteractionSource() }
     val smallLogoWidth = if (isCompactLayout) 72.dp else 86.dp
     val smallLogoTopPadding = if (isCompactLayout) 12.dp else 20.dp
     val mainLogoWidth = if (isCompactLayout) 160.dp else 200.dp
@@ -77,22 +70,7 @@ internal fun BoxScope.LoginBrandingHeader(
             .align(Alignment.TopCenter)
             .width(mainLogoWidth)
             .padding(top = mainLogoTopPadding)
-            .testTag("login_main_logo")
-            .then(
-                if (onMainLogoLongPress != null) {
-                    Modifier.combinedClickable(
-                        interactionSource = mainLogoInteractionSource,
-                        indication = null,
-                        onClick = {},
-                        onLongClick = {
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onMainLogoLongPress()
-                        },
-                    )
-                } else {
-                    Modifier
-                },
-            ),
+            .testTag("login_main_logo"),
     )
 }
 

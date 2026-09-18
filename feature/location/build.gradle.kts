@@ -27,7 +27,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.dagger.hilt.android)
-    implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
     implementation(libs.amap.location)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.crashreport)

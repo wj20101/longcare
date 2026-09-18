@@ -1,6 +1,9 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
+import com.ytone.longcare.api.model.CheckResultDto
+import com.ytone.longcare.api.model.GetCheckResultRequestDto
+import com.ytone.longcare.model.CheckResultModel
 import com.ytone.longcare.api.model.AddUserLatentRequestDto
 import com.ytone.longcare.api.model.AddUserLatentResponseDto
 import com.ytone.longcare.api.model.CheckTokenDto
@@ -80,6 +83,7 @@ class SaleRepositoryImplTest {
             val requestArgument = args?.dropLast(1)?.firstOrNull()
             calls += method.name to requestArgument
             when (method.name) {
+                "getCheckResult" -> ApiResult.Success(CheckResultDto("A级", "https://example.test/report"))
                 "getCheckToken" -> ApiResult.Success(tokenDto)
                 "addUserLatent" -> ApiResult.Success(createdDto)
                 "getRecentUserLatentList" -> ApiResult.Success(listDto)
@@ -110,6 +114,10 @@ class SaleRepositoryImplTest {
         assertEquals(ApiResult.Success(toDoList), repository.getToDoList())
         assertEquals(ApiResult.Success(list), repository.searchUserLatentList(searchRequest))
         assertEquals(ApiResult.Success(detail), repository.getUserLatentDetail(7))
+        assertEquals(
+            ApiResult.Success(CheckResultModel("A级", "https://example.test/report")),
+            repository.getCheckResult(7, "record-1"),
+        )
 
         assertEquals(
             listOf(
@@ -124,6 +132,7 @@ class SaleRepositoryImplTest {
                         userName = "测试",
                     ),
                 "getUserLatentDetail" to 7,
+                "getCheckResult" to GetCheckResultRequestDto(7, "record-1"),
             ),
             calls,
         )
@@ -143,6 +152,7 @@ class SaleRepositoryImplTest {
         val documentedPostPaths =
             mapOf(
                 "getCheckToken" to "/V1/Sale/GetCheckToken",
+                "getCheckResult" to "/V1/Sale/GetCheckResult",
                 "addUserLatent" to "/V1/Sale/AddUserLatent",
                 "searchUserLatentList" to "/V1/Sale/SearchUserLatentList",
             )
@@ -186,6 +196,12 @@ class SaleRepositoryImplTest {
 
     @Test
     fun `Sale DTO JSON keys exactly match the documented contract`() {
+        assertEquals(setOf("id", "recordId"), jsonKeys(GetCheckResultRequestDto(7, "record-1")))
+        assertEquals(setOf("id", "recordId"), jsonKeys(GetCheckResultRequestDto(7, null)))
+        assertEquals(setOf("pgResult", "pgUrl"), jsonKeys(CheckResultDto("A级", "report")))
+        val adapter = Moshi.Builder().build().adapter(CheckResultDto::class.java)
+        assertEquals(CheckResultDto(), adapter.fromJson("""{"pgResult":null,"pgUrl":null}"""))
+        assertEquals(CheckResultDto("重度失能", null), adapter.fromJson("""{"pgResult":"重度失能"}"""))
         assertEquals(
             setOf("id", "checkDeviceId"),
             jsonKeys(GetCheckTokenRequestDto(id = 7, checkDeviceId = "device-1")),

@@ -5,10 +5,10 @@ context: |
   All artifacts must be written in zh-CN.
   Keep OpenSpec structural headings and SHALL/MUST keywords in English.
 
-  项目：LongCare，面向长期护理服务执行和客户评估的单 APK、多模块 Android 应用。
+  项目：LongCare，面向长期护理服务执行和客户评估的双 APK、多模块 Android 工程，包含正式应用与独立内部验证助手。
   主要用户链路包括护理端的登录、服务单、身份/NFC 核验、定位、拍照上传、倒计时与完成，以及销售端的客户登记、QLZ 设备评估和报告查看。
 
-  技术基线：Kotlin、Jetpack Compose、Navigation Compose 2、Hilt、Coroutines/Flow、Room、DataStore、WorkManager、Retrofit/OkHttp、CameraX/ML Kit；JDK 21、Gradle 9.7.1、AGP 9.3.2。具体版本始终以 Gradle 文件和 version catalog 为准。
+  技术基线：Kotlin、Jetpack Compose、Navigation 3、Hilt、Coroutines/Flow、Room、DataStore、WorkManager、Retrofit/OkHttp、CameraX/ML Kit；JDK 21、Gradle 9.7.1、AGP 9.4.1。具体版本始终以 Gradle 文件和 version catalog 为准。
 
   模块边界：
   - :app 仅作为启动、根导航、DI/Manifest 组装、平台与厂商 SDK 适配的壳层；现有 route-bound UI 尚未全部迁出，但不得继续扩大 legacy 区域。

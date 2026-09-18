@@ -1,6 +1,6 @@
 # 路线图与开放问题
 
-最后核对：2026-08-27
+最后核对：2026-09-08
 
 本文只记录仍然成立的后续工作。已完成的任务、逐次 CI 结果和历史方案通过 Git/PR/Issue 追溯，不在主文档中保留执行日志。
 
@@ -79,7 +79,7 @@ Owner 涉及移动端、服务端和厂商，完成条件必须全部满足：
 
 ```bash
 bash scripts/quality/preflight_local.sh --full
-bash scripts/quality/verify_release_validation_entry.sh .
+bash scripts/quality/verify_validation_app_isolation.sh .
 ./gradlew --no-daemon :app:lintDebug :app:assembleDebug
 bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
 ./gradlew --no-daemon :app:assembleRelease \
@@ -153,7 +153,7 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 - 不因为模块目录名称不理想而一次性搬迁所有页面。
 - 不通过关闭 Lint、增加全局 `-ignorewarnings`、放宽 exported component 或复用 debug 签名绕过生产发布问题。
 - 不恢复相册选图、跨重启定位自动恢复或离线定位补传，除非产品明确改变现有规则。
-- 不把内部功能验证入口升级为普通用户导航。
+- 内部功能验证已独立到 `:assistant`，正式 App 不再保留隐藏入口；不把助手验证路由引入普通用户导航。
 
 ## 更新触发
 
