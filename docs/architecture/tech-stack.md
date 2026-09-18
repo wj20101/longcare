@@ -36,6 +36,7 @@
 | Camera | CameraX | 1.6.1 |
 | Face detection | ML Kit Face Detection | 16.1.7 |
 | Network | Retrofit / OkHttp | 3.0.0 / 5.5.0 |
+| Network I/O | Okio | 3.18.2 |
 | WebView | AndroidX WebKit（渲染进程异常保护；关闭接口直接注册 NativeBridge） | 1.17.0 |
 | Serialization | Moshi / kotlinx.serialization | 1.15.2 / 1.11.0 |
 | Images | Coil | 3.6.3 |
