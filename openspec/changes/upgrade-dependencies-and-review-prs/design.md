@@ -47,7 +47,7 @@
 | Okio [#127](https://github.com/wj20101/longcare/pull/127) | 3.18.1 → 3.18.2 | 核对实际解析版本、OkHttp 网络和文件读写回归 |
 | Room [#121](https://github.com/wj20101/longcare/pull/121) | 2.8.4 → 2.8.5 | DAO、Flow、关闭/取消及现有迁移测试；不主动改 schema |
 | KSP [#126](https://github.com/wj20101/longcare/pull/126) | 2.3.11 → 2.3.12 | Hilt/Room/Moshi 生成、Lint 和跨模块编译 |
-| Kotlin [#122](https://github.com/wj20101/longcare/pull/122) | 2.4.10 → 2.4.20 | 解决当前冲突，验证编译器/Compose 插件一致与完整单测 |
+| Kotlin [#122](https://github.com/wj20101/longcare/pull/122) | 2.4.10 → 2.4.20 | 实施复核已无冲突，仍须整合最新基线，验证编译器/Compose 插件一致与完整单测 |
 | Compose BOM | 2026.08.00 → 2026.09.00 | 当前无 PR，授权后新建独立 PR；导航/H5/弹窗/输入法/重建回归 |
 | Robolectric [#128](https://github.com/wj20101/longcare/pull/128) | 4.16.1 → 4.17 | 主应用与助手完整 JVM 单测，核对 JDK 21 和测试 API 配置 |
 | Baseline Profile [#124](https://github.com/wj20101/longcare/pull/124) | 1.5.0-rc02 → 1.5.0 | 与 Benchmark 协同验证，分别保留清晰差异 |

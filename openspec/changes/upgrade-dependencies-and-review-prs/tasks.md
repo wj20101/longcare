@@ -8,13 +8,21 @@
 
 ## 2. 恢复 CI 与处理 #115
 
-- [ ] 2.1 复查主分支最新 CI 与 Maven Central 429 根因，执行有界重试或有证据的最小缓存/并行调整；以依赖解析和 verify-build 恢复通过为验收，不覆盖 Lint 内部依赖或放宽门禁。
+- [x] 2.1 复查主分支最新 CI 与 Maven Central 429 根因，执行有界重试或有证据的最小缓存/并行调整；以依赖解析和 verify-build 恢复通过为验收，不覆盖 Lint 内部依赖或放宽门禁。
 - [x] 2.2 将 #115 的有效修复整合到最新基线，保留助手和现有 workflow 变化；补充 KVM 存在/权限成功及失败、稳定并发分组隔离、三类 CI 路径触发 smoke 的守卫测试并通过。
-- [ ] 2.3 在授权后更新 #115 并运行真实 CI，核验同 PR 旧运行取消、不同 PR 不互相取消及 smoke 实际通过；审查当前候选差异和必需检查，通过后按授权合入，记录提交及运行链接。
+- [x] 2.3 在授权后更新 #115 并运行真实 CI，核验同 PR 旧运行取消、不同 PR 不互相取消及 smoke 实际通过；审查当前候选差异和必需检查，通过后按授权合入，记录提交及运行链接。
 
-#115 已用 merge 保留原历史并快进推送 `0b68f384`，未 force-push。相对 H5 基线只改 CI workflow、影响检测、守卫/测试及对应文档。7 项脚本测试、完整 workflow 守卫、local-fast 和严格 OpenSpec 校验通过；真实 CI 及并发行为仍待验收。
+#115 已用 merge 保留原历史并快进推送 `0b68f384`，未 force-push。相对 H5 基线只改 CI workflow、影响检测、守卫/测试及对应文档。7 项脚本测试、完整 workflow 守卫、local-fast 和严格 OpenSpec 校验通过。
+
+主分支 `34d599db` 的 [CI 35404522867](https://github.com/wj20101/longcare/actions/runs/35404522867) 已完成依赖解析及 verify-build，429 未重现；未修改依赖仓库、Lint 内部版本或配置缓存。其 smoke 后续失败：emulator 明确报告无 KVM 权限，开机耗时 586 秒，ExampleInstrumentedTest 两次因进程启动 ANR 被终止，后续 H5 类未执行。smoke 不在 2.1 的通过声明内；继续以包含 KVM 修复的 #115 验收，不把未执行测试标为通过。
+
+并发实测：#115 后续验收记录提交 `875f4116` 触发 [35404957399](https://github.com/wj20101/longcare/actions/runs/35404957399)，自动取消前一运行 [35404905439](https://github.com/wj20101/longcare/actions/runs/35404905439) 的 verify-build/smoke（always 清理结束后整体 cancelled），同时 #122 的 [35366151804 attempt 2](https://github.com/wj20101/longcare/actions/runs/35366151804/attempts/2) 继续独立运行并通过。#122 本次重跑只用来验证隔离，不作为新基线依赖合入证据。
+
+#115 当前候选的 detect-affected、verify-build、instrumentation-smoke、cleanup 全部通过；KVM 可用后模拟器开机 55 秒，基础 smoke 为 `OK (1 test)`，不声称覆盖全部 H5。确认 head/base 和检查后，以锁定 head 的普通 merge 合入，合并提交 `aba9fb01dde44cdf03e3d825fa01ad1faa2b4517`。没有使用管理员绕过检查或手动取消伪造自动取消结果。
 
 ## 3. 运行时依赖补丁
+
+前置条件检查：合法 Release 签名校验通过；当前 Coil 3.6.0 的显式 acceptance `:app:assembleRelease`（禁用 unsigned/debug fallback）已通过 R8，仅作升级前对照，不宣称已复现 Coil 3.6.3 所修复的问题，也不替代升级后验收。
 
 - [ ] 3.1 将 #120 的 Coil 候选更新为 3.6.3，核对解析图；运行图片加载/取消/缓存及统一图片管线测试，并用合法 acceptance 签名配置验证 R8 混淆构建，缺少条件时保留未验收。
 - [ ] 3.2 基于最新基线处理 #127 的 Okio 3.18.2，核对 OkHttp/Okio 解析与网络、文件读写相关测试，不引入强制版本覆盖或其他传递依赖升级。
@@ -24,7 +32,7 @@
 ## 4. 编译与测试工具链
 
 - [ ] 4.1 处理 #126 的 KSP 2.3.12，先在现有 Kotlin 下验证 Hilt/Room/Moshi 生成、跨模块编译和 Lint，再纳入下一项目标组合验证。
-- [ ] 4.2 解决 #122 的冲突并升级 Kotlin 2.4.20，检查相关编译器/Compose 插件版本一致；通过主应用/助手完整 JVM 单测、代码生成与构建，审查并按授权逐项合入 #126/#122。
+- [ ] 4.2 基于最新主分支整合 #122（实施复核时已无冲突）并升级 Kotlin 2.4.20，检查相关编译器/Compose 插件版本一致；通过主应用/助手完整 JVM 单测、代码生成与构建，审查并按授权逐项合入 #126/#122。
 - [ ] 4.3 升级 Compose BOM 2026.09.00 并在授权后建立独立 PR，核对实际解析映射；运行 Navigation 3 状态/返回、H5 无标题栏/键盘/弹窗/大字体回归，最新检查通过后按授权合入。
 - [ ] 4.4 处理 #128 的 Robolectric 4.17，核对 JDK/API 配置及受影响 shadow 用法；主应用和助手完整 JVM 单测通过后按授权合入，不以 build-only 替代。
 
