@@ -24,10 +24,12 @@
 
 前置条件检查：合法 Release 签名校验通过；当前 Coil 3.6.0 的显式 acceptance `:app:assembleRelease`（禁用 unsigned/debug fallback）已通过 R8，仅作升级前对照，不宣称已复现 Coil 3.6.3 所修复的问题，也不替代升级后验收。
 
-- [ ] 3.1 将 #120 的 Coil 候选更新为 3.6.3，核对解析图；运行图片加载/取消/缓存及统一图片管线测试，并用合法 acceptance 签名配置验证 R8 混淆构建，缺少条件时保留未验收。
+- [x] 3.1 将 #120 的 Coil 候选更新为 3.6.3，核对解析图；运行图片加载/取消/缓存及统一图片管线测试，并用合法 acceptance 签名配置验证 R8 混淆构建，缺少条件时保留未验收。
 - [ ] 3.2 基于最新基线处理 #127 的 Okio 3.18.2，核对 OkHttp/Okio 解析与网络、文件读写相关测试，不引入强制版本覆盖或其他传递依赖升级。
 - [ ] 3.3 基于最新基线处理 #121 的 Room 2.8.5，验证 DAO/Flow、关闭/取消、既有迁移测试和 schema 无意外差异；不增加破坏性迁移。
 - [ ] 3.4 对上述三个 PR 逐项完成双应用构建/Lint和专项检查，按授权逐项合入；每次主分支变化后刷新后续 PR 基准并验证最新候选，不沿用旧 CI 结论。
+
+#120 候选 `15b06fd5` 已整合 `9298f5ac`，版本改为 3.6.3；双应用实际 Coil 组件解析一致，12 项图片专项、完整 preflight、双应用 Debug/Lint、warning allowlist/隔离守卫及显式 acceptance R8 构建通过。新增解码测试使用 Robolectric Native Graphics，不用 fake engine 替代实际解码；取消/磁盘缓存资源释放有断言。PR [CI 35406981706](https://github.com/wj20101/longcare/actions/runs/35406981706) 通过（依赖改动未触发 instrumentation，不声称远端图片专项覆盖），锁定 head 正常合入为 `ff3765d5bae2839bbfd5a6c43a0d6f76e860fe04`。#115 合入后的主分支 [CI 35406666485](https://github.com/wj20101/longcare/actions/runs/35406666485) 也全部通过。3.4 仍待 Okio/Room 完成。
 
 ## 4. 编译与测试工具链
 
