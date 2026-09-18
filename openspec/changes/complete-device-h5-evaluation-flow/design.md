@@ -32,6 +32,16 @@ WebViewActions 默认 JS 关闭与普通返回均只 pop 当前网页。评估�
 
 完成页直接显示“评估成功，评估等级为：%1$s”，原样使用 pgResult，不追加“级”、不按分数映射、不再判断是否完成。空文案显示等级待同步，失败显示获取失败并支持手动刷新；刷新不重复上传、不轮询。报告使用本次结果接口 pgUrl。保留简单请求取消，避免旧请求覆盖换客户后的文案。
 
+### 5. BLE 扫描前台权限修正
+
+真机发现仅授予附近设备权限但未授予定位时，扫描注册成功却没有设备结果。当前 Manifest 未声明 neverForLocation；按用户确认保留此策略，不新增该断言或后台定位。Android 12+ 在用户点击扫描时一起请求 BLUETOOTH_SCAN、BLUETOOTH_CONNECT、ACCESS_FINE_LOCATION、ACCESS_COARSE_LOCATION；旧系统继续请求精确定位。精确和粗略定位必须成对申请，即使粗略定位已授权也不从请求数组中删去。只有全部所需权限通过才启动会话，仅授予粗略定位或拒绝时保持阻断并允许重试。所有支持版本读取真实定位开关状态，关闭时提示开启后重试；不因 API 31+ 直接视为已开启，不额外启动位置采集。
+
+依据 Android CLI 官方 Bluetooth permissions 与 Request location access at runtime 文档。该修正替代 use-qlz-custom-evaluation-ui 中“现有权限分支已满足要求”的判断，保留其无新增 Manifest 权限和生产发布门禁边界。
+
+### 6. AGP 补丁升级
+
+用户确认将版本目录的 AGP 从 9.4.0 升级至 9.4.1，主构建和 build-logic 继续共享同一版本来源。Android CLI 官方 AGP 9.4 兼容矩阵要求 Gradle 9.6.0+、JDK 17+，支持 API 37；保留现有 Gradle 9.7.1、JDK 21、Kotlin 与 SDK 基线，不顺带升级其他依赖。重新执行完整 preflight、双应用构建/Lint、warning allowlist 和关闭接口 instrumentation；不为版本提醒添加豁免。
+
 ## Risks / Trade-offs
 
 - H5 需在业务完成时调用关闭；客户端按约定信任该通知，不再次校验完成。

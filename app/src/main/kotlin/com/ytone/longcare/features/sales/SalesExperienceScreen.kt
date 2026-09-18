@@ -374,7 +374,8 @@ internal fun SalesExperienceScreen(
         if (missing.isEmpty()) {
             launchCustomEvaluation(hostActivity)
         } else {
-            sdkPermissionLauncher.launch(missing.toTypedArray())
+            // Keep FINE/COARSE together even when approximate location is already granted.
+            sdkPermissionLauncher.launch(sdkPermissions)
         }
     }
 

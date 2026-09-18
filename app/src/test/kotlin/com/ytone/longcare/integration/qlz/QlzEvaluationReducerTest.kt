@@ -123,10 +123,10 @@ class QlzEvaluationReducerTest {
         val unknown = mapQlzFailure(Int.MAX_VALUE)
         assertEquals(QlzEvaluationIssue.UNKNOWN, unknown.issue)
         assertNotEquals(QlzEvaluationRecoveryAction.RETRY_UPLOAD, unknown.recoveryAction)
-        assertNull(
+        assertEquals(
+            QlzEvaluationIssue.LOCATION_SERVICE_DISABLED,
             evaluateQlzBluetoothEnvironment(
                 QlzBluetoothEnvironmentSnapshot(
-                    apiLevel = 31,
                     hasBleFeature = true,
                     permissionsGranted = true,
                     hasBluetoothAdapter = true,

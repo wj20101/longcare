@@ -156,7 +156,7 @@
     <string name="sales_error_camera_unavailable">当前设备不支持拍照</string>
     <string name="sales_error_camera_permission">请允许使用相机后再拍照</string>
     <string name="sales_camera_permission_purpose">拍摄客户登记照片并添加水印</string>
-    <string name="sales_error_evaluation_permission">请允许附近设备或定位权限后连接评估设备</string>
+    <string name="sales_error_evaluation_permission">搜索评估设备需要精确定位权限；Android 12 及以上还需要附近设备权限，请允许后重试</string>
     <string name="sales_error_location_permission">请允许定位权限后获取客户位置</string>
     <string name="sales_error_open_evaluation">当前无法打开评估页面，请稍后重试</string>
     <string name="sales_error_select_customer">请先选择需要评估的客户</string>

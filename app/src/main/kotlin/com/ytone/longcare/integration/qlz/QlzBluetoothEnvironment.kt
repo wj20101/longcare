@@ -10,25 +10,12 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 
 internal data class QlzBluetoothEnvironmentSnapshot(
-    val apiLevel: Int,
     val hasBleFeature: Boolean,
     val permissionsGranted: Boolean,
     val hasBluetoothAdapter: Boolean,
     val bluetoothEnabled: Boolean,
     val locationServiceEnabled: Boolean,
 )
-
-internal enum class QlzBluetoothPermissionProfile {
-    NEARBY_DEVICES,
-    FINE_LOCATION,
-}
-
-internal fun qlzBluetoothPermissionProfile(apiLevel: Int): QlzBluetoothPermissionProfile =
-    if (apiLevel >= Build.VERSION_CODES.S) {
-        QlzBluetoothPermissionProfile.NEARBY_DEVICES
-    } else {
-        QlzBluetoothPermissionProfile.FINE_LOCATION
-    }
 
 internal fun evaluateQlzBluetoothEnvironment(
     snapshot: QlzBluetoothEnvironmentSnapshot,
@@ -39,7 +26,7 @@ internal fun evaluateQlzBluetoothEnvironment(
 
         !snapshot.permissionsGranted -> QlzEvaluationIssue.PERMISSION_REQUIRED
         !snapshot.bluetoothEnabled -> QlzEvaluationIssue.BLUETOOTH_DISABLED
-        snapshot.apiLevel < Build.VERSION_CODES.S && !snapshot.locationServiceEnabled ->
+        !snapshot.locationServiceEnabled ->
             QlzEvaluationIssue.LOCATION_SERVICE_DISABLED
 
         else -> null
@@ -63,26 +50,19 @@ internal fun Activity.qlzBluetoothEnvironmentIssue(
         } else {
             runCatching { bluetoothAdapter?.isEnabled == true }.getOrDefault(false)
         }
-    val locationServiceEnabled =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            true
-        } else {
-            val locationManager =
-                getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-            runCatching {
-                locationManager?.let { manager ->
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        manager.isLocationEnabled
-                    } else {
-                        manager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
-                            manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
-                    }
-                } == true
-            }.getOrDefault(false)
-        }
+    val locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+    val locationServiceEnabled = runCatching {
+        locationManager?.let { manager ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                manager.isLocationEnabled
+            } else {
+                manager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                    manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+            }
+        } == true
+    }.getOrDefault(false)
     return evaluateQlzBluetoothEnvironment(
         QlzBluetoothEnvironmentSnapshot(
-            apiLevel = Build.VERSION.SDK_INT,
             hasBleFeature = hasBleFeature,
             permissionsGranted = permissionsGranted,
             hasBluetoothAdapter = bluetoothAdapter != null,
@@ -107,6 +87,9 @@ internal fun qlzRequiredRuntimePermissions(): Array<String> =
         arrayOf(
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT,
+            // Without neverForLocation, BLE scans also require precise foreground location.
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
         )
     } else {
         arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)

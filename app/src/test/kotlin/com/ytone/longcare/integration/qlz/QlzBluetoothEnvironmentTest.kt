@@ -1,35 +1,84 @@
 package com.ytone.longcare.integration.qlz
 
+import android.Manifest
+import android.app.Application
+import java.io.File
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [31], application = Application::class)
 class QlzBluetoothEnvironmentTest {
     @Test
-    fun `api 31 uses nearby device permissions without a location-service gate`() {
+    @Config(sdk = [31, 33])
+    fun `modern Android requests nearby devices and paired foreground location permissions`() {
+        assertArrayEquals(
+            arrayOf(
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            ),
+            qlzRequiredRuntimePermissions(),
+        )
+    }
+
+    @Test
+    @Config(sdk = [24, 30])
+    fun `legacy Android only requests fine location`() {
+        assertArrayEquals(
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+            qlzRequiredRuntimePermissions(),
+        )
+    }
+
+    @Test
+    fun `all versions block when location service is off and recover when enabled`() {
         assertEquals(
-            QlzBluetoothPermissionProfile.NEARBY_DEVICES,
-            qlzBluetoothPermissionProfile(31),
+            QlzEvaluationIssue.LOCATION_SERVICE_DISABLED,
+            evaluateQlzBluetoothEnvironment(
+                readySnapshot().copy(locationServiceEnabled = false)
+            ),
+        )
+        assertNull(evaluateQlzBluetoothEnvironment(readySnapshot()))
+    }
+
+    @Test
+    fun `nearby devices and approximate location alone cannot start scanning`() {
+        val required = qlzRequiredRuntimePermissions()
+        val granted = required.toSet() - Manifest.permission.ACCESS_FINE_LOCATION
+        assertEquals(
+            QlzEvaluationIssue.PERMISSION_REQUIRED,
+            evaluateQlzBluetoothEnvironment(
+                readySnapshot().copy(permissionsGranted = required.all(granted::contains))
+            ),
         )
         assertNull(
             evaluateQlzBluetoothEnvironment(
-                readySnapshot(apiLevel = 31).copy(locationServiceEnabled = false)
+                readySnapshot().copy(
+                    permissionsGranted = required.all(
+                        (granted + Manifest.permission.ACCESS_FINE_LOCATION)::contains
+                    )
+                )
             )
         )
     }
 
     @Test
-    fun `api 30 requires fine location and enabled location services`() {
-        assertEquals(
-            QlzBluetoothPermissionProfile.FINE_LOCATION,
-            qlzBluetoothPermissionProfile(30),
-        )
-        assertEquals(
-            QlzEvaluationIssue.LOCATION_SERVICE_DISABLED,
-            evaluateQlzBluetoothEnvironment(
-                readySnapshot(apiLevel = 30).copy(locationServiceEnabled = false)
-            ),
-        )
+    fun `permission retry retains the full fine and coarse pair`() {
+        val source = File(
+            "src/main/kotlin/com/ytone/longcare/features/sales/SalesExperienceScreen.kt"
+        ).readText().substringAfter("fun openEvaluationWithPermission()")
+            .substringBefore("fun requestLocationPermission()")
+        assertTrue(source.contains("sdkPermissionLauncher.launch(sdkPermissions)"))
+        assertFalse(source.contains("launch(missing.toTypedArray())"))
     }
 
     @Test
@@ -37,26 +86,25 @@ class QlzBluetoothEnvironmentTest {
         assertEquals(
             QlzEvaluationIssue.PERMISSION_REQUIRED,
             evaluateQlzBluetoothEnvironment(
-                readySnapshot(apiLevel = 31).copy(permissionsGranted = false)
+                readySnapshot().copy(permissionsGranted = false)
             ),
         )
         assertEquals(
             QlzEvaluationIssue.BLUETOOTH_UNSUPPORTED,
             evaluateQlzBluetoothEnvironment(
-                readySnapshot(apiLevel = 31).copy(hasBleFeature = false)
+                readySnapshot().copy(hasBleFeature = false)
             ),
         )
         assertEquals(
             QlzEvaluationIssue.BLUETOOTH_DISABLED,
             evaluateQlzBluetoothEnvironment(
-                readySnapshot(apiLevel = 31).copy(bluetoothEnabled = false)
+                readySnapshot().copy(bluetoothEnabled = false)
             ),
         )
     }
 
-    private fun readySnapshot(apiLevel: Int) =
+    private fun readySnapshot() =
         QlzBluetoothEnvironmentSnapshot(
-            apiLevel = apiLevel,
             hasBleFeature = true,
             permissionsGranted = true,
             hasBluetoothAdapter = true,

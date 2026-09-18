@@ -52,6 +52,7 @@ Android 源码、资源、BuildConfig 或 APK。客户端通过
 | 方法 | 路径 | 客户端方法 |
 |---|---|---|
 | POST | `/V1/Sale/GetCheckToken` | `SaleRepository.getCheckToken` |
+| POST | `/V1/Sale/GetCheckResult` | `SaleRepository.getCheckResult` |
 | POST | `/V1/Sale/AddUserLatent` | `SaleRepository.addUserLatent` |
 | GET | `/V1/Sale/GetRecentUserLatentList` | `SaleRepository.getRecentUserLatentList` |
 | GET | `/V1/Sale/ToDoNum` | `SaleRepository.getToDoCount` |
@@ -71,8 +72,8 @@ Android 源码、资源、BuildConfig 或 APK。客户端通过
 2. 查询或新增潜在客户，获得客户 ID。
 3. 初始化 SDK 并读取 `CheckIml.getDeviceId()`。
 4. 调用 `/V1/Sale/GetCheckToken`，传入客户 ID 和检测设备 ID。
-5. 请求 Android 12+ 的 `BLUETOOTH_SCAN`、`BLUETOOTH_CONNECT` 运行时权限
-   （Android 11 及以下请求精确位置权限）。
+5. 用户点击搜索时，请求 Android 12+ 的 `BLUETOOTH_SCAN`、`BLUETOOTH_CONNECT` 及前台 `ACCESS_FINE_LOCATION`、`ACCESS_COARSE_LOCATION` 权限
+   （Android 11 及以下请求精确位置权限）。Manifest 未声明 `neverForLocation`，因此不能只授予附近设备权限；仅粗略定位也不能开始扫描。精确/粗略定位始终成对申请，拒绝后显示提示并允许重试。所有支持版本均检查系统定位服务开关，开启后重试重新检查；不新增后台定位或启动位置采集。
 6. 创建 UI 作用域的 `QlzEvaluationSession`，调用 `CheckIml.startCheck(...)` 校验 Token；成功后使用 `ScanDeviceIml` 执行 30 秒有界扫描。
 7. 页面只接收不可变的 `QlzEvaluationUiState`。蓝牙地址在 integration 边界内换成会话级不透明 ID，界面仅显示掩码；用户点选后由 `ConnectDeviceHelp` 连接，并映射五指、进度、电量、超时和掉线回调。
 8. `onCheckEnd` 只触发一次 `sendData(...)`。纬度、经度和地址取自当前客户或本次登记的可靠字段，缺失时传空字符串；上传失败仅在内存中保留本次 `RecordInputData` 供重试。
@@ -103,7 +104,8 @@ window.NativeBridge.closeWebView();
 ```
 
 客户端接收后通过当前 Navigation 3 entry 返回来源原生页面，保留首页和来源状态。
-该调用无参数，不表示提交成功，不修改客户或评估数据，也不是客户端调用 H5 的接口。
+该调用无参数，由 H5 调用客户端；普通网页只关闭自身，评估 H5 按业务约定以该调用通知评估完成。
+客户端不代替 H5 提交评估数据，完成页直接查询 GetCheckResult 获取文案，不增加网页返回结果关联或二次完成确认。
 容器在首次加载前通过 `addJavascriptInterface` 注册 `NativeBridge` 对象，
 仅以 `@JavascriptInterface` 暴露无参数 `closeWebView()`。客户端不注入 JS 包装、不检查现代消息桥能力，
 不要求 H5 传凭证或协议字段；H5 自行决定按钮、弹窗、提交与关闭时机。

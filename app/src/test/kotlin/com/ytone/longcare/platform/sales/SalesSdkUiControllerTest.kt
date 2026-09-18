@@ -88,4 +88,45 @@ class SalesSdkUiControllerTest {
         controller.start()
         assertEquals(1, drivers.size)
     }
+
+    @Test
+    fun `denied permission stays blocked until an explicit granted retry`() {
+        val controller = controller()
+        controller.showPermissionRequired()
+        assertEquals(QlzEvaluationIssue.PERMISSION_REQUIRED, controller.uiState.value.issue)
+        assertTrue(drivers.isEmpty())
+
+        controller.onHostStopped()
+        controller.onHostStarted()
+        assertTrue(drivers.isEmpty())
+
+        controller.start()
+        callbacks.single()(QlzEvaluationDriverEvent.Authorized)
+        assertEquals(QlzEvaluationStage.SCANNING, controller.uiState.value.stage)
+        controller.cancel()
+        assertEquals(1, releases)
+        verify(exactly = 1) { drivers.single().close() }
+    }
+
+    @Test
+    fun `disabled location service is rechecked before creating a session on retry`() {
+        val controller = controller()
+        every { client.createEvaluationSession(any(), any(), any(), any()) } returns
+            QlzEvaluationSessionCreation.Blocked(
+                QlzEvaluationIssue.LOCATION_SERVICE_DISABLED,
+                QlzEvaluationRecoveryAction.RECHECK_ENVIRONMENT,
+            )
+        controller.start()
+        assertEquals(QlzEvaluationIssue.LOCATION_SERVICE_DISABLED, controller.uiState.value.issue)
+        assertTrue(drivers.isEmpty())
+
+        // Restore the factory's ready response, as after the user enables location services.
+        controller()
+        controller.start()
+        callbacks.single()(QlzEvaluationDriverEvent.Authorized)
+        assertEquals(QlzEvaluationStage.SCANNING, controller.uiState.value.stage)
+        verify(exactly = 2) { client.createEvaluationSession(any(), any(), any(), any()) }
+        controller.close()
+        assertEquals(1, releases)
+    }
 }

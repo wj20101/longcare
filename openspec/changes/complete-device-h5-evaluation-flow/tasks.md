@@ -23,12 +23,25 @@
 ## 4. 验收与文档
 
 - [x] 4.1 使用隔离 mock 完成“设备上传 → H5 提交与关闭 → 原生等级完成页”及取消/重试链路；执行受影响单测、Navigation 3 状态恢复测试与 WebView instrumentation。
-- [ ] 4.2 按 android-cli 技能验证 API 24 旧内核、当前 WebView 80 真机与现代内核，记录实际版本和覆盖限制；真机只使用受控页面，不重复提交客户数据、不降级/清空系统组件。缺少设备时如实保持未验收。
+- [x] 4.2 按 android-cli 技能验证 API 24 旧内核、当前 WebView 80 真机与现代内核，记录实际版本和覆盖限制；真机只使用受控页面，不重复提交客户数据、不降级/清空系统组件。缺少设备时如实保持未验收。
 - [ ] 4.3 在 H5 已部署调用且有授权测试客户后进行真实联调，确认最终状态与等级；若 H5 或服务端未就绪，明确区分客户端 mock 通过与端到端未验收。
-- [x] 4.4 同步产品、路由和 QLZ 集成文档；串行运行完整 preflight、受影响构建/Lint、warning allowlist、助手隔离、严格 OpenSpec 校验和 diff 检查，不放宽既有门禁。
+- [x] 4.4 同步产品、路由和 QLZ 集成文档；按用户确认升级 AGP 9.4.1，串行运行完整 preflight、双应用构建/Lint、关闭接口 instrumentation、warning allowlist、助手隔离、严格 OpenSpec 校验和 diff 检查，不放宽既有门禁。
+- [x] 4.5 按用户确认补齐 BLE 前台定位授权和全版本定位开关检查；覆盖实际权限数组、粗略定位不足、拒绝/恢复、后台/退出释放并重新构建与真机验收，不新增后台定位、neverForLocation 或位置采集。
 
 ### 当前验收边界
 
 本轮按最新约定补齐完成页接口查询，未引入网页返回关联或二次完成核实。GetCheckResult 方法/路径/JSON/空值契约测试通过；真实 SalesViewModel + QLZ 会话的 mock 测试覆盖上传到完成结果、失败刷新、纯表单、状态恢复与旧请求取消。WebView 133.0.6943.137 模拟器首轮 39 项（关闭、文案、大字体、SDK mock、自动跳转）通过，最终 APK 的导航重建/关闭/渲染异常 20 项通过，其中关闭测试为重复回归，不合并宣称 59 个独立用例。WebView 80.0.3987.99 真机 9 项受控接口测试通过，应用已保留数据覆盖安装。完整 preflight、双应用构建/Lint、warning allowlist、隔离、严格 OpenSpec 与 diff 检查通过。
 
-H5 内容与接口响应均为隔离替身或受控数据，不声称已验证线上提交或服务端实时返回的等级。没有 API 24 设备，4.2 保持未验收；真实 BLE/H5/服务端端到端联调 4.3 仍需单独执行。
+补充在 API 24 / WebView 52.0.2743.100 隔离模拟器运行 26 项测试全部通过：真实旧内核 NativeBridge 接口 9 项、评估自动打开 2 项、结果文案 5 项、Navigation 3 状态与返回 10 项。与上述 WebView 80 真机和现代内核记录共同完成 4.2 的版本覆盖；不代表穷举所有 WebView 版本，依赖较新系统的渲染进程测试仍以现代内核结果为准。
+
+补充 BLE 权限修复：QLZ 权限/环境/会话及 UI controller 共 38 项定向测试通过，最终完整 preflight、assembleDebug、lintDebug 通过。实际权限数组在 Robolectric API 24/30/31/33 上验证；真机 Pixel 10（API 37）验证定位拒绝阻断、重试授权、成功发现并连接设备、真实测量上传后自动打开 H5。修复不新增 Manifest 权限或位置采集。
+
+真实联调已验证：用户提交 H5 后网页显示 A级（12分）；点击 H5 自己的返回按钮，由网页现有代码调用 NativeBridge.closeWebView，原生完成页查询接口后显示“评估成功，评估等级为：A级”，系统返回保留首页。没有注入或代调用关闭脚本，也未重复提交。4.3 仍保留未完成：只读检查线上 `/assets/index-Dy5qvu0H.js` 确认成功弹窗的确认分支仅刷新数据，关闭方法仅绑定网页返回按钮，尚未实现提交确认后主动关闭。当前仓库不含 H5 源码，需 H5 修正该分支后再验收自动关闭。
+
+4.4 已按用户确认完成 AGP 9.4.0 → 9.4.1：双应用 assembleDebug/lintDebug、完整 preflight、warning allowlist、助手隔离、严格 OpenSpec 与 diff 检查通过；API 24 / WebView 52 上重新构建的 NativeBridge 与 Navigation 3 instrumentation 共 19 项通过。版本提醒和 InlinedApi 均已消除，未放宽门禁或添加 Lint 豁免。
+
+线上复查直接获取 `https://careweb.ytone.cn/pinggu` 及其引用的 7 份脚本；评估代码仍是 `/assets/index-Dy5qvu0H.js`（SHA-256：`07285c549f1de538c60e743ec12064db7b58c987d777512eef13ed62f3e0c8a7`）。成功确认仅执行 `B()` 重新 GET `/H5Api/GetSurvey`，`P(window)` 关闭调用仅绑定网页返回按钮；与此前真实 WebView 加载版本一致，不是依据过期本地 H5 源码判断。
+
+补充从对象登记开始的真机验证：AGP 9.4.1 构建产物保留数据覆盖安装至 Pixel 10；新建测试对象 `AndroidTest0918B`，选填身份、联系方式、地址和照片均留空，经过信息确认后服务端返回提交成功。从登记结果页进入设备自动评估，发现并连接 BMS105695，实际手握检测上传完成后自动打开 `/pinggu`。只读检查该次 WebView，`NativeBridge` 为 object，`closeWebView` 为 function；实际加载脚本与上述 SHA-256 一致。
+
+用户选择答案后授权代点提交，本轮逐步检查两个弹窗：提交前确认完整可见，确认提交后 POST `/api/H5Api/SaveSurveyAnswers` 返回 200，成功弹窗显示“评估成功 / A级(12分)”。点击成功弹窗“确认”后 GET `/api/H5Api/GetSurvey` 返回 200，网页刷新到问卷顶部而未关闭，与线上成功分支缺失关闭调用一致。随后点击 H5 自己的返回按钮，网页调用已注册接口，原生完成页显示“评估成功，评估等级为：A级”。未改动用户答案、未重复提交、未注入或代调用 JS；该结果再次证明关闭接口可用，但成功确认自动关闭仍待 H5 修正，4.3 不标记通过。
