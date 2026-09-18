@@ -170,7 +170,7 @@ internal fun SalesExperienceScreen(
         if (reportUrl.isBlank()) {
             showMessage(noReportMessage)
         } else {
-            actions.onOpenWebPage(reportUrl, evaluationReportTitle)
+            actions.onOpenEvaluationReport(reportUrl, evaluationReportTitle)
         }
     }
 
@@ -705,7 +705,7 @@ internal fun SalesExperienceScreen(
                         onDone = ::goHome,
                         onOpenReport = {
                             uiState.evaluationResult?.pgUrl?.takeIf { it.isNotBlank() }?.let {
-                                actions.onOpenWebPage(it, evaluationReportTitle)
+                                actions.onOpenEvaluationReport(it, evaluationReportTitle)
                             }
                         },
                     )

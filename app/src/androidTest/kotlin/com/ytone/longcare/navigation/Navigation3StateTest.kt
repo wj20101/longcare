@@ -225,7 +225,7 @@ class Navigation3StateTest {
         compose.runOnIdle { NavigationStateTestActivity.recreatedContent = { Content() } }
         compose.activityRule.scenario.recreate()
         compose.onNodeWithText("HOME").assertExists()
-        val form = WebViewRoute("https://mock.internal/form", "表单评估", isEvaluation = true)
+        val form = WebViewRoute("https://mock.internal/form", "表单评估", isEvaluation = true, showNativeToolbar = false)
         val originalHome = shared.getValue(HomeRoute)
         compose.runOnIdle { navigator.navigate(form) }
         compose.onNodeWithText("BACK").assertExists()

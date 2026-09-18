@@ -82,12 +82,15 @@ Navigation 3 使用可保存的 `AppNavEntry` 包装业务路由，为相同参�
 回调进入主线程，检查前台生命周期、当前 entry 和容器是否已关闭；重复/失效容器调用无效。
 内部 H5 不设置额外 URL 白名单、顶层导航或请求拦截；跨域导航保留接口，普通加载失败不禁用关闭。
 NativeBridge 是后续方法的直接扩展入口，不使用独立关闭 Policy、注册表或分发器。
+评估表单和报告入口显式设置 `WebViewRoute.showNativeToolbar=false`，共用容器去除原生顶部栏；`WindowInsets.safeDrawing` 由 Scaffold 应用并消费，H5 填满剩余内容区。普通网页、协议与隐私弹窗默认保留原生栏。展示参数与 `isEvaluation` 独立，报告关闭不触发完成；参数随 Navigation 3 栈保存恢复，不按标题或 URL 推断。
+无原生栏时，白色背景延伸至系统栏，页面使用 AndroidX 浅色系统栏样式实现沉浸式视觉；暂停/退出后恢复应用默认样式。仅做页面级适配，不隐藏系统栏、不注入 H5 脚本、不增加适配框架。
+H5 左上角返回调用关闭接口；成功弹窗确认仅刷新网页属于正常行为，不注入脚本代为关闭。移除原生栏后仍由 Navigation 3 处理系统返回，网页错误时同样可退出。
 接口对所有加载页面及其 iframe 同样可见，不认证调用来源；未来敏感方法须独立设计授权。
 不再使用现代消息桥能力检查、文档随机凭证或独立 JS 初始化状态，新旧内核共用平台接口。
 网页容器与隐私政策网页弹窗在渲染进程退出时显示原生异常提示，移除并销毁失效 WebView，保留原生返回；
 不自动重载、不退出应用，也不改变隐私同意状态。隐私网页启用 JavaScript，复用通用 `WebViewScreen` 的桥接和安全配置。
 
-销售端的根页签为首页、我的客户和我的；个人中心复用护理端 `ProfileScreen`。表单和报告跳到应用级 `WebViewRoute`，登记照片跳到应用级 `CameraRoute`。只有相机使用返回结果；所有网页不增加返回结果关联机制。`DEVICE_STATUS` 与 `EVALUATION_GUIDE` 共享一个 UI 作用域的 QLZ 会话，切换两页不会释放连接；离开这两页、取消、完成或宿主销毁时必须释放。设备上传成功后刷新客户详情并自动打开服务端 `pgUrl` 的评估 H5，不直接显示完成页。客户/recordId/待打开 URL/消费状态通过 SavedStateHandle 保存，前台执行一次导航；失败仅重试取地址。评估网页以 `isEvaluation` 标识用途，复用现有首页 SalesViewModel；JS 关闭更新业务完成状态并 pop，原生/系统返回仅 pop。完成页直接请求 GetCheckResult 获取 pgResult/pgUrl，不二次确认完成、不写导航结果邮箱，完成/返回回保留的首页。普通网页与隐私弹窗只关闭自身。
+销售端的根页签为首页、我的客户和我的；个人中心复用护理端 `ProfileScreen`。表单和报告跳到应用级 `WebViewRoute`，登记照片跳到应用级 `CameraRoute`。只有相机使用返回结果；所有网页不增加返回结果关联机制。`DEVICE_STATUS` 与 `EVALUATION_GUIDE` 共享一个 UI 作用域的 QLZ 会话，切换两页不会释放连接；离开这两页、取消、完成或宿主销毁时必须释放。设备上传成功后刷新客户详情并自动打开服务端 `pgUrl` 的评估 H5，不直接显示完成页。客户/recordId/待打开 URL/消费状态通过 SavedStateHandle 保存，前台执行一次导航；失败仅重试取地址。评估网页以 `isEvaluation` 标识用途，复用现有首页 SalesViewModel；JS 关闭更新业务完成状态并 pop，原生/系统返回仅 pop。完成页有非空设备 recordId 时请求 GetCheckResult，纯表单重新请求 GetUserLatentDetail 获取 pgResult/pgUrl；两条分支均不读取缓存旧值、不在失败后切换接口，不二次确认完成、不写导航结果邮箱，完成/返回回保留的首页。普通网页与隐私弹窗只关闭自身。
 
 ## 非路由 UI
 

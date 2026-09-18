@@ -43,11 +43,11 @@ internal fun AppEntryProviderBuilder.registerEntryNavGraphs(navController: AppNa
                 },
                 onNavigateToHaveServiceUserList = { navController.navigateToHaveServiceUserList() },
                 onNavigateToNoServiceUserList = { navController.navigateToNoServiceUserList() },
-                onOpenWebPage = { url, title ->
-                    navController.navigateToWebView(url, title)
+                onOpenEvaluationReport = { url, title ->
+                    navController.navigateToEvaluationReport(url, title)
                 },
                 onOpenEvaluationPage = { url, title ->
-                    navController.navigateWhenResumed(WebViewRoute(url, title, isEvaluation = true))
+                    navController.navigateToEvaluationForm(url, title)
                 },
                 onOpenUserAgreement = {
                     navController.navigateToWebView(

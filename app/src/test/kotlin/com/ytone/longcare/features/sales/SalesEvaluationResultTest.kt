@@ -48,22 +48,29 @@ class SalesEvaluationResultTest {
         coVerify(exactly = 0) { repository.getUserLatentDetail(any()) }
     }
 
-    @Test fun `manual form uses null record and displays backend text without mapping`() = runTest {
-        coEvery { repository.getCheckResult(7, null) } returns ApiResult.Success(CheckResultModel("重度失能"))
+    @Test fun `manual form fetches fresh detail rather than cached grade or device result`() = runTest {
         val vm = createViewModel()
+        vm.loadCustomerDetail(7)
+        advanceUntilIdle()
+        coEvery { repository.getUserLatentDetail(7) } returns ApiResult.Success(
+            UserLatentDetailModel(id = 7, pgResult = "重度失能", pgUrl = "fresh-report"),
+        )
         vm.onEvaluationH5Closed()
         vm.loadEvaluationResult()
         advanceUntilIdle()
         assertEquals("重度失能", vm.uiState.value.evaluationResult?.pgResult)
+        assertEquals("fresh-report", vm.uiState.value.evaluationResult?.pgUrl)
+        coVerify(exactly = 2) { repository.getUserLatentDetail(7) }
+        coVerify(exactly = 0) { repository.getCheckResult(any(), any()) }
     }
 
     @Test fun `failure and empty result keep completed state and refresh only queries result`() = runTest {
-        coEvery { repository.getCheckResult(7, null) } returnsMany listOf(
+        coEvery { repository.getCheckResult(7, "record") } returnsMany listOf(
             ApiResult.Failure(500, "失败"),
             ApiResult.Success(CheckResultModel()),
             ApiResult.Success(CheckResultModel("B级")),
         )
-        val vm = createViewModel()
+        val vm = createViewModel(withDevice = true)
         vm.onEvaluationH5Closed()
         vm.loadEvaluationResult()
         advanceUntilIdle()
@@ -77,6 +84,36 @@ class SalesEvaluationResultTest {
         advanceUntilIdle()
         assertEquals("B级", vm.uiState.value.evaluationResult?.pgResult)
         coVerify(exactly = 0) { repository.getCheckToken(any(), any()) }
+        coVerify(exactly = 0) { repository.getUserLatentDetail(any()) }
+        coVerify(exactly = 3) { repository.getCheckResult(7, "record") }
+    }
+
+    @Test fun `manual form failure exception and empty result refresh the same detail endpoint`() = runTest {
+        coEvery { repository.getUserLatentDetail(7) } returnsMany listOf(
+            ApiResult.Failure(500, "失败"),
+            ApiResult.Exception(IllegalStateException("offline")),
+            ApiResult.Success(UserLatentDetailModel(id = 7)),
+            ApiResult.Success(UserLatentDetailModel(id = 7, pgResult = "B级", pgUrl = "report")),
+        )
+        val vm = createViewModel()
+        vm.onEvaluationH5Closed()
+        repeat(2) {
+            vm.loadEvaluationResult()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.evaluationCompleted)
+            assertTrue(vm.uiState.value.evaluationResultError)
+        }
+        vm.loadEvaluationResult()
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.evaluationResultError)
+        assertNull(vm.uiState.value.evaluationResult?.pgResult)
+        vm.loadEvaluationResult()
+        advanceUntilIdle()
+        assertEquals("B级", vm.uiState.value.evaluationResult?.pgResult)
+        assertEquals("report", vm.uiState.value.evaluationResult?.pgUrl)
+        coVerify(exactly = 4) { repository.getUserLatentDetail(7) }
+        coVerify(exactly = 0) { repository.getCheckResult(any(), any()) }
+        coVerify(exactly = 0) { repository.getCheckToken(any(), any()) }
     }
 
     @Test fun `ordinary back does not complete or query and completion can restore`() = runTest {
@@ -86,6 +123,7 @@ class SalesEvaluationResultTest {
         advanceUntilIdle()
         assertFalse(vm.uiState.value.evaluationCompleted)
         coVerify(exactly = 0) { repository.getCheckResult(any(), any()) }
+        coVerify(exactly = 0) { repository.getUserLatentDetail(any()) }
         vm.onEvaluationH5Closed()
         val restored = createViewModel(handle = SavedStateHandle(handle.keys().associateWith { handle.get<Any?>(it) }))
         assertTrue(restored.uiState.value.evaluationCompleted)
@@ -95,8 +133,8 @@ class SalesEvaluationResultTest {
     }
 
     @Test fun `late result cannot overwrite a different customer`() = runTest {
-        val response = CompletableDeferred<ApiResult<CheckResultModel>>()
-        coEvery { repository.getCheckResult(7, null) } coAnswers {
+        val response = CompletableDeferred<ApiResult<UserLatentDetailModel>>()
+        coEvery { repository.getUserLatentDetail(7) } coAnswers {
             withContext(NonCancellable) { response.await() }
         }
         val vm = createViewModel()
@@ -104,7 +142,7 @@ class SalesEvaluationResultTest {
         vm.loadEvaluationResult()
         runCurrent()
         vm.loadCustomerDetail(8)
-        response.complete(ApiResult.Success(CheckResultModel("旧客户A级")))
+        response.complete(ApiResult.Success(UserLatentDetailModel(id = 7, pgResult = "旧客户A级")))
         advanceUntilIdle()
         assertEquals(8, vm.uiState.value.selectedCustomerId)
         assertNull(vm.uiState.value.evaluationResult)
