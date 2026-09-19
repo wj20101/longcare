@@ -22,6 +22,8 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.hasProgressBarRangeInfo
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import com.ytone.longcare.features.sales.SalesEvaluationCompleteScreen
 import com.ytone.longcare.features.sales.SalesPageBackground
 import androidx.compose.ui.semantics.SemanticsActions
@@ -147,8 +149,10 @@ class WebViewCloseBridgeTest {
     }
 
     @Test fun httpErrorCallbackDoesNotDisableClose() {
-        setContent { WebViewScreen(WebViewActions({ closes.incrementAndGet() }), "$origin/form", "表单评估") }
+        setContent { WebViewScreen(WebViewActions({ closes.incrementAndGet() }), "$origin/form", "表单评估", showNativeToolbar = false) }
         supplyLocalContent("$origin/error")
+        compose.runOnIdle { webView.webViewClient.onPageStarted(webView, "$origin/error", null) }
+        compose.onNode(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).assertIsDisplayed()
         // A locally intercepted response does not reliably produce the platform HTTP-error
         // callback. Deliver that callback explicitly to the real production client.
         compose.runOnIdle {
@@ -166,6 +170,7 @@ class WebViewCloseBridgeTest {
             )
         }
         compose.onNodeWithText("网页加载失败，请返回后重新打开。").assertIsDisplayed()
+        compose.onNode(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).assertDoesNotExist()
         js("window.NativeBridge.closeWebView();true")
         compose.waitUntil(5_000) { closes.get() == 1 }
     }
@@ -186,7 +191,7 @@ class WebViewCloseBridgeTest {
                             WebViewActions(
                                 { closes.incrementAndGet(); page.popBackStack() },
                                 page::canHandleCallback,
-                            ), "$origin/report", "评估报告",
+                            ), "$origin/report", "评估报告", showNativeToolbar = false,
                         )
                     }
                 }
@@ -238,7 +243,7 @@ class WebViewCloseBridgeTest {
                                     closes.incrementAndGet()
                                     page.popBackStack()
                                 },
-                            ), "$origin/form", "表单评估",
+                            ), "$origin/form", "表单评估", showNativeToolbar = false,
                         )
                     }
                 }
@@ -246,7 +251,8 @@ class WebViewCloseBridgeTest {
         }
         compose.runOnIdle { navigator.navigate(WebViewRoute("$origin/form", "表单评估", true)) }
         supplyLocalContent("$origin/form")
-        compose.onNodeWithContentDescription("返回").performClick()
+        compose.onNodeWithContentDescription("返回").assertDoesNotExist()
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.onNodeWithText("Mock 评估入口").assertIsDisplayed()
         compose.runOnIdle { assertEquals(0, resultQueries); assertFalse(completed.value) }
         compose.runOnIdle { navigator.navigate(WebViewRoute("$origin/form", "表单评估", true)) }

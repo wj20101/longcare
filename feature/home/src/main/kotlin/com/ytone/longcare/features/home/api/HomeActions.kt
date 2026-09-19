@@ -12,11 +12,11 @@ data class HomeActions(
     val onNavigateToServiceCountdown: (OrderKey, List<Int>) -> Unit,
     val onNavigateToHaveServiceUserList: () -> Unit,
     val onNavigateToNoServiceUserList: () -> Unit,
-    val onOpenWebPage: (url: String, title: String) -> Unit,
+    val onOpenEvaluationReport: (url: String, title: String) -> Unit,
     val onOpenUserAgreement: () -> Unit,
     val onOpenPrivacyPolicy: () -> Unit,
     val onNavigateToCamera: (WatermarkData) -> Unit,
     val capturedImageUriFlow: StateFlow<String?>,
     val clearCapturedImageUri: () -> Unit,
-    val onOpenEvaluationPage: (url: String, title: String) -> Unit = onOpenWebPage,
+    val onOpenEvaluationPage: (url: String, title: String) -> Unit = onOpenEvaluationReport,
 )

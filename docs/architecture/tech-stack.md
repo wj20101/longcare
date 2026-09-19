@@ -1,6 +1,6 @@
 # 技术栈与构建基线
 
-最后核对：2026-09-18
+最后核对：2026-09-19
 
 本文是便于阅读的快照。版本发生冲突时，以 `constants.gradle.kts`、`gradle/libs.versions.toml`、`gradle-wrapper.properties` 和各模块 `build.gradle.kts` 为准。
 
@@ -17,7 +17,7 @@
 | Gradle Wrapper | 9.7.1 | `gradle/wrapper/gradle-wrapper.properties` |
 | Android Gradle Plugin | 9.4.1 | `gradle/libs.versions.toml` |
 | Kotlin | 2.4.10 | `gradle/libs.versions.toml` |
-| KSP | 2.3.11 | `gradle/libs.versions.toml` |
+| KSP | 2.3.12 | `gradle/libs.versions.toml` |
 
 ## 主要库
 
@@ -30,15 +30,16 @@
 | Compose DI | Hilt lifecycle-viewmodel-compose（无 Navigation 2 依赖） | 1.4.0 |
 | Lifecycle | AndroidX Lifecycle | 2.11.0 |
 | DI | Dagger Hilt / AndroidX Hilt | 2.60.1 / 1.4.0 |
-| Persistence | Room | 2.8.4 |
+| Persistence | Room | 2.8.5 |
 | Preferences | DataStore | 1.2.1 |
 | Background | WorkManager | 2.11.2 |
 | Camera | CameraX | 1.6.1 |
 | Face detection | ML Kit Face Detection | 16.1.7 |
 | Network | Retrofit / OkHttp | 3.0.0 / 5.5.0 |
+| Network I/O | Okio | 3.18.2 |
 | WebView | AndroidX WebKit（渲染进程异常保护；关闭接口直接注册 NativeBridge） | 1.17.0 |
 | Serialization | Moshi / kotlinx.serialization | 1.15.2 / 1.11.0 |
-| Images | Coil | 3.6.0 |
+| Images | Coil | 3.6.3 |
 | Async | kotlinx.coroutines | 1.11.0 |
 | Location | AMap Location | 11.2.100 |
 | Object storage | Tencent COS Android | 5.9.52 |

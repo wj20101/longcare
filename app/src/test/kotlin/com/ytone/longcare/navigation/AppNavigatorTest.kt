@@ -8,6 +8,27 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AppNavigatorTest {
+    @Test fun evaluationPresentationIsExplicitAndIndependentFromClosePurpose() {
+        val nav = navigator()
+        nav.navigateToEvaluationForm("https://evaluation.invalid/form", "任意标题")
+        val form = nav.top().route as WebViewRoute
+        assertTrue(form.isEvaluation)
+        assertFalse(form.showNativeToolbar)
+        nav.popBackStack()
+        nav.navigateToEvaluationReport("https://evaluation.invalid/report", "任意标题")
+        val report = nav.top().route as WebViewRoute
+        assertFalse(report.isEvaluation)
+        assertFalse(report.showNativeToolbar)
+        nav.popBackStack()
+        nav.navigateToWebView("https://evaluation.invalid/form", "任意标题")
+        val ordinary = nav.top().route as WebViewRoute
+        assertFalse(ordinary.isEvaluation)
+        assertTrue(ordinary.showNativeToolbar)
+        listOf(form, report, ordinary).forEach { route ->
+            assertEquals(route, Json.decodeFromString<WebViewRoute>(Json.encodeToString(route)))
+        }
+    }
+
     @Test fun evaluationCloseReturnsToCallerAndLateCloseCannotPopNewPage() {
         val navigator = navigator()
         val homeId = navigator.top().id

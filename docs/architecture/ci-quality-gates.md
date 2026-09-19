@@ -1,6 +1,6 @@
 # CI、质量门禁与发布
 
-最后核对：2026-09-10
+最后核对：2026-09-19
 
 本文描述当前脚本和 GitHub Actions 的实际行为。门禁名称/Owner 元数据以 `scripts/quality/quality_gate_registry.json` 为准；是否真正执行则以对应 workflow 和 runner 脚本为准。
 
@@ -49,12 +49,16 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 
 `.github/workflows/android-ci.yml` 保留普通 PR/Push 的 build-only 主阻断路径，并在 affected scope 明确要求时追加独立 instrumentation smoke job：
 
-1. `detect-affected` 计算 Gradle tasks、`run_instrumentation` 和 smoke test classes。
+1. `detect-affected` 计算 Gradle tasks、`run_instrumentation` 和 smoke test classes；Android CI 工作流、smoke runner 或影响分析器本身发生变更时强制执行 instrumentation，避免 CI 控制面改动产生假绿。
 2. `verify-build` 执行 ci-required guards、Lint 和 Debug 构建，不启动模拟器；full scope 额外构建 Debug AAB。
-3. 仅当 `run_instrumentation=true` 时，`instrumentation-smoke` 在 API 36 x86_64 emulator 上构建 App/androidTest APK，并通过 `.github/scripts/run-instrumentation-smoke.sh` 逐个执行选中的 App test class。
+3. 仅当 `run_instrumentation=true` 时，`instrumentation-smoke` 先启用并验证 `/dev/kvm` 硬件加速，再在 API 36 x86_64 emulator 上构建 App/androidTest APK，并通过 `.github/scripts/run-instrumentation-smoke.sh` 逐个执行选中的 App test class；KVM 不可用时快速失败，不允许退化为不稳定的软件模拟。
 4. Debug APK、构建报告和诊断产物按既有策略上传；smoke 报告和失败 logcat 作为 7 天 artifact 上传，未受影响的改动不承担 emulator 成本。
 
+PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；同一 PR 推送新提交时会取消旧流水线，避免过期 build 与 emulator job 继续占用资源。主分支 push 不自动取消，确保每个已合入提交仍有独立结果。
+
 该条件 job 仍不是完整业务回归矩阵。普通主阻断路径执行助手单测，但不覆盖正式应用完整业务单测或完整用户旅程，条件 smoke 也只执行 affected scope 选中的 App instrumentation class。完整 `:app` 与 `:core:data` connected tests 通过 `scripts/quality/run_connected_android_tests.sh` 在本地或发布验收环境执行。
+
+`test_ci_upgrade_validation.py` 由 workflow 守卫调用：执行工作流中的 KVM 脚本并注入缺失/权限拒绝场景，在临时 Git 仓库逐项验证三类 CI 路径触发 smoke，并验证 PR 并发分组跨提交稳定且彼此隔离。这些本地守卫不替代真实 Actions 模拟器运行。
 
 当前 ci-required guards：
 

@@ -2,7 +2,7 @@
 # Build tooling
 agp = "9.4.1"
 kotlin = "2.4.20"
-ksp = "2.3.11"
+ksp = "2.3.12"
 
 # KotlinX
 kotlinxCoroutines = "1.11.0"
@@ -31,7 +31,7 @@ mlKitFaceDetection = "16.1.7"
 
 # Persistence and background work
 androidxDataStore = "1.2.1"
-androidxRoom = "2.8.4"
+androidxRoom = "2.8.5"
 androidxWork = "2.11.2"
 
 # Dependency injection
@@ -43,12 +43,12 @@ javaxInject = "1"
 gson = "2.14.0"
 moshi = "1.15.2"
 okhttp = "5.5.0"
-okio = "3.18.1"
+okio = "3.18.2"
 protobufJavalite = "4.28.3"
 retrofit = "3.0.0"
 
 # Image loading
-coil = "3.6.0"
+coil = "3.6.3"
 
 # Vendor SDKs and diagnostics
 amapLocation = "11.2.100"

@@ -109,3 +109,11 @@ fun AppNavigator.navigateToManualFaceCapture() {
 fun AppNavigator.navigateToWebView(url: String, title: String) {
     navigate(WebViewRoute(url, title))
 }
+
+fun AppNavigator.navigateToEvaluationForm(url: String, title: String) {
+    navigateWhenResumed(WebViewRoute(url, title, isEvaluation = true, showNativeToolbar = false))
+}
+
+fun AppNavigator.navigateToEvaluationReport(url: String, title: String) {
+    navigate(WebViewRoute(url, title, showNativeToolbar = false))
+}

@@ -60,6 +60,8 @@ Android 源码、资源、BuildConfig 或 APK。客户端通过
 | POST | `/V1/Sale/SearchUserLatentList` | `SaleRepository.searchUserLatentList` |
 | GET | `/V1/Sale/GetUserLatentDetail?id=...` | `SaleRepository.getUserLatentDetail` |
 
+2026-09-19 纯表单真机联调发现契约差异：Swagger 虽将 `GetCheckResult.recordId` 标为可空，但没有设备记录时，省略该字段或显式传 null 均返回业务码 2001“参数错误”。同一已完成问卷的最新客户详情可返回 `pgResult` 和 `pgUrl`。按用户确认，完成页有非空设备记录时使用 GetCheckResult，纯表单直接重新请求 GetUserLatentDetail；不使用缓存旧值、不在失败后切换接口兜底。
+
 当前 Swagger 对 `liveLng` 的说明写作“纬度”、`liveLat` 写作“经度”，与通用命名习惯相反。
 客户端不擅自互换字段，按接口字段名原样传递；服务端确认含义后再统一修订。
 
@@ -78,11 +80,11 @@ Android 源码、资源、BuildConfig 或 APK。客户端通过
 7. 页面只接收不可变的 `QlzEvaluationUiState`。蓝牙地址在 integration 边界内换成会话级不透明 ID，界面仅显示掩码；用户点选后由 `ConnectDeviceHelp` 连接，并映射五指、进度、电量、超时和掉线回调。
 8. `onCheckEnd` 只触发一次 `sendData(...)`。纬度、经度和地址取自当前客户或本次登记的可靠字段，缺失时传空字符串；上传失败仅在内存中保留本次 `RecordInputData` 供重试。
 9. 上传成功后关闭设备会话，重新查询 `/V1/Sale/GetUserLatentDetail?id=...`，取 `pgUrl` 自动进入应用内“表单评估” H5，不直接显示业务完成页。待打开请求绑定客户与 recordId，通过 SavedStateHandle 保存；页面恢复前台后消费一次。URL 为空或查询失败可只重试客户查询，不重新上传。SDK 回调中的 URL 会被忽略，不打开厂商报告 Activity。
-10. 评估 H5 调用 `window.NativeBridge.closeWebView()` 后关闭并显示完成页，以该调用作为完成通知，不另行核实是否完成。完成页请求 `POST /V1/Sale/GetCheckResult`（id=当前客户、recordId=已有 SDK 记录；纯表单可空），直接展示 `pgResult`，报告使用该响应的 `pgUrl`。结果失败/为空可手动刷新，不重新上传。系统/顶部返回只回评估入口；报告/协议/隐私网页只关闭自身，所有网页都不使用返回结果邮箱或关联协议。
+10. 评估 H5 左上角返回调用 `window.NativeBridge.closeWebView()` 后关闭并显示完成页，沿用已确认业务约定，不另行核实是否提交完成。设备完成页请求 `POST /V1/Sale/GetCheckResult`（id=当前客户、recordId=已有 SDK 记录）；纯表单完成页重新请求 `GET /V1/Sale/GetUserLatentDetail`。直接展示本次响应的 `pgResult`，报告使用其 `pgUrl`。结果失败/为空可手动刷新同一接口，不重新上传、不读缓存旧值、不增加兜底链。系统返回只回评估入口；报告/协议/隐私网页只关闭自身，所有网页都不使用返回结果邮箱或关联协议。成功弹窗确认仅刷新 H5，不要求调用关闭。
 
 表单评估同样只使用 `/V1/Sale/AddUserLatent` 或
-`/V1/Sale/GetUserLatentDetail` 返回的 `pgUrl`，通过标题为“表单评估”的应用内
-`WebViewRoute` 加载；表单、报告与协议共用统一关闭接口。
+`/V1/Sale/GetUserLatentDetail` 返回的 `pgUrl`，通过应用内 `WebViewRoute` 加载。
+表单和报告显式隐藏原生标题栏，仅保留 H5 自带标题/返回，填满系统安全内容区并避让键盘；协议和隐私页面保持原布局。表单、报告与协议共用统一关闭接口，展示开关不改变关闭用途。
 设备自动评估也始终停留在应用自有页面；应用不调用
 `SDKCall.openByToken(...)` 或 `SDKCall.goResultAcitivty(...)` 打开检测、表单或报告。
 
@@ -105,7 +107,7 @@ window.NativeBridge.closeWebView();
 
 客户端接收后通过当前 Navigation 3 entry 返回来源原生页面，保留首页和来源状态。
 该调用无参数，由 H5 调用客户端；普通网页只关闭自身，评估 H5 按业务约定以该调用通知评估完成。
-客户端不代替 H5 提交评估数据，完成页直接查询 GetCheckResult 获取文案，不增加网页返回结果关联或二次完成确认。
+客户端不代替 H5 提交评估数据，完成页按有无设备记录分别查询 GetCheckResult 或最新客户详情获取文案，不增加网页返回结果关联或二次完成确认。
 容器在首次加载前通过 `addJavascriptInterface` 注册 `NativeBridge` 对象，
 仅以 `@JavascriptInterface` 暴露无参数 `closeWebView()`。客户端不注入 JS 包装、不检查现代消息桥能力，
 不要求 H5 传凭证或协议字段；H5 自行决定按钮、弹窗、提交与关闭时机。
@@ -114,7 +116,7 @@ window.NativeBridge.closeWebView();
 内部 H5 不设置额外 URL 白名单或导航/请求拦截，跨域跳转保留接口，普通加载失败不禁用关闭。
 新增方法直接在 NativeBridge 中声明并添加注解，不使用独立关闭 Policy、注册表或分发器。
 接口对所有页面及其 frame 可见，不认证调用来源；当前仅能关闭，未来敏感方法须独立设计授权。
-加载失败保留原生返回，不放宽 TLS、文件访问或混合内容限制。
+加载失败仍可系统返回（有原生栏的页面也保留原生返回），不放宽 TLS、文件访问或混合内容限制。
 渲染进程退出时桥同步失效，销毁网页并显示原生异常提示，用户可返回后重新打开，不自动循环重载。
 
 ## 联调运行
@@ -153,6 +155,8 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest \
 
 测试结果输出至 `app/build/test-results/` 和 `app/build/outputs/androidTest-results/`；
 这些 mock 验证不会把 OpenSpec 中的真实 BLE 验收项标记为完成。
+
+`SalesEvaluationLiveResultTest` 是显式启用的只读联调测试：仅对已提交问卷的授权测试客户，使用真实登录态、SalesViewModel 和接口验证纯表单等级及完成页文案；不创建客户、不提交问卷、不打印报告 URL。须同时传入 `liveEvaluationCustomerId` 与 `liveEvaluationExpectedGrade`，默认跳过。该测试验证结果查询分支，不替代登记、H5 提交与返回的完整 UI 旅程。
 
 `SalesEvaluationDesignTest` 提供三态确定性截图，`QlzGripPreparationTest` 用虚拟时间验证计时与取消。
 `NativeWebViewCloseBridgeTest` 使用不启动 Activity 的真实 WebView 验证首次脚本可调用、重复/后台/失效回调、刷新与 frame 可见性；

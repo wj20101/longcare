@@ -16,6 +16,11 @@ import com.ytone.longcare.features.webview.api.WebViewActions
 import com.ytone.longcare.features.webview.ui.WebViewScreen
 import com.ytone.longcare.navigation.InAppWebViewDialog
 import com.ytone.longcare.navigation.NavigationStateTestActivity
+import com.ytone.longcare.navigation.AppNavigationHost
+import com.ytone.longcare.navigation.AppEntryProviderBuilder
+import com.ytone.longcare.navigation.AppNavigator
+import com.ytone.longcare.navigation.HomeRoute
+import com.ytone.longcare.navigation.WebViewRoute
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -51,14 +56,27 @@ class WebViewTerminationTest {
         }
     }
 
-    @Test fun evaluationRendererExitRemovesWebViewAndKeepsNativeBack() {
-        var backs = 0
+    @Test fun evaluationRendererExitRemovesWebViewAndKeepsSystemBack() {
+        lateinit var navigator: AppNavigator
         compose.setContent {
-            WebViewScreen(WebViewActions({ backs++ }), "https://evaluation.invalid/form", "表单评估")
+            AppNavigationHost(HomeRoute, "renderer-test") { nav ->
+                navigator = nav
+                AppEntryProviderBuilder().apply {
+                    destination<HomeRoute> { Text("评估来源") }
+                    destination<WebViewRoute> { entry ->
+                        val page = nav.forEntry(entry.id)
+                        WebViewScreen(WebViewActions({ page.popBackStack() }),
+                            "https://evaluation.invalid/form", "表单评估", showNativeToolbar = false)
+                    }
+                }
+            }
         }
+        compose.runOnIdle { navigator.navigate(WebViewRoute("https://evaluation.invalid/form", "表单评估", true, false)) }
         signalRendererExit(expectJavascript = true)
-        compose.onNodeWithContentDescription("返回").performClick()
-        compose.runOnIdle { assertEquals(1, backs) }
+        compose.onNodeWithContentDescription("返回").assertDoesNotExist()
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.onNodeWithText("评估来源").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(1, navigator.backStack.size) }
     }
 
     @Test fun privacyRendererExitKeepsConsentPendingAndDismissAvailable() {

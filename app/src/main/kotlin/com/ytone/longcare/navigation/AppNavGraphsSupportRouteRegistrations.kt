@@ -158,6 +158,7 @@ internal fun AppEntryProviderBuilder.registerWebViewRoute(navController: AppNavi
             ),
             url = route.url,
             title = route.title,
+            showNativeToolbar = route.showNativeToolbar,
         )
     }
 }

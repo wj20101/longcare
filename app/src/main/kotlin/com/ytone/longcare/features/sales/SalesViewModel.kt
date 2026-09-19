@@ -717,9 +717,18 @@ class SalesViewModel @Inject constructor(
         _uiState.value = state.copy(isEvaluationResultLoading = true, evaluationResultError = false)
         evaluationResultJob = viewModelScope.launch {
             try {
-                val result = saleRepository.getCheckResult(
-                    state.selectedCustomerId, state.evaluationFormRequest?.recordId,
-                )
+                val recordId = state.evaluationFormRequest?.recordId
+                val result = if (!recordId.isNullOrBlank()) {
+                    saleRepository.getCheckResult(state.selectedCustomerId, recordId)
+                } else {
+                    when (val detail = saleRepository.getUserLatentDetail(state.selectedCustomerId)) {
+                        is ApiResult.Success -> ApiResult.Success(
+                            CheckResultModel(pgResult = detail.data.pgResult, pgUrl = detail.data.pgUrl),
+                        )
+                        is ApiResult.Failure -> detail
+                        is ApiResult.Exception -> detail
+                    }
+                }
                 currentCoroutineContext().ensureActive()
                 when (result) {
                     is ApiResult.Success -> _uiState.value = _uiState.value.copy(
