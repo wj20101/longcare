@@ -27,7 +27,7 @@ JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SH
 
 | 领域 | 组件 | 版本 |
 |---|---|---:|
-| UI | Jetpack Compose BOM | 2026.08.00 |
+| UI | Jetpack Compose BOM | 2026.09.00 |
 | UI | Material 3 / Adaptive Navigation Suite | 由 Compose BOM 管理 |
 | Navigation | Navigation 3 runtime / ui | 1.1.7 |
 | Navigation state | Lifecycle ViewModel Navigation 3 decorator | 2.11.0 |
