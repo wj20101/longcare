@@ -9,6 +9,7 @@ import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
+import com.ytone.longcare.domain.system.WatermarkConfigProvider
 import com.ytone.longcare.domain.system.ServicePhotoConfigProvider
 import com.ytone.longcare.model.SystemConfigModel
 import com.ytone.longcare.model.ThirdKeyReturnModel
@@ -31,7 +32,7 @@ class SystemConfigManager @Inject constructor(
     @param:ApplicationScope private val applicationScope: CoroutineScope,
     private val moshi: Moshi,
     private val apiService: LongCareApiService,
-) : FaceVerificationConfigProvider, ServicePhotoConfigProvider {
+) : FaceVerificationConfigProvider, ServicePhotoConfigProvider, WatermarkConfigProvider {
     companion object {
         private const val PREFS_NAME = "system_config_prefs"
         private const val KEY_SYSTEM_CONFIG = "system_config"
@@ -231,7 +232,7 @@ class SystemConfigManager @Inject constructor(
     /**
      * 获取水印logo图片
      */
-    suspend fun getSyLogoImg(): String {
+    override suspend fun getSyLogoImg(): String {
         return getSystemConfigLazy()?.syLogoImg ?: ""
     }
 

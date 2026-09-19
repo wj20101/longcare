@@ -432,7 +432,7 @@ Closes #123
 ### 2. 人脸识别
 - 使用腾讯云人脸识别SDK
 - 人脸识别流程：获取FaceId → 启动SDK → 验证结果
-- 相关代码在 `features/facerecognition/` 和 `domain/faceauth/`
+- 腾讯 SDK 适配在 `integration/txface/`，共享验证 UI 在 `feature/identification/`，领域契约在 `core/domain/` 下的 `domain/faceauth/`
 
 ### 3. 位置追踪
 - 使用高德地图SDK

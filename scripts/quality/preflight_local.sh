@@ -198,6 +198,7 @@ run_step() {
 }
 
 run_local_fast() {
+  run_step "validation-app-isolation" bash scripts/quality/verify_validation_app_isolation.sh "${ROOT_DIR}"
   local new_files_guard_mode=""
   if [[ "${MODE}" == "changed-only" && "${CHANGED_ONLY_FALLBACK_ALL}" != "true" ]]; then
     new_files_guard_mode="--changed-only"
@@ -226,7 +227,7 @@ run_local_fast() {
       return 0
     fi
 
-    if has_changed_paths '^(app/src/(main|debug|test)/kotlin/com/ytone/longcare/|core/|feature/|scripts/quality/(verify_architecture_boundaries\.sh|legacy_feature_files_allowlist\.txt|architecture_legacy_imports_allowlist\.txt|architecture_legacy_import_budget\.txt))'; then
+    if has_changed_paths '^(app/src/(main|debug|test)/kotlin/com/ytone/longcare/|assistant/|integration/|core/|feature/|scripts/quality/(verify_architecture_boundaries\.sh|legacy_feature_files_allowlist\.txt|architecture_legacy_imports_allowlist\.txt|architecture_legacy_import_budget\.txt))'; then
       run_step \
         "architecture-boundaries" \
         bash scripts/quality/verify_architecture_boundaries.sh "${ROOT_DIR}"
@@ -258,7 +259,7 @@ run_local_fast() {
       fi
     fi
 
-    if has_changed_paths '^(app/src/(main|debug|test)/kotlin/com/ytone/longcare/|core/|feature/|scripts/quality/verify_module_api_visibility\.sh)'; then
+    if has_changed_paths '^(app/src/(main|debug|test)/kotlin/com/ytone/longcare/|assistant/|integration/|core/|feature/|scripts/quality/verify_module_api_visibility\.sh)'; then
       run_step \
         "module-api-visibility" \
         bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare "${ROOT_DIR}"
@@ -310,8 +311,8 @@ echo
 run_local_fast
 
 if [[ "${MODE}" == "full" || "${MODE}" == "release" ]]; then
-  run_step "compile-debug-kotlin" ./gradlew --no-daemon :app:compileDebugKotlin
-  run_step "test-debug-unit" ./gradlew --no-daemon :app:testDebugUnitTest
+  run_step "compile-debug-kotlin" ./gradlew --no-daemon :app:compileDebugKotlin :assistant:compileDebugKotlin
+  run_step "test-debug-unit" ./gradlew --no-daemon :app:testDebugUnitTest :assistant:testDebugUnitTest :integration:txface:testDebugUnitTest :core:common:testDebugUnitTest :core:data:testDebugUnitTest :core:ui:testDebugUnitTest :feature:identification:testDebugUnitTest :feature:photoupload:testDebugUnitTest
 fi
 
 if [[ "${MODE}" == "release" ]]; then

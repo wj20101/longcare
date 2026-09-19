@@ -7,6 +7,7 @@ plugins {
 }
 
 android {
+    testOptions { unitTests.isIncludeAndroidResources = true }
     namespace = "com.ytone.longcare.feature.identification"
     buildFeatures {
         compose = true
@@ -40,9 +41,11 @@ dependencies {
     implementation(libs.okhttp.core)
     implementation(libs.crashreport)
     implementation(libs.dagger.hilt.android)
-    implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
     ksp(libs.dagger.hilt.compiler)
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.androidx.test.core)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.truth)

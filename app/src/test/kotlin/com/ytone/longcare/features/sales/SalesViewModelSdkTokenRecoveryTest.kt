@@ -164,6 +164,7 @@ class SalesViewModelSdkTokenRecoveryTest {
             imagePipeline = testImagePipeline(applicationContext),
             evaluationDeviceGateway = evaluationDeviceGateway,
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
+            savedStateHandle = androidx.lifecycle.SavedStateHandle(),
             textResolver = ResourceTextResolver(applicationContext),
         )
     }
