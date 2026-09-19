@@ -1,6 +1,6 @@
 # QLZ SDK 1.3.0.5 接入说明
 
-最后核对：2026-09-12
+最后核对：2026-09-19
 
 > 当前状态：Debug 和显式 Acceptance Release 可用于联调；Production Release 会因固定测试配置、QLZ 弱 TLS finding 和当前腾讯人脸二进制兼容问题 fail closed。不得把验收产物作为生产包。
 
@@ -12,9 +12,45 @@
 - SDK AAR SHA-256：
   `5a0a5d647ceaf23d8660e4def556b6eb2caa73e3a0e2a0aa204bce69eb77b3ab`
 
-选用厂商建议的 protobuf Lite 包，并按接入文档使用
-`com.google.protobuf:protobuf-javalite:4.28.3`。工程已有的 OkHttp 和 AppCompat 版本继续统一
-由版本目录管理，未额外引入厂商文档中的旧版本。
+选用厂商建议的 protobuf Lite AAR，厂商示例运行库基线为 4.28.3；本项目版本目录的
+运行库现为 `com.google.protobuf:protobuf-javalite:4.36.2`，AAR 保持不变。该基线不是
+已验证的精确 protoc 生成器版本。工程已有的 OkHttp 和 AppCompat 版本继续由版本目录管理。
+
+Java Lite 不保证 API/ABI 稳定，因此升级必须测试 AAR 自带的真实消息与 Gzip 入口，
+而非仅构建或 mock SDK 回调。`QlzProtobufCompatibilityTest` 在 JVM 和 Android 共用同一源文件，
+使用合成记录覆盖嵌套采样、生理数据、旧版本 fixture、未知字段及损坏输入，不进入正式包。
+4.28.3/4.36.2 的 JVM 专项、双向消息/Gzip 解析及 4.36.2 的 API 24/37 Debug 专项已通过；
+另外，4.36.2 合法签名 acceptance Release 在 API 24/37 各通过 8 项实际 SDK 消息/Gzip
+混淆专项。该组合另已完成授权真机 BLE 检测、上传、自动进入 H5、提交问卷、H5 返回与
+原生接口等级展示验收；离线测试不替代后续 SDK/运行库升级时的真实链路复核。
+
+默认 instrumentation 继续使用 Debug 和 AndroidJUnitRunner。仅做离线 QLZ 混淆专项时，
+可显式启用 `-Ptest.qlzRelease=true`，测试源限定为共享消息代码和 `src/qlzReleaseTest/java`。
+测试入口 `QlzReleaseTestRunner` 直接运行 JUnit，不初始化 AndroidX UI/Tracing；
+不改变 Release 的签名、混淆或生产校验规则。构建需要合法签名及显式 acceptance：
+
+```bash
+./gradlew :app:assembleRelease :app:assembleReleaseAndroidTest \
+  -Ptest.qlzRelease=true -Prelease.production=false -Prelease.acceptance=true \
+  -PLONGCARE_ALLOW_UNSIGNED_RELEASE=false -PALLOW_UNSIGNED_RELEASE=false
+```
+
+覆盖安装对应目标 APK 和测试 APK 后，运行：
+
+```bash
+adb -s DEVICE_SERIAL shell am instrument -w -r \
+  com.ytone.longcare.test/com.ytone.longcare.integration.qlz.QlzReleaseTestRunner
+```
+
+完整 13 项 API 矩阵保留在 JVM/Debug。混淆包使用 `QlzReleaseProtobufTest` 的 8 项实际
+SDK 消息/Gzip 合约，覆盖旧 fixture、嵌套字段、实例隔离、未知字段和错误输入；不要求 R8
+为测试保留正式代码未使用的辅助 API，也不把 8 项结果冒称完整 13 项。原 AndroidJUnitRunner
+需要的 Trace 方法及测试直接调用的部分 Protobuf 工厂方法在正式 R8 包中已被删除，故不适用
+该场景。运行器必须报告非零用例、无跳过、无失败才成功；可加 `-e class java.lang.String`
+做受控失败检查，预期 `FAILED` 且 `INSTRUMENTATION_CODE: 0`，不能只检查 adb 进程退出码。
+
+设备验收须同时安装对应目标 APK 和测试 APK，确认消息/运行库来自目标包，不以测试包内副本
+通过作为 R8 验收。个人设备只覆盖安装，不卸载或清数据，完成后恢复约定 Debug 包。
 
 ## 1.3.0.5 升级约定
 
@@ -168,6 +204,10 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest \
 
 - `SalesSdkUiController` 在 `DEVICE_STATUS` 与 `EVALUATION_GUIDE` 之间持有同一会话；普通页面状态和 ViewModel 不保存 `Activity`、`BluetoothDevice`、MAC 全值或厂商可变回调对象。
 - 每个进程最多持有一个活动检测租约。重复点击、迟到回调和旧 generation 不会创建第二条连接或覆盖新状态。
+- QLZ 1.3.0.5 的 `ScanDeviceIml` 仅以弱引用保存内部回调，GC 后可能丢失设备列表及停止通知。
+  `QlzVendorScanner` 在存活期间强持有该回调，重试时重新注册，关闭时停止扫描、清理引用并屏蔽迟到事件。
+  此处依赖固定 AAR 的 `bluetoothLeScan.d`/注册方法；升级厂商 AAR 时必须重跑真实回调生命周期测试，
+  不以 mock 状态机代替，也不添加反射兜底、轮询或自动无限重试。
 - 离开活动评估页面、宿主销毁、取消或完成时，先使当前 generation 失效，再停止扫描、终止检测、调用 `ConnectDeviceHelp.onDestroy()` 并释放租约；即使 `stopScan()` 同步触发回调，也无法改写关闭后的状态。宿主进入后台时至少停止正在进行的扫描，Token 校验的迟到成功也不会在后台启动扫描。
 - Token 过期仍复用现有业务规则：最多向 LongCare 服务端刷新一次，再重建当前自定义 driver；第二次过期直接终止。
 - 支付回调只显示阻断提示并中止本次检测，不自动打开 SDK 返回的支付 URL。厂商错误文本不会直接显示，所有错误按应用内固定分类映射。

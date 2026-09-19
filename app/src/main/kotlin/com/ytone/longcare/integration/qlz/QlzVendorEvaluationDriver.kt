@@ -13,7 +13,6 @@ import com.evenmed.sdk.call.CheckCallIml
 import com.evenmed.sdk.call.CheckIml
 import com.evenmed.sdk.call.ConnectDeviceHelp
 import com.evenmed.sdk.call.ErrorCodeConfig
-import com.evenmed.sdk.call.ScanDeviceIml
 import com.falth.data.AssessedData
 import com.falth.data.RecordInputData
 import java.util.ArrayList
@@ -24,7 +23,7 @@ internal class QlzVendorEvaluationDriver(
 ) : QlzEvaluationDriver {
     private var activity: Activity? = activity
     private var listener: ((QlzEvaluationDriverEvent) -> Unit)? = null
-    private var scanner: ScanDeviceIml? = null
+    private var scanner: QlzVendorScanner? = null
     private var connector: ConnectDeviceHelp? = null
     private val deviceCatalog = QlzDeviceCatalog<BluetoothDevice>()
     private val uploadBuffer = QlzUploadBuffer<AssessedData, RecordInputData>()
@@ -67,19 +66,16 @@ internal class QlzVendorEvaluationDriver(
         check(!closed)
         val hostActivity = checkNotNull(activity)
         val activeScanner =
-            scanner ?: object : ScanDeviceIml(hostActivity) {
-                override fun scanStart() {
+            scanner ?: QlzVendorScanner(
+                hostActivity,
+                onStarted = {
                     emit(QlzEvaluationDriverEvent.ScanStarted)
-                }
-
-                override fun scanStop() {
+                },
+                onStopped = {
                     emit(QlzEvaluationDriverEvent.ScanStopped)
-                }
-
-                override fun scanChange(devices: ArrayList<BluetoothDevice>?) {
-                    publishDeviceSnapshot(devices)
-                }
-            }.also { scanner = it }
+                },
+                onDevices = ::publishDeviceSnapshot,
+            ).also { scanner = it }
         activeScanner.startScan(SCAN_TIMEOUT_MILLIS)
     }
 
@@ -175,6 +171,7 @@ internal class QlzVendorEvaluationDriver(
         deviceCatalog.clear()
         connector?.onDestroy()
         connector = null
+        scanner?.close()
         scanner = null
         activity = null
     }

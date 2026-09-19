@@ -134,6 +134,23 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
 
+    // Run the same vendor protobuf contract on the JVM and Android; never package it in the app.
+    sourceSets {
+        getByName("test").java.srcDir("src/testShared/java")
+        getByName("androidTest").java.srcDir("src/testShared/java")
+    }
+
+    // Opt-in offline QLZ checks against the real minified target; normal UI tests stay on Debug.
+    if (providers.gradleProperty("test.qlzRelease").orNull == "true") {
+        testBuildType = "release"
+        defaultConfig.testInstrumentationRunner =
+            "com.ytone.longcare.integration.qlz.QlzReleaseTestRunner"
+        sourceSets.getByName("androidTest") {
+            java.setSrcDirs(listOf("src/testShared/java", "src/qlzReleaseTest/java"))
+            kotlin.setSrcDirs(emptyList<String>())
+        }
+    }
+
     packaging {
         jniLibs {
             keepDebugSymbols +=
@@ -241,7 +258,7 @@ dependencies {
     implementation(libs.okio.core)
     implementation(libs.moshi.kotlin)
     implementation(libs.gson)
-    // The bundled protobuf Lite SDK is generated against protobuf-javalite 4.28.3.
+    // Vendor sample baseline: 4.28.3. Keep the catalog runtime covered by QLZ message/Gzip tests.
     implementation(libs.protobuf.javalite)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.work.runtime.ktx)
