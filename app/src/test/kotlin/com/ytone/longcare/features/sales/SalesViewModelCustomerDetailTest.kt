@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.sales
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import com.ytone.longcare.R
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
@@ -16,6 +17,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -161,7 +163,58 @@ class SalesViewModelCustomerDetailTest {
             coEvery { getUserLatentDetail(any()) } returns result
         }
 
-    private fun createViewModel(repository: SaleRepository): SalesViewModel {
+    @Test
+    fun `restored customer detail reloads saved id only once`() = runTest {
+        val detail = UserLatentDetailModel(id = 7, pgResult = "A级")
+        val repository = repositoryWithDetail(ApiResult.Success(detail))
+        val originalHandle = SavedStateHandle()
+        createViewModel(repository, originalHandle).loadCustomerDetail(7)
+        val restoredHandle = SavedStateHandle(originalHandle.keys().associateWith { originalHandle.get<Any?>(it) })
+        val restored = createViewModel(repository, restoredHandle)
+        assertNull(restored.uiState.value.selectedCustomer)
+
+        restored.restoreCustomerDetailIfNeeded()
+        restored.restoreCustomerDetailIfNeeded()
+        advanceUntilIdle()
+
+        assertEquals(detail, restored.uiState.value.selectedCustomer)
+        coVerify(exactly = 2) { repository.getUserLatentDetail(7) }
+    }
+
+    @Test
+    fun `restoring detail does not duplicate pending request`() = runTest {
+        val response = CompletableDeferred<ApiResult<UserLatentDetailModel>>()
+        val repository = repositoryWithDetail(ApiResult.Success(UserLatentDetailModel(id = 7)))
+        coEvery { repository.getUserLatentDetail(7) } coAnswers { response.await() }
+        val vm = createViewModel(repository, SavedStateHandle(mapOf("sales.evaluation.customer" to 7)))
+        repeat(2) { vm.restoreCustomerDetailIfNeeded() }
+        response.complete(ApiResult.Success(UserLatentDetailModel(id = 7)))
+        advanceUntilIdle()
+        coVerify(exactly = 1) { repository.getUserLatentDetail(7) }
+    }
+
+    @Test
+    fun `restored detail failure stays retryable without automatic retry loop`() = runTest {
+        val repository = repositoryWithDetail(ApiResult.Failure(code = 500, message = "暂不可用"))
+        val vm = createViewModel(repository, SavedStateHandle(mapOf("sales.evaluation.customer" to 7)))
+        repeat(2) { vm.restoreCustomerDetailIfNeeded() }
+        advanceUntilIdle()
+        assertEquals("暂不可用", vm.uiState.value.customerDetailErrorMessage)
+        coVerify(exactly = 1) { repository.getUserLatentDetail(7) }
+    }
+
+    @Test
+    fun `detail restoration without saved customer does not request id zero`() = runTest {
+        val repository = repositoryWithDetail(ApiResult.Success(UserLatentDetailModel(id = 7)))
+        createViewModel(repository).restoreCustomerDetailIfNeeded()
+        advanceUntilIdle()
+        coVerify(exactly = 0) { repository.getUserLatentDetail(any()) }
+    }
+
+    private fun createViewModel(
+        repository: SaleRepository,
+        savedStateHandle: SavedStateHandle = SavedStateHandle(),
+    ): SalesViewModel {
         val applicationContext =
             mockk<Context>(relaxed = true) {
                 every { getString(R.string.sales_error_customer_detail_data) } returns
@@ -174,7 +227,7 @@ class SalesViewModelCustomerDetailTest {
             imagePipeline = testImagePipeline(applicationContext),
             evaluationDeviceGateway = mockk<SalesEvaluationDeviceGateway>(relaxed = true),
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
-            savedStateHandle = androidx.lifecycle.SavedStateHandle(),
+            savedStateHandle = savedStateHandle,
             textResolver = ResourceTextResolver(applicationContext),
         )
     }

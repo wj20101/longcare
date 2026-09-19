@@ -3,8 +3,8 @@ set -euo pipefail
 
 LINT_REPORT="${1:-app/build/reports/lint-results-debug.txt}"
 
-if [[ ! -f "${LINT_REPORT}" ]]; then
-  echo "[vendor-sdk-release][FAIL] lint report not found: ${LINT_REPORT}" >&2
+if [[ ! -f "${LINT_REPORT}" || ! -r "${LINT_REPORT}" || ! -s "${LINT_REPORT}" ]]; then
+  echo "[vendor-sdk-release][FAIL] lint report missing, unreadable or empty: ${LINT_REPORT}" >&2
   exit 1
 fi
 
@@ -23,11 +23,22 @@ grep '\[TrustAllX509TrustManager\]' "${LINT_REPORT}" \
   | grep -E 'qlzsdk' \
   >> "${TMP_VIOLATIONS}" || true
 
-if [[ -s "${TMP_VIOLATIONS}" ]]; then
-  echo "[vendor-sdk-release][FAIL] production-blocking vendor SDK findings remain:" >&2
-  sort -u "${TMP_VIOLATIONS}" | sed 's/^/  - /' >&2
-  echo "Replace the QLZ and/or Tencent face SDK binaries before production release." >&2
-  exit 1
-fi
+unapproved=0
+while IFS= read -r finding; do
+  # Only the explicitly accepted current binaries/findings are advisory.
+  case "${finding}" in
+    *qlzsdk-1.3.0.5-protobufLiteRelease-ui*\[TrustAllX509TrustManager\]*|\
+    *WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc*\[Aligned16KB\]*|\
+    *WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc*\[GlobalOptionInConsumerRules\]*)
+      echo "[vendor-sdk-release][WARN] accepted risk, not fixed: ${finding}" >&2
+      ;;
+    *)
+      echo "[vendor-sdk-release][FAIL] unapproved vendor finding: ${finding}" >&2
+      unapproved=1
+      ;;
+  esac
+done < <(sort -u "${TMP_VIOLATIONS}")
 
-echo "[vendor-sdk-release][PASS] no production-blocking vendor SDK findings detected"
+if [[ "${unapproved}" -ne 0 ]]; then exit 1; fi
+
+echo "[vendor-sdk-release][PASS] no unapproved targeted vendor findings; other lint/signing checks remain required"

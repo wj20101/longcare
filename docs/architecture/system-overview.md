@@ -166,7 +166,7 @@ flowchart LR
 - Debug、Release、nonMinifiedRelease 和 benchmarkRelease 变体由 Android CLI/Gradle 识别。
 - Android CI 的正常阻断路径以构建、Lint、架构和治理为主，助手单测纳入阻断，正式业务全量单测仍不作为普通 CI 必跑；本地 `--full` 和专项验证仍应运行相关测试。
 - 验收 Release 必须显式设置 `release.production=false` 和 `release.acceptance=true`。
-- 当前生产 Release 是 fail-closed：临时 QLZ key/test mode、QLZ 弱 TLS 检查和腾讯人脸 ARM64 16 KB 对齐问题未解决前，生产门禁必须失败。
+- 当前 QLZ key/test mode、QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 已知问题经用户明确接受，production 输出警告；正式签名、其他质量和产物检查仍必须通过，不将风险接受视为问题修复。
 
 ## 已接受的技术债
 
@@ -175,7 +175,7 @@ flowchart LR
 - 销售体验仍由 `:app` 持有，`SalesViewModel` 体量较大。
 - Navigation 3 路由和三个 feature entry 常量还不是统一的 feature-owned 导航模型。
 - Manifest 组件面较广，源于定位、计时、闹钟、NFC、更新和厂商 SDK 的现实需求。
-- Jetifier 与生产发布阻断依赖厂商提供兼容的新 AAR，不能用忽略 Lint 或放宽门禁替代。
+- Jetifier 移除及厂商风险修复依赖兼容的新 AAR；当前发布风险接受不等于完成这些修复，也不允许忽略其他 Lint 或签名问题。
 
 后续优先级见[路线图与开放问题](roadmap-and-open-gaps.md)，强制边界见[依赖规则](dependency-rules.md)。
 
