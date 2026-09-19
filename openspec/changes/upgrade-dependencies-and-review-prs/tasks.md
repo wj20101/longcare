@@ -37,10 +37,12 @@
 
 ## 4. 编译与测试工具链
 
-- [ ] 4.1 处理 #126 的 KSP 2.3.12，先在现有 Kotlin 下验证 Hilt/Room/Moshi 生成、跨模块编译和 Lint，再纳入下一项目标组合验证。
-- [ ] 4.2 基于最新主分支整合 #122（实施复核时已无冲突）并升级 Kotlin 2.4.20，检查相关编译器/Compose 插件版本一致；通过主应用/助手完整 JVM 单测、代码生成与构建，审查并按授权逐项合入 #126/#122。
+- [x] 4.1 处理 #126 的 KSP 2.3.12，先在现有 Kotlin 下验证 Hilt/Room/Moshi 生成、跨模块编译和 Lint，再纳入下一项目标组合验证。
+- [ ] 4.2 基于最新主分支整合 #122 并升级 Kotlin 2.4.20（初次复核无冲突，KSP 合入后需保留两个目标版本解决相邻行冲突），检查相关编译器/Compose 插件版本一致；通过主应用/助手完整 JVM 单测、代码生成与构建，审查并按授权逐项合入 #126/#122。
 - [ ] 4.3 升级 Compose BOM 2026.09.00 并在授权后建立独立 PR，核对实际解析映射；运行 Navigation 3 状态/返回、H5 无标题栏/键盘/弹窗/大字体回归，最新检查通过后按授权合入。
 - [ ] 4.4 处理 #128 的 Robolectric 4.17，核对 JDK/API 配置及受影响 shadow 用法；主应用和助手完整 JVM 单测通过后按授权合入，不以 build-only 替代。
+
+#126 候选 `1ad9b625` 已整合 `46cd1529`，只升级 KSP 到 2.3.12，Kotlin 保持 2.4.10，不启用 backing field 新特性。Hilt 注入器、Room DAO/数据库和 Moshi DTO adapter 重新生成；双应用 Debug/Lint、Data 测试 APK 和完整 preflight 均通过，新生成 DAO 在 API 24 的 7 项测试通过，schema 无差异，既有 allowlist 通过。[CI 35408739082](https://github.com/wj20101/longcare/actions/runs/35408739082) 通过（instrumentation 按范围跳过），锁定 head 正常合入为 `ce06b1d0b3afcd1063b0b819b1de095cc5b897c3`；目标 Kotlin 组合验证仍属于 4.2。Room 合入后的主分支 CI 35408621120 也已通过。
 
 ## 5. 性能工具与 #117
 

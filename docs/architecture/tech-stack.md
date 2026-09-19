@@ -16,7 +16,7 @@
 | JDK / JVM toolchain | 21 | `constants.gradle.kts`、约定插件 |
 | Gradle Wrapper | 9.7.1 | `gradle/wrapper/gradle-wrapper.properties` |
 | Android Gradle Plugin | 9.4.1 | `gradle/libs.versions.toml` |
-| Kotlin | 2.4.10 | `gradle/libs.versions.toml` |
+| Kotlin | 2.4.20 | `gradle/libs.versions.toml` |
 | KSP | 2.3.12 | `gradle/libs.versions.toml` |
 
 ## 主要库
