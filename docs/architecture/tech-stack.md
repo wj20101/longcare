@@ -55,7 +55,7 @@ JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SH
 
 | 组件 | 当前来源 | 说明 |
 |---|---|---|
-| QLZ | `app/libs/qlzsdk-1.3.0.5-protobufLiteRelease-ui.aar` | 运行库 `protobuf-javalite:4.36.2`（厂商示例基线 4.28.3）；当前只允许 Debug/验收用途 |
+| QLZ | `app/libs/qlzsdk-1.3.0.5-protobufLiteRelease-ui.aar` | 运行库 `protobuf-javalite:4.36.2`（厂商示例基线 4.28.3）；当前测试配置和已知风险经确认可保留于正式包 |
 | 腾讯人脸 Live | `WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc.aar` | 默认本地 AAR，可通过 Gradle 属性切到私有 Maven |
 | 腾讯人脸 Normal | `WbCloudNormal-v5.1.10-4e3e198.aar` | 与 Live SDK 一起由约定插件装配 |
 
@@ -96,7 +96,7 @@ Android CLI 当前识别以下 app 变体：
 | 变体 | 用途 | 关键差异 |
 |---|---|---|
 | `debug` | 日常开发与联调 | 可用 `debug.useMockData` 切换本地 mock；默认仓库配置为 `false` |
-| `release` | 签名、压缩和资源收缩的发布包 | 默认按生产模式校验；当前已知厂商问题会阻断生产构建 |
+| `release` | 签名、压缩和资源收缩的发布包 | 默认按生产模式校验；已明确接受的当前厂商问题告警，其余检查保持阻断 |
 | `nonMinifiedRelease` | Baseline Profile 目标变体 | 由 Baseline Profile 插件创建 |
 | `benchmarkRelease` | Macrobenchmark/Profile 验证 | 由性能插件创建 |
 

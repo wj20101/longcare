@@ -489,6 +489,15 @@ class SalesViewModel @Inject constructor(
         loadCustomerDetail(_uiState.value.selectedCustomerId)
     }
 
+    fun restoreCustomerDetailIfNeeded() {
+        val state = _uiState.value
+        if (state.selectedCustomerId > 0 && state.selectedCustomer == null &&
+            !state.isCustomerDetailLoading && state.customerDetailErrorMessage == null
+        ) {
+            loadCustomerDetail(state.selectedCustomerId)
+        }
+    }
+
     fun selectCustomer(customerId: Int) {
         _uiState.value = _uiState.value.copy(selectedCustomerId = customerId)
     }

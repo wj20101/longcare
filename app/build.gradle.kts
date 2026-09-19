@@ -187,7 +187,7 @@ val verifyProductionReleaseConfiguration =
     tasks.register<Exec>("verifyProductionReleaseConfiguration") {
         group = "verification"
         description =
-            "Prevents the temporary QLZ test configuration from being published as production."
+            "Validates release mode and reports explicitly accepted vendor/configuration risks."
         commandLine(
             "bash",
             rootProject.file("scripts/quality/verify_production_release_config.sh").absolutePath,

@@ -179,7 +179,7 @@ jobs:
       - name: Enforce lint release readiness
         run: bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
 
-      - name: Enforce production vendor SDK release readiness
+      - name: Check production vendor SDK risk policy
         if: ${{ steps.release_mode.outputs.production == 'true' }}
         run: bash scripts/quality/verify_vendor_sdk_release_readiness.sh app/build/reports/lint-results-debug.txt
 

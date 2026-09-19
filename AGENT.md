@@ -132,7 +132,7 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 
 - app 版本、SDK 和依赖以 `constants.gradle.kts`、version catalog 和 Wrapper 为准。
 - 验收 Release 必须显式声明 acceptance。
-- 生产 Release 当前 fail-closed：固定 QLZ 测试配置、QLZ 弱 TLS finding、腾讯人脸 16 KB 对齐和 consumer rule 问题未解决前不得绕过门禁。
+- 2026-09-19 用户明确接受当前固定 QLZ 测试配置、QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 的 16 KB/consumer rule 风险：正式构建报告警告，不代表问题已修复。其余签名、Lint、产物和业务验收检查仍阻断；不得扩展为任意错误放行。
 - targetSdk 36 的大屏竖屏 opt-out 在 API 37 被移除；升级前必须完成自适应与相机方向回归。
 
 ## 结束任务前

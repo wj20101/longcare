@@ -550,7 +550,7 @@ require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:spa
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Run release-required signing safety checks" "android-release defines explicit release-required signing step"
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Run release-required exported component guard" "android-release defines explicit release-required exported-component step"
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Resolve release mode" "android-release resolves acceptance and production mode explicitly"
-require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Enforce production vendor SDK release readiness" "android-release keeps the production vendor SDK gate"
+require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Check production vendor SDK risk policy" "android-release keeps the production vendor SDK risk check"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "name:[[:space:]]*Run affected compile/lint/assemble verification" "android-ci uses affected compile/lint/assemble verification step name"
 require_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "name:[[:space:]]*Run ci-required compile/lint/assemble verification" "android-release uses ci-required compile/lint/assemble verification step name"
 require_pattern "${ROOT_DIR}/.github/workflows/android-ci.yml" "run-lint-ignore-policy-check:[[:space:]]*'false'" "android-ci disables shared lint-ignore guard to keep ownership explicit"
@@ -575,8 +575,8 @@ check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" 
 check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Run ci-required quality gates" "bash scripts/quality/verify_module_dependency_whitelist\\.sh \\." "android-release ci-required step runs module dependency guard command"
 check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Resolve release mode" "PRODUCTION_REQUESTED=\"false\"" "android-release maps acceptance mode to a non-production build"
 check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Resolve release mode" "ACCEPTANCE_REQUESTED=\"true\"" "android-release explicitly enables acceptance builds"
-check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Enforce production vendor SDK release readiness" "steps\\.release_mode\\.outputs\\.production[[:space:]]*==[[:space:]]*'true'" "android-release runs the vendor SDK blocker only for production"
-check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Enforce production vendor SDK release readiness" "verify_vendor_sdk_release_readiness\\.sh" "android-release production gate invokes the vendor SDK readiness script"
+check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Check production vendor SDK risk policy" "steps\\.release_mode\\.outputs\\.production[[:space:]]*==[[:space:]]*'true'" "android-release runs the vendor SDK risk check only for production"
+check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Check production vendor SDK risk policy" "verify_vendor_sdk_release_readiness\\.sh" "android-release production gate invokes the vendor SDK risk policy script"
 check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Generate baseline profile (GMD)" "-Prelease\\.production=.*steps\\.release_mode\\.outputs\\.production" "android-release baseline generation uses the resolved production flag"
 check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Generate baseline profile (GMD)" "-Prelease\\.acceptance=.*steps\\.release_mode\\.outputs\\.acceptance" "android-release baseline generation uses the resolved acceptance flag"
 check_step_contains_pattern "${ROOT_DIR}/.github/workflows/android-release.yml" "Build release APK and AAB" "-Prelease\\.production=.*steps\\.release_mode\\.outputs\\.production" "android-release passes the resolved production flag to Gradle"
@@ -631,5 +631,6 @@ if [[ "${EXIT_CODE}" -ne 0 ]]; then
 fi
 
 python3 "${ROOT_DIR}/scripts/quality/test_ci_upgrade_validation.py"
+python3 "${ROOT_DIR}/scripts/quality/test_production_release_policy.py"
 
 echo "[ci-workflow-quality] verification passed."

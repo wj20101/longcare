@@ -37,7 +37,7 @@
 
 `run_quality_gate.sh` 调用 `collect_quality_snapshot.sh`，需要 `jq`。Lint 报告缺失时默认先运行 `:app:lintDebug`，结果写入 `build/quality-snapshot/`。
 
-质量快照包含 production-oriented 厂商 SDK readiness 检查。当前已知 QLZ/腾讯人脸问题仍存在时，该命令失败是预期的 fail-closed 结果，不应通过放宽规则让它变绿。
+质量快照包含厂商 SDK 风险检查。经用户于 2026-09-19 明确确认，当前 QLZ 1.3.0.5 和腾讯人脸 6.6.2 已知事项改为警告；缺失报告或未接受的目标厂商问题仍失败，其他 Lint/签名检查不变。
 
 正式/助手隔离守卫由本地 preflight 与 Android CI/Release 执行，也可单独运行：
 
@@ -87,7 +87,7 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 
 - 只允许 `workflow_dispatch`。
 - 工作流传入 `release.production=false`、`release.acceptance=true`。
-- 临时 QLZ key/test mode 和已知厂商包只在明确验收模式下允许。
+- 此模式继续显式标记为验收；当前 QLZ key/test mode 在 production 中也经明确接受并告警。
 - APK、AAB 和 GitHub Release 名称必须标记为验收用途。
 
 ### Production
@@ -98,12 +98,14 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 - 要求真实 Release keystore、密码和 alias；禁止 debug keystore fallback。
 - 生成压缩 Release APK/AAB，并执行产物、签名、Manifest 和发布元数据检查。
 
-当前 production 必须失败，直到以下问题全部消失：
+用户已明确接受以下当前风险，production 输出警告而不因此单独失败；这不是问题已修复或全设备兼容的保证：
 
 - Android 内仍有固定 QLZ 测试 key 和 `QLZ_TEST_MODE=true`。
 - QLZ 1.3.0.5 可达代码存在弱 TLS trust manager。
 - 当前腾讯人脸 ARM64 native library 不满足 16 KB 对齐。
-- 人脸 AAR 的 consumer rules 含生产阻断的全局选项。
+- 人脸 AAR 的 consumer rules 含已知全局选项。
+
+`test_production_release_policy.py` 由 workflow 守卫调用，覆盖风险告警、合法/冲突模式、错误参数、缺失报告和其他版本不自动放行。不得通过 `continue-on-error` 或关闭签名/Lint 来放行其他失败。
 
 详见 [QLZ SDK 接入](../integrations/qlz-sdk.md)和[路线图](roadmap-and-open-gaps.md)。
 
@@ -123,8 +125,8 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 | 门禁 | 事实来源 | 常见修复方向 |
 |---|---|---|
 | Release exported components | `verify_release_exported_components.sh` | 收紧 Manifest 或有依据地更新 allowlist |
-| Vendor SDK readiness | `verify_vendor_sdk_release_readiness.sh` | 替换厂商二进制并回归，不加 ignore |
-| Production config | `verify_production_release_config.sh` | 删除临时 QLZ 配置、升级厂商 SDK |
+| Vendor SDK risk policy | `verify_vendor_sdk_release_readiness.sh` | 当前已接受事项告警；其他目标厂商问题仍需处理 |
+| Production config | `verify_production_release_config.sh` | 模式冲突/错误参数阻断，当前已接受测试配置告警 |
 | Signing safety | build-logic + Release workflow | 配置真实 keystore，不使用 debug 签名 |
 | Baseline profile source | Release workflow | 生成/提交受支持的 profile 或明确 warning |
 
@@ -166,7 +168,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 ./gradlew --no-daemon :app:lintDebug :app:assembleDebug
 bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
 
-# 查看完整 release-oriented 快照；当前厂商 blocker 会使其 fail closed
+# 查看完整 release-oriented 快照，已接受厂商风险仍输出警告
 bash scripts/quality/preflight_local.sh --release
 ```
 
@@ -177,7 +179,7 @@ bash scripts/quality/preflight_local.sh --release
 - `bash scripts/release/build-dual-apks.sh --debug`：两应用真实接口 Debug，输出 `build/outputs/dual-apk/debug/`。
 - `bash scripts/release/build-dual-apks.sh --acceptance`：显式 acceptance、强制非生产且禁用签名 fallback，输出 `build/outputs/dual-apk/acceptance/`。
 - 打包只选择 Gradle output-metadata.json 当前声明的 APK，校验独立包名、相同版本、模式和文件；失败不导出半套新包。每套包含 `SHA256SUMS`、`artifacts.json`。
-- Android CI 始终编译/测试/检查助手并独立上传 `assistant-debug-apk`。Release workflow 仅 acceptance 分支生成 `dual-acceptance-apks`；生产发布仍只包含正式 `:app`，原 fail-closed 厂商门禁不变。
+- Android CI 始终编译/测试/检查助手并独立上传 `assistant-debug-apk`。Release workflow 仅 acceptance 分支生成 `dual-acceptance-apks`；生产发布仍只包含正式 `:app`，厂商事项按上述明确接受的风险策略报告。
 - 脚本回归：`python3 scripts/quality/test_validation_app_isolation.py`、`python3 scripts/release/test_package_dual_apks.py`。
 
 助手设备回归应使用独占的 ARM64 测试模拟器，避免与其他项目同时运行 instrumentation。相机权限测试要求开始时助手未授予相机权限；使用空白测试环境，不对个人手机清数据。登录测试以测试内存会话和 Repository 替身覆盖状态，不发送真实短信或提交真实人脸。

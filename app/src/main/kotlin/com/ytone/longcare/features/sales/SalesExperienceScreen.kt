@@ -265,6 +265,9 @@ internal fun SalesExperienceScreen(
             currentPage == SalesPage.REMINDERS ->
                 viewModel.loadToDoList()
 
+            currentPage == SalesPage.CUSTOMER_DETAIL ->
+                viewModel.restoreCustomerDetailIfNeeded()
+
             currentPage == SalesPage.REMINDER_DETAIL &&
                 uiState.toDoItems.isEmpty() ->
                 viewModel.loadToDoList()

@@ -9,6 +9,10 @@ known_unsafe_qlz_sdk_present="false"
 known_unsafe_face_sdk_present="false"
 
 while [[ $# -gt 0 ]]; do
+  if [[ $# -lt 2 || ( "$2" != "true" && "$2" != "false" ) ]]; then
+    echo "[release-config][FAIL] each option requires true or false" >&2
+    exit 2
+  fi
   case "$1" in
     --production-requested)
       production_requested="${2:-}"
@@ -70,12 +74,13 @@ if [[ "${known_unsafe_face_sdk_present}" == "true" ]]; then
 fi
 
 if [[ ${#violations[@]} -gt 0 ]]; then
-  echo "[release-config][FAIL] production release configuration is not ready:" >&2
+  # Explicitly accepted for the current vendor/configuration baseline on 2026-09-19.
+  # Keep the risk visible; this is not evidence that the SDK issues are fixed.
+  echo "[release-config][WARN] approved vendor/configuration risks remain:" >&2
   for violation in "${violations[@]}"; do
     echo "- ${violation}" >&2
   done
-  echo "Replace the flagged vendor SDKs and use server-supplied QLZ configuration before producing a release." >&2
-  exit 1
+  echo "[release-config][WARN] approved baseline is unchanged; vendor security/device compatibility is not guaranteed." >&2
 fi
 
-echo "[release-config][PASS] production release configuration is ready"
+echo "[release-config][PASS] release mode is valid; signing and quality checks remain required"

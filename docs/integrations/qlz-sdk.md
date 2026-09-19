@@ -2,7 +2,7 @@
 
 最后核对：2026-09-19
 
-> 当前状态：Debug 和显式 Acceptance Release 可用于联调；Production Release 会因固定测试配置、QLZ 弱 TLS finding 和当前腾讯人脸二进制兼容问题 fail closed。不得把验收产物作为生产包。
+> 当前状态：用户于 2026-09-19 明确接受当前固定测试配置、QLZ 1.3.0.5 弱 TLS 及腾讯人脸 6.6.2 已知风险，Production Release 将其作为警告。其他签名和质量检查仍阻断；风险接受不等于修复，不得把验收产物直接当作正式包。
 
 ## 接入范围
 
@@ -70,14 +70,14 @@ SDK 消息/Gzip 合约，覆盖旧 fixture、嵌套字段、实例隔离、未�
 初始化 `QlzSdkClient`。
 
 普通 `release` 默认按生产包校验，不再默认生成测试验收包。需要临时生成验收 Release 时，
-必须同时显式传入 `-Prelease.production=false -Prelease.acceptance=true`。生产构建只要仍存在
-固定测试 key、`QLZ_TEST_MODE=true`、QLZ 1.3.0.5 弱 TLS 实现或未兼容 16 KB 的腾讯人脸包，
-构建门禁都会直接失败。
+必须同时显式传入 `-Prelease.production=false -Prelease.acceptance=true`。当前固定测试 key、
+`QLZ_TEST_MODE=true`、QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 已知问题已获用户明确接受，
+生产检查改为警告，保持模式合法性、签名和其余质量检查。
 
 GitHub 的 `Android Release` 手动工作流提供 `release_mode` 选项。当前测试阶段默认选择
 `acceptance`，工作流会自动传入上述两个 Gradle 参数，并在 APK、AAB、GitHub Release 名称中
-标记为验收包。只有厂商 SDK 与服务端下发配置全部达到生产要求后，才可选择 `production`；
-生产模式始终执行 `verify_vendor_sdk_release_readiness.sh`，不会绕过安全门禁。
+标记为验收包。选择 `production` 时仍使用当前已接受的配置，并执行
+`verify_vendor_sdk_release_readiness.sh` 报告剩余风险；缺失输入和未接受问题不自动放行。
 
 `appSecret` 只允许配置在 LongCare 服务端。它用于俏郎中 OpenAPI 请求签名，不得写入
 Android 源码、资源、BuildConfig 或 APK。客户端通过
@@ -219,6 +219,5 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest \
 - 旧版 `BLUETOOTH`、`BLUETOOTH_ADMIN` 权限限制到 API 30。
 - SDK 仅在联调页或未来业务入口按需初始化，不在 Application 启动阶段读取设备标识。
 - 自定义页面不再注册厂商 Activity 的全局 WindowInsets 兼容回调；AAR 中的 Activity 仍由 manifest merge 保留为不可导出组件，但业务路径不会启动它们。
-- QLZ 1.3.0.5 内置的遥测链路仍存在弱 TLS 校验；Debug/验收联调可继续使用，但生产发布已由
-  `verifyProductionReleaseConfiguration` 和 `verify_vendor_sdk_release_readiness.sh` 双重阻断，
-  直到厂商提供修复版本。
+- QLZ 1.3.0.5 内置遥测仍存在弱 TLS 校验。用户已接受当前风险，production 检查明确告警；
+  这不修复 SDK，也不免除其他签名、质量或业务验收。后续由厂商提供修复版本。
