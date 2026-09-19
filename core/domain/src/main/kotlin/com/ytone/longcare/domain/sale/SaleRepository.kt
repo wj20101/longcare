@@ -4,6 +4,7 @@ import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.AddUserLatentParamModel
 import com.ytone.longcare.model.AddUserLatentResultModel
 import com.ytone.longcare.model.CheckTokenModel
+import com.ytone.longcare.model.CheckResultModel
 import com.ytone.longcare.model.SearchUserLatentParamModel
 import com.ytone.longcare.model.ToDoNumResultModel
 import com.ytone.longcare.model.ToDoResultModel
@@ -14,6 +15,8 @@ import com.ytone.longcare.model.UserLatentListModel
  * 销售与俏郎中检测相关接口。
  */
 interface SaleRepository {
+    suspend fun getCheckResult(customerId: Int, recordId: String?): ApiResult<CheckResultModel>
+
     suspend fun getCheckToken(
         customerId: Int,
         checkDeviceId: String,

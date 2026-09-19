@@ -112,7 +112,7 @@ android {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
-                "txkyc-face-consumer-proguard-rules.pro"
+                // Tencent consumer rules are supplied by :integration:txface.
             )
             buildConfigField("String", "BASE_URL", "\"$BASE_URL\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
@@ -203,6 +203,7 @@ configurations.configureEach {
 dependencies {
     baselineProfile(project(":baselineprofile"))
 
+    implementation(project(":integration:txface"))
     implementation(project(":core:common"))
     implementation(project(":core:data"))
     implementation(project(":core:domain"))
@@ -217,6 +218,7 @@ dependencies {
 
     implementation(platform(libs.compose.bom))
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.webkit)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -228,10 +230,12 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.startup.runtime)
     implementation(libs.androidx.profileinstaller)
-    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.dagger.hilt.android)
     implementation(libs.hilt.work)
-    implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
     implementation(libs.retrofit.core)
     implementation(libs.okhttp.core)
     implementation(libs.okio.core)

@@ -10,8 +10,8 @@ class PermissionRequestPolicyTest {
     @Test
     fun `camera permission is not launched from composition side effects`() {
         val files = listOf(
-            "src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraPermissionGate.kt",
-            "src/main/kotlin/com/ytone/longcare/features/face/ui/ManualFaceCaptureEffects.kt",
+            "../feature/photoupload/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraPermissionGate.kt",
+            "../feature/identification/src/main/kotlin/com/ytone/longcare/features/face/ui/ManualFaceCaptureEffects.kt",
             "../feature/identification/src/main/kotlin/com/ytone/longcare/features/facecapture/FaceCaptureScreen.kt"
         )
 
@@ -28,7 +28,7 @@ class PermissionRequestPolicyTest {
     @Test
     fun `camera watermark screen does not request location permission on resume`() {
         val source = File(
-            "src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraScreenContentLifecycle.kt"
+            "../feature/photoupload/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraScreenContentLifecycle.kt"
         ).readText()
 
         assertFalse(source.contains("launcher.launch(locationPermissions)"))
@@ -38,7 +38,7 @@ class PermissionRequestPolicyTest {
     @Test
     fun `camera permission gate initializes from system permission`() {
         val source = File(
-            "src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraPermissionGate.kt"
+            "../feature/photoupload/src/main/kotlin/com/ytone/longcare/features/photoupload/ui/CameraPermissionGate.kt"
         ).readText()
 
         assertTrue(source.contains("ContextCompat.checkSelfPermission"))

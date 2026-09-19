@@ -16,22 +16,14 @@ import kotlinx.serialization.Serializable
  */
 @Keep
 @Serializable
-object LoginRoute
+object LoginRoute : AppRoute
 
 /**
  * 主页路由
  */
 @Keep
 @Serializable
-object HomeRoute
-
-/**
- * Home 子图路由
- * 用于承载主页及其共享状态页面。
- */
-@Keep
-@Serializable
-object HomeGraphRoute
+object HomeRoute : AppRoute
 
 /**
  * 服务详情页面路由
@@ -39,7 +31,7 @@ object HomeGraphRoute
  */
 @Keep
 @Serializable
-data class ServiceRoute(val orderParams: OrderNavParams)
+data class ServiceRoute(val orderParams: OrderNavParams) : AppRoute
 
 /**
  * 护理执行页面路由
@@ -47,7 +39,7 @@ data class ServiceRoute(val orderParams: OrderNavParams)
  */
 @Keep
 @Serializable
-data class NursingExecutionRoute(val orderParams: OrderNavParams)
+data class NursingExecutionRoute(val orderParams: OrderNavParams) : AppRoute
 
 
 /**
@@ -59,8 +51,10 @@ data class NursingExecutionRoute(val orderParams: OrderNavParams)
 @Serializable
 data class WebViewRoute(
     val url: String,
-    val title: String
-)
+    val title: String,
+    val isEvaluation: Boolean = false,
+    val showNativeToolbar: Boolean = true,
+) : AppRoute
 
 /**
  * 选择服务页面路由
@@ -68,7 +62,7 @@ data class WebViewRoute(
  */
 @Keep
 @Serializable
-data class SelectServiceRoute(val orderParams: OrderNavParams)
+data class SelectServiceRoute(val orderParams: OrderNavParams) : AppRoute
 
 /**
  * 照片上传页面路由
@@ -76,44 +70,21 @@ data class SelectServiceRoute(val orderParams: OrderNavParams)
  */
 @Keep
 @Serializable
-data class PhotoUploadRoute(val orderParams: OrderNavParams)
+data class PhotoUploadRoute(val orderParams: OrderNavParams) : AppRoute
 
 /**
  * 护理计划列表页面路由
  */
 @Keep
 @Serializable
-object CarePlansListRoute
+object CarePlansListRoute : AppRoute
 
 /**
  * 服务记录列表页面路由
  */
 @Keep
 @Serializable
-object ServiceRecordsListRoute
-
-/**
- * 腾讯人脸识别路由
- */
-@Keep
-@Serializable
-object TxFaceRoute
-
-/**
- * 人脸识别引导页面路由
- * @param orderParams 订单导航参数
- */
-@Keep
-@Serializable
-data class FaceRecognitionGuideRoute(val orderParams: OrderNavParams)
-
-/**
- * 选择设备页面路由
- * @param orderParams 订单导航参数
- */
-@Keep
-@Serializable
-data class SelectDeviceRoute(val orderParams: OrderNavParams)
+object ServiceRecordsListRoute : AppRoute
 
 /**
  * 身份认证页面路由
@@ -121,7 +92,7 @@ data class SelectDeviceRoute(val orderParams: OrderNavParams)
  */
 @Keep
 @Serializable
-data class IdentificationRoute(val orderParams: OrderNavParams)
+data class IdentificationRoute(val orderParams: OrderNavParams) : AppRoute
 
 /**
  * 订单默认人脸检测与服务端比对页面路由。
@@ -129,7 +100,7 @@ data class IdentificationRoute(val orderParams: OrderNavParams)
  */
 @Keep
 @Serializable
-data class DefaultFaceVerificationRoute(val orderParams: OrderNavParams)
+data class DefaultFaceVerificationRoute(val orderParams: OrderNavParams) : AppRoute
 
 /**
  * 用户列表页面路由
@@ -137,7 +108,7 @@ data class DefaultFaceVerificationRoute(val orderParams: OrderNavParams)
  */
 @Keep
 @Serializable
-data class UserListRoute(val listType: String)
+data class UserListRoute(val listType: String) : AppRoute
 
 /**
  * 用户服务记录页面路由
@@ -147,7 +118,7 @@ data class UserListRoute(val listType: String)
  */
 @Keep
 @Serializable
-data class UserServiceRecordRoute(val userId: Long, val userName: String, val userAddress: String)
+data class UserServiceRecordRoute(val userId: Long, val userName: String, val userAddress: String) : AppRoute
 
 /**
  * 相机页面路由
@@ -155,10 +126,10 @@ data class UserServiceRecordRoute(val userId: Long, val userName: String, val us
  */
 @Keep
 @Serializable
-data class CameraRoute(val watermarkData: WatermarkData)
+data class CameraRoute(val watermarkData: WatermarkData) : AppRoute
 
 /**
  * 手动人脸捕获页面路由
  */
 @Serializable
-object ManualFaceCaptureRoute
+object ManualFaceCaptureRoute : AppRoute
