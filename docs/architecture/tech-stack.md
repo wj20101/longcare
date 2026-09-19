@@ -86,6 +86,9 @@ WebKit 1.17.0 的渲染退出检查器会误报已实现回调的父类构造调
 
 约定插件自身也固定使用 JDK 21 toolchain，确保单独执行 `./gradlew -p build-logic test` 时不会因 Android Studio 的更高版本 JDK 生成主构建无法加载的字节码。
 
+Robolectric 4.17 的文件描述符模拟在 JDK 21 上需要访问 `jdk.internal.access`。
+公共约定仅为 Android 模块的单测 JVM 增加对应 `--add-opens`，不影响 App 运行时、Gradle daemon 或纯 JVM 模块。
+
 ## App 构建变体
 
 Android CLI 当前识别以下 app 变体：

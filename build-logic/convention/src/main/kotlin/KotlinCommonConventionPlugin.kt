@@ -1,12 +1,23 @@
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 class KotlinCommonConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         val appJdkVersion = target.intProperty("appJdkVersion")
         val kotlinVersion = target.libsVersion("kotlin")
+
+        listOf("com.android.application", "com.android.library").forEach { pluginId ->
+            target.pluginManager.withPlugin(pluginId) {
+                target.tasks.withType(Test::class.java).configureEach {
+                    // Robolectric 4.17's FileDescriptor interceptor needs this on JDK 17+.
+                    // Test JVM only: https://robolectric.org/getting-started/#running-with-java-17-and-higher
+                    jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED")
+                }
+            }
+        }
 
         target.configurations.configureEach {
             resolutionStrategy.eachDependency {
