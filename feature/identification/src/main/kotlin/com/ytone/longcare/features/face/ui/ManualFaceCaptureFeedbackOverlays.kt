@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.face.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.ytone.longcare.feature.identification.R
 
 @Composable
 internal fun ManualFaceCaptureErrorOverlay(
@@ -50,7 +51,7 @@ internal fun ManualFaceCaptureErrorOverlay(
                 IconButton(onClick = onClearError) {
                     Icon(
                         Icons.Default.Close,
-                        contentDescription = stringResource(R.string.common_close),
+                        contentDescription = stringResource(CoreUiR.string.common_close),
                         tint = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
@@ -80,7 +81,7 @@ internal fun ManualFaceCaptureLoadingOverlay(
             ) {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(stringResource(R.string.common_processing))
+                Text(stringResource(CoreUiR.string.common_processing))
             }
         }
     }

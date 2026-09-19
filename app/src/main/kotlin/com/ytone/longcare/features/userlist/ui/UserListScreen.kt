@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.userlist.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -86,7 +88,7 @@ fun UserListScreen(
                         IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.common_back),
+                                contentDescription = stringResource(CoreUiR.string.common_back),
                                 tint = Color.White
                             )
                         }

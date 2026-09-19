@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.shared
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,7 +52,7 @@ internal fun FaceVerificationWithAutoSignScaffold(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                            contentDescription = stringResource(R.string.common_back),
+                            contentDescription = stringResource(CoreUiR.string.common_back),
                         )
                     }
                 }
@@ -61,7 +63,7 @@ internal fun FaceVerificationWithAutoSignScaffold(
                 Snackbar(
                     action = {
                         TextButton(onClick = onDismissSnackbar) {
-                            Text(stringResource(R.string.common_confirm))
+                            Text(stringResource(CoreUiR.string.common_confirm))
                         }
                     }
                 ) {

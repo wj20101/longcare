@@ -1,6 +1,6 @@
 # 路线图与开放问题
 
-发布风险策略核对：2026-09-19（其余路线条目仍需逐项复核）
+本轮清理核对：2026-09-19
 
 本文只记录仍然成立的后续工作。已完成的任务、逐次 CI 结果和历史方案通过 Git/PR/Issue 追溯，不在主文档中保留执行日志。
 
@@ -23,25 +23,11 @@ Owner 涉及移动端、服务端和厂商；以下是尚未修复的风险治�
 5. `verify_vendor_sdk_release_readiness.sh`、Release 配置门禁、Lint 和 Release 全部通过。
 6. 重新评估 Jetifier；只有全部相关厂商包 AndroidX-only 后才可关闭。
 
-内部双包用于联调/验收，助手不纳入对外正式发布；正式 App 统一使用标准 Release。
+双包支持联调/验收；主应用与助手均使用标准 Release，作为独立安装产物统一通过 GitHub Release 分发，助手不进入主应用商店或更新通道。
 
 ## P1：低风险优化批次
 
-目标是在不改变用户可见行为、route contract、数据契约和厂商 SDK 接入方式的前提下，先提高回归可信度，再修正性能产物，最后清理确定无效的项目 R8 规则。三个批次必须独立实现、独立验证和独立提交；前一批稳定后才能开始下一批。
-
-### 批次 A：测试与 CI 可信度
-
-- 修复 `DashboardGridCompactModeTest` 的陈旧硬编码文案，改为从当前 string resource 生成期望值。
-- 将 `TopHeaderAdaptationTest` 拆为断点纯逻辑测试和与设备宽度匹配的 UI 测试，避免在 compact 模拟器中伪造不可满足的 645dp 根布局。
-- 聚合 instrumentation 只运行实际拥有 `androidTest` 的模块，避免空 Library 测试 APK 因 runner 缺失而在执行前失败。
-- 让 Android CI 真正消费 `run_instrumentation` 和 `smoke_test_classes`，复用现有 instrumentation smoke 脚本；仅在 affected scope 要求时执行。
-
-完成条件：
-
-- `:app` 当前发现的 instrumentation 用例全部通过，新增的布局断点 JVM 用例通过，`:core:data` 迁移用例继续通过。
-- 空 Library 模块不再启动无测试的 instrumentation APK。
-- 普通 Android CI 的 build-only 基线保持不变；受影响范围要求 smoke 时才增加业务验证。
-- 不修改任何生产 Composable 文案、布局断点或业务分支，只修复测试表达和执行编排。
+目标是在不改变用户可见行为、route contract、数据契约和厂商 SDK 接入方式的前提下，修正性能产物，再清理确定无效的项目 R8 规则。两个批次必须独立实现、独立验证和独立提交；前一批稳定后才能开始下一批。
 
 ### 批次 B：Baseline 与 Startup Profile 语义
 
@@ -87,7 +73,7 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 
 再按批次补充 focused unit test、instrumentation、Baseline Profile Benchmark 或 R8 analyzer。每个批次使用独立提交；发现行为差异时只回滚该批次，不跨批次追加兼容分支。
 
-首期明确不包含：厂商 SDK 替换或二进制修补、厂商 consumer rules 收窄、Jetifier 关闭、Navigation 迁移、Compose UI 重构，以及 WorkManager、定位、Bugly、DataStore 等启动初始化时序调整。这些事项分别保留在 P0、既有架构路线或后续受控性能实验中。
+首期明确不包含：厂商 SDK 替换或二进制修补、厂商 consumer rules 收窄、Jetifier 关闭、Navigation 迁移、Compose UI 重构，以及 WorkManager、定位、Bugly、DataStore 等启动初始化时序调整。这些事项分别保留在已接受的厂商风险、既有架构路线或后续受控性能实验中。
 
 ## P1：`:app` 壳层收敛
 
@@ -118,7 +104,7 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 - 销售登记草稿、三张照片上限、QLZ 权限/Token 恢复、表单/报告 WebView。
 - Room 迁移、WorkManager 重建和 app 更新下载恢复。
 
-正常 Android CI 当前是 build-only 阻断策略；这些业务验证应在本地 `--full`、专项 workflow、发布验收或真实设备矩阵中明确承担，而不是被误认为已由普通 CI 覆盖。
+正常 Android CI 以构建/Lint 为基线，按 affected scope 运行 instrumentation smoke；完整业务验证仍应在本地 `--full`、专项 workflow、发布验收或真实设备矩阵中明确承担，而不是被误认为已由普通 CI 覆盖。
 
 ## P1：Android API 37 与自适应
 
@@ -135,8 +121,6 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 ## P2：导航与模块 API
 
 - 统一 feature entry、route key 和 app navigation registry 的所有权；当前 registry 只含 login/home/identification 三项。
-- 评估 Navigation 3，但必须先建立 route/payload/back-stack 等价测试。
-- Navigation 3 迁移不与业务接口变化、模块大搬迁或 targetSdk 升级合并。
 - 继续缩小公共 API，优先 `implementation` 和 `internal`，避免跨模块访问实现包。
 
 ## P2：工程与可观测性

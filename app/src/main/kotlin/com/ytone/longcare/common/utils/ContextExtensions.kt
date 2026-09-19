@@ -3,7 +3,6 @@ package com.ytone.longcare.common.utils
 import android.content.Context
 import android.os.Looper
 import android.widget.Toast
-import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
 
 /**
@@ -14,36 +13,6 @@ import androidx.core.content.ContextCompat
  */
 fun Context.showShortToast(message: CharSequence) {
     showToastOnMainThread(message, Toast.LENGTH_SHORT)
-}
-
-/**
- * 显示一个短时间的 Toast 消息。
- * 确保在主线程中执行，避免 "Can't toast on a thread that has not called Looper.prepare()" 崩溃。
- *
- * @param resId 要显示的消息的字符串资源 ID。
- */
-fun Context.showShortToast(@StringRes resId: Int) {
-    showToastOnMainThread(getString(resId), Toast.LENGTH_SHORT)
-}
-
-/**
- * 显示一个长时间的 Toast 消息。
- * 确保在主线程中执行，避免 "Can't toast on a thread that has not called Looper.prepare()" 崩溃。
- *
- * @param message 要显示的消息文本。
- */
-fun Context.showLongToast(message: CharSequence) {
-    showToastOnMainThread(message, Toast.LENGTH_LONG)
-}
-
-/**
- * 显示一个长时间的 Toast 消息。
- * 确保在主线程中执行，避免 "Can't toast on a thread that has not called Looper.prepare()" 崩溃。
- *
- * @param resId 要显示的消息的字符串资源 ID。
- */
-fun Context.showLongToast(@StringRes resId: Int) {
-    showToastOnMainThread(getString(resId), Toast.LENGTH_LONG)
 }
 
 /**

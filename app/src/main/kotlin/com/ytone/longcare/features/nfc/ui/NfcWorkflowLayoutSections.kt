@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.nfc.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -52,7 +54,7 @@ internal fun NfcWorkflowTopBar(
             IconButton(onClick = singleClick { onBack() }) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.common_back),
+                    contentDescription = stringResource(CoreUiR.string.common_back),
                     tint = Color.White
                 )
             }

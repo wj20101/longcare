@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="common_back">返回</string>
+    <string name="common_confirm">确认</string>
+    <string name="common_cancel">取消</string>
+    <string name="common_close">关闭</string>
+    <string name="common_retry">重试</string>
+    <string name="common_processing">处理中…</string>
     <string name="photo_preview_content_description">预览图片</string>
     <string name="photo_preview_close">关闭图片预览</string>
     <string name="photo_preview_hint">双击缩放 · 双指缩放 · 拖动查看</string>

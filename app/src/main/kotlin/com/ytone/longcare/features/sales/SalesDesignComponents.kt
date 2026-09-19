@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.sales
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -108,7 +110,7 @@ internal fun SalesTopBar(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.ArrowBackIosNew,
-                    contentDescription = stringResource(R.string.common_back),
+                    contentDescription = stringResource(CoreUiR.string.common_back),
                     tint = Color.White,
                     modifier = Modifier.size(if (compact) 16.dp else 25.dp),
                 )

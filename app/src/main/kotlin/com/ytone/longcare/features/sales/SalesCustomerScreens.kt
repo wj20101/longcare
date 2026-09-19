@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.sales
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -589,7 +591,7 @@ internal fun SalesCustomerDetailScreen(
             }
             item {
                 SalesOutlinedActionButton(
-                    text = stringResource(R.string.common_back),
+                    text = stringResource(CoreUiR.string.common_back),
                     onClick = onBack,
                 )
             }

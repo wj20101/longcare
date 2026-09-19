@@ -87,9 +87,10 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 - 执行 `verify_vendor_sdk_release_readiness.sh`。
 - `assembleRelease` / `bundleRelease` 依赖 `verifyReleaseConfiguration`，不传额外模式参数。
 - 要求真实 Release keystore、密码和 alias；禁止 debug keystore fallback。
-- 生成压缩 Release APK/AAB，并执行产物、签名、Manifest 和发布元数据检查。
+- 生成主应用压缩 Release APK/AAB 和助手压缩 Release APK。发布前检查双 APK 的签名有效且一致、包名、版本号/名称、不可调试属性、R8 mapping 及导出组件；缺包或检查失败阻断发布。
 - 自动递增 versionCode、推送版本提交，tag 为 `v<versionName>-<versionCode>`；名称为 `Release v<versionName> (<versionCode>)`，非草稿、非预发布，并设为 Latest。
 - APK/AAB 命名为 `app-v<versionName>-<yyMMdd>-<versionCode>-release.apk/aab`，Actions artifact 名称为 `app-release-artifacts`；不改动历史 Release 的现有下载链接。
+- 助手命名为 `assistant-v<versionName>-<yyMMdd>-<versionCode>-release.apk`，与主应用放入同一 GitHub Release，说明中标明验证助手用途；`release-checksums.txt` 覆盖三个安装包。`assistant-release-artifacts` 留存助手 APK 和 R8 mapping（7 天），助手 mapping 不作为 GitHub Release 附件。
 
 用户已明确接受以下当前风险，Release 输出警告而不因此单独失败；这不是问题已修复或全设备兼容的保证：
 
@@ -98,7 +99,7 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 - 当前腾讯人脸 ARM64 native library 不满足 16 KB 对齐。
 - 人脸 AAR 的 consumer rules 含已知全局选项。
 
-`test_release_policy.py` 由 workflow 守卫调用，覆盖风险告警、旧模式参数拒绝、错误参数、缺失报告和其他版本不自动放行。`test_release_workflow.py` 离线执行实际工作流的产物命名与元数据片段，并断言正式发布标记、签名/目标提交 CI 守卫和助手隔离。不得通过 `continue-on-error` 或关闭签名/Lint 来放行其他失败。
+`test_release_policy.py` 由 workflow 守卫调用，覆盖风险告警、旧模式参数拒绝、错误参数、缺失报告和其他版本不自动放行。`test_release_workflow.py` 离线执行实际工作流的产物命名、校验和与元数据片段，以工具替身覆盖 APK 签名/身份/调试属性失败，并断言双应用上传路径、发布前检查顺序、正式发布标记、目标提交 CI 守卫和助手隔离。不得通过 `continue-on-error` 或关闭签名/Lint 来放行其他失败。
 
 详见 [QLZ SDK 接入](../integrations/qlz-sdk.md)和[路线图](roadmap-and-open-gaps.md)。
 
@@ -172,7 +173,7 @@ bash scripts/quality/preflight_local.sh --release
 - `bash scripts/release/build-dual-apks.sh --debug`：两应用真实接口 Debug，输出 `build/outputs/dual-apk/debug/`。
 - `bash scripts/release/build-dual-apks.sh --release`：标准 Release，要求合法签名且禁用签名 fallback，输出 `build/outputs/dual-apk/release/`。
 - 打包只选择 Gradle output-metadata.json 当前声明的 APK，校验独立包名、相同版本、变体和文件；失败不导出半套新包。每套包含 `SHA256SUMS`、`artifacts.json`，元数据使用 `variant` 字段记录 debug/release。
-- Android CI 始终编译/测试/检查助手并独立上传 `assistant-debug-apk`。双包仅用于内部验证，对外 Release workflow 只包含正式 `:app`，不构建或上传助手；厂商事项按上述明确接受的风险策略报告。
+- Android CI 始终编译/测试/检查助手并独立上传 `assistant-debug-apk`。Android Release 同时构建主应用与助手，在 GitHub Release 提供可区分的独立安装包，不改变主应用商店或更新通道；厂商事项按上述明确接受的风险策略报告。
 - 脚本回归：`python3 scripts/quality/test_validation_app_isolation.py`、`python3 scripts/release/test_package_dual_apks.py`。
 
 助手设备回归应使用独占的 ARM64 测试模拟器，避免与其他项目同时运行 instrumentation。相机权限测试要求开始时助手未授予相机权限；使用空白测试环境，不对个人手机清数据。登录测试以测试内存会话和 Repository 替身覆盖状态，不发送真实短信或提交真实人脸。

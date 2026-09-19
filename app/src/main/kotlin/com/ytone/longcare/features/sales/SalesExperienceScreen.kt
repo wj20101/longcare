@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.sales
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
@@ -738,11 +740,11 @@ internal fun SalesExperienceScreen(
                 text = { Text(message) },
                 confirmButton = {
                     TextButton(onClick = viewModel::retryEvaluationForm) {
-                        Text(stringResource(R.string.common_retry))
+                        Text(stringResource(CoreUiR.string.common_retry))
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = dismiss) { Text(stringResource(R.string.common_back)) }
+                    TextButton(onClick = dismiss) { Text(stringResource(CoreUiR.string.common_back)) }
                 },
             )
         }

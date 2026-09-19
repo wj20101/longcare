@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.identification.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -50,7 +52,7 @@ internal fun IdentificationCardStatusArea(
             RetryStatusColumn(
                 statusText = stringResource(R.string.identification_setup_failed),
                 statusColor = Color(0xFFFF3B30),
-                buttonText = stringResource(R.string.common_retry),
+                buttonText = stringResource(CoreUiR.string.common_retry),
                 onClick = onRetryFaceSetup
             )
         }
@@ -72,7 +74,7 @@ internal fun IdentificationCardStatusArea(
             RetryStatusColumn(
                 statusText = stringResource(R.string.identification_verification_failed),
                 statusColor = Color(0xFFFF3B30),
-                buttonText = stringResource(R.string.common_retry),
+                buttonText = stringResource(CoreUiR.string.common_retry),
                 onClick = onRetryFaceVerification
             )
         }
@@ -103,7 +105,7 @@ internal fun IdentificationCardStatusArea(
                 val statusText = if (photoUploadState is PhotoUploadState.Uploading) {
                     stringResource(R.string.identification_uploading)
                 } else {
-                    stringResource(R.string.common_processing)
+                    stringResource(CoreUiR.string.common_processing)
                 }
                 LoadingStatusRow(text = statusText)
             } else {

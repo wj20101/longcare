@@ -1,4 +1,6 @@
 package com.ytone.longcare.features.endservice.ui
+
+import com.ytone.longcare.core.ui.R as CoreUiR
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -63,7 +65,7 @@ fun EndServiceSelectionScreen(
                     IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.common_back),
+                            contentDescription = stringResource(CoreUiR.string.common_back),
                             tint = Color.White
                         )
                     }

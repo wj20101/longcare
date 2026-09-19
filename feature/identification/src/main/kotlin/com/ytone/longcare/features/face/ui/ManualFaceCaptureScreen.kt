@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.face.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -78,7 +80,7 @@ fun ManualFaceCaptureScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.common_back),
+                            contentDescription = stringResource(CoreUiR.string.common_back),
                         )
                     }
                 },

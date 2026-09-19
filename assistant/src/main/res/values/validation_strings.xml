@@ -1,5 +1,4 @@
 <resources>
-    <string name="common_close">关闭</string>
     <string name="nfc_tag_detected">检测到 NFC 标签</string>
     <string name="nfc_tag_id">标签 ID：%1$s</string>
     <string name="common_copy">复制</string>

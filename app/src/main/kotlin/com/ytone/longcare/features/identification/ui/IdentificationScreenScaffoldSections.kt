@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.identification.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,7 +41,7 @@ internal fun IdentificationTopBar(onNavigateBack: () -> Unit) {
             IconButton(onClick = singleClick(onClick = onNavigateBack)) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.common_back),
+                    contentDescription = stringResource(CoreUiR.string.common_back),
                 )
             }
         },

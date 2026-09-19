@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.nursingexecution.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,7 +70,7 @@ internal fun NursingExecutionContent(
                         IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.common_back)
+                                contentDescription = stringResource(CoreUiR.string.common_back)
                             )
                         }
                     },

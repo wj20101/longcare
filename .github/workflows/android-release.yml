@@ -356,10 +356,49 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease
+        run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease :assistant:assembleRelease
 
       - name: Run release-required exported component guard
-        run: bash scripts/quality/verify_release_exported_components.sh
+        run: |
+          bash scripts/quality/verify_release_exported_components.sh
+          bash scripts/quality/verify_release_exported_components.sh assistant/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
+
+      - name: Verify release APK identities and signatures
+        run: |
+          set -euo pipefail
+          VERSION_CODE="${{ steps.app_version.outputs.version_code }}"
+          VERSION_NAME="${{ steps.app_version.outputs.version_name }}"
+          BUILD_TOOLS=$(find "${ANDROID_HOME}/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)
+          test -x "${BUILD_TOOLS}/apksigner"
+          test -x "${BUILD_TOOLS}/aapt"
+          APP_CERT=""
+          for MODULE in app assistant; do
+            shopt -s nullglob
+            APKS=("${MODULE}/build/outputs/apk/release/"*.apk)
+            if [ "${#APKS[@]}" -ne 1 ] || [ ! -s "${APKS[0]}" ]; then
+              echo "::error::Expected exactly one non-empty ${MODULE} Release APK"
+              exit 1
+            fi
+            CERTS=$("${BUILD_TOOLS}/apksigner" verify --print-certs "${APKS[0]}")
+            CERT=$(printf '%s\n' "$CERTS" | sed -n 's/^.*certificate SHA-256 digest: //p' | sort -u)
+            test -n "$CERT"
+            BADGING=$("${BUILD_TOOLS}/aapt" dump badging "${APKS[0]}")
+            PACKAGE="com.ytone.longcare"
+            EXPECTED_NAME="$VERSION_NAME"
+            if [ "$MODULE" = assistant ]; then
+              PACKAGE="${PACKAGE}.assistant"
+              EXPECTED_NAME="${VERSION_NAME}-assistant"
+              test "$CERT" = "$APP_CERT"
+            else
+              APP_CERT="$CERT"
+            fi
+            printf '%s\n' "$BADGING" | grep -F "package: name='${PACKAGE}' versionCode='${VERSION_CODE}' versionName='${EXPECTED_NAME}'"
+            if printf '%s\n' "$BADGING" | grep '^application-debuggable' > /dev/null; then
+              echo "::error::${MODULE} Release APK is debuggable"
+              exit 1
+            fi
+            test -s "${MODULE}/build/outputs/mapping/release/mapping.txt"
+          done
 
       - name: Rename release APK with version metadata
         id: release_apk
@@ -405,9 +444,27 @@ jobs:
           echo "Final AAB name: ${AAB_TARGET}"
           ls -lah app/build/outputs/bundle/release
 
+      - name: Rename assistant release APK with version metadata
+        id: assistant_apk
+        run: |
+          VERSION_CODE="${{ steps.app_version.outputs.version_code }}"
+          VERSION_NAME="${{ steps.app_version.outputs.version_name }}"
+          DATE_STR=$(date +'%y%m%d')
+          shopt -s nullglob
+          APKS=(assistant/build/outputs/apk/release/*.apk)
+          if [ "${#APKS[@]}" -ne 1 ] || [ ! -s "${APKS[0]}" ]; then
+            echo "::error::Expected exactly one non-empty assistant Release APK"
+            exit 1
+          fi
+          APK_TARGET="assistant/build/outputs/apk/release/assistant-v${VERSION_NAME}-${DATE_STR}-${VERSION_CODE}-release.apk"
+          if [ "${APKS[0]}" != "$APK_TARGET" ]; then
+            mv "${APKS[0]}" "$APK_TARGET"
+          fi
+          echo "apk_path=${APK_TARGET}" >> "$GITHUB_OUTPUT"
+
       - name: Generate release checksums
         run: |
-          sha256sum app/build/outputs/apk/release/*.apk app/build/outputs/bundle/release/*.aab > app/build/outputs/release-checksums.txt
+          sha256sum app/build/outputs/apk/release/*.apk app/build/outputs/bundle/release/*.aab assistant/build/outputs/apk/release/*.apk > app/build/outputs/release-checksums.txt
 
       - name: Archive release mapping
         run: |
@@ -430,6 +487,16 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Upload assistant release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: assistant-release-artifacts
+          path: |
+            assistant/build/outputs/apk/release/*.apk
+            assistant/build/outputs/mapping/release/**
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -439,6 +506,9 @@ jobs:
             app/build/reports/**
             app/build/test-results/**
             app/build/outputs/**
+            assistant/build/reports/**
+            assistant/build/test-results/**
+            assistant/build/outputs/**
             baselineprofile/build/reports/**
             baselineprofile/build/outputs/**
             build/reports/problems/**
@@ -472,6 +542,11 @@ jobs:
             echo "- Tag: \`${TAG_NAME}\`"
             echo "- Commit: \`${SHORT_SHA}\`"
             echo
+            echo "### 下载说明"
+            echo '- app-*-release.apk/aab：LongCare 主应用。'
+            echo '- assistant-*-release.apk：LongCare 验证助手，独立安装，不替代主应用。'
+            echo '- release-checksums.txt：以上安装包的 SHA-256 校验和。'
+            echo
             echo "### Latest commits"
             git log --no-merges -n 12 --pretty=format:'- %s (%h)'
             echo
@@ -489,9 +564,11 @@ jobs:
           draft: false
           make_latest: "true"
           body_path: ${{ steps.release_notes.outputs.path }}
+          fail_on_unmatched_files: true
           files: |
             app/build/outputs/apk/release/*.apk
             app/build/outputs/bundle/release/*.aab
+            assistant/build/outputs/apk/release/*.apk
             app/build/outputs/mapping/release-mapping.zip
             app/build/outputs/release-checksums.txt
 

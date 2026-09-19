@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.serviceorders.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,7 +36,6 @@ import com.ytone.longcare.model.TodayServiceOrderModel
 import com.ytone.longcare.model.handleOrderNavigation
 import com.ytone.longcare.theme.bgGradientBrush
 import androidx.compose.ui.res.stringResource
-import com.ytone.longcare.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,7 +114,7 @@ private fun ServiceOrdersListTopBar(
             IconButton(onClick = singleClick { onNavigateBack() }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.common_back),
+                    contentDescription = stringResource(CoreUiR.string.common_back),
                     tint = Color.White
                 )
             }

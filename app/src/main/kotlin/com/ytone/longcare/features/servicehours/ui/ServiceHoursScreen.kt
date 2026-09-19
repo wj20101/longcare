@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.servicehours.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -99,7 +101,7 @@ fun ServiceHoursScreen(
                                 IconButton(onClick = singleClick { actions.onNavigateBack() }) {
                                     Icon(
                                         Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = stringResource(R.string.common_back)
+                                        contentDescription = stringResource(CoreUiR.string.common_back)
                                     )
                                 }
                             }, colors = TopAppBarDefaults.topAppBarColors(

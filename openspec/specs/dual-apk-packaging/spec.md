@@ -20,7 +20,7 @@
 - **THEN** 两个应用各自原位升级且不会互相替换
 
 ### Requirement: 双应用构建输出两个 APK
-项目 SHALL 提供文档化的双应用构建入口，为指定的受支持变体同时构建正式应用和助手应用，并 SHALL 在构建目录中产生两个名称与路径可明确区分的 APK。
+项目 SHALL 提供文档化的双应用构建入口，仅使用标准 Debug/Release 变体同时构建正式应用和助手应用，并 SHALL 在构建目录中产生两个名称与路径可明确区分的 APK，不再提供独立验收模式。
 
 #### Scenario: 构建 Debug 双 APK
 - **WHEN** 开发者执行文档化的 Debug 双应用构建命令
@@ -28,13 +28,17 @@
 - **THEN** Android CLI 项目描述能够识别两个 application 构建目标及其 APK 输出
 
 #### Scenario: 构建内部验收双 APK
-- **GIVEN** 已提供现有验收构建所需的签名与显式验收配置
-- **WHEN** 开发者执行文档化的验收双应用构建命令
-- **THEN** 构建同时输出正式验收 APK 与明确标记为内部工具的助手 APK
-- **THEN** 该结果不解除或绕过正式生产 Release 的既有 fail-closed 门禁
+- **GIVEN** 已提供合法的正式签名
+- **WHEN** 开发者执行文档化的 Release 双应用构建命令
+- **THEN** 构建同时输出正式 Release APK 与明确标记为内部工具的助手 Release APK
+- **THEN** 两者遵守签名及隔离要求，不需要验收模式配置
+
+#### Scenario: 使用旧验收入口
+- **WHEN** 开发者向双应用构建脚本传入 `acceptance` 或 `production`
+- **THEN** 脚本提示仅支持 `debug` / `release`，不将旧参数作为兼容别名
 
 #### Scenario: 单独构建正式应用
-- **WHEN** 开发者或生产发布流程只执行正式应用构建任务
+- **WHEN** 开发者或正式发布流程只执行正式应用构建任务
 - **THEN** 构建系统不要求生成或发布助手 APK
 
 ### Requirement: 正式 APK 不包含验证入口和专用组件
@@ -57,10 +61,14 @@
 - **THEN** 正式应用和助手应用之间不存在直接项目依赖边
 - **THEN** 新增公共依赖边均被最小化记录并通过模块边界检查
 
-### Requirement: 助手产物不得作为正式产品发布
-发布系统 MUST 将助手 APK 标记为内部验证工具，并 MUST NOT 将其混入面向终端用户的正式商店产物或正式应用更新通道。
+### Requirement: 助手以独立 Release 附件分发
+发布系统 SHALL 在同一 GitHub Release 中提供主应用与助手 Release 产物，并 MUST 通过名称和发布说明明确区分用途。助手 MUST 保持独立应用身份，不得进入主应用的商店产物或应用内更新通道。
 
-#### Scenario: 执行正式生产发布
-- **WHEN** 发布流程生成正式应用的生产 APK 或 AAB
-- **THEN** 对外发布集合只包含正式应用产物
-- **THEN** 助手产物仅在显式请求的内部构建或验收 artifact 中出现
+#### Scenario: 下载同一版本的两个应用
+- **WHEN** 用户访问成功发布的新版本 GitHub Release
+- **THEN** 可分别下载主应用 Release APK/AAB 和助手 Release APK
+- **THEN** 助手附件名称包含 `assistant`，发布说明明确其为验证助手，不与主应用互相覆盖
+
+#### Scenario: 主应用检查更新
+- **WHEN** 主应用使用既有应用内更新通道获取更新
+- **THEN** 本次新增的助手附件不改变主应用更新协议或其安装包身份

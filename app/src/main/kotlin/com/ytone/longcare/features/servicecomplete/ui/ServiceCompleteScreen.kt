@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.servicecomplete.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -68,7 +70,7 @@ fun ServiceCompleteScreen(
                     }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.common_back),
+                            contentDescription = stringResource(CoreUiR.string.common_back),
                             tint = Color.White
                         )
                     }

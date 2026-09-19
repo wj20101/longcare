@@ -2,6 +2,7 @@ package com.ytone.longcare
 
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.ytone.longcare.common.utils.DefaultMoshi
 import com.ytone.longcare.model.ImageTaskStatus
 import com.ytone.longcare.model.ImageTaskType
@@ -12,6 +13,32 @@ import org.junit.Test
  * 测试Moshi序列化优化后的功能
  */
 class MoshiOptimizationTest {
+    @Test
+    fun `string collections round trip`() {
+        val list = listOf("item1", "item2", "item3")
+        val listAdapter = DefaultMoshi.adapter<List<String>>(
+            Types.newParameterizedType(List::class.java, String::class.java)
+        )
+        assertEquals(list, listAdapter.fromJson(listAdapter.toJson(list)))
+
+        val map = mapOf("key1" to "value1", "key2" to "value2")
+        val mapAdapter = DefaultMoshi.adapter<Map<String, String>>(
+            Types.newParameterizedType(Map::class.java, String::class.java, String::class.java)
+        )
+        assertEquals(map, mapAdapter.fromJson(mapAdapter.toJson(map)))
+    }
+
+    @Test
+    fun `enum output matches reflection configuration`() {
+        val adapter = DefaultMoshi.adapter(ImageTaskType::class.java)
+        val json = adapter.toJson(ImageTaskType.BEFORE_CARE)
+        val reflectionAdapter = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+            .adapter(ImageTaskType::class.java)
+        assertEquals("\"BEFORE_CARE\"", json)
+        assertEquals(ImageTaskType.BEFORE_CARE, adapter.fromJson(json))
+        assertEquals(reflectionAdapter.toJson(ImageTaskType.BEFORE_CARE), json)
+    }
+
     private val stringAnyMapType =
         Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
 

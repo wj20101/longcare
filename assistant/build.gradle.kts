@@ -35,7 +35,7 @@ android {
     testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
-// The assistant is an internal validation tool, never included in the public app release.
+// The validation assistant ships as a separate Release APK alongside the main app.
 // No baseline-profile tooling receiver is needed in this internal shell.
 configurations.configureEach {
     exclude(group = "androidx.profileinstaller", module = "profileinstaller")

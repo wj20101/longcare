@@ -3,15 +3,9 @@
     <string name="app_name">长护盾</string>
     <string name="nfc_sign_in_title">进门碰一碰</string>
     <string name="nfc_sign_out_title">出门碰一碰</string>
-    <string name="common_back">返回</string>
-    <string name="common_confirm">确认</string>
-    <string name="common_cancel">取消</string>
-    <string name="common_close">关闭</string>
-    <string name="common_retry">重试</string>
     <string name="common_later">稍后</string>
     <string name="common_go_to_settings">去设置</string>
     <string name="common_acknowledge">我知道了</string>
-    <string name="common_processing">处理中…</string>
     <string name="common_complete">完成</string>
     <string name="common_load_failed">加载失败：%1$s</string>
     <string name="duration_hours">%1$d 小时</string>

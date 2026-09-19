@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.photoupload.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -160,7 +162,7 @@ fun ImageTaskItem(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = stringResource(R.string.common_retry),
+                        contentDescription = stringResource(CoreUiR.string.common_retry),
                         tint = Color.Red,
                         modifier = Modifier
                             .size(32.dp)

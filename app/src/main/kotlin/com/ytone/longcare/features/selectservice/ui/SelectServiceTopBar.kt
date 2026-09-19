@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.selectservice.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -29,7 +31,7 @@ internal fun SelectServiceTopBar(onNavigateBack: () -> Unit) {
             IconButton(onClick = singleClick { onNavigateBack() }) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.common_back),
+                    contentDescription = stringResource(CoreUiR.string.common_back),
                     tint = Color.White
                 )
             }

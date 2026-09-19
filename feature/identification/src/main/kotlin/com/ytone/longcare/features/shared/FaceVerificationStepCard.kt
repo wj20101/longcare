@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.shared
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -129,7 +131,7 @@ internal fun FaceVerificationStepCard(
                             onClick = onClearError,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(stringResource(R.string.common_cancel))
+                            Text(stringResource(CoreUiR.string.common_cancel))
                         }
 
                         Button(
@@ -137,7 +139,7 @@ internal fun FaceVerificationStepCard(
                             modifier = Modifier.weight(1f),
                             enabled = !currentUserId.isNullOrBlank()
                         ) {
-                            Text(stringResource(R.string.common_retry))
+                            Text(stringResource(CoreUiR.string.common_retry))
                         }
                     }
                 }

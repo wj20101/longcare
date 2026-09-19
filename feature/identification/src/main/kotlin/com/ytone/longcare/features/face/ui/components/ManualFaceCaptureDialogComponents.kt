@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.face.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -144,7 +146,7 @@ fun FaceConfirmationDialog(
         },
         confirmButton = {
             Button(onClick = onConfirm) {
-                Text(stringResource(R.string.common_confirm))
+                Text(stringResource(CoreUiR.string.common_confirm))
             }
         },
         dismissButton = {

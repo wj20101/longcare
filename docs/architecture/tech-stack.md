@@ -112,7 +112,7 @@ baseline/startup 两份规则目前相同，语义拆分仍见[性能改进待�
 None / Require 两组冷启动测试；普通 CI 或模拟器生成成功不能证明真实启动收益。
 本地 Release 验收仍须使用合法签名，不能绕过发布门禁。
 
-助手只提供 Debug/Release，始终关闭 mock，与正式 App 共享基础版本、versionCode 及签名校验，助手 versionName 追加 `-assistant`；不应用 Baseline Profile 插件。统一命令为 `bash scripts/release/build-dual-apks.sh --debug|--release`（选择其一），输出 `build/outputs/dual-apk/<variant>/` 中两份版本化 APK、校验和和元数据。助手仅内部使用，对外工作流只发布正式 App。
+助手只提供 Debug/Release，始终关闭 mock，与正式 App 共享基础版本、versionCode 及签名校验，助手 versionName 追加 `-assistant`；不应用 Baseline Profile 插件。统一命令为 `bash scripts/release/build-dual-apks.sh --debug|--release`（选择其一），输出 `build/outputs/dual-apk/<variant>/` 中两份版本化 APK、校验和和元数据。Android Release 将主应用 APK/AAB 和助手 Release APK 发布到同一 GitHub Release；助手保持独立包名，不进入主应用商店或更新通道。
 
 ## 重要构建开关
 

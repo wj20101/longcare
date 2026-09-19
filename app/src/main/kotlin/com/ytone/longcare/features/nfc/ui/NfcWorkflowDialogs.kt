@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.nfc.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -95,7 +97,7 @@ internal fun LocationActivationDialog(
                 border = BorderStroke(1.dp, Color.Gray),
                 shape = RoundedCornerShape(20.dp)
             ) {
-                Text(text = stringResource(R.string.common_cancel), fontSize = 14.sp)
+                Text(text = stringResource(CoreUiR.string.common_cancel), fontSize = 14.sp)
             }
         },
         containerColor = Color.White,
@@ -136,7 +138,7 @@ internal fun EndOrderConfirmDialog(
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Text(
-                    text = stringResource(R.string.common_confirm),
+                    text = stringResource(CoreUiR.string.common_confirm),
                     color = Color.White,
                     fontSize = 14.sp,
                 )
@@ -149,7 +151,7 @@ internal fun EndOrderConfirmDialog(
                 border = BorderStroke(1.dp, Color.Gray),
                 shape = RoundedCornerShape(20.dp)
             ) {
-                Text(text = stringResource(R.string.common_cancel), fontSize = 14.sp)
+                Text(text = stringResource(CoreUiR.string.common_cancel), fontSize = 14.sp)
             }
         },
         containerColor = Color.White,

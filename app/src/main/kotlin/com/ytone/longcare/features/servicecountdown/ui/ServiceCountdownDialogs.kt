@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.servicecountdown.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,14 +60,14 @@ internal fun ConfirmEarlyEndServiceDialog(
                     onConfirm()
                 }
             ) {
-                Text(stringResource(R.string.common_confirm))
+                Text(stringResource(CoreUiR.string.common_confirm))
             }
         },
         dismissButton = {
             TextButton(
                 onClick = singleClick { onDismiss() }
             ) {
-                Text(stringResource(R.string.common_cancel))
+                Text(stringResource(CoreUiR.string.common_cancel))
             }
         }
     )
@@ -86,7 +88,7 @@ internal fun OrderStateErrorDialog(
             TextButton(
                 onClick = singleClick { onConfirm() }
             ) {
-                Text(stringResource(R.string.common_confirm))
+                Text(stringResource(CoreUiR.string.common_confirm))
             }
         }
     )

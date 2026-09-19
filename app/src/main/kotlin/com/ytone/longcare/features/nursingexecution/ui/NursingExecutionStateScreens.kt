@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.nursingexecution.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +19,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.theme.bgGradientBrush
-import com.ytone.longcare.R
 
 @Composable
 internal fun LoadingScreen() {
@@ -58,7 +59,7 @@ internal fun ErrorScreen(
                     contentColor = Color.Black
                 )
             ) {
-                Text(stringResource(R.string.common_retry))
+                Text(stringResource(CoreUiR.string.common_retry))
             }
         }
     }

@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.maindashboard.utils
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
@@ -30,7 +32,7 @@ internal fun NfcTagDialogContent(
         },
         dismissButton = {
             Button(onClick = onDismiss) {
-                Text(stringResource(R.string.common_close))
+                Text(stringResource(CoreUiR.string.common_close))
             }
         }
     )

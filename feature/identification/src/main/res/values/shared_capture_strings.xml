@@ -1,12 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="common_back">返回</string>
-    <string name="common_confirm">确认</string>
-    <string name="common_cancel">取消</string>
-    <string name="common_close">关闭</string>
-    <string name="common_retry">重试</string>
     <string name="common_retake_photo">重新拍照</string>
-    <string name="common_processing">处理中…</string>
     <string name="face_capture_confirm_selection">确认选择的人脸</string>
     <string name="face_capture_permission_title">需要相机权限</string>
     <string name="face_capture_permission_message">请授予相机权限以使用人脸采集功能</string>

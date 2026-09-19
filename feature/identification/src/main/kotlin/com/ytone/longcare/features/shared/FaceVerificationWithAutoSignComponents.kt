@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.shared
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -123,7 +125,7 @@ internal fun FacePhotoCaptureCard(
                     }
                     Text(
                         text = if (isProcessingPhoto) {
-                            stringResource(R.string.common_processing)
+                            stringResource(CoreUiR.string.common_processing)
                         } else {
                             stringResource(R.string.face_verification_capture_photo)
                         },

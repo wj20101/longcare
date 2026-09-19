@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.update.ui
 
+import com.ytone.longcare.core.ui.R as CoreUiR
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -99,7 +101,7 @@ internal fun AppUpdateDialogContent(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.common_close),
+                                contentDescription = stringResource(CoreUiR.string.common_close),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }

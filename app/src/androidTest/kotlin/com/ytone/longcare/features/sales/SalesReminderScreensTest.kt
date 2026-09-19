@@ -3,6 +3,7 @@ package com.ytone.longcare.features.sales
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ytone.longcare.model.ToDoResultModel
@@ -48,6 +49,7 @@ class SalesReminderScreensTest {
 
     @Test
     fun toDoDetail_displaysApiTitleContentAndReminderTime() {
+        val backCount = AtomicInteger(0)
         composeRule.setContent {
             SalesPageBackground {
                 SalesReminderDetailScreen(
@@ -57,7 +59,7 @@ class SalesReminderScreensTest {
                             content = "确认评估报告是否已送达",
                             createTime = "2026-08-02 10:30:00",
                         ),
-                    onBack = {},
+                    onBack = { backCount.incrementAndGet() },
                 )
             }
         }
@@ -65,5 +67,7 @@ class SalesReminderScreensTest {
         composeRule.onNodeWithText("回访客户").assertIsDisplayed()
         composeRule.onNodeWithText("确认评估报告是否已送达").assertIsDisplayed()
         composeRule.onNodeWithText("2026-08-02 10:30:00").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("返回").assertIsDisplayed().performClick()
+        assertEquals(1, backCount.get())
     }
 }
