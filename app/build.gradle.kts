@@ -134,6 +134,12 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
 
+    // Run the same vendor protobuf contract on the JVM and Android; never package it in the app.
+    sourceSets {
+        getByName("test").java.srcDir("src/testShared/java")
+        getByName("androidTest").java.srcDir("src/testShared/java")
+    }
+
     packaging {
         jniLibs {
             keepDebugSymbols +=
