@@ -34,6 +34,7 @@ dependencies {
     implementation(libs.moshi.kotlin)
     implementation(libs.okhttp.core)
     implementation(libs.okhttp.logging.interceptor)
+    implementation(libs.okio.core)
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.moshi)
     implementation(libs.room.runtime)
