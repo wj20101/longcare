@@ -1,6 +1,6 @@
 # CI、质量门禁与发布
 
-最后核对：2026-08-27
+最后核对：2026-09-19
 
 本文描述当前脚本和 GitHub Actions 的实际行为。门禁名称/Owner 元数据以 `scripts/quality/quality_gate_registry.json` 为准；是否真正执行则以对应 workflow 和 runner 脚本为准。
 
@@ -21,7 +21,7 @@
 |---|---|
 | `bash scripts/quality/preflight_local.sh` | `local-fast` |
 | `... --changed-only` | 使用可靠 base ref 缩小检查；无法解析时安全回退到完整 `local-fast` |
-| `... --full` | `local-fast` + `:app:compileDebugKotlin` + `:app:testDebugUnitTest` |
+| `... --full` | `local-fast` + 双应用 Kotlin 编译 + App、助手、腾讯集成、Common/Data/UI、Identification/PhotoUpload 单测 |
 | `... --release` | `--full` + `run_quality_gate.sh` 质量快照 |
 
 `local-fast` 当前包含：
@@ -39,22 +39,26 @@
 
 质量快照包含 production-oriented 厂商 SDK readiness 检查。当前已知 QLZ/腾讯人脸问题仍存在时，该命令失败是预期的 fail-closed 结果，不应通过放宽规则让它变绿。
 
-共享 Release 隐藏验证入口的专用守卫目前由 Android CI/Release 直接执行；本地需要单独运行：
+正式/助手隔离守卫由本地 preflight 与 Android CI/Release 执行，也可单独运行：
 
 ```bash
-bash scripts/quality/verify_release_validation_entry.sh .
+bash scripts/quality/verify_validation_app_isolation.sh .
 ```
 
 ## Android CI
 
 `.github/workflows/android-ci.yml` 保留普通 PR/Push 的 build-only 主阻断路径，并在 affected scope 明确要求时追加独立 instrumentation smoke job：
 
-1. `detect-affected` 计算 Gradle tasks、`run_instrumentation` 和 smoke test classes。
+1. `detect-affected` 计算 Gradle tasks、`run_instrumentation` 和 smoke test classes；Android CI 工作流、smoke runner 或影响分析器本身发生变更时强制执行 instrumentation，避免 CI 控制面改动产生假绿。
 2. `verify-build` 执行 ci-required guards、Lint 和 Debug 构建，不启动模拟器；full scope 额外构建 Debug AAB。
-3. 仅当 `run_instrumentation=true` 时，`instrumentation-smoke` 在 API 36 x86_64 emulator 上构建 App/androidTest APK，并通过 `.github/scripts/run-instrumentation-smoke.sh` 逐个执行选中的 App test class。
+3. 仅当 `run_instrumentation=true` 时，`instrumentation-smoke` 先启用并验证 `/dev/kvm` 硬件加速，再在 API 36 x86_64 emulator 上构建 App/androidTest APK，并通过 `.github/scripts/run-instrumentation-smoke.sh` 逐个执行选中的 App test class；KVM 不可用时快速失败，不允许退化为不稳定的软件模拟。
 4. Debug APK、构建报告和诊断产物按既有策略上传；smoke 报告和失败 logcat 作为 7 天 artifact 上传，未受影响的改动不承担 emulator 成本。
 
-该条件 job 仍不是完整业务回归矩阵。普通主阻断路径本身不执行业务单元测试或完整用户旅程，条件 smoke 也只执行 affected scope 选中的 App instrumentation class。完整 `:app` 与 `:core:data` connected tests 通过 `scripts/quality/run_connected_android_tests.sh` 在本地或发布验收环境执行。
+PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；同一 PR 推送新提交时会取消旧流水线，避免过期 build 与 emulator job 继续占用资源。主分支 push 不自动取消，确保每个已合入提交仍有独立结果。
+
+该条件 job 仍不是完整业务回归矩阵。普通主阻断路径执行助手单测，但不覆盖正式应用完整业务单测或完整用户旅程，条件 smoke 也只执行 affected scope 选中的 App instrumentation class。完整 `:app` 与 `:core:data` connected tests 通过 `scripts/quality/run_connected_android_tests.sh` 在本地或发布验收环境执行。
+
+`test_ci_upgrade_validation.py` 由 workflow 守卫调用：执行工作流中的 KVM 脚本并注入缺失/权限拒绝场景，在临时 Git 仓库逐项验证三类 CI 路径触发 smoke，并验证 PR 并发分组跨提交稳定且彼此隔离。这些本地守卫不替代真实 Actions 模拟器运行。
 
 当前 ci-required guards：
 
@@ -62,7 +66,7 @@ bash scripts/quality/verify_release_validation_entry.sh .
 |---|---|
 | `verify_no_tracked_keystore_files.sh` | 禁止 keystore 进入 Git |
 | `verify_ci_workflow_quality.sh` | workflow action 版本、timeout、retention、触发和治理约束 |
-| `verify_release_validation_entry.sh` | Debug/Release 共享隐藏验证入口与不可导出契约 |
+| `verify_validation_app_isolation.sh` | 正式 Debug/Release 无验证入口、双包依赖/包名、助手导出面 |
 | `verify_lint_ignore_policy.sh` | 禁止不受控 Lint ignore |
 | `verify_jetpack_compat_apis.sh` | 受保护 Jetpack API 使用 |
 | `verify_baselineprofile_journeys.sh` | Baseline Profile 旅程存在且无 TODO |
@@ -158,7 +162,7 @@ bash scripts/quality/preflight_local.sh --full
 ANDROID_SERIAL=emulator-5554 bash scripts/quality/run_connected_android_tests.sh --continue
 
 # 与普通 Android CI 对齐
-bash scripts/quality/verify_release_validation_entry.sh .
+bash scripts/quality/verify_validation_app_isolation.sh .
 ./gradlew --no-daemon :app:lintDebug :app:assembleDebug
 bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
 
@@ -167,3 +171,32 @@ bash scripts/quality/preflight_local.sh --release
 ```
 
 只运行与改动风险相称的最小集合，但不能用“普通 CI 不跑测试”作为跳过相关单元测试或真机回归的理由。
+
+## 双 APK 验收交付
+
+- `bash scripts/release/build-dual-apks.sh --debug`：两应用真实接口 Debug，输出 `build/outputs/dual-apk/debug/`。
+- `bash scripts/release/build-dual-apks.sh --acceptance`：显式 acceptance、强制非生产且禁用签名 fallback，输出 `build/outputs/dual-apk/acceptance/`。
+- 打包只选择 Gradle output-metadata.json 当前声明的 APK，校验独立包名、相同版本、模式和文件；失败不导出半套新包。每套包含 `SHA256SUMS`、`artifacts.json`。
+- Android CI 始终编译/测试/检查助手并独立上传 `assistant-debug-apk`。Release workflow 仅 acceptance 分支生成 `dual-acceptance-apks`；生产发布仍只包含正式 `:app`，原 fail-closed 厂商门禁不变。
+- 脚本回归：`python3 scripts/quality/test_validation_app_isolation.py`、`python3 scripts/release/test_package_dual_apks.py`。
+
+助手设备回归应使用独占的 ARM64 测试模拟器，避免与其他项目同时运行 instrumentation。相机权限测试要求开始时助手未授予相机权限；使用空白测试环境，不对个人手机清数据。登录测试以测试内存会话和 Repository 替身覆盖状态，不发送真实短信或提交真实人脸。
+
+```bash
+# 将序列号替换为专用模拟器；不要默认选中连接的真机
+ANDROID_SERIAL=emulator-5580 ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.package=com.ytone.longcare.features.login.ui
+ANDROID_SERIAL=emulator-5580 ./gradlew :assistant:connectedDebugAndroidTest
+```
+
+测试覆盖登录页 Logo 隔离、助手登录/导航/订单校验/结果展示、相机拒绝和设置授权恢复，以及页面重建。模拟器上的拍照与 R65C 页面测试不能替代 NFC、外接读卡器和服务端人脸真机验收。
+
+NFC 真机专项使用 `AssistantNfcHardwareLifecycleTest`，须显式传入 `nfcHardwareTests=true`，否则跳过硬件用例。它临时切换 NFC 并恢复初始状态，使用真实系统服务的前台分发注册状态验证设置返回、Home/返回、离开页面及 Activity 重建；不模拟贴卡，也不运行相机、人脸或 R65C。执行期间保持设备解锁，不同时运行 Android CLI layout 或其他 instrumentation，并先移开 NFC 标签。`AssistantNfcIntentTest` 单独检查畸形外部 Intent 不触发助手路由。
+
+```bash
+# 替换为专用 NFC 真机序列号；只运行 NFC 专项。
+ANDROID_SERIAL="NFC_DEVICE_SERIAL" ./gradlew :assistant:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.ytone.longcare.assistant.AssistantNfcHardwareLifecycleTest,com.ytone.longcare.assistant.AssistantNfcIntentTest \
+  -Pandroid.testInstrumentationRunnerArguments.nfcHardwareTests=true
+```
+
+自动测试之后仍须实际贴卡，检查卡号展示/复制和重复读取；这些结果才是 NFC 标签读取的真机证据。其他硬件、真实登录和人脸验收需单独安排，不以 NFC 专项通过替代。

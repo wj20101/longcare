@@ -1,5 +1,8 @@
 package com.ytone.longcare.api
 
+import com.ytone.longcare.api.model.CheckResultDto
+import com.ytone.longcare.api.model.GetCheckResultRequestDto
+
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.network.SuppressSessionInvalidation
 import com.ytone.longcare.model.OrderListParamModel
@@ -279,6 +282,11 @@ interface LongCareApiService {
     suspend fun getCheckToken(
         @Body request: GetCheckTokenRequestDto,
     ): ApiResult<CheckTokenDto>
+
+    @POST("/V1/Sale/GetCheckResult")
+    suspend fun getCheckResult(
+        @Body request: GetCheckResultRequestDto,
+    ): ApiResult<CheckResultDto>
 
     /**
      * 添加潜在客户。

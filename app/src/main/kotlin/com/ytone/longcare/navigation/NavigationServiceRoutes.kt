@@ -16,14 +16,14 @@ data class NfcSignInRoute(
     val orderParams: OrderNavParams,
     val signInMode: SignInMode,
     val endOrderParams: EndOderInfo? = null
-)
+) : AppRoute
 
 @Keep
 @Serializable
 data class ServiceCountdownRoute(
     val orderParams: OrderNavParams,
     val projectIdList: List<Int> = emptyList()
-)
+) : AppRoute
 
 @Keep
 @Serializable
@@ -40,7 +40,7 @@ data class EndOderInfo(
 data class ServiceCompleteRoute(
     val orderParams: OrderNavParams,
     val serviceCompleteData: ServiceCompleteData
-)
+) : AppRoute
 
 @Keep
 @Serializable
@@ -59,4 +59,4 @@ data class EndServiceSelectionRoute(
     val orderParams: OrderNavParams,
     val endType: Int,
     val initialProjectIdList: List<Int> = emptyList()
-)
+) : AppRoute

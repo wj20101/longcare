@@ -15,17 +15,6 @@
       ]
     },
     {
-      "id": "GlobalOptionInConsumerRules",
-      "owner": "mobile-platform",
-      "review_by": "2026-11-09",
-      "reason": "Tencent face SDK local AAR ships consumer ProGuard rules with global options. Remove waiver when vendor fixes packaging.",
-      "allowed_sources": [
-        "regex:WbCloudFaceLiveSdk-face-v[0-9]+\\.[0-9]+\\.[0-9]+-[A-Za-z0-9]+",
-        "regex:WbCloudFaceLiveSdk-face-v[0-9]+\\.[0-9]+\\.[0-9]+-[A-Za-z0-9]+\\.aar",
-        "regex:com\\.tencent\\.cloud\\.huiyansdkface:wbcloudface-live:[0-9]+\\.[0-9]+\\.[0-9]+"
-      ]
-    },
-    {
       "id": "TrustAllX509TrustManager",
       "owner": "mobile-platform",
       "review_by": "2026-11-09",

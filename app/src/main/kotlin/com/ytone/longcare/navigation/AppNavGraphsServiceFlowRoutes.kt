@@ -1,9 +1,5 @@
 package com.ytone.longcare.navigation
 
-import androidx.navigation.NavController
-import androidx.navigation.NavGraphBuilder
-import androidx.navigation.compose.composable
-import androidx.navigation.toRoute
 import com.ytone.longcare.features.endservice.api.EndServiceSelectionActions
 import com.ytone.longcare.features.endservice.ui.EndServiceSelectionScreen
 import com.ytone.longcare.features.nfc.api.NfcWorkflowActions
@@ -16,13 +12,11 @@ import com.ytone.longcare.features.servicecomplete.api.ServiceCompleteActions
 import com.ytone.longcare.features.servicecomplete.ui.ServiceCompleteScreen
 import com.ytone.longcare.features.servicehours.api.ServiceHoursActions
 import com.ytone.longcare.features.servicehours.ui.ServiceHoursScreen
-import kotlin.reflect.typeOf
 
-internal fun NavGraphBuilder.registerServiceHoursRoute(navController: NavController) {
-    composable<ServiceRoute>(
-        typeMap = mapOf(typeOf<OrderNavParams>() to OrderNavParamsNavType)
-    ) { backStackEntry ->
-        val route = backStackEntry.toRoute<ServiceRoute>()
+internal fun AppEntryProviderBuilder.registerServiceHoursRoute(navController: AppNavigator) {
+    destination<ServiceRoute> { backStackEntry ->
+        val navController = navController.forEntry(backStackEntry.id, androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle)
+        val route = backStackEntry.route<ServiceRoute>()
         ServiceHoursScreen(
             actions = ServiceHoursActions(
                 onNavigateBack = { navController.popBackStack() }
@@ -32,19 +26,18 @@ internal fun NavGraphBuilder.registerServiceHoursRoute(navController: NavControl
     }
 }
 
-internal fun NavGraphBuilder.registerNursingExecutionRoute(navController: NavController) {
-    composable<NursingExecutionRoute>(
-        typeMap = mapOf(typeOf<OrderNavParams>() to OrderNavParamsNavType)
-    ) { backStackEntry ->
-        val route = backStackEntry.toRoute<NursingExecutionRoute>()
+internal fun AppEntryProviderBuilder.registerNursingExecutionRoute(navController: AppNavigator) {
+    destination<NursingExecutionRoute> { backStackEntry ->
+        val navController = navController.forEntry(backStackEntry.id, androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle)
+        val route = backStackEntry.route<NursingExecutionRoute>()
         NursingExecutionScreen(
             actions = NursingExecutionActions(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToServiceCountdown = { orderKey, projectIdList ->
                     navController.navigateToServiceCountdown(orderKey, projectIdList)
                 },
-                onNavigateToSelectDevice = { orderKey ->
-                    navController.navigateToSelectDevice(orderKey)
+                onStartOrderNfcSignIn = { orderKey ->
+                    navController.navigateToNfcSignInForStartOrder(orderKey)
                 }
             ),
             orderKey = route.orderParams.toOrderKey()
@@ -52,14 +45,10 @@ internal fun NavGraphBuilder.registerNursingExecutionRoute(navController: NavCon
     }
 }
 
-internal fun NavGraphBuilder.registerNfcSignInRoute(navController: NavController) {
-    composable<NfcSignInRoute>(
-        typeMap = mapOf(
-            typeOf<EndOderInfo?>() to EndOderInfoNavType,
-            typeOf<OrderNavParams>() to OrderNavParamsNavType
-        )
-    ) { backStackEntry ->
-        val route = backStackEntry.toRoute<NfcSignInRoute>()
+internal fun AppEntryProviderBuilder.registerNfcSignInRoute(navController: AppNavigator) {
+    destination<NfcSignInRoute> { backStackEntry ->
+        val navController = navController.forEntry(backStackEntry.id, androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle)
+        val route = backStackEntry.route<NfcSignInRoute>()
         NfcWorkflowScreen(
             actions = NfcWorkflowActions(
                 onNavigateBack = { navController.popBackStack() },
@@ -81,11 +70,10 @@ internal fun NavGraphBuilder.registerNfcSignInRoute(navController: NavController
     }
 }
 
-internal fun NavGraphBuilder.registerSelectServiceRoute(navController: NavController) {
-    composable<SelectServiceRoute>(
-        typeMap = mapOf(typeOf<OrderNavParams>() to OrderNavParamsNavType)
-    ) { backStackEntry ->
-        val route = backStackEntry.toRoute<SelectServiceRoute>()
+internal fun AppEntryProviderBuilder.registerSelectServiceRoute(navController: AppNavigator) {
+    destination<SelectServiceRoute> { backStackEntry ->
+        val navController = navController.forEntry(backStackEntry.id, androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle)
+        val route = backStackEntry.route<SelectServiceRoute>()
         SelectServiceScreen(
             actions = SelectServiceActions(
                 onNavigateBack = { navController.popBackStack() },
@@ -101,14 +89,10 @@ internal fun NavGraphBuilder.registerSelectServiceRoute(navController: NavContro
     }
 }
 
-internal fun NavGraphBuilder.registerServiceCompleteRoute(navController: NavController) {
-    composable<ServiceCompleteRoute>(
-        typeMap = mapOf(
-            typeOf<ServiceCompleteData>() to ServiceCompleteDataNavType,
-            typeOf<OrderNavParams>() to OrderNavParamsNavType
-        )
-    ) { backStackEntry ->
-        val route = backStackEntry.toRoute<ServiceCompleteRoute>()
+internal fun AppEntryProviderBuilder.registerServiceCompleteRoute(navController: AppNavigator) {
+    destination<ServiceCompleteRoute> { backStackEntry ->
+        val navController = navController.forEntry(backStackEntry.id, androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle)
+        val route = backStackEntry.route<ServiceCompleteRoute>()
         ServiceCompleteScreen(
             actions = ServiceCompleteActions(
                 onNavigateHomeAndClearStack = { navController.navigateToHomeAndClearStack() }
@@ -119,11 +103,10 @@ internal fun NavGraphBuilder.registerServiceCompleteRoute(navController: NavCont
     }
 }
 
-internal fun NavGraphBuilder.registerEndServiceSelectionRoute(navController: NavController) {
-    composable<EndServiceSelectionRoute>(
-        typeMap = mapOf(typeOf<OrderNavParams>() to OrderNavParamsNavType)
-    ) { backStackEntry ->
-        val route = backStackEntry.toRoute<EndServiceSelectionRoute>()
+internal fun AppEntryProviderBuilder.registerEndServiceSelectionRoute(navController: AppNavigator) {
+    destination<EndServiceSelectionRoute> { backStackEntry ->
+        val navController = navController.forEntry(backStackEntry.id, androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle)
+        val route = backStackEntry.route<EndServiceSelectionRoute>()
         EndServiceSelectionScreen(
             actions = EndServiceSelectionActions(
                 onNavigateBack = { navController.popBackStack() },
