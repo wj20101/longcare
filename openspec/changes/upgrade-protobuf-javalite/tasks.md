@@ -27,8 +27,8 @@
 ## 5. 文档与 PR 交付
 
 - [x] 5.1 同步技术栈、QLZ 接入说明的运行库版本、实测组合及验证边界，保留生产阻塞；运行 local-fast、`openspec validate --all --strict --no-interactive`、`git diff --check` 并审查全部差异，不提交日志、凭据或构建产物。
-- [ ] 5.2 获远端写入授权后更新/推送现有 #125，标题与说明同步为 4.36.2，保留历史且无无关覆盖；核验最新 head/base 的专项证据与 CI，变化后补充受影响验证，不沿用旧绿色检查。
-- [ ] 5.3 所有必需专项和真实验收通过后按授权合入 #125，核对合入提交及主分支 CI；交付实际覆盖与仍存在的生产 blocker。任何必需项未完成时保留 PR 未合入，不将内部验收称为生产可发布。
+- [x] 5.2 获远端写入授权后更新/推送现有 #125，标题与说明同步为 4.36.2，保留历史且无无关覆盖；核验最新 head/base 的专项证据与 CI，变化后补充受影响验证，不沿用旧绿色检查。
+- [x] 5.3 所有必需专项和真实验收通过后按授权合入 #125，核对合入提交及主分支 CI；交付实际覆盖与仍存在的生产 blocker。任何必需项未完成时保留 PR 未合入，不将内部验收称为生产可发布。
 
 ## 验收记录（2026-09-19）
 
@@ -42,3 +42,5 @@
 - 追加混淆专项：正式 R8 规则不变，最终 acceptance Release 在 API 24/37 各 8 项实际 SDK 消息/Gzip 合约通过。最终测试 APK 不含厂商消息或 Google Protobuf 实现副本；R8 mapping 确认扫描强引用字段仍保留。受控 `java.lang.String` 用例返回 1 项失败及 `INSTRUMENTATION_CODE: 0`，正常专项返回 `OK` 与 `-1`。
 - 用户解锁后，追加修复的 acceptance Release 成功发现并连接 QLZ，完成真实采样、上传及自动 H5 跳转。用户填写后由客户端操作提交，H5 显示“A级(12分)”；确认仅刷新 H5，左上角返回后原生完成页显示“评估成功，评估等级为：A级”。系统返回回到保留销售登录态的首页。
 - 验收目标 APK SHA-256：`aa93b076b43abaab6feb4dacb632c535797d2278f9ce0e418549bcba9d8137e7`。最终模拟器 Debug 完整消息+mock 共 21 项、Pixel Debug 完整消息 13 项通过；两台均覆盖恢复 Debug，Pixel 已正常启动，未卸载或清数据。
+- 最终候选 `cbf1a2fd` 已非强制推送至现有 #125，保留 Dependabot 历史；合入前核对 base 为 `ba150fb7`、head 未变。[Android CI 35439181236](https://github.com/wj20101/longcare/actions/runs/35439181236) 的构建、Lint、instrumentation smoke 全部通过，Face SDK Migration Check 同样通过。
+- #125 已按授权合入，合入提交为 `830b680f`，与已验收候选的文件树一致。[主分支 Android CI 35439833065](https://github.com/wj20101/longcare/actions/runs/35439833065) 全部通过，包括构建/Lint 与 instrumentation smoke。17 项任务全部完成，既有 QLZ/腾讯 SDK 生产 blocker 保持不变；本 change 尚未归档。
