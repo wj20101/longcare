@@ -59,9 +59,17 @@
 
 保留 `kotlinx-datetime` 的 `0.8.0-0.6.x-compat` 兼容变体，不仅按数字大小替换。AGP 9.4.1、Navigation 3、WebKit 等非本表升级项保持当前版本。
 
+### 追加确认：AGP / Gradle 联动核验与 Wrapper 同步
+
+2026-09-19 用户要求同步处理 Gradle，随后确认保留稳定版组合并单独提交 Wrapper PR。Android CLI `version-lookup agp gradle` 与 Google Maven/Gradle 官方发布源交叉核对：AGP 稳定版仍为 9.4.1，Gradle 稳定版仍为 9.7.1；[AGP 9.4 兼容表](https://developer.android.com/build/releases/agp-9-4-0-release-notes) 要求 Gradle 至少 9.6.0，当前组合满足。不升级 AGP 9.5 alpha 或 Gradle 预览版，不改变 JDK/SDK。
+
+现有提交 `f88e252c` 仅更新 Wrapper properties；本地 JAR SHA-256 为 `497c8c2a7e5031f6aa847f88104aa80a93532ec32ee17bdb8d1d2f67a194a9c7`，对应旧 9.5/9.6 Wrapper。按[官方校验清单](https://gradle.org/release-checksums/)，9.7.1 Wrapper JAR 应为 `7a9ce74cff467ca1bf60a4fcd9f05185acceda4d0f382434d393e17864262c5d`。当前 all 分发包的 SHA-256 `92c1a136d76b5017732a66d2e0a648ebff00dd3687d8bff0d0047a1bd904fdf2` 已正确，保留校验及 URL 验证，不把旧 Wrapper 误称为被篡改。
+
+Kotlin PR 完成后，使用 Gradle Wrapper 生成任务同步 JAR/Unix/Windows 启动脚本与 properties，审查实际差异并核对官方 JAR/分发包摘要及 `./gradlew --version`。通过 build-logic 测试、双应用 Debug/Lint、完整 preflight 和最新 CI 后按新增授权独立合入；不混入 Kotlin 版本 PR，也不手工替换为不明来源二进制。
+
 ### 2. 按依赖风险分批而非一次混合升级
 
-顺序为：H5 UI 验收 → 主分支 CI 下载故障定位/恢复 → #115 → Coil/Okio/Room → KSP/Kotlin → Compose/Robolectric → Baseline Profile/Benchmark 稳定版 → #117 重生成 → 最终回归。
+顺序为：H5 UI 验收 → 主分支 CI 下载故障定位/恢复 → #115 → Coil/Okio/Room → KSP/Kotlin → Wrapper 同步 → Compose/Robolectric → Baseline Profile/Benchmark 稳定版 → #117 重生成 → 最终回归。
 
 每个库保留独立可审查差异和针对性测试；KSP 先验证当前 Kotlin，再验证目标 Kotlin，方便定位编译链变化。Baseline/Benchmark 在合入前联动验证，避免最终混用 RC 与稳定版。各阶段串行运行本地 Gradle；一项失败停在该项定位，不用随后升级掩盖问题。
 
@@ -86,7 +94,7 @@ HTTP 429 与 KVM 是不同问题。先检查失败依赖/仓库/重试结果，�
 
 ### 5. 远端操作与 profile 来源
 
-分支更新、Compose PR 创建和逐项合入已获上述用户授权。优先复用现有 PR，不重复创建；冲突解决需比对当前主分支，不覆盖新增的 Navigation 3、助手或 H5 逻辑，不盲目 force-push。必须替代旧 PR 或改写历史时先说明具体目标和影响。
+分支更新、Compose/Wrapper 独立 PR 创建和逐项合入已获上述用户授权。优先复用现有 PR，不重复创建；冲突解决需比对当前主分支，不覆盖新增的 Navigation 3、助手或 H5 逻辑，不盲目 force-push。必须替代旧 PR 或改写历史时先说明具体目标和影响。
 
 每个 PR 以最新 head/base 的差异、必需检查及专项回归决定合入；基准变化后重新验证，不能以早期绿色结果代替当前候选。若创建或继续处理 PR，保持任务附件与实际 PR 对应。#117 只接受最终代码/依赖生成的 profile，检查生成流程可重复、baseline/startup 文件与来源一致。
 

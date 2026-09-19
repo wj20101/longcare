@@ -19,6 +19,10 @@
 | Kotlin | 2.4.20 | `gradle/libs.versions.toml` |
 | KSP | 2.3.12 | `gradle/libs.versions.toml` |
 
+AGP 与 Gradle 按稳定版兼容组合一起核验。升级 Gradle 时使用 `wrapper` 任务同步
+JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SHA-256；不要只改下载地址。
+当前 Wrapper JAR 已同步为 9.7.1，分发包校验和 URL 验证保持启用。
+
 ## 主要库
 
 | 领域 | 组件 | 版本 |
