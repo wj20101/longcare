@@ -17,7 +17,7 @@
 | Gradle Wrapper | 9.7.1 | `gradle/wrapper/gradle-wrapper.properties` |
 | Android Gradle Plugin | 9.4.1 | `gradle/libs.versions.toml` |
 | Kotlin | 2.4.10 | `gradle/libs.versions.toml` |
-| KSP | 2.3.11 | `gradle/libs.versions.toml` |
+| KSP | 2.3.12 | `gradle/libs.versions.toml` |
 
 ## 主要库
 
