@@ -49,6 +49,7 @@ JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SH
 | Object storage | Tencent COS Android | 5.9.52 |
 | Diagnostics | Tencent Bugly CrashReport | 4.1.9.3 |
 | Performance | Baseline Profile / Macrobenchmark | 1.5.0-rc01 |
+| JVM Tests | Robolectric | 4.17 |
 
 ## 本地 AAR 与兼容配置
 
