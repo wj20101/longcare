@@ -1,9 +1,7 @@
 package com.ytone.longcare.navigation
 
-import androidx.navigation.NavController
-import androidx.navigation.NavGraphBuilder
 
-internal fun NavGraphBuilder.registerServiceFlowNavGraphs(navController: NavController) {
+internal fun AppEntryProviderBuilder.registerServiceFlowNavGraphs(navController: AppNavigator) {
     registerServiceHoursRoute(navController)
     registerNursingExecutionRoute(navController)
     registerNfcSignInRoute(navController)

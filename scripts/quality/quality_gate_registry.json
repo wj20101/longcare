@@ -65,13 +65,13 @@
       "likely_fix": "Restore workflow governance requirements such as retention, pinning, or trigger policy."
     },
     {
-      "id": "release_validation_entry",
-      "name": "Release Validation Entry Contract",
+      "id": "validation_app_isolation",
+      "name": "Formal / Assistant Isolation Contract",
       "layer": "ci-required",
       "blocking": true,
       "owner": "mobile-platform",
-      "source_of_truth": "scripts/quality/verify_release_validation_entry.sh",
-      "likely_fix": "Restore the shared hidden validation entry sources and Release-safe navigation contract."
+      "source_of_truth": "scripts/quality/verify_validation_app_isolation.sh",
+      "likely_fix": "Remove validation code from the formal app and restore independent assistant/shared module ownership."
     },
     {
       "id": "release_exported_components",

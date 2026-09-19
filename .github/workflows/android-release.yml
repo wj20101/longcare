@@ -158,7 +158,7 @@ jobs:
         run: |
           bash scripts/quality/verify_no_tracked_keystore_files.sh .
           bash scripts/quality/verify_ci_workflow_quality.sh
-          bash scripts/quality/verify_release_validation_entry.sh .
+          bash scripts/quality/verify_validation_app_isolation.sh .
           bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
           bash scripts/quality/verify_jetpack_compat_apis.sh
           bash scripts/quality/verify_baselineprofile_journeys.sh
@@ -403,6 +403,26 @@ jobs:
           ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease \
             -Prelease.production=${{ steps.release_mode.outputs.production }} \
             -Prelease.acceptance=${{ steps.release_mode.outputs.acceptance }}
+
+      - name: Build dual acceptance APKs
+        if: steps.release_mode.outputs.mode == 'acceptance'
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
+          TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
+        run: bash scripts/release/build-dual-apks.sh acceptance
+
+      - name: Upload dual acceptance APKs
+        if: steps.release_mode.outputs.mode == 'acceptance'
+        uses: actions/upload-artifact@v7
+        with:
+          name: dual-acceptance-apks
+          path: build/outputs/dual-apk/acceptance/*
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Run release-required exported component guard
         run: bash scripts/quality/verify_release_exported_components.sh

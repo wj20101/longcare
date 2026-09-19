@@ -9,6 +9,12 @@ plugins {
 group = "com.ytone.longcare.buildlogic"
 version = "1.0.0"
 
+// Standalone build-logic tests must emit the same bytecode as the included build,
+// even when Android Studio's launcher JDK is newer than the project baseline.
+kotlin {
+    jvmToolchain(21)
+}
+
 val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 dependencies {
@@ -30,6 +36,10 @@ gradlePlugin {
         create("kotlinCommonConvention") {
             id = "longcare.kotlin.common"
             implementationClass = "KotlinCommonConventionPlugin"
+        }
+        create("tencentFaceConvention") {
+            id = "longcare.tencent-face"
+            implementationClass = "TencentFaceConventionPlugin"
         }
         create("androidAppSigningTxFaceConvention") {
             id = "longcare.android.app.signing-txface"

@@ -1,6 +1,8 @@
 package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.api.LongCareApiService
+import com.ytone.longcare.api.model.GetCheckResultRequestDto
+import com.ytone.longcare.model.CheckResultModel
 import com.ytone.longcare.api.model.AddUserLatentRequestDto
 import com.ytone.longcare.api.model.AddUserLatentResponseDto
 import com.ytone.longcare.api.model.CheckTokenDto
@@ -30,6 +32,13 @@ import javax.inject.Singleton
 class SaleRepositoryImpl @Inject constructor(
     private val apiService: LongCareApiService,
 ) : SaleRepository {
+
+    override suspend fun getCheckResult(
+        customerId: Int,
+        recordId: String?,
+    ): ApiResult<CheckResultModel> =
+        apiService.getCheckResult(GetCheckResultRequestDto(customerId, recordId))
+            .mapData { CheckResultModel(pgResult = it.pgResult, pgUrl = it.pgUrl) }
 
     override suspend fun getCheckToken(
         customerId: Int,

@@ -1,29 +1,25 @@
 package com.ytone.longcare.navigation
 
-import androidx.navigation.NavController
-import com.ytone.longcare.common.utils.safeNavigate
 import com.ytone.longcare.features.userlist.ui.UserListType
 import com.ytone.longcare.model.WatermarkData
 
-fun NavController.navigateToHomeFromLogin() {
-    navigate(HomeGraphRoute) {
-        popUpTo(LoginRoute) { inclusive = true }
-    }
+fun AppNavigator.navigateToHomeFromLogin() {
+    resetToHome()
 }
 
-fun NavController.navigateToService(orderParams: OrderNavParams) {
+fun AppNavigator.navigateToService(orderParams: OrderNavParams) {
     navigate(ServiceRoute(orderParams))
 }
 
-fun NavController.navigateToNursingExecution(orderParams: OrderNavParams) {
+fun AppNavigator.navigateToNursingExecution(orderParams: OrderNavParams) {
     navigate(NursingExecutionRoute(orderParams))
 }
 
-fun NavController.navigateToNfcSignInForStartOrder(orderParams: OrderNavParams) {
+fun AppNavigator.navigateToNfcSignInForStartOrder(orderParams: OrderNavParams) {
     navigate(NfcSignInRoute(orderParams = orderParams, signInMode = SignInMode.START_ORDER))
 }
 
-fun NavController.navigateToNfcSignInForEndOrder(orderParams: OrderNavParams, params: EndOderInfo) {
+fun AppNavigator.navigateToNfcSignInForEndOrder(orderParams: OrderNavParams, params: EndOderInfo) {
     navigate(
         NfcSignInRoute(
             orderParams = orderParams,
@@ -33,32 +29,32 @@ fun NavController.navigateToNfcSignInForEndOrder(orderParams: OrderNavParams, pa
     )
 }
 
-fun NavController.navigateToCarePlansList() {
+fun AppNavigator.navigateToCarePlansList() {
     navigate(CarePlansListRoute)
 }
 
-fun NavController.navigateToServiceRecordsList() {
+fun AppNavigator.navigateToServiceRecordsList() {
     navigate(ServiceRecordsListRoute)
 }
 
-fun NavController.navigateToSelectService(orderParams: OrderNavParams) {
+fun AppNavigator.navigateToSelectService(orderParams: OrderNavParams) {
     navigate(SelectServiceRoute(orderParams))
 }
 
-fun NavController.navigateToPhotoUpload(orderParams: OrderNavParams) {
+fun AppNavigator.navigateToPhotoUpload(orderParams: OrderNavParams) {
     navigate(PhotoUploadRoute(orderParams))
 }
 
-fun NavController.navigateToServiceCountdown(orderParams: OrderNavParams, projectIdList: List<Int> = emptyList()) {
+fun AppNavigator.navigateToServiceCountdown(orderParams: OrderNavParams, projectIdList: List<Int> = emptyList()) {
     navigate(ServiceCountdownRoute(orderParams = orderParams, projectIdList = projectIdList))
 }
 
-fun NavController.navigateToEndServiceSelection(
+fun AppNavigator.navigateToEndServiceSelection(
     orderParams: OrderNavParams,
     endType: Int,
     projectIdList: List<Int> = emptyList()
 ) {
-    safeNavigate(
+    navigateWhenResumed(
         EndServiceSelectionRoute(
             orderParams = orderParams,
             endType = endType,
@@ -67,71 +63,57 @@ fun NavController.navigateToEndServiceSelection(
     )
 }
 
-fun NavController.navigateToServiceComplete(
+fun AppNavigator.navigateToServiceComplete(
     orderParams: OrderNavParams,
     serviceCompleteData: ServiceCompleteData
 ) {
-    navigate(ServiceCompleteRoute(orderParams = orderParams, serviceCompleteData = serviceCompleteData)) {
-        popUpTo(HomeGraphRoute) { inclusive = false }
-        launchSingleTop = true
-    }
+    completeService(ServiceCompleteRoute(orderParams = orderParams, serviceCompleteData = serviceCompleteData))
 }
 
-fun NavController.navigateToFaceRecognitionGuide(orderParams: OrderNavParams) {
-    navigate(FaceRecognitionGuideRoute(orderParams = orderParams))
+fun AppNavigator.navigateToIdentification(orderParams: OrderNavParams) {
+    replaceTop(IdentificationRoute(orderParams))
 }
 
-fun NavController.navigateToSelectDevice(orderParams: OrderNavParams) {
-    navigateToNfcSignInForStartOrder(orderParams)
-}
-
-fun NavController.navigateToIdentification(orderParams: OrderNavParams) {
-    val currentRoute = this.currentBackStackEntry?.destination?.route ?: return
-    navigate(IdentificationRoute(orderParams)) {
-        popUpTo(currentRoute) { inclusive = true }
-        launchSingleTop = true
-    }
-}
-
-fun NavController.navigateToDefaultFaceVerification(orderParams: OrderNavParams) {
+fun AppNavigator.navigateToDefaultFaceVerification(orderParams: OrderNavParams) {
     navigate(DefaultFaceVerificationRoute(orderParams = orderParams))
 }
 
-fun NavController.navigateToUserList(listType: String) {
+fun AppNavigator.navigateToUserList(listType: String) {
     navigate(UserListRoute(listType))
 }
 
-fun NavController.navigateToHaveServiceUserList() {
+fun AppNavigator.navigateToHaveServiceUserList() {
     navigateToUserList(UserListType.HAVE_SERVICE.name)
 }
 
-fun NavController.navigateToNoServiceUserList() {
+fun AppNavigator.navigateToNoServiceUserList() {
     navigateToUserList(UserListType.NO_SERVICE.name)
 }
 
-fun NavController.navigateToHomeAndClearStack() {
-    safeNavigate(HomeGraphRoute) {
-        popUpTo(0) { inclusive = false }
-        launchSingleTop = true
-    }
+fun AppNavigator.navigateToHomeAndClearStack() {
+    resetToHome()
 }
 
-fun NavController.navigateToUserServiceRecord(userId: Long, userName: String, userAddress: String) {
+fun AppNavigator.navigateToUserServiceRecord(userId: Long, userName: String, userAddress: String) {
     navigate(UserServiceRecordRoute(userId, userName, userAddress))
 }
 
-fun NavController.navigateToCamera(watermarkData: WatermarkData) {
+fun AppNavigator.navigateToCamera(watermarkData: WatermarkData) {
     navigate(CameraRoute(watermarkData))
 }
 
-fun NavController.navigateToFaceVerificationWithAutoSign() {
-    navigate(TxFaceRoute)
-}
-
-fun NavController.navigateToManualFaceCapture() {
+fun AppNavigator.navigateToManualFaceCapture() {
     navigate(ManualFaceCaptureRoute)
 }
 
-fun NavController.navigateToWebView(url: String, title: String) {
+fun AppNavigator.navigateToWebView(url: String, title: String) {
     navigate(WebViewRoute(url, title))
+}
+
+fun AppNavigator.navigateToEvaluationForm(url: String, title: String) {
+    navigateWhenResumed(WebViewRoute(url, title, isEvaluation = true, showNativeToolbar = false))
+}
+
+fun AppNavigator.navigateToEvaluationReport(url: String, title: String) {
+    navigate(WebViewRoute(url, title, showNativeToolbar = false))
 }
