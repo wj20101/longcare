@@ -102,6 +102,16 @@ Android CLI 当前识别以下 app 变体：
 
 默认仅打包 `arm64-v8a`。运行 Baseline Profile 的 x86_64 环境可显式传入 `-Pbaseline.enableX86_64=true`。
 
+性能工具使用 Baseline Profile / Macrobenchmark 1.5.0 稳定版。当前生成器在独立
+`pixel6Api33` Managed Device 上采集启动、滚动和返回路径；不包含登录后的业务旅程，
+baseline/startup 两份规则目前相同，语义拆分仍见[性能改进待办](roadmap-and-open-gaps.md#批次-bbaseline-与-startup-profile-语义)。
+生成时同时指定 `androidx.benchmark.enabledRules=BaselineProfile` 和
+`class=com.ytone.longcare.baselineprofile.BaselineProfileGenerator` 的 instrumentation 参数，
+将生成用例与启动测量分开。生成后重新构建 `benchmarkRelease`，核查 APK 中的
+`assets/dexopt/baseline.prof` / `baseline.profm`，再在真机运行 `StartupBenchmarks` 的
+None / Require 两组冷启动测试；普通 CI 或模拟器生成成功不能证明真实启动收益。
+本地验收仍须显式使用 acceptance 配置及合法签名，不能绕过生产发布门禁。
+
 助手只提供 Debug/Release，始终关闭 mock，与正式 App 共享基础版本、versionCode 及签名校验，助手 versionName 追加 `-assistant`；不应用 Baseline Profile 插件。统一命令为 `bash scripts/release/build-dual-apks.sh --debug|--acceptance`（选择其一），输出 `build/outputs/dual-apk/<mode>/` 中两份版本化 APK、校验和和元数据。
 
 ## 重要构建开关

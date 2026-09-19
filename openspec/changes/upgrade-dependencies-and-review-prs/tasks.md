@@ -55,11 +55,15 @@
 
 ## 5. 性能工具与 #117
 
-- [ ] 5.1 处理 #124/#123，将 Baseline Profile 与 Benchmark 同步验证为 1.5.0 稳定版；核对插件/运行库解析及 benchmark 构建任务，按授权合入后确认无 RC 残留。
-- [ ] 5.2 在最终 H5/依赖提交上重新生成 baseline/startup profile，核验生成任务、设备/版本和产物来源，审查生成差异；更新现有 #117 而非直接接受旧基线产物或创建重复 PR。
+- [x] 5.1 处理 #124/#123，将 Baseline Profile 与 Benchmark 同步验证为 1.5.0 稳定版；核对插件/运行库解析及 benchmark 构建任务，按授权合入后确认无 RC 残留。
+- [x] 5.2 在最终 H5/依赖提交上重新生成 baseline/startup profile，核验生成任务、设备/版本和产物来源，审查生成差异；更新现有 #117 而非直接接受旧基线产物或创建重复 PR。
 - [ ] 5.3 验证 profile 能被当前构建消费，执行相关启动/性能检查；核对最新 #117 差异及 CI 后按授权合入，保留可追溯的基准提交与证据。
 
+#124 独立候选 `aad82eb2` 基于 `b114b1b7`，插件解析、采集 APK、双应用 Debug/Lint 和完整 preflight 通过；[CI 35412086127](https://github.com/wj20101/longcare/actions/runs/35412086127) 通过。#123 联合候选 `d8dfb852` 保留两稳定版解决相邻行冲突，实际 benchmark-common/macro/junit4 与插件均为 1.5.0，Benchmark R8/采集/双应用构建、完整 preflight 和守卫通过，[CI 35412361527](https://github.com/wj20101/longcare/actions/runs/35412361527) 通过。先锁定 #124 合入为 `7cd9abf6aa271cf1fa4dd4ab25775b49546e9b55`，再将 #123 刷新为 `3d9503f6`（源码树与联合候选完全一致）并复核构建/完整 preflight；[最新 CI 35412660891](https://github.com/wj20101/longcare/actions/runs/35412660891) 通过后锁定合入为 `48de70d86a50a061aa9924d05c9be63253879ca2`。远端 instrumentation 均按范围跳过；两个版本无 RC 残留，profile 重生成仍属于 5.2/5.3。
+
 ## 6. 综合回归与交付
+
+#117 已基于最终主分支 `48de70d8` 保留历史整合为生成基准 `a1d36804`。以稳定版 1.5.0 工具在 `pixel6Api33`（API 33 AOSP ARM64 Managed Device）执行 `:app:generateReleaseBaselineProfile`，显式 acceptance 且禁用签名兜底，不触碰个人手机。先采集成功，再以 class 参数单独执行 `BaselineProfileGenerator`，最终 XML 为 1 项、0 失败/错误/跳过，耗时 108.105 秒；不把按 enabledRules 排除的 StartupBenchmarks 当通过。baseline/startup 各 16,263 条规则，SHA-256 均为 `67a665be74b8f6ae868463475b5cb5b7ebe34f9b43bd6c53c5f95d5458a20bf1`，规则全部由工具生成，未手改；两次采集相差 3 条，未宣称字节级确定性。现有脚本仅启动/滚动/返回，两文件相同的语义限制已如实写入技术栈文档。继续验证打包消费、真机启动和新 CI 后才允许合入。
 
 - [ ] 6.1 串行执行完整 preflight、`:app:lintDebug :app:assembleDebug :assistant:lintDebug :assistant:assembleDebug`、既有 warning allowlist 和助手隔离守卫，全部通过且不新增豁免。
 - [ ] 6.2 在 API 24 旧内核与现代设备执行受影响的 Navigation 3/WebView instrumentation 和 H5 UI 回归，验证真实关闭调用、系统返回、报告/隐私隔离与生命周期；记录实际覆盖，使用已有测试数据或 mock，不无授权新增业务提交。
