@@ -49,6 +49,7 @@ JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SH
 | Object storage | Tencent COS Android | 5.9.52 |
 | Diagnostics | Tencent Bugly CrashReport | 4.1.9.3 |
 | Performance | Baseline Profile / Macrobenchmark | 1.5.0-rc01 |
+| JVM Tests | Robolectric | 4.17 |
 
 ## 本地 AAR 与兼容配置
 
@@ -84,6 +85,9 @@ WebKit 1.17.0 的渲染退出检查器会误报已实现回调的父类构造调
 `build-logic` 是 included build，提供 application、library、Kotlin 公共配置，以及 Release 签名和腾讯人脸依赖来源约定。签名兼容插件与 `longcare.tencent-face` 职责分离，后者只用于集成 library。版本目录统一管理 Maven 依赖；业务模块不应自行声明版本号。
 
 约定插件自身也固定使用 JDK 21 toolchain，确保单独执行 `./gradlew -p build-logic test` 时不会因 Android Studio 的更高版本 JDK 生成主构建无法加载的字节码。
+
+Robolectric 4.17 的文件描述符模拟在 JDK 21 上需要访问 `jdk.internal.access`。
+公共约定仅为 Android 模块的单测 JVM 增加对应 `--add-opens`，不影响 App 运行时、Gradle daemon 或纯 JVM 模块。
 
 ## App 构建变体
 
