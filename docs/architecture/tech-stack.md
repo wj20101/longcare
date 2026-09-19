@@ -9,7 +9,7 @@
 | 项目 | 当前值 | 事实来源 |
 |---|---:|---|
 | Application ID | 正式 `com.ytone.longcare`；助手 `com.ytone.longcare.assistant` | 两个 application module 的 build.gradle.kts |
-| 版本 | `1.0.6 (59)` | `constants.gradle.kts` |
+| 版本 | `1.0.6 (60)` | `constants.gradle.kts` |
 | `compileSdk` | 37 | `constants.gradle.kts` |
 | `targetSdk` | 36 | `constants.gradle.kts` |
 | `minSdk` | 24 | `constants.gradle.kts` |
@@ -96,7 +96,7 @@ Android CLI 当前识别以下 app 变体：
 | 变体 | 用途 | 关键差异 |
 |---|---|---|
 | `debug` | 日常开发与联调 | 可用 `debug.useMockData` 切换本地 mock；默认仓库配置为 `false` |
-| `release` | 签名、压缩和资源收缩的发布包 | 默认按生产模式校验；已明确接受的当前厂商问题告警，其余检查保持阻断 |
+| `release` | 签名、压缩和资源收缩的正式包 | 无额外发布模式；已明确接受的当前厂商问题告警，其余检查保持阻断 |
 | `nonMinifiedRelease` | Baseline Profile 目标变体 | 由 Baseline Profile 插件创建 |
 | `benchmarkRelease` | Macrobenchmark/Profile 验证 | 由性能插件创建 |
 
@@ -110,20 +110,18 @@ baseline/startup 两份规则目前相同，语义拆分仍见[性能改进待�
 将生成用例与启动测量分开。生成后重新构建 `benchmarkRelease`，核查 APK 中的
 `assets/dexopt/baseline.prof` / `baseline.profm`，再在真机运行 `StartupBenchmarks` 的
 None / Require 两组冷启动测试；普通 CI 或模拟器生成成功不能证明真实启动收益。
-本地验收仍须显式使用 acceptance 配置及合法签名，不能绕过生产发布门禁。
+本地 Release 验收仍须使用合法签名，不能绕过发布门禁。
 
-助手只提供 Debug/Release，始终关闭 mock，与正式 App 共享基础版本、versionCode 及签名校验，助手 versionName 追加 `-assistant`；不应用 Baseline Profile 插件。统一命令为 `bash scripts/release/build-dual-apks.sh --debug|--acceptance`（选择其一），输出 `build/outputs/dual-apk/<mode>/` 中两份版本化 APK、校验和和元数据。
+助手只提供 Debug/Release，始终关闭 mock，与正式 App 共享基础版本、versionCode 及签名校验，助手 versionName 追加 `-assistant`；不应用 Baseline Profile 插件。统一命令为 `bash scripts/release/build-dual-apks.sh --debug|--release`（选择其一），输出 `build/outputs/dual-apk/<variant>/` 中两份版本化 APK、校验和和元数据。助手仅内部使用，对外工作流只发布正式 App。
 
 ## 重要构建开关
 
 | 配置 | 默认值/行为 |
 |---|---|
 | `debug.useMockData` | 仓库中为 `false`；传 `true` 使用 `app/src/debug/assets/mock` |
-| `release.production` | 默认为 `true` |
-| `release.acceptance` | 默认为 `false`；非生产 Release 必须显式设为 `true` |
 | `baseline.enableX86_64` | 默认为 `false` |
 
-生产 Release 需要 LongCare Release 签名配置。缺少签名时不会静默使用 debug keystore；双 APK 验收脚本还显式禁用 unsigned/debug fallback。
+Release 需要 LongCare Release 签名配置。缺少签名时不会静默使用 debug keystore；双 APK Release 脚本还显式禁用 unsigned/debug fallback。
 
 ## 常用命令
 
@@ -135,4 +133,4 @@ bash scripts/quality/preflight_local.sh --full
 android run --apks=app/build/outputs/apk/debug/app-debug.apk
 ```
 
-生产/验收包的具体门禁和已知阻断见 [CI 与质量门禁](ci-quality-gates.md)；QLZ 专项配置见 [QLZ SDK 接入](../integrations/qlz-sdk.md)。
+正式包的具体门禁和已知风险见 [CI 与质量门禁](ci-quality-gates.md)；QLZ 专项配置见 [QLZ SDK 接入](../integrations/qlz-sdk.md)。

@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-production_requested="false"
-acceptance_requested="false"
 temporary_qlz_key_present="false"
 qlz_test_mode="false"
 known_unsafe_qlz_sdk_present="false"
@@ -14,16 +12,8 @@ while [[ $# -gt 0 ]]; do
     exit 2
   fi
   case "$1" in
-    --production-requested)
-      production_requested="${2:-}"
-      shift 2
-      ;;
     --temporary-qlz-key-present)
       temporary_qlz_key_present="${2:-}"
-      shift 2
-      ;;
-    --acceptance-requested)
-      acceptance_requested="${2:-}"
       shift 2
       ;;
     --qlz-test-mode)
@@ -44,20 +34,6 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
-
-if [[ "${production_requested}" == "true" && "${acceptance_requested}" == "true" ]]; then
-  echo "[release-config][FAIL] release cannot be both production and acceptance" >&2
-  exit 1
-fi
-
-if [[ "${production_requested}" != "true" ]]; then
-  if [[ "${acceptance_requested}" != "true" ]]; then
-    echo "[release-config][FAIL] non-production release requires explicit -Prelease.acceptance=true" >&2
-    exit 1
-  fi
-  echo "[release-config][PASS] explicit acceptance build: temporary vendor configuration is allowed"
-  exit 0
-fi
 
 violations=()
 if [[ "${temporary_qlz_key_present}" == "true" ]]; then
@@ -83,4 +59,4 @@ if [[ ${#violations[@]} -gt 0 ]]; then
   echo "[release-config][WARN] approved baseline is unchanged; vendor security/device compatibility is not guaranteed." >&2
 fi
 
-echo "[release-config][PASS] release mode is valid; signing and quality checks remain required"
+echo "[release-config][PASS] configuration risks checked; signing and quality checks remain required"

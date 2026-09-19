@@ -35,14 +35,14 @@ android {
     testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
-// The assistant is an internal acceptance tool, never a production distribution.
+// The assistant is an internal validation tool, never included in the public app release.
 // No baseline-profile tooling receiver is needed in this internal shell.
 configurations.configureEach {
     exclude(group = "androidx.profileinstaller", module = "profileinstaller")
 }
 
 tasks.matching { it.name == "assembleRelease" || it.name == "bundleRelease" }.configureEach {
-    dependsOn(":app:verifyProductionReleaseConfiguration")
+        dependsOn(":app:verifyReleaseConfiguration")
 }
 
 dependencies {

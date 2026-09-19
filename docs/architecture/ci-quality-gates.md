@@ -81,31 +81,24 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 
 ## Android Release
 
-`.github/workflows/android-release.yml` 先要求目标 commit 的 Android CI 成功，再执行发布校验。手动触发必须选择模式：
+`.github/workflows/android-release.yml` 只有一条正式 Release 流程，无额外模式选项。先要求目标 commit 的 Android CI 成功，再执行发布校验；文档提交若没有触发 CI，须先对该提交手动运行 Android CI。
 
-### Acceptance
-
-- 只允许 `workflow_dispatch`。
-- 工作流传入 `release.production=false`、`release.acceptance=true`。
-- 此模式继续显式标记为验收；当前 QLZ key/test mode 在 production 中也经明确接受并告警。
-- APK、AAB 和 GitHub Release 名称必须标记为验收用途。
-
-### Production
-
-- tag 触发和显式 production 模式均按生产要求处理。
+- 通过 `workflow_dispatch` 从分支发布；现有 tag push 拒绝规则保持不变，避免自动递增版本号修改已打标签的提交。
 - 执行 `verify_vendor_sdk_release_readiness.sh`。
-- `assembleRelease` / `bundleRelease` 依赖 `verifyProductionReleaseConfiguration`。
+- `assembleRelease` / `bundleRelease` 依赖 `verifyReleaseConfiguration`，不传额外模式参数。
 - 要求真实 Release keystore、密码和 alias；禁止 debug keystore fallback。
 - 生成压缩 Release APK/AAB，并执行产物、签名、Manifest 和发布元数据检查。
+- 自动递增 versionCode、推送版本提交，tag 为 `v<versionName>-<versionCode>`；名称为 `Release v<versionName> (<versionCode>)`，非草稿、非预发布，并设为 Latest。
+- APK/AAB 命名为 `app-v<versionName>-<yyMMdd>-<versionCode>-release.apk/aab`，Actions artifact 名称为 `app-release-artifacts`；不改动历史 Release 的现有下载链接。
 
-用户已明确接受以下当前风险，production 输出警告而不因此单独失败；这不是问题已修复或全设备兼容的保证：
+用户已明确接受以下当前风险，Release 输出警告而不因此单独失败；这不是问题已修复或全设备兼容的保证：
 
 - Android 内仍有固定 QLZ 测试 key 和 `QLZ_TEST_MODE=true`。
 - QLZ 1.3.0.5 可达代码存在弱 TLS trust manager。
 - 当前腾讯人脸 ARM64 native library 不满足 16 KB 对齐。
 - 人脸 AAR 的 consumer rules 含已知全局选项。
 
-`test_production_release_policy.py` 由 workflow 守卫调用，覆盖风险告警、合法/冲突模式、错误参数、缺失报告和其他版本不自动放行。不得通过 `continue-on-error` 或关闭签名/Lint 来放行其他失败。
+`test_release_policy.py` 由 workflow 守卫调用，覆盖风险告警、旧模式参数拒绝、错误参数、缺失报告和其他版本不自动放行。`test_release_workflow.py` 离线执行实际工作流的产物命名与元数据片段，并断言正式发布标记、签名/目标提交 CI 守卫和助手隔离。不得通过 `continue-on-error` 或关闭签名/Lint 来放行其他失败。
 
 详见 [QLZ SDK 接入](../integrations/qlz-sdk.md)和[路线图](roadmap-and-open-gaps.md)。
 
@@ -126,7 +119,7 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 |---|---|---|
 | Release exported components | `verify_release_exported_components.sh` | 收紧 Manifest 或有依据地更新 allowlist |
 | Vendor SDK risk policy | `verify_vendor_sdk_release_readiness.sh` | 当前已接受事项告警；其他目标厂商问题仍需处理 |
-| Production config | `verify_production_release_config.sh` | 模式冲突/错误参数阻断，当前已接受测试配置告警 |
+| Release config | `verify_release_config.sh` | 错误参数阻断，当前已接受测试配置告警 |
 | Signing safety | build-logic + Release workflow | 配置真实 keystore，不使用 debug 签名 |
 | Baseline profile source | Release workflow | 生成/提交受支持的 profile 或明确 warning |
 
@@ -139,7 +132,7 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 - CI 仍可通过 `LINT_ENFORCE_UNUSED_WAIVERS=true` 强制严格模式。
 - 版本目录产生的 `GradleDependency` 与 `NewerVersionAvailable` 仅作为 advisory 输出，不阻断 CI；依赖升级由每周 Dependabot PR 承载，并单独执行兼容性回归。
 
-新增 warning 应优先修复根因。只有有 Owner、范围和退出条件的已知厂商问题才可进入 waiver；production-blocking finding 不能靠 waiver 解除。
+新增 warning 应优先修复根因。只有有 Owner、范围和退出条件的已知厂商问题才可进入 waiver；未经明确接受的发布阻断问题不能靠新增 waiver 绕过。
 
 ## 生成报告的位置
 
@@ -177,9 +170,9 @@ bash scripts/quality/preflight_local.sh --release
 ## 双 APK 验收交付
 
 - `bash scripts/release/build-dual-apks.sh --debug`：两应用真实接口 Debug，输出 `build/outputs/dual-apk/debug/`。
-- `bash scripts/release/build-dual-apks.sh --acceptance`：显式 acceptance、强制非生产且禁用签名 fallback，输出 `build/outputs/dual-apk/acceptance/`。
-- 打包只选择 Gradle output-metadata.json 当前声明的 APK，校验独立包名、相同版本、模式和文件；失败不导出半套新包。每套包含 `SHA256SUMS`、`artifacts.json`。
-- Android CI 始终编译/测试/检查助手并独立上传 `assistant-debug-apk`。Release workflow 仅 acceptance 分支生成 `dual-acceptance-apks`；生产发布仍只包含正式 `:app`，厂商事项按上述明确接受的风险策略报告。
+- `bash scripts/release/build-dual-apks.sh --release`：标准 Release，要求合法签名且禁用签名 fallback，输出 `build/outputs/dual-apk/release/`。
+- 打包只选择 Gradle output-metadata.json 当前声明的 APK，校验独立包名、相同版本、变体和文件；失败不导出半套新包。每套包含 `SHA256SUMS`、`artifacts.json`，元数据使用 `variant` 字段记录 debug/release。
+- Android CI 始终编译/测试/检查助手并独立上传 `assistant-debug-apk`。双包仅用于内部验证，对外 Release workflow 只包含正式 `:app`，不构建或上传助手；厂商事项按上述明确接受的风险策略报告。
 - 脚本回归：`python3 scripts/quality/test_validation_app_isolation.py`、`python3 scripts/release/test_package_dual_apks.py`。
 
 助手设备回归应使用独占的 ARM64 测试模拟器，避免与其他项目同时运行 instrumentation。相机权限测试要求开始时助手未授予相机权限；使用空白测试环境，不对个人手机清数据。登录测试以测试内存会话和 Repository 替身覆盖状态，不发送真实短信或提交真实人脸。

@@ -165,8 +165,8 @@ flowchart LR
 
 - Debug、Release、nonMinifiedRelease 和 benchmarkRelease 变体由 Android CLI/Gradle 识别。
 - Android CI 的正常阻断路径以构建、Lint、架构和治理为主，助手单测纳入阻断，正式业务全量单测仍不作为普通 CI 必跑；本地 `--full` 和专项验证仍应运行相关测试。
-- 验收 Release 必须显式设置 `release.production=false` 和 `release.acceptance=true`。
-- 当前 QLZ key/test mode、QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 已知问题经用户明确接受，production 输出警告；正式签名、其他质量和产物检查仍必须通过，不将风险接受视为问题修复。
+- 正式构建统一使用标准 Release，保留正式签名、R8 和资源压缩，无额外发布模式；内部双包支持 debug/release，助手不纳入对外发布。
+- 当前 QLZ key/test mode、QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 已知问题经用户明确接受，Release 输出警告；正式签名、其他质量和产物检查仍必须通过，不将风险接受视为问题修复。
 
 ## 已接受的技术债
 

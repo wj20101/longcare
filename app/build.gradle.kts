@@ -37,16 +37,6 @@ val debugUseMockData =
         .orElse("true")
         .map { it.equals("true", ignoreCase = true) }
         .get()
-val productionReleaseRequested =
-    providers
-        .gradleProperty("release.production")
-        .orElse("true")
-        .map { it.equals("true", ignoreCase = true) }
-val acceptanceReleaseRequested =
-    providers
-        .gradleProperty("release.acceptance")
-        .orElse("false")
-        .map { it.equals("true", ignoreCase = true) }
 val txFaceSdkSource =
     providers
         .gradleProperty("TX_FACE_SDK_SOURCE")
@@ -183,18 +173,14 @@ baselineProfile {
     }
 }
 
-val verifyProductionReleaseConfiguration =
-    tasks.register<Exec>("verifyProductionReleaseConfiguration") {
+val verifyReleaseConfiguration =
+    tasks.register<Exec>("verifyReleaseConfiguration") {
         group = "verification"
         description =
-            "Validates release mode and reports explicitly accepted vendor/configuration risks."
+            "Reports explicitly accepted release vendor/configuration risks."
         commandLine(
             "bash",
-            rootProject.file("scripts/quality/verify_production_release_config.sh").absolutePath,
-            "--production-requested",
-            productionReleaseRequested.get().toString(),
-            "--acceptance-requested",
-            acceptanceReleaseRequested.get().toString(),
+            rootProject.file("scripts/quality/verify_release_config.sh").absolutePath,
             "--temporary-qlz-key-present",
             TEMPORARY_QLZ_SDK_KEY.isNotBlank().toString(),
             "--qlz-test-mode",
@@ -208,7 +194,7 @@ val verifyProductionReleaseConfiguration =
 
 tasks.matching { it.name == "assembleRelease" || it.name == "bundleRelease" }
     .configureEach {
-        dependsOn(verifyProductionReleaseConfiguration)
+        dependsOn(verifyReleaseConfiguration)
     }
 
 configurations.configureEach {

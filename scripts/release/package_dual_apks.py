@@ -9,9 +9,9 @@ import tempfile
 import time
 
 
-def package(root: Path, mode: str, variant: str) -> Path:
-    if (mode, variant) not in (("debug", "debug"), ("acceptance", "release")):
-        raise ValueError("Unsupported dual APK mode")
+def package(root: Path, variant: str) -> Path:
+    if variant not in ("debug", "release"):
+        raise ValueError("Unsupported build variant")
     artifacts = []
     version = None
     for module in ("app", "assistant"):
@@ -35,11 +35,11 @@ def package(root: Path, mode: str, variant: str) -> Path:
         source = (directory / element["outputFile"]).resolve()
         if source.parent != directory.resolve() or not source.is_file() or source.suffix != ".apk":
             raise ValueError(f"Missing or unsafe APK path: {module}")
-        filename = f"longcare-{module}-v{version[0]}-{version[1]}-{mode}.apk"
+        filename = f"longcare-{module}-v{version[0]}-{version[1]}-{variant}.apk"
         artifacts.append((source, filename, expected_id))
     parent = root / "build/outputs/dual-apk"
     parent.mkdir(parents=True, exist_ok=True)
-    stage = Path(tempfile.mkdtemp(prefix=f".{mode}-", dir=parent))
+    stage = Path(tempfile.mkdtemp(prefix=f".{variant}-", dir=parent))
     checksums = []
     summary = []
     for source, filename, app_id in artifacts:
@@ -49,13 +49,15 @@ def package(root: Path, mode: str, variant: str) -> Path:
         checksums.append(f"{digest}  {filename}\n")
         summary.append({"file": filename, "applicationId": app_id, "sha256": digest})
     (stage / "SHA256SUMS").write_text("".join(checksums))
-    (stage / "artifacts.json").write_text(json.dumps({"mode": mode, "versionName": version[0], "versionCode": version[1], "artifacts": summary}, indent=2) + "\n")
-    output = parent / mode
+    (stage / "artifacts.json").write_text(json.dumps({"variant": variant, "versionName": version[0], "versionCode": version[1], "artifacts": summary}, indent=2) + "\n")
+    output = parent / variant
     if output.exists():
-        output.rename(parent / f".{mode}-previous-{time.time_ns()}")
+        output.rename(parent / f".{variant}-previous-{time.time_ns()}")
     stage.rename(output)
     return output
 
 
 if __name__ == "__main__":
-    print(package(Path(sys.argv[1]).resolve(), sys.argv[2], sys.argv[3]))
+    if len(sys.argv) != 3:
+        sys.exit("Usage: package_dual_apks.py ROOT [debug|release]")
+    print(package(Path(sys.argv[1]).resolve(), sys.argv[2]))

@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-CONFIG = ROOT / "scripts/quality/verify_production_release_config.sh"
+CONFIG = ROOT / "scripts/quality/verify_release_config.sh"
 VENDOR = ROOT / "scripts/quality/verify_vendor_sdk_release_readiness.sh"
 
 
@@ -21,24 +21,24 @@ class ReleasePolicyTest(unittest.TestCase):
                 path.write_text(report)
             return subprocess.run(["bash", str(VENDOR), str(path)], text=True, capture_output=True)
 
-    def test_current_production_risks_warn_without_failing(self):
-        result = self.config("--production-requested", "true", "--acceptance-requested", "false",
-                             "--temporary-qlz-key-present", "true", "--qlz-test-mode", "true",
+    def test_current_release_risks_warn_without_failing(self):
+        result = self.config("--temporary-qlz-key-present", "true", "--qlz-test-mode", "true",
                              "--known-unsafe-qlz-sdk-present", "true", "--known-unsafe-face-sdk-present", "true")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("[WARN]", result.stderr)
         self.assertIn("not guaranteed", result.stderr)
 
-    def test_mode_conflict_and_implicit_acceptance_fail(self):
-        for args in (("--production-requested", "true", "--acceptance-requested", "true"), ()):
+    def test_removed_mode_options_are_rejected(self):
+        for args in (("--production-requested", "true"), ("--acceptance-requested", "true")):
             self.assertNotEqual(0, self.config(*args).returncode)
 
-    def test_explicit_acceptance_and_clean_production_pass(self):
-        for args in (("--acceptance-requested", "true"), ("--production-requested", "true")):
-            self.assertEqual(0, self.config(*args).returncode)
+    def test_clean_configuration_passes_without_extra_options(self):
+        result = self.config()
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertNotIn("WARN", result.stderr)
 
     def test_missing_invalid_or_unknown_option_fails(self):
-        for args in (("--production-requested",), ("--production-requested", "typo"),
+        for args in (("--qlz-test-mode",), ("--qlz-test-mode", "typo"),
                      ("--ignore-everything", "true")):
             self.assertNotEqual(0, self.config(*args).returncode)
 

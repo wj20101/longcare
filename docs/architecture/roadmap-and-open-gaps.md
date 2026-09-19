@@ -7,7 +7,7 @@
 ## 当前判断
 
 - 护理端和销售端的主要用户链路均已实现。
-- Debug 和显式验收构建可用。
+- 标准 Debug 和合法签名 Release 构建可用，无额外发布模式。
 - 当前 QLZ 测试配置与 QLZ/腾讯 SDK 已知风险经用户接受，不再单独阻断正式构建；签名、其他质量检查和实际产物验收仍必须通过。
 - 架构演进重点是缩小 `:app`、稳定平台生命周期和提高关键业务回归信心。
 - 文档当前真相集已经收敛；后续应随实现更新，不再累积 design/plan/progress 副本。
@@ -20,10 +20,10 @@ Owner 涉及移动端、服务端和厂商；以下是尚未修复的风险治�
 2. 替换或修复 QLZ 1.3.0.5，确保可达网络链路不再触发弱 TLS trust manager finding。
 3. 替换腾讯人脸 AAR，确保 ARM64 native library 满足 16 KB ELF/page alignment，并移除危险的全局 consumer ProGuard 规则。
 4. 新厂商包通过真实设备的登录、身份核验、QLZ 蓝牙评估、报告、COS 上传和 Release shrink 回归。
-5. `verify_vendor_sdk_release_readiness.sh`、生产配置门禁、Lint 和 production Release 全部通过。
+5. `verify_vendor_sdk_release_readiness.sh`、Release 配置门禁、Lint 和 Release 全部通过。
 6. 重新评估 Jetifier；只有全部相关厂商包 AndroidX-only 后才可关闭。
 
-验收 Release 只用于联调/验收，必须显式标记，不得作为生产包分发。
+内部双包用于联调/验收，助手不纳入对外正式发布；正式 App 统一使用标准 Release。
 
 ## P1：低风险优化批次
 
@@ -55,7 +55,7 @@ Owner 涉及移动端、服务端和厂商；以下是尚未修复的风险治�
 
 - `startup-prof.txt` 只包含初始显示相关路径，`baseline-prof.txt` 作为其包含关键业务旅程的超集，不再近似完全相同。
 - Benchmark 的 Profile/None 使用同一预置状态和同一旅程；模拟器用于稳定性与依赖链诊断，最终收益在多核真实设备确认。
-- 生成、安装和 minified acceptance Release 均能识别并使用打包后的 `baseline.prof` / `baseline.profm`。
+- 生成、安装和 minified Release 均能识别并使用打包后的 `baseline.prof` / `baseline.profm`。
 - 不改变隐私协议、登录态、页面路由或业务数据，仅修正测试预置状态、旅程和性能标记。
 
 ### 批次 C：项目 R8 确定性清理
@@ -69,7 +69,7 @@ Owner 涉及移动端、服务端和厂商；以下是尚未修复的风险治�
 完成条件：
 
 - `analyzeReleaseR8Config` 中对应 unused/subsumed 项消失，Optimization、Shrinking 和 Obfuscation 分数不得下降。
-- minified acceptance Release 构建通过，并覆盖登录、导航参数恢复、定位、身份核验、照片上传、倒计时、视频呼叫和应用更新 smoke。
+- minified Release 构建通过，并覆盖登录、导航参数恢复、定位、身份核验、照片上传、倒计时、视频呼叫和应用更新 smoke。
 - mapping、资源 shrinking、Baseline Profile 打包和 APK 签名/Manifest 检查保持正常。
 - 任一反射、序列化、JNI 或厂商流程回归时，立即回滚当前单条规则，不用新增整包 `-keep` 掩盖问题。
 
@@ -82,9 +82,7 @@ bash scripts/quality/preflight_local.sh --full
 bash scripts/quality/verify_validation_app_isolation.sh .
 ./gradlew --no-daemon :app:lintDebug :app:assembleDebug
 bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
-./gradlew --no-daemon :app:assembleRelease \
-  -Prelease.production=false \
-  -Prelease.acceptance=true
+./gradlew --no-daemon :app:assembleRelease
 ```
 
 再按批次补充 focused unit test、instrumentation、Baseline Profile Benchmark 或 R8 analyzer。每个批次使用独立提交；发现行为差异时只回滚该批次，不跨批次追加兼容分支。

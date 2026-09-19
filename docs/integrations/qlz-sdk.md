@@ -2,7 +2,7 @@
 
 最后核对：2026-09-19
 
-> 当前状态：用户于 2026-09-19 明确接受当前固定测试配置、QLZ 1.3.0.5 弱 TLS 及腾讯人脸 6.6.2 已知风险，Production Release 将其作为警告。其他签名和质量检查仍阻断；风险接受不等于修复，不得把验收产物直接当作正式包。
+> 当前状态：用户于 2026-09-19 明确接受当前固定测试配置、QLZ 1.3.0.5 弱 TLS 及腾讯人脸 6.6.2 已知风险，Release 将其作为警告。其他签名和质量检查仍阻断；风险接受不等于修复，不能以 Debug 验收代替 Release 证据。
 
 ## 接入范围
 
@@ -20,18 +20,18 @@ Java Lite 不保证 API/ABI 稳定，因此升级必须测试 AAR 自带的真�
 而非仅构建或 mock SDK 回调。`QlzProtobufCompatibilityTest` 在 JVM 和 Android 共用同一源文件，
 使用合成记录覆盖嵌套采样、生理数据、旧版本 fixture、未知字段及损坏输入，不进入正式包。
 4.28.3/4.36.2 的 JVM 专项、双向消息/Gzip 解析及 4.36.2 的 API 24/37 Debug 专项已通过；
-另外，4.36.2 合法签名 acceptance Release 在 API 24/37 各通过 8 项实际 SDK 消息/Gzip
+另外，4.36.2 合法签名 Release（当时的 acceptance 模式）在 API 24/37 各通过 8 项实际 SDK 消息/Gzip
 混淆专项。该组合另已完成授权真机 BLE 检测、上传、自动进入 H5、提交问卷、H5 返回与
 原生接口等级展示验收；离线测试不替代后续 SDK/运行库升级时的真实链路复核。
 
 默认 instrumentation 继续使用 Debug 和 AndroidJUnitRunner。仅做离线 QLZ 混淆专项时，
 可显式启用 `-Ptest.qlzRelease=true`，测试源限定为共享消息代码和 `src/qlzReleaseTest/java`。
 测试入口 `QlzReleaseTestRunner` 直接运行 JUnit，不初始化 AndroidX UI/Tracing；
-不改变 Release 的签名、混淆或生产校验规则。构建需要合法签名及显式 acceptance：
+不改变 Release 的签名、混淆或发布校验规则。构建需要合法签名：
 
 ```bash
 ./gradlew :app:assembleRelease :app:assembleReleaseAndroidTest \
-  -Ptest.qlzRelease=true -Prelease.production=false -Prelease.acceptance=true \
+  -Ptest.qlzRelease=true \
   -PLONGCARE_ALLOW_UNSIGNED_RELEASE=false -PALLOW_UNSIGNED_RELEASE=false
 ```
 
@@ -64,19 +64,17 @@ SDK 消息/Gzip 合约，覆盖旧 fixture、嵌套字段、实例隔离、未�
 
 测试阶段在 `app/build.gradle.kts` 中统一固化测试 appKey：
 
-`debug` 与验收用途的 `release` 构建当前都会将该 appKey 写入 `BuildConfig.QLZ_SDK_KEY`，并设置
+`debug` 与 `release` 构建当前都会将该 appKey 写入 `BuildConfig.QLZ_SDK_KEY`，并设置
 `BuildConfig.QLZ_TEST_MODE=true`，保证线上打包环境不依赖本机 `local.properties` 或 CI
 环境变量。测试完成、Sale 接口提供 SDK key 后，应删除这段固定配置，改为使用接口返回值
 初始化 `QlzSdkClient`。
 
-普通 `release` 默认按生产包校验，不再默认生成测试验收包。需要临时生成验收 Release 时，
-必须同时显式传入 `-Prelease.production=false -Prelease.acceptance=true`。当前固定测试 key、
+正式包统一使用标准 `release`，不设置额外发布模式。当前固定测试 key、
 `QLZ_TEST_MODE=true`、QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 已知问题已获用户明确接受，
-生产检查改为警告，保持模式合法性、签名和其余质量检查。
+发布检查改为警告，保持签名和其余质量检查。
 
-GitHub 的 `Android Release` 手动工作流提供 `release_mode` 选项。当前测试阶段默认选择
-`acceptance`，工作流会自动传入上述两个 Gradle 参数，并在 APK、AAB、GitHub Release 名称中
-标记为验收包。选择 `production` 时仍使用当前已接受的配置，并执行
+GitHub 的 `Android Release` 手动工作流只发布正式 App，生成正式 Release 并设为 Latest，
+APK、AAB 不附加额外模式标签。工作流仍使用当前已接受的配置，并执行
 `verify_vendor_sdk_release_readiness.sh` 报告剩余风险；缺失输入和未接受问题不自动放行。
 
 `appSecret` 只允许配置在 LongCare 服务端。它用于俏郎中 OpenAPI 请求签名，不得写入
@@ -219,5 +217,5 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest \
 - 旧版 `BLUETOOTH`、`BLUETOOTH_ADMIN` 权限限制到 API 30。
 - SDK 仅在联调页或未来业务入口按需初始化，不在 Application 启动阶段读取设备标识。
 - 自定义页面不再注册厂商 Activity 的全局 WindowInsets 兼容回调；AAR 中的 Activity 仍由 manifest merge 保留为不可导出组件，但业务路径不会启动它们。
-- QLZ 1.3.0.5 内置遥测仍存在弱 TLS 校验。用户已接受当前风险，production 检查明确告警；
+- QLZ 1.3.0.5 内置遥测仍存在弱 TLS 校验。用户已接受当前风险，Release 检查明确告警；
   这不修复 SDK，也不免除其他签名、质量或业务验收。后续由厂商提供修复版本。

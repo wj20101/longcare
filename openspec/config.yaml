@@ -26,6 +26,7 @@ context: |
   - 权限、NFC、相机、定位和 Service 改动覆盖拒绝/恢复、前后台、退出/换号和资源释放。
   - 新导出组件、secret、Lint ignore、全局 ProGuard ignore 或 debug 签名 fallback 必须进行安全审查，不得用于绕过门禁。
   - 用户已于 2026-09-19 接受当前 QLZ 固定测试配置/1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 的 16 KB/consumer rules 风险，正式构建将这些事项作为警告；其余签名、Lint、产物和业务验收仍阻断，不将风险接受写成问题已修复。
+  - 正式构建统一使用标准 Release，无额外发布模式；本地双包支持 debug/release，助手仅内部验证，对外 Release 仅包含 :app。
   - 涉及 Android 平台行为、targetSdk、权限、前台服务、大屏或推荐 API 时，先用 android docs search/fetch 核对官方最新资料。
 
   事实来源与维护：
