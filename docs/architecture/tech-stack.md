@@ -30,7 +30,7 @@
 | Compose DI | Hilt lifecycle-viewmodel-compose（无 Navigation 2 依赖） | 1.4.0 |
 | Lifecycle | AndroidX Lifecycle | 2.11.0 |
 | DI | Dagger Hilt / AndroidX Hilt | 2.60.1 / 1.4.0 |
-| Persistence | Room | 2.8.4 |
+| Persistence | Room | 2.8.5 |
 | Preferences | DataStore | 1.2.1 |
 | Background | WorkManager | 2.11.2 |
 | Camera | CameraX | 1.6.1 |
