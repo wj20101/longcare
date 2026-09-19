@@ -1,14 +1,9 @@
 package com.ytone.longcare.navigation
 
-import androidx.navigation.NavController
-import androidx.navigation.NavGraphBuilder
 
-internal fun NavGraphBuilder.registerSupportNavGraphs(navController: NavController) {
-    registerTxFaceRoute(navController)
+internal fun AppEntryProviderBuilder.registerSupportNavGraphs(navController: AppNavigator) {
     registerUserListRoute(navController)
     registerUserServiceRecordRoute(navController)
-    registerFaceRecognitionGuideRoute(navController)
-    registerSelectDeviceRoute(navController)
     registerIdentificationRoute(navController)
     registerDefaultFaceVerificationRoute(navController)
     registerCameraRoute(navController)

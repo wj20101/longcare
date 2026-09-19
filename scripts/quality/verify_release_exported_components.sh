@@ -17,14 +17,19 @@ if [[ ! -f "${MANIFEST_PATH}" ]]; then
   exit 1
 fi
 
-APP_PACKAGE="$(sed -nE 's@<manifest[^>]*package="([^"]+)".*@\1@p' "${MANIFEST_PATH}" | head -n1)"
-if [[ -z "${APP_PACKAGE}" ]]; then
-  APP_PACKAGE="com.ytone.longcare"
-fi
-
-ALLOWED_EXPORTED_COMPONENTS=(
-  "${APP_PACKAGE}.MainActivity"
-)
+APP_PACKAGE="$(python3 -c 'import sys, xml.etree.ElementTree as ET; print(ET.parse(sys.argv[1]).getroot().get("package", ""))' "${MANIFEST_PATH}")"
+case "${APP_PACKAGE}" in
+  com.ytone.longcare)
+    ALLOWED_EXPORTED_COMPONENTS=("${APP_PACKAGE}.MainActivity")
+    ;;
+  com.ytone.longcare.assistant)
+    ALLOWED_EXPORTED_COMPONENTS=("${APP_PACKAGE}.AssistantActivity")
+    ;;
+  *)
+    echo "Unexpected application package: ${APP_PACKAGE}" >&2
+    exit 1
+    ;;
+esac
 
 TMP_EXPORTED="$(mktemp)"
 trap 'rm -f "${TMP_EXPORTED}"' EXIT

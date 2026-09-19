@@ -1,0 +1,7 @@
+<resources>
+    <string name="camera_delay_seconds">%1$d 秒</string>
+    <string name="camera_delay_off_description">延迟拍照：关闭</string>
+    <string name="camera_cancel_countdown_description">取消倒计时</string>
+    <string name="camera_shutter_description">拍照</string>
+    <string name="camera_switch_description">切换摄像头</string>
+</resources>

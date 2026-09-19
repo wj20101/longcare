@@ -1,15 +1,20 @@
 package com.ytone.longcare.features.sales
 
 import android.net.Uri
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -20,6 +25,11 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.ytone.longcare.integration.qlz.QlzDeviceOption
+import com.ytone.longcare.integration.qlz.QlzEvaluationStage
+import com.ytone.longcare.integration.qlz.QlzEvaluationIssue
+import com.ytone.longcare.integration.qlz.QlzEvaluationRecoveryAction
+import com.ytone.longcare.integration.qlz.QlzEvaluationUiState
 import com.ytone.longcare.model.ToDoResultModel
 import com.ytone.longcare.model.User
 import com.ytone.longcare.model.UserLatentCheckState
@@ -308,20 +318,55 @@ class SalesLargeFontLayoutTest {
     }
 
     @Test
-    fun evaluationGuideCanScrollToPrimaryAction() {
+    fun evaluationGuideCanScrollToMeasurementStatus() {
         setLargeFontContent {
             SalesEvaluationGuideScreen(
-                connectedDeviceName = "QLZ 大字体测试设备",
-                progressText = "",
+                evaluationState =
+                    QlzEvaluationUiState(
+                        stage = QlzEvaluationStage.MEASURING,
+                        selectedDevice =
+                            QlzDeviceOption(
+                                id = "device-1",
+                                displayName = "QLZ 大字体测试设备",
+                                maskedIdentifier = "••:••:••:••:AA:BB",
+                            ),
+                        successCount = 3,
+                        totalCount = 10,
+                    ),
                 onBack = {},
-                onOpenSdk = {},
+                onRetry = {},
             )
         }
 
         composeRule
-            .onNodeWithText("继续评估")
+            .onNodeWithText("30%")
             .performScrollTo()
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun shortEvaluationGuideKeepsUploadRetryAndBackReachable() {
+        var retries = 0
+        var backs = 0
+        setLargeFontContent {
+            Box(Modifier.width(320.dp).height(360.dp)) {
+                SalesEvaluationGuideScreen(
+                    QlzEvaluationUiState(
+                        stage = QlzEvaluationStage.ERROR,
+                        totalCount = 100,
+                        successCount = 100,
+                        issue = QlzEvaluationIssue.UPLOAD_FAILED,
+                        recoveryAction = QlzEvaluationRecoveryAction.RETRY_UPLOAD,
+                    ),
+                    onBack = { backs++ },
+                    onRetry = { retries++ },
+                )
+            }
+        }
+        composeRule.onNode(hasScrollAction()).performScrollToNode(hasTestTag("qlz_retry_action"))
+        composeRule.onNodeWithTag("qlz_retry_action").assertIsDisplayed().performClick()
+        composeRule.onNodeWithContentDescription("返回").assertIsDisplayed().performClick()
+        composeRule.runOnIdle { assertEquals(1, retries); assertEquals(1, backs) }
     }
 
     @Test
@@ -380,19 +425,32 @@ class SalesLargeFontLayoutTest {
         val deviceName = "QLZ 大字体测试设备 2026"
         setLargeFontContent {
             SalesDeviceStatusScreen(
-                connectedDeviceName = deviceName,
+                evaluationState =
+                    QlzEvaluationUiState(
+                        stage = QlzEvaluationStage.SCAN_RESULTS,
+                        devices =
+                            listOf(
+                                QlzDeviceOption(
+                                    id = "device-1",
+                                    displayName = deviceName,
+                                    maskedIdentifier = "••:••:••:••:AA:BB",
+                                )
+                            ),
+                    ),
                 tokenReady = true,
-                progressText = "",
                 onBack = {},
-                onStartEvaluation = {},
+                onStartScan = {},
+                onSelectDevice = {},
+                onRetry = {},
+                onRecheckEnvironment = {},
             )
         }
 
         composeRule.onNodeWithText(deviceName).assertIsDisplayed()
         composeRule
             .onNode(hasScrollAction())
-            .performScrollToNode(hasText("开始评估"))
-        composeRule.onNodeWithText("开始评估").assertIsDisplayed()
+            .performScrollToNode(hasText("重新搜索"))
+        composeRule.onNodeWithText("重新搜索").assertIsDisplayed()
     }
 
     @Test
@@ -400,6 +458,7 @@ class SalesLargeFontLayoutTest {
         setLargeFontContent {
             SalesEvaluationCompleteScreen(
                 hasReport = true,
+                grade = "重度失能",
                 onBack = {},
                 onDone = {},
                 onOpenReport = {},

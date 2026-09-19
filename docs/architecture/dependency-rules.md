@@ -1,6 +1,6 @@
 # 依赖与架构规则
 
-最后核对：2026-08-27
+最后核对：2026-09-08
 
 本文同时记录“当前允许的依赖”和“继续迁移的目标”。两者不能混写：当前 `:app` 仍有业务实现，但新代码不得因此扩大 legacy 边界。
 
@@ -10,7 +10,10 @@
 
 | 源模块 | 允许依赖的项目模块 |
 |---|---|
-| `:app` | `:baselineprofile`、全部 `:core:*`、全部现有 `:feature:*` |
+| `:app` | `:baselineprofile`、全部 `:core:*`、全部现有 `:feature:*`、`:integration:txface` |
+| `:assistant` | 全部 `:core:*`、`:feature:login`、`:feature:identification`、`:feature:photoupload`、`:integration:txface` |
+| `:integration:txface` | `:core:common`、`:core:domain`、`:core:model`，本地来源时依赖 txface-live/txface-normal artifact wrapper |
+| `:integration:txface-live` / `:integration:txface-normal` | 无项目依赖，仅暴露现有 AAR artifact |
 | `:baselineprofile` | 无 |
 | `:core:model` | 无 |
 | `:core:domain` | `:core:model` |
@@ -18,7 +21,9 @@
 | `:core:data` | `:core:common`、`:core:domain`、`:core:model` |
 | `:core:ui` | `:core:common`、`:core:domain`、`:core:model` |
 | `:feature:home` | `:core:domain`、`:core:model` |
-| 其他现有 `:feature:*` | `:core:common`、`:core:domain`、`:core:model`；identification 额外允许 `:core:ui` |
+| 其他现有 `:feature:*` | `:core:common`、`:core:domain`、`:core:model`；identification 和 photoupload 额外允许 `:core:ui` |
+
+`:app` 与 `:assistant` 禁止互相依赖。两者共享能力只通过 Core/Feature/Integration；验证 UI、HID 测试状态和测试 NFC helper 仅属于助手。
 
 新增或修改 Gradle 项目依赖时，必须同步检查实际 build 文件和 allowlist；不能只更新本文。
 
@@ -76,7 +81,7 @@
 - Service、通知、闹钟、安装器、NFC 前台调度、Activity Result 和第三方 SDK UI 由 app-owned gateway/controller 或明确的平台模块封装。
 - 前台 Service 必须声明匹配用途的 `foregroundServiceType` 和权限，并从满足运行时前置条件的用户可见流程启动。
 - Release 组件默认 `exported=false`；新增导出组件需要最小 intent surface、安全审查和 allowlist 更新。
-- Debug-only mock、launcher 或诊断能力必须放在 debug source set；共享验证入口进入 main source set 时仍需在 Release 保持不可导出。
+- 正式应用的 mock 仍限制在 debug source set；五项独立验证功能只进入助手，正式 App 的 Debug/Release 均不得包含隐藏测试入口。
 - 权限请求要有用途说明、拒绝恢复和从设置页返回后的重新检查，不能在 Application 无上下文地批量申请。
 
 ## 数据、网络和文件
@@ -102,6 +107,7 @@
 | 守卫 | 保护内容 |
 |---|---|
 | `verify_architecture_boundaries.sh` | Android-free Domain、禁止 Feature/Data 反向依赖、ViewModel/调度器/文件规模等规则 |
+| `verify_validation_app_isolation.sh` | 正式 App 无验证入口、应用包名/依赖、助手最小导出面及共享实现归属 |
 | `verify_module_dependency_whitelist.sh` | Gradle 项目模块边 |
 | `verify_module_api_visibility.sh` | 跨模块 API 和 internal 实现边界 |
 | `check_new_files_guard.sh` | 冻结 legacy feature 目录不新增文件 |

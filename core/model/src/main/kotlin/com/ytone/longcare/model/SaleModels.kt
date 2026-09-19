@@ -1,5 +1,10 @@
 package com.ytone.longcare.model
 
+data class CheckResultModel(
+    val pgResult: String? = null,
+    val pgUrl: String? = null,
+)
+
 /**
  * 可注入俏郎中 SDK 的一次性检测 Token。
  */

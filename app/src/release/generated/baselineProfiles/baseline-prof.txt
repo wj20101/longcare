@@ -12912,12 +12912,6 @@ Lcom/ytone/longcare/features/facecapture/FaceCaptureViewModel_HiltModules_BindsM
 HSPLcom/ytone/longcare/features/facecapture/FaceCaptureViewModel_HiltModules_BindsModule_Binds_LazyMapKey;-><clinit>()V
 Lcom/ytone/longcare/features/facecapture/FaceCaptureViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
 HSPLcom/ytone/longcare/features/facecapture/FaceCaptureViewModel_HiltModules_KeyModule_Provide_LazyMapKey;-><clinit>()V
-Lcom/ytone/longcare/features/facerecognition/vm/FaceRecognitionViewModel_HiltModules$KeyModule;
-HSPLcom/ytone/longcare/features/facerecognition/vm/FaceRecognitionViewModel_HiltModules$KeyModule;->provide()Z
-Lcom/ytone/longcare/features/facerecognition/vm/FaceRecognitionViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
-HSPLcom/ytone/longcare/features/facerecognition/vm/FaceRecognitionViewModel_HiltModules_BindsModule_Binds_LazyMapKey;-><clinit>()V
-Lcom/ytone/longcare/features/facerecognition/vm/FaceRecognitionViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
-HSPLcom/ytone/longcare/features/facerecognition/vm/FaceRecognitionViewModel_HiltModules_KeyModule_Provide_LazyMapKey;-><clinit>()V
 Lcom/ytone/longcare/features/home/vm/HomeSharedViewModel_HiltModules$KeyModule;
 HSPLcom/ytone/longcare/features/home/vm/HomeSharedViewModel_HiltModules$KeyModule;->provide()Z
 Lcom/ytone/longcare/features/home/vm/HomeSharedViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
