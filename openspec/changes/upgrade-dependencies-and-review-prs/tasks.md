@@ -41,7 +41,7 @@
 - [x] 4.2 基于最新主分支整合 #122 并升级 Kotlin 2.4.20（初次复核无冲突，KSP 合入后需保留两个目标版本解决相邻行冲突），检查相关编译器/Compose 插件版本一致；通过主应用/助手完整 JVM 单测、代码生成与构建，审查并按授权逐项合入 #126/#122。
 - [x] 4.2a 按追加确认核对 AGP/Gradle 稳定版兼容组合，保留 9.4.1/9.7.1；Kotlin 合入后以 Wrapper 生成任务同步 JAR/启动脚本及 properties，验证官方 SHA-256、实际运行版本、build-logic 测试、双应用 Debug/Lint 和完整 preflight；独立 PR 最新 CI 通过后按授权合入，不采用预览版或移除校验。
 - [x] 4.3 升级 Compose BOM 2026.09.00 并在授权后建立独立 PR，核对实际解析映射；运行 Navigation 3 状态/返回、H5 无标题栏/键盘/弹窗/大字体回归，最新检查通过后按授权合入。
-- [ ] 4.4 处理 #128 的 Robolectric 4.17，核对 JDK/API 配置及受影响 shadow 用法；主应用和助手完整 JVM 单测通过后按授权合入，不以 build-only 替代。
+- [x] 4.4 处理 #128 的 Robolectric 4.17，核对 JDK/API 配置及受影响 shadow 用法；主应用和助手完整 JVM 单测通过后按授权合入，不以 build-only 替代。
 
 #126 候选 `1ad9b625` 已整合 `46cd1529`，只升级 KSP 到 2.3.12，Kotlin 保持 2.4.10，不启用 backing field 新特性。Hilt 注入器、Room DAO/数据库和 Moshi DTO adapter 重新生成；双应用 Debug/Lint、Data 测试 APK 和完整 preflight 均通过，新生成 DAO 在 API 24 的 7 项测试通过，schema 无差异，既有 allowlist 通过。[CI 35408739082](https://github.com/wj20101/longcare/actions/runs/35408739082) 通过（instrumentation 按范围跳过），锁定 head 正常合入为 `ce06b1d0b3afcd1063b0b819b1de095cc5b897c3`；目标 Kotlin 组合验证仍属于 4.2。Room 合入后的主分支 CI 35408621120 也已通过。
 
@@ -50,6 +50,8 @@
 #129 候选 `2717c036` 基于 `740d514b`，通过官方 `wrapper` 任务同步 JAR；Unix/Windows 脚本重新生成后无差异，properties 仅排序变化，分发包摘要及 URL 验证保留。JAR 官方 SHA-256 匹配，实际 Gradle 为 9.7.1；build-logic 测试、双应用 Debug/Lint、完整 preflight、allowlist/隔离/严格规格检查通过。额外 API 24/WebView 52 的 24 项及 API 37 Pixel 10 的 34 项 Navigation/WebView 对照通过，均为本地测试内容。[CI 35409946447](https://github.com/wj20101/longcare/actions/runs/35409946447) 通过（远端 instrumentation 按范围跳过），锁定 head 合入为 `f836d2400520af26afb73de293b4760d3bc13931`。
 
 #130 候选 `2eff88f5` 基于 `f836d240`，实际双应用 animation/foundation/runtime/ui 解析为 1.12.1，Material 3 保持 1.4.0。完整 preflight、双应用 Debug/Lint、allowlist/隔离和严格规格检查通过；[CI 35410617491](https://github.com/wj20101/longcare/actions/runs/35410617491) 通过（远端 instrumentation 按范围跳过）。API 24/WebView 52 的 24 项 Navigation/WebView 测试通过。Pixel 10 初轮键盘与系统栏两项受安全锁屏/DreamActivity 占用焦点影响；用户解锁且确认 `deviceLocked=0` 后，同一 APK 原样重跑 34 项全部通过（39.413 秒），未改断言或绕过锁屏。锁定 head 正常合入为 `c5bb538715cb697e01d1d1fc1622a3a928d1d949`。
+
+#128 候选 `247ee106` 整合 `c5bb5387`，实际 Robolectric/sandbox/shadows 均为 4.17。初轮完整测试定位到 JDK 模块访问异常；依官方指引仅为 Android 模块的 Test JVM 添加 `java.base/jdk.internal.access` 的 `--add-opens`，不改变 App、daemon、纯 JVM 模块、JDK/SDK 或断言。正式应用 370 项、助手 34 项（无失败/跳过）及其他完整 preflight 模块通过；双应用 Debug/Lint、build-logic tests、allowlist/隔离/严格规格通过。强制重跑 458 项 Lint 相关任务后旧缓存 quickfix 提示消失。[CI 35411553102](https://github.com/wj20101/longcare/actions/runs/35411553102) 通过（instrumentation 按范围跳过），锁定 head 合入为 `b114b1b7f31b9fbb60fb8c80b6db77da0cd911ed`。
 
 ## 5. 性能工具与 #117
 
