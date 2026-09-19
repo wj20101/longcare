@@ -1,56 +1,47 @@
 package com.ytone.longcare.navigation
 
-import androidx.navigation.NavController
 import com.ytone.longcare.model.OrderKey
 
-fun NavController.navigateToService(orderKey: OrderKey) {
+fun AppNavigator.navigateToService(orderKey: OrderKey) {
     navigateToService(orderKey.toOrderNavParams())
 }
 
-fun NavController.navigateToNursingExecution(orderKey: OrderKey) {
+fun AppNavigator.navigateToNursingExecution(orderKey: OrderKey) {
     navigateToNursingExecution(orderKey.toOrderNavParams())
 }
 
-fun NavController.navigateToNfcSignInForStartOrder(orderKey: OrderKey) {
+fun AppNavigator.navigateToNfcSignInForStartOrder(orderKey: OrderKey) {
     navigateToNfcSignInForStartOrder(orderKey.toOrderNavParams())
 }
 
-fun NavController.navigateToNfcSignInForEndOrder(orderKey: OrderKey, params: EndOderInfo) {
+fun AppNavigator.navigateToNfcSignInForEndOrder(orderKey: OrderKey, params: EndOderInfo) {
     navigateToNfcSignInForEndOrder(orderKey.toOrderNavParams(), params)
 }
 
-fun NavController.navigateToSelectService(orderKey: OrderKey) {
+fun AppNavigator.navigateToSelectService(orderKey: OrderKey) {
     navigateToSelectService(orderKey.toOrderNavParams())
 }
 
-fun NavController.navigateToPhotoUpload(orderKey: OrderKey) {
+fun AppNavigator.navigateToPhotoUpload(orderKey: OrderKey) {
     navigateToPhotoUpload(orderKey.toOrderNavParams())
 }
 
-fun NavController.navigateToServiceCountdown(orderKey: OrderKey, projectIdList: List<Int> = emptyList()) {
+fun AppNavigator.navigateToServiceCountdown(orderKey: OrderKey, projectIdList: List<Int> = emptyList()) {
     navigateToServiceCountdown(orderKey.toOrderNavParams(), projectIdList)
 }
 
-fun NavController.navigateToEndServiceSelection(orderKey: OrderKey, endType: Int, projectIdList: List<Int> = emptyList()) {
+fun AppNavigator.navigateToEndServiceSelection(orderKey: OrderKey, endType: Int, projectIdList: List<Int> = emptyList()) {
     navigateToEndServiceSelection(orderKey.toOrderNavParams(), endType, projectIdList)
 }
 
-fun NavController.navigateToServiceComplete(orderKey: OrderKey, serviceCompleteData: ServiceCompleteData) {
+fun AppNavigator.navigateToServiceComplete(orderKey: OrderKey, serviceCompleteData: ServiceCompleteData) {
     navigateToServiceComplete(orderKey.toOrderNavParams(), serviceCompleteData)
 }
 
-fun NavController.navigateToFaceRecognitionGuide(orderKey: OrderKey) {
-    navigateToFaceRecognitionGuide(orderKey.toOrderNavParams())
-}
-
-fun NavController.navigateToSelectDevice(orderKey: OrderKey) {
-    navigateToSelectDevice(orderKey.toOrderNavParams())
-}
-
-fun NavController.navigateToIdentification(orderKey: OrderKey) {
+fun AppNavigator.navigateToIdentification(orderKey: OrderKey) {
     navigateToIdentification(orderKey.toOrderNavParams())
 }
 
-fun NavController.navigateToDefaultFaceVerification(orderKey: OrderKey) {
+fun AppNavigator.navigateToDefaultFaceVerification(orderKey: OrderKey) {
     navigateToDefaultFaceVerification(orderKey.toOrderNavParams())
 }

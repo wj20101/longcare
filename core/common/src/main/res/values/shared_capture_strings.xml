@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nfc_settings_action">设置</string>
+    <string name="nfc_settings_cancel">取消</string>
+    <string name="nfc_disabled_title">NFC 未开启</string>
+    <string name="nfc_disabled_message">请在系统设置中开启 NFC 后继续使用。</string>
+</resources>
