@@ -9,6 +9,7 @@ Protobuf #125 在上一轮依赖升级中因 QLZ Lite AAR 的兼容性尚未验�
 - 验证最终依赖解析、双应用单测/Debug/Lint、合法签名的显式 acceptance 混淆产物及 API 24/现代设备上的实际消息处理。
 - 合入前完成真实 QLZ 初始化、BLE 检测、上传、自动打开 H5、返回和原生结果查询验收；真实业务数据提交须在执行时另行确认测试对象与授权。
 - 更新技术栈和 QLZ 接入文档，区分厂商示例基线与本项目实测运行库；保留可追溯的测试和 PR 证据。
+- 用户追加批准定位并最小修复本轮发现的混淆测试运行器启动失败与扫描停滞；测试侧修复不放宽正式混淆规则，扫描侧保留既有有界扫描、取消和释放契约，不扩展为新的兼容框架。
 
 ## Capabilities
 
@@ -18,11 +19,12 @@ Protobuf #125 在上一轮依赖升级中因 QLZ Lite AAR 的兼容性尚未验�
 
 ### Modified Capabilities
 
-无。检测、上传、H5 关闭、结果查询、持久化及双 APK 隔离契约均保持不变；本 change 设置 `skip_specs: true`，不为纯依赖升级补造行为规格。
+无。检测、上传、H5 关闭、结果查询、持久化及双 APK 隔离契约均保持不变；追加修复只恢复既有扫描及测试契约，本 change 仍设置 `skip_specs: true`，不新增业务行为规格。
 
 ## Impact
 
 - 预期修改版本目录、`app/build.gradle.kts` 中版本说明、App 测试源集及 `docs/architecture/tech-stack.md`、`docs/integrations/qlz-sdk.md`；仅在确有需要时修改测试专用构建配置。
+- 追加范围允许修改 App 内 QLZ 扫描接入及其回归测试；先以真实 AAR 和可复现证据区分测试基础设施、扫描回调生命周期与 Protobuf 兼容问题，不替换或重打包 AAR。
 - 不替换或重打包 QLZ AAR，不重新生成厂商消息类，不引入完整 `protobuf-java`、双运行库、运行时切换或兼容适配框架；不改变 AGP/Gradle/JDK/SDK、数据库或接口。
 - Java Lite 官方不保证 API/ABI 稳定，厂商生成器精确版本尚缺少可验证元数据。测试通过只证明所测组合和路径，不代表厂商背书；失败时保留 4.28.3 并报告具体障碍，不放宽断言或安全门禁。
 - QLZ 固定测试配置/弱 TLS、腾讯人脸 16 KB 对齐及 consumer rules 的生产阻塞仍在，不因 Protobuf 验收解除。
