@@ -15,6 +15,8 @@ LongCare 是单应用、多模块的 Android 客户端，服务两类主要流�
 
 | 任务 | 文档 |
 |---|---|
+| 整体需求、技术评估和优化依据 | `docs/analysis/project-review.md` |
+| 全量文档职责与一致性检查 | `docs/maintenance.md` |
 | 产品行为、角色、业务规则 | `docs/product/overview.md` |
 | 模块、运行时、平台边界 | `docs/architecture/system-overview.md` |
 | 依赖/版本/构建变体 | `docs/architecture/tech-stack.md` |
@@ -25,7 +27,7 @@ LongCare 是单应用、多模块的 Android 客户端，服务两类主要流�
 | QLZ / 销售评估 | `docs/integrations/qlz-sdk.md` |
 | 定位生命周期 | `feature/location/src/main/kotlin/com/ytone/longcare/features/location/README.md` |
 
-冲突时相信当前代码、Gradle/Manifest/workflow 和测试，再相信对应当前文档。不要从旧提交中的计划或日志推导现状。
+判断当前实现时核对代码、Gradle/Manifest/workflow 和测试；与已接受规格冲突时明确记录偏差，不以实现自动覆盖需求。不要从旧提交中的计划或日志推导现状。
 
 ## 当前架构
 
@@ -58,13 +60,13 @@ LongCare 是单应用、多模块的 Android 客户端，服务两类主要流�
 - ViewModel 不持有 Activity，不直接启动 Service/闹钟/安装器/厂商 SDK UI。
 - 持久 UI 状态使用 `StateFlow`；不可丢失动作保持到 UI 确认消费。
 - 协程捕获异常时继续抛出 `CancellationException`。
-- Room 升级提交 schema、显式 Migration 和迁移测试，禁止破坏性兜底。
+- Room 当前缺少迁移路径时重建表（见 `DatabaseModule`）；升级须先明确保留需求，提交 schema 和对应升级测试。需要保留的数据必须有迁移路径，不得扩大存量重建策略或把重建测试写成保留数据证明。
 - Retrofit 方法、路径、注解或 JSON key 变化同步契约测试。
 - 标准持久图片统一走 `UnifiedImagePipeline`、`ImageProcessingPolicies` 和受管文件生命周期。
 - 权限/NFC/相机/定位/Service 改动必须覆盖拒绝、恢复、前后台、退出/换号和资源释放。
 - 新导出组件、新 secret、Lint ignore、全局 ProGuard ignore 或 debug 签名 fallback 都需要停下来做安全审查。
 - 产品、模块、路由、版本、门禁或 SDK 行为变化时，同步 [文档维护矩阵](docs/README.md#文档维护规则)。
-- 不新建 task plan、progress、findings 或执行日志文档；过程留在 PR/Issue，长期决策写 ADR。
+- 不新建 task plan、progress、findings 或执行日志文档；过程留在 PR/Issue，长期决策写 ADR。人工维护的整体分析可放在 docs/analysis，必须标明基线与验证边界，机器报告仍放 build/CI artifact。
 
 ## Android CLI
 
@@ -114,6 +116,9 @@ OpenSpec 产物统一使用简体中文并提交到 `openspec/`；结构关键�
 ## 最小验证
 
 ```bash
+# 文档一致性（链接、清单、指定版本；不替代业务核对）
+python3 scripts/quality/verify_documentation.py
+
 # 文档、边界或小改动
 bash scripts/quality/preflight_local.sh --local-fast
 

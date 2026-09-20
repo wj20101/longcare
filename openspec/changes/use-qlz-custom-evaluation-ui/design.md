@@ -1,12 +1,14 @@
 ## Context
 
+> 2026-09-20 一致性校准：本文已对齐后续落地的 `device-h5-evaluation-flow`、`legacy-h5-close` 和 `approved-vendor-release` 主规格。任务 5.3 的完整真机异常矩阵仍未完成；文档更新不新增验收证据。
+
 参见 [proposal.md](proposal.md) 的动机，以及 [qlz-custom-evaluation-ui spec](specs/qlz-custom-evaluation-ui/spec.md) 的行为要求。
 
-当前 `QlzSdkClient` 以单例初始化 QLZ 1.3.0.5 Lite AAR，并由 `SalesSdkUiController` 调用 `SDKCall.openByToken(...)` 打开厂商 Activity。`SalesExperienceScreen` 已有 `DEVICE_STATUS`、`EVALUATION_GUIDE`、`EVALUATION_COMPLETE` 三个应用内页面，`SalesViewModel` 已负责获取/恢复一次性 Token、处理完成事件、刷新客户详情以及从服务端 `pgUrl` 打开报告。
+本变更提出时，`QlzSdkClient` 以单例初始化 QLZ 1.3.0.5 Lite AAR，并由 `SalesSdkUiController` 调用 `SDKCall.openByToken(...)` 打开厂商 Activity。`SalesExperienceScreen` 已有 `DEVICE_STATUS`、`EVALUATION_GUIDE`、`EVALUATION_COMPLETE` 三个应用内页面，`SalesViewModel` 已负责获取/恢复一次性 Token、处理完成事件、刷新客户详情以及从服务端 `pgUrl` 打开报告。
 
 Demo 证明自定义界面不需要复制或换肤厂商 Activity：先用 `CheckIml.startCheck(token)` 校验并建立检测上下文，再由 `ScanDeviceIml` 输出候选设备，以 `ConnectDeviceHelp` 连接、接收五指/进度回调并在 `onCheckEnd` 后调用 `sendData`。AAR 使用全局 `CheckIml` 状态；扫描列表、五指数组及部分检测集合为可变对象；`ConnectDeviceHelp` 持有 Context 和回调直到 `onDestroy()`。
 
-2026-09-12 已通过 Android CLI 核对官方文档：`kb://android/develop/connectivity/bluetooth/bt-permissions` 要求 target Android 12+ 的扫描/连接分别使用运行时 `BLUETOOTH_SCAN`、`BLUETOOTH_CONNECT`，旧蓝牙权限限制到 API 30；`kb://android/develop/connectivity/bluetooth/ble/find-ble-devices` 要求扫描设置时间上限并在找到目标后停止，且蓝牙关闭时 `BluetoothLeScanner` 不可用。现有 Manifest 与权限分支已经满足版本声明，本设计不扩大权限面。
+2026-09-12 已通过 Android CLI 核对官方文档：`kb://android/develop/connectivity/bluetooth/bt-permissions` 要求 target Android 12+ 的扫描/连接分别使用运行时 `BLUETOOTH_SCAN`、`BLUETOOTH_CONNECT`，旧蓝牙权限限制到 API 30；`kb://android/develop/connectivity/bluetooth/ble/find-ble-devices` 要求扫描设置时间上限并在找到目标后停止，且蓝牙关闭时 `BluetoothLeScanner` 不可用。当前扫描权限以后续 `device-h5-evaluation-flow` 为准：Android 12+ 还需成对请求前台精确/粗略位置且取得精确授权，所有支持版本检查定位开关；不新增后台权限或位置采集。
 
 ## Goals / Non-Goals
 
@@ -23,7 +25,7 @@ Demo 证明自定义界面不需要复制或换肤厂商 Activity：先用 `Chec
 - 不采用 `setCustomCheckUI(BaseActHelp)`、`CheckPageFragment` 或 WebView 包裹厂商检测页。
 - 不新增 LongCare 或厂商网络接口，不改变表单评估、客户登记和报告 URL 规则。
 - 不在本变更内实现厂商支付；收到需要支付回调时安全阻断并退出。
-- 不解决固定测试 key、测试模式、弱 TLS 或其他 production release blocker。
+- 不修复固定测试 key、测试模式、弱 TLS 及腾讯已接受风险；当前 Release 对明确接受的事项告警，其他失败继续阻断。
 - 不把无法由模拟器验证的设备协议、五指语义或上传成功当作自动化测试已证明。
 
 ## Decisions
@@ -40,7 +42,9 @@ LongCare Token
   → onCheckEnd / sendData
   → UpDataCallback
   → SalesViewModel 刷新客户详情
-  → 服务端 pgUrl
+  → 服务端 pgUrl 的评估 H5（前台消费一次）
+  → H5 主动 closeWebView
+  → 原生完成页查询等级/报告
 ```
 
 `CheckConfig.setCustomCheckUI(BaseActHelp)` 虽然存在，但需要公开无参构造和厂商旧式 Activity/View 生命周期，Demo 未给出完整契约，也会让 Compose UI 依附厂商宿主。`CheckPageFragment` 仍使用 legacy support Fragment 和厂商布局。直接控制链路能让 LongCare 完整拥有 UI，同时只依赖 AAR 的公开控制/回调 API，因此选择该方案。
@@ -87,7 +91,7 @@ Idle / Preparing
 
 - `DEVICE_STATUS` 承担运行条件、扫描、空结果和设备选择。
 - 选择设备后进入 `EVALUATION_GUIDE`，承担连接、握持引导、五指接触、检测进度、电量/掉线/超时与上传状态。
-- `EVALUATION_COMPLETE` 继续显示业务完成和服务端报告入口。
+- `EVALUATION_COMPLETE` 仅在评估 H5 主动关闭后显示业务完成和服务端报告入口，设备上传完成不直接进入该页。
 - 从 `DEVICE_STATUS` 切到 `EVALUATION_GUIDE` 不释放会话；离开这两个活动评估页面、完成、取消或不可恢复错误退出时释放。
 - Activity/进程重建不尝试序列化厂商连接对象。重建后如果原会话不能安全确认，展示检测已中断并要求重新开始，避免伪造续检。
 
@@ -98,7 +102,7 @@ UI 沿用销售端现有背景、卡片、按钮和设备/握持素材；新增�
 扫描、连接、五指、进度、可恢复错误和上传重试保留在 UI 会话状态中，避免每个设备回调都污染业务 ViewModel。仅以下跨页面事件发送给 `SalesViewModel`：
 
 - Token 无效：复用现有至多一次的 Token 恢复；恢复得到的 `sdkLaunchRequest` 改为重启自定义会话，不再打开 SDK Activity。
-- 上传成功：转换为现有 `QlzSdkEvent.Completed` 或等价的厂商无关完成事件，触发客户详情刷新和完成页面。
+- 上传成功：转换为现有 `QlzSdkEvent.Completed` 或等价的厂商无关完成事件，触发客户详情刷新并保存待打开 H5 请求；前台消费一次，地址失败仅重查详情，H5 主动关闭后才显示完成页。
 - 用户取消/终止错误：发送脱敏的取消或终止事件，用于现有提示和导航协调。
 
 `connectedDeviceName` 与 `sdkProgressText` 不再作为检测 UI 的事实来源；在兼容迁移期可由会话状态同步，最终页面直接渲染会话状态。`SalesViewModel` 继续不导入任何 QLZ 或 Android 蓝牙类型。
@@ -117,14 +121,14 @@ UI 沿用销售端现有背景、卡片、按钮和设备/握持素材；新增�
 - 充电状态：暂停性提示，条件恢复后继续采用 SDK 回调；低电量等终止状态重新连接或退出。
 - 上传失败：用同一次 `RecordInputData` 调用厂商重试 API；按钮在请求中禁用。
 - Token/鉴权失败：交给现有一次性 Token 恢复；第二次失败终止。
-- 支付要求：展示厂商返回的脱敏提示并终止检测，只提供退出，不打开 `paymentUrl`/`btnUrl`。
+- 支付要求：展示应用固定分类文案并终止检测，只提供退出，不打开 `paymentUrl`/`btnUrl`。
 - 未知或不可恢复错误：映射为通用用户文案；原始错误码可进入脱敏诊断日志，但 Token、MAC、SDK URL 和密钥不得输出。
 
 ### 8. 保持 Manifest、安全和报告边界不变
 
 本方案不新增 Activity、Service、provider、intent-filter 或权限。继续覆盖 AAR 合并出的外部 deep link 导出状态，并保留 API 30 的 legacy 蓝牙权限上限。由于销售流程可能已有位置业务数据且 AAR 上传参数含位置，不新增 `neverForLocation` 断言。
 
-SDK 上传成功回调中的 `recordid`/score 可作为完成信息，但其 URL 不参与导航。完成后仍由 `SalesViewModel` 请求 `/V1/Sale/GetUserLatentDetail`，报告只打开服务端 `pgUrl`。现有生产 fail-closed 守卫、AAR SHA 校验、测试 key 和弱 TLS finding 均保持原样。
+SDK 上传成功回调中的 `recordId` 用于关联设备记录，score 不推导业务等级，SDK URL 不参与导航。上传后由 `SalesViewModel` 请求 `/V1/Sale/GetUserLatentDetail`，自动打开其 `pgUrl` 的评估 H5。只有 H5 主动关闭才进入完成页：有设备 recordId 调用 `GetCheckResult`，纯表单重新请求客户详情，不读缓存旧结果、不切接口兜底；系统返回只返回评估入口。正式发布遵循当前标准 Release，已接受厂商事项告警，AAR 校验、签名及其余检查不变。
 
 ### 9. 测试以可替换的厂商适配器和状态 reducer 为中心
 
@@ -134,7 +138,7 @@ SDK 上传成功回调中的 `recordid`/score 可作为完成信息，但其 URL
 - Compose 测试覆盖各状态文案、设备选择、五指可视状态、按钮 enablement、返回/重试动作及紧凑/宽屏布局。
 - 现有 `SalesViewModel` Token 恢复、完成刷新和报告 URL 测试继续通过，并补充自定义会话完成事件用例。
 - 静态/架构测试确认 ViewModel/Feature 不导入厂商或蓝牙类型，Manifest 无新增导出面，源码不再调用 `SDKCall.openByToken` 或厂商报告 Activity。
-- 运行 `:app` focused tests、lint/assemble、完整本地 preflight 和既有 release readiness 守卫；已知 production blocker 失败必须如实保留。
+- 运行 `:app` focused tests、lint/assemble、完整本地 preflight 和既有 release readiness 守卫；明确记录已接受厂商告警，缺失输入或其他未接受问题仍失败。
 - 真机验收使用 QLZ 设备覆盖逐指接触映射、扫描停止、连接/掉线、完整检测、上传/报告、权限拒绝恢复、前后台和返回释放。模拟器仅覆盖 UI 与可注入错误状态。
 
 ## Risks / Trade-offs
@@ -154,9 +158,9 @@ SDK 上传成功回调中的 `recordid`/score 可作为完成信息，但其 URL
 2. 将 `DEVICE_STATUS`/`EVALUATION_GUIDE` 接入自定义会话，复用现有权限请求、Token 获取/恢复和 `EVALUATION_COMPLETE` 页面。
 3. 将完成事件接回客户详情刷新与服务端报告链，删除业务路径中的 `SDKCall.openByToken` 调用和厂商 Activity 完成语义。
 4. 更新字符串、Compose/架构测试、QLZ 集成说明与页面地图，执行 lint/assemble/preflight 及 Manifest/生产门禁检查。
-5. 在支持 BLE 的真机用 QLZ 设备完成主路径和异常验收后启用为唯一设备自动评估 UI。
+5. 当前已使用应用自有 UI；在支持 BLE 的真机用 QLZ 设备补齐任务 5.3 的异常矩阵后，才能认定本变更完整验收。
 
-本变更无数据库或服务端迁移。若验收发现厂商底层 API 无法满足流程，可在不更改 Token/报告契约的情况下回退到此前的 `SDKCall.openByToken` 入口；回退不得复制 Demo 密钥、放宽 Manifest 或解除 production fail-closed 门禁。
+本变更无数据库迁移。后续主规格已要求应用自有设备 UI 和 H5 连续流程，不把恢复 `SDKCall.openByToken` 当作已批准的回退方案；需要改变该行为时另行提出兼容方案与验收。不得复制 Demo 密钥、放宽 Manifest 或绕过其他发布门禁。
 
 ## Open Questions
 

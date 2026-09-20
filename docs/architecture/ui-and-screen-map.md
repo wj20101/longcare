@@ -1,6 +1,6 @@
 # 页面与路由地图
 
-最后核对：2026-09-12
+最后核对：2026-09-20（代码与文档静态核对；非本轮全量运行验收）
 
 本文列出当前可运行的 Compose 路由、嵌套页面和现实模块归属。导航代码的机器真相位于 `app/src/main/kotlin/com/ytone/longcare/navigation/`。
 
@@ -142,7 +142,7 @@ Logo 点击和长按均无波纹或按压高亮。弹窗使用 Material 3 默认
 
 ## 模块迁移判断
 
-“legacy UI”在本文中只表示页面仍位于 `:app/features/**`，不表示功能已废弃。当前除默认人脸核验 UI 外，绝大多数 route-bound 页面仍由 `:app` 持有；`:feature:location` 没有独立页面，另外几个 Feature 主要持有动作接口、状态、用例或 delegate。
+“legacy UI”在本文中只表示页面仍位于 `:app/features/**`，不表示功能已废弃。当前默认人脸核验、手动人脸采集与标准相机 UI 已在 Feature，其他多数 route-bound 页面仍由 `:app` 持有；`:feature:location` 没有独立页面，另外几个 Feature 主要持有动作接口、状态、用例或 delegate。
 
 迁移 route 时必须保持：
 

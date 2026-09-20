@@ -1,6 +1,6 @@
 # 系统架构概览
 
-最后核对：2026-09-08
+最后核对：2026-09-20（代码与文档静态核对；非本轮全量运行验收）
 
 本文描述当前代码实际运行形态，不把目标架构写成已经完成的事实。版本和依赖见[技术栈与构建基线](tech-stack.md)，产品行为见[产品概览](../product/overview.md)。
 
@@ -13,7 +13,7 @@ LongCare 是单应用、多模块的 Compose Android 应用。当前采用“壳
 - `:integration:txface` 统一拥有腾讯人脸 SDK；本地 AAR 通过两个纯 artifact wrapper 模块供 Android library 消费。
 - `:core:*` 提供模型、领域契约、数据实现、通用 UI 和基础设施。
 - `:feature:*` 已承接部分业务状态、用例、平台能力或 UI，但模块迁移尚未完成。
-- `:baselineprofile` 生成启动和关键旅程的 Baseline Profile。
+- `:baselineprofile` 提供启动测量及 Profile 生成；当前生成器仅有启动、盲滑和返回操作，尚未建立登录后业务旅程断言。
 
 ```mermaid
 flowchart LR
@@ -84,7 +84,7 @@ flowchart LR
 
 - Entry：登录、Home 和订单列表；首页、计划和记录列表显式共享 Home entry 的 TodayOrderViewModel owner。
 - Service flow：服务详情、护理执行、NFC、选择服务、照片上传、倒计时、结束选择、完成摘要。
-- Support：用户列表/记录、人脸引导与核验、设备选择、相机、手动人脸采集和 WebView。
+- Support：用户列表/记录、身份与默认人脸核验、相机、手动人脸采集和 WebView；旧设备选择页、人脸引导页及正式应用腾讯测试路由已移除。
 
 所有应用内 H5 共用 `WebViewScreen` 与 `NativeBridge`；隐私网页以 Dialog 包裹同一容器，
 启用 JavaScript 但关闭仅映射到网页 dismiss，不触发隐私同意/拒绝。当前唯一公开接口为
@@ -108,7 +108,7 @@ flowchart LR
 
 - Retrofit + Moshi 承载 LongCare API；API 方法、路径、参数注解和关键 JSON 字段由契约测试保护。
 - 正式 Moshi 由 `:core:data` 的 DI 配置提供；`DefaultMoshi` 仅在 App 测试源集中使用。
-- Room 当前 schema 版本为 3，schema JSON 保存在 `app/schemas`；升级必须提供显式 Migration 和迁移测试，不允许异常时删库重建。
+- Room 当前 schema 版本为 3，schema JSON 保存在 `app/schemas`。`DatabaseModule` 当前使用 `fallbackToDestructiveMigration(dropAllTables = true)`；测试明确验证 v1/v2 升至 v3 时重建，v3 普通重开保留数据。当前没有显式 Migration 链，不能把重建测试当成数据保留证明。后续 schema 变更须先评估本地状态/未上传照片的保留需求，提交 schema 与对应升级测试，不扩大重建策略。
 - DataStore 保存会话、偏好和少量兼容记录。
 - WorkManager 用于启动更新检查、APK 下载等需要跨重建继续或恢复结果的任务。
 - 腾讯 COS 负责业务图片/文件上传，Feature 通过 `PhotoCloudUploader` 等受校验门面使用。

@@ -96,4 +96,4 @@ docs/                当前产品、架构、集成和合规说明
 - [路线图与开放问题](docs/architecture/roadmap-and-open-gaps.md)
 - 开始代码协作前阅读 [AGENT.md](AGENT.md)
 
-仓库不再维护一次性计划、执行日志或生成报告型 Markdown；需要历史上下文时使用 Git、PR 或 Issue。
+长期分析与优化基线见[项目整体分析报告](docs/analysis/project-review.md)，文档职责、完整清单与一致性检查见[文档治理](docs/maintenance.md)。一次性执行日志和机器生成报告仍放在构建目录或 CI artifact；历史上下文使用 Git、PR、Issue 和 OpenSpec 归档。

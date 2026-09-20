@@ -1,6 +1,6 @@
 # CI、质量门禁与发布
 
-最后核对：2026-09-19
+最后核对：2026-09-20（代码与文档静态核对；非本轮全量运行验收）
 
 本文描述当前脚本和 GitHub Actions 的实际行为。门禁名称/Owner 元数据以 `scripts/quality/quality_gate_registry.json` 为准；是否真正执行则以对应 workflow 和 runner 脚本为准。
 
@@ -26,10 +26,13 @@
 
 `local-fast` 当前包含：
 
+- `verify_validation_app_isolation.sh`
 - `check_new_files_guard.sh`
 - `verify_architecture_boundaries.sh`
 - `verify_module_dependency_whitelist.sh`
 - `verify_module_api_visibility.sh`
+
+`--full` 的显式测试列表目前不含 `:feature:home:testDebugUnitTest` 和 `:feature:location:testDebugUnitTest`，虽然这两个模块已有测试源码；涉及它们时需补跑，不将 `--full` 描述为全模块全量测试。
 
 `--changed-only` 按 `BASE_REF`、`origin/$GITHUB_BASE_REF`、`origin/master`、`origin/main` 的顺序寻找强基线。找不到时不会相信局部 diff，而是扩大扫描，避免 false green。
 
@@ -143,7 +146,7 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 - 单测：各模块 `build/reports/tests/` 和 `build/test-results/`
 - CI 运行指标：调用脚本指定的 `build/` 输出目录或 CI artifact
 
-报告是一次性证据，不提交到 `docs/`。
+上述机器生成报告是一次性证据，不提交到 `docs/`。人工维护的[项目整体分析](../analysis/project-review.md)属于有来源和复核日期的优化基线，不保存构建输出或会话日志。
 
 ## 推荐命令
 

@@ -1,68 +1,67 @@
 # LongCare 文档索引
 
-最后核对：2026-09-19
+最后核对：2026-09-20。
 
-本目录只保存能够长期维护的当前说明、架构决策和仍有现实用途的专项资料。任务计划、执行日志、临时审计记录和生成报告不再作为仓库文档维护。
+本目录保存当前产品/工程说明、长期分析和必要专项资料。首次阅读先看根 [README](../README.md)，代码协作先看 [AGENT](../AGENT.md)。
 
-## 从哪里开始
+## 整体分析与优化
 
-- 第一次接触项目：先读根目录的 [README](../README.md)。
-- 开始代码协作：先读根目录的 [AGENT](../AGENT.md)，再按任务选择下面的文档。
-- 判断产品行为：[产品概览](product/overview.md)。
-- 判断运行架构和模块归属：[系统概览](architecture/system-overview.md)。
-- 查页面与路由：[页面与路由地图](architecture/ui-and-screen-map.md)。
+- [项目整体分析与优化基线](analysis/project-review.md)：20 章，覆盖需求、实现、模块、数据、平台生命周期、测试发布、风险、优化顺序和验收矩阵。基线是 2026-09-20 的 `ea514003`；首页已注明后续 `cd483252` 的助手退役与单应用发布变化，主体旧数量/双包描述属于分析快照。
+- [路线图与开放问题](architecture/roadmap-and-open-gaps.md)：维护当前可行动事项，与报告风险编号关联。
+- [文档治理与完整清单](maintenance.md)：逐文件分类、事实归属、冲突处理、复核范围和检查命令。
 
-## 当前真相集
+## 当前专项文档
 
-### 产品
+| 领域 | 主文档 | 内容 |
+|---|---|---|
+| 产品 | [产品概览](product/overview.md) | 角色、流程、规则与能力状态 |
+| 架构 | [系统概览](architecture/system-overview.md) | 实际运行形态、模块与资源边界 |
+| 构建 | [技术栈](architecture/tech-stack.md) | SDK、依赖、版本、变体和配置入口 |
+| 导航 | [页面与路由](architecture/ui-and-screen-map.md) | 路由、owner、结果、页面归属与读卡检测 |
+| 分层 | [依赖规则](architecture/dependency-rules.md) | 允许依赖、现状与后续约束 |
+| 质量 | [CI 与门禁](architecture/ci-quality-gates.md) | 本地/CI/设备测试范围、发布与产物 |
+| 决策 | [ADR-001](architecture/adr/ADR-001-layer-boundary.md) | 已接受的分层方向；不是全部当前实现清单 |
+| 厂商 | [QLZ 接入](integrations/qlz-sdk.md) | BLE、SDK、H5、接口、风险与专项验收 |
+| 定位 | [定位模块说明](../feature/location/src/main/kotlin/com/ytone/longcare/features/location/README.md) | 会话、上报、停止和恢复边界 |
+| 历史合规 | [2026-05 隐私整改](compliance/2026-05-app-store-privacy-remediation.md) | 历史整改与当前外部待核项，不证明政策已上线 |
+| 行为规格 | [OpenSpec 入口](../openspec/README.md) | 主规格、活动变更和历史归档的适用范围 |
 
-- [产品概览](product/overview.md)：用户角色、核心流程、能力状态和产品约束。
+## 事实与规范的关系
 
-### 工程
+- 代码、Gradle、Manifest、workflow 和可执行测试证明当前实现；专项文档应准确描述这些事实。
+- OpenSpec 主规格和已接受的变更定义行为契约。实现与契约不一致时先记录偏差，不自动把当前代码变成新的产品要求。
+- 活动 change 可能只剩验收未完成；后续已落地规格可以替代其旧设计，须明确同步，不靠目录时间猜测。
+- 本报告是有日期的优化基线，历史 ADR/archive/整改是特定时期证据，均不得覆盖后续当前契约。
+- 仓库文档或 CLI 显示存在 APK，不证明该包来自当前 commit 或已通过本轮业务验收。
 
-- [系统概览](architecture/system-overview.md)：运行时、模块职责、平台边界和外部集成。
-- [技术栈](architecture/tech-stack.md)：SDK、工具链、依赖版本、构建变体和配置入口。
-- [页面与路由地图](architecture/ui-and-screen-map.md)：Navigation 3 路由、页面归属和本地读卡检测入口。
-- [依赖规则](architecture/dependency-rules.md)：当前允许的模块依赖和代码边界。
-- [CI 与质量门禁](architecture/ci-quality-gates.md)：本地、CI、验收与生产发布校验。
-- [路线图与开放问题](architecture/roadmap-and-open-gaps.md)：仍需处理的产品、架构和发布风险。
-- [ADR-001 分层边界](architecture/adr/ADR-001-layer-boundary.md)：分层方向的已接受决策。
-
-### 专项资料
-
-- [QLZ SDK 接入](integrations/qlz-sdk.md)：销售评估 SDK、接口、权限和发布限制。
-- [应用市场隐私整改记录](compliance/2026-05-app-store-privacy-remediation.md)：2026-05 的整改证据与外部复核项，不等同于当前线上政策已发布证明。
-- [定位模块说明](../feature/location/src/main/kotlin/com/ytone/longcare/features/location/README.md)：定位会话、上报和生命周期边界。
-
-## 真相优先级
-
-出现冲突时按以下顺序判断：
-
-1. 当前代码、Gradle/Manifest/workflow 配置和可执行测试。
-2. 对应领域的专项当前文档。
-3. 本索引与根目录入口说明。
-4. Git 历史、PR、Issue 和旧提交中的计划或报告。
-
-版本号以 `constants.gradle.kts` 为准，依赖版本以 `gradle/libs.versions.toml` 为准，模块清单以 `settings.gradle.kts` 为准，质量门禁以 workflow、脚本和 `quality_gate_registry.json` 为准。
+版本以 `constants.gradle.kts`、依赖以 `gradle/libs.versions.toml`、模块以 `settings.gradle.kts`、执行门禁以实际脚本/workflow 为准。`quality_gate_registry.json` 是门禁元数据，不代表其中所有门禁在每次命令都被执行。
 
 ## 文档维护规则
 
-| 变更 | 必须同步的文档 |
+| 变更 | 必须同步 |
 |---|---|
-| 用户角色、业务流程、用户可见能力 | `docs/product/overview.md` |
-| 模块、运行时组件、平台边界 | `system-overview.md` |
-| 路由、页面、页面归属 | `ui-and-screen-map.md` |
-| SDK、工具链、依赖或构建变体 | `tech-stack.md` |
-| 模块依赖或架构守卫 | `dependency-rules.md` |
-| CI、发布流程或质量脚本 | `ci-quality-gates.md` |
-| 已确认且长期有效的架构决策 | 新增或更新 ADR |
-| 第三方 SDK 行为、权限或安全状态 | 对应 `integrations/` / `compliance/` 文档 |
+| 产品角色、流程、用户可见行为 | 产品概览＋相关 OpenSpec；跨域判断变化更新报告 |
+| 模块、运行组件、平台边界 | 系统概览＋依赖规则＋相关路由归属 |
+| 路由、返回、状态 owner | 页面地图＋对应行为规格/测试 |
+| 版本、SDK、工具链、库 | 技术栈；版本 snapshot 检查；报告保留基线日期 |
+| Room schema 或升级策略 | 系统概览＋依赖规则＋AGENT/OpenSpec 配置约束＋升级测试 |
+| CI、脚本或发布 | CI 与门禁＋README 摘要＋相关主规格 |
+| SDK、权限或信任边界 | 集成说明＋相关产品/架构说明；合规材料标明是否已外部复核 |
+| 长期技术决策 | ADR；不得把待确认优化建议写成 Accepted |
+| 新增、删除、移动 Markdown | 本索引（如为主入口）＋完整清单＋链接检查 |
+| 活动 change 状态 | 任务真实勾选＋OpenSpec 入口；归档按技能流程执行 |
 
-不要提交以下内容作为长期文档：
+同一事实只指定一个详细主文档，其他文档保留必要摘要和链接。不要新建并行 task plan、progress、findings 或会话执行日志；OpenSpec 是变更规划入口。
 
-- 一次性任务计划、逐步执行日志、会话进度和临时 findings。
-- 构建耗时、Lint 输出、质量快照和截图的本机路径。
-- 从 Swagger 或外部页面复制、但没有契约测试约束的孤立接口片段。
-- 已完成方案的整套 design/plan 副本；需要长期解释的结论应提炼到当前文档或 ADR。
+人工维护的整体分析可放在 `docs/analysis/`，必须注明基线、来源、现状/推断/建议和验证边界。Lint 输出、性能快照、截图、构建日志等机器生成报告仍放在 `build/` 或 CI artifact，不复制到长期 Markdown。
 
-生成报告统一写入 `build/reports/` 或其他被忽略的构建目录。历史执行材料需要追溯时使用 Git、PR 或 Issue。
+## 最小检查
+
+```bash
+python3 scripts/quality/verify_documentation.py
+bash scripts/quality/preflight_local.sh --local-fast
+openspec validate --all --strict --no-interactive
+git diff --check
+```
+
+文档脚本检查全量 Markdown 清单、仓库内普通 Markdown 链接/标题锚点及当前技术栈指定版本；它不会执行外链访问或证明自然语言需求一致，也尚未接入 CI/preflight。修改业务代码仍须按风险执行对应测试。

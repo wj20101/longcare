@@ -1,6 +1,6 @@
 # 技术栈与构建基线
 
-最后核对：2026-09-19
+最后核对：2026-09-20（代码与文档静态核对；非本轮全量运行验收）
 
 本文是便于阅读的快照。版本发生冲突时，以 `constants.gradle.kts`、`gradle/libs.versions.toml`、`gradle-wrapper.properties` 和各模块 `build.gradle.kts` 为准。
 
@@ -9,7 +9,7 @@
 | 项目 | 当前值 | 事实来源 |
 |---|---:|---|
 | Application ID | `com.ytone.longcare` | app/build.gradle.kts |
-| 版本 | `1.0.6 (60)` | `constants.gradle.kts` |
+| 版本 | `1.0.6 (62)` | `constants.gradle.kts` |
 | `compileSdk` | 37 | `constants.gradle.kts` |
 | `targetSdk` | 36 | `constants.gradle.kts` |
 | `minSdk` | 24 | `constants.gradle.kts` |
@@ -37,7 +37,7 @@ JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SH
 | Persistence | Room | 2.8.5 |
 | Preferences | DataStore | 1.2.1 |
 | Background | WorkManager | 2.11.2 |
-| Camera | CameraX | 1.6.1 |
+| Camera | CameraX | 1.6.2 |
 | Face detection | ML Kit Face Detection | 16.1.7 |
 | Network | Retrofit / OkHttp | 3.0.0 / 5.5.0 |
 | Network I/O | Okio | 3.18.2 |

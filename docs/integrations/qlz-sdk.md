@@ -1,6 +1,6 @@
 # QLZ SDK 1.3.0.5 接入说明
 
-最后核对：2026-09-19
+最后核对：2026-09-20（代码与文档静态核对；非本轮全量运行验收）
 
 > 当前状态：用户于 2026-09-19 明确接受当前固定测试配置、QLZ 1.3.0.5 弱 TLS 及腾讯人脸 6.6.2 已知风险，Release 将其作为警告。其他签名和质量检查仍阻断；风险接受不等于修复，不能以 Debug 验收代替 Release 证据。
 
@@ -73,8 +73,8 @@ SDK 消息/Gzip 合约，覆盖旧 fixture、嵌套字段、实例隔离、未�
 `QLZ_TEST_MODE=true`、QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 已知问题已获用户明确接受，
 发布检查改为警告，保持签名和其余质量检查。
 
-GitHub 的 `Android Release` 手动工作流只发布正式 App，生成正式 Release 并设为 Latest，
-APK、AAB 不附加额外模式标签。工作流仍使用当前已接受的配置，并执行
+GitHub 的 `Android Release` 手动工作流仅发布主应用 APK/AAB，生成正式 Release 并设为 Latest；
+安装包不附加额外模式标签。独立助手及双包构建已退役，历史 Release 附件保持不变。工作流仍使用当前已接受的配置，并执行
 `verify_vendor_sdk_release_readiness.sh` 报告剩余风险；缺失输入和未接受问题不自动放行。
 
 `appSecret` 只允许配置在 LongCare 服务端。它用于俏郎中 OpenAPI 请求签名，不得写入
@@ -215,7 +215,7 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest \
 - 覆盖 SDK 自带的全局明文网络配置，只对白名单中的俏郎中测试/报告域名允许 HTTP。
 - 将 SDK 自带的外部 deep link Activity 改为 `exported=false`；当前接入只使用显式 SDK 调用。
 - 旧版 `BLUETOOTH`、`BLUETOOTH_ADMIN` 权限限制到 API 30。
-- SDK 仅在联调页或未来业务入口按需初始化，不在 Application 启动阶段读取设备标识。
+- SDK 仅在现有销售设备评估业务入口按需初始化，不在 Application 启动阶段读取设备标识。
 - 自定义页面不再注册厂商 Activity 的全局 WindowInsets 兼容回调；AAR 中的 Activity 仍由 manifest merge 保留为不可导出组件，但业务路径不会启动它们。
 - QLZ 1.3.0.5 内置遥测仍存在弱 TLS 校验。用户已接受当前风险，Release 检查明确告警；
   这不修复 SDK，也不免除其他签名、质量或业务验收。后续由厂商提供修复版本。
