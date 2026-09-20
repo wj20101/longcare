@@ -104,7 +104,7 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 
 `test_release_policy.py` 由 workflow 守卫调用，覆盖风险告警、旧模式参数拒绝、错误参数、缺失报告和其他版本不自动放行。`test_release_workflow.py` 离线执行实际工作流的产物命名、校验和与元数据片段，以工具替身覆盖主 APK 签名/身份/调试属性失败，并断言单应用上传路径、发布前检查顺序、正式发布标记、目标提交 CI 守卫和读卡隔离。不得通过 `continue-on-error` 或关闭签名/Lint 来放行其他失败。
 
-详见 [QLZ SDK 接入](../integrations/qlz-sdk.md)和[路线图](roadmap-and-open-gaps.md)。
+详见 [QLZ SDK 接入](../integrations/qlz-sdk.md)和[路线图](../analysis/project-review.md#17-分阶段技术方案与实施顺序)。
 
 ## 其他 workflows
 
@@ -160,7 +160,7 @@ bash scripts/quality/preflight_local.sh --full
 # 完整 App 与 core:data connected tests
 ANDROID_SERIAL=emulator-5554 bash scripts/quality/run_connected_android_tests.sh --continue
 
-# 与普通 Android CI 对齐
+# App 基础构建检查；完整 CI 任务由 affected-modules.sh 决定
 bash scripts/quality/verify_validation_app_isolation.sh .
 ./gradlew --no-daemon :app:lintDebug :app:assembleDebug
 bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt

@@ -24,12 +24,6 @@ flowchart LR
     APP --> DOMAIN[":core:domain"]
     APP --> MODEL[":core:model"]
     APP --> TX[":integration:txface"]
-    ASSISTANT --> DATA
-    ASSISTANT --> UI
-    ASSISTANT --> COMMON
-    ASSISTANT --> DOMAIN
-    ASSISTANT --> MODEL
-    ASSISTANT --> TX
 
     FEATURES --> UI
     FEATURES --> COMMON
@@ -177,8 +171,169 @@ flowchart LR
 - Manifest 组件面较广，源于定位、计时、闹钟、NFC、更新和厂商 SDK 的现实需求。
 - Jetifier 移除及厂商风险修复依赖兼容的新 AAR；当前发布风险接受不等于完成这些修复，也不允许忽略其他 Lint 或签名问题。
 
-后续优先级见[路线图与开放问题](roadmap-and-open-gaps.md)，强制边界见[依赖规则](dependency-rules.md)。
+后续优先级与实施验收见[整体分析第 16～18 章](../analysis/project-review.md#16-风险与优化事项登记)。
 
 ## 读卡检测隐私与运行时
 
 检测仅在全局隐私同意后的登录页通过中央大 Logo 长按及确认进入，不创建单独登录、照片缓存或上传流程。NFC/R65C 只在对应模式前台监听，切换、后台和退出释放；返回原登录表单。未完成长按与确认状态不跨后台恢复。
+
+## 依赖与架构规则
+
+以下是开发约束。当前 App 中仍有业务实现，不构成新增 legacy 代码的许可。
+
+### 项目模块依赖
+
+精确机器真相是 `scripts/quality/module_dependency_allowlist.txt`。当前允许的项目模块边如下：
+
+| 源模块 | 允许依赖的项目模块 |
+|---|---|
+| `:app` | `:baselineprofile`、全部 `:core:*`、全部现有 `:feature:*`、`:integration:txface` |
+| `:feature:carddiagnostics` | `:core:common` |
+| `:integration:txface` | `:core:common`、`:core:domain`、`:core:model`，本地来源时依赖 txface-live/txface-normal artifact wrapper |
+| `:integration:txface-live` / `:integration:txface-normal` | 无项目依赖，仅暴露现有 AAR artifact |
+| `:baselineprofile` | 无 |
+| `:core:model` | 无 |
+| `:core:domain` | `:core:model` |
+| `:core:common` | `:core:model` |
+| `:core:data` | `:core:common`、`:core:domain`、`:core:model` |
+| `:core:ui` | `:core:common`、`:core:domain`、`:core:model` |
+| `:feature:home` | `:core:domain`、`:core:model` |
+| 其他现有 `:feature:*` | `:core:common`、`:core:domain`、`:core:model`；identification 和 photoupload 额外允许 `:core:ui` |
+
+读卡检测 UI/HID 状态由 `:feature:carddiagnostics` 持有，只依赖 `:core:common`；平台监听由 `:app` 管理，不依赖业务 Repository 或事件总线。
+
+新增或修改 Gradle 项目依赖时，必须同步检查实际 build 文件和 allowlist；不能只更新本文。
+
+### 分层边界
+
+#### Model
+
+- `:core:model` 是 Kotlin/JVM 模块，只保存跨层模型和值对象。
+- 禁止引入 Android framework。
+- 网络字段注解只在确有共享序列化契约时保留；不要把 Retrofit 接口或数据源实现放入 Model。
+
+#### Domain
+
+- `:core:domain` 是 Kotlin/JVM 模块，保存 Repository/网关契约和跨 feature 的领域规则。
+- 禁止 `android.*`、Activity/Context、Retrofit、Room、具体 SDK 类型和 `*Impl`。
+- Feature 依赖抽象，不依赖 `:core:data`。
+
+#### Data
+
+- `:core:data` 实现 Domain 契约，拥有 Retrofit、Room、COS、DataStore 相关数据访问和绑定。
+- 网络专用 DTO、接口路径、参数注解和数据源应隐藏在 Data 边界内。
+- Data 不得依赖 Feature/UI，也不得反向调用页面导航。
+
+#### Common 与 UI
+
+- `:core:common` 是 Android library，可持有真正跨业务复用的基础能力；它不是无边界的杂物目录。
+- `:core:ui` 只保存通用 UI、主题/组件和 UI 支撑，禁止网络、数据库或 Repository 实现。
+- 只被一个 feature 使用的 helper 优先留在该 feature，不要为了“复用可能性”提前放入 Core。
+
+#### Feature
+
+- Feature 负责一组紧密相关的用户能力、状态和 UI/编排。
+- Feature 只能使用允许的 Core 抽象，禁止直接依赖 Data 实现或另一个 Feature 的 internal 实现。
+- 公共入口保持最小；非契约声明使用 `internal` / `private`。
+- 新业务 UI 应优先进入 `:feature:*`，不要继续扩大 `:app/features/**`。
+
+#### App
+
+- 目标职责是启动、根导航、DI 组装、Manifest 和 Android/厂商平台适配。
+- 当前仍有大量 route-bound UI 和流程代码，因此 `:app` 对 Core/Data/Feature 的依赖是现实允许边，而不是鼓励新业务继续堆入壳层。
+- `app/src/main/.../features/**` 受冻结目录和文件 allowlist 保护；优先在现有允许文件内做小修复，新增能力迁往 Feature。
+
+
+### 实施约束与例外
+
+运行时状态、平台、数据和导航规则分别见本文对应章节；页面归属与结果 key 见[页面地图](ui-and-screen-map.md)。补充约束：
+
+- ViewModel 通过 UseCase/Repository 契约访问数据，调度器经 DI 注入；用户文案使用资源或可测试文本抽象。
+- 平台资源在对应生命周期释放；权限拒绝、设置返回与后台恢复必须可验证。
+- Release 组件默认 `exported=false`；新增导出组件须安全审查、最小 intent surface 和 allowlist 更新。
+- Retrofit 方法、路径、注解与 JSON key 变动同步契约测试；持久任务不能只依赖进程内事件。
+- 生产 secret 不得写入源码、资源、BuildConfig、日志或 APK；客户端使用受限 token/临时凭据。当前固定 QLZ 测试 key 属于已有、限定范围的风险接受，不能扩展到其他凭据。
+- 路由优化保持现有 Navigation 3 entry 邮箱、轻量参数和消费清理契约；不与业务 API 变化或大规模模块搬迁混在一次修改中。
+- 架构例外在 PR 写明原因、影响与回收条件，只改最小 allowlist/预算，并增加防扩散守卫。长期取舍记录 ADR；短期执行过程留在 PR/Issue。
+
+自动检查及执行范围统一见[CI 与质量门禁](ci-quality-gates.md)。
+
+## ADR-001：分层边界
+
+- Status: Accepted
+- Date: 2026-02-13
+- Owners: LongCare Android Team
+
+**背景**：项目由单 App 演进，虽有 domain/data/features 目录，曾缺少可执行依赖约束，造成 UI 访问 Data 实现、Domain 混入 Android 类型和评审标准不统一。
+
+**决策**：UI/Feature 通过 Domain 接口与模型调用业务能力；Data 实现 Domain，承担网络/数据库/存储；Domain 保持纯 Kotlin。Repository 接口在 Domain、实现在 Data、装配在 DI，禁止 Feature import Data Impl 和 Domain import Android；ViewModel 不实现数据访问细节。当前允许的 Core 基础依赖以本页依赖表及机器白名单为准。
+
+**影响**：统一评审标准、提高业务可测试性并支持渐进模块化；代价是接口与 DI 绑定维护成本。CI 架构守卫和 PR review 持续执行这些约束。该决策表达分层方向，不证明当前所有 UI 已迁出 App。
+
+## 定位会话与生命周期
+
+### 业务边界
+
+- 只有业务会话确认订单执行中时才启动订单持续定位与上报；单次定位不受订单限制。
+- App 切到后台后，由 `location` 类型前台 Service 继续采集和上报。
+- 单个定位点上传失败后直接丢弃；不落库、不排队、不补传。
+- 订单结束成功、退出登录、Token 失效、账号切换、划掉任务或进程终止时停止。
+- App 重启、设备重启或重新登录后不自动恢复旧订单定位。
+- 用户重新进入服务订单时创建新会话并重新确认服务中，确认后恢复持续上报；
+  不依赖旧进程状态，不补传旧定位，订单已结束则不启动。
+
+### 核心组件
+
+1. `LocationFacade`
+   - 统一提供快速定位、新鲜定位、缓存定位和前台保活控制。
+2. `LocationKeepAliveManager`
+   - 以进程内 owner 和 generation 管理前台 Service，不持久化 desired state。
+3. `LocationTrackingService`
+   - 持有前台通知、高德持续定位 collector 和唯一 `AddPostion` 调用点，不查询订单状态。
+4. `LocationSampleStore`
+   - 保存短时缓存并发布实时样本；上报消费端使用 conflate，仅保留一个最新待处理点。
+5. `LocationReportingManager`
+   - 实现业务层 `ServiceOrderLifecycle`，统一同步订单状态，驱动上报会话启停，不执行上传。
+   - 状态同步不依赖页面存活；倒计时页面仅订阅同一份状态，不重复请求。
+6. `LocationSessionLifecycleObserver`
+   - 登出或账号切换时强制停止；登录时绝不恢复定位。
+
+### 启停上报
+
+```kotlin
+trackingManager.startTracking(orderKey)
+trackingManager.stopTracking()
+```
+
+结束接口成功后，业务执行器立即调用 `ServiceOrderLifecycle.onOrderEnded(orderId)`，
+先使对应会话失效并取消在途协程，再停止 Android Service，最后执行 UI/资源清理。
+结束接口失败、仅打开结束确认流程、倒计时归零均不会结束真实业务会话。
+
+正式开始接口成功是服务中的直接依据；随后通过定位权限入口启动 Service，
+不必等待额外状态查询成功。重新打开订单、进程重建时则先重新确认状态。
+正常业务状态同步每 5 秒一次，与上传结果无关。
+初始状态不可用时不启动定位，按 5/10/20/40/60 秒退避持续复核，网络恢复后可继续。
+已确认服务中时，查询异常保留最后已确认状态，不因异常次数永久停报；
+查询确认非服务中则立即停止，不等待用户确认弹窗。
+
+`AddPostion` 没有“非服务中”专用错误码。上传结果仅记录诊断，不触发状态反查、
+不修改订单状态、不弹 Toast、不因业务失败停报，不重试同一个定位点。
+既有全局登录失效安全处理保持不变。后台远程状态变化存在同步延迟，
+已发出的请求无法撤回，服务端仍需校验订单状态。
+
+### 单次业务定位
+
+```kotlin
+val location = locationFacade.getCurrentLocation()
+val freshLocation = locationFacade.getFreshLocation()
+```
+
+单次定位使用独立高德客户端，不会创建第二个持续定位 collector，也不进入实时上报链路。
+
+### Android 生命周期
+
+- 前台 Service 必须从用户可见的订单流程中启动，并声明 `foregroundServiceType="location"`。
+- 状态确认完成时若系统不允许启动 Service，在用户返回订单页面时显式重试；不使用后台重启调度。
+- Service 返回 `START_NOT_STICKY`，不要求系统在进程终止后重建。
+- Service 使用 `stopWithTask=true`，显式停止和 `onDestroy()` 共用幂等 SDK 清理路径。
+- 进程被硬终止时 Android 不保证调用 `onDestroy()`；不恢复的保证来自“没有任何持久队列或调度任务”。

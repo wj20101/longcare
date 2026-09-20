@@ -88,12 +88,6 @@ docs/                当前产品、架构、集成和合规说明
 
 ## 文档
 
-- [文档索引](docs/README.md)
-- [产品概览](docs/product/overview.md)
-- [系统架构](docs/architecture/system-overview.md)
-- [技术栈](docs/architecture/tech-stack.md)
-- [页面与路由](docs/architecture/ui-and-screen-map.md)
-- [路线图与开放问题](docs/architecture/roadmap-and-open-gaps.md)
-- 开始代码协作前阅读 [AGENT.md](AGENT.md)
+统一阅读入口和维护规则见[文档索引](docs/README.md)，需求、技术评估、风险与优化顺序见[项目整体分析报告](docs/analysis/project-review.md)。代码协作先读 [AGENT.md](AGENT.md)。
 
-长期分析与优化基线见[项目整体分析报告](docs/analysis/project-review.md)，文档职责、完整清单与一致性检查见[文档治理](docs/maintenance.md)。一次性执行日志和机器生成报告仍放在构建目录或 CI artifact；历史上下文使用 Git、PR、Issue 和 OpenSpec 归档。
+机器输出保存在构建目录或 CI artifact；历史决策通过 Git、PR、Issue 和 OpenSpec 归档追溯。

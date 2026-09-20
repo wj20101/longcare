@@ -76,22 +76,18 @@ Navigation 3 使用可保存的 `AppNavEntry` 包装业务路由，为相同参�
 - `DEVICE_STATUS` / `EVALUATION_GUIDE` / `EVALUATION_COMPLETE`：应用自有 QLZ 扫描、连接、五指检测、上传与完成链路；不启动厂商 Activity
 
 `EVALUATION_GUIDE` 使用手握、5 秒准备、沙漏进度三态单卡片；准备计时仅控制展示，真实 SDK 进度优先。
-所有应用内 H5（表单、报告、普通网页、协议和隐私网页弹窗）统一调用 `window.NativeBridge.closeWebView()` 关闭当前网页。
-路由网页经 source-bound entry 返回来源页面；隐私网页仅关闭自身弹窗，不触发同意或拒绝。
-不会清空首页或重复弹栈。所有网页均注册同一接口；评估用途仅用于关闭后的业务展示，不控制接口是否注册，也不承载返回结果。
-首次加载前直接以 `addJavascriptInterface` 注册 `NativeBridge`，仅暴露无参数 `closeWebView()`；不生成 JS 包装或通用分发框架。
-回调进入主线程，检查前台生命周期、当前 entry 和容器是否已关闭；重复/失效容器调用无效。
-内部 H5 不设置额外 URL 白名单、顶层导航或请求拦截；跨域导航保留接口，普通加载失败不禁用关闭。
-NativeBridge 是后续方法的直接扩展入口，不使用独立关闭 Policy、注册表或分发器。
+所有应用内 H5 共用 `NativeBridge.closeWebView()`：路由网页返回来源 entry，隐私网页只关闭自身弹窗，不触发同意/拒绝。桥接注册、线程、去重、frame 可见性和信任边界统一见[QLZ/H5 接入契约](../integrations/qlz-sdk.md#检测展示与-h5-关闭契约)。
+
 评估表单和报告入口显式设置 `WebViewRoute.showNativeToolbar=false`，共用容器去除原生顶部栏；`WindowInsets.safeDrawing` 由 Scaffold 应用并消费，H5 填满剩余内容区。普通网页、协议与隐私弹窗默认保留原生栏。展示参数与 `isEvaluation` 独立，报告关闭不触发完成；参数随 Navigation 3 栈保存恢复，不按标题或 URL 推断。
 无原生栏时，白色背景延伸至系统栏，页面使用 AndroidX 浅色系统栏样式实现沉浸式视觉；暂停/退出后恢复应用默认样式。仅做页面级适配，不隐藏系统栏、不注入 H5 脚本、不增加适配框架。
 H5 左上角返回调用关闭接口；成功弹窗确认仅刷新网页属于正常行为，不注入脚本代为关闭。移除原生栏后仍由 Navigation 3 处理系统返回，网页错误时同样可退出。
-接口对所有加载页面及其 iframe 同样可见，不认证调用来源；未来敏感方法须独立设计授权。
-不再使用现代消息桥能力检查、文档随机凭证或独立 JS 初始化状态，新旧内核共用平台接口。
-网页容器与隐私政策网页弹窗在渲染进程退出时显示原生异常提示，移除并销毁失效 WebView，保留原生返回；
-不自动重载、不退出应用，也不改变隐私同意状态。隐私网页启用 JavaScript，复用通用 `WebViewScreen` 的桥接和安全配置。
+渲染进程退出后，容器销毁失效 WebView 并展示可返回的异常状态，不自动重载或改变隐私选择。
 
-销售端的根页签为首页、我的客户和我的；个人中心复用护理端 `ProfileScreen`。表单和报告跳到应用级 `WebViewRoute`，登记照片跳到应用级 `CameraRoute`。只有相机使用返回结果；所有网页不增加返回结果关联机制。`DEVICE_STATUS` 与 `EVALUATION_GUIDE` 共享一个 UI 作用域的 QLZ 会话，切换两页不会释放连接；离开这两页、取消、完成或宿主销毁时必须释放。设备上传成功后刷新客户详情并自动打开服务端 `pgUrl` 的评估 H5，不直接显示完成页。客户/recordId/待打开 URL/消费状态通过 SavedStateHandle 保存，前台执行一次导航；失败仅重试取地址。评估网页以 `isEvaluation` 标识用途，复用现有首页 SalesViewModel；JS 关闭更新业务完成状态并 pop，原生/系统返回仅 pop。完成页有非空设备 recordId 时请求 GetCheckResult，纯表单重新请求 GetUserLatentDetail 获取 pgResult/pgUrl；两条分支均不读取缓存旧值、不在失败后切换接口，不二次确认完成、不写导航结果邮箱，完成/返回回保留的首页。普通网页与隐私弹窗只关闭自身。
+销售端的根页签为首页、我的客户和我的，个人中心复用 `ProfileScreen`。表单/报告进入应用级 `WebViewRoute`，登记照片进入 `CameraRoute`；只有相机使用返回结果邮箱。
+
+`DEVICE_STATUS` 与 `EVALUATION_GUIDE` 共享 UI 作用域的 QLZ 会话，切换两页保持连接，离开、取消、完成或宿主销毁时释放。上传成功后刷新客户详情并自动打开服务端 H5；客户、recordId、待打开 URL 和消费状态通过 SavedStateHandle 保存，前台仅导航一次，失败只重试取地址。
+
+评估网页用 `isEvaluation` 标识用途，复用首页 SalesViewModel；JS 主动关闭更新完成状态并 pop，原生/系统返回仅 pop，报告与普通网页只关闭自身。完成和返回保留首页，不写导航结果邮箱。设备/纯表单的查询分支和失败恢复统一见[SDK 调用链](../integrations/qlz-sdk.md#sdk-调用链)。
 
 ## 非路由 UI
 
@@ -108,7 +104,7 @@ Logo 点击和长按均无波纹或按压高亮。弹窗使用 Material 3 默认
 
 检测 UI 属于 `:feature:carddiagnostics`，NFC/R65C 可主动切换。NFC 使用页面限定的 Reader Mode，不经过业务事件总线；R65C 只在当前模式前台捕获 HID 输入。结果只在本地显示、清空、复制，不上传、不签到、不修改会话。返回只弹出检测页，保留登录表单；退出和切换模式释放原监听。
 
-独立助手及其他测试入口已删除，历史安装包不变。长按入口真机交互与 NFC/R65C 贴卡验收仍须使用硬件，自动化不替代这些证据。
+独立助手及其他测试入口已删除，历史安装包不变。长按入口已有用户真机确认；NFC/R65C 贴卡、模式切换与资源释放仍待真实硬件验收，状态见[任务 4.3](../../openspec/changes/integrate-card-diagnostics-in-app/tasks.md)。
 
 ## 路由类型清单
 

@@ -1,10 +1,10 @@
 # LongCare 项目整体分析与优化基线
 
-分析日期：2026-09-20。代码基线：`ea514003`，工作树在本轮开始时无未提交改动。本文面向后续产品、架构、质量和交付优化；不是一次性构建日志，也不替代各领域的当前契约。
+分析日期：2026-09-20。代码基线：`4036a76a`，工作树在本轮开始时无未提交改动。本文面向后续产品、架构、质量和交付优化；不是一次性构建日志，也不替代各领域的当前契约。
 
-> 提交前状态补充（2026-09-20）：后续提交 `cd483252` 已退役独立助手及双包发布，新增 `:feature:carddiagnostics`，由登录页中央 Logo 长按并确认进入本地 NFC/R65C 检测；当前 Release 仅发布主应用 APK/AAB。本文主体保留 `ea514003` 的分析快照，其中独立助手、双包交付、模块/测试数量和旧脚本执行范围均属于该基线，不应作为当前操作步骤。当前行为与执行命令以[产品概览](../product/overview.md)、[技术栈](../architecture/tech-stack.md)、[质量门禁](../architecture/ci-quality-gates.md)及[OpenSpec 入口](../../openspec/README.md)为准；新变更的真实硬件验收状态以对应 tasks 为准。
+> 本文已按当前单应用形态更新：独立助手和双包发布已退役，本地 NFC/R65C 检测从登录页大 Logo 长按确认进入。统计、测试调用范围与发布说明均按当前代码重新核对；硬件验收仍以真实 tasks 状态为准。
 
-阅读方式：项目负责人先读第 1、3、16、17 章；客户端开发重点读第 4～13 章；测试与发布负责人重点读第 14、15、18 章；文档维护者读第 19 章和[文档治理](../maintenance.md)。文中的“建议”没有自动转化为已批准的业务变更。
+阅读方式：项目负责人先读第 1、3、16、17 章；客户端开发重点读第 4～13 章；测试与发布负责人重点读第 14、15、18 章；文档维护者读第 19 章和[文档治理](../README.md#文档维护规则)。文中的“建议”没有自动转化为已批准的业务变更。
 
 ## 目录
 
@@ -13,7 +13,7 @@
 3. [产品目标、角色与需求矩阵](#3-产品目标角色与需求矩阵)
 4. [护理业务流程与状态边界](#4-护理业务流程与状态边界)
 5. [销售与评估业务流程](#5-销售与评估业务流程)
-6. [启动、隐私、账号与独立助手](#6-启动隐私账号与独立助手)
+6. [启动、隐私、账号与本地检测](#6-启动隐私账号与本地检测)
 7. [模块架构、依赖方向与迁移方案](#7-模块架构依赖方向与迁移方案)
 8. [导航、页面与状态恢复](#8-导航页面与状态恢复)
 9. [数据、数据库、接口与一致性](#9-数据数据库接口与一致性)
@@ -33,9 +33,9 @@
 
 ### 1.1 项目目前处于什么阶段
 
-LongCare 已有护理执行、销售客户评估以及独立验证助手的主要实现。它不是只具备页面原型的项目，也不是完成全部模块化和全部设备验收的成熟终态。更准确的定位是：**业务主链路已有实现、工程约束较完整，但平台资源生命周期、数据升级、端到端验收和维护责任仍需要收敛的 Android 工程**。
+LongCare 已有护理执行、销售客户评估以及本地读卡检测的主要实现。它不是只具备页面原型的项目，也不是完成全部模块化和全部设备验收的成熟终态。更准确的定位是：**业务主链路已有实现、工程约束较完整，但平台资源生命周期、数据升级、端到端验收和维护责任仍需要收敛的 Android 工程**。
 
-当前最值得保留的基础包括：纯 Kotlin 的 Model/Domain 边界、Feature 不直接依赖 Data、独立助手、可保存 Navigation 3 栈、会话失效统一处理、定位会话隔离、图片处理统一策略、厂商适配器与可注入测试，以及签名/组件/发布检查。优化应建立在这些已有能力上，不应把它们作为“大重构”一并替换。
+当前最值得保留的基础包括：纯 Kotlin 的 Model/Domain 边界、Feature 不直接依赖 Data、本地检测与业务提交隔离、可保存 Navigation 3 栈、会话失效统一处理、定位会话隔离、图片处理统一策略、厂商适配器与可注入测试，以及签名/组件/发布检查。优化应建立在这些已有能力上，不应把它们作为“大重构”一并替换。
 
 当前主要矛盾不在于技术栈老旧。仓库已经采用 Navigation 3、Compose、现代 AGP/Kotlin、Room、WorkManager 与 CameraX。真正影响后续效率的是：需求、运行实现、测试执行范围和文档状态之间仍有偏差。例如文档曾把 Room 说成显式迁移，实际却在缺少迁移路径时重建；一些文档仍禁止生产发布，实际 Release 已对指定风险改为告警；已有测试文件并不保证日常脚本会运行它们。
 
@@ -44,7 +44,7 @@ LongCare 已有护理执行、销售客户评估以及独立验证助手的主�
 | 判断 | 证据 | 对优化的含义 |
 |---|---|---|
 | 产品两条主线应分别管理，但复用会话、相机、图片等基础能力 | 护理流程与 Home 内销售状态机并存 | 不用一个庞大通用工作流框架强行统一两条业务 |
-| `:app` 仍承担大量业务代码 | 主源集约 29,030 行，占本次统计约 49.6% | 模块化必须围绕可独立验收的功能切片，而不是仅移动文件 |
+| `:app` 仍承担大量业务代码 | 主源集约 29,175 行，占本次统计约 50.7% | 模块化必须围绕可独立验收的功能切片，而不是仅移动文件 |
 | 数据升级策略是实际决策缺口 | `DatabaseModule` 与重建测试 | 下一次 schema 变化前明确本地数据是否可丢弃 |
 | 质量脚本数量较多，执行覆盖并不等同于业务覆盖 | 普通 CI 无 App 全量单测；full 无 home/location 单测 | 建立“需求 → 测试 → 执行入口 → 证据”的映射 |
 | QLZ 主路径与异常矩阵的完成状态不同 | 历史主路径验收说明与任务 5.3 未勾选并存 | 不把成功测量一次扩展成完整硬件验收 |
@@ -54,7 +54,7 @@ LongCare 已有护理执行、销售客户评估以及独立验证助手的主�
 
 ### 1.3 本次分析能证明什么
 
-本次读取并交叉核对了构建配置、源码关键路径、Manifest、数据库实体与测试、导航、销售/QLZ 状态处理、质量脚本、工作流、当前文档、主规格及活动 change。Android CLI `describe` 成功识别主应用、助手和性能变体；官方知识库核对了 API 37 大屏行为。
+本次读取并交叉核对了构建配置、源码关键路径、Manifest、数据库实体与测试、导航、销售/QLZ 状态处理、质量脚本、工作流、当前文档、主规格及活动 change。前次分析使用 Android CLI 与官方知识库核对了构建结构和 API 37 大屏行为；本轮依据当前 Gradle/源码复核，不把旧 CLI 助手变体输出当作当前模块证据。
 
 证据用以下四类理解：
 
@@ -73,8 +73,7 @@ LongCare 已有护理执行、销售客户评估以及独立验证助手的主�
 
 | 模块 | main 文件 | main 行数 | test 文件 | androidTest 文件 |
 |---|---:|---:|---:|---:|
-| app | 255 | 29,030 | 106 | 28 |
-| assistant | 20 | 1,738 | 11 | 9 |
+| app | 257 | 29,175 | 109 | 28 |
 | core:model | 55 | 2,415 | 0 | 0 |
 | core:domain | 21 | 622 | 0 | 0 |
 | core:data | 56 | 4,786 | 15 | 2 |
@@ -86,9 +85,10 @@ LongCare 已有护理执行、销售客户评估以及独立验证助手的主�
 | feature:location | 16 | 1,954 | 6 | 0 |
 | feature:photoupload | 24 | 2,277 | 2 | 1 |
 | feature:servicecountdown | 10 | 660 | 0 | 0 |
+| feature:carddiagnostics | 4 | 521 | 3 | 0 |
 | integration:txface | 4 | 458 | 2 | 0 |
 | baselineprofile | 2 | 160 | 0 | 0 |
-| **合计** | **614** | **58,568** | **167** | **40** |
+| **合计** | **600** | **57,496** | **162** | **31** |
 
 另外两个 `integration:txface-live` / `integration:txface-normal` 是本地 AAR artifact wrapper，没有上述 main 源码。主构建共 17 个 Gradle 模块，`build-logic` 是独立 included build。
 
@@ -96,7 +96,7 @@ LongCare 已有护理执行、销售客户评估以及独立验证助手的主�
 
 ### 2.2 技术基线与版本事实来源
 
-本次版本为 `1.0.6 (62)`，助手 versionName 加 `-assistant`；`compileSdk=37`、`targetSdk=36`、`minSdk=24`、JDK 21。工具链为 Gradle 9.7.1、AGP 9.4.1、Kotlin 2.4.20、KSP 2.3.12。
+本次版本为 `1.0.6 (62)`；`compileSdk=37`、`targetSdk=36`、`minSdk=24`、JDK 21。工具链为 Gradle 9.7.1、AGP 9.4.1、Kotlin 2.4.20、KSP 2.3.12。
 
 UI 为 Compose BOM 2026.09.00、Material 3、Navigation 3 1.1.7；持久化为 Room 2.8.5、DataStore 1.2.1；后台任务为 WorkManager 2.11.2；网络为 Retrofit 3.0.0、OkHttp 5.5.0；CameraX 为 1.6.2；ML Kit 人脸检测为 16.1.7。QLZ 为本地 1.3.0.5 Lite AAR，腾讯人脸 Live 6.6.2/Normal 5.1.10。
 
@@ -112,7 +112,7 @@ Moshi、kotlinx.serialization、部分 Gson/Protobuf 同时存在也不能仅凭
 
 ### 3.1 产品边界
 
-护理端的目标是完成一次可追溯的服务执行：确认服务对象和执行人、验证现场条件、记录护理内容、留存照片和位置、计时、提交结束结果。销售端的目标是管理客户并完成登记、设备/表单评估和报告查看。助手的目标是隔离验证硬件与共享采集能力，不承担正式业务交付。
+护理端的目标是完成一次可追溯的服务执行：确认服务对象和执行人、验证现场条件、记录护理内容、留存照片和位置、计时、提交结束结果。销售端的目标是管理客户并完成登记、设备/表单评估和报告查看。本地读卡检测用于排查 NFC/R65C 输入，不承担业务提交，不扩展为通用测试平台。
 
 客户端不是护理服务或评估结果的最终权威。订单状态、人脸比对结果、评估等级、可访问报告地址和账号身份均由后端响应决定。客户端负责及时、可靠、可恢复地呈现与提交，不应自行推导服务完成或评估等级。
 
@@ -122,7 +122,7 @@ Moshi、kotlinx.serialization、部分 Gson/Protobuf 同时存在也不能仅凭
 |---|---|---|---|
 | 护理执行人员 | 普通账号 Home | 执行服务单、身份核验、留痕和签退 | UI 可见性不代替后端订单权限 |
 | 销售顾问 | `userIdentity == 2` | 客户、待办、登记和评估 | 客户与评估请求必须绑定当前选择对象 |
-| 内部验证人员 | 独立助手 APK | 相机、NFC、默认/备用人脸、手动采集 | 部分工具需助手独立登录，不共享主应用沙箱 |
+| 内部排障人员 | 登录页中央大 Logo 长按并确认 | NFC/R65C 本地读取、显示和复制 | 隐私同意后可用；不独立登录，不签到或上传 |
 | 运营/项目人员 | 消费服务端记录，未发现独立移动端管理入口 | 审核、排障、交付 | 不能把业务参与角色写成客户端已有管理功能 |
 | 产品/服务端/厂商 | 开发与运行协作 | 定义流程和异常处理 | 等级、Token、SDK 配置、设备语义需跨方确认 |
 
@@ -153,8 +153,8 @@ Moshi、kotlinx.serialization、部分 Gson/Protobuf 同时存在也不能仅凭
 | REQ-19 | 上传后进入 H5 | 已有实现 | 上传成功才打开一次；100% 采样不能提前完成 |
 | REQ-20 | 评估等级与报告 | 已有实现 | 有设备记录/无设备记录分支明确，不伪造等级 |
 | REQ-21 | 应用内更新 | 已有实现 | 下载/校验/安装授权有明确状态，重建可恢复 |
-| REQ-22 | 独立验证助手 | 已有实现 | 两包独立、正式 App 无隐藏验证入口 |
-| REQ-23 | 双包交付 | 已有实现 | 主 APK/AAB、助手 APK 和校验和完整且身份正确 |
+| REQ-22 | 本地读卡检测 | 入口已有真机确认；真实读卡验收未闭合 | 长按确认、无震动；模式独占，后台/退出释放，无业务副作用 |
+| REQ-23 | 单应用交付 | 已有实现 | 主 APK/AAB 和校验和完整、身份正确；不生成新助手包 |
 | REQ-24 | 大屏及旋转 | 局部适配；仍有缺口 | 顶层导航适配不等于相机/表单/状态全部适配 |
 
 ### 3.4 非功能需求应如何补齐
@@ -275,13 +275,13 @@ sequenceDiagram
 | 查询等级失败 | 重试同一分支接口 | 不以旧结果或 A 级替代 |
 | 评估页退出/销毁 | 先使 generation 失效再释放 | stopScan 同步回调也不能重新导航 |
 
-## 6. 启动、隐私、账号与独立助手
+## 6. 启动、隐私、账号与本地检测
 
 ### 6.1 启动链路
 
 `MainApplication` 初始化日志、启动会话相关定位观察；已同意隐私时才调用后置初始化，Release 的 Bugly 与启动更新任务在该边界之后执行。`MainApp` 未同意时只呈现隐私弹窗；会话为 Unknown 时展示启动状态，LoggedOut 进入登录，LoggedIn 进入 Home。
 
-应避免过度概括为“隐私同意前绝无任何初始化/网络”。Application、依赖注入、ContentProvider、系统配置和 WebView 都有独立初始化路径；需要用合并 Manifest、实际 SDK 清单与隐私专项测试证明。助手显式移除 ML Kit 自动初始化 provider 并延后初始化，主应用的全部合并 provider 时序不应由这条助手证据代替。
+应避免过度概括为“隐私同意前绝无任何初始化/网络”。Application、依赖注入、ContentProvider、系统配置和 WebView 都有独立初始化路径；需要用合并 Manifest、实际 SDK 清单与隐私专项测试证明。应直接核对当前主应用的合并 provider 时序；已删除助手的配置不能作为主应用证据。
 
 ### 6.2 会话模型
 
@@ -294,17 +294,19 @@ sequenceDiagram
 - 导航：当前实现用 session identity 重置保存栈，防止旧账号页面恢复。
 - 进程缓存：订单详情、厂商临时凭据、图片展示 URL 等是否随换号失效，需要逐一追踪。
 - 本地持久数据：Room 订单实体主要以 orderId 建键，没有在这些实体中显式加入账号字段；这要求退出清理或服务端数据访问保证明确。
-- 远端会话：助手本地独立不代表同一账号在后端允许并行会话。
+- 远端会话：客户端账号隔离不代表服务端允许同一账号多设备并行，需明确踢出和 Token 失效契约。
 
 本次可确认导航和定位有账号边界；未完成全缓存/全表在换号情况下的动态验证，不能直接断言存在越权泄漏，也不能断言全链路隔离已经证明。后续增加“账号 A 数据 → 退出 → 账号 B → 旧响应到达”的集成场景，比继续增加普通登录成功测试价值更高。
 
-### 6.4 助手的独立产品边界
+### 6.4 本地读卡检测的产品边界
 
-助手有默认人脸、NFC/R65C、标准相机、备用腾讯人脸和手动采集五项入口。默认/备用人脸需要助手登录；相机、NFC、手动采集仍需隐私同意与对应权限，但不要求登录。订单 ID 需在有效整数范围内，不能截断用户输入后验证另一个订单。
+全局隐私同意后，登录页中央大 Logo 长按弹出“打开助手”确认框；普通点击不触发，长按没有震动及按压视觉效果。取消和返回不导航；确认后进入 `CardDiagnosticsRoute`，返回保留登录表单。未完成长按和确认状态不跨后台恢复。
 
-助手使用独立 applicationId、Application、会话与文件目录，不依赖正式 App 模块；不运行 QLZ、更新 Worker 或持续定位。共享的相机/人脸能力通过 Feature/Core/Integration 提供。GitHub Release 中提供助手 APK 只改变交付可获取性，没有把它变成主应用更新包或商店包。
+`:feature:carddiagnostics` 仅提供 NFC/R65C 本地读取展示、复制/清空和 HID 状态。App 持有 NFC Reader Mode，只有对应页面前台监听，模式切换、后台或退出释放；不向业务事件总线派发、不调用 Repository 签到或上传。没有独立 Application、登录、上传或测试 Launcher。
 
-助手的价值是缩短硬件排查路径，但并不能替代正式入口验收：助手相机拍照成功，不证明服务单照片绑定正确；助手 NFC 读卡成功，不证明服务端签到接口通过；备用腾讯人脸正常，也不证明默认 ML Kit + CheckFace 路径正常。
+独立助手和其他测试入口已退役，历史安装包保持原状。默认人脸、相机与正式业务仍使用的共享实现继续保留，但不能据此恢复旧验证菜单。
+
+长按入口已由用户确认真机验收；真实 NFC 标签和 R65C 的两种模式、复制/清空、切换与业务隔离仍见[任务 4.3](../../openspec/changes/integrate-card-diagnostics-in-app/tasks.md)。本地 UID 读取成功只能证明设备输入，不能代替正式服务单签到/签退验收。
 
 ## 7. 模块架构、依赖方向与迁移方案
 
@@ -313,7 +315,7 @@ sequenceDiagram
 | 层 | 应保留的职责 | 当前现实 | 优化方向 |
 |---|---|---|---|
 | App | 启动、根导航、DI/Manifest、平台与厂商组装 | 同时拥有大量护理/销售 route UI | 保留组装，按完整功能切片下沉 |
-| Assistant | 验证入口、独立登录和结果展示 | 规模较小、与 App 隔离 | 保持工具边界，避免变成第二套业务客户端 |
+| CardDiagnostics | 本地读卡 UI/HID 状态 | Feature 仅依赖 Common，NFC 平台监听由 App 提供 | 保持无业务提交边界和页面资源隔离 |
 | Model | 共享模型和值对象 | 纯 JVM，部分序列化模型共享 | 明确模型用途，不强求所有 DTO 立即搬迁 |
 | Domain | Repository/网关契约和领域规则 | 纯 JVM，约 622 行 | 稳定业务契约，避免引入 Android 类型 |
 | Data | API、Room、DataStore、COS 实现和绑定 | 数据访问较集中 | 强化事务、账户与升级语义 |
@@ -456,7 +458,7 @@ Room 官方说明，缺少迁移路径时使用此 fallback 会重建数据库�
 
 ### 9.6 数据安全和备份
 
-主 Manifest `allowBackup=true`，但 backup/extraction XML 明确排除 database/sharedpref/file/external，助手则关闭备份。评估时必须读完整规则，不能仅凭单个 allowBackup 属性断言业务数据被云备份。
+主 Manifest `allowBackup=true`，但 backup/extraction XML 明确排除 database/sharedpref/file/external。评估时必须读完整规则，不能仅凭单个 allowBackup 属性断言业务数据被云备份。
 
 DataStore 用户对象编码不是“已加密”的证明，私有目录也不代表端到端保密。报告不暴露实际 token、测试 key 或用户信息。后续按实际威胁和市场要求复核持久会话、日志脱敏、截图和临时文件，不凭惯例叠加未经需求确认的安全框架。
 
@@ -493,7 +495,7 @@ DataStore 用户对象编码不是“已加密”的证明，私有目录也不�
 
 ### 10.4 NFC 与 R65C
 
-正式业务使用 NFC workflow，R65C HID 是无原生 NFC 等场景的兼容路径；助手的读卡显示与复制属于单独验证 UI。当前已移除无入口的设备选择页，不能依据旧文档再次添加一个中间设备选择路由。
+正式业务使用 NFC workflow，R65C HID 是无原生 NFC 等场景的兼容路径；本地检测的读卡显示与复制属于独立于业务提交的 UI。当前已移除无入口的设备选择页，不能依据旧文档再次添加一个中间设备选择路由。
 
 高价值回归包括：标签读取重复、UID 格式、外接键盘输入与普通按键区别、输入超时、设置返回后前台分发恢复、后台停止捕获、离页后迟到结果、开始/结束两种模式不串用。模拟器或合成 Intent 可验证处理逻辑，不能证明真实贴卡和 R65C 固件行为。
 
@@ -521,7 +523,7 @@ DataStore 用户对象编码不是“已加密”的证明，私有目录也不�
 
 默认服务人员核验使用 CameraX/ML Kit 检测单人、姿态和眼睛状态，建立睁眼基线，经闭眼与稳定睁开后采集，再由服务端 CheckFace 判断是否通过。登记照状态查询与实际人脸比对不同；前者决定是否补录，后者决定本次服务人员验证是否成功。
 
-ML Kit 的眨眼/姿态检测是采集门槛，不能写成达到某一认证等级的反欺诈保证。当前备用腾讯路径仍在助手中，不能因为保留腾讯集成就把它描述为默认订单核验路径。
+ML Kit 的眨眼/姿态检测是采集门槛，不能写成达到某一认证等级的反欺诈保证。备用腾讯共享实现仍保留，独立测试入口已删除，不能因为保留腾讯集成就把它描述为默认订单核验路径。
 
 ### 11.4 优化和验收重点
 
@@ -590,7 +592,7 @@ Baseline Profile 可覆盖常用运行路径，Startup Profile 关注启动代�
 
 ### 13.3 R8 和包体
 
-现有 roadmap 已限定两批优化先后：先修正 Profile 语义，再处理确定未命中或被覆盖的项目 R8 规则。保持这个顺序有助于独立回滚；厂商 consumer rules、AAR 重打包和 Jetifier 关闭不包含在低风险清理批次中。
+第 17 章限定两批优化先后：先修正 Profile 语义，再处理确定未命中或被覆盖的项目 R8 规则。保持这个顺序有助于独立回滚；厂商 consumer rules、AAR 重打包和 Jetifier 关闭不包含在低风险清理批次中。
 
 R8 usage 中出现某类被删除，只能作为无使用证据之一；反射、JNI、Manifest、资源名、序列化和生成代码仍可能有间接引用。删除未命中规则也未必降低 APK 大小，它可能主要减少维护负担。后续报告应分别记录规则清晰度、包体和运行收益，不将三者混写。
 
@@ -600,7 +602,7 @@ R8 usage 中出现某类被删除，只能作为无使用证据之一；反射�
 
 因此不能只把 target 数字加一后运行手机纵向 smoke。建议先按窗口类别执行：紧凑竖屏、低高度横屏、平板、折叠展开、多窗口/桌面窗口。检查照片按钮、五指卡片、表单键盘、完成页、NFC 提示和全屏提醒是否可达；相机要单独检查预览比例、输出方向、ML Kit 坐标和水印。
 
-顶层 Adaptive Navigation Suite 已根据窗口切换底栏/导航轨，这是有用基础，但并不能证明各内容页面已自适应。`CountdownAlarmActivity` 源 Manifest 未锁方向，助手也未锁方向，回归应按每个 Activity 实际配置开展，不能假设全项目只有竖屏。
+顶层 Adaptive Navigation Suite 已根据窗口切换底栏/导航轨，这是有用基础，但并不能证明各内容页面已自适应。`CountdownAlarmActivity` 源 Manifest 未锁方向，回归应按每个 Activity 实际配置开展，不能假设全项目只有竖屏。
 
 ### 13.5 无障碍与操作容错
 
@@ -614,21 +616,21 @@ R8 usage 中出现某类被删除，只能作为无使用证据之一；反射�
 
 仓库已有业务状态、导航、网络契约、图片、位置会话、QLZ reducer/scanner、会话失效、更新 Worker、相机权限等多类测试。测试形态包括 JVM、Robolectric、Compose/Android instrumentation、Release 专项与真实硬件专项。
 
-其中网络方法/路径/JSON 契约、来源 entry 结果隔离、定位取消与旧会话屏蔽、QLZ 重复上传与资源释放、数据库重建行为、助手外部 Intent 边界均有明确价值。不应为了缩短执行时间把它们替换成只有渲染成功或对象可构造的测试。
+其中网络方法/路径/JSON 契约、来源 entry 结果隔离、定位取消与旧会话屏蔽、QLZ 重复上传与资源释放、数据库重建行为、本地读卡生命周期与业务隔离均有明确价值。不应为了缩短执行时间把它们替换成只有渲染成功或对象可构造的测试。
 
 ### 14.2 “有测试”与“执行测试”之间的差距
 
 | 执行入口 | 当前主要内容 | 明确不覆盖的部分 |
 |---|---|---|
-| local-fast | 助手隔离、新文件、架构、依赖、API 可见性 | Kotlin 编译和业务测试 |
-| full | local-fast、双应用编译、显式列出的 8 个模块单测 | 未显式调用 home/location 模块已有单测；不跑全量设备测试 |
-| 普通 Android CI | guards、App Lint/Debug 构建、助手单测/Lint/构建 | App 完整业务单测和全设备矩阵 |
+| local-fast | 本地检测隔离、新文件、架构、依赖、API 可见性 | Kotlin 编译和业务测试 |
+| full | local-fast、App/读卡 Feature 编译、显式列出的 8 个模块单测 | 未显式调用 home/location 模块已有单测；不跑全量设备测试 |
+| 普通 Android CI | guards、App Lint/Debug、读卡 Feature 单测/Lint及 App 长按入口/NFC/导航专项单测 | App 完整业务单测和全设备矩阵 |
 | 条件 instrumentation smoke | affected scope 选择的 App class | 未选择的类、完整业务旅程和真实硬件 |
-| connected 脚本 | App 与 core:data 的 connected tests | 助手/其他模块需按范围单独安排 |
+| connected 脚本 | App 与 core:data 的 connected tests | 其他模块需按范围单独安排 |
 | Release 工作流 | CI 前置、构建、签名、身份、组件、产物 | 所有真实业务与设备场景并非自动全部覆盖 |
 | 厂商切源工作流 | compile/lint/manifest/assemble | 不是业务测试完整矩阵 |
 
-`full` 显式测试任务是 App、Assistant、txface、Common、Data、UI、Identification、PhotoUpload。Location 的 6 个 test 文件和 Home 的 1 个 test 文件没有在该列表中。不能因为 App 依赖这些模块就推断 Gradle 会执行依赖模块的 test task。
+`full` 显式测试任务是 App、CardDiagnostics、txface、Common、Data、UI、Identification、PhotoUpload。Location 的 6 个 test 文件和 Home 的 1 个 test 文件没有在该列表中。不能因为 App 依赖这些模块就推断 Gradle 会执行依赖模块的 test task。
 
 ### 14.3 建议的测试责任安排
 
@@ -649,7 +651,7 @@ R8 usage 中出现某类被删除，只能作为无使用证据之一；反射�
 | E | 授权测试环境完整业务旅程 | 客户端、后端、H5 与设备协同 |
 | F | 生产观测与回滚结果 | 真实规模下稳定性与交付风险 |
 
-本轮主要取得 A 和文档/守卫相关 B 级证据，CLI describe 属于构建结构识别。历史 D/E 证据仅按原范围引用。不要将 A/B 的成功包装成 D/E/F 的完成。
+本轮主要取得 A 和文档/守卫相关 B 级证据，历史 CLI describe 只属于当时构建结构识别。历史 D/E 证据仅按原范围引用。不要将 A/B 的成功包装成 D/E/F 的完成。
 
 ### 14.5 失败恢复测试的基本模式
 
@@ -661,25 +663,25 @@ R8 usage 中出现某类被删除，只能作为无使用证据之一；反射�
 
 ### 15.1 构建与依赖来源
 
-Version catalog 管理 Maven 依赖，constants 管理 SDK/JDK/应用版本，build-logic 管理公共插件、签名及腾讯依赖来源。腾讯可使用本地 AAR wrapper 或私有 Maven；QLZ 仍由 App 本地 AAR 提供。Android CLI 本次成功识别 App 的 debug/release/nonMinifiedRelease/benchmarkRelease 和助手 debug/release。
+Version catalog 管理 Maven 依赖，constants 管理 SDK/JDK/应用版本，build-logic 管理公共插件、签名及腾讯依赖来源。腾讯可使用本地 AAR wrapper 或私有 Maven；QLZ 仍由 App 本地 AAR 提供。当前 App 配置保留 debug/release/nonMinifiedRelease/benchmarkRelease，读卡模块为 library，不产生独立应用。
 
 默认 ABI 为 arm64-v8a，性能场景可显式启用 x86_64。不能因为在 x86_64 模拟器能验证普通页面就宣称 ARM64 vendor native 路径全部兼容；16 KB 风险也不能由普通 ARM64 设备一次成功启动排除。
 
-Debug 默认访问真实后端，mock 需显式开启；助手始终真实接口。因此后续自动测试必须明确环境和数据副作用，不能把“Debug”理解为不会创建真实数据。
+Debug 默认访问真实后端，mock 需显式开启。因此后续自动测试必须明确环境和数据副作用，不能把“Debug”理解为不会创建真实数据。
 
 ### 15.2 发布实际流程
 
-发布工作流要求目标 commit 的 Android CI 成功，执行质量/签名检查，自动递增 versionCode，构建主 APK/AAB 与助手 APK，再检查身份、签名、不可调试属性、mapping 和导出组件，生成校验和并创建正式 Latest Release。
+发布工作流要求目标 commit 的 Android CI 成功，执行质量/签名检查，自动递增 versionCode，构建主应用 APK/AAB，再检查身份、签名、不可调试属性、mapping 和导出组件，生成校验和并创建正式 Latest Release。
 
 这里有一个需要理解的边界：进入工作流前的目标提交 CI 与工作流内版本递增后的最终发布提交不是文字上同一 SHA；后续审查须结合流程中的再验证和最终产物来源，不只查看一个“CI 已绿”标签。本轮没有认定其为缺陷，也没有修改发布行为，建议发布证据明确记录最终 commit、版本、产物哈希和 workflow run。
 
-主应用与助手使用同一版本代码和签名校验，但 applicationId 不同；助手 versionName 带后缀。三类安装产物出现在同一 GitHub Release，助手不进入主应用商店或应用内更新通道。发布脚本不得缺助手还宣告交付成功。
+正式分发仅包含主应用 APK/AAB、校验和及 mapping 等辅助产物，不生成新的助手包，也不删除历史 Release 附件。产物身份、签名、不可调试和主包缺失检查仍必须通过。
 
-### 15.3 双包本地导出与 GitHub 发布的区别
+### 15.3 本地构建与正式发布的区别
 
-`build-dual-apks.sh --debug|--release` 导出两份 APK、SHA256SUMS 和 artifacts.json，使用 Gradle output metadata 识别产物，失败不发布半套新目录。它是本地交付入口，不等于触发线上发布。
+本地使用标准 Gradle App 构建任务；正式 Release 还包含 CI 前置、版本递增、签名与产物验证、标签和发布说明。操作命令及产物路径统一见[CI 与质量门禁](../architecture/ci-quality-gates.md)。旧双包脚本已经删除，不再是当前交付入口。
 
-GitHub Release 还包含主 AAB、发布标签和发布说明。不要把两套目录/校验和文件名称混为一谈。报告与文档修订不应触发版本递增、打 tag 或发布。
+文档修订本身不触发版本递增、打 tag 或正式发布。一次本地构建成功也不证明 GitHub Release 的全部验证已执行。
 
 ### 15.4 应用内更新
 
@@ -708,7 +710,7 @@ Release 关闭普通调试日志，Bugly 仅在同意且 Release 路径初始化
 | R07 | 状态/P1 | 导航隔离已有，缓存/持久全链路隔离尚需补证据 | 换号后旧数据或迟到响应风险 | 移动端＋服务端 | A→B 换号集成覆盖缓存、图片、定位和评估 |
 | R08 | 文件/P1 | DB、受管文件、上传和业务提交多阶段 | 孤立文件或未上传数据丢失风险 | 移动端数据层 | 删除、重试、升级、取消的所有权测试 |
 | R09 | 厂商/已接受 | QLZ 测试配置与弱 TLS | 环境/传输风险持续存在 | 厂商＋服务端＋移动端 | 新配置/包验证后移除对应例外 |
-| R10 | 厂商/已接受 | 腾讯 16 KB 对齐与 consumer rules | 设备兼容与压缩风险 | 厂商＋移动端平台 | 新 AAR 的 native/R8 和双包实际验证 |
+| R10 | 厂商/已接受 | 腾讯 16 KB 对齐与 consumer rules | 设备兼容与压缩风险 | 厂商＋移动端平台 | 新 AAR 的 native/R8 与主应用真实路径验证 |
 | R11 | Web/P2 | 最小桥向所有 frame 开放 | 扩展敏感方法时不能沿用关闭授权模型 | 移动端＋H5 | 新能力独立授权设计；当前关闭语义回归 |
 | R12 | 需求/P1 | 服务接口幂等和评估结果时效缺少完整仓库证据 | 客户端重试/成功提示容易误判 | 产品＋服务端 | 明确重复调用、超时查询与结果延迟契约 |
 | R13 | 工程/P2 | R8/兼容工具存在可评估冗余 | 维护成本和升级阻力 | 移动端平台 | 闭合引用证据、独立 Release 回归和回滚 |
@@ -726,19 +728,62 @@ Release 关闭普通调试日志，Bugly 仅在同意且 Release 路径初始化
 
 本阶段可先在不改业务行为的情况下执行 home/location focused tests、整理已存在证据和运行隔离模拟器测试。涉及调整迁移策略、CI 任务或产品行为时应建立对应 OpenSpec change；本文不直接成为一次批量修改所有代码的授权。
 
+本地读卡入口交互已有用户验收，NFC/R65C 真实读卡与资源释放仍纳入硬件待办；不要恢复独立助手、相册选图、跨重启定位恢复或离线补传，除非产品明确修改规则。
+
 退出条件：每项 P1 有 owner 角色、独立实施边界、可运行验收和回滚方式；未取得真实指标时明确写未测量。
 
 ### 17.2 阶段 B：性能采集语义
 
-沿用 roadmap 中 Profile 批次：区分首次/已同意/已登录场景，补准确页面断言，限制 Startup Profile 范围，加入业务 fully drawn 条件和 TTFD 验证。完整采集和打包后，在相同状态下比较 None/Require。
+先完成可信的旅程和 Profile 产物，再进入阶段 C；两批独立实施、验收和提交。收益不明显时可以认定采集正确，但不能宣传性能提升。
 
-不要同时更改 DataStore、WorkManager、定位或 Bugly 初始化顺序，否则测量改善无法归因。退出条件是旅程可信、产物可用、结果可复现；收益不明显时仍可以认定采集正确，但不能宣传性能提升。
+
+- 将首次启动、已同意隐私协议的典型启动和登录后关键业务旅程拆成明确场景，共用稳定的 journey helper。
+- `includeInStartupProfile=true` 只覆盖初始显示必需路径；滚动、导航和异步业务加载只进入 Baseline Profile。
+- 每个场景断言准确页面和关键节点，不再以 package root、盲滑或 `pressBack` 作为旅程成功证据。
+- 在真实业务内容可交互时报告 fully drawn，同时保留 TTID，并增加 TTFD 验证。
+- 加强 `verify_baselineprofile_journeys.sh`，要求隐私/会话前置条件、目标页面断言和 Startup/Profile 场景边界，而不只检查任意手势与等待调用。
+
+完成条件：
+
+- `startup-prof.txt` 只包含初始显示相关路径，`baseline-prof.txt` 作为其包含关键业务旅程的超集，不再近似完全相同。
+- Benchmark 的 Profile/None 使用同一预置状态和同一旅程；模拟器用于稳定性与依赖链诊断，最终收益在多核真实设备确认。
+- 生成、安装和 minified Release 均能识别并使用打包后的 `baseline.prof` / `baseline.profm`。
+- 不改变隐私协议、登录态、页面路由或业务数据，仅修正测试预置状态、旅程和性能标记。
 
 ### 17.3 阶段 C：确定性 R8 清理
 
-仅处理有当前 Release 全程序分析证据的项目规则，按单条或小组修改，每组保留回滚。验证构建、mapping、资源压缩、导航序列化、图片、定位、人脸、QLZ、更新等受影响路径。
+下列名称是分析候选，实施前必须重新确认当次 Release 的匹配证据，不能按历史名单直接删规则。
 
-不修改厂商 consumer rules，不重打包 AAR，不收窄仍有实际匹配的宽规则。退出条件是目标冗余消失且无行为回归，优化分数及产物完整性不下降。收益只报告实际测得部分。
+
+- 先删除当前 Release 全程序分析中匹配 0 items 的项目规则。
+- 删除确定被更宽项目规则覆盖的重复项，包括 `com.autonavi.aps.amapapi.model.**`、`com.comm.*`、`com.falth.data.*` 和 `**$$serializer` 的重复 member 规则。
+- `@Keep` methods 的异常覆盖结果不纳入自动清理，必须先人工确认实际匹配关系。
+- 不修改 COS、高德、Bugly、QLZ、腾讯人脸等厂商 consumer rules，不拆包或重写 AAR。
+- 不在本批次收窄仍有实际匹配的 package-wide 规则；这类工作需要单独的 SDK 业务回归方案。
+
+完成条件：
+
+- `analyzeReleaseR8Config` 中对应 unused/subsumed 项消失，Optimization、Shrinking 和 Obfuscation 分数不得下降。
+- minified Release 构建通过，并覆盖登录、导航参数恢复、定位、身份核验、照片上传、倒计时和应用更新 smoke。
+- mapping、资源 shrinking、Baseline Profile 打包和 APK 签名/Manifest 检查保持正常。
+- 任一反射、序列化、JNI 或厂商流程回归时，立即回滚当前单条规则，不用新增整包 `-keep` 掩盖问题。
+
+#### B/C 统一门禁与排除范围
+
+
+每个批次至少执行：
+
+```bash
+bash scripts/quality/preflight_local.sh --full
+bash scripts/quality/verify_validation_app_isolation.sh .
+./gradlew --no-daemon :app:lintDebug :app:assembleDebug
+bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
+./gradlew --no-daemon :app:assembleRelease
+```
+
+再按批次补充 focused unit test、instrumentation、Baseline Profile Benchmark 或 R8 analyzer。每个批次使用独立提交；发现行为差异时只回滚该批次，不跨批次追加兼容分支。
+
+首期明确不包含：厂商 SDK 替换或二进制修补、厂商 consumer rules 收窄、Jetifier 关闭、Navigation 迁移、Compose UI 重构，以及 WorkManager、定位、Bugly、DataStore 等启动初始化时序调整。这些事项分别保留在已接受的厂商风险、既有架构路线或后续受控性能实验中。
 
 ### 17.4 阶段 D：稳定业务切片迁移
 
@@ -755,6 +800,8 @@ Release 关闭普通调试日志，Bugly 仅在同意且 Release 路径初始化
 ### 17.6 并行治理：厂商与服务端依赖
 
 SDK 修复周期不能依赖纯客户端排期。服务端应确认 QLZ 配置下发、Token/recordId/结果契约、经纬度字段和幂等；厂商应提供弱 TLS、16 KB、consumer rules 和回调 API 的说明及修复包。
+
+现有固定测试 key/测试模式后续应由服务端配置替代；厂商包修复前不宣称弱 TLS、16 KB 或 consumer rules 风险已消除。Jetifier 仅在相关厂商依赖确认 AndroidX-only 后另行评估关闭。
 
 每个新包独立记录 SHA、ABI、Manifest、依赖变化和业务验收，不自动继承旧包风险接受。当前已接受的发布策略保持原范围，直到新决策或验证结果更新。
 
@@ -798,7 +845,7 @@ SDK 修复周期不能依赖纯客户端排期。服务端应确认 QLZ 配置�
 | 网页 | 正常加载与关闭 | 重定向、渲染退出、重复 close | 仅关闭当前容器，隐私不变 |
 | 数据升级 | 真实旧库升级 | 待上传照片/异常 schema | 按明确策略保留或重建，不能静默假设 |
 | 更新 | 下载、验证、安装 | 错包/损坏/权限往返 | 不安装错误身份包，恢复状态正确 |
-| 助手 | 五入口及独立登录 | 拒绝权限、外部畸形 Intent | 无主 App 隐藏入口，无沙箱混用 |
+| 本地读卡 | 长按确认、NFC/R65C 显示和复制 | 取消、模式切换、后台与退出 | 不签到/上传、不消费离页后的输入；真实硬件需单独验收 |
 
 ### 18.3 建议指标及计算口径
 
@@ -825,7 +872,7 @@ SDK 修复周期不能依赖纯客户端排期。服务端应确认 QLZ 配置�
 1. **数据库**：升级时未上传照片、项目选择、本地核验状态是否允许丢弃？什么内容能够完整重建？
 2. **订单幂等**：开始/结束请求超时后如何查询真实结果，重复请求返回什么？
 3. **定位规则**：已确认服务中后长时间查询异常，允许持续采集多久？后台远端结束延迟是否有明确容忍范围？
-4. **身份与权限**：同一账号能否同时使用主应用和助手？角色变化是否即时失效？
+4. **身份与权限**：同一账号能否多设备并行使用？角色变化是否即时失效？
 5. **登记草稿**：是否要求跨进程、跨升级甚至跨设备保留？当前局部恢复不能默认为完整草稿产品能力。
 6. **评估完成**：当前 H5 主动关闭的完成约定是否长期保留？结果延迟的业务提示和可接受时间是什么？
 7. **字段语义**：Sale 经纬度字段、recordId、等级枚举及 pgUrl 生命周期的服务端最终契约是什么？
@@ -839,44 +886,13 @@ SDK 修复周期不能依赖纯客户端排期。服务端应确认 QLZ 配置�
 
 ## 19. 文档一致性与维护制度
 
-### 19.1 本次确认的主要漂移
+长期说明现收敛到[文档索引与维护规则](../README.md)：架构概览持有依赖规则、ADR 与定位运行契约；本报告持有风险、优化路线和验收矩阵；OpenSpec 保留行为契约、真实任务与历史决策。每个主题只保留一个详细维护入口，机器输出继续放 build/CI artifact。
 
-| 漂移 | 当前事实 | 本次处理 |
-|---|---|---|
-| 技术栈写 versionCode 60、CameraX 1.6.1 | constants 为 62，catalog 为 1.6.2 | 修订技术栈快照 |
-| 产品文档称生产发布受阻 | 指定已接受风险告警，标准 Release 可按门禁构建 | 统一产品/入口/集成描述 |
-| README/QLZ 称 Release 只发主应用 | workflow 同时发主 APK/AAB 与助手 APK | 对齐双应用交付 |
-| 系统概览仍列设备选择/旧人脸引导 | 当前路由已移除 | 删除过时可达入口描述 |
-| 文档称 Room 已采用显式迁移 | 现实现为缺迁移重建，测试验证重建 | 标明事实、风险和下一步决策，不修改数据库 |
-| full 被容易理解为全模块测试 | home/location 测试未在显式任务列表 | 质量文档明确边界 |
-| local-fast 列表漏助手隔离 | 脚本首项执行隔离检查 | 补齐列表 |
-| 全部 Activity 竖屏的概括 | 主入口锁定，提醒 Activity 源声明未锁定 | 缩小表述范围 |
-| 活动 QLZ 方案仍上传后直接完成 | 已落地上传 → H5 → 主动关闭 → 结果查询 | 对齐 proposal/design/spec/tasks，保留 5.3 未完成 |
-| 当前文档与历史整改混读 | 历史提审材料未证明当前网页已更新 | 加强历史模板与外部待核提示 |
-| 禁止所有报告的措辞 | 用户需要可维护的整体优化基线 | 区分人工长期分析与一次性机器输出 |
+此次合并同时消除旧助手/双包发布快照、架构图残留节点和旧导航结果描述。当前数据章节仍明确 Room 缺迁移时重建，测试章节仍列出 full 未调用 home/location 的缺口；这些问题不能靠修改文案变成已修复。
 
-### 19.2 文档分层
+历史双应用方案保留在 Git 和 OpenSpec 中，通过索引注明替代关系。QLZ 完整异常矩阵及真实 NFC/R65C 验收保持未完成状态。不要为了全文词句一致而抹掉历史，也不要把一次主路径成功推断为全部场景已验收。
 
-- 根 README：环境、构建和最短阅读入口。
-- AGENT：协作约束与真实项目边界。
-- docs 当前专项：产品、架构、技术栈、路由、依赖、质量、集成。
-- 本文：跨领域分析、需求矩阵、风险与优化依据，保留明确基线日期。
-- roadmap：当前可行动事项，引用本报告风险编号，不复制整份分析。
-- OpenSpec 主规格：已同步的行为契约；活动 change：增量方案与尚未完成验收；archive：当时决策历史。
-- 合规整改与图标资料：特定用途材料，不能被误用为当前线上状态证明。
-- build/CI artifact：测试输出、截图、性能与质量快照，不作为长期需求文档。
-
-完整逐文件目录、职责、更新触发和冲突处理见[文档治理](../maintenance.md)，不在此再复制完整文件清单。
-
-### 19.3 冲突处理原则
-
-代码和测试证明“现在做什么”；主规格和已接受变更表达“应当做什么”。二者冲突时必须记录差异，不能简单把实现中的风险改成新要求，也不能把未实现目标写成现状。本次 Room 就采用“如实描述当前重建＋保留未来数据决策”的方式，没有新增迁移实现或扩大重建许可。
-
-活动 QLZ 文档则是后续已落地规格没有回写导致的陈旧方案，因此可按现有 H5 与 Release 契约同步。历史归档仍保留原始决策，通过索引说明已被何者替代，不全量改写历史以营造“一直一致”。
-
-### 19.4 持续维护的最小闭环
-
-每次修改产品/路由/数据/发布时，在 PR 中标出对应主文档与规格；运行文档一致性检查和相关测试；评审确认没有用新文案掩盖实现差异；完成后更新核对日期和未完成事项。文档检查可以自动发现链接、版本和清单漂移，复杂业务语义仍需人工与测试确认。
+新增、移动或删除文档后更新主索引并检查链接；全量文件清单由 Git 动态生成，不再手工维护逐文件副本。版本检查与链接检查只能检测结构性漂移，复杂业务语义仍须核对代码、规格和测试。
 
 ## 20. 证据索引与本轮验证边界
 
@@ -887,7 +903,7 @@ SDK 修复周期不能依赖纯客户端排期。服务端应确认 QLZ 配置�
 | 编号 | 来源 | 支持的主要结论 |
 |---|---|---|
 | E01 | [settings](../../settings.gradle.kts)、[constants](../../constants.gradle.kts)、[catalog](../../gradle/libs.versions.toml) | 模块/版本/SDK/依赖基线 |
-| E02 | [App 构建](../../app/build.gradle.kts)、[助手构建](https://github.com/wj20101/longcare/blob/ea514003799598c9268263a89162f22cd4dab1cd/assistant/build.gradle.kts) | 变体、身份、mock、压缩和厂商配置 |
+| E02 | [App 构建](../../app/build.gradle.kts)、[读卡 Feature 构建](../../feature/carddiagnostics/build.gradle.kts) | 变体、身份、mock、压缩和厂商配置 |
 | E03 | [MainApplication](../../app/src/main/kotlin/com/ytone/longcare/app/MainApplication.kt) | 隐私后初始化、日志与更新调度 |
 | E04 | [AppNavigation](../../app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigation.kt)、[AppNavigator](../../app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigator.kt)、[NavigationResults](../../app/src/main/kotlin/com/ytone/longcare/navigation/NavigationResults.kt) | 栈、owner、会话与结果 |
 | E05 | [SalesViewModel](../../app/src/main/kotlin/com/ytone/longcare/features/sales/SalesViewModel.kt) | 客户、登记、Token、H5 请求及结果分支 |
@@ -897,13 +913,13 @@ SDK 修复周期不能依赖纯客户端排期。服务端应确认 QLZ 配置�
 | E09 | [统一订单仓储](../../core/data/src/main/kotlin/com/ytone/longcare/data/repository/UnifiedOrderRepository.kt) | 内存/Room/API 分层与本地状态 |
 | E10 | [API](../../core/data/src/main/kotlin/com/ytone/longcare/api/LongCareApiService.kt)、[网络 DI](../../core/data/src/main/kotlin/com/ytone/longcare/di/NetworkDataModule.kt) | 路径、序列化、超时、日志与缓存 |
 | E11 | [会话仓储](../../core/data/src/main/kotlin/com/ytone/longcare/data/repository/DefaultUserSessionRepository.kt)、[失效处理](../../core/data/src/main/kotlin/com/ytone/longcare/data/repository/DefaultSessionInvalidationHandler.kt) | 持久会话与去重 |
-| E12 | [定位模块](../../feature/location/src/main/kotlin/com/ytone/longcare/features/location/README.md)、[上报管理](../../feature/location/src/main/kotlin/com/ytone/longcare/features/location/reporting/LocationReportingManager.kt) | 状态确认、停止和实时上传边界 |
+| E12 | [定位模块](../architecture/system-overview.md#定位会话与生命周期)、[上报管理](../../feature/location/src/main/kotlin/com/ytone/longcare/features/location/reporting/LocationReportingManager.kt) | 状态确认、停止和实时上传边界 |
 | E13 | [图片策略](../../core/common/src/main/kotlin/com/ytone/longcare/common/image/ImageProcessingPolicy.kt)、[统一管线](../../core/common/src/main/kotlin/com/ytone/longcare/common/image/UnifiedImagePipeline.kt) | 尺寸、压缩及受管文件 |
-| E14 | [App Manifest](../../app/src/main/AndroidManifest.xml)、[助手 Manifest](https://github.com/wj20101/longcare/blob/ea514003799598c9268263a89162f22cd4dab1cd/assistant/src/main/AndroidManifest.xml) | 组件、方向、权限和隔离 |
+| E14 | [App Manifest](../../app/src/main/AndroidManifest.xml) | 组件、方向、权限和隔离 |
 | E15 | [NativeBridge](../../app/src/main/kotlin/com/ytone/longcare/platform/webview/NativeBridge.kt)、[WebViewScreen](../../app/src/main/kotlin/com/ytone/longcare/features/webview/ui/WebViewScreen.kt) | 最小关闭能力与容器生命周期 |
 | E16 | [Profile 生成器](../../baselineprofile/src/main/java/com/ytone/longcare/baselineprofile/BaselineProfileGenerator.kt)、[启动测试](../../baselineprofile/src/main/java/com/ytone/longcare/baselineprofile/StartupBenchmarks.kt) | 性能采集与断言现状 |
 | E17 | [本地 preflight](../../scripts/quality/preflight_local.sh)、[affected modules](../../scripts/quality/affected-modules.sh) | 实际测试任务范围 |
-| E18 | [Android CI](../../.github/workflows/android-ci.yml)、[Android Release](../../.github/workflows/android-release.yml) | CI 条件、双包发布和验证顺序 |
+| E18 | [Android CI](../../.github/workflows/android-ci.yml)、[Android Release](../../.github/workflows/android-release.yml) | CI 条件、单应用发布和验证顺序 |
 | E19 | [QLZ 未完成任务](../../openspec/changes/use-qlz-custom-evaluation-ui/tasks.md)、[连续评估规格](../../openspec/specs/device-h5-evaluation-flow/spec.md) | 真机验收边界与已落地 H5 契约 |
 | E20 | [Release 风险策略](../../openspec/specs/approved-vendor-release/spec.md)、[QLZ 集成说明](../integrations/qlz-sdk.md) | 风险接受范围和历史验证 |
 
@@ -911,6 +927,6 @@ SDK 修复周期不能依赖纯客户端排期。服务端应确认 QLZ 配置�
 
 本轮交付范围是报告、文档与文档检查工具，未修改 Android 业务代码、数据库、依赖、签名、版本或发布工作流。执行结果以本轮终端和最终交付说明为准；仓库中的历史通过数量不作为本轮执行数量。
 
-本轮完成 Android CLI 项目描述、官方资料核对、当前代码/配置静态交叉核查，并执行文档链接/版本/清单检查、local-fast、OpenSpec strict 与 diff 格式检查。文档检查还使用临时错误输入验证能发现漂移，不触碰真实业务数据。
+前次分析已使用 Android CLI 和官方资料核对；本轮合并重新核对当前代码/配置、源码统计及任务状态，执行文档链接/版本/索引检查、local-fast、OpenSpec strict 与 diff 格式检查。文档检查还使用临时错误输入验证能发现漂移，不触碰真实业务数据。
 
 未重跑全量 Kotlin 单测、Lint/Debug/Release 构建、Room 设备测试、性能 Benchmark、全部模拟器/真机旅程、市场合规扫描或真实发布。因此这份报告提供后期优化所需的需求和技术依据，不授予任何未完成验收“已通过”的状态。

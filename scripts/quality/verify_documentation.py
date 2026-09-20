@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check repository Markdown inventory, local links/anchors, and live tech snapshots.
+"""Check repository Markdown index, local links/anchors, and live tech snapshots.
 
 Read-only, standard library only. Does not access external URLs or certify prose semantics.
 Historical and dated analysis documents are link-checked but not version-rewritten.
@@ -57,21 +57,38 @@ def check_links(root: Path, files: list[Path]) -> list[str]:
     return errors
 
 
-def check_inventory(root: Path, files: list[Path]) -> list[str]:
-    inventory = root / "docs/maintenance.md"
-    if not inventory.exists():
-        return ["docs/maintenance.md: missing inventory"]
-    text = inventory.read_text()
-    start, end = "<!-- inventory:start -->", "<!-- inventory:end -->"
-    if start not in text or end not in text:
-        return ["docs/maintenance.md: missing inventory markers"]
-    section = text.split(start, 1)[1].split(end, 1)[0]
-    listed = re.findall(r"^\| \[([^\]]+\.md)\]", section, re.M)
-    expected = {p.as_posix() for p in files}
-    errors = [f"inventory: missing {p}" for p in sorted(expected - set(listed))]
-    errors += [f"inventory: stale {p}" for p in sorted(set(listed) - expected)]
-    errors += [f"inventory: duplicate {p}" for p, n in Counter(listed).items() if n > 1]
-    return errors
+def document_group(path: Path) -> str:
+    name = path.as_posix()
+    for prefix, group in (
+        ("openspec/changes/archive/", "历史变更"),
+        ("openspec/changes/", "未归档变更（完成状态见 tasks）"),
+        ("openspec/specs/", "主规格"),
+        (".agents/skills/", "工具技能"),
+        ("docs/compliance/", "历史合规"),
+        ("docs/analysis/", "分析基线"),
+    ):
+        if name.startswith(prefix):
+            return group
+    return "当前说明"
+
+
+def check_index(root: Path, files: list[Path]) -> list[str]:
+    index = root / "docs/README.md"
+    if not index.exists():
+        return ["docs/README.md: missing index"]
+    linked = {index.resolve()}
+    for target in re.findall(r"\[[^\]\n]*\]\(([^\s)]+)\)", prose(index.read_text())):
+        url = urlsplit(target)
+        if not url.scheme and not url.netloc:
+            linked.add((index.parent / unquote(url.path)).resolve())
+    required = []
+    for path in files:
+        group = document_group(path)
+        if group in {"当前说明", "分析基线", "历史合规", "主规格"}:
+            required.append(path)
+        elif group.startswith("未归档变更") and path.name == "tasks.md":
+            required.append(path)
+    return [f"index: missing {path}" for path in required if (root / path).resolve() not in linked]
 
 
 def check_versions(root: Path) -> list[str]:
@@ -104,11 +121,17 @@ def check_versions(root: Path) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument("--list", action="store_true", help="List Markdown paths and directory-based categories; does not validate")
     args = parser.parse_args()
     root = args.root.resolve()
     try:
         files = markdown_files(root)
-        errors = check_links(root, files) + check_inventory(root, files) + check_versions(root)
+        if args.list:
+            for path in files:
+                print(f"{document_group(path)}\t{path.as_posix()}")
+            print(f"[docs][LIST] {len(files)} Markdown files")
+            return 0
+        errors = check_links(root, files) + check_index(root, files) + check_versions(root)
     except (OSError, subprocess.CalledProcessError, KeyError, ValueError) as error:
         print(f"[docs][FAIL] unable to check: {error}", file=sys.stderr)
         return 1
@@ -116,7 +139,7 @@ def main() -> int:
         print(f"[docs][FAIL] {error}", file=sys.stderr)
     if errors:
         return 1
-    print(f"[docs][PASS] {len(files)} Markdown files: local links/anchors, inventory, selected live versions")
+    print(f"[docs][PASS] {len(files)} Markdown files: local links/anchors, index coverage, selected live versions")
     print("[docs][NOTE] External URLs, reference-style links and prose semantics require separate review; not wired into CI/preflight.")
     return 0
 

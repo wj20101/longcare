@@ -11,47 +11,13 @@ LongCare 是单应用、多模块的 Android 客户端，服务两类主要流�
 
 主链路可运行。当前核心风险是生产厂商 SDK readiness、`:app` 壳层过重、复杂平台生命周期的回归深度，以及 targetSdk 37 前的大屏适配。
 
-## 先看什么
+## 阅读与架构入口
 
-| 任务 | 文档 |
-|---|---|
-| 整体需求、技术评估和优化依据 | `docs/analysis/project-review.md` |
-| 全量文档职责与一致性检查 | `docs/maintenance.md` |
-| 产品行为、角色、业务规则 | `docs/product/overview.md` |
-| 模块、运行时、平台边界 | `docs/architecture/system-overview.md` |
-| 依赖/版本/构建变体 | `docs/architecture/tech-stack.md` |
-| 页面、路由、返回结果 | `docs/architecture/ui-and-screen-map.md` |
-| 分层或模块变更 | `docs/architecture/dependency-rules.md` |
-| CI、Lint、发布 | `docs/architecture/ci-quality-gates.md` |
-| 优先级和已知 blocker | `docs/architecture/roadmap-and-open-gaps.md` |
-| QLZ / 销售评估 | `docs/integrations/qlz-sdk.md` |
-| 定位生命周期 | `feature/location/src/main/kotlin/com/ytone/longcare/features/location/README.md` |
+所有文档职责和更新矩阵统一见[文档索引](docs/README.md)。需求、风险和优化顺序见[整体分析](docs/analysis/project-review.md)；模块、强制依赖规则、定位生命周期及 ADR 见[系统概览](docs/architecture/system-overview.md)。
 
-判断当前实现时核对代码、Gradle/Manifest/workflow 和测试；与已接受规格冲突时明确记录偏差，不以实现自动覆盖需求。不要从旧提交中的计划或日志推导现状。
+App 保留启动、导航、平台组装和多数 route UI；Core/Feature 渐进承接业务。登录页中央大 Logo 长按确认进入本地 NFC/R65C，不上传或签到；平台监听随页面生命周期释放。独立助手已退役。
 
-## 当前架构
-
-- `:app`
-  - `MainApplication`、`MainActivity`、隐私/会话入口和 App 更新弹窗。
-  - Navigation 3 可保存类型安全单栈、entry 结果邮箱和根 NavDisplay。
-  - Android 组件、Service/闹钟/安装器，以及护理 NFC、QLZ 等 app-owned controller。
-  - 仍持有大多数 route-bound UI；legacy feature 目录冻结新增。
-- `:feature:carddiagnostics`
-  - NFC/R65C 本地读卡 UI；入口为登录页中央大 Logo 长按后弹窗确认，无震动，不上传或触发签到。
-  - NFC Reader Mode 由 app-owned 平台代码控制，只在对应页面前台监听；入口不使用传感器。
-- `:integration:txface`
-  - 共享腾讯 SDK adapter、Hilt 绑定、AAR/Maven 依赖和 consumer rules。
-- `:core:model` / `:core:domain`
-  - Kotlin/JVM 模块，保持 Android-free。
-- `:core:data`
-  - Retrofit、Room、DataStore/COS 数据实现和绑定。
-- `:core:common` / `:core:ui`
-  - 日志/诊断/图片/通用 Android 能力，以及共享 Compose/UI 支撑。
-- `:feature:*`
-  - 已承接部分动作、ViewModel、用例、Service 或页面。
-  - `:feature:identification` 已拥有默认 CameraX/ML Kit、手动采集与备用腾讯人脸页面。
-  - `:feature:photoupload` 已拥有标准相机/水印页面。
-  - `:feature:location` 已拥有持续定位 Service 和上报链路。
+判断现状时核对代码、Gradle/Manifest/workflow 和测试；与已接受规格冲突时记录偏差，不以实现自动覆盖需求，不从历史计划推导现状。
 
 ## 开发守则
 
@@ -115,6 +81,8 @@ OpenSpec 产物统一使用简体中文并提交到 `openspec/`；结构关键�
 
 ## 最小验证
 
+完整命令、CI 选择范围与发布检查见[CI 与门禁](docs/architecture/ci-quality-gates.md)。
+
 ```bash
 # 文档一致性（链接、清单、指定版本；不替代业务核对）
 python3 scripts/quality/verify_documentation.py
@@ -125,7 +93,7 @@ bash scripts/quality/preflight_local.sh --local-fast
 # Kotlin/业务逻辑
 bash scripts/quality/preflight_local.sh --full
 
-# 普通 Android CI 主路径
+# App/读卡模块基础编译与测试（不等于全部 CI 专项）
 bash scripts/quality/verify_validation_app_isolation.sh .
 ./gradlew --no-daemon :app:lintDebug :app:assembleDebug :feature:carddiagnostics:lintDebug :feature:carddiagnostics:testDebugUnitTest
 bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt

@@ -30,9 +30,7 @@ LongCare 是面向长期护理服务执行和客户评估场景的 Android 客�
 
 应用内所有 H5（含报告、协议和隐私网页弹窗）共用 `window.NativeBridge.closeWebView()` 关闭接口。
 普通网页调用只关闭自身，不代表隐私同意；隐私网页关闭后仍需用户在原生弹窗中明确选择。评估 H5 按业务约定以主动关闭通知完成，完成页另行请求结果文案，不通过网页返回结果。
-客户端首次加载前直接注册 `NativeBridge`，仅通过 `@JavascriptInterface` 暴露无参数关闭方法；
-不注入 JS 包装、不接管 H5 交互，覆盖项目支持的 API 24+ 标准 WebView，不要求更新内核。
-当前页面均为内部 H5，不额外设置 URL 白名单或导航拦截；接口对页面内的 frame 同样可见，不能独立认证调用来源。
+桥接接口与信任边界统一见[QLZ/H5 接入契约](../integrations/qlz-sdk.md#检测展示与-h5-关闭契约)。
 
 ### 护理服务执行
 
@@ -99,4 +97,4 @@ LongCare 是面向长期护理服务执行和客户评估场景的 Android 客�
 - 当前 QLZ 固定测试配置、1.3.0.5 弱 TLS，以及腾讯人脸 6.6.2 的 16 KB 对齐与 consumer rules 风险已明确接受，标准 Release 对这些事项告警；问题尚未修复，不能扩大为其他失败自动放行。
 - 大量 route-bound UI 仍在 `:app`，这是维护成本问题，不代表当前用户流程不可用。
 
-开放问题和优先级见[路线图与开放问题](../architecture/roadmap-and-open-gaps.md)。
+开放问题和优先级见[路线图与开放问题](../analysis/project-review.md#17-分阶段技术方案与实施顺序)。

@@ -104,7 +104,7 @@ Android CLI 当前识别以下 app 变体：
 
 性能工具使用 Baseline Profile / Macrobenchmark 1.5.0 稳定版。当前生成器在独立
 `pixel6Api33` Managed Device 上采集启动、滚动和返回路径；不包含登录后的业务旅程，
-baseline/startup 两份规则目前相同，语义拆分仍见[性能改进待办](roadmap-and-open-gaps.md#批次-bbaseline-与-startup-profile-语义)。
+baseline/startup 两份规则目前相同，语义拆分仍见[性能改进待办](../analysis/project-review.md#172-阶段-b性能采集语义)。
 生成时同时指定 `androidx.benchmark.enabledRules=BaselineProfile` 和
 `class=com.ytone.longcare.baselineprofile.BaselineProfileGenerator` 的 instrumentation 参数，
 将生成用例与启动测量分开。生成后重新构建 `benchmarkRelease`，核查 APK 中的
