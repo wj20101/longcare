@@ -73,4 +73,4 @@ include(":feature:photoupload")
 include(":feature:servicecountdown")
 
 include(":integration:txface", ":integration:txface-live", ":integration:txface-normal")
-include(":assistant")
+include(":feature:carddiagnostics")

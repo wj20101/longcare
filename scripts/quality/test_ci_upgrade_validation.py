@@ -138,7 +138,10 @@ class AffectedPathsTest(unittest.TestCase):
                     fields = dict(line.split("=", 1) for line in output.splitlines())
                     self.assertEqual(expected, fields["run_instrumentation"])
                     self.assertEqual("1", fields["changed_files_count"])
-                    self.assertIn(":assistant:testDebugUnitTest", fields["verify_tasks"])
+                    self.assertIn(":feature:carddiagnostics:testDebugUnitTest", fields["verify_tasks"])
+                    self.assertIn(":app:testDebugUnitTest", fields["verify_tasks"])
+                    self.assertIn("--tests com.ytone.longcare.features.login.ui.LoginCardDiagnosticsEntryTest", fields["verify_tasks"])
+                    self.assertIn("--tests com.ytone.longcare.navigation.*", fields["verify_tasks"])
                     self.assertIn("com.ytone.longcare.ExampleInstrumentedTest", fields["smoke_test_classes"])
                     base = head
 

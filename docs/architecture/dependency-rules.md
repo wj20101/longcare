@@ -11,7 +11,7 @@
 | 源模块 | 允许依赖的项目模块 |
 |---|---|
 | `:app` | `:baselineprofile`、全部 `:core:*`、全部现有 `:feature:*`、`:integration:txface` |
-| `:assistant` | 全部 `:core:*`、`:feature:login`、`:feature:identification`、`:feature:photoupload`、`:integration:txface` |
+| `:feature:carddiagnostics` | `:core:common` |
 | `:integration:txface` | `:core:common`、`:core:domain`、`:core:model`，本地来源时依赖 txface-live/txface-normal artifact wrapper |
 | `:integration:txface-live` / `:integration:txface-normal` | 无项目依赖，仅暴露现有 AAR artifact |
 | `:baselineprofile` | 无 |
@@ -23,7 +23,7 @@
 | `:feature:home` | `:core:domain`、`:core:model` |
 | 其他现有 `:feature:*` | `:core:common`、`:core:domain`、`:core:model`；identification 和 photoupload 额外允许 `:core:ui` |
 
-`:app` 与 `:assistant` 禁止互相依赖。两者共享能力只通过 Core/Feature/Integration；验证 UI、HID 测试状态和测试 NFC helper 仅属于助手。
+读卡检测 UI/HID 状态由 `:feature:carddiagnostics` 持有，只依赖 `:core:common`；平台监听由 `:app` 管理，不依赖业务 Repository 或事件总线。
 
 新增或修改 Gradle 项目依赖时，必须同步检查实际 build 文件和 allowlist；不能只更新本文。
 
@@ -81,7 +81,7 @@
 - Service、通知、闹钟、安装器、NFC 前台调度、Activity Result 和第三方 SDK UI 由 app-owned gateway/controller 或明确的平台模块封装。
 - 前台 Service 必须声明匹配用途的 `foregroundServiceType` 和权限，并从满足运行时前置条件的用户可见流程启动。
 - Release 组件默认 `exported=false`；新增导出组件需要最小 intent surface、安全审查和 allowlist 更新。
-- 正式应用的 mock 仍限制在 debug source set；五项独立验证功能只进入助手，正式 App 的 Debug/Release 均不得包含隐藏测试入口。
+- 正式应用的 mock 仍限制在 debug source set；登录页中央大 Logo 长按并确认可打开本地 NFC/R65C，不新增外部检测组件或其他测试入口。
 - 权限请求要有用途说明、拒绝恢复和从设置页返回后的重新检查，不能在 Application 无上下文地批量申请。
 
 ## 数据、网络和文件
@@ -107,7 +107,7 @@
 | 守卫 | 保护内容 |
 |---|---|
 | `verify_architecture_boundaries.sh` | Android-free Domain、禁止 Feature/Data 反向依赖、ViewModel/调度器/文件规模等规则 |
-| `verify_validation_app_isolation.sh` | 正式 App 无验证入口、应用包名/依赖、助手最小导出面及共享实现归属 |
+| `verify_validation_app_isolation.sh` | 本地检测不调用业务链路、助手退役、主应用身份与共享实现归属 |
 | `verify_module_dependency_whitelist.sh` | Gradle 项目模块边 |
 | `verify_module_api_visibility.sh` | 跨模块 API 和 internal 实现边界 |
 | `check_new_files_guard.sh` | 冻结 legacy feature 目录不新增文件 |

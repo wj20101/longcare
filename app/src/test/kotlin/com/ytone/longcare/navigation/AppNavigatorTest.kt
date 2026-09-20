@@ -52,7 +52,7 @@ class AppNavigatorTest {
     private fun AppNavigator.page() = forEntry(top().id)
 
     @Test fun allRoutesRoundTripWithStableEntryAndCallerIds() {
-        val routes = listOf(LoginRoute, HomeRoute, ServiceRoute(order), NursingExecutionRoute(order),
+        val routes = listOf(LoginRoute, CardDiagnosticsRoute, HomeRoute, ServiceRoute(order), NursingExecutionRoute(order),
             WebViewRoute("https://example.test/a?b=中文&c=%2F#1", "条款 / ?"), SelectServiceRoute(order),
             WebViewRoute("https://evaluation.invalid/form", "评估", isEvaluation = true),
             PhotoUploadRoute(order), CarePlansListRoute, ServiceRecordsListRoute,
@@ -76,6 +76,22 @@ class AppNavigatorTest {
     @Test fun rootAndEmptyStackCannotPop() {
         assertFalse(navigator().popBackStack())
         assertFalse(AppNavigator(mutableListOf(), NavigationResults()).popBackStack())
+    }
+
+    @Test fun diagnosticsReturnsToOriginalLoginAndIgnoresDuplicateConfirmation() {
+        val nav = navigator(LoginRoute)
+        val original = nav.top()
+        val login = nav.page()
+        login.navigateWhenResumed(CardDiagnosticsRoute)
+        login.navigateWhenResumed(CardDiagnosticsRoute)
+        assertEquals(2, nav.backStack.size)
+        val diagnostics = nav.page()
+        assertTrue(diagnostics.popBackStack())
+        assertEquals(original, nav.top())
+        assertFalse(diagnostics.popBackStack())
+        login.navigateToHomeFromLogin()
+        login.navigateWhenResumed(CardDiagnosticsRoute)
+        assertEquals(listOf(HomeRoute), nav.backStack.map { (it as AppNavEntry).route })
     }
 
     @Test fun loginDropsAnonymousHistoryAndStaleLoginCannotRepeat() {

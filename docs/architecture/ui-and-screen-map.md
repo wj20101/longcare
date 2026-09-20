@@ -19,7 +19,7 @@ Navigation 3 使用可保存的 `AppNavEntry` 包装业务路由，为相同参�
 
 | 路由 | 页面 | 现实归属 | 说明 |
 |---|---|---|---|
-| `LoginRoute` | `LoginScreen` | `:app` | 登录、协议、隐私/协议 WebView；Logo 无测试行为 |
+| `LoginRoute` | `LoginScreen` | `:app` | 登录、协议、隐私/协议 WebView；中央大 Logo 长按确认进入读卡检测 |
 | `HomeRoute` | `HomeScreen` | `:app` | 按 `userIdentity` 选择护理端或销售端 |
 | `CarePlansListRoute` | `ServiceOrdersListScreen` | `:app` | 服务计划列表 |
 | `ServiceRecordsListRoute` | `ServiceOrdersListScreen` | `:app` | 服务记录列表 |
@@ -59,7 +59,7 @@ Navigation 3 使用可保存的 `AppNavEntry` 包装业务路由，为相同参�
 | `UserServiceRecordRoute` | `UserServiceRecordScreen` | `:app` | 用户服务记录 |
 | `WebViewRoute` | `WebViewScreen` | `:app` | 协议、隐私政策、销售表单/报告页面；统一注册最小原生关闭接口 |
 
-开始服务直接进入 NFC/读卡流程；无入口的设备选择页、旧人脸引导页和正式应用腾讯测试路由已移除。腾讯验证仍保留在独立助手中。
+开始服务直接进入 NFC/读卡流程；无入口的设备选择页、旧人脸引导页和正式应用腾讯测试路由已移除。独立助手的腾讯测试入口亦已删除，正式业务仍需的共享实现保留。
 
 默认服务人员核验结果通过调用者 entry 邮箱的 `DEFAULT_FACE_VERIFICATION_RESULT_KEY` 返回；长者照片和销售登记照片通过 `CAPTURED_IMAGE_URI_KEY` 返回；手动人脸补录通过 `FACE_IMAGE_PATH_KEY` 返回。图片输入/上传结果分别使用 `EXISTING_IMAGES_KEY` / `PHOTO_UPLOAD_RESULT_KEY`。邮箱与栈共同保存，接收页消费后清空 StateFlow；来源失效的迟到回调丢弃。服务完成后清除中间页并保留首页，普通返回到首页。
 
@@ -100,34 +100,22 @@ H5 左上角返回调用关闭接口；成功弹窗确认仅刷新网页属于�
 - `PhotoPreviewDialog`：`:core:ui` 的统一全屏预览。
 - `CountdownAlarmActivity`：锁屏/全屏提醒 Activity，不属于 Compose NavDisplay。
 
-## 独立验证助手
+## 本地读卡检测
 
-正式登录页不提供长按 Logo 面板；验证只在独立包 `com.ytone.longcare.assistant` 中进行。助手不注册正式 App 导航图。
+全局隐私同意后，登录页前台可交互时长按中央大 Logo，只弹出“打开助手”，点击“打开”才压入 `CardDiagnosticsRoute`。普通点击、小 Logo/背景长按均不触发入口，长按无震动；取消后需重新长按，进入后台或离开登录页清空待确认状态。无摇动监听、冷却计时、外部深链或登录后入口。
 
-| 助手路由 | 能力 | 鉴权 |
-|---|---|---|
-| `AssistantHome` | 五项入口与最近结果/照片预览 | 隐私同意 |
-| `AssistantLogin` | 独立短信登录，取消返回首页 | 复用 LoginViewModel；无 mock |
-| `AssistantToolRoute(DEFAULT_FACE, orderId)` | 订单 ID 输入、默认人脸验证、JPEG 尺寸/字节数 | 需登录，ID 限 1..Int.MAX_VALUE |
-| `AssistantToolRoute(NFC)` | 原生 NFC 或无 NFC 设备上的 R65C HID | 无需登录；页面前台才监听 |
-| `AssistantToolRoute(CAMERA)` | 标准水印相机、压缩、照片预览 | 无需登录；按需相机权限 |
-| `AssistantToolRoute(TENCENT_FACE)` | 共享备用腾讯人脸页面 | 需助手 userId |
-| `AssistantToolRoute(MANUAL_FACE)` | 共享手动采集页面和文件结果 | 无需登录 |
+Logo 点击和长按均无波纹或按压高亮。弹窗使用 Material 3 默认样式，正文“可进行 NFC 和 R65C 读卡检测，检测数据仅在本机显示。”，按钮“取消”和“打开”。
 
-助手使用独立的 Navigation 3 可保存栈；隐私状态、照片与会话在自己的沙箱，登录中断目标通过 SavedStateHandle 保存且消费一次。系统返回/取消登录返回助手首页，不进入正式 Home 或订单流程。同账号仍可能受后端单会话规则影响。
+检测 UI 属于 `:feature:carddiagnostics`，NFC/R65C 可主动切换。NFC 使用页面限定的 Reader Mode，不经过业务事件总线；R65C 只在当前模式前台捕获 HID 输入。结果只在本地显示、清空、复制，不上传、不签到、不修改会话。返回只弹出检测页，保留登录表单；退出和切换模式释放原监听。
 
-助手 Launcher 图标沿用主应用的蓝色与白色环形标识，以深蓝扳手徽章区分内部验证身份；提供 API 24 位图回退、API 26 自适应层和 API 33 单色主题层。
-
-助手首页照片由共享图片管线保存在私有受管文件目录，清空结果、替换照片及退出账号时删除旧照片，不扫描其他文件。备用腾讯人脸成功后记录结果并返回首页。水印定位支持精确和近似授权；拒绝权限时显示不可用，从设置返回后重新检查。
-
-订单 ID 无效时显示范围错误并禁止发起验证，不截断超长输入为另一个有效订单。标准相机在页面恢复时重新检查相机权限，支持从系统设置授权后返回原页面继续拍照。
-
+独立助手及其他测试入口已删除，历史安装包不变。长按入口真机交互与 NFC/R65C 贴卡验收仍须使用硬件，自动化不替代这些证据。
 
 ## 路由类型清单
 
 ### Object routes
 
 - `LoginRoute`
+- `CardDiagnosticsRoute`
 - `HomeRoute`
 - `CarePlansListRoute`
 - `ServiceRecordsListRoute`

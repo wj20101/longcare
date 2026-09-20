@@ -6,10 +6,10 @@
 
 ## 总体形态
 
-LongCare 是双 APK、多模块的 Compose Android 应用。当前采用“壳层 + Core + 部分 Feature 下沉”的过渡架构：
+LongCare 是单应用、多模块的 Compose Android 应用。当前采用“壳层 + Core + 部分 Feature 下沉”的过渡架构：
 
 - `:app` 负责 Application/Activity、隐私和会话入口、类型安全导航、Manifest 组件、平台/厂商 SDK 适配，以及仍未迁出的多数 route-bound UI。
-- `:assistant` 是独立验证应用，与正式 App 不互相依赖；通过同一 Core/Feature/腾讯集成层验证五项能力。
+- `:feature:carddiagnostics` 提供本地 NFC/R65C UI，登录页中央大 Logo 长按确认后进入，平台读卡监听在 `:app`。
 - `:integration:txface` 统一拥有腾讯人脸 SDK；本地 AAR 通过两个纯 artifact wrapper 模块供 Android library 消费。
 - `:core:*` 提供模型、领域契约、数据实现、通用 UI 和基础设施。
 - `:feature:*` 已承接部分业务状态、用例、平台能力或 UI，但模块迁移尚未完成。
@@ -24,7 +24,6 @@ flowchart LR
     APP --> DOMAIN[":core:domain"]
     APP --> MODEL[":core:model"]
     APP --> TX[":integration:txface"]
-    ASSISTANT[":assistant<br/>验证·独立登录"] --> FEATURES
     ASSISTANT --> DATA
     ASSISTANT --> UI
     ASSISTANT --> COMMON
@@ -53,7 +52,7 @@ flowchart LR
 | 模块 | 当前职责 | 当前现实/迁移状态 |
 |---|---|---|
 | `:app` | 运行时壳、导航、Manifest、平台网关、厂商 UI 控制器、更新任务 | 仍包含护理、销售、NFC、倒计时等大量业务 UI；legacy feature 目录已冻结新增 |
-| `:assistant` | 独立隐私/登录和五项验证导航 | 不注册正式业务路由；本地沙箱、组件和会话独立 |
+| `:feature:carddiagnostics` | NFC/R65C 本地检测 UI | 不依赖 Data、会话或业务事件总线 |
 | `:integration:txface` | 腾讯人脸 SDK adapter、依赖与规则 | `FaceVerifier` 契约不泄漏厂商类型 |
 | `:baselineprofile` | Macrobenchmark 旅程与 Baseline Profile 生成 | 使用 Pixel 6 API 33 managed device，目标为 `:app` |
 | `:core:model` | 跨层模型、值对象、`ApiResult`、序列化模型 | Kotlin/JVM 模块，不依赖 Android framework |
@@ -140,13 +139,13 @@ flowchart LR
 - Receiver：倒计时、关闭响铃、服务结束提醒和设备启动恢复。
 - Provider：受限 `FileProvider`；WorkManager 默认 initializer 被移除，改为应用自定义配置。
 
-正式 App 不再包含验证 Activity、Logo 长按入口或验证 Launcher。助手仅导出 `AssistantActivity`（MAIN/LAUNCHER），无外部测试深链；NFC 只通过前台显式 PendingIntent 进入，离开测试页即停用。SDK 内部 Activity 不导出，provider authority 使用各自 applicationId。
+主应用不新增检测 Activity 或检测 Launcher；登录页中央大 Logo 长按确认后在既有 NavDisplay 内打开读卡页，不使用传感器或震动。NFC Reader Mode 只回调当前页面，退出即释放，不向业务事件总线派发。SDK 内部 Activity 不导出。
 
 ## 权限与平台约束
 
 - 相机、人脸、NFC、蓝牙、定位、通知、精确闹钟、全屏提醒和应用安装均按业务入口请求，不应在 Application 无条件触发。
 - Android 14+ 的前台服务类型及对应权限在 Manifest 中显式声明；定位 Service 只能在满足位置服务和运行时权限的用户可见流程中启动。
-- 正式应用自有 Activity 当前锁定竖屏；助手不锁定方向。targetSdk 36 在 sw600dp+ 默认忽略方向/可调整大小限制，项目用 Activity 级 `PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY` 暂时退出该行为。
+- 正式主入口 `MainActivity` 当前锁定竖屏；`CountdownAlarmActivity` 的源 Manifest 没有方向锁定声明。targetSdk 36 在 sw600dp+ 默认忽略方向/可调整大小限制，项目用 Activity 级 `PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY` 暂时退出该行为。
 - Android API 37 会取消上述大屏退出能力；在升级 targetSdk 37 前必须完成旋转、多窗口、相机预览和状态恢复验证。
 - 顶层护理/销售导航已经使用 Material 3 Adaptive Navigation Suite，根据窗口尺寸选择底栏或导航轨。
 
@@ -165,8 +164,8 @@ flowchart LR
 ## 构建与发布现实
 
 - Debug、Release、nonMinifiedRelease 和 benchmarkRelease 变体由 Android CLI/Gradle 识别。
-- Android CI 的正常阻断路径以构建、Lint、架构和治理为主，助手单测纳入阻断，正式业务全量单测仍不作为普通 CI 必跑；本地 `--full` 和专项验证仍应运行相关测试。
-- 正式构建统一使用标准 Release，保留正式签名、R8 和资源压缩，无额外发布模式；双包支持 debug/release，GitHub Release 同时提供主应用 APK/AAB 和独立助手 Release APK，助手不进入主应用更新通道。
+- Android CI 的正常阻断路径以构建、Lint、架构和治理为主，读卡 Feature 和主应用长按入口、NFC 平台、导航专项单测纳入阻断，正式业务全量单测仍不作为普通 CI 必跑；本地 `--full` 和专项验证仍应运行相关测试。
+- 正式构建统一使用标准 Release，保留正式签名、R8 和资源压缩；仅提供主应用 APK/AAB，历史助手附件保持不变。
 - 当前 QLZ key/test mode、QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 已知问题经用户明确接受，Release 输出警告；正式签名、其他质量和产物检查仍必须通过，不将风险接受视为问题修复。
 
 ## 已接受的技术债
@@ -180,6 +179,6 @@ flowchart LR
 
 后续优先级见[路线图与开放问题](roadmap-and-open-gaps.md)，强制边界见[依赖规则](dependency-rules.md)。
 
-## 助手隐私与运行时
+## 读卡检测隐私与运行时
 
-助手拥有独立 Application、DataStore、数据库和私有照片缓存。隐私同意前不创建联网 ViewModel，ML Kit 显式延后初始化；不启用 Bugly 上报、QLZ、更新 Worker 或护理定位服务。可选系统单次定位只用于相机水印。默认和备用人脸需助手登录，NFC/标准相机/手动采集无需登录；待继续路由保存在 SavedStateHandle，成功消费一次，取消和退出清理。服务端可能限制同账号多端登录，本地隔离不代表后端会话互不影响。
+检测仅在全局隐私同意后的登录页通过中央大 Logo 长按及确认进入，不创建单独登录、照片缓存或上传流程。NFC/R65C 只在对应模式前台监听，切换、后台和退出释放；返回原登录表单。未完成长按与确认状态不跨后台恢复。

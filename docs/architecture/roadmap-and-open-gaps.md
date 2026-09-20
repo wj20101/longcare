@@ -23,7 +23,7 @@ Owner 涉及移动端、服务端和厂商；以下是尚未修复的风险治�
 5. `verify_vendor_sdk_release_readiness.sh`、Release 配置门禁、Lint 和 Release 全部通过。
 6. 重新评估 Jetifier；只有全部相关厂商包 AndroidX-only 后才可关闭。
 
-双包支持联调/验收；主应用与助手均使用标准 Release，作为独立安装产物统一通过 GitHub Release 分发，助手不进入主应用商店或更新通道。
+主应用内提供 NFC/R65C 本地读卡检测；标准 Release 仅发布主应用 APK/AAB。长按入口已由用户确认真机验收，两项贴卡硬件验收仍单独保留。
 
 ## P1：低风险优化批次
 
@@ -135,7 +135,7 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 - 不因为模块目录名称不理想而一次性搬迁所有页面。
 - 不通过关闭 Lint、增加全局 `-ignorewarnings`、放宽 exported component 或复用 debug 签名绕过生产发布问题。
 - 不恢复相册选图、跨重启定位自动恢复或离线定位补传，除非产品明确改变现有规则。
-- 内部功能验证已独立到 `:assistant`，正式 App 不再保留隐藏入口；不把助手验证路由引入普通用户导航。
+- 独立助手退役，只保留登录页中央大 Logo 长按并确认进入的 NFC/R65C 本地检测；不得扩展为通用测试平台或业务提交入口。
 
 ## 更新触发
 

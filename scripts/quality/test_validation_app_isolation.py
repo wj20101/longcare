@@ -14,12 +14,11 @@ PROJECT = Path(__file__).resolve().parents[2]
 
 
 class IsolationTest(unittest.TestCase):
-    def test_release_export_guard_accepts_both_launchers_and_rejects_extra_component(self):
+    def test_release_export_guard_accepts_main_launcher_and_rejects_extra_component(self):
         script = PROJECT / "scripts/quality/verify_release_exported_components.sh"
         with tempfile.TemporaryDirectory() as directory:
             manifest = Path(directory) / "AndroidManifest.xml"
-            for package, launcher in (("com.ytone.longcare", "MainActivity"),
-                                      ("com.ytone.longcare.assistant", "AssistantActivity")):
+            for package, launcher in (("com.ytone.longcare", "MainActivity"),):
                 content = ('<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n'
                            f' package="{package}">\n<application>\n'
                            f'<activity android:name="{package}.{launcher}" android:exported="true" />\n'
@@ -38,7 +37,7 @@ class IsolationTest(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / "settings.gradle.kts").write_bytes((PROJECT / "settings.gradle.kts").read_bytes())
         # Copy source only. Build outputs from other variants must not affect a source-only gate.
-        for module in ("app", "assistant", "core", "feature", "integration"):
+        for module in ("app", "core", "feature", "integration"):
             for source in (PROJECT / module).rglob("*"):
                 if "build" in source.parts or not source.is_file() or source.suffix not in (".kt", ".kts", ".xml"):
                     continue
@@ -50,9 +49,9 @@ class IsolationTest(unittest.TestCase):
     def test_current_sources_pass(self):
         self.assertEqual([], isolation.verify(self.root))
 
-    def test_unregistered_assistant_is_rejected(self):
+    def test_unregistered_diagnostics_is_rejected(self):
         path = self.root / "settings.gradle.kts"
-        path.write_text(path.read_text().replace('include(":assistant")', ''))
+        path.write_text(path.read_text().replace('include(":feature:carddiagnostics")', ''))
         self.assertTrue(isolation.verify(self.root))
 
     def test_requested_variant_requires_built_manifests(self):
@@ -68,14 +67,19 @@ class IsolationTest(unittest.TestCase):
         path.write_text(path.read_text() + '\nimplementation(project(":assistant"))')
         self.assertTrue(isolation.verify(self.root))
 
-    def test_wrong_assistant_package_is_rejected(self):
-        path = self.root / "assistant/build.gradle.kts"
-        path.write_text(path.read_text().replace('applicationId = "com.ytone.longcare.assistant"', 'applicationId = "com.ytone.longcare"'))
+    def test_wrong_main_package_is_rejected(self):
+        path = self.root / "app/build.gradle.kts"
+        path.write_text(path.read_text().replace('applicationId = "com.ytone.longcare"', 'applicationId = "com.invalid"'))
         self.assertTrue(isolation.verify(self.root))
 
-    def test_exported_validation_activity_is_rejected(self):
-        path = self.root / "assistant/src/main/AndroidManifest.xml"
-        path.write_text(path.read_text().replace("</application>", '<activity android:name=".Hidden" android:exported="true" /></application>'))
+    def test_diagnostic_activity_is_rejected(self):
+        path = self.root / "app/src/main/AndroidManifest.xml"
+        path.write_text(path.read_text().replace("</application>", '<activity android:name=".CardDiagnosticsActivity" android:exported="true" /></application>'))
+        self.assertTrue(isolation.verify(self.root))
+
+    def test_business_events_in_diagnostics_are_rejected(self):
+        path = self.root / "feature/carddiagnostics/src/main/kotlin/Injected.kt"
+        path.write_text("import com.ytone.longcare.common.event.AppEventBus")
         self.assertTrue(isolation.verify(self.root))
 
     def test_missing_shared_owner_is_rejected(self):

@@ -21,7 +21,7 @@
 |---|---|
 | `bash scripts/quality/preflight_local.sh` | `local-fast` |
 | `... --changed-only` | 使用可靠 base ref 缩小检查；无法解析时安全回退到完整 `local-fast` |
-| `... --full` | `local-fast` + 双应用 Kotlin 编译 + App、助手、腾讯集成、Common/Data/UI、Identification/PhotoUpload 单测 |
+| `... --full` | `local-fast` + 主应用/读卡 Feature Kotlin 编译 + App、读卡 Feature、腾讯集成、Common/Data/UI、Identification/PhotoUpload 单测 |
 | `... --release` | `--full` + `run_quality_gate.sh` 质量快照 |
 
 `local-fast` 当前包含：
@@ -39,7 +39,7 @@
 
 质量快照包含厂商 SDK 风险检查。经用户于 2026-09-19 明确确认，当前 QLZ 1.3.0.5 和腾讯人脸 6.6.2 已知事项改为警告；缺失报告或未接受的目标厂商问题仍失败，其他 Lint/签名检查不变。
 
-正式/助手隔离守卫由本地 preflight 与 Android CI/Release 执行，也可单独运行：
+本地读卡业务隔离守卫由本地 preflight 与 Android CI/Release 执行，也可单独运行：
 
 ```bash
 bash scripts/quality/verify_validation_app_isolation.sh .
@@ -47,7 +47,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 
 ## Android CI
 
-`.github/workflows/android-ci.yml` 保留普通 PR/Push 的 build-only 主阻断路径，并在 affected scope 明确要求时追加独立 instrumentation smoke job：
+`.github/workflows/android-ci.yml` 使用普通 PR/Push 的无设备构建/专项单测主阻断路径，并在 affected scope 明确要求时追加独立 instrumentation smoke job：
 
 1. `detect-affected` 计算 Gradle tasks、`run_instrumentation` 和 smoke test classes；Android CI 工作流、smoke runner 或影响分析器本身发生变更时强制执行 instrumentation，避免 CI 控制面改动产生假绿。
 2. `verify-build` 执行 ci-required guards、Lint 和 Debug 构建，不启动模拟器；full scope 额外构建 Debug AAB。
@@ -56,7 +56,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 
 PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；同一 PR 推送新提交时会取消旧流水线，避免过期 build 与 emulator job 继续占用资源。主分支 push 不自动取消，确保每个已合入提交仍有独立结果。
 
-该条件 job 仍不是完整业务回归矩阵。普通主阻断路径执行助手单测，但不覆盖正式应用完整业务单测或完整用户旅程，条件 smoke 也只执行 affected scope 选中的 App instrumentation class。完整 `:app` 与 `:core:data` connected tests 通过 `scripts/quality/run_connected_android_tests.sh` 在本地或发布验收环境执行。
+该条件 job 仍不是完整业务回归矩阵。普通主阻断路径执行读卡 Feature 单测及主应用长按入口、NFC 平台、导航专项单测，但不覆盖正式应用完整业务单测或完整用户旅程，条件 smoke 也只执行 affected scope 选中的 App instrumentation class。完整 `:app` 与 `:core:data` connected tests 通过 `scripts/quality/run_connected_android_tests.sh` 在本地或发布验收环境执行。
 
 `test_ci_upgrade_validation.py` 由 workflow 守卫调用：执行工作流中的 KVM 脚本并注入缺失/权限拒绝场景，在临时 Git 仓库逐项验证三类 CI 路径触发 smoke，并验证 PR 并发分组跨提交稳定且彼此隔离。这些本地守卫不替代真实 Actions 模拟器运行。
 
@@ -66,7 +66,7 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 |---|---|
 | `verify_no_tracked_keystore_files.sh` | 禁止 keystore 进入 Git |
 | `verify_ci_workflow_quality.sh` | workflow action 版本、timeout、retention、触发和治理约束 |
-| `verify_validation_app_isolation.sh` | 正式 Debug/Release 无验证入口、双包依赖/包名、助手导出面 |
+| `verify_validation_app_isolation.sh` | 检测只读本地、无旧助手模块或外部检测组件、主应用身份与共享实现 |
 | `verify_lint_ignore_policy.sh` | 禁止不受控 Lint ignore |
 | `verify_jetpack_compat_apis.sh` | 受保护 Jetpack API 使用 |
 | `verify_baselineprofile_journeys.sh` | Baseline Profile 旅程存在且无 TODO |
@@ -87,10 +87,10 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 - 执行 `verify_vendor_sdk_release_readiness.sh`。
 - `assembleRelease` / `bundleRelease` 依赖 `verifyReleaseConfiguration`，不传额外模式参数。
 - 要求真实 Release keystore、密码和 alias；禁止 debug keystore fallback。
-- 生成主应用压缩 Release APK/AAB 和助手压缩 Release APK。发布前检查双 APK 的签名有效且一致、包名、版本号/名称、不可调试属性、R8 mapping 及导出组件；缺包或检查失败阻断发布。
+- 生成主应用压缩 Release APK/AAB。发布前检查主 APK 签名、包名、版本、不可调试属性、R8 mapping 及导出组件；缺包或失败阻断。
 - 自动递增 versionCode、推送版本提交，tag 为 `v<versionName>-<versionCode>`；名称为 `Release v<versionName> (<versionCode>)`，非草稿、非预发布，并设为 Latest。
 - APK/AAB 命名为 `app-v<versionName>-<yyMMdd>-<versionCode>-release.apk/aab`，Actions artifact 名称为 `app-release-artifacts`；不改动历史 Release 的现有下载链接。
-- 助手命名为 `assistant-v<versionName>-<yyMMdd>-<versionCode>-release.apk`，与主应用放入同一 GitHub Release，说明中标明验证助手用途；`release-checksums.txt` 覆盖三个安装包。`assistant-release-artifacts` 留存助手 APK 和 R8 mapping（7 天），助手 mapping 不作为 GitHub Release 附件。
+- `release-checksums.txt` 覆盖主 APK/AAB，主应用 mapping 随 Actions artifact 留存，不再构建或上传助手产物。
 
 用户已明确接受以下当前风险，Release 输出警告而不因此单独失败；这不是问题已修复或全设备兼容的保证：
 
@@ -99,7 +99,7 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 - 当前腾讯人脸 ARM64 native library 不满足 16 KB 对齐。
 - 人脸 AAR 的 consumer rules 含已知全局选项。
 
-`test_release_policy.py` 由 workflow 守卫调用，覆盖风险告警、旧模式参数拒绝、错误参数、缺失报告和其他版本不自动放行。`test_release_workflow.py` 离线执行实际工作流的产物命名、校验和与元数据片段，以工具替身覆盖 APK 签名/身份/调试属性失败，并断言双应用上传路径、发布前检查顺序、正式发布标记、目标提交 CI 守卫和助手隔离。不得通过 `continue-on-error` 或关闭签名/Lint 来放行其他失败。
+`test_release_policy.py` 由 workflow 守卫调用，覆盖风险告警、旧模式参数拒绝、错误参数、缺失报告和其他版本不自动放行。`test_release_workflow.py` 离线执行实际工作流的产物命名、校验和与元数据片段，以工具替身覆盖主 APK 签名/身份/调试属性失败，并断言单应用上传路径、发布前检查顺序、正式发布标记、目标提交 CI 守卫和读卡隔离。不得通过 `continue-on-error` 或关闭签名/Lint 来放行其他失败。
 
 详见 [QLZ SDK 接入](../integrations/qlz-sdk.md)和[路线图](roadmap-and-open-gaps.md)。
 
@@ -168,31 +168,8 @@ bash scripts/quality/preflight_local.sh --release
 
 只运行与改动风险相称的最小集合，但不能用“普通 CI 不跑测试”作为跳过相关单元测试或真机回归的理由。
 
-## 双 APK 验收交付
+## 读卡检测验收
 
-- `bash scripts/release/build-dual-apks.sh --debug`：两应用真实接口 Debug，输出 `build/outputs/dual-apk/debug/`。
-- `bash scripts/release/build-dual-apks.sh --release`：标准 Release，要求合法签名且禁用签名 fallback，输出 `build/outputs/dual-apk/release/`。
-- 打包只选择 Gradle output-metadata.json 当前声明的 APK，校验独立包名、相同版本、变体和文件；失败不导出半套新包。每套包含 `SHA256SUMS`、`artifacts.json`，元数据使用 `variant` 字段记录 debug/release。
-- Android CI 始终编译/测试/检查助手并独立上传 `assistant-debug-apk`。Android Release 同时构建主应用与助手，在 GitHub Release 提供可区分的独立安装包，不改变主应用商店或更新通道；厂商事项按上述明确接受的风险策略报告。
-- 脚本回归：`python3 scripts/quality/test_validation_app_isolation.py`、`python3 scripts/release/test_package_dual_apks.py`。
+自动化覆盖读卡解析、大 Logo 长按/短按与无震动、取消/生命周期与 Navigation 3 返回，正式包构建与 R8 检查不替代真机流程。
 
-助手设备回归应使用独占的 ARM64 测试模拟器，避免与其他项目同时运行 instrumentation。相机权限测试要求开始时助手未授予相机权限；使用空白测试环境，不对个人手机清数据。登录测试以测试内存会话和 Repository 替身覆盖状态，不发送真实短信或提交真实人脸。
-
-```bash
-# 将序列号替换为专用模拟器；不要默认选中连接的真机
-ANDROID_SERIAL=emulator-5580 ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.package=com.ytone.longcare.features.login.ui
-ANDROID_SERIAL=emulator-5580 ./gradlew :assistant:connectedDebugAndroidTest
-```
-
-测试覆盖登录页 Logo 隔离、助手登录/导航/订单校验/结果展示、相机拒绝和设置授权恢复，以及页面重建。模拟器上的拍照与 R65C 页面测试不能替代 NFC、外接读卡器和服务端人脸真机验收。
-
-NFC 真机专项使用 `AssistantNfcHardwareLifecycleTest`，须显式传入 `nfcHardwareTests=true`，否则跳过硬件用例。它临时切换 NFC 并恢复初始状态，使用真实系统服务的前台分发注册状态验证设置返回、Home/返回、离开页面及 Activity 重建；不模拟贴卡，也不运行相机、人脸或 R65C。执行期间保持设备解锁，不同时运行 Android CLI layout 或其他 instrumentation，并先移开 NFC 标签。`AssistantNfcIntentTest` 单独检查畸形外部 Intent 不触发助手路由。
-
-```bash
-# 替换为专用 NFC 真机序列号；只运行 NFC 专项。
-ANDROID_SERIAL="NFC_DEVICE_SERIAL" ./gradlew :assistant:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.ytone.longcare.assistant.AssistantNfcHardwareLifecycleTest,com.ytone.longcare.assistant.AssistantNfcIntentTest \
-  -Pandroid.testInstrumentationRunnerArguments.nfcHardwareTests=true
-```
-
-自动测试之后仍须实际贴卡，检查卡号展示/复制和重复读取；这些结果才是 NFC 标签读取的真机证据。其他硬件、真实登录和人脸验收需单独安排，不以 NFC 专项通过替代。
+真机需验证：登录页中央大 Logo 长按先确认且无震动，普通点击及非入口区域不触发；取消、后台、重复长按和返回不会误跳，无摇动监听。实际 NFC 标签及 R65C 分别验收读取、复制、清空、模式切换与退出释放。检测无须登录，不提交业务数据。用户选择稍后进行时保留未完成验收项。

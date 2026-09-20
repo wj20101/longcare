@@ -18,6 +18,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 object LoginRoute : AppRoute
 
+@Keep
+@Serializable
+object CardDiagnosticsRoute : AppRoute
+
 /**
  * 主页路由
  */

@@ -8,7 +8,7 @@
 
 | 项目 | 当前值 | 事实来源 |
 |---|---:|---|
-| Application ID | 正式 `com.ytone.longcare`；助手 `com.ytone.longcare.assistant` | 两个 application module 的 build.gradle.kts |
+| Application ID | `com.ytone.longcare` | app/build.gradle.kts |
 | 版本 | `1.0.6 (60)` | `constants.gradle.kts` |
 | `compileSdk` | 37 | `constants.gradle.kts` |
 | `targetSdk` | 36 | `constants.gradle.kts` |
@@ -76,9 +76,9 @@ WebKit 1.17.0 的渲染退出检查器会误报已实现回调的父类构造调
 
 项目包含 17 个 Gradle 模块：
 
-- 应用/测试：`:app`、`:assistant`、`:baselineprofile`
+- 应用/测试：`:app`、`:baselineprofile`
 - Core：`:core:model`、`:core:domain`、`:core:data`、`:core:ui`、`:core:common`
-- Feature：`:feature:login`、`:feature:home`、`:feature:identification`、`:feature:location`、`:feature:photoupload`、`:feature:servicecountdown`
+- Feature：`:feature:carddiagnostics`、`:feature:login`、`:feature:home`、`:feature:identification`、`:feature:location`、`:feature:photoupload`、`:feature:servicecountdown`
 
 - Integration：`:integration:txface`；`:integration:txface-live` / `:integration:txface-normal` 为本地 AAR 的纯 artifact wrapper（不产 APK）。AAR 二进制仍在 `app/libs`，依赖只由集成模块拥有，避免 AGP 禁止 Android library 直接打包本地 AAR 的限制。
 
@@ -112,7 +112,7 @@ baseline/startup 两份规则目前相同，语义拆分仍见[性能改进待�
 None / Require 两组冷启动测试；普通 CI 或模拟器生成成功不能证明真实启动收益。
 本地 Release 验收仍须使用合法签名，不能绕过发布门禁。
 
-助手只提供 Debug/Release，始终关闭 mock，与正式 App 共享基础版本、versionCode 及签名校验，助手 versionName 追加 `-assistant`；不应用 Baseline Profile 插件。统一命令为 `bash scripts/release/build-dual-apks.sh --debug|--release`（选择其一），输出 `build/outputs/dual-apk/<variant>/` 中两份版本化 APK、校验和和元数据。Android Release 将主应用 APK/AAB 和助手 Release APK 发布到同一 GitHub Release；助手保持独立包名，不进入主应用商店或更新通道。
+主应用提供标准 Debug/Release，读卡检测是 `:feature:carddiagnostics` library，无独立应用身份。Android Release 仅发布主应用 APK/AAB，保留校验和和混淆映射。
 
 ## 重要构建开关
 
@@ -121,7 +121,7 @@ None / Require 两组冷启动测试；普通 CI 或模拟器生成成功不能�
 | `debug.useMockData` | 仓库中为 `false`；传 `true` 使用 `app/src/debug/assets/mock` |
 | `baseline.enableX86_64` | 默认为 `false` |
 
-Release 需要 LongCare Release 签名配置。缺少签名时不会静默使用 debug keystore；双 APK Release 脚本还显式禁用 unsigned/debug fallback。
+Release 需要 LongCare Release 签名配置。缺少签名时不会静默使用 debug keystore；Release 不允许 unsigned/debug fallback。
 
 ## 常用命令
 

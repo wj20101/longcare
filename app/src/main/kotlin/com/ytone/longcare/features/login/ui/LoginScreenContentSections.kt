@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.login.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -48,6 +49,7 @@ import com.ytone.longcare.theme.TextColorPrimary
 @Composable
 internal fun BoxScope.LoginBrandingHeader(
     isCompactLayout: Boolean = false,
+    onDiagnosticsLongClick: (() -> Unit)? = null,
 ) {
     val smallLogoWidth = if (isCompactLayout) 72.dp else 86.dp
     val smallLogoTopPadding = if (isCompactLayout) 12.dp else 20.dp
@@ -70,6 +72,15 @@ internal fun BoxScope.LoginBrandingHeader(
             .align(Alignment.TopCenter)
             .width(mainLogoWidth)
             .padding(top = mainLogoTopPadding)
+            .combinedClickable(
+                interactionSource = null,
+                indication = null,
+                enabled = onDiagnosticsLongClick != null,
+                onLongClick = onDiagnosticsLongClick,
+                onLongClickLabel = stringResource(R.string.card_diagnostics_long_click),
+                hapticFeedbackEnabled = false,
+                onClick = {},
+            )
             .testTag("login_main_logo"),
     )
 }

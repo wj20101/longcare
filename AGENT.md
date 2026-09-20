@@ -4,7 +4,7 @@
 
 ## 项目一句话
 
-LongCare 是双 APK、多模块的 Android 客户端，服务两类主要流程：
+LongCare 是单应用、多模块的 Android 客户端，服务两类主要流程：
 
 - 护理执行：登录 → 服务单 → NFC/读卡与身份核验 → 服务项目 → 定位/照片/倒计时 → 签退与完成。
 - 销售评估：客户/待办 → 登记照片 → 表单或 QLZ 蓝牙设备评估 → 应用内报告。
@@ -34,9 +34,9 @@ LongCare 是双 APK、多模块的 Android 客户端，服务两类主要流程�
   - Navigation 3 可保存类型安全单栈、entry 结果邮箱和根 NavDisplay。
   - Android 组件、Service/闹钟/安装器，以及护理 NFC、QLZ 等 app-owned controller。
   - 仍持有大多数 route-bound UI；legacy feature 目录冻结新增。
-- `:assistant`
-  - 独立包名/沙箱的内部验证助手；无正式业务导航、QLZ、更新 Worker 或持续定位。
-  - 默认人脸、NFC/R65C、标准相机、备用腾讯人脸、手动采集五项入口；登录与隐私单独管理。
+- `:feature:carddiagnostics`
+  - NFC/R65C 本地读卡 UI；入口为登录页中央大 Logo 长按后弹窗确认，无震动，不上传或触发签到。
+  - NFC Reader Mode 由 app-owned 平台代码控制，只在对应页面前台监听；入口不使用传感器。
 - `:integration:txface`
   - 共享腾讯 SDK adapter、Hilt 绑定、AAR/Maven 依赖和 consumer rules。
 - `:core:model` / `:core:domain`
@@ -122,16 +122,16 @@ bash scripts/quality/preflight_local.sh --full
 
 # 普通 Android CI 主路径
 bash scripts/quality/verify_validation_app_isolation.sh .
-./gradlew --no-daemon :app:lintDebug :app:assembleDebug :assistant:lintDebug :assistant:assembleDebug
+./gradlew --no-daemon :app:lintDebug :app:assembleDebug :feature:carddiagnostics:lintDebug :feature:carddiagnostics:testDebugUnitTest
 bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
 ```
 
-按风险补充 focused test、instrumentation、模拟器或真机验证。普通 Android CI 包含助手单测，但不覆盖正式应用完整业务单测；不要把“CI 绿色”误解为业务流程已完整回归。
+按风险补充 focused test、instrumentation、模拟器或真机验证。普通 Android CI 包含读卡 Feature、登录页长按入口、NFC 平台及导航专项单测，但不覆盖正式应用完整业务单测；不要把“CI 绿色”误解为业务流程已完整回归。
 
 ## 发布现实
 
 - app 版本、SDK 和依赖以 `constants.gradle.kts`、version catalog 和 Wrapper 为准。
-- 正式版统一使用标准 Release，不设置额外发布模式；双包仅支持 debug/release，主应用 APK/AAB 与独立助手 Release APK 统一放入 GitHub Release，助手不进入主应用商店或更新通道。
+- 正式版统一使用标准 Release，不设置额外发布模式；仅主应用 APK/AAB 发布到 GitHub Release，不再生成独立助手，历史产物不变。
 - 2026-09-19 用户明确接受当前固定 QLZ 测试配置、QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 的 16 KB/consumer rule 风险：正式构建报告警告，不代表问题已修复。其余签名、Lint、产物和业务验收检查仍阻断；不得扩展为任意错误放行。
 - targetSdk 36 的大屏竖屏 opt-out 在 API 37 被移除；升级前必须完成自适应与相机方向回归。
 

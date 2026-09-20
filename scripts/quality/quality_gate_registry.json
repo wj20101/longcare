@@ -71,7 +71,7 @@
       "blocking": true,
       "owner": "mobile-platform",
       "source_of_truth": "scripts/quality/verify_validation_app_isolation.sh",
-      "likely_fix": "Remove validation code from the formal app and restore independent assistant/shared module ownership."
+      "likely_fix": "Keep NFC/R65C diagnostics local, remove retired assistant components, and preserve shared business implementations."
     },
     {
       "id": "release_exported_components",

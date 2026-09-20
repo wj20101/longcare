@@ -10,6 +10,7 @@ import com.ytone.longcare.features.login.ui.LoginScreen
 import com.ytone.longcare.privacy.AgreementUrls
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.R
+import com.ytone.longcare.platform.nfc.CardDiagnosticsContent
 
 internal fun AppEntryProviderBuilder.registerEntryNavGraphs(navController: AppNavigator) {
     destination<LoginRoute> { backStackEntry ->
@@ -18,8 +19,17 @@ internal fun AppEntryProviderBuilder.registerEntryNavGraphs(navController: AppNa
             actions = LoginFeatureActions(
                 onLoginSuccess = { navController.navigateToHomeFromLogin() },
                 onOpenWebPage = { url, title -> navController.navigateToWebView(url, title) },
-            )
+            ),
+            onOpenCardDiagnostics = { navController.navigateWhenResumed(CardDiagnosticsRoute) },
         )
+    }
+
+    destination<CardDiagnosticsRoute> { backStackEntry ->
+        val controller = navController.forEntry(backStackEntry.id,
+            androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle)
+        CardDiagnosticsContent {
+            controller.popBackStack()
+        }
     }
 
     destination<HomeRoute> { backStackEntry ->

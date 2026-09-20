@@ -107,7 +107,7 @@ jobs:
             echo "- coroutine cancellation and empty catch guards"
             echo "- target SDK and exact alarm policy"
             echo "- tracked keystore guard"
-            echo "- Formal/assistant isolation contract"
+            echo "- Local card diagnostics isolation contract"
             echo "- workflow quality guard"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -141,14 +141,6 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Upload assistant APK
-        uses: actions/upload-artifact@v7
-        with:
-          name: assistant-debug-apk
-          path: assistant/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 7
-
       - name: Upload AAB
         if: needs.detect-affected.outputs.affected_scope == 'full'
         uses: actions/upload-artifact@v7
@@ -175,8 +167,8 @@ jobs:
           path: |
             app/build/reports/**
             app/build/test-results/**
-            assistant/build/reports/**
-            assistant/build/test-results/**
+            feature/carddiagnostics/build/reports/**
+            feature/carddiagnostics/build/test-results/**
             build/reports/problems/**
           if-no-files-found: warn
           retention-days: 7

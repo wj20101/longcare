@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Keep the companion badge inside the 66 dp circular safe zone of a 108 dp layer. -->
-<inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:inset="16%">
-    <bitmap android:src="@drawable/assistant_brand" android:gravity="fill" />
-</inset>

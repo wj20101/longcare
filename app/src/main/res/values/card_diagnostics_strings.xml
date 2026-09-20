@@ -1,0 +1,7 @@
+<resources>
+    <string name="card_diagnostics_long_click">打开助手</string>
+    <string name="card_diagnostics_confirmation">打开助手</string>
+    <string name="card_diagnostics_description">可进行 NFC 和 R65C 读卡检测，检测数据仅在本机显示。</string>
+    <string name="card_diagnostics_enter">打开</string>
+    <string name="card_diagnostics_cancel">取消</string>
+</resources>

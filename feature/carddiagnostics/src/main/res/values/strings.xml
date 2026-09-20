@@ -1,0 +1,29 @@
+<resources>
+    <string name="nfc_not_supported">设备不支持 NFC 功能</string>
+    <string name="nfc_validation_title">读卡检测</string>
+    <string name="nfc_validation_back">返回</string>
+    <string name="nfc_validation_native_title">手机 NFC 读卡</string>
+    <string name="nfc_validation_native_ready">请将卡片贴近手机 NFC 感应区域。读取成功后可查看并复制卡号。</string>
+    <string name="nfc_validation_native_disabled">当前设备支持 NFC，但 NFC 开关尚未开启。</string>
+    <string name="nfc_validation_open_settings">打开 NFC 设置</string>
+    <string name="nfc_validation_r65c_title">R65C 外接读卡器</string>
+    <string name="nfc_validation_r65c_description">连接 R65C 外接读卡器，保持本页在前台后刷卡。检测结果仅在本机显示。</string>
+    <string name="nfc_validation_status">状态</string>
+    <string name="nfc_validation_status_waiting_focus">正在准备</string>
+    <string name="nfc_validation_status_ready">等待刷卡</string>
+    <string name="nfc_validation_status_receiving">正在接收</string>
+    <string name="nfc_validation_status_success">读取成功</string>
+    <string name="nfc_validation_status_failure">读取失败：%1$s</string>
+    <string name="nfc_validation_parse_failure">未识别出有效卡号</string>
+    <string name="nfc_validation_live_input">当前输入</string>
+    <string name="nfc_validation_raw_input">最近原始输入</string>
+    <string name="nfc_validation_normalized_uid">卡号</string>
+    <string name="nfc_validation_completed_at">完成时间</string>
+    <string name="nfc_validation_empty_value">—</string>
+    <string name="nfc_validation_no_uid">未识别出卡号</string>
+    <string name="nfc_validation_refocus">重新准备</string>
+    <string name="nfc_validation_clear">清空结果</string>
+    <string name="nfc_validation_copy">复制卡号</string>
+    <string name="nfc_validation_copy_success">卡号已复制</string>
+    <string name="nfc_validation_clipboard_label">卡号</string>
+</resources>

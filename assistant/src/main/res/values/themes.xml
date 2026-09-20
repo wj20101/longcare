@@ -1,6 +1,0 @@
-<resources>
-    <style name="Theme.LongCareAssistant" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowActionModeOverlay">true</item>
-    </style>
-</resources>

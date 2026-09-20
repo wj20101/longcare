@@ -31,7 +31,7 @@ done
 
 declare -a ALL_MODULES=(
   ":app"
-  ":assistant"
+  ":feature:carddiagnostics"
   ":integration:txface"
   ":integration:txface-live"
   ":integration:txface-normal"
@@ -191,7 +191,7 @@ for file in "${changed_files[@]:-}"; do
 
   case "${file}" in
     app/*) add_unique ":app" ;;
-    assistant/*) add_unique ":assistant" ;;
+    feature/carddiagnostics/*) add_unique ":feature:carddiagnostics" ;;
     integration/txface/*) add_unique ":integration:txface" ;;
     integration/txface-live/*) add_unique ":integration:txface-live" ;;
     integration/txface-normal/*) add_unique ":integration:txface-normal" ;;
@@ -249,10 +249,10 @@ if [[ "${#selected_modules[@]}" -eq 0 ]]; then
 fi
 
 affected_scope="partial"
-verify_tasks=":assistant:testDebugUnitTest :assistant:lintDebug :assistant:assembleDebug :app:lintDebug :app:assembleDebug"
+verify_tasks=":feature:carddiagnostics:testDebugUnitTest :feature:carddiagnostics:lintDebug :app:testDebugUnitTest --tests com.ytone.longcare.features.login.ui.LoginCardDiagnosticsEntryTest --tests com.ytone.longcare.platform.nfc.CardDiagnosticsReaderTest --tests com.ytone.longcare.navigation.* :app:lintDebug :app:assembleDebug"
 if [[ "${full_scope}" == "true" ]]; then
   affected_scope="full"
-  verify_tasks=":assistant:testDebugUnitTest :assistant:lintDebug :assistant:assembleDebug :app:lintDebug :app:assembleDebug :app:bundleDebug"
+  verify_tasks="${verify_tasks} :app:bundleDebug"
 fi
 
 if [[ "${run_instrumentation}" != "true" ]]; then

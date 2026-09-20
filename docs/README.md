@@ -22,7 +22,7 @@
 
 - [系统概览](architecture/system-overview.md)：运行时、模块职责、平台边界和外部集成。
 - [技术栈](architecture/tech-stack.md)：SDK、工具链、依赖版本、构建变体和配置入口。
-- [页面与路由地图](architecture/ui-and-screen-map.md)：Navigation 3 路由、页面归属和独立助手入口。
+- [页面与路由地图](architecture/ui-and-screen-map.md)：Navigation 3 路由、页面归属和本地读卡检测入口。
 - [依赖规则](architecture/dependency-rules.md)：当前允许的模块依赖和代码边界。
 - [CI 与质量门禁](architecture/ci-quality-gates.md)：本地、CI、验收与生产发布校验。
 - [路线图与开放问题](architecture/roadmap-and-open-gaps.md)：仍需处理的产品、架构和发布风险。

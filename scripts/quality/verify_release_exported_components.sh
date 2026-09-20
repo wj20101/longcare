@@ -22,9 +22,6 @@ case "${APP_PACKAGE}" in
   com.ytone.longcare)
     ALLOWED_EXPORTED_COMPONENTS=("${APP_PACKAGE}.MainActivity")
     ;;
-  com.ytone.longcare.assistant)
-    ALLOWED_EXPORTED_COMPONENTS=("${APP_PACKAGE}.AssistantActivity")
-    ;;
   *)
     echo "Unexpected application package: ${APP_PACKAGE}" >&2
     exit 1

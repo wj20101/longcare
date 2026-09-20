@@ -33,12 +33,17 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.ytone.longcare.R
 import com.ytone.longcare.feature.login.api.LoginFeatureActions
 import com.ytone.longcare.feature.login.ext.maxPhoneLength
@@ -53,7 +58,8 @@ import com.ytone.longcare.theme.LongCareTheme
 fun LoginScreen(
     actions: LoginFeatureActions,
     viewModel: LoginViewModel = hiltViewModel(),
-    initialAgreementChecked: Boolean = false
+    initialAgreementChecked: Boolean = false,
+    onOpenCardDiagnostics: (() -> Unit)? = null,
 ) {
 
     val loginState by viewModel.loginState.collectAsStateWithLifecycle()
@@ -73,6 +79,7 @@ fun LoginScreen(
             initialPhoneNumber = remember { viewModel.getLastLoginPhoneNumber() },
             initialAgreementChecked = initialAgreementChecked,
             onPrivacyAgreementConfirmed = viewModel::onPrivacyAgreementConfirmed,
+            onOpenCardDiagnostics = onOpenCardDiagnostics,
             onSendCodeClick = { phoneNumber -> viewModel.sendSmsCode(phoneNumber) },
             onLoginClick = { phoneNumber, code -> viewModel.login(phoneNumber, code) }
         )
@@ -109,6 +116,7 @@ fun LoginScreenContent(
     initialPhoneNumber: String = "",
     initialAgreementChecked: Boolean = false,
     onPrivacyAgreementConfirmed: () -> Unit = {},
+    onOpenCardDiagnostics: (() -> Unit)? = null,
     onSendCodeClick: (String) -> Unit,
     onLoginClick: (String, String) -> Unit
 ) {
@@ -116,11 +124,43 @@ fun LoginScreenContent(
     val agreementConfirmAction = stringResource(R.string.login_agreement_confirm_action)
     val agreementCancelAction = stringResource(R.string.login_agreement_cancel_action)
 
-    var phoneNumber by remember { mutableStateOf(initialPhoneNumber) }
-    var verificationCode by remember { mutableStateOf("") }
+    var phoneNumber by rememberSaveable { mutableStateOf(initialPhoneNumber) }
+    var verificationCode by rememberSaveable { mutableStateOf("") }
     var agreementChecked by rememberSaveable { mutableStateOf(initialAgreementChecked) }
     var showAgreementDialog by rememberSaveable { mutableStateOf(false) }
     val verificationCodeFocusRequester = remember { FocusRequester() }
+    var showCardDiagnosticsConfirmation by remember { mutableStateOf(false) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val lifecycleState by lifecycle.currentStateAsState()
+    val windowFocused = LocalWindowInfo.current.isWindowFocused
+    val diagnosticsEnabled = onOpenCardDiagnostics != null && !showAgreementDialog &&
+        loginState !is LoginUiState.Loading && loginState !is LoginUiState.Success &&
+        lifecycleState == Lifecycle.State.RESUMED
+    LaunchedEffect(diagnosticsEnabled) {
+        if (!diagnosticsEnabled) showCardDiagnosticsConfirmation = false
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { showCardDiagnosticsConfirmation = false }
+    if (showCardDiagnosticsConfirmation && diagnosticsEnabled) {
+        AlertDialog(
+            onDismissRequest = { showCardDiagnosticsConfirmation = false },
+            title = { Text(stringResource(R.string.card_diagnostics_confirmation)) },
+            text = { Text(stringResource(R.string.card_diagnostics_description)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (showCardDiagnosticsConfirmation && diagnosticsEnabled &&
+                        lifecycle.currentState == Lifecycle.State.RESUMED) {
+                        showCardDiagnosticsConfirmation = false
+                        onOpenCardDiagnostics.invoke()
+                    }
+                }) { Text(stringResource(R.string.card_diagnostics_enter)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCardDiagnosticsConfirmation = false }) {
+                    Text(stringResource(R.string.card_diagnostics_cancel))
+                }
+            },
+        )
+    }
     val updateAgreementChecked: (Boolean) -> Unit = { checked ->
         agreementChecked = checked
     }
@@ -184,6 +224,10 @@ fun LoginScreenContent(
 
                 LoginBrandingHeader(
                     isCompactLayout = compactHeight,
+                    onDiagnosticsLongClick = if (diagnosticsEnabled && windowFocused &&
+                        !showCardDiagnosticsConfirmation) {
+                        { showCardDiagnosticsConfirmation = true }
+                    } else null,
                 )
 
                 Column(
