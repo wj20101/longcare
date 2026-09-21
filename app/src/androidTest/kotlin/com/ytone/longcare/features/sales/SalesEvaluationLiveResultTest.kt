@@ -38,7 +38,7 @@ class SalesEvaluationLiveResultTest {
             }
             compose.waitUntil(15_000) { viewModel.uiState.value.selectedCustomer?.id == customerId }
             scenario.onActivity { activity ->
-                assertNull(viewModel.uiState.value.evaluationFormRequest)
+                assertNull(viewModel.uiState.value.evaluationRecordId)
                 viewModel.onEvaluationH5Closed()
                 viewModel.loadEvaluationResult()
                 activity.setContent {

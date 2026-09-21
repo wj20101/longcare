@@ -1,6 +1,4 @@
 <resources>
-    <string name="sales_error_evaluation_form">暂时无法获取评估页面，请重试</string>
-    <string name="sales_loading_evaluation_form">设备检测已上传，正在打开评估页面…</string>
     <!-- 销售端通用文案 -->
     <string name="sales_nav_home">首页</string>
     <string name="sales_nav_customers">我的客户</string>
@@ -124,6 +122,7 @@
     <string name="sales_evaluation_result_loading">正在获取评估结果…</string>
     <string name="sales_evaluation_result_error">评估结果获取失败，请刷新重试</string>
     <string name="sales_evaluation_grade_pending">评估等级待同步</string>
+    <string name="sales_evaluation_report_pending">评估报告待同步</string>
     <string name="sales_evaluation_result_refresh">刷新评估结果</string>
     <string name="sales_evaluation_ready_to_scan">准备就绪，请搜索附近的评估设备</string>
     <string name="sales_evaluation_authorizing">正在校验本次评估资格…</string>

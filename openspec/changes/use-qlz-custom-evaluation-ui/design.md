@@ -1,6 +1,6 @@
 ## Context
 
-> 2026-09-20 一致性校准：本文已对齐后续落地的 `device-h5-evaluation-flow`、`legacy-h5-close` 和 `approved-vendor-release` 主规格。任务 5.3 的完整真机异常矩阵仍未完成；文档更新不新增验收证据。
+> 2026-09-21 已实施修订：设备上传成功后先进入原生结果页，通过 GetCheckResult 取得等级和报告地址，再由按钮打开报告。代码及主规格已同步，纯表单与最小 JS 关闭接口不变；自动化和构建不替代待完成的真机验收。
 
 参见 [proposal.md](proposal.md) 的动机，以及 [qlz-custom-evaluation-ui spec](specs/qlz-custom-evaluation-ui/spec.md) 的行为要求。
 
@@ -41,10 +41,11 @@ LongCare Token
   → ConnectDeviceHelp（连接与检测）
   → onCheckEnd / sendData
   → UpDataCallback
-  → SalesViewModel 刷新客户详情
-  → 服务端 pgUrl 的评估 H5（前台消费一次）
-  → H5 主动 closeWebView
-  → 原生完成页查询等级/报告
+  → 原生评估结果页
+  → GetCheckResult（当前客户 ID、本次 recordId）
+  → 展示 pgResult 和“查看评估报告”按钮
+  → 用户点击按钮打开本次响应 pgUrl 的报告 H5
+  → closeWebView 或系统返回只关闭 H5，回到结果页
 ```
 
 `CheckConfig.setCustomCheckUI(BaseActHelp)` 虽然存在，但需要公开无参构造和厂商旧式 Activity/View 生命周期，Demo 未给出完整契约，也会让 Compose UI 依附厂商宿主。`CheckPageFragment` 仍使用 legacy support Fragment 和厂商布局。直接控制链路能让 LongCare 完整拥有 UI，同时只依赖 AAR 的公开控制/回调 API，因此选择该方案。
@@ -91,7 +92,7 @@ Idle / Preparing
 
 - `DEVICE_STATUS` 承担运行条件、扫描、空结果和设备选择。
 - 选择设备后进入 `EVALUATION_GUIDE`，承担连接、握持引导、五指接触、检测进度、电量/掉线/超时与上传状态。
-- `EVALUATION_COMPLETE` 仅在评估 H5 主动关闭后显示业务完成和服务端报告入口，设备上传完成不直接进入该页。
+- 设备检测并上传成功后直接进入 `EVALUATION_COMPLETE`，由该页查询结果并呈现等级和报告入口；测量进度达到 100% 本身不触发跳转。纯表单评估仍保持原流程。
 - 从 `DEVICE_STATUS` 切到 `EVALUATION_GUIDE` 不释放会话；离开这两个活动评估页面、完成、取消或不可恢复错误退出时释放。
 - Activity/进程重建不尝试序列化厂商连接对象。重建后如果原会话不能安全确认，展示检测已中断并要求重新开始，避免伪造续检。
 
@@ -102,7 +103,7 @@ UI 沿用销售端现有背景、卡片、按钮和设备/握持素材；新增�
 扫描、连接、五指、进度、可恢复错误和上传重试保留在 UI 会话状态中，避免每个设备回调都污染业务 ViewModel。仅以下跨页面事件发送给 `SalesViewModel`：
 
 - Token 无效：复用现有至多一次的 Token 恢复；恢复得到的 `sdkLaunchRequest` 改为重启自定义会话，不再打开 SDK Activity。
-- 上传成功：转换为现有 `QlzSdkEvent.Completed` 或等价的厂商无关完成事件，触发客户详情刷新并保存待打开 H5 请求；前台消费一次，地址失败仅重查详情，H5 主动关闭后才显示完成页。
+- 上传成功：转换为现有 `QlzSdkEvent.Completed` 或等价的厂商无关完成事件，保存当前客户及本次 recordId，进入原生结果页并释放已完成会话；不再创建待打开 H5 请求。重复事件不重复导航，查询失败只重试 GetCheckResult。
 - 用户取消/终止错误：发送脱敏的取消或终止事件，用于现有提示和导航协调。
 
 `connectedDeviceName` 与 `sdkProgressText` 不再作为检测 UI 的事实来源；在兼容迁移期可由会话状态同步，最终页面直接渲染会话状态。`SalesViewModel` 继续不导入任何 QLZ 或 Android 蓝牙类型。
@@ -128,7 +129,11 @@ UI 沿用销售端现有背景、卡片、按钮和设备/握持素材；新增�
 
 本方案不新增 Activity、Service、provider、intent-filter 或权限。继续覆盖 AAR 合并出的外部 deep link 导出状态，并保留 API 30 的 legacy 蓝牙权限上限。由于销售流程可能已有位置业务数据且 AAR 上传参数含位置，不新增 `neverForLocation` 断言。
 
-SDK 上传成功回调中的 `recordId` 用于关联设备记录，score 不推导业务等级，SDK URL 不参与导航。上传后由 `SalesViewModel` 请求 `/V1/Sale/GetUserLatentDetail`，自动打开其 `pgUrl` 的评估 H5。只有 H5 主动关闭才进入完成页：有设备 recordId 调用 `GetCheckResult`，纯表单重新请求客户详情，不读缓存旧结果、不切接口兜底；系统返回只返回评估入口。正式发布遵循当前标准 Release，已接受厂商事项告警，AAR 校验、签名及其余检查不变。
+SDK 上传成功回调中的 `recordId` 仅用于本次设备结果查询，score 不推导业务等级，SDK URL 不参与导航。设备流程直接进入原生结果页，由 `SalesViewModel` 使用当前客户 ID 和本次 recordId 请求 `/V1/Sale/GetCheckResult`，以响应 `pgResult` 展示“评估成功，评估等级为：{等级}”。查询失败或等级尚未返回时显示现有失败/待同步提示并允许手动刷新，不读取缓存旧结果、不切接口兜底、不重新检测或上传。
+
+复用结果页已有“查看评估报告”按钮和报告导航，仅使用本次结果响应 `pgUrl`；没有地址时不给出可打开空网页的动作，保留刷新入口。报告保持当前无原生标题栏和沉浸式适配，`window.NativeBridge.closeWebView()` 与系统返回仅弹出当前 H5，回到已有结果页，不改变完成状态、不新增结果邮箱或网页关联机制。结果页返回/完成仍回首页。
+
+纯表单评估的 H5 入口、主动关闭后的完成页和客户详情查询保持现状，不能因设备流程清理而删除其必要逻辑。删除仅服务于设备自动打开 H5 的请求、重试与状态；保留直接的客户/recordId 结果上下文，不引入通用流程框架、自动轮询或兼容旧设备顺序的分支。正式发布策略、AAR 校验、签名及其余检查不变。
 
 ### 9. 测试以可替换的厂商适配器和状态 reducer 为中心
 
@@ -136,7 +141,7 @@ SDK 上传成功回调中的 `recordId` 用于关联设备记录，score 不推�
 
 - reducer/会话单测覆盖成功路径、列表/数组复制、重复点击、扫描超时、连接失败/掉线、超时、电量、支付、上传失败重试、Token 恢复、完成和迟到回调。
 - Compose 测试覆盖各状态文案、设备选择、五指可视状态、按钮 enablement、返回/重试动作及紧凑/宽屏布局。
-- 现有 `SalesViewModel` Token 恢复、完成刷新和报告 URL 测试继续通过，并补充自定义会话完成事件用例。
+- 保留 `SalesViewModel` Token 恢复测试，替换旧“上传后自动 H5”断言；新增上传后进入结果页、GetCheckResult 参数、成功/失败/空等级/空地址、重复回调和客户切换测试，验证按钮仅打开本次响应地址、报告返回保留结果页且纯表单不回归。
 - 静态/架构测试确认 ViewModel/Feature 不导入厂商或蓝牙类型，Manifest 无新增导出面，源码不再调用 `SDKCall.openByToken` 或厂商报告 Activity。
 - 运行 `:app` focused tests、lint/assemble、完整本地 preflight 和既有 release readiness 守卫；明确记录已接受厂商告警，缺失输入或其他未接受问题仍失败。
 - 真机验收使用 QLZ 设备覆盖逐指接触映射、扫描停止、连接/掉线、完整检测、上传/报告、权限拒绝恢复、前后台和返回释放。模拟器仅覆盖 UI 与可注入错误状态。
@@ -156,11 +161,11 @@ SDK 上传成功回调中的 `recordId` 用于关联设备记录，score 不推�
 
 1. 先新增厂商 adapter、会话状态机、全局租约和 focused unit tests，不切换现有入口。
 2. 将 `DEVICE_STATUS`/`EVALUATION_GUIDE` 接入自定义会话，复用现有权限请求、Token 获取/恢复和 `EVALUATION_COMPLETE` 页面。
-3. 将完成事件接回客户详情刷新与服务端报告链，删除业务路径中的 `SDKCall.openByToken` 调用和厂商 Activity 完成语义。
+3. 将设备上传成功接到原生结果页与 GetCheckResult，复用“查看评估报告”按钮，删除设备自动打开 H5 的旧请求和专用逻辑；不恢复 `SDKCall.openByToken` 或厂商 Activity 完成语义。
 4. 更新字符串、Compose/架构测试、QLZ 集成说明与页面地图，执行 lint/assemble/preflight 及 Manifest/生产门禁检查。
 5. 当前已使用应用自有 UI；在支持 BLE 的真机用 QLZ 设备补齐任务 5.3 的异常矩阵后，才能认定本变更完整验收。
 
-本变更无数据库迁移。后续主规格已要求应用自有设备 UI 和 H5 连续流程，不把恢复 `SDKCall.openByToken` 当作已批准的回退方案；需要改变该行为时另行提出兼容方案与验收。不得复制 Demo 密钥、放宽 Manifest 或绕过其他发布门禁。
+本变更无数据库迁移。`device-h5-evaluation-flow` 主规格已同步设备顺序，保留纯表单与通用关闭接口要求；旧自动 H5 顺序不作为本次验收标准。不得恢复厂商内置页面、复制 Demo 密钥、放宽 Manifest 或绕过其他发布门禁。
 
 ## Open Questions
 

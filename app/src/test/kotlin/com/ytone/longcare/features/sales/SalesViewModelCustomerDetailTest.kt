@@ -125,7 +125,7 @@ class SalesViewModelCustomerDetailTest {
         }
 
     @Test
-    fun `completed SDK evaluation refreshes report URL from customer detail API`() =
+    fun `completed SDK evaluation queries report from check result rather than customer detail`() =
         runTest {
             val serviceReportUrl = "https://care.example.com/assessment/report/7"
             val repository =
@@ -141,6 +141,9 @@ class SalesViewModelCustomerDetailTest {
             val viewModel = createViewModel(repository)
 
             viewModel.selectCustomer(7)
+            coEvery { repository.getCheckResult(7, "sdk-record") } returns ApiResult.Success(
+                com.ytone.longcare.model.CheckResultModel("A级", serviceReportUrl),
+            )
             viewModel.onSdkEvent(
                 QlzSdkEvent.Completed(
                     recordId = "sdk-record",
@@ -150,8 +153,11 @@ class SalesViewModelCustomerDetailTest {
             )
             advanceUntilIdle()
 
-            assertEquals(serviceReportUrl, viewModel.uiState.value.selectedCustomer?.pgUrl)
-            coVerify(exactly = 1) { repository.getUserLatentDetail(7) }
+            viewModel.loadEvaluationResult()
+            advanceUntilIdle()
+            assertEquals(serviceReportUrl, viewModel.uiState.value.evaluationResult?.pgUrl)
+            coVerify(exactly = 1) { repository.getCheckResult(7, "sdk-record") }
+            coVerify(exactly = 0) { repository.getUserLatentDetail(7) }
         }
 
     private fun repositoryWithDetail(

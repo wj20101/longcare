@@ -25,7 +25,6 @@ import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
 import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.platform.sales.SalesEvaluationDeviceGateway
-import com.ytone.longcare.platform.sales.SalesEvaluationFormRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -49,10 +48,9 @@ class SalesViewModel @Inject constructor(
     private val textResolver: ResourceTextResolver,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-    private val restoredForm: SalesEvaluationFormRequest? = savedStateHandle[EVALUATION_FORM_KEY]
     private val _uiState = MutableStateFlow(SalesUiState(
-        selectedCustomerId = savedStateHandle[EVALUATION_CUSTOMER_KEY] ?: restoredForm?.customerId ?: 0,
-        evaluationFormRequest = restoredForm,
+        selectedCustomerId = savedStateHandle[EVALUATION_CUSTOMER_KEY] ?: 0,
+        evaluationRecordId = savedStateHandle[EVALUATION_RECORD_KEY],
         evaluationCompleted = savedStateHandle[EVALUATION_COMPLETED_KEY] ?: false,
     ))
     val uiState: StateFlow<SalesUiState> = _uiState.asStateFlow()
@@ -72,9 +70,6 @@ class SalesViewModel @Inject constructor(
         loadCompanyName()
         loadRecentCustomers()
         refreshDeviceState()
-        if (restoredForm != null && !restoredForm.consumed && restoredForm.url == null) {
-            retryEvaluationForm()
-        }
     }
 
     fun loadRecentCustomers() {
@@ -470,16 +465,6 @@ class SalesViewModel @Inject constructor(
                             _uiState.value.copy(
                                 isCustomerDetailLoading = false,
                             )
-                        val form = _uiState.value.evaluationFormRequest
-                        if (form != null && !form.consumed && form.customerId == customerId) {
-                            val state = _uiState.value
-                            val url = state.selectedCustomer?.pgUrl?.trim()?.takeIf { it.isNotEmpty() }
-                            updateEvaluationForm(form.copy(
-                                url = url,
-                                errorMessage = if (url != null) null else state.customerDetailErrorMessage
-                                    ?: text(R.string.sales_error_evaluation_form),
-                            ))
-                        }
                     }
                 }
             }
@@ -696,23 +681,6 @@ class SalesViewModel @Inject constructor(
         }
     }
 
-    fun consumeEvaluationForm(recordId: String) {
-        val form = _uiState.value.evaluationFormRequest ?: return
-        if (form.recordId == recordId) updateEvaluationForm(form.copy(consumed = true))
-    }
-
-    fun retryEvaluationForm() {
-        val form = _uiState.value.evaluationFormRequest ?: return
-        if (form.customerId != _uiState.value.selectedCustomerId) return
-        updateEvaluationForm(form.copy(url = null, errorMessage = null, consumed = false))
-        loadCustomerDetail(form.customerId)
-    }
-
-    private fun updateEvaluationForm(request: SalesEvaluationFormRequest?) {
-        savedStateHandle[EVALUATION_FORM_KEY] = request
-        _uiState.value = _uiState.value.copy(evaluationFormRequest = request)
-    }
-
     fun onEvaluationH5Closed() {
         savedStateHandle[EVALUATION_CUSTOMER_KEY] = _uiState.value.selectedCustomerId
         savedStateHandle[EVALUATION_COMPLETED_KEY] = true
@@ -723,11 +691,11 @@ class SalesViewModel @Inject constructor(
         evaluationResultJob?.cancel()
         val state = _uiState.value
         if (!state.evaluationCompleted || state.selectedCustomerId <= 0) return
-        _uiState.value = state.copy(isEvaluationResultLoading = true, evaluationResultError = false)
+        _uiState.value = state.copy(isEvaluationResultLoading = true, evaluationResultError = false, evaluationResult = null)
         evaluationResultJob = viewModelScope.launch {
             try {
-                val recordId = state.evaluationFormRequest?.recordId
-                val result = if (!recordId.isNullOrBlank()) {
+                val recordId = state.evaluationRecordId
+                val result = if (recordId != null) {
                     saleRepository.getCheckResult(state.selectedCustomerId, recordId)
                 } else {
                     when (val detail = saleRepository.getUserLatentDetail(state.selectedCustomerId)) {
@@ -761,10 +729,11 @@ class SalesViewModel @Inject constructor(
 
     fun resetEvaluationResult() {
         evaluationResultJob?.cancel()
-        updateEvaluationForm(null)
+        savedStateHandle[EVALUATION_RECORD_KEY] = null
         savedStateHandle[EVALUATION_COMPLETED_KEY] = false
         _uiState.value = _uiState.value.copy(
             evaluationCompleted = false,
+            evaluationRecordId = null,
             evaluationResult = null,
             evaluationResultError = false,
             isEvaluationResultLoading = false,
@@ -866,19 +835,21 @@ class SalesViewModel @Inject constructor(
     private suspend fun reduceSdkEvent(event: QlzSdkEvent) {
         when (event) {
             is QlzSdkEvent.Completed -> {
-                // A session reports upload completion, not final business assessment success.
-                if (_uiState.value.evaluationFormRequest != null) return
+                if (_uiState.value.evaluationCompleted) return
                 val customerId = _uiState.value.selectedCustomerId
                 if (customerId <= 0) return
-                updateEvaluationForm(SalesEvaluationFormRequest(customerId, event.recordId))
+                savedStateHandle[EVALUATION_CUSTOMER_KEY] = customerId
+                savedStateHandle[EVALUATION_RECORD_KEY] = event.recordId
+                savedStateHandle[EVALUATION_COMPLETED_KEY] = true
                 _uiState.value =
                     _uiState.value.copy(
+                        evaluationRecordId = event.recordId,
+                        evaluationCompleted = true,
                         connectedDeviceName =
                             evaluationDeviceGateway.getConnectedDeviceName()
                                 ?: _uiState.value.connectedDeviceName,
                         sdkProgressText = text(R.string.sales_progress_detection_complete),
                     )
-                loadCustomerDetail(_uiState.value.selectedCustomerId)
             }
 
             is QlzSdkEvent.Progress ->
@@ -1053,7 +1024,7 @@ class SalesViewModel @Inject constructor(
     ): String = textResolver.text(resId, *formatArgs)
 
     private companion object {
-        const val EVALUATION_FORM_KEY = "sales.evaluation.form"
+        const val EVALUATION_RECORD_KEY = "sales.evaluation.record"
         const val EVALUATION_CUSTOMER_KEY = "sales.evaluation.customer"
         const val EVALUATION_COMPLETED_KEY = "sales.evaluation.completed"
         const val FIRST_CUSTOMER_PAGE = 1
@@ -1096,7 +1067,7 @@ data class SalesUiState(
     val checkToken: CheckTokenModel? = null,
     val evaluationPrepareErrorMessage: String? = null,
     val sdkProgressText: String = "",
-    val evaluationFormRequest: SalesEvaluationFormRequest? = null,
+    val evaluationRecordId: String? = null,
     val evaluationCompleted: Boolean = false,
     val evaluationResult: CheckResultModel? = null,
     val isEvaluationResultLoading: Boolean = false,

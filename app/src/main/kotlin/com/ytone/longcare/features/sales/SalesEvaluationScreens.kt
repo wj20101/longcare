@@ -734,14 +734,15 @@ internal fun SalesEvaluationCompleteScreen(
                     },
                 )
             }
-            if (isLoading || resultError || grade.isNullOrBlank()) {
+            if (isLoading || resultError || grade.isNullOrBlank() || !hasReport) {
                 item {
                     Text(
                         text = stringResource(
                             when {
                                 isLoading -> R.string.sales_evaluation_result_loading
                                 resultError -> R.string.sales_evaluation_result_error
-                                else -> R.string.sales_evaluation_grade_pending
+                                grade.isNullOrBlank() -> R.string.sales_evaluation_grade_pending
+                                else -> R.string.sales_evaluation_report_pending
                             },
                         ),
                     )
@@ -761,13 +762,12 @@ internal fun SalesEvaluationCompleteScreen(
                     onClick = onDone,
                 )
             }
-            if (hasReport) {
-                item {
-                    SalesPrimaryButton(
-                        text = stringResource(R.string.sales_customer_view_report),
-                        onClick = onOpenReport,
-                    )
-                }
+            item {
+                SalesPrimaryButton(
+                    text = stringResource(R.string.sales_customer_view_report),
+                    onClick = onOpenReport,
+                    enabled = hasReport && !isLoading && !resultError,
+                )
             }
         }
     }

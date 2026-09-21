@@ -27,8 +27,6 @@ import com.ytone.longcare.integration.qlz.QlzEvaluationStage
 import com.ytone.longcare.integration.qlz.QlzEvaluationUploadContext
 import com.ytone.longcare.integration.qlz.QlzFingerContacts
 import com.ytone.longcare.integration.qlz.QlzSdkEvent
-import com.ytone.longcare.platform.sales.SalesEvaluationFormEffect
-import com.ytone.longcare.platform.sales.SalesEvaluationFormRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -44,7 +42,6 @@ class SalesEvaluationMockFlowTest {
     private val driver = ScriptedDriver()
     private val events = mutableListOf<QlzSdkEvent>()
     private val visible = mutableStateOf(true)
-    private val formOpened = mutableStateOf(false)
     private val lastClickByTag = mutableMapOf<String, Long>()
     private var releases = 0
     private val session = QlzEvaluationSession(
@@ -86,10 +83,9 @@ class SalesEvaluationMockFlowTest {
         composeRule.runOnIdle { assertEquals(1, driver.retries) }
         emit(QlzEvaluationDriverEvent.UploadSucceeded("mock-record", "https://vendor.invalid/report", "80"))
         emit(QlzEvaluationDriverEvent.UploadSucceeded("duplicate", "https://vendor.invalid/report", "80"))
-        composeRule.onNodeWithText("Mock H5 评估页").assertExists()
-        composeRule.onNodeWithText("评估成功").assertDoesNotExist()
+        composeRule.onNodeWithText("评估成功").assertExists()
         // No business report was supplied to this screen harness.
-        composeRule.onNodeWithText("查看评估报告").assertDoesNotExist()
+        composeRule.onNodeWithText("查看评估报告").assertIsNotEnabled()
         composeRule.runOnIdle {
             assertEquals(1, events.filterIsInstance<QlzSdkEvent.Completed>().size)
             assertEquals("", events.filterIsInstance<QlzSdkEvent.Completed>().single().reportUrl)
@@ -191,12 +187,11 @@ class SalesEvaluationMockFlowTest {
                 val exit = { session.cancel(); visible.value = false }
                 SalesPageBackground {
                     when {
-                        formOpened.value -> Text("Mock H5 评估页")
-                        state.stage == QlzEvaluationStage.COMPLETED -> SalesEvaluationFormEffect(
-                            request = SalesEvaluationFormRequest(7, "mock-record", "https://internal.test/form"),
-                            onLeaveDevice = session::close,
-                            onOpenForm = { formOpened.value = true },
-                            onConsumed = {},
+                        state.stage == QlzEvaluationStage.COMPLETED -> SalesEvaluationCompleteScreen(
+                            hasReport = false,
+                            onBack = exit,
+                            onDone = exit,
+                            onOpenReport = {},
                         )
                         state.selectedDevice != null -> SalesEvaluationGuideScreen(
                             evaluationState = state,

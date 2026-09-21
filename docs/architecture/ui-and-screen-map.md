@@ -85,9 +85,9 @@ H5 左上角返回调用关闭接口；成功弹窗确认仅刷新网页属于�
 
 销售端的根页签为首页、我的客户和我的，个人中心复用 `ProfileScreen`。表单/报告进入应用级 `WebViewRoute`，登记照片进入 `CameraRoute`；只有相机使用返回结果邮箱。
 
-`DEVICE_STATUS` 与 `EVALUATION_GUIDE` 共享 UI 作用域的 QLZ 会话，切换两页保持连接，离开、取消、完成或宿主销毁时释放。上传成功后刷新客户详情并自动打开服务端 H5；客户、recordId、待打开 URL 和消费状态通过 SavedStateHandle 保存，前台仅导航一次，失败只重试取地址。
+`DEVICE_STATUS` 与 `EVALUATION_GUIDE` 共享 UI 作用域的 QLZ 会话，切换两页保持连接，离开、取消、完成或宿主销毁时释放。上传成功后直接进入 `EVALUATION_COMPLETE`，使用当前客户和本次 recordId 调用 GetCheckResult 查询 pgResult/pgUrl；客户、recordId 和完成状态通过 SavedStateHandle 保存。用户点击“查看评估报告”才打开返回地址，无地址时按钮不可用并可刷新，失败不重新检测或上传。
 
-评估网页用 `isEvaluation` 标识用途，复用首页 SalesViewModel；JS 主动关闭更新完成状态并 pop，原生/系统返回仅 pop，报告与普通网页只关闭自身。完成和返回保留首页，不写导航结果邮箱。设备/纯表单的查询分支和失败恢复统一见[SDK 调用链](../integrations/qlz-sdk.md#sdk-调用链)。
+纯表单网页用 `isEvaluation` 标识用途，复用首页 SalesViewModel；JS 主动关闭更新完成状态并 pop，原生/系统返回仅 pop。设备结果页打开的报告为非评估用途，JS/系统返回都只关闭报告并回到原结果页，不触发完成回调。完成和返回保留首页，不写导航结果邮箱。设备/纯表单的查询分支和失败恢复统一见[SDK 调用链](../integrations/qlz-sdk.md#sdk-调用链)。
 
 ## 非路由 UI
 

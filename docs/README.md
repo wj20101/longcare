@@ -70,7 +70,7 @@ OpenSpec 采用 delta-first，主规格不覆盖所有存量能力。`config.yam
 | [integrate-card-diagnostics-in-app](../openspec/changes/integrate-card-diagnostics-in-app/tasks.md) | 长按入口已由用户确认真机验收，读卡硬件验收待安排 | 登录页中央大 Logo 长按确认进入 NFC/R65C，无震动，退役助手与双包发布 |
 | [publish-assistant-release-artifact](../openspec/changes/publish-assistant-release-artifact/tasks.md) | 任务全部勾选，相关主规格已同步，目录尚未归档 | 历史双应用同一 Release 方案；已由主应用内读卡及单应用发布变更替代，后续归档不得覆盖新契约 |
 | [remove-confirmed-redundancy](../openspec/changes/remove-confirmed-redundancy/tasks.md) | 任务全部勾选，目录尚未归档 | 无新行为规格；保留清理范围，不再次执行已完成删除 |
-| [use-qlz-custom-evaluation-ui](../openspec/changes/use-qlz-custom-evaluation-ui/tasks.md) | 实现及自动化已有记录；5.3 完整硬件异常矩阵未完成 | 已对齐后续 H5/权限/Release 契约；不能归档为全部验收完成 |
+| [use-qlz-custom-evaluation-ui](../openspec/changes/use-qlz-custom-evaluation-ui/tasks.md) | 设备结果/报告顺序已实现并通过自动化与构建；真机验收暂缓 | 上传后原生结果页查询 GetCheckResult，手动查看报告；纯表单不变 |
 
 本轮整理未移动归档目录、未新增验收证据、未把未完成任务改为完成。已完成目录后续可按 archive 技能执行正式归档；不能仅凭 status 的 isComplete 判断硬件验收通过。
 
@@ -92,7 +92,7 @@ OpenSpec 采用 delta-first，主规格不覆盖所有存量能力。`config.yam
 - 原 acceptance/production 发布选项已由单一标准 Release 取代，历史命令不再是当前操作步骤。
 - 助手曾由 CI artifact 改为 Release 附件；现已退役独立助手，未来只发布主应用 APK/AAB。历史附件不删除。
 - Navigation 2 迁移已完成，历史迁移任务不是当前待办。
-- QLZ 上传后直接显示业务完成已由“上传 → 自动 H5 → JS 主动关闭 → 原生结果查询”取代。
+- QLZ 设备流程按 2026-09-21 确认改为“上传 → 原生结果/GetCheckResult → 点击查看报告”，取代自动 H5 顺序；纯表单仍在 JS 主动关闭后查询结果。
 - 旧 H5 来源限制/现代消息桥方案已由当前最小 NativeBridge 契约替代；历史讨论不授权新增敏感桥方法。
 - QLZ/腾讯已接受风险的告警策略不代表二进制缺陷已修复，也不延伸到其他版本/失败。
 

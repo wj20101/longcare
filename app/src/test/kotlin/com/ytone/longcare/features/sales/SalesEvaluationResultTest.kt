@@ -7,7 +7,7 @@ import com.ytone.longcare.domain.sale.SaleRepository
 import com.ytone.longcare.model.CheckResultModel
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.result.ApiResult
-import com.ytone.longcare.platform.sales.SalesEvaluationFormRequest
+import com.ytone.longcare.integration.qlz.QlzSdkEvent
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -33,11 +33,11 @@ class SalesEvaluationResultTest {
         }
     }
 
-    @Test fun `H5 close completes immediately and result is fetched only by completion page`() = runTest {
+    @Test fun `SDK upload completes immediately and result is fetched only by result page`() = runTest {
         coEvery { repository.getCheckResult(7, "record") } returns ApiResult.Success(CheckResultModel("A级", "report"))
-        val vm = createViewModel(withDevice = true)
+        val vm = createViewModel()
+        vm.onSdkEvent(QlzSdkEvent.Completed("record", "vendor-url", "80"))
         advanceUntilIdle()
-        vm.onEvaluationH5Closed()
         assertTrue(vm.uiState.value.evaluationCompleted)
         coVerify(exactly = 0) { repository.getCheckResult(any(), any()) }
         vm.loadEvaluationResult()
@@ -71,7 +71,6 @@ class SalesEvaluationResultTest {
             ApiResult.Success(CheckResultModel("B级")),
         )
         val vm = createViewModel(withDevice = true)
-        vm.onEvaluationH5Closed()
         vm.loadEvaluationResult()
         advanceUntilIdle()
         assertTrue(vm.uiState.value.evaluationCompleted)
@@ -149,13 +148,56 @@ class SalesEvaluationResultTest {
         assertFalse(vm.uiState.value.evaluationCompleted)
     }
 
+    @Test fun `device record and completion restore without H5 request or customer refresh`() = runTest {
+        val handle = SavedStateHandle(mapOf("sales.evaluation.customer" to 7))
+        val vm = createViewModel(handle = handle)
+        vm.onSdkEvent(QlzSdkEvent.Completed("record", "vendor", "80"))
+        advanceUntilIdle()
+        val restored = createViewModel(handle = SavedStateHandle(handle.keys().associateWith { handle.get<Any?>(it) }))
+        assertTrue(restored.uiState.value.evaluationCompleted)
+        assertEquals("record", restored.uiState.value.evaluationRecordId)
+        coEvery { repository.getCheckResult(7, "record") } returns ApiResult.Success(CheckResultModel("A级", "report"))
+        restored.loadEvaluationResult()
+        advanceUntilIdle()
+        assertEquals("report", restored.uiState.value.evaluationResult?.pgUrl)
+        coVerify(exactly = 0) { repository.getUserLatentDetail(any()) }
+    }
+
+    @Test fun `late device result is discarded on customer switch`() = runTest {
+        val response = CompletableDeferred<ApiResult<CheckResultModel>>()
+        coEvery { repository.getCheckResult(7, "record") } coAnswers {
+            withContext(NonCancellable) { response.await() }
+        }
+        val vm = createViewModel(withDevice = true)
+        vm.loadEvaluationResult()
+        runCurrent()
+        vm.loadCustomerDetail(8)
+        response.complete(ApiResult.Success(CheckResultModel("旧等级", "old-report")))
+        advanceUntilIdle()
+        assertEquals(8, vm.uiState.value.selectedCustomerId)
+        assertNull(vm.uiState.value.evaluationRecordId)
+        assertNull(vm.uiState.value.evaluationResult)
+        assertFalse(vm.uiState.value.evaluationCompleted)
+    }
+
+    @Test fun `blank device record never falls back to manual form detail`() = runTest {
+        coEvery { repository.getCheckResult(7, "") } returns ApiResult.Failure(2001, "参数错误")
+        val vm = createViewModel()
+        vm.onSdkEvent(QlzSdkEvent.Completed("", "vendor", "80"))
+        advanceUntilIdle()
+        vm.loadEvaluationResult()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.evaluationResultError)
+        coVerify(exactly = 1) { repository.getCheckResult(7, "") }
+        coVerify(exactly = 0) { repository.getUserLatentDetail(any()) }
+    }
+
     private fun createViewModel(
         withDevice: Boolean = false,
         handle: SavedStateHandle = SavedStateHandle(mapOf(
             "sales.evaluation.customer" to 7,
-            "sales.evaluation.form" to if (withDevice) SalesEvaluationFormRequest(
-                7, "record", "https://internal.test/form", consumed = true,
-            ) else null,
+            "sales.evaluation.record" to if (withDevice) "record" else null,
+            "sales.evaluation.completed" to withDevice,
         )),
     ): SalesViewModel {
         val context = mockk<Context>(relaxed = true)

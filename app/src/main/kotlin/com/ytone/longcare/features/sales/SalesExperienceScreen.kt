@@ -1,7 +1,5 @@
 package com.ytone.longcare.features.sales
 
-import com.ytone.longcare.core.ui.R as CoreUiR
-
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
@@ -12,9 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -53,7 +48,6 @@ import com.ytone.longcare.integration.qlz.QlzEvaluationStage
 import com.ytone.longcare.integration.qlz.QlzEvaluationUploadContext
 import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.platform.sales.rememberSalesSdkUiController
-import com.ytone.longcare.platform.sales.SalesEvaluationFormEffect
 import com.ytone.longcare.presentation.sales.SalesNavigationState
 import com.ytone.longcare.presentation.sales.SalesPage
 import com.ytone.longcare.presentation.sales.evaluationBackTarget
@@ -238,7 +232,6 @@ internal fun SalesExperienceScreen(
             SalesPage.DEVICE_STATUS,
             SalesPage.EVALUATION_GUIDE,
             -> {
-                uiState.evaluationFormRequest?.let { viewModel.consumeEvaluationForm(it.recordId) }
                 if (currentPage.ownsQlzEvaluationSession()) {
                     sdkUiController.cancel()
                 }
@@ -420,22 +413,11 @@ internal fun SalesExperienceScreen(
         }
     }
 
-    SalesEvaluationFormEffect(
-        request = uiState.evaluationFormRequest,
-        onLeaveDevice = {
-            sdkUiController.close()
-            navigate(SalesPage.EVALUATION_CHOICE)
-        },
-        onOpenForm = { url ->
-            if (viewModel.uiState.value.evaluationFormRequest == uiState.evaluationFormRequest) {
-                actions.onOpenEvaluationPage(url, evaluationFormTitle)
-            }
-        },
-        onConsumed = viewModel::consumeEvaluationForm,
-    )
-
     LaunchedEffect(uiState.evaluationCompleted) {
-        if (uiState.evaluationCompleted) navigate(SalesPage.EVALUATION_COMPLETE)
+        if (uiState.evaluationCompleted) {
+            sdkUiController.close()
+            navigate(SalesPage.EVALUATION_COMPLETE)
+        }
     }
 
     LaunchedEffect(currentPage) {
@@ -662,17 +644,10 @@ internal fun SalesExperienceScreen(
                             startAutomaticEvaluation(uiState.selectedCustomerId)
                         },
                         onFormEvaluation = {
-                            if (uiState.evaluationFormRequest != null) {
-                                viewModel.retryEvaluationForm()
-                            } else {
-                                val formUrl =
-                                    uiState.submissionResult?.pgUrl
-                                        .orEmpty()
-                                        .ifBlank {
-                                            uiState.selectedCustomer?.pgUrl.orEmpty()
-                                        }
-                                openFormEvaluation(formUrl)
+                            val formUrl = uiState.submissionResult?.pgUrl.orEmpty().ifBlank {
+                                uiState.selectedCustomer?.pgUrl.orEmpty()
                             }
+                            openFormEvaluation(formUrl)
                         },
                     )
 
@@ -725,27 +700,8 @@ internal fun SalesExperienceScreen(
                         .padding(16.dp),
             )
             SalesLoadingOverlay(
-                isVisible = uiState.isLoading || (uiState.evaluationFormRequest?.consumed == false && uiState.isCustomerDetailLoading),
-                message = if (uiState.evaluationFormRequest?.consumed == false && uiState.isCustomerDetailLoading)
-                    stringResource(R.string.sales_loading_evaluation_form) else uiState.operation,
-            )
-        }
-    }
-
-    uiState.evaluationFormRequest?.takeUnless { it.consumed }?.let { form ->
-        form.errorMessage?.let { message ->
-            val dismiss = { viewModel.consumeEvaluationForm(form.recordId) }
-            AlertDialog(
-                onDismissRequest = dismiss,
-                text = { Text(message) },
-                confirmButton = {
-                    TextButton(onClick = viewModel::retryEvaluationForm) {
-                        Text(stringResource(CoreUiR.string.common_retry))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = dismiss) { Text(stringResource(CoreUiR.string.common_back)) }
-                },
+                isVisible = uiState.isLoading,
+                message = uiState.operation,
             )
         }
     }

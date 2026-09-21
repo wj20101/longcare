@@ -113,8 +113,10 @@ Android 源码、资源、BuildConfig 或 APK。客户端通过
 6. 创建 UI 作用域的 `QlzEvaluationSession`，调用 `CheckIml.startCheck(...)` 校验 Token；成功后使用 `ScanDeviceIml` 执行 30 秒有界扫描。
 7. 页面只接收不可变的 `QlzEvaluationUiState`。蓝牙地址在 integration 边界内换成会话级不透明 ID，界面仅显示掩码；用户点选后由 `ConnectDeviceHelp` 连接，并映射五指、进度、电量、超时和掉线回调。
 8. `onCheckEnd` 只触发一次 `sendData(...)`。纬度、经度和地址取自当前客户或本次登记的可靠字段，缺失时传空字符串；上传失败仅在内存中保留本次 `RecordInputData` 供重试。
-9. 上传成功后关闭设备会话，重新查询 `/V1/Sale/GetUserLatentDetail?id=...`，取 `pgUrl` 自动进入应用内“表单评估” H5，不直接显示业务完成页。待打开请求绑定客户与 recordId，通过 SavedStateHandle 保存；页面恢复前台后消费一次。URL 为空或查询失败可只重试客户查询，不重新上传。SDK 回调中的 URL 会被忽略，不打开厂商报告 Activity。
-10. 评估 H5 左上角返回调用 `window.NativeBridge.closeWebView()` 后关闭并显示完成页，沿用已确认业务约定，不另行核实是否提交完成。设备完成页请求 `POST /V1/Sale/GetCheckResult`（id=当前客户、recordId=已有 SDK 记录）；纯表单完成页重新请求 `GET /V1/Sale/GetUserLatentDetail`。直接展示本次响应的 `pgResult`，报告使用其 `pgUrl`。结果失败/为空可手动刷新同一接口，不重新上传、不读缓存旧值、不增加兜底链。系统返回只回评估入口；报告/协议/隐私网页只关闭自身，所有网页都不使用返回结果邮箱或关联协议。成功弹窗确认仅刷新 H5，不要求调用关闭。
+9. 上传成功后关闭设备会话，直接进入原生评估结果页，以当前客户 ID 和本次 recordId 请求 `POST /V1/Sale/GetCheckResult`。客户、recordId 和完成状态通过 SavedStateHandle 保存；不自动打开 H5，不以客户详情中的旧地址代替结果查询。SDK URL 被忽略，不打开厂商报告 Activity。
+10. 结果页展示本次响应 `pgResult`；用户点击“查看评估报告”才打开 `pgUrl`，报告的 `window.NativeBridge.closeWebView()` 和系统返回都只关闭当前 H5，回到原结果页。查询失败、等级或地址未就绪时允许刷新同一接口，没有地址时报告按钮不可用；不重新上传、不读缓存旧值、不增加兜底链。结果页返回/完成回首页。
+
+纯表单流程保持不变：表单 H5 主动关闭后显示完成页并重新请求 `GET /V1/Sale/GetUserLatentDetail`；系统返回只回评估入口。报告/协议/隐私网页只关闭自身，所有网页都不使用返回结果邮箱或关联协议。成功弹窗确认仅刷新 H5，不要求调用关闭。
 
 表单评估同样只使用 `/V1/Sale/AddUserLatent` 或
 `/V1/Sale/GetUserLatentDetail` 返回的 `pgUrl`，通过应用内 `WebViewRoute` 加载。
@@ -140,8 +142,8 @@ window.NativeBridge.closeWebView();
 ```
 
 客户端接收后通过当前 Navigation 3 entry 返回来源原生页面，保留首页和来源状态。
-该调用无参数，由 H5 调用客户端；普通网页只关闭自身，评估 H5 按业务约定以该调用通知评估完成。
-客户端不代替 H5 提交评估数据，完成页按有无设备记录分别查询 GetCheckResult 或最新客户详情获取文案，不增加网页返回结果关联或二次完成确认。
+该调用无参数，由 H5 调用客户端；报告和普通网页只关闭自身，只有纯表单 H5 按业务约定以该调用进入完成页。
+客户端不代替 H5 提交评估数据；设备上传后原生结果页直接查询 GetCheckResult，纯表单关闭后查询最新客户详情，不增加网页返回结果关联或二次完成确认。
 容器在首次加载前通过 `addJavascriptInterface` 注册 `NativeBridge` 对象，
 仅以 `@JavascriptInterface` 暴露无参数 `closeWebView()`。客户端不注入 JS 包装、不检查现代消息桥能力，
 不要求 H5 传凭证或协议字段；H5 自行决定按钮、弹窗、提交与关闭时机。
@@ -170,8 +172,8 @@ android run --apks=app/build/outputs/apk/debug/app-debug.apk
 
 可直接运行测试源集中的 mock，无需登录或加载真实客户详情，也无需开启全局
 `debug.useMockData`。`SalesMockEvaluationFlowTest` 使用内存中的客户详情、Token 和厂商
-回调替身，串联真实 `SalesViewModel` 与 `QlzEvaluationSession`，覆盖完成后刷新业务报告、
-报告未就绪、详情失败重试和上传去重。测试 URL 使用 `.invalid` 域名且不会发起网络请求。
+回调替身，串联真实 `SalesViewModel` 与 `QlzEvaluationSession`，覆盖上传后直接进入结果状态、
+GetCheckResult 失败重试及上传去重；结果页测试覆盖报告未就绪和手动打开/返回。测试 URL 使用 `.invalid` 域名且不会发起网络请求。
 
 `SalesEvaluationMockFlowTest` 使用真实会话状态机和 Compose 扫描/检测/完成组件，注入
 厂商回调验证逐项接触状态、空扫描重试、后台停止扫描、连接异常重试、充电暂停、上传重试、
