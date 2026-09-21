@@ -566,44 +566,18 @@ internal fun SalesSubmitSuccessScreen(
                 )
             }
             item {
-                if (useSalesLargeTextLayout()) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        SalesOutlinedActionButton(
-                            text =
-                                stringResource(R.string.sales_submission_confirm_return),
-                            onClick = onBack,
-                        )
-                        SalesPrimaryButton(
-                            text =
-                                stringResource(
-                                    R.string.sales_submission_start_evaluation
-                                ),
-                            onClick = onEvaluation,
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        SalesOutlinedActionButton(
-                            text =
-                                stringResource(R.string.sales_submission_confirm_return),
-                            onClick = onBack,
-                            modifier = Modifier.weight(1f),
-                        )
-                        SalesPrimaryButton(
-                            text =
-                                stringResource(
-                                    R.string.sales_submission_start_evaluation
-                                ),
-                            onClick = onEvaluation,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SalesPrimaryButton(
+                        text = stringResource(R.string.sales_submission_start_evaluation),
+                        onClick = onEvaluation,
+                    )
+                    SalesOutlinedActionButton(
+                        text = stringResource(R.string.sales_submission_confirm_return),
+                        onClick = onBack,
+                    )
                 }
             }
         }

@@ -100,7 +100,7 @@ class SalesEvaluationCopyTest {
         composeRule.onNodeWithTag("qlz_scan_action").assert(
             SemanticsMatcher.expectValue(
                 SemanticsProperties.Text,
-                listOf(androidx.compose.ui.text.AnnotatedString("正在搜索附近的评估设备…")),
+                listOf(androidx.compose.ui.text.AnnotatedString("正在搜索附近的设备…")),
             )
         )
     }

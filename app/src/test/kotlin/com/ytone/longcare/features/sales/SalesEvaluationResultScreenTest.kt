@@ -70,6 +70,25 @@ class SalesEvaluationResultScreenTest {
         compose.runOnIdle { assertEquals(1, refreshes) }
     }
 
+    @Test fun queryFailureDisablesReportAndAllowsRefreshAndDone() {
+        var refreshes = 0
+        var done = 0
+        compose.setContent {
+            LongCareTheme {
+                SalesEvaluationCompleteScreen(hasReport = true, grade = "A级", resultError = true,
+                    onBack = {}, onDone = { done++ }, onOpenReport = { error("Failed query") },
+                    onRefresh = { refreshes++ })
+            }
+        }
+        compose.onNodeWithText("查看评估报告").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("刷新评估结果").performScrollTo().performClick()
+        compose.onNodeWithText("完成").performScrollTo().performClick()
+        compose.runOnIdle {
+            assertEquals(1, refreshes)
+            assertEquals(1, done)
+        }
+    }
+
     @Test fun loadingDisablesReportEvenIfPreviousAddressExists() {
         compose.setContent {
             LongCareTheme {

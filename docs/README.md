@@ -67,7 +67,8 @@ OpenSpec 采用 delta-first，主规格不覆盖所有存量能力。`config.yam
 
 | Change | 实际状态 | 当前适用说明 |
 |---|---|---|
-| [fix-qlz-single-use-token](../openspec/changes/fix-qlz-single-use-token/tasks.md) | 代码与本地验证完成，正式环境真机待验收 | 新授权获取新 Token，上传鉴权恢复保留原记录，统一 SDK 默认正式环境 |
+| [simplify-sales-result-layout](../openspec/changes/simplify-sales-result-layout/tasks.md) | 实现、离线 UI 回归及 Debug/Release 构建验证完成，尚未归档 | 两个结果页统一纵向按钮组，继续/查看在上、返回/完成在下，设备通用称呼简化；不改业务与 SDK 配置 |
+| [fix-qlz-single-use-token](../openspec/changes/fix-qlz-single-use-token/tasks.md) | 代码与本地验证完成，正式环境未部署，联调暂缓 | 登记、授权/扫描及取消重进通过；连接后设备未授权（SDK 映射码 21），根因未确认，上传与结果链仍未验收 |
 | [add-customer-registration-fields](../openspec/changes/add-customer-registration-fields/tasks.md) | 代码、离线测试及 Debug/Release 构建验证完成，尚未归档 | 登记新增是否残疾（默认否）和可选备注，包含确认页、草稿恢复及请求契约；未做真机/线上提交验收 |
 | [improve-care-plan-error-feedback](../openspec/changes/improve-care-plan-error-feedback/tasks.md) | 代码、离线回归及构建验证完成，尚未归档 | 护理详情分类提示、明确可空字段对齐；未取得现场失败响应，planId 仅待核实 |
 | [simplify-ci-cd](../openspec/changes/simplify-ci-cd/tasks.md) | 实施中，线上验收待推送后执行 | 删除重复流水线与旧脚本，完整 JVM 集合、发布写入后移、存储保护 |

@@ -757,17 +757,20 @@ internal fun SalesEvaluationCompleteScreen(
                 }
             }
             item {
-                SalesOutlinedActionButton(
-                    text = stringResource(R.string.sales_common_done),
-                    onClick = onDone,
-                )
-            }
-            item {
-                SalesPrimaryButton(
-                    text = stringResource(R.string.sales_customer_view_report),
-                    onClick = onOpenReport,
-                    enabled = hasReport && !isLoading && !resultError,
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SalesPrimaryButton(
+                        text = stringResource(R.string.sales_customer_view_report),
+                        onClick = onOpenReport,
+                        enabled = hasReport && !isLoading && !resultError,
+                    )
+                    SalesOutlinedActionButton(
+                        text = stringResource(R.string.sales_common_done),
+                        onClick = onDone,
+                    )
+                }
             }
         }
     }
