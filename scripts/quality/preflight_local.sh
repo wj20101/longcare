@@ -312,7 +312,7 @@ run_local_fast
 
 if [[ "${MODE}" == "full" || "${MODE}" == "release" ]]; then
   run_step "compile-debug-kotlin" ./gradlew --no-daemon :app:compileDebugKotlin :feature:carddiagnostics:compileDebugKotlin
-  run_step "test-debug-unit" ./gradlew --no-daemon :app:testDebugUnitTest :feature:carddiagnostics:testDebugUnitTest :integration:txface:testDebugUnitTest :core:common:testDebugUnitTest :core:data:testDebugUnitTest :core:ui:testDebugUnitTest :feature:identification:testDebugUnitTest :feature:photoupload:testDebugUnitTest
+  run_step "test-debug-unit" bash scripts/quality/run_jvm_tests.sh
 fi
 
 if [[ "${MODE}" == "release" ]]; then

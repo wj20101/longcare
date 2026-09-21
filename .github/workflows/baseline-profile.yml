@@ -22,15 +22,11 @@ jobs:
     timeout-minutes: 120
 
     steps:
-      - name: Enable KVM group perms
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          ls /dev/kvm
-
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Run CI quality gates
+        run: bash scripts/quality/run_ci_checks.sh
 
       - name: Validate Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v6
@@ -39,16 +35,12 @@ jobs:
         uses: ./.github/actions/android-build-env
         with:
           setup-android-sdk: 'true'
-          run-workflow-quality-check: 'true'
+
+      - name: Enable KVM acceleration
+        run: bash scripts/quality/enable_kvm.sh
 
       - name: Free disk space for emulator
         run: bash scripts/quality/free_runner_disk_space.sh --min-free-mb 8192
-
-      - name: Enforce architecture boundaries
-        run: bash scripts/quality/verify_architecture_boundaries.sh .
-
-      - name: Enforce module API visibility
-        run: bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare .
 
       - name: Setup managed device
         run: |
@@ -125,8 +117,6 @@ jobs:
             app/src/**/baseline-prof.txt
             app/src/**/startup-prof.txt
             app/src/**/generated/baselineProfiles/**
-            app/build/outputs/**
-            baselineprofile/build/reports/**
           if-no-files-found: warn
           retention-days: 7
 
@@ -136,35 +126,10 @@ jobs:
         with:
           name: baseline-profile-${{ github.job }}-failure-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            app/build/reports/**
             app/build/test-results/**
-            app/build/outputs/**
-            baselineprofile/build/reports/**
             baselineprofile/build/outputs/**
             build/reports/problems/**
             **/hs_err_pid*.log
             **/*.hprof
           if-no-files-found: warn
           retention-days: 7
-
-  cleanup-caches:
-    needs: generate-baseline-profile
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      actions: write
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Cleanup GitHub Actions caches
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          bash scripts/quality/cleanup_github_actions_caches.sh \
-            --repo "${{ github.repository }}" \
-            --max-total-mb 2048 \
-            --keep-recent-days 1

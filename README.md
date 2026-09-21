@@ -49,15 +49,15 @@ android run --apks=app/build/outputs/apk/debug/app-debug.apk
 # 快速架构/模块检查
 bash scripts/quality/preflight_local.sh --local-fast
 
-# 快速检查 + 主应用、读卡 Feature 及共享模块编译/单测
+# 快速检查 + 完整 JVM 业务单测
 bash scripts/quality/preflight_local.sh --full
 
 # 与普通 Android CI 的主要构建任务对齐
-./gradlew --no-daemon :app:lintDebug :app:assembleDebug :feature:carddiagnostics:lintDebug :feature:carddiagnostics:testDebugUnitTest
+bash scripts/quality/run_jvm_tests.sh :app:lintDebug :feature:carddiagnostics:lintDebug :app:assembleDebug
 bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
 ```
 
-正式版统一使用标准 Release，不需要额外模式参数：`./gradlew :app:assembleRelease :app:bundleRelease`。`preflight_local.sh --release` 执行发布质量检查；已明确接受的厂商风险告警，其余问题仍阻断。Android Release 工作流发布主应用 APK/AAB，并设为正式 Release 和 Latest。流程与门禁见 [CI、质量门禁与发布](docs/architecture/ci-quality-gates.md)。
+正式版统一使用标准 Release，不需要额外模式参数：`./gradlew :app:assembleRelease :app:bundleRelease`。`preflight_local.sh --release` 执行发布质量检查；已明确接受的厂商风险告警，其余问题仍阻断。Android Release 仅手动发布主应用 APK/AAB，并设为正式 Release 和 Latest；构建校验通过后才推送版本号，不自动取消进行中的发布。流程与门禁见 [CI、质量门禁与发布](docs/architecture/ci-quality-gates.md)。
 
 ## 项目结构
 

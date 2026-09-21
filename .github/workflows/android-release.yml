@@ -1,36 +1,11 @@
 name: Android Release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
-    inputs:
-      run_baseline_profile:
-        description: "Generate baseline profile before release build (slow)"
-        required: false
-        type: boolean
-        default: false
-      tx_face_sdk_source:
-        description: "Tencent face SDK source (local/maven)"
-        required: false
-        type: choice
-        options:
-          - local
-          - maven
-        default: local
-      tx_face_live_coord:
-        description: "Tencent face live SDK coordinate when source=maven"
-        required: false
-        type: string
-      tx_face_normal_coord:
-        description: "Tencent face normal SDK coordinate when source=maven"
-        required: false
-        type: string
 
 concurrency:
-  group: android-release-${{ github.ref }}
-  cancel-in-progress: true
+  group: android-release
+  cancel-in-progress: false
 
 permissions:
   actions: read
@@ -38,10 +13,6 @@ permissions:
 
 env:
   JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
-  TX_FACE_SDK_SOURCE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_sdk_source || vars.TX_FACE_SDK_SOURCE || 'local' }}
-  TX_FACE_LIVE_COORD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_live_coord || vars.TX_FACE_LIVE_COORD || '' }}
-  TX_FACE_NORMAL_COORD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tx_face_normal_coord || vars.TX_FACE_NORMAL_COORD || '' }}
-  TX_FACE_MAVEN_REPO_URL: ${{ vars.TX_FACE_MAVEN_REPO_URL || '' }}
 
 jobs:
   release-build:
@@ -59,82 +30,21 @@ jobs:
       - name: Validate Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v6
 
-      - name: Reject tag-triggered auto version bump
-        run: |
-          set -euo pipefail
-          if [ "${GITHUB_EVENT_NAME}" = "push" ] && [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            echo "::error::VersionCode auto-bump is only supported for workflow_dispatch branch releases. Use workflow_dispatch instead of tag push."
-            exit 1
-          fi
-
       - name: Verify Android CI success for target commit
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          TARGET_SHA="${GITHUB_SHA}"
-
-          RUN_JSON="$(gh run list \
-            --workflow "Android CI" \
-            --limit 20 \
-            --json status,conclusion,headSha,databaseId,displayTitle)"
-
-          MATCH_COUNT="$(printf '%s' "${RUN_JSON}" | jq --arg target_sha "${TARGET_SHA}" '[.[] | select(.headSha == $target_sha)] | length')"
-          if [ "${MATCH_COUNT}" -eq 0 ]; then
-            echo "::error::No Android CI run found for commit ${TARGET_SHA}. Run Android CI first."
-            exit 1
-          fi
-
-          STATUS="$(printf '%s' "${RUN_JSON}" | jq -r --arg target_sha "${TARGET_SHA}" '[.[] | select(.headSha == $target_sha)][0].status')"
-          CONCLUSION="$(printf '%s' "${RUN_JSON}" | jq -r --arg target_sha "${TARGET_SHA}" '[.[] | select(.headSha == $target_sha)][0].conclusion')"
-          RUN_ID="$(printf '%s' "${RUN_JSON}" | jq -r --arg target_sha "${TARGET_SHA}" '[.[] | select(.headSha == $target_sha)][0].databaseId')"
-
-          if [ "${STATUS}" != "completed" ] || [ "${CONCLUSION}" != "success" ]; then
-            echo "::error::Latest Android CI run for ${TARGET_SHA} is not green (run_id=${RUN_ID}, status=${STATUS}, conclusion=${CONCLUSION})."
-            exit 1
-          fi
+        run: bash scripts/release/verify_source_ci.sh
 
       - name: Set up shared Android build environment
         uses: ./.github/actions/android-build-env
         with:
           setup-android-sdk: 'true'
-          run-workflow-quality-check: 'false'
-          run-lint-ignore-policy-check: 'false'
-          run-jetpack-compat-check: 'false'
-          run-baselineprofile-journey-check: 'false'
-          run-module-dependency-check: 'false'
 
-      - name: Validate face SDK source settings
-        run: |
-          echo "TX_FACE_SDK_SOURCE=${TX_FACE_SDK_SOURCE}"
-          if [ "${TX_FACE_SDK_SOURCE}" = "maven" ]; then
-            if [ -z "${TX_FACE_LIVE_COORD}" ] || [ -z "${TX_FACE_NORMAL_COORD}" ]; then
-              echo "::error::TX_FACE_LIVE_COORD and TX_FACE_NORMAL_COORD are required when TX_FACE_SDK_SOURCE=maven"
-              exit 1
-            fi
-          fi
-
-      - name: Run ci-required quality gates
-        run: |
-          bash scripts/quality/verify_no_tracked_keystore_files.sh .
-          bash scripts/quality/verify_ci_workflow_quality.sh
-          bash scripts/quality/verify_validation_app_isolation.sh .
-          bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
-          bash scripts/quality/verify_jetpack_compat_apis.sh
-          bash scripts/quality/verify_baselineprofile_journeys.sh
-          bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
-          bash scripts/quality/verify_no_empty_catch_blocks.sh .
-          bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
-          bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml
-          bash scripts/quality/verify_architecture_boundaries.sh .
-          bash scripts/quality/verify_module_dependency_whitelist.sh .
-          bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare .
-
-      - name: Run ci-required compile/lint/assemble verification
+      - name: Run release lint verification
         env:
           TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
           TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
-        run: ./gradlew --no-daemon :app:lintDebug :app:assembleDebug
+        run: ./gradlew --no-daemon :app:lintDebug
 
       - name: Enforce lint release readiness
         run: bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
@@ -172,167 +82,9 @@ jobs:
             echo "::warning::No committed baseline profile files found in app/src. Release will continue."
           fi
 
-      - name: Enable KVM group perms
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          ls /dev/kvm
-
-      - name: Free disk space for emulator
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
-        run: bash scripts/quality/free_runner_disk_space.sh --min-free-mb 8192
-
-      - name: Setup managed device
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
-        env:
-          TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
-          TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
-        run: |
-          ./gradlew --no-daemon :baselineprofile:pixel6Api33Setup \
-            -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect \
-            -Pandroid.experimental.testOptions.managedDevices.emulator.showKernelLogging=true
-
-      - name: Generate baseline profile (GMD)
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
-        timeout-minutes: 75
-        env:
-          TX_FACE_MAVEN_REPO_USERNAME: ${{ secrets.TX_FACE_MAVEN_REPO_USERNAME || '' }}
-          TX_FACE_MAVEN_REPO_PASSWORD: ${{ secrets.TX_FACE_MAVEN_REPO_PASSWORD || '' }}
-        run: |
-          ./gradlew --no-daemon :app:generateReleaseBaselineProfile \
-            -Pbaseline.enableX86_64=true \
-            -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile \
-            -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect \
-            -Pandroid.experimental.testOptions.managedDevices.emulator.showKernelLogging=true
-
-      - name: Upload baseline debug logs
-        if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: baseline-debug-logs-release
-          path: |
-            app/build/outputs/managed_device_android_test_additional_output/**
-            app/build/reports/**
-            baselineprofile/build/reports/**
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Verify baseline profile output
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile == 'true' }}
-        run: |
-          FILE_COUNT=$(find app/src -type f \( -name 'baseline-prof.txt' -o -name 'startup-prof.txt' -o -path '*/generated/baselineProfiles/*.txt' \) | wc -l | tr -d ' ')
-          echo "Baseline profile files found: ${FILE_COUNT}"
-          find app/src -type f \( -name 'baseline-prof.txt' -o -name 'startup-prof.txt' -o -path '*/generated/baselineProfiles/*.txt' \) | sort || true
-          if [ "${FILE_COUNT}" -eq 0 ]; then
-            echo "No baseline profile output was generated."
-            echo "Profile-like files under build outputs:"
-            find app/build baselineprofile/build -type f \( -name '*-prof.txt' -o -path '*/generated/baselineProfiles/*' \) | sort || true
-            exit 1
-          fi
-
-      - name: Bump app version code
-        id: bump_version_code
-        env:
-          RUN_BASELINE_PROFILE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_baseline_profile || 'false' }}
-        run: |
-          set -euo pipefail
-          source scripts/quality/gradle_constants.sh
-
-          CURRENT_VERSION_CODE="$(read_gradle_extra_value constants.gradle.kts appVersionCode)"
-          if [ -z "${CURRENT_VERSION_CODE}" ]; then
-            echo "::error::Failed to parse appVersionCode from constants.gradle.kts"
-            exit 1
-          fi
-
-          NEXT_VERSION_CODE="$((CURRENT_VERSION_CODE + 1))"
-          python3 - "${NEXT_VERSION_CODE}" <<'PY'
-          from pathlib import Path
-          import re
-          import sys
-
-          next_version_code = sys.argv[1]
-          path = Path("constants.gradle.kts")
-          text = path.read_text()
-          text, count = re.subn(
-              r'extra\.set\("appVersionCode",\s*[0-9]+\)',
-              f'extra.set("appVersionCode", {next_version_code})',
-              text,
-              count=1,
-          )
-          if count == 0:
-              text, count = re.subn(
-                  r'val\s+appVersionCode\s+by\s+extra\([0-9]+\)',
-                  f'val appVersionCode by extra({next_version_code})',
-                  text,
-                  count=1,
-              )
-          if count != 1:
-              raise SystemExit("Failed to update appVersionCode in constants.gradle.kts")
-          path.write_text(text)
-          PY
-
-          if ! git diff -- constants.gradle.kts | grep -q "appVersionCode"; then
-            echo "::error::appVersionCode was not changed"
-            exit 1
-          fi
-
-          mapfile -t CHANGED_FILES < <(
-            {
-              git diff --name-only
-              git ls-files --others --exclude-standard
-            } | sort -u
-          )
-
-          unexpected_files=()
-          has_version_change="false"
-          for changed_file in "${CHANGED_FILES[@]}"; do
-            case "${changed_file}" in
-              constants.gradle.kts)
-                has_version_change="true"
-                ;;
-              app/src/*/baseline-prof.txt|app/src/*/startup-prof.txt|app/src/*/generated/baselineProfiles/*.txt)
-                if [ "${RUN_BASELINE_PROFILE}" != "true" ]; then
-                  unexpected_files+=("${changed_file}")
-                fi
-                ;;
-              *)
-                unexpected_files+=("${changed_file}")
-                ;;
-            esac
-          done
-
-          if [ "${has_version_change}" != "true" ]; then
-            echo "::error::constants.gradle.kts was not changed"
-            exit 1
-          fi
-          if [ "${#unexpected_files[@]}" -gt 0 ]; then
-            echo "::error::Unexpected files changed during version bump:"
-            printf '%s\n' "${unexpected_files[@]}"
-            exit 1
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add constants.gradle.kts
-          if [ "${RUN_BASELINE_PROFILE}" = "true" ]; then
-            for changed_file in "${CHANGED_FILES[@]}"; do
-              case "${changed_file}" in
-                app/src/*/baseline-prof.txt|app/src/*/startup-prof.txt|app/src/*/generated/baselineProfiles/*.txt)
-                  git add "${changed_file}"
-                  ;;
-              esac
-            done
-          fi
-          git commit -m "chore(release): bump app version code to ${NEXT_VERSION_CODE}"
-          BUMPED_SHA="$(git rev-parse HEAD)"
-          git push
-
-          echo "previous_version_code=${CURRENT_VERSION_CODE}" >> "$GITHUB_OUTPUT"
-          echo "version_code=${NEXT_VERSION_CODE}" >> "$GITHUB_OUTPUT"
-          echo "commit_sha=${BUMPED_SHA}" >> "$GITHUB_OUTPUT"
-          echo "Bumped appVersionCode: ${CURRENT_VERSION_CODE} -> ${NEXT_VERSION_CODE}"
+      - name: Prepare app version code
+        id: prepare_version_code
+        run: python3 scripts/release/prepare_version.py
 
       - name: Extract app version metadata
         id: app_version
@@ -475,6 +227,10 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Push verified version
+        id: bump_version_code
+        run: bash scripts/release/push_version.sh
+
       - name: Compute release metadata
         id: release_meta
         run: |
@@ -527,25 +283,3 @@ jobs:
             app/build/outputs/bundle/release/*.aab
             app/build/outputs/mapping/release-mapping.zip
             app/build/outputs/release-checksums.txt
-
-  cleanup-caches:
-    needs: release-build
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      actions: write
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Cleanup GitHub Actions caches
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          bash scripts/quality/cleanup_github_actions_caches.sh \
-            --repo "${{ github.repository }}" \
-            --max-total-mb 2048 \
-            --keep-recent-days 1

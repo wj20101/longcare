@@ -134,7 +134,6 @@ would_delete_count=0
 would_reclaim_bytes=0
 deletion_candidate_count=0
 stale_candidate_count=0
-capacity_candidate_count=0
 
 format_mb() {
   local bytes="$1"
@@ -152,13 +151,12 @@ else
       break
     fi
 
-    reason="over_capacity"
-    if (( created_epoch < cutoff_epoch && last_accessed_epoch < cutoff_epoch )); then
-      reason="stale"
-      stale_candidate_count=$((stale_candidate_count + 1))
-    else
-      capacity_candidate_count=$((capacity_candidate_count + 1))
+    # Capacity limits never override the promised recent-cache protection.
+    if (( created_epoch >= cutoff_epoch || last_accessed_epoch >= cutoff_epoch )); then
+      continue
     fi
+    reason="stale"
+    stale_candidate_count=$((stale_candidate_count + 1))
     deletion_candidate_count=$((deletion_candidate_count + 1))
 
     if [[ "${dry_run}" == "true" ]]; then
@@ -195,7 +193,6 @@ fi
   echo "- scanned_caches: \`${scanned_count}\`"
   echo "- deletion_candidates: \`${deletion_candidate_count}\`"
   echo "- stale_candidates: \`${stale_candidate_count}\`"
-  echo "- capacity_candidates: \`${capacity_candidate_count}\`"
   echo "- total_before_mb: \`$(format_mb "${total_bytes}")\`"
   echo "- threshold_mb: \`${max_total_mb}\`"
   if [[ "${dry_run}" == "true" ]]; then

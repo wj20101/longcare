@@ -2,14 +2,7 @@ name: Android CI
 
 on:
   push:
-    branches:
-      - main
-      - master
-      - develop
-    paths-ignore:
-      - "docs/**"
-      - "*.md"
-      - "**/*.md"
+    branches: [main, master, develop]
   pull_request:
   workflow_dispatch:
 
@@ -19,120 +12,47 @@ concurrency:
 
 permissions:
   contents: read
-  actions: write
 
 env:
   JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
 
 jobs:
-  detect-affected:
+  select-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      affected_scope: ${{ steps.detect.outputs.affected_scope }}
-      affected_modules: ${{ steps.detect.outputs.affected_modules }}
-      verify_tasks: ${{ steps.detect.outputs.verify_tasks }}
-      run_instrumentation: ${{ steps.detect.outputs.run_instrumentation }}
-      smoke_test_classes: ${{ steps.detect.outputs.smoke_test_classes }}
-      changed_files_count: ${{ steps.detect.outputs.changed_files_count }}
-
+      run_build: ${{ steps.select.outputs.run_build }}
+      run_instrumentation: ${{ steps.select.outputs.run_instrumentation }}
+      smoke_test_classes: ${{ steps.select.outputs.smoke_test_classes }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-
-      - name: Detect affected modules and tasks
-        id: detect
+      - name: Check documentation
+        run: python3 scripts/quality/verify_documentation.py
+      - name: Select device smoke tests
+        id: select
         env:
           BASE_REF: ${{ github.event_name == 'push' && github.event.before || '' }}
-        run: bash scripts/quality/affected-modules.sh --format github >> "$GITHUB_OUTPUT"
-
-      - name: Print affected plan
-        run: |
-          echo "scope=${{ steps.detect.outputs.affected_scope }}"
-          echo "modules=${{ steps.detect.outputs.affected_modules }}"
-          echo "verify_tasks=${{ steps.detect.outputs.verify_tasks }}"
-          echo "run_instrumentation=${{ steps.detect.outputs.run_instrumentation }}"
-          echo "smoke_test_classes=${{ steps.detect.outputs.smoke_test_classes }}"
-          echo "changed_files_count=${{ steps.detect.outputs.changed_files_count }}"
-
-      - name: Publish affected plan summary
-        run: |
-          {
-            echo "## Android CI affected plan"
-            echo ""
-            echo "- scope: \`${{ steps.detect.outputs.affected_scope }}\`"
-            echo "- changed files: \`${{ steps.detect.outputs.changed_files_count }}\`"
-            echo "- modules: \`${{ steps.detect.outputs.affected_modules }}\`"
-            echo "- verify tasks: \`${{ steps.detect.outputs.verify_tasks }}\`"
-            echo "- run instrumentation: \`${{ steps.detect.outputs.run_instrumentation }}\`"
-            echo "- smoke test classes: \`${{ steps.detect.outputs.smoke_test_classes }}\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: bash scripts/quality/select_ci_smoke.sh | tee -a "$GITHUB_OUTPUT" "$GITHUB_STEP_SUMMARY"
 
   verify-build:
-    needs: detect-affected
+    needs: select-checks
+    if: needs.select-checks.outputs.run_build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v6
-
-      - name: Set up shared Android build environment
-        uses: ./.github/actions/android-build-env
+      - uses: actions/checkout@v7
+      - uses: gradle/actions/wrapper-validation@v6
+      - uses: ./.github/actions/android-build-env
         with:
           setup-android-sdk: 'true'
-          run-workflow-quality-check: 'false'
-          run-lint-ignore-policy-check: 'false'
-          run-jetpack-compat-check: 'false'
-          run-baselineprofile-journey-check: 'false'
-          run-module-dependency-check: 'false'
-
-      - name: Publish ci-required gate summary
-        run: |
-          {
-            echo "## CI required gates"
-            echo ""
-            echo "- lint warning allowlist"
-            echo "- lint ignore policy"
-            echo "- jetpack compat guard"
-            echo "- baseline profile journeys"
-            echo "- module dependency whitelist"
-            echo "- architecture boundaries"
-            echo "- module API visibility"
-            echo "- coroutine cancellation and empty catch guards"
-            echo "- target SDK and exact alarm policy"
-            echo "- tracked keystore guard"
-            echo "- Local card diagnostics isolation contract"
-            echo "- workflow quality guard"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Run ci-required quality gates
-        run: |
-          bash scripts/quality/verify_no_tracked_keystore_files.sh .
-          bash scripts/quality/verify_ci_workflow_quality.sh
-          bash scripts/quality/verify_validation_app_isolation.sh .
-          bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
-          bash scripts/quality/verify_jetpack_compat_apis.sh
-          bash scripts/quality/verify_baselineprofile_journeys.sh
-          bash scripts/quality/verify_cancellation_guards.sh app/src/main/kotlin
-          bash scripts/quality/verify_no_empty_catch_blocks.sh .
-          bash scripts/quality/verify_target_sdk_upgrade.sh constants.gradle.kts .github/workflows/android-ci.yml
-          bash scripts/quality/verify_exact_alarm_permission_config.sh app/src/main/AndroidManifest.xml
-          bash scripts/quality/verify_architecture_boundaries.sh .
-          bash scripts/quality/verify_module_dependency_whitelist.sh .
-          bash scripts/quality/verify_module_api_visibility.sh app/src/main/kotlin/com/ytone/longcare .
-
-      - name: Run affected compile/lint/assemble verification
-        run: ./gradlew --no-daemon ${{ needs.detect-affected.outputs.verify_tasks }}
-
-      - name: Enforce generated lint warning allowlist
+      - name: Run CI quality gates
+        run: bash scripts/quality/run_ci_checks.sh
+      - name: Test and build
+        run: bash scripts/quality/run_jvm_tests.sh :app:lintDebug :feature:carddiagnostics:lintDebug :app:assembleDebug
+      - name: Enforce lint warnings
         run: bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
-
       - name: Upload APK
         uses: actions/upload-artifact@v7
         with:
@@ -140,106 +60,45 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
-
-      - name: Upload AAB
-        if: needs.detect-affected.outputs.affected_scope == 'full'
-        uses: actions/upload-artifact@v7
-        with:
-          name: app-debug-aab
-          path: app/build/outputs/bundle/debug/*.aab
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Upload baselineprofile APKs
-        if: needs.detect-affected.outputs.affected_scope == 'full'
-        uses: actions/upload-artifact@v7
-        with:
-          name: baselineprofile-apks
-          path: baselineprofile/build/outputs/apk/**/*.apk
-          if-no-files-found: ignore
-          retention-days: 7
-
       - name: Upload test and lint reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: app-reports
           path: |
-            app/build/reports/**
-            app/build/test-results/**
-            feature/carddiagnostics/build/reports/**
-            feature/carddiagnostics/build/test-results/**
-            build/reports/problems/**
+            **/build/reports/**
+            **/build/test-results/**
           if-no-files-found: warn
           retention-days: 7
-
       - name: Upload failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: android-ci-${{ github.job }}-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          name: android-ci-failure-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            app/build/reports/**
-            app/build/test-results/**
-            app/build/outputs/**
-            baselineprofile/build/reports/**
-            baselineprofile/build/outputs/**
-            build/reports/problems/**
             **/hs_err_pid*.log
             **/*.hprof
           if-no-files-found: warn
           retention-days: 7
 
   instrumentation-smoke:
-    needs:
-      - detect-affected
-      - verify-build
-    if: needs.detect-affected.outputs.run_instrumentation == 'true'
+    needs: [select-checks, verify-build]
+    if: needs.select-checks.outputs.run_instrumentation == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    permissions:
-      contents: read
     env:
-      SMOKE_TEST_CLASSES: ${{ needs.detect-affected.outputs.smoke_test_classes }}
+      SMOKE_TEST_CLASSES: ${{ needs.select-checks.outputs.smoke_test_classes }}
       SMOKE_POST_BOOT_STABILIZATION_SECS: 30
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v6
-      - name: Set up Android instrumentation environment
-        uses: ./.github/actions/android-build-env
+      - uses: actions/checkout@v7
+      - uses: gradle/actions/wrapper-validation@v6
+      - uses: ./.github/actions/android-build-env
         with:
           setup-android-sdk: 'true'
-          run-gradle-stability-check: 'false'
-          run-workflow-quality-check: 'false'
-          run-lint-ignore-policy-check: 'false'
-          run-jetpack-compat-check: 'false'
-          run-baselineprofile-journey-check: 'false'
-          run-module-dependency-check: 'false'
       - name: Enable KVM acceleration
-        run: |
-          if [[ ! -e /dev/kvm ]]; then
-            echo "::error::/dev/kvm is unavailable; refusing to run the emulator without hardware acceleration."
-            exit 1
-          fi
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
-            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          # Trigger queues events asynchronously; wait before checking the new permissions.
-          sudo udevadm settle --timeout=30
-          if ! test -r /dev/kvm || ! test -w /dev/kvm; then
-            echo "::error::/dev/kvm is not readable and writable by the current user."
-            exit 1
-          fi
+        run: bash scripts/quality/enable_kvm.sh
       - name: Build app and instrumentation APKs
-        run: |
-          ./gradlew --no-daemon \
-            :app:assembleDebug \
-            :app:assembleDebugAndroidTest \
-            -Pbaseline.enableX86_64=true
+        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest -Pbaseline.enableX86_64=true
       - name: Run selected instrumentation smoke tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -257,33 +116,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: instrumentation-smoke-reports
-          path: |
-            app/build/reports/androidTests/smoke/**
-            app/build/outputs/androidTest-results/**
-            app/build/reports/androidTests/connected/**
+          path: app/build/reports/androidTests/smoke/**
           if-no-files-found: warn
           retention-days: 7
-
-  cleanup-caches:
-    needs:
-      - verify-build
-      - instrumentation-smoke
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      actions: write
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Cleanup GitHub Actions caches
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          bash scripts/quality/cleanup_github_actions_caches.sh \
-            --repo "${{ github.repository }}" \
-            --max-total-mb 2048 \
-            --keep-recent-days 1

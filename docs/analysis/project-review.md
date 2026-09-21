@@ -920,7 +920,7 @@ SDK 修复周期不能依赖纯客户端排期。服务端应确认 QLZ 配置�
 | E14 | [App Manifest](../../app/src/main/AndroidManifest.xml) | 组件、方向、权限和隔离 |
 | E15 | [NativeBridge](../../app/src/main/kotlin/com/ytone/longcare/platform/webview/NativeBridge.kt)、[WebViewScreen](../../app/src/main/kotlin/com/ytone/longcare/features/webview/ui/WebViewScreen.kt) | 最小关闭能力与容器生命周期 |
 | E16 | [Profile 生成器](../../baselineprofile/src/main/java/com/ytone/longcare/baselineprofile/BaselineProfileGenerator.kt)、[启动测试](../../baselineprofile/src/main/java/com/ytone/longcare/baselineprofile/StartupBenchmarks.kt) | 性能采集与断言现状 |
-| E17 | [本地 preflight](../../scripts/quality/preflight_local.sh)、[affected modules](../../scripts/quality/affected-modules.sh) | 实际测试任务范围 |
+| E17 | [本地 preflight](../../scripts/quality/preflight_local.sh)、[CI 冒烟选择](../../scripts/quality/select_ci_smoke.sh) | 实际测试任务范围 |
 | E18 | [Android CI](../../.github/workflows/android-ci.yml)、[Android Release](../../.github/workflows/android-release.yml) | CI 条件、单应用发布和验证顺序 |
 | E19 | [QLZ 未完成任务](../../openspec/changes/use-qlz-custom-evaluation-ui/tasks.md)、[连续评估规格](../../openspec/specs/device-h5-evaluation-flow/spec.md) | 真机验收边界与已落地 H5 契约 |
 | E20 | [Release 风险策略](../../openspec/specs/approved-vendor-release/spec.md)、[QLZ 集成说明](../integrations/qlz-sdk.md) | 风险接受范围和历史验证 |

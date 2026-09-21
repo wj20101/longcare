@@ -1,89 +1,23 @@
 name: Android Build Environment
-
-description: Configure Java/Gradle/Android SDK and run shared low-cost Android guardrails. This action is environment/setup-focused and should not replace workflow-specific gate selection.
-
+description: Prepare Java, Gradle and Android SDK. Quality gates belong to the calling workflow.
 inputs:
   setup-android-sdk:
-    description: Whether to install Android SDK packages required for Android builds.
-    required: false
+    description: Install required Android SDK packages.
     default: "false"
   android-packages:
-    description: Android SDK packages to install when setup-android-sdk is true.
-    required: false
+    description: Android SDK packages to install.
     default: "platform-tools platforms;android-37.0"
-  run-gradle-stability-check:
-    description: Whether to run verify_gradle_stability.sh.
-    required: false
-    default: "true"
-  run-workflow-quality-check:
-    description: Whether to run verify_ci_workflow_quality.sh.
-    required: false
-    default: "false"
-  run-lint-ignore-policy-check:
-    description: Whether to run verify_lint_ignore_policy.sh.
-    required: false
-    default: "true"
-  run-jetpack-compat-check:
-    description: Whether to run verify_jetpack_compat_apis.sh.
-    required: false
-    default: "true"
-  run-baselineprofile-journey-check:
-    description: Whether to run verify_baselineprofile_journeys.sh.
-    required: false
-    default: "true"
-  run-module-dependency-check:
-    description: Whether to run verify_module_dependency_whitelist.sh.
-    required: false
-    default: "true"
-
 runs:
   using: composite
   steps:
-    - name: Set up JDK 21
-      uses: actions/setup-java@v5
+    - uses: actions/setup-java@v5
       with:
         distribution: temurin
         java-version: "21"
-
-    - name: Set up Gradle
-      uses: gradle/actions/setup-gradle@v5
-
-    - name: Set up Android SDK
+    - uses: gradle/actions/setup-gradle@v5
+    - uses: android-actions/setup-android@v4.0.1
       if: ${{ inputs.setup-android-sdk == 'true' }}
-      uses: android-actions/setup-android@v4.0.1
       with:
         packages: ${{ inputs.android-packages }}
-
-    - name: Grant execute permission for gradlew
-      shell: bash
+    - shell: bash
       run: chmod +x gradlew
-
-    - name: Verify Gradle stability
-      if: ${{ inputs.run-gradle-stability-check == 'true' }}
-      shell: bash
-      run: bash scripts/quality/verify_gradle_stability.sh
-
-    - name: Verify lint ignore policy
-      if: ${{ inputs.run-lint-ignore-policy-check == 'true' }}
-      shell: bash
-      run: bash scripts/lint/verify_lint_ignore_policy.sh app/lint.xml
-
-    - name: Verify Jetpack compat API guardrails
-      if: ${{ inputs.run-jetpack-compat-check == 'true' }}
-      shell: bash
-      run: bash scripts/quality/verify_jetpack_compat_apis.sh
-
-    - name: Verify baseline profile journey guardrails
-      if: ${{ inputs.run-baselineprofile-journey-check == 'true' }}
-      shell: bash
-      run: bash scripts/quality/verify_baselineprofile_journeys.sh
-
-    - name: Verify module dependency whitelist
-      if: ${{ inputs.run-module-dependency-check == 'true' }}
-      shell: bash
-      run: bash scripts/quality/verify_module_dependency_whitelist.sh .
-
-    - name: Verify CI workflow quality guardrails
-      if: ${{ inputs.run-workflow-quality-check == 'true' }}
-      shell: bash
-      run: bash scripts/quality/verify_ci_workflow_quality.sh

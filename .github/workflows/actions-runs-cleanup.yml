@@ -12,7 +12,7 @@ on:
       artifact_keep_days:
         description: "保留最近多少天内的构建产物"
         required: false
-        default: "2"
+        default: "7"
       artifact_max_total_mb:
         description: "构建产物总量超过多少 MB 时继续清理"
         required: false
@@ -60,7 +60,7 @@ jobs:
           set -euo pipefail
 
           KEEP_DAYS="${KEEP_DAYS:-7}"
-          ARTIFACT_KEEP_DAYS="${ARTIFACT_KEEP_DAYS:-2}"
+          ARTIFACT_KEEP_DAYS="${ARTIFACT_KEEP_DAYS:-7}"
           ARTIFACT_MAX_TOTAL_MB="${ARTIFACT_MAX_TOTAL_MB:-1024}"
           CACHE_MAX_TOTAL_MB="${CACHE_MAX_TOTAL_MB:-2048}"
           CACHE_KEEP_RECENT_DAYS="${CACHE_KEEP_RECENT_DAYS:-1}"

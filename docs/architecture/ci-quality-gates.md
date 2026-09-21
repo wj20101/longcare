@@ -1,6 +1,6 @@
 # CI、质量门禁与发布
 
-最后核对：2026-09-20（代码与文档静态核对；非本轮全量运行验收）
+最后核对：2026-09-21（CI/CD 精简；本地构建与测试已核对，线上结果另行验收）
 
 本文描述当前脚本和 GitHub Actions 的实际行为。门禁名称/Owner 元数据以 `scripts/quality/quality_gate_registry.json` 为准；是否真正执行则以对应 workflow 和 runner 脚本为准。
 
@@ -21,7 +21,7 @@
 |---|---|
 | `bash scripts/quality/preflight_local.sh` | `local-fast` |
 | `... --changed-only` | 使用可靠 base ref 缩小检查；无法解析时安全回退到完整 `local-fast` |
-| `... --full` | `local-fast` + 主应用/读卡 Feature Kotlin 编译 + App、读卡 Feature、腾讯集成、Common/Data/UI、Identification/PhotoUpload 单测 |
+| `... --full` | `local-fast` + 主应用/读卡 Feature Kotlin 编译 + 完整 Android 模块 Debug 单测及 Model/Domain JVM 单测 |
 | `... --release` | `--full` + `run_quality_gate.sh` 质量快照 |
 
 `local-fast` 当前包含：
@@ -32,7 +32,7 @@
 - `verify_module_dependency_whitelist.sh`
 - `verify_module_api_visibility.sh`
 
-`--full` 的显式测试列表目前不含 `:feature:home:testDebugUnitTest` 和 `:feature:location:testDebugUnitTest`，虽然这两个模块已有测试源码；涉及它们时需补跑，不将 `--full` 描述为全模块全量测试。
+`--full` 与 CI 共用 `run_jvm_tests.sh`：执行无模块前缀的 `testDebugUnitTest` 及 `:core:model:test :core:domain:test`。没有测试源码的模块可能显示 NO-SOURCE；Gradle 缓存命中不等于重新执行测试。
 
 `--changed-only` 按 `BASE_REF`、`origin/$GITHUB_BASE_REF`、`origin/master`、`origin/main` 的顺序寻找强基线。找不到时不会相信局部 diff，而是扩大扫描，避免 false green。
 
@@ -50,27 +50,26 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 
 ## Android CI
 
-`.github/workflows/android-ci.yml` 使用普通 PR/Push 的无设备构建/专项单测主阻断路径，并在 affected scope 明确要求时追加独立 instrumentation smoke job：
+代码/构建改动执行完整 JVM 业务测试、App Debug 构建、App/读卡 Lint 和质量守卫；不再使用固定 App 测试类过滤、伪模块影响列表或 full/partial 构建分支。
 
-1. `detect-affected` 计算 Gradle tasks、`run_instrumentation` 和 smoke test classes；Android CI 工作流、smoke runner 或影响分析器本身发生变更时强制执行 instrumentation，避免 CI 控制面改动产生假绿。
-2. `verify-build` 执行 ci-required guards、Lint 和 Debug 构建，不启动模拟器；full scope 额外构建 Debug AAB。
-3. 仅当 `run_instrumentation=true` 时，`instrumentation-smoke` 先启用并验证 `/dev/kvm` 硬件加速，再在 API 36 x86_64 emulator 上构建 App/androidTest APK，并通过 `.github/scripts/run-instrumentation-smoke.sh` 逐个执行选中的 App test class；KVM 不可用时快速失败，不允许退化为不稳定的软件模拟。
-4. Debug APK、构建报告和诊断产物按既有策略上传；smoke 报告和失败 logcat 作为 7 天 artifact 上传，未受影响的改动不承担 emulator 成本。
+1. `select-checks` 始终验证文档，并由 `select_ci_smoke.sh` 选择是否需要构建和设备冒烟；仅文档变更不启动 Gradle/模拟器。
+2. `verify-build` 调用 `run_ci_checks.sh` 和 `run_jvm_tests.sh`，上传主应用 Debug APK 和所有模块测试报告，不常规构建 Debug AAB。
+3. `instrumentation-smoke` 在前置构建成功且所选路径需要时执行。API 36 模拟器以真实启动用例为基础，按导航、WebView、服务、销售 UI 等路径追加离线用例；不自动运行需账号/硬件的 opt-in 测试。
+4. 手动 CI 或差异基线不可用时执行完整基础验证及固定离线冒烟集合，不将 HEAD 自身比较为空视为无需验证。
+5. PR 并发组跨提交稳定，新提交只取消同 PR 旧运行；主分支 Push 不自动取消。CI 本身仅有读取权限，无缓存删除 job。
 
-PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；同一 PR 推送新提交时会取消旧流水线，避免过期 build 与 emulator job 继续占用资源。主分支 push 不自动取消，确保每个已合入提交仍有独立结果。
+`enable_kvm.sh` 被 CI 和独立 Baseline 工作流共用：等待 udev 权限事件完成，再确认 KVM 存在且可读写，缺失/超时/权限不足均阻断。Mac 本地模拟器不使用 Linux KVM；本地成功不替代 Actions 的 Linux 验收。
 
-该条件 job 仍不是完整业务回归矩阵。普通主阻断路径执行读卡 Feature 单测及主应用长按入口、NFC 平台、导航专项单测，但不覆盖正式应用完整业务单测或完整用户旅程，条件 smoke 也只执行 affected scope 选中的 App instrumentation class。完整 `:app` 与 `:core:data` connected tests 通过 `scripts/quality/run_connected_android_tests.sh` 在本地或发布验收环境执行。
+完整 JVM 集合仍不等于全部硬件或真实业务旅程验收。完整 connected tests 可由 `run_connected_android_tests.sh` 在指定设备执行。测试报告区分执行、缓存、跳过和未执行。
 
-KVM 权限规则触发后，通过 `udevadm settle --timeout=30` 等待异步事件处理完成，再检查当前用户的读写权限；超时或权限仍不足时继续阻断。
-
-`test_ci_upgrade_validation.py` 由 workflow 守卫调用：执行工作流中的 KVM 脚本并注入缺失、权限拒绝、权限延迟生效和事件等待超时场景，在临时 Git 仓库逐项验证三类 CI 路径触发 smoke，并验证 PR 并发分组跨提交稳定且彼此隔离。这些本地守卫不替代真实 Actions 模拟器运行。
+工作流守卫执行 `test_*.py`：覆盖选择器、KVM、PR 并发、门禁调用、签名/产物、版本推送时机及存储保护。测试通过本地 Git 与工具替身执行，不发布版本或删除远端数据；步骤标题和固定时长不再作为主要约束。
 
 当前 ci-required guards：
 
 | 守卫 | 保护内容 |
 |---|---|
 | `verify_no_tracked_keystore_files.sh` | 禁止 keystore 进入 Git |
-| `verify_ci_workflow_quality.sh` | workflow action 版本、timeout、retention、触发和治理约束 |
+| `verify_ci_workflow_quality.sh` | 必要权限、版本完整性、触发、验证和发布行为契约 |
 | `verify_validation_app_isolation.sh` | 检测只读本地、无旧助手模块或外部检测组件、主应用身份与共享实现 |
 | `verify_lint_ignore_policy.sh` | 禁止不受控 Lint ignore |
 | `verify_jetpack_compat_apis.sh` | 受保护 Jetpack API 使用 |
@@ -86,16 +85,17 @@ KVM 权限规则触发后，通过 `udevadm settle --timeout=30` 等待异步事
 
 ## Android Release
 
-`.github/workflows/android-release.yml` 只有一条正式 Release 流程，无额外模式选项。先要求目标 commit 的 Android CI 成功，再执行发布校验；文档提交若没有触发 CI，须先对该提交手动运行 Android CI。
+唯一入口为分支上的 `workflow_dispatch`，无发布模式、Tag Push、临时依赖切换或生成 Baseline 选项。依赖来源由版本化构建配置管理；Baseline 使用独立工作流。
 
-- 通过 `workflow_dispatch` 从分支发布；现有 tag push 拒绝规则保持不变，避免自动递增版本号修改已打标签的提交。
-- 执行 `verify_vendor_sdk_release_readiness.sh`。
-- `assembleRelease` / `bundleRelease` 依赖 `verifyReleaseConfiguration`，不传额外模式参数。
-- 要求真实 Release keystore、密码和 alias；禁止 debug keystore fallback。
-- 生成主应用压缩 Release APK/AAB。发布前检查主 APK 签名、包名、版本、不可调试属性、R8 mapping 及导出组件；缺包或失败阻断。
-- 自动递增 versionCode、推送版本提交，tag 为 `v<versionName>-<versionCode>`；名称为 `Release v<versionName> (<versionCode>)`，非草稿、非预发布，并设为 Latest。
-- APK/AAB 命名为 `app-v<versionName>-<yyMMdd>-<versionCode>-release.apk/aab`，Actions artifact 名称为 `app-release-artifacts`；不改动历史 Release 的现有下载链接。
-- `release-checksums.txt` 覆盖主 APK/AAB，主应用 mapping 随 Actions artifact 留存，不再构建或上传助手产物。
+- 按准确源 SHA/分支确认 Android CI 成功且 `verify-build` 真正通过；文档专用绿色结果不能充当构建证据，需手动 CI。
+- 不重建无消费的 Debug APK；保留必要的 Lint 与厂商风险检查，常规静态门禁由同源提交 CI 提供。
+- 要求真实 Release 签名；`assembleRelease / bundleRelease` 仍依赖 `verifyReleaseConfiguration`，R8/资源压缩及导出组件检查不变。
+- 本地递增版本并同步技术栈文档，正式 APK/AAB、签名、身份、版本、不可调试属性、mapping 及校验和全部通过后，才提交并推送版本。
+- 发布使用稳定并发组且不自动取消进行中的发布；分支已前进或标签存在时拒绝强推/覆盖，发布失败保留诊断，不自动改写远端历史。
+- 标签为 `v<versionName>-<versionCode>`，正式、非草稿、非预发布，设为 Latest；APK/AAB 保留版本、日期、版本号和 release 标识。
+- 主应用 APK/AAB、SHA-256 校验和及 mapping ZIP 进入 GitHub Release；Actions 同时留存验证产物。历史版本不修改，不构建独立助手。
+
+`test_release_workflow.py` 和 `test_release_sequence.py` 覆盖产物命名、签名/身份失败、源 CI、版本只在本地准备、远端分支前进、已存在标签和推送时序。`test_release_policy.py` 保护既有厂商风险接受范围；不使用签名/Lint 豁免制造绿色。
 
 用户已明确接受以下当前风险，Release 输出警告而不因此单独失败；这不是问题已修复或全设备兼容的保证：
 
@@ -104,7 +104,6 @@ KVM 权限规则触发后，通过 `udevadm settle --timeout=30` 等待异步事
 - 当前腾讯人脸 ARM64 native library 不满足 16 KB 对齐。
 - 人脸 AAR 的 consumer rules 含已知全局选项。
 
-`test_release_policy.py` 由 workflow 守卫调用，覆盖风险告警、旧模式参数拒绝、错误参数、缺失报告和其他版本不自动放行。`test_release_workflow.py` 离线执行实际工作流的产物命名、校验和与元数据片段，以工具替身覆盖主 APK 签名/身份/调试属性失败，并断言单应用上传路径、发布前检查顺序、正式发布标记、目标提交 CI 守卫和读卡隔离。不得通过 `continue-on-error` 或关闭签名/Lint 来放行其他失败。
 
 详见 [QLZ SDK 接入](../integrations/qlz-sdk.md)和[路线图](../analysis/project-review.md#17-分阶段技术方案与实施顺序)。
 
@@ -112,12 +111,14 @@ KVM 权限规则触发后，通过 `udevadm settle --timeout=30` 等待异步事
 
 | Workflow | 作用 |
 |---|---|
-| `Baseline Profile` | 手动/定时生成并校验 Baseline Profile，清理缓存 |
+| `Baseline Profile` | 独立手动/定时生成并校验 Baseline Profile |
 | `Face SDK Migration Check` | 验证本地 AAR 与私有 Maven 来源切换后的 compile/lint/manifest/assemble |
 | `CI Health Monitor` | 收集运行健康指标并按阈值报告 |
-| `Actions Runs Cleanup` | 定时/手动清理旧 Actions run |
+| `Actions Runs Cleanup` | 唯一存储维护入口，清理过期 run/artifact/cache |
 
-`Face SDK Migration Check` 同样采用 build-only 策略，不把业务测试作为切源阻断项。
+`Face SDK Migration Check` 仅相关接入文件变化或手动运行时执行切源构建检查；普通业务单测由 Android CI 负责。
+
+存储维护不影响已完成构建的结果。近期创建或访问的缓存受到保护；报告和运行记录至少保留 7 天，运行保留期不能短于 artifact 保留期。容量超标优先删除到期对象，仍超限只告警，不提前删除保护期内对象；GitHub Release 不在清理范围内。
 
 ## Release-only 关键门禁
 
@@ -162,9 +163,9 @@ bash scripts/quality/preflight_local.sh --full
 # 完整 App 与 core:data connected tests
 ANDROID_SERIAL=emulator-5554 bash scripts/quality/run_connected_android_tests.sh --continue
 
-# App 基础构建检查；完整 CI 任务由 affected-modules.sh 决定
+# 与 CI 相同的 JVM、Lint、Debug 构建入口
 bash scripts/quality/verify_validation_app_isolation.sh .
-./gradlew --no-daemon :app:lintDebug :app:assembleDebug
+bash scripts/quality/run_jvm_tests.sh :app:lintDebug :feature:carddiagnostics:lintDebug :app:assembleDebug
 bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
 
 # 查看完整 release-oriented 快照，已接受厂商风险仍输出警告

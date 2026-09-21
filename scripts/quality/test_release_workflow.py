@@ -140,10 +140,11 @@ if [[ "${DEBUGGABLE:-}" == true ]]; then echo application-debuggable; fi
         self.assertIn(":app:assembleRelease :app:bundleRelease", step("Build release APK and AAB"))
         self.assertNotIn("assistant", WORKFLOW)
         self.assertIn("fail_on_unmatched_files: true", publish)
-        self.assertIn("verify_validation_app_isolation.sh", step("Run ci-required quality gates"))
+        self.assertIn("verify_validation_app_isolation.sh",
+                      (ROOT / "scripts/quality/run_ci_checks.sh").read_text())
         ordered_steps = ("Build release APK and AAB", "Run release-required exported component guard",
                          "Verify release APK identities and signatures", "Generate release checksums",
-                         "Upload release artifacts", "Publish artifacts to GitHub Releases")
+                         "Upload release artifacts", "Push verified version", "Publish artifacts to GitHub Releases")
         positions = [WORKFLOW.index(f"- name: {name}\n") for name in ordered_steps]
         self.assertEqual(sorted(positions), positions)
         vendor = step("Check vendor SDK risk policy")
@@ -153,9 +154,12 @@ if [[ "${DEBUGGABLE:-}" == true ]]; then echo application-debuggable; fi
         for variable in ("ANDROID_KEYSTORE_BASE64", "RELEASE_STORE_PASSWORD", "RELEASE_KEY_ALIAS", "RELEASE_KEY_PASSWORD"):
             self.assertIn(f'Missing secret: {variable}', signing)
         ci = step("Verify Android CI success for target commit")
-        self.assertIn("select(.headSha == $target_sha)", ci)
-        self.assertIn('"${CONCLUSION}" != "success"', ci)
-        self.assertIn("exit 1", step("Reject tag-triggered auto version bump"))
+        self.assertIn("verify_source_ci.sh", ci)
+        self.assertNotIn("tags:", WORKFLOW)
+        self.assertNotIn("inputs:", WORKFLOW)
+        self.assertIn("group: android-release\n  cancel-in-progress: false", WORKFLOW)
+        self.assertNotIn(":app:assembleDebug", WORKFLOW)
+        self.assertNotIn("continue-on-error", WORKFLOW)
 
 
 if __name__ == "__main__":

@@ -67,6 +67,7 @@ OpenSpec 采用 delta-first，主规格不覆盖所有存量能力。`config.yam
 
 | Change | 实际状态 | 当前适用说明 |
 |---|---|---|
+| [simplify-ci-cd](../openspec/changes/simplify-ci-cd/tasks.md) | 实施中，线上验收待推送后执行 | 删除重复流水线与旧脚本，完整 JVM 集合、发布写入后移、存储保护 |
 | [integrate-card-diagnostics-in-app](../openspec/changes/integrate-card-diagnostics-in-app/tasks.md) | 长按入口已由用户确认真机验收，读卡硬件验收待安排 | 登录页中央大 Logo 长按确认进入 NFC/R65C，无震动，退役助手与双包发布 |
 | [publish-assistant-release-artifact](../openspec/changes/publish-assistant-release-artifact/tasks.md) | 任务全部勾选，相关主规格已同步，目录尚未归档 | 历史双应用同一 Release 方案；已由主应用内读卡及单应用发布变更替代，后续归档不得覆盖新契约 |
 | [remove-confirmed-redundancy](../openspec/changes/remove-confirmed-redundancy/tasks.md) | 任务全部勾选，目录尚未归档 | 无新行为规格；保留清理范围，不再次执行已完成删除 |
@@ -111,4 +112,4 @@ git diff --check
 
 文档脚本只读，排除已删除文件和 ignored 构建输出。根入口及所有非 OpenSpec/技能 Markdown 必须在本页索引；OpenSpec 主规格及未归档变更的 tasks 也须在本页链接；其余 OpenSpec 与 `.agents/skills` 由固定目录分类并参与全量链接检查，技能文档不作为产品要求。历史文件不会因旧版本词句被自动改写。
 
-脚本不访问外链，不检查 reference-style 链接、全部 Markdown 方言或全部依赖版本，也不能证明自然语言契约和代码一致。目前它是手动检查入口，未接入 CI/preflight。业务变更按[质量文档](architecture/ci-quality-gates.md)补充对应测试；合规材料须另行核对线上实际状态。
+脚本不访问外链，不检查 reference-style 链接、全部 Markdown 方言或全部依赖版本，也不能证明自然语言契约和代码一致。它已接入 Android CI 的文档检查，本地仍可单独执行。业务变更按[质量文档](architecture/ci-quality-gates.md)补充对应测试；合规材料须另行核对线上实际状态。

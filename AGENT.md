@@ -99,7 +99,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-results-debug.txt
 ```
 
-按风险补充 focused test、instrumentation、模拟器或真机验证。普通 Android CI 包含读卡 Feature、登录页长按入口、NFC 平台及导航专项单测，但不覆盖正式应用完整业务单测；不要把“CI 绿色”误解为业务流程已完整回归。
+按风险补充 focused test、instrumentation、模拟器或真机验证。普通 Android CI 执行完整 JVM 业务单测、构建/Lint 和按需离线设备冒烟；真机、在线接口和厂商硬件仍需专项验收，不把“CI 绿色”当作全业务全硬件已验收。
 
 ## 发布现实
 

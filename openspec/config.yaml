@@ -38,7 +38,7 @@ context: |
   验证基线：
   - 文档、边界或小改动：bash scripts/quality/preflight_local.sh --local-fast
   - Kotlin/业务逻辑：bash scripts/quality/preflight_local.sh --full，并运行受影响模块的 focused tests。
-  - 普通 Android CI 执行 guards、App 构建/Lint、读卡 Feature 单测/Lint、App 长按入口/NFC/导航专项单测；具体任务及受影响范围以 scripts/quality/affected-modules.sh 和 workflow 为准。
+  - 普通 Android CI 执行 guards、完整 JVM 业务单测、App 构建/Lint、读卡 Feature Lint 与按需离线冒烟；入口为 run_jvm_tests.sh、select_ci_smoke.sh 和 workflow。
   - 按风险补充 instrumentation、模拟器或真机验证；不得把普通 CI 绿色当作业务回归证据。
 
 rules:

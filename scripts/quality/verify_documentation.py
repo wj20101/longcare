@@ -140,7 +140,7 @@ def main() -> int:
     if errors:
         return 1
     print(f"[docs][PASS] {len(files)} Markdown files: local links/anchors, index coverage, selected live versions")
-    print("[docs][NOTE] External URLs, reference-style links and prose semantics require separate review; not wired into CI/preflight.")
+    print("[docs][NOTE] External URLs, reference-style links and prose semantics require separate review.")
     return 0
 
 

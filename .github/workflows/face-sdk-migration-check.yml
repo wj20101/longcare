@@ -4,12 +4,9 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - "app/build.gradle.kts"
-      - "app/src/main/AndroidManifest.xml"
-      - "constants.gradle.kts"
-      - "settings.gradle.kts"
-      - "gradle.properties"
       - "scripts/face-sdk/**"
+      - "integration/txface*/**"
+      - "build-logic/convention/src/main/kotlin/TencentFaceConventionPlugin.kt"
       - "scripts/quality/verify_release_exported_components.sh"
       - ".github/actions/android-build-env/action.yml"
       - ".github/workflows/face-sdk-migration-check.yml"
@@ -30,6 +27,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Run CI quality gates
+        run: bash scripts/quality/run_ci_checks.sh
+
       - name: Validate Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v6
 
@@ -37,7 +37,6 @@ jobs:
         uses: ./.github/actions/android-build-env
         with:
           setup-android-sdk: 'true'
-          run-workflow-quality-check: 'true'
 
       - name: Grant execute permission for face SDK scripts
         run: |

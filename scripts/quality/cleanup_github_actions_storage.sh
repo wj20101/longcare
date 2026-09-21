@@ -8,7 +8,7 @@ Usage: cleanup_github_actions_storage.sh --repo OWNER/REPO [options]
 Options:
   --repo OWNER/REPO             Repository to inspect and clean. Required.
   --run-keep-days N             Keep completed workflow runs newer than N days. Default: 7.
-  --artifact-keep-days N        Keep artifacts newer than N days. Default: 2.
+  --artifact-keep-days N        Keep artifacts newer than N days. Minimum/default: 7.
   --artifact-max-total-mb N      Maximum allowed total artifact size in MB. Default: 1024.
   --cache-max-total-mb N        Maximum allowed total cache size in MB. Default: 2048.
   --cache-keep-recent-days N    Protect caches created or accessed within N days. Default: 1.
@@ -19,7 +19,7 @@ USAGE
 
 repo=""
 run_keep_days=7
-artifact_keep_days=2
+artifact_keep_days=7
 artifact_max_total_mb=1024
 cache_max_total_mb=2048
 cache_keep_recent_days=1
@@ -99,6 +99,14 @@ require_non_negative_int "--artifact-keep-days" "${artifact_keep_days}"
 require_positive_int "--artifact-max-total-mb" "${artifact_max_total_mb}"
 require_positive_int "--cache-max-total-mb" "${cache_max_total_mb}"
 require_non_negative_int "--cache-keep-recent-days" "${cache_keep_recent_days}"
+if (( run_keep_days < 7 || artifact_keep_days < 7 )); then
+  echo 'Run and artifact retention must be at least 7 days.' >&2
+  exit 1
+fi
+if (( run_keep_days < artifact_keep_days )); then
+  echo 'Run retention cannot be shorter than artifact retention.' >&2
+  exit 1
+fi
 
 if [[ -z "${GH_TOKEN:-}" ]]; then
   echo "GH_TOKEN is required and must have actions:write permission." >&2
@@ -206,7 +214,7 @@ delete_old_runs() {
     fi
   done < <(
     gh api --paginate "repos/${repo}/actions/runs?status=completed&per_page=100" \
-      --jq '.workflow_runs[]? | [.id,.created_at,.name,.conclusion,.html_url] | @tsv'
+      --jq '.workflow_runs[]? | [.id,.updated_at,.name,.conclusion,.html_url] | @tsv'
   )
 
   {
@@ -245,7 +253,6 @@ delete_old_artifacts() {
   local total_bytes=0
   local remaining_bytes=0
   local age_candidates=0
-  local capacity_candidates=0
 
   echo "[actions-storage-cleanup] Listing artifacts for ${repo}..."
 
@@ -285,9 +292,6 @@ delete_old_artifacts() {
     elif (( created_epoch < cutoff_epoch )); then
       reason="older_than_window"
       age_candidates=$((age_candidates + 1))
-    elif (( remaining_bytes > threshold_bytes )); then
-      reason="over_capacity"
-      capacity_candidates=$((capacity_candidates + 1))
     else
       continue
     fi
@@ -312,6 +316,10 @@ delete_old_artifacts() {
     fi
   done < "${artifact_sorted_tsv_file}"
 
+  if (( remaining_bytes > threshold_bytes )); then
+    echo '[actions-storage-cleanup][WARN] Artifact budget exceeded; protected artifacts were retained.' >&2
+  fi
+
   {
     echo "# GitHub Actions Artifact Cleanup Summary"
     echo ""
@@ -324,7 +332,6 @@ delete_old_artifacts() {
     echo "- threshold_mb: \`${artifact_max_total_mb}\`"
     echo "- deletion_candidates: \`${candidates}\`"
     echo "- time_or_expired_candidates: \`${age_candidates}\`"
-    echo "- capacity_candidates: \`${capacity_candidates}\`"
     echo "- candidate_size_mb: \`$(format_mb "${candidate_bytes}")\`"
     if [[ "${dry_run}" == "true" ]]; then
       echo "- would_delete_artifacts: \`${candidates}\`"
