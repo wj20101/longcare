@@ -58,11 +58,13 @@ class SharedOrderDetailViewModel @Inject constructor(
                 }
                 is ApiResult.Exception -> {
                     _uiState.value = OrderDetailUiState.Error(
-                        textResolver.text(R.string.common_network_error_retry),
+                        textResolver.text(result.exception.orderDetailErrorMessage()),
                     )
                 }
                 is ApiResult.Failure -> {
-                    _uiState.value = OrderDetailUiState.Error(result.message)
+                    _uiState.value = OrderDetailUiState.Error(
+                        result.message.ifBlank { textResolver.text(R.string.order_detail_load_failed) }
+                    )
                 }
             }
         }

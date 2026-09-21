@@ -30,9 +30,9 @@ internal class NfcOrderCompletionDelegate(
         val serviceContent = if (selectedProjectIds.isNotEmpty()) {
             projectList
                 .filter { selectedProjectIds.contains(it.projectId) }
-                .joinToString(", ") { it.projectName }
+                .joinToString(", ") { it.projectName.orEmpty() }
         } else {
-            projectList.joinToString(", ") { it.projectName }
+            projectList.joinToString(", ") { it.projectName.orEmpty() }
         }
 
         return ServiceCompleteData(

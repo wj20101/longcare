@@ -77,7 +77,7 @@ internal fun BoxScope.EndServiceSelectionSuccessContent(
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(projectList) { project ->
                 ServiceSelectionItem(
-                    name = project.projectName,
+                    name = project.projectName.orEmpty(),
                     duration = project.serviceTime,
                     isSelected = selectedProjectIds.contains(project.projectId),
                     onClick = { viewModel.toggleSelection(project.projectId) }

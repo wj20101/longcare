@@ -61,7 +61,7 @@ fun SelectedServicesCard(
                                 stringResource(
                                     R.string.service_countdown_selected_service_item,
                                     index + 1,
-                                    project.projectName,
+                                    project.projectName.orEmpty(),
                                     project.serviceTime,
                                 ),
                             )

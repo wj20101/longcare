@@ -59,7 +59,7 @@ fun InOrderServiceItem(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = order.name,
+                        text = order.name.orEmpty(),
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
@@ -80,7 +80,7 @@ fun InOrderServiceItem(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = stringResource(R.string.common_address, order.liveAddress),
+                    text = stringResource(R.string.common_address, order.liveAddress.orEmpty()),
                     fontSize = 12.sp,
                     color = Color.Gray
                 )

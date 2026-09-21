@@ -61,13 +61,13 @@ class OrderDetailViewModel @Inject constructor(
                         ),
                     )
                     _uiState.value = OrderDetailUiState.Error(
-                        textResolver.text(R.string.order_detail_load_failed),
+                        textResolver.text(result.exception.orderDetailErrorMessage()),
                     )
                 }
 
                 is ApiResult.Failure -> {
                     _uiState.value = OrderDetailUiState.Error(
-                        result.message
+                        result.message.ifBlank { textResolver.text(R.string.order_detail_load_failed) }
                     )
                 }
             }

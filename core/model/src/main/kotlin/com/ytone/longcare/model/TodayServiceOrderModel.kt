@@ -29,25 +29,25 @@ data class TodayServiceOrderModel(
      * 姓名
      */
     @param:Json(name = "name")
-    val name: String = "",
+    val name: String? = null,
 
     /**
      * 老人联系电话
      */
     @param:Json(name = "callPhone")
-    val callPhone: String = "",
+    val callPhone: String? = null,
 
     /**
      * 身份证号
      */
     @param:Json(name = "identityCardNumber")
-    val identityCardNumber: String = "",
+    val identityCardNumber: String? = null,
 
     /**
      * 居住地址
      */
     @param:Json(name = "liveAddress")
-    val liveAddress: String = "",
+    val liveAddress: String? = null,
 
     /**
      * 状态:0待执行 1执行中 2任务完成 3作废

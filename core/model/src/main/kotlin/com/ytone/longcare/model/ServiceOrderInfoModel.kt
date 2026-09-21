@@ -60,13 +60,13 @@ data class UserInfoM(
      * 老人姓名
      */
     @param:Json(name = "name")
-    val name: String = "",
+    val name: String? = null,
 
     /**
      * 身份证号码
      */
     @param:Json(name = "identityCardNumber")
-    val identityCardNumber: String = "",
+    val identityCardNumber: String? = null,
 
     /**
      * 年龄
@@ -78,13 +78,13 @@ data class UserInfoM(
      * 性别
      */
     @param:Json(name = "gender")
-    val gender: String = "",
+    val gender: String? = null,
 
     /**
      * 居住地址
      */
     @param:Json(name = "address")
-    val address: String = "",
+    val address: String? = null,
 
     /**
      * 最后服务时间
@@ -108,13 +108,13 @@ data class UserInfoM(
      * 经度
      */
     @param:Json(name = "lng")
-    val lng: String = "",
+    val lng: String? = null,
 
     /**
      * 纬度
      */
     @param:Json(name = "lat")
-    val lat: String = ""
+    val lat: String? = null
 )
 
 /**
@@ -132,7 +132,7 @@ data class ServiceProjectM(
      * 服务项目名称
      */
     @param:Json(name = "projectName")
-    val projectName: String = "",
+    val projectName: String? = null,
 
     /**
      * 服务时长 分钟

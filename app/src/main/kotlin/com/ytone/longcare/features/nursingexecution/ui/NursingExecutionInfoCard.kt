@@ -51,7 +51,7 @@ internal fun ClientInfoCard(modifier: Modifier, orderInfo: ServiceOrderInfoModel
             )
             InfoRow(
                 label = stringResource(R.string.nursing_execution_label_service_content),
-                value = (orderInfo.projectList ?: emptyList()).joinToString { it.projectName }
+                value = (orderInfo.projectList ?: emptyList()).joinToString { it.projectName.orEmpty() }
             )
         }
     }

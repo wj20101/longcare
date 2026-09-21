@@ -25,7 +25,7 @@ internal fun updateServiceItemsFromUiState(
                 (currentState.orderInfo.projectList ?: emptyList()).map { project ->
                     ServiceItem(
                         id = project.projectId,
-                        name = project.projectName,
+                        name = project.projectName.orEmpty(),
                         duration = project.serviceTime,
                         isSelected = selectServiceType != 0
                     )

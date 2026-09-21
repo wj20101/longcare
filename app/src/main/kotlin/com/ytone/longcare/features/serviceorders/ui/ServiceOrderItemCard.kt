@@ -50,7 +50,7 @@ fun ServiceOrderItem(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = order.name,
+                        text = order.name.orEmpty(),
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
@@ -58,14 +58,14 @@ fun ServiceOrderItem(
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = stringResource(R.string.common_address, order.liveAddress),
+                    text = stringResource(R.string.common_address, order.liveAddress.orEmpty()),
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
-                if (order.callPhone.isNotEmpty()) {
+                if (!order.callPhone.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = stringResource(R.string.service_order_contact_phone, order.callPhone),
+                        text = stringResource(R.string.service_order_contact_phone, order.callPhone.orEmpty()),
                         fontSize = 12.sp,
                         color = Color.Gray
                     )

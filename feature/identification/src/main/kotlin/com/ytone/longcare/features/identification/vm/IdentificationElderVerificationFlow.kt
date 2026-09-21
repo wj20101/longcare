@@ -16,8 +16,8 @@ internal suspend fun resolveElderVerificationPayload(
     val orderInfo = orderDetailRepository.getCachedOrderInfo(orderKey) ?: return null
     val userInfo = orderInfo.userInfo ?: return null
     return ElderVerificationPayload(
-        name = userInfo.name,
-        idNo = userInfo.identityCardNumber,
+        name = userInfo.name.orEmpty(),
+        idNo = userInfo.identityCardNumber.orEmpty(),
         userId = userInfo.userId.toString(),
     )
 }

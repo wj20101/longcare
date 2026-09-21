@@ -67,6 +67,7 @@ OpenSpec 采用 delta-first，主规格不覆盖所有存量能力。`config.yam
 
 | Change | 实际状态 | 当前适用说明 |
 |---|---|---|
+| [improve-care-plan-error-feedback](../openspec/changes/improve-care-plan-error-feedback/tasks.md) | 代码、离线回归及构建验证完成，尚未归档 | 护理详情分类提示、明确可空字段对齐；未取得现场失败响应，planId 仅待核实 |
 | [simplify-ci-cd](../openspec/changes/simplify-ci-cd/tasks.md) | 实施中，线上验收待推送后执行 | 删除重复流水线与旧脚本，完整 JVM 集合、发布写入后移、存储保护 |
 | [integrate-card-diagnostics-in-app](../openspec/changes/integrate-card-diagnostics-in-app/tasks.md) | 长按入口已由用户确认真机验收，读卡硬件验收待安排 | 登录页中央大 Logo 长按确认进入 NFC/R65C，无震动，退役助手与双包发布 |
 | [publish-assistant-release-artifact](../openspec/changes/publish-assistant-release-artifact/tasks.md) | 任务全部勾选，相关主规格已同步，目录尚未归档 | 历史双应用同一 Release 方案；已由主应用内读卡及单应用发布变更替代，后续归档不得覆盖新契约 |

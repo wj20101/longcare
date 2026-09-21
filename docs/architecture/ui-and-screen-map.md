@@ -1,6 +1,6 @@
 # 页面与路由地图
 
-最后核对：2026-09-20（代码与文档静态核对；非本轮全量运行验收）
+最后核对：2026-09-21（护理详情错误、重试和返回已做离线回归；非全路由真机验收）
 
 本文列出当前可运行的 Compose 路由、嵌套页面和现实模块归属。导航代码的机器真相位于 `app/src/main/kotlin/com/ytone/longcare/navigation/`。
 
@@ -46,6 +46,8 @@ Navigation 3 使用可保存的 `AppNavEntry` 包装业务路由，为相同参�
 | `ServiceCompleteRoute` | `ServiceCompleteScreen` | `:app` |
 
 `NfcSignInRoute` 通过 `SignInMode.START_ORDER` / `END_ORDER` 复用同一页面。倒计时、结束选择和完成页通过类型安全 payload 传递项目 ID、图片列表和完成摘要。
+
+护理执行与订单详情加载复用现有请求分类显示错误：业务提示原文、连接、超时、HTTP、数据异常和未知失败分别处理，空白业务提示使用兜底文案。护理执行错误页保留手动重试及系统返回，重试成功切回详情；不会因为错误文案变化而开单、自动重试或改变会话失效规则。
 
 ## 身份、相机与支持路由
 

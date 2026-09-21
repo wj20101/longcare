@@ -15,7 +15,12 @@
     <string name="location_service_open_settings">请先在系统设置中开启定位服务</string>
     <string name="location_permission_required_for_service">需要定位权限才能开始服务</string>
     <string name="common_network_error_retry">网络异常，请稍后重试</string>
-    <string name="order_detail_load_failed">订单详情加载失败，请稍后重试</string>
+    <string name="order_detail_load_failed">护理计划加载失败，请稍后重试</string>
+    <string name="order_detail_connection_failed">无法连接服务器，请检查网络后重试</string>
+    <string name="order_detail_timeout">请求超时，请重试</string>
+    <string name="order_detail_server_unavailable">服务暂时不可用，请稍后重试</string>
+    <string name="order_detail_request_failed">请求未成功，请稍后重试</string>
+    <string name="order_detail_invalid_response">服务数据异常，暂时无法加载护理计划</string>
     <string name="permission_purpose_continue">继续</string>
     <string name="permission_purpose_cancel">取消</string>
     <string name="permission_purpose_camera_title">相机权限说明</string>

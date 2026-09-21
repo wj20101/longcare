@@ -74,7 +74,7 @@ fun ServiceRecordItem(project: ServiceProjectM, orderInfo: ServiceOrderInfoModel
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = project.projectName,
+                    text = project.projectName.orEmpty(),
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp,
                     color = MaterialTheme.colorScheme.onSurface

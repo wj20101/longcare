@@ -155,7 +155,7 @@ class ServiceCountdownViewModel @Inject constructor(
     ): CountdownServiceInfo {
         val selectedProjects = projectList.filter { it.projectId in selectedProjectIds }
         return CountdownServiceInfo(
-            serviceName = selectedProjects.joinToString(", ") { it.projectName },
+            serviceName = selectedProjects.joinToString(", ") { it.projectName.orEmpty() },
             totalMinutes = selectedProjects.sumOf { it.serviceTime }
         )
     }
