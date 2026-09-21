@@ -2,14 +2,13 @@
 
 最后核对：2026-09-20（代码与文档静态核对；非本轮全量运行验收）
 
-本文是便于阅读的快照。版本发生冲突时，以 `constants.gradle.kts`、`gradle/libs.versions.toml`、`gradle-wrapper.properties` 和各模块 `build.gradle.kts` 为准。
+本文是便于阅读的快照。版本发生冲突时，以 `constants.gradle.kts`、`gradle/libs.versions.toml`、`gradle-wrapper.properties` 和各模块 `build.gradle.kts` 为准。应用版本号仅在 [constants.gradle.kts](../../constants.gradle.kts) 维护，本文不重复记录。
 
 ## Android 与工具链
 
 | 项目 | 当前值 | 事实来源 |
 |---|---:|---|
 | Application ID | `com.ytone.longcare` | app/build.gradle.kts |
-| 版本 | `1.0.6 (63)` | `constants.gradle.kts` |
 | `compileSdk` | 37 | `constants.gradle.kts` |
 | `targetSdk` | 36 | `constants.gradle.kts` |
 | `minSdk` | 24 | `constants.gradle.kts` |

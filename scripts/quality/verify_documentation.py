@@ -98,7 +98,6 @@ def check_versions(root: Path) -> list[str]:
     versions = dict(re.findall(r'^([\w]+)\s*=\s*"([^"]+)"', catalog, re.M))
     doc = (root / "docs/architecture/tech-stack.md").read_text()
     required = {
-        "application version": f'`{values["appVersionName"]} ({values["appVersionCode"]})`',
         "compileSdk": f'| `compileSdk` | {values["appCompileSdkVersion"]} |',
         "targetSdk": f'| `targetSdk` | {values["appTargetSdkVersion"]} |',
         "minSdk": f'| `minSdk` | {values["appMinSdkVersion"]} |',

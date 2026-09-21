@@ -49,7 +49,7 @@ class ReleaseSequenceTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(self.env['GITHUB_SHA'], self.git('rev-parse', 'HEAD').stdout.strip())
         self.assertEqual(self.env['GITHUB_SHA'], self.git('ls-remote', 'origin', 'refs/heads/master').stdout.split()[0])
-        self.assertEqual(['constants.gradle.kts', 'docs/architecture/tech-stack.md'],
+        self.assertEqual(['constants.gradle.kts'],
                          self.git('diff', '--name-only').stdout.splitlines())
         result = self.run_script('push_version.sh')
         self.assertEqual(0, result.returncode, result.stderr)
@@ -57,6 +57,26 @@ class ReleaseSequenceTest(unittest.TestCase):
         self.assertNotEqual(sha, self.env['GITHUB_SHA'])
         self.assertEqual(sha, self.git('ls-remote', 'origin', 'refs/heads/master').stdout.split()[0])
         self.assertIn(f'commit_sha={sha}', Path(self.env['GITHUB_OUTPUT']).read_text())
+        self.assertEqual(['constants.gradle.kts'],
+                         self.git('diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD').stdout.splitlines())
+
+    def test_release_does_not_require_version_documentation(self):
+        self.git('rm', 'docs/architecture/tech-stack.md')
+        self.git('commit', '-qm', 'no version snapshot')
+        self.git('push')
+        self.env['GITHUB_SHA'] = self.git('rev-parse', 'HEAD').stdout.strip()
+        result = self.run_script('prepare_version.py')
+        self.assertEqual(0, result.returncode, result.stderr)
+        result = self.run_script('push_version.sh')
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_release_rejects_unrelated_documentation_changes(self):
+        self.assertEqual(0, self.run_script('prepare_version.py').returncode)
+        doc = self.root / 'docs/architecture/tech-stack.md'
+        doc.write_text(doc.read_text() + '\nUnrelated change\n')
+        self.assertNotEqual(0, self.run_script('push_version.sh').returncode)
+        self.assertEqual(self.env['GITHUB_SHA'], self.git('rev-parse', 'HEAD').stdout.strip())
+        self.assertEqual(self.env['GITHUB_SHA'], self.git('ls-remote', 'origin', 'refs/heads/master').stdout.split()[0])
 
     def test_advanced_branch_is_not_force_pushed(self):
         self.git('commit', '--allow-empty', '-qm', 'concurrent change')

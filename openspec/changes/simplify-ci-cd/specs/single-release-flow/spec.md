@@ -14,6 +14,14 @@
 
 ## ADDED Requirements
 
+### Requirement: 应用版本使用单一配置来源
+应用版本 SHALL 仅在 `constants.gradle.kts` 维护，技术栈文档 SHALL 引用该配置而非复制具体应用版本号。发布流程 MUST NOT 为递增应用版本修改文档，文档检查 MUST NOT 要求同步应用版本副本；SDK、Gradle、依赖文档检查和正式产物版本验证 SHALL 保留。
+
+#### Scenario: 应用版本递增
+- **WHEN** 正式发布准备下一应用版本
+- **THEN** 仅修改构建常量，不修改或依赖技术栈文档中的应用版本行
+- **AND** APK/AAB、提交及标签的版本一致性仍受发布验证保护
+
 ### Requirement: 正式产物验证后才能写入远端版本
 发布流程 MUST 在正式产物构建和必要验证成功后才推送版本提交；新发布请求 MUST NOT 自动取消正在进行的正式发布。最终标签、提交和产物版本 SHALL 一致。
 

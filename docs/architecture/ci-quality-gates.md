@@ -52,7 +52,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 
 代码/构建改动执行完整 JVM 业务测试、App Debug 构建、App/读卡 Lint 和质量守卫；不再使用固定 App 测试类过滤、伪模块影响列表或 full/partial 构建分支。
 
-1. `select-checks` 始终验证文档，并由 `select_ci_smoke.sh` 选择是否需要构建和设备冒烟；仅文档变更不启动 Gradle/模拟器。
+1. `select-checks` 始终验证文档，并由 `select_ci_smoke.sh` 选择是否需要构建和设备冒烟；仅文档变更不启动 Gradle/模拟器。文档保留 SDK、Gradle 和依赖版本检查，不复制或校验应用版本号。
 2. `verify-build` 调用 `run_ci_checks.sh` 和 `run_jvm_tests.sh`，上传主应用 Debug APK 和所有模块测试报告，不常规构建 Debug AAB。
 3. `instrumentation-smoke` 在前置构建成功且所选路径需要时执行。API 36 模拟器以真实启动用例为基础，按导航、WebView、服务、销售 UI 等路径追加离线用例；不自动运行需账号/硬件的 opt-in 测试。
 4. 手动 CI 或差异基线不可用时执行完整基础验证及固定离线冒烟集合，不将 HEAD 自身比较为空视为无需验证。
@@ -90,7 +90,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 - 按准确源 SHA/分支确认 Android CI 成功且 `verify-build` 真正通过；文档专用绿色结果不能充当构建证据，需手动 CI。
 - 不重建无消费的 Debug APK；保留必要的 Lint 与厂商风险检查，常规静态门禁由同源提交 CI 提供。
 - 要求真实 Release 签名；`assembleRelease / bundleRelease` 仍依赖 `verifyReleaseConfiguration`，R8/资源压缩及导出组件检查不变。
-- 本地递增版本并同步技术栈文档，正式 APK/AAB、签名、身份、版本、不可调试属性、mapping 及校验和全部通过后，才提交并推送版本。
+- 本地仅在 `constants.gradle.kts` 递增版本，不修改技术栈文档；正式 APK/AAB、签名、身份、版本、不可调试属性、mapping 及校验和全部通过后，才提交并推送版本，版本提交仅允许修改该构建常量文件。
 - 发布使用稳定并发组且不自动取消进行中的发布；分支已前进或标签存在时拒绝强推/覆盖，发布失败保留诊断，不自动改写远端历史。
 - 标签为 `v<versionName>-<versionCode>`，正式、非草稿、非预发布，设为 Latest；APK/AAB 保留版本、日期、版本号和 release 标识。
 - 主应用 APK/AAB、SHA-256 校验和及 mapping ZIP 进入 GitHub Release；Actions 同时留存验证产物。历史版本不修改，不构建独立助手。
