@@ -1,8 +1,8 @@
 # QLZ SDK 1.3.0.5 接入说明
 
-最后核对：2026-09-20（代码与文档静态核对；非本轮全量运行验收）
+最后核对：2026-09-21（一次性凭证与正式环境配置；正式服务真机验收仍待单独授权）
 
-> 当前状态：用户于 2026-09-19 明确接受当前固定测试配置、QLZ 1.3.0.5 弱 TLS 及腾讯人脸 6.6.2 已知风险，Release 将其作为警告。其他签名和质量检查仍阻断；风险接受不等于修复，不能以 Debug 验收代替 Release 证据。
+> 当前状态：QLZ 已移除测试模式覆盖，使用 AAR 默认正式环境及用户确认的现有 appKey。2026-09-19 接受的 QLZ 1.3.0.5 弱 TLS 及腾讯人脸 6.6.2 已知风险仍由 Release 报警；其他签名和质量检查仍阻断。环境切换不代表厂商风险已修复，也不等于完成正式服务联调。
 
 ## 接入范围
 
@@ -60,18 +60,16 @@ SDK 消息/Gzip 合约，覆盖旧 fixture、嵌套字段、实例隔离、未�
 - Demo 的 `bugly_crash_release.jar` 不再复制；应用继续使用版本目录中的 Bugly Maven 依赖，避免重复类。
 - 1.3.0.5 新增的生理数据 protobuf 字段由 SDK 内部处理，不改变当前应用侧回调模型。
 
-## 临时联调配置
+## 正式环境配置
 
-测试阶段在 `app/build.gradle.kts` 中统一固化测试 appKey：
+`app/build.gradle.kts` 保留用户确认可用于正式环境的现有 appKey，Debug 与 Release
+统一通过 `BuildConfig.QLZ_SDK_KEY` 初始化；不依赖本机或 CI 的环境开关。
+客户端不调用 `CheckIml.setTestMode` 或 `setLocalMode`，不提供失败回退测试环境逻辑。
+固定 AAR 默认基地址为 `https://openapi.qiaolz.com`，检测上传为 `POST /sdk/assess/upload`。
+LongCare API 地址不变，服务端正式 Token 配置已由用户确认，端到端可用性仍需真机验证。
 
-`debug` 与 `release` 构建当前都会将该 appKey 写入 `BuildConfig.QLZ_SDK_KEY`，并设置
-`BuildConfig.QLZ_TEST_MODE=true`，保证线上打包环境不依赖本机 `local.properties` 或 CI
-环境变量。测试完成、Sale 接口提供 SDK key 后，应删除这段固定配置，改为使用接口返回值
-初始化 `QlzSdkClient`。
-
-正式包统一使用标准 `release`，不设置额外发布模式。当前固定测试 key、
-`QLZ_TEST_MODE=true`、QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 已知问题已获用户明确接受，
-发布检查改为警告，保持签名和其余质量检查。
+正式包统一使用标准 `release`，不设置额外发布模式。测试模式和临时测试 key 的旧发布
+输入已删除；QLZ 弱 TLS 和腾讯人脸已知风险仍明确告警，签名及其他质量检查保持不变。
 
 GitHub 的 `Android Release` 手动工作流仅发布主应用 APK/AAB，生成正式 Release 并设为 Latest；
 安装包不附加额外模式标签。独立助手及双包构建已退役，历史 Release 附件保持不变。工作流仍使用当前已接受的配置，并执行
@@ -107,10 +105,10 @@ Android 源码、资源、BuildConfig 或 APK。客户端通过
 1. 在主应用完成登录，确保 LongCare API 会话有效。
 2. 查询或新增潜在客户，获得客户 ID。
 3. 初始化 SDK 并读取 `CheckIml.getDeviceId()`。
-4. 调用 `/V1/Sale/GetCheckToken`，传入客户 ID 和检测设备 ID。
+4. 进入设备页只准备当前客户，不提前缓存 Token。
 5. 用户点击搜索时，请求 Android 12+ 的 `BLUETOOTH_SCAN`、`BLUETOOTH_CONNECT` 及前台 `ACCESS_FINE_LOCATION`、`ACCESS_COARSE_LOCATION` 权限
    （Android 11 及以下请求精确位置权限）。Manifest 未声明 `neverForLocation`，因此不能只授予附近设备权限；仅粗略定位也不能开始扫描。精确/粗略定位始终成对申请，拒绝后显示提示并允许重试。所有支持版本均检查系统定位服务开关，开启后重试重新检查；不新增后台定位或启动位置采集。
-6. 创建 UI 作用域的 `QlzEvaluationSession`，调用 `CheckIml.startCheck(...)` 校验 Token；成功后使用 `ScanDeviceIml` 执行 30 秒有界扫描。
+6. 运行条件满足后创建 UI 作用域的 `QlzEvaluationSession`；每次新授权前调用 `/V1/Sale/GetCheckToken`，传入当前客户 ID 和检测设备 ID。启动请求消费一次后交给 `CheckIml.startCheck(...)`；授权成功后使用 `ScanDeviceIml` 执行 30 秒有界扫描。
 7. 页面只接收不可变的 `QlzEvaluationUiState`。蓝牙地址在 integration 边界内换成会话级不透明 ID，界面仅显示掩码；用户点选后由 `ConnectDeviceHelp` 连接，并映射五指、进度、电量、超时和掉线回调。
 8. `onCheckEnd` 只触发一次 `sendData(...)`。纬度、经度和地址取自当前客户或本次登记的可靠字段，缺失时传空字符串；上传失败仅在内存中保留本次 `RecordInputData` 供重试。
 9. 上传成功后关闭设备会话，直接进入原生评估结果页，以当前客户 ID 和本次 recordId 请求 `POST /V1/Sale/GetCheckResult`。客户、recordId 和完成状态通过 SavedStateHandle 保存；不自动打开 H5，不以客户详情中的旧地址代替结果查询。SDK URL 被忽略，不打开厂商报告 Activity。
@@ -124,7 +122,7 @@ Android 源码、资源、BuildConfig 或 APK。客户端通过
 设备自动评估也始终停留在应用自有页面；应用不调用
 `SDKCall.openByToken(...)` 或 `SDKCall.goResultAcitivty(...)` 打开检测、表单或报告。
 
-SDK Token 当前有效期由服务端 `expireAt` 决定，客户端没有写死 20 分钟。
+SDK Token 为一次性凭证，不能因为 `expireAt` 尚未到期而用于第二次授权；客户端不保存已消费 Token，不持久化或输出到日志。
 
 ### 检测展示与 H5 关闭契约
 
@@ -209,7 +207,11 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest \
   此处依赖固定 AAR 的 `bluetoothLeScan.d`/注册方法；升级厂商 AAR 时必须重跑真实回调生命周期测试，
   不以 mock 状态机代替，也不添加反射兜底、轮询或自动无限重试。
 - 离开活动评估页面、宿主销毁、取消或完成时，先使当前 generation 失效，再停止扫描、终止检测、调用 `ConnectDeviceHelp.onDestroy()` 并释放租约；即使 `stopScan()` 同步触发回调，也无法改写关闭后的状态。宿主进入后台时至少停止正在进行的扫描，Token 校验的迟到成功也不会在后台启动扫描。
-- Token 过期仍复用现有业务规则：最多向 LongCare 服务端刷新一次，再重建当前自定义 driver；第二次过期直接终止。
+- 初次开始、授权失败重试、取消后重进及宿主重建后的新会话均先获取新 Token；存活会话的普通扫描、重连不重新授权。获取中的重复点击合并，退出或切换客户使请求失效，迟到返回和旧请求收尾不能覆盖当前状态。
+- ViewModel 用一个流程 Job 统一取消 Token 请求与待处理 SDK 事件，不另设流程序号或活动标记。启动请求按对象身份消费一次；Token loading 独立于其他操作的 loading，退出检测不改写其他操作状态。
+- controller 只授权已准备好的会话，不在交付 Token 时隐式创建新会话；UI 在宿主 STARTED 后才消费待处理请求，后台暂存。session 统一通过 `authorize(token)` 根据已有状态执行授权或上传恢复，不保留多套启动入口或跨层传递恢复标记；活动检测、上传和终态拒绝重复授权。
+- 每次检测最多自动恢复一次凭证。授权阶段失效使用新 Token 重建 driver；上传阶段厂商 401/2001 或 Token 失效回调则保留同一 driver、连接器与原 `RecordInputData`/recordId，重新授权成功后重传原记录，不重新测量。普通网络上传失败仍手动重传原记录，不刷新 Token。
+- 新 Token 获取失败、空凭证、恢复授权失败或再次失效时停止自动操作，显示提示并保留退出入口；未退出前不主动清空待上传数据，不回退旧 Token。离线回归覆盖该调用链，但厂商正式服务是否接受同一记录换凭证重传仍须真实验收。
 - 支付回调只显示阻断提示并中止本次检测，不自动打开 SDK 返回的支付 URL。厂商错误文本不会直接显示，所有错误按应用内固定分类映射。
 
 ## 安全与清单处理
@@ -218,6 +220,7 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest \
 - 将 SDK 自带的外部 deep link Activity 改为 `exported=false`；当前接入只使用显式 SDK 调用。
 - 旧版 `BLUETOOTH`、`BLUETOOTH_ADMIN` 权限限制到 API 30。
 - SDK 仅在现有销售设备评估业务入口按需初始化，不在 Application 启动阶段读取设备标识。
-- 自定义页面不再注册厂商 Activity 的全局 WindowInsets 兼容回调；AAR 中的 Activity 仍由 manifest merge 保留为不可导出组件，但业务路径不会启动它们。
+- 自定义页面直接渲染会话状态；迁移期的 ViewModel 设备名/进度镜像、重复进度事件与厂商报告地址/分数字段已删除。完成事件仅携带 recordId；业务等级和报告仍由 GetCheckResult 提供。
+- 已删除无生产调用的厂商 Activity 全局 WindowInsets 补丁、旧错误文案正则兜底及专属测试；AAR 中的 Activity 仍由 manifest merge 保留为不可导出组件，但业务路径不会启动它们。
 - QLZ 1.3.0.5 内置遥测仍存在弱 TLS 校验。用户已接受当前风险，Release 检查明确告警；
   这不修复 SDK，也不免除其他签名、质量或业务验收。后续由厂商提供修复版本。

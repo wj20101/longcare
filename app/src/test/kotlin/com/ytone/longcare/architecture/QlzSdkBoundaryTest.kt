@@ -7,6 +7,33 @@ import org.junit.Test
 
 class QlzSdkBoundaryTest {
     @Test
+    fun `all app variants use the fixed AAR production default without environment overrides`() {
+        val root = File("..").canonicalFile
+        val source = File(root, "app/src/main/kotlin/com/ytone/longcare/integration/qlz")
+            .walkTopDown().filter { it.isFile }.joinToString("\n") { it.readText() }
+        assertFalse(source.contains("setTestMode("))
+        assertFalse(source.contains("setLocalMode("))
+        val gradle = File(root, "app/build.gradle.kts").readText()
+        assertFalse(gradle.contains("QLZ_TEST_MODE"))
+        assertFalse(gradle.contains("TEMPORARY_QLZ"))
+        java.util.zip.ZipFile(File(root, "app/libs/qlzsdk-1.3.0.5-protobufLiteRelease-ui.aar")).use { aar ->
+            java.util.jar.JarInputStream(aar.getInputStream(aar.getEntry("classes.jar"))).use { jar ->
+                val classes = mutableMapOf<String, String>()
+                var entry = jar.nextJarEntry
+                while (entry != null) {
+                    if (entry.name in setOf("com/evenmed/sdk/call/l.class", "com/evenmed/sdk/call/k.class")) {
+                        classes[entry.name] = jar.readBytes().toString(Charsets.ISO_8859_1)
+                    }
+                    entry = jar.nextJarEntry
+                }
+                assertTrue(classes.getValue("com/evenmed/sdk/call/l.class").contains("https://openapi.qiaolz.com"))
+                assertFalse(classes.getValue("com/evenmed/sdk/call/l.class").contains("test.qiaolz.com"))
+                assertTrue(classes.getValue("com/evenmed/sdk/call/k.class").contains("/sdk/assess/upload"))
+            }
+        }
+    }
+
+    @Test
     fun `vendor and Bluetooth device types stay inside the QLZ integration adapter`() {
         val root = File("..").canonicalFile
         val businessRoots =

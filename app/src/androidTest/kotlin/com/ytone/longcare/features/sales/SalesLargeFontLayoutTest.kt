@@ -437,7 +437,7 @@ class SalesLargeFontLayoutTest {
                                 )
                             ),
                     ),
-                tokenReady = true,
+                isPreparing = false,
                 onBack = {},
                 onStartScan = {},
                 onSelectDevice = {},

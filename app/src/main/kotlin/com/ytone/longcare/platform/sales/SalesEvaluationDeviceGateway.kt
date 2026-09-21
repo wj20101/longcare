@@ -10,6 +10,4 @@ class SalesEvaluationDeviceGateway @Inject constructor(
     private val qlzSdkClient: QlzSdkClient,
 ) {
     fun getDeviceId(): Result<String> = qlzSdkClient.getDeviceId()
-
-    fun getConnectedDeviceName(): String? = qlzSdkClient.getConnectedDeviceName()
 }

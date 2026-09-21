@@ -12,9 +12,8 @@ plugins {
 private val BASE_URL = "https://careapi.ytone.cn"
 private val PUBLIC_KEY =
     "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk45Er/DSjJwRNhReRT+4lINV6GanR3FwNutADNBwVoNQgY33bM/adLN5ZDmb8CwCeRJ4iBdcIX0co+2cm169HSHtJvOHUm864UbT63BrxKtnJCR+GkmsB3dj7YMwDbYArg7ymGP3EhWsiqMPdnR15+4LYIfK3l74nOZqPIPp8XkUKbbvJeieyslBIVSux2eytUGQjY8EPTE7nOHbAh8boWhiekFKevmx24dQBLoOrKrpTIv4pNiFSPxWCdBayCXjyr3Vq6Eg+vEDYN1+sxXWAj4bo/91TIbGQzdPCcCiZUQ1d7EgBp1JJKAsTTzkd+CusSTVpmmz/uVwjOaEHNzqWwIDAQAB"
-// TODO(QLZ): Remove this fixed test configuration after the Sale API returns the SDK key.
-private val TEMPORARY_QLZ_SDK_KEY = "qlz235624a5adc96ccb"
-private val TEMPORARY_QLZ_TEST_MODE = true
+// Confirmed production app key; appSecret remains on the server.
+private val QLZ_SDK_KEY = "qlz235624a5adc96ccb"
 private val QLZ_SDK_AAR_FILE_NAME =
     "qlzsdk-1.3.0.5-protobufLiteRelease-ui.aar"
 
@@ -76,9 +75,8 @@ android {
         buildConfigField(
             "String",
             "QLZ_SDK_KEY",
-            TEMPORARY_QLZ_SDK_KEY.asBuildConfigString(),
+            QLZ_SDK_KEY.asBuildConfigString(),
         )
-        buildConfigField("boolean", "QLZ_TEST_MODE", TEMPORARY_QLZ_TEST_MODE.toString())
         ndk {
             val enabledAbis = mutableListOf("arm64-v8a")
             if (baselineEnableX86_64) {
@@ -181,10 +179,6 @@ val verifyReleaseConfiguration =
         commandLine(
             "bash",
             rootProject.file("scripts/quality/verify_release_config.sh").absolutePath,
-            "--temporary-qlz-key-present",
-            TEMPORARY_QLZ_SDK_KEY.isNotBlank().toString(),
-            "--qlz-test-mode",
-            TEMPORARY_QLZ_TEST_MODE.toString(),
             "--known-unsafe-qlz-sdk-present",
             knownUnsafeQlzSdkPresent.get().toString(),
             "--known-unsafe-face-sdk-present",

@@ -33,6 +33,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
@@ -65,6 +67,8 @@ internal fun SalesExperienceScreen(
     val capturedImageUri by actions.capturedImageUriFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context.findActivity()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val lifecycleState by lifecycle.currentStateAsState()
     val sdkUiController = rememberSalesSdkUiController()
     val evaluationState by sdkUiController.uiState.collectAsStateWithLifecycle()
     val sdkPermissions = remember(sdkUiController) {
@@ -90,8 +94,6 @@ internal fun SalesExperienceScreen(
         stringResource(R.string.sales_error_location_permission)
     val openEvaluationErrorMessage =
         stringResource(R.string.sales_error_open_evaluation)
-    val evaluationNotReadyMessage =
-        stringResource(R.string.sales_error_evaluation_not_ready)
     val noReportMessage = stringResource(R.string.sales_error_no_report)
     val reportUrlEmptyMessage = stringResource(R.string.sales_error_report_url_empty)
     val evaluationFormTitle = stringResource(R.string.sales_evaluation_form_title)
@@ -125,30 +127,10 @@ internal fun SalesExperienceScreen(
         return uiState.toQlzEvaluationUploadContext(registrationDraft.liveAddress)
     }
 
-    fun launchCustomEvaluation(
-        hostActivity: android.app.Activity,
-        token: String = uiState.checkToken?.token.orEmpty(),
-        restart: Boolean = false,
-    ) {
+    fun launchCustomEvaluation(hostActivity: android.app.Activity) {
         if (!currentPage.ownsQlzEvaluationSession()) return
-        if (token.isBlank()) {
-            showMessage(evaluationNotReadyMessage)
-            return
-        }
-        if (restart) {
-            sdkUiController.restartEvaluation(
-                activity = hostActivity,
-                token = token,
-                uploadContext = evaluationUploadContext(),
-                onEvent = viewModel::onSdkEvent,
-            )
-        } else {
-            sdkUiController.startEvaluation(
-                activity = hostActivity,
-                token = token,
-                uploadContext = evaluationUploadContext(),
-                onEvent = viewModel::onSdkEvent,
-            )
+        if (sdkUiController.prepareEvaluation(hostActivity, evaluationUploadContext(), viewModel::onSdkEvent)) {
+            viewModel.requestSdkAuthorization()
         }
     }
 
@@ -233,6 +215,7 @@ internal fun SalesExperienceScreen(
             SalesPage.EVALUATION_GUIDE,
             -> {
                 if (currentPage.ownsQlzEvaluationSession()) {
+                    viewModel.cancelSdkAuthorization()
                     sdkUiController.cancel()
                 }
                 navigate(
@@ -377,6 +360,14 @@ internal fun SalesExperienceScreen(
         }
     }
 
+    fun retryEvaluation() {
+        if (evaluationState.recoveryAction == QlzEvaluationRecoveryAction.RETRY_AUTHORIZATION) {
+            openEvaluationWithPermission()
+        } else {
+            sdkUiController.retryCurrentStep()
+        }
+    }
+
     fun requestLocationPermission() {
         val permissions =
             arrayOf(
@@ -438,23 +429,21 @@ internal fun SalesExperienceScreen(
         }
     }
 
-    LaunchedEffect(uiState.sdkLaunchRequest?.id, currentPage) {
+    LaunchedEffect(uiState.sdkLaunchRequest, currentPage, lifecycleState) {
         val request = uiState.sdkLaunchRequest ?: return@LaunchedEffect
         if (!currentPage.ownsQlzEvaluationSession()) {
-            viewModel.consumeSdkLaunchRequest(request.id)
+            viewModel.consumeSdkLaunchRequest(request)
             return@LaunchedEffect
         }
+        if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) return@LaunchedEffect
         val hostActivity = activity
         if (hostActivity == null || hostActivity.isFinishing || hostActivity.isDestroyed) {
-            viewModel.rejectSdkLaunchRequest(request.id)
+            viewModel.rejectSdkLaunchRequest(request)
         } else {
-            viewModel.consumeSdkLaunchRequest(request.id)
-            sdkUiController.restartEvaluation(
-                activity = hostActivity,
-                token = request.token,
-                uploadContext = evaluationUploadContext(),
-                onEvent = viewModel::onSdkEvent,
-            )
+            if (!viewModel.consumeSdkLaunchRequest(request)) return@LaunchedEffect
+            if (!sdkUiController.authorizeEvaluation(request.token)) {
+                showMessage(openEvaluationErrorMessage)
+            }
         }
     }
 
@@ -465,7 +454,10 @@ internal fun SalesExperienceScreen(
         sdkUiController.onHostStopped()
     }
     DisposableEffect(sdkUiController) {
-        onDispose { sdkUiController.close() }
+        onDispose {
+            viewModel.cancelSdkAuthorization()
+            sdkUiController.close()
+        }
     }
 
     SalesPageBackground {
@@ -654,11 +646,11 @@ internal fun SalesExperienceScreen(
                 SalesPage.DEVICE_STATUS ->
                     SalesDeviceStatusScreen(
                         evaluationState = evaluationState,
-                        tokenReady = uiState.checkToken?.token?.isNotBlank() == true,
+                        isPreparing = uiState.isSdkTokenLoading,
                         onBack = ::back,
                         onStartScan = ::openEvaluationWithPermission,
                         onSelectDevice = sdkUiController::selectDevice,
-                        onRetry = sdkUiController::retryCurrentStep,
+                        onRetry = ::retryEvaluation,
                         onRecheckEnvironment = ::openEvaluationWithPermission,
                     )
 
@@ -670,7 +662,7 @@ internal fun SalesExperienceScreen(
                             if (evaluationState.recoveryAction.returnsToDeviceScan()) {
                                 navigate(SalesPage.DEVICE_STATUS)
                             }
-                            sdkUiController.retryCurrentStep()
+                            retryEvaluation()
                         },
                     )
 
@@ -700,8 +692,10 @@ internal fun SalesExperienceScreen(
                         .padding(16.dp),
             )
             SalesLoadingOverlay(
-                isVisible = uiState.isLoading,
-                message = uiState.operation,
+                isVisible = uiState.isLoading || uiState.isSdkTokenLoading,
+                message = if (uiState.isSdkTokenLoading) {
+                    stringResource(R.string.sales_loading_prepare_evaluation)
+                } else uiState.operation,
             )
         }
     }

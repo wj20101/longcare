@@ -105,7 +105,7 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 
 - app 版本、SDK 和依赖以 `constants.gradle.kts`、version catalog 和 Wrapper 为准。
 - 正式版统一使用标准 Release，不设置额外发布模式；仅主应用 APK/AAB 发布到 GitHub Release，不再生成独立助手，历史产物不变。
-- 2026-09-19 用户明确接受当前固定 QLZ 测试配置、QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 的 16 KB/consumer rule 风险：正式构建报告警告，不代表问题已修复。其余签名、Lint、产物和业务验收检查仍阻断；不得扩展为任意错误放行。
+- 2026-09-19 用户接受当时 QLZ 测试配置及厂商风险；2026-09-21 已按确认删除测试模式，保留现有正式 appKey。QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 的 16 KB/consumer rule 风险仍由正式构建告警，不代表已修复。其余签名、Lint、产物和业务验收仍阻断；不得扩展为任意错误放行。
 - targetSdk 36 的大屏竖屏 opt-out 在 API 37 被移除；升级前必须完成自适应与相机方向回归。
 
 ## 结束任务前

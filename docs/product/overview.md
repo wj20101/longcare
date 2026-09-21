@@ -96,7 +96,7 @@ LongCare 是面向长期护理服务执行和客户评估场景的 Android 客�
 
 - 未发现缺失的核心护理或销售主链路；仍需通过真机、集成和 smoke 验证降低跨权限、NFC、定位、相机和进程恢复的回归风险。
 - 主入口 `MainActivity` 当前按产品要求锁定竖屏（不等于所有 Activity 均锁定），并在 targetSdk 36 使用 Activity 级兼容属性保留大屏限制；Android API 37 将取消该退路，因此这是有期限的产品/适配决策。
-- 当前 QLZ 固定测试配置、1.3.0.5 弱 TLS，以及腾讯人脸 6.6.2 的 16 KB 对齐与 consumer rules 风险已明确接受，标准 Release 对这些事项告警；问题尚未修复，不能扩大为其他失败自动放行。
+- QLZ 使用默认正式环境和用户确认的现有 appKey；QLZ 1.3.0.5 弱 TLS、腾讯人脸 6.6.2 的 16 KB 对齐与 consumer rules 风险仍按用户确认由标准 Release 告警，不能扩大为其他失败自动放行。
 - 大量 route-bound UI 仍在 `:app`，这是维护成本问题，不代表当前用户流程不可用。
 
 开放问题和优先级见[路线图与开放问题](../analysis/project-review.md#17-分阶段技术方案与实施顺序)。

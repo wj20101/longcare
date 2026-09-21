@@ -6,11 +6,12 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SalesSdkUiControllerTest {
-    private val activity = mockk<Activity>()
+    private val activity = mockk<Activity>(relaxed = true)
     private val client = mockk<QlzSdkClient>()
     private val drivers = mutableListOf<QlzEvaluationDriver>()
     private val callbacks = mutableListOf<(QlzEvaluationDriverEvent) -> Unit>()
@@ -36,8 +37,75 @@ class SalesSdkUiControllerTest {
         return SalesSdkUiController(client)
     }
 
-    private fun SalesSdkUiController.start() =
-        startEvaluation(activity, "test-token", QlzEvaluationUploadContext()) {}
+    private fun SalesSdkUiController.start() {
+        if (prepareEvaluation(activity, QlzEvaluationUploadContext()) {}) {
+            assertTrue(authorizeEvaluation("test-token"))
+        }
+    }
+
+    @Test
+    fun `authorization never creates a missing or closed session`() {
+        val controller = controller()
+        assertFalse(controller.authorizeEvaluation("unused"))
+        verify(exactly = 0) { client.createEvaluationSession(any(), any(), any(), any()) }
+        controller.start()
+        controller.close()
+        assertFalse(controller.authorizeEvaluation("late"))
+        verify(exactly = 1) { client.createEvaluationSession(any(), any(), any(), any()) }
+        verify(exactly = 1) { drivers.single().authorize(any(), any()) }
+    }
+
+    @Test
+    fun `prepared session accepts pending authorization only after host returns`() {
+        val controller = controller()
+        assertTrue(controller.prepareEvaluation(activity, QlzEvaluationUploadContext()) {})
+        controller.onHostStopped()
+        assertFalse(controller.authorizeEvaluation("pending"))
+        verify(exactly = 0) { drivers.single().authorize(any(), any()) }
+        controller.onHostStarted()
+        assertTrue(controller.authorizeEvaluation("pending"))
+        assertFalse(controller.authorizeEvaluation("duplicate"))
+        verify(exactly = 1) { drivers.single().authorize("pending", any()) }
+        controller.close()
+    }
+
+    @Test
+    fun `back to device page and host recreation request fresh authorization instead of replaying token`() {
+        val controller = controller()
+        assertTrue(controller.prepareEvaluation(activity, QlzEvaluationUploadContext()) {})
+        verify(exactly = 0) { drivers.single().authorize(any(), any()) }
+        assertTrue(controller.authorizeEvaluation("first"))
+        callbacks.last()(QlzEvaluationDriverEvent.Authorized)
+        controller.cancel()
+        assertTrue(controller.prepareEvaluation(activity, QlzEvaluationUploadContext()) {})
+        assertTrue(controller.authorizeEvaluation("second"))
+        verify(exactly = 1) { drivers[0].authorize("first", any()) }
+        verify(exactly = 1) { drivers[1].authorize("second", any()) }
+        controller.close()
+        val recreated = controller()
+        assertTrue(recreated.prepareEvaluation(activity, QlzEvaluationUploadContext()) {})
+        assertTrue(recreated.authorizeEvaluation("third"))
+        verify(exactly = 1) { drivers[2].authorize("third", any()) }
+        recreated.close()
+    }
+
+    @Test
+    fun `authorization retry waits for fresh token and normal reconnection never authorizes again`() {
+        val controller = controller()
+        controller.start()
+        callbacks.last()(QlzEvaluationDriverEvent.Failed(1, QlzEvaluationIssue.NETWORK, QlzEvaluationRecoveryAction.RETRY_AUTHORIZATION))
+        controller.retryCurrentStep()
+        verify(exactly = 1) { drivers.single().authorize(any(), any()) }
+        assertTrue(controller.prepareEvaluation(activity, QlzEvaluationUploadContext()) {})
+        assertTrue(controller.authorizeEvaluation("fresh"))
+        verify(exactly = 1) { drivers.single().authorize("fresh", any()) }
+        callbacks.last()(QlzEvaluationDriverEvent.Authorized)
+        callbacks.last()(QlzEvaluationDriverEvent.Failed(1, QlzEvaluationIssue.CONNECTION_LOST, QlzEvaluationRecoveryAction.RETRY_CONNECTION))
+        controller.retryCurrentStep()
+        verify(exactly = 1) { drivers.single().reconnect() }
+        verify(exactly = 2) { drivers.single().authorize(any(), any()) }
+        controller.close()
+    }
 
     @Test
     fun `rescan uses existing session and clears candidates once`() {

@@ -99,7 +99,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 
 用户已明确接受以下当前风险，Release 输出警告而不因此单独失败；这不是问题已修复或全设备兼容的保证：
 
-- Android 内仍有固定 QLZ 测试 key 和 `QLZ_TEST_MODE=true`。
+- QLZ 已使用默认正式环境和用户确认的现有 appKey，旧测试模式告警输入已删除；这不消除以下厂商风险。
 - QLZ 1.3.0.5 可达代码存在弱 TLS trust manager。
 - 当前腾讯人脸 ARM64 native library 不满足 16 KB 对齐。
 - 人脸 AAR 的 consumer rules 含已知全局选项。

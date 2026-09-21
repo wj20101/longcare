@@ -63,7 +63,7 @@ class SalesEvaluationCopyTest {
                             stage = QlzEvaluationStage.SCAN_RESULTS,
                             devices = listOf(device),
                         ),
-                    tokenReady = true,
+                    isPreparing = false,
                     onBack = {},
                     onStartScan = {},
                     onSelectDevice = selected::add,
@@ -86,7 +86,7 @@ class SalesEvaluationCopyTest {
                 SalesDeviceStatusScreen(
                     evaluationState =
                         QlzEvaluationUiState(stage = QlzEvaluationStage.SCANNING),
-                    tokenReady = true,
+                    isPreparing = false,
                     onBack = {},
                     onStartScan = {},
                     onSelectDevice = {},

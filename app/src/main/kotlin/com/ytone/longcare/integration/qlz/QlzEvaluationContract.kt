@@ -181,8 +181,6 @@ internal sealed interface QlzEvaluationDriverEvent {
 
     data class UploadSucceeded(
         val recordId: String,
-        val ignoredVendorReportUrl: String,
-        val score: String,
     ) : QlzEvaluationDriverEvent
 
     data class Failed(

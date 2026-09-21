@@ -15,7 +15,6 @@ import com.ytone.longcare.integration.qlz.QlzSdkEvent
 import com.ytone.longcare.features.photoupload.upload.PhotoCloudUploader
 import com.ytone.longcare.model.AddUserLatentParamModel
 import com.ytone.longcare.model.AddUserLatentResultModel
-import com.ytone.longcare.model.CheckTokenModel
 import com.ytone.longcare.model.CheckResultModel
 import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.SearchUserLatentParamModel
@@ -28,6 +27,7 @@ import com.ytone.longcare.platform.sales.SalesEvaluationDeviceGateway
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
@@ -63,13 +63,12 @@ class SalesViewModel @Inject constructor(
     private var toDoListJob: Job? = null
     private var toDoListRequestId = 0L
     private var sdkTokenRecoveryAttempted = false
-    private var sdkLaunchRequestId = 0L
+    private var sdkJob: Job? = null
     private var evaluationResultJob: Job? = null
 
     init {
         loadCompanyName()
         loadRecentCustomers()
-        refreshDeviceState()
     }
 
     fun loadRecentCustomers() {
@@ -484,6 +483,7 @@ class SalesViewModel @Inject constructor(
     }
 
     fun selectCustomer(customerId: Int) {
+        if (_uiState.value.selectedCustomerId != customerId) resetEvaluationResult()
         _uiState.value = _uiState.value.copy(selectedCustomerId = customerId)
     }
 
@@ -588,56 +588,56 @@ class SalesViewModel @Inject constructor(
             showError(text(R.string.sales_error_select_customer))
             return
         }
-        sdkTokenRecoveryAttempted = false
         resetEvaluationResult()
+        sdkJob = SupervisorJob(viewModelScope.coroutineContext[Job])
         savedStateHandle[EVALUATION_CUSTOMER_KEY] = customerId
-        viewModelScope.launch {
-            _uiState.value =
-                _uiState.value.copy(
-                    isLoading = true,
-                    operation = text(R.string.sales_loading_prepare_evaluation),
-                    errorMessage = null,
-                    selectedCustomerId = customerId,
-                    sdkProgressText = "",
-                    checkToken = null,
-                    sdkLaunchRequest = null,
-                    evaluationPrepareErrorMessage = null,
-                )
+        _uiState.value = _uiState.value.copy(
+            selectedCustomerId = customerId,
+            errorMessage = null,
+            evaluationPrepareErrorMessage = null,
+        )
+    }
+
+    fun cancelSdkAuthorization() {
+        sdkJob?.cancel()
+        sdkJob = null
+        sdkTokenRecoveryAttempted = false
+        _uiState.value = _uiState.value.copy(
+            sdkLaunchRequest = null,
+            isSdkTokenLoading = false,
+        )
+    }
+
+    fun requestSdkAuthorization() {
+        if (_uiState.value.isSdkTokenLoading || _uiState.value.sdkLaunchRequest != null) return
+        val customerId = _uiState.value.selectedCustomerId
+        if (customerId <= 0) return
+        val job = sdkJob ?: SupervisorJob(viewModelScope.coroutineContext[Job]).also { sdkJob = it }
+        _uiState.value = _uiState.value.copy(
+            isSdkTokenLoading = true,
+            errorMessage = null,
+            evaluationPrepareErrorMessage = null,
+        )
+        viewModelScope.launch(job) {
             try {
-                val sdkDeviceId =
-                    evaluationDeviceGateway.getDeviceId().getOrElse { throwable ->
-                        throw IllegalStateException(
-                            text(R.string.sales_error_device_prepare),
-                            throwable,
-                        )
-                    }
-                _uiState.value =
-                    _uiState.value.copy(
-                        sdkDeviceId = sdkDeviceId,
-                        connectedDeviceName = evaluationDeviceGateway.getConnectedDeviceName(),
-                        operation = text(R.string.sales_loading_prepare_evaluation),
-                    )
-                when (
-                    val result =
-                        saleRepository.getCheckToken(
-                            customerId = customerId,
-                            checkDeviceId = sdkDeviceId,
-                        )
-                ) {
+                val sdkDeviceId = evaluationDeviceGateway.getDeviceId().getOrThrow()
+                val result = saleRepository.getCheckToken(
+                    customerId = customerId,
+                    checkDeviceId = sdkDeviceId,
+                )
+                currentCoroutineContext().ensureActive()
+                when (result) {
                     is ApiResult.Success -> {
                         val token = result.data.token.trim()
                         if (token.isBlank()) {
                             showEvaluationPrepareError(
                                 text(R.string.sales_error_evaluation_credential)
                             )
-                        } else {
-                            _uiState.value =
-                                _uiState.value.copy(
-                                    checkToken = result.data.copy(token = token),
-                                    connectedDeviceName =
-                                        evaluationDeviceGateway.getConnectedDeviceName(),
-                                )
+                            return@launch
                         }
+                        _uiState.value = _uiState.value.copy(
+                            sdkLaunchRequest = SalesSdkLaunchRequest(token),
+                        )
                     }
 
                     is ApiResult.Failure ->
@@ -651,34 +651,25 @@ class SalesViewModel @Inject constructor(
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (_: Throwable) {
-                showError(text(R.string.sales_error_evaluation_prepare))
+                currentCoroutineContext().ensureActive()
+                showEvaluationPrepareError(text(R.string.sales_error_evaluation_prepare))
             } finally {
-                _uiState.value =
-                    _uiState.value.copy(
-                        isLoading = false,
-                        operation = "",
-                    )
+                if (isActive) _uiState.value = _uiState.value.copy(isSdkTokenLoading = false)
             }
         }
     }
 
-    fun refreshDeviceState() {
-        _uiState.value =
-            _uiState.value.copy(
-                connectedDeviceName = evaluationDeviceGateway.getConnectedDeviceName(),
-            )
-    }
-
     fun onSdkEvent(event: QlzSdkEvent) {
-        viewModelScope.launch {
+        val job = sdkJob ?: return
+        viewModelScope.launch(job) {
             reduceSdkEvent(event)
         }
     }
 
-    fun consumeSdkLaunchRequest(requestId: Long) {
-        if (_uiState.value.sdkLaunchRequest?.id == requestId) {
-            _uiState.value = _uiState.value.copy(sdkLaunchRequest = null)
-        }
+    fun consumeSdkLaunchRequest(request: SalesSdkLaunchRequest): Boolean {
+        if (_uiState.value.sdkLaunchRequest !== request) return false
+        _uiState.value = _uiState.value.copy(sdkLaunchRequest = null)
+        return true
     }
 
     fun onEvaluationH5Closed() {
@@ -728,6 +719,7 @@ class SalesViewModel @Inject constructor(
     }
 
     fun resetEvaluationResult() {
+        cancelSdkAuthorization()
         evaluationResultJob?.cancel()
         savedStateHandle[EVALUATION_RECORD_KEY] = null
         savedStateHandle[EVALUATION_COMPLETED_KEY] = false
@@ -740,9 +732,8 @@ class SalesViewModel @Inject constructor(
         )
     }
 
-    fun rejectSdkLaunchRequest(requestId: Long) {
-        consumeSdkLaunchRequest(requestId)
-        showError(text(R.string.sales_error_evaluation_page_closed))
+    fun rejectSdkLaunchRequest(request: SalesSdkLaunchRequest) {
+        if (consumeSdkLaunchRequest(request)) showError(text(R.string.sales_error_evaluation_page_closed))
     }
 
     fun clearTransientMessage() {
@@ -832,7 +823,7 @@ class SalesViewModel @Inject constructor(
         loadRecentCustomers()
     }
 
-    private suspend fun reduceSdkEvent(event: QlzSdkEvent) {
+    private fun reduceSdkEvent(event: QlzSdkEvent) {
         when (event) {
             is QlzSdkEvent.Completed -> {
                 if (_uiState.value.evaluationCompleted) return
@@ -845,26 +836,8 @@ class SalesViewModel @Inject constructor(
                     _uiState.value.copy(
                         evaluationRecordId = event.recordId,
                         evaluationCompleted = true,
-                        connectedDeviceName =
-                            evaluationDeviceGateway.getConnectedDeviceName()
-                                ?: _uiState.value.connectedDeviceName,
-                        sdkProgressText = text(R.string.sales_progress_detection_complete),
                     )
             }
-
-            is QlzSdkEvent.Progress ->
-                _uiState.value =
-                    _uiState.value.copy(
-                        connectedDeviceName =
-                            evaluationDeviceGateway.getConnectedDeviceName()
-                                ?: _uiState.value.connectedDeviceName,
-                        sdkProgressText =
-                            text(
-                                R.string.sales_progress_detection,
-                                event.successCount,
-                                event.totalCount,
-                            ),
-                    )
 
             is QlzSdkEvent.Error -> {
                 if (event.requiresTokenRefresh) {
@@ -881,7 +854,6 @@ class SalesViewModel @Inject constructor(
             QlzSdkEvent.Cancelled ->
                 _uiState.value =
                     _uiState.value.copy(
-                        connectedDeviceName = evaluationDeviceGateway.getConnectedDeviceName(),
                         noticeMessage =
                             text(R.string.sales_notice_evaluation_cancelled),
                     )
@@ -889,86 +861,13 @@ class SalesViewModel @Inject constructor(
         }
     }
 
-    private suspend fun recoverSdkToken() {
+    private fun recoverSdkToken() {
         if (sdkTokenRecoveryAttempted) {
             showError(text(R.string.sales_error_evaluation_expired))
             return
         }
         sdkTokenRecoveryAttempted = true
-
-        val customerId = _uiState.value.selectedCustomerId
-        if (customerId <= 0) {
-            showError(text(R.string.sales_error_customer_invalid_evaluation))
-            return
-        }
-
-        _uiState.value =
-            _uiState.value.copy(
-                isLoading = true,
-                operation = text(R.string.sales_loading_reprepare_evaluation),
-                errorMessage = null,
-                checkToken = null,
-                evaluationPrepareErrorMessage = null,
-            )
-        try {
-            val deviceId =
-                _uiState.value.sdkDeviceId.ifBlank {
-                    evaluationDeviceGateway.getDeviceId().getOrElse { throwable ->
-                        throw IllegalStateException(
-                            text(R.string.sales_error_device_prepare),
-                            throwable,
-                        )
-                    }
-                }
-            when (
-                val result =
-                    saleRepository.getCheckToken(
-                        customerId = customerId,
-                        checkDeviceId = deviceId,
-                    )
-            ) {
-                is ApiResult.Success -> {
-                    val refreshedToken = result.data.token.trim()
-                    if (refreshedToken.isBlank()) {
-                        showEvaluationPrepareError(
-                            text(R.string.sales_error_evaluation_credential)
-                        )
-                        return
-                    }
-                    sdkLaunchRequestId += 1
-                    _uiState.value =
-                        _uiState.value.copy(
-                            sdkDeviceId = deviceId,
-                            checkToken = result.data,
-                            connectedDeviceName =
-                                evaluationDeviceGateway.getConnectedDeviceName(),
-                            sdkLaunchRequest =
-                                SalesSdkLaunchRequest(
-                                    id = sdkLaunchRequestId,
-                                    token = refreshedToken,
-                                ),
-                        )
-                }
-
-                is ApiResult.Failure ->
-                    showEvaluationPrepareError(result.message)
-
-                is ApiResult.Exception ->
-                    showEvaluationPrepareError(
-                        text(R.string.sales_error_evaluation_credential_refresh)
-                    )
-            }
-        } catch (cancellation: CancellationException) {
-            throw cancellation
-        } catch (_: Throwable) {
-            showError(text(R.string.sales_error_evaluation_credential_refresh))
-        } finally {
-            _uiState.value =
-                _uiState.value.copy(
-                    isLoading = false,
-                    operation = "",
-                )
-        }
+        requestSdkAuthorization()
     }
 
     private fun <T> execute(
@@ -1062,11 +961,8 @@ data class SalesUiState(
     val customerDetailErrorMessage: String? = null,
     val currentLocation: LocationResult? = null,
     val submissionResult: AddUserLatentResultModel? = null,
-    val sdkDeviceId: String = "",
-    val connectedDeviceName: String? = null,
-    val checkToken: CheckTokenModel? = null,
+    val isSdkTokenLoading: Boolean = false,
     val evaluationPrepareErrorMessage: String? = null,
-    val sdkProgressText: String = "",
     val evaluationRecordId: String? = null,
     val evaluationCompleted: Boolean = false,
     val evaluationResult: CheckResultModel? = null,
@@ -1075,8 +971,7 @@ data class SalesUiState(
     val sdkLaunchRequest: SalesSdkLaunchRequest? = null,
 )
 
-data class SalesSdkLaunchRequest(
-    val id: Long,
+class SalesSdkLaunchRequest(
     val token: String,
 )
 

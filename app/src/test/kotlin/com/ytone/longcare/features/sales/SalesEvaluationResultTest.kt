@@ -36,7 +36,8 @@ class SalesEvaluationResultTest {
     @Test fun `SDK upload completes immediately and result is fetched only by result page`() = runTest {
         coEvery { repository.getCheckResult(7, "record") } returns ApiResult.Success(CheckResultModel("A级", "report"))
         val vm = createViewModel()
-        vm.onSdkEvent(QlzSdkEvent.Completed("record", "vendor-url", "80"))
+        vm.prepareEvaluation(7)
+        vm.onSdkEvent(QlzSdkEvent.Completed("record"))
         advanceUntilIdle()
         assertTrue(vm.uiState.value.evaluationCompleted)
         coVerify(exactly = 0) { repository.getCheckResult(any(), any()) }
@@ -151,7 +152,8 @@ class SalesEvaluationResultTest {
     @Test fun `device record and completion restore without H5 request or customer refresh`() = runTest {
         val handle = SavedStateHandle(mapOf("sales.evaluation.customer" to 7))
         val vm = createViewModel(handle = handle)
-        vm.onSdkEvent(QlzSdkEvent.Completed("record", "vendor", "80"))
+        vm.prepareEvaluation(7)
+        vm.onSdkEvent(QlzSdkEvent.Completed("record"))
         advanceUntilIdle()
         val restored = createViewModel(handle = SavedStateHandle(handle.keys().associateWith { handle.get<Any?>(it) }))
         assertTrue(restored.uiState.value.evaluationCompleted)
@@ -183,7 +185,8 @@ class SalesEvaluationResultTest {
     @Test fun `blank device record never falls back to manual form detail`() = runTest {
         coEvery { repository.getCheckResult(7, "") } returns ApiResult.Failure(2001, "参数错误")
         val vm = createViewModel()
-        vm.onSdkEvent(QlzSdkEvent.Completed("", "vendor", "80"))
+        vm.prepareEvaluation(7)
+        vm.onSdkEvent(QlzSdkEvent.Completed(""))
         advanceUntilIdle()
         vm.loadEvaluationResult()
         advanceUntilIdle()

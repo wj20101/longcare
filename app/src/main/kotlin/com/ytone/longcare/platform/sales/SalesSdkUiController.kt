@@ -34,20 +34,24 @@ internal class SalesSdkUiController(
 
     fun requiredRuntimePermissions(): Array<String> = qlzSdkClient.requiredRuntimePermissions()
 
-    fun startEvaluation(
+    /** Checks the host/environment before requesting a one-use credential. */
+    fun prepareEvaluation(
         activity: Activity,
-        token: String,
         uploadContext: QlzEvaluationUploadContext,
         onEvent: (QlzSdkEvent) -> Unit,
-    ) {
-        if (!foreground) return
+    ): Boolean {
+        if (!foreground || activity.isFinishing || activity.isDestroyed) return false
         val existingSession = activeSession
         if (existingSession != null && uiState.value.stage != QlzEvaluationStage.CLOSED) {
             if (uiState.value.recoveryAction == QlzEvaluationRecoveryAction.RECHECK_ENVIRONMENT) {
                 close()
+            } else if (uiState.value.stage == QlzEvaluationStage.IDLE ||
+                uiState.value.recoveryAction == QlzEvaluationRecoveryAction.RETRY_AUTHORIZATION
+            ) {
+                return true
             } else {
                 existingSession.startScan()
-                return
+                return false
             }
         }
         when (
@@ -61,7 +65,8 @@ internal class SalesSdkUiController(
         ) {
             is QlzEvaluationSessionCreation.Ready -> {
                 activeSession = creation.session
-                creation.session.start(token)
+                mutableUiState.value = creation.session.state.value
+                return true
             }
 
             is QlzEvaluationSessionCreation.Blocked -> {
@@ -73,21 +78,11 @@ internal class SalesSdkUiController(
                     )
             }
         }
+        return false
     }
 
-    fun restartEvaluation(
-        activity: Activity,
-        token: String,
-        uploadContext: QlzEvaluationUploadContext,
-        onEvent: (QlzSdkEvent) -> Unit,
-    ) {
-        val session = activeSession
-        if (session == null || uiState.value.stage == QlzEvaluationStage.CLOSED) {
-            startEvaluation(activity, token, uploadContext, onEvent)
-        } else {
-            session.restart(token)
-        }
-    }
+    fun authorizeEvaluation(token: String): Boolean =
+        foreground && activeSession?.authorize(token) == true
 
     fun selectDevice(device: QlzDeviceOption) {
         activeSession?.selectDevice(device.id)
@@ -95,13 +90,11 @@ internal class SalesSdkUiController(
 
     fun retryCurrentStep() {
         when (uiState.value.recoveryAction) {
-            QlzEvaluationRecoveryAction.RETRY_AUTHORIZATION ->
-                activeSession?.retryAuthorization()
-
             QlzEvaluationRecoveryAction.RETRY_SCAN -> activeSession?.startScan()
             QlzEvaluationRecoveryAction.RETRY_CONNECTION -> activeSession?.retryConnection()
             QlzEvaluationRecoveryAction.RETRY_UPLOAD -> activeSession?.retryUpload()
             QlzEvaluationRecoveryAction.RECHECK_ENVIRONMENT,
+            QlzEvaluationRecoveryAction.RETRY_AUTHORIZATION,
             QlzEvaluationRecoveryAction.EXIT,
             null,
             -> Unit

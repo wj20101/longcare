@@ -60,19 +60,24 @@ internal class QlzEvaluationSession(
     private var closed = false
     private var foreground = true
     private var uploadRequested = false
-    private var currentToken = ""
+    private var reauthorizingUpload = false
 
     @Synchronized
-    fun start(token: String) {
-        if (closed || mutableState.value.stage != QlzEvaluationStage.IDLE) return
-        startNewGeneration(token)
-    }
-
-    @Synchronized
-    fun restart(token: String) {
-        if (closed) return
-        releaseCurrentDriver()
-        startNewGeneration(token)
+    fun authorize(token: String): Boolean {
+        val current = mutableState.value
+        if (closed || !foreground || token.isBlank()) return false
+        if (current.stage != QlzEvaluationStage.IDLE &&
+            !(current.stage == QlzEvaluationStage.ERROR &&
+                (current.issue == QlzEvaluationIssue.TOKEN_EXPIRED ||
+                    current.recoveryAction == QlzEvaluationRecoveryAction.RETRY_AUTHORIZATION))
+        ) return false
+        if (uploadRequested) {
+            reauthorizeUpload(token)
+        } else {
+            releaseCurrentDriver()
+            startNewGeneration(token)
+        }
+        return true
     }
 
     @Synchronized
@@ -151,17 +156,15 @@ internal class QlzEvaluationSession(
         ) { it.reconnect() }
     }
 
-    @Synchronized
-    fun retryAuthorization() {
+    private fun reauthorizeUpload(token: String) {
         val current = mutableState.value
-        if (
-            closed ||
-            current.stage != QlzEvaluationStage.ERROR ||
-            current.recoveryAction != QlzEvaluationRecoveryAction.RETRY_AUTHORIZATION
-        ) {
-            return
+        generation += 1
+        val callbackGeneration = generation
+        reauthorizingUpload = true
+        updateState(current.copy(stage = QlzEvaluationStage.UPLOADING, issue = null, recoveryAction = null))
+        invokeDriverOrFail(QlzEvaluationIssue.UPLOAD_FAILED, QlzEvaluationRecoveryAction.EXIT) {
+            it.authorize(token.trim()) { event -> handleDriverEvent(callbackGeneration, event) }
         }
-        restart(currentToken)
     }
 
     @Synchronized
@@ -218,10 +221,10 @@ internal class QlzEvaluationSession(
     }
 
     override fun close() {
-        val currentDriver: QlzEvaluationDriver
+        val currentDriver: QlzEvaluationDriver?
         synchronized(this) {
             if (closed) return
-            currentDriver = driver ?: EmptyQlzEvaluationDriver
+            currentDriver = driver
             generation += 1
             closed = true
             preparationJob?.cancel()
@@ -236,28 +239,19 @@ internal class QlzEvaluationSession(
             )
         }
         try {
-            runCatching { currentDriver.stopScan() }
-            runCatching { currentDriver.abortCheck() }
-            runCatching { currentDriver.close() }
+            runCatching { currentDriver?.stopScan() }
+            runCatching { currentDriver?.abortCheck() }
+            runCatching { currentDriver?.close() }
         } finally {
             releaseLease()
         }
     }
 
-    @Synchronized
     private fun startNewGeneration(token: String) {
         generation += 1
         uploadRequested = false
-        currentToken = token.trim()
+        reauthorizingUpload = false
         updateState(QlzEvaluationUiState(stage = QlzEvaluationStage.AUTHORIZING))
-        if (currentToken.isBlank()) {
-            handleDriverEvent(
-                generation,
-                QlzEvaluationDriverEvent.TokenExpired(ErrorCodeConfig.error_no_token),
-            )
-            return
-        }
-
         val newDriver =
             runCatching { driverFactory.create() }
                 .getOrElse {
@@ -274,7 +268,7 @@ internal class QlzEvaluationSession(
         driver = newDriver
         val callbackGeneration = generation
         runCatching {
-            newDriver.authorize(currentToken) { event ->
+            newDriver.authorize(token.trim()) { event ->
                 handleDriverEvent(callbackGeneration, event)
             }
         }.onFailure {
@@ -297,8 +291,26 @@ internal class QlzEvaluationSession(
             if (closed || callbackGeneration != generation) return
             when (event) {
                 QlzEvaluationDriverEvent.Authorized -> {
-                    applyDriverEvent(event)
-                    if (foreground) startScan()
+                    if (reauthorizingUpload && mutableState.value.stage == QlzEvaluationStage.UPLOADING) {
+                        reauthorizingUpload = false
+                        invokeDriverOrFail(QlzEvaluationIssue.UPLOAD_FAILED, QlzEvaluationRecoveryAction.RETRY_UPLOAD) {
+                            it.retryUpload()
+                        }
+                    } else if (!uploadRequested && mutableState.value.stage == QlzEvaluationStage.AUTHORIZING) {
+                        applyDriverEvent(event)
+                        if (foreground) startScan()
+                    }
+                }
+
+                is QlzEvaluationDriverEvent.UploadFailed -> {
+                    if (mutableState.value.stage != QlzEvaluationStage.UPLOADING) return
+                    if (event.code == 401 || event.code == 2001 ||
+                        event.code == ErrorCodeConfig.error_token_outtime || event.code == ErrorCodeConfig.error_no_token
+                    ) {
+                        handleDriverEvent(callbackGeneration, QlzEvaluationDriverEvent.TokenExpired())
+                    } else {
+                        applyDriverEvent(event)
+                    }
                 }
 
                 QlzEvaluationDriverEvent.MeasurementCompleted -> {
@@ -318,28 +330,13 @@ internal class QlzEvaluationSession(
                 }
 
                 is QlzEvaluationDriverEvent.UploadSucceeded -> {
-                    if (mutableState.value.stage != QlzEvaluationStage.UPLOADING) return
+                    if (reauthorizingUpload || mutableState.value.stage != QlzEvaluationStage.UPLOADING) return
                     applyDriverEvent(event)
                     onEvent(
                         QlzSdkEvent.Completed(
                             recordId = event.recordId,
-                            reportUrl = "",
-                            score = event.score,
                         )
                     )
-                }
-
-                is QlzEvaluationDriverEvent.ProgressChanged -> {
-                    val previousState = mutableState.value
-                    applyDriverEvent(event)
-                    if (mutableState.value != previousState) {
-                        onEvent(
-                            QlzSdkEvent.Progress(
-                                successCount = event.successCount.coerceAtLeast(0),
-                                totalCount = event.totalCount.coerceAtLeast(0),
-                            )
-                        )
-                    }
                 }
 
                 is QlzEvaluationDriverEvent.TokenExpired -> {
@@ -349,8 +346,14 @@ internal class QlzEvaluationSession(
                         mutableState.value != previousState &&
                         mutableState.value.issue == QlzEvaluationIssue.TOKEN_EXPIRED
                     ) {
+                        reauthorizingUpload = false
                         onEvent(QlzSdkEvent.Error(code = event.code, message = ""))
                     }
+                }
+
+                is QlzEvaluationDriverEvent.Failed -> {
+                    applyDriverEvent(if (uploadRequested) event.copy(recoveryAction = QlzEvaluationRecoveryAction.EXIT) else event)
+                    reauthorizingUpload = false
                 }
 
                 else -> applyDriverEvent(event)
@@ -425,16 +428,4 @@ internal class QlzEvaluationSession(
         }
         uploadRequested = false
     }
-}
-
-private object EmptyQlzEvaluationDriver : QlzEvaluationDriver {
-    override fun authorize(token: String, listener: (QlzEvaluationDriverEvent) -> Unit) = Unit
-    override fun startScan() = Unit
-    override fun stopScan() = Unit
-    override fun connect(deviceId: String) = Unit
-    override fun reconnect() = Unit
-    override fun upload(context: QlzEvaluationUploadContext) = Unit
-    override fun retryUpload() = Unit
-    override fun abortCheck() = Unit
-    override fun close() = Unit
 }

@@ -4,17 +4,98 @@ import java.util.Collections
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class QlzEvaluationSessionTest {
     @Test
+    fun `authorization rejects blank input active steps ordinary upload failure and terminal states`() {
+        val driver = FakeQlzEvaluationDriver()
+        val session = session(driver)
+        try {
+            assertFalse(session.authorize("  "))
+            assertTrue(driver.tokens.isEmpty())
+            assertTrue(session.authorize("first"))
+            assertFalse(session.authorize("duplicate"))
+            for (event in listOf(
+                QlzEvaluationDriverEvent.Authorized,
+                QlzEvaluationDriverEvent.DevicesChanged(listOf(DEVICE)),
+                QlzEvaluationDriverEvent.CheckStarted,
+                QlzEvaluationDriverEvent.MeasurementCompleted,
+                QlzEvaluationDriverEvent.UploadFailed(503),
+            )) {
+                driver.emit(event)
+                assertFalse(session.authorize("must-not-restart"))
+                if (event is QlzEvaluationDriverEvent.DevicesChanged) session.selectDevice(DEVICE.id)
+            }
+            assertEquals(QlzEvaluationRecoveryAction.RETRY_UPLOAD, session.state.value.recoveryAction)
+            session.retryUpload()
+            driver.emit(QlzEvaluationDriverEvent.UploadSucceeded("record"))
+            assertFalse(session.authorize("after-completion"))
+            assertEquals(listOf("first"), driver.tokens)
+            assertTrue("close" !in driver.cleanupOrder)
+        } finally { session.close() }
+        assertFalse(session.authorize("after-close"))
+    }
+
+    @Test
+    fun `upload auth codes reauthorize same driver without scanning or destroying pending measurement`() {
+        for (code in listOf(401, 2001, 100, 102)) {
+            val driver = FakeQlzEvaluationDriver()
+            val events = mutableListOf<QlzSdkEvent>()
+            val session = session(driver, onEvent = events::add)
+            try {
+                advanceToMeasurement(session, driver)
+                driver.emit(QlzEvaluationDriverEvent.MeasurementCompleted)
+                assertFalse(session.authorize("must-not-interrupt-upload"))
+                val cleanup = driver.cleanupOrder.toList()
+                val stale = driver.callbacks.single()
+                driver.emit(QlzEvaluationDriverEvent.UploadFailed(code))
+                assertTrue(events.filterIsInstance<QlzSdkEvent.Error>().single().requiresTokenRefresh)
+                assertTrue(session.authorize("fresh"))
+                stale(QlzEvaluationDriverEvent.Authorized)
+                stale(QlzEvaluationDriverEvent.UploadSucceeded("stale"))
+                assertEquals(0, driver.uploadRetries)
+                driver.emit(QlzEvaluationDriverEvent.Authorized)
+                driver.emit(QlzEvaluationDriverEvent.Authorized)
+                assertEquals(1, driver.uploadRetries)
+                assertEquals(1, driver.uploads.size)
+                assertEquals(1, driver.scanStarts)
+                assertEquals(listOf("token", "fresh"), driver.tokens)
+                assertEquals(cleanup, driver.cleanupOrder)
+                driver.emit(QlzEvaluationDriverEvent.UploadSucceeded("record-1"))
+                assertEquals("record-1", events.filterIsInstance<QlzSdkEvent.Completed>().single().recordId)
+            } finally { session.close() }
+        }
+    }
+
+    @Test
+    fun `failed upload reauthorization retains driver with exit instead of measurement retry`() {
+        val driver = FakeQlzEvaluationDriver()
+        val session = session(driver)
+        try {
+            advanceToMeasurement(session, driver)
+            driver.emit(QlzEvaluationDriverEvent.MeasurementCompleted)
+            driver.emit(QlzEvaluationDriverEvent.UploadFailed(401))
+            session.authorize("fresh")
+            driver.emit(QlzEvaluationDriverEvent.Failed(1, QlzEvaluationIssue.NETWORK, QlzEvaluationRecoveryAction.RETRY_AUTHORIZATION))
+            assertEquals(QlzEvaluationRecoveryAction.EXIT, session.state.value.recoveryAction)
+            assertEquals(0, driver.uploadRetries)
+            assertEquals(1, driver.uploads.size)
+            assertTrue("close" !in driver.cleanupOrder)
+            driver.emit(QlzEvaluationDriverEvent.Authorized)
+            assertEquals(0, driver.uploadRetries)
+        } finally { session.close() }
+    }
+
+    @Test
     fun `authorization starts one bounded scan and repeated selection connects once`() {
         val driver = FakeQlzEvaluationDriver()
         val session = session(driver)
 
-        session.start("token")
+        session.authorize("token")
         driver.emit(QlzEvaluationDriverEvent.Authorized)
         driver.emit(
             QlzEvaluationDriverEvent.DevicesChanged(
@@ -63,13 +144,10 @@ class QlzEvaluationSessionTest {
         driver.emit(
             QlzEvaluationDriverEvent.UploadSucceeded(
                 recordId = "record-1",
-                ignoredVendorReportUrl = "https://vendor.invalid/report",
-                score = "88",
             )
         )
         val completed = sdkEvents.filterIsInstance<QlzSdkEvent.Completed>().single()
         assertEquals("record-1", completed.recordId)
-        assertEquals("", completed.reportUrl)
         assertEquals(QlzEvaluationStage.COMPLETED, session.state.value.stage)
     }
 
@@ -83,17 +161,17 @@ class QlzEvaluationSessionTest {
         driver.emit(
             QlzEvaluationDriverEvent.UploadSucceeded(
                 recordId = "record-1",
-                ignoredVendorReportUrl = "https://vendor.invalid/report",
-                score = "88",
             )
         )
 
+        val completedState = session.state.value
         driver.emit(QlzEvaluationDriverEvent.TokenExpired())
         driver.emit(QlzEvaluationDriverEvent.ProgressChanged(9, 10))
 
         assertEquals(QlzEvaluationStage.COMPLETED, session.state.value.stage)
         assertEquals(1, sdkEvents.filterIsInstance<QlzSdkEvent.Completed>().size)
-        assertTrue(sdkEvents.none { it is QlzSdkEvent.Error || it is QlzSdkEvent.Progress })
+        assertTrue(sdkEvents.none { it is QlzSdkEvent.Error })
+        assertEquals(completedState, session.state.value)
     }
 
     @Test
@@ -101,7 +179,7 @@ class QlzEvaluationSessionTest {
         val driver = FakeQlzEvaluationDriver()
         val session = session(driver)
 
-        session.start("token")
+        session.authorize("token")
         session.onHostStopped()
         driver.emit(QlzEvaluationDriverEvent.Authorized)
 
@@ -118,7 +196,7 @@ class QlzEvaluationSessionTest {
     fun `connection failure allows one reconnect while timeout remains recoverable`() {
         val driver = FakeQlzEvaluationDriver()
         val session = session(driver)
-        session.start("token")
+        session.authorize("token")
         driver.emit(QlzEvaluationDriverEvent.Authorized)
         driver.emit(QlzEvaluationDriverEvent.DevicesChanged(listOf(DEVICE)))
         session.selectDevice(DEVICE.id)
@@ -146,7 +224,7 @@ class QlzEvaluationSessionTest {
     }
 
     @Test
-    fun `restart invalidates late callbacks and close releases in safe idempotent order`() {
+    fun `reauthorization invalidates late callbacks and close releases in safe idempotent order`() {
         val first = FakeQlzEvaluationDriver()
         val second = FakeQlzEvaluationDriver()
         val drivers = ArrayDeque(listOf(first, second))
@@ -159,9 +237,10 @@ class QlzEvaluationSessionTest {
                 onEvent = sdkEvents::add,
                 releaseLease = { cleanupOrder += "release" },
             )
-        session.start("old-token")
+        session.authorize("old-token")
+        first.emit(QlzEvaluationDriverEvent.Failed(1, QlzEvaluationIssue.NETWORK, QlzEvaluationRecoveryAction.RETRY_AUTHORIZATION))
         first.onStop = { first.emit(QlzEvaluationDriverEvent.Authorized) }
-        session.restart("new-token")
+        assertTrue(session.authorize("new-token"))
 
         assertEquals(0, first.scanStarts)
         first.emit(QlzEvaluationDriverEvent.Authorized)
@@ -224,7 +303,7 @@ class QlzEvaluationSessionTest {
         session: QlzEvaluationSession,
         driver: FakeQlzEvaluationDriver,
     ) {
-        session.start("token")
+        session.authorize("token")
         driver.emit(QlzEvaluationDriverEvent.Authorized)
         driver.emit(QlzEvaluationDriverEvent.DevicesChanged(listOf(DEVICE)))
         session.selectDevice(DEVICE.id)
@@ -249,6 +328,8 @@ class QlzEvaluationSessionTest {
     )
 
     private class FakeQlzEvaluationDriver : QlzEvaluationDriver {
+        val tokens = mutableListOf<String>()
+        val callbacks = mutableListOf<(QlzEvaluationDriverEvent) -> Unit>()
         private var listener: ((QlzEvaluationDriverEvent) -> Unit)? = null
         var scanStarts = 0
         val connectedIds = mutableListOf<String>()
@@ -262,6 +343,8 @@ class QlzEvaluationSessionTest {
             token: String,
             listener: (QlzEvaluationDriverEvent) -> Unit,
         ) {
+            tokens += token
+            callbacks += listener
             this.listener = listener
         }
 

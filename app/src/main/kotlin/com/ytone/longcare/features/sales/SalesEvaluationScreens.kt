@@ -83,7 +83,7 @@ internal fun SalesEvaluationPrepareErrorDialog(
 @Composable
 internal fun SalesDeviceStatusScreen(
     evaluationState: QlzEvaluationUiState,
-    tokenReady: Boolean,
+    isPreparing: Boolean,
     onBack: () -> Unit,
     onStartScan: () -> Unit,
     onSelectDevice: (QlzDeviceOption) -> Unit,
@@ -205,10 +205,10 @@ internal fun SalesDeviceStatusScreen(
                             else -> onStartScan
                         }
                     SalesPrimaryButton(
-                        text = evaluationScanActionText(evaluationState, tokenReady),
+                        text = evaluationScanActionText(evaluationState, isPreparing),
                         onClick = singleClick(onClick = click),
                         enabled =
-                            tokenReady &&
+                            !isPreparing &&
                                 evaluationState.stage !in
                                 setOf(
                                     QlzEvaluationStage.AUTHORIZING,
@@ -592,9 +592,9 @@ private fun evaluationStageText(state: QlzEvaluationUiState): String =
 @Composable
 private fun evaluationScanActionText(
     state: QlzEvaluationUiState,
-    tokenReady: Boolean,
+    isPreparing: Boolean,
 ): String {
-    if (!tokenReady) return stringResource(R.string.sales_evaluation_preparing)
+    if (isPreparing) return stringResource(R.string.sales_evaluation_preparing)
     return when {
         state.stage == QlzEvaluationStage.AUTHORIZING ->
             stringResource(R.string.sales_evaluation_authorizing)

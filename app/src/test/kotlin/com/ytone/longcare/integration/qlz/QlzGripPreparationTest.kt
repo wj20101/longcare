@@ -73,7 +73,7 @@ class QlzGripPreparationTest {
             nowMillis = { testScheduler.currentTime },
         )
         val device = QlzDeviceOption("mock", "Mock", "••:AA")
-        session.start("mock-token")
+        session.authorize("mock-token")
         driver.emit(QlzEvaluationDriverEvent.Authorized)
         driver.emit(QlzEvaluationDriverEvent.DevicesChanged(listOf(device)))
         session.selectDevice(device.id)

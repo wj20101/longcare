@@ -81,14 +81,14 @@ class SalesEvaluationMockFlowTest {
         click("qlz_retry_action")
         composeRule.onNodeWithTag("qlz_retry_action").assertDoesNotExist()
         composeRule.runOnIdle { assertEquals(1, driver.retries) }
-        emit(QlzEvaluationDriverEvent.UploadSucceeded("mock-record", "https://vendor.invalid/report", "80"))
-        emit(QlzEvaluationDriverEvent.UploadSucceeded("duplicate", "https://vendor.invalid/report", "80"))
+        emit(QlzEvaluationDriverEvent.UploadSucceeded("mock-record"))
+        emit(QlzEvaluationDriverEvent.UploadSucceeded("duplicate"))
         composeRule.onNodeWithText("评估成功").assertExists()
         // No business report was supplied to this screen harness.
         composeRule.onNodeWithText("查看评估报告").assertIsNotEnabled()
         composeRule.runOnIdle {
             assertEquals(1, events.filterIsInstance<QlzSdkEvent.Completed>().size)
-            assertEquals("", events.filterIsInstance<QlzSdkEvent.Completed>().single().reportUrl)
+            assertEquals("mock-record", events.filterIsInstance<QlzSdkEvent.Completed>().single().recordId)
         }
     }
 
@@ -155,7 +155,7 @@ class SalesEvaluationMockFlowTest {
         composeRule.runOnIdle { visible.value = false }
         composeRule.waitForIdle()
         emit(QlzEvaluationDriverEvent.MeasurementCompleted)
-        emit(QlzEvaluationDriverEvent.UploadSucceeded("late", "", ""))
+        emit(QlzEvaluationDriverEvent.UploadSucceeded("late"))
         composeRule.runOnIdle {
             assertEquals(QlzEvaluationStage.CLOSED, session.state.value.stage)
             assertEquals(1, releases)
@@ -205,8 +205,8 @@ class SalesEvaluationMockFlowTest {
                             },
                         )
                         else -> SalesDeviceStatusScreen(
-                            evaluationState = state, tokenReady = true, onBack = exit,
-                            onStartScan = { session.start("mock-token") },
+                            evaluationState = state, isPreparing = false, onBack = exit,
+                            onStartScan = { session.authorize("mock-token") },
                             onSelectDevice = { session.selectDevice(it.id) },
                             onRetry = session::startScan, onRecheckEnvironment = {},
                         )

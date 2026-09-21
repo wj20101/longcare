@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-temporary_qlz_key_present="false"
-qlz_test_mode="false"
 known_unsafe_qlz_sdk_present="false"
 known_unsafe_face_sdk_present="false"
 
@@ -12,14 +10,6 @@ while [[ $# -gt 0 ]]; do
     exit 2
   fi
   case "$1" in
-    --temporary-qlz-key-present)
-      temporary_qlz_key_present="${2:-}"
-      shift 2
-      ;;
-    --qlz-test-mode)
-      qlz_test_mode="${2:-}"
-      shift 2
-      ;;
     --known-unsafe-qlz-sdk-present)
       known_unsafe_qlz_sdk_present="${2:-}"
       shift 2
@@ -36,12 +26,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 violations=()
-if [[ "${temporary_qlz_key_present}" == "true" ]]; then
-  violations+=("QLZ SDK key is still the temporary fixed test key")
-fi
-if [[ "${qlz_test_mode}" == "true" ]]; then
-  violations+=("QLZ SDK test mode is still enabled")
-fi
 if [[ "${known_unsafe_qlz_sdk_present}" == "true" ]]; then
   violations+=("QLZ SDK 1.3.0.5 contains a reachable weakened TLS trust manager")
 fi

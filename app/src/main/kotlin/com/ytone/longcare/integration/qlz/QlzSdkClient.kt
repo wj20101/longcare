@@ -19,9 +19,6 @@ class QlzSdkClient @Inject constructor(
     private var initializedSdkKey: String? = null
     private val sessionLeases = QlzSessionLeaseRegistry()
 
-    val isTestMode: Boolean
-        get() = BuildConfig.QLZ_TEST_MODE
-
     @Synchronized
     fun initialize(): QlzSdkInitialization {
         val sdkKey = BuildConfig.QLZ_SDK_KEY.trim()
@@ -33,7 +30,6 @@ class QlzSdkClient @Inject constructor(
         }
 
         return try {
-            CheckIml.setTestMode(isTestMode)
             val config =
                 CheckConfig.Builder()
                     .setSdkKey(sdkKey)
@@ -72,23 +68,6 @@ class QlzSdkClient @Inject constructor(
                 }
             }
         }
-
-    /**
-     * Returns the Bluetooth device currently held by the SDK.
-     *
-     * This legacy snapshot remains available to the Sales ViewModel for summary state. The active
-     * custom screen uses the session's connection callbacks instead of polling this value.
-     */
-    fun getConnectedDeviceName(): String? =
-        runCatching {
-            val initialization = initialize()
-            check(initialization is QlzSdkInitialization.Ready) {
-                initializationMessage(initialization)
-            }
-            CheckIml.getBlueDeviceName()
-                ?.trim()
-                ?.takeIf { it.isNotEmpty() }
-        }.getOrNull()
 
     internal fun createEvaluationSession(
         activity: Activity,
@@ -174,13 +153,6 @@ sealed interface QlzSdkInitialization {
 sealed interface QlzSdkEvent {
     data class Completed(
         val recordId: String,
-        val reportUrl: String,
-        val score: String,
-    ) : QlzSdkEvent
-
-    data class Progress(
-        val successCount: Int,
-        val totalCount: Int,
     ) : QlzSdkEvent
 
     data object Cancelled : QlzSdkEvent
@@ -194,23 +166,4 @@ sealed interface QlzSdkEvent {
                 code == ErrorCodeConfig.error_token_outtime ||
                     code == ErrorCodeConfig.error_no_token
     }
-}
-
-private val DEVELOPMENT_COPY_PATTERN =
-    Regex(
-        pattern =
-            """(?i)\b(?:sdk|token|api|url|http|sdkid|qlz)\b|""" +
-                """设备\s*ID|错误码|code\s*[:=]|local\.properties""",
-    )
-
-internal fun String?.toUserFacingEvaluationError(
-    fallbackMessage: String,
-): String {
-    val candidate = this?.trim().orEmpty()
-    return candidate
-        .takeIf {
-            it.isNotBlank() &&
-                !DEVELOPMENT_COPY_PATTERN.containsMatchIn(it)
-        }
-        ?: fallbackMessage
 }

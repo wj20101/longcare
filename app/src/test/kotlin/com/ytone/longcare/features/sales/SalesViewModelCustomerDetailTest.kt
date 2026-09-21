@@ -141,14 +141,13 @@ class SalesViewModelCustomerDetailTest {
             val viewModel = createViewModel(repository)
 
             viewModel.selectCustomer(7)
+            viewModel.prepareEvaluation(7)
             coEvery { repository.getCheckResult(7, "sdk-record") } returns ApiResult.Success(
                 com.ytone.longcare.model.CheckResultModel("A级", serviceReportUrl),
             )
             viewModel.onSdkEvent(
                 QlzSdkEvent.Completed(
                     recordId = "sdk-record",
-                    reportUrl = "https://vendor.example.com/sdk-report",
-                    score = "80",
                 )
             )
             advanceUntilIdle()

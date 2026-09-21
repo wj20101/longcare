@@ -29,6 +29,7 @@ internal class QlzVendorEvaluationDriver(
     private val uploadBuffer = QlzUploadBuffer<AssessedData, RecordInputData>()
     private var selectedDeviceId: String? = null
     private var closed = false
+    private var authorizationId = 0L
 
     override fun authorize(
         token: String,
@@ -36,8 +37,9 @@ internal class QlzVendorEvaluationDriver(
     ) {
         check(!closed)
         this.listener = listener
+        val requestId = ++authorizationId
         val hostActivity = checkNotNull(activity)
-        connector =
+        if (connector == null) connector =
             ConnectDeviceHelp(
                 hostActivity,
                 uploadCallback,
@@ -48,14 +50,20 @@ internal class QlzVendorEvaluationDriver(
             token,
             object : CheckCallIml.CheckUserCallback {
                 override fun onTokenOut() {
+                    if (closed || requestId != authorizationId) return
+                    authorizationId += 1
                     emit(QlzEvaluationDriverEvent.TokenExpired())
                 }
 
                 override fun onSuccess(data: CheckPatient?) {
+                    if (closed || requestId != authorizationId) return
+                    authorizationId += 1
                     emit(QlzEvaluationDriverEvent.Authorized)
                 }
 
                 override fun onError(code: Int, errorMessage: String?) {
+                    if (closed || requestId != authorizationId) return
+                    authorizationId += 1
                     emitAuthorizationFailure(code)
                 }
             },
@@ -245,8 +253,6 @@ internal class QlzVendorEvaluationDriver(
                 emit(
                     QlzEvaluationDriverEvent.UploadSucceeded(
                         recordId = result?.recordid.orEmpty(),
-                        ignoredVendorReportUrl = result?.url.orEmpty(),
-                        score = result?.score1.orEmpty(),
                     )
                 )
             }
