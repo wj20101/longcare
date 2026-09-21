@@ -73,7 +73,7 @@ Navigation 3 使用可保存的 `AppNavEntry` 包装业务路由，为相同参�
 - `REMINDERS` / `REMINDER_DETAIL`：待办列表和详情
 - `CUSTOMERS` / `CUSTOMER_DETAIL`：客户列表和详情
 - 客户详情在进程恢复后，按 SavedStateHandle 中的客户 ID 重查；已加载、请求中或已有错误时不重复请求，错误沿用手动重试。
-- `REGISTRATION` / `REGISTRATION_CONFIRM` / `SUBMIT_SUCCESS`：客户登记链路
+- `REGISTRATION` / `REGISTRATION_CONFIRM` / `SUBMIT_SUCCESS`：客户登记链路；登记与确认共用 `SalesCustomerDraft`，含默认否的是否残疾单选及可选备注，随草稿保存、恢复与重置
 - `EVALUATION_CHOICE`：表单/设备评估选择
 - `DEVICE_STATUS` / `EVALUATION_GUIDE` / `EVALUATION_COMPLETE`：应用自有 QLZ 扫描、连接、五指检测、上传与完成链路；不启动厂商 Activity
 

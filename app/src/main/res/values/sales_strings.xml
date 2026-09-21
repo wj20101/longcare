@@ -83,6 +83,12 @@
     <string name="sales_registration_phone_hint">请输入联系人手机号码（选填）</string>
     <string name="sales_registration_relation_hint">请输入与老人关系（选填）</string>
     <string name="sales_registration_address_hint">请输入居住地址（选填）</string>
+    <string name="sales_registration_disability_label">是否残疾</string>
+    <string name="sales_registration_disability_yes">是</string>
+    <string name="sales_registration_disability_no">否</string>
+    <string name="sales_registration_remarks_hint">备注（选填）</string>
+    <string name="sales_customer_label_disability">是否残疾：</string>
+    <string name="sales_customer_label_remarks">备注：</string>
     <string name="sales_registration_get_location">获取定位</string>
     <string name="sales_registration_refresh_location">重新定位</string>
     <string name="sales_registration_location_format">已定位：%1$.6f, %2$.6f</string>

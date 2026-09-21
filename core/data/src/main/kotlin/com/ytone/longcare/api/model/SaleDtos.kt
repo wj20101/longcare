@@ -42,6 +42,8 @@ data class AddUserLatentRequestDto(
     val img1: String? = "",
     val img2: String? = "",
     val img3: String? = "",
+    val isDisability: Int = 0,
+    val remarks: String? = "",
 )
 
 @JsonClass(generateAdapter = true)

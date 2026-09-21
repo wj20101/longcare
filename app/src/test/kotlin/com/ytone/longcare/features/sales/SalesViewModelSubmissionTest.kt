@@ -67,6 +67,8 @@ class SalesViewModelSubmissionTest {
             assertEquals("", submittedRequest.captured.liveAddress)
             assertEquals("", submittedRequest.captured.liveLng)
             assertEquals("", submittedRequest.captured.liveLat)
+            assertEquals(0, submittedRequest.captured.isDisability)
+            assertEquals("", submittedRequest.captured.remarks)
             assertEquals(emptyList<Uri>(), photoUploader.uploadedUris)
             assertNull(viewModel.uiState.value.errorMessage)
         }
@@ -208,6 +210,33 @@ class SalesViewModelSubmissionTest {
             )
 
         assertEquals(listOf(first, second, third), merged)
+    }
+
+    @Test
+    fun `retry after submission failure retains disability and remarks`() = runTest {
+        val requests = mutableListOf<AddUserLatentParamModel>()
+        val repository = mockk<SaleRepository>(relaxed = true) {
+            coEvery { getRecentUserLatentList() } returns ApiResult.Success(emptyList())
+            coEvery { addUserLatent(capture(requests)) } returnsMany listOf(
+                ApiResult.Failure(400, "请重试"),
+                ApiResult.Success(AddUserLatentResultModel(id = 7)),
+            )
+        }
+        val viewModel = createViewModel(repository, QueuePhotoCloudUploader(ArrayDeque()), mockk(relaxed = true))
+        val draft = validDraft().copy(isDisability = true, remarks = "  测试备注\n第二行  ")
+
+        viewModel.submitCustomer(draft, emptyList())
+        advanceUntilIdle()
+        assertEquals("请重试", viewModel.uiState.value.errorMessage)
+        assertNull(viewModel.uiState.value.submissionResult)
+
+        viewModel.submitCustomer(draft, emptyList())
+        advanceUntilIdle()
+        assertEquals(2, requests.size)
+        assertEquals(requests.first(), requests.last())
+        assertEquals(1, requests.last().isDisability)
+        assertEquals("测试备注\n第二行", requests.last().remarks)
+        assertEquals(7, viewModel.uiState.value.submissionResult?.id)
     }
 
     private fun createViewModel(

@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -29,6 +31,8 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -160,6 +165,54 @@ internal fun SalesRegistrationScreen(
                     onValueChange = {
                         onDraftChange(draft.copy(liveAddress = it))
                     },
+                    singleLine = false,
+                    minHeight = 82,
+                )
+            }
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth().salesWhiteCard().padding(14.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.sales_registration_disability_label),
+                        color = SalesTextPrimary,
+                        fontSize = 15.sp,
+                    )
+                    Row(modifier = Modifier.fillMaxWidth().selectableGroup()) {
+                        listOf(true, false).forEach { isDisability ->
+                            Row(
+                                modifier =
+                                    Modifier.weight(1f).selectable(
+                                        selected = draft.isDisability == isDisability,
+                                        onClick = { onDraftChange(draft.copy(isDisability = isDisability)) },
+                                        role = Role.RadioButton,
+                                    ).padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                RadioButton(
+                                    selected = draft.isDisability == isDisability,
+                                    onClick = null,
+                                    colors = RadioButtonDefaults.colors(selectedColor = SalesBlue),
+                                )
+                                Text(
+                                    text = stringResource(
+                                        if (isDisability) R.string.sales_registration_disability_yes
+                                        else R.string.sales_registration_disability_no,
+                                    ),
+                                    color = SalesTextPrimary,
+                                    fontSize = 15.sp,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            item {
+                SalesRegistrationField(
+                    value = draft.remarks,
+                    placeholder = stringResource(R.string.sales_registration_remarks_hint),
+                    onValueChange = { onDraftChange(draft.copy(remarks = it)) },
                     singleLine = false,
                     minHeight = 82,
                 )
@@ -428,6 +481,19 @@ internal fun SalesInformationConfirmationScreen(
                         stringResource(R.string.sales_customer_label_address),
                         draft.liveAddress,
                     )
+                    SalesInfoRow(
+                        stringResource(R.string.sales_customer_label_disability),
+                        stringResource(
+                            if (draft.isDisability) R.string.sales_registration_disability_yes
+                            else R.string.sales_registration_disability_no,
+                        ),
+                    )
+                    if (draft.remarks.isNotBlank()) {
+                        SalesInfoRow(
+                            stringResource(R.string.sales_customer_label_remarks),
+                            draft.remarks.trim(),
+                        )
+                    }
                     if (photoUris.isNotEmpty()) {
                         Spacer(Modifier.height(4.dp))
                         Row(

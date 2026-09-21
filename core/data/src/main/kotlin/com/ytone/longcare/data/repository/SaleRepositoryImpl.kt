@@ -149,6 +149,8 @@ private fun AddUserLatentParamModel.toDto(): AddUserLatentRequestDto =
         img1 = img1,
         img2 = img2,
         img3 = img3,
+        isDisability = isDisability,
+        remarks = remarks,
     )
 
 private fun SearchUserLatentParamModel.toDto(): SearchUserLatentRequestDto =

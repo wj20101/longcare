@@ -1087,6 +1087,8 @@ data class SalesCustomerDraft(
     val guardianPhone: String = "",
     val guardianRelation: String = "",
     val liveAddress: String = "",
+    val isDisability: Boolean = false,
+    val remarks: String = "",
 ) {
     @StringRes
     fun validationMessageRes(): Int? =
@@ -1119,5 +1121,7 @@ data class SalesCustomerDraft(
             img1 = photoKeys.getOrNull(0).orEmpty(),
             img2 = photoKeys.getOrNull(1).orEmpty(),
             img3 = photoKeys.getOrNull(2).orEmpty(),
+            isDisability = if (isDisability) 1 else 0,
+            remarks = remarks.trim(),
         )
 }

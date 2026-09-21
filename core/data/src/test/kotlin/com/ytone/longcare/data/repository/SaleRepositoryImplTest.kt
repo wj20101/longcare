@@ -139,6 +139,39 @@ class SaleRepositoryImplTest {
     }
 
     @Test
+    fun `registration fields reach API with integer disability and optional remarks`() = runTest {
+        val requests = mutableListOf<AddUserLatentRequestDto>()
+        val apiService = Proxy.newProxyInstance(
+            LongCareApiService::class.java.classLoader,
+            arrayOf(LongCareApiService::class.java),
+        ) { _, method, args ->
+            check(method.name == "addUserLatent")
+            requests += args!![0] as AddUserLatentRequestDto
+            ApiResult.Success(AddUserLatentResponseDto(id = 7))
+        } as LongCareApiService
+        val repository = SaleRepositoryImpl(apiService)
+        val adapter = Moshi.Builder().build().adapter(AddUserLatentRequestDto::class.java)
+
+        for ((disability, remarks) in listOf(0 to "", 1 to "中文备注\n第二行")) {
+            repository.addUserLatent(
+                AddUserLatentParamModel(userName = "测试客户", isDisability = disability, remarks = remarks),
+            )
+            val dto = requests.last()
+            val json = adapter.toJson(dto)
+            val values = adapter.toJsonValue(dto) as Map<*, *>
+            assertEquals(disability, (values["isDisability"] as Number).toInt())
+            assertEquals(remarks, values["remarks"])
+            assertEquals("测试客户", values["userName"])
+            assertEquals(dto, adapter.fromJson(json))
+            org.junit.Assert.assertTrue(json.contains("\"isDisability\":$disability"))
+        }
+        assertEquals(0, AddUserLatentRequestDto().isDisability)
+        assertEquals("", AddUserLatentRequestDto().remarks)
+        assertEquals(0, AddUserLatentParamModel().isDisability)
+        assertEquals("", AddUserLatentParamModel().remarks)
+    }
+
+    @Test
     fun `all Sale endpoints use documented methods and paths`() {
         val methods = LongCareApiService::class.java.declaredMethods.associateBy { it.name }
 
@@ -219,6 +252,8 @@ class SaleRepositoryImplTest {
                 "img1",
                 "img2",
                 "img3",
+                "isDisability",
+                "remarks",
             ),
             jsonKeys(
                 AddUserLatentRequestDto(

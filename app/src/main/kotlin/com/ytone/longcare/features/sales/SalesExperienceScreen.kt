@@ -728,7 +728,7 @@ internal fun SalesExperienceScreen(
     }
 }
 
-private val salesCustomerDraftSaver =
+internal val salesCustomerDraftSaver =
     listSaver<SalesCustomerDraft, String>(
         save = { draft ->
             listOf(
@@ -738,6 +738,8 @@ private val salesCustomerDraftSaver =
                 draft.guardianPhone,
                 draft.guardianRelation,
                 draft.liveAddress,
+                draft.isDisability.toString(),
+                draft.remarks,
             )
         },
         restore = { values ->
@@ -748,6 +750,8 @@ private val salesCustomerDraftSaver =
                 guardianPhone = values[3],
                 guardianRelation = values[4],
                 liveAddress = values[5],
+                isDisability = values.getOrNull(6) == "true",
+                remarks = values.getOrNull(7).orEmpty(),
             )
         },
     )
