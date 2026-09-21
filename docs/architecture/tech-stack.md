@@ -9,7 +9,7 @@
 | 项目 | 当前值 | 事实来源 |
 |---|---:|---|
 | Application ID | `com.ytone.longcare` | app/build.gradle.kts |
-| 版本 | `1.0.6 (62)` | `constants.gradle.kts` |
+| 版本 | `1.0.6 (63)` | `constants.gradle.kts` |
 | `compileSdk` | 37 | `constants.gradle.kts` |
 | `targetSdk` | 36 | `constants.gradle.kts` |
 | `minSdk` | 24 | `constants.gradle.kts` |

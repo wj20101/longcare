@@ -15,7 +15,8 @@ WORKFLOW = (ROOT / ".github/workflows/android-ci.yml").read_text()
 
 
 class KvmPreflightTest(unittest.TestCase):
-    def run_preflight(self, exists=True, readable=True, writable=True, udev_ok=True):
+    def run_preflight(self, exists=True, readable=True, writable=True, udev_ok=True,
+                      deferred_permissions=False, settle_ok=True):
         match = re.search(
             r"      - name: Enable KVM acceleration\n        run: \|\n(.*?)(?=      - name:)",
             WORKFLOW, re.S,
@@ -28,11 +29,22 @@ class KvmPreflightTest(unittest.TestCase):
                 device.touch()
             # Inject only OS boundaries; execute the production control flow unchanged.
             prelude = f"""
+                kvm_events_pending=0
                 sudo() {{
                     echo "sudo $*" >&2
-                    if [[ "$1" == tee ]]; then cat; else return {0 if udev_ok else 1}; fi
+                    if [[ "$1" == tee ]]; then cat; return; fi
+                    if [[ {0 if udev_ok else 1} != 0 ]]; then return 1; fi
+                    case "$*" in
+                        'udevadm trigger --name-match=kvm') kvm_events_pending=1 ;;
+                        'udevadm settle --timeout=30')
+                            if [[ {0 if settle_ok else 1} != 0 ]]; then return 1; fi
+                            kvm_events_pending=0 ;;
+                    esac
                 }}
                 test() {{
+                    if [[ {1 if deferred_permissions else 0} == 1 && "$kvm_events_pending" == 1 ]]; then
+                        return 1
+                    fi
                     case "$1" in
                         -r) return {0 if readable else 1} ;;
                         -w) return {0 if writable else 1} ;;
@@ -60,6 +72,15 @@ class KvmPreflightTest(unittest.TestCase):
 
     def test_udev_failure_is_not_ignored(self):
         self.assertNotEqual(0, self.run_preflight(udev_ok=False).returncode)
+
+    def test_permissions_are_checked_after_udev_events_complete(self):
+        result = self.run_preflight(deferred_permissions=True)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertLess(result.stderr.index("udevadm trigger --name-match=kvm"),
+                        result.stderr.index("udevadm settle --timeout=30"))
+
+    def test_udev_settle_timeout_is_not_ignored(self):
+        self.assertNotEqual(0, self.run_preflight(settle_ok=False).returncode)
 
     def test_available_device_applies_rule_then_passes(self):
         result = self.run_preflight()

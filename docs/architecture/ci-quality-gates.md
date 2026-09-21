@@ -61,7 +61,9 @@ PR 并发组以 PR 编号保持稳定，不包含随提交变化的 head SHA；�
 
 该条件 job 仍不是完整业务回归矩阵。普通主阻断路径执行读卡 Feature 单测及主应用长按入口、NFC 平台、导航专项单测，但不覆盖正式应用完整业务单测或完整用户旅程，条件 smoke 也只执行 affected scope 选中的 App instrumentation class。完整 `:app` 与 `:core:data` connected tests 通过 `scripts/quality/run_connected_android_tests.sh` 在本地或发布验收环境执行。
 
-`test_ci_upgrade_validation.py` 由 workflow 守卫调用：执行工作流中的 KVM 脚本并注入缺失/权限拒绝场景，在临时 Git 仓库逐项验证三类 CI 路径触发 smoke，并验证 PR 并发分组跨提交稳定且彼此隔离。这些本地守卫不替代真实 Actions 模拟器运行。
+KVM 权限规则触发后，通过 `udevadm settle --timeout=30` 等待异步事件处理完成，再检查当前用户的读写权限；超时或权限仍不足时继续阻断。
+
+`test_ci_upgrade_validation.py` 由 workflow 守卫调用：执行工作流中的 KVM 脚本并注入缺失、权限拒绝、权限延迟生效和事件等待超时场景，在临时 Git 仓库逐项验证三类 CI 路径触发 smoke，并验证 PR 并发分组跨提交稳定且彼此隔离。这些本地守卫不替代真实 Actions 模拟器运行。
 
 当前 ci-required guards：
 

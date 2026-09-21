@@ -228,6 +228,8 @@ jobs:
             | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          # Trigger queues events asynchronously; wait before checking the new permissions.
+          sudo udevadm settle --timeout=30
           if ! test -r /dev/kvm || ! test -w /dev/kvm; then
             echo "::error::/dev/kvm is not readable and writable by the current user."
             exit 1
