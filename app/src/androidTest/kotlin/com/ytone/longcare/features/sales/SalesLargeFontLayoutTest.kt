@@ -467,8 +467,8 @@ class SalesLargeFontLayoutTest {
 
         composeRule
             .onNode(hasScrollAction())
-            .performScrollToNode(hasText("查看评估报告"))
-        composeRule.onNodeWithText("查看评估报告").assertIsDisplayed()
+            .performScrollToNode(hasText("确认并提交评估结果"))
+        composeRule.onNodeWithText("确认并提交评估结果").assertIsDisplayed()
     }
 
     private fun setLargeFontContent(content: @Composable () -> Unit) {

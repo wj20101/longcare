@@ -15,6 +15,13 @@ import org.robolectric.annotation.Config
 @Config(application = Application::class, sdk = [35])
 class SalesEvaluationResourceTest {
     @Test
+    fun evaluationActionDoesNotRenameCustomerReportAction() {
+        val resources = ApplicationProvider.getApplicationContext<Application>().resources
+        assertEquals("确认并提交评估结果", resources.getString(R.string.sales_evaluation_confirm_submit))
+        assertEquals("查看评估报告", resources.getString(R.string.sales_customer_view_report))
+    }
+
+    @Test
     fun deviceCopyUsesSimpleName() {
         val resources = ApplicationProvider.getApplicationContext<Application>().resources
         val expected = mapOf(

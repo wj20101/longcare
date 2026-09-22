@@ -85,7 +85,7 @@ class SalesEvaluationMockFlowTest {
         emit(QlzEvaluationDriverEvent.UploadSucceeded("duplicate"))
         composeRule.onNodeWithText("评估成功").assertExists()
         // No business report was supplied to this screen harness.
-        composeRule.onNodeWithText("查看评估报告").assertIsNotEnabled()
+        composeRule.onNodeWithText("确认并提交评估结果").assertIsNotEnabled()
         composeRule.runOnIdle {
             assertEquals(1, events.filterIsInstance<QlzSdkEvent.Completed>().size)
             assertEquals("mock-record", events.filterIsInstance<QlzSdkEvent.Completed>().single().recordId)

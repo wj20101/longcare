@@ -111,15 +111,15 @@
 - **AND** 系统 MUST NOT 使用 Demo 中的硬编码坐标、地址、设备名称、MAC、Token 或密钥
 
 ### Requirement: 完成状态遵守 LongCare 报告契约
-系统 SHALL 在 SDK 检测并上传成功后直接显示原生评估结果页，使用当前客户 ID 和本次 recordId 调用 POST `/V1/Sale/GetCheckResult`。结果页 SHALL 使用响应 `pgResult` 展示等级，并提供“查看评估报告”入口，点击后才打开该响应的 `pgUrl`。系统 MUST NOT 自动打开 H5、使用 SDK URL、凭分数推导等级或等待报告关闭才显示结果。纯表单评估流程 SHALL 保持原行为。
+系统 SHALL 在 SDK 检测并上传成功后直接显示原生评估结果页，使用当前客户 ID 和本次 recordId 调用 POST `/V1/Sale/GetCheckResult`。结果页 SHALL 使用响应 `pgResult` 展示等级，并提供“确认并提交评估结果”入口，点击后才打开该响应的 `pgUrl`。系统 MUST NOT 自动打开 H5、使用 SDK URL、凭分数推导等级或等待报告关闭才显示结果。纯表单评估流程 SHALL 保持原行为。
 
 #### Scenario: 上传成功并查询结果
 - **WHEN** 当前设备会话上传成功
 - **THEN** 释放已完成的设备会话，进入原生评估结果页并调用 GetCheckResult
 - **AND** 等级来自本次响应 pgResult，例如返回“A级”时显示“评估成功，评估等级为：A级”，不重复追加“级”
 
-#### Scenario: 用户查看评估报告
-- **WHEN** GetCheckResult 返回非空报告地址，用户点击“查看评估报告”
+#### Scenario: 用户确认并提交评估结果
+- **WHEN** GetCheckResult 返回非空报告地址，用户点击“确认并提交评估结果”
 - **THEN** 打开本次响应 pgUrl 的 H5，保持现有沉浸式显示且不新增原生标题栏
 - **AND** 未点击按钮时停留在结果页，不自动打开报告
 

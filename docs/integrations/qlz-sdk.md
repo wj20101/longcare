@@ -114,7 +114,7 @@ Android 源码、资源、BuildConfig 或 APK。客户端通过
 7. 页面只接收不可变的 `QlzEvaluationUiState`。蓝牙地址在 integration 边界内换成会话级不透明 ID，界面仅显示掩码；用户点选后由 `ConnectDeviceHelp` 连接，并映射五指、进度、电量、超时和掉线回调。
 8. `onCheckEnd` 只触发一次 `sendData(...)`。纬度、经度和地址取自当前客户或本次登记的可靠字段，缺失时传空字符串；上传失败仅在内存中保留本次 `RecordInputData` 供重试。
 9. 上传成功后关闭设备会话，直接进入原生评估结果页，以当前客户 ID 和本次 recordId 请求 `POST /V1/Sale/GetCheckResult`。客户、recordId 和完成状态通过 SavedStateHandle 保存；不自动打开 H5，不以客户详情中的旧地址代替结果查询。SDK URL 被忽略，不打开厂商报告 Activity。
-10. 结果页展示本次响应 `pgResult`；用户点击“查看评估报告”才打开 `pgUrl`，报告的 `window.NativeBridge.closeWebView()` 和系统返回都只关闭当前 H5，回到原结果页。查询失败、等级或地址未就绪时允许刷新同一接口，没有地址时报告按钮不可用；不重新上传、不读缓存旧值、不增加兜底链。结果页返回/完成回首页。
+10. 结果页展示本次响应 `pgResult`；用户点击“确认并提交评估结果”才打开 `pgUrl`，报告的 `window.NativeBridge.closeWebView()` 和系统返回都只关闭当前 H5，回到原结果页。查询失败、等级或地址未就绪时允许刷新同一接口，没有地址时报告按钮不可用；不重新上传、不读缓存旧值、不增加兜底链。结果页返回/完成回首页。
 
 纯表单流程保持不变：表单 H5 主动关闭后显示完成页并重新请求 `GET /V1/Sale/GetUserLatentDetail`；系统返回只回评估入口。报告/协议/隐私网页只关闭自身，所有网页都不使用返回结果邮箱或关联协议。成功弹窗确认仅刷新 H5，不要求调用关闭。
 

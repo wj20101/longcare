@@ -43,7 +43,7 @@ LongCare Token
   → UpDataCallback
   → 原生评估结果页
   → GetCheckResult（当前客户 ID、本次 recordId）
-  → 展示 pgResult 和“查看评估报告”按钮
+  → 展示 pgResult 和“确认并提交评估结果”按钮
   → 用户点击按钮打开本次响应 pgUrl 的报告 H5
   → closeWebView 或系统返回只关闭 H5，回到结果页
 ```
@@ -131,7 +131,7 @@ UI 沿用销售端现有背景、卡片、按钮和设备/握持素材；新增�
 
 SDK 上传成功回调中的 `recordId` 仅用于本次设备结果查询，score 不推导业务等级，SDK URL 不参与导航。设备流程直接进入原生结果页，由 `SalesViewModel` 使用当前客户 ID 和本次 recordId 请求 `/V1/Sale/GetCheckResult`，以响应 `pgResult` 展示“评估成功，评估等级为：{等级}”。查询失败或等级尚未返回时显示现有失败/待同步提示并允许手动刷新，不读取缓存旧结果、不切接口兜底、不重新检测或上传。
 
-复用结果页已有“查看评估报告”按钮和报告导航，仅使用本次结果响应 `pgUrl`；没有地址时不给出可打开空网页的动作，保留刷新入口。报告保持当前无原生标题栏和沉浸式适配，`window.NativeBridge.closeWebView()` 与系统返回仅弹出当前 H5，回到已有结果页，不改变完成状态、不新增结果邮箱或网页关联机制。结果页返回/完成仍回首页。
+复用结果页已有“确认并提交评估结果”按钮和报告导航，仅使用本次结果响应 `pgUrl`；没有地址时不给出可打开空网页的动作，保留刷新入口。报告保持当前无原生标题栏和沉浸式适配，`window.NativeBridge.closeWebView()` 与系统返回仅弹出当前 H5，回到已有结果页，不改变完成状态、不新增结果邮箱或网页关联机制。结果页返回/完成仍回首页。
 
 纯表单评估的 H5 入口、主动关闭后的完成页和客户详情查询保持现状，不能因设备流程清理而删除其必要逻辑。删除仅服务于设备自动打开 H5 的请求、重试与状态；保留直接的客户/recordId 结果上下文，不引入通用流程框架、自动轮询或兼容旧设备顺序的分支。正式发布策略、AAR 校验、签名及其余检查不变。
 
@@ -161,7 +161,7 @@ SDK 上传成功回调中的 `recordId` 仅用于本次设备结果查询，scor
 
 1. 先新增厂商 adapter、会话状态机、全局租约和 focused unit tests，不切换现有入口。
 2. 将 `DEVICE_STATUS`/`EVALUATION_GUIDE` 接入自定义会话，复用现有权限请求、Token 获取/恢复和 `EVALUATION_COMPLETE` 页面。
-3. 将设备上传成功接到原生结果页与 GetCheckResult，复用“查看评估报告”按钮，删除设备自动打开 H5 的旧请求和专用逻辑；不恢复 `SDKCall.openByToken` 或厂商 Activity 完成语义。
+3. 将设备上传成功接到原生结果页与 GetCheckResult，复用“确认并提交评估结果”按钮，删除设备自动打开 H5 的旧请求和专用逻辑；不恢复 `SDKCall.openByToken` 或厂商 Activity 完成语义。
 4. 更新字符串、Compose/架构测试、QLZ 集成说明与页面地图，执行 lint/assemble/preflight 及 Manifest/生产门禁检查。
 5. 当前已使用应用自有 UI；在支持 BLE 的真机用 QLZ 设备补齐任务 5.3 的异常矩阵后，才能认定本变更完整验收。
 

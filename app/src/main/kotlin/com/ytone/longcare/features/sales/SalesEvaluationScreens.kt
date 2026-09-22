@@ -762,7 +762,7 @@ internal fun SalesEvaluationCompleteScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     SalesPrimaryButton(
-                        text = stringResource(R.string.sales_customer_view_report),
+                        text = stringResource(R.string.sales_evaluation_confirm_submit),
                         onClick = onOpenReport,
                         enabled = hasReport && !isLoading && !resultError,
                     )

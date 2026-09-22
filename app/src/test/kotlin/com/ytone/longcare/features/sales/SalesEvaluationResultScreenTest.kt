@@ -48,10 +48,10 @@ class SalesEvaluationResultScreenTest {
         }
         compose.onNodeWithText("评估成功，评估等级为：A级").assertExists()
         compose.onNodeWithText("关闭测试报告").assertDoesNotExist()
-        compose.onNodeWithText("查看评估报告").performScrollTo().performClick()
+        compose.onNodeWithText("确认并提交评估结果").performScrollTo().performClick()
         compose.onNodeWithText("关闭测试报告").performClick()
         compose.onNodeWithText("评估成功，评估等级为：A级").assertExists()
-        compose.onNodeWithText("查看评估报告").assertIsEnabled()
+        compose.onNodeWithText("确认并提交评估结果").assertIsEnabled()
     }
 
     @Test fun gradeWithoutReportOffersRefreshButCannotOpenEmptyPage() {
@@ -63,8 +63,8 @@ class SalesEvaluationResultScreenTest {
             }
         }
         compose.onNodeWithText("评估报告待同步").assertExists()
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("查看评估报告"))
-        compose.onNodeWithText("查看评估报告").assertIsNotEnabled()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("确认并提交评估结果"))
+        compose.onNodeWithText("确认并提交评估结果").assertIsNotEnabled()
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("刷新评估结果"))
         compose.onNodeWithText("刷新评估结果").performClick()
         compose.runOnIdle { assertEquals(1, refreshes) }
@@ -80,7 +80,7 @@ class SalesEvaluationResultScreenTest {
                     onRefresh = { refreshes++ })
             }
         }
-        compose.onNodeWithText("查看评估报告").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("确认并提交评估结果").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithText("刷新评估结果").performScrollTo().performClick()
         compose.onNodeWithText("完成").performScrollTo().performClick()
         compose.runOnIdle {
@@ -96,6 +96,6 @@ class SalesEvaluationResultScreenTest {
                     onBack = {}, onDone = {}, onOpenReport = { error("Loading") })
             }
         }
-        compose.onNodeWithText("查看评估报告").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("确认并提交评估结果").performScrollTo().assertIsNotEnabled()
     }
 }
