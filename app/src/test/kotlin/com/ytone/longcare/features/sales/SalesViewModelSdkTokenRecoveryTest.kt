@@ -274,6 +274,7 @@ class SalesViewModelSdkTokenRecoveryTest {
         coEvery { repository.getRecentUserLatentList() } coAnswers { customers.await() }
         coEvery { repository.getCheckToken(any(), any()) } coAnswers { token.await() }
         val vm = createViewModel(repository, gateway())
+        vm.loadRecentCustomers()
         runCurrent()
         assertTrue(vm.uiState.value.isLoading)
         val operation = vm.uiState.value.operation

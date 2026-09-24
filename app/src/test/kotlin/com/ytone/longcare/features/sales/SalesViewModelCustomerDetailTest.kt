@@ -140,7 +140,6 @@ class SalesViewModelCustomerDetailTest {
                 )
             val viewModel = createViewModel(repository)
 
-            viewModel.selectCustomer(7)
             viewModel.prepareEvaluation(7)
             coEvery { repository.getCheckResult(7, "sdk-record") } returns ApiResult.Success(
                 com.ytone.longcare.model.CheckResultModel("A级", serviceReportUrl),
@@ -169,7 +168,7 @@ class SalesViewModelCustomerDetailTest {
         }
 
     @Test
-    fun `restored customer detail reloads saved id only once`() = runTest {
+    fun `restored customer detail reloads route id`() = runTest {
         val detail = UserLatentDetailModel(id = 7, pgResult = "A级")
         val repository = repositoryWithDetail(ApiResult.Success(detail))
         val originalHandle = SavedStateHandle()
@@ -178,8 +177,7 @@ class SalesViewModelCustomerDetailTest {
         val restored = createViewModel(repository, restoredHandle)
         assertNull(restored.uiState.value.selectedCustomer)
 
-        restored.restoreCustomerDetailIfNeeded()
-        restored.restoreCustomerDetailIfNeeded()
+        restored.loadCustomerDetail(7)
         advanceUntilIdle()
 
         assertEquals(detail, restored.uiState.value.selectedCustomer)
@@ -187,33 +185,58 @@ class SalesViewModelCustomerDetailTest {
     }
 
     @Test
-    fun `restoring detail does not duplicate pending request`() = runTest {
-        val response = CompletableDeferred<ApiResult<UserLatentDetailModel>>()
+    fun `refreshing detail replaces cached evaluation result`() = runTest {
         val repository = repositoryWithDetail(ApiResult.Success(UserLatentDetailModel(id = 7)))
-        coEvery { repository.getUserLatentDetail(7) } coAnswers { response.await() }
-        val vm = createViewModel(repository, SavedStateHandle(mapOf("sales.evaluation.customer" to 7)))
-        repeat(2) { vm.restoreCustomerDetailIfNeeded() }
-        response.complete(ApiResult.Success(UserLatentDetailModel(id = 7)))
+        val vm = createViewModel(repository)
+        vm.loadCustomerDetail(7)
+        coEvery { repository.getUserLatentDetail(7) } returns ApiResult.Success(UserLatentDetailModel(id = 7, pgResult = "B级"))
+        vm.loadCustomerDetail(7)
         advanceUntilIdle()
-        coVerify(exactly = 1) { repository.getUserLatentDetail(7) }
+        assertEquals("B级", vm.uiState.value.selectedCustomer?.pgResult)
+        coVerify(exactly = 2) { repository.getUserLatentDetail(7) }
     }
 
     @Test
     fun `restored detail failure stays retryable without automatic retry loop`() = runTest {
         val repository = repositoryWithDetail(ApiResult.Failure(code = 500, message = "暂不可用"))
         val vm = createViewModel(repository, SavedStateHandle(mapOf("sales.evaluation.customer" to 7)))
-        repeat(2) { vm.restoreCustomerDetailIfNeeded() }
+        vm.loadCustomerDetail(7)
         advanceUntilIdle()
         assertEquals("暂不可用", vm.uiState.value.customerDetailErrorMessage)
         coVerify(exactly = 1) { repository.getUserLatentDetail(7) }
     }
 
     @Test
-    fun `detail restoration without saved customer does not request id zero`() = runTest {
+    fun `invalid route customer does not request id zero`() = runTest {
         val repository = repositoryWithDetail(ApiResult.Success(UserLatentDetailModel(id = 7)))
-        createViewModel(repository).restoreCustomerDetailIfNeeded()
+        createViewModel(repository).loadCustomerDetail(0)
         advanceUntilIdle()
         coVerify(exactly = 0) { repository.getUserLatentDetail(any()) }
+    }
+
+    @Test fun `separate detail entry never overwrites retained result customer or record`() = runTest {
+        val repository = repositoryWithDetail(ApiResult.Success(UserLatentDetailModel(id = 8)))
+        coEvery { repository.getCheckResult(7, "record-7") } returns
+            ApiResult.Success(com.ytone.longcare.model.CheckResultModel(pgResult = "A级", pgUrl = "https://report.invalid"))
+        val resultHandle = SavedStateHandle()
+        val result = createViewModel(repository, resultHandle)
+        result.showEvaluationResult(7, "record-7")
+        result.loadEvaluationResult()
+        val detail = createViewModel(repository)
+        detail.loadCustomerDetail(8)
+        advanceUntilIdle()
+        assertEquals(8, detail.uiState.value.selectedCustomer?.id)
+        assertEquals(7, result.uiState.value.selectedCustomerId)
+        assertEquals("record-7", result.uiState.value.evaluationRecordId)
+        assertEquals("A级", result.uiState.value.evaluationResult?.pgResult)
+        result.showEvaluationResult(7, "record-7")
+        assertEquals("A级", result.uiState.value.evaluationResult?.pgResult)
+        val restored = createViewModel(repository, SavedStateHandle(
+            resultHandle.keys().associateWith { resultHandle.get<Any?>(it) }))
+        restored.loadEvaluationResult()
+        advanceUntilIdle()
+        assertEquals("record-7", restored.uiState.value.evaluationRecordId)
+        assertEquals("A级", restored.uiState.value.evaluationResult?.pgResult)
     }
 
     private fun createViewModel(

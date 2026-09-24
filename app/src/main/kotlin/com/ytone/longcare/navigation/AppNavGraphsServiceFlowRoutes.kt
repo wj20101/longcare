@@ -95,9 +95,8 @@ internal fun AppEntryProviderBuilder.registerServiceCompleteRoute(navController:
         val route = backStackEntry.route<ServiceCompleteRoute>()
         ServiceCompleteScreen(
             actions = ServiceCompleteActions(
-                onNavigateHomeAndClearStack = { navController.navigateToHomeAndClearStack() }
+                onNavigateBack = { navController.popBackStack() }
             ),
-            orderKey = route.orderParams.toOrderKey(),
             serviceCompleteData = route.serviceCompleteData
         )
     }

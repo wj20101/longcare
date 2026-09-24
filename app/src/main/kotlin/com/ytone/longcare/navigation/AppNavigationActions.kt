@@ -111,9 +111,11 @@ fun AppNavigator.navigateToWebView(url: String, title: String) {
 }
 
 fun AppNavigator.navigateToEvaluationForm(url: String, title: String) {
-    navigateWhenResumed(WebViewRoute(url, title, isEvaluation = true, showNativeToolbar = false))
+    val customerId = ((backStack.lastOrNull() as? AppNavEntry)?.route as? SalesRoute)?.customerId ?: 0
+    navigateWhenResumed(WebViewRoute(url, title, isEvaluation = true, showNativeToolbar = false,
+        canOpenCustomerDetails = true, evaluationCustomerId = customerId))
 }
 
 fun AppNavigator.navigateToEvaluationReport(url: String, title: String) {
-    navigate(WebViewRoute(url, title, showNativeToolbar = false))
+    navigate(WebViewRoute(url, title, showNativeToolbar = false, canOpenCustomerDetails = true))
 }

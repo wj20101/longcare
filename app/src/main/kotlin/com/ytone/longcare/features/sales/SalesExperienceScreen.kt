@@ -50,17 +50,20 @@ import com.ytone.longcare.integration.qlz.QlzEvaluationStage
 import com.ytone.longcare.integration.qlz.QlzEvaluationUploadContext
 import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.platform.sales.rememberSalesSdkUiController
-import com.ytone.longcare.presentation.sales.SalesNavigationState
+import com.ytone.longcare.navigation.AppNavigator
+import com.ytone.longcare.navigation.SalesRoute
+import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.presentation.sales.SalesPage
-import com.ytone.longcare.presentation.sales.evaluationBackTarget
-import com.ytone.longcare.presentation.sales.rememberSalesNavigationState
 import kotlinx.coroutines.launch
 
 @Composable
 internal fun SalesExperienceScreen(
     actions: HomeActions,
     homeSharedViewModel: HomeSharedViewModel,
+    navigator: AppNavigator,
+    route: SalesRoute? = null,
     viewModel: SalesViewModel = hiltViewModel(),
+    sdkUiController: com.ytone.longcare.platform.sales.SalesSdkUiController = rememberSalesSdkUiController(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
@@ -69,23 +72,25 @@ internal fun SalesExperienceScreen(
     val activity = context.findActivity()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val lifecycleState by lifecycle.currentStateAsState()
-    val sdkUiController = rememberSalesSdkUiController()
     val evaluationState by sdkUiController.uiState.collectAsStateWithLifecycle()
     val sdkPermissions = remember(sdkUiController) {
         sdkUiController.requiredRuntimePermissions()
     }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-    val navigationState = rememberSalesNavigationState()
+    var rootTab by rememberSaveable { mutableStateOf(0) }
     var registrationDraft by rememberSaveable(stateSaver = salesCustomerDraftSaver) {
-        mutableStateOf(SalesCustomerDraft())
+        mutableStateOf(route?.draft ?: SalesCustomerDraft())
     }
     var photoUriStrings by rememberSaveable {
-        mutableStateOf(emptyList<String>())
+        mutableStateOf(route?.photos ?: emptyList<String>())
     }
     var showCameraPurposeNotice by rememberSaveable { mutableStateOf(false) }
 
-    val currentPage = navigationState.currentPage
+    var measurementVisible by rememberSaveable { mutableStateOf(false) }
+    val currentPage = if (route?.page == SalesPage.DEVICE_STATUS && measurementVisible) {
+        SalesPage.EVALUATION_GUIDE
+    } else route?.page ?: SalesPage.HOME
     val photoUris = photoUriStrings.map(String::toUri)
     val selectCustomerMessage = stringResource(R.string.sales_error_select_customer)
     val evaluationPermissionMessage =
@@ -120,11 +125,14 @@ internal fun SalesExperienceScreen(
     }
 
     fun navigate(page: SalesPage) {
-        navigationState.navigate(page)
+        navigator.navigateWhenResumed(SalesRoute(page))
     }
 
     fun evaluationUploadContext(): QlzEvaluationUploadContext {
-        return uiState.toQlzEvaluationUploadContext(registrationDraft.liveAddress)
+        return uiState.toQlzEvaluationUploadContext(route?.address.orEmpty()).let {
+            it.copy(latitude = it.latitude.ifBlank { route?.latitude?.toString().orEmpty() },
+                longitude = it.longitude.ifBlank { route?.longitude?.toString().orEmpty() })
+        }
     }
 
     fun launchCustomEvaluation(hostActivity: android.app.Activity) {
@@ -152,11 +160,6 @@ internal fun SalesExperienceScreen(
         }
     }
 
-    fun goHome() {
-        viewModel.resetEvaluationResult()
-        navigationState.goHome()
-    }
-
     fun discardRegistrationPhotos() {
         if (photoUriStrings.isNotEmpty()) {
             viewModel.discardManagedPhotos(photoUriStrings.map(String::toUri))
@@ -165,20 +168,13 @@ internal fun SalesExperienceScreen(
     }
 
     fun finishSubmissionFlow() {
-        // Leave the result page before clearing its state so a state emission
-        // cannot re-enter or visually pin the completed submission route.
-        goHome()
-        registrationDraft = SalesCustomerDraft()
-        discardRegistrationPhotos()
-        viewModel.resetSubmission()
+        navigator.popBackStack()
     }
 
     fun openCustomerDetail(
         customerId: Int,
-        returnPage: SalesPage,
     ) {
-        viewModel.loadCustomerDetail(customerId)
-        navigationState.showCustomerDetail(returnPage)
+        navigator.navigateWhenResumed(SalesRoute(SalesPage.CUSTOMER_DETAIL, customerId))
     }
 
     fun startAutomaticEvaluation(customerId: Int) {
@@ -186,69 +182,56 @@ internal fun SalesExperienceScreen(
             showMessage(selectCustomerMessage)
             return
         }
-        viewModel.prepareEvaluation(customerId)
-        navigate(SalesPage.DEVICE_STATUS)
+        navigator.navigateWhenResumed(requireNotNull(route).copy(page = SalesPage.DEVICE_STATUS))
     }
 
     fun back() {
-        when (currentPage) {
-            SalesPage.HOME -> {
-                if (navigationState.rootTab != 0) navigationState.selectRootTab(0)
+        if (!navigator.canHandleCallback()) return
+        if (route != null) {
+            if (currentPage.ownsQlzEvaluationSession()) {
+                viewModel.cancelSdkAuthorization()
+                sdkUiController.cancel()
             }
-
-            SalesPage.REMINDERS -> goHome()
-            SalesPage.REMINDER_DETAIL -> navigate(SalesPage.REMINDERS)
-            SalesPage.CUSTOMERS -> goHome()
-            SalesPage.CUSTOMER_DETAIL ->
-                navigate(navigationState.detailReturnPage)
-
-            SalesPage.REGISTRATION -> {
+            if (currentPage == SalesPage.REGISTRATION || currentPage == SalesPage.REGISTRATION_CONFIRM) {
                 discardRegistrationPhotos()
                 registrationDraft = SalesCustomerDraft()
-                viewModel.resetSubmission()
-                goHome()
             }
-            SalesPage.REGISTRATION_CONFIRM -> navigate(SalesPage.REGISTRATION)
-            SalesPage.SUBMIT_SUCCESS -> finishSubmissionFlow()
-            SalesPage.EVALUATION_CHOICE,
-            SalesPage.DEVICE_STATUS,
-            SalesPage.EVALUATION_GUIDE,
-            -> {
-                if (currentPage.ownsQlzEvaluationSession()) {
-                    viewModel.cancelSdkAuthorization()
-                    sdkUiController.cancel()
-                }
-                navigate(
-                    evaluationBackTarget(
-                        currentPage = currentPage,
-                        choiceReturnPage = navigationState.evaluationChoiceReturnPage,
-                    )
-                )
-            }
-
-            SalesPage.EVALUATION_COMPLETE -> goHome()
+            navigator.popBackStack()
+            return
         }
+        rootTab = 0
     }
 
     BackHandler(
-        enabled = navigationState.canHandleBack,
+        enabled = route != null || rootTab != 0,
         onBack = ::back,
     )
 
-    LaunchedEffect(currentPage, navigationState.rootTab) {
+    LaunchedEffect(currentPage, rootTab, lifecycleState) {
+        if (lifecycleState != Lifecycle.State.RESUMED) return@LaunchedEffect
         when {
-            currentPage == SalesPage.HOME && navigationState.rootTab == 0 ->
-                viewModel.loadToDoCount()
+            currentPage == SalesPage.HOME && rootTab == 0 -> viewModel.loadDashboard()
 
             currentPage == SalesPage.REMINDERS ->
                 viewModel.loadToDoList()
 
-            currentPage == SalesPage.CUSTOMER_DETAIL ->
-                viewModel.restoreCustomerDetailIfNeeded()
+        }
+    }
 
-            currentPage == SalesPage.REMINDER_DETAIL &&
-                uiState.toDoItems.isEmpty() ->
-                viewModel.loadToDoList()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (route?.page == SalesPage.CUSTOMER_DETAIL && navigator.canHandleCallback()) {
+            viewModel.loadCustomerDetail(route.customerId)
+        }
+    }
+
+    LaunchedEffect(route?.customerId) {
+        when (route?.page) {
+            SalesPage.DEVICE_STATUS -> if (!uiState.evaluationCompleted) viewModel.prepareEvaluation(route.customerId)
+            SalesPage.EVALUATION_COMPLETE -> {
+                viewModel.showEvaluationResult(route.customerId, route.recordId)
+                if (uiState.evaluationResult == null) viewModel.loadEvaluationResult()
+            }
+            else -> Unit
         }
     }
 
@@ -394,25 +377,24 @@ internal fun SalesExperienceScreen(
         }
     }
 
-    LaunchedEffect(uiState.submissionResult?.id) {
+    LaunchedEffect(uiState.submissionResult?.id, lifecycleState) {
         if (
             uiState.submissionResult != null &&
-                currentPage == SalesPage.REGISTRATION_CONFIRM
+                currentPage == SalesPage.REGISTRATION_CONFIRM && navigator.canHandleCallback()
         ) {
-            navigationState.rememberEvaluationChoiceReturnPage(SalesPage.SUBMIT_SUCCESS)
-            navigate(SalesPage.SUBMIT_SUCCESS)
+            val result = requireNotNull(uiState.submissionResult)
+            discardRegistrationPhotos()
+            navigator.replaceTop(SalesRoute(SalesPage.SUBMIT_SUCCESS, result.id, result.pgUrl,
+                address = registrationDraft.liveAddress, latitude = route?.latitude, longitude = route?.longitude))
         }
     }
 
-    LaunchedEffect(uiState.evaluationCompleted) {
-        if (uiState.evaluationCompleted) {
+    LaunchedEffect(uiState.evaluationCompleted, lifecycleState) {
+        if (route?.page == SalesPage.DEVICE_STATUS && uiState.evaluationCompleted && navigator.canHandleCallback()) {
             sdkUiController.close()
-            navigate(SalesPage.EVALUATION_COMPLETE)
+            navigator.replaceTop(SalesRoute(SalesPage.EVALUATION_COMPLETE, route.customerId,
+                recordId = uiState.evaluationRecordId))
         }
-    }
-
-    LaunchedEffect(currentPage) {
-        if (currentPage == SalesPage.EVALUATION_COMPLETE) viewModel.loadEvaluationResult()
     }
 
     LaunchedEffect(evaluationState.stage, currentPage) {
@@ -420,12 +402,12 @@ internal fun SalesExperienceScreen(
             currentPage == SalesPage.DEVICE_STATUS &&
             evaluationState.stage.opensMeasurementPage()
         ) {
-            navigate(SalesPage.EVALUATION_GUIDE)
+            measurementVisible = true
         } else if (
             currentPage == SalesPage.EVALUATION_GUIDE &&
             evaluationState.stage.opensDevicePage()
         ) {
-            navigate(SalesPage.DEVICE_STATUS)
+            measurementVisible = false
         }
     }
 
@@ -467,16 +449,16 @@ internal fun SalesExperienceScreen(
                     AdaptiveAppNavigationScaffold(
                         modifier = Modifier.fillMaxSize(),
                         items = navigationItems,
-                        selectedItemIndex = navigationState.rootTab,
+                        selectedItemIndex = rootTab,
                         onItemSelected = { selected ->
                             when (selected) {
-                                0 -> navigationState.selectRootTab(0)
+                                0 -> rootTab = 0
                                 1 -> navigate(SalesPage.CUSTOMERS)
-                                2 -> navigationState.selectRootTab(2)
+                                2 -> rootTab = 2
                             }
                         },
                     ) {
-                        when (navigationState.rootTab) {
+                        when (rootTab) {
                             2 ->
                                 ProfileScreen(
                                     actions =
@@ -504,9 +486,6 @@ internal fun SalesExperienceScreen(
                                         isToDoCountLoading =
                                             uiState.isToDoCountLoading,
                                         onRegisterCustomer = {
-                                            discardRegistrationPhotos()
-                                            registrationDraft = SalesCustomerDraft()
-                                            viewModel.resetSubmission()
                                             navigate(SalesPage.REGISTRATION)
                                         },
                                         onReminders = {
@@ -515,7 +494,6 @@ internal fun SalesExperienceScreen(
                                         onCustomerClick = { customerId ->
                                             openCustomerDetail(
                                                 customerId = customerId,
-                                                returnPage = SalesPage.HOME,
                                             )
                                         },
                                         modifier = Modifier,
@@ -534,13 +512,14 @@ internal fun SalesExperienceScreen(
                         onBack = ::back,
                         onRetry = viewModel::loadToDoList,
                         onReminderClick = { index ->
-                            navigationState.selectReminder(index)
+                            navigator.navigateWhenResumed(SalesRoute(SalesPage.REMINDER_DETAIL,
+                                reminder = uiState.toDoItems.getOrNull(index)))
                         },
                     )
 
                 SalesPage.REMINDER_DETAIL ->
                     SalesReminderDetailScreen(
-                        reminder = uiState.toDoItems.getOrNull(navigationState.reminderIndex),
+                        reminder = route?.reminder,
                         onBack = ::back,
                     )
 
@@ -553,13 +532,13 @@ internal fun SalesExperienceScreen(
                         loadMoreErrorMessage = uiState.customerLoadMoreErrorMessage,
                         initialKeyword = uiState.customerSearchKeyword,
                         initialCheckState = uiState.customerCheckState,
+                        hasLoadedCustomers = uiState.customerPageIndex > 0,
                         onBack = ::back,
                         onSearch = viewModel::searchCustomers,
                         onLoadMore = viewModel::loadNextCustomerPage,
                         onCustomerClick = { customerId ->
                             openCustomerDetail(
                                 customerId = customerId,
-                                returnPage = SalesPage.CUSTOMERS,
                             )
                         },
                     )
@@ -572,11 +551,10 @@ internal fun SalesExperienceScreen(
                         onBack = ::back,
                         onRetry = viewModel::retryCustomerDetail,
                         onEvaluate = { customerId ->
-                            navigationState.rememberEvaluationChoiceReturnPage(
-                                SalesPage.CUSTOMER_DETAIL
-                            )
-                            viewModel.selectCustomer(customerId)
-                            navigate(SalesPage.EVALUATION_CHOICE)
+                            val customer = uiState.selectedCustomer
+                            navigator.navigateWhenResumed(SalesRoute(SalesPage.EVALUATION_CHOICE, customerId,
+                                pgUrl = customer?.pgUrl.orEmpty(), address = customer?.liveAddress.orEmpty(),
+                                latitude = customer?.liveLat?.toDoubleOrNull(), longitude = customer?.liveLng?.toDoubleOrNull()))
                         },
                         onOpenReport = {
                             openLatestReport()
@@ -600,7 +578,9 @@ internal fun SalesExperienceScreen(
                         onRequestLocation = ::requestLocationPermission,
                         onBack = ::back,
                         onContinue = {
-                            navigate(SalesPage.REGISTRATION_CONFIRM)
+                            navigator.replaceTop(SalesRoute(SalesPage.REGISTRATION_CONFIRM,
+                                draft = registrationDraft, photos = photoUriStrings,
+                                latitude = uiState.currentLocation?.latitude, longitude = uiState.currentLocation?.longitude))
                         },
                         onValidationError = ::showMessage,
                     )
@@ -614,6 +594,9 @@ internal fun SalesExperienceScreen(
                             viewModel.submitCustomer(
                                 draft = registrationDraft,
                                 photoUris = photoUris,
+                                location = route?.latitude?.let { lat -> route.longitude?.let { lng ->
+                                    LocationResult(lat, lng, "registration")
+                                } },
                             )
                         },
                     )
@@ -622,10 +605,7 @@ internal fun SalesExperienceScreen(
                     SalesSubmitSuccessScreen(
                         onBack = ::finishSubmissionFlow,
                         onEvaluation = {
-                            navigationState.rememberEvaluationChoiceReturnPage(
-                                SalesPage.SUBMIT_SUCCESS
-                            )
-                            navigate(SalesPage.EVALUATION_CHOICE)
+                            navigator.navigateWhenResumed(requireNotNull(route).copy(page = SalesPage.EVALUATION_CHOICE))
                         },
                     )
 
@@ -633,12 +613,10 @@ internal fun SalesExperienceScreen(
                     SalesEvaluationChoiceScreen(
                         onBack = ::back,
                         onAutomaticEvaluation = {
-                            startAutomaticEvaluation(uiState.selectedCustomerId)
+                            startAutomaticEvaluation(route?.customerId ?: 0)
                         },
                         onFormEvaluation = {
-                            val formUrl = uiState.submissionResult?.pgUrl.orEmpty().ifBlank {
-                                uiState.selectedCustomer?.pgUrl.orEmpty()
-                            }
+                            val formUrl = route?.pgUrl.orEmpty()
                             openFormEvaluation(formUrl)
                         },
                     )
@@ -660,7 +638,7 @@ internal fun SalesExperienceScreen(
                         onBack = ::back,
                         onRetry = {
                             if (evaluationState.recoveryAction.returnsToDeviceScan()) {
-                                navigate(SalesPage.DEVICE_STATUS)
+                                measurementVisible = false
                             }
                             retryEvaluation()
                         },
@@ -673,8 +651,8 @@ internal fun SalesExperienceScreen(
                         isLoading = uiState.isEvaluationResultLoading,
                         resultError = uiState.evaluationResultError,
                         onRefresh = viewModel::loadEvaluationResult,
-                        onBack = ::goHome,
-                        onDone = ::goHome,
+                        onBack = ::back,
+                        onDone = ::back,
                         onOpenReport = {
                             uiState.evaluationResult?.pgUrl?.takeIf { it.isNotBlank() }?.let {
                                 actions.onOpenEvaluationReport(it, evaluationReportTitle)

@@ -12,6 +12,7 @@ import com.ytone.longcare.platform.sales.SalesEvaluationDeviceGateway
 import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -47,6 +48,9 @@ class SalesViewModelCustomerListTest {
 
             val viewModel = createViewModel(repository)
 
+            assertTrue(viewModel.uiState.value.recentCustomers.isEmpty())
+            coVerify(exactly = 0) { repository.getRecentUserLatentList() }
+            viewModel.loadRecentCustomers()
             assertEquals(recentCustomers, viewModel.uiState.value.recentCustomers)
             assertTrue(viewModel.uiState.value.customers.isEmpty())
             assertEquals(
@@ -270,6 +274,23 @@ class SalesViewModelCustomerListTest {
             assertEquals("新条件", viewModel.uiState.value.customerSearchKeyword)
             assertEquals(1, viewModel.uiState.value.customerPageIndex)
         }
+
+    @Test
+    fun `recreated model without list data is ready to reload including empty results`() = runTest {
+        val repository = mockk<SaleRepository>(relaxed = true) {
+            coEvery { searchUserLatentList(any()) } returns ApiResult.Success(emptyList())
+        }
+        val original = createViewModel(repository)
+        original.searchCustomers("", UserLatentCheckState.ALL)
+        assertEquals(1, original.uiState.value.customerPageIndex)
+        val restored = createViewModel(repository)
+        assertEquals(0, restored.uiState.value.customerPageIndex)
+        assertFalse(restored.uiState.value.isCustomerListLoading)
+        restored.searchCustomers("", UserLatentCheckState.ALL)
+        assertEquals(1, restored.uiState.value.customerPageIndex)
+        assertTrue(restored.uiState.value.customers.isEmpty())
+        coVerify(exactly = 2) { repository.searchUserLatentList(any()) }
+    }
 
     private fun createViewModel(repository: SaleRepository): SalesViewModel =
         SalesViewModel(

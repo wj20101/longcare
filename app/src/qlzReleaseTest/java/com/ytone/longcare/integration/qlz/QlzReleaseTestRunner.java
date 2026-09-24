@@ -9,11 +9,13 @@ import org.junit.runner.notification.Failure;
 
 /** Pure JUnit contracts against the unchanged R8 target, without AndroidX UI/tracing hooks. */
 public final class QlzReleaseTestRunner extends Instrumentation {
+    public static Instrumentation current;
     private String testClassName;
 
     @Override
     public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
+        current = this;
         testClassName = arguments == null ? null : arguments.getString("class");
         start();
     }

@@ -8,14 +8,13 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.ServiceCompleteData
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 
 internal class NfcOrderCompletionDelegate(
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
     private val serviceCountdownSystemGateway: ServiceCountdownSystemGateway,
-    private val scope: CoroutineScope
 ) {
 
     fun buildServiceCompleteDataFromCache(
@@ -45,16 +44,16 @@ internal class NfcOrderCompletionDelegate(
         )
     }
 
-    fun cleanupResources(orderKey: OrderKey) {
+    suspend fun cleanupResources(orderKey: OrderKey) = withContext(NonCancellable) {
         try {
             serviceCountdownSystemGateway.stopForegroundService()
             serviceCountdownSystemGateway.stopAlarmRingtone()
             serviceCountdownSystemGateway.cancelCountdownAlarmForOrder(orderKey)
 
-            scope.launch {
-                unifiedOrderRepository.endLocalService(orderKey)
-                imageRepository.deleteImagesByOrderId(orderKey)
-            }
+            // 服务端已确认结束，完成本地清理后再发布成功，不能随页面退出取消。
+            unifiedOrderRepository.endLocalService(orderKey)
+            unifiedOrderRepository.updateSelectedProjects(orderKey, emptyList())
+            imageRepository.deleteImagesByOrderId(orderKey)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

@@ -28,7 +28,7 @@ class NativeWebViewCloseBridgeTest {
     private var active = true
     private val origin = "https://careweb.ytone.cn"
 
-    private fun show(html: String = "<h1>受控关闭测试</h1>", url: String = "$origin/form") {
+    private fun show(html: String = "<h1>受控关闭测试</h1>", url: String = "$origin/form", onDetails: ((Int) -> Unit)? = null) {
         instrumentation.runOnMainSync {
             WebView(instrumentation.targetContext).apply {
                 view = this
@@ -36,7 +36,7 @@ class NativeWebViewCloseBridgeTest {
                 bridge = NativeBridge({ active }, {
                     assertEquals(Looper.getMainLooper(), Looper.myLooper())
                     closes.incrementAndGet()
-                })
+                }, onDetails)
                 addJavascriptInterface(bridge, NativeBridge.NAME)
                 webViewClient = object : WebViewClient() {
                     override fun shouldInterceptRequest(v: WebView?, request: WebResourceRequest): WebResourceResponse {
@@ -80,7 +80,7 @@ class NativeWebViewCloseBridgeTest {
     @Test fun nativeMethodIsRegisteredBeforeFirstPageScriptAndClosesOnMainThreadOnce() {
         show("<script>window.earlyBridge=typeof NativeBridge.closeWebView;</script><h1>受控评估</h1>")
         assertEquals("\"function\"", js("window.earlyBridge"))
-        assertEquals("[\"closeWebView\"]", js("Object.keys(window.NativeBridge)"))
+        assertEquals("[\"closeWebView\",\"enterUserDetails\"]", js("Object.keys(window.NativeBridge).sort()"))
         assertEquals("\"undefined\"", js("typeof window.NativeBridge.getClass"))
         assertEquals("\"undefined\"", js("typeof window.__longcareLegacyClose"))
         assertEquals("\"undefined\"", js("typeof window.__longcareWebViewClose"))
@@ -91,6 +91,31 @@ class NativeWebViewCloseBridgeTest {
     @Test fun merelyLoadingThePageDoesNotCloseIt() {
         show()
         instrumentation.runOnMainSync { assertEquals(0, closes.get()) }
+    }
+
+    @Test fun numericCustomerIdIsConvertedByRealWebView() {
+        val id = AtomicInteger()
+        show(onDetails = { assertEquals(Looper.getMainLooper(), Looper.myLooper()); id.set(it) })
+        js("window.NativeBridge.enterUserDetails(123);window.NativeBridge.closeWebView();true")
+        waitUntil(5_000) { id.get() == 123 }
+        assertEquals(0, closes.get())
+    }
+
+    @Test fun invalidArgumentsLeavePageAvailableForDecimalString() {
+        val id = AtomicInteger()
+        show(onDetails = id::set)
+        js("[undefined,null,'',0,-1,1.5,'abc',2147483648].forEach(v=>window.NativeBridge.enterUserDetails(v));true")
+        instrumentation.runOnMainSync { assertEquals(0, id.get()); assertEquals(0, closes.get()) }
+        js("window.NativeBridge.enterUserDetails('456');true")
+        waitUntil(5_000) { id.get() == 456 }
+    }
+
+    @Test fun ordinaryPageCannotOpenDetailsAndCanStillClose() {
+        show()
+        js("window.NativeBridge.enterUserDetails(123);true")
+        instrumentation.runOnMainSync { assertEquals(0, closes.get()) }
+        js("window.NativeBridge.closeWebView();true")
+        waitUntil(5_000) { closes.get() == 1 }
     }
 
     @Test fun inactiveThenActiveCloseDoesNotConsumeClosePermission() {

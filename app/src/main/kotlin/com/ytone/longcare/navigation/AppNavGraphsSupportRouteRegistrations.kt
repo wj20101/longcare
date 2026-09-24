@@ -1,7 +1,5 @@
 package com.ytone.longcare.navigation
 
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.ytone.longcare.features.sales.SalesViewModel
 
 import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.features.face.ui.ManualFaceCaptureScreen
@@ -144,17 +142,16 @@ internal fun AppEntryProviderBuilder.registerWebViewRoute(navController: AppNavi
     destination<WebViewRoute> { backStackEntry ->
         val navController = navController.forEntry(backStackEntry.id, androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle)
         val route = backStackEntry.route<WebViewRoute>()
-        val salesViewModel = if (route.isEvaluation) {
-            hiltViewModel<SalesViewModel>(LocalHomeViewModelStoreOwner.current)
-        } else null
         WebViewScreen(
             actions = WebViewActions(
                 onNavigateBack = { navController.popBackStack() },
                 isCurrentPage = navController::canHandleCallback,
                 onCloseFromH5 = {
-                    salesViewModel?.onEvaluationH5Closed()
-                    navController.popBackStack()
+                    navController.closeSalesH5(route)
                 },
+                onEnterUserDetails = if (route.canOpenCustomerDetails) {
+                    navController::openCustomerDetailsFromH5
+                } else null,
             ),
             url = route.url,
             title = route.title,

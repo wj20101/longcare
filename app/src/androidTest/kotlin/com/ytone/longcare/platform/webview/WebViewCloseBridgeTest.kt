@@ -207,6 +207,43 @@ class WebViewCloseBridgeTest {
         compose.runOnIdle { assertEquals(1, navigator.backStack.size); assertEquals(1, closes.get()) }
     }
 
+    @Test fun realH5DetailBridgeReplacesWebEntryAndBackRetainsResultRecord() {
+        lateinit var navigator: AppNavigator
+        val result = SalesRoute(com.ytone.longcare.presentation.sales.SalesPage.EVALUATION_COMPLETE, 7, recordId = "record-7")
+        setContent {
+            AppNavigationHost(HomeRoute, "offline-details") { nav ->
+                navigator = nav
+                AppEntryProviderBuilder().apply {
+                    destination<HomeRoute> { Text("首页") }
+                    destination<SalesRoute> { entry ->
+                        val route = entry.route<SalesRoute>()
+                        if (route.page == com.ytone.longcare.presentation.sales.SalesPage.CUSTOMER_DETAIL) {
+                            com.ytone.longcare.features.sales.SalesCustomerDetailScreen(
+                                customer = com.ytone.longcare.model.UserLatentDetailModel(id = route.customerId, userName = "目标客户 ${route.customerId}"),
+                                isLoading = false, errorMessage = null,
+                                onBack = { nav.forEntry(entry.id).popBackStack() },
+                                onRetry = {}, onEvaluate = {}, onOpenReport = {},
+                            )
+                        } else Text("结果 ${route.customerId} / ${route.recordId}")
+                    }
+                    registerWebViewRoute(nav)
+                }
+            }
+        }
+        compose.runOnIdle { navigator.navigate(result) }
+        compose.runOnIdle { navigator.navigateToEvaluationReport("https://report.invalid", "报告") }
+        supplyLocalContent("https://report.invalid/controlled")
+        js("window.NativeBridge.enterUserDetails('8');window.NativeBridge.closeWebView();true")
+        compose.onNodeWithText("目标客户 8").assertIsDisplayed()
+        compose.runOnIdle {
+            assertEquals(listOf(HomeRoute, result, SalesRoute(com.ytone.longcare.presentation.sales.SalesPage.CUSTOMER_DETAIL, 8)),
+                navigator.backStack.map { (it as AppNavEntry).route })
+            compose.activity.onBackPressedDispatcher.onBackPressed()
+        }
+        compose.onNodeWithText("结果 7 / record-7").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(2, navigator.backStack.size) }
+    }
+
     @Test fun evaluationJsCloseShowsGradePageWhileNativeBackOnlyCloses() {
         lateinit var navigator: AppNavigator
         val completed = mutableStateOf(false)

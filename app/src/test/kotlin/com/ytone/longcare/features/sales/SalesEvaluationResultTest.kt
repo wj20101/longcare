@@ -56,7 +56,7 @@ class SalesEvaluationResultTest {
         coEvery { repository.getUserLatentDetail(7) } returns ApiResult.Success(
             UserLatentDetailModel(id = 7, pgResult = "重度失能", pgUrl = "fresh-report"),
         )
-        vm.onEvaluationH5Closed()
+        vm.showEvaluationResult(vm.uiState.value.selectedCustomerId, null)
         vm.loadEvaluationResult()
         advanceUntilIdle()
         assertEquals("重度失能", vm.uiState.value.evaluationResult?.pgResult)
@@ -96,7 +96,7 @@ class SalesEvaluationResultTest {
             ApiResult.Success(UserLatentDetailModel(id = 7, pgResult = "B级", pgUrl = "report")),
         )
         val vm = createViewModel()
-        vm.onEvaluationH5Closed()
+        vm.showEvaluationResult(vm.uiState.value.selectedCustomerId, null)
         repeat(2) {
             vm.loadEvaluationResult()
             advanceUntilIdle()
@@ -124,7 +124,7 @@ class SalesEvaluationResultTest {
         assertFalse(vm.uiState.value.evaluationCompleted)
         coVerify(exactly = 0) { repository.getCheckResult(any(), any()) }
         coVerify(exactly = 0) { repository.getUserLatentDetail(any()) }
-        vm.onEvaluationH5Closed()
+        vm.showEvaluationResult(vm.uiState.value.selectedCustomerId, null)
         val restored = createViewModel(handle = SavedStateHandle(handle.keys().associateWith { handle.get<Any?>(it) }))
         assertTrue(restored.uiState.value.evaluationCompleted)
         assertEquals(7, restored.uiState.value.selectedCustomerId)
@@ -138,7 +138,7 @@ class SalesEvaluationResultTest {
             withContext(NonCancellable) { response.await() }
         }
         val vm = createViewModel()
-        vm.onEvaluationH5Closed()
+        vm.showEvaluationResult(vm.uiState.value.selectedCustomerId, null)
         vm.loadEvaluationResult()
         runCurrent()
         vm.loadCustomerDetail(8)

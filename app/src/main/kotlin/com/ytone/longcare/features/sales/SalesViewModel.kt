@@ -66,9 +66,10 @@ class SalesViewModel @Inject constructor(
     private var sdkJob: Job? = null
     private var evaluationResultJob: Job? = null
 
-    init {
+    fun loadDashboard() {
         loadCompanyName()
         loadRecentCustomers()
+        loadToDoCount()
     }
 
     fun loadRecentCustomers() {
@@ -473,20 +474,6 @@ class SalesViewModel @Inject constructor(
         loadCustomerDetail(_uiState.value.selectedCustomerId)
     }
 
-    fun restoreCustomerDetailIfNeeded() {
-        val state = _uiState.value
-        if (state.selectedCustomerId > 0 && state.selectedCustomer == null &&
-            !state.isCustomerDetailLoading && state.customerDetailErrorMessage == null
-        ) {
-            loadCustomerDetail(state.selectedCustomerId)
-        }
-    }
-
-    fun selectCustomer(customerId: Int) {
-        if (_uiState.value.selectedCustomerId != customerId) resetEvaluationResult()
-        _uiState.value = _uiState.value.copy(selectedCustomerId = customerId)
-    }
-
     fun requestCurrentLocation() {
         viewModelScope.launch {
             _uiState.value =
@@ -528,7 +515,9 @@ class SalesViewModel @Inject constructor(
     fun submitCustomer(
         draft: SalesCustomerDraft,
         photoUris: List<Uri>,
+        location: LocationResult? = _uiState.value.currentLocation,
     ) {
+        if (_uiState.value.isLoading) return
         draft.validationMessageRes()?.let { messageRes ->
             showError(text(messageRes))
             return
@@ -557,7 +546,7 @@ class SalesViewModel @Inject constructor(
                     val result =
                         saleRepository.addUserLatent(
                             draft.toRequest(
-                                location = _uiState.value.currentLocation,
+                                location = location,
                                 photoKeys = uploadedKeys,
                             )
                         )
@@ -672,10 +661,15 @@ class SalesViewModel @Inject constructor(
         return true
     }
 
-    fun onEvaluationH5Closed() {
-        savedStateHandle[EVALUATION_CUSTOMER_KEY] = _uiState.value.selectedCustomerId
+    fun showEvaluationResult(customerId: Int, recordId: String?) {
+        if (_uiState.value.evaluationCompleted &&
+            _uiState.value.selectedCustomerId == customerId &&
+            _uiState.value.evaluationRecordId == recordId) return
+        savedStateHandle[EVALUATION_CUSTOMER_KEY] = customerId
+        savedStateHandle[EVALUATION_RECORD_KEY] = recordId
         savedStateHandle[EVALUATION_COMPLETED_KEY] = true
-        _uiState.value = _uiState.value.copy(evaluationCompleted = true)
+        _uiState.value = _uiState.value.copy(selectedCustomerId = customerId,
+            evaluationRecordId = recordId, evaluationCompleted = true)
     }
 
     fun loadEvaluationResult() {
@@ -751,14 +745,6 @@ class SalesViewModel @Inject constructor(
             )
     }
 
-    fun resetSubmission() {
-        _uiState.value =
-            _uiState.value.copy(
-                submissionResult = null,
-                currentLocation = null,
-            )
-    }
-
     private fun loadCompanyName() {
         viewModelScope.launch {
             val companyName =
@@ -800,13 +786,14 @@ class SalesViewModel @Inject constructor(
     }
 
     fun discardManagedPhoto(uri: Uri) {
-        viewModelScope.launch {
+        // Entry removal must not cancel deletion of files that are no longer used.
+        viewModelScope.launch(kotlinx.coroutines.NonCancellable) {
             imagePipeline.deleteManagedImage(uri)
         }
     }
 
     fun discardManagedPhotos(uris: Iterable<Uri>) {
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.NonCancellable) {
             imagePipeline.deleteManagedImages(uris)
         }
     }
@@ -820,7 +807,6 @@ class SalesViewModel @Inject constructor(
                 selectedCustomerId = result.id,
                 noticeMessage = text(R.string.sales_notice_customer_submitted),
             )
-        loadRecentCustomers()
     }
 
     private fun reduceSdkEvent(event: QlzSdkEvent) {
@@ -936,7 +922,7 @@ private class SalesUserFacingException(
 
 data class SalesUiState(
     val isLoading: Boolean = false,
-    val isCustomerListLoading: Boolean = true,
+    val isCustomerListLoading: Boolean = false,
     val isCustomerListLoadingMore: Boolean = false,
     val isCustomerDetailLoading: Boolean = false,
     val isToDoCountLoading: Boolean = false,
@@ -975,6 +961,7 @@ class SalesSdkLaunchRequest(
     val token: String,
 )
 
+@kotlinx.serialization.Serializable
 data class SalesCustomerDraft(
     val userName: String = "",
     val identityCardNumber: String = "",

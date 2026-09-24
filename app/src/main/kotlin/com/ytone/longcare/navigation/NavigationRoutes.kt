@@ -58,6 +58,8 @@ data class WebViewRoute(
     val title: String,
     val isEvaluation: Boolean = false,
     val showNativeToolbar: Boolean = true,
+    val canOpenCustomerDetails: Boolean = false,
+    val evaluationCustomerId: Int = 0,
 ) : AppRoute
 
 /**

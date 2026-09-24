@@ -9,7 +9,6 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.ServiceCompleteData
 import com.ytone.longcare.navigation.SignInMode
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 
 internal fun applyUserVisibleNfcError(
@@ -44,7 +43,6 @@ internal class NfcOrderWorkflowDelegate(
     private val unifiedOrderRepository: OrderDetailRepository,
     private val imageRepository: OrderImageRepository,
     private val serviceCountdownSystemGateway: ServiceCountdownSystemGateway,
-    private val scope: CoroutineScope,
     private val uiState: MutableStateFlow<NfcSignInUiState>,
     private val userMessages: NfcUserMessages,
 ) {
@@ -52,7 +50,6 @@ internal class NfcOrderWorkflowDelegate(
         unifiedOrderRepository = unifiedOrderRepository,
         imageRepository = imageRepository,
         serviceCountdownSystemGateway = serviceCountdownSystemGateway,
-        scope = scope
     )
 
     suspend fun startOrder(

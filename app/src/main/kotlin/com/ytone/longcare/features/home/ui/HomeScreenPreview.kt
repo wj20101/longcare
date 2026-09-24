@@ -11,6 +11,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 fun HomeScreenPreview() {
     LongCareTheme {
         HomeScreen(
+            navigator = com.ytone.longcare.navigation.AppNavigator(
+                mutableListOf(com.ytone.longcare.navigation.AppNavEntry(com.ytone.longcare.navigation.HomeRoute)),
+                com.ytone.longcare.navigation.NavigationResults(),
+            ),
             actions = HomeActions(
                 onNavigateToCarePlansList = {},
                 onNavigateToServiceRecordsList = {},

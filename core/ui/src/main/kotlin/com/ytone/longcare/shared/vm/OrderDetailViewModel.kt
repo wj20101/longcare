@@ -82,16 +82,6 @@ class OrderDetailViewModel @Inject constructor(
         _selectedProjectIds.value = ids
     }
     
-    /**
-     * 清除选中的项目（服务完成时调用）
-     */
-    fun clearSelectedProjects(orderId: Long) {
-        viewModelScope.launch {
-            unifiedOrderRepository.updateSelectedProjects(OrderKey(orderId), emptyList())
-            _selectedProjectIds.value = emptyList()
-        }
-    }
-
 }
 
 /**

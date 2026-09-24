@@ -20,6 +20,7 @@ import com.ytone.longcare.theme.bgGradientBrush
 @Composable
 fun HomeScreen(
     actions: HomeActions,
+    navigator: com.ytone.longcare.navigation.AppNavigator,
     homeSharedViewModel: HomeSharedViewModel = hiltViewModel(),
     todayOrderViewModel: TodayOrderViewModel = hiltViewModel()
 ) {
@@ -33,6 +34,7 @@ fun HomeScreen(
         2 ->
             SalesExperienceScreen(
                 actions = actions,
+                navigator = navigator,
                 homeSharedViewModel = homeSharedViewModel,
             )
 

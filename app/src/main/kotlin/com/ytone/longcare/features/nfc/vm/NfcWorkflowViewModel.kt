@@ -55,7 +55,6 @@ class NfcWorkflowViewModel @Inject constructor(
         unifiedOrderRepository = unifiedOrderRepository,
         imageRepository = imageRepository,
         serviceCountdownSystemGateway = serviceCountdownSystemGateway,
-        scope = viewModelScope,
         uiState = _uiState,
         userMessages = userMessages,
     )

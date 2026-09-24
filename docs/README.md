@@ -67,6 +67,8 @@ OpenSpec 采用 delta-first，主规格不覆盖所有存量能力。`config.yam
 
 | Change | 实际状态 | 当前适用说明 |
 |---|---|---|
+| [fix-page-return-state](../openspec/changes/fix-page-return-state/tasks.md) | 实现、完整本地门禁、Debug/Release 构建和离线模拟器回归通过，主规格已同步，尚未归档 | 完成页复用原首页并统一成功清理；详情返回刷新、列表返回保留状态；倒计时退出业务例外不变；未做真机/线上业务验收 |
+| [add-evaluation-h5-customer-details](../openspec/changes/add-evaluation-h5-customer-details/tasks.md) | 实现、完整本地门禁、离线页面回归和 Release 混淆桥接验证完成，主规格已同步，尚未归档 | H5 进入详情时关闭自身；登记失败留页、离页不返回修改；检测成功关闭设备/进度页，其余页面正常出栈，不固定首页 |
 | [simplify-sales-result-layout](../openspec/changes/simplify-sales-result-layout/tasks.md) | 实现、离线 UI 回归及 Debug/Release 构建验证完成，尚未归档 | 两个结果页统一纵向按钮组，继续/查看在上、返回/完成在下，设备通用称呼简化；不改业务与 SDK 配置 |
 | [fix-qlz-single-use-token](../openspec/changes/fix-qlz-single-use-token/tasks.md) | 代码与本地验证完成，正式环境未部署，联调暂缓 | 登记、授权/扫描及取消重进通过；连接后设备未授权（SDK 映射码 21），根因未确认，上传与结果链仍未验收 |
 | [add-customer-registration-fields](../openspec/changes/add-customer-registration-fields/tasks.md) | 代码、离线测试及 Debug/Release 构建验证完成，尚未归档 | 登记新增是否残疾（默认否）和可选备注，包含确认页、草稿恢复及请求契约；未做真机/线上提交验收 |
@@ -90,6 +92,7 @@ OpenSpec 采用 delta-first，主规格不覆盖所有存量能力。`config.yam
 | H5 关闭与容器 | [legacy-h5-close](../openspec/specs/legacy-h5-close/spec.md)、[evaluation-h5-close](../openspec/specs/evaluation-h5-close/spec.md) |
 | 评估展示 | [evaluation-design-presentation](../openspec/specs/evaluation-design-presentation/spec.md) |
 | 服务完成导航 | [service-completion-navigation](../openspec/specs/service-completion-navigation/spec.md) |
+| 销售页面返回状态 | [sales-page-return-state](../openspec/specs/sales-page-return-state/spec.md) |
 | CI 升级验证 | [ci-upgrade-validation](../openspec/specs/ci-upgrade-validation/spec.md) |
 
 ### 历史方案的替代关系

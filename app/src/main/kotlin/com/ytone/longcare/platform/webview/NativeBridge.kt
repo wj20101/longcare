@@ -10,16 +10,28 @@ import androidx.annotation.Keep
 internal class NativeBridge(
     private val isActive: () -> Boolean,
     private val onClose: () -> Unit,
+    private val onEnterUserDetails: ((Int) -> Unit)? = null,
 ) {
     private val handler = Handler(Looper.getMainLooper())
     private var closed = false
 
     @JavascriptInterface
     fun closeWebView() {
+        navigateOnce(onClose)
+    }
+
+    @JavascriptInterface
+    fun enterUserDetails(pingguuserid: String?) {
+        val customerId = pingguuserid?.toIntOrNull()?.takeIf { it > 0 } ?: return
+        val openDetails = onEnterUserDetails ?: return
+        navigateOnce { openDetails(customerId) }
+    }
+
+    private fun navigateOnce(action: () -> Unit) {
         handler.post {
             if (!closed && isActive()) {
                 closed = true
-                onClose()
+                action()
             }
         }
     }

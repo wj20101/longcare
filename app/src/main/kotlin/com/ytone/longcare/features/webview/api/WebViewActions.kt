@@ -4,4 +4,5 @@ data class WebViewActions(
     val onNavigateBack: () -> Unit,
     val isCurrentPage: () -> Boolean = { true },
     val onCloseFromH5: () -> Unit = onNavigateBack,
+    val onEnterUserDetails: ((Int) -> Unit)? = null,
 )

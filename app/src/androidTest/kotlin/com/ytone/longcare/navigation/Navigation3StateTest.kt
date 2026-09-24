@@ -17,7 +17,6 @@ import com.ytone.longcare.core.navigation.NavigationConstants
 import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.model.ImageTask
 import com.ytone.longcare.model.ImageTaskType
-import com.ytone.longcare.presentation.sales.rememberSalesNavigationState
 import com.ytone.longcare.presentation.sales.SalesPage
 import androidx.activity.compose.BackHandler
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
@@ -65,7 +64,18 @@ class Navigation3StateTest {
                 destination<HomeRoute> { HomeContent(it, nav) }
                 destination<CarePlansListRoute> { ListContent(it, nav) }
                 destination<ServiceRecordsListRoute> { ListContent(it, nav) }
-                destination<WebViewRoute> { ListContent(it, nav) }
+                destination<WebViewRoute> { entry ->
+                    Button(onClick = { nav.forEntry(entry.id).popBackStack() }) { Text("BACK") }
+                }
+                destination<SalesRoute> { entry ->
+                    val home = sharedModel(entry.entry.route)
+                    SideEffect { shared[entry.entry.route] = home }
+                    Column {
+                        Text("SALES ${entry.route<SalesRoute>().page}")
+                        Button(onClick = { nav.forEntry(entry.id).navigate(camera) }) { Text("CAMERA") }
+                        Button(onClick = { nav.forEntry(entry.id).popBackStack() }) { Text("BACK") }
+                    }
+                }
                 destination<LoginRoute> { Text("LOGIN") }
                 destination<CameraRoute> { entry ->
                     val page = nav.forEntry(entry.id)
@@ -110,15 +120,13 @@ class Navigation3StateTest {
         val face by entry.results.getStateFlow<String>(NavigationConstants.FACE_IMAGE_PATH_KEY, null).collectAsState()
         val verified by entry.results.getStateFlow<Boolean>(NavigationConstants.DEFAULT_FACE_VERIFICATION_RESULT_KEY, null).collectAsState()
         val photos by entry.results.getStateFlow<Map<ImageTaskType, List<ImageTask>>>(NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, null).collectAsState()
-        val sales = rememberSalesNavigationState()
-        BackHandler(enabled = sales.canHandleBack) { sales.goHome() }
         val page = nav.forEntry(entry.id)
         Column {
             Text("HOME")
             Text(uri ?: "EMPTY")
-            Text("SALES ${sales.currentPage}")
+            Text("SALES HOME")
             Text("FACE $face / VERIFIED $verified / PHOTOS ${photos?.size}")
-            Button(onClick = { sales.navigate(SalesPage.REGISTRATION) }) { Text("OPEN SALES REGISTRATION") }
+            Button(onClick = { page.navigate(SalesRoute(SalesPage.REGISTRATION)) }) { Text("OPEN SALES REGISTRATION") }
             Button(onClick = { page.navigateToCarePlansList() }) { Text("PLANS") }
             Button(onClick = { page.navigateToServiceRecordsList() }) { Text("RECORDS") }
             Button(onClick = { page.navigate(camera) }) { Text("CAMERA") }
@@ -221,11 +229,11 @@ class Navigation3StateTest {
         compose.runOnIdle { assertSame(oldToday, todayShared[HomeRoute]) }
     }
 
-    @Test fun evaluationPageSharesHomeOwnerAcrossRecreationWithoutReturningResults() {
+    @Test fun salesResultRetainsHomeUserOwnerAcrossRecreationWithoutReturningResults() {
         compose.runOnIdle { NavigationStateTestActivity.recreatedContent = { Content() } }
         compose.activityRule.scenario.recreate()
         compose.onNodeWithText("HOME").assertExists()
-        val form = WebViewRoute("https://mock.internal/form", "表单评估", isEvaluation = true, showNativeToolbar = false)
+        val form = SalesRoute(SalesPage.EVALUATION_COMPLETE, 7, recordId = "record-7")
         val originalHome = shared.getValue(HomeRoute)
         compose.runOnIdle { navigator.navigate(form) }
         compose.onNodeWithText("BACK").assertExists()
@@ -338,12 +346,16 @@ class Navigation3StateTest {
         compose.onNodeWithText("EMPTY").assertExists() // Nested camera must not write Home's mailbox.
     }
 
-    @Test fun salesInternalBackHasPriorityAndCameraReturnPreservesSalesPage() {
+    @Test fun salesEntryBackAndCameraReturnPreserveActualStack() {
         compose.setContent { Content() }
         compose.onNodeWithText("OPEN SALES REGISTRATION").performClick()
         compose.onNodeWithText("CAMERA").performClick()
         compose.onNodeWithText("CAPTURE").performClick()
         compose.onNodeWithText("SALES REGISTRATION", substring = false).assertExists()
+        compose.runOnIdle {
+            assertSame(shared[HomeRoute], shared[SalesRoute(SalesPage.REGISTRATION)])
+            assertEquals(2, navigator.backStack.size)
+        }
         compose.runOnIdle { activity.onBackPressedDispatcher.onBackPressed() }
         compose.onNodeWithText("SALES HOME").assertExists()
         compose.runOnIdle { assertEquals(1, navigator.backStack.size) }

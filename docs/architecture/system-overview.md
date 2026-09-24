@@ -77,17 +77,20 @@ flowchart LR
 导航使用 Navigation 3 的可序列化 NavKey、唯一 entry ID 和可保存单栈，由 NavDisplay 管理页面生命周期，并在 `:app/navigation` 统一注册：
 
 - Entry：登录、Home 和订单列表；首页、计划和记录列表显式共享 Home entry 的 TodayOrderViewModel owner。
+- Sales：客户/提醒、登记、评估选择、设备和结果使用 `SalesRoute`，每个 entry 独立持有 SalesViewModel；扫描与进度在同一设备 entry 中展示。
 - Service flow：服务详情、护理执行、NFC、选择服务、照片上传、倒计时、结束选择、完成摘要。
 - Support：用户列表/记录、身份与默认人脸核验、相机、手动人脸采集和 WebView；旧设备选择页、人脸引导页及正式应用腾讯测试路由已移除。
 
 所有应用内 H5 共用 `WebViewScreen` 与 `NativeBridge`；隐私网页以 Dialog 包裹同一容器，
-启用 JavaScript 但关闭仅映射到网页 dismiss，不触发隐私同意/拒绝。当前唯一公开接口为
-`window.NativeBridge.closeWebView()`，保留主线程、前台生命周期、去重及路由 entry 校验。
+启用 JavaScript 但关闭仅映射到网页 dismiss，不触发隐私同意/拒绝。统一关闭接口为
+`window.NativeBridge.closeWebView()`；评估容器额外启用 `enterUserDetails(pingguuserid)`，替换 H5 为客户详情，同客户来源仅弹出并刷新。两个方法共用主线程、前台生命周期、单次导航及路由 entry 校验。
 内部 H5 不设置额外 URL 白名单或导航拦截；新增方法直接放入 NativeBridge 并显式添加注解，不使用通用分发框架。
 
 订单相关路由传递轻量 `OrderNavParams(orderId, planId)`，页面再通过 Repository/共享状态加载业务数据。跨页面结果使用 entry ID 定向的可保存邮箱，保留原 key 与 StateFlow 契约；消费会发出空值，图片 map 只编码文件引用和元数据。来源已离开的回调不可修改新栈。服务完成保留 Home、移除执行中间页，普通返回到首页。
 
 当前只有 login、home、identification 三个 feature entry 常量进入运行时 registry；registry 的数量校验不是完整路由清单。完整页面映射见[页面与路由地图](ui-and-screen-map.md)。
+
+返回必须使用当前 entry 出栈，不得用固定目标 navigate 或重建页面模拟返回。前进才压栈；登录态切换、业务已完成页面替换等特殊场景须明确移除范围并测试保留的 entry 序列。销售登记填写→确认、确认成功→提交结果、设备上传成功→评估结果使用替换；失败不导航。结果页数据归属自身 entry，打开另一客户详情不清空或覆盖它。
 
 ## 状态与异步约定
 

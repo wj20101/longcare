@@ -1,6 +1,6 @@
 # 页面与路由地图
 
-最后核对：2026-09-21（护理详情错误、重试和返回已做离线回归；非全路由真机验收）
+最后核对：2026-09-24（销售链路改用实际 Navigation 3 栈；本轮离线回归不替代真实 BLE 验收）
 
 本文列出当前可运行的 Compose 路由、嵌套页面和现实模块归属。导航代码的机器真相位于 `app/src/main/kotlin/com/ytone/longcare/navigation/`。
 
@@ -63,24 +63,27 @@ Navigation 3 使用可保存的 `AppNavEntry` 包装业务路由，为相同参�
 
 开始服务直接进入 NFC/读卡流程；无入口的设备选择页、旧人脸引导页和正式应用腾讯测试路由已移除。独立助手的腾讯测试入口亦已删除，正式业务仍需的共享实现保留。
 
-默认服务人员核验结果通过调用者 entry 邮箱的 `DEFAULT_FACE_VERIFICATION_RESULT_KEY` 返回；长者照片和销售登记照片通过 `CAPTURED_IMAGE_URI_KEY` 返回；手动人脸补录通过 `FACE_IMAGE_PATH_KEY` 返回。图片输入/上传结果分别使用 `EXISTING_IMAGES_KEY` / `PHOTO_UPLOAD_RESULT_KEY`。邮箱与栈共同保存，接收页消费后清空 StateFlow；来源失效的迟到回调丢弃。服务完成后清除中间页并保留首页，普通返回到首页。
+默认服务人员核验结果通过调用者 entry 邮箱的 `DEFAULT_FACE_VERIFICATION_RESULT_KEY` 返回；长者照片和销售登记照片通过 `CAPTURED_IMAGE_URI_KEY` 返回；手动人脸补录通过 `FACE_IMAGE_PATH_KEY` 返回。图片输入/上传结果分别使用 `EXISTING_IMAGES_KEY` / `PHOTO_UPLOAD_RESULT_KEY`。邮箱与栈共同保存，接收页消费后清空 StateFlow；来源失效的迟到回调丢弃。服务完成后清除中间页并保留原 Home entry，完成页三种退出入口统一 pop，首页恢复时加载最新订单。选中项目清理在服务端确认结束后的既有清理链执行，不由完成页按钮触发。
 
-## 销售端嵌套页面
+倒计时页顶部/系统返回继续回首页并清除前序服务步骤，这是禁止重复操作的业务例外，不改为普通 pop。
 
-销售账号仍停留在 `HomeRoute` 内，`SalesExperienceScreen` 使用可保存的 `SalesNavigationState` 管理内部页面，不为每个页面注册 NavKey route：
+## 销售端页面栈
+
+销售首页属于 `HomeRoute`，其他销售页面通过 `SalesRoute` 接入同一个 Navigation 3 可保存栈，由 `SalesExperienceScreen` 渲染。每个 entry 独立持有 SalesViewModel，不再使用 `SalesNavigationState` 或手写返回目标：
 
 - `HOME`：销售首页
 - `REMINDERS` / `REMINDER_DETAIL`：待办列表和详情
 - `CUSTOMERS` / `CUSTOMER_DETAIL`：客户列表和详情
-- 客户详情在进程恢复后，按 SavedStateHandle 中的客户 ID 重查；已加载、请求中或已有错误时不重复请求，错误沿用手动重试。
-- `REGISTRATION` / `REGISTRATION_CONFIRM` / `SUBMIT_SUCCESS`：客户登记链路；登记与确认共用 `SalesCustomerDraft`，含默认否的是否残疾单选及可选备注，随草稿保存、恢复与重置
+- 客户详情按自身 route 的客户 ID 在 entry 进入前台（RESUMED）时查询，含首次进入和逐级返回；普通重组不重查，失败可手动重试，不覆盖其他详情或结果数据。
+- 客户列表利用 ViewModel 中现有分页状态区分未加载与成功空结果，普通返回保留查询、分页和 `rememberLazyListState`；首次加载或条件变化才重置位置。加载标记不单独持久化，进程恢复无数据时重新查询。
+- `REGISTRATION` / `REGISTRATION_CONFIRM` / `SUBMIT_SUCCESS`：填写→确认使用替换，成功后确认→提交结果再次替换，返回不能重开已结束表单。失败保留确认页和资料/照片，取消或成功释放不用的资料；提交结果只保留客户 ID、地址、坐标和 pgUrl。临时相机/预览不结束填写。
 - `EVALUATION_CHOICE`：表单/设备评估选择
-- `DEVICE_STATUS` / `EVALUATION_GUIDE` / `EVALUATION_COMPLETE`：应用自有 QLZ 扫描、连接、五指检测、上传与完成链路；不启动厂商 Activity
+- `DEVICE_STATUS`：同一 entry 内展示扫描或 `EVALUATION_GUIDE` 进度 UI，不反复压栈；上传成功替换为 `EVALUATION_COMPLETE`。失败留页重试，退出检测取消授权并释放会话，不启动厂商 Activity
 
 `EVALUATION_GUIDE` 使用手握、5 秒准备、沙漏进度三态单卡片；准备计时仅控制展示，真实 SDK 进度优先。
 所有应用内 H5 共用 `NativeBridge.closeWebView()`：路由网页返回来源 entry，隐私网页只关闭自身弹窗，不触发同意/拒绝。桥接注册、线程、去重、frame 可见性和信任边界统一见[QLZ/H5 接入契约](../integrations/qlz-sdk.md#检测展示与-h5-关闭契约)。
 
-评估表单和报告入口显式设置 `WebViewRoute.showNativeToolbar=false`，共用容器去除原生顶部栏；`WindowInsets.safeDrawing` 由 Scaffold 应用并消费，H5 填满剩余内容区。普通网页、协议与隐私弹窗默认保留原生栏。展示参数与 `isEvaluation` 独立，报告关闭不触发完成；参数随 Navigation 3 栈保存恢复，不按标题或 URL 推断。
+评估表单和报告入口显式设置 `WebViewRoute.showNativeToolbar=false`，共用容器去除原生顶部栏；`WindowInsets.safeDrawing` 由 Scaffold 应用并消费，H5 填满剩余内容区。普通网页、协议与隐私弹窗默认保留原生栏。展示参数与 `isEvaluation`、`canOpenCustomerDetails` 独立，报告关闭不触发完成；参数随 Navigation 3 栈保存恢复，不按标题或 URL 推断。
 无原生栏时，白色背景延伸至系统栏，页面使用 AndroidX 浅色系统栏样式实现沉浸式视觉；暂停/退出后恢复应用默认样式。仅做页面级适配，不隐藏系统栏、不注入 H5 脚本、不增加适配框架。
 H5 左上角返回调用关闭接口；成功弹窗确认仅刷新网页属于正常行为，不注入脚本代为关闭。移除原生栏后仍由 Navigation 3 处理系统返回，网页错误时同样可退出。
 渲染进程退出后，容器销毁失效 WebView 并展示可返回的异常状态，不自动重载或改变隐私选择。
@@ -89,7 +92,11 @@ H5 左上角返回调用关闭接口；成功弹窗确认仅刷新网页属于�
 
 `DEVICE_STATUS` 与 `EVALUATION_GUIDE` 共享 UI 作用域的 QLZ 会话，切换两页保持连接，离开、取消、完成或宿主销毁时释放。上传成功后直接进入 `EVALUATION_COMPLETE`，使用当前客户和本次 recordId 调用 GetCheckResult 查询 pgResult/pgUrl；客户、recordId 和完成状态通过 SavedStateHandle 保存。用户点击“确认并提交评估结果”才打开返回地址，无地址时按钮不可用并可刷新，失败不重新检测或上传。
 
-纯表单网页用 `isEvaluation` 标识用途，复用首页 SalesViewModel；JS 主动关闭更新完成状态并 pop，原生/系统返回仅 pop。设备结果页打开的报告为非评估用途，JS/系统返回都只关闭报告并回到原结果页，不触发完成回调。完成和返回保留首页，不写导航结果邮箱。设备/纯表单的查询分支和失败恢复统一见[SDK 调用链](../integrations/qlz-sdk.md#sdk-调用链)。
+纯表单网页用 `isEvaluation` 标识用途并携带当前客户 ID；JS 主动关闭按原业务约定替换为结果页，原生/系统返回仅 pop。设备结果页打开的报告为非表单用途，JS/系统返回都只关闭报告并回到原结果页，不触发完成回调。设备/纯表单的查询分支和失败恢复统一见[SDK 调用链](../integrations/qlz-sdk.md#sdk-调用链)。
+
+评估表单和报告显式启用 `canOpenCustomerDetails`，`enterUserDetails(pingguuserid)` 替换 H5 为指定客户详情；紧邻来源为同一客户详情则 pop H5 并刷新原 entry，不重复详情。普通网页/隐私不启用该回调。客户 ID、recordId 和结果属于各自 entry，不因打开另一客户而被清空。
+
+返回严格按实际栈 pop，不用 navigate 指定旧页面代替返回。填写、确认、设备完成和 H5 转详情才使用业务替换；源 entry 被移除即完成导航消费，重组、返回或恢复不会从旧完成状态再次跳转。结果页顶部/系统返回及“完成”只弹出结果页，保留上一有效来源；不固定首页，不恢复已关闭 H5 或检测页。
 
 ## 非路由 UI
 
@@ -121,6 +128,7 @@ Logo 点击和长按均无波纹或按压高亮。弹窗使用 Material 3 默认
 
 ### 参数化 routes
 
+- `SalesRoute`
 - `ServiceRoute`
 - `NursingExecutionRoute`
 - `WebViewRoute`

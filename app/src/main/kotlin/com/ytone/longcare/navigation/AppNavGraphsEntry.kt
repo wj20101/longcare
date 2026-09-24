@@ -36,10 +36,21 @@ internal fun AppEntryProviderBuilder.registerEntryNavGraphs(navController: AppNa
         val navController = navController.forEntry(backStackEntry.id, androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle)
         val parentEntry = LocalHomeViewModelStoreOwner.current
         val todayOrderViewModel: TodayOrderViewModel = hiltViewModel(parentEntry)
-        val userAgreementTitle = stringResource(R.string.profile_user_agreement)
-        val privacyPolicyTitle = stringResource(R.string.profile_privacy_policy)
         HomeScreen(
-            actions = HomeActions(
+            actions = homeActions(navController, backStackEntry),
+            navigator = navController,
+            todayOrderViewModel = todayOrderViewModel
+        )
+    }
+
+    registerServiceOrdersListNavGraphs(navController)
+}
+
+@androidx.compose.runtime.Composable
+internal fun homeActions(navController: AppNavigator, backStackEntry: AppEntryHandle): HomeActions {
+    val userAgreementTitle = stringResource(R.string.profile_user_agreement)
+    val privacyPolicyTitle = stringResource(R.string.profile_privacy_policy)
+    return HomeActions(
                 onNavigateToCarePlansList = { navController.navigateToCarePlansList() },
                 onNavigateToServiceRecordsList = { navController.navigateToServiceRecordsList() },
                 onNavigateToNursingExecution = { orderKey ->
@@ -84,10 +95,5 @@ internal fun AppEntryProviderBuilder.registerEntryNavGraphs(navController: AppNa
                         NavigationConstants.CAPTURED_IMAGE_URI_KEY
                     )
                 },
-            ),
-            todayOrderViewModel = todayOrderViewModel
-        )
-    }
-
-    registerServiceOrdersListNavGraphs(navController)
+            )
 }

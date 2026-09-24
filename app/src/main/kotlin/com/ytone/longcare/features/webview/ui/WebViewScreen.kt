@@ -117,6 +117,9 @@ fun WebViewScreen(
                                             currentActions.isCurrentPage()
                                     },
                                     onClose = { currentActions.onCloseFromH5() },
+                                    onEnterUserDetails = actions.onEnterUserDetails?.let {
+                                        { customerId -> currentActions.onEnterUserDetails?.invoke(customerId) }
+                                    },
                                 )
                                 bridge = nativeBridge
                                 addJavascriptInterface(nativeBridge, NativeBridge.NAME)

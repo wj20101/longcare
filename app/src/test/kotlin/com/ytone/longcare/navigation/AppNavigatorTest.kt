@@ -14,16 +14,21 @@ class AppNavigatorTest {
         val form = nav.top().route as WebViewRoute
         assertTrue(form.isEvaluation)
         assertFalse(form.showNativeToolbar)
+        assertTrue(form.canOpenCustomerDetails)
         nav.popBackStack()
         nav.navigateToEvaluationReport("https://evaluation.invalid/report", "任意标题")
         val report = nav.top().route as WebViewRoute
         assertFalse(report.isEvaluation)
         assertFalse(report.showNativeToolbar)
+        assertTrue(report.canOpenCustomerDetails)
         nav.popBackStack()
         nav.navigateToWebView("https://evaluation.invalid/form", "任意标题")
         val ordinary = nav.top().route as WebViewRoute
         assertFalse(ordinary.isEvaluation)
         assertTrue(ordinary.showNativeToolbar)
+        assertFalse(ordinary.canOpenCustomerDetails)
+        assertFalse(WebViewRoute("https://evaluation.invalid/report", "评估报告",
+            showNativeToolbar = false).canOpenCustomerDetails)
         listOf(form, report, ordinary).forEach { route ->
             assertEquals(route, Json.decodeFromString<WebViewRoute>(Json.encodeToString(route)))
         }
@@ -52,7 +57,9 @@ class AppNavigatorTest {
     private fun AppNavigator.page() = forEntry(top().id)
 
     @Test fun allRoutesRoundTripWithStableEntryAndCallerIds() {
-        val routes = listOf(LoginRoute, CardDiagnosticsRoute, HomeRoute, ServiceRoute(order), NursingExecutionRoute(order),
+        val routes = listOf(LoginRoute, CardDiagnosticsRoute, HomeRoute,
+            SalesRoute(com.ytone.longcare.presentation.sales.SalesPage.CUSTOMER_DETAIL, 7),
+            ServiceRoute(order), NursingExecutionRoute(order),
             WebViewRoute("https://example.test/a?b=中文&c=%2F#1", "条款 / ?"), SelectServiceRoute(order),
             WebViewRoute("https://evaluation.invalid/form", "评估", isEvaluation = true),
             PhotoUploadRoute(order), CarePlansListRoute, ServiceRecordsListRoute,

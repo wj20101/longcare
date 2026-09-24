@@ -365,13 +365,13 @@ Common 中 `CryptoUtils` 878 行、`DeviceCompatibilityHelper` 552 行也值得�
 
 根导航采用可序列化路由、`AppNavEntry` 唯一 ID、可保存单栈和 NavDisplay。相同参数的两个页面仍有独立 entry 身份。`NavigationResults` 为调用者 entry 定向存储结果，并与返回栈保存；消费后清空 StateFlow。
 
-Home、服务计划、服务记录，以及特定评估网页通过明确 home owner 共享相关 ViewModel。退出/换号会重置旧作用域。服务完成删除中间执行页面而保留 Home。以上机制已存在，本轮不建议再做导航框架迁移。
+Home、服务计划、服务记录通过明确 home owner 共享相关 ViewModel。销售 entry 只共享用户会话 HomeSharedViewModel，业务 SalesViewModel 独立；评估网页不再借用 Home SalesViewModel。退出/换号会重置旧作用域。服务完成删除中间执行页面而保留 Home。以上机制已存在，不建议再做导航框架迁移。
 
-### 8.2 两套导航层次
+### 8.2 销售页面栈（2026-09-24 更新）
 
-应用级路由承载服务流程、相机、WebView 等跨模块入口；销售 Home 内部以 `SalesNavigationState` 管理客户和评估页面。两层同时存在有实际原因：相机/WebView 是全局能力，销售子页面共享 Home 生命周期。
+销售客户、提醒、登记和评估已通过 `SalesRoute` 使用同一个应用级 Navigation 3 栈，删除 `SalesNavigationState` 手写页面返回目标。相机仍通过实际调用 entry 的邮箱返回照片；H5 无返回结果邮箱。
 
-问题不是“两层必然错误”，而是调用与恢复边界要明确。例如打开 Camera 需要把照片结果送回当前登记；打开评估 H5 需要绑定 Home 的 SalesViewModel，但不通过网页结果邮箱传等级。将所有销售页面机械改成 NavKey 可能改变 ViewModel 生命周期，应单独评估，不顺带塞进拆 ViewModel 工作。
+各页面的业务 ViewModel 随 entry 独立，客户详情不会覆盖保留结果页的客户和记录。普通返回只 pop；填写进入确认、提交成功、检测完成与 H5 转详情替换已结束页面。该次路由修订不拆业务 API 或厂商会话模型，后续回归仍应覆盖相机照片交接、恢复和资源释放。
 
 ### 8.3 恢复能力矩阵
 
@@ -381,7 +381,7 @@ Home、服务计划、服务记录，以及特定评估网页通过明确 home o
 | 根路由、entry ID | Navigation 3 保存栈 | 系统保存恢复范围内恢复 | 换账号后继续旧业务 |
 | 页面结果 | 可保存 entry 邮箱 | 未消费结果随栈恢复 | 来源已经移除后仍接收 |
 | 客户详情 | 保存客户 ID 后重查 | 恢复目标身份与查询 | 完整详情永久离线可用 |
-| 待打开评估 H5 | SavedStateHandle 请求与消费状态 | 前台恢复后一次导航 | 厂商连接对象持久恢复 |
+| 评估结果及 H5 | 保存 entry、客户 ID 和 recordId；结束来源 entry 被替换 | 恢复有效页面并重查对应结果，不重走完成导航 | 厂商连接对象持久恢复 |
 | QLZ 连接/上传失败对象 | 当前 UI 会话内存 | 同会话受控重试 | 进程死亡后自动续检/续传 |
 | 持续定位 | 进程订单会话 | 进入订单后重新确认再启动 | 重启后自动恢复 |
 | 更新任务 | WorkManager 与 work ID | 调度/观察恢复 | 任意网络中断都有字节级断点续传 |

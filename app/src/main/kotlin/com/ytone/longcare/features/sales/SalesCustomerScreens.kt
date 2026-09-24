@@ -84,6 +84,7 @@ internal fun SalesCustomerListScreen(
     onSearch: (String, Int) -> Unit,
     onLoadMore: () -> Unit,
     onCustomerClick: (Int) -> Unit,
+    hasLoadedCustomers: Boolean = false,
 ) {
     var keyword by remember(initialKeyword) { mutableStateOf(initialKeyword) }
     var selectedState by remember(initialCheckState) {
@@ -104,6 +105,9 @@ internal fun SalesCustomerListScreen(
         )
 
     LaunchedEffect(keyword, selectedState) {
+        if (keyword == initialKeyword && selectedState == initialCheckState &&
+            (hasLoadedCustomers || isLoading)
+        ) return@LaunchedEffect
         delay(CUSTOMER_SEARCH_DEBOUNCE_MILLIS)
         listState.scrollToItem(0)
         onSearch(keyword, selectedState)
@@ -194,7 +198,12 @@ internal fun SalesCustomerListScreen(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions =
                 KeyboardActions(
-                    onSearch = { focusManager.clearFocus() },
+                    onSearch = {
+                        focusManager.clearFocus()
+                        if (!isLoading && !hasLoadedCustomers && keyword == initialKeyword &&
+                            selectedState == initialCheckState
+                        ) onSearch(keyword, selectedState)
+                    },
                 ),
         )
         val onTabSelected: (Int) -> Unit = { state ->

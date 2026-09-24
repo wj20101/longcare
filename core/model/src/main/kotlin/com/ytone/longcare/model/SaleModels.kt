@@ -75,6 +75,7 @@ data class ToDoNumResultModel(
  * 接口文档将三个字段均声明为 nullable，因此这里保留可空类型，避免服务端返回
  * 显式 null 时导致整页解析失败。
  */
+@kotlinx.serialization.Serializable
 data class ToDoResultModel(
     val title: String? = null,
     val content: String? = null,

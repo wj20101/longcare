@@ -17,27 +17,22 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.CustomBackHandler
-import com.ytone.longcare.shared.vm.OrderDetailViewModel
 import com.ytone.longcare.features.servicecomplete.api.ServiceCompleteActions
 import com.ytone.longcare.navigation.ServiceCompleteData
-import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.ui.components.BottomSafeActionContainer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceCompleteScreen(
     actions: ServiceCompleteActions,
-    orderKey: OrderKey,
     serviceCompleteData: ServiceCompleteData,
-    viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    // 统一处理系统返回键，与导航按钮行为一致（返回首页并清空堆栈）
-    CustomBackHandler(customAction = actions.onNavigateHomeAndClearStack)
+    // 服务过程已在进入完成页时移除，返回只关闭当前页。
+    CustomBackHandler(customAction = actions.onNavigateBack)
     
     // 直接使用传入的数据创建 ServiceSummary
     val serviceSummary = ServiceSummary(
@@ -63,11 +58,7 @@ fun ServiceCompleteScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        // 清除选中项目数据后再返回
-                        viewModel.clearSelectedProjects(orderKey.orderId)
-                        actions.onNavigateHomeAndClearStack()
-                    }) {
+                    IconButton(onClick = actions.onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(CoreUiR.string.common_back),
@@ -89,11 +80,7 @@ fun ServiceCompleteScreen(
                     extraBottomPadding = 16.dp
                 ) {
                     Box {
-                        ActionButton(text = stringResource(R.string.common_complete), onClick = {
-                            // 清除选中项目数据后再返回首页
-                            viewModel.clearSelectedProjects(orderKey.orderId)
-                            actions.onNavigateHomeAndClearStack()
-                        })
+                        ActionButton(text = stringResource(R.string.common_complete), onClick = actions.onNavigateBack)
                     }
                 }
             }

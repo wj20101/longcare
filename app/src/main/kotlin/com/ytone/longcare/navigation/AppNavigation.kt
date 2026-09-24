@@ -122,7 +122,7 @@ internal fun AppNavigationHost(
                 val homeId = when (val route = entry.route) {
                     HomeRoute -> entry.id
                     CarePlansListRoute, ServiceRecordsListRoute -> checkNotNull(entry.homeId)
-                    is WebViewRoute -> if (route.isEvaluation) entry.homeId else null
+                    is SalesRoute -> checkNotNull(entry.homeId)
                     else -> null
                 }
                 NavEntry(key, contentKey = entry.id,
