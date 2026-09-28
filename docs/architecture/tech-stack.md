@@ -35,7 +35,7 @@ JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SH
 | DI | Dagger Hilt / AndroidX Hilt | 2.60.1 / 1.4.0 |
 | Persistence | Room | 2.8.5 |
 | Preferences | DataStore | 1.2.1 |
-| Background | WorkManager | 2.11.2 |
+| Background | WorkManager | 2.12.0 |
 | Camera | CameraX | 1.6.2 |
 | Face detection | ML Kit Face Detection | 16.1.7 |
 | Network | Retrofit / OkHttp | 3.0.0 / 5.5.0 |
