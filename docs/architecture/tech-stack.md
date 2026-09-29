@@ -54,7 +54,7 @@ JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SH
 
 | 组件 | 当前来源 | 说明 |
 |---|---|---|
-| QLZ | `app/libs/qlzsdk-1.3.0.5-protobufLiteRelease-ui.aar` | 运行库 `protobuf-javalite:4.36.2`（厂商示例基线 4.28.3）；当前测试配置和已知风险经确认可保留于正式包 |
+| QLZ | `app/libs/qlzsdk-1.3.0.5-protobufLiteRelease-ui.aar` | 运行库 `protobuf-javalite:4.36.2`（厂商示例基线 4.28.3）；默认正式环境，已接受的厂商风险由正式构建告警 |
 | 腾讯人脸 Live | `WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc.aar` | 默认本地 AAR，可通过 Gradle 属性切到私有 Maven |
 | 腾讯人脸 Normal | `WbCloudNormal-v5.1.10-4e3e198.aar` | 与 Live SDK 一起由约定插件装配 |
 
@@ -103,7 +103,7 @@ Android CLI 当前识别以下 app 变体：
 
 性能工具使用 Baseline Profile / Macrobenchmark 1.5.0 稳定版。当前生成器在独立
 `pixel6Api33` Managed Device 上采集启动、滚动和返回路径；不包含登录后的业务旅程，
-baseline/startup 两份规则目前相同，语义拆分仍见[性能改进待办](../analysis/project-review.md#172-阶段-b性能采集语义)。
+当前整个采集块均包含到 Startup Profile，验证边界见[性能采集](../analysis/project-review.md#性能采集)。
 生成时同时指定 `androidx.benchmark.enabledRules=BaselineProfile` 和
 `class=com.ytone.longcare.baselineprofile.BaselineProfileGenerator` 的 instrumentation 参数，
 将生成用例与启动测量分开。生成后重新构建 `benchmarkRelease`，核查 APK 中的

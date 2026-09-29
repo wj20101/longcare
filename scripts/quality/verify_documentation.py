@@ -60,9 +60,6 @@ def check_links(root: Path, files: list[Path]) -> list[str]:
 def document_group(path: Path) -> str:
     name = path.as_posix()
     for prefix, group in (
-        ("openspec/changes/archive/", "历史变更"),
-        ("openspec/changes/", "未归档变更（完成状态见 tasks）"),
-        ("openspec/specs/", "主规格"),
         (".agents/skills/", "工具技能"),
         ("docs/compliance/", "历史合规"),
         ("docs/analysis/", "分析基线"),
@@ -84,9 +81,7 @@ def check_index(root: Path, files: list[Path]) -> list[str]:
     required = []
     for path in files:
         group = document_group(path)
-        if group in {"当前说明", "分析基线", "历史合规", "主规格"}:
-            required.append(path)
-        elif group.startswith("未归档变更") and path.name == "tasks.md":
+        if group in {"当前说明", "分析基线", "历史合规"}:
             required.append(path)
     return [f"index: missing {path}" for path in required if (root / path).resolve() not in linked]
 

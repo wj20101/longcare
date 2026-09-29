@@ -1,10 +1,10 @@
 # QLZ SDK 1.3.0.5 接入说明
 
-最后核对：2026-09-21（一次性凭证与正式环境配置；用户确认正式环境尚未部署，正式联调暂缓）
+最后核对：2026-09-29（用户确认 QLZ 正式上传联调通过，关闭旧待办）
 
-> 当前状态：QLZ 已移除测试模式覆盖，使用 AAR 默认正式环境及用户确认的现有 appKey。2026-09-19 接受的 QLZ 1.3.0.5 弱 TLS 及腾讯人脸 6.6.2 已知风险仍由 Release 报警；其他签名和质量检查仍阻断。环境切换不代表厂商风险已修复，也不等于完成正式服务联调。
+> 当前状态：QLZ 已移除测试模式覆盖，使用 AAR 默认正式环境及用户确认的现有 appKey。2026-09-19 接受的 QLZ 1.3.0.5 弱 TLS 及腾讯人脸 6.6.2 已知风险仍由 Release 报警；其他签名和质量检查仍阻断。正式上传联调已由用户确认通过；该结论不代表厂商风险已修复。
 
-2026-09-21 的 `df9451f2` Release 在 Pixel 10 / Android 17 上已通过测试客户登记、授权/扫描及取消后重新进入。连接 BMS105695 后出现设备未授权提示，应用映射对应固定 AAR `error_check_device_au = 21`，与 Token 失效 100/102 不同。用户随后确认正式环境尚未部署，正式联调暂缓，客户端保持当前正式配置、不切回测试环境。该提示只证明现场现象，不能据此确认厂商绑定或客户端 Token 复用问题；待正式环境部署后复验。尚未进入测量/上传，连续检测、GetCheckResult/报告及原记录换凭证恢复仍未验收。
+此前因设备未授权及当时正式环境未部署而暂缓的联调，已按用户 2026-09-29 的通过确认关闭，不再列为当前阻塞。本次只记录用户验收结论，未重新执行测量、上传或故障注入；不将其扩展为所有厂商异常分支均已实测。
 
 ## 接入范围
 
@@ -70,7 +70,7 @@ SDK 消息/Gzip 合约，覆盖旧 fixture、嵌套字段、实例隔离、未�
 统一通过 `BuildConfig.QLZ_SDK_KEY` 初始化；不依赖本机或 CI 的环境开关。
 客户端不调用 `CheckIml.setTestMode` 或 `setLocalMode`，不提供失败回退测试环境逻辑。
 固定 AAR 默认基地址为 `https://openapi.qiaolz.com`，检测上传为 `POST /sdk/assess/upload`。
-LongCare API 地址不变，服务端正式 Token 配置已由用户确认，端到端可用性仍需真机验证。
+LongCare API 地址不变，服务端正式 Token 配置已由用户确认，正式上传联调已由用户于 2026-09-29 确认通过。
 
 正式包统一使用标准 `release`，不设置额外发布模式。测试模式和临时测试 key 的旧发布
 输入已删除；QLZ 弱 TLS 和腾讯人脸已知风险仍明确告警，签名及其他质量检查保持不变。
@@ -196,7 +196,7 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest \
 ```
 
 测试结果输出至 `app/build/test-results/` 和 `app/build/outputs/androidTest-results/`；
-这些 mock 验证不会把 OpenSpec 中的真实 BLE 验收项标记为完成。
+这些 mock 验证不替代真实 BLE 验收。
 
 `SalesEvaluationLiveResultTest` 是显式启用的只读联调测试：仅对已提交问卷的授权测试客户，使用真实登录态、SalesViewModel 和接口验证纯表单等级及完成页文案；不创建客户、不提交问卷、不打印报告 URL。须同时传入 `liveEvaluationCustomerId` 与 `liveEvaluationExpectedGrade`，默认跳过。该测试验证结果查询分支，不替代登记、H5 提交与返回的完整 UI 旅程。
 
@@ -204,7 +204,7 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest \
 `NativeWebViewCloseBridgeTest` 使用不启动 Activity 的真实 WebView 验证首次脚本可调用、重复/后台/失效回调、刷新与 frame 可见性；
 `WebViewCloseBridgeTest` 验证统一容器、隐私同意不变、跨域加载及错误后关闭、重组不重载及 Navigation 3 返回，
 测试均提供受控 HTTPS 内容，不关闭 TLS 校验，
-不访问真实客户服务。真实 BLE 采样及服务端 H5 的域名、重定向、运行时兼容性仍需单独验收。
+不访问真实客户服务。后续变更 BLE 或服务端 H5 集成时，按实际影响范围复核，不重复保留本轮已关闭的硬件待办。
 
 ## 会话与错误处理
 
@@ -219,7 +219,7 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest \
 - ViewModel 用一个流程 Job 统一取消 Token 请求与待处理 SDK 事件，不另设流程序号或活动标记。启动请求按对象身份消费一次；Token loading 独立于其他操作的 loading，退出检测不改写其他操作状态。
 - controller 只授权已准备好的会话，不在交付 Token 时隐式创建新会话；UI 在宿主 STARTED 后才消费待处理请求，后台暂存。session 统一通过 `authorize(token)` 根据已有状态执行授权或上传恢复，不保留多套启动入口或跨层传递恢复标记；活动检测、上传和终态拒绝重复授权。
 - 每次检测最多自动恢复一次凭证。授权阶段失效使用新 Token 重建 driver；上传阶段厂商 401/2001 或 Token 失效回调则保留同一 driver、连接器与原 `RecordInputData`/recordId，重新授权成功后重传原记录，不重新测量。普通网络上传失败仍手动重传原记录，不刷新 Token。
-- 新 Token 获取失败、空凭证、恢复授权失败或再次失效时停止自动操作，显示提示并保留退出入口；未退出前不主动清空待上传数据，不回退旧 Token。离线回归覆盖该调用链，但厂商正式服务是否接受同一记录换凭证重传仍须真实验收。
+- 新 Token 获取失败、空凭证、恢复授权失败或再次失效时停止自动操作，显示提示并保留退出入口；未退出前不主动清空待上传数据，不回退旧 Token。离线回归覆盖该调用链；本轮正式上传联调已由用户确认通过，不额外制造生产凭证失效，未据此声称故障恢复已逐项现场重现。
 - 支付回调只显示阻断提示并中止本次检测，不自动打开 SDK 返回的支付 URL。厂商错误文本不会直接显示，所有错误按应用内固定分类映射。
 
 ## 安全与清单处理

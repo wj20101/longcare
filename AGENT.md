@@ -9,15 +9,15 @@ LongCare 是单应用、多模块的 Android 客户端，服务两类主要流�
 - 护理执行：登录 → 服务单 → NFC/读卡与身份核验 → 服务项目 → 定位/照片/倒计时 → 签退与完成。
 - 销售评估：客户/待办 → 登记照片 → 表单或 QLZ 蓝牙设备评估 → 应用内报告。
 
-主链路可运行。当前核心风险是生产厂商 SDK readiness、`:app` 壳层过重、复杂平台生命周期的回归深度，以及 targetSdk 37 前的大屏适配。
+主链路可运行。当前限制包括已接受的厂商 SDK 风险、`:app` 职责较重，以及平台升级时需要验证的生命周期和大屏适配。
 
 ## 阅读与架构入口
 
-所有文档职责和更新矩阵统一见[文档索引](docs/README.md)。需求、风险和优化顺序见[整体分析](docs/analysis/project-review.md)；模块、强制依赖规则、定位生命周期及 ADR 见[系统概览](docs/architecture/system-overview.md)。
+文档职责见[文档索引](docs/README.md)，已知限制见[工程风险](docs/analysis/project-review.md)；模块、强制依赖规则、定位生命周期及 ADR 见[系统概览](docs/architecture/system-overview.md)。
 
 App 保留启动、导航、平台组装和多数 route UI；Core/Feature 渐进承接业务。登录页中央大 Logo 长按确认进入本地 NFC/R65C，不上传或签到；平台监听随页面生命周期释放。独立助手已退役。
 
-判断现状时核对代码、Gradle/Manifest/workflow 和测试；与已接受规格冲突时记录偏差，不以实现自动覆盖需求，不从历史计划推导现状。
+判断现状时核对代码、Gradle/Manifest/workflow 和测试；与已确认需求冲突时记录偏差，不以实现自动覆盖需求，不从历史计划推导现状。
 
 ## 开发守则
 
@@ -34,7 +34,7 @@ App 保留启动、导航、平台组装和多数 route UI；Core/Feature 渐进
 - 权限/NFC/相机/定位/Service 改动必须覆盖拒绝、恢复、前后台、退出/换号和资源释放。
 - 新导出组件、新 secret、Lint ignore、全局 ProGuard ignore 或 debug 签名 fallback 都需要停下来做安全审查。
 - 产品、模块、路由、版本、门禁或 SDK 行为变化时，同步 [文档维护矩阵](docs/README.md#文档维护规则)。
-- 不新建 task plan、progress、findings 或执行日志文档；过程留在 PR/Issue，长期决策写 ADR。人工维护的整体分析可放在 docs/analysis，必须标明基线与验证边界，机器报告仍放 build/CI artifact。
+- 不新建 task plan、progress、findings 或执行日志文档；过程留在对话或 PR/Issue，长期决策写 ADR。已知限制维护在现有工程风险说明，机器报告放 build/CI artifact。
 
 ## Android CLI
 
@@ -55,31 +55,9 @@ android run --apks=app/build/outputs/apk/debug/app-debug.apk
 android layout --pretty
 ```
 
-## OpenSpec 维护流程
+## 协作方式
 
-本项目使用 OpenSpec 管理需要先对齐行为与方案的改动。OpenSpec 采用存量项目的 delta-first 方式：只为当前真实改动描述增量，不预先回填整个代码库。
-
-以下改动在写业务代码前先建立 OpenSpec change：
-
-- 新增或修改用户可见行为、业务规则、route/network/data contract。
-- 跨模块重构、模块迁移、Room schema 或构建/依赖基线变化。
-- 权限、组件导出、前台服务、厂商 SDK、隐私、安全或生产发布相关变化。
-- 范围较大、验收标准不明确，或需要先比较多种方案的缺陷修复。
-
-纯拼写/格式修正等无行为影响的小改动可以直接处理。不要为了“补全规格”给未触及的旧代码批量建 spec。
-
-在 Codex 对话中使用项目生成的技能：
-
-```text
-$openspec-explore          调研代码与方案，不创建或修改实现
-$openspec-propose          创建 proposal/specs/design/tasks，完成后等待评审
-$openspec-apply-change     用户确认后按 tasks 实现并验证
-$openspec-update-change    实现中发现新事实时更新 change 产物
-$openspec-sync-specs       需要时提前把 delta 同步到主 specs
-$openspec-archive-change   实现与验证完成后归档并更新主 specs
-```
-
-OpenSpec 产物统一使用简体中文并提交到 `openspec/`；结构关键字保留英文。归档前运行 `openspec validate --all --strict --no-interactive`。不要在 `openspec/` 之外再创建平行的 task plan、progress、findings 或执行日志文档。
+按已确认需求直接实施，完成相称的测试后交付；只有需求不清或操作超出授权时再确认。不要求提案、规格、设计、任务清单和归档的多阶段审批，不新增替代流程框架。必要的长期行为说明只更新现有专项文档，过程与历史通过对话、Git、PR 或 Issue 追溯。
 
 ## 最小验证
 
@@ -107,7 +85,7 @@ bash scripts/lint/verify_lint_warning_allowlist.sh app/build/reports/lint-result
 
 - app 版本、SDK 和依赖以 `constants.gradle.kts`、version catalog 和 Wrapper 为准。
 - 正式版统一使用标准 Release，不设置额外发布模式；仅主应用 APK/AAB 发布到 GitHub Release，不再生成独立助手，历史产物不变。
-- 2026-09-19 用户接受当时 QLZ 测试配置及厂商风险；2026-09-21 已按确认删除测试模式，保留现有正式 appKey。QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 的 16 KB/consumer rule 风险仍由正式构建告警，不代表已修复。其余签名、Lint、产物和业务验收仍阻断；不得扩展为任意错误放行。
+- QLZ 使用默认正式环境和已确认的正式 appKey。QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 的 16 KB/consumer rule 风险已接受，仍由正式构建告警，不代表已修复。其余签名、Lint、产物和业务验收仍阻断；不得扩展为任意错误放行。
 - targetSdk 36 的大屏竖屏 opt-out 在 API 37 被移除；升级前必须完成自适应与相机方向回归。
 
 ## 结束任务前

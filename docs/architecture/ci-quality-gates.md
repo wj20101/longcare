@@ -104,8 +104,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 - 当前腾讯人脸 ARM64 native library 不满足 16 KB 对齐。
 - 人脸 AAR 的 consumer rules 含已知全局选项。
 
-
-详见 [QLZ SDK 接入](../integrations/qlz-sdk.md)和[路线图](../analysis/project-review.md#17-分阶段技术方案与实施顺序)。
+详见 [QLZ SDK 接入](../integrations/qlz-sdk.md)。
 
 ## 其他 workflows
 
@@ -126,7 +125,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 |---|---|---|
 | Release exported components | `verify_release_exported_components.sh` | 收紧 Manifest 或有依据地更新 allowlist |
 | Vendor SDK risk policy | `verify_vendor_sdk_release_readiness.sh` | 当前已接受事项告警；其他目标厂商问题仍需处理 |
-| Release config | `verify_release_config.sh` | 错误参数阻断，当前已接受测试配置告警 |
+| Release config | `verify_release_config.sh` | 错误参数阻断，仅已接受的厂商风险告警 |
 | Signing safety | build-logic + Release workflow | 配置真实 keystore，不使用 debug 签名 |
 | Baseline profile source | Release workflow | 生成/提交受支持的 profile 或明确 warning |
 
@@ -149,7 +148,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 - 单测：各模块 `build/reports/tests/` 和 `build/test-results/`
 - CI 运行指标：调用脚本指定的 `build/` 输出目录或 CI artifact
 
-上述机器生成报告是一次性证据，不提交到 `docs/`。人工维护的[项目整体分析](../analysis/project-review.md)属于有来源和复核日期的优化基线，不保存构建输出或会话日志。
+上述机器生成报告是一次性证据，不提交到 `docs/`。长期已知限制维护在[工程风险](../analysis/project-review.md)，不保存构建输出或会话日志。
 
 ## 推荐命令
 
@@ -178,4 +177,4 @@ bash scripts/quality/preflight_local.sh --release
 
 自动化覆盖读卡解析、大 Logo 长按/短按与无震动、取消/生命周期与 Navigation 3 返回，正式包构建与 R8 检查不替代真机流程。
 
-真机需验证：登录页中央大 Logo 长按先确认且无震动，普通点击及非入口区域不触发；取消、后台、重复长按和返回不会误跳，无摇动监听。实际 NFC 标签及 R65C 分别验收读取、复制、清空、模式切换与退出释放。检测无须登录，不提交业务数据。用户选择稍后进行时保留未完成验收项。
+修改读卡功能时，按影响范围验证登录页长按确认、取消/返回、前后台及 NFC/R65C 读取与资源释放；检测无须登录，不提交业务数据。当前长按入口和实际读卡已由用户确认通过，不再保留旧硬件待验收项。
