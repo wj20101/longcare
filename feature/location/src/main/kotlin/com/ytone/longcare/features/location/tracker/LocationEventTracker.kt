@@ -1,19 +1,11 @@
 package com.ytone.longcare.features.location.tracker
 
-import android.os.Build
-import com.ytone.longcare.common.diagnostics.CrashReportGateway
-import com.ytone.longcare.common.utils.logE
-import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.model.LocationResult
 
-/**
- * 定位事件追踪器
- * 用于记录定位、保活、位置上报流程中的异常和错误事件，上报到 Bugly
- */
+/** Business event catalog; policy and delivery are owned by DiagnosticEventTracker. */
 object LocationEventTracker {
-
-    private const val TAG = "LocationEventTracker"
-
     enum class EventType(val code: String, val description: String) {
         // ContinuousAmapLocationManager 相关
         API_KEY_UNAVAILABLE("api_key_unavailable", "高德定位API Key不可用"),
@@ -66,17 +58,28 @@ object LocationEventTracker {
 
     fun trackEvent(
         eventType: EventType,
-        extras: Map<String, Any?> = emptyMap()
+        extras: Map<String, Any?> = emptyMap(),
     ) {
-        report(eventType, null, extras, "追踪事件失败", reportToCrash = false)
+        DiagnosticEventTracker.trackEvent(
+            category = DiagnosticCategory.LOCATION,
+            event = eventType.code,
+            description = eventType.description,
+            extras = extras,
+        )
     }
 
     fun trackError(
         eventType: EventType,
         throwable: Throwable? = null,
-        extras: Map<String, Any?> = emptyMap()
+        extras: Map<String, Any?> = emptyMap(),
     ) {
-        report(eventType, throwable, extras, "追踪错误事件失败", reportToCrash = true)
+        DiagnosticEventTracker.trackError(
+            category = DiagnosticCategory.LOCATION,
+            event = eventType.code,
+            description = eventType.description,
+            throwable = throwable,
+            extras = extras,
+        )
     }
 
     fun trackLocationSample(
@@ -89,34 +92,6 @@ object LocationEventTracker {
             eventType = eventType,
             extras = buildLocationExtras(orderId, location, extras)
         )
-    }
-
-    private fun report(
-        eventType: EventType,
-        throwable: Throwable?,
-        extras: Map<String, Any?>,
-        failureMessage: String,
-        reportToCrash: Boolean,
-    ) {
-        try {
-            val eventInfo = buildEventInfo(eventType, throwable, extras)
-            if (throwable == null) {
-                logI("$TAG: ${eventType.description} - $eventInfo")
-            } else {
-                logE("$TAG: ${eventType.description} - $eventInfo", throwable = throwable)
-            }
-            if (reportToCrash) {
-                CrashReportGateway.postCaughtException(
-                    LocationTrackingException(
-                        eventType = eventType.code,
-                        message = eventInfo,
-                        cause = throwable,
-                    ),
-                )
-            }
-        } catch (e: Exception) {
-            logE("$TAG: $failureMessage - ${e.message}")
-        }
     }
 
     private fun buildLocationExtras(
@@ -143,43 +118,6 @@ object LocationEventTracker {
         )
         return locationExtras
     }
-
-    private fun buildEventInfo(
-        eventType: EventType,
-        throwable: Throwable?,
-        extras: Map<String, Any?>
-    ): String {
-        return buildString {
-            appendLine("【${eventType.description}】")
-            appendLine("事件码: ${eventType.code}")
-            appendLine("时间戳: ${System.currentTimeMillis()}")
-            
-            appendLine("--- 设备信息 ---")
-            appendLine("SDK版本: ${Build.VERSION.SDK_INT}")
-            appendLine("厂商: ${Build.MANUFACTURER}")
-            appendLine("型号: ${Build.MODEL}")
-            appendLine("品牌: ${Build.BRAND}")
-            
-            if (extras.isNotEmpty()) {
-                appendLine("--- 额外信息 ---")
-                extras.forEach { (key, value) ->
-                    appendLine("$key: $value")
-                }
-            }
-            
-            if (throwable != null) {
-                appendLine("--- 异常信息 ---")
-                appendLine("异常类型: ${throwable.javaClass.simpleName}")
-                appendLine("异常消息: ${throwable.message}")
-            }
-        }
-    }
-
-    class LocationTrackingException(
-        val eventType: String,
-        message: String,
-        cause: Throwable? = null
-    ) : Exception("[LocationTracking:$eventType] $message", cause)
 
     private val PRECISE_COORDINATE_KEYS = setOf(
         Attribute.LATITUDE,

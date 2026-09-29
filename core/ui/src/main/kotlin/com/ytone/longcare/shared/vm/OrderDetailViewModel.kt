@@ -2,6 +2,7 @@ package com.ytone.longcare.shared.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.core.ui.R
@@ -24,7 +25,7 @@ class OrderDetailViewModel @Inject constructor(
     private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
     companion object {
-        private const val ORDER_DETAIL_DIAGNOSTIC_CATEGORY = "order_detail"
+        private val ORDER_DETAIL_DIAGNOSTIC_CATEGORY = DiagnosticCategory.ORDER_DETAIL
     }
 
     private val _uiState = MutableStateFlow<OrderDetailUiState>(OrderDetailUiState.Initial)

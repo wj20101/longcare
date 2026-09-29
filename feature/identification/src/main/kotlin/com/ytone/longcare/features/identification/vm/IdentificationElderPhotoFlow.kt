@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.identification.vm
 
 import android.net.Uri
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.feature.identification.R
@@ -105,4 +106,4 @@ private fun Uri.diagnosticExtras(orderId: Long): Map<String, Any?> =
         "uriPathLength" to (path?.length ?: 0),
     )
 
-private const val IDENTIFICATION_PHOTO_DIAGNOSTIC_CATEGORY = "identification_photo"
+private val IDENTIFICATION_PHOTO_DIAGNOSTIC_CATEGORY = DiagnosticCategory.IDENTIFICATION_PHOTO

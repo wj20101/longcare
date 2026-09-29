@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.feature.identification.R
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.features.face.ui.DetectedFace
@@ -205,7 +206,7 @@ class ManualFaceCaptureViewModel @Inject constructor(
     }
 
     private companion object {
-        const val FACE_CAPTURE_DIAGNOSTIC_CATEGORY = "face_capture"
+        val FACE_CAPTURE_DIAGNOSTIC_CATEGORY = DiagnosticCategory.FACE_CAPTURE
     }
 }
 

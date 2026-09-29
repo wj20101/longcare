@@ -6,6 +6,7 @@ import androidx.camera.mlkit.vision.MlKitAnalyzer
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
@@ -229,7 +230,7 @@ class FaceCaptureAnalyzer(
         }
 
     private companion object {
-        const val FACE_CAPTURE_DIAGNOSTIC_CATEGORY = "face_capture"
+        val FACE_CAPTURE_DIAGNOSTIC_CATEGORY = DiagnosticCategory.FACE_CAPTURE
         const val FACE_ANALYSIS_FRAMES_PER_SECOND = 20
     }
 }

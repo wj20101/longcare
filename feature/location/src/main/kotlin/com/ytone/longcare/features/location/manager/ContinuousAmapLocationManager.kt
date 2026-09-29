@@ -236,7 +236,7 @@ class ContinuousAmapLocationManager @Inject constructor(
         } catch (error: Exception) {
             LocationEventTracker.trackError(
                 LocationEventTracker.EventType.AMAP_SINGLE_LOCATION_FAIL,
-                extras = mapOf(LocationEventTracker.Attribute.ERROR_TYPE to error.javaClass.simpleName),
+                throwable = error,
             )
             LocationAcquisition.Failure(LocationFailure.UNAVAILABLE)
         } finally {
@@ -249,7 +249,7 @@ class ContinuousAmapLocationManager @Inject constructor(
                 runCatching(cleanup).onFailure {
                     LocationEventTracker.trackError(
                         LocationEventTracker.EventType.AMAP_SINGLE_LOCATION_FAIL,
-                        extras = mapOf(LocationEventTracker.Attribute.ERROR_TYPE to it.javaClass.simpleName),
+                        throwable = it,
                     )
                 }
             }

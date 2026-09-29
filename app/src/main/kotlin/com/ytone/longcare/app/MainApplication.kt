@@ -6,14 +6,12 @@ import androidx.work.Configuration
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
-import com.tencent.bugly.crashreport.CrashReport
 import com.ytone.longcare.BuildConfig
 import com.ytone.longcare.common.diagnostics.CrashReportGateway
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.common.utils.LogConfig
 import com.ytone.longcare.common.utils.LogFileConfig
 import com.ytone.longcare.common.utils.PrivacyConsentManager
-import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.features.location.session.LocationSessionLifecycleObserver
 import com.ytone.longcare.worker.StartupUpdateWorkObserver
 import dagger.hilt.android.HiltAndroidApp
@@ -69,17 +67,7 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
     }
 
     private fun initCrashReportingIfNeeded() {
-        if (BuildConfig.DEBUG) return
-        try {
-            val userStrategy = CrashReport.UserStrategy(this)
-            CrashReport.initCrashReport(this, userStrategy)
-            CrashReportGateway.markInitialized()
-        } catch (initializationFailure: Throwable) {
-            logE(
-                message = "Crash reporting initialization failed",
-                throwable = initializationFailure,
-            )
-        }
+        CrashReportGateway.initialize(this, enabled = !BuildConfig.DEBUG)
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = imageLoaderProvider.get()

@@ -30,7 +30,6 @@ dependencies {
     implementation(libs.hilt.lifecycle.viewmodel.compose)
     implementation(libs.amap.location)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.crashreport)
 
     ksp(libs.dagger.hilt.compiler)
 

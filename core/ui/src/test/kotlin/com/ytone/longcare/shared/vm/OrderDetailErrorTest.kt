@@ -31,7 +31,7 @@ class OrderDetailErrorTest {
         Dispatchers.setMain(StandardTestDispatcher())
         every { text.text(any()) } answers { "resource:${firstArg<Int>()}" }
         mockkObject(DiagnosticEventTracker)
-        every { DiagnosticEventTracker.trackError(any(), any(), any(), any(), any()) } just Runs
+        every { DiagnosticEventTracker.trackError(any(), any(), any(), any(), any(), any()) } just Runs
     }
 
     @After fun tearDown() {

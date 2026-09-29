@@ -88,6 +88,21 @@ class AmapLocationAcquisitionTest {
         verify(exactly = 1) { client.onDestroy() }
     }
 
+    @Test fun `acquisition and cleanup failures retain their original diagnostic exceptions`() = runTest(dispatcher) {
+        val acquisitionError = IllegalStateException("Location start failed")
+        val cleanupError = IllegalArgumentException("Location cleanup failed")
+        every { client.startLocation() } throws acquisitionError
+        every { client.stopLocation() } throws cleanupError
+
+        assertEquals(LocationAcquisition.Failure(LocationFailure.UNAVAILABLE), manager.acquireCurrentLocation())
+
+        verify(exactly = 1) {
+            LocationEventTracker.trackError(LocationEventTracker.EventType.AMAP_SINGLE_LOCATION_FAIL, acquisitionError, any())
+            LocationEventTracker.trackError(LocationEventTracker.EventType.AMAP_SINGLE_LOCATION_FAIL, cleanupError, any())
+        }
+        verify(exactly = 1) { client.onDestroy() }
+    }
+
     @Test fun `single completion and cancellation never stop continuous client`() = runTest(dispatcher) {
         val continuous = mockk<AMapLocationClient>(relaxed = true)
         val continuousListener = slot<AMapLocationListener>()

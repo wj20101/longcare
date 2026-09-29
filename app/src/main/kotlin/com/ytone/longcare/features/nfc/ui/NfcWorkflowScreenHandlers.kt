@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.ytone.longcare.R
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
@@ -79,7 +80,7 @@ internal fun rememberNfcLocationRequest(
             throw e
         } catch (e: Exception) {
             DiagnosticEventTracker.trackError(
-                category = "nfc_workflow",
+                category = DiagnosticCategory.NFC_WORKFLOW,
                 event = "nfc_location_request_exception",
                 description = "NFC签到请求定位异常",
                 throwable = e,

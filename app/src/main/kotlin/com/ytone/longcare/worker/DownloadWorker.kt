@@ -8,6 +8,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.R
 import com.ytone.longcare.core.ui.R as CoreUiR
@@ -260,7 +261,7 @@ class DownloadWorker @AssistedInject constructor(
         const val KEY_ERROR = "error"
         const val KEY_EXPECTED_VERSION_CODE = "expectedVersionCode"
         const val KEY_FILE_SIZE = "fileSize"
-        private const val UPDATE_DIAGNOSTIC_CATEGORY = "app_update"
+        private val UPDATE_DIAGNOSTIC_CATEGORY = DiagnosticCategory.APP_UPDATE
         private const val MAX_RETRY_COUNT = 2
     }
 }

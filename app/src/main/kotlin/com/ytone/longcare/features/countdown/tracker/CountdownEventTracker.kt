@@ -1,14 +1,10 @@
 package com.ytone.longcare.features.countdown.tracker
 
-import android.os.Build
-import com.ytone.longcare.common.diagnostics.CrashReportGateway
-import com.ytone.longcare.common.utils.logE
-import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 
+/** Business event catalog; policy and delivery are owned by DiagnosticEventTracker. */
 object CountdownEventTracker {
-
-    private const val TAG = "CountdownEventTracker"
-
     enum class EventType(val code: String, val description: String) {
         ALARM_SCHEDULE_START("alarm_schedule_start", "开始设置闹钟"),
         ALARM_SCHEDULE_SUCCESS("alarm_schedule_success", "闹钟设置成功"),
@@ -41,81 +37,28 @@ object CountdownEventTracker {
     fun trackEvent(
         eventType: EventType,
         orderId: Long? = null,
-        extras: Map<String, Any?> = emptyMap()
+        extras: Map<String, Any?> = emptyMap(),
     ) {
-        report(eventType, orderId, null, extras, "追踪事件失败")
+        DiagnosticEventTracker.trackEvent(
+            category = DiagnosticCategory.COUNTDOWN,
+            event = eventType.code,
+            description = eventType.description,
+            extras = extras + mapOf("orderId" to orderId),
+        )
     }
 
     fun trackError(
         eventType: EventType,
         orderId: Long? = null,
         throwable: Throwable? = null,
-        extras: Map<String, Any?> = emptyMap()
+        extras: Map<String, Any?> = emptyMap(),
     ) {
-        report(eventType, orderId, throwable, extras, "追踪错误事件失败")
+        DiagnosticEventTracker.trackError(
+            category = DiagnosticCategory.COUNTDOWN,
+            event = eventType.code,
+            description = eventType.description,
+            throwable = throwable,
+            extras = extras + mapOf("orderId" to orderId),
+        )
     }
-
-    private fun report(
-        eventType: EventType,
-        orderId: Long?,
-        throwable: Throwable?,
-        extras: Map<String, Any?>,
-        failureMessage: String
-    ) {
-        try {
-            val eventInfo = buildEventInfo(eventType, orderId, throwable, extras)
-            if (throwable == null) {
-                logI("$TAG: ${eventType.description} - $eventInfo")
-            } else {
-                logE("$TAG: ${eventType.description} - $eventInfo", throwable = throwable)
-            }
-            CrashReportGateway.postCaughtException(
-                CountdownTrackingException(
-                    eventType = eventType.code,
-                    message = eventInfo,
-                    cause = throwable
-                )
-            )
-        } catch (e: Exception) {
-            logE("$TAG: $failureMessage - ${e.message}")
-        }
-    }
-
-    private fun buildEventInfo(
-        eventType: EventType,
-        orderId: Long?,
-        throwable: Throwable?,
-        extras: Map<String, Any?>
-    ): String {
-        return buildString {
-            appendLine("【${eventType.description}】")
-            appendLine("事件码: ${eventType.code}")
-            appendLine("时间戳: ${System.currentTimeMillis()}")
-            if (orderId != null) {
-                appendLine("订单ID: $orderId")
-            }
-            appendLine("--- 设备信息 ---")
-            appendLine("SDK版本: ${Build.VERSION.SDK_INT}")
-            appendLine("厂商: ${Build.MANUFACTURER}")
-            appendLine("型号: ${Build.MODEL}")
-            appendLine("品牌: ${Build.BRAND}")
-            if (extras.isNotEmpty()) {
-                appendLine("--- 额外信息 ---")
-                extras.forEach { (key, value) ->
-                    appendLine("$key: $value")
-                }
-            }
-            if (throwable != null) {
-                appendLine("--- 异常信息 ---")
-                appendLine("异常类型: ${throwable.javaClass.simpleName}")
-                appendLine("异常消息: ${throwable.message}")
-            }
-        }
-    }
-
-    class CountdownTrackingException(
-        val eventType: String,
-        message: String,
-        cause: Throwable? = null
-    ) : Exception("[CountdownTracking:$eventType] $message", cause)
 }

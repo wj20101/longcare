@@ -2,6 +2,7 @@ package com.ytone.longcare.features.shared.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.faceauth.FaceSdkEvent
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
@@ -268,7 +269,7 @@ class FaceVerificationViewModel @Inject constructor(
     }
 
     private companion object {
-        const val DIAGNOSTIC_CATEGORY = "face_verification"
+        val DIAGNOSTIC_CATEGORY = DiagnosticCategory.FACE_VERIFICATION
     }
 }
 

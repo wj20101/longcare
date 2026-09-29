@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.byteArrayPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import com.ytone.longcare.common.diagnostics.CrashReportGateway
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.di.AppDataStore
 import com.ytone.longcare.core.common.di.ApplicationScope
@@ -12,16 +13,24 @@ import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.model.User
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.retryWhen
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 private val APP_USER_KEY = byteArrayPreferencesKey("app_user")
+private const val SESSION_READ_RETRY_DELAY_MS = 1_000L
+private const val SESSION_PUBLICATION_TIMEOUT_MS = 5_000L
 
 /**
  * UserSessionRepository 的默认实现
@@ -32,13 +41,17 @@ class DefaultUserSessionRepository @Inject constructor(
     @param:ApplicationScope private val coroutineScope: CoroutineScope
 ) : UserSessionRepository {
 
+    private val mutationMutex = Mutex()
+
     override val sessionState: StateFlow<SessionState> = appDataStore.data
-        .catch { exception ->
+        .retryWhen { exception, _ ->
             if (exception is IOException) {
-                // 如果读取DataStore时发生IO异常，视为登出状态
+                // Keep collecting after transient IO failures instead of completing the shared flow.
                 emit(emptyPreferences())
+                delay(SESSION_READ_RETRY_DELAY_MS)
+                true
             } else {
-                throw exception
+                false
             }
         }
         .map { preferences ->
@@ -57,6 +70,7 @@ class DefaultUserSessionRepository @Inject constructor(
                 SessionState.LoggedOut
             }
         }
+        .onEach { state -> CrashReportGateway.setUserId(state.user?.userId) }
         .stateIn(
             scope = coroutineScope,
             // Session is process-wide state used by receivers and interceptors, not only by UI collectors.
@@ -72,15 +86,25 @@ class DefaultUserSessionRepository @Inject constructor(
         updateUserInternal(user)
     }
 
-    private suspend fun updateUserInternal(user: User) {
+    private suspend fun updateUserInternal(user: User) = mutationMutex.withLock {
         appDataStore.edit { preferences ->
             preferences[APP_USER_KEY] = user.encode()
         }
+        // Publishing the state also synchronizes diagnostics. Callers can report immediately.
+        awaitSessionState(SessionState.LoggedIn(user))
     }
 
-    override suspend fun logout() {
+    override suspend fun logout() = mutationMutex.withLock {
         appDataStore.edit { preferences ->
             preferences.remove(APP_USER_KEY)
         }
+        awaitSessionState(SessionState.LoggedOut)
+    }
+
+    private suspend fun awaitSessionState(expected: SessionState) {
+        // A persistent read failure must not hold the mutation mutex indefinitely.
+        withTimeoutOrNull(SESSION_PUBLICATION_TIMEOUT_MS) {
+            sessionState.first { it == expected }
+        } ?: throw IOException("Session state could not be published")
     }
 }

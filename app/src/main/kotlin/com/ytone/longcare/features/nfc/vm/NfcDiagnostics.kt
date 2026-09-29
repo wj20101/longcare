@@ -1,11 +1,12 @@
 package com.ytone.longcare.features.nfc.vm
 
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.SignInMode
 
-private const val NFC_DIAGNOSTIC_CATEGORY = "nfc_workflow"
+private val NFC_DIAGNOSTIC_CATEGORY = DiagnosticCategory.NFC_WORKFLOW
 
 internal fun trackNfcException(
     event: String,
