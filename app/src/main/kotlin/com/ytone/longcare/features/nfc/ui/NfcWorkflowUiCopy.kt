@@ -86,13 +86,7 @@ internal fun resolveLoadingCopyRes(reason: NfcLoadingReason): Int = when (reason
 @StringRes
 internal fun resolveBottomHintRes(
     loadingReason: NfcLoadingReason?,
-    isLocationPreparing: Boolean,
     idleBottomHintKey: NfcWorkflowCopyKey,
 ): Int {
-    return loadingReason?.let(::resolveLoadingCopyRes)
-        ?: if (isLocationPreparing) {
-            R.string.nfc_location_preparing_hint
-        } else {
-            resolveCopyRes(idleBottomHintKey)
-        }
+    return loadingReason?.let(::resolveLoadingCopyRes) ?: resolveCopyRes(idleBottomHintKey)
 }

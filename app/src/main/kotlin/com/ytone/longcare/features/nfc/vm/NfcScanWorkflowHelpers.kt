@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.nfc.vm
 
+import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.ScanSource
 import com.ytone.longcare.navigation.EndOderInfo
@@ -14,16 +15,16 @@ internal suspend fun handleTagScanned(
     onLocationError: (LocationRequestResult.Error) -> Unit,
     onLocationPermissionRequired: suspend (String) -> Unit = {},
     onLoadingReasonChanged: (NfcLoadingReason) -> Unit = {},
-    onStartOrder: suspend (String, String, String) -> Unit,
-    onEndOrder: suspend (String, String, String, EndOderInfo) -> Unit,
+    onStartOrder: suspend (String, LocationResult) -> Unit,
+    onEndOrder: suspend (String, LocationResult, EndOderInfo) -> Unit,
 ) {
     if (currentState !is NfcSignInUiState.Initial) return
     if (event.tagId.isBlank()) return
 
     onLoadingReasonChanged(NfcLoadingReason.CARD_RECOGNIZED_FETCHING_LOCATION)
     val locationResult = onLocationRequest()
-    val (longitude, latitude) = when (locationResult) {
-        is LocationRequestResult.Coordinates -> locationResult.longitude to locationResult.latitude
+    val location = when (locationResult) {
+        is LocationRequestResult.Coordinates -> locationResult.location
         is LocationRequestResult.Error -> {
             onLocationError(locationResult)
             return
@@ -39,8 +40,7 @@ internal suspend fun handleTagScanned(
         signInMode = signInMode,
         endOderInfo = endOderInfo,
         tagId = event.tagId,
-        longitude = longitude,
-        latitude = latitude,
+        location = location,
         onStartOrder = onStartOrder,
         onEndOrder = onEndOrder,
     )
@@ -67,13 +67,12 @@ internal suspend fun executeSignInModeAction(
     signInMode: SignInMode,
     endOderInfo: EndOderInfo?,
     tagId: String,
-    longitude: String,
-    latitude: String,
-    onStartOrder: suspend (String, String, String) -> Unit,
-    onEndOrder: suspend (String, String, String, EndOderInfo) -> Unit,
+    location: LocationResult,
+    onStartOrder: suspend (String, LocationResult) -> Unit,
+    onEndOrder: suspend (String, LocationResult, EndOderInfo) -> Unit,
 ) {
     when (signInMode) {
-        SignInMode.START_ORDER -> onStartOrder(tagId, longitude, latitude)
-        SignInMode.END_ORDER -> endOderInfo?.let { onEndOrder(tagId, longitude, latitude, it) }
+        SignInMode.START_ORDER -> onStartOrder(tagId, location)
+        SignInMode.END_ORDER -> endOderInfo?.let { onEndOrder(tagId, location, it) }
     }
 }

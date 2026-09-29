@@ -1,5 +1,8 @@
 package com.ytone.longcare.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class LocationResult(
     val latitude: Double,
     val longitude: Double,
@@ -8,5 +11,9 @@ data class LocationResult(
     val coordType: String = "",
     val locationType: Int = 0,
     val trustedLevel: Int = 0,
-    val locationTime: Long = 0L
+    val locationTime: Long = 0L,
+    val receivedAt: Long = 0L,
+    val receivedElapsedRealtime: Long = 0L,
+    val isMock: Boolean = false,
+    val isLastLocation: Boolean = false,
 )

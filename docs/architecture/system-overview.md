@@ -288,13 +288,14 @@ flowchart LR
 ### 核心组件
 
 1. `LocationFacade`
-   - 统一提供快速定位、新鲜定位、缓存定位和前台保活控制。
+   - 单次业务统一使用 `acquireCurrentLocation`，返回成功样本或分类失败；提交前调用 `isUsable` 复核。保活控制保持 owner 契约。
 2. `LocationKeepAliveManager`
    - 以进程内 owner 和 generation 管理前台 Service，不持久化 desired state。
 3. `LocationTrackingService`
    - 持有前台通知、高德持续定位 collector 和唯一 `AddPostion` 调用点，不查询订单状态。
-4. `LocationSampleStore`
-   - 保存短时缓存并发布实时样本；上报消费端使用 conflate，仅保留一个最新待处理点。
+4. `LocationQuality` / `LocationSampleEvaluator`
+   - 单次与持续共用元数据质量校验；上传前复核时效和顺序，不计算距离、位移或速度。
+   - 已删除业务缓存及无消费者的样本中心；Service 直接消费 SDK Flow，使用 conflate 仅保留一个最新待处理点。
 5. `LocationReportingManager`
    - 实现业务层 `ServiceOrderLifecycle`，统一同步订单状态，驱动上报会话启停，不执行上传。
    - 状态同步不依赖页面存活；倒计时页面仅订阅同一份状态，不重复请求。
@@ -327,11 +328,19 @@ trackingManager.stopTracking()
 ### 单次业务定位
 
 ```kotlin
-val location = locationFacade.getCurrentLocation()
-val freshLocation = locationFacade.getFreshLocation()
+val result = locationFacade.acquireCurrentLocation()
+// Success 携带完整样本；Failure 携带具体失败原因。
 ```
 
-单次定位使用独立高德客户端，不会创建第二个持续定位 collector，也不进入实时上报链路。
+单次定位使用独立高德客户端，不会创建第二个持续定位 collector，也不进入实时上报链路。只有一个在途请求槽，冲突返回 Busy；质量不足最多再采集一次，超时与重试共用 15 秒总预算。取消或账号切换释放本次请求，不影响持续采集。
+
+单次和持续都显式关闭 SDK 缓存，保持高精度、Wi-Fi 扫描、禁止模拟、不请求地址及 GCJ02 输出；持续间隔 30 秒、HTTP 超时 20 秒不变。保留 SDK 原始时间与实际精度，不截断或转换经纬度，不用收到回调的时间替换采样时间。
+
+质量规则：坐标有限且合法，时间存在且非未来；以墙钟与单调时钟同时限制样本总年龄不超过 15 秒（依据高德最高可信度的环境信息新鲜度定义），持续流拒绝会话前/乱序采样。精度必须为有限正数，但不设置未经现场验证的米数上限。接受实时 GPS、同请求、Wi-Fi、基站、在线补偿及系统网络来源，要求最高可信度、非模拟、非最后位置、GCJ02；不以坐标距客户或上一点的距离拒绝样本。元数据合格不代表物理位置绝对准确。
+
+NFC 入页不预定位，实际碰卡才请求；绑定确认过期需重新获取并再次确认，开始/结束服务没有有效位置则留页重试。登记位置仍可选，重新获取先清除旧结果，确认路由携带完整样本元数据，照片上传完成后再检查时效。相机只有精确权限才展示数字位置，拍摄截图前同步复核并更新水印；失效或大致权限不阻止拍照，但不写入旧坐标。
+
+权限永久拒绝时提供应用设置入口；设置返回后重新检查权限，业务请求再核对系统定位开关。默认诊断不包含精确坐标。本轮只做客户端采集与传递、本地回归和真机准确性验收；不扩展线上诊断、不依赖服务端数据对照，也不以单测通过替代真机定位表现。
 
 ### Android 生命周期
 

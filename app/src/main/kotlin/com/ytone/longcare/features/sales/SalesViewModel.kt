@@ -10,6 +10,8 @@ import com.ytone.longcare.common.image.UnifiedImagePipeline
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.location.LocationFacade
+import com.ytone.longcare.domain.location.LocationAcquisition
+import com.ytone.longcare.common.utils.messageRes
 import com.ytone.longcare.domain.sale.SaleRepository
 import com.ytone.longcare.integration.qlz.QlzSdkEvent
 import com.ytone.longcare.features.photoupload.upload.PhotoCloudUploader
@@ -475,6 +477,8 @@ class SalesViewModel @Inject constructor(
     }
 
     fun requestCurrentLocation() {
+        if (_uiState.value.isLoading) return
+        _uiState.value = _uiState.value.copy(isLoading = true, currentLocation = null)
         viewModelScope.launch {
             _uiState.value =
                 _uiState.value.copy(
@@ -483,13 +487,13 @@ class SalesViewModel @Inject constructor(
                     errorMessage = null,
                 )
             try {
-                val location = locationFacade.getFreshLocation()
-                if (location == null) {
-                    showError(text(R.string.sales_error_location_service))
+                val result = locationFacade.acquireCurrentLocation()
+                if (result is LocationAcquisition.Failure) {
+                    showError(text(result.reason.messageRes()))
                 } else {
                     _uiState.value =
                         _uiState.value.copy(
-                            currentLocation = location,
+                            currentLocation = (result as LocationAcquisition.Success).location,
                             noticeMessage = text(R.string.sales_notice_location_success),
                         )
                 }
@@ -538,15 +542,17 @@ class SalesViewModel @Inject constructor(
             try {
                 val uploadedKeys =
                     uploadPhotoKeys(photoUris.take(MAX_SALES_CUSTOMER_PHOTOS))
+                val currentLocation = location?.takeIf(locationFacade::isUsable)
                 _uiState.value =
                     _uiState.value.copy(
+                        currentLocation = currentLocation,
                         operation = text(R.string.sales_loading_submit_customer)
                     )
                 when (
                     val result =
                         saleRepository.addUserLatent(
                             draft.toRequest(
-                                location = location,
+                                location = currentLocation,
                                 photoKeys = uploadedKeys,
                             )
                         )

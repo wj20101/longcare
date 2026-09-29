@@ -67,6 +67,7 @@ OpenSpec 采用 delta-first，主规格不覆盖所有存量能力。`config.yam
 
 | Change | 实际状态 | 当前适用说明 |
 |---|---|---|
+| [unify-location-acquisition](../openspec/changes/unify-location-acquisition/tasks.md) | 实现、本地门禁、Debug/Release 构建及 Pixel 10 多次定位/权限恢复通过，尚未归档 | 统一定位与元数据校验，清理缓存/预定位/距离计算；按用户决定取消长时漂移/功耗专项，不扩展线上诊断或服务端数据对照 |
 | [fix-page-return-state](../openspec/changes/fix-page-return-state/tasks.md) | 实现、完整本地门禁、Debug/Release 构建和离线模拟器回归通过，主规格已同步，尚未归档 | 完成页复用原首页并统一成功清理；详情返回刷新、列表返回保留状态；倒计时退出业务例外不变；未做真机/线上业务验收 |
 | [add-evaluation-h5-customer-details](../openspec/changes/add-evaluation-h5-customer-details/tasks.md) | 实现、完整本地门禁、离线页面回归和 Release 混淆桥接验证完成，主规格已同步，尚未归档 | H5 进入详情时关闭自身；登记失败留页、离页不返回修改；检测成功关闭设备/进度页，其余页面正常出栈，不固定首页 |
 | [simplify-sales-result-layout](../openspec/changes/simplify-sales-result-layout/tasks.md) | 实现、离线 UI 回归及 Debug/Release 构建验证完成，尚未归档 | 两个结果页统一纵向按钮组，继续/查看在上、返回/完成在下，设备通用称呼简化；不改业务与 SDK 配置 |

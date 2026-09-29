@@ -10,13 +10,20 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.LocalActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.core.app.ActivityCompat
+import androidx.core.net.toUri
 import androidx.core.location.LocationManagerCompat
 import com.ytone.longcare.core.ui.R
 
@@ -288,7 +295,31 @@ fun rememberLocationPermissionLauncher(
     onPermissionDenied: () -> Unit = {}
 ): ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>> {
     val context = LocalContext.current
-    
+    val activity = LocalActivity.current
+    var showSettings by remember { mutableStateOf(false) }
+    val settingsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (UnifiedPermissionHelper.hasLocationPermission(context)) onPermissionGranted()
+        else onPermissionDenied()
+    }
+    if (showSettings) {
+        AlertDialog(
+            onDismissRequest = { showSettings = false },
+            title = { Text(context.getString(R.string.location_permission_settings_title)) },
+            text = { Text(context.getString(R.string.location_error_permission)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSettings = false
+                    settingsLauncher.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        "package:${context.packageName}".toUri()))
+                }) { Text(context.getString(R.string.location_permission_settings_open)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSettings = false }) {
+                    Text(context.getString(android.R.string.cancel))
+                }
+            },
+        )
+    }
     return rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
         onResult = { permissions ->
@@ -296,7 +327,11 @@ fun rememberLocationPermissionLauncher(
                 permissions = permissions,
                 context = context,
                 onPermissionGranted = onPermissionGranted,
-                onPermissionDenied = onPermissionDenied
+                onPermissionDenied = {
+                    onPermissionDenied()
+                    showSettings = activity != null &&
+                        !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)
+                }
             )
         }
     )

@@ -52,7 +52,6 @@ import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.platform.sales.rememberSalesSdkUiController
 import com.ytone.longcare.navigation.AppNavigator
 import com.ytone.longcare.navigation.SalesRoute
-import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.presentation.sales.SalesPage
 import kotlinx.coroutines.launch
 
@@ -269,27 +268,10 @@ internal fun SalesExperienceScreen(
             }
         }
 
-    val locationPermissionLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestMultiplePermissions(),
-        ) { permissions ->
-            val granted =
-                permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                    permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true ||
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                    ) == PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                    ) == PackageManager.PERMISSION_GRANTED
-            if (granted) {
-                viewModel.onLocationPermissionGranted()
-            } else {
-                showMessage(locationPermissionMessage)
-            }
-        }
+    val locationPermissionLauncher = com.ytone.longcare.common.utils.rememberLocationPermissionLauncher(
+        onPermissionGranted = viewModel::onLocationPermissionGranted,
+        onPermissionDenied = { showMessage(locationPermissionMessage) },
+    )
 
     fun openSalesWatermarkCamera() {
         actions.onNavigateToCamera(
@@ -365,7 +347,7 @@ internal fun SalesExperienceScreen(
         if (missing.isEmpty()) {
             viewModel.onLocationPermissionGranted()
         } else {
-            locationPermissionLauncher.launch(missing.toTypedArray())
+            locationPermissionLauncher.launch(permissions)
         }
     }
 
@@ -580,7 +562,7 @@ internal fun SalesExperienceScreen(
                         onContinue = {
                             navigator.replaceTop(SalesRoute(SalesPage.REGISTRATION_CONFIRM,
                                 draft = registrationDraft, photos = photoUriStrings,
-                                latitude = uiState.currentLocation?.latitude, longitude = uiState.currentLocation?.longitude))
+                                registrationLocation = uiState.currentLocation))
                         },
                         onValidationError = ::showMessage,
                     )
@@ -594,9 +576,7 @@ internal fun SalesExperienceScreen(
                             viewModel.submitCustomer(
                                 draft = registrationDraft,
                                 photoUris = photoUris,
-                                location = route?.latitude?.let { lat -> route.longitude?.let { lng ->
-                                    LocationResult(lat, lng, "registration")
-                                } },
+                                location = route?.registrationLocation,
                             )
                         },
                     )

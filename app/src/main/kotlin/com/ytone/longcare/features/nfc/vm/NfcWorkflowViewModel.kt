@@ -51,6 +51,8 @@ class NfcWorkflowViewModel @Inject constructor(
 
     private val orderDelegate = NfcOrderWorkflowDelegate(
         serviceOrderLifecycle = serviceOrderLifecycle,
+        locationFacade = locationFacade,
+        textResolver = textResolver,
         orderRepository = orderRepository,
         unifiedOrderRepository = unifiedOrderRepository,
         imageRepository = imageRepository,
@@ -61,6 +63,7 @@ class NfcWorkflowViewModel @Inject constructor(
 
     private val locationDelegate = NfcLocationDelegate(
         locationFacade = locationFacade,
+        textResolver = textResolver,
     )
 
     private val _scanMode = MutableStateFlow(selectScanMode(nfcDeviceCapabilities.isNfcSupported()))
@@ -76,6 +79,8 @@ class NfcWorkflowViewModel @Inject constructor(
     val readerUiState: StateFlow<ReaderUiState> = _readerUiState.asStateFlow()
 
     private val scanDelegate = NfcScanWorkflowDelegate(
+        locationFacade = locationFacade,
+        acquireLocation = locationDelegate::acquireLocation,
         appEventBus = appEventBus,
         unifiedOrderRepository = unifiedOrderRepository,
         orderRepository = orderRepository,
@@ -92,39 +97,6 @@ class NfcWorkflowViewModel @Inject constructor(
 
     private fun launchOrderDelegateAction(action: suspend NfcOrderWorkflowDelegate.() -> Unit) {
         viewModelScope.launch { orderDelegate.action() }
-    }
-
-    fun startOrder(
-        orderKey: OrderKey,
-        nfcDeviceId: String,
-        longitude: String = "",
-        latitude: String = ""
-    ) = launchOrderDelegateAction {
-        startOrder(orderKey, nfcDeviceId, longitude, latitude)
-    }
-
-    fun endOrder(
-        orderKey: OrderKey,
-        nfcDeviceId: String,
-        projectIdList: List<Int>,
-        beginImgList: List<String>,
-        endImageList: List<String>,
-        centerImgList: List<String> = emptyList(),
-        longitude: String = "",
-        latitude: String = "",
-        endType: Int = 1
-    ) = launchOrderDelegateAction {
-        endOrder(
-            orderKey = orderKey,
-            nfcDeviceId = nfcDeviceId,
-            projectIdList = projectIdList,
-            beginImgList = beginImgList,
-            endImageList = endImageList,
-            centerImgList = centerImgList,
-            longitude = longitude,
-            latitude = latitude,
-            endType = endType
-        )
     }
 
     fun confirmEndOrder(params: EndOrderParams) = launchOrderDelegateAction { confirmEndOrder(params) }
@@ -146,9 +118,9 @@ class NfcWorkflowViewModel @Inject constructor(
         _readerUiState.value = initialExternalReaderUiState(externalRfidReaderManager.isReaderReady())
     }
 
-    suspend fun getCurrentLocationCoordinates(): Pair<String, String> = locationDelegate.getCurrentLocationCoordinates()
+    suspend fun acquireLocation(): LocationRequestResult = locationDelegate.acquireLocation()
 
-    fun notifyLocationPermissionGranted() = locationDelegate.notifyLocationPermissionGranted()
+    fun notifyLocationPermissionGranted() = locationFacade.notifyPermissionGranted()
 
     fun observeScanEvents(
         orderKey: OrderKey,
@@ -161,6 +133,8 @@ class NfcWorkflowViewModel @Inject constructor(
         scanDelegate.resumePendingPermissionScan(onLocationRequest)
 
     fun clearPendingPermissionScan() = scanDelegate.clearPendingPermissionScan()
+
+    fun stopScanRequests() = scanDelegate.clear()
 
     fun confirmLocationActivation(data: PendingNfcData) = scanDelegate.confirmLocationActivation(data)
 

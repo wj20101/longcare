@@ -7,6 +7,7 @@ import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.CoroutineScope
@@ -15,6 +16,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 internal class NfcScanWorkflowDelegate(
+    private val locationFacade: LocationFacade,
+    private val acquireLocation: suspend () -> LocationRequestResult,
     private val appEventBus: AppEventBus,
     private val unifiedOrderRepository: OrderDetailRepository,
     private val orderRepository: OrderRepository,
@@ -27,6 +30,7 @@ internal class NfcScanWorkflowDelegate(
     private val userMessages: NfcUserMessages,
 ) {
     private var nfcEventJob: Job? = null
+    private var pendingActionJob: Job? = null
     private var pendingPermissionScan: PendingNfcScan? = null
 
     fun observeScanEvents(
@@ -71,22 +75,20 @@ internal class NfcScanWorkflowDelegate(
                                 tagId = tagId
                             )
                         },
-                        onStartOrder = { tagId, longitude, latitude ->
+                        onStartOrder = { tagId, location ->
                             checkUserLocationAndProceed(
                                 unifiedOrderRepository = unifiedOrderRepository,
                                 orderKey = orderKey,
                                 signInMode = signInMode,
                                 endOderInfo = endOderInfo,
                                 tagId = tagId,
-                                longitude = longitude,
-                                latitude = latitude,
+                                location = location,
                                 pendingNfcData = pendingNfcData,
-                                scope = scope,
                                 orderDelegate = orderDelegate,
                                 userMessages = userMessages,
                             )
                         },
-                        onEndOrder = { tagId, longitude, latitude, info ->
+                        onEndOrder = { tagId, location, info ->
                             orderDelegate.endOrder(
                                 orderKey = orderKey,
                                 nfcDeviceId = tagId,
@@ -94,8 +96,7 @@ internal class NfcScanWorkflowDelegate(
                                 beginImgList = info.beginImgList,
                                 centerImgList = info.centerImgList,
                                 endImageList = info.endImgList,
-                                longitude = longitude,
-                                latitude = latitude,
+                                location = location,
                                 endType = info.endType
                             )
                         },
@@ -108,11 +109,12 @@ internal class NfcScanWorkflowDelegate(
     fun resumePendingPermissionScan(onLocationRequest: suspend () -> LocationRequestResult): Boolean {
         val scan = pendingPermissionScan ?: return false
         pendingPermissionScan = null
-        scope.launch {
+        pendingActionJob?.cancel()
+        pendingActionJob = scope.launch {
             uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.FETCHING_LOCATION)
             val locationResult = onLocationRequest()
-            val (longitude, latitude) = when (locationResult) {
-                is LocationRequestResult.Coordinates -> locationResult.longitude to locationResult.latitude
+            val location = when (locationResult) {
+                is LocationRequestResult.Coordinates -> locationResult.location
                 is LocationRequestResult.Error -> {
                     orderDelegate.showError(
                         message = locationResult.message,
@@ -124,31 +126,32 @@ internal class NfcScanWorkflowDelegate(
                     )
                     return@launch
                 }
-                is LocationRequestResult.PermissionRequired -> return@launch
+                is LocationRequestResult.PermissionRequired -> {
+                    pendingPermissionScan = scan
+                    uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.WAITING_FOR_LOCATION_PERMISSION)
+                    return@launch
+                }
             }
 
             executeSignInModeAction(
                 signInMode = scan.signInMode,
                 endOderInfo = scan.endOderInfo,
                 tagId = scan.tagId,
-                longitude = longitude,
-                latitude = latitude,
-                onStartOrder = { tagId, startLongitude, startLatitude ->
+                location = location,
+                onStartOrder = { tagId, location ->
                     checkUserLocationAndProceed(
                         unifiedOrderRepository = unifiedOrderRepository,
                         orderKey = scan.orderKey,
                         signInMode = scan.signInMode,
                         endOderInfo = scan.endOderInfo,
                         tagId = tagId,
-                        longitude = startLongitude,
-                        latitude = startLatitude,
+                        location = location,
                         pendingNfcData = pendingNfcData,
-                        scope = scope,
                         orderDelegate = orderDelegate,
                         userMessages = userMessages,
                     )
                 },
-                onEndOrder = { tagId, endLongitude, endLatitude, info ->
+                onEndOrder = { tagId, location, info ->
                     orderDelegate.endOrder(
                         orderKey = scan.orderKey,
                         nfcDeviceId = tagId,
@@ -156,8 +159,7 @@ internal class NfcScanWorkflowDelegate(
                         beginImgList = info.beginImgList,
                         centerImgList = info.centerImgList,
                         endImageList = info.endImgList,
-                        longitude = endLongitude,
-                        latitude = endLatitude,
+                        location = location,
                         endType = info.endType
                     )
                 },
@@ -176,15 +178,28 @@ internal class NfcScanWorkflowDelegate(
     }
 
     fun confirmLocationActivation(data: PendingNfcData) {
-        scope.launch {
+        if (pendingNfcData.value != data) return
+        pendingNfcData.value = null
+        pendingActionJob?.cancel()
+        pendingActionJob = scope.launch {
+            if (!locationFacade.isUsable(data.location)) {
+                when (val result = acquireLocation()) {
+                    is LocationRequestResult.Coordinates -> {
+                        pendingNfcData.value = data.copy(location = result.location)
+                    }
+                    is LocationRequestResult.Error -> orderDelegate.showError(result.message)
+                    LocationRequestResult.PermissionRequired -> uiState.value = NfcSignInUiState.Initial
+                }
+                return@launch
+            }
             when (val result = orderRepository.bindLocation(
                 orderId = data.orderKey.orderId,
                 nfc = data.tagId,
-                longitude = data.longitude,
-                latitude = data.latitude
+                longitude = data.location.longitude.toString(),
+                latitude = data.location.latitude.toString()
             )) {
                 is ApiResult.Success -> {
-                    orderDelegate.startOrder(data.orderKey, data.tagId, data.longitude, data.latitude)
+                    orderDelegate.startOrder(data.orderKey, data.tagId, data.location)
                 }
 
                 is ApiResult.Exception -> {
@@ -196,8 +211,8 @@ internal class NfcScanWorkflowDelegate(
                         signInMode = data.signInMode,
                         nfcDeviceId = data.tagId,
                         extras = mapOf(
-                            "hasLongitude" to data.longitude.isNotBlank(),
-                            "hasLatitude" to data.latitude.isNotBlank(),
+                            "hasLongitude" to data.location.longitude.isFinite(),
+                            "hasLatitude" to data.location.latitude.isFinite(),
                         ),
                     )
                     orderDelegate.showError(
@@ -208,8 +223,8 @@ internal class NfcScanWorkflowDelegate(
                         nfcDeviceId = data.tagId,
                         buglyAlreadyReported = true,
                         extras = mapOf(
-                            "hasLongitude" to data.longitude.isNotBlank(),
-                            "hasLatitude" to data.latitude.isNotBlank(),
+                            "hasLongitude" to data.location.longitude.isFinite(),
+                            "hasLatitude" to data.location.latitude.isFinite(),
                         ),
                     )
                 }
@@ -223,8 +238,8 @@ internal class NfcScanWorkflowDelegate(
                         signInMode = data.signInMode,
                         nfcDeviceId = data.tagId,
                         extras = mapOf(
-                            "hasLongitude" to data.longitude.isNotBlank(),
-                            "hasLatitude" to data.latitude.isNotBlank(),
+                            "hasLongitude" to data.location.longitude.isFinite(),
+                            "hasLatitude" to data.location.latitude.isFinite(),
                         ),
                     )
                     orderDelegate.showError(
@@ -235,8 +250,8 @@ internal class NfcScanWorkflowDelegate(
                         nfcDeviceId = data.tagId,
                         buglyAlreadyReported = true,
                         extras = mapOf(
-                            "hasLongitude" to data.longitude.isNotBlank(),
-                            "hasLatitude" to data.latitude.isNotBlank(),
+                            "hasLongitude" to data.location.longitude.isFinite(),
+                            "hasLatitude" to data.location.latitude.isFinite(),
                         ),
                     )
                 }
@@ -255,32 +270,33 @@ internal class NfcScanWorkflowDelegate(
         endOderInfo: EndOderInfo?,
     ) {
         val mockTagId = "MOCK_TAG_ID_123456"
-        val mockLongitude = "121.4737"
-        val mockLatitude = "31.2304"
 
-        scope.launch {
+        pendingActionJob?.cancel()
+        pendingActionJob = scope.launch {
+            val result = acquireLocation()
+            if (result !is LocationRequestResult.Coordinates) {
+                if (result is LocationRequestResult.Error) orderDelegate.showError(result.message)
+                return@launch
+            }
             executeSignInModeAction(
                 signInMode = signInMode,
                 endOderInfo = endOderInfo,
                 tagId = mockTagId,
-                longitude = mockLongitude,
-                latitude = mockLatitude,
-                onStartOrder = { tagId, longitude, latitude ->
+                location = result.location,
+                onStartOrder = { tagId, location ->
                     checkUserLocationAndProceed(
                         unifiedOrderRepository = unifiedOrderRepository,
                         orderKey = orderKey,
                         signInMode = signInMode,
                         endOderInfo = endOderInfo,
                         tagId = tagId,
-                        longitude = longitude,
-                        latitude = latitude,
+                        location = location,
                         pendingNfcData = pendingNfcData,
-                        scope = scope,
                         orderDelegate = orderDelegate,
                         userMessages = userMessages,
                     )
                 },
-                onEndOrder = { tagId, longitude, latitude, info ->
+                onEndOrder = { tagId, location, info ->
                     orderDelegate.endOrder(
                         orderKey = orderKey,
                         nfcDeviceId = tagId,
@@ -288,8 +304,7 @@ internal class NfcScanWorkflowDelegate(
                         beginImgList = info.beginImgList,
                         centerImgList = info.centerImgList,
                         endImageList = info.endImgList,
-                        longitude = longitude,
-                        latitude = latitude,
+                        location = location,
                         endType = info.endType
                     )
                 },
@@ -299,7 +314,12 @@ internal class NfcScanWorkflowDelegate(
 
     fun clear() {
         nfcEventJob?.cancel()
+        pendingActionJob?.cancel()
+        pendingNfcData.value = null
         pendingPermissionScan = null
+        if (uiState.value is NfcSignInUiState.Loading) {
+            uiState.value = NfcSignInUiState.Initial
+        }
     }
 
     private fun AppEvent.TagScanned.isFromActiveSource(currentMode: ScanMode): Boolean = when (currentMode) {

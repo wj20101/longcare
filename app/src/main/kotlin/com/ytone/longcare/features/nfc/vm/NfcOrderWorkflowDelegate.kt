@@ -6,6 +6,11 @@ import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.LocationResult
+import com.ytone.longcare.domain.location.LocationFacade
+import com.ytone.longcare.domain.location.LocationFailure
+import com.ytone.longcare.common.text.ResourceTextResolver
+import com.ytone.longcare.common.utils.messageRes
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.ServiceCompleteData
 import com.ytone.longcare.navigation.SignInMode
@@ -38,6 +43,8 @@ internal fun applyUserVisibleNfcError(
 }
 
 internal class NfcOrderWorkflowDelegate(
+    private val locationFacade: LocationFacade,
+    private val textResolver: ResourceTextResolver,
     private val serviceOrderLifecycle: ServiceOrderLifecycle,
     private val orderRepository: OrderRepository,
     private val unifiedOrderRepository: OrderDetailRepository,
@@ -55,17 +62,19 @@ internal class NfcOrderWorkflowDelegate(
     suspend fun startOrder(
         orderKey: OrderKey,
         nfcDeviceId: String,
-        longitude: String = "",
-        latitude: String = ""
-    ) = performStartOrderWorkflow(
-        orderRepository = orderRepository,
-        orderKey = orderKey,
-        nfcDeviceId = nfcDeviceId,
-        longitude = longitude,
-        latitude = latitude,
-        uiState = uiState,
-        userMessages = userMessages,
-    )
+        location: LocationResult
+    ) {
+        if (!validateLocation(location)) return
+        performStartOrderWorkflow(
+            orderRepository = orderRepository,
+            orderKey = orderKey,
+            nfcDeviceId = nfcDeviceId,
+            longitude = location.longitude.toString(),
+            latitude = location.latitude.toString(),
+            uiState = uiState,
+            userMessages = userMessages,
+        )
+    }
 
     suspend fun endOrder(
         orderKey: OrderKey,
@@ -74,36 +83,36 @@ internal class NfcOrderWorkflowDelegate(
         beginImgList: List<String>,
         endImageList: List<String>,
         centerImgList: List<String> = emptyList(),
-        longitude: String = "",
-        latitude: String = "",
+        location: LocationResult,
         endType: Int = 1
-    ) = performEndOrderWorkflow(
-        orderRepository = orderRepository,
-        orderKey = orderKey,
-        nfcDeviceId = nfcDeviceId,
-        projectIdList = projectIdList,
-        beginImgList = beginImgList,
-        endImageList = endImageList,
-        centerImgList = centerImgList,
-        longitude = longitude,
-        latitude = latitude,
-        endType = endType,
-        uiState = uiState,
-        userMessages = userMessages,
-        onCheckSuccess = {
-            executeEndOrder(
-                orderKey = orderKey,
-                nfcDeviceId = nfcDeviceId,
-                projectIdList = projectIdList,
-                beginImgList = beginImgList,
-                endImageList = endImageList,
-                centerImgList = centerImgList,
-                longitude = longitude,
-                latitude = latitude,
-                endType = endType
-            )
-        }
-    )
+    ) {
+        if (!validateLocation(location)) return
+        performEndOrderWorkflow(
+            orderRepository = orderRepository,
+            orderKey = orderKey,
+            nfcDeviceId = nfcDeviceId,
+            projectIdList = projectIdList,
+            beginImgList = beginImgList,
+            endImageList = endImageList,
+            centerImgList = centerImgList,
+            location = location,
+            endType = endType,
+            uiState = uiState,
+            userMessages = userMessages,
+            onCheckSuccess = {
+                executeEndOrder(
+                    orderKey = orderKey,
+                    nfcDeviceId = nfcDeviceId,
+                    projectIdList = projectIdList,
+                    beginImgList = beginImgList,
+                    endImageList = endImageList,
+                    centerImgList = centerImgList,
+                    location = location,
+                    endType = endType
+                )
+            }
+        )
+    }
 
     suspend fun confirmEndOrder(params: EndOrderParams) {
         uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
@@ -114,8 +123,7 @@ internal class NfcOrderWorkflowDelegate(
             beginImgList = params.beginImgList,
             endImageList = params.endImageList,
             centerImgList = params.centerImgList,
-            longitude = params.longitude,
-            latitude = params.latitude,
+            location = params.location,
             endType = params.endType
         )
     }
@@ -166,23 +174,31 @@ internal class NfcOrderWorkflowDelegate(
         beginImgList: List<String>,
         endImageList: List<String>,
         centerImgList: List<String>,
-        longitude: String,
-        latitude: String,
+        location: LocationResult,
         endType: Int
-    ) = executeEndOrderRequest(
-        serviceOrderLifecycle = serviceOrderLifecycle,
-        orderRepository = orderRepository,
-        completionDelegate = completionDelegate,
-        uiState = uiState,
-        orderKey = orderKey,
-        nfcDeviceId = nfcDeviceId,
-        projectIdList = projectIdList,
-        beginImgList = beginImgList,
-        endImageList = endImageList,
-        centerImgList = centerImgList,
-        longitude = longitude,
-        latitude = latitude,
-        endType = endType,
-        userMessages = userMessages,
-    )
+    ) {
+        if (!validateLocation(location)) return
+        executeEndOrderRequest(
+            serviceOrderLifecycle = serviceOrderLifecycle,
+            orderRepository = orderRepository,
+            completionDelegate = completionDelegate,
+            uiState = uiState,
+            orderKey = orderKey,
+            nfcDeviceId = nfcDeviceId,
+            projectIdList = projectIdList,
+            beginImgList = beginImgList,
+            endImageList = endImageList,
+            centerImgList = centerImgList,
+            longitude = location.longitude.toString(),
+            latitude = location.latitude.toString(),
+            endType = endType,
+            userMessages = userMessages,
+        )
+    }
+
+    private fun validateLocation(location: LocationResult): Boolean {
+        if (locationFacade.isUsable(location)) return true
+        uiState.value = NfcSignInUiState.Error(textResolver.text(LocationFailure.QUALITY.messageRes()))
+        return false
+    }
 }

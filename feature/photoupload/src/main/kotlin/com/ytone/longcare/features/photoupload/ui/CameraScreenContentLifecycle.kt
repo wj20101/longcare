@@ -50,16 +50,15 @@ internal fun ObserveCameraResume(
                         context,
                         Manifest.permission.ACCESS_FINE_LOCATION
                     ) == PackageManager.PERMISSION_GRANTED,
-                    coarseLocationGranted = ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED,
                 )
+            } else if (event == Lifecycle.Event.ON_PAUSE) {
+                viewModel.stopLocationRequest()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.stopLocationRequest()
         }
     }
 }
@@ -67,11 +66,10 @@ internal fun ObserveCameraResume(
 internal fun refreshCameraOnResume(
     viewModel: CameraViewModel,
     fineLocationGranted: Boolean,
-    coarseLocationGranted: Boolean,
 ) {
     viewModel.updateTime()
     viewModel.updateSyLogoImg()
-    viewModel.updateCurrentLocationInfo(fineLocationGranted || coarseLocationGranted)
+    viewModel.updateCurrentLocationInfo(fineLocationGranted)
 }
 
 @Composable

@@ -3,6 +3,7 @@ package com.ytone.longcare.features.nfc.vm
 import com.ytone.longcare.R
 import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.core.ui.R as CoreUiR
@@ -28,8 +29,7 @@ data class PendingNfcData(
     val signInMode: SignInMode,
     val endOderInfo: EndOderInfo?,
     val tagId: String,
-    val longitude: String,
-    val latitude: String,
+    val location: LocationResult,
 )
 
 data class PendingNfcScan(
@@ -74,13 +74,12 @@ data class EndOrderParams(
     val beginImgList: List<String>,
     val endImageList: List<String>,
     val centerImgList: List<String>,
-    val longitude: String,
-    val latitude: String,
+    val location: LocationResult,
     val endType: Int
 )
 
 sealed class LocationRequestResult {
-    data class Coordinates(val longitude: String, val latitude: String) : LocationRequestResult()
+    data class Coordinates(val location: LocationResult) : LocationRequestResult()
     data class Error(
         val message: String,
         val buglyReported: Boolean = false,

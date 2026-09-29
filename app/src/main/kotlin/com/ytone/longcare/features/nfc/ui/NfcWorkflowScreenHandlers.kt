@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.ytone.longcare.R
@@ -23,13 +22,6 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
-
-internal data class NfcWorkflowLocationHandlers(
-    val getCurrentLocationCoordinates: suspend () -> LocationRequestResult,
-    val prepareLocationOnEntry: () -> Unit,
-    val isLocationPreparing: Boolean
-)
 
 internal fun mapNfcSignInState(uiState: NfcSignInUiState): SignInState {
     return when (uiState) {
@@ -63,14 +55,12 @@ internal fun buildNfcWorkflowBackAction(
 }
 
 @Composable
-internal fun rememberNfcWorkflowLocationHandlers(
+internal fun rememberNfcLocationRequest(
     context: Context,
     orderKey: OrderKey,
     nfcViewModel: NfcWorkflowViewModel,
-): NfcWorkflowLocationHandlers {
-    val coroutineScope = rememberCoroutineScope()
+): suspend () -> LocationRequestResult {
     var showLocationOnlyPurposeNotice by remember { mutableStateOf(false) }
-    var isLocationPreparing by remember { mutableStateOf(false) }
     val locationUnavailableMessage = stringResource(R.string.nfc_location_unavailable)
     val locationServiceDisabledMessage = stringResource(R.string.nfc_location_service_disabled)
 
@@ -83,29 +73,7 @@ internal fun rememberNfcWorkflowLocationHandlers(
                 openLocationSettings(context)
                 LocationRequestResult.Error(locationServiceDisabledMessage)
             } else {
-                val (longitude, latitude) = nfcViewModel.getCurrentLocationCoordinates()
-                toLocationRequestResult(
-                    longitude = longitude,
-                    latitude = latitude,
-                    unavailableMessage = locationUnavailableMessage,
-                ).let { result ->
-                    if (result is LocationRequestResult.Error) {
-                        DiagnosticEventTracker.trackError(
-                            category = "nfc_workflow",
-                            event = "nfc_location_empty",
-                            description = "NFC签到获取定位结果为空",
-                            extras = mapOf(
-                                "orderId" to orderKey.orderId,
-                                "planId" to orderKey.planId,
-                                "hasLongitude" to longitude.isNotBlank(),
-                                "hasLatitude" to latitude.isNotBlank(),
-                            ),
-                        )
-                        result.copy(buglyReported = true)
-                    } else {
-                        result
-                    }
-                }
+                nfcViewModel.acquireLocation()
             }
         } catch (e: CancellationException) {
             throw e
@@ -127,47 +95,17 @@ internal fun rememberNfcWorkflowLocationHandlers(
         }
     }
 
-    val launchLocationPreparation: () -> Unit = {
-        if (!isLocationPreparing) {
-            isLocationPreparing = true
-            coroutineScope.launch {
-                try {
-                    getCurrentLocationCoordinates()
-                } finally {
-                    isLocationPreparing = false
-                }
-            }
-        }
-    }
-
     val locationOnlyPermissionLauncher = rememberLocationPermissionLauncher(
         onPermissionGranted = {
             nfcViewModel.notifyLocationPermissionGranted()
-            val resumedPendingScan = nfcViewModel.resumePendingPermissionScan {
+            nfcViewModel.resumePendingPermissionScan {
                 getCurrentLocationCoordinates()
-            }
-            if (!resumedPendingScan) {
-                launchLocationPreparation()
             }
         },
         onPermissionDenied = {
             nfcViewModel.clearPendingPermissionScan()
         }
     )
-
-    val prepareLocationOnEntry: () -> Unit = {
-        when {
-            !UnifiedPermissionHelper.hasLocationPermission(context) -> {
-                showLocationOnlyPurposeNotice = true
-            }
-            !UnifiedPermissionHelper.isLocationServiceEnabled(context) -> {
-                openLocationSettings(context)
-            }
-            else -> {
-                launchLocationPreparation()
-            }
-        }
-    }
 
     if (showLocationOnlyPurposeNotice) {
         PermissionPurposeDialog(
@@ -185,23 +123,7 @@ internal fun rememberNfcWorkflowLocationHandlers(
         )
     }
 
-    return NfcWorkflowLocationHandlers(
-        getCurrentLocationCoordinates = getCurrentLocationCoordinates,
-        prepareLocationOnEntry = prepareLocationOnEntry,
-        isLocationPreparing = isLocationPreparing
-    )
-}
-
-internal fun toLocationRequestResult(
-    longitude: String,
-    latitude: String,
-    unavailableMessage: String,
-): LocationRequestResult {
-    return if (longitude.isBlank() || latitude.isBlank()) {
-        LocationRequestResult.Error(unavailableMessage)
-    } else {
-        LocationRequestResult.Coordinates(longitude, latitude)
-    }
+    return getCurrentLocationCoordinates
 }
 
 internal fun handleNfcSuccessAction(

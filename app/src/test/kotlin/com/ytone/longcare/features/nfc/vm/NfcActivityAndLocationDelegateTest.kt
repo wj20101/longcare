@@ -1,64 +1,43 @@
 package com.ytone.longcare.features.nfc.vm
 
-import com.ytone.longcare.domain.location.LocationFacade
+import com.ytone.longcare.domain.location.*
+import com.ytone.longcare.common.text.ResourceTextResolver
+import com.ytone.longcare.common.utils.messageRes
 import com.ytone.longcare.model.LocationResult
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.mockk
-import io.mockk.verify
+import io.mockk.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
+import org.junit.Assert.*
 import org.junit.Test
 
-class NfcLocationDelegateTest {
+class NfcActivityAndLocationDelegateTest {
+    private val facade = mockk<LocationFacade>()
+    private val text = mockk<ResourceTextResolver> {
+        every { text(any(), *anyVararg()) } answers { firstArg<Int>().toString() }
+    }
+    private val delegate = NfcLocationDelegate(facade, text)
 
-    @Test
-    fun `notifyLocationPermissionGranted restarts location facade after permission grant`() {
-        val locationFacade = mockk<LocationFacade>(relaxed = true)
-        val delegate = NfcLocationDelegate(
-            locationFacade = locationFacade,
-        )
-
-        delegate.notifyLocationPermissionGranted()
-
-        verify(exactly = 1) { locationFacade.notifyPermissionGranted() }
+    @Test fun `NFC retains immutable sample including capture metadata`() = runTest {
+        val sample = LocationResult(31.0, 121.0, "network", locationTime = 1234)
+        coEvery { facade.acquireCurrentLocation() } returns LocationAcquisition.Success(sample)
+        assertEquals(LocationRequestResult.Coordinates(sample), delegate.acquireLocation())
+        coVerify(exactly = 1) { facade.acquireCurrentLocation() }
     }
 
-    @Test
-    fun `getCurrentLocationCoordinates uses fresh location for NFC`() = runTest {
-        val locationFacade = mockk<LocationFacade>(relaxed = true)
-        val delegate = NfcLocationDelegate(
-            locationFacade = locationFacade,
-        )
-        coEvery { locationFacade.getFreshLocation(any()) } returns LocationResult(
-            latitude = 31.2304,
-            longitude = 121.4737,
-            provider = "amap_fresh",
-            accuracy = 8f
-        )
-
-        val coordinates = delegate.getCurrentLocationCoordinates()
-
-        assertEquals(Pair("121.4737", "31.2304"), coordinates)
-        coVerify(exactly = 1) {
-            locationFacade.getFreshLocation(LocationFacade.DEFAULT_FRESH_LOCATION_TIMEOUT_MS)
+    @Test fun `all acquisition failures retain specific user message and no blank coordinate success`() = runTest {
+        LocationFailure.entries.forEach { reason ->
+            coEvery { facade.acquireCurrentLocation() } returns LocationAcquisition.Failure(reason)
+            assertEquals(LocationRequestResult.Error(reason.messageRes().toString()), delegate.acquireLocation())
         }
-        coVerify(exactly = 0) { locationFacade.getCurrentLocation(any()) }
     }
 
-    @Test
-    fun `getCurrentLocationCoordinates returns blank coordinates when fresh location is unavailable`() = runTest {
-        val locationFacade = mockk<LocationFacade>(relaxed = true)
-        val delegate = NfcLocationDelegate(
-            locationFacade = locationFacade,
-        )
-        coEvery { locationFacade.getFreshLocation(any()) } returns null
-
-        val coordinates = delegate.getCurrentLocationCoordinates()
-
-        assertEquals(Pair("", ""), coordinates)
-        coVerify(exactly = 1) {
-            locationFacade.getFreshLocation(LocationFacade.DEFAULT_FRESH_LOCATION_TIMEOUT_MS)
+    @Test fun `cancellation stays cancellation`() = runTest {
+        coEvery { facade.acquireCurrentLocation() } throws CancellationException()
+        try {
+            delegate.acquireLocation()
+            fail("expected cancellation")
+        } catch (cancelled: CancellationException) {
+            assertNotNull(cancelled)
         }
     }
 }

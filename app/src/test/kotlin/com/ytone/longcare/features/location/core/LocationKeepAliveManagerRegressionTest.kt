@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.mockkStatic
 import io.mockk.runs
 import io.mockk.unmockkAll
 import io.mockk.verify
@@ -92,5 +93,33 @@ class LocationKeepAliveManagerRegressionTest {
 
         verify(exactly = 2) { controller.start("reporting-owner", any()) }
         verify(exactly = 1) { controller.stop() }
+    }
+
+    @Test
+    fun `background or missing runtime readiness never dispatches service and visible recovery retries`() {
+        var importance = android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED
+        var permission = true
+        var enabled = true
+        mockkStatic(android.app.ActivityManager::class)
+        every { android.app.ActivityManager.getMyMemoryState(any()) } answers {
+            firstArg<android.app.ActivityManager.RunningAppProcessInfo>().importance = importance
+        }
+        val context = mockk<android.content.Context>(relaxed = true)
+        val readiness = mockk<com.ytone.longcare.domain.location.LocationRuntimeReadiness> {
+            every { hasLocationPermission() } answers { permission }
+            every { isLocationServiceEnabled() } answers { enabled }
+        }
+        val manager = LocationKeepAliveManager(LocationForegroundServiceController(context, readiness))
+        manager.acquire("owner")
+        importance = android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+        permission = false
+        manager.acquire("owner")
+        permission = true
+        enabled = false
+        manager.acquire("owner")
+        verify(exactly = 0) { context.startForegroundService(any()) }
+        enabled = true
+        manager.acquire("owner")
+        verify(exactly = 1) { context.startForegroundService(any()) }
     }
 }

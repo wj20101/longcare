@@ -1,84 +1,68 @@
 package com.ytone.longcare.features.location.core
 
-import com.ytone.longcare.features.location.tracker.LocationEventTracker
+import android.os.SystemClock
+import com.ytone.longcare.domain.location.LocationAcquisition
 import com.ytone.longcare.domain.location.LocationFacade
+import com.ytone.longcare.domain.location.LocationFailure
+import com.ytone.longcare.domain.location.LocationQuality
+import com.ytone.longcare.domain.location.LocationRuntimeReadiness
+import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
-import com.ytone.longcare.features.location.manager.LocationSampleStore
 import com.ytone.longcare.model.LocationResult
-import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.selects.select
 
 @Singleton
 class DefaultLocationFacade @Inject constructor(
-    private val continuousAmapLocationManager: ContinuousAmapLocationManager,
-    private val locationSampleStore: LocationSampleStore,
-    private val locationKeepAliveManager: LocationKeepAliveManager
+    private val manager: ContinuousAmapLocationManager,
+    private val readiness: LocationRuntimeReadiness,
+    private val locationKeepAliveManager: LocationKeepAliveManager,
+    private val userSessionRepository: UserSessionRepository,
 ) : LocationFacade {
-
-    override suspend fun getCurrentLocation(timeoutMs: Long): LocationResult? {
-        locationSampleStore.getValidLocation(LocationFacade.BUSINESS_LOCATION_CACHE_MAX_AGE_MS)?.let { return it }
-
-        val boundedTimeoutMs = timeoutMs.coerceIn(
-            LocationFacade.MIN_FAST_LOCATION_TIMEOUT_MS,
-            LocationFacade.MAX_FAST_LOCATION_TIMEOUT_MS,
-        )
-
-        val amapResult = try {
-            continuousAmapLocationManager.getCurrentLocation(boundedTimeoutMs)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            LocationEventTracker.trackError(
-                LocationEventTracker.EventType.AMAP_SINGLE_LOCATION_ERROR,
-                throwable = e,
-                extras = mapOf(LocationEventTracker.Attribute.ERROR_TYPE to e.javaClass.simpleName)
-            )
-            null
+    override suspend fun acquireCurrentLocation(): LocationAcquisition = coroutineScope<LocationAcquisition> {
+        readinessFailure()?.let { return@coroutineScope LocationAcquisition.Failure(it) }
+        val identity = userSessionRepository.sessionState.value.identity()
+        val request = async { manager.acquireCurrentLocation() }
+        val accountChanged = async {
+            userSessionRepository.sessionState.first { it.identity() != identity }
         }
-        if (amapResult != null) {
-            locationSampleStore.record(amapResult)
+        try {
+            select<LocationAcquisition> {
+                request.onAwait { result ->
+                    if (userSessionRepository.sessionState.value.identity() != identity) {
+                        throw CancellationException("Location account changed")
+                    }
+                    readinessFailure()?.let { LocationAcquisition.Failure(it) } ?: result
+                }
+                accountChanged.onAwait { throw CancellationException("Location account changed") }
+            }
+        } finally {
+            request.cancel()
+            accountChanged.cancel()
         }
-        return amapResult
     }
 
-    override suspend fun getFreshLocation(timeoutMs: Long): LocationResult? {
-        val boundedTimeoutMs = timeoutMs.coerceIn(
-            LocationFacade.MIN_FRESH_LOCATION_TIMEOUT_MS,
-            LocationFacade.MAX_FRESH_LOCATION_TIMEOUT_MS,
-        )
+    override fun isUsable(location: LocationResult): Boolean =
+        readinessFailure() == null && LocationQuality.rejection(
+            location, System.currentTimeMillis(), SystemClock.elapsedRealtime(),
+        ) == null
 
-        val amapResult = try {
-            continuousAmapLocationManager.getFreshLocation(boundedTimeoutMs)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            LocationEventTracker.trackError(
-                LocationEventTracker.EventType.AMAP_SINGLE_LOCATION_ERROR,
-                throwable = e,
-                extras = mapOf(LocationEventTracker.Attribute.ERROR_TYPE to e.javaClass.simpleName)
-            )
-            null
-        }
-        if (amapResult != null) {
-            locationSampleStore.record(amapResult)
-        }
-        return amapResult
+    private fun readinessFailure(): LocationFailure? = when {
+        !readiness.hasLocationPermission() -> LocationFailure.PERMISSION
+        !readiness.isLocationServiceEnabled() -> LocationFailure.SERVICE_DISABLED
+        else -> null
     }
 
-    override fun getCachedLocation(maxAgeMs: Long): LocationResult? {
-        return locationSampleStore.getValidLocation(maxAgeMs)
-    }
+    override fun acquireKeepAlive(owner: String) = locationKeepAliveManager.acquire(owner)
+    override fun releaseKeepAlive(owner: String) = locationKeepAliveManager.release(owner)
+    override fun notifyPermissionGranted() = manager.restartAfterPermissionGrant()
 
-    override fun acquireKeepAlive(owner: String) {
-        locationKeepAliveManager.acquire(owner)
-    }
-
-    override fun releaseKeepAlive(owner: String) {
-        locationKeepAliveManager.release(owner)
-    }
-
-    override fun notifyPermissionGranted() {
-        continuousAmapLocationManager.restartAfterPermissionGrant()
-    }
+    private fun SessionState.identity(): Triple<Int, Int, Int>? =
+        user?.let { Triple(it.companyId, it.accountId, it.userId) }
 }

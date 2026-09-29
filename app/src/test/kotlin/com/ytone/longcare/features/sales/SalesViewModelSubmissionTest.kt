@@ -239,14 +239,63 @@ class SalesViewModelSubmissionTest {
         assertEquals(7, viewModel.uiState.value.submissionResult?.id)
     }
 
+
+    @Test fun `failed relocation clears old point and optional submission has no stale coordinates`() = runTest {
+        val sample = com.ytone.longcare.model.LocationResult(31.0, 121.0, "test")
+        val location = mockk<LocationFacade> {
+            coEvery { acquireCurrentLocation() } returnsMany listOf(
+                com.ytone.longcare.domain.location.LocationAcquisition.Success(sample),
+                com.ytone.longcare.domain.location.LocationAcquisition.Failure(
+                    com.ytone.longcare.domain.location.LocationFailure.TIMEOUT),
+            )
+        }
+        val request = slot<AddUserLatentParamModel>()
+        val repository = mockk<SaleRepository>(relaxed = true) {
+            coEvery { addUserLatent(capture(request)) } returns ApiResult.Success(AddUserLatentResultModel(id = 7))
+        }
+        val model = createViewModel(repository, QueuePhotoCloudUploader(ArrayDeque()), mockk(relaxed = true), location)
+        model.requestCurrentLocation()
+        advanceUntilIdle()
+        assertEquals(sample, model.uiState.value.currentLocation)
+        model.requestCurrentLocation()
+        assertNull(model.uiState.value.currentLocation)
+        advanceUntilIdle()
+        model.submitCustomer(validDraft(), emptyList())
+        advanceUntilIdle()
+        assertEquals("", request.captured.liveLng)
+        assertEquals("", request.captured.liveLat)
+    }
+
+    @Test fun `photo upload expiry is checked immediately before customer submission`() = runTest {
+        val sample = com.ytone.longcare.model.LocationResult(31.0, 121.0, "test")
+        var valid = true
+        val location = mockk<LocationFacade> { every { isUsable(sample) } answers { valid } }
+        val request = slot<AddUserLatentParamModel>()
+        val repository = mockk<SaleRepository>(relaxed = true) {
+            coEvery { addUserLatent(capture(request)) } returns ApiResult.Success(AddUserLatentResultModel(id = 7))
+        }
+        val uploader = mockk<PhotoCloudUploader> {
+            coEvery { upload(any(), any()) } coAnswers {
+                kotlinx.coroutines.delay(16_000)
+                valid = false
+                UploadedPhoto(key = "customer/test.jpg")
+            }
+        }
+        val model = createViewModel(repository, uploader, mockk(relaxed = true), location)
+        model.submitCustomer(validDraft(), listOf(mockk(relaxed = true)), sample)
+        advanceUntilIdle()
+        assertEquals("", request.captured.liveLng)
+    }
+
     private fun createViewModel(
         saleRepository: SaleRepository,
         photoCloudUploader: PhotoCloudUploader,
         applicationContext: Context,
+        locationFacade: LocationFacade = mockk(relaxed = true),
     ): SalesViewModel =
         SalesViewModel(
             saleRepository = saleRepository,
-            locationFacade = mockk<LocationFacade>(relaxed = true),
+            locationFacade = locationFacade,
             photoCloudUploader = photoCloudUploader,
             imagePipeline = testImagePipeline(applicationContext),
             evaluationDeviceGateway = mockk<SalesEvaluationDeviceGateway>(relaxed = true),

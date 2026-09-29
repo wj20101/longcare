@@ -72,7 +72,7 @@ class NursingExecutionErrorScreenTest {
     }
 
     private fun show() {
-        val vm = SharedOrderDetailViewModel(details, orders, mockk(), mockk(),
+        val vm = SharedOrderDetailViewModel(details, orders, mockk(),
             ResourceTextResolver(compose.activity.applicationContext))
         compose.setContent {
             LongCareTheme {

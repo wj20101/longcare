@@ -15,7 +15,6 @@ import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.location.LocationRepository
 import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
-import com.ytone.longcare.features.location.manager.LocationSampleStore
 import com.ytone.longcare.features.location.core.LocationKeepAliveManager
 import com.ytone.longcare.features.location.reporting.LocationClock
 import com.ytone.longcare.features.location.reporting.LocationReportingManager
@@ -31,7 +30,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -39,9 +37,6 @@ class LocationTrackingService : Service() {
 
     @Inject
     lateinit var continuousAmapLocationManager: ContinuousAmapLocationManager
-
-    @Inject
-    lateinit var locationSampleStore: LocationSampleStore
 
     @Inject
     lateinit var keepAliveManager: LocationKeepAliveManager
@@ -156,7 +151,6 @@ class LocationTrackingService : Service() {
             previousJob?.cancelAndJoin()
             try {
                 val locations = continuousAmapLocationManager.startContinuousLocation()
-                    .onEach(locationSampleStore::publish)
                 if (orderId == null) {
                     locations.collect()
                     return@launch

@@ -49,13 +49,6 @@ class LocationArchitectureRegressionTest {
 
     @Test
     fun `continuous locations keep only latest pending sample and do not replay`() {
-        val sampleStore = source(
-            "feature/location/src/main/kotlin/com/ytone/longcare/features/location/manager/LocationSampleStore.kt",
-        )
-
-        assertTrue(sampleStore.contains("replay = 0"))
-        assertTrue(sampleStore.contains("extraBufferCapacity = LATEST_SAMPLE_BUFFER_SIZE"))
-        assertTrue(sampleStore.contains("BufferOverflow.DROP_OLDEST"))
         val executor = source(
             "feature/location/src/main/kotlin/com/ytone/longcare/features/location/service/ServiceLocationSession.kt",
         )

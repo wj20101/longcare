@@ -2,6 +2,8 @@ package com.ytone.longcare.features.location.core
 
 import android.content.Context
 import android.content.Intent
+import android.app.ActivityManager
+import com.ytone.longcare.domain.location.LocationRuntimeReadiness
 import androidx.core.content.ContextCompat
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.location.service.LocationTrackingService
@@ -177,8 +179,18 @@ class LocationKeepAliveManager @Inject constructor(
 @Singleton
 class LocationForegroundServiceController @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val readiness: LocationRuntimeReadiness,
 ) {
     fun start(owner: String, generation: Long, orderId: Long? = null) {
+        val process = ActivityManager.RunningAppProcessInfo()
+        ActivityManager.getMyMemoryState(process)
+        check(process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND ||
+            process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE) {
+            "location_requires_visible_activity"
+        }
+        check(readiness.hasLocationPermission() && readiness.isLocationServiceEnabled()) {
+            "location_runtime_not_ready"
+        }
         val intent = Intent(context, LocationTrackingService::class.java).apply {
             action = LocationTrackingService.ACTION_ACQUIRE_KEEP_ALIVE
             putExtra(LocationTrackingService.EXTRA_OWNER, owner)

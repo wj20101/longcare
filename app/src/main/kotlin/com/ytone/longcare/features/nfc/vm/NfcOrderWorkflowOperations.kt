@@ -3,6 +3,7 @@ package com.ytone.longcare.features.nfc.vm
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -63,13 +64,14 @@ internal suspend fun performEndOrderWorkflow(
     beginImgList: List<String>,
     endImageList: List<String>,
     centerImgList: List<String>,
-    longitude: String,
-    latitude: String,
+    location: LocationResult,
     endType: Int,
     uiState: MutableStateFlow<NfcSignInUiState>,
     onCheckSuccess: suspend () -> Unit,
     userMessages: NfcUserMessages,
 ) {
+    val longitude = location.longitude.toString()
+    val latitude = location.latitude.toString()
     uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
     val endOrderParams = createEndOrderParams(
         orderKey = orderKey,
@@ -78,8 +80,7 @@ internal suspend fun performEndOrderWorkflow(
         beginImgList = beginImgList,
         endImageList = endImageList,
         centerImgList = centerImgList,
-        longitude = longitude,
-        latitude = latitude,
+        location = location,
         endType = endType
     )
 

@@ -9,6 +9,7 @@ import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.result.ApiResult
 import io.mockk.every
 import io.mockk.just
+import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.runs
 import io.mockk.unmockkAll
@@ -151,7 +152,7 @@ class ServiceLocationSessionTest {
         val job = backgroundScope.launch {
             ServiceLocationSession(
                 gate, samples.receiveAsFlow(), { uploads++; ApiResult.Success(Unit) },
-                LocationSampleEvaluator(1, System.currentTimeMillis(), LocationClock()),
+                LocationSampleEvaluator(1, System.currentTimeMillis(), clock),
             ).run()
         }
         samples.send(sample(Double.NaN))
@@ -162,14 +163,48 @@ class ServiceLocationSessionTest {
         job.cancel()
     }
 
+    @Test
+    fun `sample waiting behind slow upload is rechecked and never uploaded after expiry`() = runTest {
+        val gate = LocationReportingSession(1, "owner").apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        val finishFirst = CompletableDeferred<Unit>()
+        var uploads = 0
+        val job = backgroundScope.launch {
+            executor(gate, samples) {
+                uploads++
+                if (uploads == 1) finishFirst.await()
+                ApiResult.Success(Unit)
+            }.run()
+        }
+        samples.send(sample())
+        runCurrent()
+        samples.send(sample())
+        runCurrent()
+        sampleSequence += 16_000
+        finishFirst.complete(Unit)
+        runCurrent()
+        assertEquals(1, uploads)
+        samples.send(sample())
+        runCurrent()
+        assertEquals(2, uploads)
+        job.cancel()
+    }
+
     private fun executor(
         gate: LocationReportingSession,
         samples: Channel<LocationResult>,
         upload: suspend (LocationResult) -> ApiResult<Unit>,
-    ) = ServiceLocationSession(gate, samples.receiveAsFlow(), upload, LocationSampleEvaluator(1, 0, LocationClock()))
+    ) = ServiceLocationSession(gate, samples.receiveAsFlow(), upload, LocationSampleEvaluator(1, 0, clock))
+
+    private var sampleSequence = 0L
+    private val clock = mockk<LocationClock> {
+        every { currentTimeMillis() } answers { 100_000L + sampleSequence }
+        every { elapsedRealtime() } answers { 1_000L + sampleSequence }
+    }
 
     private fun sample(latitude: Double = 31.23) = LocationResult(
         latitude = latitude, longitude = 121.47, provider = "amap_continuous",
-        accuracy = 8f, coordType = "GCJ02", locationType = 5, trustedLevel = 2, locationTime = 0,
+        accuracy = 8f, coordType = "GCJ02", locationType = 5, trustedLevel = 1, locationTime = 100_000L + ++sampleSequence,
+        receivedAt = 100_000L + sampleSequence, receivedElapsedRealtime = 1_000L + sampleSequence,
     )
 }

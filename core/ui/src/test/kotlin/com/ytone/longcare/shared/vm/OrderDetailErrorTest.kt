@@ -129,6 +129,28 @@ class OrderDetailErrorTest {
         coEvery { orders.getOrderInfo(key) } returns result
     }
 
+    @Test fun `start does not submit empty coordinates and duplicate clicks only submit once`() = runTest {
+        val location = mockk<com.ytone.longcare.domain.location.LocationFacade>()
+        val sample = com.ytone.longcare.model.LocationResult(31.0, 121.0, "test")
+        val model = SharedOrderDetailViewModel(details, orders, location, text)
+        coEvery { location.acquireCurrentLocation() } returns
+            com.ytone.longcare.domain.location.LocationAcquisition.Failure(
+                com.ytone.longcare.domain.location.LocationFailure.TIMEOUT)
+        model.starOrder(key)
+        advanceUntilIdle()
+        coVerify(exactly = 0) { orders.starOrder(any(), any(), any(), any()) }
+        assertTrue(model.starOrderState.value is StarOrderUiState.Error)
+
+        coEvery { location.acquireCurrentLocation() } returns
+            com.ytone.longcare.domain.location.LocationAcquisition.Success(sample)
+        every { location.isUsable(sample) } returns true
+        coEvery { orders.starOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
+        model.starOrder(key)
+        model.starOrder(key)
+        advanceUntilIdle()
+        coVerify(exactly = 1) { orders.starOrder(key.orderId, emptyList(), "121.0", "31.0") }
+    }
+
     private fun error(kind: ApiRequestException.Kind, code: Int? = null): ApiRequestException =
         mockk<ApiRequestException>().also {
             every { it.kind } returns kind
@@ -138,7 +160,7 @@ class OrderDetailErrorTest {
     private data class Entry(val state: StateFlow<OrderDetailUiState>, val load: () -> Unit)
 
     private fun entry(shared: Boolean): Entry = if (shared) {
-        val vm = SharedOrderDetailViewModel(details, orders, mockk(), mockk(), text)
+        val vm = SharedOrderDetailViewModel(details, orders, mockk(), text)
         Entry(vm.uiState) { vm.getOrderInfo(key, forceRefresh = true) }
     } else {
         val vm = OrderDetailViewModel(orders, details, text)

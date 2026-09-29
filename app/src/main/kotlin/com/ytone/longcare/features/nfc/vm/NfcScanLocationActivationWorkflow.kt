@@ -3,12 +3,11 @@ package com.ytone.longcare.features.nfc.vm
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 
 internal suspend fun checkUserLocationAndProceed(
     unifiedOrderRepository: OrderDetailRepository,
@@ -16,10 +15,8 @@ internal suspend fun checkUserLocationAndProceed(
     signInMode: SignInMode,
     endOderInfo: EndOderInfo?,
     tagId: String,
-    longitude: String,
-    latitude: String,
+    location: LocationResult,
     pendingNfcData: MutableStateFlow<PendingNfcData?>,
-    scope: CoroutineScope,
     orderDelegate: NfcOrderWorkflowDelegate,
     userMessages: NfcUserMessages,
 ) {
@@ -35,8 +32,8 @@ internal suspend fun checkUserLocationAndProceed(
                     signInMode = signInMode,
                     nfcDeviceId = tagId,
                     extras = mapOf(
-                        "hasLongitude" to longitude.isNotBlank(),
-                        "hasLatitude" to latitude.isNotBlank(),
+                        "hasLongitude" to location.longitude.isFinite(),
+                        "hasLatitude" to location.latitude.isFinite(),
                     ),
                 )
                 orderDelegate.showError(
@@ -47,8 +44,8 @@ internal suspend fun checkUserLocationAndProceed(
                     nfcDeviceId = tagId,
                     buglyAlreadyReported = true,
                     extras = mapOf(
-                        "hasLongitude" to longitude.isNotBlank(),
-                        "hasLatitude" to latitude.isNotBlank(),
+                        "hasLongitude" to location.longitude.isFinite(),
+                        "hasLatitude" to location.latitude.isFinite(),
                     ),
                 )
                 return
@@ -63,8 +60,8 @@ internal suspend fun checkUserLocationAndProceed(
                     signInMode = signInMode,
                     nfcDeviceId = tagId,
                     extras = mapOf(
-                        "hasLongitude" to longitude.isNotBlank(),
-                        "hasLatitude" to latitude.isNotBlank(),
+                        "hasLongitude" to location.longitude.isFinite(),
+                        "hasLatitude" to location.latitude.isFinite(),
                     ),
                 )
                 orderDelegate.showError(
@@ -75,8 +72,8 @@ internal suspend fun checkUserLocationAndProceed(
                     nfcDeviceId = tagId,
                     buglyAlreadyReported = true,
                     extras = mapOf(
-                        "hasLongitude" to longitude.isNotBlank(),
-                        "hasLatitude" to latitude.isNotBlank(),
+                        "hasLongitude" to location.longitude.isFinite(),
+                        "hasLatitude" to location.latitude.isFinite(),
                     ),
                 )
                 return
@@ -89,24 +86,20 @@ internal suspend fun checkUserLocationAndProceed(
         signInMode = signInMode,
         endOderInfo = endOderInfo,
         tagId = tagId,
-        longitude = longitude,
-        latitude = latitude,
+        location = location,
         pendingNfcData = pendingNfcData,
-        scope = scope,
         orderDelegate = orderDelegate
     )
 }
 
-private fun checkLocationAndShowDialog(
+private suspend fun checkLocationAndShowDialog(
     orderInfo: ServiceOrderInfoModel,
     orderKey: OrderKey,
     signInMode: SignInMode,
     endOderInfo: EndOderInfo?,
     tagId: String,
-    longitude: String,
-    latitude: String,
+    location: LocationResult,
     pendingNfcData: MutableStateFlow<PendingNfcData?>,
-    scope: CoroutineScope,
     orderDelegate: NfcOrderWorkflowDelegate
 ) {
     val userLng = orderInfo.userInfo?.lng ?: ""
@@ -118,12 +111,9 @@ private fun checkLocationAndShowDialog(
             signInMode = signInMode,
             endOderInfo = endOderInfo,
             tagId = tagId,
-            longitude = longitude,
-            latitude = latitude
+            location = location
         )
     } else {
-        scope.launch {
-            orderDelegate.startOrder(orderKey, tagId, longitude, latitude)
-        }
+        orderDelegate.startOrder(orderKey, tagId, location)
     }
 }

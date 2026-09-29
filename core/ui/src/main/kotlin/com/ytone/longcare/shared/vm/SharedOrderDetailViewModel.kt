@@ -6,14 +6,15 @@ import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.core.ui.R
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.location.LocationFacade
-import com.ytone.longcare.domain.location.LocationRuntimeReadiness
+import com.ytone.longcare.domain.location.LocationAcquisition
+import com.ytone.longcare.domain.location.LocationFailure
+import com.ytone.longcare.common.utils.messageRes
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.ServiceProjectM
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,7 +30,6 @@ class SharedOrderDetailViewModel @Inject constructor(
     private val unifiedOrderRepository: OrderDetailRepository,
     private val orderRepository: OrderRepository,
     private val locationFacade: LocationFacade,
-    private val locationRuntimeReadiness: LocationRuntimeReadiness,
     private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
 
@@ -139,44 +139,24 @@ class SharedOrderDetailViewModel @Inject constructor(
         starOrder(OrderKey(orderId = orderId, planId = 0), selectedProjectIds, onSuccess)
     }
 
-    /**
-     * 获取当前位置坐标
-     * @return 经纬度对，失败时返回空字符串
-     */
-    private suspend fun getCurrentLocationCoordinates(): Pair<String, String> {
-        return try {
-            // 检查定位权限
-            if (!locationRuntimeReadiness.hasLocationPermission()) {
-                // 权限未授予，返回空字符串
-                return Pair("", "")
-            }
-            
-            // 检查定位服务是否开启
-            if (!locationRuntimeReadiness.isLocationServiceEnabled()) {
-                // 定位服务未开启，返回空字符串
-                return Pair("", "")
-            }
-            
-            val location = locationFacade.getCurrentLocation(LocationFacade.DEFAULT_FAST_LOCATION_TIMEOUT_MS)
-            if (location != null) {
-                Pair(location.longitude.toString(), location.latitude.toString())
-            } else {
-                Pair("", "")
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            // 记录异常但不抛出，返回空字符串
-            Pair("", "")
-        }
-    }
-
     fun starOrder(orderKey: OrderKey, selectedProjectIds: List<Long> = emptyList(), onSuccess: () -> Unit = {}) {
+        if (_starOrderState.value is StarOrderUiState.Loading) return
+        _starOrderState.value = StarOrderUiState.Loading
         viewModelScope.launch {
-            _starOrderState.value = StarOrderUiState.Loading
-
-            // 获取当前位置坐标
-            val (longitude, latitude) = getCurrentLocationCoordinates()
+            val acquisition = locationFacade.acquireCurrentLocation()
+            val location = when (acquisition) {
+                is LocationAcquisition.Success -> acquisition.location
+                is LocationAcquisition.Failure -> {
+                    _starOrderState.value = StarOrderUiState.Error(textResolver.text(acquisition.reason.messageRes()))
+                    return@launch
+                }
+            }
+            if (!locationFacade.isUsable(location)) {
+                _starOrderState.value = StarOrderUiState.Error(textResolver.text(LocationFailure.QUALITY.messageRes()))
+                return@launch
+            }
+            val longitude = location.longitude.toString()
+            val latitude = location.latitude.toString()
 
             when (val result = orderRepository.starOrder(orderKey.orderId, selectedProjectIds, longitude, latitude)) {
                 is ApiResult.Success -> {

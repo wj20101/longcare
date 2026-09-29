@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.nfc.vm
 
+import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.ScanSource
 import com.ytone.longcare.navigation.EndOderInfo
@@ -23,12 +24,12 @@ class NfcScanWorkflowHelpersTest {
             currentState = NfcSignInUiState.Initial,
             signInMode = SignInMode.START_ORDER,
             endOderInfo = null,
-            onLocationRequest = { LocationRequestResult.Coordinates("121.47", "31.23") },
+            onLocationRequest = { LocationRequestResult.Coordinates(LocationResult(31.23, 121.47, "test")) },
             onLocationError = { error("unexpected location error: $it") },
-            onStartOrder = { tagId, longitude, latitude ->
-                started = Triple(tagId, longitude, latitude)
+            onStartOrder = { tagId, location ->
+                started = Triple(tagId, location.longitude.toString(), location.latitude.toString())
             },
-            onEndOrder = { _, _, _, _ -> error("unexpected end order") },
+            onEndOrder = { _, _, _ -> error("unexpected end order") },
         )
 
         assertEquals(Triple("ABC123", "121.47", "31.23"), started)
@@ -69,11 +70,11 @@ class NfcScanWorkflowHelpersTest {
             endOderInfo = null,
             onLocationRequest = {
                 locationRequested = true
-                LocationRequestResult.Coordinates("121.47", "31.23")
+                LocationRequestResult.Coordinates(LocationResult(31.23, 121.47, "test"))
             },
             onLocationError = { error("unexpected location error: $it") },
-            onStartOrder = { _, _, _ -> started = true },
-            onEndOrder = { _, _, _, _ -> ended = true },
+            onStartOrder = { _, _ -> started = true },
+            onEndOrder = { _, _, _ -> ended = true },
         )
 
         assertFalse(locationRequested)
@@ -94,8 +95,8 @@ class NfcScanWorkflowHelpersTest {
             endOderInfo = null,
             onLocationRequest = { LocationRequestResult.Error("location unavailable") },
             onLocationError = { error -> locationError = error },
-            onStartOrder = { _, _, _ -> started = true },
-            onEndOrder = { _, _, _, _ -> ended = true },
+            onStartOrder = { _, _ -> started = true },
+            onEndOrder = { _, _, _ -> ended = true },
         )
 
         assertEquals(LocationRequestResult.Error("location unavailable"), locationError)
@@ -119,8 +120,8 @@ class NfcScanWorkflowHelpersTest {
                 )
             },
             onLocationError = { error -> locationError = error },
-            onStartOrder = { _, _, _ -> error("unexpected start order") },
-            onEndOrder = { _, _, _, _ -> error("unexpected end order") },
+            onStartOrder = { _, _ -> error("unexpected start order") },
+            onEndOrder = { _, _, _ -> error("unexpected end order") },
         )
 
         assertEquals("location unavailable", locationError?.message)
@@ -143,8 +144,8 @@ class NfcScanWorkflowHelpersTest {
             onLocationError = { error -> locationError = error },
             onLocationPermissionRequired = { tagId -> pendingTagId = tagId },
             onLoadingReasonChanged = loadingReasons::add,
-            onStartOrder = { _, _, _ -> started = true },
-            onEndOrder = { _, _, _, _ -> error("unexpected end order") },
+            onStartOrder = { _, _ -> started = true },
+            onEndOrder = { _, _, _ -> error("unexpected end order") },
         )
 
         assertEquals("ABC123", pendingTagId)
@@ -169,13 +170,13 @@ class NfcScanWorkflowHelpersTest {
             currentState = NfcSignInUiState.Initial,
             signInMode = SignInMode.START_ORDER,
             endOderInfo = null,
-            onLocationRequest = { LocationRequestResult.Coordinates("121.47", "31.23") },
+            onLocationRequest = { LocationRequestResult.Coordinates(LocationResult(31.23, 121.47, "test")) },
             onLocationError = { error("unexpected location error: $it") },
             onLoadingReasonChanged = loadingReasons::add,
-            onStartOrder = { tagId, longitude, latitude ->
-                started = Triple(tagId, longitude, latitude)
+            onStartOrder = { tagId, location ->
+                started = Triple(tagId, location.longitude.toString(), location.latitude.toString())
             },
-            onEndOrder = { _, _, _, _ -> error("unexpected end order") },
+            onEndOrder = { _, _, _ -> error("unexpected end order") },
         )
 
         assertEquals(listOf(NfcLoadingReason.CARD_RECOGNIZED_FETCHING_LOCATION), loadingReasons)
@@ -212,11 +213,11 @@ class NfcScanWorkflowHelpersTest {
             endOderInfo = null,
             onLocationRequest = {
                 locationRequested = true
-                LocationRequestResult.Coordinates("121.47", "31.23")
+                LocationRequestResult.Coordinates(LocationResult(31.23, 121.47, "test"))
             },
             onLocationError = { error("unexpected location error: $it") },
-            onStartOrder = { _, _, _ -> started = true },
-            onEndOrder = { _, _, _, _ -> ended = true },
+            onStartOrder = { _, _ -> started = true },
+            onEndOrder = { _, _, _ -> ended = true },
         )
 
         assertFalse(locationRequested)
@@ -237,11 +238,11 @@ class NfcScanWorkflowHelpersTest {
             endOderInfo = null,
             onLocationRequest = {
                 locationRequested = true
-                LocationRequestResult.Coordinates("121.47", "31.23")
+                LocationRequestResult.Coordinates(LocationResult(31.23, 121.47, "test"))
             },
             onLocationError = { error("unexpected location error: $it") },
-            onStartOrder = { _, _, _ -> started = true },
-            onEndOrder = { _, _, _, _ -> ended = true },
+            onStartOrder = { _, _ -> started = true },
+            onEndOrder = { _, _, _ -> ended = true },
         )
 
         assertFalse(locationRequested)
@@ -266,11 +267,11 @@ class NfcScanWorkflowHelpersTest {
             currentState = NfcSignInUiState.Initial,
             signInMode = SignInMode.END_ORDER,
             endOderInfo = endInfo,
-            onLocationRequest = { LocationRequestResult.Coordinates("120.11", "30.22") },
+            onLocationRequest = { LocationRequestResult.Coordinates(LocationResult(30.22, 120.11, "test")) },
             onLocationError = { error("unexpected location error: $it") },
-            onStartOrder = { _, _, _ -> started = true },
-            onEndOrder = { tagId, longitude, latitude, info ->
-                ended = Triple(tagId, longitude, latitude) to info
+            onStartOrder = { _, _ -> started = true },
+            onEndOrder = { tagId, location, info ->
+                ended = Triple(tagId, location.longitude.toString(), location.latitude.toString()) to info
             },
         )
 
@@ -289,10 +290,10 @@ class NfcScanWorkflowHelpersTest {
             currentState = NfcSignInUiState.Initial,
             signInMode = SignInMode.END_ORDER,
             endOderInfo = null,
-            onLocationRequest = { LocationRequestResult.Coordinates("120.11", "30.22") },
+            onLocationRequest = { LocationRequestResult.Coordinates(LocationResult(30.22, 120.11, "test")) },
             onLocationError = { error("unexpected location error: $it") },
-            onStartOrder = { _, _, _ -> started = true },
-            onEndOrder = { _, _, _, _ -> ended = true },
+            onStartOrder = { _, _ -> started = true },
+            onEndOrder = { _, _, _ -> ended = true },
         )
 
         assertFalse(started)

@@ -20,20 +20,11 @@ object LocationEventTracker {
         CLIENT_INIT_ERROR("client_init_error", "持续高德定位客户端初始化失败"),
         CLIENT_NOT_INITIALIZED("client_not_initialized", "持续高德定位客户端未初始化"),
         AMAP_CONTINUOUS_LOCATION_ERROR("amap_continuous_location_error", "持续定位失败"),
-        AMAP_SINGLE_LOCATION_FAIL("amap_single_location_fail", "持续流侧单次定位获取失败"),
+        AMAP_SINGLE_LOCATION_FAIL("amap_single_location_fail", "单次定位获取失败"),
         ENABLE_BACKGROUND_LOCATION_ERROR("enable_background_location_error", "开启后台定位失败"),
         DISABLE_BACKGROUND_LOCATION_ERROR("disable_background_location_error", "关闭后台定位失败"),
 
-        // SystemLocationProvider 相关
-        SYSTEM_NETWORK_LOCATION_FAILED("system_network_location_failed", "系统网络定位也获取位置失败"),
-        SYSTEM_LOCATION_UNAVAILABLE("system_location_unavailable", "系统GPS和网络定位均不可用"),
-
-        // DefaultLocationFacade 相关
-        AMAP_SINGLE_LOCATION_ERROR("amap_single_location_error", "高德单次定位异常"),
-        SYSTEM_SINGLE_LOCATION_ERROR("system_single_location_error", "系统单次定位异常"),
-
         // LocationKeepAliveManager 相关
-        CACHE_COLLECT_ERROR("cache_collect_error", "定位缓存采集异常"),
         KEEP_ALIVE_START_ERROR("keep_alive_start_error", "启动定位保活服务失败"),
         KEEP_ALIVE_STOP_ERROR("keep_alive_stop_error", "停止定位保活服务失败"),
 
@@ -45,8 +36,6 @@ object LocationEventTracker {
         REPORTING_START("reporting_start", "位置上报任务启动"),
         REPORTING_STOP("reporting_stop", "位置上报任务停止"),
         LOCATION_SAMPLE_RECORDED("location_sample_recorded", "采集到定位样本"),
-        LOCATION_JUMP_DETECTED("location_jump_detected", "检测到疑似定位跳点"),
-        LOCATION_STALE_SKIPPED("location_stale_skipped", "跳过陈旧定位样本"),
         LOCATION_INVALID_SKIPPED("location_invalid_skipped", "跳过无效定位样本"),
         REPORTING_TASK_ERROR("reporting_task_error", "位置上报任务异常终止"),
         API_UPLOAD_BUSINESS_ERROR("api_upload_business_error", "位置上报业务失败"),
@@ -67,20 +56,12 @@ object LocationEventTracker {
         const val TRUSTED_LEVEL = "trustedLevel"
         const val LOCATION_TIME = "locationTime"
         const val SAMPLE_REASON = "sampleReason"
-        const val DISTANCE_METERS = "distanceMeters"
-        const val ELAPSED_SECONDS = "elapsedSeconds"
-        const val SPEED_METERS_PER_SECOND = "speedMps"
         const val CLEANUP_STAGE = "stage"
 
         internal const val LATITUDE = "latitude"
         internal const val LONGITUDE = "longitude"
         internal const val PREVIOUS_LATITUDE = "previouslatitude"
         internal const val PREVIOUS_LONGITUDE = "previouslongitude"
-    }
-
-    enum class SampleReason(val telemetryValue: String) {
-        FIRST("first"),
-        PERIODIC("periodic"),
     }
 
     fun trackEvent(
