@@ -42,6 +42,17 @@ internal object DiagnosticPayload {
     )
     private val urlPattern = Regex("(?i)https?://[^\\s\"'<>]+")
     private val reservedKeys = setOf("category", "eventCode", "level", "userId", "description", "errorType", "errorMessage")
+    private val orderLocationApiEvents = setOf(
+        "start_order_check_exception", "start_order_check_failure",
+        "end_order_check_exception", "end_order_check_failure",
+        "end_order_submit_exception", "end_order_submit_failure",
+        "bind_location_exception", "bind_location_failure",
+    )
+    private val locationEvidenceKeys = setOf(
+        "orderId", "planId", "signInMode", "stage", "errorCode", "failureCode",
+        "latitude", "longitude", "coordType", "locationTime", "sampleAgeMs", "accuracy",
+        "provider", "locationType", "trustedLevel", "isMock", "isLastLocation", "qualityReason", "amapErrorCode",
+    )
 
     fun create(
         category: String,
@@ -62,18 +73,28 @@ internal object DiagnosticPayload {
             "userId" to userId,
             "description" to safeText(description, 120),
         )
+        val orderLocation = (category == "location" &&
+            (event.startsWith("nfc_location_") || event.startsWith("service_start_location_"))) ||
+            (category == "nfc_workflow" && event in orderLocationApiEvents)
         if (throwable != null) {
             addIfFits(fields, "errorType", throwable.javaClass.name.take(120))
-            addIfFits(fields, "errorMessage", safeText(throwable.message.orEmpty(), 160))
+            if (!orderLocation) addIfFits(fields, "errorMessage", safeText(throwable.message.orEmpty(), 160))
         }
-        for ((key, value) in extras.entries.take(48)) {
+        // Preserve the evidence used to compare submitted points before optional, potentially long text.
+        val entries = extras.entries.take(48).let { entries ->
+            if (orderLocation) entries.sortedBy { if (it.key in locationEvidenceKeys) 0 else 1 } else entries
+        }
+        for ((key, value) in entries) {
             if (key in reservedKeys || value == null || key.length > 40) continue
             val normalized = key.lowercase().replace("_", "").replace("-", "")
-            if (sensitiveKey.matches(normalized) || normalized in privateKeys) continue
+            // Explicit NFC distance diagnostics need unmodified coordinate pairs for server comparison.
+            val coordinate = orderLocation && key in setOf("latitude", "longitude") && value is Number && value.toDouble().isFinite()
+            if ((!coordinate && sensitiveKey.matches(normalized)) || normalized in privateKeys) continue
             // Do not invoke arbitrary object toString(): models may contain credentials/images.
             if (value !is String && value !is Number && value !is Boolean && value !is Enum<*>) continue
-            addIfFits(fields, key, safeText(value.toString(), 160))
+            addIfFits(fields, key, if (coordinate) value.toString() else safeText(value.toString(), 160))
         }
+        if (orderLocation && throwable != null) addIfFits(fields, "errorMessage", safeText(throwable.message.orEmpty(), 160))
         // Preserve bounded, sanitized cause/suppressed details without handing raw Throwables to SDK.
         if (throwable != null) {
             val seen = Collections.newSetFromMap(IdentityHashMap<Throwable, Boolean>())

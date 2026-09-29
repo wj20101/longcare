@@ -86,6 +86,25 @@ class CrashReporterTest {
     }
 
     @Test
+    fun `sign modes stages and distinct samples are not suppressed as duplicate reports`() {
+        val runtime = Runtime()
+        val reporter = CrashReporter(runtime)
+        reporter.setUserId(123)
+        reporter.initialize(mockk(), true)
+        fun sample(mode: String, stage: String, time: String) = DiagnosticException(
+            event("123").fields + mapOf("orderId" to "42", "signInMode" to mode, "stage" to stage, "locationTime" to time),
+            IllegalStateException().apply { stackTrace = emptyArray() },
+        )
+        val start = sample("START_ORDER", "scan", "1000")
+        reporter.postCaughtException(start)
+        reporter.postCaughtException(start)
+        reporter.postCaughtException(sample("END_ORDER", "scan", "1000"))
+        reporter.postCaughtException(sample("END_ORDER", "end_submit", "1000"))
+        reporter.postCaughtException(sample("END_ORDER", "end_submit", "2000"))
+        assertEquals(4, runtime.errors.size)
+    }
+
+    @Test
     fun `failed initialization is retryable and successful initialization is idempotent`() {
         val runtime = Runtime().apply { fail = true }
         val reporter = CrashReporter(runtime)

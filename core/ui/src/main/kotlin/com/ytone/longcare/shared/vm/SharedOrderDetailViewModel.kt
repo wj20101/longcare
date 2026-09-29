@@ -2,6 +2,9 @@ package com.ytone.longcare.shared.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
+import com.ytone.longcare.common.diagnostics.locationDiagnosticExtras
 import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.core.ui.R
 import com.ytone.longcare.model.result.ApiResult
@@ -19,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
 /**
@@ -143,32 +147,61 @@ class SharedOrderDetailViewModel @Inject constructor(
         if (_starOrderState.value is StarOrderUiState.Loading) return
         _starOrderState.value = StarOrderUiState.Loading
         viewModelScope.launch {
-            val acquisition = locationFacade.acquireCurrentLocation()
+            val userId = DiagnosticEventTracker.currentUserId()
+            val context = mapOf("orderId" to orderKey.orderId, "planId" to orderKey.planId,
+                "signInMode" to "START_ORDER", "stage" to "service_start")
+            val started = System.nanoTime()
+            val acquisition = try {
+                locationFacade.acquireCurrentLocation()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_exception",
+                    "正式开始服务定位异常", error, context, userId)
+                _starOrderState.value = StarOrderUiState.Error(textResolver.text(LocationFailure.UNAVAILABLE.messageRes()))
+                return@launch
+            }
+            val acquisitionExtras = context + ("durationMs" to (System.nanoTime() - started) / 1_000_000)
             val location = when (acquisition) {
                 is LocationAcquisition.Success -> acquisition.location
                 is LocationAcquisition.Failure -> {
+                    DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_failed",
+                        "正式开始服务定位失败", extras = acquisitionExtras + ("errorCode" to acquisition.reason.name) +
+                            (acquisition.location?.let { locationDiagnosticExtras(it) } ?: emptyMap()), userId = userId)
                     _starOrderState.value = StarOrderUiState.Error(textResolver.text(acquisition.reason.messageRes()))
                     return@launch
                 }
             }
             if (!locationFacade.isUsable(location)) {
+                DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_rejected",
+                    "正式开始服务位置不可用", extras = acquisitionExtras + locationDiagnosticExtras(location), userId = userId)
                 _starOrderState.value = StarOrderUiState.Error(textResolver.text(LocationFailure.QUALITY.messageRes()))
                 return@launch
             }
             val longitude = location.longitude.toString()
             val latitude = location.latitude.toString()
+            val diagnosticExtras = acquisitionExtras + locationDiagnosticExtras(location)
+            DiagnosticEventTracker.trackEvent(DiagnosticCategory.LOCATION, "service_start_location_submit",
+                "正式开始服务提交位置", diagnosticExtras, userId, reportToServer = true)
 
             when (val result = orderRepository.starOrder(orderKey.orderId, selectedProjectIds, longitude, latitude)) {
                 is ApiResult.Success -> {
+                    DiagnosticEventTracker.trackEvent(DiagnosticCategory.LOCATION, "service_start_location_success",
+                        "正式开始服务位置提交成功", diagnosticExtras, userId, reportToServer = true)
                     _starOrderState.value = StarOrderUiState.Success
                     onSuccess()
                 }
                 is ApiResult.Exception -> {
+                    DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_submit_exception",
+                        "正式开始服务位置提交异常", result.exception, diagnosticExtras, userId)
                     _starOrderState.value = StarOrderUiState.Error(
                         textResolver.text(R.string.common_network_error_retry),
                     )
                 }
                 is ApiResult.Failure -> {
+                    DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_submit_failure",
+                        "正式开始服务位置提交失败", extras = diagnosticExtras + mapOf("failureCode" to result.code,
+                            "failureMessage" to result.message), userId = userId)
                     _starOrderState.value = StarOrderUiState.Error(result.message)
                 }
             }

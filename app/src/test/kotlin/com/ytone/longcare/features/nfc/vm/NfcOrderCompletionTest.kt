@@ -18,11 +18,18 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.Before
+import org.junit.After
+import android.os.SystemClock
 import com.ytone.longcare.common.utils.KLogger
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NfcOrderCompletionTest {
-    @Before fun disablePlatformLogging() { KLogger.updateConfig { enabled = false } }
+    @Before fun disablePlatformLogging() {
+        KLogger.updateConfig { enabled = false }
+        mockkStatic(SystemClock::class)
+        every { SystemClock.elapsedRealtime() } returns 1_000L
+    }
+    @After fun cleanupClock() { unmockkAll() }
     private val order = OrderKey(7, 2)
     private val repository = mockk<OrderRepository>()
     private val local = mockk<OrderDetailRepository>(relaxed = true)
@@ -34,7 +41,7 @@ class NfcOrderCompletionTest {
 
     private suspend fun end() = executeEndOrderRequest(lifecycle, repository, completion, state,
         order, "test-tag", listOf(1), listOf("before"), listOf("after"), emptyList(),
-        "", "", 1, NfcUserMessages("网络异常", "详情失败", "定位失败"))
+        LocationResult(31.0, 121.0, "test"), 1, NfcUserMessages("网络异常", "详情失败", "定位失败", "定位不可用"))
 
     @Test fun successPublishesOnlyAfterCleanupAndKeepsSummary() = runTest {
         coEvery { repository.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns

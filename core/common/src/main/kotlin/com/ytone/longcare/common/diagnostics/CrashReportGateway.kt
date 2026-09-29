@@ -72,7 +72,7 @@ internal class CrashReporter(
         // Do not submit a late callback belonging to a previous account as the current user.
         if (exception.fields["userId"] != userId) return@synchronized
         val fields = exception.fields
-        val key = listOf("category", "eventCode", "userId", "errorType", "errorCode", "orderId")
+        val key = listOf("category", "eventCode", "userId", "errorType", "errorCode", "orderId", "signInMode", "stage", "locationTime")
             .map { fields[it].orEmpty() } + exception.stackTrace.take(4).map { it.toString() }
         val now = nanoTime()
         if (recentErrors[key]?.let { now - it < 30_000_000_000L } == true) return@synchronized

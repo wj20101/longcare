@@ -16,7 +16,7 @@ interface LocationFacade {
 
 sealed interface LocationAcquisition {
     data class Success(val location: LocationResult) : LocationAcquisition
-    data class Failure(val reason: LocationFailure) : LocationAcquisition
+    data class Failure(val reason: LocationFailure, val location: LocationResult? = null) : LocationAcquisition
 }
 
 enum class LocationFailure {

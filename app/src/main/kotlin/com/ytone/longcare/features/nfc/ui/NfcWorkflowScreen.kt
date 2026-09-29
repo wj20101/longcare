@@ -50,7 +50,6 @@ fun NfcWorkflowScreen(
 
     val requestLocation = rememberNfcLocationRequest(
         context = context,
-        orderKey = orderKey,
         nfcViewModel = nfcViewModel,
     )
 

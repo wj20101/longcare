@@ -16,8 +16,9 @@ object DiagnosticEventTracker {
         description: String,
         extras: Map<String, Any?> = emptyMap(),
         userId: String = currentUserId(),
+        reportToServer: Boolean = false,
     ) {
-        report(category, event, description, null, extras, userId, isError = false)
+        report(category, event, description, null, extras, userId, isError = false, reportToServer = reportToServer)
     }
 
     fun trackError(
@@ -48,6 +49,7 @@ object DiagnosticEventTracker {
         extras: Map<String, Any?>,
         userId: String,
         isError: Boolean,
+        reportToServer: Boolean = isError,
     ) {
         try {
             val fields = DiagnosticPayload.create(
@@ -56,7 +58,7 @@ object DiagnosticEventTracker {
             val text = DiagnosticPayload.encode(fields)
             // Use the same sanitized payload locally and remotely; never log the raw cause here.
             runCatching { if (isError) logE(text) else logI(text) }
-            if (isError) {
+            if (reportToServer) {
                 CrashReportGateway.postCaughtException(DiagnosticException(fields, throwable))
             } else {
                 CrashReportGateway.recordBreadcrumb(text, userId)

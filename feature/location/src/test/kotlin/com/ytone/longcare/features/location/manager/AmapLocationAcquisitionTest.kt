@@ -81,6 +81,37 @@ class AmapLocationAcquisitionTest {
         verify(exactly = 1) { client.onDestroy() }
     }
 
+    @Test fun `SDK failure retains raw result and error details for business diagnostics`() = runTest(dispatcher) {
+        val raw = sample()
+        every { raw.errorCode } returns AMapLocation.ERROR_CODE_FAILURE_CONNECTION
+        every { raw.errorInfo } returns "network unavailable"
+        val request = async { manager.acquireCurrentLocation() }
+        runCurrent()
+        listeners.single().onLocationChanged(raw)
+        val failure = request.await() as LocationAcquisition.Failure
+        assertEquals(LocationFailure.NETWORK, failure.reason)
+        val snapshot = requireNotNull(failure.location)
+        assertEquals(raw.longitude, snapshot.longitude, 0.0)
+        assertEquals(raw.latitude, snapshot.latitude, 0.0)
+        assertEquals(raw.errorCode, snapshot.errorCode)
+        assertEquals("network unavailable", snapshot.errorInfo)
+    }
+
+    @Test fun `quality retry preserves final SDK sample instead of dropping diagnostics`() = runTest(dispatcher) {
+        val request = async { manager.acquireCurrentLocation() }
+        runCurrent()
+        val stale = sample().also { every { it.time } returns System.currentTimeMillis() - 60_000 }
+        listeners.last().onLocationChanged(stale)
+        runCurrent()
+        assertEquals(2, listeners.size)
+        val second = sample().also { every { it.trustedLevel } returns AMapLocation.TRUSTED_LEVEL_LOW }
+        listeners.last().onLocationChanged(second)
+        val failure = request.await() as LocationAcquisition.Failure
+        assertEquals(LocationFailure.QUALITY, failure.reason)
+        assertEquals(AMapLocation.TRUSTED_LEVEL_LOW, failure.location!!.trustedLevel)
+        assertEquals(second.time, failure.location!!.locationTime)
+    }
+
     @Test fun `timeout destroys isolated client`() = runTest(dispatcher) {
         val job = async { manager.acquireCurrentLocation() }
         advanceUntilIdle()
@@ -134,6 +165,7 @@ class AmapLocationAcquisitionTest {
 
     private fun sample(): AMapLocation = mockk {
         every { errorCode } returns 0
+        every { errorInfo } returns "success"
         every { latitude } returns 31.23456789012345
         every { longitude } returns 121.98765432109876
         every { provider } returns "network"

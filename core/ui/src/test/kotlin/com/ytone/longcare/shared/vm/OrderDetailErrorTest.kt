@@ -149,6 +149,13 @@ class OrderDetailErrorTest {
         model.starOrder(key)
         advanceUntilIdle()
         coVerify(exactly = 1) { orders.starOrder(key.orderId, emptyList(), "121.0", "31.0") }
+        verify(exactly = 1) {
+            DiagnosticEventTracker.trackEvent(any(), "service_start_location_submit", any(),
+                match { it["longitude"] == 121.0 && it["latitude"] == 31.0 && it["stage"] == "service_start" }, any(), true)
+        }
+        verify(exactly = 1) {
+            DiagnosticEventTracker.trackEvent(any(), "service_start_location_success", any(), any(), any(), true)
+        }
     }
 
     private fun error(kind: ApiRequestException.Kind, code: Int? = null): ApiRequestException =

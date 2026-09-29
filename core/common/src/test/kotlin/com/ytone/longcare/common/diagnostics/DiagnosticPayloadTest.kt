@@ -5,6 +5,48 @@ import org.junit.Test
 
 class DiagnosticPayloadTest {
     @Test
+    fun `long failure details cannot displace the submitted location evidence`() {
+        val sample = com.ytone.longcare.model.LocationResult(
+            31.13812345678, 121.98765432109876, "network", accuracy = 18f,
+            coordType = "GCJ02", locationType = 5, trustedLevel = 1,
+            locationTime = 1_800_000_000_000, receivedAt = 1_800_000_000_100,
+        )
+        val extras = linkedMapOf<String, Any?>(
+            "orderId" to 1234567890123L, "planId" to 123456789,
+            "signInMode" to "END_ORDER", "stage" to "end_submit",
+            "nfcDeviceIdLength" to 100, "nfcDeviceIdHash" to -123456789,
+            "failureCode" to 4001, "failureMessage" to "超出范围".repeat(40),
+        ) + locationDiagnosticExtras(sample, sample.receivedAt)
+        val fields = DiagnosticPayload.create("nfc_workflow", "end_order_submit_failure", "ERROR", "2147483647",
+            "NFC结束工单提交业务失败", IllegalStateException("\"".repeat(160)), extras)
+        val expected = locationDiagnosticExtras(sample, sample.receivedAt)
+        listOf("latitude", "longitude", "accuracy", "coordType", "locationTime", "sampleAgeMs", "provider",
+            "locationType", "trustedLevel", "isMock", "isLastLocation", "amapErrorCode").forEach {
+            assertEquals("Missing location evidence: $it", expected[it].toString(), fields[it])
+        }
+        assertEquals("4001", fields["failureCode"])
+        assertTrue(DiagnosticPayload.encode(fields).length <= 950)
+    }
+
+    @Test
+    fun `only NFC distance diagnostics retain exact numeric coordinates`() {
+        val coordinates = mapOf("latitude" to 31.13812345678, "longitude" to 121.98765432109876, "token" to "secret")
+        for ((category, event) in listOf("location" to "nfc_location_acquired", "nfc_workflow" to "end_order_submit_failure")) {
+            val fields = DiagnosticPayload.create(category, event, "INFO", "123", "定位", null, coordinates)
+            assertEquals("31.13812345678", fields["latitude"])
+            assertEquals("121.98765432109876", fields["longitude"])
+            assertFalse(fields.containsKey("token"))
+        }
+        val ordinary = DiagnosticPayload.create("location", "location_sample_recorded", "INFO", "123", "定位", null, coordinates)
+        assertFalse(ordinary.containsKey("latitude"))
+        assertFalse(ordinary.containsKey("longitude"))
+        val invalid = DiagnosticPayload.create("location", "nfc_location_failed", "ERROR", "123", "定位", null,
+            mapOf("latitude" to Double.NaN, "longitude" to "121.0 token=secret"))
+        assertFalse(invalid.containsKey("latitude"))
+        assertFalse(invalid.containsKey("longitude"))
+    }
+
+    @Test
     fun `dynamic identity and details do not change grouping frames`() {
         val original = IllegalStateException("token=secret").apply {
             stackTrace = arrayOf(StackTraceElement("Camera", "capture", "Camera.kt", 12))

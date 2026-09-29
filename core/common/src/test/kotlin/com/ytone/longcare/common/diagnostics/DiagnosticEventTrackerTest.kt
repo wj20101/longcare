@@ -30,6 +30,19 @@ class DiagnosticEventTrackerTest {
     }
 
     @Test
+    fun `explicit diagnostic upload retains INFO severity`() {
+        DiagnosticEventTracker.trackEvent(
+            DiagnosticCategory.LOCATION, "nfc_location_acquired", "定位成功",
+            extras = mapOf("longitude" to 121.98765432109876), reportToServer = true,
+        )
+        verify(exactly = 1) {
+            CrashReportGateway.postCaughtException(match {
+                it.fields["level"] == "INFO" && it.fields["longitude"] == "121.98765432109876"
+            })
+        }
+    }
+
+    @Test
     fun `error without throwable has explicit severity category and raw user ID`() {
         DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "upload_failed", "位置上传失败")
         verify(exactly = 1) {

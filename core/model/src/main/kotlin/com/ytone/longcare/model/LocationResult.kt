@@ -16,4 +16,6 @@ data class LocationResult(
     val receivedElapsedRealtime: Long = 0L,
     val isMock: Boolean = false,
     val isLastLocation: Boolean = false,
+    val errorCode: Int = 0,
+    val errorInfo: String = "",
 )

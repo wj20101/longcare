@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.nfc.vm
 
 import com.ytone.longcare.common.event.AppEvent
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.event.AppEventBus
 import com.ytone.longcare.common.event.ScanSource
 import com.ytone.longcare.model.result.ApiResult
@@ -54,7 +55,9 @@ internal class NfcScanWorkflowDelegate(
                         currentState = uiState.value,
                         signInMode = signInMode,
                         endOderInfo = endOderInfo,
-                        onLocationRequest = onLocationRequest,
+                        onLocationRequest = {
+                            requestNfcLocation(orderKey, signInMode, "scan", userMessages.locationUnavailable, onLocationRequest)
+                        },
                         onLocationError = { error ->
                             orderDelegate.showError(
                                 message = error.message,
@@ -112,7 +115,9 @@ internal class NfcScanWorkflowDelegate(
         pendingActionJob?.cancel()
         pendingActionJob = scope.launch {
             uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.FETCHING_LOCATION)
-            val locationResult = onLocationRequest()
+            val locationResult = requestNfcLocation(
+                scan.orderKey, scan.signInMode, "permission_resume", userMessages.locationUnavailable, onLocationRequest,
+            )
             val location = when (locationResult) {
                 is LocationRequestResult.Coordinates -> locationResult.location
                 is LocationRequestResult.Error -> {
@@ -169,6 +174,9 @@ internal class NfcScanWorkflowDelegate(
     }
 
     fun clearPendingPermissionScan() {
+        pendingPermissionScan?.let { scan ->
+            trackNfcLocation("nfc_location_permission_denied", scan.orderKey, scan.signInMode, "permission")
+        }
         pendingPermissionScan = null
         if ((uiState.value as? NfcSignInUiState.Loading)?.reason ==
             NfcLoadingReason.WAITING_FOR_LOCATION_PERMISSION
@@ -183,15 +191,27 @@ internal class NfcScanWorkflowDelegate(
         pendingActionJob?.cancel()
         pendingActionJob = scope.launch {
             if (!locationFacade.isUsable(data.location)) {
-                when (val result = acquireLocation()) {
+                trackNfcLocation(
+                    "nfc_location_rejected", data.orderKey, data.signInMode, "bind_validate",
+                    location = data.location, isError = true, reason = "NOT_USABLE",
+                )
+                when (val result = requestNfcLocation(
+                    data.orderKey, data.signInMode, "bind_refresh", userMessages.locationUnavailable, acquireLocation,
+                )) {
                     is LocationRequestResult.Coordinates -> {
                         pendingNfcData.value = data.copy(location = result.location)
                     }
-                    is LocationRequestResult.Error -> orderDelegate.showError(result.message)
+                    is LocationRequestResult.Error -> orderDelegate.showError(
+                        result.message, buglyAlreadyReported = result.buglyReported,
+                    )
                     LocationRequestResult.PermissionRequired -> uiState.value = NfcSignInUiState.Initial
                 }
                 return@launch
             }
+            val userId = DiagnosticEventTracker.currentUserId()
+            val locationFields = nfcLocationExtras(data.location)
+            trackNfcLocation("nfc_location_validated", data.orderKey, data.signInMode, "bind_submit",
+                userId = userId, locationFields = locationFields)
             when (val result = orderRepository.bindLocation(
                 orderId = data.orderKey.orderId,
                 nfc = data.tagId,
@@ -199,6 +219,8 @@ internal class NfcScanWorkflowDelegate(
                 latitude = data.location.latitude.toString()
             )) {
                 is ApiResult.Success -> {
+                    trackNfcLocation("nfc_location_submit_success", data.orderKey, data.signInMode, "bind_submit",
+                        userId = userId, locationFields = locationFields)
                     orderDelegate.startOrder(data.orderKey, data.tagId, data.location)
                 }
 
@@ -210,10 +232,8 @@ internal class NfcScanWorkflowDelegate(
                         orderKey = data.orderKey,
                         signInMode = data.signInMode,
                         nfcDeviceId = data.tagId,
-                        extras = mapOf(
-                            "hasLongitude" to data.location.longitude.isFinite(),
-                            "hasLatitude" to data.location.latitude.isFinite(),
-                        ),
+                        userId = userId,
+                        extras = locationFields,
                     )
                     orderDelegate.showError(
                         message = userMessages.bindLocationFailed,
@@ -237,10 +257,8 @@ internal class NfcScanWorkflowDelegate(
                         orderKey = data.orderKey,
                         signInMode = data.signInMode,
                         nfcDeviceId = data.tagId,
-                        extras = mapOf(
-                            "hasLongitude" to data.location.longitude.isFinite(),
-                            "hasLatitude" to data.location.latitude.isFinite(),
-                        ),
+                        userId = userId,
+                        extras = locationFields,
                     )
                     orderDelegate.showError(
                         message = result.message,
@@ -273,9 +291,13 @@ internal class NfcScanWorkflowDelegate(
 
         pendingActionJob?.cancel()
         pendingActionJob = scope.launch {
-            val result = acquireLocation()
+            val result = requestNfcLocation(
+                orderKey, signInMode, "mock_scan", userMessages.locationUnavailable, acquireLocation,
+            )
             if (result !is LocationRequestResult.Coordinates) {
-                if (result is LocationRequestResult.Error) orderDelegate.showError(result.message)
+                if (result is LocationRequestResult.Error) orderDelegate.showError(
+                    result.message, buglyAlreadyReported = result.buglyReported,
+                )
                 return@launch
             }
             executeSignInModeAction(

@@ -64,13 +64,12 @@ internal class NfcOrderWorkflowDelegate(
         nfcDeviceId: String,
         location: LocationResult
     ) {
-        if (!validateLocation(location)) return
+        if (!validateLocation(location, orderKey, SignInMode.START_ORDER, "start_check")) return
         performStartOrderWorkflow(
             orderRepository = orderRepository,
             orderKey = orderKey,
             nfcDeviceId = nfcDeviceId,
-            longitude = location.longitude.toString(),
-            latitude = location.latitude.toString(),
+            location = location,
             uiState = uiState,
             userMessages = userMessages,
         )
@@ -86,7 +85,7 @@ internal class NfcOrderWorkflowDelegate(
         location: LocationResult,
         endType: Int = 1
     ) {
-        if (!validateLocation(location)) return
+        if (!validateLocation(location, orderKey, SignInMode.END_ORDER, "end_check")) return
         performEndOrderWorkflow(
             orderRepository = orderRepository,
             orderKey = orderKey,
@@ -177,7 +176,7 @@ internal class NfcOrderWorkflowDelegate(
         location: LocationResult,
         endType: Int
     ) {
-        if (!validateLocation(location)) return
+        if (!validateLocation(location, orderKey, SignInMode.END_ORDER, "end_submit")) return
         executeEndOrderRequest(
             serviceOrderLifecycle = serviceOrderLifecycle,
             orderRepository = orderRepository,
@@ -189,16 +188,20 @@ internal class NfcOrderWorkflowDelegate(
             beginImgList = beginImgList,
             endImageList = endImageList,
             centerImgList = centerImgList,
-            longitude = location.longitude.toString(),
-            latitude = location.latitude.toString(),
+            location = location,
             endType = endType,
             userMessages = userMessages,
         )
     }
 
-    private fun validateLocation(location: LocationResult): Boolean {
-        if (locationFacade.isUsable(location)) return true
-        uiState.value = NfcSignInUiState.Error(textResolver.text(LocationFailure.QUALITY.messageRes()))
-        return false
+    private fun validateLocation(location: LocationResult, orderKey: OrderKey, mode: SignInMode, stage: String): Boolean {
+        val usable = locationFacade.isUsable(location)
+        trackNfcLocation(
+            if (usable) "nfc_location_validated" else "nfc_location_rejected",
+            orderKey, mode, stage, location = location, isError = !usable,
+            reason = if (usable) null else "NOT_USABLE",
+        )
+        if (!usable) uiState.value = reportedNfcError(textResolver.text(LocationFailure.QUALITY.messageRes()))
+        return usable
     }
 }

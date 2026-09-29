@@ -8,8 +8,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.ytone.longcare.R
-import com.ytone.longcare.common.diagnostics.DiagnosticCategory
-import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper.openLocationSettings
@@ -22,7 +20,7 @@ import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
-import kotlinx.coroutines.CancellationException
+import com.ytone.longcare.domain.location.LocationFailure
 
 internal fun mapNfcSignInState(uiState: NfcSignInUiState): SignInState {
     return when (uiState) {
@@ -58,41 +56,20 @@ internal fun buildNfcWorkflowBackAction(
 @Composable
 internal fun rememberNfcLocationRequest(
     context: Context,
-    orderKey: OrderKey,
     nfcViewModel: NfcWorkflowViewModel,
 ): suspend () -> LocationRequestResult {
     var showLocationOnlyPurposeNotice by remember { mutableStateOf(false) }
-    val locationUnavailableMessage = stringResource(R.string.nfc_location_unavailable)
     val locationServiceDisabledMessage = stringResource(R.string.nfc_location_service_disabled)
 
     val getCurrentLocationCoordinates: suspend () -> LocationRequestResult = {
-        try {
-            if (!UnifiedPermissionHelper.hasLocationPermission(context)) {
-                showLocationOnlyPurposeNotice = true
-                LocationRequestResult.PermissionRequired
-            } else if (!UnifiedPermissionHelper.isLocationServiceEnabled(context)) {
-                openLocationSettings(context)
-                LocationRequestResult.Error(locationServiceDisabledMessage)
-            } else {
-                nfcViewModel.acquireLocation()
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            DiagnosticEventTracker.trackError(
-                category = DiagnosticCategory.NFC_WORKFLOW,
-                event = "nfc_location_request_exception",
-                description = "NFC签到请求定位异常",
-                throwable = e,
-                extras = mapOf(
-                    "orderId" to orderKey.orderId,
-                    "planId" to orderKey.planId,
-                ),
-            )
-            LocationRequestResult.Error(
-                message = locationUnavailableMessage,
-                buglyReported = true,
-            )
+        if (!UnifiedPermissionHelper.hasLocationPermission(context)) {
+            showLocationOnlyPurposeNotice = true
+            LocationRequestResult.PermissionRequired
+        } else if (!UnifiedPermissionHelper.isLocationServiceEnabled(context)) {
+            openLocationSettings(context)
+            LocationRequestResult.Error(locationServiceDisabledMessage, reason = LocationFailure.SERVICE_DISABLED)
+        } else {
+            nfcViewModel.acquireLocation()
         }
     }
 

@@ -127,6 +127,8 @@ class ContinuousAmapLocationManager @Inject constructor(
         receivedElapsedRealtime = SystemClock.elapsedRealtime(),
         isMock = isMock,
         isLastLocation = isFixLastLocation,
+        errorCode = errorCode,
+        errorInfo = errorInfo.orEmpty(),
     )
 
     /**
@@ -216,10 +218,10 @@ class ContinuousAmapLocationManager @Inject constructor(
                             if (LocationQuality.rejection(sample, System.currentTimeMillis(), SystemClock.elapsedRealtime()) == null) {
                                 LocationAcquisition.Success(sample)
                             } else {
-                                LocationAcquisition.Failure(LocationFailure.QUALITY)
+                                LocationAcquisition.Failure(LocationFailure.QUALITY, sample)
                             }
                         } else {
-                            LocationAcquisition.Failure(locationFailure(location?.errorCode))
+                            LocationAcquisition.Failure(locationFailure(location?.errorCode), location?.toSample())
                         }
                         continuation.resume(result)
                     }

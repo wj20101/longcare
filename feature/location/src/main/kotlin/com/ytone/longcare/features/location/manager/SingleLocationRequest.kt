@@ -14,7 +14,7 @@ internal class SingleLocationRequest {
         try {
             return withTimeoutOrNull(TIMEOUT_MS) {
                 val first = request()
-                if (first == LocationAcquisition.Failure(LocationFailure.QUALITY)) request() else first
+                if (first is LocationAcquisition.Failure && first.reason == LocationFailure.QUALITY) request() else first
             } ?: LocationAcquisition.Failure(LocationFailure.TIMEOUT)
         } finally {
             inFlight.unlock()

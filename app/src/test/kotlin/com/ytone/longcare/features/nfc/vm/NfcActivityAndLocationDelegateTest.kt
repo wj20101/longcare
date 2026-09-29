@@ -27,7 +27,7 @@ class NfcActivityAndLocationDelegateTest {
     @Test fun `all acquisition failures retain specific user message and no blank coordinate success`() = runTest {
         LocationFailure.entries.forEach { reason ->
             coEvery { facade.acquireCurrentLocation() } returns LocationAcquisition.Failure(reason)
-            assertEquals(LocationRequestResult.Error(reason.messageRes().toString()), delegate.acquireLocation())
+            assertEquals(LocationRequestResult.Error(reason.messageRes().toString(), reason = reason), delegate.acquireLocation())
         }
     }
 

@@ -16,14 +16,22 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.*
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.Before
+import org.junit.After
+import android.os.SystemClock
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NfcLocationFreshnessTest {
+    @Before fun setupClock() {
+        mockkStatic(SystemClock::class)
+        every { SystemClock.elapsedRealtime() } returns 1_000L
+    }
+    @After fun cleanupClock() { unmockkAll() }
     private val facade = mockk<LocationFacade>()
     private val orders = mockk<OrderRepository>(relaxed = true)
     private val lifecycle = mockk<ServiceOrderLifecycle>(relaxed = true)
     private val state = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
-    private val messages = NfcUserMessages("network", "detail", "bind")
+    private val messages = NfcUserMessages("network", "detail", "bind", "unavailable")
     private val text = mockk<ResourceTextResolver> { every { text(any()) } returns "location expired" }
     private val delegate = NfcOrderWorkflowDelegate(facade, text, lifecycle, orders,
         mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), state, messages)

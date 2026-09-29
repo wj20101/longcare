@@ -11,6 +11,8 @@ internal class NfcLocationDelegate(
 ) {
     suspend fun acquireLocation(): LocationRequestResult = when (val result = locationFacade.acquireCurrentLocation()) {
         is LocationAcquisition.Success -> LocationRequestResult.Coordinates(result.location)
-        is LocationAcquisition.Failure -> LocationRequestResult.Error(textResolver.text(result.reason.messageRes()))
+        is LocationAcquisition.Failure -> LocationRequestResult.Error(
+            textResolver.text(result.reason.messageRes()), reason = result.reason, location = result.location,
+        )
     }
 }
