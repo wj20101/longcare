@@ -102,6 +102,11 @@ class DefaultUserSessionRepositoryTest {
                 fail("A failed state publication must be reported to the caller")
             } catch (_: IOException) {
                 // The durable write succeeded, but state reads remain unavailable.
+                assertEquals(
+                    User(userId = 123),
+                    User.ADAPTER.decode(dataStore.persisted.value[byteArrayPreferencesKey("app_user")]!!),
+                )
+                assertEquals(SessionState.LoggedOut, repository.sessionState.value)
             }
         }
         dataStore.failuresRemaining = 0

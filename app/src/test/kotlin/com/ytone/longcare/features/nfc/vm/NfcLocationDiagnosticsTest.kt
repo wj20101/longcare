@@ -83,10 +83,13 @@ class NfcLocationDiagnosticsTest {
     @Test fun `permission and cancellation do not upload errors or invent coordinates`() = runTest {
         assertEquals(LocationRequestResult.PermissionRequired,
             requestNfcLocation(key, SignInMode.START_ORDER, "scan", "unavailable") { LocationRequestResult.PermissionRequired })
+        val cancellation = CancellationException("Location request cancelled")
         try {
-            requestNfcLocation(key, SignInMode.END_ORDER, "scan", "unavailable") { throw CancellationException() }
+            requestNfcLocation(key, SignInMode.END_ORDER, "scan", "unavailable") { throw cancellation }
             fail("Cancellation must propagate")
-        } catch (_: CancellationException) { }
+        } catch (actual: CancellationException) {
+            assertSame(cancellation, actual)
+        }
         assertTrue(reports.isEmpty())
     }
 
