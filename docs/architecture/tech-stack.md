@@ -1,6 +1,6 @@
 # 技术栈与构建基线
 
-最后核对：2026-09-20（代码与文档静态核对；非本轮全量运行验收）
+最后核对：2026-10-08（Gradle Wrapper 补丁升级；其余条目沿用代码与文档静态核对）
 
 本文是便于阅读的快照。版本发生冲突时，以 `constants.gradle.kts`、`gradle/libs.versions.toml`、`gradle-wrapper.properties` 和各模块 `build.gradle.kts` 为准。应用版本号仅在 [constants.gradle.kts](../../constants.gradle.kts) 维护，本文不重复记录。
 
@@ -13,14 +13,14 @@
 | `targetSdk` | 36 | `constants.gradle.kts` |
 | `minSdk` | 24 | `constants.gradle.kts` |
 | JDK / JVM toolchain | 21 | `constants.gradle.kts`、约定插件 |
-| Gradle Wrapper | 9.8.0 | `gradle/wrapper/gradle-wrapper.properties` |
+| Gradle Wrapper | 9.8.1 | `gradle/wrapper/gradle-wrapper.properties` |
 | Android Gradle Plugin | 9.4.1 | `gradle/libs.versions.toml` |
 | Kotlin | 2.4.20 | `gradle/libs.versions.toml` |
 | KSP | 2.3.12 | `gradle/libs.versions.toml` |
 
 AGP 与 Gradle 按稳定版兼容组合一起核验。升级 Gradle 时使用 `wrapper` 任务同步
 JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SHA-256；不要只改下载地址。
-当前 Wrapper JAR 已同步为 9.8.0，分发包校验和 URL 验证保持启用。
+当前 Wrapper JAR 已同步为 9.8.1，分发包校验和 URL 验证保持启用。
 
 ## 主要库
 
