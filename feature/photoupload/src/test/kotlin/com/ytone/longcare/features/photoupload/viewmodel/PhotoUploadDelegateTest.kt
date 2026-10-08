@@ -6,12 +6,16 @@ import com.ytone.longcare.common.diagnostics.DiagnosticException
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.features.photoupload.upload.PhotoCloudUploadException
 import com.ytone.longcare.features.photoupload.upload.PhotoCloudUploader
+import com.ytone.longcare.features.photoupload.upload.UploadedPhoto
+import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.model.ImageTask
 import com.ytone.longcare.model.ImageTaskStatus
 import com.ytone.longcare.model.ImageTaskType
 import com.ytone.longcare.model.OrderKey
 import io.mockk.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.*
@@ -20,6 +24,54 @@ import org.junit.Test
 class PhotoUploadDelegateTest {
     @After
     fun cleanup() { unmockkAll() }
+
+    @Test
+    fun `upload success waits for Room before publishing uploaded state`() = runTest {
+        mockkStatic(Uri::class)
+        every { Uri.parse(any()) } returns mockk()
+        val started = CompletableDeferred<Unit>()
+        val persist = CompletableDeferred<Unit>()
+        val images = mockk<OrderImageRepository>()
+        coEvery { images.markAsSuccess(1L, "cloud-key") } coAnswers {
+            started.complete(Unit)
+            persist.await()
+        }
+        val queue = PhotoTaskQueueDelegate(backgroundScope, images, mockk(), mockk())
+        queue.imageTasks.value = listOf(
+            ImageTask("1", "file:///photo.jpg", ImageTaskType.BEFORE_CARE,
+                resultUri = "file:///photo.jpg", status = ImageTaskStatus.SUCCESS),
+        )
+        val uploader = mockk<PhotoCloudUploader>()
+        coEvery { uploader.upload(any(), any()) } returns UploadedPhoto("cloud-key")
+        val delegate = PhotoUploadDelegate(uploader, mockk(), mockk(), queue, mockk())
+
+        val pending = async { delegate.uploadSuccessfulImagesToCloud() }
+        started.await()
+        assertFalse(pending.isCompleted)
+        assertFalse(queue.imageTasks.value.single().isUploaded)
+        persist.complete(Unit)
+
+        assertEquals(listOf("cloud-key"), pending.await().getOrThrow()[ImageTaskType.BEFORE_CARE])
+        assertTrue(queue.imageTasks.value.single().isUploaded)
+    }
+
+    @Test
+    fun `failed persistence does not mark a photo as uploaded`() = runTest {
+        val images = mockk<OrderImageRepository>()
+        val failure = java.io.IOException("disk full")
+        coEvery { images.markAsSuccess(any(), any()) } throws failure
+        val queue = PhotoTaskQueueDelegate(backgroundScope, images, mockk(), mockk())
+        queue.imageTasks.value = listOf(ImageTask("1", "file:///photo.jpg", ImageTaskType.BEFORE_CARE))
+
+        try {
+            queue.updateTaskUploadStatus("1", "cloud-key")
+            fail("Persistence failure must reach the caller")
+        } catch (error: java.io.IOException) {
+            assertSame(failure, error)
+        }
+        assertFalse(queue.imageTasks.value.single().isUploaded)
+        assertNull(queue.imageTasks.value.single().key)
+    }
 
     @Test
     fun `upload failure preserves sanitized error details through the diagnostic gateway`() = runTest {
@@ -56,6 +108,6 @@ class PhotoUploadDelegateTest {
         assertTrue(fields.getValue("errorMessage").contains("Request expired"))
         assertFalse(reported.captured.message!!.contains("private-token"))
         verify(exactly = 1) { CrashReportGateway.postCaughtException(any()) }
-        verify(exactly = 0) { queue.updateTaskUploadStatus(any(), any()) }
+        coVerify(exactly = 0) { queue.updateTaskUploadStatus(any(), any()) }
     }
 }

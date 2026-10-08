@@ -24,7 +24,7 @@ internal class CosObjectOperationDelegate(
     private val apiService: LongCareApiService,
     private val ioDispatcher: CoroutineDispatcher,
     private val tag: String,
-    private val getCosService: suspend () -> CosXmlService,
+    private val getCosService: suspend (Int) -> CosXmlService,
     private val getValidCosConfig: suspend (Int) -> CosConfig,
     private val clearCache: suspend () -> Unit
 ) {
@@ -64,7 +64,7 @@ internal class CosObjectOperationDelegate(
     suspend fun deleteFile(key: String): Boolean = withContext(ioDispatcher) {
         try {
             executeCosOperationWithRetry(clearCache) {
-                val service = getCosService()
+                val service = getCosService(CosConstants.DEFAULT_FOLDER_TYPE)
                 val config = getValidCosConfig(CosConstants.DEFAULT_FOLDER_TYPE)
                 service.deleteObject(DeleteObjectRequest(config.bucket, key))
             }
@@ -86,7 +86,7 @@ internal class CosObjectOperationDelegate(
     suspend fun fileExists(key: String): Boolean = withContext(ioDispatcher) {
         try {
             executeCosOperationWithRetry(clearCache) {
-                val service = getCosService()
+                val service = getCosService(CosConstants.DEFAULT_FOLDER_TYPE)
                 val config = getValidCosConfig(CosConstants.DEFAULT_FOLDER_TYPE)
                 service.headObject(HeadObjectRequest(config.bucket, key))
             }
@@ -108,7 +108,7 @@ internal class CosObjectOperationDelegate(
         try {
             val result =
                 executeCosOperationWithRetry(clearCache) {
-                    val service = getCosService()
+                    val service = getCosService(CosConstants.DEFAULT_FOLDER_TYPE)
                     val config = getValidCosConfig(CosConstants.DEFAULT_FOLDER_TYPE)
                     service.headObject(HeadObjectRequest(config.bucket, key))
                 }
@@ -136,7 +136,7 @@ internal class CosObjectOperationDelegate(
                 val fileUri = Uri.parse(params.fileUri)
                 val config =
                     executeCosOperationWithRetry(clearCache) {
-                        val service = getCosService()
+                        val service = getCosService(params.folderType)
                         val currentConfig = getValidCosConfig(params.folderType)
                         if (resolvedKey.isBlank()) {
                             resolvedKey =

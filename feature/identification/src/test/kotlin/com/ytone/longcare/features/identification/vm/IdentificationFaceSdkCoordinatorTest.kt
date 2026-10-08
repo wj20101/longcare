@@ -4,6 +4,7 @@ import com.ytone.longcare.common.faceauth.FaceSdkEvent
 import com.ytone.longcare.domain.faceauth.FaceVerificationConfigProvider
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import com.ytone.longcare.domain.faceauth.model.FaceVerificationRequest
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -48,6 +49,7 @@ class IdentificationFaceSdkCoordinatorTest {
         var configMissingCount = 0
         val coordinator = IdentificationFaceSdkCoordinator(
             configProvider = object : FaceVerificationConfigProvider {
+            override val sessionGeneration = kotlinx.coroutines.flow.MutableStateFlow<Long?>(1L)
                 override suspend fun getFaceVerificationConfig(): FaceVerificationConfig? = null
             },
             onStandardConfigMissing = { configMissingCount++ },
@@ -66,9 +68,10 @@ class IdentificationFaceSdkCoordinatorTest {
         var configMissingCount = 0
         val coordinator = IdentificationFaceSdkCoordinator(
             configProvider = object : FaceVerificationConfigProvider {
+            override val sessionGeneration = kotlinx.coroutines.flow.MutableStateFlow<Long?>(1L)
                 override suspend fun getFaceVerificationConfig(): FaceVerificationConfig? =
                     if (configCall++ == 0) {
-                        FaceVerificationConfig("app", "secret", "licence")
+                        FaceVerificationConfig("app", "licence", 1L)
                     } else {
                         null
                     }
@@ -93,10 +96,40 @@ class IdentificationFaceSdkCoordinatorTest {
         assertEquals(emptyList<FaceSdkEvent>(), receivedEvents)
     }
 
+    @Test
+    fun `old screen cannot publish a suspended launch or restart under a new session`() = runTest {
+        val generation = kotlinx.coroutines.flow.MutableStateFlow<Long?>(1L)
+        val started = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val finish = kotlinx.coroutines.CompletableDeferred<Unit>()
+        var configCalls = 0
+        val coordinator = IdentificationFaceSdkCoordinator(
+            configProvider = object : FaceVerificationConfigProvider {
+                override val sessionGeneration = generation
+                override suspend fun getFaceVerificationConfig(): FaceVerificationConfig {
+                    configCalls++
+                    started.complete(Unit)
+                    finish.await()
+                    return FaceVerificationConfig("app", "licence", 2L)
+                }
+            },
+            onStandardConfigMissing = { error("stale request must be silent") },
+            onFaceSetupConfigMissing = {},
+        )
+        val pending = async { coordinator.prepareStandard(testRequest()) }
+        started.await()
+        generation.value = 2L
+        finish.complete(Unit)
+        pending.await()
+        assertNull(coordinator.launchRequest.value)
+        coordinator.prepareStandard(testRequest())
+        assertEquals(1, configCalls)
+    }
+
     private fun coordinatorWithConfig() = IdentificationFaceSdkCoordinator(
         configProvider = object : FaceVerificationConfigProvider {
+            override val sessionGeneration = kotlinx.coroutines.flow.MutableStateFlow<Long?>(1L)
             override suspend fun getFaceVerificationConfig() =
-                FaceVerificationConfig("app", "secret", "licence")
+                FaceVerificationConfig("app", "licence", 1L)
         },
         onStandardConfigMissing = {},
         onFaceSetupConfigMissing = {},

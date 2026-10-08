@@ -49,7 +49,6 @@ class ServiceCountdownViewModelTest {
         systemGateway = mockk(relaxed = true)
         
         // Mock default flows
-        every { unifiedOrderRepository.observeOrderWithDetails(any()) } returns MutableStateFlow(null)
         
         viewModel = ServiceCountdownViewModel(
             unifiedOrderRepository,

@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.identification.domain
 
 import java.io.File
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -23,6 +24,7 @@ class SetupFaceUseCaseTest {
             imageFile = temporaryFolder.newFile("face.jpg"),
             base64Image = "face-base64",
             currentUserId = 123,
+            ensureCurrentSession = {},
         )
 
         assertTrue(result is SetupFaceResult.Success)
@@ -44,6 +46,7 @@ class SetupFaceUseCaseTest {
             imageFile = temporaryFolder.newFile("face.jpg"),
             base64Image = "face-base64",
             currentUserId = 123,
+            ensureCurrentSession = {},
         )
 
         assertTrue(result is SetupFaceResult.Error)
@@ -64,6 +67,7 @@ class SetupFaceUseCaseTest {
             imageFile = temporaryFolder.newFile("face.jpg"),
             base64Image = "face-base64",
             currentUserId = 123,
+            ensureCurrentSession = {},
         )
 
         assertTrue(result is SetupFaceResult.Error)
@@ -71,6 +75,44 @@ class SetupFaceUseCaseTest {
         assertEquals(SetupFaceFailure.ServerRejected("服务器更新失败"), result.failure)
         assertEquals(listOf("uploadFaceImage", "setFaceOnServer"), gateway.callOrder)
         assertFalse(gateway.sessionRefreshed)
+    }
+
+    @Test
+    fun `session change during upload prevents face registration and success`() = kotlinx.coroutines.test.runTest {
+        val started = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val finish = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val calls = mutableListOf<String>()
+        var currentSession = true
+        val gateway = object : SetupFaceGateway {
+            override suspend fun uploadFaceImage(imageFile: File): SetupFaceUploadResult {
+                calls += "upload"
+                started.complete(Unit)
+                finish.await()
+                return SetupFaceUploadResult.Success("face-key")
+            }
+            override suspend fun setFaceOnServer(base64Image: String, uploadedKey: String): SetupFaceServerResult {
+                calls += "setFace"
+                return SetupFaceServerResult.Success
+            }
+            override suspend fun refreshCurrentUserSession() { calls += "refresh" }
+        }
+        val useCase = SetupFaceUseCase(gateway)
+        var deliveredSuccess = false
+        val pending = async {
+            useCase.execute(temporaryFolder.newFile("face.jpg"), "photo", 123) {
+                if (!currentSession) throw kotlinx.coroutines.CancellationException("Session changed")
+            }
+            deliveredSuccess = true
+        }
+        started.await()
+        currentSession = false
+        finish.complete(Unit)
+        org.junit.Assert.assertTrue(
+            "Stale upload must be cancelled",
+            runCatching { pending.await() }.exceptionOrNull() is kotlinx.coroutines.CancellationException,
+        )
+        assertEquals(listOf("upload"), calls)
+        assertFalse(deliveredSuccess)
     }
 
     private class FakeSetupFaceGateway(

@@ -15,6 +15,8 @@ import com.ytone.longcare.data.repository.TencentFaceRepositoryImpl
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.data.repository.UserListRepositoryImpl
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository
+import com.ytone.longcare.domain.faceauth.FaceVerificationSession
+import com.ytone.longcare.data.repository.UserSessionTracker
 import com.ytone.longcare.domain.identification.IdentificationRepository
 import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.location.LocationRepository
@@ -35,6 +37,9 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
+
+    @Binds
+    abstract fun bindFaceVerificationSession(impl: UserSessionTracker): FaceVerificationSession
 
     @Binds
     @Singleton

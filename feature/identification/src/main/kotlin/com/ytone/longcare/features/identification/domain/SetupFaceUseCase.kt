@@ -26,20 +26,26 @@ class SetupFaceUseCase @Inject constructor(
         imageFile: File,
         base64Image: String,
         currentUserId: Int?,
+        ensureCurrentSession: () -> Unit,
     ): SetupFaceResult {
+        ensureCurrentSession()
         if (currentUserId == null) {
             return SetupFaceResult.Error(SetupFaceFailure.CurrentUserUnavailable)
         }
 
         val uploadResult = gateway.uploadFaceImage(imageFile)
+        ensureCurrentSession()
         if (uploadResult is SetupFaceUploadResult.Error) {
             return SetupFaceResult.Error(SetupFaceFailure.ImageUpload(uploadResult.detail))
         }
         val uploadedKey = (uploadResult as SetupFaceUploadResult.Success).uploadedKey
 
-        return when (val setFaceResult = gateway.setFaceOnServer(base64Image, uploadedKey)) {
+        val setFaceResult = gateway.setFaceOnServer(base64Image, uploadedKey)
+        ensureCurrentSession()
+        return when (setFaceResult) {
             SetupFaceServerResult.Success -> {
                 gateway.refreshCurrentUserSession()
+                ensureCurrentSession()
                 SetupFaceResult.Success
             }
 

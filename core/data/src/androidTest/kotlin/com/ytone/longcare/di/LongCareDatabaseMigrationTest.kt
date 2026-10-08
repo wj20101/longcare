@@ -1,6 +1,5 @@
 package com.ytone.longcare.di
 
-import androidx.room.Room
 import androidx.room.testing.MigrationTestHelper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -78,10 +77,7 @@ class LongCareDatabaseMigrationTest {
     }
 
     private fun openDatabase(name: String): LongCareDatabase =
-        Room.databaseBuilder(context, LongCareDatabase::class.java, name)
-            .fallbackToDestructiveMigration(dropAllTables = true)
-            .allowMainThreadQueries()
-            .build()
+        DatabaseModule.buildDatabase(context, name)
 
     private companion object {
         const val DATABASE_V3 = "longcare-destructive-v3"

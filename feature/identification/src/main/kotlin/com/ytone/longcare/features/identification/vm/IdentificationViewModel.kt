@@ -69,10 +69,9 @@ class IdentificationViewModel @Inject constructor(
         onFaceSetupConfigMissing = {
             setFaceSetupError(textResolver.text(R.string.identification_face_config_unavailable))
         },
-    )
+    ).also { it.observeSession(viewModelScope) }
     val faceSdkLaunchRequest = faceSdkCoordinator.launchRequest
     private var servicePersonEntryJob: Job? = null
-
     private fun setFaceVerificationError(
         message: String,
         error: FaceVerifyError? = null,
@@ -201,6 +200,7 @@ class IdentificationViewModel @Inject constructor(
                     ready = ready,
                     scope = viewModelScope,
                     setupFaceUseCase = setupFaceUseCase,
+                    ensureCurrentSession = faceSdkCoordinator::requireCurrentSession,
                     resolveCurrentUserId = { getCurrentUser()?.userId },
                     setFaceSetupState = { state -> _faceSetupState.value = state },
                     setFaceSetupError = ::setFaceSetupError,

@@ -5,7 +5,6 @@ import com.ytone.longcare.data.database.dao.OrderElderInfoDao
 import com.ytone.longcare.data.database.dao.OrderLocalStateDao
 import com.ytone.longcare.data.database.dao.OrderProjectDao
 import com.ytone.longcare.data.database.entity.toDb
-import com.ytone.longcare.data.database.entity.toModel
 import com.ytone.longcare.data.repository.OrderMapper.toOrderElderInfoEntity
 import com.ytone.longcare.data.repository.OrderMapper.toOrderEntity
 import com.ytone.longcare.data.repository.OrderMapper.toOrderProjectEntities
@@ -41,29 +40,4 @@ internal class OrderRoomSyncDelegate(
         }
     }
 
-    suspend fun loadOrderWithDetails(orderId: Long): OrderWithDetails? {
-        val cachedOrder = orderDao.getOrderById(orderId) ?: return null
-        val elderInfo = orderElderInfoDao.getByOrderId(orderId)
-        val localState = orderLocalStateDao.getByOrderId(orderId)
-        val projects = orderProjectDao.getProjectsByOrderId(orderId)
-        return OrderWithDetails(
-            order = cachedOrder.toModel(),
-            elderInfo = elderInfo?.toModel(),
-            localState = localState?.toModel(),
-            projects = projects.map { it.toModel() }
-        )
-    }
-
-    suspend fun persistOrderInfoAndBuildDetails(
-        orderId: Long,
-        orderInfo: ServiceOrderInfoModel
-    ): OrderWithDetails {
-        syncOrderInfoToRoom(orderId, orderInfo)
-        return loadOrderWithDetails(orderId) ?: OrderWithDetails(
-            order = orderInfo.toOrderEntity(orderId),
-            elderInfo = orderInfo.userInfo?.toOrderElderInfoEntity(orderId),
-            localState = OrderLocalStateEntity(orderId = orderId),
-            projects = orderInfo.projectList?.toOrderProjectEntities(orderId) ?: emptyList()
-        )
-    }
 }

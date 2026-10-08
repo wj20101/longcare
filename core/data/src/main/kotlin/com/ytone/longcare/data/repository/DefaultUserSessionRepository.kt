@@ -38,7 +38,8 @@ private const val SESSION_PUBLICATION_TIMEOUT_MS = 5_000L
 @Singleton
 class DefaultUserSessionRepository @Inject constructor(
     @param:AppDataStore private val appDataStore: DataStore<Preferences>,
-    @param:ApplicationScope private val coroutineScope: CoroutineScope
+    @param:ApplicationScope private val coroutineScope: CoroutineScope,
+    private val faceSession: UserSessionTracker,
 ) : UserSessionRepository {
 
     private val mutationMutex = Mutex()
@@ -70,7 +71,10 @@ class DefaultUserSessionRepository @Inject constructor(
                 SessionState.LoggedOut
             }
         }
-        .onEach { state -> CrashReportGateway.setUserId(state.user?.userId) }
+        .onEach { state ->
+            faceSession.observe(state.user)
+            CrashReportGateway.setUserId(state.user?.userId)
+        }
         .stateIn(
             scope = coroutineScope,
             // Session is process-wide state used by receivers and interceptors, not only by UI collectors.
@@ -79,26 +83,37 @@ class DefaultUserSessionRepository @Inject constructor(
         )
 
     override suspend fun login(user: User) {
-        updateUserInternal(user)
+        updateUserInternal(user, forceNewSession = true)
     }
 
     override suspend fun updateUser(user: User) {
         updateUserInternal(user)
     }
 
-    private suspend fun updateUserInternal(user: User) = mutationMutex.withLock {
-        appDataStore.edit { preferences ->
-            preferences[APP_USER_KEY] = user.encode()
+    private suspend fun updateUserInternal(user: User, forceNewSession: Boolean = false) = mutationMutex.withLock {
+        val changesSession = forceNewSession || !faceSession.matches(user)
+        if (changesSession) faceSession.beginChange(user)
+        try {
+            appDataStore.edit { preferences ->
+                preferences[APP_USER_KEY] = user.encode()
+            }
+            // Publishing also synchronizes diagnostics and restored session identity.
+            awaitSessionState(SessionState.LoggedIn(user))
+        } finally {
+            if (changesSession) faceSession.finishChange(sessionState.value.user)
         }
-        // Publishing the state also synchronizes diagnostics. Callers can report immediately.
-        awaitSessionState(SessionState.LoggedIn(user))
     }
 
     override suspend fun logout() = mutationMutex.withLock {
-        appDataStore.edit { preferences ->
-            preferences.remove(APP_USER_KEY)
+        faceSession.beginChange()
+        try {
+            appDataStore.edit { preferences ->
+                preferences.remove(APP_USER_KEY)
+            }
+            awaitSessionState(SessionState.LoggedOut)
+        } finally {
+            faceSession.finishChange(sessionState.value.user)
         }
-        awaitSessionState(SessionState.LoggedOut)
     }
 
     private suspend fun awaitSessionState(expected: SessionState) {

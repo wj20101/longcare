@@ -183,12 +183,10 @@ internal class PhotoTaskQueueDelegate(
 
     fun getTasksSnapshot(): List<ImageTask> = imageTasks.value
 
-    fun updateTaskUploadStatus(taskId: String, key: String) {
+    suspend fun updateTaskUploadStatus(taskId: String, key: String) {
+        taskId.toLongOrNull()?.let { imageRepository.markAsSuccess(it, key) }
         imageTasks.value = imageTasks.value.map { task ->
             if (task.id == taskId) task.copy(isUploaded = true, cloudUrl = null, key = key) else task
-        }
-        scope.launch {
-            taskId.toLongOrNull()?.let { imageRepository.markAsSuccess(it, key) }
         }
     }
 

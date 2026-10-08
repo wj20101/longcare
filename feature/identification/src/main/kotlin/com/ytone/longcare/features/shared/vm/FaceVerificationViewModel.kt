@@ -31,6 +31,7 @@ class FaceVerificationViewModel @Inject constructor(
     private val photoProcessor: FaceVerificationPhotoProcessor,
     private val textResolver: ResourceTextResolver,
 ) : ViewModel() {
+    private val ownerSession = systemConfigManager.sessionGeneration.value
 
     sealed class FaceVerifyUiState {
         object Idle : FaceVerifyUiState()
@@ -62,6 +63,14 @@ class FaceVerificationViewModel @Inject constructor(
     private var latestPhotoProcessingId = 0L
     private var nextLaunchId = 0L
     private var latestPreparationId = 0L
+
+    init {
+        viewModelScope.launch {
+            systemConfigManager.sessionGeneration.collect { generation ->
+                if (generation != ownerSession) resetState()
+            }
+        }
+    }
 
     fun startFaceVerificationWithAutoSign(
         name: String,
@@ -144,6 +153,7 @@ class FaceVerificationViewModel @Inject constructor(
     }
 
     fun onFaceSdkEvent(launchId: Long, event: FaceSdkEvent) {
+        if (ownerSession == null || !systemConfigManager.isCurrent(ownerSession)) return
         val launch = activeLaunchRequest?.takeIf { it.id == launchId } ?: return
         when (event) {
             FaceSdkEvent.InitSuccess -> _uiState.value = FaceVerifyUiState.Verifying
@@ -184,13 +194,15 @@ class FaceVerificationViewModel @Inject constructor(
     }
 
     private fun prepareFaceVerification(request: FaceVerificationRequest) {
+        if (ownerSession == null || !systemConfigManager.isCurrent(ownerSession)) return
         val preparationId = ++latestPreparationId
         _sdkLaunchRequest.value = null
         activeLaunchRequest = null
         _uiState.value = FaceVerifyUiState.Initializing
         viewModelScope.launch {
+            if (!systemConfigManager.isCurrent(ownerSession)) return@launch
             val config = systemConfigManager.getFaceVerificationConfig()
-            if (preparationId != latestPreparationId) return@launch
+            if (preparationId != latestPreparationId || !systemConfigManager.isCurrent(ownerSession)) return@launch
             if (config == null) {
                 emitError(
                     message = textResolver.text(R.string.face_verification_config_unavailable),
@@ -201,6 +213,7 @@ class FaceVerificationViewModel @Inject constructor(
                 )
                 return@launch
             }
+            if (config.sessionGeneration != ownerSession) return@launch
             val launchRequest = SharedFaceSdkLaunchRequest(
                 id = ++nextLaunchId,
                 config = config,

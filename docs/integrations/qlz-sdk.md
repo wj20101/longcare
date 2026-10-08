@@ -98,6 +98,8 @@ Android 源码、资源、BuildConfig 或 APK。客户端通过
 
 2026-09-19 纯表单真机联调发现契约差异：Swagger 虽将 `GetCheckResult.recordId` 标为可空，但没有设备记录时，省略该字段或显式传 null 均返回业务码 2001“参数错误”。同一已完成问卷的最新客户详情可返回 `pgResult` 和 `pgUrl`。按用户确认，完成页有非空设备记录时使用 GetCheckResult，纯表单直接重新请求 GetUserLatentDetail；不使用缓存旧值、不在失败后切换接口兜底。
 
+销售登记与服务照片都先上传 COS，再在业务接口提交文件 key；销售照片使用 `UploadToken.folderType=15`，`img1`～`img3` 接收各照片上传返回的 key，不保存私有访问 URL。用户点击获取定位后显示的位置作为登记快照提交，照片上传耗时不清空该位置，也不自动重新定位；登记完成后继续将其经纬度传入评估上下文。
+
 当前 Swagger 对 `liveLng` 的说明写作“纬度”、`liveLat` 写作“经度”，与通用命名习惯相反。
 客户端不擅自互换字段，按接口字段名原样传递；服务端确认含义后再统一修订。
 

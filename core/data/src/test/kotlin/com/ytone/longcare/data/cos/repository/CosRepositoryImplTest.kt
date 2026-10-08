@@ -6,16 +6,55 @@ import com.tencent.cos.xml.exception.CosXmlServiceException
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.CosStorageException
 import com.ytone.longcare.model.CosStorageFailureKind
+import com.ytone.longcare.model.CosConfig
+import com.ytone.longcare.common.utils.KLogger
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNotNull
+import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CosRepositoryImplTest {
+
+    @Before
+    fun disableAndroidLogging() {
+        KLogger.updateConfig { enabled = false }
+    }
+
+    @Test
+    fun `credentials and refresh stay bound to each photo folder type`() {
+        for (folderType in listOf(13, 14, 15)) {
+            val configReads = mutableListOf<Int>()
+            val refreshes = mutableListOf<Int>()
+            val checks = mutableListOf<Int>()
+            val config = CosConfig(
+                region = "ap-test", bucket = "private-bucket",
+                sessionToken = "temporary-token-$folderType", expiredTime = Long.MAX_VALUE,
+                tmpSecretId = "temporary-id-$folderType", tmpSecretKey = "temporary-key-$folderType",
+                startTime = 0, expiration = "", fileKeyPre = "private/$folderType/",
+            )
+            val provider = CosDynamicCredentialProvider(
+                defaultFolderType = folderType,
+                getCachedConfig = { configReads += it; config },
+                isConfigValid = { checks += it; false },
+                refreshSync = { refreshes += it; true },
+                isMainThread = { false },
+            )
+
+            assertNotNull(provider.getCredentials())
+            provider.refresh()
+
+            assertTrue(configReads.isNotEmpty())
+            assertTrue(configReads.all { it == folderType })
+            assertEquals(listOf(folderType), checks)
+            assertEquals(listOf(folderType, folderType), refreshes)
+        }
+    }
 
     @Test
     fun `resolveCredentialRefreshStrategy should skip and use cache on main thread when cached`() {

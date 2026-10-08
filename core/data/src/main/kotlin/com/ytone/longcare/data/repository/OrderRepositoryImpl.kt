@@ -4,7 +4,6 @@ import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.model.CheckOrderParamModel
 import com.ytone.longcare.model.EndOrderParamModel
 import com.ytone.longcare.model.OrderListParamModel
-import com.ytone.longcare.model.OrderInfoParamModel
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.StarOrderParamModel
 import com.ytone.longcare.model.UpUserStartImgParamModel
@@ -18,12 +17,14 @@ import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.EndOrderResultModel
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.order.OrderRepository
+import com.ytone.longcare.domain.repository.OrderDetailRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class OrderRepositoryImpl @Inject constructor(
     private val apiService: LongCareApiService,
+    private val orderDetails: OrderDetailRepository,
 ) : OrderRepository {
 
     override suspend fun getTodayOrderList(): ApiResult<List<TodayServiceOrderModel>> =
@@ -36,12 +37,7 @@ class OrderRepositoryImpl @Inject constructor(
         apiService.getOrderList(OrderListParamModel(daytime = daytime))
 
     override suspend fun getOrderInfo(orderKey: OrderKey): ApiResult<ServiceOrderInfoModel> =
-        apiService.getOrderInfo(
-            OrderInfoParamModel(
-                orderId = orderKey.orderId,
-                planId = orderKey.planId,
-            )
-        )
+        orderDetails.getOrderInfo(orderKey, forceRefresh = true)
 
     override suspend fun checkOrder(
         orderId: Long,

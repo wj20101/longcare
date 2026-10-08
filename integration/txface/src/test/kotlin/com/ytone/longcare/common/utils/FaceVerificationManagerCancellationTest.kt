@@ -16,6 +16,10 @@ import org.junit.Test
 
 class FaceVerificationManagerCancellationTest {
 
+    private val session = object : com.ytone.longcare.domain.faceauth.FaceVerificationSession {
+        override val sessionGeneration = kotlinx.coroutines.flow.MutableStateFlow<Long?>(1L)
+    }
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob())
     private val repository = mockk<TencentFaceRepository>()
     private val runtimeConfigProvider = mockk<RuntimeConfigProvider>(relaxed = true)
     private val callback = mockk<FaceVerifyCallback>(relaxed = true)
@@ -23,7 +27,7 @@ class FaceVerificationManagerCancellationTest {
 
     private val config = FaceVerificationConfig(
         appId = "app-id",
-        secret = "secret",
+        sessionGeneration = 1L,
         licence = "licence"
     )
 
@@ -36,8 +40,8 @@ class FaceVerificationManagerCancellationTest {
 
     @Test
     fun `startFaceVerification should rethrow cancellation exception`() = runTest {
-        coEvery { repository.getAccessToken(any(), any()) } throws CancellationException("cancel")
-        val manager = FaceVerificationManager(repository, runtimeConfigProvider)
+        coEvery { repository.getAccessToken(any()) } throws CancellationException("cancel")
+        val manager = FaceVerificationManager(repository, runtimeConfigProvider, session, scope)
 
         val cancelled = try {
             manager.startFaceVerification(context, config, request, callback)

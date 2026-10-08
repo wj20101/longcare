@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 internal fun launchFaceSetupUpload(
     scope: CoroutineScope,
     setupFaceUseCase: SetupFaceUseCase,
+    ensureCurrentSession: () -> Unit,
     resolveCurrentUserId: suspend () -> Int?,
     imageFile: File,
     base64Image: String,
@@ -25,12 +26,14 @@ internal fun launchFaceSetupUpload(
 ) {
     scope.launch {
         try {
+            ensureCurrentSession()
             onUploading()
             when (
                 val result = setupFaceUseCase.execute(
                     imageFile = imageFile,
                     base64Image = base64Image,
                     currentUserId = resolveCurrentUserId(),
+                    ensureCurrentSession = ensureCurrentSession,
                 )
             ) {
                 SetupFaceResult.Success -> onSuccess()
@@ -39,6 +42,7 @@ internal fun launchFaceSetupUpload(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            ensureCurrentSession()
             onError(
                 textResolver.text(
                     R.string.identification_face_setup_upload_failed,
@@ -54,6 +58,7 @@ internal fun handleStandardFaceSetupSdkEvent(
     ready: FaceSetupPreparation.Ready,
     scope: CoroutineScope,
     setupFaceUseCase: SetupFaceUseCase,
+    ensureCurrentSession: () -> Unit,
     resolveCurrentUserId: suspend () -> Int?,
     setFaceSetupState: (FaceSetupState) -> Unit,
     setFaceSetupError: (String) -> Unit,
@@ -86,6 +91,7 @@ internal fun handleStandardFaceSetupSdkEvent(
             launchFaceSetupUpload(
                 scope = scope,
                 setupFaceUseCase = setupFaceUseCase,
+                ensureCurrentSession = ensureCurrentSession,
                 resolveCurrentUserId = resolveCurrentUserId,
                 imageFile = ready.imageFile,
                 base64Image = ready.base64Image,

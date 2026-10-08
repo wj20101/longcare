@@ -188,6 +188,7 @@ interface LongCareApiService {
     /**
      * 系统相关配置
      */
+    @Headers("Cache-Control: no-cache, no-store")
     @GET("/V1/System/Config")
     suspend fun getSystemConfig(): ApiResult<SystemConfigModel>
 

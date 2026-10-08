@@ -367,7 +367,9 @@ internal fun SalesExperienceScreen(
             val result = requireNotNull(uiState.submissionResult)
             discardRegistrationPhotos()
             navigator.replaceTop(SalesRoute(SalesPage.SUBMIT_SUCCESS, result.id, result.pgUrl,
-                address = registrationDraft.liveAddress, latitude = route?.latitude, longitude = route?.longitude))
+                address = registrationDraft.liveAddress,
+                latitude = route?.registrationLocation?.latitude,
+                longitude = route?.registrationLocation?.longitude))
         }
     }
 

@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.R
+import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.image.UnifiedImagePipeline
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
@@ -43,13 +44,14 @@ import javax.inject.Inject
 class SalesViewModel @Inject constructor(
     private val saleRepository: SaleRepository,
     private val locationFacade: LocationFacade,
-    private val photoCloudUploader: PhotoCloudUploader,
+    photoCloudUploader: PhotoCloudUploader,
     private val imagePipeline: UnifiedImagePipeline,
     private val evaluationDeviceGateway: SalesEvaluationDeviceGateway,
     private val systemConfigManager: SystemConfigManager,
     private val textResolver: ResourceTextResolver,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+    private val submitCustomerUseCase = SubmitCustomerUseCase(saleRepository, photoCloudUploader)
     private val _uiState = MutableStateFlow(SalesUiState(
         selectedCustomerId = savedStateHandle[EVALUATION_CUSTOMER_KEY] ?: 0,
         evaluationRecordId = savedStateHandle[EVALUATION_RECORD_KEY],
@@ -540,22 +542,21 @@ class SalesViewModel @Inject constructor(
                     submissionResult = null,
                 )
             try {
-                val uploadedKeys =
-                    uploadPhotoKeys(photoUris.take(MAX_SALES_CUSTOMER_PHOTOS))
-                val currentLocation = location?.takeIf(locationFacade::isUsable)
-                _uiState.value =
-                    _uiState.value.copy(
-                        currentLocation = currentLocation,
-                        operation = text(R.string.sales_loading_submit_customer)
-                    )
                 when (
-                    val result =
-                        saleRepository.addUserLatent(
-                            draft.toRequest(
-                                location = currentLocation,
-                                photoKeys = uploadedKeys,
+                    val result = submitCustomerUseCase(
+                        draft, photoUris, location,
+                        onPhotoProgress = { index, count ->
+                            _uiState.value = _uiState.value.copy(
+                                operation = text(R.string.sales_loading_photo_progress, index, count),
                             )
-                        )
+                        },
+                        onSubmitting = { currentLocation ->
+                            _uiState.value = _uiState.value.copy(
+                                currentLocation = currentLocation,
+                                operation = text(R.string.sales_loading_submit_customer),
+                            )
+                        },
+                    )
                 ) {
                     is ApiResult.Success -> onCustomerSubmitted(result.data)
                     is ApiResult.Failure -> showError(result.message)
@@ -564,8 +565,8 @@ class SalesViewModel @Inject constructor(
                 }
             } catch (cancellation: CancellationException) {
                 throw cancellation
-            } catch (userFacing: SalesUserFacingException) {
-                showError(userFacing.message.orEmpty())
+            } catch (photoError: SalesPhotoUploadException) {
+                showError(text(R.string.sales_error_photo_upload, photoError.index))
             } catch (_: Throwable) {
                 showError(text(R.string.sales_error_submit))
             } finally {
@@ -760,37 +761,6 @@ class SalesViewModel @Inject constructor(
         }
     }
 
-    private suspend fun uploadPhotoKeys(photoUris: List<Uri>): List<String> {
-        if (photoUris.isEmpty()) {
-            return emptyList()
-        }
-        return photoUris.mapIndexed { index, uri ->
-            _uiState.value =
-                _uiState.value.copy(
-                    operation =
-                        text(
-                            R.string.sales_loading_photo_progress,
-                            index + 1,
-                            photoUris.size,
-                        )
-                )
-            val uploadedKey =
-                try {
-                    photoCloudUploader.upload(uri).key
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (_: Throwable) {
-                    null
-                }
-            if (uploadedKey.isNullOrBlank()) {
-                throw SalesUserFacingException(
-                    text(R.string.sales_error_photo_upload, index + 1)
-                )
-            }
-            uploadedKey
-        }
-    }
-
     fun discardManagedPhoto(uri: Uri) {
         // Entry removal must not cancel deletion of files that are no longer used.
         viewModelScope.launch(kotlinx.coroutines.NonCancellable) {
@@ -922,9 +892,38 @@ class SalesViewModel @Inject constructor(
     }
 }
 
-private class SalesUserFacingException(
-    message: String,
-) : IllegalStateException(message)
+/** Registration orchestration has no dependency on ViewModel state or UI text. */
+internal class SubmitCustomerUseCase(
+    private val repository: SaleRepository,
+    private val uploader: PhotoCloudUploader,
+) {
+    suspend operator fun invoke(
+        draft: SalesCustomerDraft,
+        photoUris: List<Uri>,
+        location: LocationResult?,
+        onPhotoProgress: (Int, Int) -> Unit,
+        onSubmitting: (LocationResult?) -> Unit,
+    ): ApiResult<AddUserLatentResultModel> {
+        val photos = photoUris.take(MAX_SALES_CUSTOMER_PHOTOS)
+        val keys = photos.mapIndexed { index, uri ->
+            onPhotoProgress(index + 1, photos.size)
+            val key = try {
+                uploader.upload(uri, folderType = CosConstants.DEFAULT_SALES_TYPE).key
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                throw SalesPhotoUploadException(index + 1)
+            }
+            if (key.isBlank()) throw SalesPhotoUploadException(index + 1)
+            key
+        }
+        // 登记位置是用户获取后显示的表单数据，不再套用实时签到位置的时效规则。
+        onSubmitting(location)
+        return repository.addUserLatent(draft.toRequest(location, keys))
+    }
+}
+
+internal class SalesPhotoUploadException(val index: Int) : Exception()
 
 data class SalesUiState(
     val isLoading: Boolean = false,

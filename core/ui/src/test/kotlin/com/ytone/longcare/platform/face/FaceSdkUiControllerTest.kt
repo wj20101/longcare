@@ -14,7 +14,7 @@ class FaceSdkUiControllerTest {
     private val controller = FaceSdkUiController(verifier)
     private val callback = slot<FaceVerifyCallback>()
     private val context = mockk<Context>()
-    private val config = FaceVerificationConfig("app", "secret", "licence")
+    private val config = FaceVerificationConfig("app", "licence", 1L)
     private val request = FaceVerificationRequest("name", "id", "order", "user")
 
     @Test fun `terminal callbacks release once and late callbacks are ignored`() = runTest {

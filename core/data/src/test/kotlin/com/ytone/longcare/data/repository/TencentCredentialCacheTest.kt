@@ -4,6 +4,7 @@ import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.TencentAccessTokenResponse
 import com.ytone.longcare.model.TencentApiTicketResponse
 import com.ytone.longcare.model.TicketInfo
+import com.ytone.longcare.model.User
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -24,11 +25,11 @@ class TencentCredentialCacheTest {
             ApiResult.Success(accessToken("token-$loads", expireIn = "100"))
         }
 
-        val first = cache.getAccessToken("app-id", loader)
+        val first = cache.getAccessToken("app-id", 1L, { true }, loader)
         now += 89_000L
-        val cached = cache.getAccessToken("app-id", loader)
+        val cached = cache.getAccessToken("app-id", 1L, { true }, loader)
         now += 1_000L
-        val refreshed = cache.getAccessToken("app-id", loader)
+        val refreshed = cache.getAccessToken("app-id", 1L, { true }, loader)
 
         assertEquals("token-1", first.successData().accessToken)
         assertEquals("token-1", cached.successData().accessToken)
@@ -46,7 +47,7 @@ class TencentCredentialCacheTest {
         val requests =
             List(8) {
                 async {
-                    cache.getAccessToken("app-id") {
+                    cache.getAccessToken("app-id", 1L, { true }) {
                         loads += 1
                         loaderStarted.complete(Unit)
                         releaseLoader.await()
@@ -76,12 +77,75 @@ class TencentCredentialCacheTest {
             ApiResult.Success(signTicket("sign-$loads", expireIn = "3600"))
         }
 
-        val first = cache.getSignTicket("app-id", loader)
-        val second = cache.getSignTicket("app-id", loader)
+        val first = cache.getSignTicket("app-id", 1L, { true }, loader)
+        val second = cache.getSignTicket("app-id", 1L, { true }, loader)
 
         assertEquals("sign-1", first.successData().tickets?.single()?.value)
         assertEquals("sign-1", second.successData().tickets?.single()?.value)
         assertEquals(1, loads)
+    }
+
+    @Test
+    fun `session change rejects an in flight token and allows fresh credentials`() = runTest {
+        val session = UserSessionTracker().apply { observe(User(userId = 1)) }
+        val cache = session.credentials
+        val generation = requireNotNull(session.sessionGeneration.value)
+        val started = CompletableDeferred<Unit>()
+        val finish = CompletableDeferred<Unit>()
+        val pending = async {
+            cache.getAccessToken("app", generation, { session.isCurrent(generation) }) {
+                started.complete(Unit)
+                finish.await()
+                ApiResult.Success(accessToken("stale", "3600"))
+            }
+        }
+        started.await()
+        session.beginChange()
+        session.finishChange(User(userId = 2))
+        finish.complete(Unit)
+        org.junit.Assert.assertTrue(
+            "Old session credentials must not escape",
+            runCatching { pending.await() }.exceptionOrNull() is kotlinx.coroutines.CancellationException,
+        )
+        val next = requireNotNull(session.sessionGeneration.value)
+        val fresh = cache.getAccessToken("app", next, { session.isCurrent(next) }) {
+            ApiResult.Success(accessToken("fresh", "3600"))
+        }
+        assertEquals("fresh", fresh.successData().accessToken)
+    }
+
+    @Test
+    fun `sign refresh is single flight and invalidated by session change`() = runTest {
+        val cache = TencentCredentialCache()
+        var generation = 1L
+        var loads = 0
+        val started = CompletableDeferred<Unit>()
+        val finish = CompletableDeferred<Unit>()
+        val requests = List(4) {
+            async {
+                cache.getSignTicket("app", 1L, { generation == 1L }) {
+                    loads++
+                    started.complete(Unit)
+                    finish.await()
+                    ApiResult.Success(signTicket("stale", "3600"))
+                }
+            }
+        }
+        started.await()
+        generation = 2L
+        cache.clear()
+        finish.complete(Unit)
+        requests.forEach {
+            org.junit.Assert.assertTrue(
+                "Old session must be rejected",
+                runCatching { it.await() }.exceptionOrNull() is kotlinx.coroutines.CancellationException,
+            )
+        }
+        assertEquals(1, loads)
+        val fresh = cache.getSignTicket("app", 2L, { generation == 2L }) {
+            ApiResult.Success(signTicket("fresh", "3600"))
+        }
+        assertEquals("fresh", fresh.successData().tickets!!.single().value)
     }
 
     private fun accessToken(

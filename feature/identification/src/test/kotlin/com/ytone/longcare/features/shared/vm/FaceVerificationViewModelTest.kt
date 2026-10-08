@@ -36,12 +36,33 @@ class FaceVerificationViewModelTest {
     private val systemConfigManager = mockk<FaceVerificationConfigProvider>(relaxed = true)
     private val photoProcessor = mockk<FaceVerificationPhotoProcessor>()
 
+    private val sessionGeneration = kotlinx.coroutines.flow.MutableStateFlow<Long?>(1L)
+
     private fun createViewModel(): FaceVerificationViewModel {
+        io.mockk.every { systemConfigManager.sessionGeneration } returns sessionGeneration
+        io.mockk.every { systemConfigManager.isCurrent(any()) } answers { firstArg<Long>() == sessionGeneration.value }
         return FaceVerificationViewModel(
             systemConfigManager = systemConfigManager,
             photoProcessor = photoProcessor,
             textResolver = ResourceTextResolver(ApplicationProvider.getApplicationContext()),
         )
+    }
+
+    @Test
+    fun `session switch clears retained launch and blocks callbacks and restart`() = runTest {
+        coEvery { systemConfigManager.getFaceVerificationConfig() } returns FaceVerificationConfig("app", "licence", 1L)
+        val viewModel = createViewModel()
+        viewModel.startFaceVerificationWithAutoSign("order", "elderly-99", "photo")
+        advanceUntilIdle()
+        val launch = requireNotNull(viewModel.sdkLaunchRequest.value)
+        sessionGeneration.value = 2L
+        advanceUntilIdle()
+        assertNull(viewModel.sdkLaunchRequest.value)
+        viewModel.onFaceSdkEvent(launch.id, FaceSdkEvent.InitSuccess)
+        viewModel.startFaceVerificationWithAutoSign("order", "elderly-99", "photo")
+        advanceUntilIdle()
+        assertNull(viewModel.sdkLaunchRequest.value)
+        assertEquals(FaceVerificationViewModel.FaceVerifyUiState.Idle, viewModel.uiState.value)
     }
 
     @Test
@@ -110,7 +131,7 @@ class FaceVerificationViewModelTest {
     fun `startFaceVerificationWithAutoSign should expose resolved sdk launch request`() = runTest {
         coEvery { systemConfigManager.getFaceVerificationConfig() } returns FaceVerificationConfig(
             appId = "appId",
-            secret = "secret",
+            sessionGeneration = 1L,
             licence = "licence"
         )
         val viewModel = createViewModel()
@@ -124,7 +145,7 @@ class FaceVerificationViewModelTest {
         advanceUntilIdle()
 
         val launchRequest = requireNotNull(viewModel.sdkLaunchRequest.value)
-        assertEquals(FaceVerificationConfig("appId", "secret", "licence"), launchRequest.config)
+        assertEquals(FaceVerificationConfig("appId", "licence", 1L), launchRequest.config)
         assertEquals("test", launchRequest.request.name)
         assertEquals("123", launchRequest.request.idNo)
         assertEquals(null, launchRequest.request.sourcePhotoStr)
@@ -135,7 +156,7 @@ class FaceVerificationViewModelTest {
         val sdkError = FaceVerifyError(code = "E001", description = "verify failed")
         coEvery { systemConfigManager.getFaceVerificationConfig() } returns FaceVerificationConfig(
             appId = "appId",
-            secret = "secret",
+            sessionGeneration = 1L,
             licence = "licence"
         )
         val viewModel = createViewModel()
@@ -160,7 +181,7 @@ class FaceVerificationViewModelTest {
     fun `startFaceVerificationWithAutoSign should expose init success as verifying state`() = runTest {
         coEvery { systemConfigManager.getFaceVerificationConfig() } returns FaceVerificationConfig(
             appId = "appId",
-            secret = "secret",
+            sessionGeneration = 1L,
             licence = "licence"
         )
         val viewModel = createViewModel()
@@ -182,7 +203,7 @@ class FaceVerificationViewModelTest {
         val result = FaceVerifyResult(isSuccess = true, error = null)
         coEvery { systemConfigManager.getFaceVerificationConfig() } returns FaceVerificationConfig(
             appId = "appId",
-            secret = "secret",
+            sessionGeneration = 1L,
             licence = "licence"
         )
         val viewModel = createViewModel()
@@ -206,7 +227,7 @@ class FaceVerificationViewModelTest {
     fun `new preparation clears stale launch when refreshed config is missing`() = runTest {
         coEvery { systemConfigManager.getFaceVerificationConfig() } returnsMany
             listOf(
-                FaceVerificationConfig("appId", "secret", "licence"),
+                FaceVerificationConfig("appId", "licence", 1L),
                 null,
             )
         val viewModel = createViewModel()

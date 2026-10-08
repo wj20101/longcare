@@ -14,6 +14,12 @@ import retrofit2.http.POST
 class UserApiContractTest {
 
     @Test
+    fun `system configuration always bypasses HTTP storage`() {
+        val method = LongCareApiService::class.java.declaredMethods.single { it.name == "getSystemConfig" }
+        assertTrue(requireNotNull(method.getAnnotation(Headers::class.java)).value.contains("Cache-Control: no-cache, no-store"))
+    }
+
+    @Test
     fun `getFace uses documented GET path and always checks server state`() {
         val method = LongCareApiService::class.java.declaredMethods.single { it.name == "getFace" }
 

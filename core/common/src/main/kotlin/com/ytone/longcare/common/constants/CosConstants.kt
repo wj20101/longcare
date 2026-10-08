@@ -17,6 +17,9 @@ object CosConstants {
      */
     const val DEFAULT_FACE_TYPE = 14
 
+    /** 用于销售登记照片上传。 */
+    const val DEFAULT_SALES_TYPE = 15
+
     /** 业务图片上传前允许的最大文件大小。 */
     const val MAX_IMAGE_FILE_SIZE_BYTES = 10L * 1024L * 1024L
 

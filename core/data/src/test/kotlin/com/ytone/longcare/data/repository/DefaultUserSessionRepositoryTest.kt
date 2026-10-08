@@ -36,7 +36,7 @@ class DefaultUserSessionRepositoryTest {
             PreferenceDataStoreFactory.create(scope = backgroundScope) {
                 temporaryFolder.root.resolve("session.preferences_pb")
             }
-        val repository = DefaultUserSessionRepository(dataStore, backgroundScope)
+        val repository = DefaultUserSessionRepository(dataStore, backgroundScope, UserSessionTracker())
         val user = User(userId = 7, token = "token")
 
         repository.login(user)
@@ -60,7 +60,7 @@ class DefaultUserSessionRepositoryTest {
             temporaryFolder.root.resolve("restored.preferences_pb")
         }
         dataStore.edit { it[byteArrayPreferencesKey("app_user")] = User(userId = 123).encode() }
-        val repository = DefaultUserSessionRepository(dataStore, backgroundScope)
+        val repository = DefaultUserSessionRepository(dataStore, backgroundScope, UserSessionTracker())
         repository.sessionState.first { it is SessionState.LoggedIn }
         assertEquals("123", CrashReportGateway.userId)
         repository.login(User(userId = 456))
@@ -74,7 +74,7 @@ class DefaultUserSessionRepositoryTest {
     @Test
     fun `login recovers after a transient read failure and subsequent mutations complete`() = runTest {
         val dataStore = FailingReadDataStore(failuresRemaining = 1)
-        val repository = DefaultUserSessionRepository(dataStore, backgroundScope)
+        val repository = DefaultUserSessionRepository(dataStore, backgroundScope, UserSessionTracker())
         repository.sessionState.first { it == SessionState.LoggedOut }
         val user = User(userId = 123)
 
@@ -93,7 +93,7 @@ class DefaultUserSessionRepositoryTest {
     @Test
     fun `persistent read failure bounds publication wait and releases mutation mutex`() = runTest {
         val dataStore = FailingReadDataStore(failuresRemaining = Int.MAX_VALUE)
-        val repository = DefaultUserSessionRepository(dataStore, backgroundScope)
+        val repository = DefaultUserSessionRepository(dataStore, backgroundScope, UserSessionTracker())
         repository.sessionState.first { it == SessionState.LoggedOut }
 
         withTimeout(10_000) {
@@ -119,7 +119,7 @@ class DefaultUserSessionRepositoryTest {
     @Test
     fun `cancelling a publication wait releases the mutex without stopping read recovery`() = runTest {
         val dataStore = FailingReadDataStore(failuresRemaining = Int.MAX_VALUE)
-        val repository = DefaultUserSessionRepository(dataStore, backgroundScope)
+        val repository = DefaultUserSessionRepository(dataStore, backgroundScope, UserSessionTracker())
         val login = async { repository.login(User(userId = 123)) }
         dataStore.persisted.first { it[byteArrayPreferencesKey("app_user")] != null }
         login.cancelAndJoin()
@@ -128,6 +128,61 @@ class DefaultUserSessionRepositoryTest {
         dataStore.failuresRemaining = 0
         withTimeout(10_000) { repository.login(User(userId = 456)) }
         assertEquals("456", CrashReportGateway.userId)
+    }
+
+    @Test
+    fun `face session invalidates before persistence and same account relogin gets a new generation`() = runTest {
+        val persisted = MutableStateFlow(emptyPreferences())
+        var writeGate: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+        val dataStore = object : DataStore<Preferences> {
+            override val data = persisted
+            override suspend fun updateData(transform: suspend (Preferences) -> Preferences): Preferences {
+                writeGate?.await()
+                return transform(persisted.value).also { persisted.value = it }
+            }
+        }
+        val session = UserSessionTracker()
+        val repository = DefaultUserSessionRepository(dataStore, backgroundScope, session)
+        val user = User(userId = 7, token = "token")
+        repository.login(user)
+        val first = requireNotNull(session.sessionGeneration.value)
+        repository.updateUser(user.copy(userName = "cosmetic update"))
+        assertEquals(first, session.sessionGeneration.value)
+
+        writeGate = kotlinx.coroutines.CompletableDeferred()
+        val logout = async { repository.logout() }
+        session.sessionGeneration.first { it == null }
+        assertEquals(SessionState.LoggedIn(user.copy(userName = "cosmetic update")), repository.sessionState.value)
+        assertTrue(!session.isCurrent(first))
+        writeGate.complete(Unit)
+        logout.await()
+        writeGate = null
+        repository.login(user)
+        val second = requireNotNull(session.sessionGeneration.value)
+        assertTrue(second > first)
+        repository.login(user)
+        assertTrue(requireNotNull(session.sessionGeneration.value) > second)
+        val third = session.sessionGeneration.value
+        repository.updateUser(user.copy(token = "rotated-token"))
+        assertTrue(session.sessionGeneration.value != third)
+    }
+
+    @Test
+    fun `logged in publication already has a usable face session`() = runTest {
+        val store = FailingReadDataStore(0)
+        val faceSession = UserSessionTracker()
+        val repository = DefaultUserSessionRepository(store, backgroundScope, faceSession)
+        repository.sessionState.first { it == SessionState.LoggedOut }
+        val observer = async(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+            repository.sessionState.first { state ->
+                if (state is SessionState.LoggedIn) {
+                    assertTrue(faceSession.sessionGeneration.value != null)
+                    true
+                } else false
+            }
+        }
+        repository.login(User(userId = 7, token = "token"))
+        observer.await()
     }
 
     private class FailingReadDataStore(var failuresRemaining: Int) : DataStore<Preferences> {
