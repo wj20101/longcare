@@ -61,7 +61,6 @@
     <string name="sales_evaluation_report_title">评估报告</string>
     <string name="sales_customer_loading_detail">正在加载客户信息…</string>
     <string name="sales_customer_detail_load_failed">客户信息加载失败</string>
-    <string name="sales_customer_no_detail">暂无客户信息</string>
 
     <!-- 待办提醒 -->
     <string name="sales_reminder_list_title">待办提醒</string>
