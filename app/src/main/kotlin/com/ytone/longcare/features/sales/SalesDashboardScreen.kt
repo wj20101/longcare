@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +53,9 @@ internal fun SalesDashboardScreen(
     onReminders: () -> Unit,
     onCustomerClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    isRecentCustomersLoading: Boolean = false,
+    recentCustomersErrorMessage: String? = null,
+    onRetryRecentCustomers: () -> Unit = {},
 ) {
     LazyColumn(
         modifier =
@@ -137,7 +143,30 @@ internal fun SalesDashboardScreen(
                 fontWeight = FontWeight.Bold,
             )
         }
-        if (customers.isEmpty()) {
+        if (recentCustomersErrorMessage != null) {
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth().salesWhiteCard().padding(18.dp),
+                ) {
+                    Text(recentCustomersErrorMessage, color = SalesTextSecondary, fontSize = 14.sp)
+                    TextButton(onClick = onRetryRecentCustomers) {
+                        Text(stringResource(R.string.sales_common_reload), color = SalesBlue)
+                    }
+                }
+            }
+        }
+        if (customers.isEmpty() && isRecentCustomersLoading) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 82.dp).salesWhiteCard().padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = SalesBlue, strokeWidth = 2.dp)
+                    Text(stringResource(R.string.sales_loading_recent_customers), color = SalesTextSecondary, fontSize = 14.sp)
+                }
+            }
+        } else if (customers.isEmpty() && recentCustomersErrorMessage == null) {
             item {
                 Column(
                     modifier =

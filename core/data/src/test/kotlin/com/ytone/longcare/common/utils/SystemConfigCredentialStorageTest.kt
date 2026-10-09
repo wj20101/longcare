@@ -1,9 +1,9 @@
 package com.ytone.longcare.common.utils
 
 import android.content.Context
-import com.squareup.moshi.Moshi
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.model.SystemConfigModel
+import com.ytone.longcare.di.NetworkDataModule
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -19,13 +19,28 @@ import org.robolectric.annotation.Config
 class SystemConfigCredentialStorageTest {
     private val context: Context = RuntimeEnvironment.getApplication()
     private val preferences = context.getSharedPreferences("system_config_prefs", Context.MODE_PRIVATE)
-    private val moshi = Moshi.Builder().build()
+    private val moshi = NetworkDataModule.provideMoshi()
     private val api = mockk<LongCareApiService>()
     private val config = SystemConfigModel(
         companyName = "Care",
         maxImgNum = 9,
         thirdKeyStr = """{"GaoDeMapApiKey":"map-key","TxFaceAppId":"app","TxFaceAppSecret":"sensitive-value","TxFaceAppLicence":"licence"}""",
     )
+
+    @Test
+    fun `production Uri adapter does not intercept ordinary configuration values`() {
+        val mapAdapter = moshi.adapter(Map::class.java)
+        val json = mapAdapter.toJson(mapOf("name" to "map-key", "enabled" to true, "count" to 1))
+        val parsed = requireNotNull(mapAdapter.fromJson(json))
+        assertEquals("map-key", parsed["name"])
+        assertEquals(true, parsed["enabled"])
+        assertEquals(1.0, parsed["count"])
+
+        val uriAdapter = moshi.adapter(android.net.Uri::class.java)
+        val uri = android.net.Uri.parse("content://media/item/7")
+        assertEquals("\"content://media/item/7\"", uriAdapter.toJson(uri))
+        assertEquals(uri, uriAdapter.fromJson("\"content://media/item/7\""))
+    }
 
     @Test
     fun `save excludes secret from both disk and ordinary memory cache`() = runTest {

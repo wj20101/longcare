@@ -2,6 +2,7 @@ package com.ytone.longcare.di
 
 import android.app.Application
 import android.content.Context
+import android.net.Uri
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.ytone.longcare.api.LongCareApiService
@@ -44,7 +45,7 @@ object NetworkDataModule {
     fun provideMoshi(): Moshi {
         return Moshi.Builder()
             .add(Unit::class.java, UnitJsonAdapter)
-            .add(UriJsonAdapter())
+            .add(Uri::class.java, UriJsonAdapter())
             .add(KotlinJsonAdapterFactory())
             .build()
     }

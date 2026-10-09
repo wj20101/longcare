@@ -22,6 +22,7 @@ import com.ytone.longcare.presentation.sales.SalesPage
 import com.ytone.longcare.theme.LongCareTheme
 import io.mockk.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -44,8 +45,8 @@ class SalesFlowScreenTest {
         coEvery { getUserLatentDetail(any()) } answers { ApiResult.Success(UserLatentDetailModel(id = firstArg(), userName = "目标客户")) }
     }
 
-    private fun show(initial: SalesRoute) {
-        val home = mockk<HomeSharedViewModel> { every { userState } returns MutableStateFlow(null) }
+    private fun show(initial: SalesRoute, homeUser: User? = null) {
+        val home = mockk<HomeSharedViewModel> { every { userState } returns MutableStateFlow(homeUser) }
         compose.setContent {
             LongCareTheme {
                 AppNavigationHost(HomeRoute, "offline-sales") { nav ->
@@ -56,7 +57,7 @@ class SalesFlowScreenTest {
                             val vm: SalesViewModel = viewModel {
                                 SalesViewModel(repository, mockk(relaxed = true), UnusedPhotoCloudUploader,
                                     images, mockk(relaxed = true), mockk(relaxed = true),
-                                    ResourceTextResolver(compose.activity), SavedStateHandle())
+                                    ResourceTextResolver(compose.activity), SavedStateHandle(), mockk(relaxed = true))
                             }
                             SideEffect { models[entry.id] = vm }
                             val controller = remember {
@@ -140,6 +141,34 @@ class SalesFlowScreenTest {
         compose.onNodeWithText("原生来源").assertIsDisplayed()
         compose.runOnIdle { assertEquals(listOf(HomeRoute), routes()) }
         coVerify(exactly = 0) { repository.addUserLatent(any()) }
+    }
+
+    @Test fun detailStartsLoadingAndHomeKeepsItsDataDuringBackgroundRefresh() {
+        val detail = CompletableDeferred<ApiResult<UserLatentDetailModel>>()
+        val refresh = CompletableDeferred<ApiResult<List<UserLatentListModel>>>()
+        var calls = 0
+        coEvery { repository.getRecentUserLatentList() } coAnswers {
+            if (calls++ == 0) ApiResult.Success(listOf(UserLatentListModel(7, "已有客户")))
+            else refresh.await()
+        }
+        coEvery { repository.getToDoCount() } returns ApiResult.Success(ToDoNumResultModel(3))
+        coEvery { repository.getUserLatentDetail(7) } coAnswers { detail.await() }
+        show(SalesRoute(SalesPage.HOME), User(userName = "测试顾问"))
+        click("已有客户")
+        compose.onNodeWithText("正在加载客户信息…").assertIsDisplayed()
+        compose.onNodeWithText("暂无客户信息").assertDoesNotExist()
+        compose.runOnIdle { detail.complete(ApiResult.Success(UserLatentDetailModel(7, "已有客户"))) }
+        compose.onNodeWithText("已有客户").assertExists()
+        compose.onNodeWithContentDescription("返回").performClick()
+        compose.onNodeWithText("已有客户").assertIsDisplayed()
+        compose.onNodeWithText("3项待处理").assertIsDisplayed()
+        compose.onNodeWithTag("sales_loading_overlay").assertDoesNotExist()
+        compose.onNodeWithText("正在加载最新客户").assertDoesNotExist()
+        compose.runOnIdle {
+            refresh.complete(ApiResult.Success(listOf(UserLatentListModel(8, "新客户"))))
+        }
+        compose.onNodeWithText("新客户").assertIsDisplayed()
+        compose.onNodeWithText("已有客户").assertDoesNotExist()
     }
 
     @Test fun leavingConfirmationReleasesItsPhotosEvenWhenEntryIsRemoved() {

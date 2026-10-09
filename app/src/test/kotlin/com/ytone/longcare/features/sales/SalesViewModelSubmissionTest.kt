@@ -341,6 +341,7 @@ class SalesViewModelSubmissionTest {
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
             savedStateHandle = androidx.lifecycle.SavedStateHandle(),
             textResolver = ResourceTextResolver(applicationContext),
+            cosRepository = mockk(relaxed = true),
         )
 
     private fun validDraft(): SalesCustomerDraft =

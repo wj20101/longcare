@@ -14,6 +14,7 @@ import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.location.LocationAcquisition
 import com.ytone.longcare.common.utils.messageRes
 import com.ytone.longcare.domain.sale.SaleRepository
+import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.integration.qlz.QlzSdkEvent
 import com.ytone.longcare.features.photoupload.upload.PhotoCloudUploader
 import com.ytone.longcare.model.AddUserLatentParamModel
@@ -50,6 +51,7 @@ class SalesViewModel @Inject constructor(
     private val systemConfigManager: SystemConfigManager,
     private val textResolver: ResourceTextResolver,
     private val savedStateHandle: SavedStateHandle,
+    private val cosRepository: CosRepository,
 ) : ViewModel() {
     private val submitCustomerUseCase = SubmitCustomerUseCase(saleRepository, photoCloudUploader)
     private val _uiState = MutableStateFlow(SalesUiState(
@@ -62,6 +64,8 @@ class SalesViewModel @Inject constructor(
     private var customerSearchRequestId = 0L
     private var customerDetailJob: Job? = null
     private var customerDetailRequestId = 0L
+    private var recentCustomersJob: Job? = null
+    private val customerPhotoJobs = mutableMapOf<String, Job>()
     private var toDoCountJob: Job? = null
     private var toDoCountRequestId = 0L
     private var toDoListJob: Job? = null
@@ -77,16 +81,33 @@ class SalesViewModel @Inject constructor(
     }
 
     fun loadRecentCustomers() {
-        execute(
-            operation = text(R.string.sales_loading_recent_customers),
-            request = saleRepository::getRecentUserLatentList,
-            onSuccess = { customers ->
-                _uiState.value =
-                    _uiState.value.copy(
-                        recentCustomers = customers,
-                    )
-            },
+        if (recentCustomersJob?.isActive == true) return
+        _uiState.value = _uiState.value.copy(
+            isRecentCustomersLoading = true,
+            recentCustomersErrorMessage = null,
         )
+        recentCustomersJob = viewModelScope.launch {
+            try {
+                when (val result = saleRepository.getRecentUserLatentList()) {
+                    is ApiResult.Success -> _uiState.value = _uiState.value.copy(
+                        recentCustomers = result.data,
+                        hasLoadedRecentCustomers = true,
+                    )
+                    is ApiResult.Failure -> _uiState.value = _uiState.value.copy(
+                        recentCustomersErrorMessage = result.message.ifBlank { text(R.string.sales_error_network) },
+                    )
+                    is ApiResult.Exception -> _uiState.value = _uiState.value.copy(
+                        recentCustomersErrorMessage = text(R.string.sales_error_network),
+                    )
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(recentCustomersErrorMessage = text(R.string.sales_error_network))
+            } finally {
+                _uiState.value = _uiState.value.copy(isRecentCustomersLoading = false)
+            }
+        }
     }
 
     fun loadToDoCount() {
@@ -385,11 +406,14 @@ class SalesViewModel @Inject constructor(
         savedStateHandle[EVALUATION_CUSTOMER_KEY] = customerId
         val requestId = ++customerDetailRequestId
         customerDetailJob?.cancel()
+        customerPhotoJobs.values.forEach(Job::cancel)
+        customerPhotoJobs.clear()
         if (customerId <= 0) {
             _uiState.value =
                 _uiState.value.copy(
                     selectedCustomerId = customerId,
                     selectedCustomer = null,
+                    customerPhotos = emptyList(),
                     isCustomerDetailLoading = false,
                     customerDetailErrorMessage =
                         text(R.string.sales_error_customer_invalid_return),
@@ -400,6 +424,7 @@ class SalesViewModel @Inject constructor(
             _uiState.value.copy(
                 selectedCustomerId = customerId,
                 selectedCustomer = null,
+                customerPhotos = emptyList(),
                 isCustomerDetailLoading = true,
                 customerDetailErrorMessage = null,
             )
@@ -413,10 +438,13 @@ class SalesViewModel @Inject constructor(
                         is ApiResult.Success -> {
                             if (requestId == customerDetailRequestId) {
                                 val detail = result.data
+                                val photoKeys = listOf(detail.img1, detail.img2, detail.img3)
+                                    .filterNotNull().filter(String::isNotBlank).distinct()
                                 _uiState.value =
                                     if (detail.id == customerId) {
                                         _uiState.value.copy(
                                             selectedCustomer = detail,
+                                            customerPhotos = photoKeys.map(::SalesCustomerPhotoUiState),
                                             customerDetailErrorMessage = null,
                                         )
                                     } else {
@@ -428,6 +456,9 @@ class SalesViewModel @Inject constructor(
                                                 ),
                                         )
                                     }
+                                if (detail.id == customerId) {
+                                    photoKeys.forEach { key -> loadCustomerPhoto(customerId, requestId, key) }
+                                }
                             }
                         }
 
@@ -476,6 +507,35 @@ class SalesViewModel @Inject constructor(
 
     fun retryCustomerDetail() {
         loadCustomerDetail(_uiState.value.selectedCustomerId)
+    }
+
+    fun retryCustomerPhoto(key: String) {
+        val customerId = _uiState.value.selectedCustomer?.id ?: return
+        if (_uiState.value.customerPhotos.none { it.key == key }) return
+        loadCustomerPhoto(customerId, customerDetailRequestId, key)
+    }
+
+    private fun loadCustomerPhoto(customerId: Int, requestId: Long, key: String) {
+        customerPhotoJobs[key]?.cancel()
+        fun update(photo: SalesCustomerPhotoUiState) {
+            if (requestId != customerDetailRequestId || _uiState.value.selectedCustomer?.id != customerId) return
+            _uiState.value = _uiState.value.copy(
+                customerPhotos = _uiState.value.customerPhotos.map { if (it.key == key) photo else it },
+            )
+        }
+        update(SalesCustomerPhotoUiState(key))
+        customerPhotoJobs[key] = viewModelScope.launch {
+            try {
+                val url = cosRepository.getFileUrl(key, folderType = CosConstants.DEFAULT_SALES_TYPE)
+                check(url.isNotBlank())
+                update(SalesCustomerPhotoUiState(key, url = url, isLoading = false))
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                update(SalesCustomerPhotoUiState(key, isLoading = false,
+                    errorMessage = text(R.string.sales_customer_photo_load_failed)))
+            }
+        }
     }
 
     fun requestCurrentLocation() {
@@ -832,35 +892,6 @@ class SalesViewModel @Inject constructor(
         requestSdkAuthorization()
     }
 
-    private fun <T> execute(
-        operation: String,
-        request: suspend () -> ApiResult<T>,
-        onSuccess: (T) -> Unit,
-    ) {
-        viewModelScope.launch {
-            _uiState.value =
-                _uiState.value.copy(
-                    isLoading = true,
-                    operation = operation,
-                    errorMessage = null,
-                )
-            try {
-                when (val result = request()) {
-                    is ApiResult.Success -> onSuccess(result.data)
-                    is ApiResult.Failure -> showError(result.message)
-                    is ApiResult.Exception ->
-                        showError(text(R.string.sales_error_network))
-                }
-            } finally {
-                _uiState.value =
-                    _uiState.value.copy(
-                        isLoading = false,
-                        operation = "",
-                    )
-            }
-        }
-    }
-
     private fun showError(message: String) {
         _uiState.value =
             _uiState.value.copy(
@@ -937,6 +968,9 @@ data class SalesUiState(
     val noticeMessage: String? = null,
     val companyName: String = "",
     val recentCustomers: List<UserLatentListModel> = emptyList(),
+    val isRecentCustomersLoading: Boolean = false,
+    val hasLoadedRecentCustomers: Boolean = false,
+    val recentCustomersErrorMessage: String? = null,
     val toDoCount: Int? = null,
     val toDoCountErrorMessage: String? = null,
     val toDoItems: List<ToDoResultModel> = emptyList(),
@@ -949,6 +983,7 @@ data class SalesUiState(
     val customerLoadMoreErrorMessage: String? = null,
     val selectedCustomerId: Int = 0,
     val selectedCustomer: UserLatentDetailModel? = null,
+    val customerPhotos: List<SalesCustomerPhotoUiState> = emptyList(),
     val customerDetailErrorMessage: String? = null,
     val currentLocation: LocationResult? = null,
     val submissionResult: AddUserLatentResultModel? = null,
@@ -964,6 +999,13 @@ data class SalesUiState(
 
 class SalesSdkLaunchRequest(
     val token: String,
+)
+
+data class SalesCustomerPhotoUiState(
+    val key: String,
+    val url: String? = null,
+    val isLoading: Boolean = true,
+    val errorMessage: String? = null,
 )
 
 @kotlinx.serialization.Serializable

@@ -466,6 +466,10 @@ internal fun SalesExperienceScreen(
                                         user = loggedInUser,
                                         companyName = uiState.companyName,
                                         customers = uiState.recentCustomers,
+                                        isRecentCustomersLoading = !uiState.hasLoadedRecentCustomers &&
+                                            (uiState.isRecentCustomersLoading || uiState.recentCustomersErrorMessage == null),
+                                        recentCustomersErrorMessage = uiState.recentCustomersErrorMessage,
+                                        onRetryRecentCustomers = viewModel::loadRecentCustomers,
                                         toDoCount = uiState.toDoCount,
                                         isToDoCountLoading =
                                             uiState.isToDoCountLoading,
@@ -532,6 +536,8 @@ internal fun SalesExperienceScreen(
                         customer = uiState.selectedCustomer,
                         isLoading = uiState.isCustomerDetailLoading,
                         errorMessage = uiState.customerDetailErrorMessage,
+                        photos = uiState.customerPhotos,
+                        onRetryPhoto = viewModel::retryCustomerPhoto,
                         onBack = ::back,
                         onRetry = viewModel::retryCustomerDetail,
                         onEvaluate = { customerId ->

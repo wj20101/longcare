@@ -3,9 +3,11 @@ package com.ytone.longcare.features.sales
 import com.ytone.longcare.core.ui.R as CoreUiR
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -46,14 +48,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -61,6 +68,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytone.longcare.R
+import com.ytone.longcare.core.ui.image.PhotoPreviewDialog
+import coil3.compose.AsyncImage
 import com.ytone.longcare.model.UserLatentCheckState
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.model.UserLatentListModel
@@ -470,6 +479,8 @@ internal fun SalesCustomerDetailScreen(
     onRetry: () -> Unit,
     onEvaluate: (Int) -> Unit,
     onOpenReport: () -> Unit,
+    photos: List<SalesCustomerPhotoUiState> = emptyList(),
+    onRetryPhoto: (String) -> Unit = {},
 ) {
     Column(
         modifier =
@@ -556,6 +567,40 @@ internal fun SalesCustomerDetailScreen(
                             stringResource(R.string.sales_customer_label_address),
                             customer.liveAddress.orEmpty(),
                         )
+                        SalesInfoRow(
+                            stringResource(R.string.sales_customer_label_disability),
+                            stringResource(
+                                if (customer.isDisability == 1) R.string.sales_registration_disability_yes
+                                else R.string.sales_registration_disability_no,
+                            ),
+                        )
+                        SalesInfoRow(
+                            stringResource(R.string.sales_customer_label_remarks),
+                            customer.remarks.orEmpty(),
+                        )
+                        if (photos.isNotEmpty()) {
+                            Text(
+                                text = stringResource(R.string.sales_customer_photos),
+                                color = SalesTextSecondary,
+                                fontSize = 15.sp,
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                photos.forEachIndexed { index, photo ->
+                                    SalesCustomerPhoto(
+                                        photo = photo,
+                                        index = index + 1,
+                                        onRetry = { onRetryPhoto(photo.key) },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                                repeat((MAX_SALES_CUSTOMER_PHOTOS - photos.size).coerceAtLeast(0)) {
+                                    Spacer(Modifier.weight(1f))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -624,6 +669,57 @@ internal fun SalesCustomerDetailScreen(
 }
 
 @Composable
+private fun SalesCustomerPhoto(
+    photo: SalesCustomerPhotoUiState,
+    index: Int,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showPreview by rememberSaveable(photo.key) { mutableStateOf(false) }
+    var imageLoaded by remember(photo.url) { mutableStateOf(false) }
+    var imageFailed by remember(photo.url) { mutableStateOf(false) }
+    val failed = photo.errorMessage != null || imageFailed
+    val status = stringResource(
+        when {
+            failed -> R.string.sales_customer_photo_load_failed
+            imageLoaded -> R.string.sales_customer_photo_loaded
+            else -> R.string.sales_customer_photo_loading
+        },
+    )
+    Box(
+        modifier = modifier.aspectRatio(1f).clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFFF0F4F9))
+            .testTag("customer_photo_$index")
+            .semantics { stateDescription = status },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!photo.isLoading && photo.url != null && !failed) {
+            AsyncImage(
+                model = photo.url,
+                contentDescription = stringResource(R.string.sales_customer_photo_description, index),
+                contentScale = ContentScale.Crop,
+                onSuccess = { imageLoaded = true },
+                onError = { imageFailed = true },
+                modifier = Modifier.fillMaxSize().clickable { showPreview = true },
+            )
+        }
+        if (failed) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(status, color = SalesTextSecondary, fontSize = 12.sp)
+                TextButton(onClick = onRetry) {
+                    Text(stringResource(CoreUiR.string.common_retry), fontSize = 12.sp)
+                }
+            }
+        } else if (!imageLoaded) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+        }
+    }
+    if (showPreview && photo.url != null) {
+        PhotoPreviewDialog(imageModel = photo.url, onDismiss = { showPreview = false })
+    }
+}
+
+@Composable
 private fun SalesCustomerDetailPlaceholder(
     isLoading: Boolean,
     errorMessage: String?,
@@ -641,7 +737,7 @@ private fun SalesCustomerDetailPlaceholder(
         verticalArrangement = Arrangement.Center,
     ) {
         when {
-            isLoading -> {
+            isLoading || errorMessage == null -> {
                 CircularProgressIndicator(
                     modifier = Modifier.size(28.dp),
                     color = SalesBlue,
@@ -681,13 +777,6 @@ private fun SalesCustomerDetailPlaceholder(
                 }
             }
 
-            else -> {
-                Text(
-                    text = stringResource(R.string.sales_customer_no_detail),
-                    color = SalesTextPrimary,
-                    fontSize = 16.sp,
-                )
-            }
         }
     }
 }

@@ -54,8 +54,8 @@ class SaleRepositoryImplTest {
         val tokenDto = CheckTokenDto("SDK.test", 1, 1234L, 2)
         val created = AddUserLatentResultModel(id = 7, pgUrl = "https://example.test/pg")
         val createdDto = AddUserLatentResponseDto(id = 7, pgUrl = "https://example.test/pg")
-        val list = listOf(UserLatentListModel(id = 7, userName = "测试客户"))
-        val listDto = listOf(UserLatentListDto(id = 7, userName = "测试客户"))
+        val list = listOf(UserLatentListModel(id = 7, userName = "测试客户", isDisability = 1, remarks = "客户备注"))
+        val listDto = listOf(UserLatentListDto(id = 7, userName = "测试客户", isDisability = 1, remarks = "客户备注"))
         val toDoCount = ToDoNumResultModel(num = 2)
         val toDoCountDto = ToDoCountDto(num = 2)
         val toDoList =
@@ -74,8 +74,8 @@ class SaleRepositoryImplTest {
                     createTime = "2026-08-01 09:00:00",
                 )
             )
-        val detail = UserLatentDetailModel(id = 7, userName = "测试客户")
-        val detailDto = UserLatentDetailDto(id = 7, userName = "测试客户")
+        val detail = UserLatentDetailModel(id = 7, userName = "测试客户", isDisability = 1, remarks = "客户备注")
+        val detailDto = UserLatentDetailDto(id = 7, userName = "测试客户", isDisability = 1, remarks = "客户备注")
         val apiService = Proxy.newProxyInstance(
             LongCareApiService::class.java.classLoader,
             arrayOf(LongCareApiService::class.java),
@@ -102,6 +102,7 @@ class SaleRepositoryImplTest {
             SearchUserLatentParamModel(
                 pageIndex = 3,
                 userName = "测试",
+                isDisability = 1,
             )
 
         assertEquals(
@@ -130,6 +131,7 @@ class SaleRepositoryImplTest {
                     SearchUserLatentRequestDto(
                         pageIndex = 3,
                         userName = "测试",
+                        isDisability = 1,
                     ),
                 "getUserLatentDetail" to 7,
                 "getCheckResult" to GetCheckResultRequestDto(7, "record-1"),
@@ -272,7 +274,7 @@ class SaleRepositoryImplTest {
             ),
         )
         assertEquals(
-            setOf("pageIndex", "userName", "checkState"),
+            setOf("pageIndex", "userName", "checkState", "isDisability"),
             jsonKeys(SearchUserLatentRequestDto(pageIndex = 2, userName = "客户", checkState = 1)),
         )
         assertEquals(
@@ -284,7 +286,7 @@ class SaleRepositoryImplTest {
             jsonKeys(AddUserLatentResponseDto(id = 7, pgUrl = "url")),
         )
         assertEquals(
-            setOf("id", "userName", "checkState", "liveAddress", "identityCardNumber"),
+            setOf("id", "userName", "checkState", "liveAddress", "identityCardNumber", "isDisability", "remarks"),
             jsonKeys(UserLatentListDto(7, "客户", 1, "地址", "证件号")),
         )
         assertEquals(setOf("num"), jsonKeys(ToDoCountDto(num = 2)))
@@ -314,6 +316,8 @@ class SaleRepositoryImplTest {
                 "pgResult",
                 "pgScore",
                 "pgUrl",
+                "isDisability",
+                "remarks",
             ),
             jsonKeys(
                 UserLatentDetailDto(
@@ -340,6 +344,47 @@ class SaleRepositoryImplTest {
                 )
             ),
         )
+    }
+
+    @Test
+    fun `unfiltered search sends minus one and preserves explicit disability filters`() = runTest {
+        val requests = mutableListOf<SearchUserLatentRequestDto>()
+        val apiService = Proxy.newProxyInstance(
+            LongCareApiService::class.java.classLoader,
+            arrayOf(LongCareApiService::class.java),
+        ) { _, method, args ->
+            check(method.name == "searchUserLatentList")
+            requests += args!![0] as SearchUserLatentRequestDto
+            ApiResult.Success(emptyList<UserLatentListDto>())
+        } as LongCareApiService
+        val repository = SaleRepositoryImpl(apiService)
+        val adapter = Moshi.Builder().build().adapter(SearchUserLatentRequestDto::class.java)
+
+        repository.searchUserLatentList(SearchUserLatentParamModel())
+        repository.searchUserLatentList(SearchUserLatentParamModel(isDisability = 0))
+        repository.searchUserLatentList(SearchUserLatentParamModel(isDisability = 1))
+
+        assertEquals(listOf(-1, 0, 1), requests.map { it.isDisability })
+        assertEquals(
+            "{\"pageIndex\":1,\"userName\":\"\",\"checkState\":-1,\"isDisability\":-1}",
+            adapter.toJson(requests.first()),
+        )
+    }
+
+    @Test
+    fun `nullable and absent remarks remain compatible with customer responses`() {
+        val moshi = Moshi.Builder().build()
+        val listAdapter = moshi.adapter(UserLatentListDto::class.java)
+        val detailAdapter = moshi.adapter(UserLatentDetailDto::class.java)
+
+        for (json in listOf("{\"id\":7}", "{\"id\":7,\"isDisability\":1,\"remarks\":null}")) {
+            assertEquals(null, requireNotNull(listAdapter.fromJson(json)).remarks)
+            assertEquals(null, requireNotNull(detailAdapter.fromJson(json)).remarks)
+        }
+        val json = "{\"id\":7,\"isDisability\":1,\"remarks\":\"中文备注\\n第二行\"}"
+        assertEquals("中文备注\n第二行", requireNotNull(listAdapter.fromJson(json)).remarks)
+        assertEquals(1, requireNotNull(detailAdapter.fromJson(json)).isDisability)
+        assertEquals("中文备注\n第二行", requireNotNull(detailAdapter.fromJson(json)).remarks)
     }
 
     private inline fun <reified T : Any> jsonKeys(value: T): Set<String> {

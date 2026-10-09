@@ -98,6 +98,11 @@
     <string name="sales_photo_description">照片</string>
     <string name="sales_photo_remove_description">移除照片</string>
     <string name="sales_photo_add_description">添加照片</string>
+    <string name="sales_customer_photo_description">登记照片 %1$d</string>
+    <string name="sales_customer_photos">登记照片</string>
+    <string name="sales_customer_photo_loading">正在加载照片</string>
+    <string name="sales_customer_photo_loaded">照片已加载</string>
+    <string name="sales_customer_photo_load_failed">照片加载失败</string>
     <string name="sales_watermark_title">长者顾问</string>
     <string name="sales_watermark_unknown_advisor">未知顾问</string>
     <string name="sales_confirmation_title">信息确认</string>

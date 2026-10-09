@@ -49,6 +49,7 @@ data class SearchUserLatentParamModel(
     val pageIndex: Int = 1,
     val userName: String = "",
     val checkState: Int = UserLatentCheckState.ALL,
+    val isDisability: Int = -1,
 )
 
 /**
@@ -60,6 +61,8 @@ data class UserLatentListModel(
     val checkState: Int = UserLatentCheckState.NOT_SUBMITTED,
     val liveAddress: String = "",
     val identityCardNumber: String = "",
+    val isDisability: Int = 0,
+    val remarks: String = "",
 )
 
 /**
@@ -106,6 +109,8 @@ data class UserLatentDetailModel(
     val pgResult: String? = null,
     val pgScore: Int = 0,
     val pgUrl: String? = null,
+    val isDisability: Int = 0,
+    val remarks: String? = null,
 )
 
 object UserLatentCheckState {

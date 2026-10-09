@@ -44,7 +44,7 @@ class SalesMockEvaluationFlowTest {
             val vm = SalesViewModel(repository, mockk(relaxed = true), UnusedPhotoCloudUploader,
                 testImagePipeline(context), mockk<SalesEvaluationDeviceGateway> {
                     every { getDeviceId() } returns Result.success("device")
-                }, mockk(relaxed = true), ResourceTextResolver(context), SavedStateHandle())
+                }, mockk(relaxed = true), ResourceTextResolver(context), SavedStateHandle(), mockk(relaxed = true))
             vm.loadCustomerDetail(7)
             advanceUntilIdle()
             vm.prepareEvaluation(7)

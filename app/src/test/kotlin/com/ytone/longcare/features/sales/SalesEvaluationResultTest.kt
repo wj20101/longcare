@@ -206,6 +206,6 @@ class SalesEvaluationResultTest {
         val context = mockk<Context>(relaxed = true)
         return SalesViewModel(repository, mockk(relaxed = true), UnusedPhotoCloudUploader,
             testImagePipeline(context), mockk(relaxed = true), mockk(relaxed = true),
-            ResourceTextResolver(context), handle)
+            ResourceTextResolver(context), handle, mockk(relaxed = true))
     }
 }

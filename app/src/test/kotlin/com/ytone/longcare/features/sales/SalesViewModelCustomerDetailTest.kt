@@ -7,6 +7,7 @@ import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.sale.SaleRepository
+import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.integration.qlz.QlzSdkEvent
 import com.ytone.longcare.model.UserLatentDetailModel
 import com.ytone.longcare.platform.sales.SalesEvaluationDeviceGateway
@@ -18,6 +19,8 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -31,6 +34,75 @@ class SalesViewModelCustomerDetailTest {
 
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
+
+    @Test
+    fun `customer photo keys resolve with sales permissions without blocking detail`() = runTest {
+        val detail = UserLatentDetailModel(id = 7, img1 = "sale/one.jpg", img2 = "", img3 = "sale/three.jpg")
+        val pending = CompletableDeferred<String>()
+        val cos = mockk<CosRepository> {
+            coEvery { getFileUrl("sale/one.jpg", 15, null) } coAnswers { pending.await() }
+            coEvery { getFileUrl("sale/three.jpg", 15, null) } returns "https://images.invalid/three"
+        }
+        val viewModel = createViewModel(repositoryWithDetail(ApiResult.Success(detail)), cosRepository = cos)
+        viewModel.loadCustomerDetail(7)
+        assertEquals(detail, viewModel.uiState.value.selectedCustomer)
+        assertFalse(viewModel.uiState.value.isCustomerDetailLoading)
+        assertEquals(listOf("sale/one.jpg", "sale/three.jpg"), viewModel.uiState.value.customerPhotos.map { it.key })
+        assertEquals(true, viewModel.uiState.value.customerPhotos[0].isLoading)
+        assertEquals("https://images.invalid/three", viewModel.uiState.value.customerPhotos[1].url)
+        pending.complete("https://images.invalid/one")
+        advanceUntilIdle()
+        assertEquals("https://images.invalid/one", viewModel.uiState.value.customerPhotos[0].url)
+        coVerify(exactly = 1) { cos.getFileUrl("sale/one.jpg", 15, null) }
+        coVerify(exactly = 1) { cos.getFileUrl("sale/three.jpg", 15, null) }
+    }
+
+    @Test
+    fun `retrying a failed photo keeps the customer and other photos`() = runTest {
+        val detail = UserLatentDetailModel(id = 7, img1 = "sale/one.jpg", img2 = "sale/two.jpg")
+        var attempts = 0
+        val cos = mockk<CosRepository> {
+            coEvery { getFileUrl("sale/one.jpg", 15, null) } returns "https://images.invalid/one"
+            coEvery { getFileUrl("sale/two.jpg", 15, null) } coAnswers {
+                if (attempts++ == 0) throw java.io.IOException("unavailable")
+                "https://images.invalid/two"
+            }
+        }
+        val repository = repositoryWithDetail(ApiResult.Success(detail))
+        val viewModel = createViewModel(repository, cosRepository = cos)
+        viewModel.loadCustomerDetail(7)
+        assertEquals("照片加载失败", viewModel.uiState.value.customerPhotos[1].errorMessage)
+        assertEquals(detail, viewModel.uiState.value.selectedCustomer)
+        assertNull(viewModel.uiState.value.customerDetailErrorMessage)
+        viewModel.retryCustomerPhoto("sale/two.jpg")
+        advanceUntilIdle()
+        assertEquals("https://images.invalid/two", viewModel.uiState.value.customerPhotos[1].url)
+        assertNull(viewModel.uiState.value.customerPhotos[1].errorMessage)
+        coVerify(exactly = 1) { repository.getUserLatentDetail(7) }
+        coVerify(exactly = 1) { cos.getFileUrl("sale/one.jpg", 15, null) }
+        coVerify(exactly = 2) { cos.getFileUrl("sale/two.jpg", 15, null) }
+    }
+
+    @Test
+    fun `late photo response cannot replace a different customers photos`() = runTest {
+        val late = CompletableDeferred<String>()
+        val repository = mockk<SaleRepository> {
+            coEvery { getUserLatentDetail(7) } returns ApiResult.Success(UserLatentDetailModel(id = 7, img1 = "sale/old.jpg"))
+            coEvery { getUserLatentDetail(8) } returns ApiResult.Success(UserLatentDetailModel(id = 8, img1 = "sale/new.jpg"))
+        }
+        val cos = mockk<CosRepository> {
+            coEvery { getFileUrl("sale/old.jpg", 15, null) } coAnswers { withContext(NonCancellable) { late.await() } }
+            coEvery { getFileUrl("sale/new.jpg", 15, null) } returns "https://images.invalid/new"
+        }
+        val viewModel = createViewModel(repository, cosRepository = cos)
+        viewModel.loadCustomerDetail(7)
+        viewModel.loadCustomerDetail(8)
+        late.complete("https://images.invalid/old")
+        advanceUntilIdle()
+        assertEquals(8, viewModel.uiState.value.selectedCustomer?.id)
+        assertEquals(listOf("sale/new.jpg"), viewModel.uiState.value.customerPhotos.map { it.key })
+        assertEquals("https://images.invalid/new", viewModel.uiState.value.customerPhotos.single().url)
+    }
 
     @Test
     fun `nullable customer detail loads without global blocking`() =
@@ -242,11 +314,13 @@ class SalesViewModelCustomerDetailTest {
     private fun createViewModel(
         repository: SaleRepository,
         savedStateHandle: SavedStateHandle = SavedStateHandle(),
+        cosRepository: CosRepository = mockk(relaxed = true),
     ): SalesViewModel {
         val applicationContext =
             mockk<Context>(relaxed = true) {
                 every { getString(R.string.sales_error_customer_detail_data) } returns
                     "客户详情数据异常，请重试"
+                every { getString(R.string.sales_customer_photo_load_failed) } returns "照片加载失败"
             }
         return SalesViewModel(
             saleRepository = repository,
@@ -257,6 +331,7 @@ class SalesViewModelCustomerDetailTest {
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
             savedStateHandle = savedStateHandle,
             textResolver = ResourceTextResolver(applicationContext),
+            cosRepository = cosRepository,
         )
     }
 }
