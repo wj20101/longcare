@@ -6,6 +6,7 @@ import com.ytone.longcare.features.location.core.LocationKeepAliveManager
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderStateModel
 import com.ytone.longcare.model.result.ApiResult
+import io.mockk.every
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -28,28 +29,29 @@ class LocationReportingManagerTest {
     private val repository = mockk<OrderRepository>()
 
     @Before
-    fun setup() { KLogger.updateConfig { enabled = false } }
+    fun setup() { KLogger.updateConfig { enabled = false }; every { keepAlive.acquireOrderTracking(any(), any()) } returns true }
 
     @Test
-    fun `only confirmed in progress state starts foreground tracking`() = runTest {
+    fun `foreground prepares before query and upload waits for in progress state`() = runTest {
         coEvery { repository.getOrderState(1) } returns state(1)
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope).apply { setMonitoringAllowed(true) }
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true)).apply { setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3)) }
         manager.startReporting(OrderKey(1))
-        verify(exactly = 0) { keepAlive.acquireOrderTracking(any(), any()) }
+        verify(exactly = 1) { keepAlive.acquireOrderTracking(any(), 1) }
         runCurrent()
         verify(exactly = 1) { keepAlive.acquireOrderTracking(any(), 1) }
         manager.stopReporting()
     }
 
     @Test
-    fun `every non service state forbids foreground tracking`() = runTest {
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope).apply { setMonitoringAllowed(true) }
+    fun `non service states stop prepared foreground tracking`() = runTest {
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true)).apply { setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3)) }
         for (state in listOf(-1, 0, 2, 3)) {
             coEvery { repository.getOrderState(1) } returns state(state)
             manager.startReporting(OrderKey(1))
             runCurrent()
         }
-        verify(exactly = 0) { keepAlive.acquireOrderTracking(any(), any()) }
+        verify(exactly = 4) { keepAlive.acquireOrderTracking(any(), any()) }
+        verify(exactly = 4) { keepAlive.release(any()) }
     }
 
     @Test
@@ -60,11 +62,11 @@ class LocationReportingManagerTest {
             ApiResult.Exception(IllegalStateException("offline")),
             state(1),
         )
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope).apply { setMonitoringAllowed(true) }
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true)).apply { setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3)) }
         manager.startReporting(OrderKey(1))
         runCurrent()
-        advanceTimeBy(35_000)
-        verify(exactly = 0) { keepAlive.acquireOrderTracking(any(), any()) }
+        advanceTimeBy(150_000)
+        verify(exactly = 1) { keepAlive.acquireOrderTracking(any(), any()) }
         runCurrent()
         verify(exactly = 1) { keepAlive.acquireOrderTracking(any(), 1) }
         manager.stopReporting()
@@ -75,7 +77,7 @@ class LocationReportingManagerTest {
         coEvery { repository.getOrderState(1) } returnsMany listOf(
             state(1), ApiResult.Exception(IllegalStateException("offline")), state(1),
         )
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope).apply { setMonitoringAllowed(true) }
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true)).apply { setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3)) }
         manager.startReporting(OrderKey(1))
         runCurrent()
         advanceTimeBy(10_000)
@@ -88,13 +90,13 @@ class LocationReportingManagerTest {
     @Test
     fun `monitoring is shared and remote completion stops without screen confirmation`() = runTest {
         coEvery { repository.getOrderState(1) } returnsMany listOf(state(1), state(2))
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope).apply { setMonitoringAllowed(true) }
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true)).apply { setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3)) }
         manager.monitorOrder(1)
         manager.startReporting(OrderKey(1))
         manager.monitorOrder(1)
         runCurrent()
         coVerify(exactly = 1) { repository.getOrderState(1) }
-        advanceTimeBy(5_000)
+        advanceTimeBy(30_000)
         runCurrent()
         verify(exactly = 1) { keepAlive.release(any()) }
         assertEquals(2, manager.orderState.value?.state)
@@ -103,21 +105,23 @@ class LocationReportingManagerTest {
     @Test
     fun `monitor alone does not request location and old order end cannot stop new order`() = runTest {
         coEvery { repository.getOrderState(any()) } returns state(1)
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope).apply { setMonitoringAllowed(true) }
+        var owner = ""
+        every { keepAlive.acquireOrderTracking(any(), any()) } answers { owner = firstArg(); true }
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true)).apply { setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3)) }
         manager.monitorOrder(1)
         runCurrent()
         verify(exactly = 0) { keepAlive.acquireOrderTracking(any(), any()) }
         manager.startReporting(OrderKey(2))
         runCurrent()
         manager.onOrderEnded(1)
-        verify(exactly = 0) { keepAlive.release(any()) }
+        verify(exactly = 0) { keepAlive.release(owner) }
         manager.onOrderEnded(2)
-        verify(exactly = 1) { keepAlive.release(any()) }
+        verify(exactly = 1) { keepAlive.release(owner) }
     }
 
     @Test
     fun `invalid ids never query state or start location`() = runTest {
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope).apply { setMonitoringAllowed(true) }
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true)).apply { setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3)) }
         manager.startReporting(OrderKey(0))
         manager.monitorOrder(-1)
         runCurrent()
@@ -131,14 +135,14 @@ class LocationReportingManagerTest {
     @Test
     fun `formal start success allows immediate tracking even during state query outage`() = runTest {
         coEvery { repository.getOrderState(1) } returns ApiResult.Exception(IllegalStateException("offline"))
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope)
-        manager.setMonitoringAllowed(true)
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true))
+        manager.setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3))
         manager.onOrderStarted(1)
         verify(exactly = 0) { keepAlive.acquireOrderTracking(any(), any()) }
         manager.startReporting(OrderKey(1))
         verify(exactly = 1) { keepAlive.acquireOrderTracking(any(), 1) }
         runCurrent()
-        advanceTimeBy(35_000)
+        advanceTimeBy(150_000)
         runCurrent()
         verify(exactly = 0) { keepAlive.release(any()) }
         manager.stopReporting()
@@ -148,16 +152,16 @@ class LocationReportingManagerTest {
     fun `reopened in progress order starts after process state is recreated`() = runTest {
         coEvery { repository.getOrderState(1) } returns state(1)
         val firstProcessScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
-        val firstProcess = LocationReportingManager(keepAlive, repository, firstProcessScope)
-        firstProcess.setMonitoringAllowed(true)
+        val firstProcess = LocationReportingManager(keepAlive, repository, firstProcessScope, mockk(relaxed = true))
+        firstProcess.setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3))
         firstProcess.startReporting(OrderKey(1))
         runCurrent()
         // Simulate losing the process scope without stopReporting/onDestroy cleanup.
         firstProcessScope.cancel()
 
         val nextKeepAlive = mockk<LocationKeepAliveManager>(relaxed = true)
-        val nextProcess = LocationReportingManager(nextKeepAlive, repository, backgroundScope)
-        nextProcess.setMonitoringAllowed(true)
+        val nextProcess = LocationReportingManager(nextKeepAlive, repository, backgroundScope, mockk(relaxed = true))
+        nextProcess.setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3))
         runCurrent()
         verify(exactly = 0) { nextKeepAlive.acquireOrderTracking(any(), any()) }
         nextProcess.startReporting(OrderKey(1))
@@ -170,18 +174,19 @@ class LocationReportingManagerTest {
     @Test
     fun `recreated process never restores an already completed order`() = runTest {
         coEvery { repository.getOrderState(1) } returns state(2)
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope)
-        manager.setMonitoringAllowed(true)
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true))
+        manager.setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3))
         manager.startReporting(OrderKey(1))
         runCurrent()
-        verify(exactly = 0) { keepAlive.acquireOrderTracking(any(), any()) }
+        verify(exactly = 1) { keepAlive.acquireOrderTracking(any(), any()) }
+        verify(exactly = 1) { keepAlive.release(any()) }
         assertEquals(2, manager.orderState.value?.state)
     }
 
     @Test
     fun `late screen callbacks after logout cannot restart polling or upload`() = runTest {
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope)
-        manager.setMonitoringAllowed(false)
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true))
+        manager.setAccount(null)
         manager.monitorOrder(1)
         manager.startReporting(OrderKey(1))
         runCurrent()

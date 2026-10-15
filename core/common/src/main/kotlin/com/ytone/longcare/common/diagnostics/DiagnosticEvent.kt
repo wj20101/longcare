@@ -50,7 +50,7 @@ internal object DiagnosticPayload {
     )
     private val locationEvidenceKeys = setOf(
         "orderId", "planId", "signInMode", "stage", "errorCode", "failureCode",
-        "latitude", "longitude", "coordType", "locationTime", "sampleAgeMs", "accuracy",
+        "latitude", "longitude", "coordType", "locationTime", "sampleAgeMs", "accuracy", "accuracyBand", "requestId",
         "provider", "locationType", "trustedLevel", "isMock", "isLastLocation", "qualityReason", "amapErrorCode",
     )
 

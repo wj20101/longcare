@@ -5,7 +5,9 @@ import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.diagnostics.locationDiagnosticExtras
 import com.ytone.longcare.domain.location.LocationFailure
-import com.ytone.longcare.domain.location.LocationQuality
+import com.ytone.longcare.domain.location.ServiceOrderLocationQuality
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.result.ApiResult
@@ -203,11 +205,12 @@ private val allowedNfcExtraKeys = setOf(
     "centerImageCount",
     "endImageCount",
     "longitude", "latitude", "coordType", "locationTime", "sampleAgeMs", "accuracy",
+    "accuracyBand", "requestId",
     "provider", "locationType", "trustedLevel", "isMock", "isLastLocation", "qualityReason",
     "amapErrorCode", "amapErrorInfo",
 )
 
-/** Reports each NFC acquisition once, including requests paused for permission or refreshed after expiry. */
+/** Reports each NFC acquisition once, including permission waits and fresh samples after confirmation. */
 internal suspend fun requestNfcLocation(
     orderKey: OrderKey,
     mode: SignInMode,
@@ -220,6 +223,7 @@ internal suspend fun requestNfcLocation(
     trackNfcLocation("nfc_location_request", orderKey, mode, stage, userId = userId)
     try {
         val result = request()
+        currentCoroutineContext().ensureActive()
         val elapsedMs = (System.nanoTime() - started) / 1_000_000
         when (result) {
             is LocationRequestResult.Coordinates -> trackNfcLocation(
@@ -244,6 +248,7 @@ internal suspend fun requestNfcLocation(
         trackNfcLocation("nfc_location_cancelled", orderKey, mode, stage, userId = userId)
         throw cancelled
     } catch (error: Exception) {
+        currentCoroutineContext().ensureActive()
         trackNfcLocation(
             "nfc_location_exception", orderKey, mode, stage, isError = true, throwable = error,
             durationMs = (System.nanoTime() - started) / 1_000_000, userId = userId,
@@ -288,5 +293,6 @@ internal fun nfcLocationExtras(
     now: Long = System.currentTimeMillis(),
     elapsedRealtime: Long = SystemClock.elapsedRealtime(),
 ): Map<String, Any?> = locationDiagnosticExtras(location, now) + mapOf(
-    "qualityReason" to LocationQuality.rejection(location, now, elapsedRealtime)?.name,
+    "qualityReason" to ServiceOrderLocationQuality.rejection(location, now, elapsedRealtime)?.name,
+    "accuracyBand" to ServiceOrderLocationQuality.accuracyBand(location.accuracy).name,
 )

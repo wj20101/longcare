@@ -42,7 +42,7 @@ internal fun rememberServiceCountdownScreenLaunchers(
     }
 
     val locationPermissionLauncher = rememberLocationPermissionLauncher(
-        onPermissionGranted = { locationTrackingViewModel.startTrackingAfterPermissionGrant(orderKey) }
+        onPermissionGranted = { locationTrackingViewModel.startTracking(orderKey) }
     )
 
     return ServiceCountdownScreenLaunchers(

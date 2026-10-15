@@ -94,14 +94,23 @@ class NfcWorkflowViewModel @Inject constructor(
     )
     private val r65cSessionCollector = R65cWorkflowHidSessionCollector()
     private var r65cCompletionJob: kotlinx.coroutines.Job? = null
+    private var orderActionJob: kotlinx.coroutines.Job? = null
+    private var activeOrder: OrderKey? = null
 
     private fun launchOrderDelegateAction(action: suspend NfcOrderWorkflowDelegate.() -> Unit) {
-        viewModelScope.launch { orderDelegate.action() }
+        if (orderActionJob?.isActive == true) return
+        orderActionJob = viewModelScope.launch { orderDelegate.action() }
     }
 
-    fun confirmEndOrder(params: EndOrderParams) = launchOrderDelegateAction { confirmEndOrder(params) }
+    fun confirmEndOrder(params: EndOrderParams, request: suspend () -> LocationRequestResult = locationDelegate::acquireLocation) {
+        if (params.orderKey != activeOrder) return
+        launchOrderDelegateAction { confirmEndOrder(params, request) }
+    }
 
-    fun cancelEndOrder() = orderDelegate.cancelEndOrder()
+    fun cancelEndOrder() {
+        orderActionJob?.cancel()
+        orderDelegate.cancelEndOrder()
+    }
 
     fun resetState() = orderDelegate.resetState()
 
@@ -120,23 +129,45 @@ class NfcWorkflowViewModel @Inject constructor(
 
     suspend fun acquireLocation(): LocationRequestResult = locationDelegate.acquireLocation()
 
-    fun notifyLocationPermissionGranted() = locationFacade.notifyPermissionGranted()
-
     fun observeScanEvents(
         orderKey: OrderKey,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
         onLocationRequest: suspend () -> LocationRequestResult,
-    ) = scanDelegate.observeScanEvents(orderKey, signInMode, endOderInfo, onLocationRequest)
+    ) {
+        orderActionJob?.cancel()
+        activeOrder = orderKey
+        scanDelegate.observeScanEvents(orderKey, signInMode, endOderInfo, onLocationRequest)
+    }
 
-    fun resumePendingPermissionScan(onLocationRequest: suspend () -> LocationRequestResult) =
-        scanDelegate.resumePendingPermissionScan(onLocationRequest)
+    fun resumePendingPermissionScan(onLocationRequest: suspend () -> LocationRequestResult): Boolean {
+        if (activeOrder == null) return false
+        if (orderDelegate.hasPendingEndLocation) {
+            launchOrderDelegateAction { retryEndLocation(onLocationRequest) }
+            return true
+        }
+        return scanDelegate.resumePendingPermissionScan(onLocationRequest)
+    }
 
-    fun clearPendingPermissionScan() = scanDelegate.clearPendingPermissionScan()
+    fun clearPendingPermissionScan() {
+        scanDelegate.clearPendingPermissionScan()
+        orderDelegate.locationPermissionDenied()
+    }
 
-    fun stopScanRequests() = scanDelegate.clear()
+    fun stopScanRequests() {
+        activeOrder = null
+        orderActionJob?.cancel()
+        scanDelegate.clear()
+    }
 
-    fun confirmLocationActivation(data: PendingNfcData) = scanDelegate.confirmLocationActivation(data)
+    fun confirmLocationActivation(data: PendingNfcData, request: suspend () -> LocationRequestResult = locationDelegate::acquireLocation) =
+        scanDelegate.confirmLocationActivation(data, request)
+
+    fun retryLocation(request: suspend () -> LocationRequestResult) {
+        if (activeOrder == null) return
+        if (orderDelegate.hasPendingEndLocation) launchOrderDelegateAction { retryEndLocation(request) }
+        else if (!scanDelegate.retryLocation(request)) resetState()
+    }
 
     fun cancelLocationActivation() = scanDelegate.cancelLocationActivation()
 
@@ -181,7 +212,7 @@ class NfcWorkflowViewModel @Inject constructor(
     override fun onCleared() {
         cancelR65cCompletionJob()
         r65cSessionCollector.reset()
-        scanDelegate.clear()
+        stopScanRequests()
     }
 }
 

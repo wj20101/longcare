@@ -9,7 +9,7 @@ internal class NfcLocationDelegate(
     private val locationFacade: LocationFacade,
     private val textResolver: ResourceTextResolver,
 ) {
-    suspend fun acquireLocation(): LocationRequestResult = when (val result = locationFacade.acquireCurrentLocation()) {
+    suspend fun acquireLocation(): LocationRequestResult = when (val result = locationFacade.acquireServiceOrderLocation()) {
         is LocationAcquisition.Success -> LocationRequestResult.Coordinates(result.location)
         is LocationAcquisition.Failure -> LocationRequestResult.Error(
             textResolver.text(result.reason.messageRes()), reason = result.reason, location = result.location,

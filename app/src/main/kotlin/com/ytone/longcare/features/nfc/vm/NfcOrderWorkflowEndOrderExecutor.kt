@@ -9,6 +9,8 @@ import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 internal suspend fun executeEndOrderRequest(
     serviceOrderLifecycle: ServiceOrderLifecycle,
@@ -32,7 +34,7 @@ internal suspend fun executeEndOrderRequest(
         "executeEndOrder: Begin: ${beginImgList.size}, Center: ${centerImgList.size}, End: ${endImageList.size}",
     )
 
-    when (val result = orderRepository.endOrder(
+    val result = orderRepository.endOrder(
         orderId = orderKey.orderId,
         nfcDeviceId = nfcDeviceId,
         projectIdList = projectIdList,
@@ -42,7 +44,9 @@ internal suspend fun executeEndOrderRequest(
         longitude = location.longitude.toString(),
         latitude = location.latitude.toString(),
         endType = endType
-    )) {
+    )
+    currentCoroutineContext().ensureActive()
+    when (result) {
         is ApiResult.Success -> {
             trackNfcLocation("nfc_location_submit_success", orderKey, SignInMode.END_ORDER, "end_submit", location, userId = userId, locationFields = locationFields)
             serviceOrderLifecycle.onOrderEnded(orderKey.orderId)

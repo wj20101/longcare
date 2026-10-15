@@ -39,32 +39,32 @@ class LocationKeepAliveManagerRegressionTest {
     @Test
     fun `failed foreground service start must roll back owner so a later acquire retries`() {
         val controller = mockk<LocationForegroundServiceController>()
-        every { controller.start(any(), any()) } throws
+        every { controller.start(any(), any(), any()) } throws
             IllegalStateException("foreground start rejected")
 
         val manager = LocationKeepAliveManager(
             serviceController = controller,
         )
 
-        manager.acquire("reporting-owner")
-        manager.acquire("reporting-owner")
+        manager.acquireOrderTracking("reporting-owner", 1)
+        manager.acquireOrderTracking("reporting-owner", 1)
 
-        verify(exactly = 2) { controller.start("reporting-owner", any()) }
+        verify(exactly = 2) { controller.start("reporting-owner", any(), 1) }
     }
 
     @Test
     fun `failed foreground service start must not begin unprotected background collection`() {
         val controller = mockk<LocationForegroundServiceController>()
-        every { controller.start(any(), any()) } throws
+        every { controller.start(any(), any(), any()) } throws
             IllegalStateException("foreground start rejected")
 
         val manager = LocationKeepAliveManager(
             serviceController = controller,
         )
 
-        manager.acquire("reporting-owner")
+        manager.acquireOrderTracking("reporting-owner", 1)
 
-        verify(exactly = 1) { controller.start("reporting-owner", any()) }
+        verify(exactly = 1) { controller.start("reporting-owner", any(), 1) }
     }
 
     @Test
@@ -72,26 +72,26 @@ class LocationKeepAliveManagerRegressionTest {
         val stopEntered = CountDownLatch(1)
         val allowStop = CountDownLatch(1)
         val controller = mockk<LocationForegroundServiceController>()
-        every { controller.start(any(), any()) } just runs
+        every { controller.start(any(), any(), any()) } just runs
         every { controller.stop() } answers {
             stopEntered.countDown()
             check(allowStop.await(2, TimeUnit.SECONDS))
             true
         }
         val manager = LocationKeepAliveManager(controller)
-        manager.acquire("reporting-owner")
+        manager.acquireOrderTracking("reporting-owner", 1)
 
         val releaseThread = Thread { manager.release("reporting-owner") }
         releaseThread.start()
         org.junit.Assert.assertTrue(stopEntered.await(2, TimeUnit.SECONDS))
-        val acquireThread = Thread { manager.acquire("reporting-owner") }
+        val acquireThread = Thread { manager.acquireOrderTracking("reporting-owner", 1) }
         acquireThread.start()
         org.junit.Assert.assertTrue("acquire must be serialized behind stop", acquireThread.isAlive)
         allowStop.countDown()
         releaseThread.join(2_000)
         acquireThread.join(2_000)
 
-        verify(exactly = 2) { controller.start("reporting-owner", any()) }
+        verify(exactly = 2) { controller.start("reporting-owner", any(), 1) }
         verify(exactly = 1) { controller.stop() }
     }
 
@@ -110,16 +110,16 @@ class LocationKeepAliveManagerRegressionTest {
             every { isLocationServiceEnabled() } answers { enabled }
         }
         val manager = LocationKeepAliveManager(LocationForegroundServiceController(context, readiness))
-        manager.acquire("owner")
+        manager.acquireOrderTracking("owner", 1)
         importance = android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
         permission = false
-        manager.acquire("owner")
+        manager.acquireOrderTracking("owner", 1)
         permission = true
         enabled = false
-        manager.acquire("owner")
+        manager.acquireOrderTracking("owner", 1)
         verify(exactly = 0) { context.startForegroundService(any()) }
         enabled = true
-        manager.acquire("owner")
+        manager.acquireOrderTracking("owner", 1)
         verify(exactly = 1) { context.startForegroundService(any()) }
     }
 }

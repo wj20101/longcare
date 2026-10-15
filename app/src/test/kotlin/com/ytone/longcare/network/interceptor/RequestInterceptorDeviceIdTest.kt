@@ -4,11 +4,13 @@ import com.ytone.longcare.common.config.RuntimeConfigProvider
 import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.model.User
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Protocol
@@ -21,6 +23,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.json.JSONObject
 import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
@@ -95,6 +98,25 @@ class RequestInterceptorDeviceIdTest {
         executeRequest()
 
         verify(exactly = 0) { deviceInfoProvider.getAppInstanceId() }
+    }
+
+    @Test
+    fun `account changes cannot mix identity fields within a request header`() {
+        every { consentManager.isPrivacyConsented } returns false
+        val first = User(userId = 1, accountId = 2, companyId = 3, userIdentity = 4, token = "first-token")
+        val next = User(userId = 11, accountId = 12, companyId = 13, userIdentity = 14, token = "next-token")
+        val sessionState = mockk<StateFlow<SessionState>>()
+        every { userSessionRepository.sessionState } returns sessionState
+        every { sessionState.value } returnsMany listOf(SessionState.LoggedIn(first), SessionState.LoggedIn(next))
+
+        executeRequest()
+
+        val header = JSONObject(String(capturedHeaderJson.captured, Charsets.UTF_8))
+        assertEquals(first.userId, header.getInt("userId"))
+        assertEquals(first.accountId, header.getInt("accountId"))
+        assertEquals(first.companyId, header.getInt("companyId"))
+        assertEquals(first.userIdentity, header.getInt("userIdentity"))
+        assertEquals(first.token, header.getString("token"))
     }
 
     @Test

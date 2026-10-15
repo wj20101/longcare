@@ -292,4 +292,5 @@
 
     <!-- 隐藏功能验证入口（Debug 与 Release 共用） -->
 
+    <string name="location_recovery_action">服务定位已中断，点击恢复</string>
 </resources>

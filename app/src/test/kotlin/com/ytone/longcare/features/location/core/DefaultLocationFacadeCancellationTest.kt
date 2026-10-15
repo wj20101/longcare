@@ -5,6 +5,7 @@ import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.domain.repository.SessionState
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
+import com.ytone.longcare.features.location.manager.SingleAmapLocationSource
 import com.ytone.longcare.model.LocationResult
 import io.mockk.*
 import kotlinx.coroutines.CancellationException
@@ -17,23 +18,22 @@ import org.junit.Test
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class DefaultLocationFacadeCancellationTest {
     private val manager = mockk<ContinuousAmapLocationManager>()
+    private val singleSource = mockk<SingleAmapLocationSource>()
     private val readiness = mockk<LocationRuntimeReadiness> {
         every { hasLocationPermission() } returns true
         every { isLocationServiceEnabled() } returns true
     }
-    private val keepAlive = mockk<LocationKeepAliveManager>(relaxed = true)
     private val session = MutableStateFlow<SessionState>(SessionState.LoggedOut)
     private val users = mockk<UserSessionRepository> { every { sessionState } returns session }
-    private val facade = DefaultLocationFacade(manager, readiness, keepAlive, users)
+    private val facade = DefaultLocationFacade(manager, singleSource, readiness, users)
 
     @Test fun `each action requests new location and failures never return old success`() = runTest {
         val success = LocationAcquisition.Success(LocationResult(30.0, 120.0, "test"))
         val failure = LocationAcquisition.Failure(LocationFailure.TIMEOUT)
-        coEvery { manager.acquireCurrentLocation() } returnsMany listOf(success, failure)
+        coEvery { singleSource.acquireCurrentLocation() } returnsMany listOf(success, failure)
         assertEquals(success, facade.acquireCurrentLocation())
         assertEquals(failure, facade.acquireCurrentLocation())
-        coVerify(exactly = 2) { manager.acquireCurrentLocation() }
-        verify { keepAlive wasNot Called }
+        coVerify(exactly = 2) { singleSource.acquireCurrentLocation() }
     }
 
     @Test fun `denied permission and disabled location never start SDK`() = runTest {
@@ -42,30 +42,29 @@ class DefaultLocationFacadeCancellationTest {
         every { readiness.hasLocationPermission() } returns true
         every { readiness.isLocationServiceEnabled() } returns false
         assertEquals(LocationAcquisition.Failure(LocationFailure.SERVICE_DISABLED), facade.acquireCurrentLocation())
-        coVerify(exactly = 0) { manager.acquireCurrentLocation() }
+        coVerify(exactly = 0) { singleSource.acquireCurrentLocation() }
     }
 
     @Test fun `permission revoked during request discards result`() = runTest {
-        coEvery { manager.acquireCurrentLocation() } coAnswers {
+        coEvery { singleSource.acquireCurrentLocation() } coAnswers {
             every { readiness.hasLocationPermission() } returns false
             LocationAcquisition.Success(LocationResult(30.0, 120.0, "test"))
         }
         assertEquals(LocationAcquisition.Failure(LocationFailure.PERMISSION), facade.acquireCurrentLocation())
     }
 
-    @Test fun `cancellation propagates without touching continuous lifecycle`() = runTest {
-        coEvery { manager.acquireCurrentLocation() } throws CancellationException()
+    @Test fun `cancellation propagates to the caller`() = runTest {
+        coEvery { singleSource.acquireCurrentLocation() } throws CancellationException("SDK request cancelled")
         try {
             facade.acquireCurrentLocation()
             fail("Cancellation expected")
-        } catch (_: CancellationException) {
-            verify { keepAlive wasNot Called }
-            verify(exactly = 0) { manager.stopContinuousLocation() }
+        } catch (cancelled: CancellationException) {
+            assertEquals("SDK request cancelled", cancelled.message)
         }
     }
     @Test fun `account change cancels in flight SDK work`() = runTest {
         var released = false
-        coEvery { manager.acquireCurrentLocation() } coAnswers {
+        coEvery { singleSource.acquireCurrentLocation() } coAnswers {
             try { kotlinx.coroutines.awaitCancellation() } finally { released = true }
         }
         val request = async { facade.acquireCurrentLocation() }
@@ -74,6 +73,32 @@ class DefaultLocationFacadeCancellationTest {
         runCurrent()
         assertTrue(request.isCancelled)
         assertTrue(released)
+    }
+
+    @Test fun `service order request checks permission before SDK and after result`() = runTest {
+        every { readiness.hasLocationPermission() } returns false
+        assertEquals(LocationAcquisition.Failure(LocationFailure.PERMISSION), facade.acquireServiceOrderLocation())
+        coVerify(exactly = 0) { manager.acquireServiceOrderLocation() }
+        every { readiness.hasLocationPermission() } returns true
+        coEvery { manager.acquireServiceOrderLocation() } coAnswers {
+            every { readiness.hasLocationPermission() } returns false
+            LocationAcquisition.Success(LocationResult(30.0, 120.0, "test"))
+        }
+        assertEquals(LocationAcquisition.Failure(LocationFailure.PERMISSION), facade.acquireServiceOrderLocation())
+        coVerify(exactly = 1) { manager.acquireServiceOrderLocation() }
+    }
+
+    @Test fun `account change cancels service order request without touching continuous client`() = runTest {
+        var cleaned = false
+        coEvery { manager.acquireServiceOrderLocation() } coAnswers {
+            try { kotlinx.coroutines.awaitCancellation() } finally { cleaned = true }
+        }
+        val request = async { facade.acquireServiceOrderLocation() }
+        runCurrent()
+        session.value = SessionState.LoggedIn(com.ytone.longcare.model.User(userId = 2))
+        runCurrent()
+        assertTrue(request.isCancelled)
+        assertTrue(cleaned)
     }
 
 }

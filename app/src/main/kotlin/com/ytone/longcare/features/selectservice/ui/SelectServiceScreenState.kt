@@ -1,17 +1,7 @@
 package com.ytone.longcare.features.selectservice.ui
 
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.shared.vm.OrderDetailUiState
-import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
-
-internal fun loadOrderInfoIfNeeded(sharedViewModel: SharedOrderDetailViewModel, orderKey: OrderKey) {
-    if (sharedViewModel.getCachedOrderInfo(orderKey) == null) {
-        sharedViewModel.getOrderInfo(orderKey)
-    } else {
-        sharedViewModel.getOrderInfo(orderKey, forceRefresh = false)
-    }
-}
 
 internal fun updateServiceItemsFromUiState(
     uiState: OrderDetailUiState,
