@@ -10,6 +10,7 @@ import com.ytone.longcare.domain.location.ServiceOrderLocationQuality
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
+import com.ytone.longcare.features.location.manager.SingleAmapLocationSource
 import com.ytone.longcare.model.LocationResult
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,17 +23,18 @@ import kotlinx.coroutines.selects.select
 @Singleton
 class DefaultLocationFacade @Inject constructor(
     private val manager: ContinuousAmapLocationManager,
+    private val singleSource: SingleAmapLocationSource,
     private val readiness: LocationRuntimeReadiness,
     private val userSessionRepository: UserSessionRepository,
 ) : LocationFacade {
-    override suspend fun acquireCurrentLocation(): LocationAcquisition = acquire(serviceOrder = false)
+    override suspend fun acquireCurrentLocation(): LocationAcquisition = acquire(singleSource::acquireCurrentLocation)
 
-    override suspend fun acquireServiceOrderLocation(): LocationAcquisition = acquire(serviceOrder = true)
+    override suspend fun acquireServiceOrderLocation(): LocationAcquisition = acquire(manager::acquireServiceOrderLocation)
 
-    private suspend fun acquire(serviceOrder: Boolean): LocationAcquisition = coroutineScope<LocationAcquisition> {
+    private suspend fun acquire(requestLocation: suspend () -> LocationAcquisition): LocationAcquisition = coroutineScope<LocationAcquisition> {
         readinessFailure()?.let { return@coroutineScope LocationAcquisition.Failure(it) }
         val identity = userSessionRepository.sessionState.value.identity()
-        val request = async { manager.acquireCurrentLocation(serviceOrder) }
+        val request = async { requestLocation() }
         val accountChanged = async {
             userSessionRepository.sessionState.first { it.identity() != identity }
         }
@@ -70,8 +72,6 @@ class DefaultLocationFacade @Inject constructor(
         !readiness.isLocationServiceEnabled() -> LocationFailure.SERVICE_DISABLED
         else -> null
     }
-
-    override fun notifyPermissionGranted() = manager.restartAfterPermissionGrant()
 
     private fun SessionState.identity(): Triple<Int, Int, Int>? =
         user?.let { Triple(it.companyId, it.accountId, it.userId) }

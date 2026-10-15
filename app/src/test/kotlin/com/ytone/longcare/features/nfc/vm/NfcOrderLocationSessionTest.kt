@@ -76,8 +76,9 @@ class NfcOrderLocationSessionTest {
         assertEquals(0, requests)
         scan.confirmLocationActivation(requireNotNull(pending.value)) { requests++; LocationRequestResult.Coordinates(sample) }
         runCurrent()
-        assertEquals(1, requests)
+        assertEquals(2, requests)
         coVerify(exactly = 1) { orders.bindLocation(1, "tag", "121.0", "31.0") }
+        coVerify(exactly = 1) { orders.checkOrder(1, "tag", "121.0", "31.0") }
         scan.clear()
     }
 

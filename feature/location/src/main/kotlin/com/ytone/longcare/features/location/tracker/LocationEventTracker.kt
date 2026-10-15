@@ -13,8 +13,6 @@ object LocationEventTracker {
         CLIENT_CLEANUP_ERROR("client_cleanup_error", "持续高德定位客户端释放失败"),
         AMAP_CONTINUOUS_LOCATION_ERROR("amap_continuous_location_error", "持续定位失败"),
         AMAP_SINGLE_LOCATION_FAIL("amap_single_location_fail", "单次定位获取失败"),
-        ENABLE_BACKGROUND_LOCATION_ERROR("enable_background_location_error", "开启后台定位失败"),
-        DISABLE_BACKGROUND_LOCATION_ERROR("disable_background_location_error", "关闭后台定位失败"),
 
         // LocationKeepAliveManager 相关
         KEEP_ALIVE_START_ERROR("keep_alive_start_error", "启动定位保活服务失败"),

@@ -4,6 +4,7 @@
     <string name="location_tracking_notification_title">位置服务运行中</string>
     <string name="location_tracking_notification_content">正在记录服务位置</string>
     <string name="location_tracking_preparing">正在确认服务状态</string>
+    <string name="location_tracking_locating">正在获取服务位置</string>
     <string name="location_tracking_quality_wait">定位质量暂不足，正在继续定位</string>
     <string name="location_tracking_network_wait">位置上传暂未成功，正在继续尝试</string>
     <string name="location_tracking_interrupted">位置服务已中断，请打开应用恢复</string>

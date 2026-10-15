@@ -199,7 +199,7 @@ class OrderDetailErrorTest {
         val next = key.copy(orderId = key.orderId + 1)
         model.starOrder(next); runCurrent()
         first.completeExceptionally(IllegalStateException("old SDK failed")); advanceUntilIdle()
-        assertEquals(StarOrderUiState.Success, model.starOrderState.value)
+        assertEquals(StarOrderUiState.Success(next, emptyList()), model.starOrderState.value)
         coVerify(exactly = 0) { orders.starOrder(key.orderId, any(), any(), any()) }
         coVerify(exactly = 1) { orders.starOrder(next.orderId, any(), "121.0", "31.0") }
     }
@@ -212,6 +212,7 @@ class OrderDetailErrorTest {
 
         model.starOrder(key)
         runCurrent()
+        assertEquals(StarOrderUiState.Initial, model.starOrderState.value)
         model.starOrder(key)
         runCurrent()
 
@@ -232,7 +233,11 @@ class OrderDetailErrorTest {
         val model = SharedOrderDetailViewModel(details, orders, location, text, lifecycle)
         model.starOrder(key)
         runCurrent()
-        model.resetState()
+        val otherOrder = key.copy(orderId = key.orderId + 1)
+        coEvery { details.getOrderInfo(otherOrder, any()) } returns ApiResult.Success(
+            ServiceOrderInfoModel(orderId = otherOrder.orderId),
+        )
+        model.getOrderInfo(otherOrder)
         model.starOrder(key)
         runCurrent()
         verify(exactly = 1) { lifecycle.cancelOrderPreparation(key.orderId) }

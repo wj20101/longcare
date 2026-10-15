@@ -47,23 +47,22 @@ class SharedOrderDetailViewModel @Inject constructor(
     val uiState: StateFlow<OrderDetailUiState> = _uiState.asStateFlow()
 
     // 当前订单信息请求
-    private val _currentOrderId = MutableStateFlow<OrderKey?>(null)
-    val currentOrderId: StateFlow<OrderKey?> = _currentOrderId.asStateFlow()
+    private var currentOrderKey: OrderKey? = null
+    private var orderInfoJob: Job? = null
 
     fun getOrderInfo(orderKey: OrderKey, forceRefresh: Boolean = false) {
         if (startingOrder != null && startingOrder != orderKey) cancelStartingOrder()
-        viewModelScope.launch {
-            // 如果是同一个订单且不强制刷新，且当前状态是成功状态，则不重复请求
-            if (!forceRefresh &&
-                _currentOrderId.value == orderKey &&
-                _uiState.value is OrderDetailUiState.Success) {
-                return@launch
-            }
+        if (!forceRefresh && currentOrderKey == orderKey &&
+            (_uiState.value is OrderDetailUiState.Success || orderInfoJob?.isActive == true)
+        ) return
 
-            _currentOrderId.value = orderKey
-            _uiState.value = OrderDetailUiState.Loading
-
-            when (val result = unifiedOrderRepository.getOrderInfo(orderKey, forceRefresh)) {
+        orderInfoJob?.cancel()
+        currentOrderKey = orderKey
+        _uiState.value = OrderDetailUiState.Loading
+        orderInfoJob = viewModelScope.launch {
+            val result = unifiedOrderRepository.getOrderInfo(orderKey, forceRefresh)
+            currentCoroutineContext().ensureActive()
+            when (result) {
                 is ApiResult.Success -> {
                     _uiState.value = OrderDetailUiState.Success(result.data)
                 }
@@ -85,18 +84,8 @@ class SharedOrderDetailViewModel @Inject constructor(
         return unifiedOrderRepository.getCachedOrderInfo(orderKey)
     }
 
-    fun preloadOrderInfo(orderKey: OrderKey) {
-        viewModelScope.launch {
-            unifiedOrderRepository.preloadOrderInfo(orderKey)
-        }
-    }
-
     fun getUserAddress(orderKey: OrderKey): String {
         return getCachedOrderInfo(orderKey)?.userInfo?.address ?: ""
-    }
-
-    fun getProjectIdList(orderKey: OrderKey): List<Int> {
-        return getCachedOrderInfo(orderKey)?.projectList?.map { it.projectId } ?: emptyList()
     }
 
     suspend fun getSelectedProjectIdsOrDefault(
@@ -109,32 +98,6 @@ class SharedOrderDetailViewModel @Inject constructor(
         } else {
             savedProjectIds
         }
-    }
-
-    fun clearOrderCache(orderKey: OrderKey) {
-        unifiedOrderRepository.clearOrderInfoCache(orderKey)
-        if (_currentOrderId.value == orderKey) {
-            _uiState.value = OrderDetailUiState.Initial
-            _currentOrderId.value = null
-        }
-    }
-
-    /**
-     * 刷新当前订单详情
-     */
-    fun refreshCurrentOrder() {
-        _currentOrderId.value?.let { orderKey ->
-            getOrderInfo(orderKey, forceRefresh = true)
-        }
-    }
-
-    /**
-     * 重置状态
-     */
-    fun resetState() {
-        cancelStartingOrder()
-        _uiState.value = OrderDetailUiState.Initial
-        _currentOrderId.value = null
     }
 
     // 工单开始状态
@@ -155,17 +118,14 @@ class SharedOrderDetailViewModel @Inject constructor(
 
     /**
      * 工单开始(正式计时)
-     * @param orderId 订单ID
+     * @param orderKey 订单标识
      * @param selectedProjectIds 选中的项目ID列表
-     * @param onSuccess 成功回调
      */
-    fun starOrder(orderId: Long, selectedProjectIds: List<Long> = emptyList(), onSuccess: () -> Unit = {}) {
-        starOrder(OrderKey(orderId = orderId, planId = 0), selectedProjectIds, onSuccess)
-    }
-
-    fun starOrder(orderKey: OrderKey, selectedProjectIds: List<Long> = emptyList(), onSuccess: () -> Unit = {}) {
+    fun starOrder(orderKey: OrderKey, selectedProjectIds: List<Int> = emptyList()) {
         if (startJob?.isActive == true && startingOrder == orderKey) return
+        if ((_starOrderState.value as? StarOrderUiState.Success)?.orderKey == orderKey) return
         cancelStartingOrder()
+        val projectIds = selectedProjectIds.toList()
         startingOrder = orderKey
         _starOrderState.value = StarOrderUiState.Loading
         serviceLifecycle.prepareOrderStart(orderKey.orderId)
@@ -211,15 +171,25 @@ class SharedOrderDetailViewModel @Inject constructor(
                 DiagnosticEventTracker.trackEvent(DiagnosticCategory.LOCATION, "service_start_location_submit",
                     "正式开始服务提交位置", diagnosticExtras, userId, reportToServer = true)
 
-                val result = orderRepository.starOrder(orderKey.orderId, selectedProjectIds, longitude, latitude)
+                val result = orderRepository.starOrder(orderKey.orderId, projectIds.map(Int::toLong), longitude, latitude)
                 currentCoroutineContext().ensureActive()
                 when (result) {
                     is ApiResult.Success -> {
                         DiagnosticEventTracker.trackEvent(DiagnosticCategory.LOCATION, "service_start_location_success",
                             "正式开始服务位置提交成功", diagnosticExtras, userId, reportToServer = true)
                         serviceLifecycle.onOrderStarted(orderKey.orderId)
-                        _starOrderState.value = StarOrderUiState.Success
-                        onSuccess()
+                        try {
+                            unifiedOrderRepository.updateSelectedProjects(orderKey, projectIds)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (error: Exception) {
+                            currentCoroutineContext().ensureActive()
+                            // 服务端已经开始，磁盘失败不能提示重新签到；路由仍携带本次项目。
+                            DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_projects_save_failed",
+                                "服务已开始，但本地项目保存失败", error, context, userId)
+                        }
+                        currentCoroutineContext().ensureActive()
+                        _starOrderState.value = StarOrderUiState.Success(orderKey, projectIds)
                     }
                     is ApiResult.Exception -> {
                         DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_submit_exception",
@@ -241,17 +211,22 @@ class SharedOrderDetailViewModel @Inject constructor(
                     startJob = null
                     startingOrder = null
                     serviceLifecycle.cancelOrderPreparation(orderKey.orderId)
+                    if (_starOrderState.value is StarOrderUiState.Loading) {
+                        _starOrderState.value = StarOrderUiState.Initial
+                    }
                 }
             }
         }
         startJob?.start()
     }
 
-    /**
-     * 重置工单开始状态
-     */
-    fun resetStarOrderState() {
-        _starOrderState.value = StarOrderUiState.Initial
+    /** 仅消费当前展示的结果，旧页面或旧 Snackbar 不能清除后来的动作。 */
+    fun acknowledgeStartResult(result: StarOrderUiState) {
+        if ((result is StarOrderUiState.Success || result is StarOrderUiState.Error) &&
+            _starOrderState.value === result
+        ) {
+            _starOrderState.value = StarOrderUiState.Initial
+        }
     }
 }
 
@@ -261,6 +236,6 @@ class SharedOrderDetailViewModel @Inject constructor(
 sealed class StarOrderUiState {
     data object Initial : StarOrderUiState()
     data object Loading : StarOrderUiState()
-    data object Success : StarOrderUiState()
+    data class Success(val orderKey: OrderKey, val selectedProjectIds: List<Int>) : StarOrderUiState()
     data class Error(val message: String) : StarOrderUiState()
 }

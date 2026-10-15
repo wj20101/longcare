@@ -14,8 +14,6 @@ interface LocationFacade {
 
     /** 在实际提交/拍摄时复核，包含实时权限、开关和样本时效。 */
     fun isUsable(location: LocationResult): Boolean
-
-    fun notifyPermissionGranted()
 }
 
 sealed interface LocationAcquisition {

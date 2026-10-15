@@ -129,8 +129,6 @@ class NfcWorkflowViewModel @Inject constructor(
 
     suspend fun acquireLocation(): LocationRequestResult = locationDelegate.acquireLocation()
 
-    fun notifyLocationPermissionGranted() = locationFacade.notifyPermissionGranted()
-
     fun observeScanEvents(
         orderKey: OrderKey,
         signInMode: SignInMode,

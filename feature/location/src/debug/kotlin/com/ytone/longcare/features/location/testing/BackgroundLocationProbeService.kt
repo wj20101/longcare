@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.location.testing
 
-import android.app.Notification
 import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
@@ -155,8 +154,6 @@ class BackgroundLocationProbeService : LocationTrackingService() {
         override fun startLocation() { if (!running) { running = true; handler.post(callback) } }
         override fun stopLocation() { running = false; handler.removeCallbacks(callback) }
         override fun onDestroy() { stopLocation(); listener = null }
-        override fun enableBackgroundLocation(id: Int, notification: Notification) = Unit
-        override fun disableBackgroundLocation(removeNotification: Boolean) = Unit
     }
 
     companion object {

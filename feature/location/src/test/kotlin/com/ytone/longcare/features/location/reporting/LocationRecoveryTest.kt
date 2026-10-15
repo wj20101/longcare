@@ -46,6 +46,7 @@ class LocationRecoveryTest {
         manager.resumePendingRecovery()
         verify(exactly = 1) { keepAlive.acquireOrderTracking(record.sessionId, 10) }
         val session = requireNotNull(manager.sessionFor(record.sessionId, 10))
+        assertEquals(identity, session.account)
         assertFalse(session.canUpload())
         runCurrent()
         response.complete(active())
@@ -59,6 +60,7 @@ class LocationRecoveryTest {
         coEvery { orders.getOrderState(10) } coAnswers { response.await() }
         val manager = LocationReportingManager(keepAlive, orders, backgroundScope, store)
         val session = requireNotNull(manager.restore(record, identity)).first
+        assertEquals(identity, session.account)
         assertFalse(session.canUpload())
         runCurrent()
         verify(exactly = 0) { keepAlive.acquireOrderTracking(any(), any()) }

@@ -1,11 +1,16 @@
 package com.ytone.longcare.features.location.reporting
 
+import com.ytone.longcare.domain.location.LocationAccount
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 
 /** Identity and synchronous cancellation gate shared by business coordination and the Service. */
-internal class LocationReportingSession(val orderId: Long, val owner: String) {
+internal class LocationReportingSession(
+    val orderId: Long,
+    val owner: String,
+    val account: LocationAccount,
+) {
     private val lock = Any()
     private var valid = true
     private val ready = MutableStateFlow(false)

@@ -75,7 +75,6 @@ internal fun rememberNfcLocationRequest(
 
     val locationOnlyPermissionLauncher = rememberLocationPermissionLauncher(
         onPermissionGranted = {
-            nfcViewModel.notifyLocationPermissionGranted()
             nfcViewModel.resumePendingPermissionScan {
                 getCurrentLocationCoordinates()
             }

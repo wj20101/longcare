@@ -93,7 +93,6 @@ class LocationArchitectureRegressionTest {
 
         assertTrue(manager.contains("SessionState.LoggedOut"))
         assertTrue(manager.contains("locationReportingManager.setAccount(null)"))
-        assertTrue(manager.contains("if (!hasActiveSession()) return"))
     }
 
     @Test

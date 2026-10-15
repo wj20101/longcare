@@ -7,14 +7,22 @@ import com.ytone.longcare.domain.location.LocationAccount
 import com.ytone.longcare.domain.location.LocationRecoveryRecord
 import com.ytone.longcare.domain.location.LocationRecoveryStore
 import com.ytone.longcare.domain.order.OrderRepository
+import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.location.core.LocationForegroundServiceController
 import com.ytone.longcare.features.location.core.LocationKeepAliveManager
 import com.ytone.longcare.features.location.reporting.LocationReportingManager
+import com.ytone.longcare.features.location.reporting.LocationReportingStatus
+import com.ytone.longcare.model.LocationResult
+import com.ytone.longcare.model.User
+import com.ytone.longcare.model.result.ApiResult
 import io.mockk.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.*
@@ -56,6 +64,101 @@ class LocationTrackingServiceRecoveryRaceTest {
     @Test fun `late empty bootstrap cannot stop a new visible session`() = assertLateBootstrap(false)
 
     @Test fun `late failed bootstrap cannot stop a new visible session`() = assertLateBootstrap(true)
+
+    @Test fun `failed native startup exposes interruption and allows visible retry before destruction`() = runTest {
+        val manager = LocationReportingManager(keepAlive, orders, backgroundScope, store)
+        manager.setAccount(LocationAccount(1, 2, 3))
+        runCurrent()
+        val service = service(manager)
+        // Consent can change after startForegroundService was accepted but before Service startup.
+        every { service.privacyConsentManager.isPrivacyConsented } returns false
+        try {
+            manager.prepareOrderStart(10)
+            service.onStartCommand(startIntent(10), 0, 1)
+
+            assertTrue(shadowOf(service).isStoppedBySelf)
+            assertEquals(LocationReportingStatus.INTERRUPTED, manager.status.value)
+            verify(exactly = 0) {
+                service.continuousAmapLocationManager.startContinuousLocation(any())
+            }
+
+            // stopSelf is asynchronous; retry must not be blocked by the old accepted dispatch.
+            manager.onAppVisible()
+            verify(exactly = 2) { controller.start(any(), any(), 10) }
+            assertEquals(LocationReportingStatus.PREPARING, manager.status.value)
+        } finally {
+            manager.stopReporting()
+            service.onDestroy()
+            runCurrent()
+        }
+    }
+
+    @Test fun `delayed account observer cannot rebind an old order before SDK collection starts`() = runTest {
+        val manager = LocationReportingManager(keepAlive, orders, backgroundScope, store)
+        manager.setAccount(LocationAccount(1, 2, 3))
+        runCurrent()
+        manager.prepareOrderStart(10)
+        manager.onOrderStarted(10)
+        val service = service(manager)
+        // The repository has changed account, but its application-scope observer has not run yet.
+        val users = MutableStateFlow<SessionState>(SessionState.LoggedIn(User(companyId = 1, accountId = 2, userId = 4)))
+        every { service.userSessionRepository.sessionState } returns users
+        try {
+            service.onStartCommand(startIntent(10), 0, 1)
+            runBlocking {
+                withTimeout(2_000) { manager.status.first { it == LocationReportingStatus.INTERRUPTED } }
+            }
+
+            verify(exactly = 0) { service.continuousAmapLocationManager.startContinuousLocation(any()) }
+            coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
+        } finally {
+            manager.stopReporting()
+            service.onDestroy()
+            runCurrent()
+        }
+    }
+
+    @Test fun `account change before a callback blocks upload even before observer cancellation`() = runTest {
+        val manager = LocationReportingManager(keepAlive, orders, backgroundScope, store)
+        manager.setAccount(LocationAccount(1, 2, 3))
+        runCurrent()
+        manager.prepareOrderStart(10)
+        manager.onOrderStarted(10)
+        val service = service(manager)
+        val users = MutableStateFlow<SessionState>(SessionState.LoggedIn(User(companyId = 1, accountId = 2, userId = 3)))
+        every { service.userSessionRepository.sessionState } returns users
+        every { service.runtimeReadiness.hasLocationPermission() } returns true
+        every { service.runtimeReadiness.isLocationServiceEnabled() } returns true
+        every { service.locationClock.currentTimeMillis() } returns 1_000_000L
+        every { service.locationClock.elapsedRealtime() } returns 10_000L
+        coEvery { service.locationRepository.addPosition(any(), any(), any()) } returns ApiResult.Success(Unit)
+        val collecting = CountDownLatch(1)
+        val delivered = CountDownLatch(1)
+        val callback = CompletableDeferred<Unit>()
+        every { service.continuousAmapLocationManager.startContinuousLocation(any()) } returns flow {
+            collecting.countDown()
+            callback.await()
+            emit(LocationResult(31.0, 121.0, "network", accuracy = 50f, coordType = "GCJ02",
+                locationType = 5, trustedLevel = 1, locationTime = 1_000_000L,
+                receivedAt = 1_000_000L, receivedElapsedRealtime = 10_000L))
+            delivered.countDown()
+            awaitCancellation()
+        }
+        try {
+            service.onStartCommand(startIntent(10), 0, 1)
+            assertTrue(collecting.await(2, TimeUnit.SECONDS))
+            users.value = SessionState.LoggedIn(User(companyId = 1, accountId = 2, userId = 4))
+            callback.complete(Unit)
+            assertTrue(delivered.await(2, TimeUnit.SECONDS))
+
+            coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
+        } finally {
+            callback.complete(Unit)
+            manager.stopReporting()
+            service.onDestroy()
+            runCurrent()
+        }
+    }
 
     private fun assertLateBootstrap(fails: Boolean) = runTest {
         val manager = LocationReportingManager(keepAlive, orders, backgroundScope, store)

@@ -38,6 +38,7 @@ internal class NfcScanWorkflowDelegate(
     private var pendingPermissionScan: PendingNfcScan? = null
     private var retryScan: PendingNfcScan? = null
     private var retryBinding: PendingNfcData? = null
+    private var confirmedBindingOrder: OrderKey? = null
 
     fun observeScanEvents(
         orderKey: OrderKey,
@@ -69,9 +70,13 @@ internal class NfcScanWorkflowDelegate(
         retryScan = scan
         uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
         // 先读客户资料；未绑定时先确认，再采集，避免页面等待消耗有效定位。
-        checkUserLocationAndProceed(unifiedOrderRepository, scan.orderKey, scan.signInMode,
-            scan.endOderInfo, scan.tagId, pendingNfcData, orderDelegate, userMessages,
-            onLocationNeeded = { requestAndStart(scan, request) })
+        if (confirmedBindingOrder == scan.orderKey) {
+            requestAndStart(scan, request)
+        } else {
+            checkUserLocationAndProceed(unifiedOrderRepository, scan.orderKey, scan.signInMode,
+                scan.endOderInfo, scan.tagId, pendingNfcData, orderDelegate, userMessages,
+                onLocationNeeded = { requestAndStart(scan, request) })
+        }
         currentCoroutineContext().ensureActive()
         if (pendingNfcData.value != null) uiState.value = NfcSignInUiState.Initial
     }
@@ -163,7 +168,11 @@ internal class NfcScanWorkflowDelegate(
             is ApiResult.Success -> {
                 trackNfcLocation("nfc_location_submit_success", data.orderKey, data.signInMode, "bind_submit", location,
                     userId = userId, locationFields = locationFields)
-                orderDelegate.startOrder(data.orderKey, data.tagId, location)
+                // 绑定网络请求可能很慢；签到重新取点，后续定位重试不能再次绑定客户。
+                confirmedBindingOrder = data.orderKey
+                val scan = PendingNfcScan(data.orderKey, data.signInMode, data.endOderInfo, data.tagId)
+                retryScan = scan
+                requestAndStart(scan, request)
             }
             is ApiResult.Exception -> {
                 trackNfcException("bind_location_exception", "NFC绑定定位异常", response.exception,
@@ -200,6 +209,7 @@ internal class NfcScanWorkflowDelegate(
         pendingPermissionScan = null
         retryScan = null
         retryBinding = null
+        confirmedBindingOrder = null
         orderDelegate.resetState()
     }
 

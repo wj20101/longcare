@@ -19,13 +19,6 @@ class LocationTrackingViewModel @Inject constructor(
     }
 
     /**
-     * 定位权限刚被授予后调用，重启定位引擎再启动追踪。
-     */
-    fun startTrackingAfterPermissionGrant(orderKey: OrderKey) {
-        trackingManager.startTrackingAfterPermissionGrant(orderKey)
-    }
-
-    /**
      * 用于已确认的业务停止/退出；不能在仅点击“结束”进入确认流程时调用。
      */
     fun stopTracking() {

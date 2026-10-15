@@ -207,7 +207,11 @@ class LocationReportingManager @Inject constructor(
         current?.takeIf { it.orderId == orderId }?.let { return it }
         stopLocked()
         _orderState.value = null
-        val session = LocationReportingSession(orderId, restoredOwner ?: "location_report_${orderId}_${UUID.randomUUID()}")
+        val session = LocationReportingSession(
+            orderId,
+            restoredOwner ?: "location_report_${orderId}_${UUID.randomUUID()}",
+            checkNotNull(account) { "location_account_not_ready" },
+        )
         current = session
         _pendingRecovery.value = null
         _status.value = LocationReportingStatus.PREPARING
@@ -281,12 +285,10 @@ class LocationReportingManager @Inject constructor(
 
     private fun persistLocked(session: LocationReportingSession) {
         if (!session.canUpload() || !session.trackingRequested) return
-        account?.let {
-            val record = LocationRecoveryRecord(it, session.orderId, session.owner)
-            if (lastRecoveryRecord != record) {
-                lastRecoveryRecord = record
-                recoveryWrites.trySend(record)
-            }
+        val record = LocationRecoveryRecord(session.account, session.orderId, session.owner)
+        if (lastRecoveryRecord != record) {
+            lastRecoveryRecord = record
+            recoveryWrites.trySend(record)
         }
     }
 

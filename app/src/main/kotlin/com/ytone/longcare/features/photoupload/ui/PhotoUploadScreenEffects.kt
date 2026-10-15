@@ -34,11 +34,7 @@ internal fun PhotoUploadScreenEffects(
 
     LaunchedEffect(orderKey) {
         viewModel.setOrderKey(orderKey)
-        if (sharedViewModel.getCachedOrderInfo(orderKey) == null) {
-            sharedViewModel.getOrderInfo(orderKey)
-        } else {
-            sharedViewModel.getOrderInfo(orderKey, forceRefresh = false)
-        }
+        sharedViewModel.getOrderInfo(orderKey)
     }
 
     LaunchedEffect(actions.existingImagesFlow) {

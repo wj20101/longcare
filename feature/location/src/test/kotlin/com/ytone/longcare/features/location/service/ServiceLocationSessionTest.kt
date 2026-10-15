@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.location.service
 
 import com.ytone.longcare.common.utils.KLogger
+import com.ytone.longcare.domain.location.LocationAccount
 import com.ytone.longcare.features.location.reporting.LocationClock
 import com.ytone.longcare.features.location.reporting.LocationReportingSession
 import com.ytone.longcare.features.location.reporting.LocationSampleEvaluator
@@ -34,6 +35,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ServiceLocationSessionTest {
+    private val account = LocationAccount(1, 2, 3)
     @Before
     fun setup() {
         KLogger.updateConfig { enabled = false }
@@ -48,7 +50,7 @@ class ServiceLocationSessionTest {
 
     @Test
     fun `inactive gate never uploads`() = runTest {
-        val gate = LocationReportingSession(1, "owner")
+        val gate = LocationReportingSession(1, "owner", account)
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
         var uploads = 0
         val job = backgroundScope.launch { executor(gate, samples) { uploads++; ApiResult.Success(Unit) }.run() }
@@ -60,7 +62,7 @@ class ServiceLocationSessionTest {
 
     @Test
     fun `repeated business and network failures do not change business state or retry a point`() = runTest {
-        val gate = LocationReportingSession(1, "owner").apply { setEnabled(true) }
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
         var uploads = 0
         val job = backgroundScope.launch {
@@ -84,7 +86,7 @@ class ServiceLocationSessionTest {
 
     @Test
     fun `stop cancels in flight upload before Android onDestroy and blocks late samples`() = runTest {
-        val gate = LocationReportingSession(1, "owner").apply { setEnabled(true) }
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
         var uploads = 0
         var cancelled = false
@@ -109,7 +111,7 @@ class ServiceLocationSessionTest {
 
     @Test
     fun `stop before lazy collector attachment prevents it from starting`() = runTest {
-        val gate = LocationReportingSession(1, "owner").apply { setEnabled(true) }
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         var ran = false
         val job = backgroundScope.launch(start = CoroutineStart.LAZY) { ran = true }
         gate.invalidate()
@@ -122,7 +124,7 @@ class ServiceLocationSessionTest {
 
     @Test
     fun `order ending during sample validation prevents HTTP dispatch`() = runTest {
-        val gate = LocationReportingSession(1, "owner").apply { setEnabled(true) }
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
         var uploads = 0
         every { clock.elapsedRealtime() } answers {
@@ -142,7 +144,7 @@ class ServiceLocationSessionTest {
 
     @Test
     fun `late upload response from ended order is ignored while the next order uploads normally`() = runTest {
-        val previous = LocationReportingSession(1, "old-owner").apply { setEnabled(true) }
+        val previous = LocationReportingSession(1, "old-owner", account).apply { setEnabled(true) }
         val previousSamples = Channel<LocationResult>(Channel.UNLIMITED)
         val finishPrevious = CompletableDeferred<Unit>()
         val previousJob = backgroundScope.launch(start = CoroutineStart.LAZY) {
@@ -157,7 +159,7 @@ class ServiceLocationSessionTest {
         runCurrent()
         previous.invalidate()
 
-        val next = LocationReportingSession(2, "new-owner").apply { setEnabled(true) }
+        val next = LocationReportingSession(2, "new-owner", account).apply { setEnabled(true) }
         val nextSamples = Channel<LocationResult>(Channel.UNLIMITED)
         var nextUploads = 0
         val nextJob = backgroundScope.launch {
@@ -177,7 +179,7 @@ class ServiceLocationSessionTest {
 
     @Test
     fun `busy upload drops pending samples and only a new callback uploads`() = runTest {
-        val gate = LocationReportingSession(1, "owner").apply { setEnabled(true) }
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
         val finishFirst = CompletableDeferred<Unit>()
         val uploaded = mutableListOf<Double>()
@@ -207,7 +209,7 @@ class ServiceLocationSessionTest {
 
     @Test
     fun `invalid and pre session locations never upload`() = runTest {
-        val gate = LocationReportingSession(1, "owner").apply { setEnabled(true) }
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
         var uploads = 0
         val job = backgroundScope.launch {
@@ -226,7 +228,7 @@ class ServiceLocationSessionTest {
 
     @Test
     fun `sample waiting behind slow upload is rechecked and never uploaded after expiry`() = runTest {
-        val gate = LocationReportingSession(1, "owner").apply { setEnabled(true) }
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
         val finishFirst = CompletableDeferred<Unit>()
         var uploads = 0
@@ -253,7 +255,7 @@ class ServiceLocationSessionTest {
 
     @Test
     fun `reporting drops low precision samples and recovers without ending the order`() = runTest {
-        val gate = LocationReportingSession(1, "owner").apply { setEnabled(true) }
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
         val uploaded = mutableListOf<Float>()
         val job = backgroundScope.launch {

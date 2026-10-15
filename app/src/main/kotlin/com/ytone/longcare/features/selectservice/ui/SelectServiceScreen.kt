@@ -14,13 +14,16 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.DeviceCompatibilityHelper
 import com.ytone.longcare.common.utils.PermissionGuideItem
@@ -31,7 +34,6 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.shared.vm.StarOrderUiState
 import com.ytone.longcare.theme.bgGradientBrush
-import kotlinx.coroutines.launch
 
 data class ServiceItem(
     val id: Int,
@@ -49,7 +51,8 @@ fun SelectServiceScreen(
     sharedViewModel: SharedOrderDetailViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val currentActions by rememberUpdatedState(actions)
     val uiState by sharedViewModel.uiState.collectAsStateWithLifecycle()
     val starOrderState by sharedViewModel.starOrderState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -57,17 +60,24 @@ fun SelectServiceScreen(
     CustomBackHandler(customAction = actions.onNavigateBack)
 
     LaunchedEffect(orderKey) {
-        loadOrderInfoIfNeeded(sharedViewModel, orderKey)
+        sharedViewModel.getOrderInfo(orderKey)
     }
 
-    LaunchedEffect(starOrderState) {
-        when (val currentState = starOrderState) {
-            is StarOrderUiState.Success -> sharedViewModel.resetStarOrderState()
-            is StarOrderUiState.Error -> {
-                snackbarHostState.showSnackbar(currentState.message)
-                sharedViewModel.resetStarOrderState()
+    LaunchedEffect(sharedViewModel, lifecycleOwner, orderKey) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            sharedViewModel.starOrderState.collect { result ->
+                when (result) {
+                    is StarOrderUiState.Success -> if (result.orderKey == orderKey) {
+                        currentActions.onNavigateToServiceCountdown(result.orderKey, result.selectedProjectIds)
+                        sharedViewModel.acknowledgeStartResult(result)
+                    }
+                    is StarOrderUiState.Error -> {
+                        snackbarHostState.showSnackbar(result.message)
+                        sharedViewModel.acknowledgeStartResult(result)
+                    }
+                    else -> Unit
+                }
             }
-            else -> Unit
         }
     }
 
@@ -86,15 +96,7 @@ fun SelectServiceScreen(
     var guideItems by remember { mutableStateOf<List<PermissionGuideItem>>(emptyList()) }
 
     fun startService(selectedIds: List<Int>) {
-        sharedViewModel.starOrder(orderKey, selectedIds.map(Int::toLong)) {
-            coroutineScope.launch {
-                selectServiceViewModel.updateSelectedProjects(
-                    orderKey = orderKey,
-                    selectedProjectIds = selectedIds
-                )
-                actions.onNavigateToServiceCountdown(orderKey, selectedIds)
-            }
-        }
+        sharedViewModel.starOrder(orderKey, selectedIds)
     }
 
     fun continuePendingStart() {
@@ -131,7 +133,7 @@ fun SelectServiceScreen(
                 uiState = uiState,
                 serviceItems = serviceItems,
                 selectServiceType = selectServiceType,
-                isStarOrderLoading = starOrderState is StarOrderUiState.Loading,
+                isStarOrderLoading = starOrderState is StarOrderUiState.Loading || starOrderState is StarOrderUiState.Success,
                 onToggleItemSelection = { clickedIndex ->
                     val currentItem = serviceItems[clickedIndex]
                     serviceItems[clickedIndex] = currentItem.copy(
