@@ -13,6 +13,7 @@ class LocationFailureMessageTest {
             LocationFailure.BUSY to R.string.location_error_busy,
             LocationFailure.TIMEOUT to R.string.location_error_timeout,
             LocationFailure.QUALITY to R.string.location_error_quality,
+            LocationFailure.PRECISION to R.string.location_error_precision,
             LocationFailure.NETWORK to R.string.location_error_network,
             LocationFailure.CONFIGURATION to R.string.location_error_configuration,
             LocationFailure.UNAVAILABLE to R.string.location_error_unavailable,

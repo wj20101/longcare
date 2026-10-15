@@ -8,9 +8,9 @@ import com.ytone.longcare.model.LocationResult
 object LocationEventTracker {
     enum class EventType(val code: String, val description: String) {
         // ContinuousAmapLocationManager 相关
-        API_KEY_UNAVAILABLE("api_key_unavailable", "高德定位API Key不可用"),
+        SDK_RECOVERED("sdk_recovered", "无回调后重建定位采集"),
         CLIENT_INIT_ERROR("client_init_error", "持续高德定位客户端初始化失败"),
-        CLIENT_NOT_INITIALIZED("client_not_initialized", "持续高德定位客户端未初始化"),
+        CLIENT_CLEANUP_ERROR("client_cleanup_error", "持续高德定位客户端释放失败"),
         AMAP_CONTINUOUS_LOCATION_ERROR("amap_continuous_location_error", "持续定位失败"),
         AMAP_SINGLE_LOCATION_FAIL("amap_single_location_fail", "单次定位获取失败"),
         ENABLE_BACKGROUND_LOCATION_ERROR("enable_background_location_error", "开启后台定位失败"),
@@ -25,8 +25,6 @@ object LocationEventTracker {
         SERVICE_STOP_ERROR("service_stop_error", "停止定位前台保活失败"),
 
         // LocationReportingManager 相关
-        REPORTING_START("reporting_start", "位置上报任务启动"),
-        REPORTING_STOP("reporting_stop", "位置上报任务停止"),
         LOCATION_SAMPLE_RECORDED("location_sample_recorded", "采集到定位样本"),
         LOCATION_INVALID_SKIPPED("location_invalid_skipped", "跳过无效定位样本"),
         REPORTING_TASK_ERROR("reporting_task_error", "位置上报任务异常终止"),
@@ -40,7 +38,6 @@ object LocationEventTracker {
         const val ERROR_TYPE = "errorType"
         const val ERROR_CODE = "errorCode"
         const val ORDER_ID = "orderId"
-        const val GENERATION = "generation"
         const val PROVIDER = "provider"
         const val ACCURACY = "accuracy"
         const val COORDINATE_TYPE = "coordType"
@@ -114,6 +111,7 @@ object LocationEventTracker {
             Attribute.LOCATION_TYPE to location.locationType,
             Attribute.TRUSTED_LEVEL to location.trustedLevel,
             Attribute.LOCATION_TIME to location.locationTime,
+            "requestId" to location.requestId.takeIf { it.isNotBlank() },
             )
         )
         return locationExtras

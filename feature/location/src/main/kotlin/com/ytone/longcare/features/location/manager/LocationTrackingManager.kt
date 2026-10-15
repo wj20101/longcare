@@ -2,6 +2,7 @@ package com.ytone.longcare.features.location.manager
 
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.location.LocationFacade
+import com.ytone.longcare.domain.location.LocationAccount
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.features.location.reporting.LocationReportingManager
 import com.ytone.longcare.model.OrderKey
@@ -18,8 +19,12 @@ class LocationTrackingManager @Inject constructor(
     private val locationFacade: LocationFacade,
     private val locationReportingManager: LocationReportingManager,
 ) {
+    val pendingRecovery = locationReportingManager.pendingRecovery
+    val status = locationReportingManager.status
+    fun onAppVisible() = locationReportingManager.onAppVisible()
+    fun resumePendingRecovery() = locationReportingManager.resumePendingRecovery()
     private val lifecycleLock = Any()
-    private var sessionIdentity: SessionIdentity? = null
+    private var sessionIdentity: LocationAccount? = null
 
     /**
      * 启动位置上报业务。
@@ -28,11 +33,6 @@ class LocationTrackingManager @Inject constructor(
         synchronized(lifecycleLock) {
             startTrackingLocked(orderKey)
         }
-    }
-
-    /** The formal start API succeeded; NFC success or button clicks are not confirmation. */
-    fun onOrderStarted(orderId: Long) = synchronized(lifecycleLock) {
-        if (hasActiveSession()) locationReportingManager.onOrderStarted(orderId)
     }
 
     /** 权限授予与订单启动共享登录态锁，避免登出后重新启动定位引擎。 */
@@ -54,22 +54,18 @@ class LocationTrackingManager @Inject constructor(
     fun onSessionStateChanged(state: SessionState) {
         synchronized(lifecycleLock) {
             when (state) {
-                SessionState.Unknown,
-                SessionState.LoggedOut,
-                -> {
+                SessionState.Unknown -> locationReportingManager.pauseAuthorization()
+                SessionState.LoggedOut -> {
                     sessionIdentity = null
-                    locationReportingManager.stopReporting()
+                    locationReportingManager.setAccount(null)
                 }
 
                 is SessionState.LoggedIn -> {
-                    val nextIdentity = SessionIdentity.from(state)
-                    if (sessionIdentity != null && sessionIdentity != nextIdentity) {
-                        locationReportingManager.stopReporting()
-                    }
+                    val nextIdentity = LocationAccount(state.user.companyId, state.user.accountId, state.user.userId)
                     sessionIdentity = nextIdentity
+                    locationReportingManager.setAccount(nextIdentity)
                 }
             }
-            locationReportingManager.setMonitoringAllowed(sessionIdentity != null)
         }
     }
 
@@ -84,17 +80,4 @@ class LocationTrackingManager @Inject constructor(
         return false
     }
 
-    private data class SessionIdentity(
-        val companyId: Int,
-        val accountId: Int,
-        val userId: Int,
-    ) {
-        companion object {
-            fun from(session: SessionState.LoggedIn) = SessionIdentity(
-                companyId = session.user.companyId,
-                accountId = session.user.accountId,
-                userId = session.user.userId,
-            )
-        }
-    }
 }

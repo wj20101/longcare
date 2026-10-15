@@ -5,173 +5,83 @@ import android.content.Intent
 import android.app.ActivityManager
 import com.ytone.longcare.domain.location.LocationRuntimeReadiness
 import androidx.core.content.ContextCompat
-import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.location.service.LocationTrackingService
 import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
-/**
- * 定位保活生命周期管理器（独立于具体业务）。
- * 使用 owner 引用计数，避免多个业务互相抢占定位保活。
- */
+/** One accepted order owner. Generation fences delayed Android callbacks across restarts. */
 @Singleton
 class LocationKeepAliveManager @Inject constructor(
     private val serviceController: LocationForegroundServiceController,
 ) {
     private val lock = Any()
-    private val activeOwners = linkedSetOf<String>()
+    private var owner: String? = null
     private var generation = 0L
-    private val _state = MutableStateFlow<LocationKeepAliveState>(LocationKeepAliveState.Idle)
-    internal val state: StateFlow<LocationKeepAliveState> = _state.asStateFlow()
+    // An accepted dispatch is idempotent until Android reports that its Service stopped.
+    private var startAccepted = false
+    internal fun hasAcceptedStart(): Boolean = synchronized(lock) { startAccepted }
 
-    fun acquire(owner: String) {
-        acquire(owner = owner, orderId = null)
-    }
-
-    /** Starts the foreground service for one active service-order reporting session. */
-    fun acquireOrderTracking(owner: String, orderId: Long) {
-        if (orderId <= 0L) return
-        acquire(owner = owner, orderId = orderId)
-    }
-
-    private fun acquire(owner: String, orderId: Long?) {
-        if (owner.isBlank()) return
-
-        synchronized(lock) {
-            val ownerAdded = activeOwners.add(owner)
-            val explicitRestart =
-                !ownerAdded && _state.value is LocationKeepAliveState.NeedsUserRestart
-            if (ownerAdded || explicitRestart) {
-                logI("定位保活 +1: $owner, active=${activeOwners.size}")
-                val shouldStart = explicitRestart || activeOwners.size == 1
-                if (shouldStart) {
-                    generation += 1
-                    val startGeneration = generation
-                    _state.value = LocationKeepAliveState.Starting(generation, activeOwners.size)
-                    val started = startForegroundKeepAlive(owner, orderId, startGeneration)
-                    if (!started) {
-                        activeOwners.remove(owner)
-                        if (generation == startGeneration) {
-                            _state.value = if (activeOwners.isEmpty()) {
-                                LocationKeepAliveState.Idle
-                            } else {
-                                LocationKeepAliveState.NeedsUserRestart(
-                                    generation = startGeneration,
-                                    ownerCount = activeOwners.size,
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    updateOwnerCountLocked()
-                }
-            }
+    fun acquireOrderTracking(owner: String, orderId: Long): Boolean = synchronized(lock) {
+        if (owner.isBlank() || orderId <= 0L) return@synchronized false
+        if (this.owner == owner && startAccepted) {
+            return@synchronized true
         }
-    }
-
-    fun release(owner: String) {
-        if (owner.isBlank()) return
-
-        synchronized(lock) {
-            releaseLocked(owner)
-        }
-    }
-
-    /**
-     * Lets the running Service close only the generation that detected an inactive order.
-     * A delayed response from an older Service must never stop a newer reporting session.
-     */
-    internal fun releaseFromService(owner: String, serviceGeneration: Long) {
-        if (owner.isBlank()) return
-        synchronized(lock) {
-            if (serviceGeneration != generation) return
-            releaseLocked(owner)
-        }
-    }
-
-    /**
-     * Confirms that the Service generation is still desired before it starts SDK collection.
-     * A stale Service must clean up itself; stopping through the controller could kill a newer one.
-     */
-    internal fun onServiceStarted(serviceGeneration: Long): Boolean = synchronized(lock) {
-        if (serviceGeneration != generation || activeOwners.isEmpty()) {
+        this.owner = owner
+        generation += 1
+        startAccepted = true
+        try {
+            serviceController.start(owner, generation, orderId)
+            true
+        } catch (error: Exception) {
+            this.owner = null
+            startAccepted = false
+            LocationEventTracker.trackError(LocationEventTracker.EventType.KEEP_ALIVE_START_ERROR, error,
+                mapOf(LocationEventTracker.Attribute.ERROR_TYPE to error.javaClass.simpleName))
             false
-        } else {
-            _state.value = LocationKeepAliveState.Active(serviceGeneration, activeOwners.size)
+        }
+    }
+
+    /** The system already owns the Service; no application background start is dispatched. */
+    internal fun adoptRestoredService(owner: String): Long = synchronized(lock) {
+        this.owner = owner
+        generation += 1
+        startAccepted = true
+        generation
+    }
+
+    internal fun hasNewerRequestThan(owner: String, serviceGeneration: Long): Boolean = synchronized(lock) {
+        this.owner != null && (this.owner != owner || generation != serviceGeneration)
+    }
+
+    fun release(owner: String) = synchronized(lock) { releaseLocked(owner) }
+
+    internal fun releaseFromService(owner: String, serviceGeneration: Long) = synchronized(lock) {
+        if (generation == serviceGeneration) releaseLocked(owner)
+    }
+
+    internal fun onServiceStarted(serviceGeneration: Long): Boolean = synchronized(lock) {
+        if (generation != serviceGeneration || owner == null) false
+        else {
+            startAccepted = true
             true
         }
     }
 
-    internal fun onServiceStopped(serviceGeneration: Long) {
-        synchronized(lock) {
-            if (serviceGeneration != generation) return
-            _state.value = if (activeOwners.isEmpty()) {
-                LocationKeepAliveState.Idle
-            } else {
-                LocationKeepAliveState.NeedsUserRestart(serviceGeneration, activeOwners.size)
-            }
-        }
-    }
-
-    private fun updateOwnerCountLocked() {
-        _state.value = when (val current = _state.value) {
-            is LocationKeepAliveState.Starting -> current.copy(ownerCount = activeOwners.size)
-            is LocationKeepAliveState.Active -> current.copy(ownerCount = activeOwners.size)
-            is LocationKeepAliveState.NeedsUserRestart -> current.copy(ownerCount = activeOwners.size)
-            else -> current
-        }
+    internal fun onServiceStopped(serviceGeneration: Long) = synchronized(lock) {
+        if (generation == serviceGeneration) startAccepted = false
     }
 
     private fun releaseLocked(owner: String) {
-        if (!activeOwners.remove(owner)) return
-        logI("定位保活 -1: $owner, active=${activeOwners.size}")
-        val shouldStop = activeOwners.isEmpty()
-        _state.value = if (shouldStop) {
-            LocationKeepAliveState.Stopping(generation)
-        } else {
-            updateOwnerCountLocked()
-            _state.value
-        }
-        if (shouldStop) {
-            stopForegroundKeepAlive()
-        }
-    }
-
-    private fun startForegroundKeepAlive(
-        owner: String,
-        orderId: Long?,
-        serviceGeneration: Long,
-    ): Boolean {
-        return try {
-            serviceController.start(owner, serviceGeneration, orderId)
-            true
-        } catch (e: Exception) {
-            LocationEventTracker.trackError(
-                LocationEventTracker.EventType.KEEP_ALIVE_START_ERROR,
-                throwable = e,
-                extras = mapOf(LocationEventTracker.Attribute.ERROR_TYPE to e.javaClass.simpleName)
-            )
-            false
-        }
-    }
-
-    private fun stopForegroundKeepAlive() {
+        if (this.owner != owner) return
+        this.owner = null
+        startAccepted = false
         try {
-            val stopped = serviceController.stop()
-            if (!stopped) {
-                onServiceStopped(generation)
-            }
-        } catch (e: Exception) {
-            LocationEventTracker.trackError(
-                LocationEventTracker.EventType.KEEP_ALIVE_STOP_ERROR,
-                throwable = e,
-                extras = mapOf(LocationEventTracker.Attribute.ERROR_TYPE to e.javaClass.simpleName)
-            )
+            serviceController.stop()
+        } catch (error: Exception) {
+            LocationEventTracker.trackError(LocationEventTracker.EventType.KEEP_ALIVE_STOP_ERROR, error,
+                mapOf(LocationEventTracker.Attribute.ERROR_TYPE to error.javaClass.simpleName))
         }
     }
 }
@@ -181,7 +91,7 @@ class LocationForegroundServiceController @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val readiness: LocationRuntimeReadiness,
 ) {
-    fun start(owner: String, generation: Long, orderId: Long? = null) {
+    fun start(owner: String, generation: Long, orderId: Long) {
         val process = ActivityManager.RunningAppProcessInfo()
         ActivityManager.getMyMemoryState(process)
         check(process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND ||
@@ -195,18 +105,10 @@ class LocationForegroundServiceController @Inject constructor(
             action = LocationTrackingService.ACTION_ACQUIRE_KEEP_ALIVE
             putExtra(LocationTrackingService.EXTRA_OWNER, owner)
             putExtra(LocationTrackingService.EXTRA_GENERATION, generation)
-            orderId?.let { putExtra(LocationTrackingService.EXTRA_ORDER_ID, it) }
+            putExtra(LocationTrackingService.EXTRA_ORDER_ID, orderId)
         }
         ContextCompat.startForegroundService(context, intent)
     }
 
     fun stop(): Boolean = context.stopService(Intent(context, LocationTrackingService::class.java))
-}
-
-sealed interface LocationKeepAliveState {
-    data object Idle : LocationKeepAliveState
-    data class Starting(val generation: Long, val ownerCount: Int) : LocationKeepAliveState
-    data class Active(val generation: Long, val ownerCount: Int) : LocationKeepAliveState
-    data class Stopping(val generation: Long) : LocationKeepAliveState
-    data class NeedsUserRestart(val generation: Long, val ownerCount: Int) : LocationKeepAliveState
 }

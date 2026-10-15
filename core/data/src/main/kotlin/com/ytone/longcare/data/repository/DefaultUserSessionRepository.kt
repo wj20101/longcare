@@ -4,7 +4,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.byteArrayPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.emptyPreferences
 import com.ytone.longcare.common.diagnostics.CrashReportGateway
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.di.AppDataStore
@@ -28,7 +27,7 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val APP_USER_KEY = byteArrayPreferencesKey("app_user")
+internal val APP_USER_KEY = byteArrayPreferencesKey("app_user")
 private const val SESSION_READ_RETRY_DELAY_MS = 1_000L
 private const val SESSION_PUBLICATION_TIMEOUT_MS = 5_000L
 
@@ -48,7 +47,7 @@ class DefaultUserSessionRepository @Inject constructor(
         .retryWhen { exception, _ ->
             if (exception is IOException) {
                 // Keep collecting after transient IO failures instead of completing the shared flow.
-                emit(emptyPreferences())
+                // No value means no authorization is available; it must not fabricate a logout.
                 delay(SESSION_READ_RETRY_DELAY_MS)
                 true
             } else {
@@ -95,6 +94,12 @@ class DefaultUserSessionRepository @Inject constructor(
         if (changesSession) faceSession.beginChange(user)
         try {
             appDataStore.edit { preferences ->
+                val previousUser = preferences[APP_USER_KEY]?.let { runCatching { User.ADAPTER.decode(it) }.getOrNull() }
+                // Token refresh/cosmetic updates for the same account must not erase active order recovery.
+                if (forceNewSession || previousUser == null || previousUser.companyId != user.companyId ||
+                    previousUser.accountId != user.accountId || previousUser.userId != user.userId) {
+                    DataStoreLocationRecoveryStore.clearLocationRecovery(preferences)
+                }
                 preferences[APP_USER_KEY] = user.encode()
             }
             // Publishing also synchronizes diagnostics and restored session identity.
@@ -108,6 +113,7 @@ class DefaultUserSessionRepository @Inject constructor(
         faceSession.beginChange()
         try {
             appDataStore.edit { preferences ->
+                DataStoreLocationRecoveryStore.clearLocationRecovery(preferences)
                 preferences.remove(APP_USER_KEY)
             }
             awaitSessionState(SessionState.LoggedOut)

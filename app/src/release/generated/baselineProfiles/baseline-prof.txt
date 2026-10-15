@@ -13137,10 +13137,6 @@ HSPLcom/ytone/longcare/features/location/core/LocationForegroundServiceControlle
 Lcom/ytone/longcare/features/location/core/LocationKeepAliveManager;
 HSPLcom/ytone/longcare/features/location/core/LocationKeepAliveManager;-><clinit>()V
 HSPLcom/ytone/longcare/features/location/core/LocationKeepAliveManager;-><init>(Lcom/ytone/longcare/features/location/core/LocationForegroundServiceController;)V
-Lcom/ytone/longcare/features/location/core/LocationKeepAliveState;
-Lcom/ytone/longcare/features/location/core/LocationKeepAliveState$Idle;
-HSPLcom/ytone/longcare/features/location/core/LocationKeepAliveState$Idle;-><clinit>()V
-HSPLcom/ytone/longcare/features/location/core/LocationKeepAliveState$Idle;-><init>()V
 Lcom/ytone/longcare/features/location/manager/AmapLocationClientFactory;
 HSPLcom/ytone/longcare/features/location/manager/AmapLocationClientFactory;-><clinit>()V
 HSPLcom/ytone/longcare/features/location/manager/AmapLocationClientFactory;-><init>(Landroid/content/Context;)V

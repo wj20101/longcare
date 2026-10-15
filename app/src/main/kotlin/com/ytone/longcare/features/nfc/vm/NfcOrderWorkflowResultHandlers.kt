@@ -2,7 +2,6 @@ package com.ytone.longcare.features.nfc.vm
 
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.model.LocationResult
 import kotlinx.coroutines.flow.MutableStateFlow
 
 internal fun createEndOrderParams(
@@ -12,7 +11,6 @@ internal fun createEndOrderParams(
     beginImgList: List<String>,
     endImageList: List<String>,
     centerImgList: List<String>,
-    location: LocationResult,
     endType: Int
 ): EndOrderParams {
     return EndOrderParams(
@@ -22,7 +20,6 @@ internal fun createEndOrderParams(
         beginImgList = beginImgList,
         endImageList = endImageList,
         centerImgList = centerImgList,
-        location = location,
         endType = endType
     )
 }

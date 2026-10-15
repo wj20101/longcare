@@ -103,16 +103,16 @@ class NfcLocationDiagnosticsTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test fun `binding failure retains submission identity and full location evidence`() = runTest {
-        val facade = mockk<LocationFacade> { every { isUsable(sample) } returns true }
+        val facade = mockk<LocationFacade> { every { serviceOrderLocationFailure(sample) } returns null }
         val orders = mockk<OrderRepository>()
-        val data = PendingNfcData(key, SignInMode.START_ORDER, null, "tag", sample)
+        val data = PendingNfcData(key, SignInMode.START_ORDER, null, "tag")
         val pending = MutableStateFlow<PendingNfcData?>(data)
         val orderDelegate = mockk<NfcOrderWorkflowDelegate>(relaxed = true)
         coEvery { orders.bindLocation(any(), any(), any(), any()) } coAnswers {
             every { CrashReportGateway.userId } returns "456"
             ApiResult.Failure(4001, "绑定失败")
         }
-        val scan = NfcScanWorkflowDelegate(facade, { error("must use confirmed sample") }, AppEventBus(),
+        val scan = NfcScanWorkflowDelegate(facade, { LocationRequestResult.Coordinates(sample) }, AppEventBus(),
             mockk(), orders, backgroundScope, MutableStateFlow(NfcSignInUiState.Initial), pending,
             MutableStateFlow(ScanMode.SYSTEM_NFC), MutableStateFlow(ReaderUiState.NotRequired), orderDelegate,
             NfcUserMessages("network", "detail", "bind", "unavailable"))
@@ -131,7 +131,7 @@ class NfcLocationDiagnosticsTest {
 
     @Test fun `server distance rejection includes exact submitted point distinct from sign in`() = runTest {
         val endSample = sample.copy(latitude = 31.13899999999, longitude = 121.98799999999)
-        val facade = mockk<LocationFacade> { every { isUsable(any()) } returns true }
+        val facade = mockk<LocationFacade> { every { serviceOrderLocationFailure(any()) } returns null }
         val orders = mockk<OrderRepository>()
         coEvery { orders.checkOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
         coEvery { orders.checkEndOrder(any(), any()) } returns ApiResult.Success(Unit)
@@ -146,7 +146,7 @@ class NfcLocationDiagnosticsTest {
         val delegate = NfcOrderWorkflowDelegate(facade, mockk(), mockk(), orders,
             mockk(), mockk(), mockk(), state, NfcUserMessages("network", "detail", "bind", "unavailable"))
         delegate.startOrder(key, "tag", sample)
-        delegate.endOrder(key, "tag", emptyList(), emptyList(), emptyList(), location = endSample)
+        delegate.endOrder(key, "tag", emptyList(), emptyList(), emptyList(), requestLocation = { LocationRequestResult.Coordinates(endSample) })
         coVerify(exactly = 1) { orders.checkOrder(key.orderId, "tag", sample.longitude.toString(), sample.latitude.toString()) }
         coVerify(exactly = 1) {
             orders.endOrder(key.orderId, "tag", emptyList(), emptyList(), emptyList(), emptyList(),

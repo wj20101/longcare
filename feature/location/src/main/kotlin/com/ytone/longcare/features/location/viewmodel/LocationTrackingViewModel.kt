@@ -18,10 +18,6 @@ class LocationTrackingViewModel @Inject constructor(
         trackingManager.startTracking(orderKey)
     }
 
-    fun onOrderStarted(orderId: Long) {
-        trackingManager.onOrderStarted(orderId)
-    }
-
     /**
      * 定位权限刚被授予后调用，重启定位引擎再启动追踪。
      */

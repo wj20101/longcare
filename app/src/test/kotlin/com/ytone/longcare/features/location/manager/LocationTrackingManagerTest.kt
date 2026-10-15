@@ -77,7 +77,7 @@ class LocationTrackingManagerTest {
         manager.startTracking(OrderKey(200L))
 
         verify(exactly = 1) { reportingManager.startReporting(order) }
-        verify(exactly = 1) { reportingManager.stopReporting() }
+        verify(exactly = 1) { reportingManager.setAccount(null) }
     }
 
     @Test
@@ -88,7 +88,7 @@ class LocationTrackingManagerTest {
 
         manager.onSessionStateChanged(loggedIn(accountId = 3))
 
-        verify(exactly = 1) { reportingManager.stopReporting() }
+        verify(exactly = 1) { reportingManager.setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 3, 3)) }
     }
 
     @Test
@@ -102,7 +102,7 @@ class LocationTrackingManagerTest {
             check(allowStartToFinish.await(2, TimeUnit.SECONDS))
             events += "start-end"
         }
-        every { reportingManager.stopReporting() } answers { events += "stop" }
+        every { reportingManager.setAccount(null) } answers { events += "stop" }
         val manager = createManager()
         manager.onSessionStateChanged(loggedIn(accountId = 2))
 

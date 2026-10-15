@@ -95,7 +95,7 @@ fun NfcWorkflowScreen(
                         )
                     },
                     onRetryClick = {
-                        nfcViewModel.resetState()
+                        nfcViewModel.retryLocation(requestLocation)
                     }
                 )
             },
@@ -118,9 +118,9 @@ fun NfcWorkflowScreen(
         NfcWorkflowDialogs(
             pendingNfcData = pendingNfcData,
             uiState = uiState,
-            onConfirmLocationActivation = nfcViewModel::confirmLocationActivation,
+            onConfirmLocationActivation = { nfcViewModel.confirmLocationActivation(it, requestLocation) },
             onCancelLocationActivation = nfcViewModel::cancelLocationActivation,
-            onConfirmEndOrder = nfcViewModel::confirmEndOrder,
+            onConfirmEndOrder = { nfcViewModel.confirmEndOrder(it, requestLocation) },
             onCancelEndOrder = nfcViewModel::cancelEndOrder
         )
     }

@@ -11,6 +11,7 @@ fun LocationFailure.messageRes(): Int = when (this) {
     LocationFailure.BUSY -> R.string.location_error_busy
     LocationFailure.TIMEOUT -> R.string.location_error_timeout
     LocationFailure.QUALITY -> R.string.location_error_quality
+    LocationFailure.PRECISION -> R.string.location_error_precision
     LocationFailure.NETWORK -> R.string.location_error_network
     LocationFailure.CONFIGURATION -> R.string.location_error_configuration
     LocationFailure.UNAVAILABLE -> R.string.location_error_unavailable
