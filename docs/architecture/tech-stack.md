@@ -1,6 +1,6 @@
 # 技术栈与构建基线
 
-最后核对：2026-10-08（Gradle Wrapper 补丁升级；其余条目沿用代码与文档静态核对）
+最后核对：2026-10-15（Kotlin 补丁升级；其余条目按现有构建配置核对）
 
 本文是便于阅读的快照。版本发生冲突时，以 `constants.gradle.kts`、`gradle/libs.versions.toml`、`gradle-wrapper.properties` 和各模块 `build.gradle.kts` 为准。应用版本号仅在 [constants.gradle.kts](../../constants.gradle.kts) 维护，本文不重复记录。
 
@@ -15,7 +15,7 @@
 | JDK / JVM toolchain | 21 | `constants.gradle.kts`、约定插件 |
 | Gradle Wrapper | 9.8.1 | `gradle/wrapper/gradle-wrapper.properties` |
 | Android Gradle Plugin | 9.4.1 | `gradle/libs.versions.toml` |
-| Kotlin | 2.4.20 | `gradle/libs.versions.toml` |
+| Kotlin | 2.4.21 | `gradle/libs.versions.toml` |
 | KSP | 2.3.12 | `gradle/libs.versions.toml` |
 
 AGP 与 Gradle 按稳定版兼容组合一起核验。升级 Gradle 时使用 `wrapper` 任务同步
