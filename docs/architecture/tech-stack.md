@@ -22,6 +22,8 @@ AGP 与 Gradle 按稳定版兼容组合一起核验。升级 Gradle 时使用 `w
 JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SHA-256；不要只改下载地址。
 当前 Wrapper JAR 已同步为 9.8.1，分发包校验和 URL 验证保持启用。
 
+[Kotlin 官方兼容表](https://kotlinlang.org/docs/gradle-configure-project.html)对 2.4.20～2.4.21 完整测试的上限为 Gradle 9.7.0 / AGP 9.3.1；当前组合高于该范围，补丁升级前后均如此。官方允许使用更新版本，但不保证所有新特性；以项目实际编译、KSP、测试与设备回归结果验收，不把构建成功表述为官方完整兼容承诺。
+
 ## 主要库
 
 | 领域 | 组件 | 版本 |
