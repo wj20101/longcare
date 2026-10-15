@@ -10,12 +10,12 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/setup-java@v5
+    - uses: actions/setup-java@v6
       with:
         distribution: temurin
         java-version: "21"
-    - uses: gradle/actions/setup-gradle@v5
-    - uses: android-actions/setup-android@v4.0.1
+    - uses: gradle/actions/setup-gradle@v6
+    - uses: android-actions/setup-android@v4
       if: ${{ inputs.setup-android-sdk == 'true' }}
       with:
         packages: ${{ inputs.android-packages }}

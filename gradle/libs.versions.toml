@@ -16,11 +16,11 @@ androidxConstraintLayout = "2.2.2"
 androidxCore = "1.19.1"
 androidxExifInterface = "1.4.2"
 androidxLifecycle = "2.11.0"
-androidxNavigation3 = "1.1.7"
+androidxNavigation3 = "1.2.0"
 androidxProfileInstaller = "1.4.1"
 androidxStartup = "1.2.0"
 androidxWindow = "1.5.1"
-androidxWebkit = "1.17.0"
+androidxWebkit = "1.17.1"
 
 # Compose
 composeBom = "2026.09.00"

@@ -1,6 +1,6 @@
 # 技术栈与构建基线
 
-最后核对：2026-10-15（Kotlin 补丁升级；其余条目按现有构建配置核对）
+最后核对：2026-10-15（Kotlin、Navigation 3 和 WebKit 稳定版升级；其余条目按现有构建配置核对）
 
 本文是便于阅读的快照。版本发生冲突时，以 `constants.gradle.kts`、`gradle/libs.versions.toml`、`gradle-wrapper.properties` 和各模块 `build.gradle.kts` 为准。应用版本号仅在 [constants.gradle.kts](../../constants.gradle.kts) 维护，本文不重复记录。
 
@@ -30,7 +30,7 @@ JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SH
 |---|---|---:|
 | UI | Jetpack Compose BOM | 2026.09.00 |
 | UI | Material 3 / Adaptive Navigation Suite | 由 Compose BOM 管理 |
-| Navigation | Navigation 3 runtime / ui | 1.1.7 |
+| Navigation | Navigation 3 runtime / ui | 1.2.0 |
 | Navigation state | Lifecycle ViewModel Navigation 3 decorator | 2.11.0 |
 | Compose DI | Hilt lifecycle-viewmodel-compose（无 Navigation 2 依赖） | 1.4.0 |
 | Lifecycle | AndroidX Lifecycle | 2.11.0 |
@@ -42,7 +42,7 @@ JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SH
 | Face detection | ML Kit Face Detection | 16.1.7 |
 | Network | Retrofit / OkHttp | 3.0.0 / 5.5.0 |
 | Network I/O | Okio | 3.18.2 |
-| WebView | AndroidX WebKit（渲染进程异常保护；关闭接口直接注册 NativeBridge） | 1.17.0 |
+| WebView | AndroidX WebKit（渲染进程异常保护；关闭接口直接注册 NativeBridge） | 1.17.1 |
 | Serialization | Moshi / kotlinx.serialization | 1.15.2 / 1.11.0 |
 | Images | Coil | 3.6.3 |
 | Async | kotlinx.coroutines | 1.11.0 |

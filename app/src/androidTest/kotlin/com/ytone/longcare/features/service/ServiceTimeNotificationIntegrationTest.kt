@@ -53,7 +53,6 @@ class ServiceTimeNotificationIntegrationTest {
         // 使用真实的服务管理器
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
         pendingOrdersStorage = PendingOrdersStorage(context)
-        pendingOrdersStorage.clearAllPendingOrders()
         serviceTimeNotificationManager = ServiceTimeNotificationManager(
             context,
             notificationManager,
@@ -61,10 +60,19 @@ class ServiceTimeNotificationIntegrationTest {
             workManager,
             pendingOrdersStorage
         )
+        clearTestNotifications()
     }
 
     @After
     fun tearDown() {
+        clearTestNotifications()
+    }
+
+    private fun clearTestNotifications() {
+        // 同时清除闹钟、兜底任务和去重标记，避免重复运行被上次测试通知短路。
+        listOf(99999L, 88888L, 11111L, 22222L, 33333L).forEach {
+            serviceTimeNotificationManager.cancelServiceTimeEndNotification(it)
+        }
         pendingOrdersStorage.clearAllPendingOrders()
     }
 

@@ -1,6 +1,6 @@
 # CI、质量门禁与发布
 
-最后核对：2026-09-21（CI/CD 精简；本地构建与测试已核对，线上结果另行验收）
+最后核对：2026-10-15（共享构建 Action 升级；本地验证与线上结果分别验收）
 
 本文描述当前脚本和 GitHub Actions 的实际行为。门禁名称/Owner 元数据以 `scripts/quality/quality_gate_registry.json` 为准；是否真正执行则以对应 workflow 和 runner 脚本为准。
 
@@ -49,6 +49,10 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 ```
 
 ## Android CI
+
+所有远端 Action 使用当前稳定主版本标签。共享构建环境使用 `actions/setup-java@v6`、`gradle/actions/setup-gradle@v6` 和 `android-actions/setup-android@v4`，JDK 仍为 Temurin 21。
+
+[`setup-gradle` v6 发布说明](https://github.com/gradle/actions/releases/tag/v6.0.0)指出，其启用缓存时使用的 `gradle-actions-caching` 组件适用单独的使用条款，且移除了原有的跨运行配置缓存支持。当前未配置配置缓存专用输入，Gradle 自身的本地配置缓存设置不变。
 
 代码/构建改动执行完整 JVM 业务测试、App Debug 构建、App/读卡 Lint 和质量守卫；不再使用固定 App 测试类过滤、伪模块影响列表或 full/partial 构建分支。
 
