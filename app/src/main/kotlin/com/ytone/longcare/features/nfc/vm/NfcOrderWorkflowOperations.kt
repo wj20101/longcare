@@ -7,6 +7,8 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 internal suspend fun performStartOrderWorkflow(
     orderRepository: OrderRepository,
@@ -20,12 +22,14 @@ internal suspend fun performStartOrderWorkflow(
     val locationFields = nfcLocationExtras(location)
     uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
 
-    when (val result = orderRepository.checkOrder(
+    val result = orderRepository.checkOrder(
         orderKey.orderId,
         nfcDeviceId,
         location.longitude.toString(),
         location.latitude.toString()
-    )) {
+    )
+    currentCoroutineContext().ensureActive()
+    when (result) {
         is ApiResult.Success -> {
             trackNfcLocation("nfc_location_submit_success", orderKey, SignInMode.START_ORDER, "start_check", location, userId = userId, locationFields = locationFields)
             applyOrderCheckSuccess(uiState)
@@ -71,14 +75,12 @@ internal suspend fun performEndOrderWorkflow(
     beginImgList: List<String>,
     endImageList: List<String>,
     centerImgList: List<String>,
-    location: LocationResult,
     endType: Int,
     uiState: MutableStateFlow<NfcSignInUiState>,
     onCheckSuccess: suspend () -> Unit,
     userMessages: NfcUserMessages,
 ) {
     val userId = DiagnosticEventTracker.currentUserId()
-    val locationFields = nfcLocationExtras(location)
     uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
     val endOrderParams = createEndOrderParams(
         orderKey = orderKey,
@@ -87,14 +89,15 @@ internal suspend fun performEndOrderWorkflow(
         beginImgList = beginImgList,
         endImageList = endImageList,
         centerImgList = centerImgList,
-        location = location,
         endType = endType
     )
 
-    when (val checkResult = orderRepository.checkEndOrder(
+    val checkResult = orderRepository.checkEndOrder(
         orderId = orderKey.orderId,
         projectIdList = projectIdList
-    )) {
+    )
+    currentCoroutineContext().ensureActive()
+    when (checkResult) {
         is ApiResult.Success -> onCheckSuccess()
         is ApiResult.Exception -> {
             trackNfcException(
@@ -105,7 +108,7 @@ internal suspend fun performEndOrderWorkflow(
                 signInMode = SignInMode.END_ORDER,
                 nfcDeviceId = nfcDeviceId,
                 userId = userId,
-                extras = locationFields + mapOf(
+                extras = mapOf(
                     "projectCount" to projectIdList.size,
                     "beginImageCount" to beginImgList.size,
                     "centerImageCount" to centerImgList.size,
@@ -128,7 +131,7 @@ internal suspend fun performEndOrderWorkflow(
                 signInMode = SignInMode.END_ORDER,
                 nfcDeviceId = nfcDeviceId,
                 userId = userId,
-                extras = locationFields + mapOf(
+                extras = mapOf(
                     "projectCount" to projectIdList.size,
                     "beginImageCount" to beginImgList.size,
                     "centerImageCount" to centerImgList.size,

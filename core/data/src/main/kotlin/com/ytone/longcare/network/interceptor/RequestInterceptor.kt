@@ -94,12 +94,14 @@ class RequestInterceptor @Inject constructor(
     }
 
     private fun iniHttpHeader(randomString: String): Map<String, String> {
+        // A concurrent account change must not mix identity fields within one request header.
+        val user = userSessionRepository.sessionState.value.user
         val baseMap = mutableMapOf<String, Any>(
-            "userId" to (userSessionRepository.sessionState.value.user?.userId ?: 0),
-            "token" to userSessionRepository.sessionState.value.user?.token.orEmpty(),
-            "accountId" to (userSessionRepository.sessionState.value.user?.accountId ?: 0),
-            "companyId" to (userSessionRepository.sessionState.value.user?.companyId ?: 0),
-            "userIdentity" to (userSessionRepository.sessionState.value.user?.userIdentity ?: 0),
+            "userId" to (user?.userId ?: 0),
+            "token" to user?.token.orEmpty(),
+            "accountId" to (user?.accountId ?: 0),
+            "companyId" to (user?.companyId ?: 0),
+            "userIdentity" to (user?.userIdentity ?: 0),
             "nonce" to randomString,
             "timeSpan" to System.currentTimeMillis(),
             "platform" to "android",
@@ -111,8 +113,7 @@ class RequestInterceptor @Inject constructor(
         if (privacyConsentManager.isPrivacyConsented) {
             baseMap["deviceId"] = requestDeviceInfoProvider.getAppInstanceId()
         }
-        val map: Map<String, Any> = baseMap
-        val headerInfo = JSONObject(map).toString()
+        val headerInfo = JSONObject(baseMap).toString()
 
         // 请求头日志同样由 KLogger 脱敏，不改变实际加密内容。
         if (runtimeConfigProvider.isDebug) {

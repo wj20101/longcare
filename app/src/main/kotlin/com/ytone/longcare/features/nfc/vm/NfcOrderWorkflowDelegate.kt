@@ -15,6 +15,8 @@ import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.ServiceCompleteData
 import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 internal fun applyUserVisibleNfcError(
     uiState: MutableStateFlow<NfcSignInUiState>,
@@ -58,13 +60,15 @@ internal class NfcOrderWorkflowDelegate(
         imageRepository = imageRepository,
         serviceCountdownSystemGateway = serviceCountdownSystemGateway,
     )
+    private var pendingEndOrder: EndOrderParams? = null
+    val hasPendingEndLocation: Boolean get() = pendingEndOrder != null
 
     suspend fun startOrder(
         orderKey: OrderKey,
         nfcDeviceId: String,
         location: LocationResult
-    ) {
-        if (!validateLocation(location, orderKey, SignInMode.START_ORDER, "start_check")) return
+    ): Boolean {
+        if (!validateLocation(location, orderKey, SignInMode.START_ORDER, "start_check")) return false
         performStartOrderWorkflow(
             orderRepository = orderRepository,
             orderKey = orderKey,
@@ -73,6 +77,7 @@ internal class NfcOrderWorkflowDelegate(
             uiState = uiState,
             userMessages = userMessages,
         )
+        return true
     }
 
     suspend fun endOrder(
@@ -82,10 +87,11 @@ internal class NfcOrderWorkflowDelegate(
         beginImgList: List<String>,
         endImageList: List<String>,
         centerImgList: List<String> = emptyList(),
-        location: LocationResult,
-        endType: Int = 1
+        endType: Int = 1,
+        requestLocation: suspend () -> LocationRequestResult = ::acquireLocation,
     ) {
-        if (!validateLocation(location, orderKey, SignInMode.END_ORDER, "end_check")) return
+        pendingEndOrder = null
+        // CheckEndOrder 不接收坐标。预检和确认完成后才采集本次提交的位置。
         performEndOrderWorkflow(
             orderRepository = orderRepository,
             orderKey = orderKey,
@@ -94,44 +100,38 @@ internal class NfcOrderWorkflowDelegate(
             beginImgList = beginImgList,
             endImageList = endImageList,
             centerImgList = centerImgList,
-            location = location,
             endType = endType,
             uiState = uiState,
             userMessages = userMessages,
             onCheckSuccess = {
-                executeEndOrder(
-                    orderKey = orderKey,
-                    nfcDeviceId = nfcDeviceId,
-                    projectIdList = projectIdList,
-                    beginImgList = beginImgList,
-                    endImageList = endImageList,
-                    centerImgList = centerImgList,
-                    location = location,
-                    endType = endType
-                )
+                executeEndOrder(EndOrderParams(orderKey, nfcDeviceId, projectIdList,
+                    beginImgList, endImageList, centerImgList, endType = endType), requestLocation)
             }
         )
     }
 
-    suspend fun confirmEndOrder(params: EndOrderParams) {
-        uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
-        executeEndOrder(
-            orderKey = params.orderKey,
-            nfcDeviceId = params.nfcDeviceId,
-            projectIdList = params.porjectIdList,
-            beginImgList = params.beginImgList,
-            endImageList = params.endImageList,
-            centerImgList = params.centerImgList,
-            location = params.location,
-            endType = params.endType
-        )
+    suspend fun confirmEndOrder(
+        params: EndOrderParams,
+        requestLocation: suspend () -> LocationRequestResult = ::acquireLocation,
+    ) {
+        executeEndOrder(params, requestLocation)
+    }
+
+    suspend fun retryEndLocation(requestLocation: suspend () -> LocationRequestResult) {
+        pendingEndOrder?.let { executeEndOrder(it, requestLocation) }
+    }
+
+    fun locationPermissionDenied() {
+        if (pendingEndOrder != null) uiState.value = reportedNfcError(textResolver.text(LocationFailure.PERMISSION.messageRes()))
     }
 
     fun cancelEndOrder() {
+        pendingEndOrder = null
         uiState.value = NfcSignInUiState.Initial
     }
 
     fun resetState() {
+        pendingEndOrder = null
         uiState.value = NfcSignInUiState.Initial
     }
 
@@ -156,6 +156,8 @@ internal class NfcOrderWorkflowDelegate(
         )
     }
 
+    fun showLocationFailure(failure: LocationFailure) = showError(textResolver.text(failure.messageRes()))
+
     fun buildServiceCompleteDataFromCache(
         orderKey: OrderKey,
         endOderInfo: EndOderInfo?,
@@ -166,42 +168,56 @@ internal class NfcOrderWorkflowDelegate(
         trueServiceTime = trueServiceTime
     )
 
-    private suspend fun executeEndOrder(
-        orderKey: OrderKey,
-        nfcDeviceId: String,
-        projectIdList: List<Int>,
-        beginImgList: List<String>,
-        endImageList: List<String>,
-        centerImgList: List<String>,
-        location: LocationResult,
-        endType: Int
-    ) {
-        if (!validateLocation(location, orderKey, SignInMode.END_ORDER, "end_submit")) return
+    private suspend fun executeEndOrder(params: EndOrderParams, requestLocation: suspend () -> LocationRequestResult) {
+        pendingEndOrder = params
+        uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.FETCHING_LOCATION)
+        val result = requestNfcLocation(params.orderKey, SignInMode.END_ORDER, "end_submit_acquire",
+            userMessages.locationUnavailable, requestLocation)
+        currentCoroutineContext().ensureActive()
+        val location = when (result) {
+            is LocationRequestResult.Coordinates -> result.location
+            is LocationRequestResult.Error -> {
+                showError(result.message, buglyAlreadyReported = result.buglyReported)
+                return
+            }
+            LocationRequestResult.PermissionRequired -> {
+                uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.WAITING_FOR_LOCATION_PERMISSION)
+                return
+            }
+        }
+        if (!validateLocation(location, params.orderKey, SignInMode.END_ORDER, "end_submit")) return
+        // 位置错误可只重试采集；请求发出后清除动作，避免网络结果未知时重复签退。
+        pendingEndOrder = null
+        uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
         executeEndOrderRequest(
             serviceOrderLifecycle = serviceOrderLifecycle,
             orderRepository = orderRepository,
             completionDelegate = completionDelegate,
             uiState = uiState,
-            orderKey = orderKey,
-            nfcDeviceId = nfcDeviceId,
-            projectIdList = projectIdList,
-            beginImgList = beginImgList,
-            endImageList = endImageList,
-            centerImgList = centerImgList,
+            orderKey = params.orderKey,
+            nfcDeviceId = params.nfcDeviceId,
+            projectIdList = params.porjectIdList,
+            beginImgList = params.beginImgList,
+            endImageList = params.endImageList,
+            centerImgList = params.centerImgList,
             location = location,
-            endType = endType,
+            endType = params.endType,
             userMessages = userMessages,
         )
     }
 
     private fun validateLocation(location: LocationResult, orderKey: OrderKey, mode: SignInMode, stage: String): Boolean {
-        val usable = locationFacade.isUsable(location)
+        val failure = locationFacade.serviceOrderLocationFailure(location)
+        val usable = failure == null
         trackNfcLocation(
             if (usable) "nfc_location_validated" else "nfc_location_rejected",
             orderKey, mode, stage, location = location, isError = !usable,
-            reason = if (usable) null else "NOT_USABLE",
+            reason = failure?.name,
         )
-        if (!usable) uiState.value = reportedNfcError(textResolver.text(LocationFailure.QUALITY.messageRes()))
+        if (failure != null) uiState.value = reportedNfcError(textResolver.text(failure.messageRes()))
         return usable
     }
+
+    private suspend fun acquireLocation(): LocationRequestResult =
+        NfcLocationDelegate(locationFacade, textResolver).acquireLocation()
 }

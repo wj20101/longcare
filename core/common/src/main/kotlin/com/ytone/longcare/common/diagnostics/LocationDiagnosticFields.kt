@@ -10,6 +10,7 @@ fun locationDiagnosticExtras(location: LocationResult, now: Long = System.curren
     "locationTime" to location.locationTime,
     "sampleAgeMs" to (now - location.locationTime).takeIf { location.locationTime > 0 && it >= 0 },
     "accuracy" to location.accuracy.takeIf { it.isFinite() },
+    "requestId" to location.requestId.takeIf { it.isNotBlank() },
     "provider" to location.provider,
     "locationType" to location.locationType,
     "trustedLevel" to location.trustedLevel,

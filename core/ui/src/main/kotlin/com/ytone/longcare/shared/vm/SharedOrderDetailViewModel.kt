@@ -13,6 +13,7 @@ import com.ytone.longcare.domain.location.LocationAcquisition
 import com.ytone.longcare.domain.location.LocationFailure
 import com.ytone.longcare.common.utils.messageRes
 import com.ytone.longcare.domain.order.OrderRepository
+import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderInfoModel
@@ -23,6 +24,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import javax.inject.Inject
 
 /**
@@ -35,28 +40,29 @@ class SharedOrderDetailViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val locationFacade: LocationFacade,
     private val textResolver: ResourceTextResolver,
+    private val serviceLifecycle: ServiceOrderLifecycle,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<OrderDetailUiState>(OrderDetailUiState.Initial)
     val uiState: StateFlow<OrderDetailUiState> = _uiState.asStateFlow()
 
     // 当前订单信息请求
-    private val _currentOrderId = MutableStateFlow<OrderKey?>(null)
-    val currentOrderId: StateFlow<OrderKey?> = _currentOrderId.asStateFlow()
+    private var currentOrderKey: OrderKey? = null
+    private var orderInfoJob: Job? = null
 
     fun getOrderInfo(orderKey: OrderKey, forceRefresh: Boolean = false) {
-        viewModelScope.launch {
-            // 如果是同一个订单且不强制刷新，且当前状态是成功状态，则不重复请求
-            if (!forceRefresh && 
-                _currentOrderId.value == orderKey && 
-                _uiState.value is OrderDetailUiState.Success) {
-                return@launch
-            }
+        if (startingOrder != null && startingOrder != orderKey) cancelStartingOrder()
+        if (!forceRefresh && currentOrderKey == orderKey &&
+            (_uiState.value is OrderDetailUiState.Success || orderInfoJob?.isActive == true)
+        ) return
 
-            _currentOrderId.value = orderKey
-            _uiState.value = OrderDetailUiState.Loading
-
-            when (val result = unifiedOrderRepository.getOrderInfo(orderKey, forceRefresh)) {
+        orderInfoJob?.cancel()
+        currentOrderKey = orderKey
+        _uiState.value = OrderDetailUiState.Loading
+        orderInfoJob = viewModelScope.launch {
+            val result = unifiedOrderRepository.getOrderInfo(orderKey, forceRefresh)
+            currentCoroutineContext().ensureActive()
+            when (result) {
                 is ApiResult.Success -> {
                     _uiState.value = OrderDetailUiState.Success(result.data)
                 }
@@ -78,18 +84,8 @@ class SharedOrderDetailViewModel @Inject constructor(
         return unifiedOrderRepository.getCachedOrderInfo(orderKey)
     }
 
-    fun preloadOrderInfo(orderKey: OrderKey) {
-        viewModelScope.launch {
-            unifiedOrderRepository.preloadOrderInfo(orderKey)
-        }
-    }
-
     fun getUserAddress(orderKey: OrderKey): String {
         return getCachedOrderInfo(orderKey)?.userInfo?.address ?: ""
-    }
-
-    fun getProjectIdList(orderKey: OrderKey): List<Int> {
-        return getCachedOrderInfo(orderKey)?.projectList?.map { it.projectId } ?: emptyList()
     }
 
     suspend fun getSelectedProjectIdsOrDefault(
@@ -104,115 +100,133 @@ class SharedOrderDetailViewModel @Inject constructor(
         }
     }
 
-    fun clearOrderCache(orderKey: OrderKey) {
-        unifiedOrderRepository.clearOrderInfoCache(orderKey)
-        if (_currentOrderId.value == orderKey) {
-            _uiState.value = OrderDetailUiState.Initial
-            _currentOrderId.value = null
-        }
-    }
-
-    /**
-     * 刷新当前订单详情
-     */
-    fun refreshCurrentOrder() {
-        _currentOrderId.value?.let { orderKey ->
-            getOrderInfo(orderKey, forceRefresh = true)
-        }
-    }
-
-    /**
-     * 重置状态
-     */
-    fun resetState() {
-        _uiState.value = OrderDetailUiState.Initial
-        _currentOrderId.value = null
-    }
-
     // 工单开始状态
     private val _starOrderState = MutableStateFlow<StarOrderUiState>(StarOrderUiState.Initial)
     val starOrderState: StateFlow<StarOrderUiState> = _starOrderState.asStateFlow()
+    private var startingOrder: OrderKey? = null
+    private var startJob: Job? = null
+
+    private fun cancelStartingOrder() {
+        val previousJob = startJob
+        val previousOrder = startingOrder
+        startJob = null
+        startingOrder = null
+        previousJob?.cancel()
+        previousOrder?.let { serviceLifecycle.cancelOrderPreparation(it.orderId) }
+        _starOrderState.value = StarOrderUiState.Initial
+    }
 
     /**
      * 工单开始(正式计时)
-     * @param orderId 订单ID
+     * @param orderKey 订单标识
      * @param selectedProjectIds 选中的项目ID列表
-     * @param onSuccess 成功回调
      */
-    fun starOrder(orderId: Long, selectedProjectIds: List<Long> = emptyList(), onSuccess: () -> Unit = {}) {
-        starOrder(OrderKey(orderId = orderId, planId = 0), selectedProjectIds, onSuccess)
-    }
-
-    fun starOrder(orderKey: OrderKey, selectedProjectIds: List<Long> = emptyList(), onSuccess: () -> Unit = {}) {
-        if (_starOrderState.value is StarOrderUiState.Loading) return
+    fun starOrder(orderKey: OrderKey, selectedProjectIds: List<Int> = emptyList()) {
+        if (startJob?.isActive == true && startingOrder == orderKey) return
+        if ((_starOrderState.value as? StarOrderUiState.Success)?.orderKey == orderKey) return
+        cancelStartingOrder()
+        val projectIds = selectedProjectIds.toList()
+        startingOrder = orderKey
         _starOrderState.value = StarOrderUiState.Loading
-        viewModelScope.launch {
-            val userId = DiagnosticEventTracker.currentUserId()
-            val context = mapOf("orderId" to orderKey.orderId, "planId" to orderKey.planId,
-                "signInMode" to "START_ORDER", "stage" to "service_start")
-            val started = System.nanoTime()
-            val acquisition = try {
-                locationFacade.acquireCurrentLocation()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_exception",
-                    "正式开始服务定位异常", error, context, userId)
-                _starOrderState.value = StarOrderUiState.Error(textResolver.text(LocationFailure.UNAVAILABLE.messageRes()))
-                return@launch
-            }
-            val acquisitionExtras = context + ("durationMs" to (System.nanoTime() - started) / 1_000_000)
-            val location = when (acquisition) {
-                is LocationAcquisition.Success -> acquisition.location
-                is LocationAcquisition.Failure -> {
-                    DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_failed",
-                        "正式开始服务定位失败", extras = acquisitionExtras + ("errorCode" to acquisition.reason.name) +
-                            (acquisition.location?.let { locationDiagnosticExtras(it) } ?: emptyMap()), userId = userId)
-                    _starOrderState.value = StarOrderUiState.Error(textResolver.text(acquisition.reason.messageRes()))
+        serviceLifecycle.prepareOrderStart(orderKey.orderId)
+        startJob = viewModelScope.launch(start = CoroutineStart.LAZY) {
+            try {
+                val userId = DiagnosticEventTracker.currentUserId()
+                val context = mapOf("orderId" to orderKey.orderId, "planId" to orderKey.planId,
+                    "signInMode" to "START_ORDER", "stage" to "service_start")
+                val started = System.nanoTime()
+                val acquisition = try {
+                    locationFacade.acquireServiceOrderLocation()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    currentCoroutineContext().ensureActive()
+                    DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_exception",
+                        "正式开始服务定位异常", error, context, userId)
+                    _starOrderState.value = StarOrderUiState.Error(textResolver.text(LocationFailure.UNAVAILABLE.messageRes()))
                     return@launch
                 }
-            }
-            if (!locationFacade.isUsable(location)) {
-                DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_rejected",
-                    "正式开始服务位置不可用", extras = acquisitionExtras + locationDiagnosticExtras(location), userId = userId)
-                _starOrderState.value = StarOrderUiState.Error(textResolver.text(LocationFailure.QUALITY.messageRes()))
-                return@launch
-            }
-            val longitude = location.longitude.toString()
-            val latitude = location.latitude.toString()
-            val diagnosticExtras = acquisitionExtras + locationDiagnosticExtras(location)
-            DiagnosticEventTracker.trackEvent(DiagnosticCategory.LOCATION, "service_start_location_submit",
-                "正式开始服务提交位置", diagnosticExtras, userId, reportToServer = true)
+                val acquisitionExtras = context + ("durationMs" to (System.nanoTime() - started) / 1_000_000)
+                currentCoroutineContext().ensureActive()
+                val location = when (acquisition) {
+                    is LocationAcquisition.Success -> acquisition.location
+                    is LocationAcquisition.Failure -> {
+                        DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_failed",
+                            "正式开始服务定位失败", extras = acquisitionExtras + ("errorCode" to acquisition.reason.name) +
+                                (acquisition.location?.let { locationDiagnosticExtras(it) } ?: emptyMap()), userId = userId)
+                        _starOrderState.value = StarOrderUiState.Error(textResolver.text(acquisition.reason.messageRes()))
+                        return@launch
+                    }
+                }
+                val locationFailure = locationFacade.serviceOrderLocationFailure(location)
+                if (locationFailure != null) {
+                    DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_rejected",
+                        "正式开始服务位置不可用", extras = acquisitionExtras + locationDiagnosticExtras(location), userId = userId)
+                    _starOrderState.value = StarOrderUiState.Error(textResolver.text(locationFailure.messageRes()))
+                    return@launch
+                }
+                val longitude = location.longitude.toString()
+                val latitude = location.latitude.toString()
+                val diagnosticExtras = acquisitionExtras + locationDiagnosticExtras(location)
+                DiagnosticEventTracker.trackEvent(DiagnosticCategory.LOCATION, "service_start_location_submit",
+                    "正式开始服务提交位置", diagnosticExtras, userId, reportToServer = true)
 
-            when (val result = orderRepository.starOrder(orderKey.orderId, selectedProjectIds, longitude, latitude)) {
-                is ApiResult.Success -> {
-                    DiagnosticEventTracker.trackEvent(DiagnosticCategory.LOCATION, "service_start_location_success",
-                        "正式开始服务位置提交成功", diagnosticExtras, userId, reportToServer = true)
-                    _starOrderState.value = StarOrderUiState.Success
-                    onSuccess()
+                val result = orderRepository.starOrder(orderKey.orderId, projectIds.map(Int::toLong), longitude, latitude)
+                currentCoroutineContext().ensureActive()
+                when (result) {
+                    is ApiResult.Success -> {
+                        DiagnosticEventTracker.trackEvent(DiagnosticCategory.LOCATION, "service_start_location_success",
+                            "正式开始服务位置提交成功", diagnosticExtras, userId, reportToServer = true)
+                        serviceLifecycle.onOrderStarted(orderKey.orderId)
+                        try {
+                            unifiedOrderRepository.updateSelectedProjects(orderKey, projectIds)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (error: Exception) {
+                            currentCoroutineContext().ensureActive()
+                            // 服务端已经开始，磁盘失败不能提示重新签到；路由仍携带本次项目。
+                            DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_projects_save_failed",
+                                "服务已开始，但本地项目保存失败", error, context, userId)
+                        }
+                        currentCoroutineContext().ensureActive()
+                        _starOrderState.value = StarOrderUiState.Success(orderKey, projectIds)
+                    }
+                    is ApiResult.Exception -> {
+                        DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_submit_exception",
+                            "正式开始服务位置提交异常", result.exception, diagnosticExtras, userId)
+                        _starOrderState.value = StarOrderUiState.Error(
+                            textResolver.text(R.string.common_network_error_retry),
+                        )
+                    }
+                    is ApiResult.Failure -> {
+                        DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_submit_failure",
+                            "正式开始服务位置提交失败", extras = diagnosticExtras + mapOf("failureCode" to result.code,
+                                "failureMessage" to result.message), userId = userId)
+                        _starOrderState.value = StarOrderUiState.Error(result.message)
+                    }
                 }
-                is ApiResult.Exception -> {
-                    DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_submit_exception",
-                        "正式开始服务位置提交异常", result.exception, diagnosticExtras, userId)
-                    _starOrderState.value = StarOrderUiState.Error(
-                        textResolver.text(R.string.common_network_error_retry),
-                    )
-                }
-                is ApiResult.Failure -> {
-                    DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "service_start_location_submit_failure",
-                        "正式开始服务位置提交失败", extras = diagnosticExtras + mapOf("failureCode" to result.code,
-                            "failureMessage" to result.message), userId = userId)
-                    _starOrderState.value = StarOrderUiState.Error(result.message)
+            } finally {
+                // A cancelled SDK call may finish late; it must not release a newer preparation.
+                if (startJob === currentCoroutineContext()[Job]) {
+                    startJob = null
+                    startingOrder = null
+                    serviceLifecycle.cancelOrderPreparation(orderKey.orderId)
+                    if (_starOrderState.value is StarOrderUiState.Loading) {
+                        _starOrderState.value = StarOrderUiState.Initial
+                    }
                 }
             }
         }
+        startJob?.start()
     }
 
-    /**
-     * 重置工单开始状态
-     */
-    fun resetStarOrderState() {
-        _starOrderState.value = StarOrderUiState.Initial
+    /** 仅消费当前展示的结果，旧页面或旧 Snackbar 不能清除后来的动作。 */
+    fun acknowledgeStartResult(result: StarOrderUiState) {
+        if ((result is StarOrderUiState.Success || result is StarOrderUiState.Error) &&
+            _starOrderState.value === result
+        ) {
+            _starOrderState.value = StarOrderUiState.Initial
+        }
     }
 }
 
@@ -222,6 +236,6 @@ class SharedOrderDetailViewModel @Inject constructor(
 sealed class StarOrderUiState {
     data object Initial : StarOrderUiState()
     data object Loading : StarOrderUiState()
-    data object Success : StarOrderUiState()
+    data class Success(val orderKey: OrderKey, val selectedProjectIds: List<Int>) : StarOrderUiState()
     data class Error(val message: String) : StarOrderUiState()
 }

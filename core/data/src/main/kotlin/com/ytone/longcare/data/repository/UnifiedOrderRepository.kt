@@ -67,14 +67,6 @@ class UnifiedOrderRepository @Inject constructor(
     override fun getCachedOrderInfo(orderKey: OrderKey): ServiceOrderInfoModel? =
         if (session.sessionGeneration.value != null) memoryCache.get(orderKey) else null
 
-    override fun clearOrderInfoCache(orderKey: OrderKey) {
-        memoryCache.remove(orderKey)
-    }
-
-    override suspend fun preloadOrderInfo(orderKey: OrderKey) {
-        getOrderInfo(orderKey, forceRefresh = false)
-    }
-
     override suspend fun updateSelectedProjects(orderKey: OrderKey, selectedProjectIds: List<Int>) {
         val orderId = orderKey.orderId
         orderProjectDao.updateSelectedProjects(orderId, selectedProjectIds)

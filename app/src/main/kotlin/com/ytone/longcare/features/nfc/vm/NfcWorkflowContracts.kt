@@ -30,7 +30,6 @@ data class PendingNfcData(
     val signInMode: SignInMode,
     val endOderInfo: EndOderInfo?,
     val tagId: String,
-    val location: LocationResult,
 )
 
 data class PendingNfcScan(
@@ -75,7 +74,6 @@ data class EndOrderParams(
     val beginImgList: List<String>,
     val endImageList: List<String>,
     val centerImgList: List<String>,
-    val location: LocationResult,
     val endType: Int
 )
 

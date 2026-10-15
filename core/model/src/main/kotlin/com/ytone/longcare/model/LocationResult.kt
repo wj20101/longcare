@@ -18,4 +18,5 @@ data class LocationResult(
     val isLastLocation: Boolean = false,
     val errorCode: Int = 0,
     val errorInfo: String = "",
+    val requestId: String = "",
 )

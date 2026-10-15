@@ -269,7 +269,7 @@ internal fun SalesExperienceScreen(
         }
 
     val locationPermissionLauncher = com.ytone.longcare.common.utils.rememberLocationPermissionLauncher(
-        onPermissionGranted = viewModel::onLocationPermissionGranted,
+        onPermissionGranted = viewModel::requestCurrentLocation,
         onPermissionDenied = { showMessage(locationPermissionMessage) },
     )
 
@@ -345,7 +345,7 @@ internal fun SalesExperienceScreen(
                     PackageManager.PERMISSION_GRANTED
             }
         if (missing.isEmpty()) {
-            viewModel.onLocationPermissionGranted()
+            viewModel.requestCurrentLocation()
         } else {
             locationPermissionLauncher.launch(permissions)
         }

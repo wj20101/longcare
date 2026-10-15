@@ -94,7 +94,8 @@ class DefaultUserSessionRepositoryTest {
     fun `persistent read failure bounds publication wait and releases mutation mutex`() = runTest {
         val dataStore = FailingReadDataStore(failuresRemaining = Int.MAX_VALUE)
         val repository = DefaultUserSessionRepository(dataStore, backgroundScope, UserSessionTracker())
-        repository.sessionState.first { it == SessionState.LoggedOut }
+        testScheduler.runCurrent()
+        assertEquals(SessionState.Unknown, repository.sessionState.value)
 
         withTimeout(10_000) {
             try {
@@ -106,7 +107,7 @@ class DefaultUserSessionRepositoryTest {
                     User(userId = 123),
                     User.ADAPTER.decode(dataStore.persisted.value[byteArrayPreferencesKey("app_user")]!!),
                 )
-                assertEquals(SessionState.LoggedOut, repository.sessionState.value)
+                assertEquals(SessionState.Unknown, repository.sessionState.value)
             }
         }
         dataStore.failuresRemaining = 0

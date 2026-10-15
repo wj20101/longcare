@@ -65,4 +65,17 @@ class SingleLocationRequestTest {
         assertEquals(2, calls)
         assertEquals(0, currentTime)
     }
+
+    @Test fun `retry receives remaining budget and does not extend total wait`() = runTest {
+        val request = SingleLocationRequest { testScheduler.currentTime }
+        val budgets = mutableListOf<Long>()
+        val result = request.acquire { remaining ->
+            budgets += remaining
+            delay(10_000)
+            LocationAcquisition.Failure(LocationFailure.QUALITY)
+        }
+        assertEquals(listOf(15_000L, 5_000L), budgets)
+        assertEquals(15_000L, currentTime)
+        assertEquals(LocationFailure.TIMEOUT, (result as LocationAcquisition.Failure).reason)
+    }
 }

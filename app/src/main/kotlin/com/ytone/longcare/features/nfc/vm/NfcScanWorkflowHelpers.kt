@@ -1,50 +1,7 @@
 package com.ytone.longcare.features.nfc.vm
 
-import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.common.event.AppEvent
 import com.ytone.longcare.common.event.ScanSource
-import com.ytone.longcare.navigation.EndOderInfo
-import com.ytone.longcare.navigation.SignInMode
-
-internal suspend fun handleTagScanned(
-    event: AppEvent.TagScanned,
-    currentState: NfcSignInUiState,
-    signInMode: SignInMode,
-    endOderInfo: EndOderInfo?,
-    onLocationRequest: suspend () -> LocationRequestResult,
-    onLocationError: (LocationRequestResult.Error) -> Unit,
-    onLocationPermissionRequired: suspend (String) -> Unit = {},
-    onLoadingReasonChanged: (NfcLoadingReason) -> Unit = {},
-    onStartOrder: suspend (String, LocationResult) -> Unit,
-    onEndOrder: suspend (String, LocationResult, EndOderInfo) -> Unit,
-) {
-    if (currentState !is NfcSignInUiState.Initial) return
-    if (event.tagId.isBlank()) return
-
-    onLoadingReasonChanged(NfcLoadingReason.CARD_RECOGNIZED_FETCHING_LOCATION)
-    val locationResult = onLocationRequest()
-    val location = when (locationResult) {
-        is LocationRequestResult.Coordinates -> locationResult.location
-        is LocationRequestResult.Error -> {
-            onLocationError(locationResult)
-            return
-        }
-        is LocationRequestResult.PermissionRequired -> {
-            onLoadingReasonChanged(NfcLoadingReason.WAITING_FOR_LOCATION_PERMISSION)
-            onLocationPermissionRequired(event.tagId)
-            return
-        }
-    }
-
-    executeSignInModeAction(
-        signInMode = signInMode,
-        endOderInfo = endOderInfo,
-        tagId = event.tagId,
-        location = location,
-        onStartOrder = onStartOrder,
-        onEndOrder = onEndOrder,
-    )
-}
 
 internal fun reduceReaderUiState(
     currentMode: ScanMode,
@@ -61,18 +18,4 @@ internal fun reduceReaderUiState(
 private fun activeScanSource(mode: ScanMode): ScanSource = when (mode) {
     ScanMode.SYSTEM_NFC -> ScanSource.SYSTEM_NFC
     ScanMode.EXTERNAL_RFID -> ScanSource.EXTERNAL_RFID
-}
-
-internal suspend fun executeSignInModeAction(
-    signInMode: SignInMode,
-    endOderInfo: EndOderInfo?,
-    tagId: String,
-    location: LocationResult,
-    onStartOrder: suspend (String, LocationResult) -> Unit,
-    onEndOrder: suspend (String, LocationResult, EndOderInfo) -> Unit,
-) {
-    when (signInMode) {
-        SignInMode.START_ORDER -> onStartOrder(tagId, location)
-        SignInMode.END_ORDER -> endOderInfo?.let { onEndOrder(tagId, location, it) }
-    }
 }

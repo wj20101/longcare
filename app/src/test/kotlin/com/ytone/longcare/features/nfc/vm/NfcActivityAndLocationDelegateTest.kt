@@ -19,20 +19,20 @@ class NfcActivityAndLocationDelegateTest {
 
     @Test fun `NFC retains immutable sample including capture metadata`() = runTest {
         val sample = LocationResult(31.0, 121.0, "network", locationTime = 1234)
-        coEvery { facade.acquireCurrentLocation() } returns LocationAcquisition.Success(sample)
+        coEvery { facade.acquireServiceOrderLocation() } returns LocationAcquisition.Success(sample)
         assertEquals(LocationRequestResult.Coordinates(sample), delegate.acquireLocation())
-        coVerify(exactly = 1) { facade.acquireCurrentLocation() }
+        coVerify(exactly = 1) { facade.acquireServiceOrderLocation() }
     }
 
     @Test fun `all acquisition failures retain specific user message and no blank coordinate success`() = runTest {
         LocationFailure.entries.forEach { reason ->
-            coEvery { facade.acquireCurrentLocation() } returns LocationAcquisition.Failure(reason)
+            coEvery { facade.acquireServiceOrderLocation() } returns LocationAcquisition.Failure(reason)
             assertEquals(LocationRequestResult.Error(reason.messageRes().toString(), reason = reason), delegate.acquireLocation())
         }
     }
 
     @Test fun `cancellation stays cancellation`() = runTest {
-        coEvery { facade.acquireCurrentLocation() } throws CancellationException()
+        coEvery { facade.acquireServiceOrderLocation() } throws CancellationException()
         try {
             delegate.acquireLocation()
             fail("expected cancellation")

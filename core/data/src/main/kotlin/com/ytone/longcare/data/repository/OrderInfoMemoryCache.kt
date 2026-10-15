@@ -21,12 +21,6 @@ internal class OrderInfoMemoryCache {
         cachedOrderInfo[orderKey.cacheKey] = orderInfo
     }
 
-    fun remove(orderKey: OrderKey) {
-        val cacheKey = orderKey.cacheKey
-        cachedOrderInfo.remove(cacheKey)
-        orderLoadMutexes.remove(cacheKey)
-    }
-
     fun clear() = synchronized(stateLock) {
         cachedOrderInfo.clear()
         orderLoadMutexes.clear()

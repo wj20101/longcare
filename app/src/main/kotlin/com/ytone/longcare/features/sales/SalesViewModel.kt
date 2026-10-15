@@ -573,11 +573,6 @@ class SalesViewModel @Inject constructor(
         }
     }
 
-    fun onLocationPermissionGranted() {
-        locationFacade.notifyPermissionGranted()
-        requestCurrentLocation()
-    }
-
     fun submitCustomer(
         draft: SalesCustomerDraft,
         photoUris: List<Uri>,
