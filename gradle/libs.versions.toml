@@ -51,7 +51,7 @@ retrofit = "3.0.0"
 coil = "3.6.3"
 
 # Vendor SDKs and diagnostics
-amapLocation = "11.2.100"
+amapLocation = "11.3.000"
 buglyCrashReport = "4.1.9.3"
 tencentCos = "5.9.52"
 
