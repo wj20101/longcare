@@ -1,11 +1,14 @@
-"""Application releases must not require a duplicate Markdown version snapshot."""
+"""Project documentation checks preserve version and link validation boundaries."""
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
 from pathlib import Path
 import re
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from verify_documentation import check_versions
+from verify_documentation import check_versions, main
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -44,6 +47,20 @@ class DocumentationVersionTest(unittest.TestCase):
         self.assertEqual(2, len(errors))
         self.assertTrue(any('stale Gradle' in error for error in errors))
         self.assertTrue(any('stale Room' in error for error in errors))
+
+    def test_vendored_skill_examples_do_not_disable_project_link_validation(self):
+        index = self.root / 'docs/README.md'
+        index.write_text('[Tech stack](architecture/tech-stack.md)\n')
+        skill = self.root / '.agents/skills/example/SKILL.md'
+        skill.parent.mkdir(parents=True)
+        skill.write_text('[Example screenshot](path/to/screenshot)\n')
+        files = [Path('docs/README.md'), Path('.agents/skills/example/SKILL.md')]
+        with patch('verify_documentation.markdown_files', return_value=files), \
+                patch('sys.argv', ['verify_documentation.py', '--root', str(self.root)]), \
+                redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+            self.assertEqual(0, main())
+            index.write_text(index.read_text() + '[Broken project link](missing.md)\n')
+            self.assertEqual(1, main())
 
 
 if __name__ == '__main__':

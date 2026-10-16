@@ -125,7 +125,10 @@ def main() -> int:
                 print(f"{document_group(path)}\t{path.as_posix()}")
             print(f"[docs][LIST] {len(files)} Markdown files")
             return 0
-        errors = check_links(root, files) + check_index(root, files) + check_versions(root)
+        # Vendored skills include upstream examples and anchor conventions; the
+        # repository's link/index contract applies to project documentation.
+        project_files = [path for path in files if document_group(path) != "工具技能"]
+        errors = check_links(root, project_files) + check_index(root, project_files) + check_versions(root)
     except (OSError, subprocess.CalledProcessError, KeyError, ValueError) as error:
         print(f"[docs][FAIL] unable to check: {error}", file=sys.stderr)
         return 1
@@ -133,7 +136,9 @@ def main() -> int:
         print(f"[docs][FAIL] {error}", file=sys.stderr)
     if errors:
         return 1
-    print(f"[docs][PASS] {len(files)} Markdown files: local links/anchors, index coverage, selected live versions")
+    print(f"[docs][PASS] {len(project_files)} project Markdown files: local links/anchors, index coverage, selected live versions")
+    if len(files) != len(project_files):
+        print(f"[docs][NOTE] {len(files) - len(project_files)} vendored skill documents excluded from project link checks.")
     print("[docs][NOTE] External URLs, reference-style links and prose semantics require separate review.")
     return 0
 
