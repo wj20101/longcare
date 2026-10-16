@@ -1,12 +1,19 @@
 package com.ytone.longcare.features.nfc.ui
 
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
+import android.provider.Settings
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import androidx.core.net.toUri
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
@@ -21,6 +28,7 @@ import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.domain.location.LocationFailure
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 internal fun mapNfcSignInState(uiState: NfcSignInUiState): SignInState {
     return when (uiState) {
@@ -58,7 +66,7 @@ internal fun rememberNfcLocationRequest(
     context: Context,
     nfcViewModel: NfcWorkflowViewModel,
 ): suspend () -> LocationRequestResult {
-    var showLocationOnlyPurposeNotice by remember { mutableStateOf(false) }
+    var showLocationOnlyPurposeNotice by rememberSaveable { mutableStateOf(false) }
     val locationServiceDisabledMessage = stringResource(R.string.nfc_location_service_disabled)
 
     val getCurrentLocationCoordinates: suspend () -> LocationRequestResult = {
@@ -73,16 +81,20 @@ internal fun rememberNfcLocationRequest(
         }
     }
 
+    fun resumeLocationRequest() {
+        nfcViewModel.resumePendingPermissionScan(getCurrentLocationCoordinates)
+    }
+
     val locationOnlyPermissionLauncher = rememberLocationPermissionLauncher(
-        onPermissionGranted = {
-            nfcViewModel.resumePendingPermissionScan {
-                getCurrentLocationCoordinates()
-            }
-        },
-        onPermissionDenied = {
-            nfcViewModel.clearPendingPermissionScan()
-        }
+        onPermissionGranted = ::resumeLocationRequest,
+        onPermissionDenied = nfcViewModel::clearPendingPermissionScan,
     )
+    val locationSettingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        if (UnifiedPermissionHelper.hasLocationPermission(context)) resumeLocationRequest()
+        else nfcViewModel.clearPendingPermissionScan()
+    }
 
     if (showLocationOnlyPurposeNotice) {
         PermissionPurposeDialog(
@@ -96,7 +108,20 @@ internal fun rememberNfcLocationRequest(
             onDismiss = {
                 showLocationOnlyPurposeNotice = false
                 nfcViewModel.clearPendingPermissionScan()
-            }
+            },
+            onOpenSettings = {
+                showLocationOnlyPurposeNotice = false
+                try {
+                    locationSettingsLauncher.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        "package:${context.packageName}".toUri()))
+                } catch (_: ActivityNotFoundException) {
+                    nfcViewModel.clearPendingPermissionScan()
+                    Toast.makeText(context, CoreUiR.string.permission_settings_unavailable, Toast.LENGTH_SHORT).show()
+                } catch (_: SecurityException) {
+                    nfcViewModel.clearPendingPermissionScan()
+                    Toast.makeText(context, CoreUiR.string.permission_settings_unavailable, Toast.LENGTH_SHORT).show()
+                }
+            },
         )
     }
 

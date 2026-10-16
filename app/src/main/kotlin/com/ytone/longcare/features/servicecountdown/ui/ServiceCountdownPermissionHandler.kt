@@ -1,40 +1,42 @@
 package com.ytone.longcare.features.servicecountdown.ui
 
 import android.Manifest
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
-import androidx.activity.compose.ManagedActivityResultLauncher
-import androidx.activity.result.ActivityResultLauncher
-import com.ytone.longcare.common.utils.UnifiedPermissionHelper
+import androidx.annotation.StringRes
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
-import androidx.annotation.StringRes
 import com.ytone.longcare.R
+import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.common.utils.UnifiedPermissionHelper
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 internal enum class ServiceCountdownPermissionIssue(
     @param:StringRes val messageRes: Int,
-    val settingsDestination: SettingsDestination,
 ) {
+    LOCATION(
+        R.string.service_countdown_location_permission_required,
+    ),
+    LOCATION_SERVICE(
+        CoreUiR.string.location_service_open_settings,
+    ),
     NOTIFICATION(
-        R.string.service_countdown_notification_permission_denied,
-        SettingsDestination.APP_DETAILS,
+        R.string.service_countdown_notification_permission_required,
+    ),
+    CHANNEL(
+        R.string.service_countdown_notification_channel_required,
     ),
     EXACT_ALARM(
-        R.string.service_countdown_exact_alarm_permission_denied,
-        SettingsDestination.APP_DETAILS,
+        R.string.service_countdown_exact_alarm_permission_required,
     ),
     FULL_SCREEN(
         R.string.service_countdown_full_screen_permission_required,
-        SettingsDestination.FULL_SCREEN_NOTIFICATION,
     ),
-}
-
-internal enum class SettingsDestination {
-    APP_DETAILS,
-    FULL_SCREEN_NOTIFICATION,
 }
 
 internal fun hasNotificationPermission(context: Context): Boolean {
@@ -48,104 +50,64 @@ internal fun hasNotificationPermission(context: Context): Boolean {
     }
 }
 
-internal fun checkAndRequestRequiredPermissions(
+/** 每次授权或设置返回后继续检查下一项，避免只检查第一项便永久跳过全屏提醒。 */
+internal fun requiredCountdownPermissionIssue(
     context: Context,
     canScheduleExactAlarms: Boolean,
     canUseFullScreenIntent: Boolean,
-    requestNotificationPermission: () -> Unit,
-    requestExactAlarmPermission: () -> Unit,
-    onPermissionDialogRequired: (ServiceCountdownPermissionIssue) -> Unit
-) {
-    if (!hasNotificationPermission(context)) {
-        requestNotificationPermission()
-        return
+): ServiceCountdownPermissionIssue? {
+    val notifications = NotificationManagerCompat.from(context)
+    val channel = notifications.getNotificationChannelCompat(CountdownNotificationManager.COUNTDOWN_NOTIFICATION_CHANNEL_ID)
+    return when {
+        !UnifiedPermissionHelper.hasLocationPermission(context) -> ServiceCountdownPermissionIssue.LOCATION
+        !UnifiedPermissionHelper.isLocationServiceEnabled(context) -> ServiceCountdownPermissionIssue.LOCATION_SERVICE
+        !hasNotificationPermission(context) || !notifications.areNotificationsEnabled() ->
+            ServiceCountdownPermissionIssue.NOTIFICATION
+        (channel != null && channel.importance < NotificationManager.IMPORTANCE_HIGH) ||
+            isCountdownNotificationGroupBlocked(notifications) ->
+            ServiceCountdownPermissionIssue.CHANNEL
+        !canScheduleExactAlarms -> ServiceCountdownPermissionIssue.EXACT_ALARM
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !canUseFullScreenIntent ->
+            ServiceCountdownPermissionIssue.FULL_SCREEN
+        else -> null
     }
-    if (!canScheduleExactAlarms) {
-        requestExactAlarmPermission()
-        return
-    }
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !canUseFullScreenIntent) {
-        onPermissionDialogRequired(ServiceCountdownPermissionIssue.FULL_SCREEN)
-    }
-}
-
-internal fun checkAndRequestCountdownPermissions(
-    context: Context,
-    canScheduleExactAlarms: Boolean,
-    canUseFullScreenIntent: Boolean,
-    notificationPermissionLauncher: ActivityResultLauncher<String>,
-    exactAlarmPermissionLauncher: ActivityResultLauncher<Intent>,
-    onPermissionDialogRequired: (ServiceCountdownPermissionIssue) -> Unit
-) {
-    checkAndRequestRequiredPermissions(
-        context = context,
-        canScheduleExactAlarms = canScheduleExactAlarms,
-        canUseFullScreenIntent = canUseFullScreenIntent,
-        requestNotificationPermission = {
-            requestNotificationPermission(
-                context = context,
-                notificationPermissionLauncher = notificationPermissionLauncher
-            )
-        },
-        requestExactAlarmPermission = {
-            requestExactAlarmPermission(
-                context = context,
-                canScheduleExactAlarms = canScheduleExactAlarms,
-                exactAlarmPermissionLauncher = exactAlarmPermissionLauncher
-            )
-        },
-        onPermissionDialogRequired = onPermissionDialogRequired
-    )
-}
-
-internal fun requestNotificationPermission(
-    context: Context,
-    notificationPermissionLauncher: ActivityResultLauncher<String>
-) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission(context)) {
-        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
-}
-
-internal fun requestExactAlarmPermission(
-    context: Context,
-    canScheduleExactAlarms: Boolean,
-    exactAlarmPermissionLauncher: ActivityResultLauncher<Intent>
-) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !canScheduleExactAlarms) {
-        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-            data = "package:${context.packageName}".toUri()
-        }
-        exactAlarmPermissionLauncher.launch(intent)
-    }
-}
-
-internal fun checkLocationPermissionAndStart(
-    context: Context,
-    permissionLauncher: ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>,
-    onPermissionGranted: () -> Unit
-) {
-    UnifiedPermissionHelper.checkLocationPermissionAndStart(
-        context = context,
-        permissionLauncher = permissionLauncher,
-        onPermissionGranted = onPermissionGranted
-    )
 }
 
 internal fun buildPermissionSettingsIntent(
     context: Context,
     issue: ServiceCountdownPermissionIssue,
 ): Intent {
-    return if (
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
-        issue.settingsDestination == SettingsDestination.FULL_SCREEN_NOTIFICATION
-    ) {
-        Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
-            data = "package:${context.packageName}".toUri()
-        }
-    } else {
-        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-            data = "package:${context.packageName}".toUri()
-        }
+    if (issue == ServiceCountdownPermissionIssue.LOCATION_SERVICE) {
+        return Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
     }
+    val intent = if (
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+        issue == ServiceCountdownPermissionIssue.FULL_SCREEN
+    ) {
+        Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+        issue == ServiceCountdownPermissionIssue.EXACT_ALARM) {
+        Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        issue == ServiceCountdownPermissionIssue.CHANNEL &&
+        !isCountdownNotificationGroupBlocked(NotificationManagerCompat.from(context))) {
+        return Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            .putExtra(Settings.EXTRA_CHANNEL_ID, CountdownNotificationManager.COUNTDOWN_NOTIFICATION_CHANNEL_ID)
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        (issue == ServiceCountdownPermissionIssue.NOTIFICATION || issue == ServiceCountdownPermissionIssue.CHANNEL)) {
+        return Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+    } else {
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+    }
+    return intent.apply { data = "package:${context.packageName}".toUri() }
+}
+
+/** A blocked group prevents its channels from notifying even when channel importance is high. */
+private fun isCountdownNotificationGroupBlocked(notifications: NotificationManagerCompat): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return false
+    val group = notifications.getNotificationChannelCompat(CountdownNotificationManager.COUNTDOWN_NOTIFICATION_CHANNEL_ID)
+        ?.group ?: return false
+    return notifications.getNotificationChannelGroupCompat(group)?.isBlocked == true
 }

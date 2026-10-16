@@ -58,13 +58,17 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 
 1. `select-checks` 始终验证文档，并由 `select_ci_smoke.sh` 选择是否需要构建和设备冒烟；仅文档变更不启动 Gradle/模拟器。文档保留 SDK、Gradle 和依赖版本检查，不复制或校验应用版本号。
 2. `verify-build` 调用 `run_ci_checks.sh` 和 `run_jvm_tests.sh`，上传主应用 Debug APK 和所有模块测试报告，不常规构建 Debug AAB。
-3. `instrumentation-smoke` 在前置构建成功且所选路径需要时执行。API 36 模拟器以真实启动用例为基础，按导航、WebView、服务、销售 UI 等路径追加离线用例；不自动运行需账号/硬件的 opt-in 测试。
+3. `instrumentation-smoke` 在前置构建成功且所选路径需要时执行。API 36 模拟器以真实启动用例为基础，按导航、WebView、服务、销售 UI 等路径追加离线用例；服务/定位及倒计时改动覆盖通知、精确闹钟、全屏提醒的授权回调链，以及首次读取期间 Home/锁屏后的排程与显示暂停；机型后台设置与共享引导改动追加关闭/确认分离、重建恢复、大字体操作可见、显式复查及设置返回刷新测试；共享定位申请验证拒绝不劝导及定位与通知分开。不自动运行需账号/硬件的 opt-in 测试。
 4. 手动 CI 或差异基线不可用时执行完整基础验证及固定离线冒烟集合，不将 HEAD 自身比较为空视为无需验证。
 5. PR 并发组跨提交稳定，新提交只取消同 PR 旧运行；主分支 Push 不自动取消。CI 本身仅有读取权限，无缓存删除 job。
 
 `enable_kvm.sh` 被 CI 和独立 Baseline 工作流共用：等待 udev 权限事件完成，再确认 KVM 存在且可读写，缺失/超时/权限不足均阻断。Mac 本地模拟器不使用 Linux KVM；本地成功不替代 Actions 的 Linux 验收。
 
 完整 JVM 集合仍不等于全部硬件或真实业务旅程验收。完整 connected tests 可由 `run_connected_android_tests.sh` 在指定设备执行。测试报告区分执行、缓存、跳过和未执行。
+
+机型设置往返可单独执行 `DeviceCompatibilitySettingsNavigationTest`：从真实弹窗打开系统设置，通过系统返回验证刷新，不修改开关；不支持的厂商项会跳过。`ServiceCountdownRealSettingsTest` 仅供 API 34+ 模拟器显式验证，须传 `-e runRealSettings true` 并逐方法执行，预先满足实际定位、通知及提醒渠道条件，分别准备精确闹钟或全屏提醒缺失状态。外部执行器必须先备份 package/UID app-op，并在 finally 中恢复；精确闹钟撤权可能结束应用进程，不能在尚未退出的 instrumentation 内恢复。普通 CI 冒烟不启用这类会修改系统特殊授权的测试。
+
+`ServiceCountdownBackgroundInitializationTest` 默认使用隔离仓库和记录型 Gateway 验证首次排程与生命周期，不提交护理接口。两个真实闹钟用例须显式传 `-e runRealAlarm true`；空白设备还须传 `-e initializeEmptyDevice true`，只建立并清理本地测试会话，不调用登录接口。测试拒绝覆盖现有排程、提醒或定位恢复记录，验证真实响铃、锁屏自动弹页、约 30 秒停声及通知保留；需可用提醒权限和非静音闹钟音量。安全锁屏恢复时可能需人工解锁，不更改用户 PIN、系统权限或省电策略。
 
 工作流守卫执行 `test_*.py`：覆盖选择器、KVM、PR 并发、门禁调用、签名/产物、版本推送时机及存储保护。测试通过本地 Git 与工具替身执行，不发布版本或删除远端数据；步骤标题和固定时长不再作为主要约束。
 

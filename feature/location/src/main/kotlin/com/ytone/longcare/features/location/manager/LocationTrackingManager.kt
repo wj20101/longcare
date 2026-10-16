@@ -17,7 +17,6 @@ class LocationTrackingManager @Inject constructor(
     fun onAppVisible() = locationReportingManager.onAppVisible()
     fun resumePendingRecovery() = locationReportingManager.resumePendingRecovery()
     fun startTracking(orderKey: OrderKey) = locationReportingManager.startReporting(orderKey)
-    fun stopTracking() = locationReportingManager.stopReporting()
 
     fun onSessionStateChanged(state: SessionState) {
         when (state) {

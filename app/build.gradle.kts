@@ -120,6 +120,8 @@ android {
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        // App 的 Robolectric 回归共享 JVM；完整集合已超过默认的 512 MiB 堆预算。
+        unitTests.all { it.maxHeapSize = "1g" }
     }
 
     // Run the same vendor protobuf contract on the JVM and Android; never package it in the app.

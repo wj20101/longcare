@@ -13,6 +13,7 @@ import io.mockk.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.*
 import org.junit.Assert.*
 import org.junit.Before
@@ -67,6 +68,33 @@ class LocationRecoveryTest {
         response.complete(active())
         runCurrent()
         assertTrue(session.canUpload())
+        manager.stopReporting()
+    }
+
+    @Test fun `stalled restored order query times out then existing backoff confirms recovery`() = runTest {
+        var queries = 0
+        var firstCancelled = false
+        coEvery { orders.getOrderState(10) } coAnswers {
+            queries++
+            if (queries == 1) {
+                try { awaitCancellation() } finally { firstCancelled = true }
+            }
+            active()
+        }
+        val manager = LocationReportingManager(keepAlive, orders, backgroundScope, store)
+        val session = requireNotNull(manager.restore(record, identity)).first
+        runCurrent()
+        assertFalse(session.canUpload())
+        advanceTimeBy(30_000)
+        runCurrent()
+        assertTrue(firstCancelled)
+        assertFalse(session.canUpload())
+        assertTrue(session.isValid())
+        advanceTimeBy(30_000)
+        runCurrent()
+        assertEquals(2, queries)
+        assertTrue(session.canUpload())
+        verify(exactly = 0) { keepAlive.acquireOrderTracking(any(), any()) }
         manager.stopReporting()
     }
 

@@ -1,16 +1,15 @@
 package com.ytone.longcare.features.servicecountdown.ui
 
-import android.content.Context
 import androidx.compose.runtime.Composable
-import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.model.OrderKey
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import com.ytone.longcare.R
 
 @Composable
 internal fun ServiceCountdownDialogsHost(
-    showPermissionDialog: Boolean,
     permissionIssue: ServiceCountdownPermissionIssue?,
     onDismissPermissionDialog: () -> Unit,
     showConfirmDialog: Boolean,
@@ -18,23 +17,29 @@ internal fun ServiceCountdownDialogsHost(
     showOrderStateErrorDialog: Boolean,
     orderStateErrorMessage: String,
     onDismissOrderStateErrorDialog: () -> Unit,
-    context: Context,
+    onOpenPermissionSettings: (ServiceCountdownPermissionIssue) -> Unit,
+    onRequestPermission: (ServiceCountdownPermissionIssue) -> Unit,
     orderKey: OrderKey,
     projectIdList: List<Int>,
     countdownViewModel: ServiceCountdownViewModel,
-    locationTrackingViewModel: LocationTrackingViewModel,
     actions: ServiceCountdownActions
 ) {
     val permissionDialogMessage = permissionIssue?.let { stringResource(it.messageRes) }.orEmpty()
+    val runtimeRequest = permissionIssue == ServiceCountdownPermissionIssue.LOCATION ||
+        (permissionIssue == ServiceCountdownPermissionIssue.NOTIFICATION && !hasNotificationPermission(LocalContext.current))
     PermissionAlertDialog(
-        visible = showPermissionDialog && permissionIssue != null,
+        visible = permissionIssue != null,
         message = permissionDialogMessage,
         onDismiss = onDismissPermissionDialog,
-        onNavigateSettings = {
-            context.startActivity(
-                buildPermissionSettingsIntent(context, requireNotNull(permissionIssue))
-            )
-        }
+        confirmLabelRes = when {
+            permissionIssue == ServiceCountdownPermissionIssue.LOCATION -> R.string.service_countdown_allow_location
+            runtimeRequest -> R.string.service_countdown_allow_notifications
+            else -> R.string.common_go_to_settings
+        },
+        onConfirm = { permissionIssue?.let(onRequestPermission) },
+        onOpenAppSettings = if (runtimeRequest) {
+            { permissionIssue?.let(onOpenPermissionSettings) }
+        } else null,
     )
 
     ConfirmEarlyEndServiceDialog(
@@ -44,7 +49,6 @@ internal fun ServiceCountdownDialogsHost(
             handleEndService(
                 orderKey = orderKey,
                 projectIdList = projectIdList,
-                countdownViewModel = countdownViewModel,
                 actions = actions,
                 endType = 2
             )
@@ -59,7 +63,6 @@ internal fun ServiceCountdownDialogsHost(
             handleOrderStateErrorAndExit(
                 orderKey = orderKey,
                 countdownViewModel = countdownViewModel,
-                locationTrackingViewModel = locationTrackingViewModel,
                 actions = actions
             )
         }

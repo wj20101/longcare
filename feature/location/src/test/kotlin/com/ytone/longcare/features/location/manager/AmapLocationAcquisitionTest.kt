@@ -461,6 +461,27 @@ class AmapLocationAcquisitionTest {
         collector.cancelAndJoin()
     }
 
+    @Test fun `null callbacks cannot hide 90 seconds without SDK results`() = runTest(dispatcher) {
+        var elapsed = 10_000L
+        every { SystemClock.elapsedRealtime() } answers { elapsed }
+        val collector = backgroundScope.launch { manager.startContinuousLocation(owner = "order-1").collect() }
+        runCurrent()
+        val callback = listeners.single()
+        repeat(2) {
+            elapsed += 30_000
+            callback.onLocationChanged(null)
+            assertFalse(manager.recoverStalledSampling("order-1"))
+        }
+        elapsed += 30_000
+        callback.onLocationChanged(null)
+        assertTrue(manager.recoverStalledSampling("order-1"))
+        verify(exactly = 2) { factory.create(any()) }
+        verify(exactly = 1) { client.onDestroy() }
+        assertNull(manager.latestEvent())
+        collector.cancelAndJoin()
+        verify(exactly = 2) { client.onDestroy() }
+    }
+
     private fun sample(): AMapLocation = mockk {
         every { errorCode } returns 0
         every { errorInfo } returns "success"

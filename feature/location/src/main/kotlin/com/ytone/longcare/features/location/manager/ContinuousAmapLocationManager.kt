@@ -156,8 +156,8 @@ class ContinuousAmapLocationManager @Inject constructor(
                 lastCallbackElapsed = SystemClock.elapsedRealtime()
                 val listener = AMapLocationListener { raw ->
                     if (!request.active.get()) return@AMapLocationListener
-                    lastCallbackElapsed = SystemClock.elapsedRealtime()
                     if (raw == null) return@AMapLocationListener
+                    lastCallbackElapsed = SystemClock.elapsedRealtime()
                     val sample = raw.toSample(id)
                     val event = if (raw.errorCode == 0) LocationAcquisition.Success(sample) else {
                         LocationEventTracker.trackError(LocationEventTracker.EventType.AMAP_CONTINUOUS_LOCATION_ERROR,

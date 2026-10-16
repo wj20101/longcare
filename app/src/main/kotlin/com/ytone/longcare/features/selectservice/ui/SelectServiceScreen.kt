@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,8 +27,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.ytone.longcare.common.utils.CustomBackHandler
 import com.ytone.longcare.common.utils.DeviceCompatibilityHelper
-import com.ytone.longcare.common.utils.PermissionGuideItem
+import com.ytone.longcare.common.utils.PermissionGuideId
 import com.ytone.longcare.common.utils.singleClick
+import com.ytone.longcare.core.ui.permission.BackgroundSettingsDialog
+import com.ytone.longcare.core.ui.R as CoreUiR
 import com.ytone.longcare.features.selectservice.api.SelectServiceActions
 import com.ytone.longcare.features.selectservice.vm.SelectServiceViewModel
 import com.ytone.longcare.model.OrderKey
@@ -91,28 +94,33 @@ fun SelectServiceScreen(
         updateServiceItemsFromUiState(uiState, selectServiceType, serviceItems)
     }
 
-    var pendingStartProjectIds by remember { mutableStateOf<List<Int>?>(null) }
-    var showUnifiedGuide by remember { mutableStateOf(false) }
-    var guideItems by remember { mutableStateOf<List<PermissionGuideItem>>(emptyList()) }
+    // Save only the pending selection and guide identities; Settings intents and system state are rebuilt.
+    var pendingStartProjectIds by rememberSaveable(orderKey) { mutableStateOf<IntArray?>(null) }
+    var pendingGuideIds by rememberSaveable(orderKey) { mutableStateOf(emptyArray<String>()) }
 
     fun startService(selectedIds: List<Int>) {
         sharedViewModel.starOrder(orderKey, selectedIds)
     }
 
-    fun continuePendingStart() {
-        val selectedIds = pendingStartProjectIds
-        pendingStartProjectIds = null
-        if (selectedIds != null) {
-            startService(selectedIds)
+    fun dismissPendingStart() {
+        PermissionGuideId.entries.filter { it.name in pendingGuideIds }.forEach { id ->
+            DeviceCompatibilityHelper.markGuideShown(context, id)
         }
+        pendingStartProjectIds = null
+        pendingGuideIds = emptyArray()
+    }
+
+    fun confirmPendingStart() {
+        val selectedIds = pendingStartProjectIds?.toList()
+        dismissPendingStart()
+        selectedIds?.let(::startService)
     }
 
     fun showCompatibilityGuideIfNeeded(selectedIds: List<Int>): Boolean {
         val items = DeviceCompatibilityHelper.getAllRequiredGuides(context)
         if (items.isEmpty()) return false
-        pendingStartProjectIds = selectedIds
-        guideItems = items
-        showUnifiedGuide = true
+        pendingGuideIds = items.map { it.id.name }.toTypedArray()
+        pendingStartProjectIds = selectedIds.toIntArray()
         return true
     }
 
@@ -155,20 +163,20 @@ fun SelectServiceScreen(
             )
         }
 
-        if (showUnifiedGuide) {
-            UnifiedPermissionGuideDialog(
-                items = guideItems,
-                onItemAction = { item ->
-                    DeviceCompatibilityHelper.openGuide(context, item)
+        if (pendingStartProjectIds != null) {
+            val recommendedIds = pendingGuideIds.toSet()
+            val guideItems = remember(context, orderKey, pendingGuideIds) {
+                DeviceCompatibilityHelper.getAllGuides(context).filter { it.id.name in recommendedIds }
+            }
+            BackgroundSettingsDialog(
+                initialItems = guideItems,
+                refreshItems = {
+                    DeviceCompatibilityHelper.getAllGuides(context).filter { it.id.name in recommendedIds }
                 },
-                onDismiss = {
-                    showUnifiedGuide = false
-                    // 标记所有未处理的引导为已展示
-                    guideItems.forEach { item ->
-                        DeviceCompatibilityHelper.markGuideHandled(context, item.id)
-                    }
-                    continuePendingStart()
-                }
+                dismissLabelRes = CoreUiR.string.common_cancel,
+                onItemAction = { DeviceCompatibilityHelper.openGuide(context, it) },
+                onDismiss = ::dismissPendingStart,
+                onConfirm = ::confirmPendingStart,
             )
         }
     }

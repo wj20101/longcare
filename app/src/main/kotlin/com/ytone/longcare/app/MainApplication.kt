@@ -12,6 +12,7 @@ import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.common.utils.LogConfig
 import com.ytone.longcare.common.utils.LogFileConfig
 import com.ytone.longcare.common.utils.PrivacyConsentManager
+import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.location.session.LocationSessionLifecycleObserver
 import com.ytone.longcare.worker.StartupUpdateWorkObserver
 import dagger.hilt.android.HiltAndroidApp
@@ -37,6 +38,9 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
     @Inject
     lateinit var locationSessionLifecycleObserver: LocationSessionLifecycleObserver
 
+    @Inject
+    lateinit var countdownNotificationManager: CountdownNotificationManager
+
     private val postConsentInitDone = AtomicBoolean(false)
 
     override val workManagerConfiguration: Configuration
@@ -49,6 +53,7 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
 
         initLogger()
         locationSessionLifecycleObserver.start()
+        countdownNotificationManager.startSessionObservation()
 
         // 只有用户已同意隐私政策才初始化 SDK 和调度 Worker
         if (privacyConsentManager.isPrivacyConsented) {

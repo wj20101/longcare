@@ -81,6 +81,34 @@ class SelectionTest(unittest.TestCase):
         self.assertEqual("true", result["run_instrumentation"])
         self.assertNotIn("SalesEvaluationLiveResultTest", result["smoke_test_classes"])
 
+    def test_countdown_changes_include_permission_flow_regression(self):
+        result = self.select("app/src/main/kotlin/com/ytone/longcare/features/countdown/manager/CountdownNotificationManager.kt")
+        self.assertIn("ServiceCountdownPermissionFlowTest", result["smoke_test_classes"])
+        self.assertIn("ServiceCountdownBackgroundInitializationTest", result["smoke_test_classes"])
+        self.assertIn("BackgroundSettingsDialogTest", result["smoke_test_classes"])
+        result = self.select("app/src/androidTest/kotlin/com/ytone/longcare/features/servicecountdown/ui/ServiceCountdownPermissionFlowTest.kt")
+        self.assertIn("ServiceCountdownPermissionFlowTest", result["smoke_test_classes"])
+
+    def test_background_settings_changes_include_dialog_regression(self):
+        for path in (
+            "core/common/src/main/kotlin/com/ytone/longcare/common/utils/DeviceCompatibilityHelper.kt",
+            "core/ui/src/main/kotlin/com/ytone/longcare/core/ui/permission/BackgroundSettingsDialog.kt",
+            "app/src/main/kotlin/com/ytone/longcare/features/selectservice/ui/SelectServiceScreen.kt",
+            "app/src/androidTest/kotlin/com/ytone/longcare/core/ui/permission/BackgroundSettingsDialogTest.kt",
+        ):
+            with self.subTest(path=path):
+                result = self.select(path)
+                self.assertIn("BackgroundSettingsDialogTest", result["smoke_test_classes"])
+
+    def test_location_permission_changes_include_denial_regression(self):
+        for path in (
+            "core/ui/src/main/kotlin/com/ytone/longcare/common/utils/UnifiedPermissionHelper.kt",
+            "app/src/androidTest/kotlin/com/ytone/longcare/platform/location/LocationPermissionUiTest.kt",
+        ):
+            with self.subTest(path=path):
+                result = self.select(path)
+                self.assertIn("LocationPermissionUiTest", result["smoke_test_classes"])
+
 
 if __name__ == "__main__":
     unittest.main()

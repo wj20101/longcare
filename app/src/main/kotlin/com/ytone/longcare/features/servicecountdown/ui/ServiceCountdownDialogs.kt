@@ -3,6 +3,8 @@ package com.ytone.longcare.features.servicecountdown.ui
 import com.ytone.longcare.core.ui.R as CoreUiR
 
 import androidx.compose.material3.AlertDialog
+import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -15,28 +17,42 @@ internal fun PermissionAlertDialog(
     visible: Boolean,
     message: String,
     onDismiss: () -> Unit,
-    onNavigateSettings: () -> Unit
+    @StringRes confirmLabelRes: Int,
+    onConfirm: () -> Unit,
+    onOpenAppSettings: (() -> Unit)? = null,
 ) {
     if (!visible) return
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.service_countdown_permission_title)) },
-        text = { Text(message) },
+        text = {
+            Column {
+                Text(message)
+                if (onOpenAppSettings != null) {
+                    TextButton(onClick = singleClick {
+                        onDismiss()
+                        onOpenAppSettings()
+                    }) {
+                        Text(stringResource(R.string.common_go_to_settings))
+                    }
+                }
+            }
+        },
         confirmButton = {
             TextButton(
                 onClick = singleClick {
                     onDismiss()
-                    onNavigateSettings()
+                    onConfirm()
                 }
             ) {
-                Text(stringResource(R.string.common_go_to_settings))
+                Text(stringResource(confirmLabelRes))
             }
         },
         dismissButton = {
             TextButton(
                 onClick = singleClick { onDismiss() }
             ) {
-                Text(stringResource(R.string.common_later))
+                Text(stringResource(R.string.service_countdown_permission_later))
             }
         }
     )

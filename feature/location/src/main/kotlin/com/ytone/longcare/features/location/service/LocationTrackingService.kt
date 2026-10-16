@@ -1,10 +1,12 @@
 package com.ytone.longcare.features.location.service
 
+import android.Manifest
 import android.app.PendingIntent
 import android.app.Notification
 import android.os.PowerManager
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
@@ -13,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.PendingIntentCompat
 import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import com.ytone.longcare.feature.location.R
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.location.LocationRepository
@@ -259,9 +262,10 @@ open class LocationTrackingService : Service() {
                                     orderId = orderId,
                                     latitude = location.latitude,
                                     longitude = location.longitude,
-                                ).also { result ->
-                                    currentCoroutineContext().ensureActive()
-                                    if (!session.canUpload() || currentAccount() != session.account) return@also
+                                )
+                            },
+                            onUploadResult = { result ->
+                                if (session.canUpload() && currentAccount() == session.account) {
                                     val healthy = result is com.ytone.longcare.model.result.ApiResult.Success
                                     reportingManager.updateStatus(owner, if (healthy) LocationReportingStatus.ACTIVE else LocationReportingStatus.NETWORK_ERROR)
                                     updateNotification(if (healthy) R.string.location_tracking_notification_content else R.string.location_tracking_network_wait)
@@ -346,8 +350,15 @@ open class LocationTrackingService : Service() {
 
     private fun updateNotification(text: Int) {
         if (lastNotificationText == text || !foregroundEntered) return
-        lastNotificationText = text
-        NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, createNotification(text))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        try {
+            NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, createNotification(text))
+            lastNotificationText = text
+        } catch (_: SecurityException) {
+            // 权限可能在检查后被撤销；通知不可用不应中断采集或上报。
+            logI("定位通知更新被系统拒绝，继续当前定位会话")
+        }
     }
 
     private fun stopKeepAlive(stopService: Boolean = false) {

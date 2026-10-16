@@ -7,6 +7,7 @@ import com.ytone.longcare.domain.location.LocationRecoveryRecord
 import com.ytone.longcare.domain.location.LocationRecoveryStore
 import com.ytone.longcare.domain.order.OrderRepository
 import java.util.UUID
+import java.net.SocketTimeoutException
 import kotlinx.coroutines.channels.Channel
 import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.features.location.core.LocationKeepAliveManager
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Business-owned session: one state monitor independent of screens and Android Service callbacks.
@@ -228,7 +230,10 @@ class LocationReportingManager @Inject constructor(
             }
             val revision = synchronized(lifecycleLock) { session.revision }
             val result = try {
-                orderRepository.getOrderState(session.orderId)
+                // A read timeout alone cannot bound a response that keeps delivering bytes.
+                // Recovery stays paused until a fresh confirmation; timeout uses existing backoff.
+                withTimeoutOrNull(STATE_QUERY_TIMEOUT_MS) { orderRepository.getOrderState(session.orderId) }
+                    ?: ApiResult.Exception(SocketTimeoutException("location_order_state_timeout"))
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -294,6 +299,7 @@ class LocationReportingManager @Inject constructor(
 
     private companion object {
         const val POLL_INTERVAL_MS = 30_000L
+        const val STATE_QUERY_TIMEOUT_MS = 30_000L
         const val MAX_RETRY_MS = 60_000L
     }
 }

@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import com.amap.api.location.AMapLocation
@@ -73,7 +74,9 @@ class BackgroundLocationProbeService : LocationTrackingService() {
         } as OrderRepository
         val context = object : ContextWrapper(this) {
             private fun redirect(intent: Intent) = Intent(intent).setClass(baseContext, BackgroundLocationProbeService::class.java)
-            override fun startForegroundService(service: Intent): ComponentName? = baseContext.startForegroundService(redirect(service))
+            override fun startForegroundService(service: Intent): ComponentName? =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) baseContext.startForegroundService(redirect(service))
+                else baseContext.startService(redirect(service))
             override fun startService(service: Intent): ComponentName? = baseContext.startService(redirect(service))
             override fun stopService(service: Intent): Boolean = baseContext.stopService(redirect(service))
         }

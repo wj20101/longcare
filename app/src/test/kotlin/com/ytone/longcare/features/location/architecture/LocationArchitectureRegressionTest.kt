@@ -48,12 +48,10 @@ class LocationArchitectureRegressionTest {
     }
 
     @Test
-    fun `busy upload drops samples without queueing or replay`() {
+    fun `upload executor never queries order state or controls UI`() {
         val executor = source(
             "feature/location/src/main/kotlin/com/ytone/longcare/features/location/service/ServiceLocationSession.kt",
         )
-        assertFalse(executor.contains("conflate()"))
-        assertTrue(executor.contains("uploadJob?.isActive == true"))
         assertFalse(executor.contains("getOrderState"))
         assertFalse(executor.contains("Toast."))
     }

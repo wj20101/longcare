@@ -5,25 +5,19 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
-import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.LocalActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
-import androidx.core.app.ActivityCompat
-import androidx.core.net.toUri
 import androidx.core.location.LocationManagerCompat
 import com.ytone.longcare.core.ui.R
 
@@ -114,19 +108,11 @@ object UnifiedPermissionHelper {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    /**
-     * 获取定位相关需要请求的权限列表
-     */
-    fun getLocationRequiredPermissions(): Array<String> {
-        val permissions = mutableListOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        return permissions.toTypedArray()
-    }
+    /** Android 12+ 必须一并请求精确与大致位置；通知在提醒业务中单独申请。 */
+    fun getLocationRequiredPermissions(): Array<String> = arrayOf(
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION,
+    )
 
     /**
      * 引导用户开启定位服务
@@ -144,18 +130,17 @@ object UnifiedPermissionHelper {
      * 处理定位权限请求结果
      */
     fun handleLocationPermissionResult(
-        permissions: Map<String, Boolean>,
         context: Context,
         onPermissionGranted: () -> Unit,
         onPermissionDenied: () -> Unit = {}
     ) {
-        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+        if (hasLocationPermission(context)) {
             // 权限获取成功，执行回调
             onPermissionGranted()
         } else {
             Toast.makeText(
                 context,
-                context.getString(R.string.location_permission_required_for_service),
+                context.getString(R.string.location_permission_denied_message),
                 Toast.LENGTH_LONG,
             ).show()
             onPermissionDenied()
@@ -237,7 +222,7 @@ fun cameraPermissionPurposeNotice(
         title = context.getString(R.string.permission_purpose_camera_title),
         message = context.getString(R.string.permission_purpose_camera_message, featureName),
         confirmLabel = context.getString(R.string.permission_purpose_continue),
-        cancelLabel = context.getString(R.string.permission_purpose_cancel),
+        cancelLabel = context.getString(R.string.common_cancel),
     )
 }
 
@@ -253,7 +238,7 @@ fun locationPermissionPurposeNotice(
         title = context.getString(R.string.permission_purpose_location_title),
         message = context.getString(R.string.permission_purpose_location_message, featureName),
         confirmLabel = context.getString(R.string.permission_purpose_continue),
-        cancelLabel = context.getString(R.string.permission_purpose_cancel),
+        cancelLabel = context.getString(R.string.common_cancel),
     )
 }
 
@@ -265,12 +250,22 @@ fun locationPermissionPurposeNotice(featureName: String): PermissionPurposeNotic
 fun PermissionPurposeDialog(
     notice: PermissionPurposeNotice,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onOpenSettings: (() -> Unit)? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(notice.title) },
-        text = { Text(notice.message) },
+        text = {
+            Column {
+                Text(notice.message)
+                if (onOpenSettings != null) {
+                    TextButton(onClick = onOpenSettings) {
+                        Text(stringResource(R.string.permission_purpose_settings))
+                    }
+                }
+            }
+        },
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text(notice.confirmLabel)
@@ -295,45 +290,16 @@ fun rememberLocationPermissionLauncher(
     onPermissionDenied: () -> Unit = {}
 ): ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>> {
     val context = LocalContext.current
-    val activity = LocalActivity.current
-    var showSettings by remember { mutableStateOf(false) }
-    val settingsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (UnifiedPermissionHelper.hasLocationPermission(context)) onPermissionGranted()
-        else onPermissionDenied()
-    }
-    if (showSettings) {
-        AlertDialog(
-            onDismissRequest = { showSettings = false },
-            title = { Text(context.getString(R.string.location_permission_settings_title)) },
-            text = { Text(context.getString(R.string.location_error_permission)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showSettings = false
-                    settingsLauncher.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        "package:${context.packageName}".toUri()))
-                }) { Text(context.getString(R.string.location_permission_settings_open)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showSettings = false }) {
-                    Text(context.getString(android.R.string.cancel))
-                }
-            },
-        )
-    }
     return rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
-        onResult = { permissions ->
+        onResult = {
+            // 只读取系统真实授权并回传业务结果；拒绝后不再自动弹出设置劝导。
             UnifiedPermissionHelper.handleLocationPermissionResult(
-                permissions = permissions,
                 context = context,
                 onPermissionGranted = onPermissionGranted,
-                onPermissionDenied = {
-                    onPermissionDenied()
-                    showSettings = activity != null &&
-                        !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)
-                }
+                onPermissionDenied = onPermissionDenied,
             )
-        }
+        },
     )
 }
 

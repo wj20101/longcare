@@ -22,10 +22,13 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.TestScope
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -80,6 +83,7 @@ class ServiceLocationSessionTest {
             runCurrent()
             assertEquals(it + 1, uploads)
             assertTrue(gate.canUpload())
+            if (it < 3) advanceBy(30_000)
         }
         job.cancel()
     }
@@ -129,7 +133,7 @@ class ServiceLocationSessionTest {
         var uploads = 0
         every { clock.elapsedRealtime() } answers {
             gate.invalidate()
-            1_000L + sampleSequence
+            elapsed
         }
         val job = backgroundScope.launch(start = CoroutineStart.LAZY) {
             executor(gate, samples) { uploads++; ApiResult.Success(Unit) }.run()
@@ -178,7 +182,7 @@ class ServiceLocationSessionTest {
     }
 
     @Test
-    fun `busy upload drops pending samples and only a new callback uploads`() = runTest {
+    fun `one current candidate replaces action bursts without queueing or parallel uploads`() = runTest {
         val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
         val finishFirst = CompletableDeferred<Unit>()
@@ -203,7 +207,43 @@ class ServiceLocationSessionTest {
         assertEquals(listOf(31.0), uploaded)
         samples.send(sample(31.4))
         runCurrent()
+        assertEquals(listOf(31.0), uploaded)
+        advanceBy(30_000)
         assertEquals(listOf(31.0, 31.4), uploaded)
+        advanceBy(30_000)
+        assertEquals("A consumed candidate must never be replayed", listOf(31.0, 31.4), uploaded)
+        job.cancel()
+    }
+
+    @Test
+    fun `stalled upload is cancelled within one reporting period and fresh samples continue`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        var attempts = 0
+        var cancelled = false
+        val results = mutableListOf<ApiResult<Unit>>()
+        val job = backgroundScope.launch {
+            executor(gate, samples, onResult = { results += it }) {
+                attempts++
+                if (attempts == 1) {
+                    try { awaitCancellation() } finally { cancelled = true }
+                }
+                ApiResult.Success(Unit)
+            }.run()
+        }
+        samples.send(sample())
+        runCurrent()
+        // The next callback may precede timeout by 1 ms. It stays the current candidate,
+        // then uploads at the same period boundary after the timed-out request is joined.
+        advanceBy(29_999)
+        samples.send(sample())
+        runCurrent()
+        advanceBy(1)
+        assertTrue("A stalled upload must not silently occupy all following callbacks", cancelled)
+        assertTrue(gate.canUpload())
+        assertEquals(2, attempts)
+        assertTrue(results.first() is ApiResult.Exception)
+        assertTrue(results.last() is ApiResult.Success)
         job.cancel()
     }
 
@@ -215,12 +255,12 @@ class ServiceLocationSessionTest {
         val job = backgroundScope.launch {
             ServiceLocationSession(
                 gate, samples.receiveAsFlow(), { uploads++; ApiResult.Success(Unit) },
-                LocationSampleEvaluator(1, System.currentTimeMillis(), clock),
+                LocationSampleEvaluator(1, now + 10, clock),
             ).run()
         }
         samples.send(sample(Double.NaN))
         runCurrent()
-        samples.send(sample().copy(locationTime = System.currentTimeMillis() - 30_000))
+        samples.send(sample())
         runCurrent()
         assertEquals(0, uploads)
         job.cancel()
@@ -243,9 +283,10 @@ class ServiceLocationSessionTest {
         runCurrent()
         samples.send(sample())
         runCurrent()
-        sampleSequence += 61_000
+        now += 61_000
+        elapsed += 61_000
         finishFirst.complete(Unit)
-        runCurrent()
+        advanceBy(30_000)
         assertEquals(1, uploads)
         samples.send(sample())
         runCurrent()
@@ -265,26 +306,136 @@ class ServiceLocationSessionTest {
             samples.send(sample().copy(accuracy = it))
             runCurrent()
         }
+        assertEquals(listOf(200f), uploaded)
+        advanceBy(30_000)
         assertEquals(listOf(200f, 100f), uploaded)
         assertTrue(gate.canUpload())
         job.cancel()
     }
 
+    @Test
+    fun `SDK callbacks just before each period are sampled without losing every other period`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        var uploads = 0
+        val job = backgroundScope.launch {
+            executor(gate, samples) { uploads++; ApiResult.Success(Unit) }.run()
+        }
+        samples.send(sample())
+        runCurrent()
+        assertEquals(1, uploads)
+        repeat(4) { period ->
+            advanceBy(29_999)
+            samples.send(sample())
+            runCurrent()
+            assertEquals(period + 1, uploads)
+            advanceBy(1)
+            assertEquals(period + 2, uploads)
+        }
+        job.cancel()
+    }
+
+    @Test
+    fun `cancellation releases the sole upstream subscription and in flight HTTP`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        var subscriptions = 0
+        var releases = 0
+        var uploadCancelled = false
+        val source = flow {
+            subscriptions++
+            try {
+                emit(sample())
+                awaitCancellation()
+            } finally { releases++ }
+        }
+        val job = backgroundScope.launch {
+            ServiceLocationSession(gate, source, {
+                try { awaitCancellation() } finally { uploadCancelled = true }
+            }, LocationSampleEvaluator(1, 0, clock)).run()
+        }
+        runCurrent()
+        assertEquals(1, subscriptions)
+        job.cancel()
+        runCurrent()
+        assertEquals(1, releases)
+        assertTrue(uploadCancelled)
+    }
+
+    @Test
+    fun `unexpected upload failure does not kill SDK subscription or next reporting period`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        var attempts = 0
+        val job = backgroundScope.launch {
+            executor(gate, samples) {
+                attempts++
+                if (attempts == 1) error("unexpected adapter failure")
+                ApiResult.Success(Unit)
+            }.run()
+        }
+        samples.send(sample())
+        runCurrent()
+        assertTrue(job.isActive)
+        samples.send(sample())
+        advanceBy(30_000)
+        assertEquals(2, attempts)
+        assertTrue(job.isActive)
+        job.cancel()
+    }
+
+    @Test
+    fun `finite source completes with one subscription and release without replaying last sample`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        var subscriptions = 0
+        var releases = 0
+        var uploads = 0
+        val source = flow {
+            subscriptions++
+            try { emit(sample()) } finally { releases++ }
+        }
+        val job = backgroundScope.launch {
+            ServiceLocationSession(gate, source, { uploads++; ApiResult.Success(Unit) },
+                LocationSampleEvaluator(1, 0, clock)).run()
+        }
+        runCurrent()
+        assertEquals(1, subscriptions)
+        assertEquals(1, uploads)
+        assertEquals(1, releases)
+        advanceBy(30_000)
+        assertTrue(job.isCompleted)
+        assertEquals(1, uploads)
+        assertEquals(1, releases)
+    }
+
     private fun executor(
         gate: LocationReportingSession,
         samples: Channel<LocationResult>,
+        onResult: (ApiResult<Unit>) -> Unit = {},
         upload: suspend (LocationResult) -> ApiResult<Unit>,
-    ) = ServiceLocationSession(gate, samples.receiveAsFlow(), upload, LocationSampleEvaluator(1, 0, clock, minimumUploadIntervalMs = 0))
+    ) = ServiceLocationSession(gate, samples.receiveAsFlow(), upload,
+        LocationSampleEvaluator(1, 0, clock), onUploadResult = onResult)
 
-    private var sampleSequence = 0L
+    private var now = 100_000L
+    private var elapsed = 1_000L
     private val clock = mockk<LocationClock> {
-        every { currentTimeMillis() } answers { 100_000L + sampleSequence }
-        every { elapsedRealtime() } answers { 1_000L + sampleSequence }
+        every { currentTimeMillis() } answers { now }
+        every { elapsedRealtime() } answers { elapsed }
     }
 
-    private fun sample(latitude: Double = 31.23) = LocationResult(
-        latitude = latitude, longitude = 121.47, provider = "amap_continuous",
-        accuracy = 8f, coordType = "GCJ02", locationType = 5, trustedLevel = 1, locationTime = 100_000L + ++sampleSequence,
-        receivedAt = 100_000L + sampleSequence, receivedElapsedRealtime = 1_000L + sampleSequence,
-    )
+    private fun TestScope.advanceBy(millis: Long) {
+        now += millis
+        elapsed += millis
+        advanceTimeBy(millis)
+        runCurrent()
+    }
+
+    private fun sample(latitude: Double = 31.23): LocationResult {
+        now++
+        elapsed++
+        return LocationResult(
+            latitude = latitude, longitude = 121.47, provider = "amap_continuous",
+            accuracy = 8f, coordType = "GCJ02", locationType = 5, trustedLevel = 1,
+            locationTime = now, receivedAt = now, receivedElapsedRealtime = elapsed,
+        )
+    }
 }

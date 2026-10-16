@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
-import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import com.ytone.longcare.model.OrderKey
@@ -47,19 +46,9 @@ internal object DismissAlarmReceiverDelegate {
         val orderId = orderKey.orderId
         val serviceName = CountdownNotificationManager.extractServiceName(intent, "")
 
-        // 停止响铃服务
-        AlarmRingtoneService.stopRingtone(context)
-
-        // 取消通知
-        countdownNotificationManager.cancelCountdownCompletionNotification()
-
-        // 发送广播通知其他组件停止响铃
-        val stopAlarmIntent = Intent(DismissAlarmReceiver.ACTION_STOP_ALARM).apply {
-            setPackage(context.packageName)
-            putExtra(CountdownNotificationManager.EXTRA_ORDER_KEY, orderKey)
-            putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, serviceName)
-        }
-        context.sendBroadcast(stopAlarmIntent)
+        countdownNotificationManager.dismissAlarm(
+            orderKey, intent.getStringExtra(CountdownNotificationManager.EXTRA_ALARM_OWNER),
+            intent.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L))
 
         logI("DismissAlarmReceiver: 响铃已关闭，orderId=$orderId, serviceName=$serviceName")
     }

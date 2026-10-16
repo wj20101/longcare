@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="location_error_permission">请在系统设置中允许精确定位后重试</string>
-    <string name="location_permission_settings_title">需要精确定位权限</string>
-    <string name="location_permission_settings_open">前往设置</string>
     <string name="location_error_disabled">请开启系统定位服务后重试</string>
     <string name="location_error_busy">正在获取位置，请稍后重试</string>
     <string name="location_error_timeout">获取位置超时，请到信号较好的位置重试</string>
@@ -15,6 +13,18 @@
     <string name="common_confirm">确认</string>
     <string name="common_cancel">取消</string>
     <string name="common_close">关闭</string>
+    <string name="background_settings_action">后台设置</string>
+    <string name="background_settings_title">后台运行设置</string>
+    <string name="background_settings_description">按需调整以下设置，减少锁屏定位中断和提醒遗漏。</string>
+    <string name="background_settings_open_description">前往%1$s</string>
+    <string name="background_settings_battery_summary">减少定位中断</string>
+    <string name="background_settings_auto_start_summary">支持服务恢复</string>
+    <string name="background_settings_popup_summary">核对锁屏提醒</string>
+    <string name="background_settings_show_details">查看机型设置说明</string>
+    <string name="background_settings_hide_details">收起说明</string>
+    <string name="background_settings_start_service">开始服务</string>
+    <string name="background_settings_check_system_permissions">检查系统权限</string>
+    <string name="background_settings_system_permissions_enabled">系统定位与提醒权限已开启；厂商后台设置请手动核对</string>
     <string name="common_retry">重试</string>
     <string name="common_processing">处理中…</string>
     <string name="photo_preview_content_description">预览图片</string>
@@ -24,7 +34,7 @@
     <string name="camera_feature_unsupported">设备不支持相机功能</string>
     <string name="camera_feature_available">相机功能正常</string>
     <string name="location_service_open_settings">请先在系统设置中开启定位服务</string>
-    <string name="location_permission_required_for_service">需要定位权限才能开始服务</string>
+    <string name="location_permission_denied_message">未开启精确定位，暂时无法获取当前位置。可在系统应用权限中调整。</string>
     <string name="common_network_error_retry">网络异常，请稍后重试</string>
     <string name="order_detail_load_failed">护理计划加载失败，请稍后重试</string>
     <string name="order_detail_connection_failed">无法连接服务器，请检查网络后重试</string>
@@ -33,9 +43,10 @@
     <string name="order_detail_request_failed">请求未成功，请稍后重试</string>
     <string name="order_detail_invalid_response">服务数据异常，暂时无法加载护理计划</string>
     <string name="permission_purpose_continue">继续</string>
-    <string name="permission_purpose_cancel">取消</string>
+    <string name="permission_purpose_settings">前往应用设置</string>
+    <string name="permission_settings_unavailable">无法打开设置，请在手机设置中找到长护盾，手动核对相关设置。</string>
     <string name="permission_purpose_camera_title">相机权限说明</string>
     <string name="permission_purpose_camera_message">需要相机权限用于%1$s。本权限仅在您主动使用拍照、上传或核验功能时申请。</string>
     <string name="permission_purpose_location_title">定位权限说明</string>
-    <string name="permission_purpose_location_message">需要定位权限用于%1$s。本权限仅在您主动使用 NFC 签到、开始服务或提交服务位置时申请。</string>
+    <string name="permission_purpose_location_message">需要精确定位权限用于%1$s。仅在您主动使用此功能时申请，未开启时暂时无法获取当前位置；也可在应用权限设置中调整。</string>
 </resources>

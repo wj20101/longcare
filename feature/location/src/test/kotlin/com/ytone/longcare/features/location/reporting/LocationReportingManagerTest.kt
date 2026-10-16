@@ -80,8 +80,10 @@ class LocationReportingManagerTest {
         val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true)).apply { setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3)) }
         manager.startReporting(OrderKey(1))
         runCurrent()
-        advanceTimeBy(10_000)
+        advanceTimeBy(30_000)
         runCurrent()
+        coVerify(exactly = 2) { repository.getOrderState(1) }
+        assertEquals(1, manager.orderState.value?.state)
         verify(exactly = 1) { keepAlive.acquireOrderTracking(any(), 1) }
         verify(exactly = 0) { keepAlive.release(any()) }
         manager.stopReporting()

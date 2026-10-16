@@ -57,17 +57,6 @@ internal class ServiceCountdownImageDelegate(
         }
     }
 
-    suspend fun hasLocalUploadedImages(orderKey: OrderKey): Boolean {
-        return imageRepository.getImagesByOrderId(orderKey).isNotEmpty()
-    }
-
-    fun clearUploadedImagesFromLocal(orderKey: OrderKey) {
-        viewModelScope.launch {
-            imageRepository.deleteImagesByOrderId(orderKey)
-            stateHolder.uploadedImages.value = emptyMap()
-        }
-    }
-
     private fun OrderImageEntity.toTaskType(): ImageTaskType? {
         return when (getImageTypeEnum()) {
             ImageType.BEFORE_CARE -> ImageTaskType.BEFORE_CARE

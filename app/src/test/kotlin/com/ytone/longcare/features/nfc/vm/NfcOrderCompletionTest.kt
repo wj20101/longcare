@@ -62,6 +62,7 @@ class NfcOrderCompletionTest {
             local.updateSelectedProjects(order, emptyList())
             images.deleteImagesByOrderId(order)
         }
+        verify(exactly = 1) { system.cancelCountdownAlarmForOrder(order) }
         val summary = completion.buildServiceCompleteDataFromCache(order, EndOderInfo(projectIdList = listOf(1)), 60)
         assertEquals("测试客户", summary.clientName)
         assertEquals("护理项目", summary.serviceContent)

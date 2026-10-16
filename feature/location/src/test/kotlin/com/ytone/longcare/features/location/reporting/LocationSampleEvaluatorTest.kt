@@ -8,10 +8,11 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 
-class LocationSampleCadenceTest {
+class LocationSampleEvaluatorTest {
     private var elapsed = 1_000L
     private var now = 100_000L
     private val clock = mockk<LocationClock>()
+
     @Before fun setup() {
         every { clock.elapsedRealtime() } answers { elapsed }
         every { clock.currentTimeMillis() } answers { now }
@@ -19,18 +20,18 @@ class LocationSampleCadenceTest {
         every { LocationEventTracker.trackEvent(any(), any()) } just Runs
         every { LocationEventTracker.trackLocationSample(any(), any(), any(), any()) } just Runs
     }
+
     @After fun cleanup() = unmockkAll()
 
-    @Test fun `fast action callbacks do not increase uploads beyond 30 second cadence`() {
+    @Test fun `quality evaluation does not impose a second reporting interval`() {
         val evaluator = LocationSampleEvaluator(1, now, clock)
         assertTrue(evaluator.shouldUpload(sample()))
-        now += 29_999; elapsed += 29_999
-        assertFalse(evaluator.shouldUpload(sample()))
-        now += 1; elapsed += 1
+        now++; elapsed++
         assertTrue(evaluator.shouldUpload(sample()))
+        assertFalse("The exact same sample must not upload twice", evaluator.shouldUpload(sample()))
     }
 
-    @Test fun `rejected precision does not consume the next eligible upload and restart rejects old point`() {
+    @Test fun `rejected precision does not consume the next eligible sample and restart rejects old point`() {
         val evaluator = LocationSampleEvaluator(1, now, clock)
         assertFalse(evaluator.shouldUpload(sample().copy(accuracy = 1_000f)))
         assertTrue(evaluator.shouldUpload(sample()))

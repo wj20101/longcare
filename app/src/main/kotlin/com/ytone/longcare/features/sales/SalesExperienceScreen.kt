@@ -1,7 +1,10 @@
 package com.ytone.longcare.features.sales
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,6 +42,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
+import com.ytone.longcare.common.utils.locationPermissionPurposeNotice
 import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.features.home.ui.AdaptiveAppNavigationScaffold
 import com.ytone.longcare.features.home.ui.AppNavigationItem
@@ -54,6 +58,7 @@ import com.ytone.longcare.navigation.AppNavigator
 import com.ytone.longcare.navigation.SalesRoute
 import com.ytone.longcare.presentation.sales.SalesPage
 import kotlinx.coroutines.launch
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 @Composable
 internal fun SalesExperienceScreen(
@@ -85,6 +90,7 @@ internal fun SalesExperienceScreen(
         mutableStateOf(route?.photos ?: emptyList<String>())
     }
     var showCameraPurposeNotice by rememberSaveable { mutableStateOf(false) }
+    var showLocationPurposeNotice by rememberSaveable { mutableStateOf(false) }
 
     var measurementVisible by rememberSaveable { mutableStateOf(false) }
     val currentPage = if (route?.page == SalesPage.DEVICE_STATUS && measurementVisible) {
@@ -268,10 +274,18 @@ internal fun SalesExperienceScreen(
             }
         }
 
+    val permissionSettingsUnavailableMessage = stringResource(CoreUiR.string.permission_settings_unavailable)
+
     val locationPermissionLauncher = com.ytone.longcare.common.utils.rememberLocationPermissionLauncher(
         onPermissionGranted = viewModel::requestCurrentLocation,
         onPermissionDenied = { showMessage(locationPermissionMessage) },
     )
+    val locationSettingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        if (UnifiedPermissionHelper.hasLocationPermission(context)) viewModel.requestCurrentLocation()
+        else showMessage(locationPermissionMessage)
+    }
 
     fun openSalesWatermarkCamera() {
         actions.onNavigateToCamera(
@@ -334,20 +348,10 @@ internal fun SalesExperienceScreen(
     }
 
     fun requestLocationPermission() {
-        val permissions =
-            arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-            )
-        val missing =
-            permissions.filter { permission ->
-                ContextCompat.checkSelfPermission(context, permission) !=
-                    PackageManager.PERMISSION_GRANTED
-            }
-        if (missing.isEmpty()) {
+        if (UnifiedPermissionHelper.hasLocationPermission(context)) {
             viewModel.requestCurrentLocation()
         } else {
-            locationPermissionLauncher.launch(permissions)
+            showLocationPurposeNotice = true
         }
     }
 
@@ -684,6 +688,28 @@ internal fun SalesExperienceScreen(
                 salesCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             },
             onDismiss = { showCameraPurposeNotice = false },
+        )
+    }
+
+    if (showLocationPurposeNotice) {
+        PermissionPurposeDialog(
+            notice = locationPermissionPurposeNotice(stringResource(R.string.sales_registration_title)),
+            onConfirm = {
+                showLocationPurposeNotice = false
+                locationPermissionLauncher.launch(UnifiedPermissionHelper.getLocationRequiredPermissions())
+            },
+            onDismiss = { showLocationPurposeNotice = false },
+            onOpenSettings = {
+                showLocationPurposeNotice = false
+                try {
+                    locationSettingsLauncher.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        "package:${context.packageName}".toUri()))
+                } catch (_: ActivityNotFoundException) {
+                    showMessage(permissionSettingsUnavailableMessage)
+                } catch (_: SecurityException) {
+                    showMessage(permissionSettingsUnavailableMessage)
+                }
+            },
         )
     }
 }

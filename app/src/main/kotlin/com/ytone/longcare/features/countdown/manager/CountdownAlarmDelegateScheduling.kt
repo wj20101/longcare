@@ -11,7 +11,7 @@ import com.ytone.longcare.common.utils.klogE
 import com.ytone.longcare.common.utils.klogI
 import com.ytone.longcare.features.countdown.receiver.CountdownAlarmReceiver
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
+import com.ytone.longcare.MainActivity
 
 internal data class CountdownScheduleMetadata(
     val useAlarmClock: Boolean,
@@ -22,17 +22,19 @@ internal fun scheduleCountdownAlarmInSystem(
     context: Context,
     alarmManager: AlarmManager,
     countdownAlarmRequestCode: Int,
-    countdownAlarmActivityRequestCode: Int,
     actionCountdownAlarmPrefix: String,
     orderKey: OrderKey,
     serviceName: String,
     triggerTimeMillis: Long,
-    canUseExactAlarm: Boolean
+    canUseExactAlarm: Boolean,
+    owner: String? = null,
 ): CountdownScheduleMetadata? {
     val intent = Intent(context, CountdownAlarmReceiver::class.java).apply {
         putExtra(CountdownNotificationManager.EXTRA_ORDER_KEY, orderKey)
         putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, serviceName)
         action = "$actionCountdownAlarmPrefix${orderKey.orderId}"
+        putExtra(CountdownNotificationManager.EXTRA_ALARM_OWNER, owner)
+        putExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, triggerTimeMillis)
     }
 
     val pendingIntent = PendingIntentCompat.getBroadcast(
@@ -46,30 +48,24 @@ internal fun scheduleCountdownAlarmInSystem(
         return null
     }
 
-    val alarmActivityIntent = CountdownAlarmActivity.createIntent(
-        context,
-        orderKey,
-        serviceName,
-        autoCloseEnabled = false
-    )
-    val alarmActivityPendingIntent = PendingIntentCompat.getActivity(
-        context,
-        countdownAlarmActivityRequestCode,
-        alarmActivityIntent,
-        PendingIntent.FLAG_UPDATE_CURRENT,
-        false
-    )
+    // AlarmClock 的 showIntent 是用户提前点击系统闹钟入口，不能打开“已结束”页面。
+    val showIntent = PendingIntentCompat.getActivity(context, 3004,
+        Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_MAIN
+            addCategory(Intent.CATEGORY_LAUNCHER)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }, PendingIntent.FLAG_UPDATE_CURRENT, false)
 
     val supportsAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     var useAlarmClock =
         supportsAlarmClock &&
             canUseExactAlarm &&
-            alarmActivityPendingIntent != null
+            showIntent != null
     if (useAlarmClock) {
         try {
             val alarmClockInfo = AlarmManager.AlarmClockInfo(
                 triggerTimeMillis,
-                alarmActivityPendingIntent
+                showIntent
             )
             alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
             klogI("✅ 通过AlarmClock设置倒计时闹钟(确保锁屏提醒): orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")

@@ -25,13 +25,4 @@ class LocationTrackingViewModelTest {
         verify(exactly = 1) { manager.startTracking(orderKey) }
     }
 
-    @Test
-    fun `stopTracking delegates once`() {
-        val manager = mockk<LocationTrackingManager>(relaxed = true)
-        val viewModel = LocationTrackingViewModel(manager)
-
-        viewModel.stopTracking()
-
-        verify(exactly = 1) { manager.stopTracking() }
-    }
 }

@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.countdown.manager
 
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -16,37 +15,26 @@ import com.ytone.longcare.features.countdown.receiver.DismissAlarmReceiver
 import com.ytone.longcare.presentation.countdown.CountdownAlarmActivity
 import com.ytone.longcare.model.OrderKey
 
-internal enum class CountdownAlarmLaunchSource {
-    FULL_SCREEN_NOTIFICATION,
-    DIRECT_SERVICE_LAUNCH,
-}
-
-internal object CountdownAlarmPresentationPolicy {
-    fun autoCloseEnabled(launchSource: CountdownAlarmLaunchSource): Boolean {
-        return when (launchSource) {
-            CountdownAlarmLaunchSource.FULL_SCREEN_NOTIFICATION -> false
-            CountdownAlarmLaunchSource.DIRECT_SERVICE_LAUNCH -> false
-        }
-    }
-}
-
 internal class CountdownNotificationUiDelegate(
     private val context: Context,
-    private val notificationManager: NotificationManager,
     private val channelId: String,
-    private val notificationId: Int,
     private val dismissAlarmRequestCode: Int,
     private val countdownAlarmActivityRequestCode: Int,
 ) {
     fun buildCountdownCompletionNotification(
         orderKey: OrderKey,
-        serviceName: String
+        serviceName: String,
+        owner: String,
+        triggerTimeMillis: Long,
     ): android.app.Notification {
         logI("构建倒计时完成通知: orderId=${orderKey.orderId}, serviceName=$serviceName")
 
         val dismissIntent = Intent(context, DismissAlarmReceiver::class.java).apply {
             putExtra(CountdownNotificationManager.EXTRA_ORDER_KEY, orderKey)
             putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, serviceName)
+            putExtra(CountdownNotificationManager.EXTRA_ALARM_OWNER, owner)
+            putExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, triggerTimeMillis)
+            action = "com.ytone.longcare.COUNTDOWN_DISMISS_${orderKey.orderId}_${orderKey.planId}_$triggerTimeMillis"
         }
         val dismissPendingIntent = PendingIntentCompat.getBroadcast(
             context,
@@ -60,14 +48,9 @@ internal class CountdownNotificationUiDelegate(
             context,
             orderKey,
             serviceName,
-            autoCloseEnabled = CountdownAlarmPresentationPolicy.autoCloseEnabled(
-                launchSource = CountdownAlarmLaunchSource.FULL_SCREEN_NOTIFICATION
-            )
-        ).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        }
+            owner = owner,
+            triggerTimeMillis = triggerTimeMillis,
+        )
         val alarmActivityPendingIntent = PendingIntentCompat.getActivity(
             context,
             countdownAlarmActivityRequestCode,
@@ -75,10 +58,6 @@ internal class CountdownNotificationUiDelegate(
             PendingIntent.FLAG_UPDATE_CURRENT,
             false
         )
-
-        val notificationManagerCompat = NotificationManagerCompat.from(context)
-        val canUseFullScreenIntent = notificationManagerCompat.canUseFullScreenIntent()
-        logI("全屏Intent权限: canUseFullScreenIntent=$canUseFullScreenIntent, SDK=${Build.VERSION.SDK_INT}")
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setContentTitle(context.getString(R.string.countdown_notification_title))
@@ -113,30 +92,18 @@ internal class CountdownNotificationUiDelegate(
             logE("⚠️ 倒计时通知关闭动作 PendingIntent 为空，忽略关闭按钮")
         }
 
-        if (canUseFullScreenIntent && alarmActivityPendingIntent != null) {
+        // 始终提交 FSI 请求；Android 14+ 在权限被拒绝时会移除 FSI，转为受限的
+        // heads-up 提醒。提前省略请求会跳过系统的这条降级链路。
+        if (alarmActivityPendingIntent != null) {
             builder.setFullScreenIntent(alarmActivityPendingIntent, true)
-            logI("✅ 已设置fullScreenIntent")
-        } else if (canUseFullScreenIntent) {
-            logE("❌ 可用 fullScreenIntent 但 Activity PendingIntent 为空，跳过设置")
+            logI("已提交 fullScreenIntent 请求，由系统根据权限与屏幕状态决定展示方式")
         } else {
-            logE("❌ 无法使用fullScreenIntent，需要用户授权")
-            builder.setDefaults(NotificationCompat.DEFAULT_ALL)
-            builder.setVibrate(longArrayOf(0, 500, 200, 500, 200, 500))
-            logI("⚠️ 使用 Fallback Heads-up 通知")
+            logE("❌ Activity PendingIntent 为空，无法提交 fullScreenIntent 请求")
         }
 
         val notification = builder.build()
         logI("✅ 通知构建完成")
         return notification
-    }
-
-    fun cancelCountdownCompletionNotification() {
-        try {
-            notificationManager.cancel(notificationId)
-            logI("倒计时完成通知已取消")
-        } catch (e: Exception) {
-            logE("取消倒计时完成通知失败: ${e.message}")
-        }
     }
 
     fun createNotificationChannel() {
@@ -163,7 +130,7 @@ internal class CountdownNotificationUiDelegate(
             .build()
 
         notificationManagerCompat.createNotificationChannel(channel)
-        logI("倒计时通知渠道已重新创建: $channelId")
+        logI("倒计时通知渠道已确保存在: $channelId")
     }
 
     fun canUseFullScreenIntent(): Boolean {

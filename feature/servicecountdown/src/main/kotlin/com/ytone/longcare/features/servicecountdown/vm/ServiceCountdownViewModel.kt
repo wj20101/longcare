@@ -12,11 +12,18 @@ import com.ytone.longcare.model.ImageTaskType
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderStateModel
 import com.ytone.longcare.model.ServiceProjectM
+import com.ytone.longcare.model.result.ApiResult
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -27,26 +34,14 @@ class ServiceCountdownViewModel @Inject constructor(
     private val systemGateway: ServiceCountdownSystemGateway,
 ) : ViewModel() {
 
-    private data class CountdownInitializationState(
-        val isInitialized: Boolean = false,
-        val lastProjectIdList: List<Int> = emptyList(),
-        val permissionsChecked: Boolean = false
-    )
-
     private data class CountdownServiceInfo(val serviceName: String, val totalMinutes: Int)
+    private var synchronizationRequest: Pair<OrderKey, List<Int>>? = null
+    private var synchronization: Deferred<Boolean>? = null
 
-    private val initializationState = MutableStateFlow(CountdownInitializationState())
     private val stateHolder = ServiceCountdownStateHolder()
     private val timerDelegate = ServiceCountdownTimerDelegate(
         stateHolder = stateHolder,
         orderDetailRepository = unifiedOrderRepository,
-        viewModelScope = viewModelScope
-    )
-    private val serviceDelegate = ServiceCountdownServiceDelegate(
-        stateHolder = stateHolder,
-        orderDetailRepository = unifiedOrderRepository,
-        imageRepository = imageRepository,
-        systemGateway = systemGateway,
         viewModelScope = viewModelScope
     )
     private val imageDelegate = ServiceCountdownImageDelegate(
@@ -61,76 +56,65 @@ class ServiceCountdownViewModel @Inject constructor(
     )
 
     val countdownState: StateFlow<ServiceCountdownState> = stateHolder.countdownState.asStateFlow()
-    val remainingTimeMillis: StateFlow<Long> = stateHolder.remainingTimeMillis.asStateFlow()
     val formattedTime: StateFlow<String> = stateHolder.formattedTime.asStateFlow()
-    val overtimeMillis: StateFlow<Long> = stateHolder.overtimeMillis.asStateFlow()
     val uploadedImages: StateFlow<Map<ImageTaskType, List<ImageTask>>> = stateHolder.uploadedImages.asStateFlow()
     val orderStateError: StateFlow<ServiceOrderStateModel?> = stateHolder.orderStateError.asStateFlow()
 
-    fun setCountdownTimeFromProjects(orderKey: OrderKey, projectList: List<ServiceProjectM>, selectedProjectIds: List<Int>) {
-        viewModelScope.launch {
-            timerDelegate.applyCountdownState(orderKey, projectList, selectedProjectIds, startTicker = true)
-        }
-    }
-
-    fun shouldReinitialize(selectedProjectIds: List<Int>): Boolean {
-        val init = initializationState.value
-        return !init.isInitialized || init.lastProjectIdList != selectedProjectIds || stateHolder.countdownState.value == ServiceCountdownState.ENDED
-    }
-
-    fun shouldCheckPermissions(): Boolean = !initializationState.value.permissionsChecked
-
-    fun markPermissionsChecked() {
-        initializationState.value = initializationState.value.copy(permissionsChecked = true)
-    }
-
-    fun markInitialized(selectedProjectIds: List<Int>) {
-        initializationState.value = initializationState.value.copy(isInitialized = true, lastProjectIdList = selectedProjectIds)
-    }
-
-    fun isInitialized(): Boolean = initializationState.value.isInitialized
-
-    suspend fun initializeCountdownSession(
+    /** 排程由 VM 持有；页面暂停不取消已确认服务的首次排程。 */
+    fun synchronizeCountdownSession(
         orderKey: OrderKey,
-        projectList: List<ServiceProjectM>,
         selectedProjectIds: List<Int>
-    ): Boolean {
+    ): Deferred<Boolean> {
+        val request = orderKey to selectedProjectIds.toList()
+        val pending = synchronization
+        if (synchronizationRequest == request && pending?.isActive == true) return pending
+        pending?.cancel()
+        synchronizationRequest = request
+        val work = viewModelScope.async(start = CoroutineStart.LAZY) {
+            synchronizeCountdown(orderKey, request.second)
+        }
+        synchronization = work
+        work.start()
+        return work
+    }
+
+    private suspend fun synchronizeCountdown(orderKey: OrderKey, selectedProjectIds: List<Int>): Boolean {
+        if (stateHolder.countdownState.value == ServiceCountdownState.ENDED) return false
+        val orderInfo = (unifiedOrderRepository.getOrderInfo(orderKey) as? ApiResult.Success)?.data ?: return false
+        currentCoroutineContext().ensureActive()
+        if (stateHolder.countdownState.value == ServiceCountdownState.ENDED) return false
+        val projectList = orderInfo.projectList.orEmpty()
         val serviceInfo = calculateServiceInfo(projectList, selectedProjectIds)
         if (serviceInfo.totalMinutes <= 0) return false
 
-        val (state, remainingMillis, _) = timerDelegate.applyCountdownState(
-            orderKey = orderKey,
-            projectList = projectList,
-            selectedProjectIds = selectedProjectIds,
-            startTicker = true
-        )
+        val deadline = timerDelegate.synchronizeCountdown(orderKey, serviceInfo.totalMinutes) ?: return false
 
-        startForegroundService(orderKey, serviceInfo.serviceName, serviceInfo.totalMinutes * 60L)
-        if (state == ServiceCountdownState.RUNNING && remainingMillis > 0) {
-            scheduleCountdownAlarm(orderKey, serviceInfo.serviceName, System.currentTimeMillis() + remainingMillis)
+        currentCoroutineContext().ensureActive()
+        if (stateHolder.countdownState.value == ServiceCountdownState.ENDED) return false
+        if (stateHolder.countdownState.value == ServiceCountdownState.RUNNING && deadline > System.currentTimeMillis()) {
+            // 设置返回也走这里，以当前授权重新替换旧的降级闹钟；服务起点仍使用持久时间。
+            systemGateway.scheduleCountdownAlarm(orderKey, serviceInfo.serviceName, deadline)
         }
         return true
     }
 
-    fun getCurrentCountdownState(): Triple<ServiceCountdownState, Long, Long> = timerDelegate.getCurrentCountdownState()
-    fun refreshCountdownDisplay(orderKey: OrderKey, projectList: List<ServiceProjectM>, selectedProjectIds: List<Int>) =
-        timerDelegate.refreshCountdownDisplay(orderKey, projectList, selectedProjectIds)
-    fun startCountdown() = timerDelegate.startCountdown()
-    fun pauseCountdown() = timerDelegate.pauseCountdown()
-    fun resetCountdown(totalMinutes: Int = 0) = timerDelegate.resetCountdown(totalMinutes)
-    fun setCountdownTime(hours: Long, minutes: Long, seconds: Long) = timerDelegate.setCountdownTime(hours, minutes, seconds)
+    fun startDisplayUpdates() = timerDelegate.startDisplayUpdates()
+    fun stopDisplayUpdates() = timerDelegate.stopDisplayUpdates()
 
-    private fun startForegroundService(orderKey: OrderKey, serviceName: String, totalSeconds: Long) =
-        serviceDelegate.startForegroundService(orderKey, serviceName, totalSeconds)
-    fun endService(orderKey: OrderKey) = serviceDelegate.endService(orderKey)
-    fun endServiceWithoutClearingImages(orderKey: OrderKey) =
-        serviceDelegate.endServiceWithoutClearingImages(orderKey)
-    fun canScheduleExactAlarms(): Boolean = serviceDelegate.canScheduleExactAlarms()
-    fun canUseFullScreenIntent(): Boolean = serviceDelegate.canUseFullScreenIntent()
-    fun scheduleCountdownAlarm(orderKey: OrderKey, serviceName: String, triggerTimeMillis: Long) =
-        serviceDelegate.scheduleCountdownAlarm(orderKey, serviceName, triggerTimeMillis)
-    fun cancelCountdownAlarm() = serviceDelegate.cancelCountdownAlarm()
-    fun cancelCountdownAlarmForOrder(orderKey: OrderKey) = serviceDelegate.cancelCountdownAlarmForOrder(orderKey)
+    /** 仅用于服务端已确认结束或取消；进入签退选择页不能改变服务状态。 */
+    fun onOrderEnded(orderKey: OrderKey) {
+        stateHolder.countdownState.value = ServiceCountdownState.ENDED
+        synchronization?.cancel()
+        stopDisplayUpdates()
+        stopOrderStatePolling()
+        systemGateway.cancelCountdownAlarmForOrder(orderKey)
+        // 清栈会立即释放 VM；已确认的本地终态写入必须在导航前进入并完成。
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            withContext(NonCancellable) { unifiedOrderRepository.endLocalService(orderKey) }
+        }
+    }
+    fun canScheduleExactAlarms(): Boolean = systemGateway.canScheduleExactAlarms()
+    fun canUseFullScreenIntent(): Boolean = systemGateway.canUseFullScreenIntent()
 
     fun startOrderStatePolling(orderKey: OrderKey) = orderStatePollingDelegate.startOrderStatePolling(orderKey)
     fun stopOrderStatePolling() = orderStatePollingDelegate.stopOrderStatePolling()
@@ -141,13 +125,6 @@ class ServiceCountdownViewModel @Inject constructor(
     fun validatePhotosUploaded(): Boolean = imageDelegate.validatePhotosUploaded()
     suspend fun getUploadedImagesSuspend(orderKey: OrderKey): Map<ImageTaskType, List<ImageTask>> = imageDelegate.getUploadedImagesSuspend(orderKey)
     fun loadUploadedImagesFromRepository(orderKey: OrderKey) = imageDelegate.loadUploadedImagesFromRepository(orderKey)
-    suspend fun hasLocalUploadedImages(orderKey: OrderKey): Boolean = imageDelegate.hasLocalUploadedImages(orderKey)
-    fun clearUploadedImagesFromLocal(orderKey: OrderKey) = imageDelegate.clearUploadedImagesFromLocal(orderKey)
-
-    override fun onCleared() {
-        super.onCleared()
-        serviceDelegate.onCleared()
-    }
 
     private fun calculateServiceInfo(
         projectList: List<ServiceProjectM>,
