@@ -1,4 +1,7 @@
 <resources>
+    <string name="home_device_name">咫尺</string>
+    <string name="home_device_installation">安装示意</string>
+    <string name="home_device_preview">预览</string>
     <string name="webview_renderer_unavailable">网页已停止运行，请返回后重新打开</string>
     <string name="app_name">长护盾</string>
     <string name="nfc_sign_in_title">进门碰一碰</string>

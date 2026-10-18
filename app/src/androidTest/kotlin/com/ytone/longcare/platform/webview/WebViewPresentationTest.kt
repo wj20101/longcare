@@ -2,6 +2,9 @@ package com.ytone.longcare.platform.webview
 
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
+import android.view.InputDevice
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -18,11 +21,13 @@ import androidx.compose.ui.unit.Density
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowCompat
+import androidx.test.platform.app.InstrumentationRegistry
 import com.ytone.longcare.features.webview.api.WebViewActions
 import com.ytone.longcare.features.webview.ui.WebViewScreen
 import com.ytone.longcare.navigation.NavigationStateTestActivity
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import org.json.JSONArray
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -43,8 +48,8 @@ class WebViewPresentationTest {
         else -> null
     }
 
-    private fun showPage(fontScale: Float = 1f) {
-        val html = """
+    private fun showPage(fontScale: Float = 1f, htmlOverride: String? = null) {
+        val html = htmlOverride ?: """
             <html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>
             <body style="margin:0"><header style="height:48px;background:#eee">
             <button id="back" onclick="window.NativeBridge.closeWebView()">返回</button>H5 评估标题
@@ -107,6 +112,50 @@ class WebViewPresentationTest {
         }
     }
 
+    @Test fun fullscreenViewportHeightKeepsPercentAndVhContentVisible() {
+        // Fixed text without viewport units can pass while an older WebView measures 100vh as
+        // zero. Use a normal full-height H5 document; no CSS is injected after page creation.
+        showPage(htmlOverride = """
+            <!DOCTYPE html><html><head>
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <style>
+              html,body,#app {width:100%;height:100%;margin:0;overflow:hidden;}
+              #app {height:100vh;}
+              #content {height:100%;display:flex;align-items:center;background:#dbeafe;}
+            </style></head><body><main id="app"><section id="content">
+            <button id="back" onclick="window.NativeBridge.closeWebView()">返回</button>
+            <p>安装说明可见内容</p>
+            </section></main></body></html>
+        """.trimIndent())
+        var nativeWidth = 0
+        var nativeHeight = 0
+        compose.runOnIdle { nativeWidth = webView.width; nativeHeight = webView.height }
+        assertTrue("WebView must have nonzero native dimensions", nativeWidth > 0 && nativeHeight > 0)
+        val dimensions = JSONArray(js("""
+            (function() {
+              return [window.innerWidth,window.innerHeight,
+                document.documentElement.getBoundingClientRect().height,
+                document.body.getBoundingClientRect().height,
+                document.getElementById('app').getBoundingClientRect().height,
+                document.getElementById('content').getBoundingClientRect().height,
+                window.devicePixelRatio];
+            })()
+        """.trimIndent()))
+        val viewportWidth = dimensions.getDouble(0)
+        val viewportHeight = dimensions.getDouble(1)
+        val pixelRatio = dimensions.getDouble(6)
+        assertTrue("CSS viewport must have nonzero dimensions", viewportWidth > 0.0 && viewportHeight > 0.0)
+        assertTrue("devicePixelRatio must be positive", pixelRatio > 0.0)
+        assertEquals("CSS viewport width must follow the native WebView", nativeWidth / pixelRatio, viewportWidth, 2.0)
+        assertEquals("CSS viewport height must follow the native WebView", nativeHeight / pixelRatio, viewportHeight, 2.0)
+        listOf("html", "body", "#app", "#content").forEachIndexed { index, name ->
+            val height = dimensions.getDouble(index + 2)
+            assertTrue("$name must have nonzero rendered height", height > 0.0)
+            assertEquals("$name must fill the CSS viewport", viewportHeight, height, 2.0)
+        }
+        assertEquals("true", js("document.getElementById('content').innerText.indexOf('安装说明可见内容') >= 0"))
+    }
+
     @Test fun confirmRefreshesWithoutClosingAndH5BackClosesOnlyOnce() {
         showPage()
         assertEquals("\"已刷新\"", js("document.getElementById('confirm').click();document.getElementById('result').textContent"))
@@ -144,9 +193,45 @@ class WebViewPresentationTest {
         showPage()
         var initialHeight = 0
         compose.runOnIdle { initialHeight = webView.height }
-        js("document.getElementById('answer').focus();window.presentationMarker=42")
+        // A native tap gives older WebView/IME implementations the same user gesture and
+        // input-connection setup as a person selecting the input, without JS focus shortcuts.
+        val inputCenter = JSONArray(js("""
+            (function() {
+              var r = document.getElementById('answer').getBoundingClientRect();
+              return [(r.left+r.right)/2,(r.top+r.bottom)/2,window.innerWidth];
+            })()
+        """.trimIndent()))
+        val viewportWidth = inputCenter.getDouble(2)
+        assertTrue("CSS viewport width must be positive before tapping", viewportWidth > 0.0)
+        var tapX = 0f
+        var tapY = 0f
         compose.runOnUiThread {
-            webView.requestFocus()
+            val location = IntArray(2).also(webView::getLocationOnScreen)
+            val scale = webView.width / viewportWidth
+            tapX = (location[0] + inputCenter.getDouble(0) * scale).toFloat()
+            tapY = (location[1] + inputCenter.getDouble(1) * scale).toFloat()
+        }
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val downTime = SystemClock.uptimeMillis()
+        listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP).forEach { action ->
+            val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, tapX, tapY, 0)
+                .apply { source = InputDevice.SOURCE_TOUCHSCREEN }
+            try {
+                instrumentation.sendPointerSync(event)
+            } finally {
+                event.recycle()
+            }
+        }
+        val inputFocused = AtomicReference(false)
+        compose.waitUntil(10_000) {
+            compose.runOnUiThread {
+                webView.evaluateJavascript("document.activeElement.id") { inputFocused.set(it == "\"answer\"") }
+            }
+            inputFocused.get()
+        }
+        js("window.presentationMarker=42")
+        assertEquals("\"answer\"", js("document.activeElement.id"))
+        compose.runOnUiThread {
             WindowCompat.getInsetsController(compose.activity.window, webView)
                 .show(WindowInsetsCompat.Type.ime())
         }

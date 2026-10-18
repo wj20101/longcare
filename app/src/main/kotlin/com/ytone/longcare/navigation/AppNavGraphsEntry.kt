@@ -70,6 +70,9 @@ internal fun homeActions(navController: AppNavigator, backStackEntry: AppEntryHa
                 onOpenEvaluationPage = { url, title ->
                     navController.navigateToEvaluationForm(url, title)
                 },
+                onOpenDevicePage = { url, title ->
+                    navController.navigateToDevicePage(url, title)
+                },
                 onOpenUserAgreement = {
                     navController.navigateToWebView(
                         AgreementUrls.USER_AGREEMENT_URL,

@@ -14,6 +14,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
 import com.ytone.longcare.features.sales.SalesExperienceScreen
+import com.ytone.longcare.model.UserIdentityDisplay
+import com.ytone.longcare.model.userIdentityDisplay
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 import com.ytone.longcare.theme.bgGradientBrush
 
@@ -30,8 +32,8 @@ fun HomeScreen(
         homeSharedViewModel.reportHomeEntry()
     }
 
-    when (user?.userIdentity) {
-        2 ->
+    when (user?.userIdentityDisplay()) {
+        UserIdentityDisplay.SALES ->
             SalesExperienceScreen(
                 actions = actions,
                 navigator = navigator,

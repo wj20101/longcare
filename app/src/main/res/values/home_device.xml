@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="home_device_surface_light">#F3F8FF</color>
+    <color name="home_device_action_light">#1976D2</color>
+    <color name="home_device_action_dark">#ADCAFF</color>
+    <!-- 750px artboard uses a 47px circle, 19px inset and 10px icon/name gap at 375dp. -->
+    <dimen name="home_device_icon_size">23.5dp</dimen>
+    <dimen name="home_device_content_inset">9.5dp</dimen>
+    <dimen name="home_device_name_spacing">5dp</dimen>
+    <!-- Each capsule reserves an independent Material minimum touch target. -->
+    <dimen name="home_device_min_touch_target">48dp</dimen>
+</resources>

@@ -22,16 +22,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.ytone.longcare.features.home.vm.HomeSharedViewModel
+import com.ytone.longcare.features.home.vm.HomeDeviceViewModel
 import com.ytone.longcare.core.ui.message.UiMessageSnackbarEffect
 import com.ytone.longcare.features.maindashboard.api.MainDashboardActions
 import com.ytone.longcare.features.maindashboard.vm.MainDashboardViewModel
 import com.ytone.longcare.model.ServiceOrderModel
 import com.ytone.longcare.model.TodayServiceOrderModel
 import com.ytone.longcare.model.User
+import com.ytone.longcare.model.UserIdentityDisplay
+import com.ytone.longcare.model.userIdentityDisplay
+import com.ytone.longcare.model.ZhiChiDeviceStatusModel
 import com.ytone.longcare.model.isPendingCareState
 import com.ytone.longcare.shared.vm.TodayOrderViewModel
 
@@ -40,10 +45,13 @@ fun MainDashboardScreen(
     actions: MainDashboardActions,
     homeSharedViewModel: HomeSharedViewModel,
     todayOrderViewModel: TodayOrderViewModel,
-    mainDashboardViewModel: MainDashboardViewModel = hiltViewModel()
+    mainDashboardViewModel: MainDashboardViewModel = hiltViewModel(),
+    isHomeTabSelected: Boolean = true,
+    homeDeviceViewModel: HomeDeviceViewModel = hiltViewModel(),
 ) {
     val user by homeSharedViewModel.userState.collectAsStateWithLifecycle()
     val companyName by mainDashboardViewModel.companyName.collectAsStateWithLifecycle()
+    val deviceStatus by homeDeviceViewModel.deviceStatus.collectAsStateWithLifecycle()
 
     val todayOrderList by todayOrderViewModel.todayOrderListState.collectAsStateWithLifecycle()
     val inOrderList by todayOrderViewModel.inOrderListState.collectAsStateWithLifecycle()
@@ -52,6 +60,8 @@ fun MainDashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    HomeDevicePollingEffect(homeDeviceViewModel, isHomeTabSelected, lifecycleOwner)
 
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -92,11 +102,27 @@ fun MainDashboardScreen(
                     top = paddingValues.calculateTopPadding()
                 ),
                 companyName = companyName,
-                mainDashboardViewModel = mainDashboardViewModel
+                mainDashboardViewModel = mainDashboardViewModel,
+                deviceStatus = deviceStatus,
             )
         } ?: run {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
+            }
+        }
+    }
+}
+
+@Composable
+internal fun HomeDevicePollingEffect(
+    viewModel: HomeDeviceViewModel,
+    isHomeTabSelected: Boolean,
+    lifecycleOwner: LifecycleOwner,
+) {
+    LaunchedEffect(lifecycleOwner, isHomeTabSelected, viewModel) {
+        if (isHomeTabSelected) {
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                viewModel.pollDeviceStatus()
             }
         }
     }
@@ -111,7 +137,8 @@ private fun MainDashboardContent(
     homeSharedViewModel: HomeSharedViewModel,
     modifier: Modifier = Modifier,
     companyName: String,
-    mainDashboardViewModel: MainDashboardViewModel
+    mainDashboardViewModel: MainDashboardViewModel,
+    deviceStatus: ZhiChiDeviceStatusModel?,
 ) {
     LazyColumn(
         modifier = modifier,
@@ -130,6 +157,11 @@ private fun MainDashboardContent(
                 pendingCarePlanCount = todayOrderList.count { it.state.isPendingCareState() },
                 actions = actions
             )
+        }
+        if (user.userIdentityDisplay() != UserIdentityDisplay.SALES && deviceStatus != null) {
+            item {
+                HomeDeviceStatusCard(deviceStatus, actions.onOpenDevicePage)
+            }
         }
         item {
             OrderTabLayout(

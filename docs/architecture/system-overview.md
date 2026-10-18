@@ -55,7 +55,7 @@ flowchart LR
 | `:core:common` | 日志、诊断、运行配置、调度器、图片输出/受管文件、通用 Android 能力 | Android library；不是纯 Kotlin 模块 |
 | `:core:ui` | 共用 Compose/UI 支撑、共享 ViewModel、统一图片预览及通用按钮文案 | 可依赖 Core 契约，不得访问数据实现 |
 | `:feature:login` | 登录 ViewModel、动作接口、DI 和 feature entry | `LoginScreen` 仍在 `:app` |
-| `:feature:home` | 首页共享状态、上报能力、动作接口和 feature entry | 护理/销售首页 route UI 仍在 `:app` |
+| `:feature:home` | 首页共享状态、可见期设备状态轮询、上报能力、动作接口和 feature entry | 护理/销售首页 route UI 仍在 `:app` |
 | `:feature:identification` | 身份用例/网关、状态编排、CameraX + ML Kit 人脸采集和默认比对页 | 已拥有默认、手动采集、备用腾讯人脸 UI；`IdentificationScreen` 主页面仍在 `:app` |
 | `:feature:location` | 定位 Service、管理器、会话、上报、诊断 | 作为服务流程内嵌能力，没有独立路由 |
 | `:feature:photoupload` | 上传门面、任务队列、标准相机/水印与照片处理状态 | `PhotoUploadScreen` 仍在 `:app`；`CameraScreen` 已共享 |
@@ -77,6 +77,7 @@ flowchart LR
 导航使用 Navigation 3 的可序列化 NavKey、唯一 entry ID 和可保存单栈，由 NavDisplay 管理页面生命周期，并在 `:app/navigation` 统一注册：
 
 - Entry：登录、Home 和订单列表；首页、计划和记录列表显式共享 Home entry 的 TodayOrderViewModel owner。
+- 护理首页设备状态由独立 `HomeDeviceViewModel` 调用 Domain `HomeDeviceRepository`，Data 层只透传禁缓存的状态接口。轮询协程由首页页签选中与 `RESUMED` 双条件管理，不放入常驻服务或全局作用域；周期从请求起点计至少 5 秒，单请求串行，慢请求不追赶补发。暂停轮询只取消网络工作，同一会话保留最后成功状态，返回静默刷新；失败不隐藏已有卡片。ViewModel 内仅保留不发请求的会话监听，退出、换号、令牌或账号归属变化时先清空，再取消旧请求，结果发布前复验取消状态和当前会话；姓名、头像更新不重启轮询。销售和未登录会话不请求。安装示意/预览仅接受 HTTPS 地址并复用无原生标题栏的普通 `WebViewRoute`，不启用销售评估或客户详情桥接。
 - Sales：客户/提醒、登记、评估选择、设备和结果使用 `SalesRoute`，每个 entry 独立持有 SalesViewModel；扫描与进度在同一设备 entry 中展示。
 - Service flow：服务详情、护理执行、NFC、选择服务、照片上传、倒计时、结束选择、完成摘要。
 - Support：用户列表/记录、身份与默认人脸核验、相机、手动人脸采集和 WebView；旧设备选择页、人脸引导页及正式应用腾讯测试路由已移除。
