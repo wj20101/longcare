@@ -27,6 +27,7 @@ all_smoke() {
   add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownBackgroundInitializationTest
   add_class com.ytone.longcare.core.ui.permission.BackgroundSettingsDialogTest
   add_class com.ytone.longcare.platform.location.LocationPermissionUiTest
+  add_class com.ytone.longcare.platform.location.AmapContinuousRecoveryTest
   add_class com.ytone.longcare.features.maindashboard.ui.HomeDeviceStatusCardTest
 }
 
@@ -58,6 +59,9 @@ else
         app/src/main/*/com/ytone/longcare/features/home/*|app/src/main/*/com/ytone/longcare/features/maindashboard/*|feature/home/*|app/src/androidTest/*/com/ytone/longcare/features/maindashboard/*|app/src/main/res/values*/home_device.xml|app/src/main/res/drawable*/home_ic_zhichi_device.*)
           run_instrumentation=true
           add_class com.ytone.longcare.features.maindashboard.ui.HomeDeviceStatusCardTest ;;
+        app/src/androidTest/*/com/ytone/longcare/platform/location/AmapContinuousRecoveryTest.kt)
+          run_instrumentation=true
+          add_class com.ytone.longcare.platform.location.AmapContinuousRecoveryTest ;;
         core/ui/src/main/*/com/ytone/longcare/common/utils/UnifiedPermissionHelper.kt|app/src/androidTest/*/com/ytone/longcare/platform/location/*)
           run_instrumentation=true
           add_class com.ytone.longcare.platform.location.LocationPermissionUiTest ;;
@@ -70,6 +74,7 @@ else
           add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownPermissionFlowTest
           add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownDialogsTest
           add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownBackgroundInitializationTest
+          add_class com.ytone.longcare.platform.location.AmapContinuousRecoveryTest
           add_class com.ytone.longcare.core.ui.permission.BackgroundSettingsDialogTest ;;
         app/src/main/*/com/ytone/longcare/features/sales/*Screen*.kt|app/src/androidTest/*/com/ytone/longcare/features/sales/*)
           run_instrumentation=true

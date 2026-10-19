@@ -29,6 +29,8 @@ open class AmapLocationClientFactory @Inject constructor(
 
 /** Narrow SDK boundary, allowing device lifecycle tests to use an isolated location source. */
 interface AmapClientHandle {
+    /** Version of this live SDK client; isolated test clients may omit it. */
+    fun sdkVersion(): String? = null
     fun setLocationOption(option: AMapLocationClientOption)
     fun setLocationListener(listener: AMapLocationListener)
     fun unRegisterLocationListener(listener: AMapLocationListener)
@@ -38,6 +40,7 @@ interface AmapClientHandle {
 }
 
 class SdkAmapClientHandle(private val client: AMapLocationClient) : AmapClientHandle {
+    override fun sdkVersion(): String = client.version
     override fun setLocationOption(option: AMapLocationClientOption) = client.setLocationOption(option)
     override fun setLocationListener(listener: AMapLocationListener) = client.setLocationListener(listener)
     override fun unRegisterLocationListener(listener: AMapLocationListener) = client.unRegisterLocationListener(listener)

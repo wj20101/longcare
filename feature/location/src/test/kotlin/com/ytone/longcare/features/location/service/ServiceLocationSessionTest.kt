@@ -1,6 +1,8 @@
 package com.ytone.longcare.features.location.service
 
+import android.os.SystemClock
 import com.ytone.longcare.common.utils.KLogger
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.domain.location.LocationAccount
 import com.ytone.longcare.features.location.reporting.LocationClock
 import com.ytone.longcare.features.location.reporting.LocationReportingSession
@@ -12,6 +14,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.mockkStatic
 import io.mockk.runs
 import io.mockk.unmockkAll
 import io.mockk.verify
@@ -38,14 +41,28 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ServiceLocationSessionTest {
+    private data class UploadDiagnostic(val extras: Map<String, Any?>, val userId: String, val remote: Boolean)
+    private data class UploadErrorDiagnostic(val event: LocationEventTracker.EventType, val userId: String)
+    private val uploadDiagnostics = mutableListOf<UploadDiagnostic>()
+    private val uploadErrors = mutableListOf<UploadErrorDiagnostic>()
     private val account = LocationAccount(1, 2, 3)
     @Before
     fun setup() {
         KLogger.updateConfig { enabled = false }
+        mockkStatic(SystemClock::class)
+        every { SystemClock.elapsedRealtime() } answers { elapsed }
+        mockkObject(DiagnosticEventTracker)
+        every { DiagnosticEventTracker.currentUserId() } returns "3"
         mockkObject(LocationEventTracker)
-        every { LocationEventTracker.trackError(any(), any(), any()) } just runs
+        every { LocationEventTracker.trackError(any(), any(), any(), any()) } answers {
+            uploadErrors += UploadErrorDiagnostic(firstArg(), arg(3))
+        }
         every { LocationEventTracker.trackLocationSample(any(), any(), any(), any()) } just runs
-        every { LocationEventTracker.trackEvent(any(), any()) } just runs
+        every { LocationEventTracker.trackEvent(any(), any(), any(), any()) } answers {
+            if (firstArg<LocationEventTracker.EventType>() == LocationEventTracker.EventType.API_UPLOAD_RESUMED) {
+                uploadDiagnostics += UploadDiagnostic(secondArg(), arg(3), arg(2))
+            }
+        }
     }
 
     @After
@@ -85,6 +102,231 @@ class ServiceLocationSessionTest {
             assertTrue(gate.canUpload())
             if (it < 3) advanceBy(30_000)
         }
+        job.cancel()
+    }
+
+    @Test
+    fun `first successful HTTP upload is reported once while routine uploads remain local`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        var uploads = 0
+        val job = backgroundScope.launch {
+            executor(gate, samples) {
+                uploads++
+                elapsed += 25L
+                ApiResult.Success(Unit)
+            }.run()
+        }
+        repeat(4) {
+            samples.send(sample().copy(requestId = "sdk-request-$it"))
+            runCurrent()
+            if (it < 3) advanceBy(30_000L)
+        }
+        assertEquals(4, uploads)
+        val first = uploadDiagnostics.single()
+        assertEquals("first_success", first.extras["stage"])
+        assertEquals(1L, first.extras["orderId"])
+        assertEquals("sdk-request-0", first.extras["requestId"])
+        assertEquals(25L, first.extras["durationMs"])
+        assertEquals(null, first.extras["successGapMs"])
+        assertEquals("3", first.userId)
+        assertTrue(first.remote)
+        job.cancel()
+    }
+
+    @Test
+    fun `HTTP business and network errors produce one recovery report after success`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        var uploads = 0
+        val job = backgroundScope.launch {
+            executor(gate, samples) {
+                when (++uploads) {
+                    2 -> ApiResult.Failure(400, "rejected")
+                    3 -> ApiResult.Exception(IllegalStateException("offline"))
+                    else -> ApiResult.Success(Unit)
+                }
+            }.run()
+        }
+        repeat(5) {
+            samples.send(sample())
+            runCurrent()
+            if (it < 4) advanceBy(30_000L)
+        }
+        assertEquals(5, uploads)
+        assertEquals(listOf("first_success", "upload_recovered"), uploadDiagnostics.map { it.extras["stage"] })
+        assertEquals(90_003L, uploadDiagnostics.last().extras["successGapMs"])
+        assertTrue(gate.canUpload())
+        job.cancel()
+    }
+
+    @Test
+    fun `first successful upload after an initial adapter failure is reported as HTTP recovery`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        var attempts = 0
+        val job = backgroundScope.launch {
+            executor(gate, samples) {
+                if (++attempts == 1) error("adapter unavailable")
+                ApiResult.Success(Unit)
+            }.run()
+        }
+        samples.send(sample())
+        runCurrent()
+        assertTrue(uploadDiagnostics.isEmpty())
+        advanceBy(30_000L)
+        samples.send(sample())
+        runCurrent()
+        assertEquals("upload_recovered", uploadDiagnostics.single().extras["stage"])
+        assertEquals(2, attempts)
+        job.cancel()
+    }
+
+    @Test
+    fun `success after ninety second callback silence reports the HTTP gap without a retry timer`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        var uploads = 0
+        val job = backgroundScope.launch {
+            executor(gate, samples) { uploads++; ApiResult.Success(Unit) }.run()
+        }
+        samples.send(sample())
+        runCurrent()
+        advanceBy(89_998L)
+        assertEquals(1, uploads)
+        samples.send(sample())
+        runCurrent()
+        assertEquals("A gap below the diagnostic threshold remains a routine success", 1, uploadDiagnostics.size)
+        advanceBy(89_999L)
+        assertEquals(2, uploads)
+        samples.send(sample())
+        runCurrent()
+        assertEquals(3, uploads)
+        assertEquals(listOf("first_success", "gap_resumed"), uploadDiagnostics.map { it.extras["stage"] })
+        assertEquals(90_000L, uploadDiagnostics.last().extras["successGapMs"])
+        job.cancel()
+    }
+
+    @Test
+    fun `default Android elapsed realtime includes deep sleep in successful upload gap`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        var platformElapsed = 1_000L
+        every { SystemClock.elapsedRealtime() } answers { platformElapsed }
+        val job = backgroundScope.launch {
+            // Deliberately omit the injected lambda to exercise the production clock default.
+            ServiceLocationSession(gate, samples.receiveAsFlow(), {
+                platformElapsed += 10L
+                ApiResult.Success(Unit)
+            }, LocationSampleEvaluator(1, 0, clock)).run()
+        }
+        samples.send(sample())
+        runCurrent()
+        advanceBy(30_000L)
+        // Android elapsedRealtime advances through deep sleep; coroutine/uptime scheduling need not.
+        platformElapsed += 300_000L
+        samples.send(sample())
+        runCurrent()
+        assertEquals(listOf("first_success", "gap_resumed"), uploadDiagnostics.map { it.extras["stage"] })
+        assertEquals(300_010L, uploadDiagnostics.last().extras["successGapMs"])
+        assertTrue(uploadDiagnostics.all { it.extras["durationMs"] == 10L })
+        job.cancel()
+    }
+
+    @Test
+    fun `all upload failure paths keep run identity while account invalidation is pending`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        val response = CompletableDeferred<Unit>()
+        var attempts = 0
+        val job = backgroundScope.launch {
+            executor(gate, samples) {
+                when (++attempts) {
+                    1 -> { response.await(); ApiResult.Failure(400, "rejected") }
+                    2 -> ApiResult.Exception(IllegalStateException("offline"))
+                    else -> error("adapter failure")
+                }
+            }.run()
+        }
+        samples.send(sample())
+        runCurrent()
+        every { DiagnosticEventTracker.currentUserId() } returns "4"
+        response.complete(Unit)
+        runCurrent()
+        repeat(2) {
+            advanceBy(30_000L)
+            samples.send(sample())
+            runCurrent()
+        }
+        assertEquals(listOf(
+            LocationEventTracker.EventType.API_UPLOAD_BUSINESS_ERROR,
+            LocationEventTracker.EventType.API_UPLOAD_NETWORK_ERROR,
+            LocationEventTracker.EventType.API_UPLOAD_FATAL_ERROR,
+        ), uploadErrors.map { it.event })
+        assertTrue(uploadErrors.all { it.userId == "3" })
+        job.cancel()
+    }
+
+    @Test
+    fun `late successful HTTP response after order end does not report upload recovery`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        val response = CompletableDeferred<Unit>()
+        val job = backgroundScope.launch(start = CoroutineStart.LAZY) {
+            executor(gate, samples) {
+                withContext(NonCancellable) { response.await() }
+                ApiResult.Success(Unit)
+            }.run()
+        }
+        gate.attach(job)
+        job.start()
+        samples.send(sample())
+        runCurrent()
+        gate.invalidate()
+        response.complete(Unit)
+        runCurrent()
+        assertTrue(job.isCancelled)
+        assertTrue(uploadDiagnostics.isEmpty())
+    }
+
+    @Test
+    fun `account switch invalidation discards an old account late successful HTTP response`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        val response = CompletableDeferred<Unit>()
+        val job = backgroundScope.launch(start = CoroutineStart.LAZY) {
+            executor(gate, samples) {
+                withContext(NonCancellable) { response.await() }
+                ApiResult.Success(Unit)
+            }.run()
+        }
+        gate.attach(job)
+        job.start()
+        samples.send(sample())
+        runCurrent()
+        every { DiagnosticEventTracker.currentUserId() } returns "4"
+        gate.invalidate()
+        response.complete(Unit)
+        runCurrent()
+        assertTrue(job.isCancelled)
+        assertTrue(uploadDiagnostics.isEmpty())
+    }
+
+    @Test
+    fun `successful diagnostic keeps the identity captured before an asynchronous HTTP response`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        val response = CompletableDeferred<Unit>()
+        val job = backgroundScope.launch {
+            executor(gate, samples) { response.await(); ApiResult.Success(Unit) }.run()
+        }
+        samples.send(sample())
+        runCurrent()
+        // The delivery gateway drops this old identity if account cancellation has not yet arrived.
+        every { DiagnosticEventTracker.currentUserId() } returns "4"
+        response.complete(Unit)
+        runCurrent()
+        assertEquals("3", uploadDiagnostics.single().userId)
         job.cancel()
     }
 
@@ -176,7 +418,7 @@ class ServiceLocationSessionTest {
         assertEquals(1, nextUploads)
         assertTrue(next.canUpload())
         verify(exactly = 0) {
-            LocationEventTracker.trackError(LocationEventTracker.EventType.API_UPLOAD_BUSINESS_ERROR, any(), any())
+            LocationEventTracker.trackError(LocationEventTracker.EventType.API_UPLOAD_BUSINESS_ERROR, any(), any(), any())
         }
         nextJob.cancel()
     }
@@ -413,7 +655,7 @@ class ServiceLocationSessionTest {
         onResult: (ApiResult<Unit>) -> Unit = {},
         upload: suspend (LocationResult) -> ApiResult<Unit>,
     ) = ServiceLocationSession(gate, samples.receiveAsFlow(), upload,
-        LocationSampleEvaluator(1, 0, clock), onUploadResult = onResult)
+        LocationSampleEvaluator(1, 0, clock), onUploadResult = onResult, elapsedRealtime = { elapsed })
 
     private var now = 100_000L
     private var elapsed = 1_000L

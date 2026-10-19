@@ -69,6 +69,7 @@ class SelectionTest(unittest.TestCase):
                                                  cwd=self.root, env=options, text=True)
                 self.assertIn("run_build=true", output)
                 self.assertIn("run_instrumentation=true", output)
+                self.assertIn("AmapContinuousRecoveryTest", output)
 
     def test_webview_and_navigation_have_relevant_tests(self):
         result = self.select("app/src/main/kotlin/com/ytone/longcare/platform/webview/NativeBridge.kt")
@@ -125,6 +126,17 @@ class SelectionTest(unittest.TestCase):
             with self.subTest(path=path):
                 result = self.select(path)
                 self.assertIn("LocationPermissionUiTest", result["smoke_test_classes"])
+
+    def test_location_sampling_changes_include_offline_sdk_recovery(self):
+        for path in (
+            "feature/location/src/main/kotlin/com/ytone/longcare/features/location/manager/ContinuousAmapLocationManager.kt",
+            "feature/location/src/main/kotlin/com/ytone/longcare/features/location/tracker/LocationEventTracker.kt",
+            "app/src/androidTest/kotlin/com/ytone/longcare/platform/location/AmapContinuousRecoveryTest.kt",
+        ):
+            with self.subTest(path=path):
+                result = self.select(path)
+                self.assertEqual("true", result["run_instrumentation"])
+                self.assertIn("AmapContinuousRecoveryTest", result["smoke_test_classes"])
 
 
 if __name__ == "__main__":

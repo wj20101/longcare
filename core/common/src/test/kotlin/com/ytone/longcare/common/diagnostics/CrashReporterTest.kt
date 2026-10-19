@@ -104,6 +104,55 @@ class CrashReporterTest {
         assertEquals(4, runtime.errors.size)
     }
 
+    private fun continuousFailure(requestId: String, episode: Long, count: Long = 1L, stage: String = "first") =
+        DiagnosticException(
+            DiagnosticPayload.create("location", "amap_continuous_location_error", "ERROR", "123", "持续定位失败", null,
+                mapOf("requestId" to requestId, "failureEpisode" to episode, "failureCount" to count,
+                    "errorCode" to 4, "stage" to stage)),
+            IllegalStateException().apply { stackTrace = emptyArray() },
+        )
+
+    @Test
+    fun `new location clients retain their first failure within the duplicate window`() {
+        val runtime = Runtime()
+        val reporter = CrashReporter(runtime) { 1_000_000_000L }
+        reporter.setUserId(123)
+        reporter.initialize(mockk(), true)
+        val first = continuousFailure("client-a", 1L)
+        reporter.postCaughtException(first)
+        reporter.postCaughtException(first)
+        reporter.postCaughtException(continuousFailure("client-b", 1L))
+        assertEquals(listOf("client-a", "client-b"), runtime.errors.map { it.fields["requestId"] })
+    }
+
+    @Test
+    fun `new failure episodes retain their first report within the duplicate window`() {
+        val runtime = Runtime()
+        val reporter = CrashReporter(runtime) { 1_000_000_000L }
+        reporter.setUserId(123)
+        reporter.initialize(mockk(), true)
+        reporter.postCaughtException(continuousFailure("client-a", 1L))
+        reporter.postCaughtException(continuousFailure("client-a", 2L))
+        reporter.postCaughtException(continuousFailure("client-a", 2L))
+        assertEquals(listOf("1", "2"), runtime.errors.map { it.fields["failureEpisode"] })
+    }
+
+    @Test
+    fun `new aggregate progress survives the duplicate window but the same summary is deduplicated`() {
+        val runtime = Runtime()
+        // Aggregation uses elapsedRealtime; deep sleep can advance it without advancing this clock.
+        val reporter = CrashReporter(runtime) { 1_000_000_000L }
+        reporter.setUserId(123)
+        reporter.initialize(mockk(), true)
+        val first = continuousFailure("client-a", 1L, count = 2L, stage = "summary")
+        val next = continuousFailure("client-a", 1L, count = 3L, stage = "summary")
+        reporter.postCaughtException(first)
+        reporter.postCaughtException(first)
+        reporter.postCaughtException(next)
+        reporter.postCaughtException(next)
+        assertEquals(listOf("2", "3"), runtime.errors.map { it.fields["failureCount"] })
+    }
+
     @Test
     fun `failed initialization is retryable and successful initialization is idempotent`() {
         val runtime = Runtime().apply { fail = true }

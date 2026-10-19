@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.location.service
 
+import android.os.SystemClock
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.location.reporting.LocationReportingSession
 import com.ytone.longcare.features.location.reporting.LocationSampleEvaluator
@@ -30,14 +32,20 @@ internal class ServiceLocationSession(
     private val uploadLocation: suspend (LocationResult) -> ApiResult<Unit>,
     private val evaluator: LocationSampleEvaluator,
     private val onUploadResult: (ApiResult<Unit>) -> Unit = {},
+    private val elapsedRealtime: () -> Long = SystemClock::elapsedRealtime,
 ) {
     private companion object {
         const val REPORTING_INTERVAL_MS = 30_000L
         // 整次请求最多占用一个采样周期；超时点不重试，下一周期只检查最新候选。
         const val UPLOAD_TIMEOUT_MS = 30_000L
+        // Diagnostic threshold only: a successful HTTP upload after this gap is reported once.
+        const val UPLOAD_SUCCESS_GAP_DIAGNOSTIC_MS = 90_000L
     }
 
     suspend fun run() = coroutineScope {
+        val diagnosticUserId = DiagnosticEventTracker.currentUserId()
+        var lastSuccessfulUploadElapsed: Long? = null
+        var uploadFailed = false
         // Exactly one SDK subscription and one replaceable current candidate, never a history queue.
         val candidates = locations.buffer(Channel.CONFLATED).produceIn(this)
         try {
@@ -46,7 +54,7 @@ internal class ServiceLocationSession(
                 // Revalidate at the sampling instant: a candidate can age while HTTP is in flight.
                 if (!session.canUpload() || !evaluator.shouldUpload(location)) continue
                 val uploadJob = launch(start = CoroutineStart.UNDISPATCHED) {
-                    val startedAt = System.nanoTime()
+                    val startedAt = elapsedRealtime()
                     try {
                         // 校验期间也可能结束/切换订单，发请求前必须再次检查取消与会话。
                         currentCoroutineContext().ensureActive()
@@ -62,29 +70,57 @@ internal class ServiceLocationSession(
                             LocationEventTracker.Attribute.LOCATION_TIME to location.locationTime,
                             LocationEventTracker.Attribute.ACCURACY to location.accuracy,
                             "requestId" to location.requestId,
-                            "durationMs" to (System.nanoTime() - startedAt) / 1_000_000,
+                            "durationMs" to (elapsedRealtime() - startedAt).coerceAtLeast(0L),
                         )
                         when (result) {
-                            is ApiResult.Success -> logI("位置实时上报成功 (orderId=${session.orderId})")
-                            is ApiResult.Failure -> LocationEventTracker.trackError(
-                                LocationEventTracker.EventType.API_UPLOAD_BUSINESS_ERROR,
-                                extras = extras + (LocationEventTracker.Attribute.ERROR_CODE to result.code),
-                            )
-                            is ApiResult.Exception -> LocationEventTracker.trackError(
-                                LocationEventTracker.EventType.API_UPLOAD_NETWORK_ERROR,
-                                throwable = result.exception,
-                                extras = extras,
-                            )
+                            is ApiResult.Success -> {
+                                val succeededAt = elapsedRealtime()
+                                val gap = lastSuccessfulUploadElapsed?.let { (succeededAt - it).coerceAtLeast(0L) }
+                                val stage = when {
+                                    uploadFailed -> "upload_recovered"
+                                    lastSuccessfulUploadElapsed == null -> "first_success"
+                                    gap != null && gap >= UPLOAD_SUCCESS_GAP_DIAGNOSTIC_MS -> "gap_resumed"
+                                    else -> null
+                                }
+                                lastSuccessfulUploadElapsed = succeededAt
+                                uploadFailed = false
+                                logI("位置实时上报成功 (orderId=${session.orderId})")
+                                if (stage != null) LocationEventTracker.trackEvent(
+                                    LocationEventTracker.EventType.API_UPLOAD_RESUMED,
+                                    extras = extras + mapOf("stage" to stage, "successGapMs" to gap),
+                                    reportToServer = true,
+                                    userId = diagnosticUserId,
+                                )
+                            }
+                            is ApiResult.Failure -> {
+                                uploadFailed = true
+                                LocationEventTracker.trackError(
+                                    LocationEventTracker.EventType.API_UPLOAD_BUSINESS_ERROR,
+                                    extras = extras + (LocationEventTracker.Attribute.ERROR_CODE to result.code),
+                                    userId = diagnosticUserId,
+                                )
+                            }
+                            is ApiResult.Exception -> {
+                                uploadFailed = true
+                                LocationEventTracker.trackError(
+                                    LocationEventTracker.EventType.API_UPLOAD_NETWORK_ERROR,
+                                    throwable = result.exception,
+                                    extras = extras,
+                                    userId = diagnosticUserId,
+                                )
+                            }
                         }
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (error: Exception) {
                         currentCoroutineContext().ensureActive()
                         if (!session.canUpload()) return@launch
+                        uploadFailed = true
                         LocationEventTracker.trackError(
                             LocationEventTracker.EventType.API_UPLOAD_FATAL_ERROR,
                             throwable = error,
                             extras = mapOf(LocationEventTracker.Attribute.ORDER_ID to session.orderId),
+                            userId = diagnosticUserId,
                         )
                     }
                 }

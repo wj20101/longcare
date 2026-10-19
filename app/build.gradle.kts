@@ -275,6 +275,8 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    // Offline SDK-boundary tests construct AMap values; the feature keeps its SDK dependency private.
+    androidTestImplementation(libs.amap.location)
 
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

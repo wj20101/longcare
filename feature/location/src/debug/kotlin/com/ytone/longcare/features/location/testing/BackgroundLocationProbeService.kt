@@ -15,6 +15,7 @@ import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.location.core.LocationForegroundServiceController
+import com.ytone.longcare.features.location.core.AndroidLocationRuntimeReadiness
 import com.ytone.longcare.features.location.core.LocationKeepAliveManager
 import com.ytone.longcare.features.location.manager.AmapClientHandle
 import com.ytone.longcare.features.location.manager.AmapLocationClientFactory
@@ -100,7 +101,7 @@ class BackgroundLocationProbeService : LocationTrackingService() {
             }
             continuousAmapLocationManager = ContinuousAmapLocationManager(factory, object : AmapApiKeyProvider {
                 override suspend fun getAmapApiKey() = "isolated-probe"
-            })
+            }, AndroidLocationRuntimeReadiness(this))
         }
     }
 

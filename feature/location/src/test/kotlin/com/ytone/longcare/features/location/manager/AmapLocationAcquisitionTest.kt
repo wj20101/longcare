@@ -4,7 +4,13 @@ import android.os.SystemClock
 import com.amap.api.location.*
 import com.ytone.longcare.domain.location.*
 import com.ytone.longcare.features.location.tracker.LocationEventTracker
+import com.ytone.longcare.features.location.core.AndroidLocationRuntimeReadiness
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.utils.KLogger
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.flow.collect
 import io.mockk.*
 import kotlinx.coroutines.*
@@ -23,6 +29,9 @@ class AmapLocationAcquisitionTest {
     private lateinit var manager: ContinuousAmapLocationManager
     private lateinit var singleSource: SingleAmapLocationSource
     private lateinit var factory: AmapLocationClientFactory
+    private val runtimeReadiness = mockk<AndroidLocationRuntimeReadiness> {
+        every { diagnosticSnapshot() } returns emptyMap()
+    }
 
     @Before fun setup() {
         KLogger.updateConfig { enabled = false }
@@ -40,7 +49,7 @@ class AmapLocationAcquisitionTest {
         val key = mockk<AmapApiKeyProvider>()
         coEvery { key.getAmapApiKey() } returns "test-key"
         factory = mockk<AmapLocationClientFactory> { every { create(any()) } returns SdkAmapClientHandle(client) }
-        manager = ContinuousAmapLocationManager(factory, key)
+        manager = ContinuousAmapLocationManager(factory, key, runtimeReadiness)
         singleSource = SingleAmapLocationSource(factory, key)
     }
 
@@ -281,7 +290,7 @@ class AmapLocationAcquisitionTest {
         coEvery { keyProvider.getAmapApiKey() } coAnswers {
             withContext(NonCancellable) { keyResponse.await() }
         }
-        val isolatedManager = ContinuousAmapLocationManager(factory, keyProvider)
+        val isolatedManager = ContinuousAmapLocationManager(factory, keyProvider, runtimeReadiness)
         val collector = backgroundScope.launch { isolatedManager.startContinuousLocation(owner = "test-owner").collect() }
         runCurrent()
         collector.cancel()
@@ -299,7 +308,7 @@ class AmapLocationAcquisitionTest {
         assertEquals(3_000, options.last().interval)
         assertFalse(options.last().isOnceLocation)
         assertTrue(options.last().isOnceLocationLatest)
-        assertEquals(20_000, options.last().httpTimeOut)
+        assertEquals(30_000, options.last().httpTimeOut)
         listeners.single().onLocationChanged(sample().also { every { it.trustedLevel } returns 2 })
         assertTrue(action.await() is LocationAcquisition.Success)
         assertEquals(30_000, options.last().interval)
@@ -461,6 +470,62 @@ class AmapLocationAcquisitionTest {
         collector.cancelAndJoin()
     }
 
+    @Test fun `repeated SDK network failures keep the same client and resume successful sampling`() = runTest(dispatcher) {
+        val received = mutableListOf<com.ytone.longcare.model.LocationResult>()
+        val collector = backgroundScope.launch {
+            manager.startContinuousLocation(owner = "order-1").collect { received += it }
+        }
+        runCurrent()
+        val callback = listeners.single()
+        val failure = sample().also { every { it.errorCode } returns AMapLocation.ERROR_CODE_FAILURE_CONNECTION }
+        repeat(5) {
+            callback.onLocationChanged(failure)
+            runCurrent()
+            assertEquals(LocationFailure.NETWORK, (manager.latestEvent() as LocationAcquisition.Failure).reason)
+            advanceTimeBy(30_000)
+            assertFalse(manager.recoverStalledSampling("order-1"))
+        }
+        assertTrue("SDK failures must not enter the coordinate upload stream", received.isEmpty())
+        callback.onLocationChanged(sample())
+        runCurrent()
+        assertEquals(1, received.size)
+        assertEquals(1, listeners.size)
+        verify(exactly = 1) { factory.create(any()) }
+        verify(exactly = 1) { client.startLocation() }
+        verify(exactly = 0) { client.stopLocation() }
+        collector.cancelAndJoin()
+        verify(exactly = 1) { client.onDestroy() }
+    }
+
+    @Test fun `temporary Main immediate action records terminal error before releasing its client`() {
+        assertTemporaryActionDiagnostic(
+            callbackCodes = listOf(AMapLocation.ERROR_CODE_FAILURE_LOCATION_PERMISSION),
+            expectedEvent = "amap_continuous_location_error",
+        )
+    }
+
+    @Test fun `temporary Main immediate action records SDK recovery before releasing its client`() {
+        assertTemporaryActionDiagnostic(
+            callbackCodes = listOf(AMapLocation.ERROR_CODE_FAILURE_CONNECTION, AMapLocation.LOCATION_SUCCESS),
+            expectedEvent = "amap_continuous_location_recovered",
+        )
+    }
+
+    @Test fun `default SDK network timeout never extends the service action budget`() = runTest(dispatcher) {
+        val request = async { manager.acquireServiceOrderLocation() }
+        runCurrent()
+        assertEquals(30_000, options.single().httpTimeOut)
+        advanceTimeBy(29_999)
+        runCurrent()
+        assertFalse(request.isCompleted)
+        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(LocationAcquisition.Failure(LocationFailure.TIMEOUT), request.await())
+        verify(exactly = 1) { client.startLocation() }
+        verify(exactly = 1) { client.stopLocation() }
+        verify(exactly = 1) { client.onDestroy() }
+    }
+
     @Test fun `null callbacks cannot hide 90 seconds without SDK results`() = runTest(dispatcher) {
         var elapsed = 10_000L
         every { SystemClock.elapsedRealtime() } answers { elapsed }
@@ -495,5 +560,44 @@ class AmapLocationAcquisitionTest {
         every { time } returns System.currentTimeMillis() - 2_000
         every { isMock } returns false
         every { isFixLastLocation } returns false
+    }
+
+    /** Plain executor callbacks model Handler delivery outside an active coroutine event loop. */
+    private fun assertTemporaryActionDiagnostic(callbackCodes: List<Int>, expectedEvent: String) = runBlocking {
+        val executor = Executors.newSingleThreadExecutor { task -> Thread(task, "amap-test-main").apply { isDaemon = true } }
+        val mainThread = executor.submit<Thread> { Thread.currentThread() }.get(5, TimeUnit.SECONDS)
+        val immediateMain = object : MainCoroutineDispatcher() {
+            override val immediate: MainCoroutineDispatcher get() = this
+            override fun isDispatchNeeded(context: CoroutineContext): Boolean = Thread.currentThread() !== mainThread
+            override fun dispatch(context: CoroutineContext, block: Runnable) { executor.execute(block) }
+        }
+        val started = CountDownLatch(1)
+        val events = mutableListOf<String>()
+        mockkObject(DiagnosticEventTracker)
+        every { DiagnosticEventTracker.currentUserId() } returns "123"
+        every { DiagnosticEventTracker.trackError(any(), any(), any(), any(), any(), any()) } answers { events += arg<String>(1) }
+        every { DiagnosticEventTracker.trackEvent(any(), any(), any(), any(), any(), any()) } answers { events += arg<String>(1) }
+        every { client.startLocation() } answers { started.countDown() }
+        Dispatchers.setMain(immediateMain)
+        val action = async(Dispatchers.Main.immediate) { manager.acquireServiceOrderLocation() }
+        try {
+            assertTrue("Temporary action did not start", started.await(5, TimeUnit.SECONDS))
+            callbackCodes.forEach { code ->
+                val raw = sample().also {
+                    every { it.errorCode } returns code
+                    every { it.time } answers { System.currentTimeMillis() - 500L }
+                }
+                executor.submit { listeners.single().onLocationChanged(raw) }.get(5, TimeUnit.SECONDS)
+            }
+            val result = action.await()
+            if (callbackCodes.last() == AMapLocation.LOCATION_SUCCESS) assertTrue(result is LocationAcquisition.Success)
+            else assertEquals(LocationFailure.PERMISSION, (result as LocationAcquisition.Failure).reason)
+            verify(exactly = 1) { client.onDestroy() }
+            assertTrue("Callback diagnostics were lost during synchronous action cleanup: $expectedEvent", expectedEvent in events)
+        } finally {
+            action.cancelAndJoin()
+            Dispatchers.setMain(dispatcher)
+            executor.shutdownNow()
+        }
     }
 }

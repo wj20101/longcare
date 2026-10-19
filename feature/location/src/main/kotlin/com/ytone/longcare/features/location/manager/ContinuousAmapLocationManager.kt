@@ -9,6 +9,8 @@ import com.ytone.longcare.domain.location.AmapApiKeyProvider
 import com.ytone.longcare.domain.location.LocationAcquisition
 import com.ytone.longcare.domain.location.LocationFailure
 import com.ytone.longcare.domain.location.ServiceOrderLocationQuality
+import com.ytone.longcare.features.location.core.AndroidLocationRuntimeReadiness
+import com.ytone.longcare.features.location.tracker.ContinuousLocationDiagnostics
 import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.model.LocationResult
 import java.util.UUID
@@ -34,10 +36,18 @@ import kotlinx.coroutines.withTimeoutOrNull
 @Singleton
 class ContinuousAmapLocationManager @Inject constructor(
     private val clientFactory: AmapLocationClientFactory,
-    private val amapApiKeyProvider: AmapApiKeyProvider
+    private val amapApiKeyProvider: AmapApiKeyProvider,
+    private val runtimeReadiness: AndroidLocationRuntimeReadiness,
 ) {
-    private class ContinuousClient(val client: AmapClientHandle) {
+    private class ContinuousClient(val client: AmapClientHandle, runtimeSnapshot: () -> Map<String, Any?>) {
         val active = AtomicBoolean(true)
+        val requestId: String = UUID.randomUUID().toString()
+        val diagnostics = ContinuousLocationDiagnostics(requestId, CONTINUOUS_HTTP_TIMEOUT_MILLIS,
+            runtimeSnapshot = {
+                runtimeSnapshot() + ("amapSdkVersion" to runCatching { client.sdkVersion() }
+                    .getOrNull()?.takeIf { it.isNotBlank() }?.take(MAX_SDK_VERSION_LENGTH))
+            },
+        )
         var listener: AMapLocationListener? = null
         var appliedIntervalMs: Long? = null
     }
@@ -49,7 +59,9 @@ class ContinuousAmapLocationManager @Inject constructor(
         private const val REPORTING_INTERVAL_MS = 30_000L
         /** 服务动作短时采集间隔（毫秒） */
         private const val ACTION_INTERVAL_MS = 3_000L
-        private const val CONTINUOUS_HTTP_TIMEOUT_MILLIS = 20_000L
+        // 高德错误码 4 官方建议保留默认 30 秒；业务动作仍由自己的 30 秒总预算取消。
+        private const val CONTINUOUS_HTTP_TIMEOUT_MILLIS = 30_000L
+        private const val MAX_SDK_VERSION_LENGTH = 32
     }
 
     private val serviceRequest = Mutex()
@@ -68,7 +80,7 @@ class ContinuousAmapLocationManager @Inject constructor(
         check(continuousClient == null) { "amap_continuous_collection_already_active" }
         var created: ContinuousClient? = null
         try {
-            val request = ContinuousClient(clientFactory.create(apiKey))
+            val request = ContinuousClient(clientFactory.create(apiKey), runtimeReadiness::diagnosticSnapshot)
             created = request
             continuousClient = request
             logI("持续高德定位客户端初始化成功，间隔: ${desiredInterval()}ms")
@@ -92,6 +104,7 @@ class ContinuousAmapLocationManager @Inject constructor(
     private fun releaseContinuousClient(request: ContinuousClient) {
         if (!request.active.compareAndSet(true, false)) return
         if (continuousClient === request) continuousClient = null
+        request.diagnostics.finish()
         // 仅释放本次客户端；任一步失败仍执行后续释放。
         val client = request.client
         listOf<Pair<String, () -> Unit>>(
@@ -152,18 +165,18 @@ class ContinuousAmapLocationManager @Inject constructor(
             if (continuousClient == null) {
                 samples.resetReplayCache()
                 val request = initContinuousLocationClient(requireNotNull(key))
-                val id = UUID.randomUUID().toString()
                 lastCallbackElapsed = SystemClock.elapsedRealtime()
                 val listener = AMapLocationListener { raw ->
                     if (!request.active.get()) return@AMapLocationListener
                     if (raw == null) return@AMapLocationListener
                     lastCallbackElapsed = SystemClock.elapsedRealtime()
-                    val sample = raw.toSample(id)
-                    val event = if (raw.errorCode == 0) LocationAcquisition.Success(sample) else {
-                        LocationEventTracker.trackError(LocationEventTracker.EventType.AMAP_CONTINUOUS_LOCATION_ERROR,
-                            extras = mapOf(LocationEventTracker.Attribute.ERROR_CODE to raw.errorCode))
+                    val sample = raw.toSample(request.requestId)
+                    val event = if (raw.errorCode == AMapLocation.LOCATION_SUCCESS) LocationAcquisition.Success(sample) else {
                         LocationAcquisition.Failure(locationFailure(raw.errorCode), sample)
                     }
+                    // Main.immediate consumers can finish the action and release this client inside tryEmit.
+                    // Settle this callback's diagnostics before that synchronous cleanup marks them finished.
+                    request.diagnostics.onLocation(raw, request.appliedIntervalMs ?: desiredInterval())
                     samples.tryEmit(event)
                 }
                 request.listener = listener

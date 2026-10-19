@@ -72,7 +72,10 @@ internal class CrashReporter(
         // Do not submit a late callback belonging to a previous account as the current user.
         if (exception.fields["userId"] != userId) return@synchronized
         val fields = exception.fields
-        val key = listOf("category", "eventCode", "userId", "errorType", "errorCode", "orderId", "signInMode", "stage", "locationTime")
+        // Requests and aggregated failure episodes carry their own identity/progress. Only the
+        // same report is a duplicate; a new client, episode or summary must keep its evidence.
+        val key = listOf("category", "eventCode", "userId", "errorType", "errorCode", "orderId", "signInMode", "stage", "locationTime",
+            "requestId", "failureEpisode", "failureCount")
             .map { fields[it].orEmpty() } + exception.stackTrace.take(4).map { it.toString() }
         val now = nanoTime()
         if (recentErrors[key]?.let { now - it < 30_000_000_000L } == true) return@synchronized
