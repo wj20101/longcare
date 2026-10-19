@@ -11,8 +11,6 @@ internal fun createEndOrderParams(
     beginImgList: List<String>,
     endImageList: List<String>,
     centerImgList: List<String>,
-    longitude: String,
-    latitude: String,
     endType: Int
 ): EndOrderParams {
     return EndOrderParams(
@@ -22,8 +20,6 @@ internal fun createEndOrderParams(
         beginImgList = beginImgList,
         endImageList = endImageList,
         centerImgList = centerImgList,
-        longitude = longitude,
-        latitude = latitude,
         endType = endType
     )
 }

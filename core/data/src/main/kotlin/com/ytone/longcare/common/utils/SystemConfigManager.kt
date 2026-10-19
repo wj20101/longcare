@@ -13,6 +13,7 @@ import com.ytone.longcare.domain.system.WatermarkConfigProvider
 import com.ytone.longcare.domain.system.ServicePhotoConfigProvider
 import com.ytone.longcare.model.SystemConfigModel
 import com.ytone.longcare.model.ThirdKeyReturnModel
+import com.ytone.longcare.data.repository.UserSessionTracker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -32,7 +33,9 @@ class SystemConfigManager @Inject constructor(
     @param:ApplicationScope private val applicationScope: CoroutineScope,
     private val moshi: Moshi,
     private val apiService: LongCareApiService,
+    private val faceSession: UserSessionTracker,
 ) : FaceVerificationConfigProvider, ServicePhotoConfigProvider, WatermarkConfigProvider {
+    override val sessionGeneration get() = faceSession.sessionGeneration
     companion object {
         private const val PREFS_NAME = "system_config_prefs"
         private const val KEY_SYSTEM_CONFIG = "system_config"
@@ -43,6 +46,8 @@ class SystemConfigManager @Inject constructor(
 
     private val systemConfigAdapter = moshi.adapter(SystemConfigModel::class.java)
     private val thirdKeyAdapter = moshi.adapter(ThirdKeyReturnModel::class.java)
+    private val sanitizer = SystemConfigSanitizer(moshi)
+    private val cacheLock = Any()
     
     // 内存缓存，使用volatile确保线程安全
     @Volatile
@@ -58,13 +63,14 @@ class SystemConfigManager @Inject constructor(
     /**
      * 保存系统配置
      */
-    fun saveSystemConfig(config: SystemConfigModel) {
-        val configJson = systemConfigAdapter.toJson(config)
+    fun saveSystemConfig(config: SystemConfigModel) = synchronized(cacheLock) {
+        val safeConfig = sanitizer.sanitize(config)
+        val configJson = systemConfigAdapter.toJson(safeConfig)
         sharedPreferences.edit {
             putString(KEY_SYSTEM_CONFIG, configJson)
         }
         // 更新内存缓存
-        cachedConfig = config
+        cachedConfig = safeConfig
         cacheInitialized = true
     }
 
@@ -72,33 +78,40 @@ class SystemConfigManager @Inject constructor(
      * 获取系统配置
      * 优先从内存缓存读取，缓存未命中时从SharedPreferences读取
      */
-    fun getSystemConfig(): SystemConfigModel? {
+    fun getSystemConfig(): SystemConfigModel? = synchronized(cacheLock) {
         // 如果缓存已初始化，直接返回缓存数据
         if (cacheInitialized) {
-            return cachedConfig
+            return@synchronized cachedConfig
         }
         
         // 从SharedPreferences读取并缓存
         val configJson = sharedPreferences.getString(KEY_SYSTEM_CONFIG, null)
         val config = configJson?.let { 
             try {
-                systemConfigAdapter.fromJson(it)
+                systemConfigAdapter.fromJson(it)?.let(sanitizer::sanitize)
             } catch (e: Exception) {
                 null
             }
         }
         
+        // Rewrite legacy nested JSON before exposing it to any synchronous caller.
+        val safeJson = config?.let(systemConfigAdapter::toJson)
+        if (configJson != safeJson) {
+            sharedPreferences.edit(commit = true) {
+                if (safeJson == null) remove(KEY_SYSTEM_CONFIG) else putString(KEY_SYSTEM_CONFIG, safeJson)
+            }
+        }
         // 更新缓存
         cachedConfig = config
         cacheInitialized = true
         
-        return config
+        config
     }
 
     /**
      * 清除系统配置
      */
-    fun clearSystemConfig() {
+    fun clearSystemConfig() = synchronized(cacheLock) {
         sharedPreferences.edit {
             remove(KEY_SYSTEM_CONFIG)
         }
@@ -129,26 +142,19 @@ class SystemConfigManager @Inject constructor(
      */
     private suspend fun getSystemConfigLazy(): SystemConfigModel? {
         // 如果缓存已初始化，直接返回缓存数据
-        if (cacheInitialized) {
+        if (cacheInitialized && cachedConfig != null) {
             return cachedConfig
         }
         
         // 使用互斥锁确保只有一个协程执行网络请求
         return loadMutex.withLock {
             // 双重检查，防止多个协程同时进入
-            if (cacheInitialized) {
+            if (cacheInitialized && cachedConfig != null) {
                 return@withLock cachedConfig
             }
             
             // 先尝试从SharedPreferences读取
-            val configJson = sharedPreferences.getString(KEY_SYSTEM_CONFIG, null)
-            val localConfig = configJson?.let { 
-                try {
-                    systemConfigAdapter.fromJson(it)
-                } catch (e: Exception) {
-                    null
-                }
-            }
+            val localConfig = getSystemConfig()
             
             if (localConfig != null) {
                 // 如果本地有缓存，先使用本地缓存
@@ -163,9 +169,8 @@ class SystemConfigManager @Inject constructor(
                 try {
                     val result = apiService.getSystemConfig()
                     if (result is ApiResult.Success) {
-                        cachedConfig = result.data
                         saveSystemConfig(result.data)
-                        return@withLock result.data
+                        return@withLock getSystemConfig()
                     }
                 } catch (e: CancellationException) {
                     throw e
@@ -257,15 +262,32 @@ class SystemConfigManager @Inject constructor(
     }
 
     override suspend fun getFaceVerificationConfig(): FaceVerificationConfig? {
+        val generation = sessionGeneration.value ?: return null
         val third = getThirdKey() ?: return null
-        if (third.txFaceAppId.isBlank() || third.txFaceAppSecret.isBlank() || third.txFaceAppLicence.isBlank()) {
+        if (!isCurrent(generation) || third.txFaceAppId.isBlank() || third.txFaceAppLicence.isBlank()) {
             return null
         }
         return FaceVerificationConfig(
             appId = third.txFaceAppId,
-            secret = third.txFaceAppSecret,
-            licence = third.txFaceAppLicence
+            licence = third.txFaceAppLicence,
+            sessionGeneration = generation,
         )
+    }
+
+    /** Used only by the data repository on an access-token cache miss. Never cache its result. */
+    internal suspend fun loadFaceSecret(config: FaceVerificationConfig): String? {
+        faceSession.requireCurrent(config.sessionGeneration)
+        val result = apiService.getSystemConfig()
+        faceSession.requireCurrent(config.sessionGeneration)
+        val fresh = (result as? ApiResult.Success)?.data ?: return null
+        saveSystemConfig(fresh)
+        val third = try {
+            thirdKeyAdapter.fromJson(fresh.thirdKeyStr)
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        if (third.txFaceAppId != config.appId || third.txFaceAppLicence != config.licence) return null
+        return third.txFaceAppSecret.takeIf { it.isNotBlank() }
     }
     
     fun getThirdKeySync(): ThirdKeyReturnModel? {

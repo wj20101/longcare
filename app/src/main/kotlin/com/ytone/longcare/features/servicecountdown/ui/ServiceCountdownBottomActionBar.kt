@@ -63,7 +63,7 @@ internal fun BoxScope.ServiceCountdownBottomActionBar(
 private fun countdownActionColor(state: ServiceCountdownState): Color {
     return when (state) {
         ServiceCountdownState.RUNNING -> Color(0xFFFF9500)
-        ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> Color(0xFF4A90E2)
+        ServiceCountdownState.OVERTIME -> Color(0xFF4A90E2)
         ServiceCountdownState.ENDED -> Color.Gray
     }
 }
@@ -71,7 +71,7 @@ private fun countdownActionColor(state: ServiceCountdownState): Color {
 private fun countdownActionTextRes(state: ServiceCountdownState): Int {
     return when (state) {
         ServiceCountdownState.RUNNING -> R.string.service_countdown_action_end_early
-        ServiceCountdownState.COMPLETED, ServiceCountdownState.OVERTIME -> R.string.service_countdown_action_end
+        ServiceCountdownState.OVERTIME -> R.string.service_countdown_action_end
         ServiceCountdownState.ENDED -> R.string.service_countdown_action_ended
     }
 }

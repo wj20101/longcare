@@ -120,6 +120,8 @@ android {
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        // App 的 Robolectric 回归共享 JVM；完整集合已超过默认的 512 MiB 堆预算。
+        unitTests.all { it.maxHeapSize = "1g" }
     }
 
     // Run the same vendor protobuf contract on the JVM and Android; never package it in the app.
@@ -273,6 +275,8 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    // Offline SDK-boundary tests construct AMap values; the feature keeps its SDK dependency private.
+    androidTestImplementation(libs.amap.location)
 
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

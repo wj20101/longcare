@@ -6,7 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Source guards for the process-bound, non-persistent location reporting contract. */
+/** 防止恢复服务时重新引入坐标补传队列或后台调度框架。 */
 class LocationArchitectureRegressionTest {
     private val repositoryRoot = File("src/main/kotlin").canonicalFile
         .resolve("../../../..")
@@ -43,29 +43,21 @@ class LocationArchitectureRegressionTest {
             "feature/location/src/main/kotlin/com/ytone/longcare/features/location/service/LocationTrackingService.kt",
         )
         assertFalse(service.contains("orderRepository"))
-        assertTrue(service.contains("reportingManager.sessionFor(owner, it)"))
+        assertTrue(service.contains("reportingManager.sessionFor(owner, orderId)"))
         assertTrue(service.contains("const val EXTRA_ORDER_ID"))
     }
 
     @Test
-    fun `continuous locations keep only latest pending sample and do not replay`() {
-        val sampleStore = source(
-            "feature/location/src/main/kotlin/com/ytone/longcare/features/location/manager/LocationSampleStore.kt",
-        )
-
-        assertTrue(sampleStore.contains("replay = 0"))
-        assertTrue(sampleStore.contains("extraBufferCapacity = LATEST_SAMPLE_BUFFER_SIZE"))
-        assertTrue(sampleStore.contains("BufferOverflow.DROP_OLDEST"))
+    fun `upload executor never queries order state or controls UI`() {
         val executor = source(
             "feature/location/src/main/kotlin/com/ytone/longcare/features/location/service/ServiceLocationSession.kt",
         )
-        assertTrue(executor.contains("locations.conflate()"))
         assertFalse(executor.contains("getOrderState"))
         assertFalse(executor.contains("Toast."))
     }
 
     @Test
-    fun `foreground service owns collection and is not restarted after process death`() {
+    fun `foreground service owns collection and validates sticky restoration`() {
         val callers = mainKotlinSources()
             .filter { it.readText().contains("continuousAmapLocationManager.startContinuousLocation(") }
             .map { it.relativeTo(repositoryRoot).invariantSeparatorsPath }
@@ -80,12 +72,15 @@ class LocationArchitectureRegressionTest {
             ),
             callers,
         )
-        assertTrue(service.contains("return START_NOT_STICKY"))
+        assertTrue(service.contains("return START_STICKY"))
+        assertTrue(service.contains("restoreFromStore()"))
+        assertTrue(service.contains("session.awaitReady()"))
         val manifest = File(
             repositoryRoot,
             "feature/location/src/main/AndroidManifest.xml",
         ).readText()
-        assertTrue(manifest.contains("android:stopWithTask=\"true\""))
+        assertTrue(manifest.contains("android:stopWithTask=\"false\""))
+        assertTrue(service.contains("override fun onTaskRemoved"))
     }
 
     @Test
@@ -95,8 +90,7 @@ class LocationArchitectureRegressionTest {
         )
 
         assertTrue(manager.contains("SessionState.LoggedOut"))
-        assertTrue(manager.contains("locationReportingManager.stopReporting()"))
-        assertTrue(manager.contains("if (!hasActiveSession()) return"))
+        assertTrue(manager.contains("locationReportingManager.setAccount(null)"))
     }
 
     @Test

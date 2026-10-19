@@ -51,6 +51,8 @@ class NfcWorkflowViewModel @Inject constructor(
 
     private val orderDelegate = NfcOrderWorkflowDelegate(
         serviceOrderLifecycle = serviceOrderLifecycle,
+        locationFacade = locationFacade,
+        textResolver = textResolver,
         orderRepository = orderRepository,
         unifiedOrderRepository = unifiedOrderRepository,
         imageRepository = imageRepository,
@@ -61,6 +63,7 @@ class NfcWorkflowViewModel @Inject constructor(
 
     private val locationDelegate = NfcLocationDelegate(
         locationFacade = locationFacade,
+        textResolver = textResolver,
     )
 
     private val _scanMode = MutableStateFlow(selectScanMode(nfcDeviceCapabilities.isNfcSupported()))
@@ -76,6 +79,8 @@ class NfcWorkflowViewModel @Inject constructor(
     val readerUiState: StateFlow<ReaderUiState> = _readerUiState.asStateFlow()
 
     private val scanDelegate = NfcScanWorkflowDelegate(
+        locationFacade = locationFacade,
+        acquireLocation = locationDelegate::acquireLocation,
         appEventBus = appEventBus,
         unifiedOrderRepository = unifiedOrderRepository,
         orderRepository = orderRepository,
@@ -89,47 +94,23 @@ class NfcWorkflowViewModel @Inject constructor(
     )
     private val r65cSessionCollector = R65cWorkflowHidSessionCollector()
     private var r65cCompletionJob: kotlinx.coroutines.Job? = null
+    private var orderActionJob: kotlinx.coroutines.Job? = null
+    private var activeOrder: OrderKey? = null
 
     private fun launchOrderDelegateAction(action: suspend NfcOrderWorkflowDelegate.() -> Unit) {
-        viewModelScope.launch { orderDelegate.action() }
+        if (orderActionJob?.isActive == true) return
+        orderActionJob = viewModelScope.launch { orderDelegate.action() }
     }
 
-    fun startOrder(
-        orderKey: OrderKey,
-        nfcDeviceId: String,
-        longitude: String = "",
-        latitude: String = ""
-    ) = launchOrderDelegateAction {
-        startOrder(orderKey, nfcDeviceId, longitude, latitude)
+    fun confirmEndOrder(params: EndOrderParams, request: suspend () -> LocationRequestResult = locationDelegate::acquireLocation) {
+        if (params.orderKey != activeOrder) return
+        launchOrderDelegateAction { confirmEndOrder(params, request) }
     }
 
-    fun endOrder(
-        orderKey: OrderKey,
-        nfcDeviceId: String,
-        projectIdList: List<Int>,
-        beginImgList: List<String>,
-        endImageList: List<String>,
-        centerImgList: List<String> = emptyList(),
-        longitude: String = "",
-        latitude: String = "",
-        endType: Int = 1
-    ) = launchOrderDelegateAction {
-        endOrder(
-            orderKey = orderKey,
-            nfcDeviceId = nfcDeviceId,
-            projectIdList = projectIdList,
-            beginImgList = beginImgList,
-            endImageList = endImageList,
-            centerImgList = centerImgList,
-            longitude = longitude,
-            latitude = latitude,
-            endType = endType
-        )
+    fun cancelEndOrder() {
+        orderActionJob?.cancel()
+        orderDelegate.cancelEndOrder()
     }
-
-    fun confirmEndOrder(params: EndOrderParams) = launchOrderDelegateAction { confirmEndOrder(params) }
-
-    fun cancelEndOrder() = orderDelegate.cancelEndOrder()
 
     fun resetState() = orderDelegate.resetState()
 
@@ -146,23 +127,47 @@ class NfcWorkflowViewModel @Inject constructor(
         _readerUiState.value = initialExternalReaderUiState(externalRfidReaderManager.isReaderReady())
     }
 
-    suspend fun getCurrentLocationCoordinates(): Pair<String, String> = locationDelegate.getCurrentLocationCoordinates()
-
-    fun notifyLocationPermissionGranted() = locationDelegate.notifyLocationPermissionGranted()
+    suspend fun acquireLocation(): LocationRequestResult = locationDelegate.acquireLocation()
 
     fun observeScanEvents(
         orderKey: OrderKey,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
         onLocationRequest: suspend () -> LocationRequestResult,
-    ) = scanDelegate.observeScanEvents(orderKey, signInMode, endOderInfo, onLocationRequest)
+    ) {
+        orderActionJob?.cancel()
+        activeOrder = orderKey
+        scanDelegate.observeScanEvents(orderKey, signInMode, endOderInfo, onLocationRequest)
+    }
 
-    fun resumePendingPermissionScan(onLocationRequest: suspend () -> LocationRequestResult) =
-        scanDelegate.resumePendingPermissionScan(onLocationRequest)
+    fun resumePendingPermissionScan(onLocationRequest: suspend () -> LocationRequestResult): Boolean {
+        if (activeOrder == null) return false
+        if (orderDelegate.hasPendingEndLocation) {
+            launchOrderDelegateAction { retryEndLocation(onLocationRequest) }
+            return true
+        }
+        return scanDelegate.resumePendingPermissionScan(onLocationRequest)
+    }
 
-    fun clearPendingPermissionScan() = scanDelegate.clearPendingPermissionScan()
+    fun clearPendingPermissionScan() {
+        scanDelegate.clearPendingPermissionScan()
+        orderDelegate.locationPermissionDenied()
+    }
 
-    fun confirmLocationActivation(data: PendingNfcData) = scanDelegate.confirmLocationActivation(data)
+    fun stopScanRequests() {
+        activeOrder = null
+        orderActionJob?.cancel()
+        scanDelegate.clear()
+    }
+
+    fun confirmLocationActivation(data: PendingNfcData, request: suspend () -> LocationRequestResult = locationDelegate::acquireLocation) =
+        scanDelegate.confirmLocationActivation(data, request)
+
+    fun retryLocation(request: suspend () -> LocationRequestResult) {
+        if (activeOrder == null) return
+        if (orderDelegate.hasPendingEndLocation) launchOrderDelegateAction { retryEndLocation(request) }
+        else if (!scanDelegate.retryLocation(request)) resetState()
+    }
 
     fun cancelLocationActivation() = scanDelegate.cancelLocationActivation()
 
@@ -207,7 +212,7 @@ class NfcWorkflowViewModel @Inject constructor(
     override fun onCleared() {
         cancelR65cCompletionJob()
         r65cSessionCollector.reset()
-        scanDelegate.clear()
+        stopScanRequests()
     }
 }
 

@@ -158,6 +158,7 @@ private fun SearchUserLatentParamModel.toDto(): SearchUserLatentRequestDto =
         pageIndex = pageIndex,
         userName = userName,
         checkState = checkState,
+        isDisability = isDisability,
     )
 
 private fun CheckTokenDto.toModel(): CheckTokenModel =
@@ -178,6 +179,8 @@ private fun UserLatentListDto.toModel(): UserLatentListModel =
         checkState = checkState,
         liveAddress = liveAddress.orEmpty(),
         identityCardNumber = identityCardNumber.orEmpty(),
+        isDisability = isDisability,
+        remarks = remarks.orEmpty(),
     )
 
 private fun ToDoCountDto.toModel(): ToDoNumResultModel = ToDoNumResultModel(num = num)
@@ -207,6 +210,8 @@ private fun UserLatentDetailDto.toModel(): UserLatentDetailModel =
         pgResult = pgResult,
         pgScore = pgScore,
         pgUrl = pgUrl,
+        isDisability = isDisability,
+        remarks = remarks,
     )
 
 private const val GET_CHECK_TOKEN_LOG_TAG = "GetCheckToken"

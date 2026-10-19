@@ -60,10 +60,12 @@ internal fun HomeScreenPagerContent(
                             onNavigateToServiceRecordsList = actions.onNavigateToServiceRecordsList,
                             onNavigateToNursingExecution = actions.onNavigateToNursingExecution,
                             onNavigateToService = actions.onNavigateToService,
-                            onNavigateToServiceCountdown = actions.onNavigateToServiceCountdown
+                            onNavigateToServiceCountdown = actions.onNavigateToServiceCountdown,
+                            onOpenDevicePage = actions.onOpenDevicePage,
                         ),
                         homeSharedViewModel = homeSharedViewModel,
-                        todayOrderViewModel = todayOrderViewModel
+                        todayOrderViewModel = todayOrderViewModel,
+                        isHomeTabSelected = pagerState.currentPage == 0,
                     )
 
                     1 -> NursingScreen(

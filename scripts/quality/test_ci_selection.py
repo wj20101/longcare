@@ -69,10 +69,12 @@ class SelectionTest(unittest.TestCase):
                                                  cwd=self.root, env=options, text=True)
                 self.assertIn("run_build=true", output)
                 self.assertIn("run_instrumentation=true", output)
+                self.assertIn("AmapContinuousRecoveryTest", output)
 
     def test_webview_and_navigation_have_relevant_tests(self):
         result = self.select("app/src/main/kotlin/com/ytone/longcare/platform/webview/NativeBridge.kt")
         self.assertIn("NativeWebViewCloseBridgeTest", result["smoke_test_classes"])
+        self.assertIn("WebViewPresentationTest", result["smoke_test_classes"])
         result = self.select("app/src/main/kotlin/com/ytone/longcare/navigation/AppNavigator.kt")
         self.assertIn("Navigation3StateTest", result["smoke_test_classes"])
 
@@ -80,6 +82,61 @@ class SelectionTest(unittest.TestCase):
         result = self.select("app/src/androidTest/kotlin/com/ytone/longcare/features/sales/SalesEvaluationLiveResultTest.kt")
         self.assertEqual("true", result["run_instrumentation"])
         self.assertNotIn("SalesEvaluationLiveResultTest", result["smoke_test_classes"])
+
+    def test_countdown_changes_include_permission_flow_regression(self):
+        result = self.select("app/src/main/kotlin/com/ytone/longcare/features/countdown/manager/CountdownNotificationManager.kt")
+        self.assertIn("ServiceCountdownPermissionFlowTest", result["smoke_test_classes"])
+        self.assertIn("ServiceCountdownBackgroundInitializationTest", result["smoke_test_classes"])
+        self.assertIn("BackgroundSettingsDialogTest", result["smoke_test_classes"])
+        result = self.select("app/src/androidTest/kotlin/com/ytone/longcare/features/servicecountdown/ui/ServiceCountdownPermissionFlowTest.kt")
+        self.assertIn("ServiceCountdownPermissionFlowTest", result["smoke_test_classes"])
+
+    def test_home_changes_include_device_card_and_polling_regression(self):
+        for path in (
+            "feature/home/src/main/kotlin/com/ytone/longcare/features/home/vm/HomeDeviceViewModel.kt",
+            "app/src/main/kotlin/com/ytone/longcare/features/maindashboard/ui/MainDashboardScreen.kt",
+            "app/src/main/kotlin/com/ytone/longcare/features/home/ui/HomeScreenContentSections.kt",
+            "app/src/androidTest/kotlin/com/ytone/longcare/features/maindashboard/ui/HomeDeviceStatusCardTest.kt",
+            "app/src/main/res/values/home_device.xml",
+            "app/src/main/res/values-night/home_device.xml",
+            "app/src/main/res/drawable/home_ic_zhichi_device.xml",
+            "app/src/main/res/drawable-xxxhdpi/home_ic_zhichi_device.png",
+        ):
+            with self.subTest(path=path):
+                result = self.select(path)
+                self.assertEqual("true", result["run_instrumentation"])
+                self.assertIn("HomeDeviceStatusCardTest", result["smoke_test_classes"])
+
+    def test_background_settings_changes_include_dialog_regression(self):
+        for path in (
+            "core/common/src/main/kotlin/com/ytone/longcare/common/utils/DeviceCompatibilityHelper.kt",
+            "core/ui/src/main/kotlin/com/ytone/longcare/core/ui/permission/BackgroundSettingsDialog.kt",
+            "app/src/main/kotlin/com/ytone/longcare/features/selectservice/ui/SelectServiceScreen.kt",
+            "app/src/androidTest/kotlin/com/ytone/longcare/core/ui/permission/BackgroundSettingsDialogTest.kt",
+        ):
+            with self.subTest(path=path):
+                result = self.select(path)
+                self.assertIn("BackgroundSettingsDialogTest", result["smoke_test_classes"])
+
+    def test_location_permission_changes_include_denial_regression(self):
+        for path in (
+            "core/ui/src/main/kotlin/com/ytone/longcare/common/utils/UnifiedPermissionHelper.kt",
+            "app/src/androidTest/kotlin/com/ytone/longcare/platform/location/LocationPermissionUiTest.kt",
+        ):
+            with self.subTest(path=path):
+                result = self.select(path)
+                self.assertIn("LocationPermissionUiTest", result["smoke_test_classes"])
+
+    def test_location_sampling_changes_include_offline_sdk_recovery(self):
+        for path in (
+            "feature/location/src/main/kotlin/com/ytone/longcare/features/location/manager/ContinuousAmapLocationManager.kt",
+            "feature/location/src/main/kotlin/com/ytone/longcare/features/location/tracker/LocationEventTracker.kt",
+            "app/src/androidTest/kotlin/com/ytone/longcare/platform/location/AmapContinuousRecoveryTest.kt",
+        ):
+            with self.subTest(path=path):
+                result = self.select(path)
+                self.assertEqual("true", result["run_instrumentation"])
+                self.assertIn("AmapContinuousRecoveryTest", result["smoke_test_classes"])
 
 
 if __name__ == "__main__":

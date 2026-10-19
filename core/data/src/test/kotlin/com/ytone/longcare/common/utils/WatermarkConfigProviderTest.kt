@@ -25,7 +25,7 @@ class WatermarkConfigProviderTest {
         coEvery { api.getSystemConfig() } returns ApiResult.Success(SystemConfigModel(syLogoImg = "https://example.com/logo.png"))
         val provider: WatermarkConfigProvider = SystemConfigManager(
             RuntimeEnvironment.getApplication(), backgroundScope,
-            Moshi.Builder().add(KotlinJsonAdapterFactory()).build(), api,
+            Moshi.Builder().add(KotlinJsonAdapterFactory()).build(), api, com.ytone.longcare.data.repository.UserSessionTracker(),
         )
         assertEquals("https://example.com/logo.png", provider.getSyLogoImg())
         assertEquals("https://example.com/logo.png", provider.getSyLogoImg())
@@ -34,19 +34,19 @@ class WatermarkConfigProviderTest {
 
     @Test fun `provider keeps empty logo as empty`() = runTest {
         coEvery { api.getSystemConfig() } returns ApiResult.Success(SystemConfigModel())
-        val provider: WatermarkConfigProvider = SystemConfigManager(RuntimeEnvironment.getApplication(), backgroundScope, Moshi.Builder().add(KotlinJsonAdapterFactory()).build(), api)
+        val provider: WatermarkConfigProvider = SystemConfigManager(RuntimeEnvironment.getApplication(), backgroundScope, Moshi.Builder().add(KotlinJsonAdapterFactory()).build(), api, com.ytone.longcare.data.repository.UserSessionTracker())
         assertEquals("", provider.getSyLogoImg())
     }
 
     @Test fun `network exception falls back to empty logo`() = runTest {
         coEvery { api.getSystemConfig() } throws java.io.IOException("offline")
-        val provider: WatermarkConfigProvider = SystemConfigManager(RuntimeEnvironment.getApplication(), backgroundScope, Moshi.Builder().add(KotlinJsonAdapterFactory()).build(), api)
+        val provider: WatermarkConfigProvider = SystemConfigManager(RuntimeEnvironment.getApplication(), backgroundScope, Moshi.Builder().add(KotlinJsonAdapterFactory()).build(), api, com.ytone.longcare.data.repository.UserSessionTracker())
         assertEquals("", provider.getSyLogoImg())
     }
 
     @Test fun `cancellation is not converted to empty logo`() = runTest {
         coEvery { api.getSystemConfig() } throws CancellationException("cancel")
-        val provider: WatermarkConfigProvider = SystemConfigManager(RuntimeEnvironment.getApplication(), backgroundScope, Moshi.Builder().add(KotlinJsonAdapterFactory()).build(), api)
+        val provider: WatermarkConfigProvider = SystemConfigManager(RuntimeEnvironment.getApplication(), backgroundScope, Moshi.Builder().add(KotlinJsonAdapterFactory()).build(), api, com.ytone.longcare.data.repository.UserSessionTracker())
         try {
             provider.getSyLogoImg()
             fail("Cancellation expected")

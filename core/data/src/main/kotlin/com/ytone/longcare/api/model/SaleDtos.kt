@@ -57,6 +57,7 @@ data class SearchUserLatentRequestDto(
     val pageIndex: Int = 1,
     val userName: String? = "",
     val checkState: Int = -1,
+    val isDisability: Int = -1,
 )
 
 @JsonClass(generateAdapter = true)
@@ -66,6 +67,8 @@ data class UserLatentListDto(
     val checkState: Int = 0,
     val liveAddress: String? = null,
     val identityCardNumber: String? = null,
+    val isDisability: Int = 0,
+    val remarks: String? = null,
 )
 
 @JsonClass(generateAdapter = true)
@@ -102,4 +105,6 @@ data class UserLatentDetailDto(
     val pgResult: String? = null,
     val pgScore: Int = 0,
     val pgUrl: String? = null,
+    val isDisability: Int = 0,
+    val remarks: String? = null,
 )

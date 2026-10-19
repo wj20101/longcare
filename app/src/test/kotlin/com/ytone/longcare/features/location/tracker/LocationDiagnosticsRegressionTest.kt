@@ -33,7 +33,7 @@ class LocationDiagnosticsRegressionTest {
     @Test
     fun `routine lifecycle event must not be reported as a caught exception`() {
         LocationEventTracker.trackEvent(
-            eventType = LocationEventTracker.EventType.REPORTING_START,
+            eventType = LocationEventTracker.EventType.LOCATION_SAMPLE_RECORDED,
             extras = mapOf("orderId" to 42L),
         )
 

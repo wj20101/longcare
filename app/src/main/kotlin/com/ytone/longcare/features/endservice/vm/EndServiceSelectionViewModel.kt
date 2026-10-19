@@ -2,6 +2,7 @@ package com.ytone.longcare.features.endservice.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceProjectM
@@ -133,7 +134,7 @@ class EndServiceSelectionViewModel @Inject constructor(
     }
 
     private companion object {
-        const val END_SERVICE_DIAGNOSTIC_CATEGORY = "end_service"
+        val END_SERVICE_DIAGNOSTIC_CATEGORY = DiagnosticCategory.END_SERVICE
     }
 }
 

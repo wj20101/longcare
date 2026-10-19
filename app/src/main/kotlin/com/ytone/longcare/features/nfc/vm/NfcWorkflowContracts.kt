@@ -3,6 +3,8 @@ package com.ytone.longcare.features.nfc.vm
 import com.ytone.longcare.R
 import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.LocationResult
+import com.ytone.longcare.domain.location.LocationFailure
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.SignInMode
 import com.ytone.longcare.core.ui.R as CoreUiR
@@ -28,8 +30,6 @@ data class PendingNfcData(
     val signInMode: SignInMode,
     val endOderInfo: EndOderInfo?,
     val tagId: String,
-    val longitude: String,
-    val latitude: String,
 )
 
 data class PendingNfcScan(
@@ -74,16 +74,16 @@ data class EndOrderParams(
     val beginImgList: List<String>,
     val endImageList: List<String>,
     val centerImgList: List<String>,
-    val longitude: String,
-    val latitude: String,
     val endType: Int
 )
 
 sealed class LocationRequestResult {
-    data class Coordinates(val longitude: String, val latitude: String) : LocationRequestResult()
+    data class Coordinates(val location: LocationResult) : LocationRequestResult()
     data class Error(
         val message: String,
         val buglyReported: Boolean = false,
+        val reason: LocationFailure? = null,
+        val location: LocationResult? = null,
     ) : LocationRequestResult()
     data object PermissionRequired : LocationRequestResult()
 }
@@ -92,10 +92,12 @@ internal data class NfcUserMessages(
     val networkError: String,
     val orderDetailLoadFailed: String,
     val bindLocationFailed: String,
+    val locationUnavailable: String,
 )
 
 internal fun ResourceTextResolver.nfcUserMessages(): NfcUserMessages = NfcUserMessages(
     networkError = text(CoreUiR.string.common_network_error_retry),
     orderDetailLoadFailed = text(R.string.nfc_order_detail_load_failed),
     bindLocationFailed = text(R.string.nfc_bind_location_failed),
+    locationUnavailable = text(R.string.nfc_location_unavailable),
 )

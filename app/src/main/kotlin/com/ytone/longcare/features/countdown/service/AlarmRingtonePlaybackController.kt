@@ -20,6 +20,7 @@ internal class AlarmRingtonePlaybackController(
         private set
 
     fun start(): Boolean {
+        if (isPlaying) return true
         return try {
             logI("AlarmRingtoneService: 准备启动响铃和震动")
             initializeMediaPlayer()
@@ -29,6 +30,7 @@ internal class AlarmRingtonePlaybackController(
             true
         } catch (e: Exception) {
             logE("AlarmRingtoneService: 启动闹铃失败 - ${e.message}")
+            stop()
             false
         }
     }
@@ -39,10 +41,14 @@ internal class AlarmRingtonePlaybackController(
                 if (it.isPlaying) {
                     it.stop()
                 }
-                it.release()
             } catch (e: Exception) {
                 logE("AlarmRingtoneService: 停止MediaPlayer失败 - ${e.message}")
             } finally {
+                try {
+                    it.release()
+                } catch (e: Exception) {
+                    logE("AlarmRingtoneService: 释放MediaPlayer失败 - ${e.message}")
+                }
                 mediaPlayer = null
             }
         }
@@ -64,7 +70,10 @@ internal class AlarmRingtonePlaybackController(
             val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
-            mediaPlayer = MediaPlayer().apply {
+            // 先保存引用，prepare / start 中途失败时也能统一释放。
+            val player = MediaPlayer()
+            mediaPlayer = player
+            player.apply {
                 setDataSource(context, alarmUri)
                 setAudioAttributes(
                     AudioAttributes.Builder()

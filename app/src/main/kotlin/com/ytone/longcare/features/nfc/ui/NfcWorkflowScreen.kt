@@ -48,9 +48,8 @@ fun NfcWorkflowScreen(
     val onBack = buildNfcWorkflowBackAction(signInMode, signInState, actions)
     CustomBackHandler(customAction = onBack)
 
-    val locationHandlers = rememberNfcWorkflowLocationHandlers(
+    val requestLocation = rememberNfcLocationRequest(
         context = context,
-        orderKey = orderKey,
         nfcViewModel = nfcViewModel,
     )
 
@@ -61,8 +60,7 @@ fun NfcWorkflowScreen(
         endOderInfo = endOderInfo,
         scanMode = scanMode,
         nfcViewModel = nfcViewModel,
-        onLocationRequest = { locationHandlers.getCurrentLocationCoordinates() },
-        onEntryLocationPrepare = locationHandlers.prepareLocationOnEntry
+        onLocationRequest = requestLocation,
     )
 
     val titleRes = resolveNfcWorkflowTitleRes(signInMode)
@@ -86,7 +84,6 @@ fun NfcWorkflowScreen(
                     scanMode = scanMode,
                     readerUiState = readerUiState,
                     loadingReason = loadingReason,
-                    isLocationPreparing = locationHandlers.isLocationPreparing,
                     onSuccessClick = singleClick {
                         handleNfcSuccessAction(
                             signInMode = signInMode,
@@ -98,7 +95,7 @@ fun NfcWorkflowScreen(
                         )
                     },
                     onRetryClick = {
-                        nfcViewModel.resetState()
+                        nfcViewModel.retryLocation(requestLocation)
                     }
                 )
             },
@@ -121,9 +118,9 @@ fun NfcWorkflowScreen(
         NfcWorkflowDialogs(
             pendingNfcData = pendingNfcData,
             uiState = uiState,
-            onConfirmLocationActivation = nfcViewModel::confirmLocationActivation,
+            onConfirmLocationActivation = { nfcViewModel.confirmLocationActivation(it, requestLocation) },
             onCancelLocationActivation = nfcViewModel::cancelLocationActivation,
-            onConfirmEndOrder = nfcViewModel::confirmEndOrder,
+            onConfirmEndOrder = { nfcViewModel.confirmEndOrder(it, requestLocation) },
             onCancelEndOrder = nfcViewModel::cancelEndOrder
         )
     }

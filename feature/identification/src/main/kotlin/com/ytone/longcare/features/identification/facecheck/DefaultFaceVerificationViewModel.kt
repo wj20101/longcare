@@ -3,6 +3,7 @@ package com.ytone.longcare.features.identification.facecheck
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.features.identification.domain.CheckFaceFailure
 import com.ytone.longcare.features.identification.domain.CheckFaceResult
@@ -79,7 +80,7 @@ class DefaultFaceVerificationViewModel @Inject constructor(
                 throw error
             } catch (error: Exception) {
                 DiagnosticEventTracker.trackError(
-                    category = "default_face_verification",
+                    category = DiagnosticCategory.FACE_VERIFICATION,
                     event = "face_verification_failure",
                     description = "默认人脸验证失败",
                     throwable = error,

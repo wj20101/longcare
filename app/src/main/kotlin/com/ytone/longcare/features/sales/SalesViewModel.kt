@@ -6,11 +6,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.R
+import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.common.image.UnifiedImagePipeline
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.SystemConfigManager
 import com.ytone.longcare.domain.location.LocationFacade
+import com.ytone.longcare.domain.location.LocationAcquisition
+import com.ytone.longcare.common.utils.messageRes
 import com.ytone.longcare.domain.sale.SaleRepository
+import com.ytone.longcare.domain.cos.repository.CosRepository
 import com.ytone.longcare.integration.qlz.QlzSdkEvent
 import com.ytone.longcare.features.photoupload.upload.PhotoCloudUploader
 import com.ytone.longcare.model.AddUserLatentParamModel
@@ -41,13 +45,15 @@ import javax.inject.Inject
 class SalesViewModel @Inject constructor(
     private val saleRepository: SaleRepository,
     private val locationFacade: LocationFacade,
-    private val photoCloudUploader: PhotoCloudUploader,
+    photoCloudUploader: PhotoCloudUploader,
     private val imagePipeline: UnifiedImagePipeline,
     private val evaluationDeviceGateway: SalesEvaluationDeviceGateway,
     private val systemConfigManager: SystemConfigManager,
     private val textResolver: ResourceTextResolver,
     private val savedStateHandle: SavedStateHandle,
+    private val cosRepository: CosRepository,
 ) : ViewModel() {
+    private val submitCustomerUseCase = SubmitCustomerUseCase(saleRepository, photoCloudUploader)
     private val _uiState = MutableStateFlow(SalesUiState(
         selectedCustomerId = savedStateHandle[EVALUATION_CUSTOMER_KEY] ?: 0,
         evaluationRecordId = savedStateHandle[EVALUATION_RECORD_KEY],
@@ -58,6 +64,8 @@ class SalesViewModel @Inject constructor(
     private var customerSearchRequestId = 0L
     private var customerDetailJob: Job? = null
     private var customerDetailRequestId = 0L
+    private var recentCustomersJob: Job? = null
+    private val customerPhotoJobs = mutableMapOf<String, Job>()
     private var toDoCountJob: Job? = null
     private var toDoCountRequestId = 0L
     private var toDoListJob: Job? = null
@@ -73,16 +81,33 @@ class SalesViewModel @Inject constructor(
     }
 
     fun loadRecentCustomers() {
-        execute(
-            operation = text(R.string.sales_loading_recent_customers),
-            request = saleRepository::getRecentUserLatentList,
-            onSuccess = { customers ->
-                _uiState.value =
-                    _uiState.value.copy(
-                        recentCustomers = customers,
-                    )
-            },
+        if (recentCustomersJob?.isActive == true) return
+        _uiState.value = _uiState.value.copy(
+            isRecentCustomersLoading = true,
+            recentCustomersErrorMessage = null,
         )
+        recentCustomersJob = viewModelScope.launch {
+            try {
+                when (val result = saleRepository.getRecentUserLatentList()) {
+                    is ApiResult.Success -> _uiState.value = _uiState.value.copy(
+                        recentCustomers = result.data,
+                        hasLoadedRecentCustomers = true,
+                    )
+                    is ApiResult.Failure -> _uiState.value = _uiState.value.copy(
+                        recentCustomersErrorMessage = result.message.ifBlank { text(R.string.sales_error_network) },
+                    )
+                    is ApiResult.Exception -> _uiState.value = _uiState.value.copy(
+                        recentCustomersErrorMessage = text(R.string.sales_error_network),
+                    )
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(recentCustomersErrorMessage = text(R.string.sales_error_network))
+            } finally {
+                _uiState.value = _uiState.value.copy(isRecentCustomersLoading = false)
+            }
+        }
     }
 
     fun loadToDoCount() {
@@ -381,11 +406,14 @@ class SalesViewModel @Inject constructor(
         savedStateHandle[EVALUATION_CUSTOMER_KEY] = customerId
         val requestId = ++customerDetailRequestId
         customerDetailJob?.cancel()
+        customerPhotoJobs.values.forEach(Job::cancel)
+        customerPhotoJobs.clear()
         if (customerId <= 0) {
             _uiState.value =
                 _uiState.value.copy(
                     selectedCustomerId = customerId,
                     selectedCustomer = null,
+                    customerPhotos = emptyList(),
                     isCustomerDetailLoading = false,
                     customerDetailErrorMessage =
                         text(R.string.sales_error_customer_invalid_return),
@@ -396,6 +424,7 @@ class SalesViewModel @Inject constructor(
             _uiState.value.copy(
                 selectedCustomerId = customerId,
                 selectedCustomer = null,
+                customerPhotos = emptyList(),
                 isCustomerDetailLoading = true,
                 customerDetailErrorMessage = null,
             )
@@ -409,10 +438,13 @@ class SalesViewModel @Inject constructor(
                         is ApiResult.Success -> {
                             if (requestId == customerDetailRequestId) {
                                 val detail = result.data
+                                val photoKeys = listOf(detail.img1, detail.img2, detail.img3)
+                                    .filterNotNull().filter(String::isNotBlank).distinct()
                                 _uiState.value =
                                     if (detail.id == customerId) {
                                         _uiState.value.copy(
                                             selectedCustomer = detail,
+                                            customerPhotos = photoKeys.map(::SalesCustomerPhotoUiState),
                                             customerDetailErrorMessage = null,
                                         )
                                     } else {
@@ -424,6 +456,9 @@ class SalesViewModel @Inject constructor(
                                                 ),
                                         )
                                     }
+                                if (detail.id == customerId) {
+                                    photoKeys.forEach { key -> loadCustomerPhoto(customerId, requestId, key) }
+                                }
                             }
                         }
 
@@ -474,7 +509,38 @@ class SalesViewModel @Inject constructor(
         loadCustomerDetail(_uiState.value.selectedCustomerId)
     }
 
+    fun retryCustomerPhoto(key: String) {
+        val customerId = _uiState.value.selectedCustomer?.id ?: return
+        if (_uiState.value.customerPhotos.none { it.key == key }) return
+        loadCustomerPhoto(customerId, customerDetailRequestId, key)
+    }
+
+    private fun loadCustomerPhoto(customerId: Int, requestId: Long, key: String) {
+        customerPhotoJobs[key]?.cancel()
+        fun update(photo: SalesCustomerPhotoUiState) {
+            if (requestId != customerDetailRequestId || _uiState.value.selectedCustomer?.id != customerId) return
+            _uiState.value = _uiState.value.copy(
+                customerPhotos = _uiState.value.customerPhotos.map { if (it.key == key) photo else it },
+            )
+        }
+        update(SalesCustomerPhotoUiState(key))
+        customerPhotoJobs[key] = viewModelScope.launch {
+            try {
+                val url = cosRepository.getFileUrl(key, folderType = CosConstants.DEFAULT_SALES_TYPE)
+                check(url.isNotBlank())
+                update(SalesCustomerPhotoUiState(key, url = url, isLoading = false))
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                update(SalesCustomerPhotoUiState(key, isLoading = false,
+                    errorMessage = text(R.string.sales_customer_photo_load_failed)))
+            }
+        }
+    }
+
     fun requestCurrentLocation() {
+        if (_uiState.value.isLoading) return
+        _uiState.value = _uiState.value.copy(isLoading = true, currentLocation = null)
         viewModelScope.launch {
             _uiState.value =
                 _uiState.value.copy(
@@ -483,13 +549,13 @@ class SalesViewModel @Inject constructor(
                     errorMessage = null,
                 )
             try {
-                val location = locationFacade.getFreshLocation()
-                if (location == null) {
-                    showError(text(R.string.sales_error_location_service))
+                val result = locationFacade.acquireCurrentLocation()
+                if (result is LocationAcquisition.Failure) {
+                    showError(text(result.reason.messageRes()))
                 } else {
                     _uiState.value =
                         _uiState.value.copy(
-                            currentLocation = location,
+                            currentLocation = (result as LocationAcquisition.Success).location,
                             noticeMessage = text(R.string.sales_notice_location_success),
                         )
                 }
@@ -505,11 +571,6 @@ class SalesViewModel @Inject constructor(
                     )
             }
         }
-    }
-
-    fun onLocationPermissionGranted() {
-        locationFacade.notifyPermissionGranted()
-        requestCurrentLocation()
     }
 
     fun submitCustomer(
@@ -536,20 +597,21 @@ class SalesViewModel @Inject constructor(
                     submissionResult = null,
                 )
             try {
-                val uploadedKeys =
-                    uploadPhotoKeys(photoUris.take(MAX_SALES_CUSTOMER_PHOTOS))
-                _uiState.value =
-                    _uiState.value.copy(
-                        operation = text(R.string.sales_loading_submit_customer)
-                    )
                 when (
-                    val result =
-                        saleRepository.addUserLatent(
-                            draft.toRequest(
-                                location = location,
-                                photoKeys = uploadedKeys,
+                    val result = submitCustomerUseCase(
+                        draft, photoUris, location,
+                        onPhotoProgress = { index, count ->
+                            _uiState.value = _uiState.value.copy(
+                                operation = text(R.string.sales_loading_photo_progress, index, count),
                             )
-                        )
+                        },
+                        onSubmitting = { currentLocation ->
+                            _uiState.value = _uiState.value.copy(
+                                currentLocation = currentLocation,
+                                operation = text(R.string.sales_loading_submit_customer),
+                            )
+                        },
+                    )
                 ) {
                     is ApiResult.Success -> onCustomerSubmitted(result.data)
                     is ApiResult.Failure -> showError(result.message)
@@ -558,8 +620,8 @@ class SalesViewModel @Inject constructor(
                 }
             } catch (cancellation: CancellationException) {
                 throw cancellation
-            } catch (userFacing: SalesUserFacingException) {
-                showError(userFacing.message.orEmpty())
+            } catch (photoError: SalesPhotoUploadException) {
+                showError(text(R.string.sales_error_photo_upload, photoError.index))
             } catch (_: Throwable) {
                 showError(text(R.string.sales_error_submit))
             } finally {
@@ -754,37 +816,6 @@ class SalesViewModel @Inject constructor(
         }
     }
 
-    private suspend fun uploadPhotoKeys(photoUris: List<Uri>): List<String> {
-        if (photoUris.isEmpty()) {
-            return emptyList()
-        }
-        return photoUris.mapIndexed { index, uri ->
-            _uiState.value =
-                _uiState.value.copy(
-                    operation =
-                        text(
-                            R.string.sales_loading_photo_progress,
-                            index + 1,
-                            photoUris.size,
-                        )
-                )
-            val uploadedKey =
-                try {
-                    photoCloudUploader.upload(uri).key
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (_: Throwable) {
-                    null
-                }
-            if (uploadedKey.isNullOrBlank()) {
-                throw SalesUserFacingException(
-                    text(R.string.sales_error_photo_upload, index + 1)
-                )
-            }
-            uploadedKey
-        }
-    }
-
     fun discardManagedPhoto(uri: Uri) {
         // Entry removal must not cancel deletion of files that are no longer used.
         viewModelScope.launch(kotlinx.coroutines.NonCancellable) {
@@ -856,35 +887,6 @@ class SalesViewModel @Inject constructor(
         requestSdkAuthorization()
     }
 
-    private fun <T> execute(
-        operation: String,
-        request: suspend () -> ApiResult<T>,
-        onSuccess: (T) -> Unit,
-    ) {
-        viewModelScope.launch {
-            _uiState.value =
-                _uiState.value.copy(
-                    isLoading = true,
-                    operation = operation,
-                    errorMessage = null,
-                )
-            try {
-                when (val result = request()) {
-                    is ApiResult.Success -> onSuccess(result.data)
-                    is ApiResult.Failure -> showError(result.message)
-                    is ApiResult.Exception ->
-                        showError(text(R.string.sales_error_network))
-                }
-            } finally {
-                _uiState.value =
-                    _uiState.value.copy(
-                        isLoading = false,
-                        operation = "",
-                    )
-            }
-        }
-    }
-
     private fun showError(message: String) {
         _uiState.value =
             _uiState.value.copy(
@@ -916,9 +918,38 @@ class SalesViewModel @Inject constructor(
     }
 }
 
-private class SalesUserFacingException(
-    message: String,
-) : IllegalStateException(message)
+/** Registration orchestration has no dependency on ViewModel state or UI text. */
+internal class SubmitCustomerUseCase(
+    private val repository: SaleRepository,
+    private val uploader: PhotoCloudUploader,
+) {
+    suspend operator fun invoke(
+        draft: SalesCustomerDraft,
+        photoUris: List<Uri>,
+        location: LocationResult?,
+        onPhotoProgress: (Int, Int) -> Unit,
+        onSubmitting: (LocationResult?) -> Unit,
+    ): ApiResult<AddUserLatentResultModel> {
+        val photos = photoUris.take(MAX_SALES_CUSTOMER_PHOTOS)
+        val keys = photos.mapIndexed { index, uri ->
+            onPhotoProgress(index + 1, photos.size)
+            val key = try {
+                uploader.upload(uri, folderType = CosConstants.DEFAULT_SALES_TYPE).key
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                throw SalesPhotoUploadException(index + 1)
+            }
+            if (key.isBlank()) throw SalesPhotoUploadException(index + 1)
+            key
+        }
+        // 登记位置是用户获取后显示的表单数据，不再套用实时签到位置的时效规则。
+        onSubmitting(location)
+        return repository.addUserLatent(draft.toRequest(location, keys))
+    }
+}
+
+internal class SalesPhotoUploadException(val index: Int) : Exception()
 
 data class SalesUiState(
     val isLoading: Boolean = false,
@@ -932,6 +963,9 @@ data class SalesUiState(
     val noticeMessage: String? = null,
     val companyName: String = "",
     val recentCustomers: List<UserLatentListModel> = emptyList(),
+    val isRecentCustomersLoading: Boolean = false,
+    val hasLoadedRecentCustomers: Boolean = false,
+    val recentCustomersErrorMessage: String? = null,
     val toDoCount: Int? = null,
     val toDoCountErrorMessage: String? = null,
     val toDoItems: List<ToDoResultModel> = emptyList(),
@@ -944,6 +978,7 @@ data class SalesUiState(
     val customerLoadMoreErrorMessage: String? = null,
     val selectedCustomerId: Int = 0,
     val selectedCustomer: UserLatentDetailModel? = null,
+    val customerPhotos: List<SalesCustomerPhotoUiState> = emptyList(),
     val customerDetailErrorMessage: String? = null,
     val currentLocation: LocationResult? = null,
     val submissionResult: AddUserLatentResultModel? = null,
@@ -959,6 +994,13 @@ data class SalesUiState(
 
 class SalesSdkLaunchRequest(
     val token: String,
+)
+
+data class SalesCustomerPhotoUiState(
+    val key: String,
+    val url: String? = null,
+    val isLoading: Boolean = true,
+    val errorMessage: String? = null,
 )
 
 @kotlinx.serialization.Serializable

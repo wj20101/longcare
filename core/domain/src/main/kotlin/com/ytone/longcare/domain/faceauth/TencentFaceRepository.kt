@@ -4,6 +4,7 @@ import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.TencentAccessTokenResponse
 import com.ytone.longcare.model.TencentApiTicketResponse
 import com.ytone.longcare.model.TencentFaceIdResponse
+import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 
 /**
  * 腾讯人脸识别Repository接口
@@ -13,13 +14,11 @@ interface TencentFaceRepository {
     /**
      * 获取access_token
      *
-     * @param appId 腾讯云应用ID
-     * @param secret 腾讯云应用密钥
+     * @param config 不含应用密钥的配置；由数据层按需取密钥并兑换
      * @return access_token结果
      */
     suspend fun getAccessToken(
-        appId: String,
-        secret: String
+        config: FaceVerificationConfig,
     ): ApiResult<TencentAccessTokenResponse>
 
     /**
@@ -33,7 +32,8 @@ interface TencentFaceRepository {
     suspend fun getApiTicket(
         appId: String,
         accessToken: String,
-        userId: String
+        userId: String,
+        sessionGeneration: Long,
     ): ApiResult<TencentApiTicketResponse>
 
     /**
@@ -46,7 +46,8 @@ interface TencentFaceRepository {
      */
     suspend fun getSignTicket(
         appId: String,
-        accessToken: String
+        accessToken: String,
+        sessionGeneration: Long,
     ): ApiResult<TencentApiTicketResponse>
 
     /**
@@ -73,6 +74,7 @@ interface TencentFaceRepository {
         sign: String,
         nonce: String,
         sourcePhotoStr: String?,
-        sourcePhotoType: String?
+        sourcePhotoType: String?,
+        sessionGeneration: Long,
     ): ApiResult<TencentFaceIdResponse>
 }

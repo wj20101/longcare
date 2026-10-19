@@ -1,6 +1,6 @@
 # 技术栈与构建基线
 
-最后核对：2026-09-20（代码与文档静态核对；非本轮全量运行验收）
+最后核对：2026-10-15（Kotlin、Navigation 3 和 WebKit 稳定版升级；其余条目按现有构建配置核对）
 
 本文是便于阅读的快照。版本发生冲突时，以 `constants.gradle.kts`、`gradle/libs.versions.toml`、`gradle-wrapper.properties` 和各模块 `build.gradle.kts` 为准。应用版本号仅在 [constants.gradle.kts](../../constants.gradle.kts) 维护，本文不重复记录。
 
@@ -13,14 +13,16 @@
 | `targetSdk` | 36 | `constants.gradle.kts` |
 | `minSdk` | 24 | `constants.gradle.kts` |
 | JDK / JVM toolchain | 21 | `constants.gradle.kts`、约定插件 |
-| Gradle Wrapper | 9.7.1 | `gradle/wrapper/gradle-wrapper.properties` |
+| Gradle Wrapper | 9.8.1 | `gradle/wrapper/gradle-wrapper.properties` |
 | Android Gradle Plugin | 9.4.1 | `gradle/libs.versions.toml` |
-| Kotlin | 2.4.20 | `gradle/libs.versions.toml` |
+| Kotlin | 2.4.21 | `gradle/libs.versions.toml` |
 | KSP | 2.3.12 | `gradle/libs.versions.toml` |
 
 AGP 与 Gradle 按稳定版兼容组合一起核验。升级 Gradle 时使用 `wrapper` 任务同步
 JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SHA-256；不要只改下载地址。
-当前 Wrapper JAR 已同步为 9.7.1，分发包校验和 URL 验证保持启用。
+当前 Wrapper JAR 已同步为 9.8.1，分发包校验和 URL 验证保持启用。
+
+[Kotlin 官方兼容表](https://kotlinlang.org/docs/gradle-configure-project.html)对 2.4.20～2.4.21 完整测试的上限为 Gradle 9.7.0 / AGP 9.3.1；当前组合高于该范围，补丁升级前后均如此。官方允许使用更新版本，但不保证所有新特性；以项目实际编译、KSP、测试与设备回归结果验收，不把构建成功表述为官方完整兼容承诺。
 
 ## 主要库
 
@@ -28,19 +30,19 @@ JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SH
 |---|---|---:|
 | UI | Jetpack Compose BOM | 2026.09.00 |
 | UI | Material 3 / Adaptive Navigation Suite | 由 Compose BOM 管理 |
-| Navigation | Navigation 3 runtime / ui | 1.1.7 |
+| Navigation | Navigation 3 runtime / ui | 1.2.0 |
 | Navigation state | Lifecycle ViewModel Navigation 3 decorator | 2.11.0 |
 | Compose DI | Hilt lifecycle-viewmodel-compose（无 Navigation 2 依赖） | 1.4.0 |
 | Lifecycle | AndroidX Lifecycle | 2.11.0 |
 | DI | Dagger Hilt / AndroidX Hilt | 2.60.1 / 1.4.0 |
 | Persistence | Room | 2.8.5 |
 | Preferences | DataStore | 1.2.1 |
-| Background | WorkManager | 2.11.2 |
+| Background | WorkManager | 2.12.0 |
 | Camera | CameraX | 1.6.2 |
 | Face detection | ML Kit Face Detection | 16.1.7 |
 | Network | Retrofit / OkHttp | 3.0.0 / 5.5.0 |
 | Network I/O | Okio | 3.18.2 |
-| WebView | AndroidX WebKit（渲染进程异常保护；关闭接口直接注册 NativeBridge） | 1.17.0 |
+| WebView | AndroidX WebKit（渲染进程异常保护；关闭接口直接注册 NativeBridge） | 1.17.1 |
 | Serialization | Moshi / kotlinx.serialization | 1.15.2 / 1.11.0 |
 | Images | Coil | 3.6.3 |
 | Async | kotlinx.coroutines | 1.11.0 |
@@ -54,7 +56,7 @@ JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SH
 
 | 组件 | 当前来源 | 说明 |
 |---|---|---|
-| QLZ | `app/libs/qlzsdk-1.3.0.5-protobufLiteRelease-ui.aar` | 运行库 `protobuf-javalite:4.36.2`（厂商示例基线 4.28.3）；当前测试配置和已知风险经确认可保留于正式包 |
+| QLZ | `app/libs/qlzsdk-1.3.0.5-protobufLiteRelease-ui.aar` | 运行库 `protobuf-javalite:4.36.2`（厂商示例基线 4.28.3）；默认正式环境，已接受的厂商风险由正式构建告警 |
 | 腾讯人脸 Live | `WbCloudFaceLiveSdk-face-v6.6.2-8e4718fc.aar` | 默认本地 AAR，可通过 Gradle 属性切到私有 Maven |
 | 腾讯人脸 Normal | `WbCloudNormal-v5.1.10-4e3e198.aar` | 与 Live SDK 一起由约定插件装配 |
 
@@ -103,7 +105,7 @@ Android CLI 当前识别以下 app 变体：
 
 性能工具使用 Baseline Profile / Macrobenchmark 1.5.0 稳定版。当前生成器在独立
 `pixel6Api33` Managed Device 上采集启动、滚动和返回路径；不包含登录后的业务旅程，
-baseline/startup 两份规则目前相同，语义拆分仍见[性能改进待办](../analysis/project-review.md#172-阶段-b性能采集语义)。
+当前整个采集块均包含到 Startup Profile，验证边界见[性能采集](../analysis/project-review.md#性能采集)。
 生成时同时指定 `androidx.benchmark.enabledRules=BaselineProfile` 和
 `class=com.ytone.longcare.baselineprofile.BaselineProfileGenerator` 的 instrumentation 参数，
 将生成用例与启动测量分开。生成后重新构建 `benchmarkRelease`，核查 APK 中的

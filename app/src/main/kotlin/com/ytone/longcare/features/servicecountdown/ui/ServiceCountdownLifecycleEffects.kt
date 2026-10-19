@@ -1,15 +1,18 @@
 package com.ytone.longcare.features.servicecountdown.ui
 
 import android.content.Context
-import androidx.activity.compose.ManagedActivityResultLauncher
-import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.repeatOnLifecycle
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
@@ -18,6 +21,18 @@ import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
+
+/** One initial explanation per saved order screen; requests require a separate user action. */
+@Composable
+internal fun ServiceCountdownInitialPermissionCheck(orderKey: OrderKey, checkPermissions: () -> Unit) {
+    var checked by rememberSaveable(orderKey) { mutableStateOf(false) }
+    LaunchedEffect(orderKey) {
+        if (!checked) {
+            checked = true
+            checkPermissions()
+        }
+    }
+}
 
 @Composable
 internal fun ServiceCountdownLifecycleEffects(
@@ -29,11 +44,6 @@ internal fun ServiceCountdownLifecycleEffects(
     locationTrackingViewModel: LocationTrackingViewModel,
     context: Context,
     lifecycleOwner: LifecycleOwner,
-    countdownState: ServiceCountdownState,
-    notificationPermissionLauncher: ActivityResultLauncher<String>,
-    exactAlarmPermissionLauncher: ActivityResultLauncher<android.content.Intent>,
-    permissionLauncher: ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>,
-    onPermissionDialogRequired: (ServiceCountdownPermissionIssue) -> Unit,
     onOrderStateError: (String) -> Unit
 ) {
     val orderStateError by countdownViewModel.orderStateError.collectAsStateWithLifecycle()
@@ -43,15 +53,10 @@ internal fun ServiceCountdownLifecycleEffects(
         }
     }
 
-    LaunchedEffect(orderKey) {
-        sharedViewModel.getCachedOrderInfo(orderKey)
-        sharedViewModel.getOrderInfo(orderKey)
+    ServiceCountdownTimerLifecycleEffect(countdownViewModel, orderKey, projectIdList, lifecycleOwner)
 
-        checkLocationPermissionAndStart(
-            context = context,
-            permissionLauncher = permissionLauncher,
-            onPermissionGranted = { locationTrackingViewModel.startTracking(orderKey) }
-        )
+    LaunchedEffect(orderKey) {
+        sharedViewModel.getOrderInfo(orderKey)
 
         countdownViewModel.loadUploadedImagesFromRepository(orderKey)
         countdownViewModel.startOrderStatePolling(orderKey)
@@ -64,44 +69,45 @@ internal fun ServiceCountdownLifecycleEffects(
         }
     }
 
-    LaunchedEffect(orderKey, projectIdList) {
-        setupCountdownSessionIfNeeded(
-            context = context,
-            orderKey = orderKey,
-            projectIdList = projectIdList,
-            sharedViewModel = sharedViewModel,
-            countdownViewModel = countdownViewModel,
-            notificationPermissionLauncher = notificationPermissionLauncher,
-            exactAlarmPermissionLauncher = exactAlarmPermissionLauncher,
-            onPermissionDialogRequired = onPermissionDialogRequired
-        )
-    }
-
-    LaunchedEffect(lifecycleOwner) {
+    LaunchedEffect(lifecycleOwner, orderKey, projectIdList) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             // A previous confirmation may have completed after Android disallowed an FGS start.
             // Retry only from this visible business screen, never from a background scheduler.
-            if (UnifiedPermissionHelper.hasLocationPermission(context) &&
+            if (countdownViewModel.countdownState.value != ServiceCountdownState.ENDED &&
+                UnifiedPermissionHelper.hasLocationPermission(context) &&
                 UnifiedPermissionHelper.isLocationServiceEnabled(context)
             ) {
                 locationTrackingViewModel.startTracking(orderKey)
             }
-            if (countdownViewModel.isInitialized() && countdownState != ServiceCountdownState.ENDED) {
-                val orderInfo = sharedViewModel.getCachedOrderInfo(orderKey)
-                orderInfo?.let {
-                    countdownViewModel.refreshCountdownDisplay(
-                        orderKey = orderKey,
-                        projectList = it.projectList ?: emptyList(),
-                        selectedProjectIds = projectIdList
-                    )
-                }
-            }
         }
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(orderKey, countdownViewModel) {
         onDispose {
             countdownViewModel.stopOrderStatePolling()
+        }
+    }
+}
+
+/** 业务排程不随可见性取消，只有显示刷新跟随 RESUMED。 */
+@Composable
+internal fun ServiceCountdownTimerLifecycleEffect(
+    countdownViewModel: ServiceCountdownViewModel,
+    orderKey: OrderKey,
+    projectIdList: List<Int>,
+    lifecycleOwner: LifecycleOwner,
+) {
+    LaunchedEffect(countdownViewModel, orderKey, projectIdList) {
+        countdownViewModel.synchronizeCountdownSession(orderKey, projectIdList)
+    }
+    var hasResumed by remember(lifecycleOwner, countdownViewModel, orderKey, projectIdList) { mutableStateOf(false) }
+    LifecycleResumeEffect(countdownViewModel, orderKey to projectIdList, lifecycleOwner = lifecycleOwner) {
+        countdownViewModel.startDisplayUpdates()
+        // 首次已由进入页的任务准备；设置返回才重排，避免缓存命中时重复读取。
+        if (hasResumed) countdownViewModel.synchronizeCountdownSession(orderKey, projectIdList)
+        hasResumed = true
+        onPauseOrDispose {
+            countdownViewModel.stopDisplayUpdates()
         }
     }
 }

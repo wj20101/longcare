@@ -46,8 +46,6 @@ internal class NfcOrderCompletionDelegate(
 
     suspend fun cleanupResources(orderKey: OrderKey) = withContext(NonCancellable) {
         try {
-            serviceCountdownSystemGateway.stopForegroundService()
-            serviceCountdownSystemGateway.stopAlarmRingtone()
             serviceCountdownSystemGateway.cancelCountdownAlarmForOrder(orderKey)
 
             // 服务端已确认结束，完成本地清理后再发布成功，不能随页面退出取消。

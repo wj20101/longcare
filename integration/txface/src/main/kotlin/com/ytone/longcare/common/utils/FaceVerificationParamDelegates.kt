@@ -18,7 +18,7 @@ internal suspend fun fetchFaceAccessToken(
     config: FaceVerificationConfig
 ): FaceApiStepResult<String> {
     return runFaceApiCall {
-        val result = repository.getAccessToken(config.appId, config.secret)
+        val result = repository.getAccessToken(config)
         result.requiredValue { response ->
             response.accessToken?.trim()?.takeIf { it.isNotBlank() }
         }
@@ -31,7 +31,7 @@ internal suspend fun fetchFaceSignTicket(
     accessToken: String
 ): FaceApiStepResult<String> {
     return runFaceApiCall {
-        val result = repository.getSignTicket(config.appId, accessToken)
+        val result = repository.getSignTicket(config.appId, accessToken, config.sessionGeneration)
         result.requiredValue { response ->
             response.tickets?.firstOrNull { it.value.isNotBlank() }?.value
         }
@@ -45,7 +45,7 @@ internal suspend fun fetchFaceNonceTicket(
     userId: String
 ): FaceApiStepResult<String> {
     return runFaceApiCall {
-        val result = repository.getApiTicket(config.appId, accessToken, userId)
+        val result = repository.getApiTicket(config.appId, accessToken, userId, config.sessionGeneration)
         result.requiredValue { response ->
             response.tickets?.firstOrNull { it.value.isNotBlank() }?.value
         }
@@ -79,7 +79,8 @@ internal suspend fun fetchFaceId(
                 FACE_AUTH_SOURCE_PHOTO_TYPE_HD
             } else {
                 null
-            }
+            },
+            sessionGeneration = config.sessionGeneration,
         )
         result.requiredValue { response ->
             response.result?.faceId?.trim()?.takeIf { it.isNotBlank() }

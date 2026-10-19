@@ -72,8 +72,8 @@ class NursingExecutionErrorScreenTest {
     }
 
     private fun show() {
-        val vm = SharedOrderDetailViewModel(details, orders, mockk(), mockk(),
-            ResourceTextResolver(compose.activity.applicationContext))
+        val vm = SharedOrderDetailViewModel(details, orders, mockk(),
+            ResourceTextResolver(compose.activity.applicationContext), mockk(relaxed = true))
         compose.setContent {
             LongCareTheme {
                 NursingExecutionScreen(

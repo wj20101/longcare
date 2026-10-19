@@ -19,8 +19,16 @@ all_smoke() {
   run_instrumentation=true
   add_class com.ytone.longcare.navigation.Navigation3StateTest
   add_class com.ytone.longcare.platform.webview.NativeWebViewCloseBridgeTest
+  add_class com.ytone.longcare.platform.webview.WebViewPresentationTest
   add_class com.ytone.longcare.features.sales.SalesEvaluationMockFlowTest
   add_class com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest
+  add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownPermissionFlowTest
+  add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownDialogsTest
+  add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownBackgroundInitializationTest
+  add_class com.ytone.longcare.core.ui.permission.BackgroundSettingsDialogTest
+  add_class com.ytone.longcare.platform.location.LocationPermissionUiTest
+  add_class com.ytone.longcare.platform.location.AmapContinuousRecoveryTest
+  add_class com.ytone.longcare.features.maindashboard.ui.HomeDeviceStatusCardTest
 }
 
 if [[ "${GITHUB_EVENT_NAME:-}" == workflow_dispatch ]]; then
@@ -35,7 +43,7 @@ else
     while IFS= read -r file; do
       [[ -z "$file" ]] && continue
       case "$file" in
-        *.md|docs/*|openspec/*|.agents/*) continue ;;
+        *.md|docs/*|.agents/*) continue ;;
       esac
       run_build=true
       case "$file" in
@@ -46,10 +54,28 @@ else
           add_class com.ytone.longcare.navigation.Navigation3StateTest ;;
         app/src/main/*/com/ytone/longcare/*webview/*|app/src/androidTest/*/com/ytone/longcare/platform/webview/*)
           run_instrumentation=true
-          add_class com.ytone.longcare.platform.webview.NativeWebViewCloseBridgeTest ;;
-        app/src/main/*/com/ytone/longcare/features/service/*|app/src/main/*/com/ytone/longcare/features/servicecountdown/*|feature/servicecountdown/*|feature/location/*|app/src/androidTest/*/com/ytone/longcare/features/service/*)
+          add_class com.ytone.longcare.platform.webview.NativeWebViewCloseBridgeTest
+          add_class com.ytone.longcare.platform.webview.WebViewPresentationTest ;;
+        app/src/main/*/com/ytone/longcare/features/home/*|app/src/main/*/com/ytone/longcare/features/maindashboard/*|feature/home/*|app/src/androidTest/*/com/ytone/longcare/features/maindashboard/*|app/src/main/res/values*/home_device.xml|app/src/main/res/drawable*/home_ic_zhichi_device.*)
           run_instrumentation=true
-          add_class com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest ;;
+          add_class com.ytone.longcare.features.maindashboard.ui.HomeDeviceStatusCardTest ;;
+        app/src/androidTest/*/com/ytone/longcare/platform/location/AmapContinuousRecoveryTest.kt)
+          run_instrumentation=true
+          add_class com.ytone.longcare.platform.location.AmapContinuousRecoveryTest ;;
+        core/ui/src/main/*/com/ytone/longcare/common/utils/UnifiedPermissionHelper.kt|app/src/androidTest/*/com/ytone/longcare/platform/location/*)
+          run_instrumentation=true
+          add_class com.ytone.longcare.platform.location.LocationPermissionUiTest ;;
+        core/common/src/*/com/ytone/longcare/common/utils/DeviceCompatibilityHelper*|core/common/src/main/res/*|core/ui/src/main/*/com/ytone/longcare/core/ui/permission/*|core/ui/src/main/res/*|app/src/main/*/com/ytone/longcare/features/selectservice/*|app/src/androidTest/*/com/ytone/longcare/core/ui/permission/*)
+          run_instrumentation=true
+          add_class com.ytone.longcare.core.ui.permission.BackgroundSettingsDialogTest ;;
+        app/src/main/*/com/ytone/longcare/features/service/*|app/src/main/*/com/ytone/longcare/features/servicecountdown/*|app/src/main/*/com/ytone/longcare/features/countdown/*|feature/servicecountdown/*|feature/location/*|app/src/androidTest/*/com/ytone/longcare/features/service/*|app/src/androidTest/*/com/ytone/longcare/features/servicecountdown/*)
+          run_instrumentation=true
+          add_class com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest
+          add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownPermissionFlowTest
+          add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownDialogsTest
+          add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownBackgroundInitializationTest
+          add_class com.ytone.longcare.platform.location.AmapContinuousRecoveryTest
+          add_class com.ytone.longcare.core.ui.permission.BackgroundSettingsDialogTest ;;
         app/src/main/*/com/ytone/longcare/features/sales/*Screen*.kt|app/src/androidTest/*/com/ytone/longcare/features/sales/*)
           run_instrumentation=true
           add_class com.ytone.longcare.features.sales.SalesEvaluationMockFlowTest ;;

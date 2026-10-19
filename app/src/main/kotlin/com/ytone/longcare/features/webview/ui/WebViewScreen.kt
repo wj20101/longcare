@@ -2,6 +2,7 @@ package com.ytone.longcare.features.webview.ui
 
 import android.annotation.SuppressLint
 import android.os.Build
+import android.view.ViewGroup
 import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
@@ -81,6 +82,11 @@ fun WebViewScreen(
                     } else AndroidView(
                         factory = { context ->
                             WebView(context).apply {
+                                // Older WebView engines resolve percentage/vh heights to zero in wrap-content mode.
+                                layoutParams = ViewGroup.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                )
                                 webViewClient = ManagedWebViewClient(
                                     onLoadingChanged = { loading ->
                                         isLoading = loading

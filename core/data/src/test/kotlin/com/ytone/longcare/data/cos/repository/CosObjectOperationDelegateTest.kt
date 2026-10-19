@@ -11,6 +11,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import java.io.File
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -55,6 +56,45 @@ class CosObjectOperationDelegateTest {
 
             assertTrue(result.success)
             assertEquals("private/service/photo.jpg", result.key)
+            coVerify(exactly = 0) { apiService.getFileUrl(any()) }
+        }
+
+    @Test
+    fun `sales upload uses the sales service and its key prefix instead of service photos`() =
+        runTest {
+            val salesService = mockk<CosXmlService>(relaxed = true)
+            val serviceTypes = mutableListOf<Int>()
+            val configTypes = mutableListOf<Int>()
+            val delegate = CosObjectOperationDelegate(
+                apiService = apiService,
+                ioDispatcher = UnconfinedTestDispatcher(testScheduler),
+                tag = "CosObjectOperationDelegateTest",
+                getCosService = { folderType ->
+                    serviceTypes += folderType
+                    if (folderType == 15) salesService else cosService
+                },
+                getValidCosConfig = { folderType ->
+                    configTypes += folderType
+                    config.copy(fileKeyPre = if (folderType == 15) "private/sales/" else "private/service/")
+                },
+                clearCache = {},
+            )
+
+            val salesResult = delegate.uploadFile(
+                UploadParams(Uri.fromFile(File("sales.jpg")).toString(), key = "", folderType = 15),
+            )
+            val serviceResult = delegate.uploadFile(
+                UploadParams(Uri.fromFile(File("service.jpg")).toString(), key = "", folderType = 13),
+            )
+
+            assertTrue(salesResult.success)
+            assertTrue(requireNotNull(salesResult.key).startsWith("private/sales/"))
+            assertTrue(serviceResult.success)
+            assertTrue(requireNotNull(serviceResult.key).startsWith("private/service/"))
+            assertEquals(listOf(15, 13), serviceTypes)
+            assertEquals(listOf(15, 13), configTypes)
+            verify(exactly = 1) { salesService.putObject(any()) }
+            verify(exactly = 1) { cosService.putObject(any()) }
             coVerify(exactly = 0) { apiService.getFileUrl(any()) }
         }
 

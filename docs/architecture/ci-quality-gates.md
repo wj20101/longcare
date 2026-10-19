@@ -1,6 +1,6 @@
 # CI、质量门禁与发布
 
-最后核对：2026-09-21（CI/CD 精简；本地构建与测试已核对，线上结果另行验收）
+最后核对：2026-10-15（共享构建 Action 升级；本地验证与线上结果分别验收）
 
 本文描述当前脚本和 GitHub Actions 的实际行为。门禁名称/Owner 元数据以 `scripts/quality/quality_gate_registry.json` 为准；是否真正执行则以对应 workflow 和 runner 脚本为准。
 
@@ -50,17 +50,26 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 
 ## Android CI
 
+所有远端 Action 使用当前稳定主版本标签。共享构建环境使用 `actions/setup-java@v6`、`gradle/actions/setup-gradle@v6` 和 `android-actions/setup-android@v4`，JDK 仍为 Temurin 21。
+
+[`setup-gradle` v6 发布说明](https://github.com/gradle/actions/releases/tag/v6.0.0)指出，其启用缓存时使用的 `gradle-actions-caching` 组件适用单独的使用条款，且移除了原有的跨运行配置缓存支持。当前未配置配置缓存专用输入，Gradle 自身的本地配置缓存设置不变。
+
 代码/构建改动执行完整 JVM 业务测试、App Debug 构建、App/读卡 Lint 和质量守卫；不再使用固定 App 测试类过滤、伪模块影响列表或 full/partial 构建分支。
 
 1. `select-checks` 始终验证文档，并由 `select_ci_smoke.sh` 选择是否需要构建和设备冒烟；仅文档变更不启动 Gradle/模拟器。文档保留 SDK、Gradle 和依赖版本检查，不复制或校验应用版本号。
 2. `verify-build` 调用 `run_ci_checks.sh` 和 `run_jvm_tests.sh`，上传主应用 Debug APK 和所有模块测试报告，不常规构建 Debug AAB。
-3. `instrumentation-smoke` 在前置构建成功且所选路径需要时执行。API 36 模拟器以真实启动用例为基础，按导航、WebView、服务、销售 UI 等路径追加离线用例；不自动运行需账号/硬件的 opt-in 测试。
+3. `instrumentation-smoke` 在前置构建成功且所选路径需要时执行。API 36 模拟器以真实启动用例为基础，按导航、WebView、服务、销售 UI 等路径追加离线用例；服务/定位及倒计时改动覆盖通知、精确闹钟、全屏提醒的授权回调链，以及首次读取期间 Home/锁屏后的排程与显示暂停；机型后台设置与共享引导改动追加关闭/确认分离、重建恢复、大字体操作可见、显式复查及设置返回刷新测试；共享定位申请验证拒绝不劝导及定位与通知分开。不自动运行需账号/硬件的 opt-in 测试。
+   定位采集与诊断改动还选择高德 SDK 边界回归：离线注入错误 4 与成功回调，检查同客户端恢复、停止后的迟到回调隔离、30 秒网络超时与动作间隔切换，以及无后台采集时 `Main.immediate` 动作经真实 Handler 回调完成和释放临时客户端；使用真实 SDK 值类型，不调用真实定位服务器或护理接口。
 4. 手动 CI 或差异基线不可用时执行完整基础验证及固定离线冒烟集合，不将 HEAD 自身比较为空视为无需验证。
 5. PR 并发组跨提交稳定，新提交只取消同 PR 旧运行；主分支 Push 不自动取消。CI 本身仅有读取权限，无缓存删除 job。
 
 `enable_kvm.sh` 被 CI 和独立 Baseline 工作流共用：等待 udev 权限事件完成，再确认 KVM 存在且可读写，缺失/超时/权限不足均阻断。Mac 本地模拟器不使用 Linux KVM；本地成功不替代 Actions 的 Linux 验收。
 
 完整 JVM 集合仍不等于全部硬件或真实业务旅程验收。完整 connected tests 可由 `run_connected_android_tests.sh` 在指定设备执行。测试报告区分执行、缓存、跳过和未执行。
+
+机型设置往返可单独执行 `DeviceCompatibilitySettingsNavigationTest`：从真实弹窗打开系统设置，通过系统返回验证刷新，不修改开关；不支持的厂商项会跳过。`ServiceCountdownRealSettingsTest` 仅供 API 34+ 模拟器显式验证，须传 `-e runRealSettings true` 并逐方法执行，预先满足实际定位、通知及提醒渠道条件，分别准备精确闹钟或全屏提醒缺失状态。外部执行器必须先备份 package/UID app-op，并在 finally 中恢复；精确闹钟撤权可能结束应用进程，不能在尚未退出的 instrumentation 内恢复。普通 CI 冒烟不启用这类会修改系统特殊授权的测试。
+
+`ServiceCountdownBackgroundInitializationTest` 默认使用隔离仓库和记录型 Gateway 验证首次排程与生命周期，不提交护理接口。两个真实闹钟用例须显式传 `-e runRealAlarm true`；空白设备还须传 `-e initializeEmptyDevice true`，只建立并清理本地测试会话，不调用登录接口。测试拒绝覆盖现有排程、提醒或定位恢复记录，验证真实响铃、锁屏自动弹页、约 30 秒停声及通知保留；需可用提醒权限和非静音闹钟音量。安全锁屏恢复时可能需人工解锁，不更改用户 PIN、系统权限或省电策略。
 
 工作流守卫执行 `test_*.py`：覆盖选择器、KVM、PR 并发、门禁调用、签名/产物、版本推送时机及存储保护。测试通过本地 Git 与工具替身执行，不发布版本或删除远端数据；步骤标题和固定时长不再作为主要约束。
 
@@ -104,8 +113,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 - 当前腾讯人脸 ARM64 native library 不满足 16 KB 对齐。
 - 人脸 AAR 的 consumer rules 含已知全局选项。
 
-
-详见 [QLZ SDK 接入](../integrations/qlz-sdk.md)和[路线图](../analysis/project-review.md#17-分阶段技术方案与实施顺序)。
+详见 [QLZ SDK 接入](../integrations/qlz-sdk.md)。
 
 ## 其他 workflows
 
@@ -126,7 +134,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 |---|---|---|
 | Release exported components | `verify_release_exported_components.sh` | 收紧 Manifest 或有依据地更新 allowlist |
 | Vendor SDK risk policy | `verify_vendor_sdk_release_readiness.sh` | 当前已接受事项告警；其他目标厂商问题仍需处理 |
-| Release config | `verify_release_config.sh` | 错误参数阻断，当前已接受测试配置告警 |
+| Release config | `verify_release_config.sh` | 错误参数阻断，仅已接受的厂商风险告警 |
 | Signing safety | build-logic + Release workflow | 配置真实 keystore，不使用 debug 签名 |
 | Baseline profile source | Release workflow | 生成/提交受支持的 profile 或明确 warning |
 
@@ -149,7 +157,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 - 单测：各模块 `build/reports/tests/` 和 `build/test-results/`
 - CI 运行指标：调用脚本指定的 `build/` 输出目录或 CI artifact
 
-上述机器生成报告是一次性证据，不提交到 `docs/`。人工维护的[项目整体分析](../analysis/project-review.md)属于有来源和复核日期的优化基线，不保存构建输出或会话日志。
+上述机器生成报告是一次性证据，不提交到 `docs/`。长期已知限制维护在[工程风险](../analysis/project-review.md)，不保存构建输出或会话日志。
 
 ## 推荐命令
 
@@ -178,4 +186,4 @@ bash scripts/quality/preflight_local.sh --release
 
 自动化覆盖读卡解析、大 Logo 长按/短按与无震动、取消/生命周期与 Navigation 3 返回，正式包构建与 R8 检查不替代真机流程。
 
-真机需验证：登录页中央大 Logo 长按先确认且无震动，普通点击及非入口区域不触发；取消、后台、重复长按和返回不会误跳，无摇动监听。实际 NFC 标签及 R65C 分别验收读取、复制、清空、模式切换与退出释放。检测无须登录，不提交业务数据。用户选择稍后进行时保留未完成验收项。
+修改读卡功能时，按影响范围验证登录页长按确认、取消/返回、前后台及 NFC/R65C 读取与资源释放；检测无须登录，不提交业务数据。当前长按入口和实际读卡已由用户确认通过，不再保留旧硬件待验收项。

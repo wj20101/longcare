@@ -8,21 +8,19 @@ import org.junit.Test
 class NfcWorkflowBottomHintTest {
 
     @Test
-    fun `location preparation hint is used when no scan loading is active`() {
+    fun `idle hint is used before a tag is scanned`() {
         val hintRes = resolveBottomHintRes(
             loadingReason = null,
-            isLocationPreparing = true,
             idleBottomHintKey = NfcWorkflowCopyKey.SYSTEM_IDLE_HINT,
         )
 
-        assertEquals(R.string.nfc_location_preparing_hint, hintRes)
+        assertEquals(R.string.nfc_sign_in_idle_hint, hintRes)
     }
 
     @Test
     fun `scan loading hint has priority over location preparation hint`() {
         val hintRes = resolveBottomHintRes(
             loadingReason = NfcLoadingReason.CARD_RECOGNIZED_FETCHING_LOCATION,
-            isLocationPreparing = true,
             idleBottomHintKey = NfcWorkflowCopyKey.SYSTEM_IDLE_HINT,
         )
 
@@ -33,7 +31,6 @@ class NfcWorkflowBottomHintTest {
     fun `idle hint is used when not loading or preparing location`() {
         val hintRes = resolveBottomHintRes(
             loadingReason = null,
-            isLocationPreparing = false,
             idleBottomHintKey = NfcWorkflowCopyKey.SYSTEM_IDLE_HINT,
         )
 

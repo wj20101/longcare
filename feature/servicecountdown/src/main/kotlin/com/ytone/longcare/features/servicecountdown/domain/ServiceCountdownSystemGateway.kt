@@ -4,19 +4,9 @@ import com.ytone.longcare.model.OrderKey
 
 /**
  * 服务倒计时系统能力网关。
- * 统一封装前台服务、闹钟与响铃等平台能力，降低 ViewModel 与 app 实现细节耦合。
+ * 封装闹钟与响铃平台能力，持续定位由定位业务独立管理。
  */
 interface ServiceCountdownSystemGateway {
-    fun startForegroundService(
-        orderKey: OrderKey,
-        serviceName: String,
-        totalSeconds: Long,
-    )
-
-    fun stopForegroundService()
-
-    fun stopAlarmRingtone()
-
     fun canScheduleExactAlarms(): Boolean
 
     fun canUseFullScreenIntent(): Boolean
@@ -26,8 +16,6 @@ interface ServiceCountdownSystemGateway {
         serviceName: String,
         triggerTimeMillis: Long,
     )
-
-    fun cancelCountdownAlarm()
 
     fun cancelCountdownAlarmForOrder(orderKey: OrderKey)
 }

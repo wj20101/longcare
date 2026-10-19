@@ -1,9 +1,11 @@
 <resources>
+    <string name="home_device_name">咫尺</string>
+    <string name="home_device_installation">安装示意</string>
+    <string name="home_device_preview">预览</string>
     <string name="webview_renderer_unavailable">网页已停止运行，请返回后重新打开</string>
     <string name="app_name">长护盾</string>
     <string name="nfc_sign_in_title">进门碰一碰</string>
     <string name="nfc_sign_out_title">出门碰一碰</string>
-    <string name="common_later">稍后</string>
     <string name="common_go_to_settings">去设置</string>
     <string name="common_acknowledge">我知道了</string>
     <string name="common_complete">完成</string>
@@ -66,18 +68,11 @@
     <string name="service_countdown_status_running">服务倒计时</string>
     <string name="service_countdown_status_overtime">服务超时</string>
     <string name="service_countdown_status_ended">服务已结束</string>
-    <string name="service_countdown_skip_permission">跳过，直接开始服务</string>
-    <string name="service_permission_settings_title">权限设置</string>
-    <string name="service_permission_settings_description">为保证服务正常运行，请完成以下设置</string>
     <string name="service_countdown_permission_title">权限提示</string>
     <string name="service_countdown_end_early_title">确认提前结束服务</string>
     <string name="service_countdown_end_early_message">服务时间尚未结束，确定要提前结束服务吗？</string>
     <string name="service_countdown_order_state_error">订单状态异常</string>
     <string name="service_countdown_album">护理相册</string>
-    <string name="service_countdown_notification_channel_name">服务倒计时通知</string>
-    <string name="service_countdown_notification_channel_description">显示服务倒计时的实时进度</string>
-    <string name="service_countdown_notification_title">服务进行中</string>
-    <string name="service_countdown_notification_content">%1$s - 正在为您提供服务</string>
     <string name="service_countdown_action_end_early">提前结束服务</string>
     <string name="service_countdown_action_end">结束服务</string>
     <string name="service_countdown_action_ended">服务已结束</string>
@@ -85,9 +80,16 @@
     <string name="service_countdown_selected_services">所选服务</string>
     <string name="service_countdown_no_selected_services">暂无选中的服务项目</string>
     <string name="service_countdown_selected_service_item">%1$d：%2$s（%3$d 分钟）</string>
-    <string name="service_countdown_notification_permission_denied">通知权限被拒绝，可能无法收到倒计时完成提醒。请到设置中手动开启通知权限。</string>
-    <string name="service_countdown_exact_alarm_permission_denied">精确闹钟权限被拒绝，可能无法准时收到倒计时完成提醒。请到设置中手动开启精确闹钟权限。</string>
-    <string name="service_countdown_full_screen_permission_required">为了在服务时间结束时能准时提醒您，需要开启“全屏通知”权限。\n\n请在设置中找到“全屏通知”或“显示在其他应用上层”选项并开启。</string>
+    <string name="service_countdown_location_permission_required">服务期间需要精确定位，用于记录本次护理服务位置。未允许时无法上报服务位置，您仍可查看订单和上传照片。</string>
+    <string name="service_countdown_notification_permission_required">服务结束提醒的应用通知尚未开启，可能无法在通知栏查看提醒或点击进入结束页面。允许通知后可接收服务提醒。</string>
+    <string name="service_countdown_notification_channel_required">“倒计时完成通知”的通知类别或所属分组受限，可能无法显示或弹出提醒。请在通知设置中检查该类别和所属分组，并按需允许声音和弹出提醒。</string>
+    <string name="service_countdown_exact_alarm_permission_required">尚未允许精确闹钟，服务结束提醒可能延迟，后台也可能仅显示通知而不持续响铃。可在系统设置中允许长护盾设置闹钟和提醒。</string>
+    <string name="service_countdown_full_screen_permission_required">尚未允许全屏提醒，锁屏时可能只显示通知，需点击通知进入服务结束页面。可在系统设置中允许全屏通知或全屏提醒；实际显示仍受通知设置和手机系统限制。</string>
+    <string name="service_countdown_allow_location">允许定位</string>
+    <string name="service_countdown_allow_notifications">允许通知</string>
+    <string name="service_countdown_permission_later">暂不设置</string>
+    <string name="service_countdown_permission_unchanged">本次未开启，可稍后在“后台设置”中调整</string>
+    <string name="service_countdown_settings_unavailable">无法打开设置，请在手机设置中找到长护盾，核对定位与提醒权限。</string>
     <string name="service_countdown_order_not_created">订单未开单，无法继续服务</string>
     <string name="service_countdown_order_pending">订单状态异常：待执行</string>
     <string name="service_countdown_order_completed">订单已完成，无法继续服务</string>
@@ -115,7 +117,6 @@
     <string name="nfc_loading_card_recognized_fetching_location">已识别卡片，正在获取定位…</string>
     <string name="nfc_loading_waiting_location_permission">已识别卡片，请授予定位权限后继续</string>
     <string name="nfc_loading_fetching_location">正在获取定位…</string>
-    <string name="nfc_location_preparing_hint">定位准备中，请稍候…</string>
     <string name="nfc_loading_submitting">正在提交打卡…</string>
     <string name="nfc_sign_in_diagram_description">NFC操作示意图</string>
     <string name="photo_upload_title">护理照片上传</string>
@@ -293,4 +294,5 @@
 
     <!-- 隐藏功能验证入口（Debug 与 Release 共用） -->
 
+    <string name="location_recovery_action">服务定位已中断，点击恢复</string>
 </resources>

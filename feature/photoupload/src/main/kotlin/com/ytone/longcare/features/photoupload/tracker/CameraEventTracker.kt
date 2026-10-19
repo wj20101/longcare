@@ -1,23 +1,10 @@
 package com.ytone.longcare.features.photoupload.tracker
 
-import android.os.Build
-import com.ytone.longcare.common.diagnostics.CrashReportGateway
-import com.ytone.longcare.common.utils.logE
-import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 
-/**
- * 相机事件追踪器
- * 用于记录相机拍照流程中的关键事件，便于问题排查
- * 
- * 通过初始化感知的统一网关按需上报日志到 Bugly
- */
+/** Business event catalog; policy and delivery are owned by DiagnosticEventTracker. */
 object CameraEventTracker {
-    
-    private const val TAG = "CameraEventTracker"
-    
-    /**
-     * 事件类型枚举
-     */
     enum class EventType(val code: String, val description: String) {
         // 相机初始化相关
         CAMERA_INIT_START("camera_init_start", "相机初始化开始"),
@@ -53,107 +40,30 @@ object CameraEventTracker {
         CAMERA_PERMISSION_GRANTED("camera_permission_granted", "相机权限已授予"),
         CAMERA_PERMISSION_DENIED("camera_permission_denied", "相机权限被拒绝")
     }
-    
-    /**
-     * 追踪事件（不带异常）
-     * @param eventType 事件类型
-     * @param extras 额外信息
-     */
+
     fun trackEvent(
         eventType: EventType,
-        extras: Map<String, Any?> = emptyMap()
+        extras: Map<String, Any?> = emptyMap(),
     ) {
-        try {
-            val eventInfo = buildEventInfo(eventType, null, extras)
-            logI("$TAG: ${eventType.description} - $eventInfo")
-            
-            // 上报到 Bugly（使用自定义异常包装信息）
-            val exception = CameraTrackingException(
-                eventType = eventType.code,
-                message = eventInfo
-            )
-            CrashReportGateway.postCaughtException(exception)
-        } catch (e: Exception) {
-            logE("$TAG: 追踪事件失败 - ${e.message}")
-        }
+        DiagnosticEventTracker.trackEvent(
+            category = DiagnosticCategory.CAMERA,
+            event = eventType.code,
+            description = eventType.description,
+            extras = extras,
+        )
     }
-    
-    /**
-     * 追踪错误事件（带异常）
-     * @param eventType 事件类型
-     * @param throwable 异常
-     * @param extras 额外信息
-     */
+
     fun trackError(
         eventType: EventType,
         throwable: Throwable? = null,
-        extras: Map<String, Any?> = emptyMap()
+        extras: Map<String, Any?> = emptyMap(),
     ) {
-        try {
-            val eventInfo = buildEventInfo(eventType, throwable, extras)
-            logE("$TAG: ${eventType.description} - $eventInfo", throwable = throwable)
-            
-            // 上报到 Bugly
-            val exception = if (throwable != null) {
-                CameraTrackingException(
-                    eventType = eventType.code,
-                    message = eventInfo,
-                    cause = throwable
-                )
-            } else {
-                CameraTrackingException(
-                    eventType = eventType.code,
-                    message = eventInfo
-                )
-            }
-            CrashReportGateway.postCaughtException(exception)
-        } catch (e: Exception) {
-            logE("$TAG: 追踪错误事件失败 - ${e.message}")
-        }
+        DiagnosticEventTracker.trackError(
+            category = DiagnosticCategory.CAMERA,
+            event = eventType.code,
+            description = eventType.description,
+            throwable = throwable,
+            extras = extras,
+        )
     }
-    
-    /**
-     * 构建事件信息字符串
-     */
-    private fun buildEventInfo(
-        eventType: EventType,
-        throwable: Throwable?,
-        extras: Map<String, Any?>
-    ): String {
-        return buildString {
-            appendLine("【${eventType.description}】")
-            appendLine("事件码: ${eventType.code}")
-            appendLine("时间戳: ${System.currentTimeMillis()}")
-            
-            appendLine("--- 设备信息 ---")
-            appendLine("SDK版本: ${Build.VERSION.SDK_INT}")
-            appendLine("厂商: ${Build.MANUFACTURER}")
-            appendLine("型号: ${Build.MODEL}")
-            appendLine("品牌: ${Build.BRAND}")
-            appendLine("可用堆内存: ${Runtime.getRuntime().maxMemory() / 1024 / 1024}MB")
-            
-            if (extras.isNotEmpty()) {
-                appendLine("--- 额外信息 ---")
-                extras.forEach { (key, value) ->
-                    appendLine("$key: $value")
-                }
-            }
-            
-            if (throwable != null) {
-                appendLine("--- 异常信息 ---")
-                appendLine("异常类型: ${throwable.javaClass.simpleName}")
-                appendLine("异常消息: ${throwable.message}")
-            }
-        }
-    }
-    
-    /**
-     * 自定义追踪异常类
-     * 用于在 Bugly 中区分追踪事件
-     */
-    class CameraTrackingException(
-        val eventType: String,
-        message: String,
-        cause: Throwable? = null
-    ) : Exception("[CameraTracking:$eventType] $message", cause)
 }

@@ -21,7 +21,6 @@ internal fun NfcWorkflowEffects(
     scanMode: ScanMode,
     nfcViewModel: NfcWorkflowViewModel,
     onLocationRequest: suspend () -> LocationRequestResult,
-    onEntryLocationPrepare: () -> Unit
 ) {
     val scanSourceUiController = rememberNfcScanSourceUiController()
 
@@ -44,8 +43,10 @@ internal fun NfcWorkflowEffects(
         )
     }
 
-    LaunchedEffect(orderKey, signInMode) {
-        onEntryLocationPrepare()
+    DisposableEffect(nfcViewModel) {
+        onDispose {
+            nfcViewModel.stopScanRequests()
+        }
     }
 
     DisposableEffect(activity, scanMode) {

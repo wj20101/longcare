@@ -13,7 +13,6 @@ internal class CountdownAlarmDelegate(
     private val alarmManager: AlarmManager,
     private val prefs: SharedPreferences,
     private val countdownAlarmRequestCode: Int,
-    private val countdownAlarmActivityRequestCode: Int,
     private val actionCountdownAlarmPrefix: String,
     private val keyLastScheduledOrderId: String,
     private val noOrderId: Long,
@@ -21,8 +20,9 @@ internal class CountdownAlarmDelegate(
     fun scheduleCountdownAlarm(
         orderKey: OrderKey,
         serviceName: String,
-        triggerTimeMillis: Long
-    ) {
+        triggerTimeMillis: Long,
+        owner: String,
+    ): Boolean {
         try {
             logI("开始设置倒计时闹钟: orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
 
@@ -32,13 +32,13 @@ internal class CountdownAlarmDelegate(
                 context,
                 alarmManager,
                 countdownAlarmRequestCode,
-                countdownAlarmActivityRequestCode,
                 actionCountdownAlarmPrefix,
                 orderKey,
                 serviceName,
                 triggerTimeMillis,
-                canScheduleExactAlarms()
-            ) ?: return
+                canScheduleExactAlarms(),
+                owner = owner,
+            ) ?: return false
 
             saveLastScheduledOrderId(
                 prefs = prefs,
@@ -54,6 +54,7 @@ internal class CountdownAlarmDelegate(
                 triggerTimeMillis = triggerTimeMillis,
                 scheduleMetadata = scheduleMetadata
             )
+            return true
         } catch (e: Exception) {
             logE("❌ 设置倒计时闹钟失败: ${e.message}", throwable = e)
             trackAlarmScheduleFailure(
@@ -62,6 +63,7 @@ internal class CountdownAlarmDelegate(
                 triggerTimeMillis = triggerTimeMillis,
                 error = e
             )
+            return false
         }
     }
 
@@ -94,34 +96,6 @@ internal class CountdownAlarmDelegate(
             }
         } catch (e: Exception) {
             logE("❌ 取消倒计时闹钟失败: ${e.message}", throwable = e)
-        }
-    }
-
-    fun cancelCountdownAlarmForOrder(orderKey: OrderKey) {
-        try {
-            logI("开始取消订单 ${orderKey.orderId} 的倒计时闹钟...")
-            cancelCountdownAlarmForOrderId(
-                context = context,
-                alarmManager = alarmManager,
-                countdownAlarmRequestCode = countdownAlarmRequestCode,
-                actionCountdownAlarmPrefix = actionCountdownAlarmPrefix,
-                orderId = orderKey.orderId
-            )
-            if (
-                getLastScheduledOrderId(
-                    prefs = prefs,
-                    keyLastScheduledOrderId = keyLastScheduledOrderId,
-                    noOrderId = noOrderId
-                ) == orderKey.orderId
-            ) {
-                clearLastScheduledOrderId(
-                    prefs = prefs,
-                    keyLastScheduledOrderId = keyLastScheduledOrderId
-                )
-            }
-        } catch (e: Exception) {
-            logE("❌ 取消订单 ${orderKey.orderId} 的倒计时闹钟失败: ${e.message}", throwable = e)
-            cancelCountdownAlarm()
         }
     }
 

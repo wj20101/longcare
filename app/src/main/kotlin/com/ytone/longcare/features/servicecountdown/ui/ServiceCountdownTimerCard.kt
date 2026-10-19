@@ -42,8 +42,6 @@ fun CountdownTimerCard(
                 val (timeText, statusText) = when (countdownState) {
                     ServiceCountdownState.RUNNING -> formattedTime to
                         stringResource(R.string.service_countdown_status_running)
-                    ServiceCountdownState.COMPLETED -> "00:00:00" to
-                        stringResource(R.string.service_countdown_status_running)
                     ServiceCountdownState.OVERTIME -> formattedTime to
                         stringResource(R.string.service_countdown_status_overtime)
                     ServiceCountdownState.ENDED -> "00:00:00" to

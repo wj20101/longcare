@@ -8,6 +8,37 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AppNavigatorTest {
+    @Test fun devicePagesUseFullscreenWithoutCustomerBridgeAndReturnToCaller() {
+        val nav = navigator()
+        val home = nav.top()
+        for (url in listOf("https://device.invalid/install?source=app", "https://device.invalid/preview?sn=test", "HTTPS://device.invalid/install")) {
+            nav.navigateToDevicePage(url, "设备")
+            val page = nav.top()
+            val route = page.route as WebViewRoute
+            assertEquals(url, route.url)
+            assertFalse(route.showNativeToolbar)
+            assertFalse(route.isEvaluation)
+            assertFalse(route.canOpenCustomerDetails)
+            assertTrue(nav.forEntry(page.id).popBackStack())
+            assertEquals(home, nav.top())
+        }
+        for (invalid in listOf("", "javascript:alert(1)", "file:///sdcard/test.html", "http://zcclient.ytone.cn/zhichi/install", "http://device.invalid/preview", "https://", "not a url")) {
+            nav.navigateToDevicePage(invalid, "设备")
+            assertEquals(home, nav.top())
+        }
+    }
+
+    @Test fun `registration route preserves location metadata without refreshing timestamps`() {
+        val sample = com.ytone.longcare.model.LocationResult(31.0, 121.0, "network", 8f, "GCJ02", 5, 1,
+            locationTime = 100_000, receivedAt = 100_000, receivedElapsedRealtime = 1_000)
+        val route = SalesRoute(com.ytone.longcare.presentation.sales.SalesPage.REGISTRATION_CONFIRM,
+            registrationLocation = sample)
+        val restored = Json.decodeFromString<SalesRoute>(Json.encodeToString(route))
+        assertEquals(sample, restored.registrationLocation)
+        assertEquals(com.ytone.longcare.domain.location.LocationQuality.Rejection.STALE,
+            com.ytone.longcare.domain.location.LocationQuality.rejection(requireNotNull(restored.registrationLocation),
+                120_000, 21_000))
+    }
     @Test fun evaluationPresentationIsExplicitAndIndependentFromClosePurpose() {
         val nav = navigator()
         nav.navigateToEvaluationForm("https://evaluation.invalid/form", "任意标题")

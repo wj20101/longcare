@@ -49,6 +49,10 @@ class SystemConfigManagerTest {
             applicationScope = appScope,
             moshi = DefaultMoshi,
             apiService = apiService,
+            faceSession = mockk<com.ytone.longcare.data.repository.UserSessionTracker> {
+                io.mockk.every { sessionGeneration } returns kotlinx.coroutines.flow.MutableStateFlow<Long?>(1L)
+                io.mockk.every { isCurrent(1L) } returns true
+            },
         )
         manager.clearSystemConfig()
     }
@@ -74,7 +78,8 @@ class SystemConfigManagerTest {
         val config = manager.getFaceVerificationConfig()
 
         assertEquals("appId", config?.appId)
-        assertEquals("secret", config?.secret)
+        assertEquals(1L, config?.sessionGeneration)
+        assertEquals("", manager.getThirdKey()?.txFaceAppSecret)
         assertEquals("licence", config?.licence)
     }
 

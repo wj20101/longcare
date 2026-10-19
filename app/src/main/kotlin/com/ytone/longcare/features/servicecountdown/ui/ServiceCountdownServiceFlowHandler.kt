@@ -5,7 +5,6 @@ import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
-import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderStateModel
 
@@ -26,25 +25,19 @@ internal fun buildOrderStateErrorMessage(
 internal fun handleEndService(
     orderKey: OrderKey,
     projectIdList: List<Int>,
-    countdownViewModel: ServiceCountdownViewModel,
     actions: ServiceCountdownActions,
     endType: Int
 ) {
-    countdownViewModel.endServiceWithoutClearingImages(orderKey)
-    KLogger.i("ServiceCountdownScreen", "服务已结束并保留图片: orderId=${orderKey.orderId}, endType=$endType")
-
     actions.onNavigateToEndServiceSelection(orderKey, endType, projectIdList)
 }
 
 internal fun handleOrderStateErrorAndExit(
     orderKey: OrderKey,
     countdownViewModel: ServiceCountdownViewModel,
-    locationTrackingViewModel: LocationTrackingViewModel,
     actions: ServiceCountdownActions
 ) {
     countdownViewModel.clearOrderStateError()
-    locationTrackingViewModel.stopTracking()
-    countdownViewModel.endServiceWithoutClearingImages(orderKey)
+    countdownViewModel.onOrderEnded(orderKey)
     KLogger.i("ServiceCountdownScreen", "订单状态异常，运行资源已统一停止: orderId=${orderKey.orderId}")
 
     actions.onNavigateHomeAndClearStack()

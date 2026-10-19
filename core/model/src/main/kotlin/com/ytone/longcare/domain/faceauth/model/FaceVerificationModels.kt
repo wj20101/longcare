@@ -4,12 +4,12 @@ const val FACE_AUTH_API_VERSION = "1.0.0"
 const val FACE_AUTH_SOURCE_PHOTO_TYPE_HD = "2"
 
 /**
- * 腾讯云鉴权配置（SDK无关领域模型）
+ * 可交给 UI 的腾讯 SDK 配置；应用密钥仅在数据层兑换凭据时使用。
  */
 data class FaceVerificationConfig(
     val appId: String,
-    val secret: String,
-    val licence: String
+    val licence: String,
+    val sessionGeneration: Long,
 )
 
 /**

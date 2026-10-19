@@ -2,41 +2,25 @@ package com.ytone.longcare.domain.location
 
 import com.ytone.longcare.model.LocationResult
 
-/**
- * Unified contract for location capabilities:
- * 1. fetch single location
- * 2. read cached location
- * 3. manage keep-alive lifecycle
- *
- * Continuous samples are intentionally not exposed here. The foreground location
- * service is their sole SDK collector and publishes them through LocationSampleStore.
- */
+/** 动作取点与提交前质量复核；服务订单借用当前采集流，通用取点独立采集。 */
 interface LocationFacade {
-    suspend fun getCurrentLocation(timeoutMs: Long = DEFAULT_FAST_LOCATION_TIMEOUT_MS): LocationResult?
+    suspend fun acquireCurrentLocation(): LocationAcquisition
 
-    suspend fun getFreshLocation(timeoutMs: Long = DEFAULT_FRESH_LOCATION_TIMEOUT_MS): LocationResult?
+    /** 服务订单专用：200 米精度上限，最多等待 30 秒；不接受动作窗口外的位置。 */
+    suspend fun acquireServiceOrderLocation(): LocationAcquisition
 
-    fun getCachedLocation(
-        maxAgeMs: Long = DEFAULT_LOCATION_CACHE_MAX_AGE_MS,
-    ): LocationResult?
+    /** 实际提交前复核权限、开关及质量，返回 null 表示可用；不使用固定 15 秒提交时限。 */
+    fun serviceOrderLocationFailure(location: LocationResult): LocationFailure?
 
-    fun acquireKeepAlive(owner: String)
+    /** 在实际提交/拍摄时复核，包含实时权限、开关和样本时效。 */
+    fun isUsable(location: LocationResult): Boolean
+}
 
-    fun releaseKeepAlive(owner: String)
+sealed interface LocationAcquisition {
+    data class Success(val location: LocationResult) : LocationAcquisition
+    data class Failure(val reason: LocationFailure, val location: LocationResult? = null) : LocationAcquisition
+}
 
-    /** 定位权限授予后调用，重启定位引擎 */
-    fun notifyPermissionGranted() {}
-
-    companion object {
-        const val MIN_FAST_LOCATION_TIMEOUT_MS: Long = 1_000L
-        const val DEFAULT_FAST_LOCATION_TIMEOUT_MS: Long = 4_000L
-        const val MAX_FAST_LOCATION_TIMEOUT_MS: Long = DEFAULT_FAST_LOCATION_TIMEOUT_MS
-
-        const val MIN_FRESH_LOCATION_TIMEOUT_MS: Long = 8_000L
-        const val DEFAULT_FRESH_LOCATION_TIMEOUT_MS: Long = 10_000L
-        const val MAX_FRESH_LOCATION_TIMEOUT_MS: Long = 15_000L
-
-        const val DEFAULT_LOCATION_CACHE_MAX_AGE_MS: Long = 30_000L
-        const val BUSINESS_LOCATION_CACHE_MAX_AGE_MS: Long = 5 * 60 * 1000L
-    }
+enum class LocationFailure {
+    PERMISSION, SERVICE_DISABLED, BUSY, TIMEOUT, QUALITY, PRECISION, NETWORK, CONFIGURATION, UNAVAILABLE,
 }

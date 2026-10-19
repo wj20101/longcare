@@ -35,6 +35,7 @@ import com.ytone.longcare.model.UploadTokenResultModel
 import com.ytone.longcare.model.SystemConfigModel
 import com.ytone.longcare.model.AppVersionModel
 import com.ytone.longcare.model.StartConfigResultModel
+import com.ytone.longcare.model.ZhiChiDeviceStatusModel
 import com.ytone.longcare.model.EndOrderResultModel
 import com.ytone.longcare.model.SendSmsCodeParamModel
 import com.ytone.longcare.api.model.AddUserLatentRequestDto
@@ -155,6 +156,11 @@ interface LongCareApiService {
     @GET("/V1/Service/Statistics")
     suspend fun getServiceStatistics(): ApiResult<NurseServiceTimeModel>
 
+    /** 首页咫尺设备状态，轮询时始终查询服务端最新状态。 */
+    @Headers("Cache-Control: no-cache, no-store")
+    @GET("/V1/User/ZhiChiDeviceStatus")
+    suspend fun getZhiChiDeviceStatus(): ApiResult<ZhiChiDeviceStatusModel>
+
     /**
      * 获取本月已服务的用户列表
      */
@@ -188,6 +194,7 @@ interface LongCareApiService {
     /**
      * 系统相关配置
      */
+    @Headers("Cache-Control: no-cache, no-store")
     @GET("/V1/System/Config")
     suspend fun getSystemConfig(): ApiResult<SystemConfigModel>
 

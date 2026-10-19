@@ -4,7 +4,12 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.Build
+import android.os.PowerManager
 import androidx.core.content.ContextCompat
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.location.LocationManagerCompat
 import com.ytone.longcare.domain.location.LocationRuntimeReadiness
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,4 +30,52 @@ class AndroidLocationRuntimeReadiness @Inject constructor(
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         return LocationManagerCompat.isLocationEnabled(locationManager)
     }
+
+    /** Read only when reporting an episode; null means unavailable, never a guessed false. */
+    fun diagnosticSnapshot(): Map<String, Any?> {
+        val connectivity = read { context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager }
+        // Preserve the distinction between an unavailable getter and a confirmed absent network.
+        val networkRead = connectivity?.let { runCatching { it.activeNetwork } }
+        val networkAvailable = networkRead?.map { it != null }?.getOrNull()
+        val capabilities = networkRead?.getOrNull()?.let { network ->
+            read { connectivity?.getNetworkCapabilities(network) }
+        }
+        val power = read { context.getSystemService(Context.POWER_SERVICE) as? PowerManager }
+        return mapOf(
+            "androidApi" to Build.VERSION.SDK_INT,
+            "appVersionCode" to read {
+                val manager = context.packageManager
+                val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    manager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+                } else {
+                    manager.getPackageInfo(context.packageName, 0)
+                }
+                PackageInfoCompat.getLongVersionCode(info)
+            },
+            "networkAvailable" to networkAvailable,
+            "networkValidated" to when (networkAvailable) {
+                false -> false
+                true -> capabilities?.let { read { it.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) } }
+                null -> null
+            },
+            "networkTransport" to when {
+                networkAvailable == false -> "NONE"
+                capabilities == null -> null
+                else -> read {
+                    when {
+                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "WIFI"
+                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "CELLULAR"
+                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ETHERNET"
+                        else -> "OTHER"
+                    }
+                }
+            },
+            "deviceIdle" to read { power?.isDeviceIdleMode },
+            "screenOn" to read { power?.isInteractive },
+            "powerSave" to read { power?.isPowerSaveMode },
+            "batteryExempt" to read { power?.isIgnoringBatteryOptimizations(context.packageName) },
+        )
+    }
+
+    private inline fun <T> read(block: () -> T): T? = try { block() } catch (_: Exception) { null }
 }

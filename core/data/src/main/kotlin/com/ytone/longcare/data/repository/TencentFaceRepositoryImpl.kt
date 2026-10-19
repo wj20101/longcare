@@ -7,6 +7,8 @@ import com.ytone.longcare.model.GetFaceIdRequest
 import com.ytone.longcare.model.TencentAccessTokenResponse
 import com.ytone.longcare.model.TencentApiTicketResponse
 import com.ytone.longcare.model.TencentFaceIdResponse
+import com.ytone.longcare.common.utils.SystemConfigManager
+import com.ytone.longcare.domain.faceauth.model.FaceVerificationConfig
 import javax.inject.Inject
 
 /**
@@ -14,16 +16,20 @@ import javax.inject.Inject
  */
 class TencentFaceRepositoryImpl @Inject constructor(
     private val apiService: TencentFaceApiService,
+    private val configManager: SystemConfigManager,
+    private val faceSession: UserSessionTracker,
 ) : TencentFaceRepository {
-    private val credentialCache = TencentCredentialCache()
+    private val credentialCache get() = faceSession.credentials
 
     override suspend fun getAccessToken(
-        appId: String,
-        secret: String
+        config: FaceVerificationConfig,
     ): ApiResult<TencentAccessTokenResponse> =
-        credentialCache.getAccessToken(appId) {
+        credentialCache.getAccessToken(config.appId, config.sessionGeneration, { faceSession.isCurrent(config.sessionGeneration) }) {
+            val secret = configManager.loadFaceSecret(config)
+                ?: return@getAccessToken ApiResult.Failure(code = -1, message = "Face configuration unavailable")
+            faceSession.requireCurrent(config.sessionGeneration)
             apiService.getAccessToken(
-                appId = appId,
+                appId = config.appId,
                 secret = secret
             )
         }
@@ -31,19 +37,19 @@ class TencentFaceRepositoryImpl @Inject constructor(
     override suspend fun getApiTicket(
         appId: String,
         accessToken: String,
-        userId: String
+        userId: String,
+        sessionGeneration: Long,
     ): ApiResult<TencentApiTicketResponse> =
-        apiService.getApiTicket(
-            appId = appId,
-            accessToken = accessToken,
-            userId = userId
-        )
+        inSession(sessionGeneration) {
+            apiService.getApiTicket(appId = appId, accessToken = accessToken, userId = userId)
+        }
 
     override suspend fun getSignTicket(
         appId: String,
-        accessToken: String
+        accessToken: String,
+        sessionGeneration: Long,
     ): ApiResult<TencentApiTicketResponse> =
-        credentialCache.getSignTicket(appId) {
+        credentialCache.getSignTicket(appId, sessionGeneration, { faceSession.isCurrent(sessionGeneration) }) {
             apiService.getSignTicket(
                 appId = appId,
                 accessToken = accessToken
@@ -59,7 +65,8 @@ class TencentFaceRepositoryImpl @Inject constructor(
         sign: String,
         nonce: String,
         sourcePhotoStr: String?,
-        sourcePhotoType: String?
+        sourcePhotoType: String?,
+        sessionGeneration: Long,
     ): ApiResult<TencentFaceIdResponse> {
         val request = GetFaceIdRequest(
             appId = appId,
@@ -72,9 +79,15 @@ class TencentFaceRepositoryImpl @Inject constructor(
             sourcePhotoStr = sourcePhotoStr,
             sourcePhotoType = sourcePhotoType
         )
-        return apiService.getFaceId(
-            request = request,
-            orderNo = orderNo
-        )
+        return inSession(sessionGeneration) {
+            apiService.getFaceId(request = request, orderNo = orderNo)
+        }
+    }
+
+    private suspend fun <T> inSession(generation: Long, block: suspend () -> T): T {
+        faceSession.requireCurrent(generation)
+        val result = block()
+        faceSession.requireCurrent(generation)
+        return result
     }
 }

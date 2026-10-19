@@ -42,5 +42,6 @@ class NfcOrderWorkflowResultHandlersTest {
         networkError = "网络异常",
         orderDetailLoadFailed = "订单加载失败",
         bindLocationFailed = "绑定定位失败",
+        locationUnavailable = "定位不可用",
     )
 }

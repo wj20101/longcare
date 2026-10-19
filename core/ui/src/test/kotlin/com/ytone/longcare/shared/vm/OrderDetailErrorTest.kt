@@ -31,7 +31,7 @@ class OrderDetailErrorTest {
         Dispatchers.setMain(StandardTestDispatcher())
         every { text.text(any()) } answers { "resource:${firstArg<Int>()}" }
         mockkObject(DiagnosticEventTracker)
-        every { DiagnosticEventTracker.trackError(any(), any(), any(), any(), any()) } just Runs
+        every { DiagnosticEventTracker.trackError(any(), any(), any(), any(), any(), any()) } just Runs
     }
 
     @After fun tearDown() {
@@ -129,16 +129,135 @@ class OrderDetailErrorTest {
         coEvery { orders.getOrderInfo(key) } returns result
     }
 
+    @Test fun `start does not submit empty coordinates and duplicate clicks only submit once`() = runTest {
+        val location = mockk<com.ytone.longcare.domain.location.LocationFacade>()
+        val sample = com.ytone.longcare.model.LocationResult(31.0, 121.0, "test")
+        val model = SharedOrderDetailViewModel(details, orders, location, text, mockk(relaxed = true))
+        coEvery { location.acquireServiceOrderLocation() } returns
+            com.ytone.longcare.domain.location.LocationAcquisition.Failure(
+                com.ytone.longcare.domain.location.LocationFailure.TIMEOUT)
+        model.starOrder(key)
+        advanceUntilIdle()
+        coVerify(exactly = 0) { orders.starOrder(any(), any(), any(), any()) }
+        assertTrue(model.starOrderState.value is StarOrderUiState.Error)
+
+        coEvery { location.acquireServiceOrderLocation() } returns
+            com.ytone.longcare.domain.location.LocationAcquisition.Success(sample)
+        every { location.serviceOrderLocationFailure(sample) } returns null
+        coEvery { orders.starOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
+        model.starOrder(key)
+        model.starOrder(key)
+        advanceUntilIdle()
+        coVerify(exactly = 1) { orders.starOrder(key.orderId, emptyList(), "121.0", "31.0") }
+        verify(exactly = 1) {
+            DiagnosticEventTracker.trackEvent(any(), "service_start_location_submit", any(),
+                match { it["longitude"] == 121.0 && it["latitude"] == 31.0 && it["stage"] == "service_start" }, any(), true)
+        }
+        verify(exactly = 1) {
+            DiagnosticEventTracker.trackEvent(any(), "service_start_location_success", any(), any(), any(), true)
+        }
+    }
+
     private fun error(kind: ApiRequestException.Kind, code: Int? = null): ApiRequestException =
         mockk<ApiRequestException>().also {
             every { it.kind } returns kind
             every { it.httpCode } returns code
         }
 
+    @Test fun `switching formal start order cancels old location result and keeps new order identity`() = runTest {
+        val location = mockk<com.ytone.longcare.domain.location.LocationFacade>()
+        val first = kotlinx.coroutines.CompletableDeferred<com.ytone.longcare.domain.location.LocationAcquisition>()
+        val sample = com.ytone.longcare.model.LocationResult(31.0, 121.0, "test")
+        coEvery { location.acquireServiceOrderLocation() } coAnswers {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { first.await() }
+        } coAndThen { com.ytone.longcare.domain.location.LocationAcquisition.Success(sample) }
+        every { location.serviceOrderLocationFailure(sample) } returns null
+        coEvery { orders.starOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
+        val model = SharedOrderDetailViewModel(details, orders, location, text, mockk(relaxed = true))
+        model.starOrder(key)
+        runCurrent()
+        val next = key.copy(orderId = key.orderId + 1)
+        model.starOrder(next)
+        runCurrent()
+        first.complete(com.ytone.longcare.domain.location.LocationAcquisition.Success(sample))
+        advanceUntilIdle()
+        coVerify(exactly = 0) { orders.starOrder(key.orderId, any(), any(), any()) }
+        coVerify(exactly = 1) { orders.starOrder(next.orderId, any(), "121.0", "31.0") }
+    }
+
+    @Test fun `late exception from cancelled SDK request does not overwrite new formal start`() = runTest {
+        val location = mockk<com.ytone.longcare.domain.location.LocationFacade>()
+        val first = kotlinx.coroutines.CompletableDeferred<com.ytone.longcare.domain.location.LocationAcquisition>()
+        val sample = com.ytone.longcare.model.LocationResult(31.0, 121.0, "test")
+        coEvery { location.acquireServiceOrderLocation() } coAnswers {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { first.await() }
+        } coAndThen { com.ytone.longcare.domain.location.LocationAcquisition.Success(sample) }
+        every { location.serviceOrderLocationFailure(sample) } returns null
+        coEvery { orders.starOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
+        val model = SharedOrderDetailViewModel(details, orders, location, text, mockk(relaxed = true))
+        model.starOrder(key); runCurrent()
+        val next = key.copy(orderId = key.orderId + 1)
+        model.starOrder(next); runCurrent()
+        first.completeExceptionally(IllegalStateException("old SDK failed")); advanceUntilIdle()
+        assertEquals(StarOrderUiState.Success(next, emptyList()), model.starOrderState.value)
+        coVerify(exactly = 0) { orders.starOrder(key.orderId, any(), any(), any()) }
+        coVerify(exactly = 1) { orders.starOrder(next.orderId, any(), "121.0", "31.0") }
+    }
+
+    @Test fun `cancelled acquisition can retry the same order instead of staying loading forever`() = runTest {
+        val location = mockk<com.ytone.longcare.domain.location.LocationFacade>()
+        coEvery { location.acquireServiceOrderLocation() } throws CancellationException()
+        val lifecycle = mockk<com.ytone.longcare.domain.order.ServiceOrderLifecycle>(relaxed = true)
+        val model = SharedOrderDetailViewModel(details, orders, location, text, lifecycle)
+
+        model.starOrder(key)
+        runCurrent()
+        assertEquals(StarOrderUiState.Initial, model.starOrderState.value)
+        model.starOrder(key)
+        runCurrent()
+
+        coVerify(exactly = 2) { location.acquireServiceOrderLocation() }
+        verify(exactly = 2) { lifecycle.prepareOrderStart(key.orderId) }
+        verify(exactly = 2) { lifecycle.cancelOrderPreparation(key.orderId) }
+        coVerify(exactly = 0) { orders.starOrder(any(), any(), any(), any()) }
+    }
+
+    @Test fun `late cancelled preparation cannot release a new preparation for the same order`() = runTest {
+        val location = mockk<com.ytone.longcare.domain.location.LocationFacade>()
+        val oldResult = kotlinx.coroutines.CompletableDeferred<com.ytone.longcare.domain.location.LocationAcquisition>()
+        val newResult = kotlinx.coroutines.CompletableDeferred<com.ytone.longcare.domain.location.LocationAcquisition>()
+        coEvery { location.acquireServiceOrderLocation() } coAnswers {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { oldResult.await() }
+        } coAndThen { newResult.await() }
+        val lifecycle = mockk<com.ytone.longcare.domain.order.ServiceOrderLifecycle>(relaxed = true)
+        val model = SharedOrderDetailViewModel(details, orders, location, text, lifecycle)
+        model.starOrder(key)
+        runCurrent()
+        val otherOrder = key.copy(orderId = key.orderId + 1)
+        coEvery { details.getOrderInfo(otherOrder, any()) } returns ApiResult.Success(
+            ServiceOrderInfoModel(orderId = otherOrder.orderId),
+        )
+        model.getOrderInfo(otherOrder)
+        model.starOrder(key)
+        runCurrent()
+        verify(exactly = 1) { lifecycle.cancelOrderPreparation(key.orderId) }
+
+        oldResult.complete(com.ytone.longcare.domain.location.LocationAcquisition.Failure(
+            com.ytone.longcare.domain.location.LocationFailure.TIMEOUT))
+        runCurrent()
+
+        verify(exactly = 1) { lifecycle.cancelOrderPreparation(key.orderId) }
+        assertEquals(StarOrderUiState.Loading, model.starOrderState.value)
+        newResult.complete(com.ytone.longcare.domain.location.LocationAcquisition.Failure(
+            com.ytone.longcare.domain.location.LocationFailure.TIMEOUT))
+        runCurrent()
+        verify(exactly = 2) { lifecycle.cancelOrderPreparation(key.orderId) }
+    }
+
     private data class Entry(val state: StateFlow<OrderDetailUiState>, val load: () -> Unit)
 
     private fun entry(shared: Boolean): Entry = if (shared) {
-        val vm = SharedOrderDetailViewModel(details, orders, mockk(), mockk(), text)
+        val vm = SharedOrderDetailViewModel(details, orders, mockk(), text, mockk(relaxed = true))
         Entry(vm.uiState) { vm.getOrderInfo(key, forceRefresh = true) }
     } else {
         val vm = OrderDetailViewModel(orders, details, text)

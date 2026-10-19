@@ -42,7 +42,6 @@ class CountdownAlarmPermissionFallbackIntegrationTest {
                 context = context,
                 alarmManager = alarmManager,
                 countdownAlarmRequestCode = ALARM_REQUEST_CODE,
-                countdownAlarmActivityRequestCode = ALARM_ACTIVITY_REQUEST_CODE,
                 actionCountdownAlarmPrefix = ACTION_PREFIX,
                 orderKey = OrderKey(orderId = ORDER_ID),
                 serviceName = "精确闹钟权限降级测试",
@@ -58,7 +57,6 @@ class CountdownAlarmPermissionFallbackIntegrationTest {
     private companion object {
         const val ORDER_ID = 987_654_321L
         const val ALARM_REQUEST_CODE = 31_001
-        const val ALARM_ACTIVITY_REQUEST_CODE = 31_002
         const val ACTION_PREFIX = "com.ytone.longcare.test.COUNTDOWN_ALARM_"
     }
 }

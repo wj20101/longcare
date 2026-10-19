@@ -94,5 +94,6 @@ class SalesViewModelToDoTest {
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
             savedStateHandle = androidx.lifecycle.SavedStateHandle(),
             textResolver = ResourceTextResolver(mockk<Context>(relaxed = true)),
+            cosRepository = mockk(relaxed = true),
         )
 }

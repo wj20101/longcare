@@ -1,29 +1,39 @@
 package com.ytone.longcare.features.nfc.vm
 
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 internal suspend fun performStartOrderWorkflow(
     orderRepository: OrderRepository,
     orderKey: OrderKey,
     nfcDeviceId: String,
-    longitude: String,
-    latitude: String,
+    location: LocationResult,
     uiState: MutableStateFlow<NfcSignInUiState>,
     userMessages: NfcUserMessages,
 ) {
+    val userId = DiagnosticEventTracker.currentUserId()
+    val locationFields = nfcLocationExtras(location)
     uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
 
-    when (val result = orderRepository.checkOrder(
+    val result = orderRepository.checkOrder(
         orderKey.orderId,
         nfcDeviceId,
-        longitude,
-        latitude
-    )) {
-        is ApiResult.Success -> applyOrderCheckSuccess(uiState)
+        location.longitude.toString(),
+        location.latitude.toString()
+    )
+    currentCoroutineContext().ensureActive()
+    when (result) {
+        is ApiResult.Success -> {
+            trackNfcLocation("nfc_location_submit_success", orderKey, SignInMode.START_ORDER, "start_check", location, userId = userId, locationFields = locationFields)
+            applyOrderCheckSuccess(uiState)
+        }
         is ApiResult.Exception -> {
             trackNfcException(
                 event = "start_order_check_exception",
@@ -32,7 +42,8 @@ internal suspend fun performStartOrderWorkflow(
                 orderKey = orderKey,
                 signInMode = SignInMode.START_ORDER,
                 nfcDeviceId = nfcDeviceId,
-                extras = locationExtras(longitude, latitude),
+                userId = userId,
+                extras = locationFields,
             )
             applyOrderApiException(
                 exception = result,
@@ -48,7 +59,8 @@ internal suspend fun performStartOrderWorkflow(
                 orderKey = orderKey,
                 signInMode = SignInMode.START_ORDER,
                 nfcDeviceId = nfcDeviceId,
-                extras = locationExtras(longitude, latitude),
+                userId = userId,
+                extras = locationFields,
             )
             applyOrderApiFailure(failure = result, uiState = uiState)
         }
@@ -63,13 +75,12 @@ internal suspend fun performEndOrderWorkflow(
     beginImgList: List<String>,
     endImageList: List<String>,
     centerImgList: List<String>,
-    longitude: String,
-    latitude: String,
     endType: Int,
     uiState: MutableStateFlow<NfcSignInUiState>,
     onCheckSuccess: suspend () -> Unit,
     userMessages: NfcUserMessages,
 ) {
+    val userId = DiagnosticEventTracker.currentUserId()
     uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
     val endOrderParams = createEndOrderParams(
         orderKey = orderKey,
@@ -78,15 +89,15 @@ internal suspend fun performEndOrderWorkflow(
         beginImgList = beginImgList,
         endImageList = endImageList,
         centerImgList = centerImgList,
-        longitude = longitude,
-        latitude = latitude,
         endType = endType
     )
 
-    when (val checkResult = orderRepository.checkEndOrder(
+    val checkResult = orderRepository.checkEndOrder(
         orderId = orderKey.orderId,
         projectIdList = projectIdList
-    )) {
+    )
+    currentCoroutineContext().ensureActive()
+    when (checkResult) {
         is ApiResult.Success -> onCheckSuccess()
         is ApiResult.Exception -> {
             trackNfcException(
@@ -96,7 +107,8 @@ internal suspend fun performEndOrderWorkflow(
                 orderKey = orderKey,
                 signInMode = SignInMode.END_ORDER,
                 nfcDeviceId = nfcDeviceId,
-                extras = locationExtras(longitude, latitude) + mapOf(
+                userId = userId,
+                extras = mapOf(
                     "projectCount" to projectIdList.size,
                     "beginImageCount" to beginImgList.size,
                     "centerImageCount" to centerImgList.size,
@@ -118,7 +130,8 @@ internal suspend fun performEndOrderWorkflow(
                 orderKey = orderKey,
                 signInMode = SignInMode.END_ORDER,
                 nfcDeviceId = nfcDeviceId,
-                extras = locationExtras(longitude, latitude) + mapOf(
+                userId = userId,
+                extras = mapOf(
                     "projectCount" to projectIdList.size,
                     "beginImageCount" to beginImgList.size,
                     "centerImageCount" to centerImgList.size,
@@ -134,9 +147,3 @@ internal suspend fun performEndOrderWorkflow(
         }
     }
 }
-
-private fun locationExtras(longitude: String, latitude: String): Map<String, Any?> =
-    mapOf(
-        "hasLongitude" to longitude.isNotBlank(),
-        "hasLatitude" to latitude.isNotBlank(),
-    )

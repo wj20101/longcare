@@ -3,6 +3,7 @@ package com.ytone.longcare.di
 import com.ytone.longcare.common.network.SessionInvalidationHandler
 import com.ytone.longcare.data.repository.DefaultSessionInvalidationHandler
 import com.ytone.longcare.data.repository.DefaultUserSessionRepository
+import com.ytone.longcare.data.repository.HomeDeviceRepositoryImpl
 import com.ytone.longcare.data.repository.IdentificationRepositoryImpl
 import com.ytone.longcare.data.repository.ImageRepository
 import com.ytone.longcare.data.repository.LocationRepositoryImpl
@@ -15,7 +16,10 @@ import com.ytone.longcare.data.repository.TencentFaceRepositoryImpl
 import com.ytone.longcare.data.repository.UnifiedOrderRepository
 import com.ytone.longcare.data.repository.UserListRepositoryImpl
 import com.ytone.longcare.domain.faceauth.TencentFaceRepository
+import com.ytone.longcare.domain.faceauth.FaceVerificationSession
+import com.ytone.longcare.data.repository.UserSessionTracker
 import com.ytone.longcare.domain.identification.IdentificationRepository
+import com.ytone.longcare.domain.home.HomeDeviceRepository
 import com.ytone.longcare.domain.login.LoginRepository
 import com.ytone.longcare.domain.location.LocationRepository
 import com.ytone.longcare.domain.order.OrderRepository
@@ -37,6 +41,9 @@ import javax.inject.Singleton
 abstract class RepositoryModule {
 
     @Binds
+    abstract fun bindFaceVerificationSession(impl: UserSessionTracker): FaceVerificationSession
+
+    @Binds
     @Singleton
     abstract fun bindUserSessionRepository(impl: DefaultUserSessionRepository): UserSessionRepository
 
@@ -53,6 +60,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindProfileRepository(impl: ProfileRepositoryImpl): ProfileRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindHomeDeviceRepository(impl: HomeDeviceRepositoryImpl): HomeDeviceRepository
 
     @Binds
     @Singleton

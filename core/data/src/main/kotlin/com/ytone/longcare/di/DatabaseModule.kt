@@ -19,7 +19,7 @@ import javax.inject.Singleton
  * 数据库DI Module
  *
  * 提供Room数据库及其DAO的依赖注入。
- * 本地订单数据是服务端缓存。版本缺少迁移路径时按已确认策略完整重建。
+ * 仅重建已确认可丢弃的 v1/v2 数据；后续升级必须迁移本地状态与未上传照片记录。
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -30,13 +30,16 @@ object DatabaseModule {
         @ApplicationContext context: Context
     ): LongCareDatabase = buildDatabase(context)
 
-    private fun buildDatabase(context: Context): LongCareDatabase {
+    internal fun buildDatabase(
+        context: Context,
+        name: String = LongCareDatabase.DATABASE_NAME,
+    ): LongCareDatabase {
         return Room.databaseBuilder(
             context = context,
             klass = LongCareDatabase::class.java,
-            name = LongCareDatabase.DATABASE_NAME
+            name = name
         )
-            .fallbackToDestructiveMigration(dropAllTables = true)
+            .fallbackToDestructiveMigrationFrom(true, 1, 2)
             .build()
     }
 

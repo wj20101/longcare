@@ -268,13 +268,13 @@ class SalesViewModelSdkTokenRecoveryTest {
 
     @Test
     fun `cancel only clears SDK loading without overwriting another operation`() = runTest {
-        val customers = CompletableDeferred<ApiResult<List<com.ytone.longcare.model.UserLatentListModel>>>()
+        val submission = CompletableDeferred<ApiResult<com.ytone.longcare.model.AddUserLatentResultModel>>()
         val token = CompletableDeferred<ApiResult<CheckTokenModel>>()
         val repository = tokenRepository()
-        coEvery { repository.getRecentUserLatentList() } coAnswers { customers.await() }
+        coEvery { repository.addUserLatent(any()) } coAnswers { submission.await() }
         coEvery { repository.getCheckToken(any(), any()) } coAnswers { token.await() }
         val vm = createViewModel(repository, gateway())
-        vm.loadRecentCustomers()
+        vm.submitCustomer(SalesCustomerDraft(userName = "测试客户"), emptyList())
         runCurrent()
         assertTrue(vm.uiState.value.isLoading)
         val operation = vm.uiState.value.operation
@@ -286,7 +286,7 @@ class SalesViewModelSdkTokenRecoveryTest {
         assertFalse(vm.uiState.value.isSdkTokenLoading)
         assertTrue(vm.uiState.value.isLoading)
         assertEquals(operation, vm.uiState.value.operation)
-        customers.complete(ApiResult.Success(emptyList()))
+        submission.complete(ApiResult.Success(com.ytone.longcare.model.AddUserLatentResultModel(id = 7)))
         advanceUntilIdle()
     }
 
@@ -350,6 +350,7 @@ class SalesViewModelSdkTokenRecoveryTest {
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
             savedStateHandle = androidx.lifecycle.SavedStateHandle(),
             textResolver = ResourceTextResolver(applicationContext),
+            cosRepository = mockk(relaxed = true),
         )
     }
 }

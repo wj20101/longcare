@@ -6,6 +6,8 @@ import com.ytone.longcare.common.image.UnifiedImagePipeline
 import com.ytone.longcare.common.image.WatermarkedCaptureRequest
 import com.ytone.longcare.domain.system.WatermarkConfigProvider
 import com.ytone.longcare.domain.location.LocationFacade
+import com.ytone.longcare.domain.location.LocationAcquisition
+import com.ytone.longcare.model.LocationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -22,7 +24,9 @@ sealed interface CameraLocationState {
     data object Loading : CameraLocationState
     data object Unavailable : CameraLocationState
     data object Failed : CameraLocationState
-    data class Coordinates(val value: String) : CameraLocationState
+    data class Coordinates(val sample: LocationResult) : CameraLocationState {
+        val value: String get() = "${sample.longitude},${sample.latitude}"
+    }
 }
 
 @HiltViewModel
@@ -51,11 +55,11 @@ class CameraViewModel @Inject constructor(
         if (!hasLocationPermission) return
         locationJob = viewModelScope.launch {
             try {
-                val locationResult = locationFacade.getCurrentLocation()
+                val locationResult = locationFacade.acquireCurrentLocation()
                 if (requestId != locationRequestId) return@launch
-                _location.value = if (locationResult != null) {
+                _location.value = if (locationResult is LocationAcquisition.Success) {
                     CameraLocationState.Coordinates(
-                        "${locationResult.longitude},${locationResult.latitude}",
+                        locationResult.location,
                     )
                 } else {
                     CameraLocationState.Unavailable
@@ -66,6 +70,19 @@ class CameraViewModel @Inject constructor(
                 if (requestId == locationRequestId) _location.value = CameraLocationState.Failed
             }
         }
+    }
+
+    fun coordinatesForCapture(): String? {
+        val coordinates = _location.value as? CameraLocationState.Coordinates ?: return null
+        if (locationFacade.isUsable(coordinates.sample)) return coordinates.value
+        _location.value = CameraLocationState.Unavailable
+        return null
+    }
+
+    fun stopLocationRequest() {
+        ++locationRequestId
+        locationJob?.cancel()
+        _location.value = CameraLocationState.Unavailable
     }
 
     fun updateTime() {

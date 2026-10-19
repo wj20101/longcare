@@ -39,7 +39,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.face.detection)
     implementation(libs.okhttp.core)
-    implementation(libs.crashreport)
     implementation(libs.dagger.hilt.android)
     implementation(libs.hilt.lifecycle.viewmodel.compose)
     ksp(libs.dagger.hilt.compiler)

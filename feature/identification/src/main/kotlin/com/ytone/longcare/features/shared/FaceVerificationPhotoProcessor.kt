@@ -3,6 +3,7 @@ package com.ytone.longcare.features.shared
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.core.common.di.IoDispatcher
 import java.io.File
@@ -57,7 +58,7 @@ class FaceVerificationPhotoProcessor @Inject constructor(
                 throw exception
             } catch (exception: Exception) {
                 DiagnosticEventTracker.trackError(
-                    category = "face_verification",
+                    category = DiagnosticCategory.FACE_VERIFICATION,
                     event = "shared_face_photo_process_exception",
                     description = "共享人脸照片处理异常",
                     throwable = exception,

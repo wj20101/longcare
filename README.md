@@ -7,14 +7,14 @@ LongCare 是面向长期护理服务执行和客户评估场景的 Android 客�
 
 工程仅构建主应用（`com.ytone.longcare`）。隐私同意后，长按登录页中央大 Logo 并点击确认，可进入 NFC/R65C 本地读卡检测；不震动、不登录、不上传、不触发业务签到。
 
-当前主业务链路已实现，工程处于模块化收敛阶段。当前 QLZ 测试配置及 QLZ/腾讯 SDK 已知风险已获明确接受，Release 会报告警告，仍须通过正式签名和其他质量/业务验收。风险接受不等于厂商问题修复。
+当前主业务链路已实现，QLZ 使用默认正式环境。已明确接受的 QLZ/腾讯 SDK 厂商风险由 Release 报告警告，正式签名和其他质量检查保持阻断。风险接受不等于厂商问题修复。
 
 ## 环境
 
 - macOS/Linux/Windows + Android SDK
 - JDK 21
 - Android SDK Platform 37
-- Gradle 使用仓库自带 Wrapper（9.7.1）
+- Gradle 使用仓库自带 [Wrapper](gradle/wrapper/gradle-wrapper.properties)
 - 推荐安装 Android CLI，用于项目描述、官方文档检索、设备和模拟器操作
 
 SDK 路径写入未跟踪的 `local.properties`。Release 签名、私有 Maven 凭据和其他 secret 不得提交到仓库。
@@ -35,7 +35,7 @@ android describe --project_dir=.
 android run --apks=app/build/outputs/apk/debug/app-debug.apk
 ```
 
-未来 Release 仅提供主应用 APK/AAB、校验和与映射等辅助产物；历史助手附件和已安装旧助手保持不变。
+Release 仅提供主应用 APK/AAB、校验和与映射等辅助产物；历史助手附件和已安装旧助手保持不变。
 
 仓库默认 `debug.useMockData=false`，Debug 会访问真实配置的后端。需要本地 mock 时显式构建：
 
@@ -88,6 +88,6 @@ docs/                当前产品、架构、集成和合规说明
 
 ## 文档
 
-统一阅读入口和维护规则见[文档索引](docs/README.md)，需求、技术评估、风险与优化顺序见[项目整体分析报告](docs/analysis/project-review.md)。代码协作先读 [AGENT.md](AGENT.md)。
+统一阅读入口和维护规则见[文档索引](docs/README.md)，已知限制见[工程风险](docs/analysis/project-review.md)。代码协作先读 [AGENT.md](AGENT.md)。
 
-机器输出保存在构建目录或 CI artifact；历史决策通过 Git、PR、Issue 和 OpenSpec 归档追溯。
+机器输出保存在构建目录或 CI artifact；历史决策通过 Git、PR 和 Issue 追溯。

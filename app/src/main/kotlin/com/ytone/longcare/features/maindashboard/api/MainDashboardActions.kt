@@ -7,5 +7,6 @@ data class MainDashboardActions(
     val onNavigateToServiceRecordsList: () -> Unit,
     val onNavigateToNursingExecution: (OrderKey) -> Unit,
     val onNavigateToService: (OrderKey) -> Unit,
-    val onNavigateToServiceCountdown: (OrderKey, List<Int>) -> Unit
+    val onNavigateToServiceCountdown: (OrderKey, List<Int>) -> Unit,
+    val onOpenDevicePage: (url: String, title: String) -> Unit = { _, _ -> },
 )

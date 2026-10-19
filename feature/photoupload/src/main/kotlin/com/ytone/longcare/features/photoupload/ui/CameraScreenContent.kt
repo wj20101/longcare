@@ -25,6 +25,7 @@ import com.ytone.longcare.model.WatermarkData
 import java.io.File
 import com.ytone.longcare.feature.photoupload.R
 import com.ytone.longcare.features.photoupload.vm.CameraLocationState
+import com.ytone.longcare.feature.photoupload.databinding.WatermarkViewBinding
 
 @Composable
 internal fun CameraContent(
@@ -67,6 +68,16 @@ internal fun CameraContent(
     val isCountingDown = countdownSeconds > 0
     val watermarkPreparingMessage = stringResource(R.string.camera_watermark_preparing)
 
+    val prepareCapture: () -> Unit = {
+        viewModel.updateTime()
+        // 同步更新实际截图 View，不等待 Compose 重组，防止把旧坐标拍进水印。
+        (watermarkView?.tag as? WatermarkViewBinding)?.let { binding ->
+            binding.coordinatesTextView.text = viewModel.coordinatesForCapture()
+                ?: context.getString(R.string.camera_location_unavailable)
+            binding.captureTimeTextView.text = viewModel.time.value
+        }
+    }
+
     val performCapture: () -> Unit = {
         startWatermarkCapture(
             context = context,
@@ -78,7 +89,7 @@ internal fun CameraContent(
             preparingMessage = watermarkPreparingMessage,
             onCaptureStarted = {
                 isCapturing = true
-                viewModel.updateTime()
+                prepareCapture()
             },
             onCaptureFinished = { isCapturing = false },
             onImageCaptured = onImageCaptured
@@ -130,7 +141,7 @@ internal fun CameraContent(
                         processCapturedImage = viewModel::processCapturedImage,
                         onCountdownUpdate = { countdownSeconds = it },
                         onCaptureStateChanged = { isCapturing = it },
-                        onBeforeCapture = { viewModel.updateTime() },
+                        onBeforeCapture = prepareCapture,
                         onImageCaptured = onImageCaptured
                     )
                 },

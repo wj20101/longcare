@@ -44,6 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.repeatOnLifecycle
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
@@ -397,7 +398,7 @@ private fun Context.openApplicationSettings() {
 }
 
 private const val CAPTURE_SUCCESS_FEEDBACK_MILLIS = 650L
-private const val FACE_CAPTURE_DIAGNOSTIC_CATEGORY = "face_capture"
+private val FACE_CAPTURE_DIAGNOSTIC_CATEGORY = DiagnosticCategory.FACE_CAPTURE
 private val FACE_CAPTURE_WORKER_EXECUTOR: Executor =
     Dispatchers.Default.limitedParallelism(1).asExecutor()
 private val FACE_CAPTURE_RESOLUTION_SELECTOR = ResolutionSelector.Builder()

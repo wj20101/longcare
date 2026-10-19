@@ -36,14 +36,14 @@ class BusinessSessionCancellationTest {
     @Before
     fun setup() {
         KLogger.updateConfig { enabled = false }
-        every { keepAlive.acquireOrderTracking(any(), any()) } answers { owner = firstArg() }
+        every { keepAlive.acquireOrderTracking(any(), any()) } answers { owner = firstArg(); true }
     }
 
     @Test
     fun `business end cancels service job synchronously before requesting Android stop`() = runTest {
         coEvery { repository.getOrderState(1) } returns active(1)
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope)
-        manager.setMonitoringAllowed(true)
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true))
+        manager.setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3))
         manager.startReporting(OrderKey(1))
         runCurrent()
         val session = requireNotNull(manager.sessionFor(owner, 1))
@@ -65,14 +65,15 @@ class BusinessSessionCancellationTest {
         coEvery { repository.getOrderState(1) } coAnswers {
             withContext(NonCancellable) { response.await() }
         }
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope)
-        manager.setMonitoringAllowed(true)
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true))
+        manager.setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3))
         manager.startReporting(OrderKey(1))
         runCurrent()
         manager.stopReporting()
         response.complete(active(1))
         runCurrent()
-        verify(exactly = 0) { keepAlive.acquireOrderTracking(any(), any()) }
+        verify(exactly = 1) { keepAlive.acquireOrderTracking(any(), any()) }
+        verify(exactly = 1) { keepAlive.release(any()) }
         assertNull(manager.orderState.value)
     }
 
@@ -81,8 +82,8 @@ class BusinessSessionCancellationTest {
         val old = CompletableDeferred<ApiResult<ServiceOrderStateModel>>()
         coEvery { repository.getOrderState(1) } coAnswers { withContext(NonCancellable) { old.await() } }
         coEvery { repository.getOrderState(2) } returns active(2)
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope)
-        manager.setMonitoringAllowed(true)
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true))
+        manager.setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3))
         manager.startReporting(OrderKey(1))
         runCurrent()
         manager.startReporting(OrderKey(2))
@@ -90,15 +91,16 @@ class BusinessSessionCancellationTest {
         old.complete(ApiResult.Success(ServiceOrderStateModel(1, 2)))
         runCurrent()
         assertTrue(requireNotNull(manager.sessionFor(owner, 2)).canUpload())
-        verify(exactly = 0) { keepAlive.release(any()) }
+        // 只释放切换时的旧会话；迟到完成结果不得再次停止新订单。
+        verify(exactly = 1) { keepAlive.release(any()) }
         manager.stopReporting()
     }
 
     @Test
     fun `restart of same order rejects a stale Service command by unique owner`() = runTest {
         coEvery { repository.getOrderState(1) } returns active(1)
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope)
-        manager.setMonitoringAllowed(true)
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true))
+        manager.setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3))
         manager.startReporting(OrderKey(1))
         runCurrent()
         val oldOwner = owner
@@ -120,8 +122,8 @@ class BusinessSessionCancellationTest {
     fun `query started before formal start success cannot undo the newer confirmation`() = runTest {
         val old = CompletableDeferred<ApiResult<ServiceOrderStateModel>>()
         coEvery { repository.getOrderState(1) } coAnswers { old.await() }
-        val manager = LocationReportingManager(keepAlive, repository, backgroundScope)
-        manager.setMonitoringAllowed(true)
+        val manager = LocationReportingManager(keepAlive, repository, backgroundScope, mockk(relaxed = true))
+        manager.setAccount(com.ytone.longcare.domain.location.LocationAccount(1, 2, 3))
         manager.monitorOrder(1)
         runCurrent()
         manager.onOrderStarted(1)

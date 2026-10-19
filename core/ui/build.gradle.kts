@@ -26,6 +26,7 @@ dependencies {
     implementation(libs.compose.material.icons.extended)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.bundles.coil)
     implementation(libs.dagger.hilt.android)
     ksp(libs.dagger.hilt.compiler)

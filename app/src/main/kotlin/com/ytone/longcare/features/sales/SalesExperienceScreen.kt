@@ -1,7 +1,10 @@
 package com.ytone.longcare.features.sales
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,6 +42,7 @@ import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.PermissionPurposeDialog
 import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.cameraPermissionPurposeNotice
+import com.ytone.longcare.common.utils.locationPermissionPurposeNotice
 import com.ytone.longcare.features.home.api.HomeActions
 import com.ytone.longcare.features.home.ui.AdaptiveAppNavigationScaffold
 import com.ytone.longcare.features.home.ui.AppNavigationItem
@@ -52,9 +56,9 @@ import com.ytone.longcare.model.WatermarkData
 import com.ytone.longcare.platform.sales.rememberSalesSdkUiController
 import com.ytone.longcare.navigation.AppNavigator
 import com.ytone.longcare.navigation.SalesRoute
-import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.presentation.sales.SalesPage
 import kotlinx.coroutines.launch
+import com.ytone.longcare.core.ui.R as CoreUiR
 
 @Composable
 internal fun SalesExperienceScreen(
@@ -86,6 +90,7 @@ internal fun SalesExperienceScreen(
         mutableStateOf(route?.photos ?: emptyList<String>())
     }
     var showCameraPurposeNotice by rememberSaveable { mutableStateOf(false) }
+    var showLocationPurposeNotice by rememberSaveable { mutableStateOf(false) }
 
     var measurementVisible by rememberSaveable { mutableStateOf(false) }
     val currentPage = if (route?.page == SalesPage.DEVICE_STATUS && measurementVisible) {
@@ -269,27 +274,18 @@ internal fun SalesExperienceScreen(
             }
         }
 
-    val locationPermissionLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestMultiplePermissions(),
-        ) { permissions ->
-            val granted =
-                permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                    permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true ||
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                    ) == PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                    ) == PackageManager.PERMISSION_GRANTED
-            if (granted) {
-                viewModel.onLocationPermissionGranted()
-            } else {
-                showMessage(locationPermissionMessage)
-            }
-        }
+    val permissionSettingsUnavailableMessage = stringResource(CoreUiR.string.permission_settings_unavailable)
+
+    val locationPermissionLauncher = com.ytone.longcare.common.utils.rememberLocationPermissionLauncher(
+        onPermissionGranted = viewModel::requestCurrentLocation,
+        onPermissionDenied = { showMessage(locationPermissionMessage) },
+    )
+    val locationSettingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        if (UnifiedPermissionHelper.hasLocationPermission(context)) viewModel.requestCurrentLocation()
+        else showMessage(locationPermissionMessage)
+    }
 
     fun openSalesWatermarkCamera() {
         actions.onNavigateToCamera(
@@ -352,20 +348,10 @@ internal fun SalesExperienceScreen(
     }
 
     fun requestLocationPermission() {
-        val permissions =
-            arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-            )
-        val missing =
-            permissions.filter { permission ->
-                ContextCompat.checkSelfPermission(context, permission) !=
-                    PackageManager.PERMISSION_GRANTED
-            }
-        if (missing.isEmpty()) {
-            viewModel.onLocationPermissionGranted()
+        if (UnifiedPermissionHelper.hasLocationPermission(context)) {
+            viewModel.requestCurrentLocation()
         } else {
-            locationPermissionLauncher.launch(missing.toTypedArray())
+            showLocationPurposeNotice = true
         }
     }
 
@@ -385,7 +371,9 @@ internal fun SalesExperienceScreen(
             val result = requireNotNull(uiState.submissionResult)
             discardRegistrationPhotos()
             navigator.replaceTop(SalesRoute(SalesPage.SUBMIT_SUCCESS, result.id, result.pgUrl,
-                address = registrationDraft.liveAddress, latitude = route?.latitude, longitude = route?.longitude))
+                address = registrationDraft.liveAddress,
+                latitude = route?.registrationLocation?.latitude,
+                longitude = route?.registrationLocation?.longitude))
         }
     }
 
@@ -482,6 +470,10 @@ internal fun SalesExperienceScreen(
                                         user = loggedInUser,
                                         companyName = uiState.companyName,
                                         customers = uiState.recentCustomers,
+                                        isRecentCustomersLoading = !uiState.hasLoadedRecentCustomers &&
+                                            (uiState.isRecentCustomersLoading || uiState.recentCustomersErrorMessage == null),
+                                        recentCustomersErrorMessage = uiState.recentCustomersErrorMessage,
+                                        onRetryRecentCustomers = viewModel::loadRecentCustomers,
                                         toDoCount = uiState.toDoCount,
                                         isToDoCountLoading =
                                             uiState.isToDoCountLoading,
@@ -548,6 +540,8 @@ internal fun SalesExperienceScreen(
                         customer = uiState.selectedCustomer,
                         isLoading = uiState.isCustomerDetailLoading,
                         errorMessage = uiState.customerDetailErrorMessage,
+                        photos = uiState.customerPhotos,
+                        onRetryPhoto = viewModel::retryCustomerPhoto,
                         onBack = ::back,
                         onRetry = viewModel::retryCustomerDetail,
                         onEvaluate = { customerId ->
@@ -580,7 +574,7 @@ internal fun SalesExperienceScreen(
                         onContinue = {
                             navigator.replaceTop(SalesRoute(SalesPage.REGISTRATION_CONFIRM,
                                 draft = registrationDraft, photos = photoUriStrings,
-                                latitude = uiState.currentLocation?.latitude, longitude = uiState.currentLocation?.longitude))
+                                registrationLocation = uiState.currentLocation))
                         },
                         onValidationError = ::showMessage,
                     )
@@ -594,9 +588,7 @@ internal fun SalesExperienceScreen(
                             viewModel.submitCustomer(
                                 draft = registrationDraft,
                                 photoUris = photoUris,
-                                location = route?.latitude?.let { lat -> route.longitude?.let { lng ->
-                                    LocationResult(lat, lng, "registration")
-                                } },
+                                location = route?.registrationLocation,
                             )
                         },
                     )
@@ -696,6 +688,28 @@ internal fun SalesExperienceScreen(
                 salesCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             },
             onDismiss = { showCameraPurposeNotice = false },
+        )
+    }
+
+    if (showLocationPurposeNotice) {
+        PermissionPurposeDialog(
+            notice = locationPermissionPurposeNotice(stringResource(R.string.sales_registration_title)),
+            onConfirm = {
+                showLocationPurposeNotice = false
+                locationPermissionLauncher.launch(UnifiedPermissionHelper.getLocationRequiredPermissions())
+            },
+            onDismiss = { showLocationPurposeNotice = false },
+            onOpenSettings = {
+                showLocationPurposeNotice = false
+                try {
+                    locationSettingsLauncher.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        "package:${context.packageName}".toUri()))
+                } catch (_: ActivityNotFoundException) {
+                    showMessage(permissionSettingsUnavailableMessage)
+                } catch (_: SecurityException) {
+                    showMessage(permissionSettingsUnavailableMessage)
+                }
+            },
         )
     }
 }

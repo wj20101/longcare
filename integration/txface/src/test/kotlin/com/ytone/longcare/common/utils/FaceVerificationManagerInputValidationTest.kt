@@ -25,15 +25,19 @@ import org.junit.Test
 
 class FaceVerificationManagerInputValidationTest {
 
+    private val session = object : com.ytone.longcare.domain.faceauth.FaceVerificationSession {
+        override val sessionGeneration = kotlinx.coroutines.flow.MutableStateFlow<Long?>(1L)
+    }
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob())
     private val repository = mockk<TencentFaceRepository>()
     private val runtimeConfigProvider = mockk<RuntimeConfigProvider>(relaxed = true)
     private val callback = mockk<FaceVerifyCallback>(relaxed = true)
     private val context = mockk<Context>(relaxed = true)
-    private val manager = FaceVerificationManager(repository, runtimeConfigProvider)
+    private val manager = FaceVerificationManager(repository, runtimeConfigProvider, session, scope)
 
     private val config = FaceVerificationConfig(
         appId = "app-id",
-        secret = "secret",
+        sessionGeneration = 1L,
         licence = "licence"
     )
 
@@ -46,7 +50,7 @@ class FaceVerificationManagerInputValidationTest {
 
     @Test
     fun `startFaceVerification should fail init when access token is blank`() = runTest {
-        coEvery { repository.getAccessToken(any(), any()) } returns ApiResult.Success(
+        coEvery { repository.getAccessToken(any()) } returns ApiResult.Success(
             TencentAccessTokenResponse(
                 code = "0",
                 msg = "ok",
@@ -59,11 +63,11 @@ class FaceVerificationManagerInputValidationTest {
 
         verify(exactly = 1) { callback.onInitFailed(any()) }
         verify(exactly = 0) { callback.onInitSuccess() }
-        coVerify(exactly = 1) { repository.getAccessToken(config.appId, config.secret) }
-        coVerify(exactly = 0) { repository.getSignTicket(any(), any()) }
-        coVerify(exactly = 0) { repository.getApiTicket(any(), any(), any()) }
+        coVerify(exactly = 1) { repository.getAccessToken(config) }
+        coVerify(exactly = 0) { repository.getSignTicket(any(), any(), any()) }
+        coVerify(exactly = 0) { repository.getApiTicket(any(), any(), any(), any()) }
         coVerify(exactly = 0) {
-            repository.getFaceId(any(), any(), any(), any(), any(), any(), any(), any(), any())
+            repository.getFaceId(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         }
     }
 
@@ -71,7 +75,7 @@ class FaceVerificationManagerInputValidationTest {
     fun `startFaceVerification should hide getFaceId failure detail`() = runTest {
         every { context.getString(R.string.tencent_face_prepare_failed) } returns
             "人脸核验准备失败，请稍后重试"
-        coEvery { repository.getAccessToken(any(), any()) } returns ApiResult.Success(
+        coEvery { repository.getAccessToken(any()) } returns ApiResult.Success(
             TencentAccessTokenResponse(
                 code = "0",
                 msg = "ok",
@@ -79,9 +83,9 @@ class FaceVerificationManagerInputValidationTest {
                 accessToken = "access-token"
             )
         )
-        coEvery { repository.getSignTicket(any(), any()) } returns ApiResult.Success(ticketResponse("sign-ticket"))
+        coEvery { repository.getSignTicket(any(), any(), any()) } returns ApiResult.Success(ticketResponse("sign-ticket"))
         coEvery {
-            repository.getFaceId(any(), any(), any(), any(), any(), any(), any(), any(), any())
+            repository.getFaceId(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         } returns ApiResult.Failure(code = 400101, message = "source photo is invalid")
 
         var initError: FaceVerifyError? = null

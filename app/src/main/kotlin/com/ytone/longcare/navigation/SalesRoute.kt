@@ -18,6 +18,7 @@ internal data class SalesRoute(
     val recordId: String? = null,
     val draft: SalesCustomerDraft? = null,
     val photos: List<String> = emptyList(),
+    val registrationLocation: com.ytone.longcare.model.LocationResult? = null,
     val reminder: com.ytone.longcare.model.ToDoResultModel? = null,
 ) : AppRoute
 

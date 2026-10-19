@@ -1,6 +1,6 @@
 # 系统架构概览
 
-最后核对：2026-09-20（代码与文档静态核对；非本轮全量运行验收）
+最后核对：2026-10-16（定位与倒计时专项；其他模块非本轮全量业务运行验收）
 
 本文描述当前代码实际运行形态，不把目标架构写成已经完成的事实。版本和依赖见[技术栈与构建基线](tech-stack.md)，产品行为见[产品概览](../product/overview.md)。
 
@@ -55,11 +55,11 @@ flowchart LR
 | `:core:common` | 日志、诊断、运行配置、调度器、图片输出/受管文件、通用 Android 能力 | Android library；不是纯 Kotlin 模块 |
 | `:core:ui` | 共用 Compose/UI 支撑、共享 ViewModel、统一图片预览及通用按钮文案 | 可依赖 Core 契约，不得访问数据实现 |
 | `:feature:login` | 登录 ViewModel、动作接口、DI 和 feature entry | `LoginScreen` 仍在 `:app` |
-| `:feature:home` | 首页共享状态、上报能力、动作接口和 feature entry | 护理/销售首页 route UI 仍在 `:app` |
+| `:feature:home` | 首页共享状态、可见期设备状态轮询、上报能力、动作接口和 feature entry | 护理/销售首页 route UI 仍在 `:app` |
 | `:feature:identification` | 身份用例/网关、状态编排、CameraX + ML Kit 人脸采集和默认比对页 | 已拥有默认、手动采集、备用腾讯人脸 UI；`IdentificationScreen` 主页面仍在 `:app` |
 | `:feature:location` | 定位 Service、管理器、会话、上报、诊断 | 作为服务流程内嵌能力，没有独立路由 |
 | `:feature:photoupload` | 上传门面、任务队列、标准相机/水印与照片处理状态 | `PhotoUploadScreen` 仍在 `:app`；`CameraScreen` 已共享 |
-| `:feature:servicecountdown` | 倒计时状态、轮询和平台网关契约 | route UI、Service、闹钟实现仍在 `:app` |
+| `:feature:servicecountdown` | 倒计时状态、轮询和平台网关契约 | route UI 与系统闹钟实现在 `:app` |
 
 ## 启动与会话
 
@@ -77,6 +77,7 @@ flowchart LR
 导航使用 Navigation 3 的可序列化 NavKey、唯一 entry ID 和可保存单栈，由 NavDisplay 管理页面生命周期，并在 `:app/navigation` 统一注册：
 
 - Entry：登录、Home 和订单列表；首页、计划和记录列表显式共享 Home entry 的 TodayOrderViewModel owner。
+- 护理首页设备状态由独立 `HomeDeviceViewModel` 调用 Domain `HomeDeviceRepository`，Data 层只透传禁缓存的状态接口。轮询协程由首页页签选中与 `RESUMED` 双条件管理，不放入常驻服务或全局作用域；周期从请求起点计至少 5 秒，单请求串行，慢请求不追赶补发。暂停轮询只取消网络工作，同一会话保留最后成功状态，返回静默刷新；失败不隐藏已有卡片。ViewModel 内仅保留不发请求的会话监听，退出、换号、令牌或账号归属变化时先清空，再取消旧请求，结果发布前复验取消状态和当前会话；姓名、头像更新不重启轮询。销售和未登录会话不请求。安装示意/预览仅接受 HTTPS 地址并复用无原生标题栏的普通 `WebViewRoute`，不启用销售评估或客户详情桥接。
 - Sales：客户/提醒、登记、评估选择、设备和结果使用 `SalesRoute`，每个 entry 独立持有 SalesViewModel；扫描与进度在同一设备 entry 中展示。
 - Service flow：服务详情、护理执行、NFC、选择服务、照片上传、倒计时、结束选择、完成摘要。
 - Support：用户列表/记录、身份与默认人脸核验、相机、手动人脸采集和 WebView；旧设备选择页、人脸引导页及正式应用腾讯测试路由已移除。
@@ -98,14 +99,15 @@ flowchart LR
 - 会触发导航或用户可见结果的重要动作必须可确认消费，避免用 `SharedFlow(replay = 0)` 承载不能丢失的事件。
 - replay-zero 流只用于允许观察者缺席时丢失的实时输入或诊断信号，例如 NFC/RFID 瞬时事件。
 - 协程取消必须继续抛出 `CancellationException`；敏感流程由质量脚本扫描。
-- ViewModel 不持有 Activity；需要 Activity、Context、Service、闹钟、安装器或厂商 SDK UI 时通过 app-owned gateway/controller。
+- ViewModel 不持有 Activity；需要 Activity、Context、Service、闹钟、安装器或厂商 SDK UI 时通过 app-owned gateway/controller。正式开始服务不保留页面导航回调：项目保存由 ViewModel 完成，成功状态保留订单和项目快照，当前页面恢复到 RESUMED 后导航并确认消费；已确认服务端成功时，本地保存失败不引导重复开始。详情加载只接受当前请求，旧请求取消后的结果不得覆盖新订单。
 - Repository 会话写入为 suspend 操作，调用者不能在 DataStore 持久化完成前报告登录/退出成功。
 
 ## 数据与持久化
 
 - Retrofit + Moshi 承载 LongCare API；API 方法、路径、参数注解和关键 JSON 字段由契约测试保护。
 - 正式 Moshi 由 `:core:data` 的 DI 配置提供；`DefaultMoshi` 仅在 App 测试源集中使用。
-- Room 当前 schema 版本为 3，schema JSON 保存在 `app/schemas`。`DatabaseModule` 当前使用 `fallbackToDestructiveMigration(dropAllTables = true)`；测试明确验证 v1/v2 升至 v3 时重建，v3 普通重开保留数据。当前没有显式 Migration 链，不能把重建测试当成数据保留证明。后续 schema 变更须先评估本地状态/未上传照片的保留需求，提交 schema 与对应升级测试，不扩大重建策略。
+- Room 当前 schema 版本为 3，schema JSON 保存在 `app/schemas`。`DatabaseModule` 仅允许从已确认的 v1/v2 破坏性重建；v3 及后续版本缺少迁移路径时拒绝打开，不再无条件清表。测试覆盖历史版本重建、正常重开保留本地进度/照片，以及未知版本打开失败后记录仍保留。后续 schema 变更必须提交保留本地状态与未上传照片的 Migration 和升级测试。
+- 订单详情统一通过 `OrderDetailRepository` 读取；`OrderRepository.getOrderInfo` 委托其强制刷新路径。请求保留 `orderId/planId`；刷新成功同步 Room 后才写内存缓存。订单内存缓存与腾讯凭据共用 `UserSessionTracker` 的会话代次，退出、换号、令牌变化和重新登录时清空，旧请求不能回填新会话缓存。
 - DataStore 保存会话、偏好和少量兼容记录。
 - WorkManager 用于启动更新检查、APK 下载等需要跨重建继续或恢复结果的任务。
 - 腾讯 COS 负责业务图片/文件上传，Feature 通过 `PhotoCloudUploader` 等受校验门面使用。
@@ -117,9 +119,13 @@ flowchart LR
 - `ImageProcessingPolicies` 集中维护图片参数；业务页面不得各自硬编码压缩策略。
 - `PhotoPreviewDialog` 是通用全屏预览实现。
 - 订单图片行删除与受管文件删除在数据层耦合，单张删除、整单清理和完成流程使用同一生命周期。
+- 照片上传后的云端 key 必须先完成 Room 写入，再更新内存中的上传成功状态和发布页面结果；数据库写入失败保留可重试状态。
 - 默认服务人员核验由 `:feature:identification` 的 CameraX/ML Kit 流程完成：单人/姿态检查 → 建立睁眼基线 → 闭眼 → 稳定睁开 → 拍摄 → 编码 → `/V1/User/CheckFace`。
 - 服务端登记照只作为“是否需要补录”的权威状态，不重新下载为客户端本地缓存；旧版遗留文件在需要补录时清理。
 - 腾讯人脸 SDK 和手动采集仍保留兼容/验证路径，但不是默认订单核验入口。
+- 腾讯 AppSecret 不进入普通系统配置缓存或 UI 状态：保存、恢复和刷新配置时只保留公开第三方字段，旧嵌套 JSON 在读取时重写；配置请求禁止 HTTP 缓存。Access Token 缓存未命中时，由数据层重新请求现有配置接口，短暂提取 AppSecret 换取 token。
+- Access Token/SIGN ticket 按 AppId 与登录会话代次在内存中缓存，保留过期安全窗口和并发合并；NONCE ticket 每次认证独立请求。退出、换号、令牌变化及重新登录会清空缓存，旧异步响应、界面请求和 SDK 延迟回调不再生效；SDK 成功后的底图上传也在挂起边界检查原会话，失效后不继续登记或更新认证成功状态。核验对象 userId 可以是老人，不与操作员 userId 混同。
+- 腾讯 SDK 启动自身 Activity 会使宿主进入 `onStop`，该事件不释放认证；资源在认证结束、所属 UI 销毁或登录会话失效时释放。客户端仍会收到 AppSecret，剩余安全边界见[工程风险](../analysis/project-review.md#腾讯人脸凭据)。
 
 ## Android 组件边界
 
@@ -131,7 +137,6 @@ flowchart LR
   - QLZ SDK 的内部 `MainLoadingActivity`
 - Service：
   - 订单定位 `LocationTrackingService` 和 AMap `APSService`（`location` 类型）
-  - 倒计时前台 Service（`specialUse`）
   - 响铃 Service（`mediaPlayback`）
 - Receiver：倒计时、关闭响铃、服务结束提醒和设备启动恢复。
 - Provider：受限 `FileProvider`；WorkManager 默认 initializer 被移除，改为应用自定义配置。
@@ -142,9 +147,27 @@ flowchart LR
 
 - 相机、人脸、NFC、蓝牙、定位、通知、精确闹钟、全屏提醒和应用安装均按业务入口请求，不应在 Application 无条件触发。
 - Android 14+ 的前台服务类型及对应权限在 Manifest 中显式声明；定位 Service 只能在满足位置服务和运行时权限的用户可见流程中启动。
+- 倒计时入口只检查位置、通知、定位开关、提醒渠道/渠道组、精确闹钟和 Android 14+ 全屏提醒，并说明受影响功能；用户明确确认后才分项请求运行时权限或打开设置。定位请求仅包含精确与大致位置，通知单独申请。NFC 与销售的定位用途说明保留用户主动进入应用权限设置的入口；拒绝回调仅结束本次操作，不根据 rationale=false 猜测永久拒绝，也不自动弹设置劝导。每次授权或设置返回重读系统状态，仍缺少同一项时结束本轮提示，用户可从后台设置主动重试；授权成功才继续下一项。首次检查及可见弹窗按订单保存最小 UI 状态，Activity 重建不重复申请，恢复时不把保存的 UI 当作授权结论。进入倒计时页即发起订单资料与持久服务起点读取，由 ViewModel 持有首次排程任务；Home、锁屏或 Activity 重建不取消该任务，同一订单与项目的在途准备共用一次读取。系统排程完成后不依赖页面计时；回到 RESUMED 按当前权限重排原截止时间并恢复显示，退出 RESUMED 通过 LifecycleResumeEffect 的同步释放停止显示刷新。后台完成准备不会启动每秒显示更新；订单确认结束、切换请求或 ViewModel 释放取消未完成准备，不新增 Worker、服务或常驻计时器。显示只维护服务状态和格式化时间，移除仅供测试读取的剩余/超时毫秒 StateFlow。全屏提醒使用系统专用授权页，不申请悬浮窗。锁屏 Activity 在 Manifest 声明 `showWhenLocked` / `turnScreenOn`；全屏权限或高优先级渠道被关闭时引导用户设置，不能保证自动弹页。未锁屏时系统可只显示展开通知。只通过系统 fullScreenIntent 弹页，权限未允许时仍提交同一请求交由系统降级通知，不由应用强行启动 Activity；无精确授权等情况下，系统明确拒绝后台响铃服务时，仅对仍归属当前账号/订单的闹钟发布原通知降级，尊重通知授权，不反复重启；响铃服务正常启动时只发布一次前台通知；响铃最多 30 秒，停止声音并释放服务后保留通知供点击，用户确认或对应订单取消才移除。
+- 机型后台设置与系统权限分开处理：`DeviceCompatibilityHelper` 仅读取公开的后台受限和系统电池豁免状态，不探测私有 AppOps/Provider，不将看过引导或打开设置视为授权。项目选择前的建议可取消；取消、返回和点击遮罩仅关闭，只有明确“开始服务”才提交。待确认项目与引导只保存 ID，设置 Intent 按当前系统重建。自动建议尊重已展示记录，倒计时页“后台设置”可重复打开；从设置返回刷新状态，另提供显式的系统定位与提醒权限复查，复用原权限流程。共享引导位于 CoreUi，以蓝白主题的可点击 Material 3 设置清单呈现电池管理、自启动与锁屏提醒，用局部图标色和主操作区分层级，兼容深色主题；机型详细说明默认折叠；正文独立滚动、操作区固定，沿用主题字体与至少 48dp 触摸目标，支持大字体；自定义多项 Dialog 本身符合 Compose 推荐用途。小米权限管理使用[官方 action](https://dev.mi.com/docs/appsmarket/technical_docs/adaptation_FAQ/) 而非私有 Activity 类名；保留小米已验证电池/自启动入口及[三星官方从不休眠入口](https://developer.samsung.com/mobile/app-management.html)，不可解析、未导出、需未授予权限或启动失败均回退应用详情；其它机型按应用详情与对应文案手动检查。包可见性仅查询三个目标厂商包；Activity 内打开设置沿用正常返回栈，仅非 Activity 上下文添加新任务标记。只建议按需调整本应用，不申请悬浮窗、直接电池豁免权限或增加后台保活机制。
+- 倒计时提醒使用不可变身份快照携带账号、完整订单键、服务名和原截止时间；Manager 在同一同步边界内校验、构建、发布/前台升级和撤销，构建后复验身份，不从当前排程补借旧回调的身份。Receiver 仅异步交付，Service 仅负责有界播放与资源释放，通知构造器只构造系统通知；启动或升级被拒绝时复用同一通知发布入口。提醒以账号、完整订单键和原截止时间校验归属；旧页面、旧计划或重排前的迟到 Intent 不能清理或覆盖当前提醒。共享业务状态确认对应订单非执行、退出或换号时立即撤销，弹窗确认不承担资源停止职责。升级前无账号的旧排程保留原触发时间，到点在五秒总预算内用已有定位恢复记录匹配当前账号/订单并查询执行状态，验证成功才接管；缺少有效记录或验证不可用时不猜测归属，重新进入订单按实际起点重排。
 - 正式主入口 `MainActivity` 当前锁定竖屏；`CountdownAlarmActivity` 的源 Manifest 没有方向锁定声明。targetSdk 36 在 sw600dp+ 默认忽略方向/可调整大小限制，项目用 Activity 级 `PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY` 暂时退出该行为。
 - Android API 37 会取消上述大屏退出能力；在升级 targetSdk 37 前必须完成旋转、多窗口、相机预览和状态恢复验证。
 - 顶层护理/销售导航已经使用 Material 3 Adaptive Navigation Suite，根据窗口尺寸选择底栏或导航轨。
+
+### 后台提醒的版本与厂商边界
+
+| Android 版本 | 必须核对的公开系统能力 |
+|---|---|
+| 7–7.1（API 24–25，本项目最低版本起） | 应用通知总开关；没有渠道和全屏特殊访问页 |
+| 8–11（API 26–30） | 应用通知和高重要性渠道；API 28+ 还检查渠道组；API 29+ 在 Manifest 声明全屏提醒权限 |
+| 12–12L（API 31–32） | 增加精确闹钟特殊访问；无精确授权的非精确闹钟不提供同等的后台前台服务启动豁免 |
+| 13（API 33） | 增加通知运行时授权，不能仅凭渠道已创建判定通知可见 |
+| 14–16（API 34–36） | 增加可撤销的全屏提醒特殊访问和 mediaPlayback 前台服务声明；全屏请求由系统决定自动弹页或降级通知 |
+| 17（API 37，规则核验） | [后台音频约束](https://developer.android.com/about/versions/17/changes/bg-audio)适用于所有应用；本项目先升级 mediaPlayback 前台服务再播放，升级 targetSdk 37 时另复核 while-in-use 能力或精确授权配合 USAGE_ALARM 的豁免 |
+
+以上使用 Android 公开 API 和[全屏提醒规则](https://source.android.com/docs/core/permissions/fsi-limits)；[后台 Activity 启动限制](https://developer.android.com/guide/components/activities/secure-bal)不能通过任意增加 PendingIntent 权限绕过。系统代发通知 PendingIntent 的路径不增加应用自己的后台强拉页面。
+
+小米 MIUI 已有真机入口验收；HyperOS 菜单和开关不能据此推定逐版本通过。三星 One UI 使用官方“从不休眠”入口，其它版本不可用时回退应用详情。华为/荣耀、OPPO/realme、vivo 使用应用详情和人工设置说明；未知厂商仍有系统电池与通知入口，不读取私有权限值。华为范围仅指 EMUI 及可运行 Android APK 的 HarmonyOS 版本，不据此声明原生 HarmonyOS NEXT / 5+ 适配。Android 模拟器和更改 `MANUFACTURER` 的单测只能验证框架版本分支、入口选择与失败回退，不能证明厂商管控实际生效。
 
 ## 外部集成
 
@@ -155,15 +178,28 @@ flowchart LR
 | CameraX + ML Kit | 标准相机、人脸检测和眨眼活体 | `:feature:photoupload` 与 `:feature:identification` |
 | Tencent Face | 旧版/兼容人脸验证 | `:integration:txface` adapter + `:core:ui` UI controller，默认订单核验不进入该 SDK |
 | QLZ | 销售蓝牙设备自动评估 | app-owned SDK controller；Sale API 分层在 Core |
-| Bugly | 同意后的崩溃上报 | `CrashReportGateway`；Debug/未初始化路径不调用远端 runtime |
+| Bugly | 同意后的崩溃与分类诊断上报 | `DiagnosticEventTracker` → `CrashReportGateway` → `BuglyRuntime`，SDK 调用仅在 `:core:common`，App 保留显式依赖以延续原生库 Lint 检查 |
 | WorkManager | 更新检查、下载与可恢复后台任务 | 自定义初始化，Worker 位于 `:app` |
+
+### 诊断上报
+
+- 业务分类统一使用 `DiagnosticCategory`，事件码沿用各业务的稳定 code。相机、定位、人脸、倒计时 Tracker 只保留事件目录和业务字段，格式、脱敏、长度限制及投递统一由 `:core:common/diagnostics` 处理。
+- Bugly 原生 UserID 与事件字段 `userId` 使用原始 `User.userId.toString()`，不拼接公司、设备或会话 ID。未登录使用与请求公共信息一致的 `0`，覆盖上一账号；不传 SDK 会忽略的空字符串。
+- `DefaultUserSessionRepository` 在发布会话状态前同步诊断身份；登录、更新、退出的持久化操作等待对应状态发布。恢复会话不依赖 UI 订阅，SDK 初始化时读取已同步的身份。照片任务在执行前捕获原始 userId，过期账号的回调不向当前账号提交。
+- 会话读取遇到 I/O 异常时暂按未登录处理，每秒重新订阅；持久化后的状态发布最多等待 5 秒，超时以 `IOException` 告知调用方并释放写入锁，外部协程取消正常传播。
+- 普通 INFO 事件只进入本地日志和 Bugly 上下文日志；ERROR 走捕获异常接口。NFC 定位获取成功、提交前复核、接口成功以及正式开始服务位置提交是明确的诊断例外：以 INFO 级别独立投递，供后台对照签到与签退位置。协程取消不作为错误上报。隐私同意后才初始化远端 runtime，Debug 和未初始化路径不调用 SDK。
+- 单条诊断采用不可变 JSON 字段，控制在 SDK 的 1000 字符消息截断阈值以下。异常回调从该条消息解析 `category/eventCode/level/userId` 等字段，不使用全局“最后事件”变量或临时覆盖 `putUserData`。
+- 人工诊断异常以明确标记为 `<diagnostic-event>` 的稳定分类/事件帧参与分组，后接实际出错帧。动态 UserID 和错误描述不写入堆栈，不附原始 cause；相关异常的类型、消息及首帧以有限、脱敏字段保存。真实崩溃保留 SDK 默认捕获行为。
+- 同用户、分类、事件、错误类型/码、订单及前部堆栈的重复错误限制为 30 秒一次，内存最多保留 128 个键；切换用户清空限流记录。不新增磁盘投递队列，SDK 管理自身上传。
+- 全局 UserID 是 Bugly SDK 的当前身份，SDK 异步封装期间的换号仍需实际控制台验收；事件字段保留创建时的 userId。字段可展示不等于控制台均支持筛选，线上检索和聚合以当前控制台能力为准。
+- `/V1/Login/Log` 保留独立业务协议和调用链，不转为 Bugly 异常。
 
 ## 构建与发布现实
 
 - Debug、Release、nonMinifiedRelease 和 benchmarkRelease 变体由 Android CLI/Gradle 识别。
-- Android CI 的正常阻断路径以构建、Lint、架构和治理为主，读卡 Feature 和主应用长按入口、NFC 平台、导航专项单测纳入阻断，正式业务全量单测仍不作为普通 CI 必跑；本地 `--full` 和专项验证仍应运行相关测试。
+- Android CI 与本地 `--full` 通过 `run_jvm_tests.sh` 运行全部 Android 模块 Debug 单测及两个 Kotlin/JVM 模块测试；CI 另执行构建、Lint、架构检查和按需设备冒烟。具体范围见[CI 与门禁](ci-quality-gates.md)。
 - 正式构建统一使用标准 Release，保留正式签名、R8 和资源压缩；仅提供主应用 APK/AAB，历史助手附件保持不变。
-- 当前 QLZ key/test mode、QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 已知问题经用户明确接受，Release 输出警告；正式签名、其他质量和产物检查仍必须通过，不将风险接受视为问题修复。
+- QLZ 使用默认正式环境；QLZ 1.3.0.5 弱 TLS 和腾讯人脸 6.6.2 已知厂商问题经用户明确接受，Release 输出警告。正式签名、其他质量和产物检查仍必须通过，不将风险接受视为问题修复。
 
 ## 已接受的技术债
 
@@ -174,7 +210,7 @@ flowchart LR
 - Manifest 组件面较广，源于定位、计时、闹钟、NFC、更新和厂商 SDK 的现实需求。
 - Jetifier 移除及厂商风险修复依赖兼容的新 AAR；当前发布风险接受不等于完成这些修复，也不允许忽略其他 Lint 或签名问题。
 
-后续优先级与实施验收见[整体分析第 16～18 章](../analysis/project-review.md#16-风险与优化事项登记)。
+已知限制及处理时机见[工程风险](../analysis/project-review.md)，不另设分阶段改造计划。
 
 ## 读卡检测隐私与运行时
 
@@ -277,29 +313,32 @@ flowchart LR
 
 ### 业务边界
 
-- 只有业务会话确认订单执行中时才启动订单持续定位与上报；单次定位不受订单限制。
-- App 切到后台后，由 `location` 类型前台 Service 继续采集和上报。
+- 页面可见且精确权限、定位开关就绪时先准备 `location` 前台 Service；确认订单执行中之后才允许服务采集与上报。签到、签退取点按当前动作的窗口单独校验。
+- App 按 Home 或锁屏后，由 `location` 类型前台 Service 继续采集和上报。通知只由应用 Service 持有；按高德文档，已有前台服务通知时无需再次调用 SDK `enableBackgroundLocation`，不维护第二套通知 owner 或启停状态。
 - 单个定位点上传失败后直接丢弃；不落库、不排队、不补传。
-- 订单结束成功、退出登录、Token 失效、账号切换、划掉任务或进程终止时停止。
-- App 重启、设备重启或重新登录后不自动恢复旧订单定位。
-- 用户重新进入服务订单时创建新会话并重新确认服务中，确认后恢复持续上报；
-  不依赖旧进程状态，不补传旧定位，订单已结束则不启动。
+- 订单结束成功、退出登录、Token 失效、账号切换或划掉任务时停止，并清除恢复身份。普通 `onDestroy` 只释放资源，保留仍在执行的业务恢复意图。
+- `START_STICKY` 接受系统重建（包括空 Intent）：先建立通知，再校验隐私、精确权限、定位开关、持久账号及服务端执行中状态；只上传重新采集的位置。
+- App 普通冷启动、设备重启及系统用户主动停止后不自动恢复；存在未结束身份时显示手动恢复入口。仅保存账号、订单、会话标识，不保存坐标。
+- 同进程返回前台时重试尚未成功启动的服务；用户手动恢复或重新进入订单时重新确认状态，订单已结束则清除恢复身份。
 
 ### 核心组件
 
 1. `LocationFacade`
-   - 统一提供快速定位、新鲜定位、缓存定位和前台保活控制。
+   - 普通采集使用 `acquireCurrentLocation` / `isUsable`；服务订单使用 `acquireServiceOrderLocation` / `serviceOrderLocationFailure`，保留权限、开关、取消和账号隔离。返回成功样本或分类失败，精度不足独立为 `PRECISION`。
+   - 门面分别调用 `SingleAmapLocationSource` 与 `ContinuousAmapLocationManager`，各自拥有客户端生命周期；SDK 工厂统一配置与原始样本转换。权限完成后只恢复原业务动作，销售/NFC 页面不能通过门面重启护理服务客户端。
 2. `LocationKeepAliveManager`
-   - 以进程内 owner 和 generation 管理前台 Service，不持久化 desired state。
+   - 只保存一个当前订单 owner，以 generation 隔离迟到的系统回调；不维护多 owner 引用计数或无人订阅的状态流。失败可由前台重试；即使启动派发已接受、Android Service 内初始化失败，也先发布中断并撤销启动标记再清理。系统恢复采用当前 Service，无需从后台自行启动另一个前台服务。
 3. `LocationTrackingService`
    - 持有前台通知、高德持续定位 collector 和唯一 `AddPostion` 调用点，不查询订单状态。
-4. `LocationSampleStore`
-   - 保存短时缓存并发布实时样本；上报消费端使用 conflate，仅保留一个最新待处理点。
+   - 上传闭包固定绑定订单 ID、业务会话与创建或恢复时授权的账号；采集前、每次上传前和健康检查均核对当前账号，不能用稍后读取的账号重绑旧订单。切换订单先取消并释放旧 collector，再创建新采集。每次持续采集使用独立高德客户端，旧客户端的迟到成功/失败回调不得进入新会话。
+4. `LocationQuality` / `LocationSampleEvaluator`
+   - 单次与持续共用元数据校验；`ServiceOrderLocationQuality` 对签到、绑定、正式开始、签退和服务中上报增加 200 米精度上限。100 米为优先目标，100～200 米立即可用，超过 500 米标为明显低精度；不计算业务距离、位移或速度。
+   - 已删除业务缓存及无消费者的样本中心；Service 通过一个合流通道保留最新候选，首个合格点立即上传，之后由唯一 30 秒采样循环消费；短时动作提高 SDK 回调频率时仍只保留最新点。采样时重新校验质量、年龄与会话，最多一个在途上传；没有第二层间隔过滤或忙时丢弃分支。整次上传最多等待 30 秒，超时取消并标记网络异常，下一周期重新检查最新候选，不持久化、不重放失败点。
 5. `LocationReportingManager`
-   - 实现业务层 `ServiceOrderLifecycle`，统一同步订单状态，驱动上报会话启停，不执行上传。
-   - 状态同步不依赖页面存活；倒计时页面仅订阅同一份状态，不重复请求。
+   - 实现业务层 `ServiceOrderLifecycle`，统一同步订单状态，驱动上报会话启停，不执行上传。账号授权与启停串行化只在这一层维护；`LocationTrackingManager` 仅映射调用，不保存第二份账号状态或锁。
+   - 状态同步不依赖页面存活；倒计时页面仅订阅同一份状态，不重复请求。恢复身份通过已有 DataStore 和应用作用域中的单一串行写入协程保存、清除；换号、登出在账号写入的同一事务清除，迟到保存必须匹配持久账号。
 6. `LocationSessionLifecycleObserver`
-   - 登出或账号切换时强制停止；登录时绝不恢复定位。
+   - 登出或账号切换时强制停止；首次读取未知时暂停授权而非伪造登出。登录不会自行启动定位。
 
 ### 启停上报
 
@@ -311,11 +350,11 @@ trackingManager.stopTracking()
 结束接口成功后，业务执行器立即调用 `ServiceOrderLifecycle.onOrderEnded(orderId)`，
 先使对应会话失效并取消在途协程，再停止 Android Service，最后执行 UI/资源清理。
 结束接口失败、仅打开结束确认流程、倒计时归零均不会结束真实业务会话。
+定位质量校验后、发请求前再次检查会话与取消状态；请求返回时再次检查，忽略已结束会话的迟到结果。停止、注销和客户端销毁各自执行，单步异常不跳过其余释放；订单切换保留应用前台通知，仅替换采集客户端。
 
-正式开始接口成功是服务中的直接依据；随后通过定位权限入口启动 Service，
-不必等待额外状态查询成功。重新打开订单、进程重建时则先重新确认状态。
-正常业务状态同步每 5 秒一次，与上传结果无关。
-初始状态不可用时不启动定位，按 5/10/20/40/60 秒退避持续复核，网络恢复后可继续。
+正式开始动作在页面可见时同步准备 Service，再等待定位及接口；正式开始接口成功立即开启上传门禁，不等待额外查询，也不从异步结果再次启动 Service。重新打开订单、系统重建时先重新确认状态。准备阶段不向尚未开始的订单上报，失败或取消释放未确认的准备；旧动作的迟到清理不能释放新动作。
+系统恢复先接管 owner，再开始订单查询，查询立即返回非执行中时也能停止 Service。新可见请求取消尚未完成的恢复读取；旧读取即使晚返回空值或异常，也不能停止已接管的新会话。划掉任务同步使会话失效并停止 Service，身份清除交给既有串行写入协程，避免磁盘操作完成后误停新订单。
+正常业务状态同步每 30 秒一次，与上传结果无关；单次状态请求总预算 30 秒，失败按 30/60 秒退避。初始状态不可用时 Service 保留通知但不采集、不上传，网络恢复后继续。
 已确认服务中时，查询异常保留最后已确认状态，不因异常次数永久停报；
 查询确认非服务中则立即停止，不等待用户确认弹窗。
 
@@ -324,19 +363,55 @@ trackingManager.stopTracking()
 既有全局登录失效安全处理保持不变。后台远程状态变化存在同步延迟，
 已发出的请求无法撤回，服务端仍需校验订单状态。
 
+SDK 连续 90 秒没有非空原始回调时，既有 Service 健康检查在权限、开关正常且非深度 Doze 时重建一次客户端；持续无回调则显示中断并等待前台重试，不无限重启。错误回调、精度不合格均不等于 SDK 无回调。SDK 网络或环境不可用显示继续定位，精度不合格显示质量不足，只有实际上传失败显示上传失败。通知仅随状态变化更新；不增加 Worker、闹钟、唤醒锁或多进程保活。
+
+Android 6+ 通过动态精确定位权限；Android 12+ 同时申请精确/大致权限并检查精确授权。Android 10+ 持续采集由已在可见流程启动的定位前台服务承载，不自动申请后台定位；Android 14+ 明确声明前台服务类型及权限，捕获系统恢复时的 while-in-use 限制。通知权限被拒绝不等同于禁止启动前台服务。厂商省电或系统用户停止不能保证自动恢复，也不保证锁屏每 30 秒准时联网。
+
 ### 单次业务定位
 
 ```kotlin
-val location = locationFacade.getCurrentLocation()
-val freshLocation = locationFacade.getFreshLocation()
+val result = locationFacade.acquireCurrentLocation()
+// Success 携带完整样本；Failure 携带具体失败原因及可用的 SDK 失败样本。
 ```
 
-单次定位使用独立高德客户端，不会创建第二个持续定位 collector，也不进入实时上报链路。
+单次定位使用独立高德客户端，不会创建第二个持续定位 collector，也不进入实时上报链路。只有一个在途请求槽，冲突返回 Busy；质量不足最多再采集一次，超时与重试共用 15 秒总预算。取消或账号切换释放本次请求，不影响持续采集。
+
+服务订单采用同一持续采集流：先检查活跃客户端三秒窗口内的合格热位置，可用则直接返回；否则短时将间隔升至 3 秒，最多等待 30 秒。每个客户端仅在间隔变化时下发配置，避免 SDK 在相同配置下重复重启；取得不超过 200 米的合格点即返回，不为达到 100 米延长等待。不合格精度、暂时网络失败继续等待本次窗口的新回调；权限、配置、模拟立即失败。动作结束后有执行中服务则恢复 30 秒间隔，否则关闭客户端。只有一个在途服务动作，冲突返回 Busy；保留失败元数据供诊断，不将不合格点转为成功。旧重放只有合格热位置可以复用；旧失败、旧低精度或模拟样本均不构成本次失败证据，新动作持续无回调时报告 TIMEOUT，不把旧坐标改标为本次 QUALITY。权限或配置恢复不会被上一动作的错误立即终止；同一次动作的新权限/配置失败仍立即返回。普通销售、拍照保留独立单次客户端和 15 秒总预算，移除旧服务订单单次重试分支。
+
+单次和持续都显式关闭 SDK 缓存，保持高精度、Wi-Fi 扫描、禁止模拟、不请求地址及 GCJ02 输出；持续采集使用 `isOnceLocationLatest=true`、`isOnceLocation=false`，SDK 网络请求使用官方建议的默认 30 秒超时，不再缩短为 20 秒。服务动作仍受独立的 30 秒总预算约束，普通单次采集仍共用 15 秒预算，不因 SDK 超时调整延长业务等待。配置读取通过注入的 IO dispatcher 执行，SDK 创建仍在主线程；隐私同意后、创建客户端前显式选择 HTTPS。3 秒动作采集属于短时提升，30 秒采集属于低频高精度，并非 SDK 低功耗模式。保留 SDK 原始时间与实际精度，不截断或转换经纬度，不用收到回调的时间替换采样时间。
+
+持续采集的错误码 4 表示向高德定位服务器请求时发生网络异常，不等同于精度不足、权限缺失、应用崩溃或厂商杀进程。错误回调继续作为失败样本传播，不进入业务坐标上传流；SDK 后续按原周期继续定位，成功回调可自然恢复，不因每次网络错误重建客户端。每个客户端独立记录同码失败阶段：首次报告，之后按回调触发每 5 分钟摘要；错误码变化、首次成功回调及释放时结算未汇总计数，恢复与结算使用 INFO。5 分钟仅为项目诊断合并策略，不是定位间隔、恢复等待或高德规定。每个客户端使用递增的 `failureEpisode` 区分恢复后或错误码变化后的新失败阶段；公共去重同时识别请求、阶段与累计次数，保留新首报和新摘要，同一份重复报告仍去重。聚合不使用定时器、持久队列或全局缓存；归属固定为创建时用户，旧会话记录不能归到新用户。SDK 成功回调仅表示采集错误阶段结束，后续仍需质量校验和上传，不能将其当作业务上报恢复的证明。
+
+失败报告优先保留采集请求标识、错误码、累计次数、持续时间及实际间隔/超时配置，并从高德质量报告提取有限的网络类型、网络耗时等标量。每次失败只更新当前阶段最近一次有限 SDK 证据，避免短故障在摘要前恢复后丢失最后原因；从 `errorInfo`、`locationDetail` 只提取白名单网络异常类别及不解释含义的 SDK 子码，不上传原始明细、建议文本、SDK dump、网络标识或坐标。系统状态只在实际记录时按需读取：Android API、应用版本号、真实客户端 SDK 版本、网络连接/验证/类型、Doze、亮屏、省电与电池优化豁免；不可读为未知，不伪造为 false。网络验证状态只作诊断，不能代表高德服务必然可达，也不作为新的定位前置门禁。不新增网络监听或权限。诊断读取失败不得影响采集；本次回调诊断先于样本发布结算，避免 `Main.immediate` 等待者同步完成并释放临时客户端时丢失终止错误或恢复事件。统一网关保留 30 秒去重窗口、128 项容量及原脱敏和载荷上限。网络超时恢复、错误阶段合并和新旧客户端隔离分别通过 SDK 边界测试验证；没有现场网络明细时不宣称已确认 DNS、弱网、Doze 或 ROM 限制的具体根因。
+
+实际 `AddPostion` 返回业务成功时，首次成功、前次上报失败后成功，以及距上次成功至少 90 秒后再次成功分别记录 `api_upload_resumed` INFO，关联订单、SDK 请求标识、样本时间/精度、上传耗时和成功间隔。常规 30 秒成功不逐点远端投递；90 秒仅为日志间隔诊断阈值，不改变采集、上传、质量或恢复策略。每个上传执行器只保存最后成功时间与失败标记，采用包含深睡时间的 `SystemClock.elapsedRealtime`，避免锁屏后低估停报间隔，不新增定时器或补传队列。用户归属在执行器启动时固定，已结束会话的迟到成功不计为恢复。由此区分“SDK 又有成功回调”与“服务端实际接收成功”，并通过请求标识关联两段诊断。
+
+质量规则：SDK 成功、坐标有限且合法、时间存在且非未来；精度有限且为正。普通登记和相机保留原 15 秒元数据规则。服务订单提交取消固定 15 秒年龄拦截，改为实际写入阶段的新采集；SDK 获取时拒绝本次动作开始前三秒窗口之外的历史结果。这是动作关联窗口，不承诺任意回调到达时采样年龄都小于三秒；30 秒是整体等待预算，不是 SDK 的精度或实时性保证。持续流拒绝会话前和乱序采样，并以墙钟、单调时钟校验等待不超过 60 秒（两个默认 30 秒周期），防止慢上传后发送陈旧点。订单隔离由会话与独立客户端生命周期保证。接受实时 GPS、同请求、Wi-Fi、基站、在线补偿及系统网络来源；服务订单允许 HIGH/NORMAL 可信度，NORMAL 仍须通过来源、时间与精度校验，拒绝缓存、离线、粗略来源、LOW/BAD、模拟、最后位置和非 GCJ02；普通登记、拍照仍要求 HIGH。质量合格不代表真实误差一定小于 200 米。
+
+NFC 入页不预定位。签到先读取客户资料，再采集；未绑定时先确认绑定，再取绑定位置；绑定接口成功后为签到重新取点，避免网络等待后继续提交旧位置。当前页面记录已确认绑定的订单，定位重试不重复绑定，离页或切单清除；业务请求失败不自动重放。签退先执行不含坐标的 `CheckEndOrder`，成功或用户确认后才取位置并 `EndOrder`。位置失败保留本次碰卡、订单、项目与照片供定位重试；业务请求已发出后不自动重放，确认取消、离页和订单切换取消旧任务。位置不合格不得正常提交，签退成功前保留真实服务会话。当前接口没有低精度异常提交协议，不能通过空坐标、历史点或放宽门槛代替异常流程。
+
+登记位置仍可选，获取时通过原元数据质量检查，重新获取先清除旧结果，确认路由携带完整样本。登记提交按用户点击获取后页面显示的定位快照发送，不因填写、确认或照片上传耗时丢弃；该快照也传入后续评估。相机拍摄前仍复核精确权限和样本时效，失效或大致权限不阻止拍照，但不写入旧坐标。
+
+权限永久拒绝时提供应用设置入口；设置返回后重新检查权限，业务请求再核对系统定位开关。普通诊断不包含精确坐标；NFC 签到/签退及正式开始服务距离排查专门保留高德原始经纬度，统一载荷仅对这些事件放行有限数值坐标，保留完整 Double 精度。
+
+NFC 定位诊断使用 `category=location`、`nfc_location_*` 事件码，携带原始 `userId`、`orderId/planId`、`signInMode=START_ORDER/END_ORDER` 和 `stage`。获取、权限等待/恢复、失败、取消、绑定取点及提交前复核均有事件；成功获取、复核、接口成功独立投递，取消仅记上下文。高德样本保留坐标系、定位类型、SDK 估计精度、精度分档、采样时间、样本年龄、可信等级、模拟/最后位置标记及 SDK 错误码/说明，不上传地址或 SDK 整体 dump。`requestId` 关联同一次动作采集、业务提交和结果；普通单次的两次尝试共用 ID，持续流每个独立客户端使用自己的 ID。权限拒绝保留碰卡及绑定/签退上下文供手动重试，重复授权回调不会重复提交。
+
+`start_check` 和 `end_submit` 复核事件中的坐标直接转为对应接口参数，不转换、不截断。接口结果日志复用请求发出前的定位快照，样本年龄/质量不计入网络耗时；载荷优先保留订单、场景、原始坐标、精度、时效和错误码，再装入可选说明，避免长错误文本挤掉定位证据。既有 `nfc_workflow` 接口失败事件补充同一份样本、服务端失败码和说明，便于按用户及订单比较签到点与签退点。正式开始服务会再次定位，`service_start_location_*` 使用同一字段格式独立上报 `StarOrder` 提交点与结果（`stage=service_start`），排查时必须区分碰卡签到与正式开始点。未获得 SDK 结果的权限拒绝、Busy、超时事件不伪造坐标。质量失败重试后保留最后一次结果。本地测试不替代真机定位及 Bugly 在线投递验收。
+
+### 配置依据与验证边界
+
+- [高德定位参数](https://a.amap.com/lbs/static/unzip/Android_Location_Doc/com/amap/api/location/AMapLocationClientOption.html)：高精度由卫星与网络融合，`onceLocationLatest` 从 3.7 起适用于持续定位，首次等待 Wi-Fi 刷新可能增加 1～3 秒；不启用单次 GPS 优先或导航场景。间隔属于期望采集节奏，不保证锁屏网络和实际回调准时。
+- [高德后台定位 API](https://a.amap.com/lbs/static/unzip/Android_Location_Doc/com/amap/api/location/AMapLocationClient.html)：已有应用前台服务通知时无需重复调用 SDK 后台通知接口；该接口也不负责开始或停止采集。错误 13 不能归因为缺少这一个调用，须结合 [官方错误码](https://developer.amap.com/api/android-location-sdk/guide/utilities/errorcode) 与当时的网络、权限和环境判断。
+- [高德位置元数据](https://a.amap.com/lbs/static/unzip/Android_Location_Doc/com/amap/api/location/AMapLocation.html)：SDK 提供估计精度、定位类型、可信度及错误码，没有强制只返回不超过 200 米的参数。200 米、3 秒动作窗口、30 秒采集/等待和 90 秒静默恢复均为当前业务策略，不属于 SDK 官方保证。保留原始证据，不能把“来自高德”等同于“可直接签到”。
+- [Google 前台服务规则](https://developer.android.com/develop/background-work/services/fgs/service-types)与[协程规则](https://developer.android.com/kotlin/coroutines/coroutines-best-practices)：从用户可见流程启动定位前台服务；阻塞配置读取在 IO 执行，定位生命周期与网络请求均可取消。
+- [高德错误码](https://developer.amap.com/api/location-sdk-for-android/guide/utilities/errorcode)建议错误 4 检查网络并采用默认 30 秒超时；[获取定位指南](https://developer.amap.com/api/location-sdk-for-android/guide/android-location/getlocation)说明持续模式超时仅终止本次，后续仍按既定周期请求。[质量报告 API](https://a.amap.com/lbs/static/unzip/Android_Location_Doc/com/amap/api/location/AMapLocationQualityReport.html)提供网络类型与耗时，不能据此保证高德服务可达。
+- [高德 Skills 仓库](https://github.com/amap-demo/amap-sdk-skills)当前 Android Skill 面向 LLM 导航助手，没有专用于 Android 签到、签退或定位错误 4 的调优方案。本次定位依据为 Android 定位 SDK 官方指南及 API，不移植导航示例，不引入导航 SDK、多源切换、额外保活或策略框架。当前 11.2.100 实现中运行时重新设置 option 会内部重启采集；这是版本实现核查结果，升级时需复测。
+- 验收分别检查单元测试中的取消、旧回调、权限恢复和换号，以及设备上 Home、锁屏、系统重建和用户停止。真机回调验证与本地上报计数不替代护理接口验收；没有 Vivo 现场日志或长时间功耗数据时，不宣称已复现现场根因或量化电量改善。
 
 ### Android 生命周期
 
-- 前台 Service 必须从用户可见的订单流程中启动，并声明 `foregroundServiceType="location"`。
-- 状态确认完成时若系统不允许启动 Service，在用户返回订单页面时显式重试；不使用后台重启调度。
-- Service 返回 `START_NOT_STICKY`，不要求系统在进程终止后重建。
-- Service 使用 `stopWithTask=true`，显式停止和 `onDestroy()` 共用幂等 SDK 清理路径。
-- 进程被硬终止时 Android 不保证调用 `onDestroy()`；不恢复的保证来自“没有任何持久队列或调度任务”。
+- 应用发起的前台 Service 从用户可见流程同步准备，声明 `foregroundServiceType="location"`；异步订单查询不承担后台启动职责。
+- Service 返回 `START_STICKY`，系统重建先通知后验证账号、权限及订单；应用不通过 Worker、闹钟或反复启动服务模拟系统恢复。
+- Service 使用 `stopWithTask=false` 以接收 `onTaskRemoved()`，划掉任务取消采集、清除恢复身份并显式停止；普通 `onDestroy()` 只释放资源。
+- 同进程返回前台重试仍希望执行的服务；普通冷启动只提供手动恢复入口。系统用户主动停止、强制停止和设备重启不自行启动。
+- 硬终止不保证 `onDestroy()` 或服务自动重建。仅保存恢复身份，重建确认执行中后重新采集，不保存或补传历史坐标。

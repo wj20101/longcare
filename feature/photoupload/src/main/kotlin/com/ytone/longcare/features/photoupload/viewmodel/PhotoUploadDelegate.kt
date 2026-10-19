@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.photoupload.viewmodel
 
 import android.net.Uri
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.SessionState
@@ -40,6 +41,7 @@ internal class PhotoUploadDelegate(
     }
 
     suspend fun uploadSuccessfulImagesToCloud(): Result<Map<ImageTaskType, List<String>>> {
+        val userId = DiagnosticEventTracker.currentUserId()
         return try {
             isUploading.value = true
             val allTasks = taskQueueDelegate.getTasksSnapshot()
@@ -62,11 +64,12 @@ internal class PhotoUploadDelegate(
                     throw cancellation
                 } catch (uploadError: Exception) {
                     isUploading.value = false
-                    val errorMessage = uploadError.message
                     DiagnosticEventTracker.trackError(
+                        userId = userId,
                         category = PHOTO_DIAGNOSTIC_CATEGORY,
                         event = "cloud_upload_failure",
                         description = "服务照片上传COS失败",
+                        throwable = uploadError,
                         extras = mapOf(
                             "orderId" to taskQueueDelegate.currentOrderKey.value?.orderId,
                             "planId" to taskQueueDelegate.currentOrderKey.value?.planId,
@@ -74,7 +77,6 @@ internal class PhotoUploadDelegate(
                             "taskIdLength" to task.id.length,
                             "uploadedTaskCount" to taskQueueDelegate.getTasksSnapshot().count { it.isUploaded },
                             "pendingTaskCount" to successfulTasks.size,
-                            "errorMessage" to errorMessage,
                         ),
                     )
                     return Result.failure(
@@ -91,6 +93,7 @@ internal class PhotoUploadDelegate(
         } catch (e: Exception) {
             isUploading.value = false
             DiagnosticEventTracker.trackError(
+                userId = userId,
                 category = PHOTO_DIAGNOSTIC_CATEGORY,
                 event = "cloud_upload_exception",
                 description = "服务照片上传过程异常",
@@ -120,6 +123,6 @@ internal class PhotoUploadDelegate(
     }
 
     private companion object {
-        const val PHOTO_DIAGNOSTIC_CATEGORY = "photo_upload"
+        val PHOTO_DIAGNOSTIC_CATEGORY = DiagnosticCategory.PHOTO_UPLOAD
     }
 }

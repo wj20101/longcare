@@ -41,7 +41,6 @@ dependencies {
     ksp(libs.dagger.hilt.compiler)
 
     implementation(libs.bundles.coil)
-    implementation(libs.crashreport)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

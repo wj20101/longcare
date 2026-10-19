@@ -110,6 +110,11 @@ fun AppNavigator.navigateToWebView(url: String, title: String) {
     navigate(WebViewRoute(url, title))
 }
 
+fun AppNavigator.navigateToDevicePage(url: String, title: String) {
+    if (!com.ytone.longcare.features.home.api.isHomeDevicePageUrl(url)) return
+    navigateWhenResumed(WebViewRoute(url, title, showNativeToolbar = false))
+}
+
 fun AppNavigator.navigateToEvaluationForm(url: String, title: String) {
     val customerId = ((backStack.lastOrNull() as? AppNavEntry)?.route as? SalesRoute)?.customerId ?: 0
     navigateWhenResumed(WebViewRoute(url, title, isEvaluation = true, showNativeToolbar = false,

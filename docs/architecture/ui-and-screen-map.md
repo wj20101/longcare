@@ -26,7 +26,7 @@ Navigation 3 使用可保存的 `AppNavEntry` 包装业务路由，为相同参�
 
 护理账号的 `HomeScreen` 内有三个非 NavKey 页签：
 
-- 首页：`MainDashboardScreen`
+- 首页：`MainDashboardScreen`，咫尺状态区仅在护理首页可见时轮询，未绑定设备隐藏预览；安装示意和预览打开普通全屏 H5，返回保留原首页
 - 护理：`NursingScreen`
 - 我的：`ProfileScreen`
 
@@ -59,7 +59,7 @@ Navigation 3 使用可保存的 `AppNavEntry` 包装业务路由，为相同参�
 | `CameraRoute` | `CameraScreen` | `:feature:photoupload` | 护理和销售共用的水印相机 |
 | `UserListRoute` | `UserListScreen` | `:app` | 已服务/未服务用户列表 |
 | `UserServiceRecordRoute` | `UserServiceRecordScreen` | `:app` | 用户服务记录 |
-| `WebViewRoute` | `WebViewScreen` | `:app` | 协议、隐私政策、销售表单/报告页面；统一注册最小原生关闭接口 |
+| `WebViewRoute` | `WebViewScreen` | `:app` | 协议、隐私政策、销售表单/报告、咫尺设备安装示意/预览；统一注册最小原生关闭接口 |
 
 开始服务直接进入 NFC/读卡流程；无入口的设备选择页、旧人脸引导页和正式应用腾讯测试路由已移除。独立助手的腾讯测试入口亦已删除，正式业务仍需的共享实现保留。
 
@@ -84,6 +84,7 @@ Navigation 3 使用可保存的 `AppNavEntry` 包装业务路由，为相同参�
 所有应用内 H5 共用 `NativeBridge.closeWebView()`：路由网页返回来源 entry，隐私网页只关闭自身弹窗，不触发同意/拒绝。桥接注册、线程、去重、frame 可见性和信任边界统一见[QLZ/H5 接入契约](../integrations/qlz-sdk.md#检测展示与-h5-关闭契约)。
 
 评估表单和报告入口显式设置 `WebViewRoute.showNativeToolbar=false`，共用容器去除原生顶部栏；`WindowInsets.safeDrawing` 由 Scaffold 应用并消费，H5 填满剩余内容区。普通网页、协议与隐私弹窗默认保留原生栏。展示参数与 `isEvaluation`、`canOpenCustomerDetails` 独立，报告关闭不触发完成；参数随 Navigation 3 栈保存恢复，不按标题或 URL 推断。
+路由 WebView 的原生布局参数明确使用 `MATCH_PARENT`，与 Compose 内容区尺寸一致，避免旧版 WebView 按 wrap-content 模式将网页百分比和 `vh` 高度解析为零；回归同时检查原生尺寸和实际网页可见高度。
 无原生栏时，白色背景延伸至系统栏，页面使用 AndroidX 浅色系统栏样式实现沉浸式视觉；暂停/退出后恢复应用默认样式。仅做页面级适配，不隐藏系统栏、不注入 H5 脚本、不增加适配框架。
 H5 左上角返回调用关闭接口；成功弹窗确认仅刷新网页属于正常行为，不注入脚本代为关闭。移除原生栏后仍由 Navigation 3 处理系统返回，网页错误时同样可退出。
 渲染进程退出后，容器销毁失效 WebView 并展示可返回的异常状态，不自动重载或改变隐私选择。
@@ -113,7 +114,7 @@ Logo 点击和长按均无波纹或按压高亮。弹窗使用 Material 3 默认
 
 检测 UI 属于 `:feature:carddiagnostics`，NFC/R65C 可主动切换。NFC 使用页面限定的 Reader Mode，不经过业务事件总线；R65C 只在当前模式前台捕获 HID 输入。结果只在本地显示、清空、复制，不上传、不签到、不修改会话。返回只弹出检测页，保留登录表单；退出和切换模式释放原监听。
 
-独立助手及其他测试入口已删除，历史安装包不变。长按入口已有用户真机确认；NFC/R65C 贴卡、模式切换与资源释放仍待真实硬件验收，状态见[任务 4.3](../../openspec/changes/integrate-card-diagnostics-in-app/tasks.md)。
+独立助手及其他测试入口已删除，历史安装包不变。长按入口已有用户真机确认；NFC/R65C 实际读卡验证也已由用户于 2026-09-29 确认通过，不再作为待办。
 
 ## 路由类型清单
 

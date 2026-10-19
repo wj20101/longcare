@@ -10,6 +10,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.model.AppVersionModel
 import com.ytone.longcare.worker.DownloadWorker
@@ -364,7 +365,7 @@ class AppUpdateViewModel @Inject constructor(
     }
 
     private companion object {
-        const val UPDATE_DIAGNOSTIC_CATEGORY = "app_update"
+        val UPDATE_DIAGNOSTIC_CATEGORY = DiagnosticCategory.APP_UPDATE
         const val KEY_CURRENT_WORK_ID = "app_update.current_work_id"
         const val KEY_PENDING_INSTALL_PATH = "app_update.pending_install_path"
     }

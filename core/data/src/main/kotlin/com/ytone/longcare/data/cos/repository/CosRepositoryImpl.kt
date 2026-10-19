@@ -4,7 +4,6 @@ import android.content.Context
 import com.tencent.cos.xml.CosXmlService
 import com.tencent.cos.xml.CosXmlServiceConfig
 import com.ytone.longcare.api.LongCareApiService
-import com.ytone.longcare.common.constants.CosConstants
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.common.utils.logE
@@ -27,7 +26,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.ConcurrentHashMap
 
 internal enum class SyncCredentialRefreshResult {
     SUCCESS,
@@ -77,7 +76,7 @@ class CosRepositoryImpl @Inject constructor(
 
     private val serviceMutex = Mutex()
     private val configMutex = Mutex()
-    private val serviceRef = AtomicReference<CosXmlService?>(null)
+    private val services = ConcurrentHashMap<Int, CosXmlService>()
     private val configCache = CosConfigCache(TOKEN_REFRESH_THRESHOLD_SECONDS)
 
     private val objectOperationDelegate by lazy {
@@ -85,30 +84,30 @@ class CosRepositoryImpl @Inject constructor(
             apiService = apiService,
             ioDispatcher = ioDispatcher,
             tag = TAG,
-            getCosService = { getCosService() },
+            getCosService = { folderType -> getCosService(folderType) },
             getValidCosConfig = { folderType -> getValidCosConfig(folderType) },
             clearCache = { clearCache() }
         )
     }
 
-    private suspend fun getCosService(): CosXmlService {
-        serviceRef.get()?.let { return it }
+    private suspend fun getCosService(folderType: Int): CosXmlService {
+        services[folderType]?.let { return it }
         return serviceMutex.withLock {
-            serviceRef.get()?.let { return@withLock it }
-            val config = getValidCosConfig(CosConstants.DEFAULT_FOLDER_TYPE)
-            createCosService(config).also {
-                serviceRef.set(it)
+            services[folderType]?.let { return@withLock it }
+            val config = getValidCosConfig(folderType)
+            createCosService(config, folderType).also {
+                services[folderType] = it
                 logD(
-                    "COS service initialized with bucket: ${config.bucket}, region: ${config.region}",
+                    "COS service initialized for folderType: $folderType, bucket: ${config.bucket}, region: ${config.region}",
                     tag = TAG
                 )
             }
         }
     }
 
-    private fun createCosService(config: CosConfig): CosXmlService {
+    private fun createCosService(config: CosConfig, folderType: Int): CosXmlService {
         val credentialProvider = CosDynamicCredentialProvider(
-            defaultFolderType = CosConstants.DEFAULT_FOLDER_TYPE,
+            defaultFolderType = folderType,
             getCachedConfig = { folderType -> configCache.getConfig(folderType) },
             isConfigValid = { folderType -> configCache.isValid(folderType) },
             refreshSync = { folderType -> refreshConfigSync(folderType) },
@@ -196,7 +195,7 @@ class CosRepositoryImpl @Inject constructor(
     }
 
     private suspend fun clearCache() {
-        serviceMutex.withLock { serviceRef.set(null) }
+        serviceMutex.withLock { services.clear() }
         configMutex.withLock { configCache.clear() }
         logD("Cache cleared", tag = TAG)
     }

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.DeviceUtils
@@ -64,7 +65,7 @@ class UpdateWorker @AssistedInject constructor(
     }
 
     private companion object {
-        const val UPDATE_DIAGNOSTIC_CATEGORY = "app_update"
+        val UPDATE_DIAGNOSTIC_CATEGORY = DiagnosticCategory.APP_UPDATE
         const val MAX_RETRY_COUNT = 2
     }
 }

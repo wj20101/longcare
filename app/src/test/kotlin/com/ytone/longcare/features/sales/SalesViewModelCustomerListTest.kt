@@ -31,6 +31,53 @@ class SalesViewModelCustomerListTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
+    fun `home refresh keeps visible customers and shares an in-flight request without a modal`() = runTest {
+        val initial = listOf(UserLatentListModel(id = 7, userName = "已有客户"))
+        val refreshed = listOf(UserLatentListModel(id = 8, userName = "新增客户"))
+        val pending = CompletableDeferred<ApiResult<List<UserLatentListModel>>>()
+        var calls = 0
+        val repository = mockk<SaleRepository> {
+            coEvery { getRecentUserLatentList() } coAnswers {
+                if (calls++ == 0) ApiResult.Success(initial) else pending.await()
+            }
+        }
+        val viewModel = createViewModel(repository)
+        viewModel.loadRecentCustomers()
+        assertTrue(viewModel.uiState.value.hasLoadedRecentCustomers)
+        viewModel.loadRecentCustomers()
+        viewModel.loadRecentCustomers()
+        assertEquals(initial, viewModel.uiState.value.recentCustomers)
+        assertTrue(viewModel.uiState.value.isRecentCustomersLoading)
+        assertFalse(viewModel.uiState.value.isLoading)
+        coVerify(exactly = 2) { repository.getRecentUserLatentList() }
+        pending.complete(ApiResult.Success(refreshed))
+        advanceUntilIdle()
+        assertEquals(refreshed, viewModel.uiState.value.recentCustomers)
+        assertFalse(viewModel.uiState.value.isRecentCustomersLoading)
+        assertFalse(viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun `failed home refresh preserves customers and exposes a retryable section error`() = runTest {
+        val initial = listOf(UserLatentListModel(id = 7, userName = "已有客户"))
+        val repository = mockk<SaleRepository> {
+            coEvery { getRecentUserLatentList() } returnsMany listOf(
+                ApiResult.Success(initial), ApiResult.Failure(503, "更新暂不可用"), ApiResult.Success(initial),
+            )
+        }
+        val viewModel = createViewModel(repository)
+        viewModel.loadRecentCustomers()
+        viewModel.loadRecentCustomers()
+        assertEquals(initial, viewModel.uiState.value.recentCustomers)
+        assertEquals("更新暂不可用", viewModel.uiState.value.recentCustomersErrorMessage)
+        assertEquals(null, viewModel.uiState.value.errorMessage)
+        assertFalse(viewModel.uiState.value.isLoading)
+        viewModel.loadRecentCustomers()
+        assertEquals(null, viewModel.uiState.value.recentCustomersErrorMessage)
+        assertEquals(initial, viewModel.uiState.value.recentCustomers)
+    }
+
+    @Test
     fun `recent customers stay on home and do not seed customer search results`() =
         runTest {
             val recentCustomers =
@@ -302,5 +349,6 @@ class SalesViewModelCustomerListTest {
             systemConfigManager = mockk<SystemConfigManager>(relaxed = true),
             savedStateHandle = androidx.lifecycle.SavedStateHandle(),
             textResolver = ResourceTextResolver(mockk<Context>(relaxed = true)),
+            cosRepository = mockk(relaxed = true),
         )
 }
