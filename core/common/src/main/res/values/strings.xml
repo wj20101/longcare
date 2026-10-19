@@ -8,7 +8,7 @@
     <string name="compatibility_popup_oppo">在本应用权限和通知设置中核对后台弹出、锁屏提醒。ColorOS / realme UI 菜单可能不同。Android 14 及以上还需核对系统全屏提醒权限，展示方式由系统决定。</string>
     <string name="compatibility_popup_vivo">在 i管家或本应用权限、通知设置中核对后台弹出、锁屏提醒。OriginOS / Funtouch OS 菜单可能不同。Android 14 及以上还需核对系统全屏提醒权限，展示方式由系统决定。</string>
     <string name="compatibility_battery_xiaomi">在本应用“省电策略”中核对“无限制”。MIUI / HyperOS 菜单可能不同；仅调整本应用，放宽后台限制可能增加耗电。</string>
-    <string name="compatibility_battery_huawei">在本应用“应用启动管理”中核对“允许后台活动”。EMUI / HarmonyOS / MagicOS 菜单可能不同；仅调整本应用，放宽后台限制可能增加耗电。</string>
+    <string name="compatibility_battery_huawei">在“设置 → 电池 → 应用启动管理”中找到本应用；若开启“自动管理”，可改为手动管理并开启“允许后台活动”。EMUI / HarmonyOS / MagicOS 菜单可能不同；仅调整本应用，放宽后台限制可能增加耗电。</string>
     <string name="compatibility_battery_oppo">在本应用耗电管理中核对“允许后台活动”或“不限制后台”。ColorOS / realme UI 菜单可能不同；仅调整本应用，放宽后台限制可能增加耗电。</string>
     <string name="compatibility_battery_vivo">在电池设置的“后台耗电管理”中核对本应用“允许后台高耗电”。OriginOS / Funtouch OS 菜单可能不同；仅调整本应用，可能增加耗电。</string>
     <string name="compatibility_battery_samsung">在“电池 → 后台使用限制”中核对本应用是否休眠或深度休眠，按需移出或加入“从不休眠的应用”。One UI 菜单可能不同；仅调整本应用，可能增加耗电。</string>

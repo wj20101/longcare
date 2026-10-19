@@ -3,7 +3,10 @@ package com.ytone.longcare.features.location.reporting
 import com.ytone.longcare.domain.location.LocationAccount
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+
+internal data class LocationReportingAuthorization(val enabled: Boolean, val version: Long)
 
 /** Identity and synchronous cancellation gate shared by business coordination and the Service. */
 internal class LocationReportingSession(
@@ -13,7 +16,8 @@ internal class LocationReportingSession(
 ) {
     private val lock = Any()
     private var valid = true
-    private val ready = MutableStateFlow(false)
+    private val ready = MutableStateFlow(LocationReportingAuthorization(false, 0L))
+    val readyState = ready.asStateFlow()
     private var uploadJob: Job? = null
     var monitorJob: Job? = null
     // The following fields are accessed only under LocationReportingManager's lifecycle lock.
@@ -21,12 +25,13 @@ internal class LocationReportingSession(
     var revision = 0L
     var preparingStart = false
 
-    fun canUpload(): Boolean = synchronized(lock) { valid && ready.value }
+    fun canUpload(): Boolean = synchronized(lock) { valid && ready.value.enabled }
     fun isValid(): Boolean = synchronized(lock) { valid }
-    suspend fun awaitReady() { ready.first { it } }
+    suspend fun awaitReady() { ready.first { it.enabled } }
 
     fun setEnabled(value: Boolean) = synchronized(lock) {
-        ready.value = valid && value
+        val enabled = valid && value
+        if (ready.value.enabled != enabled) ready.value = LocationReportingAuthorization(enabled, ready.value.version + 1L)
     }
 
     fun attach(job: Job) = synchronized(lock) {
@@ -40,7 +45,7 @@ internal class LocationReportingSession(
 
     fun invalidate() = synchronized(lock) {
         valid = false
-        ready.value = false
+        setEnabled(false)
         uploadJob?.cancel()
         uploadJob = null
         monitorJob?.cancel()

@@ -23,6 +23,7 @@ import com.ytone.longcare.domain.location.LocationRecoveryStore
 import com.ytone.longcare.domain.location.LocationAccount
 import com.ytone.longcare.domain.location.LocationRuntimeReadiness
 import com.ytone.longcare.domain.location.LocationAcquisition
+import com.ytone.longcare.domain.location.LocationFailure
 import com.ytone.longcare.domain.location.ServiceOrderLocationQuality
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.domain.repository.SessionState
@@ -47,11 +48,14 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 open class LocationTrackingService : Service() {
@@ -76,15 +80,15 @@ open class LocationTrackingService : Service() {
     @Inject lateinit var runtimeReadiness: LocationRuntimeReadiness
     @Inject lateinit var privacyConsentManager: PrivacyConsentManager
 
-    @Volatile private var foregroundEntered = false
+    private var foregroundEntered = false
     private var recoveryJob: Job? = null
     private var lastNotificationText: Int? = null
     private var isKeepAliveStarted = false
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    // Android commands, SDK state and notifications share the Service's main-thread lifecycle.
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var collectorJob: Job? = null
-    @Volatile private var currentGeneration: Long = 0L
+    private var currentGeneration: Long = 0L
     private var currentOwner: String? = null
-    private var currentOrderId: Long? = null
     private var cleanupCompleted = false
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -136,19 +140,20 @@ open class LocationTrackingService : Service() {
                     stopUnclaimedService()
                     return@launch
                 }
-                if (!privacyConsentManager.isPrivacyConsented || !runtimeReadiness.hasLocationPermission() ||
-                    !runtimeReadiness.isLocationServiceEnabled()) { stopUnclaimedService(); return@launch }
+                if (!privacyConsentManager.isPrivacyConsented) {
+                    recoveryStore.clear(record.sessionId)
+                    stopUnclaimedService(); return@launch
+                }
+                if (!runtimeReadiness.hasLocationPermission()) { stopUnclaimedService(); return@launch }
                 // Authorization may change while reading storage. Never restore a captured old account.
                 val currentUser = userSessionRepository.sessionState.value.user
                 if (currentUser == null || LocationAccount(currentUser.companyId, currentUser.accountId, currentUser.userId) != identity) {
                     stopUnclaimedService(); return@launch
                 }
-                withContext(Dispatchers.Main.immediate) {
-                    val restored = reportingManager.restore(record, requireNotNull(identity))
-                    if (restored == null) { stopUnclaimedService(); return@withContext }
-                    val (session, generation) = restored
-                    startKeepAlive(session.owner, session.orderId, generation)
-                }
+                val restored = reportingManager.restore(record, requireNotNull(identity))
+                if (restored == null) { stopUnclaimedService(); return@launch }
+                val (session, generation) = restored
+                startKeepAlive(session.owner, session.orderId, generation)
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) {
                 currentCoroutineContext().ensureActive()
@@ -178,11 +183,9 @@ open class LocationTrackingService : Service() {
                 return
             }
             if (keepAliveManager.onServiceStarted(serviceGeneration)) {
-                val sessionChanged = serviceGeneration != currentGeneration ||
-                    owner != currentOwner || orderId != currentOrderId
+                val sessionChanged = serviceGeneration != currentGeneration || owner != currentOwner
                 currentGeneration = serviceGeneration
                 currentOwner = owner
-                currentOrderId = orderId
                 if (sessionChanged || collectorJob?.isActive != true) {
                     updateNotification(R.string.location_tracking_preparing)
                     startCollector(owner, orderId, serviceGeneration)
@@ -198,7 +201,6 @@ open class LocationTrackingService : Service() {
         cleanupCompleted = false
         currentGeneration = serviceGeneration
         currentOwner = owner
-        currentOrderId = orderId
         try {
             logI("启动定位前台保活 (owner=$owner)")
             enterForeground()
@@ -218,7 +220,6 @@ open class LocationTrackingService : Service() {
             // Dispatch can succeed before Android rejects the actual foreground start.
             // Publish failure before cleanup clears the owner, and allow a visible retry.
             reportingManager.onServiceInterrupted(owner)
-            keepAliveManager.onServiceStopped(serviceGeneration)
             stopKeepAlive(stopService = true)
         }
     }
@@ -237,17 +238,22 @@ open class LocationTrackingService : Service() {
                 session.awaitReady()
                 if (currentGeneration != serviceGeneration) return@launch
                 // The session owns its authorized account; a delayed login observer cannot rebind it.
-                check(currentAccount() == session.account) { "location_account_changed" }
-                val locations = continuousAmapLocationManager.startContinuousLocation(owner = owner)
+                if (userSessionRepository.sessionState.value !is SessionState.Unknown)
+                    check(currentAccount() == session.account) { "location_account_changed" }
+                val samplingEnabled = MutableStateFlow(LocationSamplingState(false))
+                val initiallyEnabled = updateSampling(owner, session, samplingEnabled)
+                val locations = continuousAmapLocationManager.startContinuousLocation(owner, initiallyEnabled)
+                    .onEach { event ->
+                        if (updateSampling(owner, session, samplingEnabled)) updateAcquisitionStatus(owner, event)
+                    }
+                    .filterIsInstance<LocationAcquisition.Success>().map { it.location }
                 val evaluator = LocationSampleEvaluator(
                     orderId = orderId,
                     sessionStartedAt = locationClock.currentTimeMillis(),
                     clock = locationClock,
                 )
-                reportingManager.updateStatus(owner, LocationReportingStatus.LOCATING)
-                updateNotification(R.string.location_tracking_locating)
                 coroutineScope {
-                    val healthJob = launch { watchSampling(owner, session) }
+                    val healthJob = launch { watchSampling(owner, session, samplingEnabled) }
                     try {
                         ServiceLocationSession(
                             session = session,
@@ -272,6 +278,8 @@ open class LocationTrackingService : Service() {
                                 }
                             },
                             evaluator = evaluator,
+                            elapsedRealtime = locationClock::elapsedRealtime,
+                            samplingEnabled = samplingEnabled,
                         ).run()
                     } finally { healthJob.cancel() }
                 }
@@ -287,8 +295,7 @@ open class LocationTrackingService : Service() {
                     ),
                 )
                 reportingManager.onServiceInterrupted(owner)
-                keepAliveManager.onServiceStopped(serviceGeneration)
-                updateNotification(R.string.location_tracking_interrupted)
+                if (currentOwner == owner && currentGeneration == serviceGeneration) stopKeepAlive(stopService = true)
             }
         }
         collectorJob = job
@@ -300,50 +307,85 @@ open class LocationTrackingService : Service() {
         LocationAccount(it.companyId, it.accountId, it.userId)
     }
 
-    private suspend fun watchSampling(owner: String, session: com.ytone.longcare.features.location.reporting.LocationReportingSession) {
-        var recoveredAt: Long? = null
+    /** Temporary gates pause the SDK; terminal authorization loss stops the actual foreground service. */
+    private suspend fun updateSampling(
+        owner: String,
+        session: com.ytone.longcare.features.location.reporting.LocationReportingSession,
+        enabled: MutableStateFlow<LocationSamplingState>,
+    ): Boolean {
+        currentCoroutineContext().ensureActive()
+        if (!privacyConsentManager.isPrivacyConsented) {
+            reportingManager.stopReporting(owner)
+            stopKeepAlive(stopService = true)
+            throw CancellationException("Location privacy revoked")
+        }
+        if (!runtimeReadiness.hasLocationPermission()) {
+            reportingManager.onServiceInterrupted(owner)
+            stopKeepAlive(stopService = true)
+            throw CancellationException("Location permission revoked")
+        }
+        val unknown = userSessionRepository.sessionState.value is SessionState.Unknown
+        check(unknown || currentAccount() == session.account) { "location_account_changed" }
+        val locationEnabled = runtimeReadiness.isLocationServiceEnabled()
+        val ready = !unknown && session.canUpload() && locationEnabled
+        if (enabled.value.enabled != ready) {
+            enabled.value = LocationSamplingState(ready,
+                if (ready) locationClock.elapsedRealtime() else enabled.value.resumedAtElapsedRealtime)
+            continuousAmapLocationManager.setSamplingEnabled(owner, ready)
+        }
+        if (!ready) {
+            reportingManager.updateStatus(owner, LocationReportingStatus.PAUSED)
+            updateNotification(if (locationEnabled) R.string.location_tracking_authorization_wait else R.string.location_tracking_location_off)
+        } else if (reportingManager.status.value == LocationReportingStatus.PAUSED ||
+            reportingManager.status.value == LocationReportingStatus.PREPARING) {
+            reportingManager.updateStatus(owner, LocationReportingStatus.LOCATING)
+            updateNotification(R.string.location_tracking_locating)
+        }
+        return ready
+    }
+
+    private fun updateAcquisitionStatus(owner: String, event: LocationAcquisition) {
+        val (status, notification) = when (event) {
+            is LocationAcquisition.Success -> {
+                if (ServiceOrderLocationQuality.rejection(event.location, locationClock.currentTimeMillis(),
+                        locationClock.elapsedRealtime(), maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS) == null) return
+                LocationReportingStatus.LOW_PRECISION to R.string.location_tracking_quality_wait
+            }
+            is LocationAcquisition.Failure -> when (event.reason) {
+                LocationFailure.PERMISSION, LocationFailure.CONFIGURATION -> error("amap_runtime_unavailable")
+                LocationFailure.NETWORK, LocationFailure.UNAVAILABLE -> LocationReportingStatus.LOCATING to R.string.location_tracking_locating
+                else -> LocationReportingStatus.LOW_PRECISION to R.string.location_tracking_quality_wait
+            }
+        }
+        reportingManager.updateStatus(owner, status)
+        updateNotification(notification)
+    }
+
+    private suspend fun watchSampling(owner: String, session: com.ytone.longcare.features.location.reporting.LocationReportingSession,
+        samplingEnabled: MutableStateFlow<LocationSamplingState>) {
+        var recoveredAfterCallback: Long? = null
         while (kotlinx.coroutines.currentCoroutineContext().isActive) {
             delay(30_000L)
-            if (!session.canUpload()) continue
+            val wasEnabled = samplingEnabled.value.enabled
+            if (!updateSampling(owner, session, samplingEnabled)) { recoveredAfterCallback = null; continue }
+            if (!wasEnabled) recoveredAfterCallback = null
             val power = getSystemService(POWER_SERVICE) as PowerManager
-            check(privacyConsentManager.isPrivacyConsented && runtimeReadiness.hasLocationPermission() &&
-                runtimeReadiness.isLocationServiceEnabled() && currentAccount() == session.account) { "location_runtime_not_ready" }
             if (power.isDeviceIdleMode) continue
             // An error callback also ends SDK silence; the next independent stall gets one rebuild.
-            if (continuousAmapLocationManager.lastCallbackTime() > (recoveredAt ?: Long.MAX_VALUE)) recoveredAt = null
-            val event = continuousAmapLocationManager.latestEvent()
-            if (event is LocationAcquisition.Success) {
-                val sample = event.location
-                if (ServiceOrderLocationQuality.rejection(sample, locationClock.currentTimeMillis(), locationClock.elapsedRealtime(),
-                        maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS) != null) {
-                    reportingManager.updateStatus(owner, LocationReportingStatus.LOW_PRECISION)
-                    updateNotification(R.string.location_tracking_quality_wait)
-                }
-            } else if (event is LocationAcquisition.Failure) {
-                when (event.reason) {
-                    com.ytone.longcare.domain.location.LocationFailure.PERMISSION,
-                    com.ytone.longcare.domain.location.LocationFailure.CONFIGURATION -> error("amap_runtime_unavailable")
-                    com.ytone.longcare.domain.location.LocationFailure.NETWORK,
-                    com.ytone.longcare.domain.location.LocationFailure.UNAVAILABLE -> {
-                        reportingManager.updateStatus(owner, LocationReportingStatus.LOCATING)
-                        updateNotification(R.string.location_tracking_locating)
-                    }
-                    else -> {
-                        reportingManager.updateStatus(owner, LocationReportingStatus.LOW_PRECISION)
-                        updateNotification(R.string.location_tracking_quality_wait)
-                    }
-                }
-            }
-            if (recoveredAt == null && continuousAmapLocationManager.recoverStalledSampling(owner)) {
-                recoveredAt = locationClock.elapsedRealtime()
+            val callbacks = continuousAmapLocationManager.callbackSequence()
+            if (recoveredAfterCallback != null && callbacks != recoveredAfterCallback) recoveredAfterCallback = null
+            if (recoveredAfterCallback == null && continuousAmapLocationManager.recoverStalledSampling(owner)) {
+                // Capture before rebuilding so a synchronous first callback also restores the budget.
+                recoveredAfterCallback = callbacks
                 reportingManager.updateStatus(owner, LocationReportingStatus.LOCATING)
                 updateNotification(R.string.location_tracking_locating)
                 LocationEventTracker.trackEvent(LocationEventTracker.EventType.SDK_RECOVERED,
                     mapOf(LocationEventTracker.Attribute.ORDER_ID to session.orderId))
-            } else if (recoveredAt != null && locationClock.elapsedRealtime() -
+            } else if (recoveredAfterCallback != null && locationClock.elapsedRealtime() -
                 continuousAmapLocationManager.lastCallbackTime() >= 90_000L) {
-                // One rebuild per stall. Continued silence requires a visible retry, not a restart loop.
-                error("amap_no_callback_after_recovery")
+                // Keep the rebuilt listener alive: a delayed SDK callback can recover without a page visit.
+                reportingManager.updateStatus(owner, LocationReportingStatus.LOCATING)
+                updateNotification(R.string.location_tracking_callback_wait)
             }
         }
     }
@@ -373,7 +415,7 @@ open class LocationTrackingService : Service() {
             isKeepAliveStarted = false
             foregroundEntered = false
             currentOwner = null
-            currentOrderId = null
+            keepAliveManager.onServiceStopped(currentGeneration)
             cleanupCompleted = true
             logI("定位前台保活已停止")
         }
@@ -434,7 +476,6 @@ open class LocationTrackingService : Service() {
     override fun onDestroy() {
         currentOwner?.let(reportingManager::onServiceInterrupted)
         stopKeepAlive()
-        keepAliveManager.onServiceStopped(currentGeneration)
         serviceScope.cancel()
         super.onDestroy()
         logI("✅ LocationTrackingService 已销毁")

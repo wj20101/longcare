@@ -134,23 +134,47 @@ object LocationEventTracker {
     )
 }
 
-/** One SDK client's failure episode; no timer, history queue or changes to location sampling. */
+/** One SDK client's bounded diagnostic window; sampling and recovery stay with the SDK/service. */
 internal class ContinuousLocationDiagnostics(
     private val requestId: String,
     private val httpTimeoutMs: Long,
     private val runtimeSnapshot: () -> Map<String, Any?> = { emptyMap() },
     private val elapsedRealtime: () -> Long = SystemClock::elapsedRealtime,
 ) {
-    private class Failure(val episode: Long, val code: Int, val startedAt: Long, var intervalMs: Long) {
-        var count = 1L
-        var reportedCount = 0L
+    private class Failure(val startedAt: Long) {
+        var code = AMapLocation.LOCATION_SUCCESS
+        var intervalMs = 0L
+        var count = 0L
+        var recoveries = 0L
+        var failing = false
+        var reportedChanges = 0L
         var reportedAt = startedAt
+        var reportSequence = 0L
+        val errorCounts = linkedMapOf<Int, Long>()
+        var otherErrorCount = 0L
         var evidence: Map<String, Any> = emptyMap()
+
+        val hasUnreportedChanges get() = count + recoveries > reportedChanges
+
+        fun recordError(errorCode: Int) {
+            code = errorCode
+            count += 1L
+            failing = true
+            if (errorCode in errorCounts || errorCounts.size < MAX_ERROR_CODES) {
+                errorCounts[errorCode] = (errorCounts[errorCode] ?: 0L) + 1L
+            } else {
+                otherErrorCount += 1L
+            }
+        }
+
+        fun errorCountsSummary(): String = buildList {
+            errorCounts.forEach { (code, count) -> add("$code:$count") }
+            if (otherErrorCount > 0L) add("other:$otherErrorCount")
+        }.joinToString(",")
     }
 
     // Keep the acquisition's identity even if a late callback/cleanup follows an account switch.
-    private val userId = DiagnosticEventTracker.currentUserId()
-    private var failureEpisode = 0L
+    private val userId = read { DiagnosticEventTracker.currentUserId() } ?: "0"
     private var failure: Failure? = null
     private var finished = false
 
@@ -158,31 +182,23 @@ internal class ContinuousLocationDiagnostics(
     fun onLocation(raw: AMapLocation, intervalMs: Long) {
         if (finished) return
         val code = read { raw.errorCode } ?: return
-        val now = elapsedRealtime()
-        val previous = failure
+        val now = read(elapsedRealtime) ?: return
+        val state = failure ?: if (code != AMapLocation.LOCATION_SUCCESS) {
+            Failure(now).also { failure = it }
+        } else return
+        state.intervalMs = intervalMs
         if (code == AMapLocation.LOCATION_SUCCESS) {
-            if (previous != null) {
-                report(previous, "recovered", now, isError = false, recovered = true)
-                failure = null
-            }
-            return
-        }
-        if (previous == null || previous.code != code) {
-            if (previous != null && previous.count > previous.reportedCount) {
-                report(previous, "error_changed", now, isError = false)
-            }
-            val next = Failure(++failureEpisode, code, now, intervalMs)
-            failure = next
-            next.evidence = evidence(raw)
-            report(next, "first", now, isError = true)
+            if (state.failing) state.recoveries += 1L
+            state.failing = false
         } else {
-            previous.count += 1
-            previous.intervalMs = intervalMs
-            // Keep the latest bounded SDK evidence for short episodes that recover before a summary.
-            previous.evidence = evidence(raw)
-            if (now - previous.reportedAt >= FAILURE_SUMMARY_INTERVAL_MS) {
-                report(previous, "summary", now, isError = true)
-            }
+            state.recordError(code)
+            // Keep only the latest allowlisted SDK cause, never raw SDK text or a history queue.
+            state.evidence = evidence(raw)
+        }
+        when {
+            state.reportSequence == 0L -> report(state, "first", now)
+            state.hasUnreportedChanges && now - state.reportedAt >= FAILURE_SUMMARY_INTERVAL_MS ->
+                report(state, "summary", now)
         }
     }
 
@@ -190,29 +206,36 @@ internal class ContinuousLocationDiagnostics(
     fun finish() {
         if (finished) return
         finished = true
-        failure?.takeIf { it.count > it.reportedCount }?.let {
-            report(it, "finished", elapsedRealtime(), isError = false)
+        failure?.takeIf { it.hasUnreportedChanges }?.let {
+            report(it, "finished", read(elapsedRealtime) ?: it.reportedAt)
         }
         failure = null
     }
 
-    private fun report(state: Failure, stage: String, now: Long, isError: Boolean, recovered: Boolean = false) {
-        val type = if (recovered) LocationEventTracker.EventType.AMAP_CONTINUOUS_LOCATION_RECOVERED
-            else LocationEventTracker.EventType.AMAP_CONTINUOUS_LOCATION_ERROR
-        // Keep the failure identity/count before optional environment fields in the bounded payload.
+    private fun report(state: Failure, stage: String, now: Long) {
+        val type = if (state.failing) LocationEventTracker.EventType.AMAP_CONTINUOUS_LOCATION_ERROR
+            else LocationEventTracker.EventType.AMAP_CONTINUOUS_LOCATION_RECOVERED
+        // Report-window identity stays monotonic even when recovery changes no failure count.
+        // Common diagnostic de-duplication uses requestId/failureEpisode/failureCount.
+        state.reportSequence += 1L
         val extras = mapOf(
             "requestId" to requestId,
-            "failureEpisode" to state.episode,
+            "failureEpisode" to state.reportSequence,
             LocationEventTracker.Attribute.ERROR_CODE to state.code,
             "failureCount" to state.count,
-            "failureDurationMs" to (now - state.startedAt).coerceAtLeast(0L),
+            "recoveryCount" to state.recoveries,
+            "errorCounts" to state.errorCountsSummary(),
+            // The aggregate survives successful callbacks; this is observation time, not outage time.
+            "observationDurationMs" to (now - state.startedAt).coerceAtLeast(0L),
             "stage" to stage,
+        ) + state.evidence.filterKeys { it == "networkFailureKind" || it == "sdkDetailCode" } + mapOf(
             "intervalMs" to state.intervalMs,
             "httpTimeoutMs" to httpTimeoutMs,
         ) + read(runtimeSnapshot).orEmpty() + state.evidence
-        // Diagnostics must not interrupt an SDK callback or client cleanup.
+        // Diagnostics must not interrupt an SDK callback or client cleanup. Count attempted reports
+        // as settled too: unavailable diagnostics must not cause a callback-by-callback retry storm.
         read {
-            if (isError) DiagnosticEventTracker.trackError(
+            if (state.failing && stage != "finished") DiagnosticEventTracker.trackError(
                 DiagnosticCategory.LOCATION, type.code, type.description, extras = extras, userId = userId,
             ) else DiagnosticEventTracker.trackEvent(
                 DiagnosticCategory.LOCATION, type.code, type.description, extras = extras, userId = userId,
@@ -220,7 +243,7 @@ internal class ContinuousLocationDiagnostics(
             )
         }
         state.reportedAt = now
-        state.reportedCount = state.count
+        state.reportedChanges = state.count + state.recoveries
     }
 
     private fun evidence(raw: AMapLocation): Map<String, Any> = buildMap {
@@ -243,6 +266,8 @@ internal class ContinuousLocationDiagnostics(
     private companion object {
         /** Project diagnostic cadence; it does not change the SDK's callback/retry interval. */
         const val FAILURE_SUMMARY_INTERVAL_MS = 5 * 60_000L
+        // Four Int error codes plus Long counts and the overflow bucket fit the 160-char scalar cap.
+        const val MAX_ERROR_CODES = 4
         const val MAX_DETAIL_LENGTH = 4_096
         val NETWORK_TYPES = setOf("WIFI", "2G", "3G", "4G", "5G", "UNKNOWN", "DISCONNECTED")
         val NETWORK_FAILURE = Regex(

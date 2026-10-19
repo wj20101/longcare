@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Intent
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.domain.location.LocationAccount
+import com.ytone.longcare.domain.location.LocationAcquisition
 import com.ytone.longcare.domain.location.LocationRecoveryRecord
 import com.ytone.longcare.domain.location.LocationRecoveryStore
 import com.ytone.longcare.domain.order.OrderRepository
@@ -16,12 +17,8 @@ import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.User
 import com.ytone.longcare.model.result.ApiResult
 import io.mockk.*
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.*
 import org.junit.After
@@ -79,7 +76,7 @@ class LocationTrackingServiceRecoveryRaceTest {
             assertTrue(shadowOf(service).isStoppedBySelf)
             assertEquals(LocationReportingStatus.INTERRUPTED, manager.status.value)
             verify(exactly = 0) {
-                service.continuousAmapLocationManager.startContinuousLocation(any())
+                service.continuousAmapLocationManager.startContinuousLocation(any(), any())
             }
 
             // stopSelf is asynchronous; retry must not be blocked by the old accepted dispatch.
@@ -105,11 +102,10 @@ class LocationTrackingServiceRecoveryRaceTest {
         every { service.userSessionRepository.sessionState } returns users
         try {
             service.onStartCommand(startIntent(10), 0, 1)
-            runBlocking {
-                withTimeout(2_000) { manager.status.first { it == LocationReportingStatus.INTERRUPTED } }
-            }
+            runCurrent()
+            assertEquals(LocationReportingStatus.INTERRUPTED, manager.status.value)
 
-            verify(exactly = 0) { service.continuousAmapLocationManager.startContinuousLocation(any()) }
+            verify(exactly = 0) { service.continuousAmapLocationManager.startContinuousLocation(any(), any()) }
             coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
         } finally {
             manager.stopReporting()
@@ -132,24 +128,26 @@ class LocationTrackingServiceRecoveryRaceTest {
         every { service.locationClock.currentTimeMillis() } returns 1_000_000L
         every { service.locationClock.elapsedRealtime() } returns 10_000L
         coEvery { service.locationRepository.addPosition(any(), any(), any()) } returns ApiResult.Success(Unit)
-        val collecting = CountDownLatch(1)
-        val delivered = CountDownLatch(1)
+        var collecting = false
+        var delivered = false
         val callback = CompletableDeferred<Unit>()
-        every { service.continuousAmapLocationManager.startContinuousLocation(any()) } returns flow {
-            collecting.countDown()
+        every { service.continuousAmapLocationManager.startContinuousLocation(any(), any()) } returns flow {
+            collecting = true
             callback.await()
-            emit(LocationResult(31.0, 121.0, "network", accuracy = 50f, coordType = "GCJ02",
+            delivered = true
+            emit(LocationAcquisition.Success(LocationResult(31.0, 121.0, "network", accuracy = 50f, coordType = "GCJ02",
                 locationType = 5, trustedLevel = 1, locationTime = 1_000_000L,
-                receivedAt = 1_000_000L, receivedElapsedRealtime = 10_000L))
-            delivered.countDown()
+                receivedAt = 1_000_000L, receivedElapsedRealtime = 10_000L)))
             awaitCancellation()
         }
         try {
             service.onStartCommand(startIntent(10), 0, 1)
-            assertTrue(collecting.await(2, TimeUnit.SECONDS))
+            runCurrent()
+            assertTrue(collecting)
             users.value = SessionState.LoggedIn(User(companyId = 1, accountId = 2, userId = 4))
             callback.complete(Unit)
-            assertTrue(delivered.await(2, TimeUnit.SECONDS))
+            runCurrent()
+            assertTrue(delivered)
 
             coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
         } finally {
@@ -164,27 +162,27 @@ class LocationTrackingServiceRecoveryRaceTest {
         val manager = LocationReportingManager(keepAlive, orders, backgroundScope, store)
         manager.setAccount(LocationAccount(1, 2, 3))
         runCurrent()
-        val readEntered = CountDownLatch(1)
-        val finished = CountDownLatch(1)
-        val readJob = AtomicReference<Job>()
+        var readEntered = false
+        var readJob: Job? = null
         val result = CompletableDeferred<LocationRecoveryRecord?>()
         coEvery { store.read() } coAnswers {
-            readJob.set(currentCoroutineContext().job)
-            readEntered.countDown()
+            readJob = currentCoroutineContext().job
+            readEntered = true
             // Simulate storage that finishes despite cancellation.
             withContext(NonCancellable) { result.await() }
         }
         val service = service(manager)
         try {
             service.onStartCommand(null, 0, 1)
-            assertTrue(readEntered.await(2, TimeUnit.SECONDS))
-            readJob.get().invokeOnCompletion { finished.countDown() }
+            runCurrent()
+            assertTrue(readEntered)
             manager.prepareOrderStart(10)
             service.onStartCommand(startIntent(10), 0, 2)
 
             if (fails) result.completeExceptionally(IllegalStateException("old read failed"))
             else result.complete(null)
-            assertTrue(finished.await(2, TimeUnit.SECONDS))
+            runCurrent()
+            assertTrue(requireNotNull(readJob).isCompleted)
 
             assertFalse(shadowOf(service).isStoppedBySelf)
             verify(exactly = 1) { controller.start(any(), any(), 10) }
@@ -235,15 +233,11 @@ class LocationTrackingServiceRecoveryRaceTest {
         manager.prepareOrderStart(10)
         previous.onStartCommand(startIntent(10), 0, 1)
         previous.onDestroy()
-        val finished = CountDownLatch(1)
-        coEvery { store.read() } coAnswers {
-            currentCoroutineContext().job.invokeOnCompletion { finished.countDown() }
-            null
-        }
+        coEvery { store.read() } returns null
         val restored = service(manager)
         try {
             restored.onStartCommand(null, 0, 2)
-            assertTrue(finished.await(2, TimeUnit.SECONDS))
+            runCurrent()
             assertTrue(shadowOf(restored).isStoppedBySelf)
 
             manager.onAppVisible()

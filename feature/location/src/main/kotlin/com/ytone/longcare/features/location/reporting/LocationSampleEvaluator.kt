@@ -7,7 +7,7 @@ import com.ytone.longcare.model.LocationResult
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** 仅校验当前会话内样本质量、年龄和重复点；上报节奏由 Service 的单一采样循环控制。 */
+/** 校验不消费样本；只有实际派发 HTTP 时才记录已消费时间，避免候选在等待期间被误判重复。 */
 internal class LocationSampleEvaluator(
     private val orderId: Long,
     private val sessionStartedAt: Long,
@@ -16,7 +16,7 @@ internal class LocationSampleEvaluator(
     private var lastSampleTime = 0L
     private var lastDiagnosticElapsed: Long? = null
 
-    fun shouldUpload(location: LocationResult): Boolean {
+    fun isEligible(location: LocationResult): Boolean {
         val now = clock.currentTimeMillis()
         val elapsed = clock.elapsedRealtime()
         val rejection = ServiceOrderLocationQuality.rejection(
@@ -37,7 +37,12 @@ internal class LocationSampleEvaluator(
             )
             return false
         }
+        return true
+    }
+
+    fun onUploadStarted(location: LocationResult) {
         lastSampleTime = location.locationTime
+        val elapsed = clock.elapsedRealtime()
         if (lastDiagnosticElapsed == null || elapsed - requireNotNull(lastDiagnosticElapsed) >= 300_000L) {
             LocationEventTracker.trackLocationSample(
                 LocationEventTracker.EventType.LOCATION_SAMPLE_RECORDED,
@@ -46,7 +51,6 @@ internal class LocationSampleEvaluator(
             )
             lastDiagnosticElapsed = elapsed
         }
-        return true
     }
 }
 

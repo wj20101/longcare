@@ -12,6 +12,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filterIsInstance
 import io.mockk.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
@@ -192,7 +193,7 @@ class AmapLocationAcquisitionTest {
         every { continuous.setLocationOption(capture(continuousOption)) } just Runs
         every { factory.create(any()) } returnsMany listOf(continuous, client, client).map(::SdkAmapClientHandle)
         val samples = mutableListOf<com.ytone.longcare.model.LocationResult>()
-        val collector = backgroundScope.launch { manager.startContinuousLocation(owner = "test-owner").collect { samples += it } }
+        val collector = backgroundScope.launch { manager.startContinuousLocation(owner = "test-owner").filterIsInstance<LocationAcquisition.Success>().collect { samples += it.location } }
         runCurrent()
         assertFalse(continuousOption.captured.isLocationCacheEnable)
         assertFalse(continuousOption.captured.isOnceLocation)
@@ -230,7 +231,7 @@ class AmapLocationAcquisitionTest {
         val oldCallback = requireNotNull(previousActiveListener)
         first.cancelAndJoin()
         val received = mutableListOf<com.ytone.longcare.model.LocationResult>()
-        val second = backgroundScope.launch { manager.startContinuousLocation(owner = "test-owner").collect { received += it } }
+        val second = backgroundScope.launch { manager.startContinuousLocation(owner = "test-owner").filterIsInstance<LocationAcquisition.Success>().collect { received += it.location } }
         runCurrent()
 
         // 模拟旧客户端的在途定位完成；时间仍然新鲜，不能依赖 15 秒规则来隔离订单。
@@ -269,7 +270,7 @@ class AmapLocationAcquisitionTest {
 
     @Test fun `cancel closes continuous flow and ignores late success and error callbacks`() = runTest(dispatcher) {
         val received = mutableListOf<com.ytone.longcare.model.LocationResult>()
-        val collector = backgroundScope.launch { manager.startContinuousLocation(owner = "test-owner").collect { received += it } }
+        val collector = backgroundScope.launch { manager.startContinuousLocation(owner = "test-owner").filterIsInstance<LocationAcquisition.Success>().collect { received += it.location } }
         runCurrent()
         val listener = listeners.single()
         collector.cancelAndJoin()
@@ -282,6 +283,46 @@ class AmapLocationAcquisitionTest {
         verify(exactly = 0) {
             LocationEventTracker.trackError(LocationEventTracker.EventType.AMAP_CONTINUOUS_LOCATION_ERROR, any(), any())
         }
+    }
+
+    @Test fun `callback sequence counts active non null SDK results across client lifecycles`() = runTest(dispatcher) {
+        assertEquals(0L, manager.callbackSequence())
+        val first = backgroundScope.launch { manager.startContinuousLocation("order-1").collect() }
+        runCurrent()
+        val previousCallback = listeners.single()
+        previousCallback.onLocationChanged(null)
+        assertEquals(0L, manager.callbackSequence())
+        previousCallback.onLocationChanged(sample().also { every { it.errorCode } returns 4 })
+        assertEquals(1L, manager.callbackSequence())
+        previousCallback.onLocationChanged(sample())
+        assertEquals(2L, manager.callbackSequence())
+        first.cancelAndJoin()
+
+        val second = backgroundScope.launch { manager.startContinuousLocation("order-2").collect() }
+        runCurrent()
+        previousCallback.onLocationChanged(sample())
+        previousCallback.onLocationChanged(sample().also { every { it.errorCode } returns 4 })
+        previousCallback.onLocationChanged(null)
+        assertEquals(2L, manager.callbackSequence())
+        listeners.last().onLocationChanged(sample())
+        assertEquals(3L, manager.callbackSequence())
+        second.cancelAndJoin()
+    }
+
+    @Test fun `synchronous startup and rebuilt callbacks advance sequence within the same clock tick`() = runTest(dispatcher) {
+        every { client.startLocation() } answers { listeners.last().onLocationChanged(sample()) }
+        val collector = backgroundScope.launch { manager.startContinuousLocation("order-1").collect() }
+        runCurrent()
+        assertEquals(1L, manager.callbackSequence())
+        assertEquals(SystemClock.elapsedRealtime(), manager.lastCallbackTime())
+
+        advanceTimeBy(90_000L)
+        val sequenceBeforeRebuild = manager.callbackSequence()
+        val rebuiltAt = SystemClock.elapsedRealtime()
+        assertTrue(manager.recoverStalledSampling("order-1"))
+        assertEquals(sequenceBeforeRebuild + 1L, manager.callbackSequence())
+        assertEquals(rebuiltAt, manager.lastCallbackTime())
+        collector.cancelAndJoin()
     }
 
     @Test fun `cancel while key lookup is pending never creates a late continuous client`() = runTest(dispatcher) {
@@ -297,6 +338,111 @@ class AmapLocationAcquisitionTest {
         keyResponse.complete("test-key")
         collector.join()
         verify(exactly = 0) { factory.create(any()) }
+    }
+
+    @Test fun `pause during key lookup prevents a late client start and can resume the same collector`() = runTest(dispatcher) {
+        val keyResponse = CompletableDeferred<String>()
+        val keyProvider = mockk<AmapApiKeyProvider>()
+        coEvery { keyProvider.getAmapApiKey() } coAnswers { keyResponse.await() }
+        val isolatedManager = ContinuousAmapLocationManager(factory, keyProvider, runtimeReadiness)
+        val events = mutableListOf<LocationAcquisition>()
+        val collector = backgroundScope.launch {
+            isolatedManager.startContinuousLocation("order-1").collect { events += it }
+        }
+        runCurrent()
+        isolatedManager.setSamplingEnabled("order-1", false)
+        keyResponse.complete("test-key")
+        runCurrent()
+        verify(exactly = 0) { factory.create(any()) }
+        assertEquals(listOf(LocationAcquisition.Failure(LocationFailure.SERVICE_DISABLED)), events)
+        assertFalse(collector.isCompleted)
+        isolatedManager.setSamplingEnabled("order-1", true)
+        verify(exactly = 1) { factory.create(any()) }
+        listeners.single().onLocationChanged(sample())
+        runCurrent()
+        assertTrue(events.last() is LocationAcquisition.Success)
+        collector.cancelAndJoin()
+    }
+
+    @Test fun `pause and resume retain the owner and collector but discard old client callbacks and warm replay`() = runTest(dispatcher) {
+        val events = mutableListOf<LocationAcquisition>()
+        val collector = backgroundScope.launch { manager.startContinuousLocation("order-1").collect { events += it } }
+        runCurrent()
+        val oldCallback = listeners.single()
+        oldCallback.onLocationChanged(sample())
+        runCurrent()
+        val oldRequestId = (events.single() as LocationAcquisition.Success).location.requestId
+
+        manager.setSamplingEnabled("order-1", false)
+        runCurrent()
+        assertFalse(collector.isCompleted)
+        assertEquals(LocationFailure.SERVICE_DISABLED, (events.last() as LocationAcquisition.Failure).reason)
+        assertEquals(LocationFailure.SERVICE_DISABLED,
+            (manager.acquireServiceOrderLocation() as LocationAcquisition.Failure).reason)
+        assertEquals(0, currentTime)
+        verify(exactly = 1) { client.onDestroy() }
+        val pausedCount = events.size
+        oldCallback.onLocationChanged(sample())
+        oldCallback.onLocationChanged(sample().also { every { it.errorCode } returns 4 })
+        runCurrent()
+        assertEquals(pausedCount, events.size)
+        assertFalse(manager.recoverStalledSampling("order-1"))
+        manager.setSamplingEnabled("other-order", true)
+        verify(exactly = 1) { factory.create(any()) }
+
+        manager.setSamplingEnabled("order-1", true)
+        runCurrent()
+        assertNull(manager.latestEvent())
+        oldCallback.onLocationChanged(sample())
+        runCurrent()
+        assertNull(manager.latestEvent())
+        assertEquals(pausedCount, events.size)
+        verify(exactly = 2) { factory.create(any()) }
+        val action = async { manager.acquireServiceOrderLocation() }
+        runCurrent()
+        assertFalse("Pre-pause replay must not satisfy an action after resume", action.isCompleted)
+        listeners.last().onLocationChanged(sample())
+        assertTrue(action.await() is LocationAcquisition.Success)
+        runCurrent()
+        val resumed = (events.last() as LocationAcquisition.Success).location
+        assertNotEquals(oldRequestId, resumed.requestId)
+        assertFalse(collector.isCompleted)
+        collector.cancelAndJoin()
+        verify(exactly = 2) { client.onDestroy() }
+    }
+
+    @Test fun `initially disabled session never starts SDK and resumes without a new collection`() = runTest(dispatcher) {
+        val events = mutableListOf<LocationAcquisition>()
+        val collector = backgroundScope.launch {
+            manager.startContinuousLocation("order-1", initiallyEnabled = false).collect { events += it }
+        }
+        runCurrent()
+        assertEquals(listOf(LocationAcquisition.Failure(LocationFailure.SERVICE_DISABLED)), events)
+        verify(exactly = 0) { factory.create(any()) }
+        assertFalse(collector.isCompleted)
+        assertEquals(LocationFailure.SERVICE_DISABLED,
+            (manager.acquireServiceOrderLocation() as LocationAcquisition.Failure).reason)
+        manager.setSamplingEnabled("order-1", true)
+        verify(exactly = 1) { factory.create(any()) }
+        listeners.single().onLocationChanged(sample())
+        runCurrent()
+        assertTrue(events.last() is LocationAcquisition.Success)
+        collector.cancelAndJoin()
+        verify(exactly = 1) { client.onDestroy() }
+    }
+
+    @Test fun `pause completes an in flight action immediately without waiting for its timeout`() = runTest(dispatcher) {
+        val collector = backgroundScope.launch { manager.startContinuousLocation("order-1").collect() }
+        runCurrent()
+        val action = async { manager.acquireServiceOrderLocation() }
+        runCurrent()
+        assertFalse(action.isCompleted)
+        manager.setSamplingEnabled("order-1", false)
+        assertEquals(LocationAcquisition.Failure(LocationFailure.SERVICE_DISABLED), action.await())
+        assertEquals(0, currentTime)
+        assertFalse(collector.isCompleted)
+        verify(exactly = 1) { client.onDestroy() }
+        collector.cancelAndJoin()
     }
 
     @Test fun `service actions temporarily raise existing sampling then restore 30 second cadence`() = runTest(dispatcher) {
@@ -470,10 +616,31 @@ class AmapLocationAcquisitionTest {
         collector.cancelAndJoin()
     }
 
+    @Test fun `closing diagnostics retain the client purpose after reporting owner is released`() = runTest(dispatcher) {
+        val events = mutableListOf<Map<String, Any?>>()
+        mockkObject(DiagnosticEventTracker)
+        every { DiagnosticEventTracker.currentUserId() } returns "123"
+        every { DiagnosticEventTracker.trackError(any(), any(), any(), any(), any(), any()) } answers {
+            events += arg<Map<String, Any?>>(4)
+        }
+        every { DiagnosticEventTracker.trackEvent(any(), any(), any(), any(), any(), any()) } answers {
+            events += arg<Map<String, Any?>>(3)
+        }
+        val collector = backgroundScope.launch { manager.startContinuousLocation("order-1").collect() }
+        runCurrent()
+        repeat(2) {
+            listeners.single().onLocationChanged(sample().also { every { it.errorCode } returns 4 })
+            runCurrent()
+        }
+        collector.cancelAndJoin()
+        assertEquals("order_reporting", events.single { it["stage"] == "first" }["clientPurpose"])
+        assertEquals("order_reporting", events.single { it["stage"] == "finished" }["clientPurpose"])
+    }
+
     @Test fun `repeated SDK network failures keep the same client and resume successful sampling`() = runTest(dispatcher) {
         val received = mutableListOf<com.ytone.longcare.model.LocationResult>()
         val collector = backgroundScope.launch {
-            manager.startContinuousLocation(owner = "order-1").collect { received += it }
+            manager.startContinuousLocation(owner = "order-1").filterIsInstance<LocationAcquisition.Success>().collect { received += it.location }
         }
         runCurrent()
         val callback = listeners.single()
@@ -504,7 +671,7 @@ class AmapLocationAcquisitionTest {
         )
     }
 
-    @Test fun `temporary Main immediate action records SDK recovery before releasing its client`() {
+    @Test fun `temporary Main immediate action settles SDK recovery in its closing summary`() {
         assertTemporaryActionDiagnostic(
             callbackCodes = listOf(AMapLocation.ERROR_CODE_FAILURE_CONNECTION, AMapLocation.LOCATION_SUCCESS),
             expectedEvent = "amap_continuous_location_recovered",
@@ -572,11 +739,11 @@ class AmapLocationAcquisitionTest {
             override fun dispatch(context: CoroutineContext, block: Runnable) { executor.execute(block) }
         }
         val started = CountDownLatch(1)
-        val events = mutableListOf<String>()
+        val events = mutableListOf<Pair<String, Map<String, Any?>>>()
         mockkObject(DiagnosticEventTracker)
         every { DiagnosticEventTracker.currentUserId() } returns "123"
-        every { DiagnosticEventTracker.trackError(any(), any(), any(), any(), any(), any()) } answers { events += arg<String>(1) }
-        every { DiagnosticEventTracker.trackEvent(any(), any(), any(), any(), any(), any()) } answers { events += arg<String>(1) }
+        every { DiagnosticEventTracker.trackError(any(), any(), any(), any(), any(), any()) } answers { events += arg<String>(1) to arg<Map<String, Any?>>(4) }
+        every { DiagnosticEventTracker.trackEvent(any(), any(), any(), any(), any(), any()) } answers { events += arg<String>(1) to arg<Map<String, Any?>>(3) }
         every { client.startLocation() } answers { started.countDown() }
         Dispatchers.setMain(immediateMain)
         val action = async(Dispatchers.Main.immediate) { manager.acquireServiceOrderLocation() }
@@ -593,7 +760,14 @@ class AmapLocationAcquisitionTest {
             if (callbackCodes.last() == AMapLocation.LOCATION_SUCCESS) assertTrue(result is LocationAcquisition.Success)
             else assertEquals(LocationFailure.PERMISSION, (result as LocationAcquisition.Failure).reason)
             verify(exactly = 1) { client.onDestroy() }
-            assertTrue("Callback diagnostics were lost during synchronous action cleanup: $expectedEvent", expectedEvent in events)
+            assertTrue("Callback diagnostics were lost during synchronous action cleanup: $expectedEvent",
+                events.any { it.first == expectedEvent })
+            if (callbackCodes.last() == AMapLocation.LOCATION_SUCCESS) {
+                val recovery = events.single { it.first == expectedEvent }.second
+                assertEquals("finished", recovery["stage"])
+                assertEquals(1L, recovery["failureCount"])
+                assertEquals(1L, recovery["recoveryCount"])
+            }
         } finally {
             action.cancelAndJoin()
             Dispatchers.setMain(dispatcher)

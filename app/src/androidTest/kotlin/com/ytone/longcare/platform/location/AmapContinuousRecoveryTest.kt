@@ -112,6 +112,87 @@ class AmapContinuousRecoveryTest {
         withContext(Dispatchers.Main) { assertEquals(2, clients.size) }
     }
 
+    @Test fun callback_sequence_counts_active_results_and_ignores_null_or_released_callbacks() = withFixture {
+        assertEquals(0L, manager.callbackSequence())
+        val firstCollection = start("order-a")
+        val previousClient = nextClient()
+        previousClient.emit(null)
+        assertEquals(0L, manager.callbackSequence())
+        previousClient.emit(networkFailure())
+        assertEquals(1L, manager.callbackSequence())
+        previousClient.emit(validLocation())
+        successes.receive()
+        assertEquals(2L, manager.callbackSequence())
+        firstCollection.cancelAndJoin()
+
+        start("order-b")
+        val currentClient = nextClient()
+        previousClient.emit(null)
+        previousClient.emit(networkFailure())
+        previousClient.emit(validLocation())
+        assertEquals(2L, manager.callbackSequence())
+        currentClient.emitFromHandler(validLocation())
+        successes.receive()
+        assertEquals(3L, manager.callbackSequence())
+    }
+
+    @Test fun paused_sampling_keeps_the_collection_and_resumes_with_a_new_client_without_old_points() = withFixture {
+        val collection = start("order-a")
+        val oldClient = nextClient()
+        oldClient.emit(validLocation())
+        val oldSample = successes.receive()
+        manager.setSamplingEnabled("order-a", false)
+        oldClient.assertReleased()
+        assertFalse(collection.isCompleted)
+        assertEquals(LocationFailure.SERVICE_DISABLED, (manager.latestEvent() as LocationAcquisition.Failure).reason)
+        assertEquals(LocationAcquisition.Failure(LocationFailure.SERVICE_DISABLED), manager.acquireServiceOrderLocation())
+        oldClient.emitFromHandler(validLocation())
+        oldClient.emitFromHandler(networkFailure())
+        assertEquals(LocationFailure.SERVICE_DISABLED, (manager.latestEvent() as LocationAcquisition.Failure).reason)
+        assertNoSuccess()
+
+        manager.setSamplingEnabled("order-a", true)
+        val resumedClient = nextClient()
+        assertNull(manager.latestEvent())
+        oldClient.emitFromHandler(validLocation())
+        assertNull(manager.latestEvent())
+        assertNoSuccess()
+        resumedClient.emitFromHandler(validLocation())
+        val resumedSample = successes.receive()
+        assertNotEquals(oldSample.requestId, resumedSample.requestId)
+        assertFalse(collection.isCompleted)
+        withContext(Dispatchers.Main) {
+            assertEquals(2, clients.size)
+            assertEquals(1, resumedClient.starts)
+            assertEquals(0, resumedClient.destroys)
+        }
+    }
+
+    @Test fun initially_disabled_sampling_waits_and_resumes_without_restarting_the_collection() = withFixture {
+        val collection = start("order-a", initiallyEnabled = false)
+        assertEquals(LocationAcquisition.Failure(LocationFailure.SERVICE_DISABLED), acquisitions.receive())
+        withContext(Dispatchers.Main) { assertTrue(clients.isEmpty()) }
+        assertEquals(LocationAcquisition.Failure(LocationFailure.SERVICE_DISABLED), manager.acquireServiceOrderLocation())
+        assertFalse(collection.isCompleted)
+        manager.setSamplingEnabled("order-a", true)
+        val client = nextClient()
+        client.emitFromHandler(validLocation())
+        assertEquals(25f, successes.receive().accuracy)
+        assertClientActive(client)
+    }
+
+    @Test fun pausing_sampling_completes_a_waiting_action_without_its_timeout() = withFixture {
+        val collection = start("order-a")
+        val client = nextClient()
+        assertOption(client.options.receive(), intervalMs = 30_000L)
+        val action = scope.async(Dispatchers.Main.immediate) { manager.acquireServiceOrderLocation() }
+        assertOption(client.options.receive(), intervalMs = 3_000L)
+        manager.setSamplingEnabled("order-a", false)
+        assertEquals(LocationAcquisition.Failure(LocationFailure.SERVICE_DISABLED), action.await())
+        assertFalse(collection.isCompleted)
+        client.assertReleased()
+    }
+
     @Test fun action_borrows_sampling_without_shortening_the_sdk_network_timeout() = withFixture {
         start("order-a")
         val client = nextClient()
@@ -149,6 +230,7 @@ class AmapContinuousRecoveryTest {
         val clients = mutableListOf<FakeClient>()
         private val created = Channel<FakeClient>(Channel.UNLIMITED)
         val successes = Channel<LocationResult>(Channel.UNLIMITED)
+        val acquisitions = Channel<LocationAcquisition>(Channel.UNLIMITED)
         val manager: ContinuousAmapLocationManager
 
         init {
@@ -170,8 +252,11 @@ class AmapContinuousRecoveryTest {
             manager = ContinuousAmapLocationManager(factory, keyProvider, AndroidLocationRuntimeReadiness(context))
         }
 
-        fun start(owner: String): Job = scope.launch {
-            manager.startContinuousLocation(owner).collect { successes.send(it) }
+        fun start(owner: String, initiallyEnabled: Boolean = true): Job = scope.launch {
+            manager.startContinuousLocation(owner, initiallyEnabled).collect { event ->
+                acquisitions.send(event)
+                if (event is LocationAcquisition.Success) successes.send(event.location)
+            }
         }
 
         suspend fun nextClient(): FakeClient = created.receive().also { it.started.await() }
@@ -235,7 +320,7 @@ class AmapContinuousRecoveryTest {
             destroys += 1
         }
 
-        suspend fun emit(location: AMapLocation) = withContext(Dispatchers.Main) {
+        suspend fun emit(location: AMapLocation?) = withContext(Dispatchers.Main) {
             requireNotNull(callback).onLocationChanged(location)
         }
 

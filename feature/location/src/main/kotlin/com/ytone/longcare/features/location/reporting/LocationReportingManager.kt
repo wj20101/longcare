@@ -191,6 +191,10 @@ class LocationReportingManager @Inject constructor(
         _orderState.value = null
     }
 
+    internal fun stopReporting(owner: String) = synchronized(lifecycleLock) {
+        if (current?.owner == owner) stopReporting()
+    }
+
     override fun onOrderEnded(orderId: Long) = synchronized(lifecycleLock) {
         if (current?.orderId != orderId) return@synchronized
         stopLocked()
@@ -304,4 +308,4 @@ class LocationReportingManager @Inject constructor(
     }
 }
 
-enum class LocationReportingStatus { IDLE, PREPARING, LOCATING, ACTIVE, LOW_PRECISION, NETWORK_ERROR, INTERRUPTED }
+enum class LocationReportingStatus { IDLE, PREPARING, LOCATING, ACTIVE, LOW_PRECISION, NETWORK_ERROR, PAUSED, INTERRUPTED }

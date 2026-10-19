@@ -25,18 +25,38 @@ class LocationSampleEvaluatorTest {
 
     @Test fun `quality evaluation does not impose a second reporting interval`() {
         val evaluator = LocationSampleEvaluator(1, now, clock)
-        assertTrue(evaluator.shouldUpload(sample()))
+        assertTrue(evaluator.isEligible(sample()))
+        evaluator.onUploadStarted(sample())
         now++; elapsed++
-        assertTrue(evaluator.shouldUpload(sample()))
-        assertFalse("The exact same sample must not upload twice", evaluator.shouldUpload(sample()))
+        assertTrue(evaluator.isEligible(sample()))
+        evaluator.onUploadStarted(sample())
+        assertFalse("The exact same sample must not upload twice", evaluator.isEligible(sample()))
     }
 
     @Test fun `rejected precision does not consume the next eligible sample and restart rejects old point`() {
         val evaluator = LocationSampleEvaluator(1, now, clock)
-        assertFalse(evaluator.shouldUpload(sample().copy(accuracy = 1_000f)))
-        assertTrue(evaluator.shouldUpload(sample()))
+        assertFalse(evaluator.isEligible(sample().copy(accuracy = 1_000f)))
+        assertTrue(evaluator.isEligible(sample()))
         val next = LocationSampleEvaluator(2, now + 1, clock)
-        assertFalse(next.shouldUpload(sample()))
+        assertFalse(next.isEligible(sample()))
+    }
+
+    @Test fun `candidate checks do not consume the sample until actual dispatch`() {
+        val evaluator = LocationSampleEvaluator(1, now, clock)
+        val candidate = sample()
+        repeat(3) { assertTrue(evaluator.isEligible(candidate)) }
+        evaluator.onUploadStarted(candidate)
+        assertFalse(evaluator.isEligible(candidate))
+    }
+
+    @Test fun `valid candidate is rechecked after waiting beyond the age limit`() {
+        val evaluator = LocationSampleEvaluator(1, now, clock)
+        val candidate = sample()
+        assertTrue(evaluator.isEligible(candidate))
+        now += 60_001L
+        elapsed += 60_001L
+        assertFalse(evaluator.isEligible(candidate))
+        assertTrue(evaluator.isEligible(sample()))
     }
 
     private fun sample() = LocationResult(30.0, 120.0, "network", 50f, "GCJ02", 5, 2,
