@@ -19,10 +19,12 @@ import io.mockk.runs
 import io.mockk.unmockkAll
 import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -47,28 +49,51 @@ class ServiceLocationSessionTest {
     private data class UploadErrorDiagnostic(val event: LocationEventTracker.EventType, val userId: String)
     private val uploadDiagnostics = mutableListOf<UploadDiagnostic>()
     private val uploadErrors = mutableListOf<UploadErrorDiagnostic>()
+    private val healthDiagnostics = mutableListOf<UploadDiagnostic>()
     private val account = LocationAccount(1, 2, 3)
     @Before
     fun setup() {
         KLogger.updateConfig { enabled = false }
         mockkStatic(SystemClock::class)
         every { SystemClock.elapsedRealtime() } answers { elapsed }
+        every { SystemClock.uptimeMillis() } answers { elapsed }
         mockkObject(DiagnosticEventTracker)
         every { DiagnosticEventTracker.currentUserId() } returns "3"
         mockkObject(LocationEventTracker)
         every { LocationEventTracker.trackError(any(), any(), any(), any()) } answers {
             uploadErrors += UploadErrorDiagnostic(firstArg(), arg(3))
         }
-        every { LocationEventTracker.trackLocationSample(any(), any(), any(), any()) } just runs
         every { LocationEventTracker.trackEvent(any(), any(), any(), any()) } answers {
             if (firstArg<LocationEventTracker.EventType>() == LocationEventTracker.EventType.API_UPLOAD_RESUMED) {
                 uploadDiagnostics += UploadDiagnostic(secondArg(), arg(3), arg(2))
+            } else if (firstArg<LocationEventTracker.EventType>() == LocationEventTracker.EventType.REPORTING_HEALTH) {
+                healthDiagnostics += UploadDiagnostic(secondArg(), arg(3), arg(2))
             }
         }
     }
 
     @After
     fun cleanup() = unmockkAll()
+
+    @Test
+    fun `final summaries distinguish interrupted collection from an ended order`() = runTest {
+        val active = LocationReportingSession(1, "active", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        val interrupted = backgroundScope.launch { executor(active, samples) { ApiResult.Success(Unit) }.run() }
+        runCurrent()
+        interrupted.cancelAndJoin()
+        assertEquals("collector_interrupted", healthDiagnostics.single().extras["reason"])
+        val ended = LocationReportingSession(2, "ended", account).apply { setEnabled(true) }
+        val endedJob = backgroundScope.launch { executor(ended, Channel(Channel.UNLIMITED)) { ApiResult.Success(Unit) }.run() }
+        runCurrent()
+        ended.invalidate()
+        endedJob.cancelAndJoin()
+        assertEquals(2, healthDiagnostics.size)
+        assertEquals(listOf("active", "ended"), healthDiagnostics.map { it.extras["sessionId"] })
+        assertTrue(healthDiagnostics.all { it.extras["stage"] == "finished" })
+        assertFalse(healthDiagnostics.last().extras["reason"] == "collector_interrupted")
+        assertTrue(uploadErrors.isEmpty())
+    }
 
     @Test
     fun `inactive gate never uploads`() = runTest {
@@ -108,7 +133,7 @@ class ServiceLocationSessionTest {
     }
 
     @Test
-    fun `first successful HTTP upload is reported once while routine uploads remain local`() = runTest {
+    fun `first successful HTTP upload is reported once and routine uploads enter the final summary`() = runTest {
         val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
         var uploads = 0
@@ -128,16 +153,75 @@ class ServiceLocationSessionTest {
         val first = uploadDiagnostics.single()
         assertEquals("first_success", first.extras["stage"])
         assertEquals(1L, first.extras["orderId"])
-        assertEquals("sdk-request-0", first.extras["requestId"])
-        assertEquals(25L, first.extras["durationMs"])
-        assertEquals(null, first.extras["successGapMs"])
+        assertEquals("owner", first.extras["sessionId"])
+        assertEquals(25L, first.extras["requestMs"])
+        assertEquals(25L, first.extras["successGapMs"])
+        assertEquals(8f, first.extras["accuracy"])
+        assertEquals(5, first.extras["locationType"])
         assertEquals("3", first.userId)
         assertTrue(first.remote)
+        assertTrue(healthDiagnostics.isEmpty())
+        job.cancelAndJoin()
+        val finished = healthDiagnostics.single()
+        assertEquals("finished", finished.extras["stage"])
+        assertEquals("cb=0,rej=0,ok=4,fail=0,cancel=0,reuse=0", finished.extras["counts"])
+    }
+
+    @Test
+    fun `healthy uploads are aggregated by the existing five minute health tick`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        val diagnostics = LocationReportingDiagnostics(1, "owner", "3", elapsedRealtime = { elapsed })
+        var uploads = 0
+        val job = backgroundScope.launch {
+            ServiceLocationSession(gate, samples.receiveAsFlow(), { uploads++; ApiResult.Success(Unit) },
+                LocationSampleEvaluator(0, clock), samplingEnabled = MutableStateFlow(LocationSamplingState(true)),
+                elapsedRealtime = { elapsed }, diagnostics = diagnostics).run()
+        }
+        repeat(11) {
+            samples.send(sample())
+            runCurrent()
+            diagnostics.onHealthTick(null)
+            if (it < 10) advanceBy(30_000L)
+        }
+        assertEquals(11, uploads)
+        assertEquals("first_success", uploadDiagnostics.single().extras["stage"])
+        val summary = healthDiagnostics.single()
+        assertEquals("summary", summary.extras["stage"])
+        assertEquals("healthy", summary.extras["reason"])
+        assertEquals("cb=0,rej=0,ok=11,fail=0,cancel=0,reuse=0", summary.extras["counts"])
+        assertTrue(uploadErrors.isEmpty())
+        job.cancelAndJoin()
+        assertEquals(listOf("summary", "finished"), healthDiagnostics.map { it.extras["stage"] })
+    }
+
+    @Test
+    fun `throwing status observer cannot turn HTTP successes into upload failures or stop later points`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        var uploads = 0
+        var observerCalls = 0
+        val job = backgroundScope.launch {
+            executor(gate, samples, onResult = {
+                observerCalls++
+                error("notification unavailable")
+            }) { uploads++; ApiResult.Success(Unit) }.run()
+        }
+        repeat(3) {
+            samples.send(sample())
+            runCurrent()
+            if (it < 2) advanceBy(30_000L)
+        }
+        assertEquals(3, uploads)
+        assertEquals(3, observerCalls)
+        assertTrue(job.isActive)
+        assertEquals(listOf("first_success"), uploadDiagnostics.map { it.extras["stage"] })
+        assertEquals(listOf(LocationEventTracker.EventType.REPORTING_TASK_ERROR), uploadErrors.map { it.event })
         job.cancel()
     }
 
     @Test
-    fun `HTTP business and network errors produce one recovery report after success`() = runTest {
+    fun `HTTP failures and later successes retain counts and maximum gap without recovery spam`() = runTest {
         val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
         var uploads = 0
@@ -156,14 +240,18 @@ class ServiceLocationSessionTest {
             if (it < 4) advanceBy(30_000L)
         }
         assertEquals(5, uploads)
-        assertEquals(listOf("first_success", "upload_recovered"), uploadDiagnostics.map { it.extras["stage"] })
-        assertEquals(90_003L, uploadDiagnostics.last().extras["successGapMs"])
+        assertEquals(listOf("first_success"), uploadDiagnostics.map { it.extras["stage"] })
+        assertEquals(listOf(LocationEventTracker.EventType.API_UPLOAD_BUSINESS_ERROR), uploadErrors.map { it.event })
         assertTrue(gate.canUpload())
-        job.cancel()
+        job.cancelAndJoin()
+        val finished = healthDiagnostics.single()
+        assertEquals("finished", finished.extras["stage"])
+        assertEquals(90_003L, finished.extras["maxSuccessGapMs"])
+        assertEquals("cb=0,rej=0,ok=3,fail=2,cancel=0,reuse=0", finished.extras["counts"])
     }
 
     @Test
-    fun `first successful upload after an initial adapter failure is reported as HTTP recovery`() = runTest {
+    fun `first success after an adapter failure preserves both outcomes in the run summary`() = runTest {
         val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
         var attempts = 0
@@ -179,13 +267,15 @@ class ServiceLocationSessionTest {
         advanceBy(30_000L)
         samples.send(sample())
         runCurrent()
-        assertEquals("upload_recovered", uploadDiagnostics.single().extras["stage"])
+        assertEquals("first_success", uploadDiagnostics.single().extras["stage"])
         assertEquals(2, attempts)
-        job.cancel()
+        assertEquals(listOf(LocationEventTracker.EventType.API_UPLOAD_FATAL_ERROR), uploadErrors.map { it.event })
+        job.cancelAndJoin()
+        assertEquals("cb=0,rej=0,ok=1,fail=1,cancel=0,reuse=0", healthDiagnostics.single().extras["counts"])
     }
 
     @Test
-    fun `success after ninety second callback silence reports the HTTP gap without a retry timer`() = runTest {
+    fun `success after sixty second callback silence retains the HTTP gap in the summary without retries`() = runTest {
         val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
         var uploads = 0
@@ -194,19 +284,20 @@ class ServiceLocationSessionTest {
         }
         samples.send(sample())
         runCurrent()
-        advanceBy(89_998L)
+        advanceBy(59_998L)
         assertEquals(1, uploads)
         samples.send(sample())
         runCurrent()
         assertEquals("A gap below the diagnostic threshold remains a routine success", 1, uploadDiagnostics.size)
-        advanceBy(89_999L)
+        advanceBy(59_999L)
         assertEquals(2, uploads)
         samples.send(sample())
         runCurrent()
         assertEquals(3, uploads)
-        assertEquals(listOf("first_success", "gap_resumed"), uploadDiagnostics.map { it.extras["stage"] })
-        assertEquals(90_000L, uploadDiagnostics.last().extras["successGapMs"])
-        job.cancel()
+        assertEquals(listOf("first_success"), uploadDiagnostics.map { it.extras["stage"] })
+        job.cancelAndJoin()
+        assertEquals(60_000L, healthDiagnostics.single().extras["maxSuccessGapMs"])
+        assertEquals("cb=0,rej=0,ok=3,fail=0,cancel=0,reuse=0", healthDiagnostics.single().extras["counts"])
     }
 
     @Test
@@ -220,7 +311,7 @@ class ServiceLocationSessionTest {
             ServiceLocationSession(gate, samples.receiveAsFlow(), {
                 platformElapsed += 10L
                 ApiResult.Success(Unit)
-            }, LocationSampleEvaluator(1, 0, clock), samplingEnabled = MutableStateFlow(LocationSamplingState(true))).run()
+            }, LocationSampleEvaluator(0, clock), samplingEnabled = MutableStateFlow(LocationSamplingState(true))).run()
         }
         samples.send(sample())
         runCurrent()
@@ -228,10 +319,46 @@ class ServiceLocationSessionTest {
         platformElapsed += 300_000L
         samples.send(sample())
         runCurrent()
-        assertEquals(listOf("first_success", "gap_resumed"), uploadDiagnostics.map { it.extras["stage"] })
-        assertEquals(300_010L, uploadDiagnostics.last().extras["successGapMs"])
-        assertTrue(uploadDiagnostics.all { it.extras["durationMs"] == 10L })
-        job.cancel()
+        assertEquals(listOf("first_success"), uploadDiagnostics.map { it.extras["stage"] })
+        assertTrue(uploadDiagnostics.all { it.extras["requestMs"] == 10L })
+        job.cancelAndJoin()
+        assertEquals(300_010L, healthDiagnostics.single().extras["maxSuccessGapMs"])
+        assertEquals("cb=0,rej=0,ok=2,fail=0,cancel=0,reuse=0", healthDiagnostics.single().extras["counts"])
+    }
+
+    @Test
+    fun `self cancelled HTTP clears pending diagnosis and allows the next fresh point`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        val diagnostics = LocationReportingDiagnostics(1, "owner", "3", elapsedRealtime = { elapsed })
+        val results = mutableListOf<ApiResult<Unit>>()
+        var uploads = 0
+        val job = backgroundScope.launch {
+            ServiceLocationSession(gate, samples.receiveAsFlow(), {
+                if (++uploads == 1) throw CancellationException("adapter cancelled")
+                ApiResult.Success(Unit)
+            }, LocationSampleEvaluator(0, clock), samplingEnabled = MutableStateFlow(LocationSamplingState(true)),
+                onUploadResult = { results += it }, elapsedRealtime = { elapsed }, diagnostics = diagnostics).run()
+        }
+        samples.send(sample())
+        runCurrent()
+        assertTrue(job.isActive)
+        assertTrue(results.isEmpty())
+        advanceBy(60_000L)
+        diagnostics.onHealthTick(null)
+        val gap = healthDiagnostics.single()
+        assertFalse(gap.extras["reason"] == "api_pending")
+        assertEquals(null, gap.extras["requestMs"])
+        assertEquals("cb=0,rej=0,ok=0,fail=0,cancel=1,reuse=0", gap.extras["counts"])
+
+        samples.send(sample())
+        runCurrent()
+        assertEquals(2, uploads)
+        assertTrue(results.single() is ApiResult.Success)
+        assertTrue(uploadErrors.isEmpty())
+        job.cancelAndJoin()
+        assertEquals("finished", healthDiagnostics.last().extras["stage"])
+        assertEquals("cb=0,rej=0,ok=1,fail=0,cancel=1,reuse=0", healthDiagnostics.last().extras["counts"])
     }
 
     @Test
@@ -261,8 +388,6 @@ class ServiceLocationSessionTest {
         }
         assertEquals(listOf(
             LocationEventTracker.EventType.API_UPLOAD_BUSINESS_ERROR,
-            LocationEventTracker.EventType.API_UPLOAD_NETWORK_ERROR,
-            LocationEventTracker.EventType.API_UPLOAD_FATAL_ERROR,
         ), uploadErrors.map { it.event })
         assertTrue(uploadErrors.all { it.userId == "3" })
         job.cancel()
@@ -498,7 +623,7 @@ class ServiceLocationSessionTest {
         val job = backgroundScope.launch {
             ServiceLocationSession(
                 gate, samples.receiveAsFlow(), { uploads++; ApiResult.Success(Unit) },
-                LocationSampleEvaluator(1, now + 10, clock),
+                LocationSampleEvaluator(now + 10, clock),
                 samplingEnabled = MutableStateFlow(LocationSamplingState(true)),
             ).run()
         }
@@ -595,7 +720,7 @@ class ServiceLocationSessionTest {
         val job = backgroundScope.launch {
             ServiceLocationSession(gate, source, {
                 try { awaitCancellation() } finally { uploadCancelled = true }
-            }, LocationSampleEvaluator(1, 0, clock), samplingEnabled = MutableStateFlow(LocationSamplingState(true))).run()
+            }, LocationSampleEvaluator(0, clock), samplingEnabled = MutableStateFlow(LocationSamplingState(true))).run()
         }
         runCurrent()
         assertEquals(1, subscriptions)
@@ -639,7 +764,7 @@ class ServiceLocationSessionTest {
         }
         val job = backgroundScope.launch {
             ServiceLocationSession(gate, source, { uploads++; ApiResult.Success(Unit) },
-                LocationSampleEvaluator(1, 0, clock), samplingEnabled = MutableStateFlow(LocationSamplingState(true))).run()
+                LocationSampleEvaluator(0, clock), samplingEnabled = MutableStateFlow(LocationSamplingState(true))).run()
         }
         runCurrent()
         assertEquals(1, subscriptions)
@@ -733,6 +858,41 @@ class ServiceLocationSessionTest {
     }
 
     @Test
+    fun `delayed consumption preserves an on time HTTP completion and its actual success gap`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        val finishFirst = CompletableDeferred<Unit>()
+        val results = mutableListOf<ApiResult<Unit>>()
+        val job = backgroundScope.launch {
+            executor(gate, samples, onResult = { results += it }) {
+                finishFirst.await()
+                elapsed += 25L
+                ApiResult.Success(Unit)
+            }.run()
+        }
+        samples.send(sample())
+        runCurrent()
+        finishFirst.complete(Unit)
+        // Queue a stall after the HTTP coroutine completes, before its consumer resumes.
+        backgroundScope.launch {
+            elapsed += 300_000L
+            now += 300_000L
+        }
+        runCurrent()
+        assertTrue(results.single() is ApiResult.Success)
+        assertTrue(uploadErrors.isEmpty())
+        assertEquals(25L, uploadDiagnostics.single().extras["requestMs"])
+
+        samples.send(sample())
+        runCurrent()
+        assertEquals(2, results.size)
+        assertTrue(results.all { it is ApiResult.Success })
+        assertEquals(listOf("first_success"), uploadDiagnostics.map { it.extras["stage"] })
+        job.cancelAndJoin()
+        assertEquals(300_026L, healthDiagnostics.last().extras["maxSuccessGapMs"])
+    }
+
+    @Test
     fun `sampling pause clears pending candidate cancels HTTP and resumes only on a fresh point`() = runTest {
         val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val enabled = MutableStateFlow(LocationSamplingState(true, elapsed))
@@ -747,7 +907,7 @@ class ServiceLocationSessionTest {
                     try { awaitCancellation() } finally { cancelled = true }
                 }
                 ApiResult.Success(Unit)
-            }, LocationSampleEvaluator(1, 0, clock), onUploadResult = { results += it },
+            }, LocationSampleEvaluator(0, clock), onUploadResult = { results += it },
                 elapsedRealtime = { elapsed }, samplingEnabled = enabled).run()
         }
         samples.send(sample(31.0))
@@ -771,6 +931,41 @@ class ServiceLocationSessionTest {
     }
 
     @Test
+    fun `resuming rejects old source ticks but accepts fresh and unknown source ticks`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val enabled = MutableStateFlow(LocationSamplingState(true, elapsed))
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        val uploaded = mutableListOf<Double>()
+        val job = backgroundScope.launch {
+            ServiceLocationSession(gate, samples.receiveAsFlow(), {
+                uploaded += it.latitude
+                ApiResult.Success(Unit)
+            }, LocationSampleEvaluator(0, clock), elapsedRealtime = { elapsed }, samplingEnabled = enabled).run()
+        }
+        runCurrent()
+        val sourceBeforePause = elapsed
+        enabled.value = enabled.value.copy(enabled = false)
+        runCurrent()
+        advanceBy(30_000L)
+        enabled.value = LocationSamplingState(true, elapsed)
+        runCurrent()
+
+        // Receipt is after resume and the source is within the 60-second age limit, but predates it.
+        samples.send(sample(31.0).copy(sourceElapsedRealtime = sourceBeforePause))
+        runCurrent()
+        assertTrue(uploaded.isEmpty())
+        samples.send(sample(31.1).copy(sourceElapsedRealtime = elapsed))
+        runCurrent()
+        assertEquals(listOf(31.1), uploaded)
+
+        advanceBy(30_000L)
+        samples.send(sample(31.2).copy(sourceElapsedRealtime = 0L))
+        runCurrent()
+        assertEquals(listOf(31.1, 31.2), uploaded)
+        job.cancel()
+    }
+
+    @Test
     fun `first resumed SDK point is accepted even when uploader observes readiness slightly later`() = runTest {
         val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val enabled = MutableStateFlow(LocationSamplingState(true, elapsed))
@@ -780,7 +975,7 @@ class ServiceLocationSessionTest {
             ServiceLocationSession(gate, samples.receiveAsFlow(), {
                 uploaded += it.latitude
                 ApiResult.Success(Unit)
-            }, LocationSampleEvaluator(1, 0, clock), elapsedRealtime = { elapsed }, samplingEnabled = enabled).run()
+            }, LocationSampleEvaluator(0, clock), elapsedRealtime = { elapsed }, samplingEnabled = enabled).run()
         }
         samples.send(sample(31.0))
         runCurrent()
@@ -788,7 +983,7 @@ class ServiceLocationSessionTest {
         runCurrent()
         advanceBy(30_000L)
         enabled.value = LocationSamplingState(true, elapsed)
-        samples.send(sample(31.1))
+        samples.send(sample(31.1).copy(sourceElapsedRealtime = elapsed))
         // The callback is genuinely post-resume; merely observing the transition takes one more ms.
         elapsed++
         now++
@@ -812,7 +1007,7 @@ class ServiceLocationSessionTest {
                     try { awaitCancellation() } finally { firstCancelled = true }
                 }
                 ApiResult.Success(Unit)
-            }, LocationSampleEvaluator(1, 0, clock), onUploadResult = { results += it },
+            }, LocationSampleEvaluator(0, clock), onUploadResult = { results += it },
                 elapsedRealtime = { elapsed }, samplingEnabled = enabled).run()
         }
         samples.send(sample(31.0))
@@ -910,7 +1105,7 @@ class ServiceLocationSessionTest {
             ServiceLocationSession(gate, locations, {
                 uploaded += it.latitude
                 ApiResult.Success(Unit)
-            }, LocationSampleEvaluator(1, 0, clock),
+            }, LocationSampleEvaluator(0, clock),
                 samplingEnabled = MutableStateFlow(LocationSamplingState(true)),
                 elapsedRealtime = { elapsed }).run()
         }
@@ -935,7 +1130,7 @@ class ServiceLocationSessionTest {
             ServiceLocationSession(gate, samples.receiveAsFlow(), {
                 if (++attempts == 1) withContext(NonCancellable) { finishFirst.await() }
                 ApiResult.Success(Unit)
-            }, LocationSampleEvaluator(1, 0, clock), onUploadResult = { results += it },
+            }, LocationSampleEvaluator(0, clock), onUploadResult = { results += it },
                 elapsedRealtime = { elapsed }, samplingEnabled = enabled).run()
         }
         samples.send(sample())
@@ -961,7 +1156,7 @@ class ServiceLocationSessionTest {
         onResult: (ApiResult<Unit>) -> Unit = {},
         upload: suspend (LocationResult) -> ApiResult<Unit>,
     ) = ServiceLocationSession(gate, samples.receiveAsFlow(), upload,
-        LocationSampleEvaluator(1, 0, clock), samplingEnabled = MutableStateFlow(LocationSamplingState(true)),
+        LocationSampleEvaluator(0, clock), samplingEnabled = MutableStateFlow(LocationSamplingState(true)),
         onUploadResult = onResult, elapsedRealtime = { elapsed })
 
     private var now = 100_000L

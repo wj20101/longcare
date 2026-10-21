@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
+import com.ytone.longcare.features.countdown.tracker.CountdownAlarmDiagnostics
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -17,6 +18,7 @@ class CountdownAlarmReceiver : BroadcastReceiver() {
     @Inject @ApplicationScope lateinit var applicationScope: CoroutineScope
 
     override fun onReceive(context: Context, intent: Intent) {
+        CountdownAlarmDiagnostics.receiverEntered(intent, context)
         val result = goAsync()
         applicationScope.launch {
             try {

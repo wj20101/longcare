@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.location.core
 
 import android.content.Context
+import android.app.ActivityManager
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
@@ -50,6 +51,23 @@ class AndroidLocationRuntimeReadinessTest {
     }
 
     @After fun tearDown() { unmockkAll() }
+
+    @Test fun `visible activity differs from location foreground service and unknown state`() {
+        mockkStatic(ActivityManager::class)
+        var importance = ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+        every { ActivityManager.getMyMemoryState(any()) } answers {
+            firstArg<ActivityManager.RunningAppProcessInfo>().importance = importance
+        }
+        assertEquals(true, readiness.isAppVisible())
+        importance = ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE
+        assertEquals(true, readiness.isAppVisible())
+        importance = ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND_SERVICE
+        assertEquals(false, readiness.isAppVisible())
+        importance = ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED
+        assertEquals(false, readiness.isAppVisible())
+        every { ActivityManager.getMyMemoryState(any()) } throws SecurityException("restricted")
+        assertNull(readiness.isAppVisible())
+    }
 
     @Test fun `no active network is distinct from an unreadable network state`() {
         val absent = readiness.diagnosticSnapshot()

@@ -90,4 +90,14 @@ class NfcOrderCompletionTest {
         coVerify(exactly = 0) { images.deleteImagesByOrderId(any()) }
         verify(exactly = 0) { lifecycle.onOrderEnded(any()) }
     }
+
+    @Test fun failedCleanupStillPublishesBusinessSuccess() = runTest {
+        coEvery { repository.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+            ApiResult.Success(EndOrderResultModel(60))
+        coEvery { local.endLocalService(order) } throws IllegalStateException("local cleanup failed")
+        end()
+        assertEquals(60, (state.value as NfcSignInUiState.Success).endOrderSuccessData?.trueServiceTime)
+        verify(exactly = 1) { lifecycle.onOrderEnded(order.orderId) }
+        coVerify(exactly = 0) { local.updateSelectedProjects(any(), any()) }
+    }
 }

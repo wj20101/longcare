@@ -44,7 +44,7 @@ internal class NfcOrderCompletionDelegate(
         )
     }
 
-    suspend fun cleanupResources(orderKey: OrderKey) = withContext(NonCancellable) {
+    suspend fun cleanupResources(orderKey: OrderKey): Boolean = withContext(NonCancellable) {
         try {
             serviceCountdownSystemGateway.cancelCountdownAlarmForOrder(orderKey)
 
@@ -52,10 +52,12 @@ internal class NfcOrderCompletionDelegate(
             unifiedOrderRepository.endLocalService(orderKey)
             unifiedOrderRepository.updateSelectedProjects(orderKey, emptyList())
             imageRepository.deleteImagesByOrderId(orderKey)
+            true
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             logE("清理服务相关资源失败: ${e.message}", tag = "NfcWorkflowViewModel", throwable = e)
+            false
         }
     }
 }

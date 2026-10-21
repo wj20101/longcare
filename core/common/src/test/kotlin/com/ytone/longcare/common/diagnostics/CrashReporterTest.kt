@@ -154,6 +154,43 @@ class CrashReporterTest {
     }
 
     @Test
+    fun `new attempts alarms and reporting sessions are distinct but repeated snapshots are suppressed`() {
+        val runtime = Runtime()
+        val reporter = CrashReporter(runtime) { 1_000_000_000L }
+        reporter.setUserId(123)
+        reporter.initialize(mockk(), true)
+        fun report(extras: Map<String, String>) = reporter.postCaughtException(DiagnosticException(
+            event("123").fields + extras,
+            IllegalStateException().apply { stackTrace = emptyArray() },
+        ))
+        val base = mapOf("attemptId" to "a", "sessionId" to "s", "plannedAt" to "1000",
+            "reportSequence" to "1", "outcome" to "failed")
+        report(base)
+        report(base + ("durationMs" to "9000"))
+        report(base + ("attemptId" to "b"))
+        report(base + ("sessionId" to "t"))
+        report(base + ("plannedAt" to "2000"))
+        report(base + ("reportSequence" to "2"))
+        report(base + ("outcome" to "recovered"))
+        assertEquals(6, runtime.errors.size)
+    }
+
+    @Test
+    fun `bounded duplicate history evicts old reports without suppressing a later operation`() {
+        val runtime = Runtime()
+        val reporter = CrashReporter(runtime) { 0L }
+        reporter.initialize(mockk(), true)
+        val events = (0..128).map { attempt ->
+            DiagnosticException(event("0").fields + ("attemptId" to attempt.toString()),
+                IllegalStateException().apply { stackTrace = emptyArray() })
+        }
+        events.forEach(reporter::postCaughtException)
+        reporter.postCaughtException(events.last())
+        reporter.postCaughtException(events.first())
+        assertEquals(130, runtime.errors.size)
+    }
+
+    @Test
     fun `failed initialization is retryable and successful initialization is idempotent`() {
         val runtime = Runtime().apply { fail = true }
         val reporter = CrashReporter(runtime)

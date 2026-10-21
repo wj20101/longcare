@@ -79,8 +79,8 @@ internal suspend fun performEndOrderWorkflow(
     uiState: MutableStateFlow<NfcSignInUiState>,
     onCheckSuccess: suspend () -> Unit,
     userMessages: NfcUserMessages,
+    diagnostics: EndOrderDiagnostics,
 ) {
-    val userId = DiagnosticEventTracker.currentUserId()
     uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
     val endOrderParams = createEndOrderParams(
         orderKey = orderKey,
@@ -92,30 +92,14 @@ internal suspend fun performEndOrderWorkflow(
         endType = endType
     )
 
-    val checkResult = orderRepository.checkEndOrder(
-        orderId = orderKey.orderId,
-        projectIdList = projectIdList
-    )
+    val checkResult = diagnostics.measure("check") {
+        orderRepository.checkEndOrder(orderId = orderKey.orderId, projectIdList = projectIdList)
+    }
     currentCoroutineContext().ensureActive()
     when (checkResult) {
         is ApiResult.Success -> onCheckSuccess()
         is ApiResult.Exception -> {
-            trackNfcException(
-                event = "end_order_check_exception",
-                description = "NFC结束工单校验异常",
-                throwable = checkResult.exception,
-                orderKey = orderKey,
-                signInMode = SignInMode.END_ORDER,
-                nfcDeviceId = nfcDeviceId,
-                userId = userId,
-                extras = mapOf(
-                    "projectCount" to projectIdList.size,
-                    "beginImageCount" to beginImgList.size,
-                    "centerImageCount" to centerImgList.size,
-                    "endImageCount" to endImageList.size,
-                    "endType" to endType,
-                ),
-            )
+            diagnostics.finish("api_exception", throwable = checkResult.exception, isError = true)
             applyOrderApiException(
                 exception = checkResult,
                 uiState = uiState,
@@ -123,21 +107,10 @@ internal suspend fun performEndOrderWorkflow(
             )
         }
         is ApiResult.Failure -> {
-            trackNfcFailure(
-                event = "end_order_check_failure",
-                description = "NFC结束工单校验业务失败",
-                failure = checkResult,
-                orderKey = orderKey,
-                signInMode = SignInMode.END_ORDER,
-                nfcDeviceId = nfcDeviceId,
-                userId = userId,
-                extras = mapOf(
-                    "projectCount" to projectIdList.size,
-                    "beginImageCount" to beginImgList.size,
-                    "centerImageCount" to centerImgList.size,
-                    "endImageCount" to endImageList.size,
-                    "endType" to endType,
-                ),
+            val needsConfirmation = checkResult.code == 3005
+            diagnostics.finish(
+                if (needsConfirmation) "confirmation_required" else "api_failure",
+                failure = checkResult, isError = !needsConfirmation,
             )
             applyCheckEndOrderFailure(
                 failure = checkResult,

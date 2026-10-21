@@ -47,6 +47,14 @@ internal object DiagnosticPayload {
         "end_order_check_exception", "end_order_check_failure",
         "end_order_submit_exception", "end_order_submit_failure",
         "bind_location_exception", "bind_location_failure",
+        "nfc_end_order_result",
+    )
+    private val correlationKeys = setOf(
+        "orderId", "attemptId", "sessionId", "alarmId", "requestId", "actionId", "clientId",
+        "stage", "outcome", "reason", "reportSequence", "failureEpisode",
+    )
+    private val checkoutTimingKeys = setOf(
+        "entry", "durationMs", "checkMs", "locationMs", "submitMs", "completionMs", "failureCode",
     )
     private val locationEvidenceKeys = setOf(
         "orderId", "planId", "signInMode", "stage", "errorCode", "failureCode",
@@ -78,11 +86,17 @@ internal object DiagnosticPayload {
             (category == "nfc_workflow" && event in orderLocationApiEvents)
         if (throwable != null) {
             addIfFits(fields, "errorType", throwable.javaClass.name.take(120))
-            if (!orderLocation) addIfFits(fields, "errorMessage", safeText(throwable.message.orEmpty(), 160))
         }
-        // Preserve the evidence used to compare submitted points before optional, potentially long text.
-        val entries = extras.entries.take(48).let { entries ->
-            if (orderLocation) entries.sortedBy { if (it.key in locationEvidenceKeys) 0 else 1 } else entries
+        // Keep correlation and measured evidence ahead of optional text. Bounds are shared by
+        // every tracker so adding a long SDK message cannot silently erase the operation identity.
+        val entries = extras.entries.take(48).sortedBy {
+            when {
+                it.key in correlationKeys -> 0
+                event == "nfc_end_order_result" && it.key in checkoutTimingKeys -> 1
+                orderLocation && it.key in locationEvidenceKeys -> 2
+                it.key.endsWith("Message") || it.key.endsWith("Info") -> 4
+                else -> 3
+            }
         }
         for ((key, value) in entries) {
             if (key in reservedKeys || value == null || key.length > 40) continue
@@ -94,7 +108,7 @@ internal object DiagnosticPayload {
             if (value !is String && value !is Number && value !is Boolean && value !is Enum<*>) continue
             addIfFits(fields, key, if (coordinate) value.toString() else safeText(value.toString(), 160))
         }
-        if (orderLocation && throwable != null) addIfFits(fields, "errorMessage", safeText(throwable.message.orEmpty(), 160))
+        if (throwable != null) addIfFits(fields, "errorMessage", safeText(throwable.message.orEmpty(), 160))
         // Preserve bounded, sanitized cause/suppressed details without handing raw Throwables to SDK.
         if (throwable != null) {
             val seen = Collections.newSetFromMap(IdentityHashMap<Throwable, Boolean>())

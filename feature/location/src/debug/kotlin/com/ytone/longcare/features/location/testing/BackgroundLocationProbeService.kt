@@ -188,7 +188,7 @@ class BackgroundLocationProbeService : LocationTrackingService() {
 
     private fun applyControls(intent: Intent) {
         val edit = prefs.edit()
-        listOf("realSource", "stall", "httpFail", "httpSuspend", "locationEnabled", "permissionGranted").forEach { key ->
+        listOf("realSource", "stall", "httpFail", "httpSuspend", "locationEnabled", "permissionGranted", "sdkVisibilityEnabled").forEach { key ->
             if (intent.hasExtra(key)) {
                 val value = intent.getBooleanExtra(key, false)
                 edit.putBoolean(key, value)
@@ -299,6 +299,12 @@ class BackgroundLocationProbeService : LocationTrackingService() {
         private var originalListener: AMapLocationListener? = null
         private var tracedListener: AMapLocationListener? = null
         override fun sdkVersion() = delegate.sdkVersion()
+        override fun notifyAppEnterForeBack(foreground: Boolean) {
+            // Single-variable real-SDK comparison; production clients have no test switch.
+            val enabled = prefs.getBoolean("sdkVisibilityEnabled", true)
+            trace("sdk_visibility_attempt", "client" to clientId, "foreground" to foreground, "enabled" to enabled)
+            if (enabled) delegate.notifyAppEnterForeBack(foreground)
+        }
         override fun setLocationOption(option: AMapLocationClientOption) {
             trace("client_option", "client" to clientId, "intervalMs" to option.interval,
                 "once" to option.isOnceLocation, "httpTimeoutMs" to option.httpTimeOut)
@@ -308,7 +314,10 @@ class BackgroundLocationProbeService : LocationTrackingService() {
             originalListener = listener
             val wrapped = AMapLocationListener { raw ->
                 trace("sdk_callback", "client" to clientId, "errorCode" to raw?.errorCode,
-                    "accuracy" to raw?.accuracy, "locationTime" to raw?.time, "locationType" to raw?.locationType)
+                    "accuracy" to raw?.accuracy, "locationTime" to raw?.time, "locationType" to raw?.locationType,
+                    // Inspect SDK tick/UTC alongside type; Location.time alone may be refreshed for reused results.
+                    "locationTickNanos" to raw?.locationTickTime, "locationUtcTime" to raw?.locationUtcTime,
+                    "trustedLevel" to raw?.trustedLevel, "lastLocation" to raw?.isFixLastLocation)
                 listener.onLocationChanged(raw)
             }
             tracedListener = wrapped

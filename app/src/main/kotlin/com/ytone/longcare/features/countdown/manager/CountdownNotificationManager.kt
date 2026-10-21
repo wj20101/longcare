@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Bundle
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -21,6 +22,7 @@ import com.ytone.longcare.domain.location.LocationRecoveryStore
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
+import com.ytone.longcare.features.countdown.tracker.CountdownAlarmDiagnostics
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.combine
 import com.ytone.longcare.model.result.ApiResult
@@ -47,6 +49,7 @@ internal data class CountdownAlarm(
     val serviceName: String,
     val owner: String,
     val triggerTimeMillis: Long,
+    val diagnostics: Bundle? = null,
 )
 
 /**
@@ -185,26 +188,26 @@ class CountdownNotificationManager @Inject constructor(
     /** 整个冷启动/旧排程验证共用五秒预算，晚到结果不写入或启动新提醒。 */
     suspend fun acceptAlarm(intent: Intent): Boolean = try {
         withTimeoutOrNull(5_000L) {
-            if (!awaitResolvedSession()) return@withTimeoutOrNull false
+            if (!awaitResolvedSession()) return@withTimeoutOrNull CountdownAlarmDiagnostics.validationFailed(intent, "session_unresolved_or_logged_out")
             if (ownsAlarm(intent)) return@withTimeoutOrNull true
-            if (intent.hasExtra(EXTRA_ALARM_OWNER)) return@withTimeoutOrNull false
+            if (intent.hasExtra(EXTRA_ALARM_OWNER)) return@withTimeoutOrNull CountdownAlarmDiagnostics.validationFailed(intent, ownershipRejectionReason(intent))
             val orderKey = extractOrderKey(intent)
-            val owner = currentOwner() ?: return@withTimeoutOrNull false
+            val owner = currentOwner() ?: return@withTimeoutOrNull CountdownAlarmDiagnostics.validationFailed(intent, "logged_out")
             if (orderKey.orderId <= 0 || prefs.getString(KEY_ALARM_OWNER, null) != null ||
                 prefs.getLong(KEY_LAST_SCHEDULED_ORDER_ID, NO_ORDER_ID) != orderKey.orderId) {
-                return@withTimeoutOrNull false
+                return@withTimeoutOrNull CountdownAlarmDiagnostics.validationFailed(intent, "legacy_schedule_mismatch")
             }
-            val record = recoveryStore.read() ?: return@withTimeoutOrNull false
+            val record = recoveryStore.read() ?: return@withTimeoutOrNull CountdownAlarmDiagnostics.validationFailed(intent, "legacy_recovery_missing")
             val account = record.account
             if (record.orderId != orderKey.orderId ||
-                "${account.companyId}:${account.accountId}:${account.userId}" != owner) return@withTimeoutOrNull false
+                "${account.companyId}:${account.accountId}:${account.userId}" != owner) return@withTimeoutOrNull CountdownAlarmDiagnostics.validationFailed(intent, "legacy_account_mismatch")
             val state = (orderRepository.getOrderState(orderKey.orderId) as? ApiResult.Success)?.data
-            if (state == null || state.orderId != orderKey.orderId || !state.isInProgress()) return@withTimeoutOrNull false
+            if (state == null || state.orderId != orderKey.orderId || !state.isInProgress()) return@withTimeoutOrNull CountdownAlarmDiagnostics.validationFailed(intent, "legacy_order_unconfirmed")
             currentCoroutineContext().ensureActive()
             synchronized(this@CountdownNotificationManager) {
                 if (currentOwner() != owner || prefs.getString(KEY_ALARM_OWNER, null) != null ||
                     prefs.getLong(KEY_LAST_SCHEDULED_ORDER_ID, NO_ORDER_ID) != orderKey.orderId) {
-                    return@synchronized false
+                    return@synchronized CountdownAlarmDiagnostics.validationFailed(intent, "ownership_changed_during_validation")
                 }
                 val triggerTime = System.currentTimeMillis()
                 prefs.edit {
@@ -215,13 +218,25 @@ class CountdownNotificationManager @Inject constructor(
                 intent.putExtra(EXTRA_ALARM_OWNER, owner).putExtra(EXTRA_TRIGGER_TIME, triggerTime)
                 true
             }
-        } ?: false
+        } ?: CountdownAlarmDiagnostics.validationFailed(intent, "validation_timeout")
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: Exception) {
-        CountdownEventTracker.trackError(CountdownEventTracker.EventType.ALARM_RECEIVER_ERROR,
-            extractOrderKey(intent).orderId, error, mapOf("stage" to "legacy_owner_validation"))
-        false
+        CountdownAlarmDiagnostics.validationFailed(intent, "validation_exception_${error.javaClass.simpleName}")
+    }
+
+    private fun ownershipRejectionReason(intent: Intent): String {
+        val key = extractOrderKey(intent)
+        val owner = intent.getStringExtra(EXTRA_ALARM_OWNER)
+        val state = serviceOrderLifecycle.orderState.value
+        return when {
+            owner != currentOwner() -> "account_mismatch"
+            owner != prefs.getString(KEY_ALARM_OWNER, null) -> "stored_owner_mismatch"
+            key != activeOrderKey() -> "order_or_plan_mismatch"
+            intent.getLongExtra(EXTRA_TRIGGER_TIME, 0L) != prefs.getLong(KEY_TRIGGER_TIME, 0L) -> "schedule_replaced"
+            state?.orderId == key.orderId && !state.isInProgress() -> "order_finished"
+            else -> "alarm_identity_invalid"
+        }
     }
 
     @Synchronized
@@ -308,16 +323,32 @@ class CountdownNotificationManager @Inject constructor(
 
     /** Receiver 只负责交付；旧版本排程的接管仍由 acceptAlarm 验证。 */
     internal suspend fun onAlarmTriggered(intent: Intent) {
-        if (!acceptAlarm(intent)) return
+        CountdownAlarmDiagnostics.receiverEntered(intent, context)
+        val accepted = acceptAlarm(intent)
+        CountdownAlarmDiagnostics.validated(intent)
+        if (!accepted) {
+            val data = CountdownAlarmDiagnostics.read(intent)
+            CountdownEventTracker.trackEvent(CountdownEventTracker.EventType.ALARM_DELIVERY_RESULT,
+                extractOrderKey(intent).orderId,
+                CountdownAlarmDiagnostics.fields(data, intent.getLongExtra(EXTRA_TRIGGER_TIME, 0L), "validation_rejected"),
+                reportToServer = true,
+                userId = CountdownAlarmDiagnostics.userId(data, intent.getStringExtra(EXTRA_ALARM_OWNER)))
+            return
+        }
         val alarm = extractAlarm(intent) ?: return
         startAlarm(alarm)
     }
 
     @Synchronized
     private fun startAlarm(alarm: CountdownAlarm) {
-        if (!ownsAlarm(alarm)) return
+        if (!ownsAlarm(alarm)) {
+            trackDeliveryResult(alarm, "ownership_changed_before_service")
+            return
+        }
         CountdownEventTracker.trackEvent(CountdownEventTracker.EventType.ALARM_TRIGGERED,
-            alarm.orderKey.orderId, mapOf("triggerTime" to System.currentTimeMillis()))
+            alarm.orderKey.orderId,
+            CountdownAlarmDiagnostics.fields(alarm.diagnostics, alarm.triggerTimeMillis, "validated"),
+            userId = CountdownAlarmDiagnostics.userId(alarm.diagnostics, alarm.owner))
         try {
             AlarmRingtoneService.startRingtone(context, alarm)
         } catch (cancelled: CancellationException) {
@@ -336,7 +367,7 @@ class CountdownNotificationManager @Inject constructor(
         if (orderKey.orderId <= 0L || triggerTime <= 0L) return null
         return CountdownAlarm(orderKey,
             extractServiceName(intent, context.getString(R.string.countdown_alarm_default_service)),
-            owner, triggerTime)
+            owner, triggerTime, CountdownAlarmDiagnostics.read(intent))
     }
 
     internal fun ownsAlarm(alarm: CountdownAlarm): Boolean =
@@ -345,14 +376,20 @@ class CountdownNotificationManager @Inject constructor(
     /** 校验与发布共用撤销排程的锁；不会把旧请求套上当前排程的新身份。 */
     @Synchronized
     internal fun startAlarmForeground(service: Service, alarm: CountdownAlarm): Boolean {
-        if (!ownsAlarm(alarm)) return false
+        if (!ownsAlarm(alarm)) {
+            trackDeliveryResult(alarm, "foreground_ownership_rejected")
+            return false
+        }
         return try {
             val notification = buildAlarmNotification(alarm)
             val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
             } else 0
             // POST_NOTIFICATIONS 被拒绝仍可启动 FGS；系统负责其受限展示。
-            if (!ownsAlarm(alarm)) return false
+            if (!ownsAlarm(alarm)) {
+                trackDeliveryResult(alarm, "foreground_ownership_rejected")
+                return false
+            }
             ServiceCompat.startForeground(service, COUNTDOWN_NOTIFICATION_ID, notification, type)
             true
         } catch (cancelled: CancellationException) {
@@ -396,7 +433,7 @@ class CountdownNotificationManager @Inject constructor(
                 "channelImportance" to NotificationManagerCompat.from(context)
                     .getNotificationChannelCompat(COUNTDOWN_NOTIFICATION_CHANNEL_ID)?.importance,
                 "sdk" to Build.VERSION.SDK_INT,
-            ))
+            ), userId = CountdownAlarmDiagnostics.userId(alarm.diagnostics, alarm.owner))
         return notificationUiDelegate.buildCountdownCompletionNotification(
             alarm.orderKey, alarm.serviceName, alarm.owner, alarm.triggerTimeMillis)
     }
@@ -404,7 +441,19 @@ class CountdownNotificationManager @Inject constructor(
     private fun trackPresentationFailure(alarm: CountdownAlarm, error: Exception, stage: String) {
         logE("倒计时提醒失败: stage=$stage, orderId=${alarm.orderKey.orderId}", throwable = error)
         CountdownEventTracker.trackError(CountdownEventTracker.EventType.RINGTONE_SERVICE_ERROR,
-            alarm.orderKey.orderId, error, mapOf("stage" to stage))
+            alarm.orderKey.orderId, error,
+            CountdownAlarmDiagnostics.fields(alarm.diagnostics, alarm.triggerTimeMillis, stage),
+            userId = CountdownAlarmDiagnostics.userId(alarm.diagnostics, alarm.owner))
+    }
+
+
+    internal fun trackDeliveryResult(alarm: CountdownAlarm, outcome: String, failureType: String? = null) {
+        CountdownEventTracker.trackEvent(CountdownEventTracker.EventType.ALARM_DELIVERY_RESULT,
+            alarm.orderKey.orderId,
+            mapOf("failureType" to failureType) +
+                CountdownAlarmDiagnostics.fields(alarm.diagnostics, alarm.triggerTimeMillis, outcome),
+            reportToServer = true,
+            userId = CountdownAlarmDiagnostics.userId(alarm.diagnostics, alarm.owner))
     }
 
     fun canScheduleExactAlarms(): Boolean {

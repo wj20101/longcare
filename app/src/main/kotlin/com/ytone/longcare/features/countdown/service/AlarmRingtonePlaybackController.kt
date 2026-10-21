@@ -16,11 +16,14 @@ internal class AlarmRingtonePlaybackController(
 ) {
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+    var lastStartFailureType: String? = null
+        private set
     var isPlaying: Boolean = false
         private set
 
     fun start(): Boolean {
         if (isPlaying) return true
+        lastStartFailureType = null
         return try {
             logI("AlarmRingtoneService: 准备启动响铃和震动")
             initializeMediaPlayer()
@@ -29,6 +32,7 @@ internal class AlarmRingtonePlaybackController(
             logI("AlarmRingtoneService: 闹铃和震动已启动")
             true
         } catch (e: Exception) {
+            lastStartFailureType = e.javaClass.simpleName
             logE("AlarmRingtoneService: 启动闹铃失败 - ${e.message}")
             stop()
             false
@@ -66,33 +70,28 @@ internal class AlarmRingtonePlaybackController(
     }
 
     private fun initializeMediaPlayer() {
-        try {
-            val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
-            // 先保存引用，prepare / start 中途失败时也能统一释放。
-            val player = MediaPlayer()
-            mediaPlayer = player
-            player.apply {
-                setDataSource(context, alarmUri)
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
-                        .build()
-                )
-                isLooping = true
-                setVolume(1.0f, 1.0f)
-                prepare()
-                start()
-            }
-
-            logI("AlarmRingtoneService: MediaPlayer已启动")
-        } catch (e: Exception) {
-            logE("AlarmRingtoneService: 初始化MediaPlayer失败 - ${e.message}")
-            throw e
+        // 先保存引用，prepare / start 中途失败时也能统一释放。
+        val player = MediaPlayer()
+        mediaPlayer = player
+        player.apply {
+            setDataSource(context, alarmUri)
+            setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
+                    .build()
+            )
+            isLooping = true
+            setVolume(1.0f, 1.0f)
+            prepare()
+            start()
         }
+
+        logI("AlarmRingtoneService: MediaPlayer已启动")
     }
 
     private fun initializeVibrator() {

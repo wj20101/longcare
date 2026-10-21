@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import io.mockk.*
 import org.junit.After
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -42,6 +43,7 @@ class AlarmRingtonePlaybackControllerTest {
         every { anyConstructed<MediaPlayer>().release() } just runs
         val controller = AlarmRingtonePlaybackController(context)
         assertFalse(controller.start())
+        assertEquals("IOException", controller.lastStartFailureType)
         verify(exactly = 1) { anyConstructed<MediaPlayer>().release() }
         verify(exactly = 0) { anyConstructed<MediaPlayer>().start() }
     }

@@ -2,6 +2,7 @@ package com.ytone.longcare.features.location.reporting
 
 import com.ytone.longcare.domain.location.LocationAccount
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -19,6 +20,7 @@ internal class LocationReportingSession(
     private val ready = MutableStateFlow(LocationReportingAuthorization(false, 0L))
     val readyState = ready.asStateFlow()
     private var uploadJob: Job? = null
+    private val samplingChecks = Channel<Unit>(Channel.CONFLATED)
     var monitorJob: Job? = null
     // The following fields are accessed only under LocationReportingManager's lifecycle lock.
     var trackingRequested = false
@@ -28,6 +30,9 @@ internal class LocationReportingSession(
     fun canUpload(): Boolean = synchronized(lock) { valid && ready.value.enabled }
     fun isValid(): Boolean = synchronized(lock) { valid }
     suspend fun awaitReady() { ready.first { it.enabled } }
+    // A visible return wakes the existing health loop; repeated resumes never queue extra work.
+    fun requestSamplingCheck() { samplingChecks.trySend(Unit) }
+    suspend fun awaitSamplingCheck() { samplingChecks.receive() }
 
     fun setEnabled(value: Boolean) = synchronized(lock) {
         val enabled = valid && value

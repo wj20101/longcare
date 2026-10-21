@@ -2,11 +2,13 @@ package com.ytone.longcare.features.countdown.manager
 
 import android.app.AlarmManager
 import android.content.Context
+import android.os.Build
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.features.countdown.tracker.CountdownAlarmDiagnostics
 import org.junit.After
-import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Before
 import org.junit.Test
@@ -51,7 +53,11 @@ class CountdownAlarmPermissionFallbackIntegrationTest {
             )
 
         assertNotNull(metadata)
-        assertFalse(metadata!!.useAlarmClock)
+        val fields = CountdownAlarmDiagnostics.fields(metadata!!.diagnostics, 0L, "scheduled")
+        assertEquals(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) "inexact_allow_idle" else "exact_allow_idle",
+            fields["scheduleMode"],
+        )
     }
 
     private companion object {

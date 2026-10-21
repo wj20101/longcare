@@ -139,7 +139,8 @@ class BackgroundSettingsDialogTest {
             settingsRow(item).assertIsDisplayed().assertHasClickAction().assertHeightIsAtLeast(48.dp)
         }
         compose.onNodeWithText("处理中…").assertDoesNotExist()
-        compose.onNodeWithText("查看机型设置说明").assertIsDisplayed()
+        // 机型说明位于滚动区域底部，小视口允许滚动查看。
+        compose.onNodeWithText("查看机型设置说明").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(context.getString(CommonR.string.compatibility_battery_xiaomi)).assertDoesNotExist()
         compose.runOnIdle {
             assertEquals(0, fixture.settingsActions)

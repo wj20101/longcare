@@ -134,7 +134,10 @@ class LocationReportingManager @Inject constructor(
     }
 
     fun onAppVisible() = synchronized(lifecycleLock) {
-        current?.takeIf { monitoringAllowed && it.trackingRequested }?.let(::requestForegroundLocked)
+        current?.takeIf { monitoringAllowed && it.trackingRequested }?.let { session ->
+            requestForegroundLocked(session)
+            session.requestSamplingCheck()
+        }
     }
 
     fun resumePendingRecovery() = synchronized(lifecycleLock) {

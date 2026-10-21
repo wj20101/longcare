@@ -12,10 +12,11 @@ import com.ytone.longcare.common.utils.klogI
 import com.ytone.longcare.features.countdown.receiver.CountdownAlarmReceiver
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.MainActivity
+import com.ytone.longcare.features.countdown.tracker.CountdownAlarmDiagnostics
 
 internal data class CountdownScheduleMetadata(
-    val useAlarmClock: Boolean,
-    val nextAlarmTime: Long?
+    val nextAlarmTime: Long?,
+    val diagnostics: android.os.Bundle?,
 )
 
 internal fun scheduleCountdownAlarmInSystem(
@@ -37,7 +38,31 @@ internal fun scheduleCountdownAlarmInSystem(
         putExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, triggerTimeMillis)
     }
 
-    val pendingIntent = PendingIntentCompat.getBroadcast(
+    // AlarmClock 的 showIntent 是用户提前点击系统闹钟入口，不能打开“已结束”页面。
+    val showIntent = PendingIntentCompat.getActivity(context, 3004,
+        Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_MAIN
+            addCategory(Intent.CATEGORY_LAUNCHER)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }, PendingIntent.FLAG_UPDATE_CURRENT, false)
+
+    val supportsAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val useAlarmClock =
+        supportsAlarmClock &&
+            canUseExactAlarm &&
+            showIntent != null
+    val mode = when {
+        useAlarmClock -> "alarm_clock"
+        supportsAlarmClock -> "inexact_allow_idle"
+        else -> "exact_allow_idle"
+    }
+    val fallback = when {
+        useAlarmClock || !supportsAlarmClock -> null
+        !canUseExactAlarm -> "exact_permission_missing"
+        else -> "show_intent_missing"
+    }
+    CountdownAlarmDiagnostics.scheduled(intent, mode, fallback, canUseExactAlarm)
+    var pendingIntent = PendingIntentCompat.getBroadcast(
         context,
         countdownAlarmRequestCode,
         intent,
@@ -48,19 +73,6 @@ internal fun scheduleCountdownAlarmInSystem(
         return null
     }
 
-    // AlarmClock 的 showIntent 是用户提前点击系统闹钟入口，不能打开“已结束”页面。
-    val showIntent = PendingIntentCompat.getActivity(context, 3004,
-        Intent(context, MainActivity::class.java).apply {
-            action = Intent.ACTION_MAIN
-            addCategory(Intent.CATEGORY_LAUNCHER)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }, PendingIntent.FLAG_UPDATE_CURRENT, false)
-
-    val supportsAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    var useAlarmClock =
-        supportsAlarmClock &&
-            canUseExactAlarm &&
-            showIntent != null
     if (useAlarmClock) {
         try {
             val alarmClockInfo = AlarmManager.AlarmClockInfo(
@@ -70,7 +82,10 @@ internal fun scheduleCountdownAlarmInSystem(
             alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
             klogI("✅ 通过AlarmClock设置倒计时闹钟(确保锁屏提醒): orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
         } catch (exception: SecurityException) {
-            useAlarmClock = false
+            CountdownAlarmDiagnostics.fallback(intent, "inexact_allow_idle", "exact_permission_revoked")
+            // Update only diagnostic extras on the same PendingIntent identity after the fallback.
+            pendingIntent = PendingIntentCompat.getBroadcast(context, countdownAlarmRequestCode,
+                intent, PendingIntent.FLAG_UPDATE_CURRENT, false) ?: pendingIntent
             klogE("⚠️ 精确闹钟权限在调度时不可用，降级为 setAndAllowWhileIdle: ${exception.message}")
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
@@ -101,7 +116,7 @@ internal fun scheduleCountdownAlarmInSystem(
     }
 
     return CountdownScheduleMetadata(
-        useAlarmClock = useAlarmClock,
-        nextAlarmTime = alarmManager.nextAlarmClock?.triggerTime
+        nextAlarmTime = alarmManager.nextAlarmClock?.triggerTime,
+        diagnostics = CountdownAlarmDiagnostics.read(intent)
     )
 }

@@ -148,7 +148,7 @@ class ServiceCountdownViewModelTest {
         verify(exactly = 1) {
             systemGateway.scheduleCountdownAlarm(order, "护理", match { kotlin.math.abs(it - (startedAt + 120_000L)) < 1_000L })
         }
-        coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any()) }
+        coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any(), any()) }
         viewModel.stopDisplayUpdates()
     }
 
@@ -174,7 +174,7 @@ class ServiceCountdownViewModelTest {
         verify(exactly = 2) {
             systemGateway.scheduleCountdownAlarm(order, "护理", match { kotlin.math.abs(it - (startedAt + 120_000L)) < 1_000L })
         }
-        coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any()) }
+        coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any(), any()) }
         viewModel.stopDisplayUpdates()
     }
 
@@ -211,7 +211,7 @@ class ServiceCountdownViewModelTest {
         assertTrue(sync.isCancelled)
         assertEquals(ServiceCountdownState.ENDED, viewModel.countdownState.value)
         verify(exactly = 0) { systemGateway.scheduleCountdownAlarm(any(), any(), any()) }
-        coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any()) }
+        coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any(), any()) }
     }
 
     @Test
@@ -231,7 +231,7 @@ class ServiceCountdownViewModelTest {
 
         verify(exactly = 1) { systemGateway.scheduleCountdownAlarm(order, "护理", startedAt + 120_000L) }
         coVerify(exactly = 1) { unifiedOrderRepository.getLocalState(order) }
-        coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any()) }
+        coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any(), any()) }
         assertTrue(viewModel.synchronizeCountdownSession(order, listOf(10)).await())
         verify(exactly = 2) { systemGateway.scheduleCountdownAlarm(order, "护理", startedAt + 120_000L) }
         viewModel.stopDisplayUpdates()
@@ -265,7 +265,7 @@ class ServiceCountdownViewModelTest {
         viewModel.stopDisplayUpdates()
         local.complete(null)
         runCurrent()
-        coVerify(exactly = 1) { unifiedOrderRepository.startLocalService(order) }
+        coVerify(exactly = 1) { unifiedOrderRepository.startLocalService(order, any()) }
         verify(exactly = 1) { systemGateway.scheduleCountdownAlarm(order, "护理", any()) }
     }
 
@@ -280,7 +280,7 @@ class ServiceCountdownViewModelTest {
         runCurrent()
         assertTrue(caller.isCancelled)
         verify(exactly = 0) { systemGateway.scheduleCountdownAlarm(any(), any(), any()) }
-        coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any()) }
+        coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any(), any()) }
     }
 
     @Test fun `a different order replaces pending preparation without borrowing its result`() = runTest {

@@ -30,8 +30,9 @@ interface OrderLocalStateDao {
     
     // ========== 写入操作 ==========
     
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertOrUpdate(localState: OrderLocalStateEntityDb): Long
+    // 详情同步与正式开始可能同时初始化；后到的默认记录不能清空既有服务进度。
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIfAbsent(localState: OrderLocalStateEntityDb): Long
     
     @Update
     suspend fun update(localState: OrderLocalStateEntityDb)
@@ -41,7 +42,7 @@ interface OrderLocalStateDao {
     @Query("UPDATE order_local_states SET local_status = :status, updated_at = :updatedAt WHERE order_id = :orderId")
     suspend fun updateStatus(orderId: Long, status: Int, updatedAt: Long = System.currentTimeMillis())
     
-    @Query("UPDATE order_local_states SET local_start_timestamp = :timestamp, local_status = 1, updated_at = :updatedAt WHERE order_id = :orderId")
+    @Query("UPDATE order_local_states SET local_start_timestamp = :timestamp, local_status = 1, updated_at = :updatedAt WHERE order_id = :orderId AND local_start_timestamp IS NULL AND local_status != 2")
     suspend fun startService(orderId: Long, timestamp: Long, updatedAt: Long = System.currentTimeMillis())
     
     @Query("UPDATE order_local_states SET local_end_timestamp = :timestamp, local_status = 2, updated_at = :updatedAt WHERE order_id = :orderId")

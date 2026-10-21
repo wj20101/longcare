@@ -83,7 +83,7 @@ internal class NfcScanWorkflowDelegate(
 
     private suspend fun requestAndStart(scan: PendingNfcScan, request: suspend () -> LocationRequestResult) {
         uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.CARD_RECOGNIZED_FETCHING_LOCATION)
-        when (val result = requestNfcLocation(scan.orderKey, scan.signInMode, "scan", userMessages.locationUnavailable, request)) {
+        when (val result = requestNfcLocation(scan.orderKey, scan.signInMode, "scan", userMessages.locationUnavailable, request = request)) {
             is LocationRequestResult.Coordinates -> {
                 currentCoroutineContext().ensureActive()
                 // 提交前复核失败仍可重试定位；已尝试业务请求则不自动重放。
@@ -137,7 +137,7 @@ internal class NfcScanWorkflowDelegate(
 
     private suspend fun bindCurrentLocation(data: PendingNfcData, request: suspend () -> LocationRequestResult) {
         uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.FETCHING_LOCATION)
-        val result = requestNfcLocation(data.orderKey, data.signInMode, "bind_submit_acquire", userMessages.locationUnavailable, request)
+        val result = requestNfcLocation(data.orderKey, data.signInMode, "bind_submit_acquire", userMessages.locationUnavailable, request = request)
         currentCoroutineContext().ensureActive()
         val location = when (result) {
             is LocationRequestResult.Coordinates -> result.location

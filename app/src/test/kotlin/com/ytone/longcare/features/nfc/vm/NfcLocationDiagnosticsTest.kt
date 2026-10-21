@@ -10,6 +10,7 @@ import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.EndOrderResultModel
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.navigation.SignInMode
 import io.mockk.*
@@ -155,7 +156,7 @@ class NfcLocationDiagnosticsTest {
         assertEquals("超出签到范围", (state.value as NfcSignInUiState.Error).message)
         val start = reports.single { it.fields["eventCode"] == "nfc_location_submit_success" }.fields
         assertEquals(sample.latitude.toString(), start["latitude"])
-        val failure = reports.single { it.fields["eventCode"] == "end_order_submit_failure" }
+        val failure = reports.single { it.fields["eventCode"] == "nfc_end_order_result" }
         val fields = failure.fields
         assertEquals("4001", fields["failureCode"])
         assertEquals("超出签到范围", fields["failureMessage"])
@@ -167,4 +168,169 @@ class NfcLocationDiagnosticsTest {
         assertTrue("Sample age must be captured before sending the request", fields.getValue("sampleAgeMs").toLong() <= ageWhenSubmitted)
         assertTrue(failure.message!!.length <= 950)
     }
+
+    @Test fun `checkout uploads one outcome with stage timings and original user across account switch`() = runTest {
+        var elapsed = 1_000L
+        every { SystemClock.elapsedRealtime() } answers { elapsed }
+        val orders = mockk<OrderRepository>()
+        coEvery { orders.checkEndOrder(any(), any()) } coAnswers {
+            elapsed += 2_000
+            every { CrashReportGateway.userId } returns "456"
+            ApiResult.Success(Unit)
+        }
+        coEvery { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) } coAnswers {
+            elapsed += 4_000
+            ApiResult.Success(EndOrderResultModel(60))
+        }
+        checkout(orders).endOrder(key, "tag", emptyList(), emptyList(), emptyList(), requestLocation = {
+            elapsed += 30_000
+            LocationRequestResult.Coordinates(sample)
+        })
+        val fields = reports.single().fields
+        assertEquals("nfc_end_order_result", fields["eventCode"])
+        assertEquals("123", fields["userId"])
+        assertEquals("success", fields["outcome"])
+        assertEquals("completion", fields["stage"])
+        assertEquals("36000", fields["durationMs"])
+        assertEquals("2000", fields["checkMs"])
+        assertEquals("30000", fields["locationMs"])
+        assertEquals("4000", fields["submitMs"])
+        assertEquals("0", fields["completionMs"])
+        assertEquals(sample.latitude.toString(), fields["latitude"])
+        assertEquals(sample.longitude.toString(), fields["longitude"])
+        assertEquals("18.0", fields["accuracy"])
+        assertNotNull(fields["attemptId"])
+        assertTrue(reports.single().message!!.length <= 950)
+    }
+
+    @Test fun `location failure and retry each upload one result with distinct attempt identities`() = runTest {
+        val orders = mockk<OrderRepository>()
+        coEvery { orders.checkEndOrder(any(), any()) } returns ApiResult.Success(Unit)
+        coEvery { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns ApiResult.Success(EndOrderResultModel(60))
+        val delegate = checkout(orders)
+        delegate.endOrder(key, "tag", emptyList(), emptyList(), emptyList(), requestLocation = {
+            LocationRequestResult.Error("failed", reason = LocationFailure.NETWORK, location = sample.copy(errorCode = 4))
+        })
+        assertTrue(delegate.hasPendingEndLocation)
+        delegate.retryEndLocation { LocationRequestResult.Coordinates(sample) }
+        val first = reports[0].fields
+        val retry = reports[1].fields
+        assertEquals(2, reports.size)
+        assertEquals("location_failure", first["outcome"])
+        assertEquals("NETWORK", first["reason"])
+        assertEquals("4", first["amapErrorCode"])
+        assertEquals("location", first["stage"])
+        assertFalse(first.containsKey("submitMs"))
+        assertEquals("success", retry["outcome"])
+        assertEquals("location_retry", retry["entry"])
+        assertFalse(retry.containsKey("checkMs"))
+        assertNotEquals(first["attemptId"], retry["attemptId"])
+        coVerify(exactly = 1) { orders.checkEndOrder(any(), any()) }
+    }
+
+    @Test fun `checkout precheck failure is distinct from location or submit failure`() = runTest {
+        val orders = mockk<OrderRepository>()
+        coEvery { orders.checkEndOrder(any(), any()) } returns ApiResult.Failure(4002, "cannot checkout")
+        checkout(orders).endOrder(key, "tag", emptyList(), emptyList(), emptyList(), requestLocation = { error("must not locate") })
+        val fields = reports.single().fields
+        assertEquals("check", fields["stage"])
+        assertEquals("api_failure", fields["outcome"])
+        assertEquals("4002", fields["failureCode"])
+        assertFalse(fields.containsKey("locationMs"))
+        assertFalse(fields.containsKey("submitMs"))
+        coVerify(exactly = 0) { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `checkout cancellation propagates without remote failure and clears no retry data`() = runTest {
+        val orders = mockk<OrderRepository>()
+        coEvery { orders.checkEndOrder(any(), any()) } returns ApiResult.Success(Unit)
+        val delegate = checkout(orders)
+        val cancellation = CancellationException("user left")
+        try {
+            delegate.endOrder(key, "tag", emptyList(), emptyList(), emptyList(), requestLocation = { throw cancellation })
+            fail("Cancellation must propagate")
+        } catch (actual: CancellationException) {
+            assertSame(cancellation, actual)
+        }
+        assertTrue(reports.isEmpty())
+        coVerify(exactly = 0) { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `checkout permission wait is an info outcome with no API submit`() = runTest {
+        val orders = mockk<OrderRepository>()
+        coEvery { orders.checkEndOrder(any(), any()) } returns ApiResult.Success(Unit)
+        val delegate = checkout(orders)
+        delegate.endOrder(key, "tag", emptyList(), emptyList(), emptyList(), requestLocation = { LocationRequestResult.PermissionRequired })
+        val fields = reports.single().fields
+        assertEquals("INFO", fields["level"])
+        assertEquals("permission_required", fields["outcome"])
+        assertEquals("location", fields["stage"])
+        assertTrue(delegate.hasPendingEndLocation)
+        coVerify(exactly = 0) { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `confirmation wait is not counted as a slow SDK request or repeated precheck`() = runTest {
+        var elapsed = 1_000L
+        every { SystemClock.elapsedRealtime() } answers { elapsed }
+        val orders = mockk<OrderRepository>()
+        coEvery { orders.checkEndOrder(any(), any()) } coAnswers {
+            elapsed += 100
+            ApiResult.Failure(3005, "confirmation")
+        }
+        coEvery { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns ApiResult.Success(EndOrderResultModel(60))
+        val delegate = checkout(orders)
+        delegate.endOrder(key, "tag", emptyList(), emptyList(), emptyList(), requestLocation = { error("must wait for user") })
+        elapsed += 600_000
+        delegate.confirmEndOrder(EndOrderParams(key, "tag", emptyList(), emptyList(), emptyList(), emptyList(), 1), requestLocation = {
+            elapsed += 2_000
+            LocationRequestResult.Coordinates(sample)
+        })
+        assertEquals(2, reports.size)
+        val check = reports[0].fields
+        val confirmation = reports[1].fields
+        assertEquals("confirmation_required", check["outcome"])
+        assertEquals("INFO", check["level"])
+        assertEquals("100", check["durationMs"])
+        assertEquals("confirmation", confirmation["entry"])
+        assertEquals("2000", confirmation["durationMs"])
+        assertEquals("2000", confirmation["locationMs"])
+        assertNotEquals(check["attemptId"], confirmation["attemptId"])
+        coVerify(exactly = 1) { orders.checkEndOrder(any(), any()) }
+    }
+
+    @Test fun `unexpected repository exception is reported once and still propagates`() = runTest {
+        val orders = mockk<OrderRepository>()
+        val failure = IllegalStateException("repository failed")
+        coEvery { orders.checkEndOrder(any(), any()) } throws failure
+        try {
+            checkout(orders).endOrder(key, "tag", emptyList(), emptyList(), emptyList())
+            fail("Unexpected errors must keep existing propagation")
+        } catch (actual: IllegalStateException) {
+            assertSame(failure, actual)
+        }
+        assertEquals("exception", reports.single().fields["outcome"])
+        assertEquals("check", reports.single().fields["stage"])
+        assertEquals(IllegalStateException::class.java.name, reports.single().fields["errorType"])
+    }
+
+    @Test fun `unexpected location exception keeps original evidence in the single checkout result`() = runTest {
+        val orders = mockk<OrderRepository>()
+        coEvery { orders.checkEndOrder(any(), any()) } returns ApiResult.Success(Unit)
+        checkout(orders).endOrder(key, "tag", emptyList(), emptyList(), emptyList(), requestLocation = {
+            throw IllegalStateException("SDK bridge unavailable")
+        })
+        val fields = reports.single().fields
+        assertEquals("location_failure", fields["outcome"])
+        assertEquals("UNAVAILABLE", fields["reason"])
+        assertEquals("location", fields["stage"])
+        assertEquals(IllegalStateException::class.java.name, fields["errorType"])
+        coVerify(exactly = 0) { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    private fun checkout(orders: OrderRepository): NfcOrderWorkflowDelegate = NfcOrderWorkflowDelegate(
+        mockk { every { serviceOrderLocationFailure(any()) } returns null },
+        mockk(relaxed = true), mockk(relaxed = true), orders, mockk(relaxed = true),
+        mockk(relaxed = true), mockk(relaxed = true), MutableStateFlow(NfcSignInUiState.Initial),
+        NfcUserMessages("network", "detail", "bind", "unavailable"),
+    )
 }

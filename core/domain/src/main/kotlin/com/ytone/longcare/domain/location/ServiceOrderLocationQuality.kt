@@ -27,10 +27,11 @@ object ServiceOrderLocationQuality {
         notBefore: Long = 0L,
         previousSampleTime: Long = 0L,
         maxAgeMs: Long? = null,
+        notBeforeElapsedRealtime: Long = 0L,
     ): LocationQuality.Rejection? = LocationQuality.rejection(
         sample, now, elapsedRealtime, notBefore, previousSampleTime,
         maxAgeMs = maxAgeMs, maxAccuracyMeters = MAX_ACCURACY_METERS,
-        allowNormalTrust = true,
+        allowNormalTrust = true, notBeforeElapsedRealtime = notBeforeElapsedRealtime,
     )
 
     fun failure(sample: LocationResult, rejection: LocationQuality.Rejection): LocationFailure =

@@ -15,6 +15,7 @@ import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.navigation.ServiceCompleteData
 import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
@@ -92,33 +93,42 @@ internal class NfcOrderWorkflowDelegate(
     ) {
         pendingEndOrder = null
         // CheckEndOrder 不接收坐标。预检和确认完成后才采集本次提交的位置。
-        performEndOrderWorkflow(
-            orderRepository = orderRepository,
-            orderKey = orderKey,
-            nfcDeviceId = nfcDeviceId,
-            projectIdList = projectIdList,
-            beginImgList = beginImgList,
-            endImageList = endImageList,
-            centerImgList = centerImgList,
-            endType = endType,
-            uiState = uiState,
-            userMessages = userMessages,
-            onCheckSuccess = {
-                executeEndOrder(EndOrderParams(orderKey, nfcDeviceId, projectIdList,
-                    beginImgList, endImageList, centerImgList, endType = endType), requestLocation)
-            }
-        )
+        withEndOrderDiagnostics(orderKey, "scan") { diagnostics ->
+            performEndOrderWorkflow(
+                orderRepository = orderRepository,
+                orderKey = orderKey,
+                nfcDeviceId = nfcDeviceId,
+                projectIdList = projectIdList,
+                beginImgList = beginImgList,
+                endImageList = endImageList,
+                centerImgList = centerImgList,
+                endType = endType,
+                uiState = uiState,
+                userMessages = userMessages,
+                diagnostics = diagnostics,
+                onCheckSuccess = {
+                    executeEndOrder(EndOrderParams(orderKey, nfcDeviceId, projectIdList,
+                        beginImgList, endImageList, centerImgList, endType = endType), requestLocation, diagnostics)
+                }
+            )
+        }
     }
 
     suspend fun confirmEndOrder(
         params: EndOrderParams,
         requestLocation: suspend () -> LocationRequestResult = ::acquireLocation,
     ) {
-        executeEndOrder(params, requestLocation)
+        withEndOrderDiagnostics(params.orderKey, "confirmation") { diagnostics ->
+            executeEndOrder(params, requestLocation, diagnostics)
+        }
     }
 
     suspend fun retryEndLocation(requestLocation: suspend () -> LocationRequestResult) {
-        pendingEndOrder?.let { executeEndOrder(it, requestLocation) }
+        pendingEndOrder?.let { params ->
+            withEndOrderDiagnostics(params.orderKey, "location_retry") { diagnostics ->
+                executeEndOrder(params, requestLocation, diagnostics)
+            }
+        }
     }
 
     fun locationPermissionDenied() {
@@ -168,24 +178,53 @@ internal class NfcOrderWorkflowDelegate(
         trueServiceTime = trueServiceTime
     )
 
-    private suspend fun executeEndOrder(params: EndOrderParams, requestLocation: suspend () -> LocationRequestResult) {
+    private suspend fun executeEndOrder(
+        params: EndOrderParams,
+        requestLocation: suspend () -> LocationRequestResult,
+        diagnostics: EndOrderDiagnostics,
+    ) {
         pendingEndOrder = params
         uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.FETCHING_LOCATION)
-        val result = requestNfcLocation(params.orderKey, SignInMode.END_ORDER, "end_submit_acquire",
-            userMessages.locationUnavailable, requestLocation)
+        var locationException: Exception? = null
+        val result = diagnostics.measure("location") {
+            requestNfcLocation(
+                params.orderKey, SignInMode.END_ORDER, "end_submit_acquire", userMessages.locationUnavailable,
+                userId = diagnostics.userId, reportToServer = false, attemptId = diagnostics.attemptId,
+                request = {
+                    try {
+                        requestLocation()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        locationException = error
+                        throw error
+                    }
+                },
+            )
+        }
         currentCoroutineContext().ensureActive()
         val location = when (result) {
             is LocationRequestResult.Coordinates -> result.location
             is LocationRequestResult.Error -> {
-                showError(result.message, buglyAlreadyReported = result.buglyReported)
+                diagnostics.captureLocation(result.location)
+                diagnostics.finish("location_failure", reason = (result.reason ?: LocationFailure.UNAVAILABLE).name,
+                    throwable = locationException, isError = true)
+                showError(result.message, buglyAlreadyReported = true)
                 return
             }
             LocationRequestResult.PermissionRequired -> {
+                diagnostics.finish("permission_required")
                 uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.WAITING_FOR_LOCATION_PERMISSION)
                 return
             }
         }
-        if (!validateLocation(location, params.orderKey, SignInMode.END_ORDER, "end_submit")) return
+        diagnostics.captureLocation(location)
+        val failure = locationFacade.serviceOrderLocationFailure(location)
+        if (failure != null) {
+            diagnostics.finish("location_rejected", reason = failure.name, isError = true)
+            uiState.value = reportedNfcError(textResolver.text(failure.messageRes()))
+            return
+        }
         // 位置错误可只重试采集；请求发出后清除动作，避免网络结果未知时重复签退。
         pendingEndOrder = null
         uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
@@ -203,6 +242,7 @@ internal class NfcOrderWorkflowDelegate(
             location = location,
             endType = params.endType,
             userMessages = userMessages,
+            diagnostics = diagnostics,
         )
     }
 

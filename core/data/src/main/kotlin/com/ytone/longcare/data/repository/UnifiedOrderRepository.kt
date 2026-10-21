@@ -77,12 +77,10 @@ class UnifiedOrderRepository @Inject constructor(
         return orderProjectDao.getSelectedProjectIds(orderKey.orderId)
     }
 
-    override suspend fun startLocalService(orderKey: OrderKey) {
+    override suspend fun startLocalService(orderKey: OrderKey, startedAtMillis: Long) {
         val orderId = orderKey.orderId
-        if (orderLocalStateDao.getByOrderId(orderId) == null) {
-            orderLocalStateDao.insertOrUpdate(OrderLocalStateEntity(orderId = orderId).toDb())
-        }
-        orderLocalStateDao.startService(orderId, System.currentTimeMillis())
+        orderLocalStateDao.insertIfAbsent(OrderLocalStateEntity(orderId = orderId).toDb())
+        orderLocalStateDao.startService(orderId, startedAtMillis)
     }
 
     override suspend fun endLocalService(orderKey: OrderKey) {

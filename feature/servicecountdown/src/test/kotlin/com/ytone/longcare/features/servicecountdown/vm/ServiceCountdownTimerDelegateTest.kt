@@ -1,5 +1,7 @@
 package com.ytone.longcare.features.servicecountdown.vm
 
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 import com.ytone.longcare.model.OrderKey
@@ -7,7 +9,14 @@ import com.ytone.longcare.model.OrderLocalStateEntity
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import io.mockk.every
+import io.mockk.just
+import io.mockk.runs
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -20,6 +29,71 @@ class ServiceCountdownTimerDelegateTest {
     private val order = OrderKey(7L, 2)
     private val repository = mockk<OrderDetailRepository>(relaxed = true)
     private val state = ServiceCountdownStateHolder()
+
+    @Test
+    fun `fallback origin does not include slow persistence time`() = runTest {
+        coEvery { repository.getLocalState(order) } returns null
+        coEvery { repository.startLocalService(order, any()) } coAnswers { delay(120_000L) }
+        val timer = ServiceCountdownTimerDelegate(state, repository, backgroundScope) {
+            1_000L + testScheduler.currentTime
+        }
+
+        assertEquals(901_000L, timer.synchronizeCountdown(order, totalMinutes = 15))
+        assertEquals("00:13:00", state.formattedTime.value)
+    }
+
+    @Test
+    fun `fallback uses an earlier confirmed origin committed during initialization`() = runTest {
+        coEvery { repository.getLocalState(order) } returnsMany listOf(
+            null, OrderLocalStateEntity(orderId = order.orderId, localStartTimestamp = 1_000L),
+        )
+        val timer = ServiceCountdownTimerDelegate(state, repository, backgroundScope) { 121_000L }
+
+        assertEquals(901_000L, timer.synchronizeCountdown(order, totalMinutes = 15))
+        assertEquals("00:13:00", state.formattedTime.value)
+    }
+
+    @Test
+    fun `delayed first page and resume preserve fifteen and twenty minute deadlines`() = runTest {
+        coEvery { repository.getLocalState(order) } returns OrderLocalStateEntity(
+            orderId = order.orderId, localStartTimestamp = 1_000L)
+        for ((minutes, lateMillis) in listOf(15 to 120_000L, 20 to 180_000L)) {
+            var now = 1_000L + lateMillis
+            val timer = ServiceCountdownTimerDelegate(
+                ServiceCountdownStateHolder(), repository, backgroundScope,
+            ) { now }
+            val expectedDeadline = 1_000L + minutes * 60_000L
+            assertEquals(expectedDeadline, timer.synchronizeCountdown(order, minutes))
+            now += 60_000L
+            assertEquals(expectedDeadline, timer.synchronizeCountdown(order, minutes))
+        }
+        coVerify(exactly = 0) { repository.startLocalService(any(), any()) }
+    }
+
+    @Test
+    fun `deadline origin is reported once and keeps first preparation user across suspension`() = runTest {
+        mockkObject(DiagnosticEventTracker)
+        try {
+            every { DiagnosticEventTracker.currentUserId() } returns "3"
+            every { DiagnosticEventTracker.trackEvent(any(), any(), any(), any(), any(), any()) } just runs
+            coEvery { repository.getLocalState(order) } coAnswers {
+                // A diagnostic must not be attributed to a different login after a disk suspension.
+                every { DiagnosticEventTracker.currentUserId() } returns "4"
+                null
+            }
+            val timer = ServiceCountdownTimerDelegate(state, repository, backgroundScope) { 1_000L }
+            timer.synchronizeCountdown(order, totalMinutes = 15)
+            coEvery { repository.getLocalState(order) } returns OrderLocalStateEntity(
+                orderId = order.orderId, localStartTimestamp = 1_000L)
+            timer.synchronizeCountdown(order, totalMinutes = 15)
+
+            verify(exactly = 1) { DiagnosticEventTracker.trackEvent(
+                DiagnosticCategory.COUNTDOWN, "countdown_deadline_prepared", any(),
+                match { it["startSource"] == "created_on_countdown" && it["totalMinutes"] == 15 && it["plannedAt"] == 901_000L },
+                "3", true) }
+            verify(exactly = 1) { DiagnosticEventTracker.trackEvent(any(), any(), any(), any(), any(), any()) }
+        } finally { unmockkObject(DiagnosticEventTracker) }
+    }
 
     @Test
     fun `display ticks use the deadline without reading persistence every second`() = runTest {
@@ -48,7 +122,7 @@ class ServiceCountdownTimerDelegateTest {
         assertEquals(ServiceCountdownState.RUNNING, state.countdownState.value)
         assertEquals("00:00:45", state.formattedTime.value)
         coVerify(exactly = 2) { repository.getLocalState(order) }
-        coVerify(exactly = 0) { repository.startLocalService(any()) }
+        coVerify(exactly = 0) { repository.startLocalService(any(), any()) }
         timer.stopDisplayUpdates()
     }
 

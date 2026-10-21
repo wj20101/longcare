@@ -3,6 +3,7 @@ package com.ytone.longcare.platform.location
 import android.os.Looper
 import android.os.Build
 import android.os.Handler
+import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.amap.api.location.AMapLocation
@@ -112,17 +113,21 @@ class AmapContinuousRecoveryTest {
         withContext(Dispatchers.Main) { assertEquals(2, clients.size) }
     }
 
-    @Test fun callback_sequence_counts_active_results_and_ignores_null_or_released_callbacks() = withFixture {
-        assertEquals(0L, manager.callbackSequence())
+    @Test fun null_and_released_callbacks_cannot_change_current_acquisition_state() = withFixture {
         val firstCollection = start("order-a")
         val previousClient = nextClient()
         previousClient.emit(null)
-        assertEquals(0L, manager.callbackSequence())
+        assertNull(manager.latestEvent())
         previousClient.emit(networkFailure())
-        assertEquals(1L, manager.callbackSequence())
+        val failure = manager.latestEvent()
+        assertTrue(failure is LocationAcquisition.Failure)
+        previousClient.emit(null)
+        assertSame(failure, manager.latestEvent())
         previousClient.emit(validLocation())
-        successes.receive()
-        assertEquals(2L, manager.callbackSequence())
+        val previousSample = successes.receive()
+        val success = manager.latestEvent()
+        previousClient.emit(null)
+        assertSame(success, manager.latestEvent())
         firstCollection.cancelAndJoin()
 
         start("order-b")
@@ -130,10 +135,9 @@ class AmapContinuousRecoveryTest {
         previousClient.emit(null)
         previousClient.emit(networkFailure())
         previousClient.emit(validLocation())
-        assertEquals(2L, manager.callbackSequence())
+        assertNull(manager.latestEvent())
         currentClient.emitFromHandler(validLocation())
-        successes.receive()
-        assertEquals(3L, manager.callbackSequence())
+        assertNotEquals(previousSample.requestId, successes.receive().requestId)
     }
 
     @Test fun paused_sampling_keeps_the_collection_and_resumes_with_a_new_client_without_old_points() = withFixture {
@@ -223,6 +227,38 @@ class AmapContinuousRecoveryTest {
         recoveredClient.emitFromHandler(validLocation())
         assertTrue(recoveredAction.await() is LocationAcquisition.Success)
         recoveredClient.assertReleased()
+    }
+
+    @Test fun refreshed_sdk_wall_times_cannot_make_an_old_source_tick_complete_an_action() = withFixture {
+        val action = scope.async(Dispatchers.Main.immediate) { manager.acquireServiceOrderLocation() }
+        val client = nextClient()
+        val oldTick = SystemClock.elapsedRealtimeNanos() - 10_000_000_000L
+        assertTrue("The test requires more than ten seconds of device uptime", oldTick > 0L)
+        val reused = validLocation().apply {
+            locationType = AMapLocation.LOCATION_TYPE_SAME_REQ
+            // Reproduce the SDK refreshing wall times while retaining the previous source tick.
+            setLocationUtcTime(time)
+            setLocationTickTime(oldTick)
+        }
+        client.emitFromHandler(reused)
+        val oldSample = (manager.latestEvent() as LocationAcquisition.Success).location
+        assertEquals(reused.time, oldSample.locationTime)
+        assertEquals(oldTick / 1_000_000L, oldSample.sourceElapsedRealtime)
+        assertNull(withTimeoutOrNull(150L) { action.await() })
+        assertFalse(action.isCompleted)
+        assertClientActive(client)
+
+        val freshTick = SystemClock.elapsedRealtimeNanos()
+        val fresh = validLocation().apply {
+            setLocationUtcTime(time)
+            setLocationTickTime(freshTick)
+        }
+        client.emitFromHandler(fresh)
+        val result = action.await() as LocationAcquisition.Success
+        assertEquals(AMapLocation.LOCATION_TYPE_WIFI, result.location.locationType)
+        assertEquals(freshTick / 1_000_000L, result.location.sourceElapsedRealtime)
+        assertTrue(result.location.sourceElapsedRealtime > oldSample.sourceElapsedRealtime)
+        client.assertReleased()
     }
 
     private class Fixture {

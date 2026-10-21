@@ -1,6 +1,8 @@
 package com.ytone.longcare.features.servicecountdown.vm
 
 import com.ytone.longcare.domain.repository.OrderDetailRepository
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 import com.ytone.longcare.model.OrderKey
 import kotlinx.coroutines.CoroutineScope
@@ -23,16 +25,37 @@ internal class ServiceCountdownTimerDelegate(
 
     /** 读取持久起点并准备同一个截止时间；后台完成准备不会启动显示刷新。 */
     suspend fun synchronizeCountdown(orderKey: OrderKey, totalMinutes: Int): Long? {
+        val diagnosticUserId = DiagnosticEventTracker.currentUserId()
         val localState = orderDetailRepository.getLocalState(orderKey)
         currentCoroutineContext().ensureActive()
         if (stateHolder.countdownState.value == ServiceCountdownState.ENDED) return null
         val startedAt = localState?.localStartTimestamp ?: run {
-            orderDetailRepository.startLocalService(orderKey)
+            // 兼容旧版本未保存的起点；磁盘等待不能额外延长服务时间。
+            val fallbackStartedAt = nowMillis()
+            orderDetailRepository.startLocalService(orderKey, fallbackStartedAt)
             currentCoroutineContext().ensureActive()
-            if (stateHolder.countdownState.value == ServiceCountdownState.ENDED) return null
-            nowMillis()
+            // 另一条初始化可能先保存了正式开始时间，以持久记录为准。
+            orderDetailRepository.getLocalState(orderKey)?.localStartTimestamp ?: fallbackStartedAt
         }
+        currentCoroutineContext().ensureActive()
+        if (stateHolder.countdownState.value == ServiceCountdownState.ENDED) return null
         val deadline = startedAt + TimeUnit.MINUTES.toMillis(totalMinutes.toLong())
+        if (deadlineMillis != deadline) {
+            DiagnosticEventTracker.trackEvent(
+                category = DiagnosticCategory.COUNTDOWN,
+                event = "countdown_deadline_prepared",
+                description = "倒计时截止时间来源",
+                reportToServer = true,
+                userId = diagnosticUserId,
+                extras = mapOf(
+                    "orderId" to orderKey.orderId,
+                    "plannedAt" to deadline,
+                    "localStartedAt" to startedAt,
+                    "totalMinutes" to totalMinutes,
+                    "startSource" to if (localState?.localStartTimestamp != null) "persisted_local" else "created_on_countdown",
+                ),
+            )
+        }
         deadlineMillis = deadline
         if (displayUpdatesEnabled) startDisplayUpdates() else updateDisplay(deadline)
         return deadline

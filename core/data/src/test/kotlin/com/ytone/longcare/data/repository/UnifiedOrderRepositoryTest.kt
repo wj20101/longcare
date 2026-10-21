@@ -159,7 +159,7 @@ class UnifiedOrderRepositoryTest {
         coEvery { elderInfoDao.insertOrUpdate(capture(insertedElderSlot)) } returns orderKey.orderId
         coEvery { projectDao.getSelectedProjectIds(orderKey.orderId) } returns emptyList()
         coEvery { localStateDao.getByOrderId(orderKey.orderId) } returns null
-        coEvery { localStateDao.insertOrUpdate(any()) } returns orderKey.orderId
+        coEvery { localStateDao.insertIfAbsent(any()) } returns orderKey.orderId
 
         val result = repository.getOrderInfo(orderKey, forceRefresh = false)
 
@@ -178,6 +178,17 @@ class UnifiedOrderRepositoryTest {
         
         // Then
         coVerify(exactly = 1) { localStateDao.updateFaceVerification(12345L, true, any()) }
+    }
+
+    @Test
+    fun `local start writes the confirmation timestamp supplied by the business action`() = runTest {
+        val key = OrderKey(42)
+
+        repository.startLocalService(key, startedAtMillis = 1_000L)
+
+        coVerify(exactly = 1) { localStateDao.insertIfAbsent(match { it.orderId == key.orderId }) }
+        coVerify(exactly = 1) { localStateDao.startService(key.orderId, 1_000L, any()) }
+        coVerify(exactly = 0) { localStateDao.getByOrderId(any()) }
     }
 
     @Test

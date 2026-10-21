@@ -13,6 +13,7 @@ import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.countdown.tracker.CountdownEventTracker
+import com.ytone.longcare.features.countdown.tracker.CountdownAlarmDiagnostics
 import com.ytone.longcare.features.countdown.manager.CountdownAlarm
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -49,6 +50,7 @@ class AlarmRingtoneService : Service() {
                 putExtra(CountdownNotificationManager.EXTRA_SERVICE_NAME, alarm.serviceName)
                 putExtra(CountdownNotificationManager.EXTRA_ALARM_OWNER, alarm.owner)
                 putExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, alarm.triggerTimeMillis)
+                CountdownAlarmDiagnostics.attach(this, alarm.diagnostics)
             }
             // 使用Compat库确保兼容性，自动处理Android 8.0+的前台服务启动
             ContextCompat.startForegroundService(context, intent)
@@ -78,11 +80,13 @@ class AlarmRingtoneService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        CountdownAlarmDiagnostics.serviceEntered(CountdownAlarmDiagnostics.read(intent))
         logI("AlarmRingtoneService: 收到启动命令")
 
         val alarm = countdownNotificationManager.extractAlarm(intent)
         if (alarm == null || !countdownNotificationManager.ownsAlarm(alarm)) {
             logI("AlarmRingtoneService: 忽略已取消或不属于当前会话的提醒")
+            alarm?.let { countdownNotificationManager.trackDeliveryResult(it, "service_ownership_rejected") }
             if (activeAlarm == null) stopSelf(startId)
             return START_NOT_STICKY
         }
@@ -99,7 +103,8 @@ class AlarmRingtoneService : Service() {
         CountdownEventTracker.trackEvent(
             eventType = CountdownEventTracker.EventType.RINGTONE_SERVICE_START,
             orderId = alarm.orderKey.orderId,
-            extras = mapOf("serviceName" to alarm.serviceName)
+            extras = CountdownAlarmDiagnostics.fields(alarm.diagnostics, alarm.triggerTimeMillis, "service_entered"),
+            userId = CountdownAlarmDiagnostics.userId(alarm.diagnostics, alarm.owner)
         )
 
         // 立即升级为前台服务，显示高优先级通知
@@ -111,10 +116,14 @@ class AlarmRingtoneService : Service() {
         // 启动响铃和震动
         if (!playbackController.isPlaying && !playbackController.start()) {
             logE("AlarmRingtoneService: 响铃播放启动失败，停止响铃服务")
+            countdownNotificationManager.trackDeliveryResult(alarm, "playback_start_failed", playbackController.lastStartFailureType)
             stopAlarmAndSelf("playback_start_failed")
             return START_NOT_STICKY
         }
         
+        // This confirms start() returned successfully, not that the user physically heard audio.
+        countdownNotificationManager.trackDeliveryResult(alarm, "playback_started")
+
         // 锁屏弹页仅由系统 fullScreenIntent 处理，权限不足时保留通知供用户点击。
         scheduleRingingTimeout()
         
@@ -151,7 +160,8 @@ class AlarmRingtoneService : Service() {
             extras = mapOf(
                 "serviceName" to activeAlarm?.serviceName,
                 "reason" to reason
-            )
+            ),
+            userId = CountdownAlarmDiagnostics.userId(activeAlarm?.diagnostics, activeAlarm?.owner)
         )
     }
 

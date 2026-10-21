@@ -397,7 +397,7 @@ class ServiceCountdownBackgroundInitializationTest {
             }
         }
 
-        override suspend fun startLocalService(orderKey: OrderKey) { localStarts++ }
+        override suspend fun startLocalService(orderKey: OrderKey, startedAtMillis: Long) { localStarts++ }
         override fun getCachedOrderInfo(orderKey: OrderKey): ServiceOrderInfoModel? = null
         override suspend fun getSelectedProjectIds(orderKey: OrderKey) = listOf(PROJECT_ID)
         override suspend fun updateSelectedProjects(orderKey: OrderKey, selectedProjectIds: List<Int>) = Unit

@@ -46,7 +46,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.onEach
@@ -235,25 +235,44 @@ open class LocationTrackingService : Service() {
         val job = serviceScope.launch(start = CoroutineStart.LAZY) {
             previousJob?.cancelAndJoin()
             try {
-                session.awaitReady()
+                // Preparing an order must not bind a paused SDK owner: the foreground sign-in
+                // action needs that client before the order can become ready. Observe this wait
+                // separately from SDK callback silence, without another timer or polling loop.
+                if (!session.canUpload()) {
+                    val waitStarted = locationClock.elapsedRealtime()
+                    fun reportAuthorizationWait(stage: String) = LocationEventTracker.trackEvent(
+                        LocationEventTracker.EventType.REPORTING_HEALTH,
+                        extras = mapOf("orderId" to orderId, "sessionId" to owner, "stage" to stage,
+                            "reason" to if (session.canUpload()) "order_ready" else "order_not_ready",
+                            "waitMs" to (locationClock.elapsedRealtime() - waitStarted).coerceAtLeast(0L)),
+                        reportToServer = true, userId = session.account.userId.toString(),
+                    )
+                    reportAuthorizationWait("authorization_wait")
+                    try { session.awaitReady() }
+                    finally { reportAuthorizationWait("authorization_wait_finished") }
+                }
                 if (currentGeneration != serviceGeneration) return@launch
                 // The session owns its authorized account; a delayed login observer cannot rebind it.
                 if (userSessionRepository.sessionState.value !is SessionState.Unknown)
                     check(currentAccount() == session.account) { "location_account_changed" }
+                val diagnostics = LocationReportingDiagnostics(
+                    orderId, owner, session.account.userId.toString(), locationClock::elapsedRealtime,
+                    runtimeSnapshot = continuousAmapLocationManager::diagnosticSnapshot,
+                )
                 val samplingEnabled = MutableStateFlow(LocationSamplingState(false))
-                val initiallyEnabled = updateSampling(owner, session, samplingEnabled)
+                val initiallyEnabled = updateSampling(owner, session, samplingEnabled, diagnostics)
                 val locations = continuousAmapLocationManager.startContinuousLocation(owner, initiallyEnabled)
                     .onEach { event ->
-                        if (updateSampling(owner, session, samplingEnabled)) updateAcquisitionStatus(owner, event)
+                        diagnostics.onAcquisition(event)
+                        if (updateSampling(owner, session, samplingEnabled, diagnostics)) updateAcquisitionStatus(owner, event)
                     }
                     .filterIsInstance<LocationAcquisition.Success>().map { it.location }
                 val evaluator = LocationSampleEvaluator(
-                    orderId = orderId,
                     sessionStartedAt = locationClock.currentTimeMillis(),
                     clock = locationClock,
                 )
                 coroutineScope {
-                    val healthJob = launch { watchSampling(owner, session, samplingEnabled) }
+                    val healthJob = launch { watchSampling(owner, session, samplingEnabled, diagnostics) }
                     try {
                         ServiceLocationSession(
                             session = session,
@@ -280,6 +299,7 @@ open class LocationTrackingService : Service() {
                             evaluator = evaluator,
                             elapsedRealtime = locationClock::elapsedRealtime,
                             samplingEnabled = samplingEnabled,
+                            diagnostics = diagnostics,
                         ).run()
                     } finally { healthJob.cancel() }
                 }
@@ -312,14 +332,17 @@ open class LocationTrackingService : Service() {
         owner: String,
         session: com.ytone.longcare.features.location.reporting.LocationReportingSession,
         enabled: MutableStateFlow<LocationSamplingState>,
+        diagnostics: LocationReportingDiagnostics,
     ): Boolean {
         currentCoroutineContext().ensureActive()
         if (!privacyConsentManager.isPrivacyConsented) {
+            diagnostics.finish("privacy_revoked")
             reportingManager.stopReporting(owner)
             stopKeepAlive(stopService = true)
             throw CancellationException("Location privacy revoked")
         }
         if (!runtimeReadiness.hasLocationPermission()) {
+            diagnostics.finish("permission_revoked")
             reportingManager.onServiceInterrupted(owner)
             stopKeepAlive(stopService = true)
             throw CancellationException("Location permission revoked")
@@ -362,27 +385,32 @@ open class LocationTrackingService : Service() {
     }
 
     private suspend fun watchSampling(owner: String, session: com.ytone.longcare.features.location.reporting.LocationReportingSession,
-        samplingEnabled: MutableStateFlow<LocationSamplingState>) {
-        var recoveredAfterCallback: Long? = null
+        samplingEnabled: MutableStateFlow<LocationSamplingState>, diagnostics: LocationReportingDiagnostics) {
         while (kotlinx.coroutines.currentCoroutineContext().isActive) {
-            delay(30_000L)
+            val healthTimerElapsed = withTimeoutOrNull(SAMPLING_HEALTH_INTERVAL_MS) {
+                session.awaitSamplingCheck()
+            } == null
             val wasEnabled = samplingEnabled.value.enabled
-            if (!updateSampling(owner, session, samplingEnabled)) { recoveredAfterCallback = null; continue }
-            if (!wasEnabled) recoveredAfterCallback = null
+            val ready = updateSampling(owner, session, samplingEnabled, diagnostics)
+            diagnostics.onHealthTick(when {
+                userSessionRepository.sessionState.value is SessionState.Unknown -> "account_pending"
+                !session.canUpload() -> "session_paused"
+                !samplingEnabled.value.enabled -> "location_disabled"
+                else -> null
+            })
+            if (!ready) continue
+            // A client created by this very check has not had an initialization grace period yet.
+            continuousAmapLocationManager.syncAppVisibility(fromHealthTimer = healthTimerElapsed && wasEnabled)
             val power = getSystemService(POWER_SERVICE) as PowerManager
-            if (power.isDeviceIdleMode) continue
-            // An error callback also ends SDK silence; the next independent stall gets one rebuild.
-            val callbacks = continuousAmapLocationManager.callbackSequence()
-            if (recoveredAfterCallback != null && callbacks != recoveredAfterCallback) recoveredAfterCallback = null
-            if (recoveredAfterCallback == null && continuousAmapLocationManager.recoverStalledSampling(owner)) {
-                // Capture before rebuilding so a synchronous first callback also restores the budget.
-                recoveredAfterCallback = callbacks
+            // Exempt apps can still sample/network in Doze; idle alone must not disable recovery.
+            if (power.isDeviceIdleMode && !power.isIgnoringBatteryOptimizations(packageName)) continue
+            // Background health checks and foreground actions share the manager's one recovery budget.
+            if (continuousAmapLocationManager.recoverStalledSampling(owner)) {
                 reportingManager.updateStatus(owner, LocationReportingStatus.LOCATING)
                 updateNotification(R.string.location_tracking_locating)
                 LocationEventTracker.trackEvent(LocationEventTracker.EventType.SDK_RECOVERED,
                     mapOf(LocationEventTracker.Attribute.ORDER_ID to session.orderId))
-            } else if (recoveredAfterCallback != null && locationClock.elapsedRealtime() -
-                continuousAmapLocationManager.lastCallbackTime() >= 90_000L) {
+            } else if (continuousAmapLocationManager.isSamplingStalled(owner)) {
                 // Keep the rebuilt listener alive: a delayed SDK callback can recover without a page visit.
                 reportingManager.updateStatus(owner, LocationReportingStatus.LOCATING)
                 updateNotification(R.string.location_tracking_callback_wait)
@@ -487,6 +515,7 @@ open class LocationTrackingService : Service() {
     }
 
     companion object {
+        private const val SAMPLING_HEALTH_INTERVAL_MS = 15_000L
         const val ACTION_ACQUIRE_KEEP_ALIVE = "ACTION_ACQUIRE_LOCATION_KEEPALIVE"
         const val EXTRA_OWNER = "EXTRA_OWNER"
         const val EXTRA_GENERATION = "EXTRA_GENERATION"

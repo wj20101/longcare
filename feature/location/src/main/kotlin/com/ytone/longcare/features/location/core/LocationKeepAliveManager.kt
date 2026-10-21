@@ -2,7 +2,6 @@ package com.ytone.longcare.features.location.core
 
 import android.content.Context
 import android.content.Intent
-import android.app.ActivityManager
 import com.ytone.longcare.domain.location.LocationRuntimeReadiness
 import androidx.core.content.ContextCompat
 import com.ytone.longcare.features.location.service.LocationTrackingService
@@ -92,10 +91,7 @@ class LocationForegroundServiceController @Inject constructor(
     private val readiness: LocationRuntimeReadiness,
 ) {
     fun start(owner: String, generation: Long, orderId: Long) {
-        val process = ActivityManager.RunningAppProcessInfo()
-        ActivityManager.getMyMemoryState(process)
-        check(process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND ||
-            process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE) {
+        check(isLocationProcessVisible()) {
             "location_requires_visible_activity"
         }
         check(readiness.hasLocationPermission() && readiness.isLocationServiceEnabled()) {

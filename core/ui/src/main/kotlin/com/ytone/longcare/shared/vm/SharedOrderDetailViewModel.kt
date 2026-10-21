@@ -26,8 +26,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -175,9 +177,24 @@ class SharedOrderDetailViewModel @Inject constructor(
                 currentCoroutineContext().ensureActive()
                 when (result) {
                     is ApiResult.Success -> {
+                        // API 无服务端起点字段，以确认成功的本机时刻计时，不能等下一页加载完成。
+                        val confirmedAtMillis = System.currentTimeMillis()
                         DiagnosticEventTracker.trackEvent(DiagnosticCategory.LOCATION, "service_start_location_success",
                             "正式开始服务位置提交成功", diagnosticExtras, userId, reportToServer = true)
                         serviceLifecycle.onOrderStarted(orderKey.orderId)
+                        try {
+                            // 仅保护服务端已确认的本地 Room 写入，页面释放不能丢失计时起点。
+                            withContext(NonCancellable) {
+                                unifiedOrderRepository.startLocalService(orderKey, confirmedAtMillis)
+                            }
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (error: Exception) {
+                            currentCoroutineContext().ensureActive()
+                            DiagnosticEventTracker.trackError(DiagnosticCategory.COUNTDOWN, "service_start_time_save_failed",
+                                "服务已开始，但本地计时起点保存失败", error, context, userId)
+                        }
+                        currentCoroutineContext().ensureActive()
                         try {
                             unifiedOrderRepository.updateSelectedProjects(orderKey, projectIds)
                         } catch (cancelled: CancellationException) {

@@ -74,15 +74,14 @@ internal class CrashReporter(
         val fields = exception.fields
         // Requests and aggregated failure episodes carry their own identity/progress. Only the
         // same report is a duplicate; a new client, episode or summary must keep its evidence.
-        val key = listOf("category", "eventCode", "userId", "errorType", "errorCode", "orderId", "signInMode", "stage", "locationTime",
-            "requestId", "failureEpisode", "failureCount")
+        val key = REPORT_IDENTITY_FIELDS
             .map { fields[it].orEmpty() } + exception.stackTrace.take(4).map { it.toString() }
         val now = nanoTime()
-        if (recentErrors[key]?.let { now - it < 30_000_000_000L } == true) return@synchronized
+        if (recentErrors[key]?.let { now - it in 0 until DUPLICATE_WINDOW_NS } == true) return@synchronized
         try {
             runtime.postCaughtException(exception)
             recentErrors[key] = now
-            if (recentErrors.size > 128) recentErrors.remove(recentErrors.keys.first())
+            if (recentErrors.size > MAX_RECENT_REPORTS) recentErrors.remove(recentErrors.keys.first())
         } catch (_: Throwable) {
             localFailure()
         }
@@ -91,5 +90,19 @@ internal class CrashReporter(
     private fun localFailure() {
         // Never recursively report diagnostic failures or expose SDK exception messages.
         runCatching { logE("Remote diagnostics unavailable") }
+    }
+
+    private companion object {
+        const val DUPLICATE_WINDOW_NS = 30_000_000_000L
+        const val MAX_RECENT_REPORTS = 128
+
+        // Keep distinct attempts, alarm deliveries and aggregate progress. Volatile duration and
+        // runtime fields deliberately do not defeat duplicate suppression for the same report.
+        val REPORT_IDENTITY_FIELDS = listOf(
+            "category", "eventCode", "level", "userId", "errorType", "errorCode", "failureCode",
+            "orderId", "signInMode", "stage", "outcome", "reason", "locationTime",
+            "requestId", "actionId", "attemptId", "sessionId", "alarmId", "plannedAt",
+            "failureEpisode", "failureCount", "reportSequence",
+        )
     }
 }

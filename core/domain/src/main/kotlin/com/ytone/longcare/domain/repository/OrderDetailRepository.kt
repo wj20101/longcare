@@ -10,7 +10,8 @@ interface OrderDetailRepository {
     fun getCachedOrderInfo(orderKey: OrderKey): ServiceOrderInfoModel?
     suspend fun updateSelectedProjects(orderKey: OrderKey, selectedProjectIds: List<Int>)
     suspend fun getSelectedProjectIds(orderKey: OrderKey): List<Int>
-    suspend fun startLocalService(orderKey: OrderKey)
+    /** 保存首次确认的服务起点；重复准备不能延长倒计时。 */
+    suspend fun startLocalService(orderKey: OrderKey, startedAtMillis: Long)
     suspend fun endLocalService(orderKey: OrderKey)
     suspend fun updateFaceVerification(orderKey: OrderKey, completed: Boolean)
     suspend fun getLocalState(orderKey: OrderKey): OrderLocalStateEntity?

@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.location.core
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
@@ -30,6 +31,9 @@ class AndroidLocationRuntimeReadiness @Inject constructor(
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         return LocationManagerCompat.isLocationEnabled(locationManager)
     }
+
+    /** A location foreground Service alone does not make the app UI visible. */
+    fun isAppVisible(): Boolean? = read { isLocationProcessVisible() }
 
     /** Read only when reporting an episode; null means unavailable, never a guessed false. */
     fun diagnosticSnapshot(): Map<String, Any?> {
@@ -78,4 +82,11 @@ class AndroidLocationRuntimeReadiness @Inject constructor(
     }
 
     private inline fun <T> read(block: () -> T): T? = try { block() } catch (_: Exception) { null }
+}
+
+internal fun isLocationProcessVisible(): Boolean {
+    val process = ActivityManager.RunningAppProcessInfo()
+    ActivityManager.getMyMemoryState(process)
+    return process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND ||
+        process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE
 }

@@ -102,6 +102,17 @@ class AlarmRingtoneServiceTest {
         assertTrue(shadowOf(service).isStoppedBySelf)
         verify(exactly = 1) { manager.startAlarmForeground(any(), any()) }
         verify(exactly = 1) { playback.start() }
+        verify(exactly = 1) { manager.trackDeliveryResult(any(), "playback_started") }
+    }
+
+    @Test fun `playback startup failure has a distinct final diagnostic without success`() {
+        val service = createService()
+        every { playback.start() } returns false
+        every { playback.lastStartFailureType } returns "IOException"
+        service.onStartCommand(startIntent(), 0, 1)
+        verify(exactly = 1) { manager.trackDeliveryResult(any(), "playback_start_failed", "IOException") }
+        verify(exactly = 0) { manager.trackDeliveryResult(any(), "playback_started") }
+        assertTrue(shadowOf(service).isStoppedBySelf)
     }
 
     @Test fun `stop uses stopService without creating a replacement service`() {

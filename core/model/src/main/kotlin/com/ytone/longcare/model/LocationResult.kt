@@ -19,4 +19,6 @@ data class LocationResult(
     val errorCode: Int = 0,
     val errorInfo: String = "",
     val requestId: String = "",
+    /** 定位提供方返回的开机累计时间，单位毫秒；0 表示未提供。 */
+    val sourceElapsedRealtime: Long = 0L,
 )

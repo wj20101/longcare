@@ -95,4 +95,63 @@ class DiagnosticPayloadTest {
         assertEquals("123", fields["orderId"])
         assertTrue(fields.containsKey("relatedError0"))
     }
+
+    @Test
+    fun `optional error text cannot crowd out alarm timing evidence`() {
+        val extras = linkedMapOf<String, Any?>(
+            "failureMessage" to "optional".repeat(100),
+            "orderId" to 1234567890123L, "outcome" to "playback_started",
+            "plannedAt" to 1_800_000_000_000L, "scheduleMode" to "inexact_idle",
+            "fallback" to "exact_permission_denied", "receiverDelayMs" to 180000L,
+            "validationMs" to 50L, "serviceDispatchMs" to 40L, "playbackSetupMs" to 100L,
+            "clockShiftMs" to 0L, "sleepMs" to 600000L,
+        )
+        val fields = DiagnosticPayload.create("countdown", "alarm_delivery", "INFO", "123",
+            "闹钟播放时序", IllegalStateException("optional".repeat(100)), extras)
+        extras.filterKeys { it != "failureMessage" }.forEach { (key, value) ->
+            assertEquals("Missing timing evidence: $key", value.toString(), fields[key])
+        }
+        assertTrue(DiagnosticPayload.encode(fields).length <= 950)
+    }
+
+    @Test
+    fun `checkout summary preserves correlation stage durations and submitted coordinates`() {
+        val extras = linkedMapOf<String, Any?>(
+            "failureMessage" to "超出范围".repeat(100),
+            "orderId" to 1234567890123L, "planId" to 123456789, "signInMode" to "END_ORDER",
+            "attemptId" to "cd47d834-d58a-45f8-9c0b-0f7bcf1fe301",
+            "entry" to "confirmation", "outcome" to "submit_failed", "stage" to "submit",
+            "durationMs" to 65000L, "checkMs" to 5000L, "locationMs" to 30000L,
+            "submitMs" to 30000L, "failureCode" to 4001,
+            "longitude" to 121.98765432109876, "latitude" to 31.13812345678,
+            "coordType" to "GCJ02", "locationTime" to 1_800_000_000_000L,
+            "accuracy" to 18f, "requestId" to "cd47d834-d58a-45f8-9c0b-0f7bcf1fe302",
+        )
+        val fields = DiagnosticPayload.create("nfc_workflow", "nfc_end_order_result", "INFO", "123",
+            "签退流程诊断", null, extras)
+        extras.filterKeys { it != "failureMessage" }.forEach { (key, value) ->
+            assertEquals("Missing checkout evidence: $key", value.toString(), fields[key])
+        }
+        assertTrue(DiagnosticPayload.encode(fields).length <= 950)
+    }
+
+    @Test
+    fun `full background health summary retains sleep network and failure counters`() {
+        val extras = linkedMapOf<String, Any?>(
+            "orderId" to 1234567890123L, "sessionId" to "cd47d834-d58a-45f8-9c0b-0f7bcf1fe301",
+            "stage" to "summary", "reason" to "callback_silence", "failureEpisode" to 20L,
+            "successGapMs" to 1_200_000L, "rawGapMs" to 120_000L, "pendingMs" to 29_000L,
+            "errorCode" to 4001, "sdkErrorCode" to 4, "qualityReason" to "ACCURACY",
+            "apiFailure" to "api_network", "apiErrorType" to "SocketTimeoutException",
+            "maxTickGapMs" to 120_000L, "maxSleepGapMs" to 90_000L,
+            "deviceIdle" to true, "screenOn" to false, "networkAvailable" to true,
+            "networkValidated" to false, "batteryExempt" to false, "powerSave" to true,
+            "clientId" to "cd47d834-d58a-45f8-9c0b-0f7bcf1fe302",
+            "failureCount" to 30, "callbackCount" to 100, "rejectedCount" to 50,
+        )
+        val fields = DiagnosticPayload.create("location", "reporting_health", "INFO", "2147483647",
+            "后台定位上报健康汇总", null, extras)
+        extras.forEach { (key, value) -> assertEquals("Missing health evidence: $key", value.toString(), fields[key]) }
+        assertTrue(DiagnosticPayload.encode(fields).length <= 950)
+    }
 }

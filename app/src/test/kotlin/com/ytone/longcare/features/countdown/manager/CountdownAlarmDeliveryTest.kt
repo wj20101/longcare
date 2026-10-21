@@ -3,6 +3,7 @@ package com.ytone.longcare.features.countdown.manager
 import android.Manifest
 import android.app.AlarmManager
 import android.app.Application
+import android.app.PendingIntent
 import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationManager
@@ -10,6 +11,8 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Bundle
+import android.os.Parcel
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationManagerCompat
@@ -19,6 +22,9 @@ import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.features.countdown.tracker.CountdownAlarmDiagnostics
+import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
+import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.countdown.service.AlarmRingtonePlaybackController
 import com.ytone.longcare.model.OrderKey
@@ -40,6 +46,8 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.Implements
+import org.robolectric.annotation.Implementation
 import org.robolectric.shadows.ShadowAlarmManager
 import org.robolectric.util.ReflectionHelpers
 
@@ -227,6 +235,91 @@ class CountdownAlarmDeliveryTest {
         assertNull(shadowOf(context as Application).nextStartedActivity)
     }
 
+    @Test
+    @Config(sdk = [30, 34])
+    fun `diagnostic records the exact API used instead of conflating all non AlarmClock modes`() = runTest {
+        createManager(backgroundScope)
+        val intent = schedule()
+        val fields = CountdownAlarmDiagnostics.fields(CountdownAlarmDiagnostics.read(intent),
+            intent.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L), "scheduled")
+        assertEquals(if (Build.VERSION.SDK_INT >= 31) "alarm_clock" else "exact_allow_idle", fields["scheduleMode"])
+        assertNull(fields["fallback"])
+        assertNull(fields["receiverDelayMs"])
+    }
+
+    @Test fun `inexact permission fallback remains visible after Intent parcel round trip`() = runTest {
+        createManager(backgroundScope)
+        ShadowAlarmManager.setCanScheduleExactAlarms(false)
+        val intent = schedule()
+        val parcel = Parcel.obtain()
+        val restored = try {
+            intent.writeToParcel(parcel, 0)
+            parcel.setDataPosition(0)
+            Intent.CREATOR.createFromParcel(parcel)
+        } finally { parcel.recycle() }
+        val fields = CountdownAlarmDiagnostics.fields(CountdownAlarmDiagnostics.read(restored),
+            restored.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L), "delivered")
+        assertEquals("inexact_allow_idle", fields["scheduleMode"])
+        assertEquals("exact_permission_missing", fields["fallback"])
+    }
+
+    @Test
+    @Config(shadows = [PermissionRevokedAlarmManager::class])
+    fun `permission revoked during exact schedule updates delivered fallback diagnostics`() {
+        scheduleCountdownAlarmInSystem(context, alarms, 3001, "COUNTDOWN_ALARM_", order,
+            "护理", System.currentTimeMillis() + 60_000L, canUseExactAlarm = true, owner = "1:2:3")
+        val intent = shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent
+        val fields = CountdownAlarmDiagnostics.fields(CountdownAlarmDiagnostics.read(intent),
+            intent.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L), "delivered")
+        assertEquals("inexact_allow_idle", fields["scheduleMode"])
+        assertEquals("exact_permission_revoked", fields["fallback"])
+        assertEquals(true, fields["canScheduleExact"])
+    }
+
+    @Test fun `manager validation preserves the receiver entry timestamp`() {
+        val intent = Intent()
+        CountdownAlarmDiagnostics.receiverEntered(intent, context)
+        org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofSeconds(3))
+        CountdownAlarmDiagnostics.receiverEntered(intent, context)
+        CountdownAlarmDiagnostics.validated(intent)
+        assertEquals(3_000L, CountdownAlarmDiagnostics.fields(
+            CountdownAlarmDiagnostics.read(intent), 0L, "validated")["validationMs"])
+    }
+
+    @Test fun `clock change and sleep are separated from receiver and validation delay`() {
+        // Device slept 80 s, wall clock advanced an extra 20 s; validation itself took 3 s.
+        val data = Bundle().apply {
+            putLong("scheduleWall", 1_000_000L); putLong("scheduleElapsed", 10_000L)
+            putLong("scheduleUptime", 5_000L); putLong("receiverWall", 1_140_000L)
+            putLong("receiverElapsed", 130_000L); putLong("receiverUptime", 45_000L)
+            putLong("validatedElapsed", 133_000L); putLong("serviceElapsed", 133_500L)
+        }
+        val fields = CountdownAlarmDiagnostics.fields(data, 1_060_000L, "playback_started")
+        assertEquals(80_000L, fields["receiverDelayMs"])
+        assertEquals(20_000L, fields["clockShiftMs"])
+        assertEquals(80_000L, fields["sleepMs"])
+        assertEquals(3_000L, fields["validationMs"])
+        assertEquals(500L, fields["serviceDispatchMs"])
+        assertNull(CountdownAlarmDiagnostics.fields(null, 0L, "legacy")["receiverDelayMs"])
+    }
+
+    @Test fun `rejected delivery reports captured account with the validation cause once`() = runTest {
+        createManager(backgroundScope)
+        mockkObject(DiagnosticEventTracker)
+        every { DiagnosticEventTracker.currentUserId() } returns "3"
+        every { DiagnosticEventTracker.trackEvent(any(), any(), any(), any(), any(), any()) } just runs
+        val intent = schedule()
+        session.value = SessionState.LoggedOut
+
+        manager.onAlarmTriggered(intent)
+
+        verify(exactly = 1) { DiagnosticEventTracker.trackEvent(
+            DiagnosticCategory.COUNTDOWN, "alarm_delivery_result", any(),
+            match { it["outcome"] == "validation_rejected" && it["validationFailure"] == "session_unresolved_or_logged_out" },
+            "3", true) }
+        verify(exactly = 0) { AlarmRingtoneService.startRingtone(any(), any()) }
+    }
+
     private fun createManager(scope: kotlinx.coroutines.CoroutineScope) {
         val repository = mockk<UserSessionRepository> { every { sessionState } returns session }
         val lifecycle = mockk<ServiceOrderLifecycle> {
@@ -239,6 +332,14 @@ class CountdownAlarmDeliveryTest {
     private fun schedule(extraDelay: Long = 0L): Intent {
         manager.scheduleCountdownAlarm(order, "护理", System.currentTimeMillis() + 60_000L + extraDelay)
         return Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+    }
+
+    @Implements(AlarmManager::class)
+    class PermissionRevokedAlarmManager : ShadowAlarmManager() {
+        @Implementation
+        override fun setAlarmClock(info: AlarmManager.AlarmClockInfo, operation: PendingIntent) {
+            throw SecurityException("revoked after capability check")
+        }
     }
 
     class TestForegroundService : Service() {

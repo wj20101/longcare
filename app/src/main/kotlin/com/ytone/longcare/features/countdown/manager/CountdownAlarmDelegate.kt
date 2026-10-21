@@ -50,7 +50,6 @@ internal class CountdownAlarmDelegate(
 
             trackAlarmScheduleSuccess(
                 orderId = orderKey.orderId,
-                serviceName = serviceName,
                 triggerTimeMillis = triggerTimeMillis,
                 scheduleMetadata = scheduleMetadata
             )

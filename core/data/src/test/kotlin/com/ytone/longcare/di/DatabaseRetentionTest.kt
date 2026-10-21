@@ -35,6 +35,49 @@ class DatabaseRetentionTest {
     }
 
     @Test
+    fun `late local state initialization preserves a confirmed service start`() = runTest {
+        val database = DatabaseModule.buildDatabase(context, name)
+        try {
+            database.orderDao().insertOrUpdate(OrderEntityDb(orderId = 42))
+            val local = database.orderLocalStateDao()
+            local.insertIfAbsent(OrderLocalStateEntityDb(orderId = 42))
+            local.startService(42, 1_000L)
+            local.updateFaceVerification(42, true)
+            // A detail refresh that observed a missing row before the start must not replace it.
+            local.insertIfAbsent(OrderLocalStateEntityDb(orderId = 42))
+
+            val saved = requireNotNull(local.getByOrderId(42))
+            assertEquals(1_000L, saved.localStartTimestamp)
+            assertEquals(1, saved.localStatus)
+            assertTrue(saved.faceVerificationCompleted)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun `repeated countdown preparation neither moves the start nor reopens a completed service`() = runTest {
+        val database = DatabaseModule.buildDatabase(context, name)
+        try {
+            database.orderDao().insertOrUpdate(OrderEntityDb(orderId = 42))
+            val local = database.orderLocalStateDao()
+            local.insertIfAbsent(OrderLocalStateEntityDb(orderId = 42))
+            local.startService(42, 1_000L)
+            local.startService(42, 121_000L)
+            assertEquals(1_000L, requireNotNull(local.getByOrderId(42)).localStartTimestamp)
+
+            local.endService(42, 181_000L)
+            local.startService(42, 241_000L)
+            val ended = requireNotNull(local.getByOrderId(42))
+            assertEquals(1_000L, ended.localStartTimestamp)
+            assertEquals(181_000L, ended.localEndTimestamp)
+            assertEquals(2, ended.localStatus)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
     fun `only approved historical versions may be rebuilt`() = runTest {
         for (version in listOf(1, 2)) {
             seedPendingPhoto()
@@ -73,7 +116,7 @@ class DatabaseRetentionTest {
         try {
             database.orderDao().insertOrUpdate(OrderEntityDb(orderId = 42))
             database.orderImageDao().insert(OrderImageEntityDb(orderId = 42, imageType = 0, localUri = "file:///pending.jpg"))
-            database.orderLocalStateDao().insertOrUpdate(OrderLocalStateEntityDb(orderId = 42, faceVerificationCompleted = true))
+            database.orderLocalStateDao().insertIfAbsent(OrderLocalStateEntityDb(orderId = 42, faceVerificationCompleted = true))
         } finally {
             database.close()
         }

@@ -1,13 +1,10 @@
 package com.ytone.longcare.features.nfc.vm
 
-import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.model.result.ApiResult
-import com.ytone.longcare.common.utils.klogI
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.OrderKey
-import com.ytone.longcare.navigation.SignInMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -26,80 +23,46 @@ internal suspend fun executeEndOrderRequest(
     location: LocationResult,
     endType: Int,
     userMessages: NfcUserMessages,
+    diagnostics: EndOrderDiagnostics = EndOrderDiagnostics(orderKey, "submit"),
 ) {
-    val userId = DiagnosticEventTracker.currentUserId()
-    val locationFields = nfcLocationExtras(location)
-    val diagnosticFields = endOrderDiagnosticExtras(locationFields, projectIdList, beginImgList, centerImgList, endImageList, endType)
-    klogI(
-        "executeEndOrder: Begin: ${beginImgList.size}, Center: ${centerImgList.size}, End: ${endImageList.size}",
-    )
-
-    val result = orderRepository.endOrder(
-        orderId = orderKey.orderId,
-        nfcDeviceId = nfcDeviceId,
-        projectIdList = projectIdList,
-        beginImgList = beginImgList,
-        centerImgList = centerImgList,
-        endImageList = endImageList,
-        longitude = location.longitude.toString(),
-        latitude = location.latitude.toString(),
-        endType = endType
-    )
+    // Capture sample age at dispatch, rather than adding network latency to the evidence.
+    diagnostics.captureLocation(location)
+    val result = diagnostics.measure("submit") {
+        orderRepository.endOrder(
+            orderId = orderKey.orderId,
+            nfcDeviceId = nfcDeviceId,
+            projectIdList = projectIdList,
+            beginImgList = beginImgList,
+            centerImgList = centerImgList,
+            endImageList = endImageList,
+            longitude = location.longitude.toString(),
+            latitude = location.latitude.toString(),
+            endType = endType
+        )
+    }
     currentCoroutineContext().ensureActive()
     when (result) {
         is ApiResult.Success -> {
-            trackNfcLocation("nfc_location_submit_success", orderKey, SignInMode.END_ORDER, "end_submit", location, userId = userId, locationFields = locationFields)
-            serviceOrderLifecycle.onOrderEnded(orderKey.orderId)
-            completionDelegate.cleanupResources(orderKey)
+            val cleanedUp = diagnostics.measure("completion") {
+                serviceOrderLifecycle.onOrderEnded(orderKey.orderId)
+                completionDelegate.cleanupResources(orderKey)
+            }
             uiState.value = NfcSignInUiState.Success(
                 endOrderSuccessData = EndOrderSuccessData(
                     trueServiceTime = result.data.trueServiceTime
                 )
             )
+            diagnostics.finish(if (cleanedUp) "success" else "success_cleanup_failed")
         }
 
         is ApiResult.Exception -> {
-            trackNfcException(
-                event = "end_order_submit_exception",
-                description = "NFC结束工单提交异常",
-                throwable = result.exception,
-                orderKey = orderKey,
-                signInMode = SignInMode.END_ORDER,
-                nfcDeviceId = nfcDeviceId,
-                userId = userId,
-                extras = diagnosticFields,
-            )
+            diagnostics.finish("api_exception", throwable = result.exception, isError = true)
             uiState.value = reportedNfcError(userMessages.networkError)
         }
 
         is ApiResult.Failure -> {
-            trackNfcFailure(
-                event = "end_order_submit_failure",
-                description = "NFC结束工单提交业务失败",
-                failure = result,
-                orderKey = orderKey,
-                signInMode = SignInMode.END_ORDER,
-                nfcDeviceId = nfcDeviceId,
-                userId = userId,
-                extras = diagnosticFields,
-            )
+            diagnostics.finish("api_failure", failure = result, isError = true)
             uiState.value = reportedNfcError(result.message)
         }
     }
 }
-
-private fun endOrderDiagnosticExtras(
-    locationFields: Map<String, Any?>,
-    projectIdList: List<Int>,
-    beginImgList: List<String>,
-    centerImgList: List<String>,
-    endImageList: List<String>,
-    endType: Int,
-): Map<String, Any?> =
-    locationFields + mapOf(
-        "projectCount" to projectIdList.size,
-        "beginImageCount" to beginImgList.size,
-        "centerImageCount" to centerImgList.size,
-        "endImageCount" to endImageList.size,
-        "endType" to endType,
-    )

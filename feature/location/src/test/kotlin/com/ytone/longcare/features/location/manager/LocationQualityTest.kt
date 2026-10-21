@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.location.manager
 
 import com.ytone.longcare.domain.location.LocationQuality
+import com.ytone.longcare.domain.location.ServiceOrderLocationQuality
 import com.ytone.longcare.domain.location.LocationQuality.Rejection
 import com.ytone.longcare.model.LocationResult
 import org.junit.Assert.*
@@ -62,5 +63,98 @@ class LocationQualityTest {
         assertEquals(Rejection.STALE, LocationQuality.rejection(sample, 100_000, 16_001))
         assertEquals(Rejection.TIME, LocationQuality.rejection(sample, 99_999, 1_000))
         assertEquals(Rejection.TIME, LocationQuality.rejection(sample, 100_000, 999))
+    }
+
+    @Test fun `source monotonic age includes time before receipt and waiting after receipt`() {
+        val reused = sample.copy(receivedElapsedRealtime = 100_000, sourceElapsedRealtime = 85_000)
+        assertNull(LocationQuality.rejection(reused, 100_000, 100_000))
+        assertEquals(Rejection.STALE, LocationQuality.rejection(reused, 100_001, 100_001))
+
+        val waiting = reused.copy(sourceElapsedRealtime = 86_000)
+        assertNull(LocationQuality.rejection(waiting, 101_000, 101_000))
+        assertEquals(Rejection.STALE, LocationQuality.rejection(waiting, 101_001, 101_001))
+        assertEquals(Rejection.STALE, LocationQuality.rejection(
+            reused.copy(sourceElapsedRealtime = 84_999), 100_000, 100_000,
+        ))
+    }
+
+    @Test fun `refreshed SDK wall time cannot renew a reporting sample with an old source tick`() {
+        val reused = sample.copy(
+            locationTime = 200_000, receivedAt = 200_000,
+            receivedElapsedRealtime = 100_000, sourceElapsedRealtime = 40_000,
+        )
+        assertNull(ServiceOrderLocationQuality.rejection(reused, 200_000, 100_000,
+            maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS))
+        assertEquals(Rejection.STALE, ServiceOrderLocationQuality.rejection(
+            reused.copy(locationTime = 200_001, receivedAt = 200_001, receivedElapsedRealtime = 100_001),
+            200_001, 100_001, maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS,
+        ))
+        assertEquals(Rejection.STALE, ServiceOrderLocationQuality.rejection(reused, 200_000, 100_001,
+            maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS))
+    }
+
+    @Test fun `source tick beyond receipt or negative is invalid even without an age limit`() {
+        listOf(-1L, 1_001L).forEach { invalid ->
+            assertEquals(Rejection.TIME, ServiceOrderLocationQuality.rejection(
+                sample.copy(sourceElapsedRealtime = invalid), 100_000, 1_000,
+            ))
+        }
+        assertNull(reason(sample.copy(sourceElapsedRealtime = 1_000)))
+    }
+
+    @Test fun `action cutoff uses source age when SDK wall time has been refreshed`() {
+        val reused = sample.copy(receivedElapsedRealtime = 100_000, sourceElapsedRealtime = 97_000)
+        assertNull(ServiceOrderLocationQuality.rejection(reused, 100_000, 100_000, notBefore = 97_000))
+        assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
+            reused.copy(sourceElapsedRealtime = 96_999), 100_000, 100_000, notBefore = 97_000,
+        ))
+        // Removing the service action's age limit must not remove its order isolation.
+        assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
+            reused.copy(sourceElapsedRealtime = 1), 100_000, 100_000, notBefore = 97_000,
+        ))
+    }
+
+    @Test fun `forward wall correction cannot admit a source tick from before the action`() {
+        // 动作开始于 wall=100000、elapsed=100000；回调前墙上时间向前跳变。
+        val received = sample.copy(
+            locationTime = 200_000, receivedAt = 200_000,
+            receivedElapsedRealtime = 110_000, sourceElapsedRealtime = 90_000,
+        )
+        assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
+            received, 200_000, 110_000, notBefore = 97_000, notBeforeElapsedRealtime = 97_000,
+        ))
+        // 仍允许动作前 3 秒的预热边界；缺失源时钟时保持原来的兼容路径。
+        assertNull(ServiceOrderLocationQuality.rejection(
+            received.copy(sourceElapsedRealtime = 97_000), 200_000, 110_000,
+            notBefore = 97_000, notBeforeElapsedRealtime = 97_000,
+        ))
+        assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
+            received.copy(sourceElapsedRealtime = 96_999), 200_000, 110_000,
+            notBefore = 97_000, notBeforeElapsedRealtime = 97_000,
+        ))
+        assertNull(ServiceOrderLocationQuality.rejection(
+            received.copy(sourceElapsedRealtime = 0), 200_000, 110_000,
+            notBefore = 97_000, notBeforeElapsedRealtime = 97_000,
+        ))
+    }
+
+    @Test fun `missing source tick preserves existing wall time age and cutoff behavior`() {
+        assertEquals(0L, sample.sourceElapsedRealtime)
+        assertNull(reason(sample))
+        assertEquals(Rejection.STALE, reason(sample.copy(locationTime = 84_999)))
+        assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
+            sample.copy(locationTime = 96_999), 100_000, 1_000, notBefore = 97_000,
+        ))
+        assertNull(ServiceOrderLocationQuality.rejection(sample, 160_001, 61_001))
+    }
+
+    @Test fun `source tick supplements rather than replaces GPS corrected wall time checks`() {
+        val gps = sample.copy(locationType = 1, receivedElapsedRealtime = 100_000, sourceElapsedRealtime = 100_000)
+        assertNull(LocationQuality.rejection(gps, 100_000, 100_000))
+        assertEquals(Rejection.STALE, LocationQuality.rejection(gps.copy(locationTime = 84_999), 100_000, 100_000))
+        assertEquals(Rejection.TIME, LocationQuality.rejection(gps.copy(locationTime = 100_001), 100_000, 100_000))
+        assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
+            gps.copy(locationTime = 96_999), 100_000, 100_000, notBefore = 97_000,
+        ))
     }
 }

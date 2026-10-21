@@ -35,9 +35,7 @@ internal class OrderRoomSyncDelegate(
             orderProjectDao.insertOrUpdateAll(updatedProjects)
         }
 
-        if (orderLocalStateDao.getByOrderId(orderId) == null) {
-            orderLocalStateDao.insertOrUpdate(OrderLocalStateEntity(orderId = orderId).toDb())
-        }
+        orderLocalStateDao.insertIfAbsent(OrderLocalStateEntity(orderId = orderId).toDb())
     }
 
 }

@@ -52,4 +52,14 @@ class DiagnosticEventTrackerTest {
             })
         }
     }
+
+    @Test
+    fun `diagnostic delivery exceptions never escape into the business callback`() {
+        every { CrashReportGateway.postCaughtException(any()) } throws IllegalStateException("SDK unavailable")
+        every { CrashReportGateway.recordBreadcrumb(any(), any()) } throws IllegalStateException("SDK unavailable")
+        DiagnosticEventTracker.trackError(DiagnosticCategory.LOCATION, "upload_failed", "上传失败")
+        DiagnosticEventTracker.trackEvent(DiagnosticCategory.COUNTDOWN, "alarm_started", "开始播放")
+        verify(exactly = 1) { CrashReportGateway.postCaughtException(any()) }
+        verify(exactly = 1) { CrashReportGateway.recordBreadcrumb(any(), "123") }
+    }
 }
